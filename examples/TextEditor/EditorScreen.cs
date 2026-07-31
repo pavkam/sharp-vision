@@ -461,7 +461,7 @@ public sealed class EditorScreen: Screen
     {
         _ = sender;
 
-        if (e.Handled || e.Phase != Phase.Preview || e.Stroke.Action != KeyAction.Press)
+        if (e.Handled || e.Phase != RoutingPhase.Preview || e.Stroke.Action != KeyAction.Press)
         {
             return;
         }

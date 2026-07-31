@@ -54,7 +54,7 @@ public sealed class ApplicationAccessKeyTests
         var root = new Stack { Children = { input, button } };
         _ = root.AddHandler(Events.Key, (_, eventArgs) =>
         {
-            if (eventArgs.Phase == Phase.Preview && eventArgs.Stroke.Modifiers == Modifiers.Alt)
+            if (eventArgs.Phase == RoutingPhase.Preview && eventArgs.Stroke.Modifiers == Modifiers.Alt)
             {
                 eventArgs.Handled = true;
             }

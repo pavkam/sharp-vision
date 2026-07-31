@@ -1895,9 +1895,9 @@ namespace SharpVision.Input
     public sealed class Event<TArgs>
         where TArgs : SharpVision.Input.RoutedEventArgs
     {
-        public Event(string name, SharpVision.Input.Strategy strategy) { }
+        public Event(string name, SharpVision.Input.RoutingStrategy strategy) { }
         public string Name { get; }
-        public SharpVision.Input.Strategy Strategy { get; }
+        public SharpVision.Input.RoutingStrategy Strategy { get; }
         public override string ToString() { }
     }
     public static class Events
@@ -2010,11 +2010,6 @@ namespace SharpVision.Input
         public PasteEventArgs(SharpVision.Terminal.Input.Paste paste) { }
         public SharpVision.Terminal.Input.Paste Paste { get; }
     }
-    public enum Phase
-    {
-        Preview = 0,
-        Bubble = 1,
-    }
     public enum PointerCaptureLossReason
     {
         Explicit = 0,
@@ -2075,7 +2070,7 @@ namespace SharpVision.Input
         protected RoutedEventArgs() { }
         public bool Handled { get; set; }
         public SharpVision.Controls.Control? OriginalSource { get; }
-        public SharpVision.Input.Phase Phase { get; }
+        public SharpVision.Input.RoutingPhase Phase { get; }
         public SharpVision.Input.PostRouteCommand PostRouteCommand { get; }
         public SharpVision.Controls.Control? Source { get; }
         public void RequestPostRouteCommand(SharpVision.Input.PostRouteCommand command) { }
@@ -2086,17 +2081,22 @@ namespace SharpVision.Input
         public static SharpVision.Input.RouteResult Route<TArgs>(SharpVision.Controls.Control target, SharpVision.Input.Event<TArgs> routedEvent, TArgs eventArgs)
             where TArgs : SharpVision.Input.RoutedEventArgs { }
     }
+    public enum RoutingPhase
+    {
+        Preview = 0,
+        Bubble = 1,
+    }
+    public enum RoutingStrategy
+    {
+        TunnelBubble = 0,
+        Bubble = 1,
+        Direct = 2,
+    }
     public sealed class SliderValueChangedEventArgs : System.EventArgs
     {
         public SliderValueChangedEventArgs(int previousValue, int value) { }
         public int PreviousValue { get; }
         public int Value { get; }
-    }
-    public enum Strategy
-    {
-        TunnelBubble = 0,
-        Bubble = 1,
-        Direct = 2,
     }
     public sealed class SubmittedEventArgs : System.EventArgs
     {

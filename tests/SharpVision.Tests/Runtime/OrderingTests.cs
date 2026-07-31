@@ -57,7 +57,7 @@ public sealed class OrderingTests
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        List<Phase> phases = [];
+        List<RoutingPhase> phases = [];
         await application.Dispatcher.InvokeAsync(() =>
         {
             application.Focus.Focus(child).ShouldBeTrue();
@@ -76,7 +76,7 @@ public sealed class OrderingTests
             static () => { },
             TestContext.Current.CancellationToken);
 
-        phases.ShouldBe([Phase.Preview, Phase.Bubble]);
+        phases.ShouldBe([RoutingPhase.Preview, RoutingPhase.Bubble]);
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 

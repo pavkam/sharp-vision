@@ -696,7 +696,7 @@ public sealed class ApplicationTests
         return;
 
         static bool IsControlCharacter(KeyEventArgs eventArgs, char character) =>
-            eventArgs.Phase == Phase.Preview &&
+            eventArgs.Phase == RoutingPhase.Preview &&
             eventArgs.Stroke.Action == KeyAction.Press &&
             eventArgs.Stroke.Code == Code.Character &&
             eventArgs.Stroke.Character == new Rune(character) &&
@@ -717,7 +717,7 @@ public sealed class ApplicationTests
         ModalScope? scope = null;
         _ = root.AddHandler(Events.Key, (_, eventArgs) =>
         {
-            if (eventArgs.Phase == Phase.Preview &&
+            if (eventArgs.Phase == RoutingPhase.Preview &&
                 eventArgs.Stroke.Code == Code.Character &&
                 eventArgs.Stroke.Character == new Rune('c') &&
                 scope is null)
@@ -735,7 +735,7 @@ public sealed class ApplicationTests
                 Events.Key,
                 (_, eventArgs) =>
                 {
-                    if (eventArgs.Phase == Phase.Preview &&
+                    if (eventArgs.Phase == RoutingPhase.Preview &&
                         eventArgs.Stroke.Character == new Rune('c') &&
                         eventArgs.Handled)
                     {
@@ -802,7 +802,7 @@ public sealed class ApplicationTests
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
         var root = new ProbeControl { Focusable = true };
-        var phases = new List<Phase>();
+        var phases = new List<RoutingPhase>();
         _ = root.AddHandler(Events.Key, (_, eventArgs) => phases.Add(eventArgs.Phase));
         await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
@@ -821,7 +821,7 @@ public sealed class ApplicationTests
             static () => { },
             TestContext.Current.CancellationToken);
 
-        phases.ShouldBe([Phase.Preview, Phase.Bubble]);
+        phases.ShouldBe([RoutingPhase.Preview, RoutingPhase.Bubble]);
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 

@@ -516,7 +516,7 @@ public sealed class TreeView: CompositeControl
     {
         _ = sender;
 
-        if (eventArgs.Phase != Phase.Bubble || eventArgs.Stroke.Action != KeyAction.Press)
+        if (eventArgs.Phase != RoutingPhase.Bubble || eventArgs.Stroke.Action != KeyAction.Press)
         {
             return;
         }

@@ -159,7 +159,7 @@ public sealed class RoutingTests
         middle.Children.Add(target);
         _ = target.AddHandler(Events.Key, (_, eventArgs) =>
         {
-            if (eventArgs.Phase == Phase.Bubble)
+            if (eventArgs.Phase == RoutingPhase.Bubble)
             {
                 order.Add("target-handle-Bubble");
                 eventArgs.Handled = true;
@@ -202,7 +202,7 @@ public sealed class RoutingTests
         root.Children.Add(target);
         _ = target.AddHandler(Events.Key, (_, eventArgs) =>
         {
-            if (eventArgs.Phase == Phase.Bubble)
+            if (eventArgs.Phase == RoutingPhase.Bubble)
             {
                 eventArgs.Handled = true;
             }
@@ -271,7 +271,7 @@ public sealed class RoutingTests
         {
             order.Add($"old-{eventArgs.Phase}");
 
-            if (!moved && eventArgs.Phase == Phase.Preview)
+            if (!moved && eventArgs.Phase == RoutingPhase.Preview)
             {
                 moved = true;
                 _ = root.Children.Remove(target);
@@ -346,8 +346,8 @@ public sealed class RoutingTests
         var root = new RecordingControl("root", order);
         var target = new RecordingControl("target", order);
         root.Children.Add(target);
-        var bubble = new Event<KeyEventArgs>("BubbleOnly", Strategy.Bubble);
-        var direct = new Event<KeyEventArgs>("Direct", Strategy.Direct);
+        var bubble = new Event<KeyEventArgs>("BubbleOnly", RoutingStrategy.Bubble);
+        var direct = new Event<KeyEventArgs>("Direct", RoutingStrategy.Direct);
         _ = root.AddHandler(bubble, (_, eventArgs) =>
             order.Add($"root-{eventArgs.Phase}"));
         _ = target.AddHandler(bubble, (_, eventArgs) =>
@@ -412,7 +412,7 @@ public sealed class RoutingTests
         root.Children.Add(target);
         _ = root.AddHandler(Events.Key, (_, eventArgs) =>
         {
-            if (eventArgs.Phase == Phase.Preview)
+            if (eventArgs.Phase == RoutingPhase.Preview)
             {
                 eventArgs.Retarget(root);
             }
@@ -459,9 +459,9 @@ public sealed class RoutingTests
         var target = new RecordingControl("target", order);
 
         _ = Should.Throw<ArgumentException>(() =>
-            new Event<KeyEventArgs>(" ", Strategy.TunnelBubble));
+            new Event<KeyEventArgs>(" ", RoutingStrategy.TunnelBubble));
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
-            new Event<KeyEventArgs>("Invalid", (Strategy) int.MaxValue));
+            new Event<KeyEventArgs>("Invalid", (RoutingStrategy) int.MaxValue));
         _ = Should.Throw<ArgumentNullException>(() =>
             Router.Route(target, Events.Key, null!));
         _ = Should.Throw<ArgumentNullException>(() =>

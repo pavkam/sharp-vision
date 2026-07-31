@@ -248,14 +248,14 @@ public sealed class ApplicationModalityTests
         {
             _ = control.AddHandler(Events.Key, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     routes.Add($"{name}-key");
                 }
             });
             _ = control.AddHandler(Events.TerminalFocusChanged, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     routes.Add($"{name}-focus");
                 }
@@ -377,14 +377,14 @@ public sealed class ApplicationModalityTests
         {
             _ = control.AddHandler(Events.Key, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     routes.Add($"{name}-key");
                 }
             });
             _ = control.AddHandler(Events.TerminalFocusChanged, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     routes.Add($"{name}-focus");
                 }
@@ -460,7 +460,7 @@ public sealed class ApplicationModalityTests
         var routes = 0;
         _ = plane.AddHandler(Events.TerminalFocusChanged, (_, eventArgs) =>
         {
-            if (eventArgs.Phase == Phase.Bubble)
+            if (eventArgs.Phase == RoutingPhase.Bubble)
             {
                 routes++;
                 captured.ProbeHasPointerCapture.ShouldBeFalse();
@@ -501,7 +501,7 @@ public sealed class ApplicationModalityTests
         root.Children.Add(plane);
         var ordinaryRoutes = 0;
         var outsideRoutes = 0;
-        var handled = new List<(Phase Phase, KeyEventArgs EventArgs)>();
+        var handled = new List<(RoutingPhase Phase, KeyEventArgs EventArgs)>();
         _ = plane.AddHandler(Events.Key, (_, _) => ordinaryRoutes++);
         _ = input.AddHandler(Events.Key, (_, _) => ordinaryRoutes++);
         _ = plane.AddHandler(
@@ -550,14 +550,14 @@ public sealed class ApplicationModalityTests
         // each shortcut once in preview and once again in bubble.
         handled.Count.ShouldBe(8);
         handled.Select(entry => entry.Phase).ShouldBe([
-            Phase.Preview,
-            Phase.Bubble,
-            Phase.Preview,
-            Phase.Bubble,
-            Phase.Preview,
-            Phase.Bubble,
-            Phase.Preview,
-            Phase.Bubble,
+            RoutingPhase.Preview,
+            RoutingPhase.Bubble,
+            RoutingPhase.Preview,
+            RoutingPhase.Bubble,
+            RoutingPhase.Preview,
+            RoutingPhase.Bubble,
+            RoutingPhase.Preview,
+            RoutingPhase.Bubble,
         ]);
         handled.Select(entry => entry.EventArgs.Stroke.Character).ShouldBe([
             new Rune('c'),
@@ -611,7 +611,7 @@ public sealed class ApplicationModalityTests
         root.Children.Add(plane);
         var ordinaryRoutes = 0;
         var outsideRoutes = 0;
-        var observed = new List<(Control Sender, Phase Phase, KeyEventArgs EventArgs)>();
+        var observed = new List<(Control Sender, RoutingPhase Phase, KeyEventArgs EventArgs)>();
         _ = plane.AddHandler(Events.Key, (_, _) => ordinaryRoutes++);
         _ = input.AddHandler(Events.Key, (_, _) => ordinaryRoutes++);
         RecordHandled(plane);
@@ -652,10 +652,10 @@ public sealed class ApplicationModalityTests
         // both phases, so bubble walks the same ancestry in reverse even though the tree changed.
         observed.Select(item => item.Sender).ShouldBe([plane, input, input, plane]);
         observed.Select(item => item.Phase).ShouldBe([
-            Phase.Preview,
-            Phase.Preview,
-            Phase.Bubble,
-            Phase.Bubble
+            RoutingPhase.Preview,
+            RoutingPhase.Preview,
+            RoutingPhase.Bubble,
+            RoutingPhase.Bubble
         ]);
         observed
             .Select(item => (object) item.EventArgs)

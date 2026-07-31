@@ -7,5 +7,5 @@ namespace SharpVision.Input;
 internal interface IEvent
 {
     /// <summary>Gets the ancestry traversal strategy.</summary>
-    public Strategy Strategy { get; }
+    public RoutingStrategy Strategy { get; }
 }

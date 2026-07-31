@@ -148,7 +148,7 @@ public sealed class ModalityRoutingTests
             ModalScope? scope = null;
             Record(appRoot, "app", eventArgs =>
             {
-                if (eventArgs.Phase == Phase.Preview && scope is null)
+                if (eventArgs.Phase == RoutingPhase.Preview && scope is null)
                 {
                     scope = modality.Enter(plane);
                 }
@@ -223,7 +223,7 @@ public sealed class ModalityRoutingTests
             var includedDuringRoute = false;
             Record(primary, "primary", eventArgs =>
             {
-                if (eventArgs.Phase == Phase.Preview && !includedDuringRoute)
+                if (eventArgs.Phase == RoutingPhase.Preview && !includedDuringRoute)
                 {
                     includedDuringRoute = true;
                     scope.Include(included);
@@ -292,7 +292,7 @@ public sealed class ModalityRoutingTests
             Record(appRoot, "app");
             Record(plane, "plane", eventArgs =>
             {
-                if (eventArgs.Phase == Phase.Preview && !exitedDuringRoute)
+                if (eventArgs.Phase == RoutingPhase.Preview && !exitedDuringRoute)
                 {
                     exitedDuringRoute = true;
                     scope.Dispose();
@@ -362,7 +362,7 @@ public sealed class ModalityRoutingTests
             Record(appRoot, "app");
             Record(plane, "plane", eventArgs =>
             {
-                if (eventArgs.Phase == Phase.Preview && !disposedDuringRoute)
+                if (eventArgs.Phase == RoutingPhase.Preview && !disposedDuringRoute)
                 {
                     disposedDuringRoute = true;
                     modality.Dispose();
@@ -425,7 +425,7 @@ public sealed class ModalityRoutingTests
             appRoot.Children.Add(background);
             appRoot.Children.Add(plane);
             plane.Children.Add(leaf);
-            var direct = new Event<KeyEventArgs>("Direct", Strategy.Direct);
+            var direct = new Event<KeyEventArgs>("Direct", RoutingStrategy.Direct);
             Record(appRoot, "app");
             Record(background, "background");
             Record(plane, "plane");

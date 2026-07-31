@@ -77,7 +77,7 @@ public sealed class PointerTests
             var routed = false;
             _ = child.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     local = eventArgs.LocalCells;
                     routed = true;
@@ -134,14 +134,14 @@ public sealed class PointerTests
             List<(Control Sender, Point? Local)> observed = [];
             _ = root.AddHandler(Events.Pointer, (sender, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     observed.Add(((Control) sender!, eventArgs.LocalCells));
                 }
             });
             _ = child.AddHandler(Events.Pointer, (sender, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     observed.Add(((Control) sender!, eventArgs.LocalCells));
                 }
@@ -301,7 +301,7 @@ public sealed class PointerTests
             List<Control> routed = [];
             _ = first.AddHandler(Events.Pointer, (sender, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     routed.Add((Control) sender!);
                 }
@@ -630,7 +630,7 @@ public sealed class PointerTests
             List<int> observed = [];
             _ = root.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     observed.Add(eventArgs.ClickCount);
                 }
@@ -673,7 +673,7 @@ public sealed class PointerTests
                 });
             _ = child.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     activated.ShouldHaveSingleItem().ShouldBeSameAs(child);
                 }

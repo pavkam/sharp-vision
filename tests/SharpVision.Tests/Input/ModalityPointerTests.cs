@@ -28,7 +28,7 @@ public sealed class ModalityPointerTests
             var backgroundRoutes = 0;
             _ = background.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     backgroundRoutes++;
                 }
@@ -140,7 +140,7 @@ public sealed class ModalityPointerTests
             leaf.PointerEntered += (_, _) => order.Add("leaf-enter");
             _ = leaf.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase != Phase.Bubble || !nestedDispatch)
+                if (eventArgs.Phase != RoutingPhase.Bubble || !nestedDispatch)
                 {
                     return;
                 }
@@ -268,7 +268,7 @@ public sealed class ModalityPointerTests
                 scope ??= modality.Enter(modalRoot, initialFocus: modalFocus);
             _ = background.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     routes++;
                 }
@@ -325,7 +325,7 @@ public sealed class ModalityPointerTests
             first.PointerExited += (_, _) => scope.Dispose();
             _ = root.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     routes++;
                 }
@@ -375,7 +375,7 @@ public sealed class ModalityPointerTests
             var routes = 0;
             _ = target.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     routes++;
                 }
@@ -451,7 +451,7 @@ public sealed class ModalityPointerTests
             };
             _ = target.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     routes++;
                 }
@@ -497,7 +497,7 @@ public sealed class ModalityPointerTests
             var routes = 0;
             _ = background.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     routes++;
                 }
@@ -641,7 +641,7 @@ public sealed class ModalityPointerTests
             List<PointerAction> routed = [];
             _ = background.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     routed.Add(eventArgs.Pointer.Action);
                 }
@@ -725,7 +725,7 @@ public sealed class ModalityPointerTests
             };
             _ = background.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     backgroundRoutes++;
                 }
@@ -767,14 +767,14 @@ public sealed class ModalityPointerTests
             scope.DismissRequested += (_, _) => dismissals++;
             _ = plane.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     modalRoutes++;
                 }
             });
             _ = background.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     backgroundRoutes++;
                 }
@@ -1186,7 +1186,7 @@ public sealed class ModalityPointerTests
             leaf.LostPointerCapture += (_, _) => captureLosses++;
             _ = leaf.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     routes++;
                 }
@@ -1393,7 +1393,7 @@ public sealed class ModalityPointerTests
             background.PointerEntered += (_, _) => backgroundEntries++;
             _ = background.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     backgroundRoutes++;
                 }
@@ -1541,7 +1541,7 @@ public sealed class ModalityPointerTests
         var backgroundPresses = 0;
         _ = background.AddHandler(Events.Pointer, (_, eventArgs) =>
         {
-            if (eventArgs.Phase == Phase.Bubble && eventArgs.Pointer.Action == PointerAction.Press)
+            if (eventArgs.Phase == RoutingPhase.Bubble && eventArgs.Pointer.Action == PointerAction.Press)
             {
                 backgroundPresses++;
             }

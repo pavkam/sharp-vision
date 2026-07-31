@@ -14,7 +14,7 @@ public abstract class RoutedEventArgs: EventArgs
     public Control? Source { get; private set; }
 
     /// <summary>Gets the active or most recent route phase.</summary>
-    public Phase Phase { get; internal set; }
+    public RoutingPhase Phase { get; internal set; }
 
     /// <summary>Gets or sets whether ordinary handling and default behavior should stop.</summary>
     public bool Handled { get; set; }
@@ -76,7 +76,7 @@ public abstract class RoutedEventArgs: EventArgs
         IsRouting = true;
         OriginalSource = source;
         Source = source;
-        Phase = Phase.Preview;
+        Phase = RoutingPhase.Preview;
         Handled = false;
         PostRouteCommand = PostRouteCommand.None;
     }

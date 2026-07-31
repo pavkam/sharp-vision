@@ -235,7 +235,7 @@ public sealed class MessageBoxTests
         var observed = 0;
         _ = host.AddHandler(Events.Key, (_, eventArgs) =>
         {
-            if (eventArgs.Phase == Phase.Bubble &&
+            if (eventArgs.Phase == RoutingPhase.Bubble &&
                 eventArgs.Stroke.Action == KeyAction.Press &&
                 eventArgs.Stroke.Code == Code.Escape)
             {

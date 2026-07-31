@@ -19,7 +19,7 @@ public sealed class Event<TArgs>: IEvent where TArgs : RoutedEventArgs
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="strategy"/> is unknown.
     /// </exception>
-    public Event(string name, Strategy strategy)
+    public Event(string name, RoutingStrategy strategy)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
@@ -39,7 +39,7 @@ public sealed class Event<TArgs>: IEvent where TArgs : RoutedEventArgs
     public string Name { get; }
 
     /// <summary>Gets the ancestry traversal strategy.</summary>
-    public Strategy Strategy { get; }
+    public RoutingStrategy Strategy { get; }
 
     /// <inheritdoc/>
     public override string ToString() => Name;

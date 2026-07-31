@@ -106,9 +106,9 @@ public static class Router
             began = true;
             initialize?.Invoke(eventArgs);
 
-            if (routedEvent.Strategy == Strategy.TunnelBubble)
+            if (routedEvent.Strategy == RoutingStrategy.TunnelBubble)
             {
-                eventArgs.Phase = Phase.Preview;
+                eventArgs.Phase = RoutingPhase.Preview;
 
                 for (index = depth - 1; index >= 0; index--)
                 {
@@ -121,9 +121,9 @@ public static class Router
                 }
             }
 
-            eventArgs.Phase = Phase.Bubble;
+            eventArgs.Phase = RoutingPhase.Bubble;
 
-            var bubbleCount = routedEvent.Strategy == Strategy.Direct ? 1 : depth;
+            var bubbleCount = routedEvent.Strategy == RoutingStrategy.Direct ? 1 : depth;
 
             // Ancestry traversal is never cut short. Handled suppresses ordinary handlers and
             // default behavior, but handlers explicitly registered for handled events must still

@@ -89,7 +89,7 @@ public sealed class TerminalInputTests
             application.Focus.Focus(child).ShouldBeTrue();
             _ = child.AddHandler(Events.Text, (_, eventArgs) =>
             {
-                if (eventArgs.Phase != Phase.Bubble)
+                if (eventArgs.Phase != RoutingPhase.Bubble)
                 {
                     return;
                 }
@@ -134,7 +134,7 @@ public sealed class TerminalInputTests
             application.Focus.Focus(child).ShouldBeTrue();
             _ = child.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     pointer = eventArgs.Pointer;
                     CompleteIfReady();
@@ -142,7 +142,7 @@ public sealed class TerminalInputTests
             });
             _ = child.AddHandler(Events.Paste, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     paste = eventArgs.Paste;
                     CompleteIfReady();
@@ -150,7 +150,7 @@ public sealed class TerminalInputTests
             });
             _ = child.AddHandler(Events.TerminalFocusChanged, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble)
+                if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
                     focus = eventArgs.Focus;
                     CompleteIfReady();
@@ -158,7 +158,7 @@ public sealed class TerminalInputTests
             });
             _ = child.AddHandler(Events.Key, (_, eventArgs) =>
             {
-                if (eventArgs is { Phase: Phase.Bubble, Stroke.Action: KeyAction.Repeat })
+                if (eventArgs is { Phase: RoutingPhase.Bubble, Stroke.Action: KeyAction.Repeat })
                 {
                     stroke = eventArgs.Stroke;
                     CompleteIfReady();

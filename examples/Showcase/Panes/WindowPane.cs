@@ -84,7 +84,7 @@ internal sealed class WindowPane: CompositeControl
             Events.Pointer,
             (_, eventArgs) =>
             {
-                if (eventArgs is { Phase: Phase.Bubble, Pointer.Action: PointerAction.Press })
+                if (eventArgs is { Phase: RoutingPhase.Bubble, Pointer.Action: PointerAction.Press })
                 {
                     ReportActivation();
                 }
@@ -94,7 +94,7 @@ internal sealed class WindowPane: CompositeControl
             Events.Pointer,
             (_, eventArgs) =>
             {
-                if (eventArgs is { Phase: Phase.Bubble, Pointer.Action: PointerAction.Press })
+                if (eventArgs is { Phase: RoutingPhase.Bubble, Pointer.Action: PointerAction.Press })
                 {
                     ReportActivation();
                 }

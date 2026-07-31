@@ -260,7 +260,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>
     {
         _ = sender;
 
-        if (eventArgs.Phase == Phase.Bubble &&
+        if (eventArgs.Phase == RoutingPhase.Bubble &&
             eventArgs.Stroke.Action == KeyAction.Press &&
             eventArgs.Stroke.Code == Code.Escape)
         {

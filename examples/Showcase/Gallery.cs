@@ -448,7 +448,7 @@ public sealed class Gallery: Screen
     {
         _ = sender;
 
-        if (eventArgs.Phase != Phase.Preview ||
+        if (eventArgs.Phase != RoutingPhase.Preview ||
             eventArgs.Handled ||
             eventArgs.Stroke.Action != KeyAction.Press ||
             (eventArgs.Stroke.Modifiers & Modifiers.Control) == 0 ||

@@ -140,7 +140,7 @@ internal sealed class StatusBarWorkspace: CompositeControl
     {
         _ = sender;
 
-        if (eventArgs.Phase != Phase.Bubble ||
+        if (eventArgs.Phase != RoutingPhase.Bubble ||
             eventArgs.Pointer.Action is not (PointerAction.Move or PointerAction.Press) ||
             eventArgs.LocalCells is not { } cells)
         {

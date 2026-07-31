@@ -5,7 +5,7 @@ namespace SharpVision.Input;
 
 /// <summary>Defines how a typed event traverses the control ancestry.</summary>
 [PublicAPI]
-public enum Strategy
+public enum RoutingStrategy
 {
     /// <summary>Invokes preview root-to-target, then bubble target-to-root.</summary>
     TunnelBubble,

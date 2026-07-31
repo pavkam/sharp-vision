@@ -208,7 +208,7 @@ public sealed class InteractiveControlTests
         {
             _ = input.AddHandler(Events.TerminalFocusChanged, (_, eventArgs) =>
             {
-                if (eventArgs is { Phase: Phase.Bubble, Focus.Gained: false })
+                if (eventArgs is { Phase: RoutingPhase.Bubble, Focus.Gained: false })
                 {
                     _ = focusLost.TrySetResult();
                 }

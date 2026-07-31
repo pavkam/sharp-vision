@@ -840,7 +840,7 @@ public sealed class Application: ISink, IAsyncDisposable
                 ? eventArgs.OriginalSource
                 : null;
 
-        if (eventArgs.Phase != Phase.Preview ||
+        if (eventArgs.Phase != RoutingPhase.Preview ||
             eventArgs.Handled ||
             target is null ||
             !TryProcessClipboardShortcut(target, eventArgs.Stroke))
@@ -902,7 +902,7 @@ public sealed class Application: ISink, IAsyncDisposable
     {
         _ = sender;
 
-        if (eventArgs.Phase != Phase.Preview ||
+        if (eventArgs.Phase != RoutingPhase.Preview ||
             eventArgs.Handled ||
             eventArgs.Pointer.Action != PointerAction.Press ||
             !eventArgs.Pointer.Buttons.HasFlag(Buttons.Secondary))

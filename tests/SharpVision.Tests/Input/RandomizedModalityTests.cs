@@ -178,7 +178,7 @@ public sealed class RandomizedModalityTests
             var observed = control;
             _ = observed.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
-                if (eventArgs.Phase == Phase.Bubble &&
+                if (eventArgs.Phase == RoutingPhase.Bubble &&
                     ReferenceEquals(eventArgs.OriginalSource, observed))
                 {
                     routedTargets.Add(observed);

@@ -741,7 +741,7 @@ public sealed class Table: ItemsControl
     {
         _ = sender;
 
-        if (eventArgs.Phase != Phase.Preview || eventArgs.Stroke.Action is not (KeyAction.Press or KeyAction.Repeat))
+        if (eventArgs.Phase != RoutingPhase.Preview || eventArgs.Stroke.Action is not (KeyAction.Press or KeyAction.Repeat))
         {
             return;
         }
@@ -829,7 +829,7 @@ public sealed class Table: ItemsControl
     {
         _ = sender;
 
-        if (eventArgs.Phase != Phase.Preview ||
+        if (eventArgs.Phase != RoutingPhase.Preview ||
             eventArgs.Pointer.Action != TerminalInput.PointerAction.Press ||
             (eventArgs.Pointer.Buttons & TerminalInput.Buttons.Primary) == 0 ||
             eventArgs.Pointer.Cells is not { } point)

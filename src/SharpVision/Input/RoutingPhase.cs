@@ -5,7 +5,7 @@ namespace SharpVision.Input;
 
 /// <summary>Identifies the direction of one routed-event pass.</summary>
 [PublicAPI]
-public enum Phase
+public enum RoutingPhase
 {
     /// <summary>Travels from the root toward the original target.</summary>
     Preview,

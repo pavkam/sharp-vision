@@ -58,7 +58,7 @@ a control-specific event:
 ```csharp
 _ = AddHandler(Events.Key, (_, args) =>
 {
-    if (args.Phase != Phase.Preview || args.Handled)
+    if (args.Phase != RoutingPhase.Preview || args.Handled)
     {
         return;
     }

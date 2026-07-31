@@ -453,7 +453,7 @@ public sealed class MenuModalityTests
         background.Click += (_, _) => activations++;
         _ = background.AddHandler(Events.Pointer, (_, eventArgs) =>
         {
-            if (eventArgs.Phase == Phase.Bubble && eventArgs.Pointer.Action == PointerAction.Wheel)
+            if (eventArgs.Phase == RoutingPhase.Bubble && eventArgs.Pointer.Action == PointerAction.Wheel)
             {
                 wheelRoutes++;
             }

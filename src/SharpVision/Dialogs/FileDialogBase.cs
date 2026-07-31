@@ -314,7 +314,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     {
         _ = sender;
 
-        if (eventArgs.Phase == Phase.Bubble &&
+        if (eventArgs.Phase == RoutingPhase.Bubble &&
             eventArgs.Stroke.Action == KeyAction.Press &&
             eventArgs.Stroke.Code == Code.Backspace)
         {
