@@ -398,7 +398,7 @@ public static class Writer
         var length = checked(2 + 1 + metadataLength + separatorLength + encodedPayload.Length + 2);
         var output = destination.GetSpan(length);
         var position = 0;
-        output[position++] = 0x1b;
+        output[position++] = ControlBytes.Escape;
         output[position++] = (byte) '_';
         output[position++] = (byte) 'G';
         metadata[..metadataLength].CopyTo(output[position..]);
@@ -411,7 +411,7 @@ public static class Writer
             position += encodedPayload.Length;
         }
 
-        output[position++] = 0x1b;
+        output[position++] = ControlBytes.Escape;
         output[position++] = (byte) '\\';
         Debug.Assert(position == length, "Kitty frame length preflight must be exact.");
         destination.Advance(length);

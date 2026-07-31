@@ -28,7 +28,7 @@ public static class TmuxWriter
 
         foreach (var value in sequence)
         {
-            if (value == 0x1b)
+            if (value == ControlBytes.Escape)
             {
                 escapeCount++;
             }
@@ -45,7 +45,7 @@ public static class TmuxWriter
         {
             output[written++] = value;
 
-            if (value == 0x1b)
+            if (value == ControlBytes.Escape)
             {
                 output[written++] = value;
             }
@@ -74,13 +74,13 @@ public static class TmuxWriter
 
         for (var index = 0; index < source.Length; index++)
         {
-            if (source[index] != 0x1b)
+            if (source[index] != ControlBytes.Escape)
             {
                 length++;
                 continue;
             }
 
-            if (++index >= source.Length || source[index] != 0x1b)
+            if (++index >= source.Length || source[index] != ControlBytes.Escape)
             {
                 return false;
             }
@@ -96,7 +96,7 @@ public static class TmuxWriter
         {
             output[written++] = source[index];
 
-            if (source[index] == 0x1b)
+            if (source[index] == ControlBytes.Escape)
             {
                 index++;
             }

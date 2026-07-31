@@ -311,7 +311,7 @@ public sealed class Decoder: IDisposable
 
         if (_escapePending)
         {
-            if (value == 0x1b)
+            if (value == ControlBytes.Escape)
             {
                 _skippedBytes = checked(_skippedBytes + 1);
                 EmitEscape();
@@ -333,7 +333,7 @@ public sealed class Decoder: IDisposable
             }
         }
 
-        if (_parser.IsGround && value == 0x1b)
+        if (_parser.IsGround && value == ControlBytes.Escape)
         {
             BeginEscape();
             return;
@@ -357,7 +357,7 @@ public sealed class Decoder: IDisposable
         !_ss3Pending &&
         !_x10Pending &&
         _parser.IsGround &&
-        value != 0x1b;
+        value != ControlBytes.Escape;
 
     private void RematchMatcher(int offset, int length, ref Adapter adapter)
     {
@@ -1016,7 +1016,7 @@ public sealed class Decoder: IDisposable
                 KeySignatureKind.Control,
                 [],
                 [],
-                0x1b,
+                ControlBytes.Escape,
                 out var binding))
         {
             EmitBinding(in binding);

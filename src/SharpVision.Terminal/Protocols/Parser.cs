@@ -22,18 +22,6 @@ namespace SharpVision.Terminal.Protocols;
 [PublicAPI]
 public sealed class Parser: IDisposable
 {
-    private const byte _bell = 0x07;
-    private const byte _cancel = 0x18;
-    private const byte _escape = 0x1b;
-    private const byte _substitute = 0x1a;
-    private const byte _eightBitDcs = 0x90;
-    private const byte _eightBitSos = 0x98;
-    private const byte _eightBitCsi = 0x9b;
-    private const byte _eightBitSt = 0x9c;
-    private const byte _eightBitOsc = 0x9d;
-    private const byte _eightBitPm = 0x9e;
-    private const byte _eightBitApc = 0x9f;
-
     private readonly Limits _limits;
     private byte[]? _parameters;
     private byte[]? _intermediates;
@@ -435,7 +423,7 @@ public sealed class Parser: IDisposable
             return;
         }
 
-        if (value == _escape)
+        if (value == ControlBytes.Escape)
         {
             if (IsIgnoring)
             {
@@ -447,7 +435,7 @@ public sealed class Parser: IDisposable
             return;
         }
 
-        if (_state != State.Ground && value is _cancel or _substitute)
+        if (_state != State.Ground && value is ControlBytes.Cancel or ControlBytes.Substitute)
         {
             if (IsIgnoring)
             {
@@ -670,7 +658,7 @@ public sealed class Parser: IDisposable
     private void ProcessString<TSink>(byte value, long currentOffset, ref TSink sink)
         where TSink : ISequenceSink
     {
-        if (value is _cancel or _substitute)
+        if (value is ControlBytes.Cancel or ControlBytes.Substitute)
         {
             if (IsIgnoring)
             {
@@ -704,13 +692,13 @@ public sealed class Parser: IDisposable
                 return;
             }
 
-            if (!TryAppendPayload(_escape, currentOffset))
+            if (!TryAppendPayload(ControlBytes.Escape, currentOffset))
             {
                 ProcessStringIgnore(value, ref sink);
                 return;
             }
 
-            if (value == _escape)
+            if (value == ControlBytes.Escape)
             {
                 _state = State.StringEscape;
                 return;
@@ -719,19 +707,19 @@ public sealed class Parser: IDisposable
             _state = State.StringPayload;
         }
 
-        if (value == _escape)
+        if (value == ControlBytes.Escape)
         {
             _state = State.StringEscape;
             return;
         }
 
-        if (_limits.AcceptEightBitControls && value == _eightBitSt)
+        if (_limits.AcceptEightBitControls && value == ControlBytes.EightBitSt)
         {
             EmitString(StringTerminator.EightBit, ref sink);
             return;
         }
 
-        if (_stringKind == SequenceKind.Osc && value == _bell)
+        if (_stringKind == SequenceKind.Osc && value == ControlBytes.Bell)
         {
             if (_limits.AcceptBellTerminatedOsc)
             {
@@ -769,7 +757,7 @@ public sealed class Parser: IDisposable
             // ignore-state byte would: a fresh ESC starts a new terminator
             // candidate, otherwise BEL/enabled C1 ST can still end recovery
             // here rather than being silently skipped.
-            if (value == _escape)
+            if (value == ControlBytes.Escape)
             {
                 _state = State.StringIgnoreEscape;
                 _discarded++;
@@ -778,10 +766,10 @@ public sealed class Parser: IDisposable
 
             _state = State.StringIgnore;
 
-            if ((_limits.AcceptEightBitControls && value == _eightBitSt) ||
+            if ((_limits.AcceptEightBitControls && value == ControlBytes.EightBitSt) ||
                 (_pendingKind == SequenceKind.Osc &&
                  _limits.AcceptBellTerminatedOsc &&
-                 value == _bell))
+                 value == ControlBytes.Bell))
             {
                 ReportPending(ref sink);
                 EnterGround();
@@ -792,17 +780,17 @@ public sealed class Parser: IDisposable
             return;
         }
 
-        if (value == _escape)
+        if (value == ControlBytes.Escape)
         {
             _state = State.StringIgnoreEscape;
             _discarded++;
             return;
         }
 
-        if ((_limits.AcceptEightBitControls && value == _eightBitSt) ||
+        if ((_limits.AcceptEightBitControls && value == ControlBytes.EightBitSt) ||
             (_pendingKind == SequenceKind.Osc &&
              _limits.AcceptBellTerminatedOsc &&
-             value == _bell))
+             value == ControlBytes.Bell))
         {
             ReportPending(ref sink);
             EnterGround();
@@ -903,27 +891,27 @@ public sealed class Parser: IDisposable
 
         switch (value)
         {
-            case _eightBitCsi:
+            case ControlBytes.EightBitCsi:
                 BeginCsi();
                 break;
 
-            case _eightBitDcs:
+            case ControlBytes.EightBitDcs:
                 BeginDcs();
                 break;
 
-            case _eightBitOsc:
+            case ControlBytes.EightBitOsc:
                 BeginString(SequenceKind.Osc);
                 break;
 
-            case _eightBitApc:
+            case ControlBytes.EightBitApc:
                 BeginString(SequenceKind.Apc);
                 break;
 
-            case _eightBitPm:
+            case ControlBytes.EightBitPm:
                 BeginString(SequenceKind.Pm);
                 break;
 
-            case _eightBitSos:
+            case ControlBytes.EightBitSos:
                 BeginString(SequenceKind.Sos);
                 break;
 

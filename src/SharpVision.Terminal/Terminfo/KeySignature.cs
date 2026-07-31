@@ -77,7 +77,7 @@ internal readonly struct KeySignature: IEquatable<KeySignature>
             return true;
         }
 
-        if (sequence.Length == 3 && sequence[0] == 0x1b && sequence[1] == (byte) 'O' &&
+        if (sequence.Length == 3 && sequence[0] == ControlBytes.Escape && sequence[1] == (byte) 'O' &&
             sequence[2] is >= 0x30 and <= 0x7e)
         {
             signature = new KeySignature(KeySignatureKind.Ss3, [], [], sequence[2]);
@@ -96,7 +96,7 @@ internal readonly struct KeySignature: IEquatable<KeySignature>
             return true;
         }
 
-        if (sequence.Length >= 2 && sequence[0] == 0x1b)
+        if (sequence.Length >= 2 && sequence[0] == ControlBytes.Escape)
         {
             var body = sequence[1..];
             var final = body[^1];
@@ -157,7 +157,7 @@ internal readonly struct KeySignature: IEquatable<KeySignature>
     {
         ReadOnlySpan<byte> body;
 
-        if (sequence.Length >= 3 && sequence[0] == 0x1b && sequence[1] == (byte) '[')
+        if (sequence.Length >= 3 && sequence[0] == ControlBytes.Escape && sequence[1] == (byte) '[')
         {
             body = sequence[2..];
         }

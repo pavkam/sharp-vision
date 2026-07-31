@@ -588,7 +588,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
     {
         Span<byte> cursor = stackalloc byte[64];
         var position = 0;
-        cursor[position++] = 0x1b;
+        cursor[position++] = ControlBytes.Escape;
         cursor[position++] = (byte) '[';
         _ = Utf8Formatter.TryFormat(value.Y + 1, cursor[position..], out var row);
         position += row;

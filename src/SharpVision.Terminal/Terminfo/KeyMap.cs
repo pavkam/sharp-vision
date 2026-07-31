@@ -181,7 +181,7 @@ internal sealed class KeyMap
                 var sequence = binding.Sequence.Span;
 
                 if (sequence.Length == 3 &&
-                    sequence[0] == 0x1b &&
+                    sequence[0] == ControlBytes.Escape &&
                     sequence[1] == (byte) 'O' &&
                     MatchesApplicationCursor(binding.Code, sequence[2]))
                 {

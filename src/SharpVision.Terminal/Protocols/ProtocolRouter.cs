@@ -282,9 +282,9 @@ public sealed class ProtocolRouter: IDisposable
         var candidate = _multiplexerCandidate.AsSpan(0, _multiplexerLength);
         var requiredTerminators = _multiplexerRoute.Policy.Kind == Multiplexing.Kind.Screen &&
                                   candidate.Length > 3 &&
-                                  candidate[0] == 0x1b &&
+                                  candidate[0] == ControlBytes.Escape &&
                                   candidate[1] == (byte) 'P' &&
-                                  candidate[2] == 0x1b &&
+                                  candidate[2] == ControlBytes.Escape &&
                                   candidate[3] is (byte) 'P' or (byte) ']'
             ? 2
             : 1;
@@ -304,7 +304,7 @@ public sealed class ProtocolRouter: IDisposable
         Debug.Assert(_multiplexerRoute is not null, "Discard recovery requires an active route.");
         _multiplexerDiscardedBytes = checked(_multiplexerDiscardedBytes + 1);
 
-        if (value == 0x1b)
+        if (value == ControlBytes.Escape)
         {
             _multiplexerDiscardEscapes++;
             return;
@@ -346,7 +346,7 @@ public sealed class ProtocolRouter: IDisposable
 
         for (var index = 1; index < candidate.Length; index++)
         {
-            if (candidate[index - 1] == 0x1b && candidate[index] == (byte) '\\')
+            if (candidate[index - 1] == ControlBytes.Escape && candidate[index] == (byte) '\\')
             {
                 count++;
             }

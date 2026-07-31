@@ -22,7 +22,6 @@ namespace SharpVision.Terminal.Protocols;
 [PublicAPI]
 public readonly struct Writer
 {
-    private const byte _escape = 0x1b;
     private readonly IBufferWriter<byte> _destination;
 
     /// <summary>
@@ -59,7 +58,7 @@ public readonly struct Writer
         var destination = _destination.GetSpan(length);
         Debug.Assert(destination.Length >= length, "IBufferWriter returned less than its size hint.");
 
-        destination[0] = _escape;
+        destination[0] = ControlBytes.Escape;
         intermediates.CopyTo(destination[1..]);
         destination[length - 1] = final;
 
@@ -91,7 +90,7 @@ public readonly struct Writer
         var destination = _destination.GetSpan(length);
         Debug.Assert(destination.Length >= length, "IBufferWriter returned less than its size hint.");
 
-        destination[0] = _escape;
+        destination[0] = ControlBytes.Escape;
         destination[1] = (byte) '[';
         parameters.CopyTo(destination[2..]);
         intermediates.CopyTo(destination[(parameters.Length + 2)..]);
@@ -121,7 +120,7 @@ public readonly struct Writer
         var destination = _destination.GetSpan(length);
         Debug.Assert(destination.Length >= length, "IBufferWriter returned less than its size hint.");
 
-        destination[0] = _escape;
+        destination[0] = ControlBytes.Escape;
         destination[1] = (byte) ']';
         var formatted = Utf8Formatter.TryFormat(selector, destination[2..], out var written);
         Debug.Assert(formatted && written == selectorLength, "Validated selector did not format exactly.");
@@ -169,7 +168,7 @@ public readonly struct Writer
         var destination = _destination.GetSpan(length);
         Debug.Assert(destination.Length >= length, "IBufferWriter returned less than its size hint.");
 
-        destination[0] = _escape;
+        destination[0] = ControlBytes.Escape;
         destination[1] = introducer;
         payload.CopyTo(destination[2..]);
         WriteTerminator(destination[(length - 2)..]);
@@ -205,7 +204,7 @@ public readonly struct Writer
         var destination = _destination.GetSpan(length);
         Debug.Assert(destination.Length >= length, "IBufferWriter returned less than its size hint.");
 
-        destination[0] = _escape;
+        destination[0] = ControlBytes.Escape;
         destination[1] = (byte) 'P';
         parameters.CopyTo(destination[2..]);
         var intermediateStart = parameters.Length + 2;
@@ -285,7 +284,7 @@ public readonly struct Writer
     {
         Debug.Assert(destination.Length >= 2, "The terminator destination is too short.");
 
-        destination[0] = _escape;
+        destination[0] = ControlBytes.Escape;
         destination[1] = (byte) '\\';
     }
 }

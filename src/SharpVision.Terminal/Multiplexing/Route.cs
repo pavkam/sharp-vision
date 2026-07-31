@@ -176,7 +176,7 @@ public sealed class Route
         }
 
         if (Policy.ContainsScreen &&
-            (current.Length < 2 || current[0] != 0x1b || current[1] != (byte) '['))
+            (current.Length < 2 || current[0] != ControlBytes.Escape || current[1] != (byte) '['))
         {
             return false;
         }
@@ -211,7 +211,7 @@ public sealed class Route
 
         var escapes = 0;
 
-        for (var index = candidate.Length - 2; index >= 0 && candidate[index] == 0x1b; index--)
+        for (var index = candidate.Length - 2; index >= 0 && candidate[index] == ControlBytes.Escape; index--)
         {
             escapes++;
         }
@@ -239,7 +239,7 @@ public sealed class Route
         var inner = payload.WrittenSpan;
 
         return inner.Length < 2 ||
-               inner[0] != 0x1b ||
+               inner[0] != ControlBytes.Escape ||
                inner[1] switch
                {
                    (byte) 'P' => inner.EndsWith("\u001b\\"u8),
@@ -264,7 +264,7 @@ public sealed class Route
         while (position < input.Length)
         {
             if (position + 2 >= input.Length ||
-                input[position] != 0x1b ||
+                input[position] != ControlBytes.Escape ||
                 input[position + 1] != (byte) '[')
             {
                 return false;
@@ -318,7 +318,7 @@ public sealed class Route
 
         foreach (var value in input)
         {
-            if (value == 0x1b)
+            if (value == ControlBytes.Escape)
             {
                 escapes++;
             }
