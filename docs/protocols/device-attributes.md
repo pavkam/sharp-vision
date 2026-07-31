@@ -47,7 +47,7 @@ values for OSC 4, OSC 10, and OSC 11. One-to-four-digit hexadecimal RGB
 components are validated and normalized to 16-bit values before publication. The
 [runtime router](runtime-routing.md#runtime-routing-contract) delivers those
 typed values without allowing them to fall through as keyboard input.
-`QueryTracker` admits at most `Limits.MaxConcurrentQueries`, one active
+`QueryTracker` admits at most `QueryLimits.MaxConcurrentQueries`, one active
 uncorrelated query per family, and distinct Kitty clipboard IDs. Completed,
 cancelled, and timed-out correlations remain in a bounded grace window so
 duplicates and late replies cannot mutate a published profile.

@@ -32,9 +32,10 @@ ground, `Reset` discards partial state, and disposal returns cleared pooled
 storage. The warmed CSI path has a regression test requiring zero managed bytes
 per event.
 
-`Limits.Default` currently allows 256 parameter bytes, 16 intermediate bytes, 1
-MiB per terminal string, 16 MiB per clipboard transaction, 8 KiB of Kitty
-metadata, 32 concurrent queries, and a 750 ms query deadline. OSC accepts BEL by
+`ParserLimits.Default` currently allows 256 parameter bytes, 16 intermediate
+bytes, and 1 MiB per terminal string. `TransferLimits.Default` allows 16 MiB
+per clipboard transaction and 8 KiB of Kitty metadata. `QueryLimits.Default`
+allows 32 concurrent queries and a 750 ms query deadline. OSC accepts BEL by
 default. Eight-bit C1 controls are opt-in so UTF-8 continuation bytes are text
 unless the caller explicitly selects an eight-bit control stream.
 

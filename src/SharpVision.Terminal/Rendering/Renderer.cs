@@ -26,6 +26,7 @@ public sealed class Renderer: IDisposable
     private Interpreter _interpreter;
     private readonly TimeSpan _cleanupTimeout;
     private readonly TimeProvider _timeProvider;
+    private readonly ProgramLimits _limits;
     private Geometry.Metrics? _cellMetrics;
     private Frame? _front;
     private TerminalProfile? _profile;
@@ -37,14 +38,16 @@ public sealed class Renderer: IDisposable
     /// <param name="maxOutputBytes">The positive maximum encoded batch size.</param>
     /// <param name="cleanupTimeout">The positive synchronized-mode recovery timeout.</param>
     /// <param name="timeProvider">The clock used to enforce recovery timeout.</param>
+    /// <param name="limits">The finite interpretation limits, or <see langword="null"/> for defaults.</param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// A size is not positive or the timeout is not positive and finite.
     /// </exception>
     public Renderer(
         int maxOutputBytes = 16 * 1024 * 1024,
         TimeSpan? cleanupTimeout = null,
-        TimeProvider? timeProvider = null)
-        : this(maxOutputBytes, cleanupTimeout, timeProvider, null)
+        TimeProvider? timeProvider = null,
+        ProgramLimits? limits = null)
+        : this(maxOutputBytes, cleanupTimeout, timeProvider, null, limits)
     {
     }
 
@@ -63,6 +66,7 @@ public sealed class Renderer: IDisposable
     /// <param name="maxOutputBytes">The positive maximum encoded batch size.</param>
     /// <param name="cleanupTimeout">The positive synchronized-mode recovery timeout.</param>
     /// <param name="timeProvider">The clock used to enforce recovery timeout.</param>
+    /// <param name="limits">The finite interpretation limits, or <see langword="null"/> for defaults.</param>
     /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException">A size or timeout is invalid.</exception>
     public Renderer(
@@ -70,14 +74,16 @@ public sealed class Renderer: IDisposable
         Multiplexing.Route? route = null,
         int maxOutputBytes = 16 * 1024 * 1024,
         TimeSpan? cleanupTimeout = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        ProgramLimits? limits = null)
         : this(
             maxOutputBytes,
             cleanupTimeout,
             timeProvider,
             GraphicsBackendSelector.Create(
                 capabilities ?? throw new ArgumentNullException(nameof(capabilities)),
-                route))
+                route),
+            limits)
     {
     }
 
@@ -86,18 +92,21 @@ public sealed class Renderer: IDisposable
     /// <param name="maxOutputBytes">The positive maximum encoded batch size.</param>
     /// <param name="cleanupTimeout">The positive synchronized-mode recovery timeout.</param>
     /// <param name="timeProvider">The clock used to enforce recovery timeout.</param>
+    /// <param name="limits">The finite interpretation limits, or <see langword="null"/> for defaults.</param>
     /// <exception cref="ArgumentNullException"><paramref name="backend"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException">A size or timeout is invalid.</exception>
     internal Renderer(
         IGraphicsBackend backend,
         int maxOutputBytes = 16 * 1024 * 1024,
         TimeSpan? cleanupTimeout = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        ProgramLimits? limits = null)
         : this(
             maxOutputBytes,
             cleanupTimeout,
             timeProvider,
-            backend ?? throw new ArgumentNullException(nameof(backend)))
+            backend ?? throw new ArgumentNullException(nameof(backend)),
+            limits)
     {
     }
 
@@ -105,7 +114,8 @@ public sealed class Renderer: IDisposable
         int maxOutputBytes,
         TimeSpan? cleanupTimeout,
         TimeProvider? timeProvider,
-        IGraphicsBackend? backend)
+        IGraphicsBackend? backend,
+        ProgramLimits? limits)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxOutputBytes);
         var timeout = cleanupTimeout ?? TimeSpan.FromSeconds(1);
@@ -120,7 +130,8 @@ public sealed class Renderer: IDisposable
 
         _buffer = new Buffer(maxOutputBytes);
         _backend = backend;
-        _interpreter = new Interpreter(Terminfo.Limits.Default);
+        _limits = limits ?? ProgramLimits.Default;
+        _interpreter = new Interpreter(_limits);
         _cleanupTimeout = timeout;
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
@@ -325,7 +336,7 @@ public sealed class Renderer: IDisposable
 
             _buffer.Reset();
             transactionInterpreter = profileChanged
-                ? new Interpreter(Terminfo.Limits.Default)
+                ? new Interpreter(_limits)
                 : _interpreter;
             transactionInterpreter.BeginTransaction();
 

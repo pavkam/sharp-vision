@@ -17,7 +17,7 @@ public sealed class XtermQueryDiscoveryTests
     {
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
-            limits: Limits.Default with { MaxConcurrentQueries = 16 });
+            limits: QueryLimits.Default with { MaxConcurrentQueries = 16 });
         var negotiator = new ActiveQueryDiscoveryStrategy(options, new ManualTimeProvider());
         var destination = new ArrayBufferWriter<byte>();
 
@@ -33,7 +33,7 @@ public sealed class XtermQueryDiscoveryTests
     {
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm" },
-            limits: Limits.Default with { MaxConcurrentQueries = 16 });
+            limits: QueryLimits.Default with { MaxConcurrentQueries = 16 });
         var negotiator = new ActiveQueryDiscoveryStrategy(options, new ManualTimeProvider());
         _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
         XtermDecrqss.TryParse("1"u8, "$"u8, (byte) 'r', ">4;2m"u8, out var status)
@@ -43,7 +43,7 @@ public sealed class XtermQueryDiscoveryTests
             "+"u8,
             (byte) 'r',
             "524742=3234"u8,
-            Limits.Default,
+            QueryLimits.Default,
             out var capability).ShouldBeTrue();
 
         negotiator.Accept(in status).ShouldBe(QueryMatch.Matched);
@@ -58,7 +58,7 @@ public sealed class XtermQueryDiscoveryTests
     {
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm" },
-            limits: Limits.Default with { MaxConcurrentQueries = 16 });
+            limits: QueryLimits.Default with { MaxConcurrentQueries = 16 });
         var negotiator = new ActiveQueryDiscoveryStrategy(options, new ManualTimeProvider());
         _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
         XtermDecrqss.TryParse("1"u8, "$"u8, (byte) 'r', "0m"u8, out var otherStatus)
@@ -70,14 +70,14 @@ public sealed class XtermQueryDiscoveryTests
             "+"u8,
             (byte) 'r',
             "6B63757531=1B5B41"u8,
-            Limits.Default,
+            QueryLimits.Default,
             out var otherCapability).ShouldBeTrue();
         XtermGetCap.TryParse(
             "1"u8,
             "+"u8,
             (byte) 'r',
             "524742=3234"u8,
-            Limits.Default,
+            QueryLimits.Default,
             out var requestedCapability).ShouldBeTrue();
 
         negotiator.Accept(in otherStatus).ShouldBe(QueryMatch.Unknown);
@@ -95,7 +95,7 @@ public sealed class XtermQueryDiscoveryTests
             "+"u8,
             (byte) 'r',
             "524742=3234"u8,
-            Limits.Default,
+            QueryLimits.Default,
             out var capability).ShouldBeTrue();
         var queries = new Queries
         {
@@ -217,7 +217,7 @@ public sealed class XtermQueryDiscoveryTests
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
             new Settings { ColorDepth = ColorDepth.Basic16 },
-            Limits.Default with { MaxConcurrentQueries = capacity });
+            QueryLimits.Default with { MaxConcurrentQueries = capacity });
         var negotiator = new ActiveQueryDiscoveryStrategy(options, new ManualTimeProvider());
         var destination = new ArrayBufferWriter<byte>();
 
@@ -240,7 +240,7 @@ public sealed class XtermQueryDiscoveryTests
     {
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
-            limits: Limits.Default with { MaxConcurrentQueries = capacity });
+            limits: QueryLimits.Default with { MaxConcurrentQueries = capacity });
         var negotiator = new ActiveQueryDiscoveryStrategy(options, new ManualTimeProvider());
         var destination = new ArrayBufferWriter<byte>();
 
@@ -270,7 +270,7 @@ public sealed class XtermQueryDiscoveryTests
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm" },
             new Settings { ColorDepth = ColorDepth.Basic16 },
-            Limits.Default with { MaxConcurrentQueries = 6 });
+            QueryLimits.Default with { MaxConcurrentQueries = 6 });
         var negotiator = new ActiveQueryDiscoveryStrategy(options, baseline, new ManualTimeProvider());
         var destination = new ArrayBufferWriter<byte>();
         _ = negotiator.TryStart(destination, new Size(80, 24), new Size(800, 480));
@@ -307,7 +307,7 @@ public sealed class XtermQueryDiscoveryTests
             "+"u8,
             (byte) 'r',
             payload,
-            Limits.Default,
+            QueryLimits.Default,
             out var capability).ShouldBeTrue();
         return capability!;
     }

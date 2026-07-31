@@ -33,7 +33,7 @@ public sealed class NcursesProviderTests
             observed = names;
             return null;
         });
-        var limits = Limits.Default with { NcursesLibraryNames = ["custom-ncurses.so"] };
+        var limits = DescriptionLimits.Default with { NcursesLibraryNames = ["custom-ncurses.so"] };
 
         _ = provider.Load(new DescriptionRequest("fixture", DescriptionPlatform.Unix, 1, limits));
 
@@ -424,7 +424,7 @@ public sealed class NcursesProviderTests
     public void Load_WhenLivePathListExceedsLimit_RejectsBeforeNativeLookup()
     {
         var native = ReadyNative();
-        var limits = Limits.Default with { MaxDescriptionPathEntries = 1 };
+        var limits = DescriptionLimits.Default with { MaxDescriptionPathEntries = 1 };
         var provider = new Provider(
             _ => native,
             name => name == "TERMINFO_DIRS" ? "/first:/second" : null);
@@ -669,7 +669,7 @@ public sealed class NcursesProviderTests
         var native = ReadyNative();
         native.SetString("kbs", NativeString.Present([0x08]));
         native.SetString("kcub1", NativeString.Present([0x08]));
-        var limits = Limits.Default with { MaxDescriptionKeyBindings = 1 };
+        var limits = DescriptionLimits.Default with { MaxDescriptionKeyBindings = 1 };
 
         var result = new Provider(_ => native).Load(
             new DescriptionRequest("fixture", DescriptionPlatform.Unix, 1, limits));
@@ -835,10 +835,11 @@ public sealed class NcursesProviderTests
         var native = ReadyNative();
         native.SetString("kcuu1", NativeString.Present("\u001b[123A"u8));
         native.SetString("kcud1", NativeString.Present("\u001b[12B"u8));
-        var limits = Limits.Default with { MaxParameterBytes = 2 };
+        var parserLimits = ParserLimits.Default with { MaxParameterBytes = 2 };
 
         var result = new Provider(_ => native).Load(
-            new DescriptionRequest("fixture", DescriptionPlatform.Unix, 1, limits));
+            new DescriptionRequest(
+                "fixture", DescriptionPlatform.Unix, 1, DescriptionLimits.Default, parserLimits: parserLimits));
 
         result.Status.ShouldBe(DescriptionLoadStatus.Loaded);
         result.Profile.ShouldNotBeNull().KeyMap.Bindings.ShouldHaveSingleItem().Code.ShouldBe(Code.Down);
@@ -853,10 +854,11 @@ public sealed class NcursesProviderTests
         var native = ReadyNative();
         native.SetString("kcuu1", NativeString.Present("\u001b()B"u8));
         native.SetString("kcud1", NativeString.Present("\u001b(B"u8));
-        var limits = Limits.Default with { MaxIntermediateBytes = 1 };
+        var parserLimits = ParserLimits.Default with { MaxIntermediateBytes = 1 };
 
         var result = new Provider(_ => native).Load(
-            new DescriptionRequest("fixture", DescriptionPlatform.Unix, 1, limits));
+            new DescriptionRequest(
+                "fixture", DescriptionPlatform.Unix, 1, DescriptionLimits.Default, parserLimits: parserLimits));
 
         result.Status.ShouldBe(DescriptionLoadStatus.Loaded);
         result.Profile.ShouldNotBeNull().KeyMap.Bindings.ShouldHaveSingleItem().Code.ShouldBe(Code.Down);
@@ -886,7 +888,7 @@ public sealed class NcursesProviderTests
     public void Load_WhenLiveEnvironmentSnapshotExceedsLimit_RejectsBeforeSetup()
     {
         var native = ReadyNative();
-        var limits = Limits.Default with { MaxDescriptionSnapshotBytes = 16 };
+        var limits = DescriptionLimits.Default with { MaxDescriptionSnapshotBytes = 16 };
         var provider = new Provider(_ => native, _ => null);
 
         var result = provider.Load(new DescriptionRequest("fixture", DescriptionPlatform.Unix, 1, limits));
@@ -901,7 +903,7 @@ public sealed class NcursesProviderTests
     public void Load_WhenCombinedSnapshotExceedsLimit_RejectsDescription()
     {
         var native = ReadyNative();
-        var limits = Limits.Default with { MaxDescriptionSnapshotBytes = 80 };
+        var limits = DescriptionLimits.Default with { MaxDescriptionSnapshotBytes = 80 };
         var provider = new Provider(_ => native, _ => null);
 
         var result = provider.Load(new DescriptionRequest("fixture", DescriptionPlatform.Unix, 1, limits));
@@ -916,7 +918,7 @@ public sealed class NcursesProviderTests
     public void Load_WhenLivePathExceedsLimit_RejectsBeforeSetup()
     {
         var native = ReadyNative();
-        var limits = Limits.Default with { MaxDescriptionPathBytes = 1 };
+        var limits = DescriptionLimits.Default with { MaxDescriptionPathBytes = 1 };
         var provider = new Provider(_ => native, name => name == "HOME" ? "/too-long" : null);
 
         var result = provider.Load(new DescriptionRequest("fixture", DescriptionPlatform.Unix, 1, limits));
@@ -930,7 +932,7 @@ public sealed class NcursesProviderTests
     [Fact]
     public void Request_WhenTerminalNameExceedsUtf8Limit_Throws()
     {
-        var limits = Limits.Default with { MaxTerminalNameBytes = 1 };
+        var limits = DescriptionLimits.Default with { MaxTerminalNameBytes = 1 };
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             new DescriptionRequest("é", DescriptionPlatform.Unix, 1, limits));
@@ -1252,5 +1254,5 @@ public sealed class NcursesProviderTests
             terminalName,
             platform,
             outputFileDescriptor: 1,
-            Limits.Default);
+            DescriptionLimits.Default);
 }

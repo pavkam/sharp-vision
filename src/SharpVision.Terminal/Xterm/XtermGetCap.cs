@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Xterm;
 
+using SharpVision.Terminal.Capabilities;
+
 /// <summary>Encodes and validates the finite xterm XTGETTCAP boundary.</summary>
 [PublicAPI]
 public static class XtermGetCap
@@ -58,11 +60,11 @@ public static class XtermGetCap
         ReadOnlySpan<byte> intermediates,
         byte final,
         ReadOnlySpan<byte> payload,
-        Limits? limits,
+        QueryLimits? limits,
         out CapabilityResponse? response)
     {
         response = null;
-        var policy = limits ?? Limits.Default;
+        var policy = limits ?? QueryLimits.Default;
 
         if (final != (byte) 'r' || !intermediates.SequenceEqual("+"u8) ||
             parameters.Length != 1 || parameters[0] is not (byte) '0' and not (byte) '1')

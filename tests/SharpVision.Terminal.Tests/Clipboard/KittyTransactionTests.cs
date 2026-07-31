@@ -5,6 +5,9 @@ namespace SharpVision.Terminal.Tests.Clipboard;
 
 using Kitty.Clipboard;
 
+using SharpVision.Terminal.Capabilities;
+using SharpVision.Terminal.Clipboard;
+
 using ClipboardPacket = Kitty.Clipboard.Packet;
 
 /// <summary>
@@ -153,7 +156,7 @@ public sealed class KittyTransactionTests
     [Fact]
     public void Accept_WhenPacketOrDataIsInvalid_FailsAndClearsBuffers()
     {
-        var limits = Limits.Default with { MaxClipboardBytes = 1 };
+        var limits = TransferLimits.Default with { MaxClipboardBytes = 1 };
         using var malformed = Transaction.Read(limits);
         using var oversized = Transaction.Read(limits);
 
@@ -277,8 +280,8 @@ public sealed class KittyTransactionTests
     public void CheckTimeout_WhenDeadlinePasses_TimesOut()
     {
         var clock = new ManualTimeProvider();
-        var limits = Limits.Default with { QueryTimeout = TimeSpan.FromSeconds(2) };
-        using var transaction = Transaction.Read(limits, timeProvider: clock);
+        var queryLimits = QueryLimits.Default with { QueryTimeout = TimeSpan.FromSeconds(2) };
+        using var transaction = Transaction.Read(timeProvider: clock, queryLimits: queryLimits);
 
         clock.Advance(TimeSpan.FromSeconds(2));
 

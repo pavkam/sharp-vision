@@ -3,6 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Protocols;
 
+using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Multiplexing;
 
 using TerminalInputOptions = Terminal.Input.Options;
@@ -55,7 +56,7 @@ public sealed class XtgettcapTests
     {
         var options = TerminalInputOptions.Default with
         {
-            Limits = Limits.Default with { MaxCapabilityValueBytes = 2 }
+            QueryLimits = QueryLimits.Default with { MaxCapabilityValueBytes = 2 }
         };
         var input = Encoding.ASCII.GetBytes($"\u001bP{dcs}\u001b\\x");
 
@@ -78,7 +79,7 @@ public sealed class XtgettcapTests
     [Fact]
     public void Route_WhenSpecificBoundsAreReached_EnforcesExactBoundary()
     {
-        var limits = Limits.Default with
+        var limits = QueryLimits.Default with
         {
             MaxCapabilityItems = 1,
             MaxCapabilityValueBytes = 2
@@ -86,7 +87,7 @@ public sealed class XtgettcapTests
         var accepted = new RecordingProtocolSink();
         using (var router = new ProtocolRouter(
                    accepted,
-                   TerminalInputOptions.Default with { Limits = limits }))
+                   TerminalInputOptions.Default with { QueryLimits = limits }))
         {
             router.Route("\u001bP1+r524742=3234\u001b\\"u8);
         }
@@ -103,7 +104,7 @@ public sealed class XtgettcapTests
             var rejected = new RecordingProtocolSink();
             using var router = new ProtocolRouter(
                 rejected,
-                TerminalInputOptions.Default with { Limits = limits });
+                TerminalInputOptions.Default with { QueryLimits = limits });
             router.Route(Encoding.ASCII.GetBytes($"\u001bP{value}\u001b\\"));
             rejected.CapabilityResponses.ShouldBeEmpty(value);
             _ = rejected.Sequences.ShouldHaveSingleItem();

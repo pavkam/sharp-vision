@@ -17,7 +17,7 @@ public sealed class NegotiationOptions
     public NegotiationOptions(
         IReadOnlyDictionary<string, string?> environment,
         Settings? overrides = null,
-        Limits? limits = null) : this(
+        QueryLimits? limits = null) : this(
         environment,
         overrides,
         limits,
@@ -34,7 +34,7 @@ public sealed class NegotiationOptions
     public NegotiationOptions(
         IReadOnlyDictionary<string, string?> environment,
         Settings? overrides,
-        Limits? limits,
+        QueryLimits? limits,
         MultiplexingPolicy? multiplexing)
     {
         ArgumentNullException.ThrowIfNull(environment);
@@ -45,7 +45,7 @@ public sealed class NegotiationOptions
         // same input.
         Environment = EnvironmentSnapshot.Create(environment);
         Overrides = overrides;
-        Limits = limits ?? Limits.Default;
+        Limits = limits ?? QueryLimits.Default;
         Multiplexing = multiplexing ?? MultiplexingPolicy.Detect(Environment);
     }
 
@@ -55,8 +55,8 @@ public sealed class NegotiationOptions
     /// <summary>Gets optional explicit final overrides.</summary>
     public Settings? Overrides { get; }
 
-    /// <summary>Gets finite parser and query limits.</summary>
-    public Limits Limits { get; }
+    /// <summary>Gets finite query limits.</summary>
+    public QueryLimits Limits { get; }
 
     /// <summary>Gets explicit or conservatively detected multiplexer routing policy.</summary>
     public MultiplexingPolicy Multiplexing { get; }

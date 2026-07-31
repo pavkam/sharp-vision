@@ -7,7 +7,6 @@ using System.Globalization;
 
 using Capabilities;
 
-using Terminfo;
 using Terminfo.Ncurses;
 
 /// <summary>Runs one process-isolated terminal-description lookup for integration tests.</summary>
@@ -30,7 +29,7 @@ internal static class Program
             terminalName,
             platform,
             outputFileDescriptor: 1,
-            Limits.Default);
+            DescriptionLimits.Default);
         var result = new Provider().Load(request);
 
         Console.WriteLine($"status={result.Status}");

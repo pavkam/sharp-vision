@@ -15,14 +15,14 @@ public sealed class NegotiationOptionsCompatibilityTests
         IReadOnlyDictionary<string, string?> environment =
             new Dictionary<string, string?> { ["TERM"] = "xterm-256color" };
         var overrides = new Settings { ColorDepth = ColorDepth.Indexed256 };
-        var limits = Limits.Default with { MaxConcurrentQueries = 3 };
+        var limits = QueryLimits.Default with { MaxConcurrentQueries = 3 };
 
         var sourceCompatible = new NegotiationOptions(environment, overrides, limits);
         var constructor = typeof(NegotiationOptions).GetConstructor(
         [
             typeof(IReadOnlyDictionary<string, string?>),
             typeof(Settings),
-            typeof(Limits)
+            typeof(QueryLimits)
         ]);
         var exactConstructor = constructor.ShouldNotBeNull();
         var runtimeCompatible = exactConstructor.Invoke([environment, overrides, limits]);

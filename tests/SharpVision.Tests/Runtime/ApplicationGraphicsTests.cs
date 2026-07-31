@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Runtime;
 
+using Terminal.Capabilities;
+
 using CapabilitySupport = Terminal.Capabilities.Support;
 using GraphicsImage = Terminal.Graphics.ImageSource;
 using MultiplexerKind = Terminal.Multiplexing.MultiplexerKind;
@@ -87,7 +89,7 @@ public sealed class ApplicationGraphicsTests
         {
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" },
-                limits: Limits.Default with { QueryTimeout = TimeSpan.FromMilliseconds(100) })
+                limits: QueryLimits.Default with { QueryTimeout = TimeSpan.FromMilliseconds(100) })
         };
         await using Application application = new(
             new Image { Source = Rgba(), AlternateText = "F" },

@@ -69,7 +69,7 @@ public sealed class SessionTests
             MultiplexingOperation.CapabilityQueries,
             maxDepth: 4,
             maxEnvelopeBytes: 8);
-        var limits = Limits.Default with
+        var limits = QueryLimits.Default with
         {
             MaxConcurrentQueries = 1,
             QueryTimeout = TimeSpan.FromMinutes(1)
@@ -125,7 +125,7 @@ public sealed class SessionTests
             PassthroughMode.All,
             paneVisible: true,
             MultiplexingOperation.CapabilityQueries);
-        var limits = Limits.Default with { MaxConcurrentQueries = 1 };
+        var limits = QueryLimits.Default with { MaxConcurrentQueries = 1 };
         var route = new Route(policy);
         var wrapped = new ArrayBufferWriter<byte>();
         route.TryWriteCapabilityQueries(wrapped, "\u001b[?1;2c"u8).ShouldBeTrue();
@@ -171,7 +171,7 @@ public sealed class SessionTests
             PassthroughMode.All,
             paneVisible: true,
             MultiplexingOperation.CapabilityQueries);
-        var limits = Limits.Default with { MaxConcurrentQueries = 1 };
+        var limits = QueryLimits.Default with { MaxConcurrentQueries = 1 };
         var wrapped = new ArrayBufferWriter<byte>();
         GnuScreenWriter.WritePassthrough(wrapped, "\u001b[?1;2c"u8);
 
@@ -376,7 +376,7 @@ public sealed class SessionTests
         await using FakeResizeSource resize = new();
         var sink = new RuntimeSink();
         var clock = new ManualTimeProvider();
-        var limits = Limits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
+        var limits = QueryLimits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
         var options = RuntimeOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(
@@ -421,7 +421,7 @@ public sealed class SessionTests
         {
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>(),
-                limits: Limits.Default with { MaxConcurrentQueries = 1 })
+                limits: QueryLimits.Default with { MaxConcurrentQueries = 1 })
         };
         transport.Input("\u001b[?1;2c"u8.ToArray());
         transport.Close();
@@ -445,7 +445,7 @@ public sealed class SessionTests
         await using FakeResizeSource resize = new() { SignalAfterReads = 3 };
         var sink = new RuntimeSink();
         var clock = new ManualTimeProvider();
-        var limits = Limits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
+        var limits = QueryLimits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
         var options = RuntimeOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(
@@ -485,7 +485,7 @@ public sealed class SessionTests
         {
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>(),
-                limits: Limits.Default with { MaxConcurrentQueries = 8 })
+                limits: QueryLimits.Default with { MaxConcurrentQueries = 8 })
         };
         await using Session session = new(transport, resize, sink, options);
         var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
@@ -529,7 +529,7 @@ public sealed class SessionTests
             Keyboard = Enhancement.Disambiguate | Enhancement.EventTypes,
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>(),
-                limits: Limits.Default with { MaxConcurrentQueries = 8 })
+                limits: QueryLimits.Default with { MaxConcurrentQueries = 8 })
         };
         transport.Input(Encoding.ASCII.GetBytes(
             "\u001b[?1016;1$y\u001b[?1006;1$y\u001b[?2004;1$y" +
@@ -611,7 +611,7 @@ public sealed class SessionTests
         await using FakeResizeSource resize = new();
         var sink = new RuntimeSink();
         var clock = new ManualTimeProvider();
-        var limits = Limits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
+        var limits = QueryLimits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
         var options = RuntimeOptions.Minimal with
         {
             Focus = true,

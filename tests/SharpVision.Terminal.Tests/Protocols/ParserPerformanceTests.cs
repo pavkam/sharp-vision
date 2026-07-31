@@ -17,7 +17,7 @@ public sealed class ParserPerformanceTests
     public void Parse_WhenOscIsHostile_BoundsAllocationAndRecovers()
     {
         const int maxPayload = 1_024;
-        var limits = Limits.Default with { MaxStringBytes = maxPayload };
+        var limits = ParserLimits.Default with { MaxStringBytes = maxPayload };
         using Parser parser = new(limits);
         var sink = new RecordingSink();
         var input = new byte[2 * 1_024 * 1_024];

@@ -5,6 +5,8 @@ namespace SharpVision.Tests.Runtime;
 
 using Input;
 
+using Terminal.Capabilities;
+
 /// <summary>Verifies terminal protocol responses traverse Session and Application onto the dispatcher.</summary>
 public sealed class ProtocolRoutingTests
 {
@@ -14,7 +16,7 @@ public sealed class ProtocolRoutingTests
     {
         // Arrange
         var clock = new ManualTimeProvider();
-        var limits = Limits.Default with { QueryTimeout = TimeSpan.FromMilliseconds(100) };
+        var limits = QueryLimits.Default with { QueryTimeout = TimeSpan.FromMilliseconds(100) };
         var options = TerminalOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(

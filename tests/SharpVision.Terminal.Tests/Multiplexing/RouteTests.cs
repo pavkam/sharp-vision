@@ -261,7 +261,7 @@ public sealed class RouteTests
             MultiplexingOperation.CapabilityQueries,
             maxDepth: 4,
             maxEnvelopeBytes: 8);
-        var limits = Limits.Default with { MaxConcurrentQueries = 1 };
+        var limits = QueryLimits.Default with { MaxConcurrentQueries = 1 };
         var negotiator = new Negotiator(new NegotiationOptions(
             new Dictionary<string, string?>(),
             overrides: null,
@@ -510,7 +510,7 @@ public sealed class RouteTests
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
             overrides: null,
-            limits: Limits.Default,
+            limits: QueryLimits.Default,
             multiplexing: policy);
         var negotiator = new Negotiator(options);
         var destination = new ArrayBufferWriter<byte>();
@@ -567,7 +567,7 @@ public sealed class RouteTests
     {
         var policy = ActivePolicy([MultiplexerKind.Tmux]);
         var route = new Route(policy);
-        var limits = Limits.Default with { MaxConcurrentQueries = 1 };
+        var limits = QueryLimits.Default with { MaxConcurrentQueries = 1 };
         var options = new NegotiationOptions(
             new Dictionary<string, string?>(),
             overrides: null,
@@ -598,7 +598,7 @@ public sealed class RouteTests
             PassthroughMode.All,
             paneVisible: true,
             MultiplexingOperation.CapabilityQueries);
-        var limits = Limits.Default with
+        var limits = QueryLimits.Default with
         {
             MaxConcurrentQueries = 1,
             QueryTimeout = TimeSpan.FromMilliseconds(10)

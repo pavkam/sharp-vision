@@ -56,7 +56,7 @@ internal readonly struct KeySignature: IEquatable<KeySignature>
     /// <param name="signature">The compiled signature when representable.</param>
     /// <returns>Whether the sequence is exactly one supported parser signature.</returns>
     public static bool TryCreate(ReadOnlySpan<byte> sequence, out KeySignature signature)
-        => TryCreate(sequence, Limits.Default, out signature);
+        => TryCreate(sequence, ParserLimits.Default, out signature);
 
     /// <summary>Compiles one exact description sequence against active parser limits.</summary>
     /// <param name="sequence">The non-empty terminal bytes.</param>
@@ -66,7 +66,7 @@ internal readonly struct KeySignature: IEquatable<KeySignature>
     /// <exception cref="ArgumentNullException"><paramref name="limits"/> is null.</exception>
     public static bool TryCreate(
         ReadOnlySpan<byte> sequence,
-        Limits limits,
+        ParserLimits limits,
         out KeySignature signature)
     {
         ArgumentNullException.ThrowIfNull(limits);
@@ -152,7 +152,7 @@ internal readonly struct KeySignature: IEquatable<KeySignature>
 
     private static bool TryCsi(
         ReadOnlySpan<byte> sequence,
-        Limits limits,
+        ParserLimits limits,
         out KeySignature signature)
     {
         ReadOnlySpan<byte> body;

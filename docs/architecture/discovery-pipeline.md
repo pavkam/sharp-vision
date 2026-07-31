@@ -77,8 +77,8 @@ once, writes one atomic bounded batch, correlates typed replies through
 snapshot. `Negotiator` and `NegotiationSink` forward to that lifecycle; they do
 not maintain a competing tracker or publication path.
 
-The configured `Limits` bound concurrent queries, payloads, route depth and
-bytes, and response history. The strategy records one absolute exclusive UTC
+The configured `QueryLimits` bound concurrent queries, payloads, route depth
+and bytes, and response history. The strategy records one absolute exclusive UTC
 deadline before registering any family. Every registered family uses that same
 instant. A reply observed at or after the deadline expires the batch before
 matching. An early timer callback is only a wakeup; it re-arms against the same

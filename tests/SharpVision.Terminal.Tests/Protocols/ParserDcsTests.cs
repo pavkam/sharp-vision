@@ -45,7 +45,7 @@ public sealed class ParserDcsTests
     [Fact]
     public void Parse_WhenDcsHeaderExceedsLimit_ReportsAtStAndRecovers()
     {
-        var limits = Limits.Default with { MaxParameterBytes = 2 };
+        var limits = ParserLimits.Default with { MaxParameterBytes = 2 };
         using Parser parser = new(limits);
         var sink = new RecordingSink();
 
@@ -61,7 +61,7 @@ public sealed class ParserDcsTests
     [Fact]
     public void Parse_WhenStringPayloadExceedsLimit_ReportsAtStAndRecovers()
     {
-        var limits = Limits.Default with { MaxStringBytes = 4 };
+        var limits = ParserLimits.Default with { MaxStringBytes = 4 };
         using Parser parser = new(limits);
         var sink = new RecordingSink();
 
@@ -81,7 +81,7 @@ public sealed class ParserDcsTests
     [Fact]
     public void Parse_WhenIgnoredStringHasFalseEscCandidate_CountsItAsDiscarded()
     {
-        var limits = Limits.Default with { MaxStringBytes = 4 };
+        var limits = ParserLimits.Default with { MaxStringBytes = 4 };
         using Parser parser = new(limits);
         var sink = new RecordingSink();
 
@@ -101,7 +101,7 @@ public sealed class ParserDcsTests
     public void Parse_WhenIgnoredStringHasFalseEscCandidate_MatchesWholeInputAcrossSplits() =>
         Fragmentation.AssertAll(
             "left\u001b]12345X\u001b\\right"u8,
-            limits: Limits.Default with { MaxStringBytes = 4 });
+            limits: ParserLimits.Default with { MaxStringBytes = 4 });
 
     /// <summary>
     /// Verifies a trailing ESC candidate still open at end-of-stream counts
@@ -110,7 +110,7 @@ public sealed class ParserDcsTests
     [Fact]
     public void Complete_WhenIgnoredStringEndsOnOpenEscCandidate_CountsItAsDiscarded()
     {
-        var limits = Limits.Default with { MaxStringBytes = 4 };
+        var limits = ParserLimits.Default with { MaxStringBytes = 4 };
         using Parser parser = new(limits);
         var sink = new RecordingSink();
 
@@ -129,7 +129,7 @@ public sealed class ParserDcsTests
     [Fact]
     public void Parse_WhenBellFollowsFalseEscCandidateInIgnoredOsc_TerminatesRecovery()
     {
-        var limits = Limits.Default with { MaxStringBytes = 4 };
+        var limits = ParserLimits.Default with { MaxStringBytes = 4 };
         using Parser parser = new(limits);
         var sink = new RecordingSink();
 
@@ -148,7 +148,7 @@ public sealed class ParserDcsTests
     [Fact]
     public void Parse_WhenEightBitStFollowsFalseEscCandidateInIgnoredString_TerminatesRecovery()
     {
-        var limits = Limits.Default with { MaxStringBytes = 4, AcceptEightBitControls = true };
+        var limits = ParserLimits.Default with { MaxStringBytes = 4, AcceptEightBitControls = true };
         using Parser parser = new(limits);
         var sink = new RecordingSink();
         // 0x9c is the raw C1 ST byte; a string literal would UTF-8 encode
@@ -167,7 +167,7 @@ public sealed class ParserDcsTests
     [Fact]
     public void Parse_WhenIgnoredStringHasRepeatedFalseEscCandidates_CountsEachOnce()
     {
-        var limits = Limits.Default with { MaxStringBytes = 4 };
+        var limits = ParserLimits.Default with { MaxStringBytes = 4 };
         using Parser parser = new(limits);
         var sink = new RecordingSink();
 

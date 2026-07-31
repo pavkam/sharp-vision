@@ -14,6 +14,9 @@ internal sealed class DescriptionRequest
     /// <param name="explicitProfile">An optional complete caller-owned replacement profile.</param>
     /// <param name="allowAnsiFallback">Whether Unix provider absence may select the built-in ANSI profile.</param>
     /// <param name="windowsVirtualTerminal">Whether the Windows host established virtual-terminal processing.</param>
+    /// <param name="parserLimits">
+    /// The finite limits bounding provider-sourced key-sequence parsing, or <see langword="null"/> for defaults.
+    /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="limits"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">
     /// <paramref name="terminalName"/> is blank, or <paramref name="windowsVirtualTerminal"/> is true for a
@@ -26,10 +29,11 @@ internal sealed class DescriptionRequest
         string terminalName,
         DescriptionPlatform platform,
         int outputFileDescriptor,
-        Limits limits,
+        DescriptionLimits limits,
         TerminalProfile? explicitProfile = null,
         bool allowAnsiFallback = false,
-        bool windowsVirtualTerminal = false)
+        bool windowsVirtualTerminal = false,
+        ParserLimits? parserLimits = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(terminalName);
         ArgumentNullException.ThrowIfNull(limits);
@@ -63,6 +67,7 @@ internal sealed class DescriptionRequest
         ExplicitProfile = explicitProfile;
         AllowAnsiFallback = allowAnsiFallback;
         WindowsVirtualTerminal = windowsVirtualTerminal;
+        ParserLimits = parserLimits ?? ParserLimits.Default;
     }
 
     /// <summary>Gets the exact requested database name.</summary>
@@ -75,7 +80,10 @@ internal sealed class DescriptionRequest
     public int OutputFileDescriptor { get; }
 
     /// <summary>Gets the finite lookup and compilation limits.</summary>
-    public Limits Limits { get; }
+    public DescriptionLimits Limits { get; }
+
+    /// <summary>Gets the finite limits bounding provider-sourced key-sequence parsing.</summary>
+    public ParserLimits ParserLimits { get; }
 
     /// <summary>Gets the complete caller-owned replacement profile, when supplied.</summary>
     public TerminalProfile? ExplicitProfile { get; }

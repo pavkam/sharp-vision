@@ -52,7 +52,7 @@ public sealed class Decoder: IDisposable
         _protocolSink = sink as IProtocolSink;
         _options = options ?? Options.Default;
         _timeProvider = timeProvider ?? TimeProvider.System;
-        _parser = new Parser(_options.Limits);
+        _parser = new Parser(_options.ParserLimits);
         _pasteAccumulator = new PasteAccumulator(_options.MaxPasteBytes);
         _keyMatcher = _options.KeyMap.FallbackBindings.Count == 0
             ? null
@@ -924,7 +924,7 @@ public sealed class Decoder: IDisposable
 
         if (_protocolSink is { } graphicsSink)
         {
-            graphicsSink.Response(Kitty.Graphics.Response.Parse(value, _options.Limits));
+            graphicsSink.Response(Kitty.Graphics.Response.Parse(value, _options.TransferLimits));
         }
         else
         {
@@ -1339,7 +1339,7 @@ public sealed class Decoder: IDisposable
         ReadOnlySpan<byte> value,
         StringTerminator terminator)
     {
-        if (!XtermGetCap.TryParse(parameters, intermediates, final, value, _options.Limits, out var capability))
+        if (!XtermGetCap.TryParse(parameters, intermediates, final, value, _options.QueryLimits, out var capability))
         {
             return false;
         }

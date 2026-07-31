@@ -41,8 +41,8 @@ value.
 
 `Xtgettcap.Query` emits `DCS + q Pt ST` for a finite public name enumeration.
 Names and values in `DCS 1 + r Pt ST` are strict two-digit hexadecimal,
-semicolon-delimited pairs. `Limits.MaxCapabilityItems` and
-`Limits.MaxCapabilityValueBytes` bound retained state. Duplicate names, odd or
+semicolon-delimited pairs. `QueryLimits.MaxCapabilityItems` and
+`QueryLimits.MaxCapabilityValueBytes` bound retained state. Duplicate names, odd or
 non-hex fields, unknown names, trailing separators, and oversized values are
 rejected as typed capability evidence. The allowlist contains `Co`, `TN`, `RGB`,
 and selected special-key capabilities; it cannot name environment variables or

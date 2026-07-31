@@ -450,7 +450,7 @@ public sealed class DescriptionEncoderTests
             ? new Program("%?%gA%{0}%=%t\u001b[0 q%;"u8)
             : new Program("\u001b[0 q"u8);
         var profile = CreateProfile(ColorDepth.Indexed256, programs);
-        var interpreter = new Interpreter(Limits.Default);
+        var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
 
         _ = FrameEncoder.Encode(null, first, destination, profile, interpreter);

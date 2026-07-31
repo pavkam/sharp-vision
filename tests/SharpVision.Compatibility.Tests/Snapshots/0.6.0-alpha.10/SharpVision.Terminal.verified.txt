@@ -122,6 +122,19 @@ namespace SharpVision.Terminal.Capabilities
         DescriptionLimit = 11,
         InvalidKey = 12,
     }
+    public sealed class DescriptionLimits : System.IEquatable<SharpVision.Terminal.Capabilities.DescriptionLimits>
+    {
+        public DescriptionLimits() { }
+        public int MaxDescriptionKeyBindings { get; init; }
+        public int MaxDescriptionPathBytes { get; init; }
+        public int MaxDescriptionPathEntries { get; init; }
+        public int MaxDescriptionRgbComponentBits { get; init; }
+        public int MaxDescriptionSnapshotBytes { get; init; }
+        public int MaxTermcapVariableBytes { get; init; }
+        public int MaxTerminalNameBytes { get; init; }
+        public System.Collections.Generic.IReadOnlyList<string> NcursesLibraryNames { get; init; }
+        public static SharpVision.Terminal.Capabilities.DescriptionLimits Default { get; }
+    }
     public enum DescriptionLoadStatus
     {
         Loaded = 0,
@@ -157,10 +170,10 @@ namespace SharpVision.Terminal.Capabilities
     }
     public sealed class NegotiationOptions
     {
-        public NegotiationOptions(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment, SharpVision.Terminal.Capabilities.Settings? overrides = null, SharpVision.Terminal.Terminfo.Limits? limits = null) { }
-        public NegotiationOptions(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment, SharpVision.Terminal.Capabilities.Settings? overrides, SharpVision.Terminal.Terminfo.Limits? limits, SharpVision.Terminal.Multiplexing.Policy? multiplexing) { }
+        public NegotiationOptions(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment, SharpVision.Terminal.Capabilities.Settings? overrides = null, SharpVision.Terminal.Capabilities.QueryLimits? limits = null) { }
+        public NegotiationOptions(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment, SharpVision.Terminal.Capabilities.Settings? overrides, SharpVision.Terminal.Capabilities.QueryLimits? limits, SharpVision.Terminal.Multiplexing.Policy? multiplexing) { }
         public System.Collections.Generic.IReadOnlyDictionary<string, string?> Environment { get; }
-        public SharpVision.Terminal.Terminfo.Limits Limits { get; }
+        public SharpVision.Terminal.Capabilities.QueryLimits Limits { get; }
         public SharpVision.Terminal.Multiplexing.Policy Multiplexing { get; }
         public SharpVision.Terminal.Capabilities.Settings? Overrides { get; }
     }
@@ -241,6 +254,15 @@ namespace SharpVision.Terminal.Capabilities
         ModifyOtherKeys = 14,
         KittyGraphics = 15,
     }
+    public sealed class QueryLimits : System.IEquatable<SharpVision.Terminal.Capabilities.QueryLimits>
+    {
+        public QueryLimits() { }
+        public int MaxCapabilityItems { get; init; }
+        public int MaxCapabilityValueBytes { get; init; }
+        public int MaxConcurrentQueries { get; init; }
+        public System.TimeSpan QueryTimeout { get; init; }
+        public static SharpVision.Terminal.Capabilities.QueryLimits Default { get; }
+    }
     public enum QueryMatch
     {
         Matched = 0,
@@ -256,7 +278,7 @@ namespace SharpVision.Terminal.Capabilities
     }
     public sealed class QueryTracker
     {
-        public QueryTracker(SharpVision.Terminal.Terminfo.Limits? limits = null, System.TimeProvider? timeProvider = null) { }
+        public QueryTracker(SharpVision.Terminal.Capabilities.QueryLimits? limits = null, System.TimeProvider? timeProvider = null) { }
         public int ActiveCount { get; }
         public SharpVision.Terminal.Protocols.Diagnostic? LastDiagnostic { get; }
         public bool Cancel(SharpVision.Terminal.Capabilities.QueryToken token) { }
@@ -313,7 +335,7 @@ namespace SharpVision.Terminal.Capabilities
         public SharpVision.Terminal.Capabilities.Description Description { get; }
         public bool IsAnsiCompatibility { get; }
         public static SharpVision.Terminal.Capabilities.TerminalProfile Conservative { get; }
-        public SharpVision.Terminal.Terminfo.ProgramExpander CreateProgramExpander() { }
+        public SharpVision.Terminal.Terminfo.ProgramExpander CreateProgramExpander(SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
         public SharpVision.Terminal.Capabilities.TerminalProfile WithCapabilities(SharpVision.Terminal.Capabilities.Capabilities capabilities) { }
         public static SharpVision.Terminal.Capabilities.TerminalProfile CreateAnsi(SharpVision.Terminal.Capabilities.Capabilities capabilities) { }
     }
@@ -372,6 +394,13 @@ namespace SharpVision.Terminal.Clipboard
         Cut5 = 9,
         Cut6 = 10,
         Cut7 = 11,
+    }
+    public sealed class TransferLimits : System.IEquatable<SharpVision.Terminal.Clipboard.TransferLimits>
+    {
+        public TransferLimits() { }
+        public int MaxClipboardBytes { get; init; }
+        public int MaxMetadataBytes { get; init; }
+        public static SharpVision.Terminal.Clipboard.TransferLimits Default { get; }
     }
 }
 namespace SharpVision.Terminal.Geometry
@@ -615,9 +644,12 @@ namespace SharpVision.Terminal.Input
         public Options() { }
         public SharpVision.Terminal.Geometry.Metrics? CellMetrics { get; init; }
         public System.TimeSpan EscapeTimeout { get; init; }
-        public SharpVision.Terminal.Terminfo.Limits Limits { get; init; }
         public int MaxPasteBytes { get; init; }
+        public SharpVision.Terminal.Protocols.ParserLimits ParserLimits { get; init; }
         public bool PixelMouse { get; init; }
+        public SharpVision.Terminal.Terminfo.ProgramLimits ProgramLimits { get; init; }
+        public SharpVision.Terminal.Capabilities.QueryLimits QueryLimits { get; init; }
+        public SharpVision.Terminal.Clipboard.TransferLimits TransferLimits { get; init; }
         public static SharpVision.Terminal.Input.Options Default { get; }
     }
     public readonly struct Paste
@@ -708,7 +740,7 @@ namespace SharpVision.Terminal.Kitty.Clipboard
         public SharpVision.Terminal.Clipboard.Selection Selection { get; }
         public System.Collections.Generic.IReadOnlyList<string> UnknownKeys { get; }
         public override string ToString() { }
-        public static SharpVision.Terminal.Kitty.Clipboard.Packet Parse(System.ReadOnlySpan<byte> value, SharpVision.Terminal.Terminfo.Limits? limits = null, bool decodePayload = true) { }
+        public static SharpVision.Terminal.Kitty.Clipboard.Packet Parse(System.ReadOnlySpan<byte> value, SharpVision.Terminal.Clipboard.TransferLimits? limits = null, bool decodePayload = true) { }
     }
     public enum ReplyStatus
     {
@@ -739,8 +771,8 @@ namespace SharpVision.Terminal.Kitty.Clipboard
         public bool CheckTimeout() { }
         public void Dispose() { }
         public override string ToString() { }
-        public static SharpVision.Terminal.Kitty.Clipboard.Transaction Read(SharpVision.Terminal.Terminfo.Limits? limits = null, string? id = null, bool listOnly = false, System.TimeProvider? timeProvider = null) { }
-        public static SharpVision.Terminal.Kitty.Clipboard.Transaction Write(SharpVision.Terminal.Terminfo.Limits? limits = null, string? id = null, System.TimeProvider? timeProvider = null) { }
+        public static SharpVision.Terminal.Kitty.Clipboard.Transaction Read(SharpVision.Terminal.Clipboard.TransferLimits? limits = null, string? id = null, bool listOnly = false, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Capabilities.QueryLimits? queryLimits = null) { }
+        public static SharpVision.Terminal.Kitty.Clipboard.Transaction Write(SharpVision.Terminal.Clipboard.TransferLimits? limits = null, string? id = null, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Capabilities.QueryLimits? queryLimits = null) { }
     }
     public enum TransactionState
     {
@@ -823,7 +855,7 @@ namespace SharpVision.Terminal.Kitty.Graphics
         public string? Message { get; }
         public uint PlacementId { get; }
         public override string ToString() { }
-        public static SharpVision.Terminal.Kitty.Graphics.Response Parse(System.ReadOnlySpan<byte> value, SharpVision.Terminal.Terminfo.Limits? limits = null) { }
+        public static SharpVision.Terminal.Kitty.Graphics.Response Parse(System.ReadOnlySpan<byte> value, SharpVision.Terminal.Clipboard.TransferLimits? limits = null) { }
     }
     public sealed class Transaction
     {
@@ -1077,7 +1109,7 @@ namespace SharpVision.Terminal.Protocols
     }
     public sealed class Parser : System.IDisposable
     {
-        public Parser(SharpVision.Terminal.Terminfo.Limits? limits = null) { }
+        public Parser(SharpVision.Terminal.Protocols.ParserLimits? limits = null) { }
         public bool IsGround { get; }
         public long Offset { get; }
         public void Complete<TSink>(ref TSink sink)
@@ -1086,6 +1118,16 @@ namespace SharpVision.Terminal.Protocols
         public void Parse<TSink>(System.ReadOnlySpan<byte> input, ref TSink sink)
             where TSink : SharpVision.Terminal.Abstractions.ISequenceSink { }
         public void Reset() { }
+    }
+    public sealed class ParserLimits : System.IEquatable<SharpVision.Terminal.Protocols.ParserLimits>
+    {
+        public ParserLimits() { }
+        public bool AcceptBellTerminatedOsc { get; init; }
+        public bool AcceptEightBitControls { get; init; }
+        public int MaxIntermediateBytes { get; init; }
+        public int MaxParameterBytes { get; init; }
+        public int MaxStringBytes { get; init; }
+        public static SharpVision.Terminal.Protocols.ParserLimits Default { get; }
     }
     public sealed class ProtocolRouter : System.IDisposable
     {
@@ -1311,8 +1353,8 @@ namespace SharpVision.Terminal.Rendering
     }
     public static class Encoder
     {
-        public static SharpVision.Terminal.Rendering.EncodeResult Encode(SharpVision.Terminal.Rendering.Frame? front, SharpVision.Terminal.Rendering.Frame back, System.Buffers.IBufferWriter<byte> destination, SharpVision.Terminal.Capabilities.Capabilities capabilities, bool full = false) { }
-        public static SharpVision.Terminal.Rendering.EncodeResult Encode(SharpVision.Terminal.Rendering.Frame? front, SharpVision.Terminal.Rendering.Frame back, System.Buffers.IBufferWriter<byte> destination, SharpVision.Terminal.Capabilities.TerminalProfile profile, bool full = false) { }
+        public static SharpVision.Terminal.Rendering.EncodeResult Encode(SharpVision.Terminal.Rendering.Frame? front, SharpVision.Terminal.Rendering.Frame back, System.Buffers.IBufferWriter<byte> destination, SharpVision.Terminal.Capabilities.Capabilities capabilities, bool full = false, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
+        public static SharpVision.Terminal.Rendering.EncodeResult Encode(SharpVision.Terminal.Rendering.Frame? front, SharpVision.Terminal.Rendering.Frame back, System.Buffers.IBufferWriter<byte> destination, SharpVision.Terminal.Capabilities.TerminalProfile profile, bool full = false, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
     }
     [System.Diagnostics.DebuggerDisplay("{ToString()}")]
     public sealed class Frame : System.IDisposable
@@ -1398,8 +1440,8 @@ namespace SharpVision.Terminal.Rendering
     }
     public sealed class Renderer : System.IDisposable
     {
-        public Renderer(int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null) { }
-        public Renderer(SharpVision.Terminal.Capabilities.Capabilities capabilities, SharpVision.Terminal.Multiplexing.Route? route = null, int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null) { }
+        public Renderer(int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
+        public Renderer(SharpVision.Terminal.Capabilities.Capabilities capabilities, SharpVision.Terminal.Multiplexing.Route? route = null, int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
         public System.Exception? LastCleanupException { get; }
         public bool AttachCommittedFrame(SharpVision.Terminal.Rendering.Frame back) { }
         public void Dispose() { }
@@ -1425,7 +1467,7 @@ namespace SharpVision.Terminal.Runtime
         public SharpVision.Terminal.Abstractions.IResizeSource Resize { get; }
         public SharpVision.Terminal.Abstractions.ITransport Transport { get; }
         public System.Threading.Tasks.ValueTask DisposeAsync() { }
-        public SharpVision.Terminal.Capabilities.DescriptionResult ResolveDescription(SharpVision.Terminal.Capabilities.TerminalProfile? explicitProfile = null, bool allowAnsiFallback = false) { }
+        public SharpVision.Terminal.Capabilities.DescriptionResult ResolveDescription(SharpVision.Terminal.Capabilities.TerminalProfile? explicitProfile = null, bool allowAnsiFallback = false, SharpVision.Terminal.Capabilities.DescriptionLimits? limits = null, SharpVision.Terminal.Protocols.ParserLimits? parserLimits = null) { }
         public SharpVision.Terminal.Capabilities.TerminalProfile? ResolveProfile(SharpVision.Terminal.Capabilities.TerminalProfile? explicitProfile = null, bool allowAnsiFallback = false) { }
     }
     public static class ConsoleHost
@@ -1507,34 +1549,6 @@ namespace SharpVision.Terminal.Sixel
 }
 namespace SharpVision.Terminal.Terminfo
 {
-    public sealed class Limits : System.IEquatable<SharpVision.Terminal.Terminfo.Limits>
-    {
-        public Limits() { }
-        public bool AcceptBellTerminatedOsc { get; init; }
-        public bool AcceptEightBitControls { get; init; }
-        public int MaxCapabilityItems { get; init; }
-        public int MaxCapabilityValueBytes { get; init; }
-        public int MaxClipboardBytes { get; init; }
-        public int MaxConcurrentQueries { get; init; }
-        public int MaxDescriptionKeyBindings { get; init; }
-        public int MaxDescriptionPathBytes { get; init; }
-        public int MaxDescriptionPathEntries { get; init; }
-        public int MaxDescriptionRgbComponentBits { get; init; }
-        public int MaxDescriptionSnapshotBytes { get; init; }
-        public int MaxIntermediateBytes { get; init; }
-        public int MaxMetadataBytes { get; init; }
-        public int MaxParameterBytes { get; init; }
-        public int MaxProgramBytes { get; init; }
-        public int MaxProgramOperations { get; init; }
-        public int MaxProgramOutputBytes { get; init; }
-        public int MaxProgramStackDepth { get; init; }
-        public int MaxStringBytes { get; init; }
-        public int MaxStringParameterBytes { get; init; }
-        public int MaxTerminalNameBytes { get; init; }
-        public System.Collections.Generic.IReadOnlyList<string> NcursesLibraryNames { get; init; }
-        public System.TimeSpan QueryTimeout { get; init; }
-        public static SharpVision.Terminal.Terminfo.Limits Default { get; }
-    }
     public sealed class ProgramExpander
     {
         public bool AppliesTo(SharpVision.Terminal.Capabilities.TerminalProfile profile) { }
@@ -1542,6 +1556,16 @@ namespace SharpVision.Terminal.Terminfo
         public bool HasPair(string prefixName, string suffixName) { }
         public bool TryExpandPair(string enableName, string disableName, out System.ReadOnlyMemory<byte> enable, out System.ReadOnlyMemory<byte> disable) { }
         public bool TryWrite(string name, System.ReadOnlySpan<int> parameters, System.Buffers.IBufferWriter<byte> destination) { }
+    }
+    public sealed class ProgramLimits : System.IEquatable<SharpVision.Terminal.Terminfo.ProgramLimits>
+    {
+        public ProgramLimits() { }
+        public int MaxProgramBytes { get; init; }
+        public int MaxProgramOperations { get; init; }
+        public int MaxProgramOutputBytes { get; init; }
+        public int MaxProgramStackDepth { get; init; }
+        public int MaxStringParameterBytes { get; init; }
+        public static SharpVision.Terminal.Terminfo.ProgramLimits Default { get; }
     }
 }
 namespace SharpVision.Terminal.Unicode
@@ -1697,7 +1721,7 @@ namespace SharpVision.Terminal.Xterm
     public static class XtermGetCap
     {
         public static void Query(SharpVision.Terminal.Protocols.Writer writer, System.ReadOnlySpan<SharpVision.Terminal.Xterm.CapabilityName> names) { }
-        public static bool TryParse(System.ReadOnlySpan<byte> parameters, System.ReadOnlySpan<byte> intermediates, byte final, System.ReadOnlySpan<byte> payload, SharpVision.Terminal.Terminfo.Limits? limits, out SharpVision.Terminal.Xterm.CapabilityResponse? response) { }
+        public static bool TryParse(System.ReadOnlySpan<byte> parameters, System.ReadOnlySpan<byte> intermediates, byte final, System.ReadOnlySpan<byte> payload, SharpVision.Terminal.Capabilities.QueryLimits? limits, out SharpVision.Terminal.Xterm.CapabilityResponse? response) { }
     }
     public static class XtermModifyOtherKeys
     {

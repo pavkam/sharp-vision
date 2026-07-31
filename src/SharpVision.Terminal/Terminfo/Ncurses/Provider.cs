@@ -202,8 +202,8 @@ internal sealed class Provider: IDescriptionProvider
         {
             throw new ArgumentException("The accepted terminal-description snapshot exceeds its byte limit.");
         }
-        var programs = CompilePrograms(strings, request.Limits, diagnostics, out var paddedRequired);
-        var keyMap = CreateKeyMap(strings, request.Limits, diagnostics);
+        var programs = CompilePrograms(strings, diagnostics, out var paddedRequired);
+        var keyMap = CreateKeyMap(strings, request.Limits, request.ParserLimits, diagnostics);
         var programSet = new Programs(programs);
         var suitability = flags.GetValueOrDefault("gn")
             ? Suitability.Generic
@@ -286,7 +286,7 @@ internal sealed class Provider: IDescriptionProvider
 
     private static Dictionary<string, byte[]> ReadStrings(
         INative native,
-        Limits limits,
+        DescriptionLimits limits,
         List<DescriptionDiagnostic> diagnostics)
     {
         var values = new Dictionary<string, byte[]>(StringComparer.Ordinal);
@@ -294,7 +294,7 @@ internal sealed class Provider: IDescriptionProvider
 
         foreach (var name in Names.Strings)
         {
-            var value = native.GetString(name, limits.MaxProgramBytes);
+            var value = native.GetString(name, ProgramLimits.Default.MaxProgramBytes);
 
             if (value.Status == NativeStringStatus.WrongType)
             {
@@ -328,7 +328,6 @@ internal sealed class Provider: IDescriptionProvider
 
     private static Dictionary<string, Program> CompilePrograms(
         IReadOnlyDictionary<string, byte[]> strings,
-        Limits limits,
         List<DescriptionDiagnostic> diagnostics,
         out bool paddedRequired)
     {
@@ -350,7 +349,7 @@ internal sealed class Provider: IDescriptionProvider
                     continue;
                 }
 
-                programs.Add(pair.Key, Compiler.Compile(pair.Value, limits));
+                programs.Add(pair.Key, Compiler.Compile(pair.Value, ProgramLimits.Default));
             }
             catch (NotSupportedException)
             {
@@ -368,7 +367,8 @@ internal sealed class Provider: IDescriptionProvider
 
     private static KeyMap CreateKeyMap(
         IReadOnlyDictionary<string, byte[]> strings,
-        Limits limits,
+        DescriptionLimits limits,
+        ParserLimits parserLimits,
         List<DescriptionDiagnostic> diagnostics)
     {
         var bindings = new List<KeyBinding>();
@@ -387,7 +387,7 @@ internal sealed class Provider: IDescriptionProvider
 
             try
             {
-                candidate = new KeyBinding(pair.Value, code, modifiers, limits);
+                candidate = new KeyBinding(pair.Value, code, modifiers, parserLimits);
             }
             catch (ArgumentException)
             {
@@ -611,12 +611,12 @@ internal sealed class Provider: IDescriptionProvider
     private static void ValidateRgb(
         INative native,
         int colors,
-        Limits limits,
+        DescriptionLimits limits,
         List<DescriptionDiagnostic> diagnostics)
     {
         var flag = native.GetFlag("RGB");
         var number = native.GetNumber("RGB");
-        var text = native.GetString("RGB", limits.MaxProgramBytes);
+        var text = native.GetString("RGB", ProgramLimits.Default.MaxProgramBytes);
 
         if (text.Status == NativeStringStatus.OverLimit)
         {

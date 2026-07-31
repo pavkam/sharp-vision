@@ -28,7 +28,7 @@ internal readonly record struct KeyBinding
         sequence,
         code,
         modifiers,
-        Limits.Default)
+        ParserLimits.Default)
     {
     }
 
@@ -48,7 +48,7 @@ internal readonly record struct KeyBinding
         ReadOnlySpan<byte> sequence,
         Code code,
         Modifiers modifiers,
-        Limits limits)
+        ParserLimits limits)
     {
         ArgumentNullException.ThrowIfNull(limits);
 

@@ -228,7 +228,7 @@ public sealed class DescriptionLoaderTests
             "fixture",
             platform,
             outputFileDescriptor: 1,
-            Limits.Default,
+            DescriptionLimits.Default,
             explicitProfile,
             allowAnsiFallback,
             windowsVirtualTerminal);

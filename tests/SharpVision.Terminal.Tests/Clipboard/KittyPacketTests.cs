@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Tests.Clipboard;
 
 using Kitty.Clipboard;
 
+using SharpVision.Terminal.Clipboard;
+
 /// <summary>
 /// Verifies Kitty OSC 5522 metadata and payload parsing.
 /// </summary>
@@ -122,7 +124,7 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenPayloadExceedsClipboardLimitAndDecodeIsDisabled_ReturnsInvalid()
     {
-        var limits = Limits.Default with { MaxClipboardBytes = 1 };
+        var limits = TransferLimits.Default with { MaxClipboardBytes = 1 };
 
         var packet = Packet.Parse(
             "5522;type=wdata;AAEC"u8,
@@ -142,7 +144,7 @@ public sealed class KittyPacketTests
     [InlineData(false)]
     public void Parse_WhenPayloadIsAtClipboardLimitBoundary_RemainsValidInBothModes(bool decodePayload)
     {
-        var limits = Limits.Default with { MaxClipboardBytes = 3 };
+        var limits = TransferLimits.Default with { MaxClipboardBytes = 3 };
 
         var packet = Packet.Parse("5522;type=wdata;AAEC"u8, limits, decodePayload);
 
@@ -197,7 +199,7 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenMetadataExceedsLimit_ReturnsInvalidMetadata()
     {
-        var limits = Limits.Default with { MaxMetadataBytes = 8 };
+        var limits = TransferLimits.Default with { MaxMetadataBytes = 8 };
 
         var packet = Packet.Parse("5522;type=read:id=abc"u8, limits);
 

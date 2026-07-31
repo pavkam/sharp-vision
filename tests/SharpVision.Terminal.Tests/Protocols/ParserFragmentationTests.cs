@@ -37,7 +37,7 @@ public sealed class ParserFragmentationTests
     [Fact]
     public void Parse_WhenParameterLimitIsExceeded_ReportsOnceAndRecovers()
     {
-        var limits = Limits.Default with { MaxParameterBytes = 2 };
+        var limits = ParserLimits.Default with { MaxParameterBytes = 2 };
         using Parser parser = new(limits);
         var sink = new RecordingSink();
 
@@ -55,7 +55,7 @@ public sealed class ParserFragmentationTests
     [Fact]
     public void Parse_WhenIntermediateLimitIsExceeded_ReportsOnceAndRecovers()
     {
-        var limits = Limits.Default with { MaxIntermediateBytes = 1 };
+        var limits = ParserLimits.Default with { MaxIntermediateBytes = 1 };
         using Parser parser = new(limits);
         var sink = new RecordingSink();
 

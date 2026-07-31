@@ -3,6 +3,7 @@
 
 namespace SharpVision.Terminal.Kitty.Clipboard;
 
+using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Clipboard;
 
 /// <summary>
@@ -18,7 +19,7 @@ public sealed class Transaction: IDisposable
 {
     private const int _chunkBytes = 4_096;
 
-    private readonly Limits _limits;
+    private readonly TransferLimits _limits;
     private readonly Operation _operation;
     private readonly string? _id;
     private readonly bool _listOnly;
@@ -31,10 +32,11 @@ public sealed class Transaction: IDisposable
 
     private Transaction(
         Operation operation,
-        Limits? limits,
+        TransferLimits? limits,
         string? id,
         bool listOnly,
-        TimeProvider? timeProvider)
+        TimeProvider? timeProvider,
+        QueryLimits? queryLimits)
     {
         if (operation is not (Operation.Read or Operation.Write))
         {
@@ -50,11 +52,14 @@ public sealed class Transaction: IDisposable
         }
 
         _operation = operation;
-        _limits = limits ?? Limits.Default;
+        _limits = limits ?? TransferLimits.Default;
         _id = id;
         _listOnly = listOnly;
         _timeProvider = timeProvider ?? TimeProvider.System;
-        Deadline = _timeProvider.GetUtcNow() + _limits.QueryTimeout;
+        // TransferLimits (deliberately scoped to MaxClipboardBytes/MaxMetadataBytes, see #92)
+        // has no timeout of its own; the deadline is bound by the same QueryLimits used for
+        // capability queries.
+        Deadline = _timeProvider.GetUtcNow() + (queryLimits ?? QueryLimits.Default).QueryTimeout;
     }
 
     /// <summary>Gets the current lifecycle state.</summary>
@@ -73,30 +78,34 @@ public sealed class Transaction: IDisposable
     public Diagnostic? Diagnostic { get; private set; }
 
     /// <summary>Creates a bounded clipboard read transaction.</summary>
-    /// <param name="limits">Optional immutable protocol limits.</param>
+    /// <param name="limits">Optional immutable transfer limits.</param>
     /// <param name="id">Optional sanitized correlation identifier.</param>
     /// <param name="listOnly">Whether DATA without a MIME field contains a MIME list.</param>
     /// <param name="timeProvider">Optional deterministic clock.</param>
+    /// <param name="queryLimits">Optional immutable query limits bounding the transaction deadline.</param>
     /// <returns>The new read transaction.</returns>
     /// <exception cref="ArgumentException"><paramref name="id"/> is invalid.</exception>
     public static Transaction Read(
-        Limits? limits = null,
+        TransferLimits? limits = null,
         string? id = null,
         bool listOnly = false,
-        TimeProvider? timeProvider = null) =>
-        new(Operation.Read, limits, id, listOnly, timeProvider);
+        TimeProvider? timeProvider = null,
+        QueryLimits? queryLimits = null) =>
+        new(Operation.Read, limits, id, listOnly, timeProvider, queryLimits);
 
     /// <summary>Creates a bounded clipboard write transaction.</summary>
-    /// <param name="limits">Optional immutable protocol limits.</param>
+    /// <param name="limits">Optional immutable transfer limits.</param>
     /// <param name="id">Optional sanitized correlation identifier.</param>
     /// <param name="timeProvider">Optional deterministic clock.</param>
+    /// <param name="queryLimits">Optional immutable query limits bounding the transaction deadline.</param>
     /// <returns>The new write transaction.</returns>
     /// <exception cref="ArgumentException"><paramref name="id"/> is invalid.</exception>
     public static Transaction Write(
-        Limits? limits = null,
+        TransferLimits? limits = null,
         string? id = null,
-        TimeProvider? timeProvider = null) =>
-        new(Operation.Write, limits, id, listOnly: false, timeProvider);
+        TimeProvider? timeProvider = null,
+        QueryLimits? queryLimits = null) =>
+        new(Operation.Write, limits, id, listOnly: false, timeProvider, queryLimits);
 
     /// <summary>Applies one decoded packet to this transaction.</summary>
     /// <param name="packet">The immutable decoded packet.</param>

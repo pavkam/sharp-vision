@@ -172,8 +172,9 @@ public sealed class TerminalProfile
     /// calls must be serialized and never overlap. Create one per owner instead of sharing it, and
     /// rebuild it when <see cref="ProgramExpander.AppliesTo"/> reports it is no longer current.
     /// </remarks>
+    /// <param name="limits">The finite interpretation limits, or <see langword="null"/> for defaults.</param>
     /// <returns>A new expander bound to this profile.</returns>
-    public ProgramExpander CreateProgramExpander() => new(this);
+    public ProgramExpander CreateProgramExpander(ProgramLimits? limits = null) => new(this, limits);
 
     /// <summary>Creates a profile retaining this description, programs, and key map with replacement semantics.</summary>
     /// <param name="capabilities">The non-null immutable semantic capabilities to publish.</param>

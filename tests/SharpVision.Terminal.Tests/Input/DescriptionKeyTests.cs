@@ -305,7 +305,7 @@ public sealed class DescriptionKeyTests
     {
         var configured = Options.Default with
         {
-            Limits = Limits.Default with { AcceptEightBitControls = true }
+            ParserLimits = ParserLimits.Default with { AcceptEightBitControls = true }
         };
         var options = configured.WithKeyMap(KeyMap.Empty, useAnsiKeyGrammar: false);
         var sink = new RecordingInputSink();
@@ -427,7 +427,7 @@ public sealed class DescriptionKeyTests
     [Fact]
     public void Constructor_WhenCsiParametersMeetOrExceedActiveLimit_EnforcesLimit()
     {
-        var limits = Limits.Default with { MaxParameterBytes = 3 };
+        var limits = ParserLimits.Default with { MaxParameterBytes = 3 };
 
         var exact = new KeyBinding("\u001b[123A"u8, Code.Up, Modifiers.None, limits);
 
@@ -440,7 +440,7 @@ public sealed class DescriptionKeyTests
     [Fact]
     public void Constructor_WhenEscapeIntermediatesMeetOrExceedActiveLimit_EnforcesLimit()
     {
-        var limits = Limits.Default with { MaxIntermediateBytes = 2 };
+        var limits = ParserLimits.Default with { MaxIntermediateBytes = 2 };
 
         var exact = new KeyBinding("\u001b()B"u8, Code.F62, Modifiers.None, limits);
 
@@ -453,8 +453,8 @@ public sealed class DescriptionKeyTests
     [Fact]
     public void Constructor_WhenCsiParametersExceedDefaultLimit_RejectsSignature()
     {
-        var exact = CsiWithParameters(Limits.Default.MaxParameterBytes);
-        var over = CsiWithParameters(Limits.Default.MaxParameterBytes + 1);
+        var exact = CsiWithParameters(ParserLimits.Default.MaxParameterBytes);
+        var over = CsiWithParameters(ParserLimits.Default.MaxParameterBytes + 1);
 
         _ = new KeyBinding(exact, Code.Up);
         _ = Should.Throw<ArgumentException>(() => new KeyBinding(over, Code.Up));

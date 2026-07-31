@@ -37,7 +37,7 @@ public sealed class DescriptionLifecycleTests
     {
         // Arrange
         var programs = new Programs(KeypadPrograms());
-        var interpreter = new Interpreter(Limits.Default);
+        var interpreter = new Interpreter(ProgramLimits.Default);
 
         // Act / Assert
         _ = Should.Throw<ArgumentException>(() =>
@@ -57,7 +57,7 @@ public sealed class DescriptionLifecycleTests
         {
             ["smkx"] = new Program("one-sided"u8)
         });
-        var interpreter = new Interpreter(Limits.Default);
+        var interpreter = new Interpreter(ProgramLimits.Default);
 
         // Act
         var expanded = programs.TryExpandPair(
@@ -79,7 +79,7 @@ public sealed class DescriptionLifecycleTests
     {
         // Arrange
         var programs = new Programs(KeypadPrograms());
-        var interpreter = new Interpreter(Limits.Default);
+        var interpreter = new Interpreter(ProgramLimits.Default);
 
         // Act
         var expanded = programs.TryExpandPair(
@@ -108,7 +108,7 @@ public sealed class DescriptionLifecycleTests
             ["smcup"] = new Program("%{42}%PAenter"u8),
             ["rmcup"] = Program.Intrinsic
         });
-        var interpreter = new Interpreter(Limits.Default);
+        var interpreter = new Interpreter(ProgramLimits.Default);
         var readStatic = new ArrayBufferWriter<byte>();
 
         // Act
@@ -711,7 +711,7 @@ public sealed class DescriptionLifecycleTests
                 AlternateScreen = true,
                 Input = Options.Default with
                 {
-                    Limits = Limits.Default with { MaxProgramOutputBytes = 3 }
+                    ProgramLimits = ProgramLimits.Default with { MaxProgramOutputBytes = 3 }
                 }
             });
 

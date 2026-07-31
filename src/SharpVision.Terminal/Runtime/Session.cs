@@ -119,7 +119,7 @@ public sealed class Session: IAsyncDisposable
         _options = resolvedOptions;
         _context = context ?? resolvedOptions.CreateContext();
         _timeProvider = timeProvider ?? TimeProvider.System;
-        _programInterpreter = new Interpreter(resolvedOptions.Input.Limits);
+        _programInterpreter = new Interpreter(resolvedOptions.Input.ProgramLimits);
     }
 
     /// <summary>Gets the first cleanup failure without replacing the primary failure.</summary>

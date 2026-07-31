@@ -26,7 +26,7 @@ public sealed class RandomizedInputTests
             var options = Options.Default with
             {
                 MaxPasteBytes = 32,
-                Limits = Limits.Default with
+                ParserLimits = ParserLimits.Default with
                 {
                     MaxParameterBytes = 16,
                     MaxIntermediateBytes = 4,

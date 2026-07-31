@@ -38,7 +38,7 @@ internal sealed class DescriptionEnvironment
     public static bool TryCapture(
         Func<string, string?> read,
         string terminalName,
-        Limits limits,
+        DescriptionLimits limits,
         out DescriptionEnvironment? environment,
         out DescriptionDiagnostic diagnostic)
     {
@@ -83,14 +83,14 @@ internal sealed class DescriptionEnvironment
 
     private string? Value(string name) => _values.GetValueOrDefault(name);
 
-    private static bool ValidPath(string? value, Limits limits) =>
+    private static bool ValidPath(string? value, DescriptionLimits limits) =>
         value is null || Encoding.UTF8.GetByteCount(value) <= limits.MaxDescriptionPathBytes;
 
-    private static bool ValidTerminfo(string? value, Limits limits) =>
+    private static bool ValidTerminfo(string? value, DescriptionLimits limits) =>
         value is null || value.StartsWith("hex:", StringComparison.Ordinal) ||
         value.StartsWith("b64:", StringComparison.Ordinal) || ValidPath(value, limits);
 
-    private static bool ValidPathList(string? value, Limits limits)
+    private static bool ValidPathList(string? value, DescriptionLimits limits)
     {
         if (value is null)
         {
@@ -102,7 +102,7 @@ internal sealed class DescriptionEnvironment
             paths.All(path => Encoding.UTF8.GetByteCount(path) <= limits.MaxDescriptionPathBytes);
     }
 
-    private static bool ValidTermcap(string? value, Limits limits, out bool termcapLimit)
+    private static bool ValidTermcap(string? value, DescriptionLimits limits, out bool termcapLimit)
     {
         termcapLimit = false;
 
@@ -116,7 +116,7 @@ internal sealed class DescriptionEnvironment
             return ValidPath(value, limits);
         }
 
-        termcapLimit = Encoding.UTF8.GetByteCount(value) > 1_023;
+        termcapLimit = Encoding.UTF8.GetByteCount(value) > limits.MaxTermcapVariableBytes;
         return !termcapLimit;
     }
 }

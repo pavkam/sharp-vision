@@ -29,7 +29,7 @@ public sealed class CompilerTests
         var bytes = Encoding.UTF8.GetBytes(template);
 
         // Act
-        var program = Compiler.Compile(bytes, Limits.Default);
+        var program = Compiler.Compile(bytes, ProgramLimits.Default);
         bytes.AsSpan().Fill((byte) 'x');
 
         // Assert
@@ -48,7 +48,7 @@ public sealed class CompilerTests
         var template = "%p1%d%p2%d%p3%d%p4%d%p5%d%p6%d%p7%d%p8%d%p9%d"u8;
 
         // Act
-        var program = Compiler.Compile(template, Limits.Default);
+        var program = Compiler.Compile(template, ProgramLimits.Default);
 
         // Assert
         program.OperationCount.ShouldBe(18);
@@ -85,7 +85,7 @@ public sealed class CompilerTests
         var bytes = Encoding.UTF8.GetBytes(template);
 
         // Act / Assert
-        _ = Should.Throw<FormatException>(() => Compiler.Compile(bytes, Limits.Default));
+        _ = Should.Throw<FormatException>(() => Compiler.Compile(bytes, ProgramLimits.Default));
     }
 
     /// <summary>Verifies hardware padding requests are rejected rather than delayed or stripped.</summary>
@@ -99,7 +99,7 @@ public sealed class CompilerTests
         var bytes = Encoding.UTF8.GetBytes(template);
 
         // Act / Assert
-        _ = Should.Throw<NotSupportedException>(() => Compiler.Compile(bytes, Limits.Default));
+        _ = Should.Throw<NotSupportedException>(() => Compiler.Compile(bytes, ProgramLimits.Default));
     }
 
     /// <summary>Verifies a command cannot consume a value absent from the compile-time stack.</summary>
@@ -114,21 +114,21 @@ public sealed class CompilerTests
         var bytes = Encoding.UTF8.GetBytes(template);
 
         // Act / Assert
-        _ = Should.Throw<FormatException>(() => Compiler.Compile(bytes, Limits.Default));
+        _ = Should.Throw<FormatException>(() => Compiler.Compile(bytes, ProgramLimits.Default));
     }
 
     /// <summary>Verifies raw string length is a stack-consuming directive.</summary>
     [Fact]
     public void Compile_WhenStringLengthHasNoOperand_Throws() =>
         // Arrange / Act / Assert
-        _ = Should.Throw<FormatException>(() => Compiler.Compile("%l"u8, Limits.Default));
+        _ = Should.Throw<FormatException>(() => Compiler.Compile("%l"u8, ProgramLimits.Default));
 
     /// <summary>Verifies the configured program-byte bound is enforced.</summary>
     [Fact]
     public void Compile_WhenProgramExceedsByteLimit_Throws()
     {
         // Arrange
-        var limits = Limits.Default with { MaxProgramBytes = 3 };
+        var limits = ProgramLimits.Default with { MaxProgramBytes = 3 };
 
         // Act / Assert
         _ = Should.Throw<ArgumentException>(() => Compiler.Compile("abcd"u8, limits));
@@ -139,7 +139,7 @@ public sealed class CompilerTests
     public void Compile_WhenProgramExceedsOperationLimit_Throws()
     {
         // Arrange
-        var limits = Limits.Default with { MaxProgramOperations = 1 };
+        var limits = ProgramLimits.Default with { MaxProgramOperations = 1 };
 
         // Act / Assert
         _ = Should.Throw<ArgumentException>(() => Compiler.Compile("a%{1}"u8, limits));
@@ -150,7 +150,7 @@ public sealed class CompilerTests
     public void Compile_WhenProgramExceedsStackLimit_Throws()
     {
         // Arrange
-        var limits = Limits.Default with { MaxProgramStackDepth = 2 };
+        var limits = ProgramLimits.Default with { MaxProgramStackDepth = 2 };
 
         // Act / Assert
         _ = Should.Throw<ArgumentException>(() => Compiler.Compile("%{1}%{2}%{3}"u8, limits));
@@ -163,7 +163,7 @@ public sealed class CompilerTests
     public void Compile_WhenPrintfBoundExceedsOutputLimit_Throws(string template)
     {
         // Arrange
-        var limits = Limits.Default with { MaxProgramOutputBytes = 3 };
+        var limits = ProgramLimits.Default with { MaxProgramOutputBytes = 3 };
 
         // Act / Assert
         _ = Should.Throw<ArgumentException>(() =>
@@ -178,7 +178,7 @@ public sealed class CompilerTests
         var template = "%p1%:999999999999999999999d"u8.ToArray();
 
         // Act / Assert
-        _ = Should.Throw<FormatException>(() => Compiler.Compile(template, Limits.Default));
+        _ = Should.Throw<FormatException>(() => Compiler.Compile(template, ProgramLimits.Default));
     }
 
     /// <summary>Verifies non-directive bytes remain valid opaque terminal program data.</summary>
@@ -189,7 +189,7 @@ public sealed class CompilerTests
         byte[] template = [0xc3, 0x28, 0xff];
 
         // Act
-        var program = Compiler.Compile(template, Limits.Default);
+        var program = Compiler.Compile(template, ProgramLimits.Default);
 
         // Assert
         program.Representation.Span.ToArray().ShouldBe(template);
@@ -211,7 +211,7 @@ public sealed class CompilerTests
     public void Limits_WhenConstructed_RequirePositiveFiniteProgramBounds()
     {
         // Arrange / Act
-        var limits = Limits.Default;
+        var limits = ProgramLimits.Default;
 
         // Assert
         limits.MaxProgramBytes.ShouldBeInRange(1, 1_048_576);
@@ -219,18 +219,18 @@ public sealed class CompilerTests
         limits.MaxProgramStackDepth.ShouldBeInRange(1, 256);
         limits.MaxProgramOutputBytes.ShouldBeInRange(1, 1_048_576);
         limits.MaxStringParameterBytes.ShouldBeInRange(1, 1_048_576);
-        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new Limits { MaxProgramBytes = 0 });
-        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new Limits { MaxProgramOperations = 0 });
-        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new Limits { MaxProgramStackDepth = 0 });
-        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new Limits { MaxProgramOutputBytes = 0 });
-        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new Limits { MaxStringParameterBytes = 0 });
-        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new Limits { MaxProgramBytes = 1_048_577 });
-        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new Limits { MaxProgramOperations = 16_385 });
-        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new Limits { MaxProgramStackDepth = 257 });
-        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new Limits { MaxProgramOutputBytes = 1_048_577 });
-        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new Limits { MaxStringParameterBytes = 1_048_577 });
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new ProgramLimits { MaxProgramBytes = 0 });
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new ProgramLimits { MaxProgramOperations = 0 });
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new ProgramLimits { MaxProgramStackDepth = 0 });
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new ProgramLimits { MaxProgramOutputBytes = 0 });
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new ProgramLimits { MaxStringParameterBytes = 0 });
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new ProgramLimits { MaxProgramBytes = 1_048_577 });
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new ProgramLimits { MaxProgramOperations = 16_385 });
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new ProgramLimits { MaxProgramStackDepth = 257 });
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new ProgramLimits { MaxProgramOutputBytes = 1_048_577 });
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () => new ProgramLimits { MaxStringParameterBytes = 1_048_577 });
 
-        var ceilings = Limits.Default with
+        var ceilings = ProgramLimits.Default with
         {
             MaxProgramBytes = 1_048_576,
             MaxProgramOperations = 16_384,

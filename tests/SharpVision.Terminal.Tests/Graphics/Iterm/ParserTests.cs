@@ -39,7 +39,7 @@ public sealed class ParserTests
     public void Route_WhenMultipartOscExceedsBound_RecoversFollowingText()
     {
         var sink = new RecordingProtocolSink();
-        var options = InputOptions.Default with { Limits = Limits.Default with { MaxStringBytes = 8 } };
+        var options = InputOptions.Default with { ParserLimits = ParserLimits.Default with { MaxStringBytes = 8 } };
         using var router = new ProtocolRouter(sink, options);
 
         router.Route("\u001b]1337;FileEnd\u001b\\ok"u8);

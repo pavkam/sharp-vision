@@ -377,7 +377,10 @@ internal sealed class Programs
             return false;
         }
 
-        var interpreter = new Interpreter(Limits.Default);
+        // Compatibility probing only interprets already-validated compiled programs with
+        // small representative test parameters to check they don't throw; it never touches
+        // real terminal I/O, so a caller-configured ProgramLimits is not reachable here.
+        var interpreter = new Interpreter(ProgramLimits.Default);
         var enableDestination = new ArrayBufferWriter<byte>();
         var disableDestination = new ArrayBufferWriter<byte>();
         interpreter.BeginTransaction();
@@ -402,7 +405,7 @@ internal sealed class Programs
 
     private static bool ProbeProgram(string name, Program program, int expected)
     {
-        var interpreter = new Interpreter(Limits.Default);
+        var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
         Span<int> parameters = stackalloc int[3];
         FillRepresentativeParameters(name, parameters);
@@ -428,7 +431,7 @@ internal sealed class Programs
 
     private static bool ProbeStringProgram(Program program)
     {
-        var interpreter = new Interpreter(Limits.Default);
+        var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
         object?[] parameters = ["c"u8.ToArray(), "?"u8.ToArray()];
         interpreter.BeginTransaction();

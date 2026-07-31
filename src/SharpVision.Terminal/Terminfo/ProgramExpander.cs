@@ -33,13 +33,13 @@ public sealed class ProgramExpander
     private readonly Programs _programs;
     private readonly Interpreter _interpreter;
 
-    internal ProgramExpander(TerminalProfile profile)
+    internal ProgramExpander(TerminalProfile profile, ProgramLimits? limits = null)
     {
         Debug.Assert(profile is not null, "A profile always creates its own expander.");
 
         _profile = profile;
         _programs = profile.Programs;
-        _interpreter = new Interpreter(Limits.Default);
+        _interpreter = new Interpreter(limits ?? ProgramLimits.Default);
     }
 
     /// <summary>

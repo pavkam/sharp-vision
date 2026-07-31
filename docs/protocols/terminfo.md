@@ -63,12 +63,15 @@ a terminal name.
 
 ## Limits and provider boundary
 
-`SharpVision.Terminal.Protocols.Limits` owns these implemented provider limits.
-Default is the ordinary accepted limit; hard ceiling is the largest caller-set
-value. Values are counts, raw bytes, or UTF-8 bytes as stated. A caller value
-above a hard ceiling is rejected before lookup. A provider value above its
-applicable limit rejects that description before any command is compiled or
-emitted.
+`SharpVision.Terminal.Capabilities.DescriptionLimits` (terminal name, path list,
+accepted snapshot, key bindings, RGB component bits) and
+`SharpVision.Terminal.Terminfo.ProgramLimits` (capability string, compiled
+operations, interpreter stack, expansion output, string parameter) own these
+implemented provider limits between them. Default is the ordinary accepted
+limit; hard ceiling is the largest caller-set value. Values are counts, raw
+bytes, or UTF-8 bytes as stated. A caller value above a hard ceiling is
+rejected before lookup. A provider value above its applicable limit rejects
+that description before any command is compiled or emitted.
 
 | Limit               | Default | Hard ceiling | Unit                                                                                 |
 | ------------------- | ------: | -----------: | ------------------------------------------------------------------------------------ |
@@ -180,7 +183,7 @@ and it MUST reject an entry missing any of:
 - usable clearing: `clear`, or both `el` and `ed`.
 
 Usable means the command is allowlisted, decodes, compiles within
-`Protocols.Limits`, has its typed parameter arity, and proves non-empty output.
+`ProgramLimits`, has its typed parameter arity, and proves non-empty output.
 Compiler metadata proves unconditional numeric programs; conditional or
 potentially failing programs receive one isolated representative expansion whose
 static-variable state is rolled back. Missing required commands reject the
@@ -375,7 +378,7 @@ detailed cross-layer ownership is in the
 ## Expected behavior
 
 Fixture databases and runtime tests prove the lookup order, every
-`Protocols.Limits` boundary, provider-failure distinction, `gn`/`hc` rejection,
+`DescriptionLimits`/`ProgramLimits` boundary, provider-failure distinction, `gn`/`hc` rejection,
 required-command rejection before output, matched cursor/alternate-screen
 fallback, allowlist filtering, parameter-program bounds, and final lifecycle
 bytes coming from a database program rather than an environment terminal name.

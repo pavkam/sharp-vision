@@ -3,7 +3,7 @@
 
 namespace SharpVision.Terminal.Kitty.Graphics;
 
-using ProtocolLimits = Limits;
+using ProtocolLimits = Terminal.Clipboard.TransferLimits;
 
 /// <summary>Owns one strict, bounded, redaction-safe Kitty graphics APC response.</summary>
 [PublicAPI]

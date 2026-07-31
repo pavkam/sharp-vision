@@ -252,7 +252,7 @@ public sealed class RouterTests
     {
         // Arrange
         var sink = new RecordingProtocolSink();
-        var options = InputOptions.Default with { Limits = Limits.Default with { MaxStringBytes = 8 } };
+        var options = InputOptions.Default with { ParserLimits = ParserLimits.Default with { MaxStringBytes = 8 } };
         using ProtocolRouter router = new(sink, options);
 
         // Act

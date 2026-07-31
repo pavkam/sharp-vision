@@ -4,6 +4,7 @@
 namespace SharpVision.Terminal.Tests.Graphics.Kitty;
 
 using SharpVision.Terminal.Capabilities;
+using SharpVision.Terminal.Clipboard;
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Kitty.Graphics;
 
@@ -85,8 +86,8 @@ public sealed class ResponseTests
     [Fact]
     public void Parse_WhenEightBitApcIsEnabled_ProducesGraphicsPayload()
     {
-        var limits = Limits.Default with { AcceptEightBitControls = true };
-        var options = Options.Default with { Limits = limits };
+        var limits = ParserLimits.Default with { AcceptEightBitControls = true };
+        var options = Options.Default with { ParserLimits = limits };
         byte[] wire = [0x9f, (byte) 'G', (byte) 'i', (byte) '=', (byte) '3', (byte) ';', (byte) 'O', (byte) 'K', 0x9c];
 
         for (var split = 0; split <= wire.Length; split++)
@@ -106,7 +107,7 @@ public sealed class ResponseTests
     [Fact]
     public void Parse_WhenReplyExceedsBounds_ReturnsStringLimit()
     {
-        var limits = Limits.Default with { MaxMetadataBytes = 8 };
+        var limits = TransferLimits.Default with { MaxMetadataBytes = 8 };
 
         var response = Response.Parse("Gi=123456;OK"u8, limits);
 

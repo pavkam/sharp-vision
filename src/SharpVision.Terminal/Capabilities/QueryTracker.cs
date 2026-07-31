@@ -11,7 +11,7 @@ using Xterm;
 [PublicAPI]
 public sealed class QueryTracker
 {
-    private readonly Limits _limits;
+    private readonly QueryLimits _limits;
     private readonly TimeProvider _timeProvider;
     private readonly Dictionary<Key, Active> _active = [];
     private readonly Dictionary<long, Key> _tokens = [];
@@ -22,9 +22,9 @@ public sealed class QueryTracker
     /// <summary>Initializes a bounded query tracker.</summary>
     /// <param name="limits">Optional immutable protocol limits.</param>
     /// <param name="timeProvider">Optional deterministic clock.</param>
-    public QueryTracker(Limits? limits = null, TimeProvider? timeProvider = null)
+    public QueryTracker(QueryLimits? limits = null, TimeProvider? timeProvider = null)
     {
-        _limits = limits ?? Limits.Default;
+        _limits = limits ?? QueryLimits.Default;
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 

@@ -105,7 +105,7 @@ public sealed class PhaseThreePerformanceTests
                 ["Se"] = new Program("\u001b[0 q"u8)
             }),
             KeyMap.Empty);
-        var interpreter = new Interpreter(Limits.Default);
+        var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>(1024);
 
         for (var index = 0; index < 1_000; index++)
@@ -244,11 +244,11 @@ public sealed class PhaseThreePerformanceTests
     public void Write_WhenTerminfoProgramsAreWarm_AllocatesZeroBytes()
     {
         // ncurses 6.6 terminfo.src xterm cursor-address and xterm-256color setaf forms.
-        var cursor = Compiler.Compile("\u001b[%i%p1%d;%p2%dH"u8, Limits.Default);
+        var cursor = Compiler.Compile("\u001b[%i%p1%d;%p2%dH"u8, ProgramLimits.Default);
         var color = Compiler.Compile(
             "\u001b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m"u8,
-            Limits.Default);
-        var interpreter = new Interpreter(Limits.Default);
+            ProgramLimits.Default);
+        var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>(64);
         object?[] cursorParameters = [4, 9];
         object?[] colorParameters = [200];

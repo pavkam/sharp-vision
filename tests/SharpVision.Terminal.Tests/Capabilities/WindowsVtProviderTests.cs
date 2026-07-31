@@ -116,7 +116,7 @@ public sealed class WindowsVtProviderTests
             "fixture",
             DescriptionPlatform.Unix,
             outputFileDescriptor: 1,
-            Limits.Default,
+            DescriptionLimits.Default,
             windowsVirtualTerminal: true));
     }
 
@@ -125,7 +125,7 @@ public sealed class WindowsVtProviderTests
     public void Load_WhenKeyMapExceedsConfiguredLimit_ReturnsProviderFailure()
     {
         var provider = new WindowsVtProvider();
-        var limits = Limits.Default with { MaxDescriptionKeyBindings = ExpectedKeys().Count - 1 };
+        var limits = DescriptionLimits.Default with { MaxDescriptionKeyBindings = ExpectedKeys().Count - 1 };
         var request = new DescriptionRequest(
             "windows-vt",
             DescriptionPlatform.Windows,
@@ -145,7 +145,7 @@ public sealed class WindowsVtProviderTests
     public void Load_WhenOwnedSnapshotExceedsConfiguredLimit_ReturnsProviderFailure()
     {
         var provider = new WindowsVtProvider();
-        var limits = Limits.Default with { MaxDescriptionSnapshotBytes = ExpectedSnapshotBytes() - 1 };
+        var limits = DescriptionLimits.Default with { MaxDescriptionSnapshotBytes = ExpectedSnapshotBytes() - 1 };
         var request = new DescriptionRequest(
             "windows-vt",
             DescriptionPlatform.Windows,
@@ -165,7 +165,7 @@ public sealed class WindowsVtProviderTests
     public void Load_WhenOwnedSnapshotEqualsConfiguredLimit_LoadsProfile()
     {
         var provider = new WindowsVtProvider();
-        var limits = Limits.Default with { MaxDescriptionSnapshotBytes = ExpectedSnapshotBytes() };
+        var limits = DescriptionLimits.Default with { MaxDescriptionSnapshotBytes = ExpectedSnapshotBytes() };
         var request = new DescriptionRequest(
             "windows-vt",
             DescriptionPlatform.Windows,
@@ -194,7 +194,7 @@ public sealed class WindowsVtProviderTests
             "windows-vt",
             platform,
             outputFileDescriptor: 1,
-            Limits.Default,
+            DescriptionLimits.Default,
             windowsVirtualTerminal: windowsVirtualTerminal);
 
     private static Dictionary<string, byte[]> ExpectedPrograms() => new(StringComparer.Ordinal)

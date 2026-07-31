@@ -14,7 +14,7 @@ public static class Fragmentation
     /// </summary>
     /// <param name="input">A complete representative sequence.</param>
     /// <param name="limits">Optional parser limits.</param>
-    public static void AssertAll(ReadOnlySpan<byte> input, Limits? limits = null)
+    public static void AssertAll(ReadOnlySpan<byte> input, ParserLimits? limits = null)
     {
         var owned = input.ToArray();
         var expected = Parse([owned], limits);
@@ -62,7 +62,7 @@ public static class Fragmentation
         }
     }
 
-    private static string[] Parse(IEnumerable<byte[]> reads, Limits? limits)
+    private static string[] Parse(IEnumerable<byte[]> reads, ParserLimits? limits)
     {
         using Parser parser = new(limits);
         var sink = new RecordingSink();

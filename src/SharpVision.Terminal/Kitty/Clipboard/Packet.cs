@@ -98,10 +98,10 @@ public sealed class Packet
     /// <returns>A valid typed packet or a redacted diagnostic packet.</returns>
     public static Packet Parse(
         ReadOnlySpan<byte> value,
-        Limits? limits = null,
+        TransferLimits? limits = null,
         bool decodePayload = true)
     {
-        var effectiveLimits = limits ?? Limits.Default;
+        var effectiveLimits = limits ?? TransferLimits.Default;
 
         if (!value.StartsWith("5522;"u8))
         {

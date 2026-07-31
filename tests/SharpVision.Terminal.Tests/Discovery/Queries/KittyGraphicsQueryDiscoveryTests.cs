@@ -75,7 +75,7 @@ public sealed class KittyGraphicsQueryDiscoveryTests
         int capacity,
         bool expected)
     {
-        var negotiator = Create(Limits.Default with { MaxConcurrentQueries = capacity });
+        var negotiator = Create(QueryLimits.Default with { MaxConcurrentQueries = capacity });
         var output = new ArrayBufferWriter<byte>();
 
         _ = negotiator.TryStart(output, null, null);
@@ -154,7 +154,7 @@ public sealed class KittyGraphicsQueryDiscoveryTests
             new Feature(CapabilitySupport.Unsupported, Origin.Override));
     }
 
-    private static ActiveQueryDiscoveryStrategy Create(Limits? limits = null) => new(
+    private static ActiveQueryDiscoveryStrategy Create(QueryLimits? limits = null) => new(
         new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" },
             limits: limits));

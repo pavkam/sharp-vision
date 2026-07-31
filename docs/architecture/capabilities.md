@@ -210,7 +210,7 @@ Each has a fake-clock-testable timeout. Publication creates a new immutable
 profile; late replies may inform diagnostics or a later explicit refresh but do
 not mutate values being used by a frame.
 
-`QueryTracker` enforces `Limits.MaxConcurrentQueries`, permits one active
+`QueryTracker` enforces `QueryLimits.MaxConcurrentQueries`, permits one active
 uncorrelated query per response family, and uses a sanitized identifier for
 concurrent Kitty clipboard queries. It retains a bounded grace record after
 completion, cancellation, or timeout so duplicate and late replies are

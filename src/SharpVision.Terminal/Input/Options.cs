@@ -2,6 +2,10 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 namespace SharpVision.Terminal.Input;
+
+using SharpVision.Terminal.Capabilities;
+using SharpVision.Terminal.Clipboard;
+
 /// <summary>Defines finite immutable input decoding policy.</summary>
 [PublicAPI]
 public sealed record Options
@@ -43,7 +47,7 @@ public sealed record Options
 
     /// <summary>Gets protocol parser limits used by the decoder.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
-    public Limits Limits
+    public ParserLimits ParserLimits
     {
         get;
         init
@@ -51,7 +55,43 @@ public sealed record Options
             ArgumentNullException.ThrowIfNull(value);
             field = value;
         }
-    } = Limits.Default;
+    } = ParserLimits.Default;
+
+    /// <summary>Gets terminfo parameter-program limits used to interpret key and control programs.</summary>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    public ProgramLimits ProgramLimits
+    {
+        get;
+        init
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            field = value;
+        }
+    } = ProgramLimits.Default;
+
+    /// <summary>Gets capability-query limits used to bound XTGETTCAP and similar in-band replies.</summary>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    public QueryLimits QueryLimits
+    {
+        get;
+        init
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            field = value;
+        }
+    } = QueryLimits.Default;
+
+    /// <summary>Gets clipboard transfer limits used to bound Kitty graphics APC responses.</summary>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    public TransferLimits TransferLimits
+    {
+        get;
+        init
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            field = value;
+        }
+    } = TransferLimits.Default;
 
     /// <summary>Gets optional positive cell-pixel dimensions for pixel mouse inference.</summary>
     public Metrics? CellMetrics { get; init; }

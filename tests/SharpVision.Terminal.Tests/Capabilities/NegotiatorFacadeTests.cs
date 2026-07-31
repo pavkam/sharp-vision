@@ -35,7 +35,7 @@ public sealed class NegotiatorFacadeTests
         var clock = new ManualTimeProvider();
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" },
-            limits: Limits.Default with { MaxConcurrentQueries = 2 });
+            limits: QueryLimits.Default with { MaxConcurrentQueries = 2 });
         var strategy = new ActiveQueryDiscoveryStrategy(options, clock);
         var facade = new Negotiator(options, clock);
         var strategyBytes = new ArrayBufferWriter<byte>();

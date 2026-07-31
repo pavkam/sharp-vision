@@ -114,7 +114,7 @@ internal sealed class WindowsVtProvider: IDescriptionProvider
 
         try
         {
-            var programs = CreatePrograms(request.Limits);
+            var programs = CreatePrograms(ProgramLimits.Default);
             var keyMap = CreateKeyMap();
             var capabilities = TerminalCapabilities.Conservative with
             {
@@ -161,7 +161,7 @@ internal sealed class WindowsVtProvider: IDescriptionProvider
         return bytes;
     }
 
-    private static Programs CreatePrograms(Limits limits)
+    private static Programs CreatePrograms(ProgramLimits limits)
     {
         var compiled = new Dictionary<string, Program>(ProgramSpecifications.Length, StringComparer.Ordinal);
 

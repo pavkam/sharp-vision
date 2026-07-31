@@ -22,7 +22,7 @@ internal static class Compiler
     /// <exception cref="ArgumentException">The program exceeds a configured bound.</exception>
     /// <exception cref="FormatException">The program is empty, malformed, unsupported, or stack-invalid.</exception>
     /// <exception cref="NotSupportedException">The program requests hardware padding.</exception>
-    public static Program Compile(ReadOnlySpan<byte> source, Limits limits)
+    public static Program Compile(ReadOnlySpan<byte> source, ProgramLimits limits)
     {
         ArgumentNullException.ThrowIfNull(limits);
 
@@ -318,7 +318,7 @@ internal static class Compiler
         ReadOnlySpan<byte> source,
         ref int index,
         List<Operation> operations,
-        Limits limits,
+        ProgramLimits limits,
         ref int stackDepth)
     {
         var flags = 0;
@@ -423,7 +423,7 @@ internal static class Compiler
     private static void Binary(
         List<Operation> operations,
         byte code,
-        Limits limits,
+        ProgramLimits limits,
         ref int stackDepth)
     {
         Pop(ref stackDepth);
@@ -435,7 +435,7 @@ internal static class Compiler
     private static void Unary(
         List<Operation> operations,
         byte code,
-        Limits limits,
+        ProgramLimits limits,
         int stackDepth)
     {
         if (stackDepth == 0)
@@ -450,7 +450,7 @@ internal static class Compiler
 
     #region Parsing and bounds
 
-    private static void Push(ref int stackDepth, ref int maximumStackDepth, Limits limits)
+    private static void Push(ref int stackDepth, ref int maximumStackDepth, ProgramLimits limits)
     {
         stackDepth++;
 
@@ -556,7 +556,7 @@ internal static class Compiler
     private static int PackFormat(int flags, int precision) =>
         flags | ((precision + 1) << 8);
 
-    private static void AddOperation(List<Operation> operations, Operation operation, Limits limits)
+    private static void AddOperation(List<Operation> operations, Operation operation, ProgramLimits limits)
     {
         if (operations.Count >= limits.MaxProgramOperations)
         {

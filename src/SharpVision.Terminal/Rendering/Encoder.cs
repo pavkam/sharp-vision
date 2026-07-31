@@ -13,6 +13,8 @@ public static class Encoder
     [ThreadStatic]
     private static Interpreter? _ansiInterpreter;
     [ThreadStatic]
+    private static ProgramLimits? _ansiInterpreterLimits;
+    [ThreadStatic]
     private static TerminalProfile? _ansiProfile;
 
     /// <summary>Encodes through the built-in ANSI compatibility profile.</summary>
@@ -21,6 +23,7 @@ public static class Encoder
     /// <param name="destination">The synchronous byte destination.</param>
     /// <param name="capabilities">The non-null semantic capability snapshot.</param>
     /// <param name="full">Whether to force a full redraw.</param>
+    /// <param name="limits">The finite interpretation limits, or <see langword="null"/> for defaults.</param>
     /// <returns>The number of spans and full/incremental classification.</returns>
     /// <exception cref="ArgumentNullException">A required dependency is null.</exception>
     /// <exception cref="ObjectDisposedException">A supplied frame is disposed.</exception>
@@ -29,7 +32,8 @@ public static class Encoder
         Frame back,
         IBufferWriter<byte> destination,
         TerminalCapabilities capabilities,
-        bool full = false)
+        bool full = false,
+        ProgramLimits? limits = null)
     {
         ArgumentNullException.ThrowIfNull(capabilities);
 
@@ -41,12 +45,20 @@ public static class Encoder
             _ansiProfile = profile;
         }
 
+        var effectiveLimits = limits ?? ProgramLimits.Default;
+
+        if (_ansiInterpreter is null || _ansiInterpreterLimits != effectiveLimits)
+        {
+            _ansiInterpreter = new Interpreter(effectiveLimits);
+            _ansiInterpreterLimits = effectiveLimits;
+        }
+
         return Encode(
             front,
             back,
             destination,
             profile,
-            _ansiInterpreter ??= new Interpreter(Limits.Default),
+            _ansiInterpreter,
             full);
     }
 
@@ -56,6 +68,7 @@ public static class Encoder
     /// <param name="destination">The synchronous byte destination.</param>
     /// <param name="profile">The non-null immutable terminal profile.</param>
     /// <param name="full">Whether to force a full redraw.</param>
+    /// <param name="limits">The finite interpretation limits, or <see langword="null"/> for defaults.</param>
     /// <returns>The number of spans and full/incremental classification.</returns>
     /// <exception cref="ArgumentNullException">A required dependency is null.</exception>
     /// <exception cref="ObjectDisposedException">A supplied frame is disposed.</exception>
@@ -70,10 +83,11 @@ public static class Encoder
         Frame back,
         IBufferWriter<byte> destination,
         TerminalProfile profile,
-        bool full = false)
+        bool full = false,
+        ProgramLimits? limits = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
-        var interpreter = new Interpreter(Limits.Default);
+        var interpreter = new Interpreter(limits ?? ProgramLimits.Default);
         return Encode(front, back, destination, profile, interpreter, full);
     }
 

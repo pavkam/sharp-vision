@@ -14,13 +14,15 @@ internal readonly struct Program
     private readonly byte[]? _literals;
 
     /// <summary>
-    /// Initializes an empty program or compiles one owned raw program with the default limits.
+    /// Initializes an empty program or compiles one owned raw program against caller-supplied or
+    /// default compilation limits.
     /// </summary>
     /// <param name="representation">The raw terminal-description program bytes to copy and compile.</param>
-    /// <exception cref="ArgumentException">The program exceeds a default compilation bound.</exception>
+    /// <param name="limits">The finite compilation limits, or <see langword="null"/> for defaults.</param>
+    /// <exception cref="ArgumentException">The program exceeds a configured compilation bound.</exception>
     /// <exception cref="FormatException">The non-empty program is malformed or unsupported.</exception>
     /// <exception cref="NotSupportedException">The program requests hardware padding.</exception>
-    public Program(ReadOnlySpan<byte> representation)
+    public Program(ReadOnlySpan<byte> representation, ProgramLimits? limits = null)
     {
         if (representation.IsEmpty)
         {
@@ -32,7 +34,7 @@ internal readonly struct Program
             return;
         }
 
-        this = Compiler.Compile(representation, Limits.Default);
+        this = Compiler.Compile(representation, limits ?? ProgramLimits.Default);
     }
 
     private Program(bool isIntrinsic)

@@ -40,7 +40,7 @@ public sealed class ParserStringTests
     [Fact]
     public void Parse_WhenOscContainsDisallowedBell_ReportsMalformedAtSt()
     {
-        var limits = Limits.Default with { AcceptBellTerminatedOsc = false };
+        var limits = ParserLimits.Default with { AcceptBellTerminatedOsc = false };
         using Parser parser = new(limits);
         var sink = new RecordingSink();
 
@@ -140,7 +140,7 @@ public sealed class ParserStringTests
     [Fact]
     public void Parse_WhenEightBitStringsAreEnabled_DeliversOsc()
     {
-        var limits = Limits.Default with { AcceptEightBitControls = true };
+        var limits = ParserLimits.Default with { AcceptEightBitControls = true };
         using Parser parser = new(limits);
         var sink = new RecordingSink();
         byte[] input = [0x9d, (byte) '2', (byte) ';', (byte) 'x', 0x9c];

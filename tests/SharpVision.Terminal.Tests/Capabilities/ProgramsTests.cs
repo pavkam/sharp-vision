@@ -74,7 +74,7 @@ public sealed class ProgramsTests
             ["setaf"] = new Program(Encoding.ASCII.GetBytes(source)),
             ["read-static"] = new Program("%gA%d"u8)
         });
-        var interpreter = new Interpreter(Limits.Default);
+        var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
 
         programs.Has("setaf").ShouldBeTrue();

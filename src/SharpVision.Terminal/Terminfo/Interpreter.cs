@@ -20,7 +20,7 @@ internal sealed class Interpreter
     private const int _showSign = 1 << 3;
     private const int _leadingSpace = 1 << 4;
 
-    private readonly Limits _limits;
+    private readonly ProgramLimits _limits;
     private readonly byte[] _output;
     private readonly byte[] _pairedOutput;
     private readonly int[] _stackNumbers;
@@ -50,7 +50,7 @@ internal sealed class Interpreter
     /// <summary>Initializes reusable storage from one non-null finite limit profile.</summary>
     /// <param name="limits">The finite program, stack, parameter, and output limits.</param>
     /// <exception cref="ArgumentNullException"><paramref name="limits"/> is <see langword="null"/>.</exception>
-    public Interpreter(Limits limits)
+    public Interpreter(ProgramLimits limits)
     {
         ArgumentNullException.ThrowIfNull(limits);
 

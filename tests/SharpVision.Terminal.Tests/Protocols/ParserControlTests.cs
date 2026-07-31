@@ -101,7 +101,7 @@ public sealed class ParserControlTests
     [Fact]
     public void Parse_WhenEightBitControlsAreEnabled_DeliversCsi()
     {
-        using Parser parser = new(Limits.Default with { AcceptEightBitControls = true });
+        using Parser parser = new(ParserLimits.Default with { AcceptEightBitControls = true });
         var sink = new RecordingSink();
         byte[] input = [0x9b, (byte) '3', (byte) 'A'];
 
@@ -119,7 +119,7 @@ public sealed class ParserControlTests
     [Fact]
     public void Parse_WhenEightBitC1IsEnabled_DeliversControl()
     {
-        using Parser parser = new(Limits.Default with { AcceptEightBitControls = true });
+        using Parser parser = new(ParserLimits.Default with { AcceptEightBitControls = true });
         var sink = new RecordingSink();
 
         parser.Parse([0x85], ref sink);

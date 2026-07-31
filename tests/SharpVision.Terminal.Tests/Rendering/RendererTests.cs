@@ -193,7 +193,7 @@ public sealed class RendererTests
         using var frame = CreateStyled(default, visible: true);
         frame.SetCursor(default, visible: true, CursorShape.Bar);
         var shapeSource = Encoding.ASCII.GetBytes(
-            $"S%p1%{Limits.Default.MaxProgramOutputBytes}d");
+            $"S%p1%{ProgramLimits.Default.MaxProgramOutputBytes}d");
         var profile = new TerminalProfile(
             new Description("cursor-live-failure", DescriptionOrigin.Database, Suitability.Usable),
             TerminalCapabilities.Conservative,

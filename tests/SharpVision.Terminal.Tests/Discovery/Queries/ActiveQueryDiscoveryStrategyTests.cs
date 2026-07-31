@@ -16,7 +16,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     public void Accept_WhenDaPrecedesKeyboard_PublishesUnsupportedKeyboard()
     {
         // Arrange
-        var limits = Limits.Default with { MaxConcurrentQueries = 2 };
+        var limits = QueryLimits.Default with { MaxConcurrentQueries = 2 };
         var negotiator = new ActiveQueryDiscoveryStrategy(new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" },
             limits: limits));
@@ -41,7 +41,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     public void Accept_WhenModeIsRepeatedOrUnknown_ClassifiesWithoutMutation()
     {
         // Arrange
-        var limits = Limits.Default with { MaxConcurrentQueries = 8 };
+        var limits = QueryLimits.Default with { MaxConcurrentQueries = 8 };
         var negotiator = new ActiveQueryDiscoveryStrategy(
             new NegotiationOptions(new Dictionary<string, string?>(), limits: limits));
         _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
@@ -63,7 +63,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     {
         // Arrange
         var clock = new ManualTimeProvider();
-        var limits = Limits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
+        var limits = QueryLimits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" },
             new Settings { SynchronizedOutput = false },
@@ -94,7 +94,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     public void Accept_WhenRepliesArriveOutOfOrder_PublishesCompleteProfile()
     {
         // Arrange
-        var limits = Limits.Default with { MaxConcurrentQueries = 8 };
+        var limits = QueryLimits.Default with { MaxConcurrentQueries = 8 };
         var negotiator = new ActiveQueryDiscoveryStrategy(
             new NegotiationOptions(new Dictionary<string, string?>(), limits: limits));
         _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
@@ -148,7 +148,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         string expected)
     {
         // Arrange
-        var limits = Limits.Default with { MaxConcurrentQueries = capacity };
+        var limits = QueryLimits.Default with { MaxConcurrentQueries = capacity };
         var options = new NegotiationOptions(
             new Dictionary<string, string?>(),
             limits: limits);
@@ -200,7 +200,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
             CellMouse = database,
             PixelMouse = database
         };
-        var limits = Limits.Default with { MaxConcurrentQueries = 3 };
+        var limits = QueryLimits.Default with { MaxConcurrentQueries = 3 };
         var options = new NegotiationOptions(
             new Dictionary<string, string?>(),
             new Settings { PixelMouse = false },
@@ -221,7 +221,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     public void TryStart_WhenLocalGeometryIsComplete_DoesNotQueryMetrics()
     {
         // Arrange
-        var limits = Limits.Default with { MaxConcurrentQueries = 14 };
+        var limits = QueryLimits.Default with { MaxConcurrentQueries = 14 };
         var negotiator = new ActiveQueryDiscoveryStrategy(
             new NegotiationOptions(new Dictionary<string, string?>(), limits: limits),
             new ManualTimeProvider());
@@ -245,7 +245,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     public void Accept_WhenStandardRepliesAreOutOfOrder_PublishesOwnedEvidence()
     {
         // Arrange
-        var limits = Limits.Default with { MaxConcurrentQueries = 7 };
+        var limits = QueryLimits.Default with { MaxConcurrentQueries = 7 };
         var baseline = TerminalCapabilities.Conservative with
         {
             KittyKeyboard = new Feature(CapabilitySupport.Supported, Origin.Database),
@@ -339,7 +339,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
             new NegotiationOptions(new Dictionary<string, string?>()),
             clock);
         _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
-        negotiator.Deadline.ShouldBe(DateTimeOffset.UnixEpoch + Limits.Default.QueryTimeout);
+        negotiator.Deadline.ShouldBe(DateTimeOffset.UnixEpoch + QueryLimits.Default.QueryTimeout);
         clock.AdvanceOnRead = TimeSpan.Zero;
         clock.AdvanceTo(negotiator.Deadline - TimeSpan.FromTicks(1));
 

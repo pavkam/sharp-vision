@@ -31,7 +31,7 @@ public sealed class QueryTrackerTests
     public void Match_WhenStatusIdentityVaries_PreservesExactActiveRequest()
     {
         var clock = new ManualTimeProvider();
-        var tracker = new QueryTracker(Limits.Default, clock);
+        var tracker = new QueryTracker(QueryLimits.Default, clock);
         tracker.TryRegister(StatusName.ModifyOtherKeys, out _).ShouldBeTrue();
         XtermDecrqss.TryParse("1"u8, "$"u8, (byte) 'r', "0m"u8, out var wrong).ShouldBeTrue();
         XtermDecrqss.TryParse("0"u8, "$"u8, (byte) 'r', [], out var failed).ShouldBeTrue();
@@ -43,9 +43,9 @@ public sealed class QueryTrackerTests
         tracker.Match(in matched).ShouldBe(QueryMatch.Matched);
         tracker.Match(in matched).ShouldBe(QueryMatch.Duplicate);
 
-        clock.Advance(Limits.Default.QueryTimeout);
+        clock.Advance(QueryLimits.Default.QueryTimeout);
         tracker.TryRegister(StatusName.ModifyOtherKeys, out _).ShouldBeTrue();
-        clock.Advance(Limits.Default.QueryTimeout);
+        clock.Advance(QueryLimits.Default.QueryTimeout);
         tracker.Match(in matched).ShouldBe(QueryMatch.Late);
     }
 
@@ -54,7 +54,7 @@ public sealed class QueryTrackerTests
     public void Match_WhenCapabilityIdentityVaries_PreservesExactActiveRequest()
     {
         var clock = new ManualTimeProvider();
-        var tracker = new QueryTracker(Limits.Default, clock);
+        var tracker = new QueryTracker(QueryLimits.Default, clock);
         tracker.TryRegister(CapabilityName.DirectColor, out _).ShouldBeTrue();
         var wrong = Capability("6B63757531=1B5B41"u8);
         var failed = Capability([], valid: false);
@@ -66,9 +66,9 @@ public sealed class QueryTrackerTests
         tracker.Match(matched).ShouldBe(QueryMatch.Matched);
         tracker.Match(matched).ShouldBe(QueryMatch.Duplicate);
 
-        clock.Advance(Limits.Default.QueryTimeout);
+        clock.Advance(QueryLimits.Default.QueryTimeout);
         tracker.TryRegister(CapabilityName.DirectColor, out _).ShouldBeTrue();
-        clock.Advance(Limits.Default.QueryTimeout);
+        clock.Advance(QueryLimits.Default.QueryTimeout);
         tracker.Match(matched).ShouldBe(QueryMatch.Late);
     }
 
@@ -125,7 +125,7 @@ public sealed class QueryTrackerTests
     [Fact]
     public void TryRegister_WhenConcurrencyLimitIsReached_RejectsQuery()
     {
-        var limits = Limits.Default with { MaxConcurrentQueries = 1 };
+        var limits = QueryLimits.Default with { MaxConcurrentQueries = 1 };
         var tracker = new QueryTracker(limits);
         _ = tracker.TryRegister(QueryKind.PrimaryAttributes, null, out _);
 
@@ -141,7 +141,7 @@ public sealed class QueryTrackerTests
     public void Match_WhenQueryIsNoLongerActive_ReturnsDuplicateOrLate()
     {
         var clock = new ManualTimeProvider();
-        var limits = Limits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
+        var limits = QueryLimits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
         var tracker = new QueryTracker(limits, clock);
         _ = tracker.TryRegister(QueryKind.PrimaryAttributes, null, out var completed);
         _ = tracker.TryRegister(QueryKind.CursorPosition, null, out var cancelled);
@@ -240,7 +240,7 @@ public sealed class QueryTrackerTests
             "+"u8,
             (byte) 'r',
             payload,
-            Limits.Default,
+            QueryLimits.Default,
             out var response).ShouldBeTrue();
         return response!;
     }

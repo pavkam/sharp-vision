@@ -22,7 +22,7 @@ namespace SharpVision.Terminal.Protocols;
 [PublicAPI]
 public sealed class Parser: IDisposable
 {
-    private readonly Limits _limits;
+    private readonly ParserLimits _limits;
     private byte[]? _parameters;
     private byte[]? _intermediates;
     private byte[]? _payload;
@@ -42,11 +42,11 @@ public sealed class Parser: IDisposable
     /// </summary>
     /// <param name="limits">
     /// The immutable limits, or <see langword="null"/> for
-    /// <see cref="Limits.Default"/>.
+    /// <see cref="ParserLimits.Default"/>.
     /// </param>
-    public Parser(Limits? limits = null)
+    public Parser(ParserLimits? limits = null)
     {
-        _limits = limits ?? Limits.Default;
+        _limits = limits ?? ParserLimits.Default;
         _parameters = ArrayPool<byte>.Shared.Rent(_limits.MaxParameterBytes);
 
         try

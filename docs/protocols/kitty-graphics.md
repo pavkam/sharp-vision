@@ -48,7 +48,7 @@ arrives.
 Replies are APC payloads beginning with `G`. Only one `i` field and optional `p`
 field are accepted, both canonical nonzero ASCII decimal values within `uint`.
 The nonempty response text must be printable ASCII and is copied within
-`Protocols.Limits.MaxMetadataBytes`. `Response.Message` exposes that bounded but
+`Clipboard.TransferLimits.MaxMetadataBytes`. `Response.Message` exposes that bounded but
 untrusted terminal text to an explicit caller. Diagnostics and `ToString()`
 never include it. Malformed, duplicate-field, overflowing, unknown-field, late,
 and unrelated replies cannot consume another transaction.
