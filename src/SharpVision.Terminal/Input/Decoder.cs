@@ -26,12 +26,7 @@ public sealed class Decoder: IDisposable
     private readonly byte[] _utf8 = new byte[4];
     private readonly byte[] _x10 = new byte[12];
     private DateTimeOffset _escapeDeadline;
-    private Metrics? _cellMetrics;
-    private Size? _localCells;
-    private Size? _localPixels;
-    private Size? _queriedCellPixels;
-    private Size? _queriedWindowCells;
-    private Size? _queriedWindowPixels;
+    private readonly CellMetricsResolver _cellMetricsResolver;
     private Modifiers _nextTextModifiers;
     private int _utf8Length;
     private int _x10Length;
@@ -64,18 +59,7 @@ public sealed class Decoder: IDisposable
             ? null
             : new KeySequenceMatcher(_options.KeyMap.FallbackBindings);
         _keyReplay = _keyMatcher is null ? null : new byte[_keyMatcher.MaximumLength];
-        _cellMetrics = _options.CellMetrics;
-
-        if (_cellMetrics is { Cells: { } cells, Pixels: { } pixels })
-        {
-            _localCells = cells;
-            _localPixels = pixels;
-        }
-        else if (_cellMetrics is { } uniform)
-        {
-            _queriedCellPixels = new Size(uniform.Width, uniform.Height);
-        }
-
+        _cellMetricsResolver = new CellMetricsResolver(_options.CellMetrics);
         _pixelMouse = _options.PixelMouse;
     }
 
@@ -226,13 +210,7 @@ public sealed class Decoder: IDisposable
     internal void SetGeometry(Size cells, Size? pixels)
     {
         ThrowIfDisposed();
-        _localCells = HasPositive(cells) ? cells : null;
-        _localPixels = pixels is { } pixelSize && HasPositive(pixelSize)
-            ? pixelSize
-            : null;
-        _queriedWindowCells = null;
-        _queriedWindowPixels = null;
-        RecomputeCellMetrics();
+        _cellMetricsResolver.SetGeometry(cells, pixels);
     }
 
     /// <summary>Accounts for raw transport bytes intentionally removed before protocol decoding.</summary>
@@ -640,7 +618,7 @@ public sealed class Decoder: IDisposable
             if (_protocolSink is { } protocolSink)
             {
                 protocolSink.Response(in metrics);
-                ApplyMetrics(in metrics);
+                _cellMetricsResolver.Apply(in metrics);
             }
             else
             {
@@ -937,49 +915,6 @@ public sealed class Decoder: IDisposable
             value.DiscardedBytes);
         _sink.Input(in adjusted);
     }
-
-    private void ApplyMetrics(in MetricsResponse response)
-    {
-        if (response.Kind == ResponseKind.WindowPixels)
-        {
-            _queriedWindowPixels = response.Size;
-        }
-        else if (response.Kind == ResponseKind.CellPixels)
-        {
-            _queriedCellPixels = response.Size;
-        }
-        else
-        {
-            Debug.Assert(
-                response.Kind == ResponseKind.WindowCells,
-                "Metrics responses validate their family at construction.");
-            _queriedWindowCells = response.Size;
-        }
-
-        RecomputeCellMetrics();
-    }
-
-    private void RecomputeCellMetrics()
-    {
-        var cells = _localCells ?? _queriedWindowCells;
-        var pixels = _localPixels ?? _queriedWindowPixels;
-
-        if (cells is { } cellSize &&
-            pixels is { } pixelSize &&
-            pixelSize.Width >= cellSize.Width &&
-            pixelSize.Height >= cellSize.Height)
-        {
-            _cellMetrics = new Metrics(cellSize, pixelSize);
-            return;
-        }
-
-        _cellMetrics = _queriedCellPixels is { } cellPixels
-            ? new Metrics(cellPixels.Width, cellPixels.Height)
-            : null;
-    }
-
-    private static bool HasPositive(Size value) =>
-        value is { Width: > 0, Height: > 0 };
 
     private void EmitText(Rune rune, Modifiers modifiers = Modifiers.None)
     {
@@ -1716,7 +1651,7 @@ public sealed class Decoder: IDisposable
             pixels = source;
             cells = null;
 
-            if (_cellMetrics is { } metrics && metrics.TryMap(source, out var mapped))
+            if (_cellMetricsResolver.Current is { } metrics && metrics.TryMap(source, out var mapped))
             {
                 cells = mapped;
                 inferred = true;
