@@ -614,10 +614,6 @@ public sealed class ScrollBar: Control
 
     private Color ResolveColor(ColorValue value) => ResolveColor(value, Theme);
 
-    private static Color ResolveColor(ColorValue value, Theme? theme) => value.IsLiteral
-        ? value.Literal
-        : theme?.ResolveColor(value.ThemeColor) ?? Color.Default;
-
     /// <summary>Merges a nullable local style with the active theme's Control profile, exactly as
     /// <see cref="ScrollBar"/> itself resolves its own style — shared so every composite host
     /// reports an ActualScrollBarStyle that matches what its generated bar actually renders

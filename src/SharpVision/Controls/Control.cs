@@ -3305,6 +3305,14 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
     internal static Color ResolveThemeColor(Color color) => color;
 
+    /// <summary>Resolves a possibly-literal color value against an optional theme.</summary>
+    /// <param name="value">The literal or theme-referenced color value.</param>
+    /// <param name="theme">The active theme, or null when no theme resolves the value.</param>
+    /// <returns>The literal color, or the theme-resolved color, or <see cref="Color.Default"/>.</returns>
+    internal static Color ResolveColor(ColorValue value, Theme? theme) => value.IsLiteral
+        ? value.Literal
+        : theme?.ResolveColor(value.ThemeColor) ?? Color.Default;
+
     internal Rune ResolveControlGlyph(ControlGlyph glyph) =>
         CellGlyphResolver.Resolve(glyph.Value, glyph.Fallback, CellPolicy.AmbiguousWidth);
 

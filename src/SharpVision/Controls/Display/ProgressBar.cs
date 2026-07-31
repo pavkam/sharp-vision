@@ -369,10 +369,6 @@ public sealed class ProgressBar: Control
 
     private Color ResolveColor(ColorValue value) => ResolveColor(value, Theme);
 
-    private static Color ResolveColor(ColorValue value, Theme? theme) => value.IsLiteral
-        ? value.Literal
-        : theme?.ResolveColor(value.ThemeColor) ?? Color.Default;
-
     private static ProgressBarStyle ResolveStyle(ProgressBarStyle? localStyle, Theme? theme) =>
         localStyle ?? new ProgressBarStyle(
             ProgressBarStyle.Default.FillColor,

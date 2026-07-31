@@ -291,10 +291,6 @@ public sealed class Table: ItemsControl
     /// <summary>Gets the resolved private-scrollbar style.</summary>
     public ScrollBarStyle ActualScrollBarStyle => ScrollBar.ResolveStyle(ScrollBarStyle, Theme);
 
-    /// <inheritdoc/>
-    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        base.GetThemeResolvedStylePropertyName(previous, current);
-
     /// <summary>Gets or sets the non-negative keyboard and wheel scrolling increment in cells.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>

@@ -301,10 +301,6 @@ public sealed class ComboBox: Control
     /// <summary>Gets the resolved drop-down scrollbar style.</summary>
     public ScrollBarStyle ActualScrollBarStyle => ScrollBar.ResolveStyle(ScrollBarStyle, Theme);
 
-    /// <inheritdoc/>
-    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        base.GetThemeResolvedStylePropertyName(previous, current);
-
     /// <summary>Gets or sets whether the private drop-down owns a dismissing modal plane rooted at this field.</summary>
     /// <exception cref="ArgumentException">The attached ComboBox is not an eligible modal root.</exception>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>

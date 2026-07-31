@@ -491,10 +491,6 @@ public sealed class Slider: Control
 
     private Color ResolveColor(ColorValue value) => ResolveColor(value, Theme);
 
-    private static Color ResolveColor(ColorValue value, Theme? theme) => value.IsLiteral
-        ? value.Literal
-        : theme?.ResolveColor(value.ThemeColor) ?? Color.Default;
-
     private Rune TrackRune()
     {
         var glyphs = ActualStyle.Glyphs;

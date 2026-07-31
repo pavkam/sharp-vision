@@ -321,10 +321,6 @@ public sealed class ListView: ItemsControl
     /// <summary>Gets the resolved generated-scrollbar style.</summary>
     public ScrollBarStyle ActualScrollBarStyle => ScrollBar.ResolveStyle(ScrollBarStyle, Theme);
 
-    /// <inheritdoc/>
-    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        base.GetThemeResolvedStylePropertyName(previous, current);
-
     /// <summary>Changes one programmatic index without replacing other Multiple selections.</summary>
     /// <param name="index">The contained item index.</param>
     /// <param name="selected">Whether the index should be selected.</param>
