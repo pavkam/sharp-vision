@@ -245,12 +245,7 @@ public sealed class NavigationView: CompositeControl
         stack.Children.Add(entry);
         _requestedPresentations.Add(
             entry,
-            new NavigationEntryPresentation(entry.Width, entry.Focusable, entry.TabStop));
-
-        if (entry is NavigationViewSeparator)
-        {
-            entry.Width = Length.Percent(100);
-        }
+            new NavigationEntryPresentation(entry.Focusable, entry.TabStop));
 
         if (entry is NavigationViewItem item)
         {
@@ -371,8 +366,6 @@ public sealed class NavigationView: CompositeControl
         {
             return;
         }
-
-        entry.Width = presentation.Width;
 
         if (entry is NavigationViewItem item)
         {

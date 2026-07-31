@@ -4,26 +4,21 @@
 namespace SharpVision.Navigation;
 
 /// <summary>
-/// Captures the authored Padding, Focusable, and TabStop a caller set on a
-/// <see cref="NavigationViewItem"/> before its owning group or view overwrote
-/// them with private presentation policy, so they can be restored unchanged
-/// when the item leaves that owner.
+/// Captures the authored Focusable and TabStop a caller set on a
+/// <see cref="NavigationViewItem"/> before its owning group overwrote them
+/// with private presentation policy, so they can be restored unchanged when
+/// the item leaves that group.
 /// </summary>
 internal readonly record struct NavigationItemPresentation
 {
     /// <summary>Initializes an immutable snapshot of one item's authored presentation.</summary>
-    /// <param name="padding">The caller-authored padding at attach time.</param>
     /// <param name="focusable">The caller-authored focusability at attach time.</param>
     /// <param name="tabStop">The caller-authored tab-stop participation at attach time.</param>
-    public NavigationItemPresentation(Thickness padding, bool focusable, bool tabStop)
+    public NavigationItemPresentation(bool focusable, bool tabStop)
     {
-        Padding = padding;
         Focusable = focusable;
         TabStop = tabStop;
     }
-
-    /// <summary>Gets the authored padding.</summary>
-    public Thickness Padding { get; }
 
     /// <summary>Gets the authored focusability.</summary>
     public bool Focusable { get; }

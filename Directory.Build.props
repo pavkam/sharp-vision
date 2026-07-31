@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <OverallVersion>0.6.0-alpha.8</OverallVersion>
+    <OverallVersion>0.6.0-alpha.9</OverallVersion>
     <Version>$(OverallVersion)</Version>
     <PackageVersion>$(OverallVersion)</PackageVersion>
     <AssemblyVersion>$([System.Text.RegularExpressions.Regex]::Replace('$(OverallVersion)', '-.*$', '')).0</AssemblyVersion>

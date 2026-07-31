@@ -603,6 +603,24 @@ public sealed class MenuTests
         menu.ItemCount.ShouldBe(0);
     }
 
+    /// <summary>Verifies an authored Width survives attachment: only Height is a semantic requirement
+    /// (menu rows are exactly one cell tall), so Width must never be clobbered to Auto.</summary>
+    [Fact]
+    public void Items_WhenMenuItemIsAdded_NeverMutatesAuthoredWidth()
+    {
+        var menu = new Menu();
+        var item = new MenuItem
+        {
+            Content = new ControlText("Open"),
+            Width = Length.Cells(30)
+        };
+
+        menu.Items.Add(item);
+
+        item.Width.ShouldBe(Length.Cells(30));
+        item.Height.ShouldBe(Length.Cells(1));
+    }
+
     /// <summary>Verifies removal restores the item's authored Focusable, TabStop, Width, and Height.</summary>
     [Fact]
     public void Items_WhenMenuItemIsRemoved_RestoresAuthoredWidthHeightFocusableAndTabStop()

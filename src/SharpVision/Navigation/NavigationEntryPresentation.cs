@@ -4,7 +4,7 @@
 namespace SharpVision.Navigation;
 
 /// <summary>
-/// Captures the authored Width, Focusable, and TabStop a caller set on a
+/// Captures the authored Focusable and TabStop a caller set on a
 /// <see cref="NavigationView"/> section entry before the view overwrote them
 /// with private presentation policy, so they can be restored unchanged when
 /// the entry leaves that section.
@@ -12,18 +12,13 @@ namespace SharpVision.Navigation;
 internal readonly record struct NavigationEntryPresentation
 {
     /// <summary>Initializes an immutable snapshot of one entry's authored presentation.</summary>
-    /// <param name="width">The caller-authored width at attach time.</param>
     /// <param name="focusable">The caller-authored focusability at attach time.</param>
     /// <param name="tabStop">The caller-authored tab-stop participation at attach time.</param>
-    public NavigationEntryPresentation(Length width, bool focusable, bool tabStop)
+    public NavigationEntryPresentation(bool focusable, bool tabStop)
     {
-        Width = width;
         Focusable = focusable;
         TabStop = tabStop;
     }
-
-    /// <summary>Gets the authored width.</summary>
-    public Length Width { get; }
 
     /// <summary>Gets the authored focusability.</summary>
     public bool Focusable { get; }

@@ -387,6 +387,33 @@ public sealed class NavigationViewTests
         item.Padding.ShouldBe(authoredPadding);
     }
 
+    /// <summary>Verifies group membership never touches an item's Padding, regardless of
+    /// whether it is authored before or after the item joins the group.</summary>
+    [Fact]
+    public void Group_WhenItemJoinsOrLeaves_NeverMutatesItemPadding()
+    {
+        var before = new NavigationViewItem { Header = "Before", Padding = new Thickness(3, 0, 0, 0) };
+        var after = new NavigationViewItem { Header = "After" };
+        var group = new NavigationViewGroup { Header = "Group" };
+
+        group.AddItem(before);
+        group.AddItem(after);
+        after.Padding = new Thickness(1, 1, 1, 1);
+
+        before.Padding.ShouldBe(new Thickness(3, 0, 0, 0));
+        after.Padding.ShouldBe(new Thickness(1, 1, 1, 1));
+    }
+
+    /// <summary>Verifies ItemIndent defaults to 2 cells and rejects negative values.</summary>
+    [Fact]
+    public void ItemIndent_WhenDefaulted_Is2AndRejectsNegative()
+    {
+        var group = new NavigationViewGroup();
+
+        group.ItemIndent.ShouldBe(2);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => group.ItemIndent = -1);
+    }
+
     /// <summary>Verifies separator is non-focusable and non-hit-testable.</summary>
     [Fact]
     public void Separator_WhenCreated_IsNonInteractive()
@@ -395,6 +422,30 @@ public sealed class NavigationViewTests
 
         separator.CanFocus.ShouldBeFalse();
         separator.IsHitTestVisible.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a separator stretches to fill its row on its own, so the owning view
+    /// never needs to pin its Width.</summary>
+    [Fact]
+    public void Separator_WhenCreated_StretchesHorizontally()
+    {
+        var separator = new NavigationViewSeparator();
+
+        separator.HorizontalAlignment.ShouldBe(HorizontalAlignment.Stretch);
+    }
+
+    /// <summary>Verifies adding and removing a separator never touches its authored Width.</summary>
+    [Fact]
+    public void Items_WhenSeparatorIsAddedAndRemoved_NeverMutatesWidth()
+    {
+        var separator = new NavigationViewSeparator { Width = Length.Cells(6) };
+        var nav = new NavigationView();
+
+        nav.Items.Add(separator);
+        separator.Width.ShouldBe(Length.Cells(6));
+
+        _ = nav.Items.Remove(separator);
+        separator.Width.ShouldBe(Length.Cells(6));
     }
 
     /// <summary>Verifies footer items are accessible through the FooterItems collection.</summary>

@@ -52,6 +52,20 @@ public sealed class NavigationViewGroup: Control
     /// <inheritdoc/>
     protected override string? AccessKeyText => Header;
 
+    /// <summary>Gets or sets the number of cells used to indent sub-items below the header.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached group is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The group is disposed.</exception>
+    public int ItemIndent
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+        }
+    } = 2;
+
     /// <summary>Gets or sets whether sub-items are visible.</summary>
     /// <exception cref="InvalidOperationException">The attached group is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The group is disposed.</exception>
@@ -110,9 +124,8 @@ public sealed class NavigationViewGroup: Control
         _stack.Children.Add(item);
         _requestedPresentations.Add(
             item,
-            new NavigationItemPresentation(item.Padding, item.Focusable, item.TabStop));
+            new NavigationItemPresentation(item.Focusable, item.TabStop));
 
-        item.Padding = new Thickness(2, 0, 0, 0);
         item.Focusable = false;
         item.TabStop = false;
         item.Invoked += OnItemInvoked;
@@ -179,7 +192,6 @@ public sealed class NavigationViewGroup: Control
             return;
         }
 
-        item.Padding = presentation.Padding;
         item.Focusable = presentation.Focusable;
         item.TabStop = presentation.TabStop;
     }
@@ -191,18 +203,23 @@ public sealed class NavigationViewGroup: Control
         var headerCells = (int) Math.Min(
             int.MaxValue,
             3L + Input.AccessKeyText.Measure(Header, CellPolicy.AmbiguousWidth, UseMnemonic));
-        var childrenDesired = MeasureChild(_stack, constraint);
+        var childConstraint = new Constraint(
+            constraint.Width is { } width ? (int) Math.Max(0L, (long) width - ItemIndent) : null,
+            constraint.Height);
+        var childrenDesired = MeasureChild(_stack, childConstraint);
         var childrenHeight = IsExpanded ? childrenDesired.Height : 0;
+        var childrenWidth = (int) Math.Min(int.MaxValue, (long) childrenDesired.Width + ItemIndent);
         return new Size(
-            Math.Max(headerCells, childrenDesired.Width),
+            Math.Max(headerCells, childrenWidth),
             (int) Math.Min(int.MaxValue, 1L + childrenHeight));
     }
 
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
+        var indent = Math.Min(ItemIndent, bounds.Width);
         var slot = IsExpanded && bounds.Height > 1
-            ? new Rect(bounds.X, bounds.Y + 1, bounds.Width, bounds.Height - 1)
+            ? new Rect(bounds.X + indent, bounds.Y + 1, bounds.Width - indent, bounds.Height - 1)
             : default;
         ArrangeChild(_stack, slot, ResolvedAxes.Both);
     }

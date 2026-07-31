@@ -1290,11 +1290,7 @@ public sealed class Menu: ItemsControl
         }
     }
 
-    private static void ApplyItemSizing(Control item)
-    {
-        item.Width = Length.Auto;
-        item.Height = Length.Cells(1);
-    }
+    private static void ApplyItemSizing(Control item) => item.Height = Length.Cells(1);
 
     private static Control RequireEntry(Control child)
     {

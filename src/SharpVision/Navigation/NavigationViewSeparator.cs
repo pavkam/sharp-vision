@@ -10,7 +10,11 @@ public sealed class NavigationViewSeparator: Control
     private Rune? _glyph;
 
     /// <summary>Initializes a non-focusable and non-hit-testable separator.</summary>
-    public NavigationViewSeparator() => IsHitTestVisible = false;
+    public NavigationViewSeparator()
+    {
+        HorizontalAlignment = HorizontalAlignment.Stretch;
+        IsHitTestVisible = false;
+    }
 
     /// <summary>Gets or sets the local separator glyph.</summary>
     public Rune Glyph
