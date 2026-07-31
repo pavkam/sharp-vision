@@ -11,27 +11,31 @@ using DisplayText = Display.Text;
 [PublicAPI]
 public sealed class HyperlinkButton: Pressable
 {
+    private static readonly AppearanceProfileSet _linkAppearance = new(
+        normal: new AppearanceSet(
+            face: new FaceSet(
+                foreground: ThemeColor.Accent,
+                attributes: ThemeDecoration.NormalText,
+                underline: Underline.Straight,
+                underlineColor: ThemeColor.Accent)));
+
     private ICommand? _command;
 
     /// <summary>Initializes an empty focusable HyperlinkButton with accent-colored underlined text.</summary>
     public HyperlinkButton()
     {
-        Face = new Face(
-            ThemeColor.Accent,
-            Color.Transparent,
-            ThemeDecoration.NormalText,
-            Underline.Straight,
-            ThemeColor.Accent);
-        Border = new Border(
-            BorderSide.None,
-            BorderGlyphStyle.Default,
-            ThemeColor.ControlBorder,
-            Color.Transparent,
-            ThemeDecoration.Border);
     }
 
     /// <inheritdoc/>
     protected override ThemeRole ThemeRole => ThemeRole.Control;
+
+    /// <inheritdoc/>
+    protected override ThemeProfile AppearanceProfile =>
+        StyleResolution.Apply(base.AppearanceProfile, _linkAppearance);
+
+    /// <inheritdoc/>
+    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
+        StyleResolution.Apply(base.GetAppearanceProfile(theme), _linkAppearance);
 
     /// <summary>Initializes a focusable HyperlinkButton with the specified text content.</summary>
     /// <param name="text">The non-null text content.</param>

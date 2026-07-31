@@ -998,12 +998,14 @@ namespace SharpVision.Controls.Input
     {
         public HyperlinkButton() { }
         public HyperlinkButton(string text) { }
+        protected override SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
         public System.Windows.Input.ICommand? Command { get; set; }
         public object? CommandParameter { get; set; }
         public string? Text { get; set; }
         protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public event System.EventHandler<SharpVision.Input.ActivationEventArgs>? Click;
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
+        protected override SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void PerformClick() { }
     }

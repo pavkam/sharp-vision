@@ -212,4 +212,74 @@ public sealed class HyperlinkButtonSurfaceTests
         // Assert
         clicks.ShouldBe(0);
     }
+
+    /// <summary>Verifies focused, pressed, and disabled resolve the theme's own state background,
+    /// proving the presentation is no longer identical across every visual state.</summary>
+    [Fact]
+    public async Task ActualFace_AcrossVisualStates_ResolvesDistinctThemeBackgroundsAsync()
+    {
+        // Arrange
+        var link = new HyperlinkButton("Visit");
+        await using var surface = await ComponentSurface.MountAsync(
+            link,
+            new Size(10, 3),
+            TestContext.Current.CancellationToken);
+        var theme = link.Theme.ShouldNotBeNull();
+
+        // Assert — normal
+        link.ActualFace.Background.ShouldBe(theme.ResolveColor(ThemeColor.Control));
+
+        // Act — focus
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert — focused resolves the theme's focused background, not the normal one
+        link.ActualFace.Background.ShouldBe(theme.ResolveColor(ThemeColor.FocusedControl));
+        link.ActualFace.Background.ShouldNotBe(theme.ResolveColor(ThemeColor.Control));
+
+        // Act — press while focused
+        await surface.Pointer.MoveToAsync(link);
+        await surface.Pointer.PressAsync();
+
+        // Assert — pressed resolves the theme's pressed background
+        link.ActualFace.Background.ShouldBe(theme.ResolveColor(ThemeColor.PressedControl));
+
+        // Act — release, then disable
+        await surface.Pointer.ReleaseAsync();
+        await surface.UpdateAsync(() => link.IsEnabled = false, "disable HyperlinkButton");
+
+        // Assert — disabled no longer keeps the active accent-underline presentation
+        link.ActualFace.Foreground.ShouldBe(theme.ResolveColor(ThemeColor.DisabledText));
+        link.ActualFace.Foreground.ShouldNotBe(theme.ResolveColor(ThemeColor.Accent));
+    }
+
+    /// <summary>Verifies a caller-assigned complete Face still wins over every visual state and theme.</summary>
+    [Fact]
+    public async Task ActualFace_WhenCallerAssignsFace_WinsAcrossEveryStateAsync()
+    {
+        // Arrange
+        var pinned = new Face(Color.Rgb(1, 2, 3), Color.Rgb(4, 5, 6), Attributes.None, Underline.None, Color.Default);
+        var link = new HyperlinkButton("Visit") { Face = pinned };
+        await using var surface = await ComponentSurface.MountAsync(
+            link,
+            new Size(10, 3),
+            TestContext.Current.CancellationToken);
+
+        // Assert — normal
+        link.ActualFace.ShouldBe(pinned);
+
+        // Act — focus, hover, and press
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Pointer.MoveToAsync(link);
+        await surface.Pointer.PressAsync();
+
+        // Assert — the pinned Face still wins over every state overlay
+        link.ActualFace.ShouldBe(pinned);
+
+        // Act — disable
+        await surface.Pointer.ReleaseAsync();
+        await surface.UpdateAsync(() => link.IsEnabled = false, "disable HyperlinkButton");
+
+        // Assert — and over Disabled too
+        link.ActualFace.ShouldBe(pinned);
+    }
 }
