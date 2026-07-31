@@ -305,6 +305,162 @@ public sealed class WindowSurfaceTests
         surface.Cell(new Point(19, 4)).Text.ShouldBe("│");
     }
 
+    /// <summary>Verifies dragging the bottom-right corner grows the Window without moving its origin.</summary>
+    [Fact]
+    public async Task Resize_WhenCornerIsDraggedOutward_GrowsInPlaceAsync()
+    {
+        // Arrange
+        var window = new Window
+        {
+            Header = "Resize",
+            CanResize = true,
+            Width = Length.Cells(10),
+            Height = Length.Cells(4),
+            Left = Length.Cells(2),
+            Top = Length.Cells(1),
+            Shadow = AppearanceTestValues.Shadow(visible: false),
+        };
+        var stage = new Overlay
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(15),
+            Children = { window }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            stage,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+        var originX = window.Bounds.X;
+        var originY = window.Bounds.Y;
+
+        // Act
+        await surface.Pointer.MoveToAsync(window, new Point(9, 3));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(stage, new Point(15, 7));
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        window.Bounds.X.ShouldBe(originX);
+        window.Bounds.Y.ShouldBe(originY);
+        window.Bounds.Width.ShouldBe(14);
+        window.Bounds.Height.ShouldBe(7);
+    }
+
+    /// <summary>Verifies the resize gesture clamps to MinWidth/MinHeight instead of shrinking further.</summary>
+    [Fact]
+    public async Task Resize_WhenDraggedBelowMinimumSize_ClampsToMinimumAsync()
+    {
+        // Arrange
+        var window = new Window
+        {
+            Header = "Resize",
+            CanResize = true,
+            Width = Length.Cells(10),
+            Height = Length.Cells(4),
+            MinWidth = 6,
+            MinHeight = 3,
+            Left = Length.Cells(2),
+            Top = Length.Cells(1),
+            Shadow = AppearanceTestValues.Shadow(visible: false),
+        };
+        var stage = new Overlay
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(15),
+            Children = { window }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            stage,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.MoveToAsync(window, new Point(9, 3));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(stage, new Point(0, 0));
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        window.Bounds.Width.ShouldBe(6);
+        window.Bounds.Height.ShouldBe(3);
+    }
+
+    /// <summary>Verifies a Window with CanResize false ignores a corner drag entirely.</summary>
+    [Fact]
+    public async Task Resize_WhenCanResizeIsFalse_LeavesSizeUnchangedAsync()
+    {
+        // Arrange
+        var window = new Window
+        {
+            Header = "Resize",
+            CanResize = false,
+            Width = Length.Cells(10),
+            Height = Length.Cells(4),
+            Left = Length.Cells(2),
+            Top = Length.Cells(1),
+            Shadow = AppearanceTestValues.Shadow(visible: false),
+        };
+        var stage = new Overlay
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(15),
+            Children = { window }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            stage,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.MoveToAsync(window, new Point(9, 3));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(stage, new Point(15, 7));
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        window.Bounds.Width.ShouldBe(10);
+        window.Bounds.Height.ShouldBe(4);
+    }
+
+    /// <summary>Verifies losing pointer capture mid-resize cancels the gesture cleanly.</summary>
+    [Fact]
+    public async Task Resize_WhenPointerCaptureIsLost_CancelsGestureAsync()
+    {
+        // Arrange
+        var window = new Window
+        {
+            Header = "Resize",
+            CanResize = true,
+            Width = Length.Cells(10),
+            Height = Length.Cells(4),
+            Left = Length.Cells(2),
+            Top = Length.Cells(1),
+            Shadow = AppearanceTestValues.Shadow(visible: false),
+        };
+        var stage = new Overlay
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(15),
+            Children = { window }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            stage,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+
+        // Act — begin a resize, then lose capture mid-gesture
+        await surface.Pointer.MoveToAsync(window, new Point(9, 3));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(stage, new Point(13, 6));
+        await surface.UpdateAsync(() => window.IsEnabled = false, "disable Window mid-resize");
+
+        // Assert — capture released, and a further move under the stale press does nothing
+        surface.ShouldHaveCapture(null);
+        var sizeAfterCancellation = window.Bounds;
+        await surface.UpdateAsync(() => window.IsEnabled = true, "re-enable Window");
+        window.Bounds.ShouldBe(sizeAfterCancellation);
+    }
+
     /// <summary>Verifies terminal resize pushes an Overlay-hosted Window inside the new client bounds.</summary>
     [Fact]
     public async Task ResizeAsync_WhenWindowWouldLeaveOverlay_KeepsBorderBoxInsideClientAsync()

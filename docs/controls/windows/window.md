@@ -15,6 +15,7 @@ not require a presentation wrapper.
 | `Content`                                              | `null`                    | Owns one child inside the titled frame.                               |
 | `Header`, `HeaderPlacement`                            | Empty, `Left`             | Supply and align non-null header text within the top edge.            |
 | `CanMove`, `CanClose`, `CloseOnEscape`                 | `true`, `false`, `false`  | Configure Overlay drag movement and explicit close requests.          |
+| `CanResize`                                            | `false`                   | Enable pointer-driven resizing from the bottom-right corner.          |
 | `ClosePlacement`                                       | `Left`                    | Places close chrome after the left corner or before the right corner. |
 | Inherited `Border`, `CloseGlyph`                       | Window profile, `■`       | Configure the complete frame and close-button glyph.                  |
 | Inherited `Face`                                       | Window profile            | Paints the theme-defined opaque window body.                          |
@@ -43,6 +44,16 @@ When `CanMove` is true, a primary drag from unoccupied title-bar chrome captures
 the pointer and writes Overlay `Left` and `Top` offsets from absolute pointer
 movement. The border box stays inside the parent content bounds; release,
 capture loss, disable, hide, detach, or disposal ends the drag.
+
+When `CanResize` is true, a primary drag from the single bottom-right corner
+cell captures the pointer and writes `Width`/`Height` from absolute pointer
+movement, keeping the top-left corner fixed. The result is clamped to
+`MinWidth`/`MaxWidth`, `MinHeight`/`MaxHeight`, and the parent content bounds.
+A corner hit is checked before a title-bar hit, so a minimum-height window
+resizes rather than drags when both targets coincide. Release, capture loss,
+disable, hide, detach, or disposal ends the resize the same way as a drag.
+Only the bottom-right corner is an interactive target; the other three
+corners and the four edges are not resize handles.
 
 ## Chrome and interaction
 

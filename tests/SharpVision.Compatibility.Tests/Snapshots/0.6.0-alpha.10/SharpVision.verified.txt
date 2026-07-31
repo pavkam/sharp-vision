@@ -3255,6 +3255,7 @@ namespace SharpVision.Windows
         public new SharpVision.Styling.Border Border { get; set; }
         public bool CanClose { get; set; }
         public bool CanMove { get; set; }
+        public bool CanResize { get; set; }
         public System.Text.Rune CloseGlyph { get; set; }
         public bool CloseOnEscape { get; set; }
         public SharpVision.Windows.WindowClosePlacement ClosePlacement { get; set; }

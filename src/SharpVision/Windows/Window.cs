@@ -38,6 +38,9 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
     private bool _dragging;
     private Point _dragPointerOrigin;
     private Point _dragWindowOrigin;
+    private bool _resizing;
+    private Point _resizePointerOrigin;
+    private Size _resizeWindowOrigin;
     private bool _closePointerOver;
     private bool _closePressed;
     private Rune? _closeGlyph;
@@ -170,6 +173,21 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
         get;
         set => _ = SetProperty(ref field, value, InvalidationImpact.None);
     } = true;
+
+    /// <summary>Gets or sets whether the window can be resized by dragging its bottom-right corner.</summary>
+    /// <remarks>
+    /// Resizing keeps the window's top-left corner fixed and adjusts <see cref="Control.Width"/> and
+    /// <see cref="Control.Height"/> within <see cref="Control.MinWidth"/>/<see cref="Control.MaxWidth"/>,
+    /// <see cref="Control.MinHeight"/>/<see cref="Control.MaxHeight"/>, and the parent's committed
+    /// content area. Off by default.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The window is disposed.</exception>
+    public bool CanResize
+    {
+        get;
+        set => _ = SetProperty(ref field, value, InvalidationImpact.None);
+    }
 
     /// <summary>Gets or sets whether the window renders a framed close affordance in the title edge.</summary>
     /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
@@ -626,6 +644,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
         base.OnLostPointerCapture(reason);
         _closeInteraction.CaptureLost();
         _dragging = false;
+        _resizing = false;
     }
 
     /// <inheritdoc/>
@@ -719,35 +738,68 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
 
         var action = eventArgs.Pointer.Action;
 
-        // A Release must always be able to end an active drag and release
-        // capture, regardless of whether CanMove was toggled off mid-drag or
+        // A Release must always be able to end an active drag/resize and release
+        // capture, regardless of whether CanMove/CanResize was toggled off mid-gesture or
         // this particular event has no cell coordinates (a legitimate state
         // in SGR-pixel mouse mode without cell-metrics mapping). Otherwise
-        // the Window keeps pointer capture and _dragging stuck true forever.
-        if (action == PointerAction.Release && _dragging)
+        // the Window keeps pointer capture and the gesture flag stuck true forever.
+        if (action == PointerAction.Release && (_dragging || _resizing))
         {
             _dragging = false;
+            _resizing = false;
             ReleasePointerCapture();
             eventArgs.Handled = true;
             return;
         }
 
-        if (!CanMove || eventArgs.Pointer.Cells is not { } cells)
+        if (eventArgs.Pointer.Cells is not { } cells)
         {
             return;
         }
 
-        if (action == PointerAction.Press &&
-            eventArgs.Pointer.Buttons == Buttons.Primary &&
-            IsTitleBar(cells) &&
-            CapturePointer())
+        if (action == PointerAction.Press && eventArgs.Pointer.Buttons == Buttons.Primary)
         {
-            _dragging = true;
-            _dragPointerOrigin = cells;
-            _dragWindowOrigin = new Point(LocalBounds.X, LocalBounds.Y);
+            // The resize corner is checked first: at a minimum window size it can coincide
+            // with the title bar row, and resizing is the more specific gesture there.
+            if (CanResize && IsResizeCorner(cells) && CapturePointer())
+            {
+                _resizing = true;
+                _resizePointerOrigin = cells;
+                _resizeWindowOrigin = new Size(LocalBounds.Width, LocalBounds.Height);
+                eventArgs.Handled = true;
+                return;
+            }
+
+            if (CanMove && IsTitleBar(cells) && CapturePointer())
+            {
+                _dragging = true;
+                _dragPointerOrigin = cells;
+                _dragWindowOrigin = new Point(LocalBounds.X, LocalBounds.Y);
+                eventArgs.Handled = true;
+            }
+
+            return;
+        }
+
+        if (action != PointerAction.Move || !HasPointerCapture)
+        {
+            return;
+        }
+
+        if (_resizing)
+        {
+            var deltaX = cells.X - _resizePointerOrigin.X;
+            var deltaY = cells.Y - _resizePointerOrigin.Y;
+            var clientBounds = Parent?.ContentBounds ?? default;
+            var maximumWidth = Math.Max(MinWidth, clientBounds.Width - LocalBounds.X);
+            var maximumHeight = Math.Max(MinHeight, clientBounds.Height - LocalBounds.Y);
+            var width = Math.Clamp(_resizeWindowOrigin.Width + deltaX, MinWidth, Math.Min(MaxWidth, maximumWidth));
+            var height = Math.Clamp(_resizeWindowOrigin.Height + deltaY, MinHeight, Math.Min(MaxHeight, maximumHeight));
+            Width = Length.Cells(width);
+            Height = Length.Cells(height);
             eventArgs.Handled = true;
         }
-        else if (action == PointerAction.Move && _dragging && HasPointerCapture)
+        else if (_dragging)
         {
             var deltaX = cells.X - _dragPointerOrigin.X;
             var deltaY = cells.Y - _dragPointerOrigin.Y;
@@ -762,6 +814,9 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
 
     private bool IsTitleBar(Point cells) =>
         cells.Y == Bounds.Y && cells.X >= Bounds.X && cells.X < Bounds.Right;
+
+    private bool IsResizeCorner(Point cells) =>
+        cells.Y == Bounds.Bottom - 1 && cells.X == Bounds.Right - 1;
 
     #endregion
 

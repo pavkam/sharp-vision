@@ -23,7 +23,8 @@ internal sealed class WindowPane: CompositeControl
             Height = Length.Cells(7),
             Header = "Normal",
             CanClose = true,
-            Content = RoleDescription("Movable application surface", "Paired frame · left title")
+            CanResize = true,
+            Content = RoleDescription("Movable, resizable application surface", "Paired frame · left title")
         };
         var dialogRole = new Window
         {
