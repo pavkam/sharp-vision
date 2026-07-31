@@ -23,13 +23,13 @@ host as unterminated DCS bodies. SharpVision does not invent an escaping form.
 
 ## Implemented passthrough behavior
 
-[`Screen.WritePassthrough`](../../src/SharpVision.Terminal/Protocols/Screen.cs)
+[`GnuScreenWriter.WritePassthrough`](../../src/SharpVision.Terminal/Multiplexing/GnuScreenWriter.cs)
 writes a typed DCS envelope around one already-validated outer-terminal
 sequence. GNU screen forwards this payload directly, so the implementation
 preserves embedded ESC bytes rather than applying tmux's doubling rule.
-`Screen.TryUnwrap` accepts only a complete `DCS ... ST` envelope and owns no
-borrowed input after returning. The low-level writer remains exact, but the
-policy layer admits only a complete batch of CSI sequences.
+`GnuScreenWriter.TryUnwrap` accepts only a complete `DCS ... ST` envelope and
+owns no borrowed input after returning. The low-level writer remains exact, but
+the policy layer admits only a complete batch of CSI sequences.
 
 The shared [tmux routing policy](tmux.md#routing-policy) supplies the explicit
 outer profile, typed-operation approval, visibility gate, finite nesting, and

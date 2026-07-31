@@ -12,7 +12,7 @@ bytes.
 - [Sixel](../../../../docs/protocols/sixel.md#sixel-contract)
 - [iTerm2](../../../../docs/protocols/iterm2.md#iterm2-contract)
 - [Backend graphics boundary](../../../../docs/architecture/terminal-backends.md#graphics-backend-boundary)
-- [Image ownership](../../../../docs/concepts/images.md#image-ownership-contract)
+- [Image ownership](../../../../docs/concepts/images.md#imagesource-ownership-contract)
 
 ## Code map
 
