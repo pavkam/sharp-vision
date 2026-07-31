@@ -329,9 +329,7 @@ public sealed class OverlayPositionTests
         child.Clear(Invalidation.All);
 
         Panel.SetLeft(child, Length.Cells(2));
-        child.Left.ShouldBe(Length.Cells(2));
         Panel.GetLeft(child).ShouldBe(Length.Cells(2));
-        child.Pending.ShouldBe(Invalidation.All);
         panel.Pending.ShouldBe(Invalidation.All);
 
         await dispatcher.InvokeAsync(
@@ -341,5 +339,35 @@ public sealed class OverlayPositionTests
         _ = Should.Throw<InvalidOperationException>(() => Panel.SetLeft(child, Length.Cells(3)));
 
         Panel.GetLeft(child).ShouldBe(Length.Cells(2));
+    }
+
+    /// <summary>Verifies an attached offset survives removal and re-addition to a different Overlay.</summary>
+    [Fact]
+    public void SetLeft_WhenControlDetachesAndReattaches_RetainsValue()
+    {
+        var first = new Panel();
+        var second = new Panel();
+        var child = new ProbeControl();
+        first.Children.Add(child);
+
+        Panel.SetLeft(child, Length.Cells(6));
+        _ = first.Children.Remove(child);
+        second.Children.Add(child);
+
+        Panel.GetLeft(child).ShouldBe(Length.Cells(6));
+    }
+
+    /// <summary>Verifies an attached offset has no meaning outside an Overlay parent.</summary>
+    [Fact]
+    public void SetLeft_WhenControlHasNoOverlayParent_IsIgnoredByLayout()
+    {
+        var stack = new Stack();
+        var child = new ProbeControl(new Size(3, 2));
+        stack.Children.Add(child);
+
+        Panel.SetLeft(child, Length.Cells(6));
+        new LayoutEngine().Layout(stack, new Size(10, 4));
+
+        child.Bounds.X.ShouldBe(0);
     }
 }

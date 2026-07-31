@@ -104,11 +104,11 @@ internal sealed class FindReplaceDialog: IDisposable
             MinWidth = 50,
             MaxWidth = 58,
             Height = Length.Auto,
-            Right = Length.Cells(2),
-            Top = Length.Cells(2),
             Visibility = Visibility.Collapsed,
             Content = content
         };
+        ControlOverlay.SetRight(Window, Length.Cells(2));
+        ControlOverlay.SetTop(Window, Length.Cells(2));
 
         Window.Closing += (_, _) => Close();
     }

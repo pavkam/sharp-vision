@@ -80,10 +80,10 @@ public sealed class ScreenTests
         var window = new Window
         {
             Width = Length.Cells(10),
-            Height = Length.Cells(4),
-            Left = Length.Cells(2),
-            Top = Length.Cells(1)
+            Height = Length.Cells(4)
         };
+        Overlay.SetLeft(window, Length.Cells(2));
+        Overlay.SetTop(window, Length.Cells(1));
         await using var surface = await ComponentSurface.MountScreenAsync(
             screen,
             new Size(40, 12),

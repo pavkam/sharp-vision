@@ -3,96 +3,101 @@
 
 namespace SharpVision.Tests.Controls;
 
-/// <summary>Verifies Left/Top/Right/Bottom position properties, LocalBounds, and ContentBounds accessibility.</summary>
+/// <summary>Verifies Overlay's attached Left/Top/Right/Bottom positions, LocalBounds, and ContentBounds accessibility.</summary>
 public sealed class ControlPositionTests
 {
-    /// <summary>Verifies position properties default to null.</summary>
+    /// <summary>Verifies attached positions default to null.</summary>
     [Fact]
     public void Position_WhenDefaulted_IsNull()
     {
         var control = new ProbeControl();
 
-        control.Left.ShouldBeNull();
-        control.Top.ShouldBeNull();
-        control.Right.ShouldBeNull();
-        control.Bottom.ShouldBeNull();
+        Overlay.GetLeft(control).ShouldBeNull();
+        Overlay.GetTop(control).ShouldBeNull();
+        Overlay.GetRight(control).ShouldBeNull();
+        Overlay.GetBottom(control).ShouldBeNull();
     }
 
     /// <summary>Verifies cells and percent values are accepted.</summary>
     [Fact]
     public void Position_WhenCellsOrPercent_Accepted()
     {
-        var control = new ProbeControl { Left = Length.Cells(5), Top = Length.Percent(50), Right = Length.Cells(3) };
+        var control = new ProbeControl();
+        Overlay.SetLeft(control, Length.Cells(5));
+        Overlay.SetTop(control, Length.Percent(50));
+        Overlay.SetRight(control, Length.Cells(3));
 
-        control.Left.ShouldBe(Length.Cells(5));
-        control.Top.ShouldBe(Length.Percent(50));
-        control.Right.ShouldBe(Length.Cells(3));
+        Overlay.GetLeft(control).ShouldBe(Length.Cells(5));
+        Overlay.GetTop(control).ShouldBe(Length.Percent(50));
+        Overlay.GetRight(control).ShouldBe(Length.Cells(3));
 
-        control.Bottom = null;
-        control.Bottom.ShouldBeNull();
+        Overlay.SetBottom(control, null);
+        Overlay.GetBottom(control).ShouldBeNull();
     }
 
-    /// <summary>Verifies Auto values are rejected on all four position properties.</summary>
+    /// <summary>Verifies Auto values are rejected on all four attached positions.</summary>
     [Fact]
     public void Position_WhenAuto_Throws()
     {
         var control = new ProbeControl();
 
-        _ = Should.Throw<ArgumentException>(() => control.Left = Length.Auto);
-        _ = Should.Throw<ArgumentException>(() => control.Top = Length.Auto);
-        _ = Should.Throw<ArgumentException>(() => control.Right = Length.Auto);
-        _ = Should.Throw<ArgumentException>(() => control.Bottom = Length.Auto);
+        _ = Should.Throw<ArgumentException>(() => Overlay.SetLeft(control, Length.Auto));
+        _ = Should.Throw<ArgumentException>(() => Overlay.SetTop(control, Length.Auto));
+        _ = Should.Throw<ArgumentException>(() => Overlay.SetRight(control, Length.Auto));
+        _ = Should.Throw<ArgumentException>(() => Overlay.SetBottom(control, Length.Auto));
     }
 
-    /// <summary>Verifies Star values are rejected on all four position properties.</summary>
+    /// <summary>Verifies Star values are rejected on all four attached positions.</summary>
     [Fact]
     public void Position_WhenStar_Throws()
     {
         var control = new ProbeControl();
 
-        _ = Should.Throw<ArgumentException>(() => control.Left = Length.Star(1));
-        _ = Should.Throw<ArgumentException>(() => control.Top = Length.Star(2));
-        _ = Should.Throw<ArgumentException>(() => control.Right = Length.Star(1));
-        _ = Should.Throw<ArgumentException>(() => control.Bottom = Length.Star(1));
+        _ = Should.Throw<ArgumentException>(() => Overlay.SetLeft(control, Length.Star(1)));
+        _ = Should.Throw<ArgumentException>(() => Overlay.SetTop(control, Length.Star(2)));
+        _ = Should.Throw<ArgumentException>(() => Overlay.SetRight(control, Length.Star(1)));
+        _ = Should.Throw<ArgumentException>(() => Overlay.SetBottom(control, Length.Star(1)));
     }
 
-    /// <summary>Verifies rejected values do not mutate the property.</summary>
+    /// <summary>Verifies rejected values do not mutate the attached value.</summary>
     [Fact]
     public void Position_WhenRejected_PreservesOldValue()
     {
-        var control = new ProbeControl { Left = Length.Cells(10) };
+        var control = new ProbeControl();
+        Overlay.SetLeft(control, Length.Cells(10));
 
-        _ = Should.Throw<ArgumentException>(() => control.Left = Length.Auto);
+        _ = Should.Throw<ArgumentException>(() => Overlay.SetLeft(control, Length.Auto));
 
-        control.Left.ShouldBe(Length.Cells(10));
+        Overlay.GetLeft(control).ShouldBe(Length.Cells(10));
     }
 
-    /// <summary>Verifies position change raises PropertyChanged.</summary>
+    /// <summary>Verifies changing an attached position invalidates the parent Overlay's measure pass.</summary>
     [Fact]
-    public void Position_WhenChanged_RaisesPropertyChanged()
+    public void Position_WhenChanged_InvalidatesParentMeasure()
     {
-        var control = new ProbeControl { Left = Length.Cells(1) };
-        List<string?> names = [];
-        control.PropertyChanged += (_, eventArgs) => names.Add(eventArgs.PropertyName);
+        var overlay = new Overlay();
+        var child = new ProbeControl();
+        overlay.Children.Add(child);
+        overlay.Clear(Invalidation.All);
 
-        control.Left = Length.Cells(5);
-        control.Top = Length.Cells(3);
+        Overlay.SetLeft(child, Length.Cells(1));
 
-        names.ShouldContain(nameof(Control.Left));
-        names.ShouldContain(nameof(Control.Top));
+        overlay.Pending.ShouldBe(Invalidation.All);
     }
 
     /// <summary>Verifies setting the same value is a no-op.</summary>
     [Fact]
-    public void Position_WhenSameValue_DoesNotNotify()
+    public void Position_WhenSameValue_DoesNotInvalidate()
     {
-        var control = new ProbeControl { Left = Length.Cells(5) };
-        var raised = 0;
-        control.PropertyChanged += (_, _) => raised++;
+        var overlay = new Overlay();
+        var child = new ProbeControl();
+        overlay.Children.Add(child);
+        Overlay.SetLeft(child, Length.Cells(5));
+        overlay.Clear(Invalidation.All);
 
-        control.Left = Length.Cells(5);
+        Overlay.SetLeft(child, Length.Cells(5));
 
-        raised.ShouldBe(0);
+        overlay.Pending.ShouldBe(Invalidation.None);
     }
 
     /// <summary>Verifies position requires dispatcher affinity when attached.</summary>
@@ -108,39 +113,17 @@ public sealed class ControlPositionTests
             () => root.Attach(dispatcher),
             TestContext.Current.CancellationToken);
 
-        _ = Should.Throw<InvalidOperationException>(() => child.Left = Length.Cells(5));
+        _ = Should.Throw<InvalidOperationException>(() => Overlay.SetLeft(child, Length.Cells(5)));
     }
 
-    /// <summary>Verifies SharpVision.Controls.Layout.Overlay.SetLeft delegates to Control.Left.</summary>
-    [Fact]
-    public void OverlaySetLeft_WhenCalled_DelegatesToControlProperty()
-    {
-        var control = new ProbeControl();
-
-        Overlay.SetLeft(control, Length.Cells(7));
-
-        control.Left.ShouldBe(Length.Cells(7));
-        Overlay.GetLeft(control).ShouldBe(Length.Cells(7));
-    }
-
-    /// <summary>Verifies SharpVision.Controls.Layout.Overlay.SetTop delegates to Control.Top.</summary>
-    [Fact]
-    public void OverlaySetTop_WhenCalled_DelegatesToControlProperty()
-    {
-        var control = new ProbeControl();
-
-        Overlay.SetTop(control, Length.Cells(3));
-
-        control.Top.ShouldBe(Length.Cells(3));
-        Overlay.GetTop(control).ShouldBe(Length.Cells(3));
-    }
-
-    /// <summary>Verifies Overlay layout reads position from Control properties.</summary>
+    /// <summary>Verifies Overlay layout reads position from attached storage.</summary>
     [Fact]
     public void OverlayLayout_WhenControlHasPosition_ArrangesCorrectly()
     {
         var canvas = new Overlay();
-        var child = new ProbeControl(new Size(3, 2)) { Left = Length.Cells(4), Top = Length.Cells(2) };
+        var child = new ProbeControl(new Size(3, 2));
+        Overlay.SetLeft(child, Length.Cells(4));
+        Overlay.SetTop(child, Length.Cells(2));
         canvas.Children.Add(child);
 
         new LayoutEngine().Layout(canvas, new Size(12, 8));
@@ -153,7 +136,9 @@ public sealed class ControlPositionTests
     public void LocalBounds_WhenParentHasOffset_ReportsRelativePosition()
     {
         var canvas = new Overlay { Padding = new Thickness(2) };
-        var child = new ProbeControl(new Size(3, 2)) { Left = Length.Cells(1), Top = Length.Cells(1) };
+        var child = new ProbeControl(new Size(3, 2));
+        Overlay.SetLeft(child, Length.Cells(1));
+        Overlay.SetTop(child, Length.Cells(1));
         canvas.Children.Add(child);
 
         new LayoutEngine().Layout(canvas, new Size(20, 10));

@@ -251,7 +251,6 @@ namespace SharpVision.Controls
         public bool AppearanceBoundary { get; set; }
         protected virtual SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
         protected virtual SharpVision.Styling.Border Border { get; set; }
-        public SharpVision.Layout.Length? Bottom { get; set; }
         public SharpVision.Terminal.Geometry.Rect Bounds { get; }
         public bool CanFocus { get; }
         protected SharpVision.Terminal.Capabilities.Capabilities Capabilities { get; }
@@ -282,7 +281,6 @@ namespace SharpVision.Controls
         public bool IsPressed { get; }
         protected virtual bool IsSelectedState { get; }
         public virtual bool IsTabStop { get; }
-        public SharpVision.Layout.Length? Left { get; set; }
         public SharpVision.Terminal.Geometry.Rect LocalBounds { get; }
         public SharpVision.Layout.Thickness Margin { get; set; }
         public int MaxHeight { get; set; }
@@ -294,7 +292,6 @@ namespace SharpVision.Controls
         public SharpVision.Layout.Thickness Padding { get; set; }
         public SharpVision.Controls.Control? Parent { get; }
         protected SharpVision.Terminal.Rendering.CellStyle ResolvedStyle { get; }
-        public SharpVision.Layout.Length? Right { get; set; }
         protected SharpVision.Styling.Shadow Shadow { get; set; }
         public int TabIndex { get; set; }
         public SharpVision.Input.TabNavigation TabNavigation { get; set; }
@@ -302,7 +299,6 @@ namespace SharpVision.Controls
         public object? Tag { get; set; }
         public SharpVision.Styling.Theme? Theme { get; }
         protected virtual SharpVision.Styling.ThemeRole ThemeRole { get; }
-        public SharpVision.Layout.Length? Top { get; set; }
         public bool UseMnemonic { get; set; }
         public SharpVision.Layout.VerticalAlignment VerticalAlignment { get; set; }
         public SharpVision.Layout.Visibility Visibility { get; set; }

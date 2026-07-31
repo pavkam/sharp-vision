@@ -352,10 +352,12 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
     /// <inheritdoc/>
     Rect IOverlayPositionConstraint.ConstrainOverlaySlot(Rect slot, Rect contentBounds)
     {
-        var requestedX = Left is null && Right is null && HorizontalAlignment == HorizontalAlignment.Center
+        var requestedX = Overlay.GetLeft(this) is null && Overlay.GetRight(this) is null &&
+                         HorizontalAlignment == HorizontalAlignment.Center
             ? CenterOverlayOrigin(slot.Width, contentBounds.X, contentBounds.Right)
             : slot.X;
-        var requestedY = Top is null && Bottom is null && VerticalAlignment == VerticalAlignment.Center
+        var requestedY = Overlay.GetTop(this) is null && Overlay.GetBottom(this) is null &&
+                         VerticalAlignment == VerticalAlignment.Center
             ? CenterOverlayOrigin(slot.Height, contentBounds.Y, contentBounds.Bottom)
             : slot.Y;
         var x = ClampOverlayOrigin(requestedX, slot.Width, contentBounds.X, contentBounds.Right);

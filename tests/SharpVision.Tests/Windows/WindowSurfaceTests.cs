@@ -24,9 +24,9 @@ public sealed class WindowSurfaceTests
             Header = "Second",
             Content = new ControlText("Passive"),
             Width = Length.Cells(10),
-            Height = Length.Cells(5),
-            Left = Length.Cells(12)
+            Height = Length.Cells(5)
         };
+        Overlay.SetLeft(second, Length.Cells(12));
         var root = new Overlay { Children = { first, second } };
         await using var surface = await ComponentSurface.MountAsync(
             root,
@@ -81,9 +81,9 @@ public sealed class WindowSurfaceTests
         {
             Content = new ControlText("Outside"),
             Width = Length.Cells(10),
-            Height = Length.Cells(3),
-            Left = Length.Cells(12)
+            Height = Length.Cells(3)
         };
+        Overlay.SetLeft(outside, Length.Cells(12));
         var root = new Overlay { Children = { window, outside } };
         var capabilities = Capabilities.Conservative with { ColorDepth = ColorDepth.TrueColor };
         var options = TerminalOptions.Minimal with { Capabilities = capabilities };
@@ -262,10 +262,10 @@ public sealed class WindowSurfaceTests
             Header = "Move",
             Width = Length.Cells(10),
             Height = Length.Cells(4),
-            Left = Length.Cells(2),
-            Top = Length.Cells(1),
             Shadow = AppearanceTestValues.Shadow(visible: false),
         };
+        Overlay.SetLeft(window, Length.Cells(2));
+        Overlay.SetTop(window, Length.Cells(1));
         var stage = new Overlay
         {
             Width = Length.Cells(20),
@@ -316,10 +316,10 @@ public sealed class WindowSurfaceTests
             CanResize = true,
             Width = Length.Cells(10),
             Height = Length.Cells(4),
-            Left = Length.Cells(2),
-            Top = Length.Cells(1),
             Shadow = AppearanceTestValues.Shadow(visible: false),
         };
+        Overlay.SetLeft(window, Length.Cells(2));
+        Overlay.SetTop(window, Length.Cells(1));
         var stage = new Overlay
         {
             Width = Length.Cells(30),
@@ -359,10 +359,10 @@ public sealed class WindowSurfaceTests
             Height = Length.Cells(4),
             MinWidth = 6,
             MinHeight = 3,
-            Left = Length.Cells(2),
-            Top = Length.Cells(1),
             Shadow = AppearanceTestValues.Shadow(visible: false),
         };
+        Overlay.SetLeft(window, Length.Cells(2));
+        Overlay.SetTop(window, Length.Cells(1));
         var stage = new Overlay
         {
             Width = Length.Cells(30),
@@ -396,10 +396,10 @@ public sealed class WindowSurfaceTests
             CanResize = false,
             Width = Length.Cells(10),
             Height = Length.Cells(4),
-            Left = Length.Cells(2),
-            Top = Length.Cells(1),
             Shadow = AppearanceTestValues.Shadow(visible: false),
         };
+        Overlay.SetLeft(window, Length.Cells(2));
+        Overlay.SetTop(window, Length.Cells(1));
         var stage = new Overlay
         {
             Width = Length.Cells(30),
@@ -433,10 +433,10 @@ public sealed class WindowSurfaceTests
             CanResize = true,
             Width = Length.Cells(10),
             Height = Length.Cells(4),
-            Left = Length.Cells(2),
-            Top = Length.Cells(1),
             Shadow = AppearanceTestValues.Shadow(visible: false),
         };
+        Overlay.SetLeft(window, Length.Cells(2));
+        Overlay.SetTop(window, Length.Cells(1));
         var stage = new Overlay
         {
             Width = Length.Cells(30),
@@ -471,10 +471,10 @@ public sealed class WindowSurfaceTests
             Header = "Resize",
             Width = Length.Cells(10),
             Height = Length.Cells(4),
-            Left = Length.Cells(18),
-            Top = Length.Cells(7),
             Shadow = AppearanceTestValues.Shadow(visible: false),
         };
+        Overlay.SetLeft(window, Length.Cells(18));
+        Overlay.SetTop(window, Length.Cells(7));
         var canvas = new Overlay
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -492,8 +492,8 @@ public sealed class WindowSurfaceTests
 
         // Assert
         window.Bounds.ShouldBe(new Rect(10, 4, 10, 4));
-        window.Left.ShouldBe(Length.Cells(18));
-        window.Top.ShouldBe(Length.Cells(7));
+        Overlay.GetLeft(window).ShouldBe(Length.Cells(18));
+        Overlay.GetTop(window).ShouldBe(Length.Cells(7));
         surface.Cell(new Point(10, 4)).Text.ShouldBe(window.Border.GlyphStyle.TopLeft.ToString());
     }
 
@@ -619,9 +619,9 @@ public sealed class WindowSurfaceTests
             Content = new ControlText("Background"),
             Width = Length.Cells(10),
             Height = Length.Cells(3),
-            Left = Length.Cells(20),
-            Top = Length.Cells(1),
         };
+        Overlay.SetLeft(background, Length.Cells(20));
+        Overlay.SetTop(background, Length.Cells(1));
         background.Click += (_, _) => activations++;
         var action = new Button { Content = new ControlText("Action") };
         var window = new Window
@@ -629,10 +629,10 @@ public sealed class WindowSurfaceTests
             Content = action,
             Width = Length.Cells(14),
             Height = Length.Cells(6),
-            Left = Length.Cells(1),
-            Top = Length.Cells(1),
             Visibility = Visibility.Collapsed,
         };
+        Overlay.SetLeft(window, Length.Cells(1));
+        Overlay.SetTop(window, Length.Cells(1));
         var root = new Overlay { Children = { background, window } };
         await using var surface = await ComponentSurface.MountAsync(
             root,
@@ -737,18 +737,18 @@ public sealed class WindowSurfaceTests
             Content = new ControlText("Background"),
             Width = Length.Cells(10),
             Height = Length.Cells(3),
-            Left = Length.Cells(20),
-            Top = Length.Cells(1),
         };
+        Overlay.SetLeft(background, Length.Cells(20));
+        Overlay.SetTop(background, Length.Cells(1));
         background.Click += (_, _) => activations++;
         var window = new Window
         {
             Content = new Button { Content = new ControlText("Action") },
             Width = Length.Cells(14),
             Height = Length.Cells(6),
-            Left = Length.Cells(1),
-            Top = Length.Cells(1),
         };
+        Overlay.SetLeft(window, Length.Cells(1));
+        Overlay.SetTop(window, Length.Cells(1));
         window.Closing += (_, _) => closing++;
         var root = new Overlay { Children = { background, window } };
         await using var surface = await ComponentSurface.MountAsync(
@@ -927,11 +927,11 @@ public sealed class WindowSurfaceTests
             Header = "Drag",
             Width = Length.Cells(12),
             Height = Length.Cells(5),
-            Left = Length.Cells(3),
-            Top = Length.Cells(2),
             Shadow = AppearanceTestValues.Shadow(visible: false),
             Content = button,
         };
+        Overlay.SetLeft(window, Length.Cells(3));
+        Overlay.SetTop(window, Length.Cells(2));
         var stage = new Overlay
         {
             Width = Length.Cells(24),

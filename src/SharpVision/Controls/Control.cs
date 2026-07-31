@@ -383,62 +383,6 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
     }
 
-    /// <summary>Gets or sets the optional leading horizontal position offset.</summary>
-    /// <exception cref="ArgumentException">The value is automatic or proportional.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Length? Left
-    {
-        get;
-        set
-        {
-            ValidatePositionOffset(value);
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
-        }
-    }
-
-    /// <summary>Gets or sets the optional leading vertical position offset.</summary>
-    /// <exception cref="ArgumentException">The value is automatic or proportional.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Length? Top
-    {
-        get;
-        set
-        {
-            ValidatePositionOffset(value);
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
-        }
-    }
-
-    /// <summary>Gets or sets the optional trailing horizontal position offset.</summary>
-    /// <exception cref="ArgumentException">The value is automatic or proportional.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Length? Right
-    {
-        get;
-        set
-        {
-            ValidatePositionOffset(value);
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
-        }
-    }
-
-    /// <summary>Gets or sets the optional trailing vertical position offset.</summary>
-    /// <exception cref="ArgumentException">The value is automatic or proportional.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Length? Bottom
-    {
-        get;
-        set
-        {
-            ValidatePositionOffset(value);
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
-        }
-    }
-
     /// <summary>Gets or sets an optional debugging or accessibility identifier.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -2261,14 +2205,6 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         var result = Math.Round(value * percent / 100, MidpointRounding.AwayFromZero);
         return result >= int.MaxValue ? int.MaxValue : (int) result;
-    }
-
-    private static void ValidatePositionOffset(Length? value)
-    {
-        if (value is { Kind: LengthKind.Auto or LengthKind.Star })
-        {
-            throw new ArgumentException("Position offsets must use cells or percentage values.", nameof(value));
-        }
     }
 
 

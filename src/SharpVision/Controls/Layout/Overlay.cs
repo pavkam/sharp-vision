@@ -20,6 +20,7 @@ public sealed class Overlay: Container
     public new void ResetShadow() => base.ResetShadow();
 
     private static readonly ConditionalWeakTable<Control, OverlayZIndex> _orders = [];
+    private static readonly ConditionalWeakTable<Control, OverlayPosition> _positions = [];
 
     /// <summary>Initializes an overlay that fills its parent shared box.</summary>
     public Overlay() => HorizontalAlignment = HorizontalAlignment.Stretch;
@@ -42,47 +43,47 @@ public sealed class Overlay: Container
     /// <inheritdoc/>
     internal override bool ClipsDescendantVisualOverflow => AutoScroll || ClipToBounds;
 
-    /// <summary>Gets the leading horizontal offset from the control's own property.</summary>
+    /// <summary>Gets one control's attached leading horizontal offset.</summary>
     /// <param name="control">The non-null control.</param>
-    /// <returns>The offset, or null.</returns>
+    /// <returns>The attached offset, or null when unset.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     public static Length? GetLeft(Control control)
     {
         ArgumentNullException.ThrowIfNull(control);
-        return control.Left;
+        return _positions.TryGetValue(control, out var position) ? position.Left : null;
     }
 
-    /// <summary>Gets the leading vertical offset from the control's own property.</summary>
+    /// <summary>Gets one control's attached leading vertical offset.</summary>
     /// <param name="control">The non-null control.</param>
-    /// <returns>The offset, or null.</returns>
+    /// <returns>The attached offset, or null when unset.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     public static Length? GetTop(Control control)
     {
         ArgumentNullException.ThrowIfNull(control);
-        return control.Top;
+        return _positions.TryGetValue(control, out var position) ? position.Top : null;
     }
 
-    /// <summary>Gets the trailing horizontal offset from the control's own property.</summary>
+    /// <summary>Gets one control's attached trailing horizontal offset.</summary>
     /// <param name="control">The non-null control.</param>
-    /// <returns>The offset, or null.</returns>
+    /// <returns>The attached offset, or null when unset.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     public static Length? GetRight(Control control)
     {
         ArgumentNullException.ThrowIfNull(control);
-        return control.Right;
+        return _positions.TryGetValue(control, out var position) ? position.Right : null;
     }
 
-    /// <summary>Gets the trailing vertical offset from the control's own property.</summary>
+    /// <summary>Gets one control's attached trailing vertical offset.</summary>
     /// <param name="control">The non-null control.</param>
-    /// <returns>The offset, or null.</returns>
+    /// <returns>The attached offset, or null when unset.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     public static Length? GetBottom(Control control)
     {
         ArgumentNullException.ThrowIfNull(control);
-        return control.Bottom;
+        return _positions.TryGetValue(control, out var position) ? position.Bottom : null;
     }
 
-    /// <summary>Sets or clears the leading horizontal offset on the control.</summary>
+    /// <summary>Sets or clears one control's attached leading horizontal offset.</summary>
     /// <param name="control">The non-null mutable control.</param>
     /// <param name="value">A cells/percent offset, or null.</param>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
@@ -92,10 +93,20 @@ public sealed class Overlay: Container
     public static void SetLeft(Control control, Length? value)
     {
         ArgumentNullException.ThrowIfNull(control);
-        control.Left = value;
+        ValidatePositionOffset(value);
+        control.VerifyMutable();
+        var position = _positions.GetOrCreateValue(control);
+
+        if (position.Left == value)
+        {
+            return;
+        }
+
+        position.Left = value;
+        InvalidateParent(control);
     }
 
-    /// <summary>Sets or clears the leading vertical offset on the control.</summary>
+    /// <summary>Sets or clears one control's attached leading vertical offset.</summary>
     /// <param name="control">The non-null mutable control.</param>
     /// <param name="value">A cells/percent offset, or null.</param>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
@@ -105,10 +116,20 @@ public sealed class Overlay: Container
     public static void SetTop(Control control, Length? value)
     {
         ArgumentNullException.ThrowIfNull(control);
-        control.Top = value;
+        ValidatePositionOffset(value);
+        control.VerifyMutable();
+        var position = _positions.GetOrCreateValue(control);
+
+        if (position.Top == value)
+        {
+            return;
+        }
+
+        position.Top = value;
+        InvalidateParent(control);
     }
 
-    /// <summary>Sets or clears the trailing horizontal offset on the control.</summary>
+    /// <summary>Sets or clears one control's attached trailing horizontal offset.</summary>
     /// <param name="control">The non-null mutable control.</param>
     /// <param name="value">A cells/percent offset, or null.</param>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
@@ -118,10 +139,20 @@ public sealed class Overlay: Container
     public static void SetRight(Control control, Length? value)
     {
         ArgumentNullException.ThrowIfNull(control);
-        control.Right = value;
+        ValidatePositionOffset(value);
+        control.VerifyMutable();
+        var position = _positions.GetOrCreateValue(control);
+
+        if (position.Right == value)
+        {
+            return;
+        }
+
+        position.Right = value;
+        InvalidateParent(control);
     }
 
-    /// <summary>Sets or clears the trailing vertical offset on the control.</summary>
+    /// <summary>Sets or clears one control's attached trailing vertical offset.</summary>
     /// <param name="control">The non-null mutable control.</param>
     /// <param name="value">A cells/percent offset, or null.</param>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
@@ -131,7 +162,33 @@ public sealed class Overlay: Container
     public static void SetBottom(Control control, Length? value)
     {
         ArgumentNullException.ThrowIfNull(control);
-        control.Bottom = value;
+        ValidatePositionOffset(value);
+        control.VerifyMutable();
+        var position = _positions.GetOrCreateValue(control);
+
+        if (position.Bottom == value)
+        {
+            return;
+        }
+
+        position.Bottom = value;
+        InvalidateParent(control);
+    }
+
+    private static void ValidatePositionOffset(Length? value)
+    {
+        if (value is { Kind: LengthKind.Auto or LengthKind.Star })
+        {
+            throw new ArgumentException("Position offsets must use cells or percentage values.", nameof(value));
+        }
+    }
+
+    private static void InvalidateParent(Control control)
+    {
+        if (control.Parent is Overlay parent)
+        {
+            parent.Invalidate(Invalidation.Measure);
+        }
     }
 
     /// <summary>Gets one control's attached signed z-order.</summary>
@@ -257,8 +314,8 @@ public sealed class Overlay: Container
 
         foreach (var child in Children)
         {
-            var positionsWidth = child.Left is not null || child.Right is not null;
-            var positionsHeight = child.Top is not null || child.Bottom is not null;
+            var positionsWidth = GetLeft(child) is not null || GetRight(child) is not null;
+            var positionsHeight = GetTop(child) is not null || GetBottom(child) is not null;
             child.Measure(
                 new Constraint(
                     positionsWidth ? null : constraint.Width,
@@ -272,10 +329,10 @@ public sealed class Overlay: Container
             var outerWidth = LayoutMath.Add(child.DesiredSize.Width, child.Margin.Horizontal);
             var outerHeight = LayoutMath.Add(child.DesiredSize.Height, child.Margin.Vertical);
             var desiredWidth = positionsWidth
-                ? LayoutMath.Add(LayoutMath.Add(Fixed(child.Left), outerWidth), Fixed(child.Right))
+                ? LayoutMath.Add(LayoutMath.Add(Fixed(GetLeft(child)), outerWidth), Fixed(GetRight(child)))
                 : outerWidth;
             var desiredHeight = positionsHeight
-                ? LayoutMath.Add(LayoutMath.Add(Fixed(child.Top), outerHeight), Fixed(child.Bottom))
+                ? LayoutMath.Add(LayoutMath.Add(Fixed(GetTop(child)), outerHeight), Fixed(GetBottom(child)))
                 : outerHeight;
             width = Math.Max(width, desiredWidth);
             height = Math.Max(height, desiredHeight);
@@ -295,26 +352,26 @@ public sealed class Overlay: Container
                 continue;
             }
 
-            var positionsWidth = child.Left is not null || child.Right is not null;
-            var positionsHeight = child.Top is not null || child.Bottom is not null;
-            var left = positionsWidth ? Resolve(child.Left, bounds.Width) : 0;
-            var right = positionsWidth ? Resolve(child.Right, bounds.Width) : 0;
-            var top = positionsHeight ? Resolve(child.Top, bounds.Height) : 0;
-            var bottom = positionsHeight ? Resolve(child.Bottom, bounds.Height) : 0;
+            var positionsWidth = GetLeft(child) is not null || GetRight(child) is not null;
+            var positionsHeight = GetTop(child) is not null || GetBottom(child) is not null;
+            var left = positionsWidth ? Resolve(GetLeft(child), bounds.Width) : 0;
+            var right = positionsWidth ? Resolve(GetRight(child), bounds.Width) : 0;
+            var top = positionsHeight ? Resolve(GetTop(child), bounds.Height) : 0;
+            var bottom = positionsHeight ? Resolve(GetBottom(child), bounds.Height) : 0;
             var width = positionsWidth
                 ? Outer(child, horizontal: true, bounds.Width, left, right)
                 : bounds.Width;
             var height = positionsHeight
                 ? Outer(child, horizontal: false, bounds.Height, top, bottom)
                 : bounds.Height;
-            var x = child.Left is not null
+            var x = GetLeft(child) is not null
                 ? LayoutMath.Add(bounds.X, left)
-                : child.Right is not null
+                : GetRight(child) is not null
                     ? TrailingOrigin(bounds.Right, right, width)
                     : bounds.X;
-            var y = child.Top is not null
+            var y = GetTop(child) is not null
                 ? LayoutMath.Add(bounds.Y, top)
-                : child.Bottom is not null
+                : GetBottom(child) is not null
                     ? TrailingOrigin(bounds.Bottom, bottom, height)
                     : bounds.Y;
 
@@ -351,8 +408,8 @@ public sealed class Overlay: Container
         var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
 
         if (length.Kind == LengthKind.Auto &&
-            (horizontal ? child.Left : child.Top) is not null &&
-            (horizontal ? child.Right : child.Bottom) is not null)
+            (horizontal ? GetLeft(child) : GetTop(child)) is not null &&
+            (horizontal ? GetRight(child) : GetBottom(child)) is not null)
         {
             return StretchedExtent(axis, leading, trailing);
         }

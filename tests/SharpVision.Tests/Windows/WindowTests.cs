@@ -811,8 +811,8 @@ public sealed class WindowTests
             _ = pointer.Dispatch(Pointer(new Point(12, 0), PointerAction.Release));
 
             closing.ShouldBe(0);
-            window.Left.ShouldBe(Length.Cells(0));
-            window.Top.ShouldBe(Length.Cells(0));
+            Overlay.GetLeft(window).ShouldBe(Length.Cells(0));
+            Overlay.GetTop(window).ShouldBe(Length.Cells(0));
             pointer.Captured.ShouldBeNull();
         }, TestContext.Current.CancellationToken);
     }
@@ -891,10 +891,10 @@ public sealed class WindowTests
             {
                 Header = "Draggable",
                 Width = Length.Cells(12),
-                Height = Length.Cells(5),
-                Left = Length.Cells(2),
-                Top = Length.Cells(1)
+                Height = Length.Cells(5)
             };
+            Overlay.SetLeft(window, Length.Cells(2));
+            Overlay.SetTop(window, Length.Cells(1));
             canvas.Children.Add(window);
             new LayoutEngine().Layout(canvas, new Size(30, 15));
             canvas.Attach(dispatcher);
@@ -904,8 +904,8 @@ public sealed class WindowTests
             capture.Captured.ShouldBeSameAs(window);
             _ = capture.Dispatch(Pointer(new Point(8, 3), PointerAction.Move));
 
-            window.Left.ShouldBe(Length.Cells(5));
-            window.Top.ShouldBe(Length.Cells(3));
+            Overlay.GetLeft(window).ShouldBe(Length.Cells(5));
+            Overlay.GetTop(window).ShouldBe(Length.Cells(3));
         }, TestContext.Current.CancellationToken);
     }
 
@@ -922,10 +922,10 @@ public sealed class WindowTests
             {
                 Header = "Burst",
                 Width = Length.Cells(12),
-                Height = Length.Cells(5),
-                Left = Length.Cells(2),
-                Top = Length.Cells(1)
+                Height = Length.Cells(5)
             };
+            Overlay.SetLeft(window, Length.Cells(2));
+            Overlay.SetTop(window, Length.Cells(1));
             canvas.Children.Add(window);
             new LayoutEngine().Layout(canvas, new Size(30, 15));
             canvas.Attach(dispatcher);
@@ -936,8 +936,8 @@ public sealed class WindowTests
             _ = capture.Dispatch(Pointer(new Point(8, 4), PointerAction.Move));
             _ = capture.Dispatch(Pointer(new Point(11, 5), PointerAction.Move));
 
-            window.Left.ShouldBe(Length.Cells(8));
-            window.Top.ShouldBe(Length.Cells(5));
+            Overlay.GetLeft(window).ShouldBe(Length.Cells(8));
+            Overlay.GetTop(window).ShouldBe(Length.Cells(5));
         }, TestContext.Current.CancellationToken);
     }
 
@@ -958,10 +958,10 @@ public sealed class WindowTests
             {
                 Header = "Contained",
                 Width = Length.Cells(10),
-                Height = Length.Cells(4),
-                Left = Length.Cells(2),
-                Top = Length.Cells(1)
+                Height = Length.Cells(4)
             };
+            Overlay.SetLeft(window, Length.Cells(2));
+            Overlay.SetTop(window, Length.Cells(1));
             canvas.Children.Add(window);
             new LayoutEngine().Layout(canvas, new Size(20, 10));
             canvas.Attach(dispatcher);
@@ -971,8 +971,8 @@ public sealed class WindowTests
                 Pointer(new Point(window.Bounds.X + 2, window.Bounds.Y), PointerAction.Press));
             _ = capture.Dispatch(Pointer(new Point(100, 100), PointerAction.Move));
 
-            window.Left.ShouldBe(Length.Cells(6));
-            window.Top.ShouldBe(Length.Cells(4));
+            Overlay.GetLeft(window).ShouldBe(Length.Cells(6));
+            Overlay.GetTop(window).ShouldBe(Length.Cells(4));
         }, TestContext.Current.CancellationToken);
     }
 
@@ -989,10 +989,10 @@ public sealed class WindowTests
         var window = new Window
         {
             Width = Length.Cells(10),
-            Height = Length.Cells(6),
-            Left = Length.Cells(5),
-            Top = Length.Cells(5)
+            Height = Length.Cells(6)
         };
+        Overlay.SetLeft(window, Length.Cells(5));
+        Overlay.SetTop(window, Length.Cells(5));
         canvas.Children.Add(window);
 
         // Act
@@ -1021,8 +1021,8 @@ public sealed class WindowTests
 
         // Assert
         window.Bounds.ShouldBe(new Rect(10, 4, 10, 4));
-        window.Left.ShouldBeNull();
-        window.Top.ShouldBeNull();
+        Overlay.GetLeft(window).ShouldBeNull();
+        Overlay.GetTop(window).ShouldBeNull();
     }
 
     /// <summary>Verifies drag uses the Window's own Overlay position properties.</summary>
@@ -1040,10 +1040,10 @@ public sealed class WindowTests
             {
                 Header = "Nested",
                 Width = Length.Cells(10),
-                Height = Length.Cells(4),
-                Left = Length.Cells(0),
-                Top = Length.Cells(0)
+                Height = Length.Cells(4)
             };
+            Overlay.SetLeft(window, Length.Cells(0));
+            Overlay.SetTop(window, Length.Cells(0));
             canvas.Children.Add(window);
             new LayoutEngine().Layout(outer, new Size(40, 20));
             outer.Attach(dispatcher);
@@ -1055,8 +1055,8 @@ public sealed class WindowTests
             capture.Captured.ShouldBeSameAs(window);
             _ = capture.Dispatch(Pointer(new Point(titleX + 3, titleY + 2), PointerAction.Move));
 
-            window.Left.ShouldBe(Length.Cells(3));
-            window.Top.ShouldBe(Length.Cells(2));
+            Overlay.GetLeft(window).ShouldBe(Length.Cells(3));
+            Overlay.GetTop(window).ShouldBe(Length.Cells(2));
         }, TestContext.Current.CancellationToken);
     }
 
@@ -1074,10 +1074,10 @@ public sealed class WindowTests
                 Header = "Fixed",
                 Width = Length.Cells(10),
                 Height = Length.Cells(4),
-                CanMove = false,
-                Left = Length.Cells(1),
-                Top = Length.Cells(1)
+                CanMove = false
             };
+            Overlay.SetLeft(window, Length.Cells(1));
+            Overlay.SetTop(window, Length.Cells(1));
             canvas.Children.Add(window);
             new LayoutEngine().Layout(canvas, new Size(20, 10));
             canvas.Attach(dispatcher);
@@ -1086,8 +1086,8 @@ public sealed class WindowTests
             _ = capture.Dispatch(Pointer(new Point(3, 1), PointerAction.Press));
             capture.Captured.ShouldNotBeSameAs(window);
 
-            window.Left.ShouldBe(Length.Cells(1));
-            window.Top.ShouldBe(Length.Cells(1));
+            Overlay.GetLeft(window).ShouldBe(Length.Cells(1));
+            Overlay.GetTop(window).ShouldBe(Length.Cells(1));
         }, TestContext.Current.CancellationToken);
     }
 
@@ -1104,10 +1104,10 @@ public sealed class WindowTests
             {
                 Header = "Release",
                 Width = Length.Cells(10),
-                Height = Length.Cells(4),
-                Left = Length.Cells(0),
-                Top = Length.Cells(0)
+                Height = Length.Cells(4)
             };
+            Overlay.SetLeft(window, Length.Cells(0));
+            Overlay.SetTop(window, Length.Cells(0));
             canvas.Children.Add(window);
             new LayoutEngine().Layout(canvas, new Size(20, 10));
             canvas.Attach(dispatcher);
@@ -1119,8 +1119,8 @@ public sealed class WindowTests
             _ = capture.Dispatch(Pointer(new Point(5, 2), PointerAction.Release));
 
             capture.Captured.ShouldBeNull();
-            window.Left.ShouldBe(Length.Cells(2));
-            window.Top.ShouldBe(Length.Cells(2));
+            Overlay.GetLeft(window).ShouldBe(Length.Cells(2));
+            Overlay.GetTop(window).ShouldBe(Length.Cells(2));
         }, TestContext.Current.CancellationToken);
     }
 
@@ -1138,10 +1138,10 @@ public sealed class WindowTests
             {
                 Header = "Release",
                 Width = Length.Cells(10),
-                Height = Length.Cells(4),
-                Left = Length.Cells(0),
-                Top = Length.Cells(0)
+                Height = Length.Cells(4)
             };
+            Overlay.SetLeft(window, Length.Cells(0));
+            Overlay.SetTop(window, Length.Cells(0));
             canvas.Children.Add(window);
             new LayoutEngine().Layout(canvas, new Size(20, 10));
             canvas.Attach(dispatcher);
@@ -1173,10 +1173,10 @@ public sealed class WindowTests
             {
                 Header = "Release",
                 Width = Length.Cells(10),
-                Height = Length.Cells(4),
-                Left = Length.Cells(0),
-                Top = Length.Cells(0)
+                Height = Length.Cells(4)
             };
+            Overlay.SetLeft(window, Length.Cells(0));
+            Overlay.SetTop(window, Length.Cells(0));
             canvas.Children.Add(window);
             new LayoutEngine().Layout(canvas, new Size(20, 10));
             canvas.Attach(dispatcher);
@@ -1215,10 +1215,10 @@ public sealed class WindowTests
             {
                 Header = "Clamp",
                 Width = Length.Cells(10),
-                Height = Length.Cells(4),
-                Left = Length.Cells(2),
-                Top = Length.Cells(2)
+                Height = Length.Cells(4)
             };
+            Overlay.SetLeft(window, Length.Cells(2));
+            Overlay.SetTop(window, Length.Cells(2));
             canvas.Children.Add(window);
             new LayoutEngine().Layout(canvas, new Size(20, 10));
             canvas.Attach(dispatcher);
@@ -1227,8 +1227,8 @@ public sealed class WindowTests
             _ = capture.Dispatch(Pointer(new Point(5, 2), PointerAction.Press));
             _ = capture.Dispatch(Pointer(new Point(0, 0), PointerAction.Move));
 
-            window.Left.ShouldBe(Length.Cells(0));
-            window.Top.ShouldBe(Length.Cells(0));
+            Overlay.GetLeft(window).ShouldBe(Length.Cells(0));
+            Overlay.GetTop(window).ShouldBe(Length.Cells(0));
         }, TestContext.Current.CancellationToken);
     }
 
@@ -1255,14 +1255,18 @@ public sealed class WindowTests
 
     private static Button FallbackButton() => new() { IsDefault = true, IsCancel = true };
 
-    private static Window ClosableWindow() => new()
+    private static Window ClosableWindow()
     {
-        Width = Length.Cells(14),
-        Height = Length.Cells(4),
-        CanClose = true,
-        Left = Length.Cells(0),
-        Top = Length.Cells(0)
-    };
+        var window = new Window
+        {
+            Width = Length.Cells(14),
+            Height = Length.Cells(4),
+            CanClose = true
+        };
+        Overlay.SetLeft(window, Length.Cells(0));
+        Overlay.SetTop(window, Length.Cells(0));
+        return window;
+    }
 
     private static string ReadRow(Frame frame, int start, int length) =>
         string.Concat(Enumerable.Range(start, length).Select(x => FrameOracle.Get(frame, new Point(x, 0))));
