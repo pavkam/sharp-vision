@@ -15,18 +15,16 @@ using InputAction = Action;
 [PublicAPI]
 public sealed class Decoder: IDisposable
 {
-    private static readonly byte[] _pasteEnd = "\u001b[201~"u8.ToArray();
-
     private readonly IInputSink _sink;
     private readonly IProtocolSink? _protocolSink;
     private readonly Options _options;
     private readonly Parser _parser;
+    private readonly PasteAccumulator _pasteAccumulator;
     private KeySequenceMatcher? _keyMatcher;
     private byte[]? _keyReplay;
     private readonly TimeProvider _timeProvider;
     private readonly byte[] _utf8 = new byte[4];
     private readonly byte[] _x10 = new byte[12];
-    private byte[]? _paste;
     private DateTimeOffset _escapeDeadline;
     private Metrics? _cellMetrics;
     private Size? _localCells;
@@ -36,17 +34,12 @@ public sealed class Decoder: IDisposable
     private Size? _queriedWindowPixels;
     private Modifiers _nextTextModifiers;
     private int _utf8Length;
-    private int _pasteLength;
-    private int _pasteMatch;
     private int _x10Length;
-    private long _pasteDiscarded;
     private long _skippedBytes;
     private bool _completed;
     private bool _disposed;
     private bool _escapePending;
-    private bool _pasteMode;
     private readonly bool _pixelMouse;
-    private bool _pasteOverflow;
     private bool _ss3Pending;
     private bool _x10Pending;
 
@@ -66,6 +59,7 @@ public sealed class Decoder: IDisposable
         _options = options ?? Options.Default;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _parser = new Parser(_options.Limits);
+        _pasteAccumulator = new PasteAccumulator(_options.MaxPasteBytes);
         _keyMatcher = _options.KeyMap.FallbackBindings.Count == 0
             ? null
             : new KeySequenceMatcher(_options.KeyMap.FallbackBindings);
@@ -105,7 +99,7 @@ public sealed class Decoder: IDisposable
         {
             var value = input[position];
 
-            if (_pasteMode)
+            if (_pasteAccumulator.IsActive)
             {
                 DecodeCoreByte(value, ref adapter);
                 position++;
@@ -216,9 +210,9 @@ public sealed class Decoder: IDisposable
             EndX10IfPending();
         }
 
-        if (_pasteMode)
+        if (_pasteAccumulator.IsActive)
         {
-            ResetPaste();
+            _pasteAccumulator.Reset();
             Report(DiagnosticCode.Truncated, SequenceKind.Csi);
         }
 
@@ -266,7 +260,7 @@ public sealed class Decoder: IDisposable
         _utf8.AsSpan().Clear();
         _x10.AsSpan().Clear();
         _utf8Length = 0;
-        ResetPaste();
+        _pasteAccumulator.Dispose();
 
         if (_keyReplay is { } keyReplay)
         {
@@ -276,12 +270,6 @@ public sealed class Decoder: IDisposable
 
         _keyMatcher?.Dispose();
         _keyMatcher = null;
-
-        if (_paste is not null)
-        {
-            ArrayPool<byte>.Shared.Return(_paste, clearArray: true);
-            _paste = null;
-        }
 
         _parser.Dispose();
     }
@@ -294,7 +282,7 @@ public sealed class Decoder: IDisposable
 
     private void DecodeCoreByte(byte value, ref Adapter adapter)
     {
-        if (_pasteMode)
+        if (_pasteAccumulator.IsActive)
         {
             _skippedBytes = checked(_skippedBytes + 1);
             ProcessPaste(value);
@@ -1479,131 +1467,33 @@ public sealed class Decoder: IDisposable
         return true;
     }
 
-    private void BeginPaste()
-    {
-        _pasteMode = true;
-        _pasteOverflow = false;
-        _pasteLength = 0;
-        _pasteMatch = 0;
-        _pasteDiscarded = 0;
-    }
+    private void BeginPaste() => _pasteAccumulator.Begin();
 
     private void ProcessPaste(byte value)
     {
-        while (true)
+        if (_pasteAccumulator.Process(value))
         {
-            if (value == _pasteEnd[_pasteMatch])
-            {
-                _pasteMatch++;
-
-                if (_pasteMatch == _pasteEnd.Length)
-                {
-                    FinishPaste();
-                }
-
-                return;
-            }
-
-            if (_pasteMatch > 0)
-            {
-                AppendPaste(_pasteEnd.AsSpan(0, _pasteMatch));
-                _pasteMatch = 0;
-                continue;
-            }
-
-            AppendPaste(value);
-            return;
+            FinishPaste();
         }
-    }
-
-    private void AppendPaste(ReadOnlySpan<byte> value)
-    {
-        foreach (var item in value)
-        {
-            AppendPaste(item);
-        }
-    }
-
-    private void AppendPaste(byte value)
-    {
-        if (_pasteOverflow)
-        {
-            _pasteDiscarded++;
-            return;
-        }
-
-        if (_pasteLength == _options.MaxPasteBytes)
-        {
-            _pasteOverflow = true;
-            _pasteDiscarded = 1;
-
-            if (_pasteLength > 0)
-            {
-                _paste.AsSpan(0, _pasteLength).Clear();
-            }
-
-            _pasteLength = 0;
-            return;
-        }
-
-        EnsurePasteCapacity(_pasteLength + 1);
-        _paste![_pasteLength++] = value;
-    }
-
-    private void EnsurePasteCapacity(int required)
-    {
-        Debug.Assert(required > 0 && required <= _options.MaxPasteBytes);
-
-        if (_paste is not null && required <= _paste.Length)
-        {
-            return;
-        }
-
-        var size = _paste is null
-            ? Math.Min(_options.MaxPasteBytes, Math.Max(256, required))
-            : Math.Min(_options.MaxPasteBytes, Math.Max(required, _paste.Length * 2));
-        var replacement = ArrayPool<byte>.Shared.Rent(size);
-
-        if (_paste is not null)
-        {
-            _paste.AsSpan(0, _pasteLength).CopyTo(replacement);
-            ArrayPool<byte>.Shared.Return(_paste, clearArray: true);
-        }
-
-        _paste = replacement;
     }
 
     private void FinishPaste()
     {
-        if (_pasteOverflow)
+        if (_pasteAccumulator.Overflowed)
         {
             Report(
                 DiagnosticCode.StringLimit,
                 SequenceKind.Csi,
-                _pasteDiscarded);
+                _pasteAccumulator.DiscardedBytes);
         }
         else
         {
-            var owned = NormalizeUtf8(_paste.AsSpan(0, _pasteLength));
+            var owned = NormalizeUtf8(_pasteAccumulator.Buffered);
             var paste = Paste.Take(owned);
             _sink.Input(paste);
         }
 
-        ResetPaste();
-    }
-
-    private void ResetPaste()
-    {
-        if (_pasteLength > 0 && _paste is not null)
-        {
-            _paste.AsSpan(0, _pasteLength).Clear();
-        }
-
-        _pasteMode = false;
-        _pasteOverflow = false;
-        _pasteLength = 0;
-        _pasteMatch = 0;
-        _pasteDiscarded = 0;
+        _pasteAccumulator.Reset();
     }
 
     private void Report(DiagnosticCode code, SequenceKind kind, long discardedBytes)
