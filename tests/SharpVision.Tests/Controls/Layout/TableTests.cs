@@ -167,6 +167,75 @@ public sealed class TableTests
         }
     }
 
+    /// <summary>Verifies a row inserted while sorted lands at its correct sorted position via
+    /// binary-search splicing rather than a full resort, for every insertion point (before every
+    /// existing row, after every existing row, and each position between) (see #118).</summary>
+    [Theory]
+    [InlineData("0", 0)]
+    [InlineData("15", 1)]
+    [InlineData("25", 2)]
+    [InlineData("35", 3)]
+    [InlineData("99", 3)]
+    public void Rows_WhenInsertedWhileSorted_LandsAtSortedPosition(string value, int expectedIndex)
+    {
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(new TableRow([new ControlText("10")]));
+        table.Rows.Add(new TableRow([new ControlText("20")]));
+        table.Rows.Add(new TableRow([new ControlText("30")]));
+        table.SortBy(0);
+        var changes = new List<(int Column, TableSortDirection Direction)>();
+        table.SortChanged += (_, args) => changes.Add((args.ColumnIndex, args.Direction));
+
+        var inserted = new TableRow([new ControlText(value)]);
+        table.Rows.Add(inserted);
+
+        var expected = new List<string> { "10", "20", "30" };
+        expected.Insert(expectedIndex, value);
+        table.Rows.IndexOf(inserted).ShouldBe(expectedIndex);
+        table.Rows.Select(static row => ((ControlText) row.Cells[0]).Content).ShouldBe(expected);
+        changes.ShouldBe([(0, TableSortDirection.Ascending)]);
+    }
+
+    /// <summary>Verifies inserting two equal-keyed rows while sorted places each new row after
+    /// every existing row sharing its key, matching SetSort's own insertion-order tie-break
+    /// (see #118).</summary>
+    [Fact]
+    public void Rows_WhenInsertedWithDuplicateKeyWhileSorted_SortsAfterExistingTies()
+    {
+        var first = new TableRow([new ControlText("dup")]);
+        var second = new TableRow([new ControlText("dup")]);
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(first);
+        table.SortBy(0);
+
+        table.Rows.Add(second);
+
+        table.Rows.ShouldBe([first, second]);
+    }
+
+    /// <summary>Verifies replacing a row while sorted re-splices only the replacement into its
+    /// correct sorted position (see #118).</summary>
+    [Fact]
+    public void Rows_WhenReplacedWhileSorted_LandsAtSortedPosition()
+    {
+        var first = new TableRow([new ControlText("10")]);
+        var second = new TableRow([new ControlText("20")]);
+        var third = new TableRow([new ControlText("30")]);
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(first);
+        table.Rows.Add(second);
+        table.Rows.Add(third);
+        table.SortBy(0);
+
+        var replacement = new TableRow([new ControlText("25")]);
+        table.Rows[0] = replacement;
+
+        table.Rows.ShouldBe([second, replacement, third]);
+    }
+
     /// <summary>Verifies removing or replacing an edited row cancels and detaches its editor callback.</summary>
     [Fact]
     public void Rows_WhenEditedRowIsRemovedOrReplaced_CancelsBeforeOwnershipChanges()

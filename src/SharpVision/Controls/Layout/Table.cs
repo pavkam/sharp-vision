@@ -1188,6 +1188,59 @@ public sealed class Table: ItemsControl
         return string.CompareOrdinal(Convert.ToString(left, CultureInfo.InvariantCulture), Convert.ToString(right, CultureInfo.InvariantCulture));
     }
 
+    /// <summary>
+    /// Splices one changed row into its sorted position among the other, already-ordered rows via
+    /// binary search, instead of re-sorting every row from scratch on each insert/replace while
+    /// sorted — O(log n) comparisons plus the O(n) shift already paid by <see cref="ReorderRows"/>,
+    /// not another full O(n log n) resort (see #118).
+    /// </summary>
+    /// <param name="changedRow">The newly inserted or replacement row, currently present in
+    /// <see cref="Rows"/> at any position.</param>
+    /// <returns>Every row in final sorted order.</returns>
+    private TableRow[] SpliceIntoSortedOrder(TableRow changedRow)
+    {
+        var others = new List<TableRow>(Rows.Count - 1);
+
+        foreach (var row in Rows)
+        {
+            if (!ReferenceEquals(row, changedRow))
+            {
+                others.Add(row);
+            }
+        }
+
+        var key = GetSortKey(changedRow, SortColumnIndex);
+        var ascending = SortDirection == TableSortDirection.Ascending;
+        var low = 0;
+        var high = others.Count;
+
+        while (low < high)
+        {
+            var mid = (low + high) / 2;
+            var comparison = CompareKeys(key, GetSortKey(others[mid], SortColumnIndex));
+
+            if (!ascending)
+            {
+                comparison = -comparison;
+            }
+
+            // A tie sorts after every existing row with an equal key, matching SetSort's
+            // insertion-order tie-break for the most recently changed row.
+            if (comparison < 0)
+            {
+                high = mid;
+            }
+            else
+            {
+                low = mid + 1;
+            }
+        }
+
+        others.Insert(low, changedRow);
+
+        return [.. others];
+    }
+
     private void ReorderRows(IReadOnlyList<TableRow> ordered)
     {
         if (Rows.SequenceEqual(ordered))
@@ -1302,7 +1355,8 @@ public sealed class Table: ItemsControl
 
         if (!_isReordering && SortDirection != TableSortDirection.None)
         {
-            SetSort(SortColumnIndex, SortDirection);
+            ReorderRows(SpliceIntoSortedOrder(row));
+            SortChanged?.Invoke(this, new TableSortChangedEventArgs(SortColumnIndex, SortDirection));
         }
     }
 
@@ -1421,7 +1475,8 @@ public sealed class Table: ItemsControl
 
         if (!_isReordering && SortDirection != TableSortDirection.None)
         {
-            SetSort(SortColumnIndex, SortDirection);
+            ReorderRows(SpliceIntoSortedOrder(row));
+            SortChanged?.Invoke(this, new TableSortChangedEventArgs(SortColumnIndex, SortDirection));
         }
     }
 
