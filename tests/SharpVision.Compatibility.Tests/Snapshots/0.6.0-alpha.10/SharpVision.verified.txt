@@ -518,7 +518,7 @@ namespace SharpVision.Controls.Display
     {
         public Image() { }
         public string AlternateText { get; set; }
-        public SharpVision.Terminal.Graphics.Image? Source { get; set; }
+        public SharpVision.Terminal.Graphics.ImageSource? Source { get; set; }
         public SharpVision.Controls.Display.ImageStretch Stretch { get; set; }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnCellMetricsChanged(SharpVision.Terminal.Geometry.Metrics? previous, SharpVision.Terminal.Geometry.Metrics? current) { }

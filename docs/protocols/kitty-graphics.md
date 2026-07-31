@@ -30,7 +30,7 @@ Typed and implemented behavior includes:
 - explicit asynchronous remote cleanup before local renderer disposal; and
 - explicitly authorized tmux passthrough.
 
-`Graphics.Image` copies validated source data. `Frame` retains ordered semantic
+`Graphics.ImageSource` copies validated source data. `Frame` retains ordered semantic
 `Graphics.Placement` values. A renderer with no selected graphics backend emits
 only ordinary cells, so those cells are the deterministic fallback rather than
 an implicit raster conversion.

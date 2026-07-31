@@ -4,18 +4,18 @@
 
 `Image` is declared `public sealed class Image : Control`. It displays one
 borrowed immutable
-[`Terminal.Graphics.Image`](../../concepts/images.md#image-ownership-contract)
+[`Terminal.Graphics.ImageSource`](../../concepts/images.md#imagesource-ownership-contract)
 without exposing a terminal protocol to control code. It is passive,
 non-focusable, and has no input events. The caller retains ownership of the
 source when it is assigned, replaced, cleared, or when the control is disposed.
 
 ## API
 
-| Property        | Type              | Default   | Effect  |
-| --------------- | ----------------- | --------- | ------- |
-| `Source`        | `Graphics.Image?` | `null`    | Measure |
-| `AlternateText` | `string`          | empty     | Measure |
-| `Stretch`       | `ImageStretch`    | `Contain` | Render  |
+| Property        | Type                    | Default   | Effect  |
+| --------------- | ----------------------- | --------- | ------- |
+| `Source`        | `Graphics.ImageSource?` | `null`    | Measure |
+| `AlternateText` | `string`                | empty     | Measure |
+| `Stretch`       | `ImageStretch`          | `Contain` | Render  |
 
 `AlternateText` rejects null or any terminal control character before mutation.
 `Stretch` accepts only `Contain`, `Cover`, or `Stretch` and rejects an unknown
@@ -62,7 +62,7 @@ already-painted cell fallback visible.
 ```csharp
 var preview = new Image
 {
-    Source = Graphics.Image.FromRgba(pixelSize, rgbaBytes),
+    Source = Graphics.ImageSource.FromRgba(pixelSize, rgbaBytes),
     AlternateText = "Photo preview",
     Stretch = ImageStretch.Contain,
 };

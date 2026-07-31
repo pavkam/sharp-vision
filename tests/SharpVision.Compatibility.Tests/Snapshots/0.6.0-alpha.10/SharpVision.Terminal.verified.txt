@@ -435,15 +435,15 @@ namespace SharpVision.Terminal.Graphics
         Rgba = 0,
         Png = 1,
     }
-    public sealed class Image
+    public sealed class ImageSource
     {
         public int ByteCount { get; }
         public SharpVision.Terminal.Graphics.Format Format { get; }
         public ulong Identity { get; }
         public SharpVision.Terminal.Geometry.Size Size { get; }
         public int CopyTo(System.Span<byte> destination) { }
-        public static SharpVision.Terminal.Graphics.Image FromPng(System.ReadOnlySpan<byte> source, SharpVision.Terminal.Graphics.Limits? limits = null) { }
-        public static SharpVision.Terminal.Graphics.Image FromRgba(SharpVision.Terminal.Geometry.Size size, System.ReadOnlySpan<byte> source, SharpVision.Terminal.Graphics.Limits? limits = null) { }
+        public static SharpVision.Terminal.Graphics.ImageSource FromPng(System.ReadOnlySpan<byte> source, SharpVision.Terminal.Graphics.Limits? limits = null) { }
+        public static SharpVision.Terminal.Graphics.ImageSource FromRgba(SharpVision.Terminal.Geometry.Size size, System.ReadOnlySpan<byte> source, SharpVision.Terminal.Graphics.Limits? limits = null) { }
     }
     public sealed class Limits
     {
@@ -455,9 +455,9 @@ namespace SharpVision.Terminal.Graphics
     }
     public readonly struct Placement : System.IEquatable<SharpVision.Terminal.Graphics.Placement>
     {
-        public Placement(SharpVision.Terminal.Graphics.Image image, SharpVision.Terminal.Geometry.Rect source, SharpVision.Terminal.Geometry.Rect destination, SharpVision.Terminal.Graphics.PlacementMode mode) { }
+        public Placement(SharpVision.Terminal.Graphics.ImageSource image, SharpVision.Terminal.Geometry.Rect source, SharpVision.Terminal.Geometry.Rect destination, SharpVision.Terminal.Graphics.PlacementMode mode) { }
         public SharpVision.Terminal.Geometry.Rect Destination { get; }
-        public SharpVision.Terminal.Graphics.Image? Image { get; }
+        public SharpVision.Terminal.Graphics.ImageSource? Image { get; }
         public ulong ImageIdentity { get; }
         public bool IsEmpty { get; }
         public SharpVision.Terminal.Graphics.PlacementMode Mode { get; }
@@ -668,7 +668,7 @@ namespace SharpVision.Terminal.Iterm
 {
     public static class Writer
     {
-        public static void Write(SharpVision.Terminal.Graphics.Image image, SharpVision.Terminal.Geometry.Size destinationCells, SharpVision.Terminal.Graphics.PlacementMode mode, System.Buffers.IBufferWriter<byte> destination, int maxSequenceBytes = 1048576, int maxOutputBytes = 268435456) { }
+        public static void Write(SharpVision.Terminal.Graphics.ImageSource image, SharpVision.Terminal.Geometry.Size destinationCells, SharpVision.Terminal.Graphics.PlacementMode mode, System.Buffers.IBufferWriter<byte> destination, int maxSequenceBytes = 1048576, int maxOutputBytes = 268435456) { }
     }
 }
 namespace SharpVision.Terminal.Kitty
@@ -860,6 +860,11 @@ namespace SharpVision.Terminal.Kitty
 }
 namespace SharpVision.Terminal.Multiplexing
 {
+    public static class GnuScreenWriter
+    {
+        public static bool TryUnwrap(System.ReadOnlySpan<byte> envelope, System.Buffers.IBufferWriter<byte> destination) { }
+        public static void WritePassthrough(System.Buffers.IBufferWriter<byte> destination, System.ReadOnlySpan<byte> sequence) { }
+    }
     public enum MultiplexerKind
     {
         None = 0,
@@ -1115,11 +1120,6 @@ namespace SharpVision.Terminal.Protocols
         Overline = 53,
         NotOverline = 55,
     }
-    public static class Screen
-    {
-        public static bool TryUnwrap(System.ReadOnlySpan<byte> envelope, System.Buffers.IBufferWriter<byte> destination) { }
-        public static void WritePassthrough(System.Buffers.IBufferWriter<byte> destination, System.ReadOnlySpan<byte> sequence) { }
-    }
     public enum SequenceKind
     {
         None = 0,
@@ -1203,7 +1203,7 @@ namespace SharpVision.Terminal.Rendering
         public void DrawCircle(SharpVision.Terminal.Geometry.Point center, int radius, System.Text.Rune value, SharpVision.Terminal.Rendering.CellStyle style = default) { }
         public void DrawEllipse(SharpVision.Terminal.Geometry.Rect bounds, System.Text.Rune value, SharpVision.Terminal.Rendering.CellStyle style = default) { }
         public void DrawHorizontalLine(SharpVision.Terminal.Geometry.Point origin, int length, SharpVision.Terminal.Rendering.LineStyle line, SharpVision.Terminal.Rendering.CellStyle style = default) { }
-        public void DrawImage(SharpVision.Terminal.Graphics.Image image, SharpVision.Terminal.Geometry.Rect destination, SharpVision.Terminal.Graphics.PlacementMode mode) { }
+        public void DrawImage(SharpVision.Terminal.Graphics.ImageSource image, SharpVision.Terminal.Geometry.Rect destination, SharpVision.Terminal.Graphics.PlacementMode mode) { }
         public void DrawLine(SharpVision.Terminal.Geometry.Point start, SharpVision.Terminal.Geometry.Point end, System.Text.Rune value, SharpVision.Terminal.Rendering.CellStyle style = default) { }
         public void DrawLineCell(SharpVision.Terminal.Geometry.Point point, SharpVision.Terminal.Rendering.LineConnections connections, SharpVision.Terminal.Rendering.LineStyle line, SharpVision.Terminal.Rendering.CellStyle style = default) { }
         public void DrawQuadrants(SharpVision.Terminal.Geometry.Point point, SharpVision.Terminal.Rendering.Quadrants quadrants, SharpVision.Terminal.Rendering.CellStyle style = default) { }
@@ -1496,7 +1496,7 @@ namespace SharpVision.Terminal.Sixel
 {
     public static class Writer
     {
-        public static void Write(SharpVision.Terminal.Graphics.Image image, SharpVision.Terminal.Geometry.Rect source, SharpVision.Terminal.Geometry.Size destinationPixels, SharpVision.Terminal.Graphics.PlacementMode mode, System.Buffers.IBufferWriter<byte> destination, int maxOutputBytes = 268435456) { }
+        public static void Write(SharpVision.Terminal.Graphics.ImageSource image, SharpVision.Terminal.Geometry.Rect source, SharpVision.Terminal.Geometry.Size destinationPixels, SharpVision.Terminal.Graphics.PlacementMode mode, System.Buffers.IBufferWriter<byte> destination, int maxOutputBytes = 268435456) { }
     }
 }
 namespace SharpVision.Terminal.Terminfo

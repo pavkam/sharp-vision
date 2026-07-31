@@ -3,8 +3,6 @@
 
 namespace SharpVision.Runtime;
 
-using Screen = Controls.Screen;
-
 /// <summary>Provides the fluent entry point for interactive console applications.</summary>
 [PublicAPI]
 public static class ConsoleApplication

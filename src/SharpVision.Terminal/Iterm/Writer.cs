@@ -28,7 +28,7 @@ public static class Writer
     /// <exception cref="ArgumentOutOfRangeException">A dimension, mode, or finite policy is invalid or exceeded.</exception>
     /// <exception cref="NotSupportedException">The image is not PNG or the mode requires cropping.</exception>
     public static void Write(
-        Image image,
+        ImageSource image,
         Size destinationCells,
         PlacementMode mode,
         IBufferWriter<byte> destination,
@@ -125,7 +125,7 @@ public static class Writer
     /// <param name="maxOutputBytes">The complete prepared transaction bound.</param>
     /// <returns>Whether every frame and the complete transaction fit.</returns>
     internal static bool CanWrite(
-        Image image,
+        ImageSource image,
         Size destinationCells,
         PlacementMode mode,
         int maxSequenceBytes,
@@ -220,7 +220,7 @@ public static class Writer
     }
 
     private static void WriteTransaction(
-        Image image,
+        ImageSource image,
         Size destinationCells,
         PlacementMode mode,
         PreparedBuffer output,

@@ -158,7 +158,7 @@ public sealed class ConsoleApplicationTests
         Capabilities.Conservative);
 
     /// <summary>Signals the exact application instance once the Started hook fires.</summary>
-    private sealed class StartedSignalScreen: SharpVision.Controls.Screen
+    private sealed class StartedSignalScreen: Screen
     {
         private readonly TaskCompletionSource<Application> _started =
             new(TaskCreationOptions.RunContinuationsAsynchronously);

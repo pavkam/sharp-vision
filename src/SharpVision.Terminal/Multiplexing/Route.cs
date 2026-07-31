@@ -136,7 +136,7 @@ public sealed class Route
                 }
                 else
                 {
-                    Screen.WritePassthrough(next, current);
+                    GnuScreenWriter.WritePassthrough(next, current);
                 }
 
                 current = next.WrittenSpan;
@@ -176,7 +176,7 @@ public sealed class Route
             var next = new ArrayBufferWriter<byte>();
             var unwrapped = Policy.Layers[index] == MultiplexerKind.Tmux
                 ? TmuxWriter.TryUnwrapEnvelope(current, next)
-                : Screen.TryUnwrap(current, next);
+                : GnuScreenWriter.TryUnwrap(current, next);
 
             if (!unwrapped || next.WrittenCount > Policy.MaxEnvelopeBytes)
             {
@@ -242,7 +242,7 @@ public sealed class Route
 
         var payload = new ArrayBufferWriter<byte>();
 
-        if (!Screen.TryUnwrap(candidate, payload))
+        if (!GnuScreenWriter.TryUnwrap(candidate, payload))
         {
             return false;
         }

@@ -24,7 +24,7 @@ flowchart TB
 ```
 
 - [Unicode cell geometry](unicode-cell-geometry.md#unicode-cell-geometry-contract)
-- [Images](images.md#image-ownership-contract)
+- [Images](images.md#imagesource-ownership-contract)
 - [Styling](styling.md#styling-contract)
 - [Intrinsic chrome](intrinsic-chrome.md#intrinsic-chrome-contract)
 - [Themes](themes.md#theme-file-contract)

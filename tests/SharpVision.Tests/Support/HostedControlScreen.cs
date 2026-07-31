@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Support;
 
 /// <summary>Hosts one detached control under the ordinary semantic application screen.</summary>
-internal sealed class HostedControlScreen: SharpVision.Controls.Screen
+internal sealed class HostedControlScreen: Screen
 {
     /// <summary>Initializes a screen that owns the supplied detached content.</summary>
     /// <param name="content">The non-null detached control to host.</param>

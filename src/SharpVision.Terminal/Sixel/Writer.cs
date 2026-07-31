@@ -27,7 +27,7 @@ public static class Writer
     /// </exception>
     /// <exception cref="NotSupportedException"><paramref name="image"/> is not RGBA.</exception>
     public static void Write(
-        Image image,
+        ImageSource image,
         Rect source,
         Size destinationPixels,
         PlacementMode mode,
@@ -75,7 +75,7 @@ public static class Writer
         destination.Write(transaction.WrittenSpan);
     }
 
-    private static void ValidateSource(Image image, Rect source)
+    private static void ValidateSource(ImageSource image, Rect source)
     {
         if (source.X < 0 ||
             source.Y < 0 ||

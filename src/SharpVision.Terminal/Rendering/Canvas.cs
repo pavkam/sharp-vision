@@ -93,7 +93,7 @@ public readonly struct Canvas
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="mode"/> is unknown.</exception>
     /// <exception cref="InvalidOperationException">The finite frame placement limit is exhausted.</exception>
     /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
-    public void DrawImage(Image image, Rect destination, PlacementMode mode)
+    public void DrawImage(ImageSource image, Rect destination, PlacementMode mode)
     {
         ArgumentNullException.ThrowIfNull(image);
 

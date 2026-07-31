@@ -9,7 +9,7 @@ using Graphics;
 internal readonly struct ImageState
 {
     /// <summary>Initializes one retained image state.</summary>
-    public ImageState(Image image, uint id)
+    public ImageState(ImageSource image, uint id)
     {
         ArgumentNullException.ThrowIfNull(image);
         ArgumentOutOfRangeException.ThrowIfZero(id);
@@ -18,7 +18,7 @@ internal readonly struct ImageState
     }
 
     /// <summary>Gets the retained immutable image.</summary>
-    public Image Image { get; }
+    public ImageSource Image { get; }
 
     /// <summary>Gets the nonzero protocol identifier.</summary>
     public uint Id { get; }

@@ -173,7 +173,7 @@ public sealed class SessionTests
             MultiplexingOperation.CapabilityQueries);
         var limits = Limits.Default with { MaxConcurrentQueries = 1 };
         var wrapped = new ArrayBufferWriter<byte>();
-        Screen.WritePassthrough(wrapped, "\u001b[?1;2c"u8);
+        GnuScreenWriter.WritePassthrough(wrapped, "\u001b[?1;2c"u8);
 
         foreach (var value in wrapped.WrittenSpan)
         {

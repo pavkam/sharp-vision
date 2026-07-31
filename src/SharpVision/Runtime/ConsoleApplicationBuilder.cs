@@ -12,7 +12,7 @@ using Terminal.Kitty;
 [PublicAPI]
 public sealed class ConsoleApplicationBuilder
 {
-    private readonly Controls.Screen _screen;
+    private readonly Screen _screen;
     private readonly Func<bool> _isInteractive;
     private readonly Func<ConsoleHostOptions, ConsoleConnection> _open;
     private readonly Action<string> _writeLine;
@@ -20,7 +20,7 @@ public sealed class ConsoleApplicationBuilder
     /// <summary>Initializes a builder for one detached screen.</summary>
     /// <param name="screen">The non-null detached screen.</param>
     /// <exception cref="ArgumentNullException"><paramref name="screen"/> is null.</exception>
-    public ConsoleApplicationBuilder(Controls.Screen screen) : this(
+    public ConsoleApplicationBuilder(Screen screen) : this(
         screen,
         static () => ConsoleHost.IsInteractive,
         static options => ConsoleHost.Open(options),
@@ -35,7 +35,7 @@ public sealed class ConsoleApplicationBuilder
     /// <param name="writeLine">The non-null plain-message writer.</param>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
     internal ConsoleApplicationBuilder(
-        Controls.Screen screen,
+        Screen screen,
         Func<bool> isInteractive,
         Func<ConsoleHostOptions, ConsoleConnection> open,
         Action<string> writeLine)

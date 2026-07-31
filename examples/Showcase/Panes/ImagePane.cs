@@ -5,7 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Terminal.Capabilities;
 
-using GraphicsImage = Terminal.Graphics.Image;
+using GraphicsImage = Terminal.Graphics.ImageSource;
 using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 using Text = SharpVision.Controls.Display.Text;
 

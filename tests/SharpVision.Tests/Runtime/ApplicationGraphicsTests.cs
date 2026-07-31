@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Runtime;
 
 using CapabilitySupport = Terminal.Capabilities.Support;
-using GraphicsImage = Terminal.Graphics.Image;
+using GraphicsImage = Terminal.Graphics.ImageSource;
 using MultiplexerKind = Terminal.Multiplexing.MultiplexerKind;
 using MultiplexingPolicy = Terminal.Multiplexing.Policy;
 

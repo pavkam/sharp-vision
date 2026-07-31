@@ -14,7 +14,7 @@ documentation, and showcase evidence agree.
 | Bind controls to model state       | [Data binding](concepts/data-binding.md#data-binding-contract)                        | [State and events](walkthroughs/state-and-events.md#state-input-and-events)            |
 | Add keyboard access keys           | [Access keys](concepts/access-keys.md#access-key-contract)                            | [Focus](concepts/focus.md#focus-contract)                                              |
 | Choose existing files              | [File picker](dialogs/file-picker-dialog.md#filepickerdialog-contract)                | [Dialogs](dialogs/index.md#dialog-catalog)                                             |
-| Display terminal-safe images       | [Image control](controls/display/image.md#image-contract)                             | [Image ownership](concepts/images.md#image-ownership-contract)                         |
+| Display terminal-safe images       | [Image control](controls/display/image.md#image-contract)                             | [ImageSource ownership](concepts/images.md#imagesource-ownership-contract)             |
 | Update the UI from background work | [Background work](walkthroughs/background-work.md#background-work-and-the-dispatcher) | [Threading](concepts/threading.md#threading-contract)                                  |
 | Use terminal capabilities safely   | [Terminal services](walkthroughs/terminal-services.md#use-terminal-services)          | [Coverage matrix](protocols/coverage-matrix.md#coverage)                               |
 | Build a reusable component         | [Custom controls](walkthroughs/custom-controls.md#build-a-custom-control)             | [Control catalog](controls/index.md#control-catalog)                                   |

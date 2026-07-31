@@ -3,8 +3,9 @@
 
 namespace SharpVision.Controls.Display;
 
+using Terminal.Graphics;
+
 using CellMetrics = Metrics;
-using GraphicsImage = Terminal.Graphics.Image;
 using PlacementMode = Terminal.Graphics.PlacementMode;
 using Shade = Terminal.Rendering.Shade;
 using UnicodeWidth = Width;
@@ -22,7 +23,7 @@ public sealed class Image: Control
     /// <remarks>Replacement, null assignment, and control disposal never mutate or dispose the image.</remarks>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public GraphicsImage? Source
+    public ImageSource? Source
     {
         get;
         set => _ = SetProperty(ref field, value, InvalidationImpact.Measure);

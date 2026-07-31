@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Support;
 
 /// <summary>Records screen lifecycle hook order for Application startup tests.</summary>
-internal sealed class ProbeScreen: SharpVision.Controls.Screen
+internal sealed class ProbeScreen: Screen
 {
     private readonly bool _throwOnAttach;
     private readonly bool _throwOnDispose;

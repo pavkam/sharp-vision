@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Controls.Display;
 
 using CellMetrics = Terminal.Geometry.Metrics;
-using GraphicsImage = Terminal.Graphics.Image;
+using GraphicsImage = Terminal.Graphics.ImageSource;
 using PlacementMode = Terminal.Graphics.PlacementMode;
 
 /// <summary>Verifies Image ownership, validation, intrinsic geometry, fallback, and semantic placement.</summary>

@@ -22,7 +22,7 @@ public readonly struct Placement: IEquatable<Placement>
     /// <exception cref="ArgumentOutOfRangeException">
     /// A rectangle is empty, the source is outside the image, or <paramref name="mode"/> is unknown.
     /// </exception>
-    public Placement(Image image, Rect source, Rect destination, PlacementMode mode)
+    public Placement(ImageSource image, Rect source, Rect destination, PlacementMode mode)
         : this(image, source, destination, mode, paintRevision: null)
     {
     }
@@ -34,7 +34,7 @@ public readonly struct Placement: IEquatable<Placement>
     /// <param name="mode">The semantic fitting mode interpreted by a graphics backend.</param>
     /// <param name="paintRevision">The frame mutation revision immediately before image paint.</param>
     internal Placement(
-        Image image,
+        ImageSource image,
         Rect source,
         Rect destination,
         PlacementMode mode,
@@ -44,7 +44,7 @@ public readonly struct Placement: IEquatable<Placement>
     }
 
     private Placement(
-        Image image,
+        ImageSource image,
         Rect source,
         Rect destination,
         PlacementMode mode,
@@ -92,7 +92,7 @@ public readonly struct Placement: IEquatable<Placement>
     public bool IsEmpty => Image is null;
 
     /// <summary>Gets the immutable retained image, or null for <see cref="Empty"/>.</summary>
-    public Image? Image { get; }
+    public ImageSource? Image { get; }
 
     /// <summary>Gets the stable process-local identity, or zero for <see cref="Empty"/>.</summary>
     public ulong ImageIdentity => Image?.Identity ?? 0;

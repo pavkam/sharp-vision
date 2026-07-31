@@ -76,7 +76,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
     /// <exception cref="ArgumentException"><paramref name="screen"/> is attached or already owned.</exception>
     /// <exception cref="ObjectDisposedException"><paramref name="screen"/> is disposed.</exception>
     internal static async Task<ComponentSurface> MountScreenAsync(
-        SharpVision.Controls.Screen screen,
+        Screen screen,
         Size size,
         CancellationToken cancellationToken)
     {

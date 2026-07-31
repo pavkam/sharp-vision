@@ -101,7 +101,7 @@ completes; `ITransport.WriteAsync` borrows renderer memory until its returned
 operation completes and must either transfer the complete memory or throw.
 Renderer disposal never disposes a borrowed transport.
 
-`Terminal.Graphics.Image` copies RGBA or structurally validated PNG bytes into
+`Terminal.Graphics.ImageSource` copies RGBA or structurally validated PNG bytes into
 private immutable storage. Public callers recover bytes only through a complete
 copy into caller-owned memory. Synchronous terminal encoders may borrow the
 internal source span only until they return; a renderer must copy encoded output

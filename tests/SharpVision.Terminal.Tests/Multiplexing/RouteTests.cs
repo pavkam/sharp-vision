@@ -411,7 +411,7 @@ public sealed class RouteTests
     {
         var route = new Route(ActivePolicy([MultiplexerKind.Screen]));
         var wrapped = new ArrayBufferWriter<byte>();
-        Screen.WritePassthrough(wrapped, "\u001bP1$r>4;2m\u001b\\"u8);
+        GnuScreenWriter.WritePassthrough(wrapped, "\u001bP1$r>4;2m\u001b\\"u8);
         var input = wrapped.WrittenSpan.ToArray();
 
         route.TryUnwrapReply(input, out var rejected).ShouldBeFalse();
@@ -452,7 +452,7 @@ public sealed class RouteTests
             maxEnvelopeBytes: 16);
         var route = new Route(policy);
         var wrapped = new ArrayBufferWriter<byte>();
-        Screen.WritePassthrough(wrapped, "\u001bP1+r524742=3234\u001b\\"u8);
+        GnuScreenWriter.WritePassthrough(wrapped, "\u001bP1+r524742=3234\u001b\\"u8);
         var input = wrapped.WrittenSpan.ToArray();
 
         for (var split = 0; split <= input.Length; split++)
@@ -482,7 +482,7 @@ public sealed class RouteTests
     {
         var route = new Route(ActivePolicy([MultiplexerKind.Screen]));
         var wrapped = new ArrayBufferWriter<byte>();
-        Screen.WritePassthrough(wrapped, "\u001b[?1;2c"u8);
+        GnuScreenWriter.WritePassthrough(wrapped, "\u001b[?1;2c"u8);
         var input = wrapped.WrittenSpan.ToArray();
 
         for (var split = 0; split <= input.Length; split++)
@@ -517,7 +517,7 @@ public sealed class RouteTests
 
         negotiator.Start(destination, localCells: null, localPixels: null, route);
         var inner = new ArrayBufferWriter<byte>();
-        Screen.TryUnwrap(destination.WrittenSpan, inner).ShouldBeTrue();
+        GnuScreenWriter.TryUnwrap(destination.WrittenSpan, inner).ShouldBeTrue();
 
         inner.WrittenSpan.ToArray().ShouldBe(
             Encoding.ASCII.GetBytes(

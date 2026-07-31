@@ -1,7 +1,7 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Terminal.Protocols;
+namespace SharpVision.Terminal.Multiplexing;
 
 /// <summary>Writes one terminal sequence through GNU screen DCS passthrough framing.</summary>
 /// <remarks>
@@ -9,10 +9,10 @@ namespace SharpVision.Terminal.Protocols;
 /// it. The caller supplies an already validated outer-terminal sequence.
 /// </remarks>
 [PublicAPI]
-public static class Screen
+public static class GnuScreenWriter
 {
-    private static ReadOnlySpan<byte> Header => "\u001bP"u8;
-    private static ReadOnlySpan<byte> Terminator => "\u001b\\"u8;
+    private static ReadOnlySpan<byte> Header => "P"u8;
+    private static ReadOnlySpan<byte> Terminator => "\\"u8;
 
     /// <summary>Writes one borrowed terminal sequence through one GNU screen DCS envelope.</summary>
     /// <param name="destination">The non-null synchronously consumed byte destination.</param>

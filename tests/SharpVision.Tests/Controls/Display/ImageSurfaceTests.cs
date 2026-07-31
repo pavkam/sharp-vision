@@ -3,7 +3,7 @@
 
 namespace SharpVision.Tests.Controls.Display;
 
-using GraphicsImage = Terminal.Graphics.Image;
+using GraphicsImage = Terminal.Graphics.ImageSource;
 
 /// <summary>Proves Image through a mounted application with deterministic cell fallback.</summary>
 public sealed class ImageSurfaceTests

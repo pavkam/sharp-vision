@@ -3,7 +3,7 @@
 
 namespace SharpVision.Tests.Support;
 
-using GraphicsImage = Terminal.Graphics.Image;
+using GraphicsImage = Terminal.Graphics.ImageSource;
 using PlacementMode = Terminal.Graphics.PlacementMode;
 #pragma warning disable IDE0001 // Keep the terminal drawing alias explicit after retiring layout Canvas.
 using TerminalCanvas = Terminal.Rendering.Canvas;

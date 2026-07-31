@@ -20,7 +20,7 @@ internal static class Encoder
     /// <returns>The exact number of source sampling operations.</returns>
     /// <exception cref="InvalidOperationException">The checked worst-case output exceeds policy.</exception>
     public static int Encode(
-        Image image,
+        ImageSource image,
         Rect source,
         Size destination,
         PlacementMode mode,
@@ -85,7 +85,7 @@ internal static class Encoder
     #region Sampling
 
     private static int Sample(
-        Image image,
+        ImageSource image,
         Rect source,
         Size destination,
         PlacementMode mode,

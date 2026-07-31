@@ -266,9 +266,9 @@ public sealed class BackendTests
         var frame = new Frame(new Size(text.Length, 1));
         _ = frame.Canvas.Draw(text, default);
 
-        foreach (var placement in placements)
+        foreach (var (image, destination) in placements)
         {
-            frame.Canvas.DrawImage(placement.Image, placement.Destination, PlacementMode.Stretch);
+            frame.Canvas.DrawImage(image, destination, PlacementMode.Stretch);
         }
 
         return frame;

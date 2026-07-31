@@ -5,12 +5,12 @@ namespace SharpVision.Terminal.Graphics;
 
 /// <summary>Owns one immutable bounded RGBA or encoded PNG terminal image.</summary>
 [PublicAPI]
-public sealed class Image
+public sealed class ImageSource
 {
     private static long _nextIdentity;
     private readonly byte[] _source;
 
-    private Image(Size size, Format format, ReadOnlySpan<byte> source)
+    private ImageSource(Size size, Format format, ReadOnlySpan<byte> source)
     {
         Size = size;
         Format = format;
@@ -37,7 +37,7 @@ public sealed class Image
     /// <returns>An independently owned immutable image.</returns>
     /// <exception cref="ArgumentOutOfRangeException">Dimensions, pixels, or bytes exceed policy.</exception>
     /// <exception cref="ArgumentException"><paramref name="source"/> is not exactly four bytes per pixel.</exception>
-    public static Image FromRgba(Size size, ReadOnlySpan<byte> source, Limits? limits = null)
+    public static ImageSource FromRgba(Size size, ReadOnlySpan<byte> source, Limits? limits = null)
     {
         var policy = limits ?? Limits.Default;
         policy.Validate(size, source.Length);
@@ -47,7 +47,7 @@ public sealed class Image
             ? throw new ArgumentException(
                 "RGBA source length must equal width times height times four.",
                 nameof(source))
-            : new Image(size, Format.Rgba, source);
+            : new ImageSource(size, Format.Rgba, source);
     }
 
     /// <summary>Creates an image by copying a structurally validated PNG container.</summary>
@@ -56,7 +56,7 @@ public sealed class Image
     /// <returns>An independently owned immutable image.</returns>
     /// <exception cref="ArgumentException">The PNG container or IHDR fields are invalid.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Dimensions, pixels, or bytes exceed policy.</exception>
-    public static Image FromPng(ReadOnlySpan<byte> source, Limits? limits = null)
+    public static ImageSource FromPng(ReadOnlySpan<byte> source, Limits? limits = null)
     {
         var policy = limits ?? Limits.Default;
 
@@ -70,7 +70,7 @@ public sealed class Image
 
         var size = Png.ReadSize(source);
         policy.Validate(size, source.Length);
-        return new Image(size, Format.Png, source);
+        return new ImageSource(size, Format.Png, source);
     }
 
     /// <summary>Copies the complete owned source into caller-provided memory.</summary>
