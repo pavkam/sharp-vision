@@ -32,6 +32,46 @@ public sealed class ModesTests
                 "\u001b[?1004h\u001b[?2026h\u001b[?5522h\u001b[?5522l"));
     }
 
+    /// <summary>Verifies each typed helper encodes exactly the DecPrivateMode constant carrying
+    /// its name, so the encode side and the discovery query side (which also reads
+    /// DecPrivateMode) cannot silently retype a different number for the same mode (see #93).</summary>
+    [Fact]
+    public void Mode_WhenToggled_EncodesTheNamedDecPrivateModeConstant()
+    {
+        AssertEncodesMode(DecPrivateMode.CursorVisible, static (writer, enabled) => Modes.CursorVisible(writer, enabled));
+        AssertEncodesMode(DecPrivateMode.AlternateScreen, static (writer, enabled) => Modes.AlternateScreen(writer, enabled));
+        AssertEncodesMode(DecPrivateMode.BracketedPaste, static (writer, enabled) => Modes.BracketedPaste(writer, enabled));
+        AssertEncodesMode(DecPrivateMode.FocusReporting, static (writer, enabled) => Modes.FocusReporting(writer, enabled));
+        AssertEncodesMode(DecPrivateMode.SynchronizedOutput, static (writer, enabled) => Modes.SynchronizedOutput(writer, enabled));
+        AssertEncodesMode(DecPrivateMode.ClipboardPasteEvents, static (writer, enabled) => Modes.ClipboardPasteEvents(writer, enabled));
+
+        static void AssertEncodesMode(int mode, Action<Writer, bool> encode)
+        {
+            var destination = new ArrayBufferWriter<byte>();
+            encode(new Writer(destination), true);
+
+            var expected = new ArrayBufferWriter<byte>();
+            Modes.SetPrivate(new Writer(expected), mode, true);
+
+            destination.WrittenSpan.ToArray().ShouldBe(expected.WrittenSpan.ToArray());
+        }
+    }
+
+    /// <summary>Verifies the shared constants match their documented DEC mode numbers, so the
+    /// discovery query side and this encode side cannot silently drift.</summary>
+    [Fact]
+    public void DecPrivateMode_WhenRead_MatchesDocumentedModeNumbers()
+    {
+        DecPrivateMode.CursorVisible.ShouldBe(25);
+        DecPrivateMode.FocusReporting.ShouldBe(1004);
+        DecPrivateMode.CellMouse.ShouldBe(1006);
+        DecPrivateMode.PixelMouse.ShouldBe(1016);
+        DecPrivateMode.AlternateScreen.ShouldBe(1049);
+        DecPrivateMode.BracketedPaste.ShouldBe(2004);
+        DecPrivateMode.SynchronizedOutput.ShouldBe(2026);
+        DecPrivateMode.ClipboardPasteEvents.ShouldBe(5522);
+    }
+
     /// <summary>
     /// Verifies raw private mode validation.
     /// </summary>

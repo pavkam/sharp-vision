@@ -34,32 +34,38 @@ public static class Modes
     /// <summary>Shows or hides the text cursor using mode 25.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="visible">Whether the cursor is visible.</param>
-    public static void CursorVisible(Writer writer, bool visible) => SetPrivate(writer, 25, visible);
+    public static void CursorVisible(Writer writer, bool visible) =>
+        SetPrivate(writer, DecPrivateMode.CursorVisible, visible);
 
     /// <summary>Enters or leaves the alternate screen using mode 1049.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="enabled">Whether the alternate screen is active.</param>
-    public static void AlternateScreen(Writer writer, bool enabled) => SetPrivate(writer, 1049, enabled);
+    public static void AlternateScreen(Writer writer, bool enabled) =>
+        SetPrivate(writer, DecPrivateMode.AlternateScreen, enabled);
 
     /// <summary>Enables or disables bracketed paste using mode 2004.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="enabled">Whether bracketed paste is active.</param>
-    public static void BracketedPaste(Writer writer, bool enabled) => SetPrivate(writer, 2004, enabled);
+    public static void BracketedPaste(Writer writer, bool enabled) =>
+        SetPrivate(writer, DecPrivateMode.BracketedPaste, enabled);
 
     /// <summary>Enables or disables terminal focus reporting using mode 1004.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="enabled">Whether focus reporting is active.</param>
-    public static void FocusReporting(Writer writer, bool enabled) => SetPrivate(writer, 1004, enabled);
+    public static void FocusReporting(Writer writer, bool enabled) =>
+        SetPrivate(writer, DecPrivateMode.FocusReporting, enabled);
 
     /// <summary>Begins or ends synchronized output using mode 2026.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="enabled">Whether synchronized output is active.</param>
-    public static void SynchronizedOutput(Writer writer, bool enabled) => SetPrivate(writer, 2026, enabled);
+    public static void SynchronizedOutput(Writer writer, bool enabled) =>
+        SetPrivate(writer, DecPrivateMode.SynchronizedOutput, enabled);
 
     /// <summary>Enables or disables Kitty clipboard paste events using mode 5522.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="enabled">Whether clipboard paste events are active.</param>
-    public static void ClipboardPasteEvents(Writer writer, bool enabled) => SetPrivate(writer, 5522, enabled);
+    public static void ClipboardPasteEvents(Writer writer, bool enabled) =>
+        SetPrivate(writer, DecPrivateMode.ClipboardPasteEvents, enabled);
 
     /// <summary>Enables or disables one validated mouse tracking/coordinate pair.</summary>
     /// <param name="writer">The validated protocol writer.</param>

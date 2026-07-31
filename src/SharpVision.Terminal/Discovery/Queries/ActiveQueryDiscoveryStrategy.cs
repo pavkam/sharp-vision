@@ -176,11 +176,36 @@ internal sealed class ActiveQueryDiscoveryStrategy
             Csi.SecondaryDeviceAttributes(writer);
         }
 
-        AddModeQuery(writer, 2026, _baseline.SynchronizedOutput, _options.Overrides?.SynchronizedOutput, ref remaining);
-        AddModeQuery(writer, 1004, _baseline.FocusReporting, _options.Overrides?.FocusReporting, ref remaining);
-        AddModeQuery(writer, 2004, _baseline.BracketedPaste, _options.Overrides?.BracketedPaste, ref remaining);
-        AddModeQuery(writer, 1006, _baseline.CellMouse, _options.Overrides?.CellMouse, ref remaining);
-        AddModeQuery(writer, 1016, _baseline.PixelMouse, _options.Overrides?.PixelMouse, ref remaining);
+        AddModeQuery(
+            writer,
+            DecPrivateMode.SynchronizedOutput,
+            _baseline.SynchronizedOutput,
+            _options.Overrides?.SynchronizedOutput,
+            ref remaining);
+        AddModeQuery(
+            writer,
+            DecPrivateMode.FocusReporting,
+            _baseline.FocusReporting,
+            _options.Overrides?.FocusReporting,
+            ref remaining);
+        AddModeQuery(
+            writer,
+            DecPrivateMode.BracketedPaste,
+            _baseline.BracketedPaste,
+            _options.Overrides?.BracketedPaste,
+            ref remaining);
+        AddModeQuery(
+            writer,
+            DecPrivateMode.CellMouse,
+            _baseline.CellMouse,
+            _options.Overrides?.CellMouse,
+            ref remaining);
+        AddModeQuery(
+            writer,
+            DecPrivateMode.PixelMouse,
+            _baseline.PixelMouse,
+            _options.Overrides?.PixelMouse,
+            ref remaining);
 
         if (!HasPositive(pixels) && TryRegister(QueryKind.WindowPixels, ref remaining))
         {
@@ -607,19 +632,19 @@ internal sealed class ActiveQueryDiscoveryStrategy
     {
         switch (mode)
         {
-            case 2026:
+            case DecPrivateMode.SynchronizedOutput:
                 _synchronizedOutput = supported;
                 break;
-            case 1004:
+            case DecPrivateMode.FocusReporting:
                 _focusReporting = supported;
                 break;
-            case 2004:
+            case DecPrivateMode.BracketedPaste:
                 _bracketedPaste = supported;
                 break;
-            case 1006:
+            case DecPrivateMode.CellMouse:
                 _cellMouse = supported;
                 break;
-            case 1016:
+            case DecPrivateMode.PixelMouse:
                 _pixelMouse = supported;
                 break;
             default:
