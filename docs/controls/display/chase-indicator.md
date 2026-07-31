@@ -31,6 +31,8 @@ trail, timing, and colors preserve it. History is bounded by
 
 ## Example
 
+![The ChaseIndicator control rendered in the live showcase](../../images/controls/chase-indicator.png)
+
 ```csharp
 var indicator = new ChaseIndicator
 {

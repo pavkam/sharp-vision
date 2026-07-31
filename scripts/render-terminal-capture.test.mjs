@@ -14,3 +14,13 @@ test("toHtml preserves cells and translates terminal rendition", () => {
     assert.match(html, /next/u);
     assert.doesNotMatch(html, /\u001b/u);
 });
+
+test("toHtml emits one block row per line and splits styled runs at row boundaries", () => {
+    const html = toHtml("\u001b[41mab\ncd\u001b[0m\n");
+
+    assert.match(
+        html,
+        /<span class="row"><span style="background:#cd0000">ab<\/span><\/span><span class="row"><span style="background:#cd0000">cd<\/span><\/span>/u,
+    );
+    assert.equal(html.match(/class="row"/gu).length, 2);
+});

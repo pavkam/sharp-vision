@@ -51,6 +51,8 @@ the same geometry.
 
 ## Example
 
+![The ScrollBar control rendered in the live showcase](../../images/controls/scroll-bar.png)
+
 ```csharp
 var position = new ScrollBar
 {

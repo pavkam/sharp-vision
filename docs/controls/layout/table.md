@@ -110,6 +110,8 @@ phantom data-row spacing or grid divider until the first row is present.
 
 ## Example
 
+![The Table control rendered in the live showcase](../../images/controls/table.png)
+
 ```csharp
 var table = new Table { ShowGridLines = true };
 table.Columns.Add(TableColumn.Fixed("Name", 14));

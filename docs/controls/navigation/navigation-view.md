@@ -88,6 +88,8 @@ item, group, and separator overrides.
 
 ## Example
 
+![The NavigationView control rendered in the live showcase](../../images/controls/navigation-view.png)
+
 ```csharp
 var nav = new NavigationView { Header = "MY APP" };
 nav.Items.Add(new NavigationViewItem { Header = "Dashboard", Glyph = "📊" });

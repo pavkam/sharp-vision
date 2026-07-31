@@ -26,6 +26,8 @@ date navigation options as `Calendar`.
 
 ## Example
 
+![The DateTimeInput control rendered in the live showcase](../../images/controls/date-time-input.png)
+
 ```csharp
 var dateTimeInput = new DateTimeInput { TimeStep = TimeSpan.FromMinutes(15) };
 ```

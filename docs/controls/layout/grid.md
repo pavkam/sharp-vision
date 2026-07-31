@@ -68,6 +68,8 @@ preserves the definitions and placements unchanged.
 
 ## Example
 
+![The Grid control rendered in the live showcase](../../images/controls/grid.png)
+
 ```csharp
 var grid = new Grid
 {

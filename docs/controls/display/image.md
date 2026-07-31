@@ -59,6 +59,8 @@ already-painted cell fallback visible.
 
 ## Example
 
+![The Image control rendered in the live showcase](../../images/controls/image.png)
+
 ```csharp
 var preview = new Image
 {

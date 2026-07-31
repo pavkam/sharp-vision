@@ -50,21 +50,16 @@ process.stdout.write(String(line.indexOf(text) + 1));
 NODE
 }
 
-select_page() {
+filter_pages() {
   local name="$1"
-  local witness="$2"
-  local filter_row
-  local navigation_row
 
-  filter_row="$page_filter_row"
-
-  if [[ -z "$filter_row" ]]; then
+  if [[ -z "$page_filter_row" ]]; then
     printf 'The page filter is not visible.\n' >&2
     exit 1
   fi
 
-  send_sgr 0 10 "$filter_row" M
-  send_sgr 0 10 "$filter_row" m
+  send_sgr 0 10 "$page_filter_row" M
+  send_sgr 0 10 "$page_filter_row" m
   tmux send-keys -t "$session" C-a
   tmux send-keys -t "$session" BSpace
   tmux send-keys -t "$session" -l "$name"
@@ -73,12 +68,22 @@ select_page() {
     tmux capture-pane -t "$session" -p -J >"$plain"
 
     if grep -q "· $name" "$plain"; then
-      break
+      return
     fi
 
     sleep 0.1
   done
 
+  printf 'The %s filtered navigation entry is not visible.\n' "$name" >&2
+  exit 1
+}
+
+select_page() {
+  local name="$1"
+  local witness="$2"
+  local navigation_row
+
+  filter_pages "$name"
   navigation_row="$(find_row "· $name")"
 
   if [[ -z "$navigation_row" ]]; then
@@ -212,11 +217,13 @@ if [[ "$returned" != true ]]; then
   exit 1
 fi
 
+# The complete Concepts-first catalog is taller than the 40-row capture
+# viewport, so filter the sidebar before every pointer test on an entry.
+filter_pages 'Canvas'
 canvas_navigation_row="$(find_row '· Canvas')"
-button_navigation_row="$(find_row '· Button')"
 
-if [[ -z "$canvas_navigation_row" || -z "$button_navigation_row" ]]; then
-  printf 'The Button and Canvas sidebar entries are not both visible.\n' >&2
+if [[ -z "$canvas_navigation_row" ]]; then
+  printf 'The Canvas sidebar entry is not visible.\n' >&2
   exit 1
 fi
 
@@ -269,7 +276,7 @@ canvas=false
 for _ in {1..50}; do
   tmux capture-pane -t "$session" -p -J >"$plain"
 
-  if grep -q '› Canvas' "$plain" && grep -q 'Fixed placement' "$plain"; then
+  if grep -q '› Canvas' "$plain" && grep -q 'Drawing fundamentals' "$plain"; then
     canvas=true
     break
   fi
@@ -282,29 +289,10 @@ if [[ "$canvas" != true ]]; then
   exit 1
 fi
 
-send_sgr 0 10 "$button_navigation_row" M
-send_sgr 0 10 "$button_navigation_row" m
+# The sidebar remains a pointer target after the filtered Canvas activation.
+select_page 'Button' 'Activation log: waiting'
 
-button=false
-
-for _ in {1..50}; do
-  tmux capture-pane -t "$session" -p -J >"$plain"
-
-  if grep -q '› Button' "$plain" && grep -q 'Activation log: waiting' "$plain"; then
-    button=true
-    break
-  fi
-
-  sleep 0.1
-done
-
-if [[ "$button" != true ]]; then
-  printf 'The showcase did not handle the injected Button SGR mouse click.\n' >&2
-  exit 1
-fi
-
-# Filter to FigletText because the complete Concepts-first catalog is taller
-# than the 40-row capture viewport, then use real pointer reports to choose a font.
+# Use real pointer reports to choose a font on the FigletText page.
 select_page 'FigletText' 'Type text, then choose a font'
 
 # The documentation headline precedes the interactive editor. Scroll the main

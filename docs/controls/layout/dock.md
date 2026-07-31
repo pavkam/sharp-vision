@@ -38,6 +38,8 @@ mutation, then invalidates measure only when the child belongs to a Dock.
 
 ## Example
 
+![The Dock control rendered in the live showcase](../../images/controls/dock.png)
+
 ```csharp
 var shell = new Dock { LastChildFills = true, Spacing = 1 };
 Dock.SetSide(sidebar, DockSide.Left);

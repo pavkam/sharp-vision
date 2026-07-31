@@ -65,6 +65,8 @@ fallbacks.
 
 ## Example
 
+![The Slider control rendered in the live showcase](../../images/controls/slider.png)
+
 ```csharp
 var volume = new Slider
 {

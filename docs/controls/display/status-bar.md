@@ -4,9 +4,10 @@
 
 `StatusBar` is a persistent horizontal strip for useful, non-critical state
 about the current application context. Applications conventionally place it at
-the bottom edge of a primary screen with `Dock.SetSide(statusBar, DockSide.Bottom)`.
-It is not a second menu or command bar, and it must not be the only place an
-application communicates an error or action that requires attention.
+the bottom edge of a primary screen with
+`Dock.SetSide(statusBar, DockSide.Bottom)`. It is not a second menu or command
+bar, and it must not be the only place an application communicates an error or
+action that requires attention.
 
 The design follows the established desktop status-bar model: a horizontal area
 split into multiple status parts, with concise current-window and contextual
@@ -112,6 +113,8 @@ Arrangement responds to item content, margin, visibility, alignment, spacing,
 and viewport changes through the normal measure/arrange invalidation path.
 
 ## Example
+
+![The StatusBar control rendered in the live showcase](../../images/controls/status-bar.png)
 
 ```csharp
 var status = new StatusBar();

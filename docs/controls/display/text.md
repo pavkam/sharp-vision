@@ -156,6 +156,8 @@ boundaries.
 
 ## Example
 
+![The Text control rendered in the live showcase](../../images/controls/text.png)
+
 ```csharp
 var status = new Text
 {

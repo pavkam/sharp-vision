@@ -46,6 +46,8 @@ render time. `ResetGlyphs()` clears both overrides.
 
 ## Example
 
+![The Separator control rendered in the live showcase](../../images/controls/separator.png)
+
 ```csharp
 var separator = new Separator
 {

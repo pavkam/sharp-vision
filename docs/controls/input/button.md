@@ -45,6 +45,10 @@ programmatic activation path.
 
 ## Example
 
+![The Button control rendered in the live showcase](../../images/controls/button.png)
+
+![The Button control held in its pressed state in the live showcase](../../images/controls/button-pressed.png)
+
 ```csharp
 var save = new Button { Content = new Text("&Save") };
 save.Click += (_, _) => Save();

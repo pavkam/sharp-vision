@@ -40,6 +40,8 @@ returning it.
 
 ## Example
 
+![The Stack control rendered in the live showcase](../../images/controls/stack.png)
+
 ```csharp
 var actions = new Stack { Orientation = Orientation.Horizontal, Spacing = 1 };
 actions.Children.Add(primaryAction);

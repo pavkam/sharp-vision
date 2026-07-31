@@ -338,6 +338,8 @@ do not emit escape bytes or manually invoke a chrome helper.
 
 ## Example
 
+![The Control control rendered in the live showcase](../images/controls/control.png)
+
 ```csharp
 control.Width = Length.Cells(14);
 control.Margin = new Thickness(horizontal: 1, vertical: 0);

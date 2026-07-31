@@ -23,6 +23,8 @@ basic display and editing options.
 
 ## Example
 
+![The TimeInput control rendered in the live showcase](../../images/controls/time-input.png)
+
 ```csharp
 var timeInput = new TimeInput { TimeStep = TimeSpan.FromMinutes(15) };
 ```

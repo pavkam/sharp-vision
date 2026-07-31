@@ -18,6 +18,8 @@ dismiss.
 
 ## Example
 
+![The ContextMenu control rendered in the live showcase](../../images/controls/context-menu.png)
+
 ```csharp
 var contextMenu = new ContextMenu();
 ```

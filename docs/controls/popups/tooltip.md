@@ -37,6 +37,8 @@ elevation, frame, lifecycle, and ownership otherwise follow Popup and the
 
 ## Example
 
+![The Tooltip control rendered in the live showcase](../../images/controls/tooltip.png)
+
 ```csharp
 Tooltip.SetText(
     saveButton,

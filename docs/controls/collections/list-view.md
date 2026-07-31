@@ -126,6 +126,8 @@ may paint the paired selection background.
 
 ## Example
 
+![The ListView control rendered in the live showcase](../../images/controls/list-view.png)
+
 ```csharp
 var list = new ListView
 {

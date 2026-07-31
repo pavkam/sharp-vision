@@ -93,9 +93,7 @@ const apply = (state, values) => {
     }
 };
 
-const segment = (value, state) => {
-    if (value.length === 0) return "";
-
+const styleOf = (state) => {
     const styles = [];
     const foreground = state.reverse
         ? (state.background ?? "#0d1117")
@@ -110,25 +108,59 @@ const segment = (value, state) => {
     if (state.underline) styles.push("text-decoration:underline");
     if (foreground !== undefined) styles.push(`color:${foreground}`);
     if (background !== undefined) styles.push(`background:${background}`);
-
-    const escaped = escapeHtml(value);
-    return styles.length === 0
-        ? escaped
-        : `<span style="${styles.join(";")}">${escaped}</span>`;
+    return styles.join(";");
 };
 
-export const toHtml = (capture) => {
+const wideRanges =
+    /[ᄀ-ᅟ⺀-〾ぁ-㏿㐀-䶿一-鿿ꀀ-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦]/u;
+
+// Terminals render default-text-presentation pictographs such as ▶ in one
+// cell, so only variation-selector emoji and the supplementary pictographic
+// planes count as wide alongside the East Asian wide and fullwidth ranges.
+export const graphemeWidth = (grapheme) => {
+    if (grapheme.includes("\ufe0f")) return 2;
+
+    const code = grapheme.codePointAt(0) ?? 0;
+
+    if (code >= 0x1f000 && /\p{Extended_Pictographic}/u.test(grapheme))
+        return 2;
+
+    return wideRanges.test(grapheme) ? 2 : 1;
+};
+
+const segmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
+
+export const parseCapture = (capture) => {
     if (typeof capture !== "string")
         throw new TypeError("capture must be a string.");
 
     const state = reset();
     const pattern = /\u001b\[([0-9;]*)m/gu;
     const content = capture.replaceAll("\r", "");
+    const rows = [[]];
     let position = 0;
-    let body = "";
+
+    const append = (text) => {
+        const parts = text.split("\n");
+
+        parts.forEach((part, index) => {
+            if (index > 0) rows.push([]);
+
+            const row = rows[rows.length - 1];
+            const style = styleOf(state);
+
+            for (const { segment } of segmenter.segment(part)) {
+                row.push({
+                    text: segment,
+                    style,
+                    width: graphemeWidth(segment),
+                });
+            }
+        });
+    };
 
     for (const match of content.matchAll(pattern)) {
-        body += segment(content.slice(position, match.index), state);
+        append(content.slice(position, match.index));
         const values =
             match[1].length === 0
                 ? [0]
@@ -139,7 +171,89 @@ export const toHtml = (capture) => {
         position = match.index + match[0].length;
     }
 
-    body += segment(content.slice(position), state);
+    append(content.slice(position));
+
+    if (content.endsWith("\n")) rows.pop();
+
+    return rows;
+};
+
+export const rowText = (row) => row.map((cell) => cell.text).join("");
+
+/// Returns the 1-based visual column where `text` first starts in `row`, or 0.
+export const findColumn = (row, text) => {
+    let visual = 1;
+
+    for (let start = 0; start < row.length; start += 1) {
+        let candidate = "";
+        let index = start;
+
+        while (index < row.length && candidate.length < text.length) {
+            candidate += row[index].text;
+            index += 1;
+        }
+
+        if (candidate.startsWith(text)) return visual;
+
+        visual += row[start].width;
+    }
+
+    return 0;
+};
+
+/// Crops parsed rows to a 1-based inclusive rectangle of visual columns.
+export const crop = (rows, rect) => {
+    const cropped = [];
+
+    for (let index = rect.top - 1; index <= rect.bottom - 1; index += 1) {
+        const row = rows[index] ?? [];
+        const kept = [];
+        let visual = 1;
+
+        for (const cell of row) {
+            if (visual >= rect.left && visual + cell.width - 1 <= rect.right)
+                kept.push(cell);
+
+            visual += cell.width;
+        }
+
+        cropped.push(kept);
+    }
+
+    return cropped;
+};
+
+export const renderHtml = (rows, { padding = 24 } = {}) => {
+    const body = rows
+        .map((row) => {
+            let markup = "";
+            let pendingText = "";
+            let pendingStyle = "";
+
+            const flush = () => {
+                if (pendingText.length === 0) return;
+
+                const escaped = escapeHtml(pendingText);
+                markup +=
+                    pendingStyle.length === 0
+                        ? escaped
+                        : `<span style="${pendingStyle}">${escaped}</span>`;
+                pendingText = "";
+            };
+
+            for (const cell of row) {
+                if (cell.style !== pendingStyle) {
+                    flush();
+                    pendingStyle = cell.style;
+                }
+
+                pendingText += cell.text;
+            }
+
+            flush();
+            return `<span class="row">${markup}</span>`;
+        })
+        .join("");
     return `<!doctype html>
 <html lang="en">
 <head>
@@ -151,18 +265,25 @@ body { display: inline-block; }
 pre {
   box-sizing: border-box;
   margin: 0;
-  padding: 24px;
+  padding: ${padding}px;
   color: #e6edf3;
   background: #0d1117;
   font: 16px/20px Menlo, Monaco, "Cascadia Mono", monospace;
   white-space: pre;
 }
+/* An inline background covers only the glyph content box, which is shorter
+   than the 20px line box and leaves one-pixel gap lines between rows. Block
+   rows and full-height inline-block runs make every background tile exactly. */
+pre .row { display: block; height: 20px; }
+pre .row span { display: inline-block; height: 20px; vertical-align: top; }
 </style>
 </head>
 <body><pre>${body}</pre></body>
 </html>
 `;
 };
+
+export const toHtml = (capture) => renderHtml(parseCapture(capture));
 
 const main = async () => {
     const [, , input, output] = process.argv;

@@ -74,6 +74,8 @@ the synchronous render or hit-test operation.
 
 ## Example
 
+![The Overlay control rendered in the live showcase](../../images/controls/overlay.png)
+
 ```csharp
 var overlay = new Overlay();
 overlay.Children.Add(content);

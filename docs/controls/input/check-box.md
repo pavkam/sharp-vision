@@ -39,6 +39,10 @@ semantic item.
 
 ## Example
 
+![The CheckBox control rendered in the live showcase](../../images/controls/check-box.png)
+
+![The CheckBox control with its check mark set in the live showcase](../../images/controls/check-box-checked.png)
+
 ```csharp
 var option = new CheckBox
 {

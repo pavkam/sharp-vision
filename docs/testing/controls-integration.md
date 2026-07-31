@@ -320,9 +320,7 @@ the latest value in one target update. A warmed allocation test bounds scalar
 updates at 256 managed bytes each and proves reverse updates cannot recurse.
 
 `SharpVision.Consumer.Tests` compiles nested two-way and observable selection
-examples without friend-assembly access. `make test-binding-coverage` collects
-Cobertura for binding production files and fails below 95% line or 90% branch
-coverage, or when those files are absent.
+examples without friend-assembly access.
 
 ## Required evidence
 
