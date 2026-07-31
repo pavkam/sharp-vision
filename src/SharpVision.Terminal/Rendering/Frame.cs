@@ -400,9 +400,13 @@ public sealed class Frame: IDisposable
     /// <para>
     /// The region is a boundary, not a suggestion. A wide cluster that straddles it would leave an
     /// orphan lead or an orphan continuation behind, so any cell whose complete owner does not fit
-    /// inside the region is written blank instead of copied. That keeps the destination a valid
-    /// frame without writing a single cell outside the caller's region, which a neighbouring dirty
-    /// branch may own.
+    /// inside the region is written blank instead of copied. Every destination cell in the region is
+    /// also repaired before the copy overwrites it, the same way <see cref="Canvas.Clear"/> repairs
+    /// before blanking, so a destination wide owner straddling the region edge never survives with
+    /// only one of its two cells intact. That repair can blank one destination cell just outside the
+    /// region when a boundary continuation's lead sits there — the same reach <see cref="Canvas.Clear"/>
+    /// already has, since a partial wide owner is not a valid frame regardless of which side of the
+    /// boundary it started on.
     /// </para>
     /// <para>
     /// Compatibility and the arena bound are checked before the first write, so a rejected copy
@@ -437,6 +441,20 @@ public sealed class Frame: IDisposable
         EnsureAppendable(required);
         EnsureCapacity(checked(TextLength + required));
         var revision = NextMutationRevision();
+
+        // Repair every destination cell in the region before any of them is overwritten, the same
+        // way Canvas.Clear repairs before blanking. Without this, a destination wide owner
+        // straddling the region edge keeps one of its two cells while the other is overwritten by
+        // the copy below, leaving an orphan lead or an orphan continuation behind.
+        for (var y = target.Y; y < target.Bottom; y++)
+        {
+            var rowStart = checked(y * Size.Width);
+
+            for (var x = target.X; x < target.Right; x++)
+            {
+                Repair(checked(rowStart + x), revision);
+            }
+        }
 
         for (var y = target.Y; y < target.Bottom; y++)
         {

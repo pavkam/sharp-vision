@@ -49,6 +49,46 @@ public sealed class FrameRegionCopyTests
         FrameTests.GetText(frame, new Point(1, 0)).ShouldBeEmpty();
     }
 
+    /// <summary>
+    /// Verifies a destination wide lead straddling the region's left edge is repaired rather than
+    /// left with its continuation overwritten, which would otherwise leave an orphan lead that
+    /// shifts every later cell in the row one column to the right.
+    /// </summary>
+    [Fact]
+    public void CopyFromPrevious_WhenDestinationWideLeadPrecedesRegion_RepairsTheOrphanedLead()
+    {
+        using var previous = new Frame(new Size(4, 1));
+        _ = previous.Canvas.Draw("w", new Point(3, 0));
+        using var frame = new Frame(new Size(4, 1));
+        _ = frame.Canvas.Draw("你", new Point(2, 0));
+        Attach(frame, previous);
+
+        frame.Canvas.CopyFromPrevious(new Rect(3, 0, 1, 1));
+
+        FrameTests.GetText(frame, new Point(2, 0)).ShouldBeEmpty();
+        FrameTests.GetText(frame, new Point(3, 0)).ShouldBe("w");
+    }
+
+    /// <summary>
+    /// Verifies a destination wide lead straddling the region's right edge is repaired rather than
+    /// leaving its continuation intact, which would otherwise leave an orphan continuation and stale
+    /// content surviving past the end of the copied span.
+    /// </summary>
+    [Fact]
+    public void CopyFromPrevious_WhenDestinationWideLeadEndsRegion_RepairsTheOrphanedContinuation()
+    {
+        using var previous = new Frame(new Size(5, 1));
+        _ = previous.Canvas.Draw("z", new Point(3, 0));
+        using var frame = new Frame(new Size(5, 1));
+        _ = frame.Canvas.Draw("你", new Point(3, 0));
+        Attach(frame, previous);
+
+        frame.Canvas.CopyFromPrevious(new Rect(0, 0, 4, 1));
+
+        FrameTests.GetText(frame, new Point(3, 0)).ShouldBe("z");
+        FrameTests.GetText(frame, new Point(4, 0)).ShouldBeEmpty();
+    }
+
     /// <summary>Verifies a region containing the complete cluster copies it intact.</summary>
     [Fact]
     public void CopyFromPrevious_WhenRegionContainsCompleteCluster_CopiesIt()
