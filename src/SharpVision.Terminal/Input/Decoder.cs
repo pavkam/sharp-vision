@@ -24,19 +24,16 @@ public sealed class Decoder: IDisposable
     private byte[]? _keyReplay;
     private readonly TimeProvider _timeProvider;
     private readonly byte[] _utf8 = new byte[4];
-    private readonly byte[] _x10 = new byte[12];
     private DateTimeOffset _escapeDeadline;
     private readonly CellMetricsResolver _cellMetricsResolver;
+    private readonly MouseDecoder _mouseDecoder;
     private Modifiers _nextTextModifiers;
     private int _utf8Length;
-    private int _x10Length;
     private long _skippedBytes;
     private bool _completed;
     private bool _disposed;
     private bool _escapePending;
-    private readonly bool _pixelMouse;
     private bool _ss3Pending;
-    private bool _x10Pending;
 
     /// <summary>Initializes a decoder with a stable synchronous event sink.</summary>
     /// <param name="sink">The non-null event sink.</param>
@@ -60,7 +57,7 @@ public sealed class Decoder: IDisposable
             : new KeySequenceMatcher(_options.KeyMap.FallbackBindings);
         _keyReplay = _keyMatcher is null ? null : new byte[_keyMatcher.MaximumLength];
         _cellMetricsResolver = new CellMetricsResolver(_options.CellMetrics);
-        _pixelMouse = _options.PixelMouse;
+        _mouseDecoder = new MouseDecoder(_sink, _cellMetricsResolver, _options.PixelMouse, Report);
     }
 
     /// <summary>Consumes one borrowed transport fragment synchronously.</summary>
@@ -189,9 +186,9 @@ public sealed class Decoder: IDisposable
             Report(DiagnosticCode.Truncated, SequenceKind.Escape);
         }
 
-        if (_x10Pending)
+        if (_mouseDecoder.IsPending)
         {
-            EndX10IfPending();
+            _mouseDecoder.EndIfPending();
         }
 
         if (_pasteAccumulator.IsActive)
@@ -236,7 +233,7 @@ public sealed class Decoder: IDisposable
 
         _disposed = true;
         _utf8.AsSpan().Clear();
-        _x10.AsSpan().Clear();
+        _mouseDecoder.Clear();
         _utf8Length = 0;
         _pasteAccumulator.Dispose();
 
@@ -270,7 +267,7 @@ public sealed class Decoder: IDisposable
         if (_utf8Length == 0 &&
             !_escapePending &&
             !_ss3Pending &&
-            !_x10Pending &&
+            !_mouseDecoder.IsPending &&
             _parser.IsGround)
         {
             if (value == 0x8f && _options.KeyMap.RequiresEightBitSs3)
@@ -333,7 +330,7 @@ public sealed class Decoder: IDisposable
         _utf8Length == 0 &&
         !_escapePending &&
         !_ss3Pending &&
-        !_x10Pending &&
+        !_mouseDecoder.IsPending &&
         _parser.IsGround &&
         value != ControlBytes.Escape;
 
@@ -499,7 +496,7 @@ public sealed class Decoder: IDisposable
 
     private void HandleControl(byte value)
     {
-        EndX10IfPending();
+        _mouseDecoder.EndIfPending();
 
         if (_ss3Pending)
         {
@@ -569,7 +566,7 @@ public sealed class Decoder: IDisposable
     private void HandleEscape(ReadOnlySpan<byte> intermediates, byte final)
     {
         FlushUtf8();
-        EndX10IfPending();
+        _mouseDecoder.EndIfPending();
         EndSs3IfPending();
 
         if (intermediates.IsEmpty && final == (byte) 'O')
@@ -610,7 +607,7 @@ public sealed class Decoder: IDisposable
         byte final)
     {
         FlushUtf8();
-        EndX10IfPending();
+        _mouseDecoder.EndIfPending();
         EndSs3IfPending();
 
         if (XtermResponses.TryMetricsCsi(parameters, intermediates, final, out var metrics))
@@ -663,7 +660,7 @@ public sealed class Decoder: IDisposable
         }
 
         if (intermediates.IsEmpty && final is (byte) 'M' or (byte) 'm' &&
-            TryHandleMouse(parameters, final == (byte) 'm'))
+            _mouseDecoder.TryHandleMouse(parameters, final == (byte) 'm'))
         {
             return;
         }
@@ -857,7 +854,7 @@ public sealed class Decoder: IDisposable
         StringTerminator terminator)
     {
         FlushUtf8();
-        EndX10IfPending();
+        _mouseDecoder.EndIfPending();
         EndSs3IfPending();
 
         if (kind == SequenceKind.Osc && XtermResponses.TryOsc(value, out var response))
@@ -906,7 +903,7 @@ public sealed class Decoder: IDisposable
     private void HandleParserDiagnostic(in Diagnostic value)
     {
         FlushUtf8();
-        EndX10IfPending();
+        _mouseDecoder.EndIfPending();
         EndSs3IfPending();
         var adjusted = new Diagnostic(
             value.Code,
@@ -1498,291 +1495,13 @@ public sealed class Decoder: IDisposable
         }
     }
 
-    private bool TryHandleMouse(ReadOnlySpan<byte> parameters, bool release)
-    {
-        if (parameters.IsEmpty && !release)
-        {
-            _x10Pending = true;
-            _x10Length = 0;
-            return true;
-        }
-
-        if (!TryReadMouse(parameters, out var marker, out var code, out var x, out var y))
-        {
-            Report(DiagnosticCode.Malformed, SequenceKind.Csi);
-            return true;
-        }
-
-        if (marker == (byte) '<')
-        {
-            EmitPointer(code, x, y, release);
-            return true;
-        }
-
-        if (marker == 0 && !release)
-        {
-            EmitPointer(code - 32, x, y, release: false);
-            return true;
-        }
-
-        Report(DiagnosticCode.Malformed, SequenceKind.Csi);
-        return true;
-    }
-
-    private int ConsumeX10(ReadOnlySpan<byte> value)
-    {
-        var consumed = 0;
-
-        while (_x10Pending && consumed < value.Length)
-        {
-            if (_x10Length == _x10.Length)
-            {
-                EndX10IfPending();
-                break;
-            }
-
-            _x10[_x10Length++] = value[consumed++];
-
-            if (TryReadX10(out var code, out var x, out var y))
-            {
-                _x10Pending = false;
-                _x10.AsSpan(0, _x10Length).Clear();
-                _x10Length = 0;
-                EmitPointer(code - 32, x - 32, y - 32, release: false);
-            }
-        }
-
-        return consumed;
-    }
-
-    private bool TryReadX10(out int code, out int x, out int y)
-    {
-        Span<int> values = stackalloc int[3];
-        var position = 0;
-
-        for (var index = 0; index < values.Length; index++)
-        {
-            var status = Rune.DecodeFromUtf8(
-                _x10.AsSpan(position, _x10Length - position),
-                out var rune,
-                out var consumed);
-
-            if (status == OperationStatus.NeedMoreData)
-            {
-                code = 0;
-                x = 0;
-                y = 0;
-                return false;
-            }
-
-            if (status != OperationStatus.Done)
-            {
-                EndX10IfPending();
-                code = 0;
-                x = 0;
-                y = 0;
-                return false;
-            }
-
-            values[index] = rune.Value;
-            position += consumed;
-        }
-
-        code = values[0];
-        x = values[1];
-        y = values[2];
-        return position == _x10Length;
-    }
-
-    private void EndX10IfPending()
-    {
-        if (!_x10Pending)
-        {
-            return;
-        }
-
-        _x10Pending = false;
-        _x10.AsSpan(0, _x10Length).Clear();
-        _x10Length = 0;
-        Report(DiagnosticCode.Malformed, SequenceKind.Csi);
-    }
-
-    private void EmitPointer(int code, int wireX, int wireY, bool release)
-    {
-        var motion = (code & 32) != 0;
-        var low = code & 3;
-
-        if (code is < 0 or > 255 ||
-            ((code & 128) != 0 && ((code & 64) != 0 || low > 1)))
-        {
-            Report(DiagnosticCode.Malformed, SequenceKind.Csi);
-            return;
-        }
-
-        if (wireX == 0 && wireY == 0 && motion && low == 3)
-        {
-            var leave = new Pointer(
-                null,
-                null,
-                Buttons.None,
-                PointerAction.Leave,
-                0,
-                0,
-                DecodeMouseModifiers(code),
-                true,
-                false);
-            _sink.Input(in leave);
-            return;
-        }
-
-        if (wireX <= 0 || wireY <= 0)
-        {
-            Report(DiagnosticCode.Malformed, SequenceKind.Csi);
-            return;
-        }
-
-        var source = new Point(wireX - 1, wireY - 1);
-        Point? cells = source;
-        Point? pixels = null;
-        var inferred = false;
-
-        if (_pixelMouse)
-        {
-            pixels = source;
-            cells = null;
-
-            if (_cellMetricsResolver.Current is { } metrics && metrics.TryMap(source, out var mapped))
-            {
-                cells = mapped;
-                inferred = true;
-            }
-        }
-
-        var modifiers = DecodeMouseModifiers(code);
-        var buttons = DecodeButtons(code);
-        var action = PointerAction.Press;
-        var wheelX = 0;
-        var wheelY = 0;
-
-        if ((code & 64) != 0)
-        {
-            action = PointerAction.Wheel;
-            buttons = Buttons.None;
-
-            switch (low)
-            {
-                case 0:
-                    wheelY = 1;
-                    break;
-                case 1:
-                    wheelY = -1;
-                    break;
-                case 2:
-                    wheelX = -1;
-                    break;
-                case 3:
-                    wheelX = 1;
-                    break;
-                default:
-                    throw new UnreachableException("A two-bit wheel selector must be bounded.");
-            }
-        }
-        else if (motion)
-        {
-            action = PointerAction.Move;
-        }
-        else if (release || low == 3)
-        {
-            action = PointerAction.Release;
-        }
-
-        var pointer = new Pointer(
-            cells,
-            pixels,
-            buttons,
-            action,
-            wheelX,
-            wheelY,
-            modifiers,
-            motion,
-            inferred);
-        _sink.Input(in pointer);
-    }
-
-    private static Buttons DecodeButtons(int code)
-    {
-        var selector = code & 3;
-        return (code & 64) != 0 || selector == 3
-            ? Buttons.None
-            : (code & 128) != 0
-                ? selector switch
-                {
-                    0 => Buttons.Back,
-                    1 => Buttons.Forward,
-                    _ => Buttons.None
-                }
-                : selector switch
-                {
-                    0 => Buttons.Primary,
-                    1 => Buttons.Middle,
-                    2 => Buttons.Secondary,
-                    _ => Buttons.None
-                };
-    }
-
-    private static Modifiers DecodeMouseModifiers(int code)
-    {
-        var modifiers = Modifiers.None;
-
-        if ((code & 4) != 0)
-        {
-            modifiers |= Modifiers.Shift;
-        }
-
-        if ((code & 8) != 0)
-        {
-            modifiers |= Modifiers.Alt;
-        }
-
-        if ((code & 16) != 0)
-        {
-            modifiers |= Modifiers.Control;
-        }
-
-        return modifiers;
-    }
-
-    private static bool TryReadMouse(
-        ReadOnlySpan<byte> input,
-        out byte marker,
-        out int code,
-        out int x,
-        out int y)
-    {
-        var parameters = new Parameters(input, 4, int.MaxValue);
-        marker = parameters.PrivateMarker;
-        x = 0;
-        y = 0;
-        return ReadMouseField(ref parameters, ParameterSeparator.Semicolon, out code) &&
-               ReadMouseField(ref parameters, ParameterSeparator.Semicolon, out x) &&
-               ReadMouseField(ref parameters, ParameterSeparator.None, out y) &&
-               parameters.Read(out _, out _) == ParameterStatus.End;
-    }
-
-    private static bool ReadMouseField(
-        ref Parameters parameters,
-        ParameterSeparator expected,
-        out int value) =>
-        parameters.Read(out value, out var separator) == ParameterStatus.Value &&
-        separator == expected;
-
     /// <summary>Accepts borrowed parser text through pending SS3 and X10 state.</summary>
     /// <param name="value">The borrowed text bytes.</param>
     internal void AcceptText(ReadOnlySpan<byte> value)
     {
-        if (_x10Pending)
+        if (_mouseDecoder.IsPending)
         {
-            value = value[ConsumeX10(value)..];
+            value = value[_mouseDecoder.ConsumeX10(value)..];
         }
 
         if (_ss3Pending && !value.IsEmpty)
@@ -1840,7 +1559,7 @@ public sealed class Decoder: IDisposable
         StringTerminator terminator)
     {
         FlushUtf8();
-        EndX10IfPending();
+        _mouseDecoder.EndIfPending();
         EndSs3IfPending();
 
         if (XtermDecrqss.TryParse(parameters, intermediates, final, value, out var status))
