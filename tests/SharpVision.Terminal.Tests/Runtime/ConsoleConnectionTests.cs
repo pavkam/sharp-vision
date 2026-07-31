@@ -198,6 +198,77 @@ public sealed class ConsoleConnectionTests
             diagnostics.Select(static value => value.Code));
     }
 
+    /// <summary>Verifies a deterministic environment reader resolves the terminal name instead of
+    /// the live process environment (see #98 item 6).</summary>
+    [Fact]
+    public void ResolveDescription_WhenEnvironmentReaderIsInjected_ResolvesTerminalNameFromIt()
+    {
+        var provider = new FakeDescriptionProvider();
+        var loader = new DescriptionLoader(provider, new FakeDescriptionProvider());
+        var requestedKeys = new List<string>();
+        var connection = new ConsoleConnection(
+            new FakeTransport(),
+            new FakeResizeSource(),
+            new TrackingRestore(),
+            DescriptionPlatform.Unix,
+            outputFileDescriptor: 1,
+            windowsVirtualTerminal: false,
+            loader,
+            key =>
+            {
+                requestedKeys.Add(key);
+                return "fake-term-256color";
+            });
+
+        _ = connection.ResolveDescription();
+
+        requestedKeys.ShouldContain(EnvironmentNames.Term);
+        provider.Request.ShouldNotBeNull().TerminalName.ShouldBe("fake-term-256color");
+    }
+
+    /// <summary>Verifies a missing environment variable produces a MissingOrGeneric result rather
+    /// than reaching the description loader with an empty terminal name.</summary>
+    [Fact]
+    public void ResolveDescription_WhenInjectedEnvironmentReaderReturnsNull_ReportsMissingOrGeneric()
+    {
+        var provider = new FakeDescriptionProvider();
+        var loader = new DescriptionLoader(provider, new FakeDescriptionProvider());
+        var connection = new ConsoleConnection(
+            new FakeTransport(),
+            new FakeResizeSource(),
+            new TrackingRestore(),
+            DescriptionPlatform.Unix,
+            outputFileDescriptor: 1,
+            windowsVirtualTerminal: false,
+            loader,
+            static _ => null);
+
+        var resolved = connection.ResolveDescription();
+
+        resolved.Status.ShouldBe(DescriptionLoadStatus.MissingOrGeneric);
+        provider.Request.ShouldBeNull();
+    }
+
+    /// <summary>Verifies a description loader with neither a terminal name nor an environment
+    /// reader is rejected at construction rather than deferring to a confusing later failure.</summary>
+    [Fact]
+    public void Constructor_WhenDescriptionLoaderHasNoNameSource_Throws()
+    {
+        var loader = new DescriptionLoader(new FakeDescriptionProvider(), new FakeDescriptionProvider());
+
+        var exception = Should.Throw<ArgumentException>(() => new ConsoleConnection(
+            new FakeTransport(),
+            new FakeResizeSource(),
+            new TrackingRestore(),
+            DescriptionPlatform.Unix,
+            outputFileDescriptor: 1,
+            windowsVirtualTerminal: false,
+            descriptionLoader: loader,
+            terminalName: null!));
+
+        exception.ParamName.ShouldBe("descriptionLoader");
+    }
+
     /// <summary>Verifies established Windows VT connection facts select the built-in profile.</summary>
     [Fact]
     public void ResolveProfile_WhenWindowsVtFactsExist_ReturnsBuiltInProfile()
@@ -217,6 +288,9 @@ public sealed class ConsoleConnectionTests
     }
 
     /// <summary>Verifies deterministic description injection validates both loader and terminal name.</summary>
+    /// <remarks>A null terminal name with a loader but no environment reader is covered separately
+    /// by <see cref="Constructor_WhenDescriptionLoaderHasNoNameSource_Throws"/>, since an injected
+    /// environment reader makes that combination valid (see #98 item 6).</remarks>
     [Fact]
     public void Constructor_WhenDescriptionInjectionIsInvalid_Throws()
     {
@@ -236,15 +310,6 @@ public sealed class ConsoleConnectionTests
             windowsVirtualTerminal: false,
             descriptionLoader: null!,
             terminalName: "dumb"));
-        var missingName = Should.Throw<ArgumentNullException>(() => new ConsoleConnection(
-            transport,
-            resize,
-            restore,
-            DescriptionPlatform.Unix,
-            1,
-            windowsVirtualTerminal: false,
-            loader,
-            terminalName: null!));
         var blankName = Should.Throw<ArgumentException>(() => new ConsoleConnection(
             transport,
             resize,
@@ -256,7 +321,6 @@ public sealed class ConsoleConnectionTests
             terminalName: " "));
 
         missingLoader.ParamName.ShouldBe("descriptionLoader");
-        missingName.ParamName.ShouldBe("terminalName");
         blankName.ParamName.ShouldBe("terminalName");
     }
 }

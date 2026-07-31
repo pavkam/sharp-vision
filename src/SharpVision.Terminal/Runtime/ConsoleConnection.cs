@@ -20,6 +20,7 @@ public sealed class ConsoleConnection: IAsyncDisposable
     private readonly IDisposable _restore;
     private readonly DescriptionLoader? _descriptionLoader;
     private readonly string? _terminalName;
+    private readonly Func<string, string?> _readEnvironment;
     private int _disposed;
 
     /// <summary>Initializes a connection over opened console resources.</summary>
@@ -36,7 +37,8 @@ public sealed class ConsoleConnection: IAsyncDisposable
             outputFileDescriptor: null,
             windowsVirtualTerminal: false,
             descriptionLoader: null,
-            terminalName: null)
+            terminalName: null,
+            readEnvironment: null)
     {
     }
 
@@ -69,7 +71,44 @@ public sealed class ConsoleConnection: IAsyncDisposable
             outputFileDescriptor,
             windowsVirtualTerminal,
             descriptionLoader: null,
-            terminalName: null)
+            terminalName: null,
+            readEnvironment: null)
+    {
+    }
+
+    /// <summary>Initializes a connection with exact host facts and a deterministic environment reader.</summary>
+    /// <param name="transport">The non-null transport over the console streams.</param>
+    /// <param name="resize">The non-null resize source.</param>
+    /// <param name="restore">The non-null platform terminal-mode restore lease.</param>
+    /// <param name="descriptionPlatform">The established description-provider platform.</param>
+    /// <param name="outputFileDescriptor">The non-negative descriptor used for terminal setup.</param>
+    /// <param name="windowsVirtualTerminal">Whether Windows virtual-terminal processing was established.</param>
+    /// <param name="readEnvironment">The non-null deterministic environment-variable reader.</param>
+    /// <exception cref="ArgumentNullException">A required dependency is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="descriptionPlatform"/> is undefined or <paramref name="outputFileDescriptor"/> is negative.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="windowsVirtualTerminal"/> is true for a non-Windows platform.
+    /// </exception>
+    internal ConsoleConnection(
+        ITransport transport,
+        IResizeSource resize,
+        IDisposable restore,
+        DescriptionPlatform descriptionPlatform,
+        int outputFileDescriptor,
+        bool windowsVirtualTerminal,
+        Func<string, string?> readEnvironment)
+        : this(
+            transport,
+            resize,
+            restore,
+            (DescriptionPlatform?) descriptionPlatform,
+            outputFileDescriptor,
+            windowsVirtualTerminal,
+            descriptionLoader: null,
+            terminalName: null,
+            readEnvironment ?? throw new ArgumentNullException(nameof(readEnvironment)))
     {
     }
 
@@ -102,7 +141,44 @@ public sealed class ConsoleConnection: IAsyncDisposable
             outputFileDescriptor,
             windowsVirtualTerminal,
             RequireDescriptionLoader(descriptionLoader),
-            terminalName)
+            terminalName,
+            readEnvironment: null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a connection with a deterministic lower-layer loader and a deterministic
+    /// environment reader, resolving the terminal name from the reader instead of a fixed value.
+    /// </summary>
+    /// <param name="transport">The non-null transport over the console streams.</param>
+    /// <param name="resize">The non-null resize source.</param>
+    /// <param name="restore">The non-null platform terminal-mode restore lease.</param>
+    /// <param name="descriptionPlatform">The established description-provider platform.</param>
+    /// <param name="outputFileDescriptor">The non-negative descriptor used for terminal setup.</param>
+    /// <param name="windowsVirtualTerminal">Whether Windows virtual-terminal processing was established.</param>
+    /// <param name="descriptionLoader">The non-null deterministic lower-layer loader.</param>
+    /// <param name="readEnvironment">The non-null deterministic environment-variable reader.</param>
+    /// <exception cref="ArgumentNullException">A required dependency is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">A platform fact is outside its valid range.</exception>
+    internal ConsoleConnection(
+        ITransport transport,
+        IResizeSource resize,
+        IDisposable restore,
+        DescriptionPlatform descriptionPlatform,
+        int outputFileDescriptor,
+        bool windowsVirtualTerminal,
+        DescriptionLoader descriptionLoader,
+        Func<string, string?> readEnvironment)
+        : this(
+            transport,
+            resize,
+            restore,
+            (DescriptionPlatform?) descriptionPlatform,
+            outputFileDescriptor,
+            windowsVirtualTerminal,
+            RequireDescriptionLoader(descriptionLoader),
+            terminalName: null,
+            readEnvironment ?? throw new ArgumentNullException(nameof(readEnvironment)))
     {
     }
 
@@ -114,7 +190,8 @@ public sealed class ConsoleConnection: IAsyncDisposable
         int? outputFileDescriptor,
         bool windowsVirtualTerminal,
         DescriptionLoader? descriptionLoader,
-        string? terminalName)
+        string? terminalName,
+        Func<string, string?>? readEnvironment)
     {
         ArgumentNullException.ThrowIfNull(transport);
         ArgumentNullException.ThrowIfNull(resize);
@@ -122,7 +199,16 @@ public sealed class ConsoleConnection: IAsyncDisposable
 
         if (descriptionLoader is not null)
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(terminalName);
+            if (terminalName is not null)
+            {
+                ArgumentException.ThrowIfNullOrWhiteSpace(terminalName);
+            }
+            else if (readEnvironment is null)
+            {
+                throw new ArgumentException(
+                    "A deterministic description loader requires either a terminal name or an environment reader.",
+                    nameof(descriptionLoader));
+            }
         }
         else if (terminalName is not null)
         {
@@ -162,6 +248,7 @@ public sealed class ConsoleConnection: IAsyncDisposable
         WindowsVirtualTerminal = windowsVirtualTerminal;
         _descriptionLoader = descriptionLoader;
         _terminalName = terminalName;
+        _readEnvironment = readEnvironment ?? Environment.GetEnvironmentVariable;
         _restore = restore;
     }
 
@@ -222,7 +309,7 @@ public sealed class ConsoleConnection: IAsyncDisposable
 
         var terminalName = _terminalName ?? (platform == Terminal.Capabilities.DescriptionPlatform.Windows
             ? "windows-vt"
-            : Environment.GetEnvironmentVariable(EnvironmentNames.Term));
+            : _readEnvironment(EnvironmentNames.Term));
 
         if (string.IsNullOrWhiteSpace(terminalName))
         {
