@@ -22,8 +22,8 @@ public sealed class ConsoleApplicationBuilder
     /// <exception cref="ArgumentNullException"><paramref name="screen"/> is null.</exception>
     public ConsoleApplicationBuilder(Screen screen) : this(
         screen,
-        static () => ConsoleHost.IsInteractive,
-        static options => ConsoleHost.Open(options),
+        static () => ConsoleHost.Default.IsInteractive,
+        static options => ConsoleHost.Default.Open(options),
         static message => Console.WriteLine(message))
     {
     }
