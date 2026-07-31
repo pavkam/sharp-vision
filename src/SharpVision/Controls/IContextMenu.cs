@@ -13,6 +13,10 @@ namespace SharpVision.Controls;
 public interface IContextMenu
 {
     /// <summary>Gets the retained presentation control owned by the associated control.</summary>
+    /// <remarks>
+    /// The presentation may be owned by only one <see cref="Control.ContextMenu"/> at a time;
+    /// assigning the same instance to a second control is rejected.
+    /// </remarks>
     public Control Presentation { get; }
 
     /// <summary>Shows the menu at a root-relative cell position.</summary>

@@ -430,6 +430,13 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     private OwnedControlSlot? _contextMenuSlot;
 
     /// <summary>Gets or sets an optional context menu shown on secondary pointer press.</summary>
+    /// <remarks>
+    /// A menu's presentation control may belong to only one owner at a time; assigning a menu
+    /// already presented by another control is rejected.
+    /// </remarks>
+    /// <exception cref="ArgumentException">
+    /// The assigned menu's presentation already belongs to another control.
+    /// </exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public IContextMenu? ContextMenu
@@ -444,27 +451,18 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 return;
             }
 
-            if (field?.Presentation is { } oldPresentation)
-            {
-                _ = _contextMenuSlot!.Remove(oldPresentation);
-            }
+            _contextMenuSlot ??= RegisterOwnedSlot(
+                new OwnedControlOptions(
+                    OwnedControlRole.FrameworkPart,
+                    OwnedControlLayer.Popup,
+                    participatesInHitTesting: true,
+                    participatesInNavigation: true,
+                    partKey: "context-menu",
+                    InvalidationImpact.None),
+                capacity: 1);
 
+            _contextMenuSlot.ReplaceAll(value is null ? [] : [value.Presentation]);
             field = value;
-
-            if (value is not null)
-            {
-                _contextMenuSlot ??= RegisterOwnedSlot(
-                    new OwnedControlOptions(
-                        OwnedControlRole.FrameworkPart,
-                        OwnedControlLayer.Popup,
-                        participatesInHitTesting: true,
-                        participatesInNavigation: true,
-                        partKey: "context-menu",
-                        InvalidationImpact.None),
-                    capacity: 1);
-
-                _contextMenuSlot.Add(value.Presentation);
-            }
         }
     }
 

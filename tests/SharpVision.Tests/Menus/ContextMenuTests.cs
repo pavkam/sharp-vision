@@ -138,6 +138,31 @@ public sealed class ContextMenuTests
         menu.Presentation.ShouldBeSameAs(presentation);
     }
 
+    /// <summary>Verifies assigning one menu instance to a second control while it is still owned
+    /// by the first throws and leaves the second control's own state untouched (see #180).</summary>
+    [Fact]
+    public void ContextMenu_WhenAlreadyOwnedByAnotherControl_ThrowsAndLeavesSecondControlUnchanged()
+    {
+        // Arrange
+        using var a = new Button { Content = new ControlText("A") };
+        using var b = new Button { Content = new ControlText("B") };
+        var shared = new ContextMenu();
+        var existing = new ContextMenu();
+        a.ContextMenu = shared;
+        b.ContextMenu = existing;
+
+        // Act and assert
+        _ = Should.Throw<ArgumentException>(() => b.ContextMenu = shared);
+
+        // Assert b's own menu and its presentation stay exactly as they were
+        b.ContextMenu.ShouldBeSameAs(existing);
+        existing.Presentation.Parent.ShouldBeSameAs(b);
+
+        // Assert a's menu is untouched by the rejected assignment
+        a.ContextMenu.ShouldBeSameAs(shared);
+        shared.Presentation.Parent.ShouldBeSameAs(a);
+    }
+
     /// <summary>Verifies TextInput default context menu type.</summary>
     [Fact]
     public void TextInput_WhenCreated_HasDefaultContextMenu()

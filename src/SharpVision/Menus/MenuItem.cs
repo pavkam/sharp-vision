@@ -48,8 +48,11 @@ public sealed class MenuItem: Pressable
     /// When a submenu is assigned, activating this item opens a popup below a horizontal-menu item
     /// or right of a vertical-menu item instead of raising <see cref="Invoked"/>. The submenu closes
     /// on Escape or when one of its items is invoked. Items invoked in the submenu propagate through
-    /// the owning <see cref="Menu.ItemInvoked"/> event.
+    /// the owning <see cref="Menu.ItemInvoked"/> event. A menu may only be assigned as one item's
+    /// submenu at a time; assigning a menu already hosted elsewhere is rejected, leaving the current
+    /// submenu unchanged.
     /// </remarks>
+    /// <exception cref="ArgumentException">The assigned menu already belongs to another tree.</exception>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
     public Menu? Submenu
@@ -79,6 +82,20 @@ public sealed class MenuItem: Pressable
     /// <param name="value">The replacement submenu, or null to remove the current value.</param>
     internal void CommitSubmenu(Menu? value)
     {
+        // Construct and validate the replacement before touching the outgoing popup, so a
+        // rejected assignment (the same menu already presented elsewhere) leaves everything
+        // — the outgoing popup, the subscribed submenu, and this item's own state — untouched.
+        var newPopup = value is null
+            ? null
+            : new Popup
+            {
+                Anchor = this,
+                ConstrainToRoot = false,
+                ModalBehavior = PopupModalBehavior.None,
+                Placement = PopupPlacement.Below,
+                Content = value,
+            };
+
         if (_submenu is { } previous)
         {
             previous.ItemInvoked -= OnSubmenuItemInvoked;
@@ -94,20 +111,13 @@ public sealed class MenuItem: Pressable
         }
 
         _submenu = value;
+        _submenuPopup = newPopup;
 
-        if (value is not null)
+        if (newPopup is not null && value is not null)
         {
-            _submenuPopup = new Popup
-            {
-                Anchor = this,
-                ConstrainToRoot = false,
-                ModalBehavior = PopupModalBehavior.None,
-                Placement = PopupPlacement.Below,
-                Content = value,
-            };
-            _submenuPopup.Closing += OnSubmenuClosing;
-            _submenuPopup.Closed += OnSubmenuClosed;
-            _submenuSlot.Add(_submenuPopup);
+            newPopup.Closing += OnSubmenuClosing;
+            newPopup.Closed += OnSubmenuClosed;
+            _submenuSlot.Add(newPopup);
             value.ItemInvoked += OnSubmenuItemInvoked;
         }
 

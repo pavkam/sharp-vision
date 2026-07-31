@@ -538,6 +538,32 @@ public sealed class MenuTests
         item.Submenu.ShouldBeNull();
     }
 
+    /// <summary>Verifies assigning a menu already hosted as another item's submenu throws and
+    /// leaves the target item's own submenu and popup untouched (see #180).</summary>
+    [Fact]
+    public void Submenu_WhenAlreadyHostedByAnotherItem_ThrowsAndLeavesTargetItemUnchanged()
+    {
+        // Arrange
+        var shared = new Menu { Orientation = Orientation.Vertical };
+        shared.Items.Add(new MenuItem { Content = new ControlText("Shared") });
+        var owner = new MenuItem { Content = new ControlText("File"), Submenu = shared };
+        var existing = new Menu { Orientation = Orientation.Vertical };
+        existing.Items.Add(new MenuItem { Content = new ControlText("Existing") });
+        var target = new MenuItem { Content = new ControlText("Edit"), Submenu = existing };
+        var targetPopup = OwnedTree.Find<Popup>(target).ShouldNotBeNull();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentException>(() => target.Submenu = shared);
+
+        // Assert target's own submenu and popup stay exactly as they were
+        target.Submenu.ShouldBeSameAs(existing);
+        OwnedTree.Find<Popup>(target).ShouldBeSameAs(targetPopup);
+        targetPopup.IsDisposed.ShouldBeFalse();
+
+        // Assert owner's submenu is untouched by the rejected assignment
+        owner.Submenu.ShouldBeSameAs(shared);
+    }
+
     /// <summary>Verifies Shortcut derives ShortcutText's display text when no explicit text is set.</summary>
     [Fact]
     public void ShortcutText_WhenShortcutIsSetAndTextIsNot_DerivesDisplayText()
