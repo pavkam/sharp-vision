@@ -15,4 +15,37 @@ public sealed class ConsoleHostTests
     [Fact]
     public void Open_WhenOptionsNull_Throws() =>
         Should.Throw<ArgumentNullException>(() => ConsoleHost.Open(options: null!));
+
+    /// <summary>Verifies the static members delegate to the same Default seam instance, so a
+    /// caller depending on IConsoleHost observes identical behavior to the static class (see
+    /// #98).</summary>
+    [Fact]
+    public void Default_WhenQueried_BacksTheStaticMembers()
+    {
+        _ = ConsoleHost.Default.ShouldNotBeNull();
+        ConsoleHost.IsInteractive.ShouldBe(ConsoleHost.Default.IsInteractive);
+        _ = Should.Throw<ArgumentNullException>(() => ConsoleHost.Default.Open(options: null!));
+    }
+
+    /// <summary>Verifies a caller can substitute a fake IConsoleHost instead of hand-wrapping the
+    /// static members in delegates (see #98).</summary>
+    [Fact]
+    public void IConsoleHost_WhenImplementedByAFake_IsSubstitutableForTheRealHost()
+    {
+        IConsoleHost fake = new FakeConsoleHost();
+
+        fake.IsInteractive.ShouldBeTrue();
+        _ = Should.Throw<ArgumentNullException>(() => fake.Open(options: null!));
+    }
+
+    private sealed class FakeConsoleHost: IConsoleHost
+    {
+        public bool IsInteractive => true;
+
+        public ConsoleConnection Open(ConsoleHostOptions options)
+        {
+            ArgumentNullException.ThrowIfNull(options);
+            throw new NotSupportedException("The fake host does not open a real connection.");
+        }
+    }
 }

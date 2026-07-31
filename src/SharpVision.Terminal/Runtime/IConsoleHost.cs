@@ -3,21 +3,21 @@
 
 namespace SharpVision.Terminal.Runtime;
 
-/// <summary>Opens interactive console streams for a SharpVision application host.</summary>
+/// <summary>
+/// Opens interactive console streams for a SharpVision application host, as an injectable seam
+/// over the operating-system boundary.
+/// </summary>
 /// <remarks>
-/// These static members delegate to <see cref="Default"/>, the real platform
-/// <see cref="IConsoleHost"/>. A caller that wants an injectable seam — for example to substitute
-/// a fake host in a test, instead of hand-wrapping these statics in delegates — depends on
-/// <see cref="IConsoleHost"/> directly instead of this static class (see #98).
+/// <see cref="ConsoleHost"/>'s static members are backed by
+/// <see cref="ConsoleHost.Default"/>, the real platform implementation. A caller that
+/// wants to substitute a fake host for a test — instead of hand-wrapping the static members in
+/// delegates, as callers previously had to — implements this interface directly (see #98).
 /// </remarks>
 [PublicAPI]
-public static class ConsoleHost
+public interface IConsoleHost
 {
-    /// <summary>Gets the real platform console host backing this class's static members.</summary>
-    public static IConsoleHost Default { get; } = new SystemConsoleHost();
-
     /// <summary>Gets whether standard input and output are attached to an interactive console.</summary>
-    public static bool IsInteractive => Default.IsInteractive;
+    public bool IsInteractive { get; }
 
     /// <summary>Opens the interactive console for the current platform.</summary>
     /// <param name="options">The non-null host policy.</param>
@@ -25,5 +25,5 @@ public static class ConsoleHost
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
     /// <exception cref="PlatformNotSupportedException">The current platform is not supported.</exception>
     /// <exception cref="IOException">The console cannot enter raw or VT mode.</exception>
-    public static ConsoleConnection Open(ConsoleHostOptions options) => Default.Open(options);
+    public ConsoleConnection Open(ConsoleHostOptions options);
 }

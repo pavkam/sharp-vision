@@ -1424,6 +1424,7 @@ namespace SharpVision.Terminal.Runtime
     }
     public static class ConsoleHost
     {
+        public static SharpVision.Terminal.Runtime.IConsoleHost Default { get; }
         public static bool IsInteractive { get; }
         public static SharpVision.Terminal.Runtime.ConsoleConnection Open(SharpVision.Terminal.Runtime.ConsoleHostOptions options) { }
     }
@@ -1439,6 +1440,11 @@ namespace SharpVision.Terminal.Runtime
         public System.Threading.Tasks.ValueTask DisposeAsync() { }
         public System.Threading.Tasks.ValueTask<SharpVision.Terminal.Geometry.Dimensions> ReadAsync(System.Threading.CancellationToken cancellationToken) { }
         public bool TryReadCurrent(out SharpVision.Terminal.Geometry.Dimensions value) { }
+    }
+    public interface IConsoleHost
+    {
+        bool IsInteractive { get; }
+        SharpVision.Terminal.Runtime.ConsoleConnection Open(SharpVision.Terminal.Runtime.ConsoleHostOptions options);
     }
     public sealed class Options : System.IEquatable<SharpVision.Terminal.Runtime.Options>
     {
