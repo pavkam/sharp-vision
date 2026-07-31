@@ -1,18 +1,18 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Terminal.Kitty;
+namespace SharpVision.Terminal.Kitty.Clipboard;
 
 /// <summary>Contains one owned MIME value in a completed clipboard result.</summary>
 [PublicAPI]
-public sealed class KittyMimeData
+public sealed class MimeData
 {
     private readonly byte[] _data;
 
     /// <summary>Initializes owned MIME data transferred from a transaction.</summary>
     /// <param name="mime">The UTF-8 MIME type.</param>
     /// <param name="data">The owned data buffer.</param>
-    internal KittyMimeData(string mime, byte[] data)
+    internal MimeData(string mime, byte[] data)
     {
         Mime = mime;
         _data = data;

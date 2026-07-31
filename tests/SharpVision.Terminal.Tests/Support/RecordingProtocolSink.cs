@@ -42,7 +42,7 @@ internal sealed class RecordingProtocolSink: IProtocolSink
     internal List<CapabilityResponse> CapabilityResponses { get; } = [];
 
     /// <summary>Gets recognized Kitty graphics responses in delivery order.</summary>
-    internal List<Kitty.Response> KittyGraphicsResponses { get; } = [];
+    internal List<Kitty.Graphics.Response> KittyGraphicsResponses { get; } = [];
 
     /// <summary>Gets owned terminal strings in delivery order.</summary>
     internal List<ProtocolSequence> Sequences { get; } = [];
@@ -128,7 +128,7 @@ internal sealed class RecordingProtocolSink: IProtocolSink
     }
 
     /// <inheritdoc/>
-    public void Response(Kitty.Response value)
+    public void Response(Kitty.Graphics.Response value)
     {
         KittyGraphicsResponses.Add(value);
         Order.Add("kitty-graphics-response");

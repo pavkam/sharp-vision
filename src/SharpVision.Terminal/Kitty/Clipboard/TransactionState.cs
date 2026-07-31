@@ -1,11 +1,11 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Terminal.Kitty;
+namespace SharpVision.Terminal.Kitty.Clipboard;
 
 /// <summary>Identifies the lifecycle state of a Kitty clipboard transaction.</summary>
 [PublicAPI]
-public enum KittyTransactionState
+public enum TransactionState
 {
     /// <summary>The request has been created but no response was accepted.</summary>
     Created,

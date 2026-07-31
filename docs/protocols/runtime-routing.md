@@ -38,7 +38,7 @@ callback. That diagnostic has zero offset and discarded bytes because the typed
 compatibility callback has no raw payload. OSC 10/11 preserve normalized red,
 green, blue; OSC 4 supplies index, red, green, blue; and metrics supply width,
 height. Kitty graphics APC payloads beginning with `G` use the strict owned
-`Graphics.Kitty.Response` callback; its default compatibility path reports a
+`Kitty.Graphics.Response` callback; its default compatibility path reports a
 redacted unsupported APC diagnostic. Built-in sinks override every typed
 overload they consume, so discovery still receives the typed value rather than
 the compatibility diagnostic. `IProtocolSink.Sequence` receives completed OSC,

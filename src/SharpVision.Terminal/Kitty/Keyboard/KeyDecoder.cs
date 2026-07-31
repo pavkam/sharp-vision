@@ -1,7 +1,7 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Terminal.Kitty;
+namespace SharpVision.Terminal.Kitty.Keyboard;
 
 using Input;
 
@@ -15,7 +15,7 @@ using InputAction = Input.Action;
 /// <see cref="TryDecimal"/> and <see cref="TryReadModifiers"/> also back <c>Decoder</c>'s xterm
 /// modifyOtherKeys CSI parsing, which reuses the same Kitty-originated modifier encoding.
 /// </remarks>
-internal sealed class KittyKeyDecoder
+internal sealed class KeyDecoder
 {
     private const int _maxAssociatedText = 32;
 
@@ -25,7 +25,7 @@ internal sealed class KittyKeyDecoder
     /// <summary>Initializes a Kitty key decoder sharing its host's sink and diagnostics.</summary>
     /// <param name="sink">The non-null event sink strokes and associated text are emitted to.</param>
     /// <param name="report">The non-null host diagnostic-reporting delegate.</param>
-    public KittyKeyDecoder(IInputSink sink, Action<DiagnosticCode, SequenceKind> report)
+    public KeyDecoder(IInputSink sink, Action<DiagnosticCode, SequenceKind> report)
     {
         _sink = sink;
         _report = report;

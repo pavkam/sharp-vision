@@ -1,9 +1,9 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Terminal.Kitty;
+namespace SharpVision.Terminal.Kitty.Graphics;
 
-using Graphics;
+using SharpVision.Terminal.Graphics;
 
 /// <summary>Retains one semantic placement and its exact image-placement identity pair.</summary>
 internal readonly struct PlacementState

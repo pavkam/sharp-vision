@@ -24,13 +24,13 @@ mode 5522 enables paste events. Transactions enforce documented ordering,
 total-size, metadata-size, timeout, and concurrency limits. Invalid Base64 or
 ordering aborts only that transaction and preserves outer parsing.
 
-`KittyPacket` validates colon-separated metadata, all documented statuses,
+`Kitty.Clipboard.Packet` validates colon-separated metadata, all documented statuses,
 Base64 MIME/password/name values, optional primary location, and correlation
-IDs. Unknown metadata remains observable by key name only. `KittyWriter` emits
+IDs. Unknown metadata remains observable by key name only. `Kitty.Clipboard.Writer` emits
 read/list/write/data/alias/end packets, DECRQM, and paste-mode controls.
-`KittyTransaction` enforces `OK -> DATA* -> DONE` reads, write `DONE`, one MIME
+`Kitty.Clipboard.Transaction` enforces `OK -> DATA* -> DONE` reads, write `DONE`, one MIME
 type at a time, 4096-byte chunks, total-size limits, cancellation, and
-fake-clock deadlines. Successful data transfers into an owned `KittyResult`
+fake-clock deadlines. Successful data transfers into an owned `Kitty.Clipboard.Result`
 whose disposal clears every data buffer.
 
 Correlation is checked before validity. An ID-bound transaction ignores any

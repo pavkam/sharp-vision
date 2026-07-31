@@ -7,7 +7,7 @@ using SharpVision.Terminal.Capabilities;
 
 using SharpVision.Terminal.Discovery.Queries;
 
-using KittyResponse = Kitty.Response;
+using KittyResponse = Kitty.Graphics.Response;
 
 /// <summary>Proves bounded numeric Kitty graphics capability negotiation.</summary>
 public sealed class KittyGraphicsQueryDiscoveryTests

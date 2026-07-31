@@ -56,9 +56,9 @@ truncation, and disposal, and copies normalized UTF-8 into the delivered
 `Paste`. Its `ReadOnlyMemory<byte>` therefore remains owned and stable after
 later decoder calls; no pooled array or transport memory escapes.
 
-`Osc52.Decode` and `KittyPacket.Parse` copy successfully decoded payloads into
-owned arrays. A completed `KittyTransaction` transfers its accumulated MIME
-buffers into `KittyResult`; the result owner must dispose it, which clears every
+`Osc52.Decode` and `Kitty.Clipboard.Packet.Parse` copy successfully decoded payloads into
+owned arrays. A completed `Kitty.Clipboard.Transaction` transfers its accumulated MIME
+buffers into `Kitty.Clipboard.Result`; the result owner must dispose it, which clears every
 buffer. Temporary Base64 and transaction buffers are returned with clearing.
 
 `DiscoveryContext` owns an immutable baseline plus copied environment, query,

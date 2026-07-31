@@ -1,9 +1,9 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Terminal.Kitty;
+namespace SharpVision.Terminal.Kitty.Graphics;
 
-using Graphics;
+using SharpVision.Terminal.Graphics;
 
 /// <summary>Encodes validated direct Kitty graphics APC commands with finite canonical chunking.</summary>
 [PublicAPI]

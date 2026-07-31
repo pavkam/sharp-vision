@@ -65,7 +65,7 @@ internal sealed class ReplyValidationSink: IProtocolSink
     public void Response(CapabilityResponse value) => _responses++;
 
     /// <inheritdoc/>
-    public void Response(Kitty.Response value)
+    public void Response(Kitty.Graphics.Response value)
     {
         ArgumentNullException.ThrowIfNull(value);
 

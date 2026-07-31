@@ -6,7 +6,7 @@ namespace SharpVision.Runtime;
 using SharpVision.Terminal.Runtime;
 
 using Terminal.Capabilities;
-using Terminal.Kitty;
+using Terminal.Kitty.Keyboard;
 
 /// <summary>Configures and builds one interactive console <see cref="Application"/> fluently.</summary>
 [PublicAPI]
@@ -124,7 +124,7 @@ public sealed class ConsoleApplicationBuilder
     /// <summary>Sets the Kitty keyboard enhancement flags, or null to disable.</summary>
     /// <param name="enhancement">The enhancement flags, or null to disable.</param>
     /// <returns>This builder.</returns>
-    public ConsoleApplicationBuilder UseKeyboardEnhancement(KittyEnhancement? enhancement)
+    public ConsoleApplicationBuilder UseKeyboardEnhancement(Enhancement? enhancement)
     {
         Options = Options with { KeyboardEnhancement = enhancement };
         return this;

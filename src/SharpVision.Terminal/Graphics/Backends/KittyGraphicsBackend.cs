@@ -6,11 +6,12 @@ namespace SharpVision.Terminal.Graphics.Backends;
 using Graphics;
 
 using Kitty;
+using Kitty.Graphics;
 
 using Rendering;
 
 using ImageFormat = Format;
-using KittyFormat = Kitty.Format;
+using KittyFormat = Kitty.Graphics.Format;
 using MultiplexerRoute = Multiplexing.Route;
 
 /// <summary>Implements finite transactional direct Kitty image upload and placement.</summary>

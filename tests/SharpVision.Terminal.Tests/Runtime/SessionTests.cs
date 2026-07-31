@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Tests.Runtime;
 
 using Capabilities;
 
-using Kitty;
+using Kitty.Keyboard;
 
 using SharpVision.Terminal.Backends;
 using SharpVision.Terminal.Capabilities;
@@ -81,7 +81,7 @@ public sealed class SessionTests
             Focus = true,
             Paste = true,
             Tracking = MouseTracking.Press,
-            Keyboard = KittyEnhancement.Disambiguate | KittyEnhancement.EventTypes,
+            Keyboard = Enhancement.Disambiguate | Enhancement.EventTypes,
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>(),
                 overrides: null,
@@ -526,7 +526,7 @@ public sealed class SessionTests
             Focus = true,
             Paste = true,
             Tracking = MouseTracking.Press,
-            Keyboard = KittyEnhancement.Disambiguate | KittyEnhancement.EventTypes,
+            Keyboard = Enhancement.Disambiguate | Enhancement.EventTypes,
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>(),
                 limits: Limits.Default with { MaxConcurrentQueries = 8 })
@@ -953,7 +953,7 @@ public sealed class SessionTests
         var options = RuntimeOptions.Minimal with
         {
             Capabilities = capabilities,
-            Keyboard = KittyEnhancement.Disambiguate,
+            Keyboard = Enhancement.Disambiguate,
             ModifyOtherKeys = 2
         };
         transport.Close();
@@ -980,7 +980,7 @@ public sealed class SessionTests
         var options = RuntimeOptions.Minimal with
         {
             Capabilities = capabilities,
-            Keyboard = KittyEnhancement.Disambiguate,
+            Keyboard = Enhancement.Disambiguate,
             ModifyOtherKeys = 2
         };
         transport.Close();

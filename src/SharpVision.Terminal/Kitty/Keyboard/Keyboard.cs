@@ -1,29 +1,29 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Terminal.Kitty;
+namespace SharpVision.Terminal.Kitty.Keyboard;
 
 /// <summary>Encodes Kitty keyboard query and mode-stack commands.</summary>
 [PublicAPI]
-public static class KittyKeyboard
+public static class Keyboard
 {
-    private const KittyEnhancement _all =
-        KittyEnhancement.Disambiguate |
-        KittyEnhancement.EventTypes |
-        KittyEnhancement.AlternateKeys |
-        KittyEnhancement.AllKeys |
-        KittyEnhancement.AssociatedText;
+    private const Enhancement _all =
+        Enhancement.Disambiguate |
+        Enhancement.EventTypes |
+        Enhancement.AlternateKeys |
+        Enhancement.AllKeys |
+        Enhancement.AssociatedText;
 
     /// <summary>Queries the current progressive enhancement flags.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    public static void Query(Protocols.Writer writer) => writer.Csi("?"u8, [], (byte) 'u');
+    public static void Query(Writer writer) => writer.Csi("?"u8, [], (byte) 'u');
 
     /// <summary>Pushes current flags and replaces them with a validated set.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="flags">The flags to push.</param>
     /// <exception cref="ArgumentOutOfRangeException">Unknown flags are present.</exception>
     /// <exception cref="ArgumentException">Associated text lacks all-key reporting.</exception>
-    public static void Push(Protocols.Writer writer, KittyEnhancement flags)
+    public static void Push(Writer writer, Enhancement flags)
     {
         Validate(flags);
         Span<byte> parameters = stackalloc byte[12];
@@ -37,7 +37,7 @@ public static class KittyKeyboard
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="count">The positive pop count; one uses the canonical omitted form.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is not positive.</exception>
-    public static void Pop(Protocols.Writer writer, int count = 1)
+    public static void Pop(Writer writer, int count = 1)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         Span<byte> parameters = stackalloc byte[12];
@@ -60,7 +60,7 @@ public static class KittyKeyboard
     /// <param name="mode">The replace, set, or clear operation.</param>
     /// <exception cref="ArgumentOutOfRangeException">Flags or mode are unknown.</exception>
     /// <exception cref="ArgumentException">Associated text lacks all-key reporting.</exception>
-    public static void Set(Protocols.Writer writer, KittyEnhancement flags, KittyEnhancementMode mode)
+    public static void Set(Writer writer, Enhancement flags, EnhancementMode mode)
     {
         Validate(flags);
 
@@ -81,15 +81,15 @@ public static class KittyKeyboard
         writer.Csi(parameters[..position], [], (byte) 'u');
     }
 
-    private static void Validate(KittyEnhancement flags)
+    private static void Validate(Enhancement flags)
     {
         if ((flags & ~_all) != 0)
         {
             throw new ArgumentOutOfRangeException(nameof(flags), flags, "Unknown enhancement flags are set.");
         }
 
-        if ((flags & KittyEnhancement.AssociatedText) != 0 &&
-            (flags & KittyEnhancement.AllKeys) == 0)
+        if ((flags & Enhancement.AssociatedText) != 0 &&
+            (flags & Enhancement.AllKeys) == 0)
         {
             throw new ArgumentException(
                 "Associated text requires all-key reporting.",

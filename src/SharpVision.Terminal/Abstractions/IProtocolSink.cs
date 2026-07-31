@@ -81,7 +81,7 @@ public interface IProtocolSink: IInputSink
     /// reports a synthetic unsupported APC diagnostic without exposing terminal text.
     /// </summary>
     /// <param name="value">The non-null owned graphics response.</param>
-    public void Response(Kitty.Response value)
+    public void Response(Kitty.Graphics.Response value)
     {
         ArgumentNullException.ThrowIfNull(value);
         var diagnostic = value.Diagnostic ?? new Diagnostic(

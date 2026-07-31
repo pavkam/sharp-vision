@@ -7,7 +7,7 @@ Primary source:
 accessed 2026-07-20. A command is APC `ESC _ G`, comma-separated control data,
 an optional semicolon plus Base64 data, and ST `ESC \`.
 
-`Graphics.Kitty.Command` and `Graphics.Kitty.Writer` provide the typed
+`Kitty.Graphics.Command` and `Kitty.Graphics.Writer` provide the typed
 direct-data surface. Image identifiers and placement identifiers are canonical
 nonzero unsigned 32-bit decimal values: leading zeroes, signs, and overflow are
 rejected. The official direct RGB query uses `f=24`; transmission accepts only

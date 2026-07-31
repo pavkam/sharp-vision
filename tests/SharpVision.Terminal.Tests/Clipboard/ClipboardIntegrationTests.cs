@@ -3,7 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Clipboard;
 
-using Kitty;
+using Kitty.Clipboard;
 
 using ProtocolWriter = Writer;
 
@@ -19,13 +19,13 @@ public sealed class ClipboardIntegrationTests
     public void Read_WhenResponseIsFragmented_CompletesAtEverySplit()
     {
         var requestBytes = new ArrayBufferWriter<byte>();
-        KittyWriter.Read(
+        Writer.Read(
             new ProtocolWriter(requestBytes),
             "application/octet-stream"u8,
             id: "req-1"u8);
         var request = ParsePackets(requestBytes.WrittenSpan).ShouldHaveSingleItem();
 
-        request.Operation.ShouldBe(KittyOperation.Read);
+        request.Operation.ShouldBe(Operation.Read);
         request.Id.ShouldBe("req-1");
 
         var responseBytes = new ArrayBufferWriter<byte>();
@@ -39,7 +39,7 @@ public sealed class ClipboardIntegrationTests
 
         for (var split = 0; split <= response.Length; split++)
         {
-            using var transaction = KittyTransaction.Read(id: "req-1");
+            using var transaction = Transaction.Read(id: "req-1");
             using Parser parser = new();
             var sink = new TransactionSink(transaction);
 
@@ -47,7 +47,7 @@ public sealed class ClipboardIntegrationTests
             parser.Parse(response.AsSpan(split), ref sink);
 
             transaction.State.ShouldBe(
-                KittyTransactionState.Completed,
+                TransactionState.Completed,
                 $"Response failed at split {split}.");
             var result = transaction.Result.ShouldNotBeNull();
             result.Items.ShouldHaveSingleItem().Data.ToArray().ShouldBe([0, 1, 2, 255]);
@@ -61,21 +61,21 @@ public sealed class ClipboardIntegrationTests
     [Fact]
     public void Read_WhenPermissionFails_DoesNotPoisonNextTransaction()
     {
-        using var denied = KittyTransaction.Read();
-        denied.Accept(KittyPacket.Parse("5522;type=read:status=EPERM"u8)).ShouldBe(
-            KittyAcceptResult.Failed);
+        using var denied = Transaction.Read();
+        denied.Accept(Packet.Parse("5522;type=read:status=EPERM"u8)).ShouldBe(
+            AcceptResult.Failed);
 
-        using var malformed = KittyTransaction.Read();
-        malformed.Accept(KittyPacket.Parse("5522;type=read;***"u8)).ShouldBe(
-            KittyAcceptResult.Failed);
+        using var malformed = Transaction.Read();
+        malformed.Accept(Packet.Parse("5522;type=read;***"u8)).ShouldBe(
+            AcceptResult.Failed);
 
-        using var next = KittyTransaction.Read();
-        _ = next.Accept(KittyPacket.Parse("5522;type=read:status=OK"u8));
-        _ = next.Accept(KittyPacket.Parse("5522;type=read:status=DONE"u8));
+        using var next = Transaction.Read();
+        _ = next.Accept(Packet.Parse("5522;type=read:status=OK"u8));
+        _ = next.Accept(Packet.Parse("5522;type=read:status=DONE"u8));
 
-        denied.Failure.ShouldBe(KittyReplyStatus.Denied);
+        denied.Failure.ShouldBe(ReplyStatus.Denied);
         malformed.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.InvalidBase64);
-        next.State.ShouldBe(KittyTransactionState.Completed);
+        next.State.ShouldBe(TransactionState.Completed);
     }
 
     /// <summary>
@@ -86,18 +86,18 @@ public sealed class ClipboardIntegrationTests
     {
         var bytes = new ArrayBufferWriter<byte>();
 
-        KittyWriter.WriteAlias(
+        Writer.WriteAlias(
             new ProtocolWriter(bytes),
             "text/plain"u8,
             "text/plain text/utf8"u8);
 
         var packet = ParsePackets(bytes.WrittenSpan).ShouldHaveSingleItem();
-        packet.Operation.ShouldBe(KittyOperation.WriteAlias);
+        packet.Operation.ShouldBe(Operation.WriteAlias);
         packet.Mime.ToArray().ShouldBe("text/plain"u8.ToArray());
         packet.Data.ToArray().ShouldBe("text/plain text/utf8"u8.ToArray());
     }
 
-    private static KittyPacket[] ParsePackets(ReadOnlySpan<byte> input)
+    private static Packet[] ParsePackets(ReadOnlySpan<byte> input)
     {
         using Parser parser = new();
         var sink = new RecordingSink();
@@ -105,7 +105,7 @@ public sealed class ClipboardIntegrationTests
 
         return
         [
-            .. sink.Observations.Select(static observation => KittyPacket.Parse(observation.First))
+            .. sink.Observations.Select(static observation => Packet.Parse(observation.First))
         ];
     }
 }

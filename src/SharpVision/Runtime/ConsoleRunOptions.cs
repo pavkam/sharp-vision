@@ -4,7 +4,7 @@
 namespace SharpVision.Runtime;
 
 using Terminal.Capabilities;
-using Terminal.Kitty;
+using Terminal.Kitty.Keyboard;
 
 using TerminalOptions = Terminal.Runtime.Options;
 
@@ -61,8 +61,8 @@ public sealed record ConsoleRunOptions
     public bool FocusReporting { get; init; } = true;
 
     /// <summary>Gets the Kitty keyboard flags to push when supported, or null to disable.</summary>
-    public KittyEnhancement? KeyboardEnhancement { get; init; } =
-        KittyEnhancement.Disambiguate | KittyEnhancement.EventTypes;
+    public Enhancement? KeyboardEnhancement { get; init; } =
+        Enhancement.Disambiguate | Enhancement.EventTypes;
 
     /// <summary>
     /// Gets a complete explicit terminal profile, or null to use compatibility

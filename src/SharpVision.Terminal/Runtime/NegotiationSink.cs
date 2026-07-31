@@ -83,7 +83,7 @@ internal sealed class NegotiationSink: IProtocolSink
     }
 
     /// <inheritdoc/>
-    public void Response(Kitty.Response value)
+    public void Response(Kitty.Graphics.Response value)
     {
         _ = _negotiator.Accept(value);
         _destination.Response(value);

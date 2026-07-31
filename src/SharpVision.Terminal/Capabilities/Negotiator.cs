@@ -105,7 +105,7 @@ public sealed class Negotiator
     /// <returns>The active, duplicate, late, or unknown match classification.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="response"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The negotiator has not started.</exception>
-    public QueryMatch Accept(Kitty.Response response) => _strategy.Accept(response);
+    public QueryMatch Accept(Kitty.Graphics.Response response) => _strategy.Accept(response);
 
     /// <summary>Matches one validated terminal color response.</summary>
     /// <param name="response">The immutable color response.</param>

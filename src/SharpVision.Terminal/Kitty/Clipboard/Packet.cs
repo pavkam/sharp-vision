@@ -1,22 +1,22 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Terminal.Kitty;
+namespace SharpVision.Terminal.Kitty.Clipboard;
 
-using Clipboard;
+using SharpVision.Terminal.Clipboard;
 
 /// <summary>
 /// Represents an immutable, redaction-safe Kitty OSC 5522 packet.
 /// </summary>
 [PublicAPI]
-public sealed class KittyPacket
+public sealed class Packet
 {
     #region Construction and properties
 
-    private KittyPacket(
+    private Packet(
         bool isValid,
-        KittyOperation operation,
-        KittyReplyStatus replyStatus,
+        Operation operation,
+        ReplyStatus replyStatus,
         Selection selection,
         string? id,
         ReadOnlyMemory<byte> mime,
@@ -48,10 +48,10 @@ public sealed class KittyPacket
     public bool IsValid { get; }
 
     /// <summary>Gets the typed packet operation.</summary>
-    public KittyOperation Operation { get; }
+    public Operation Operation { get; }
 
     /// <summary>Gets the typed response status.</summary>
-    public KittyReplyStatus ReplyStatus { get; }
+    public ReplyStatus ReplyStatus { get; }
 
     /// <summary>Gets the clipboard or primary selection.</summary>
     public Selection Selection { get; }
@@ -96,7 +96,7 @@ public sealed class KittyPacket
     /// Whether to decode the Base64 payload into owned memory.
     /// </param>
     /// <returns>A valid typed packet or a redacted diagnostic packet.</returns>
-    public static KittyPacket Parse(
+    public static Packet Parse(
         ReadOnlySpan<byte> value,
         Limits? limits = null,
         bool decodePayload = true)
@@ -119,8 +119,8 @@ public sealed class KittyPacket
             return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
         }
 
-        var operation = KittyOperation.None;
-        var replyStatus = KittyReplyStatus.None;
+        var operation = Operation.None;
+        var replyStatus = ReplyStatus.None;
         var selection = Selection.Clipboard;
         string? id = null;
         byte[] mime = [];
@@ -250,7 +250,7 @@ public sealed class KittyPacket
             return Invalid(DiagnosticCode.InvalidBase64, value.Length, id);
         }
 
-        return new KittyPacket(
+        return new Packet(
             isValid: true,
             operation,
             replyStatus,
@@ -279,12 +279,12 @@ public sealed class KittyPacket
             ? "none"
             : string.Join(',', UnknownKeys);
 
-        return $"KittyPacket valid={IsValid} operation={Operation} status={ReplyStatus} " +
+        return $"Packet valid={IsValid} operation={Operation} status={ReplyStatus} " +
                $"selection={Selection} id={(Id is null ? "none" : "set")} " +
                $"mimeBytes={Mime.Length} payloadBytes={Data.Length} unknown={unknown}";
     }
 
-    private static KittyPacket Invalid(DiagnosticCode code, int discarded, string? id = null)
+    private static Packet Invalid(DiagnosticCode code, int discarded, string? id = null)
     {
         Debug.Assert(Enum.IsDefined(code), "Invalid packets require a defined diagnostic code.");
         Debug.Assert(discarded >= 0, "Discarded packet byte counts are non-negative.");
@@ -293,13 +293,13 @@ public sealed class KittyPacket
 
         // The id field is order-independent on the wire, so a later structural
         // failure can still carry an already-parsed, already-validated id. An
-        // ID-bound KittyTransaction uses this to ignore unrelated malformed
+        // ID-bound Transaction uses this to ignore unrelated malformed
         // traffic instead of failing on every stray packet; a failure whose id
         // could not be recovered before the error correctly stays unattributed.
-        return new KittyPacket(
+        return new Packet(
             isValid: false,
-            KittyOperation.None,
-            KittyReplyStatus.None,
+            Operation.None,
+            ReplyStatus.None,
             Selection.Clipboard,
             id,
             ReadOnlyMemory<byte>.Empty,
@@ -462,18 +462,18 @@ public sealed class KittyPacket
 
     private static bool TryParseOperation(
         ReadOnlySpan<byte> value,
-        out KittyOperation operation)
+        out Operation operation)
     {
         operation = value switch
         {
-            _ when value.SequenceEqual("read"u8) => KittyOperation.Read,
-            _ when value.SequenceEqual("write"u8) => KittyOperation.Write,
-            _ when value.SequenceEqual("wdata"u8) => KittyOperation.WriteData,
-            _ when value.SequenceEqual("walias"u8) => KittyOperation.WriteAlias,
-            _ => KittyOperation.None
+            _ when value.SequenceEqual("read"u8) => Operation.Read,
+            _ when value.SequenceEqual("write"u8) => Operation.Write,
+            _ when value.SequenceEqual("wdata"u8) => Operation.WriteData,
+            _ when value.SequenceEqual("walias"u8) => Operation.WriteAlias,
+            _ => Operation.None
         };
 
-        return operation != KittyOperation.None;
+        return operation != Operation.None;
     }
 
     private static bool TryParseSelection(ReadOnlySpan<byte> value, out Selection selection)
@@ -496,22 +496,22 @@ public sealed class KittyPacket
 
     private static bool TryParseStatus(
         ReadOnlySpan<byte> value,
-        out KittyReplyStatus status)
+        out ReplyStatus status)
     {
         status = value switch
         {
-            _ when value.SequenceEqual("OK"u8) => KittyReplyStatus.Ok,
-            _ when value.SequenceEqual("DATA"u8) => KittyReplyStatus.Data,
-            _ when value.SequenceEqual("DONE"u8) => KittyReplyStatus.Done,
-            _ when value.SequenceEqual("EIO"u8) => KittyReplyStatus.Io,
-            _ when value.SequenceEqual("EINVAL"u8) => KittyReplyStatus.Invalid,
-            _ when value.SequenceEqual("ENOSYS"u8) => KittyReplyStatus.Unavailable,
-            _ when value.SequenceEqual("EPERM"u8) => KittyReplyStatus.Denied,
-            _ when value.SequenceEqual("EBUSY"u8) => KittyReplyStatus.Busy,
-            _ => KittyReplyStatus.None
+            _ when value.SequenceEqual("OK"u8) => ReplyStatus.Ok,
+            _ when value.SequenceEqual("DATA"u8) => ReplyStatus.Data,
+            _ when value.SequenceEqual("DONE"u8) => ReplyStatus.Done,
+            _ when value.SequenceEqual("EIO"u8) => ReplyStatus.Io,
+            _ when value.SequenceEqual("EINVAL"u8) => ReplyStatus.Invalid,
+            _ when value.SequenceEqual("ENOSYS"u8) => ReplyStatus.Unavailable,
+            _ when value.SequenceEqual("EPERM"u8) => ReplyStatus.Denied,
+            _ when value.SequenceEqual("EBUSY"u8) => ReplyStatus.Busy,
+            _ => ReplyStatus.None
         };
 
-        return status != KittyReplyStatus.None;
+        return status != ReplyStatus.None;
     }
 
     #endregion

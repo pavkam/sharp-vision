@@ -2612,7 +2612,7 @@ namespace SharpVision.Runtime
         public SharpVision.Runtime.ConsoleApplicationBuilder UseColorDepth(SharpVision.Terminal.Capabilities.ColorDepth depth) { }
         public SharpVision.Runtime.ConsoleApplicationBuilder UseEnvironmentSizeOverrides(bool enabled = true) { }
         public SharpVision.Runtime.ConsoleApplicationBuilder UseFocusReporting(bool enabled = true) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder UseKeyboardEnhancement(SharpVision.Terminal.Kitty.KittyEnhancement? enhancement) { }
+        public SharpVision.Runtime.ConsoleApplicationBuilder UseKeyboardEnhancement(SharpVision.Terminal.Kitty.Keyboard.Enhancement? enhancement) { }
         public SharpVision.Runtime.ConsoleApplicationBuilder UseMouse(SharpVision.Terminal.Protocols.MouseTracking tracking = 1003, SharpVision.Terminal.Protocols.MouseCoordinates coordinates = 1006) { }
         public SharpVision.Runtime.ConsoleApplicationBuilder UseNegotiation(SharpVision.Terminal.Capabilities.NegotiationOptions negotiation) { }
         public SharpVision.Runtime.ConsoleApplicationBuilder UseTerminalProfile(SharpVision.Terminal.Capabilities.TerminalProfile profile) { }
@@ -2635,7 +2635,7 @@ namespace SharpVision.Runtime
         public System.TimeSpan CleanupTimeout { get; init; }
         public SharpVision.Terminal.Capabilities.ColorDepth? ColorDepth { get; init; }
         public bool FocusReporting { get; init; }
-        public SharpVision.Terminal.Kitty.KittyEnhancement? KeyboardEnhancement { get; init; }
+        public SharpVision.Terminal.Kitty.Keyboard.Enhancement? KeyboardEnhancement { get; init; }
         public SharpVision.Terminal.Protocols.MouseCoordinates MouseCoordinates { get; init; }
         public SharpVision.Terminal.Protocols.MouseTracking? MouseTracking { get; init; }
         public SharpVision.Terminal.Capabilities.NegotiationOptions? Negotiation { get; init; }

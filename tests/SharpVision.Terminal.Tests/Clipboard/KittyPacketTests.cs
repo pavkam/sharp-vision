@@ -3,7 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Clipboard;
 
-using Kitty;
+using Kitty.Clipboard;
 
 /// <summary>
 /// Verifies Kitty OSC 5522 metadata and payload parsing.
@@ -16,12 +16,12 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenDataReplyIsValid_ReturnsTypedPacket()
     {
-        var packet = KittyPacket.Parse(
+        var packet = Packet.Parse(
             "5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==:id=req-1;AAEC"u8);
 
         packet.IsValid.ShouldBeTrue();
-        packet.Operation.ShouldBe(KittyOperation.Read);
-        packet.ReplyStatus.ShouldBe(KittyReplyStatus.Data);
+        packet.Operation.ShouldBe(Operation.Read);
+        packet.ReplyStatus.ShouldBe(ReplyStatus.Data);
         packet.Selection.ShouldBe(Selection.Clipboard);
         packet.Id.ShouldBe("req-1");
         packet.Mime.ToArray().ShouldBe("text/plain"u8.ToArray());
@@ -35,21 +35,21 @@ public sealed class KittyPacketTests
     /// <param name="wire">The wire status.</param>
     /// <param name="expected">The typed status.</param>
     [Theory]
-    [InlineData("OK", KittyReplyStatus.Ok)]
-    [InlineData("DATA", KittyReplyStatus.Data)]
-    [InlineData("DONE", KittyReplyStatus.Done)]
-    [InlineData("EIO", KittyReplyStatus.Io)]
-    [InlineData("EINVAL", KittyReplyStatus.Invalid)]
-    [InlineData("ENOSYS", KittyReplyStatus.Unavailable)]
-    [InlineData("EPERM", KittyReplyStatus.Denied)]
-    [InlineData("EBUSY", KittyReplyStatus.Busy)]
+    [InlineData("OK", ReplyStatus.Ok)]
+    [InlineData("DATA", ReplyStatus.Data)]
+    [InlineData("DONE", ReplyStatus.Done)]
+    [InlineData("EIO", ReplyStatus.Io)]
+    [InlineData("EINVAL", ReplyStatus.Invalid)]
+    [InlineData("ENOSYS", ReplyStatus.Unavailable)]
+    [InlineData("EPERM", ReplyStatus.Denied)]
+    [InlineData("EBUSY", ReplyStatus.Busy)]
     public void Parse_WhenStatusIsKnown_ReturnsTypedStatus(
         string wire,
-        KittyReplyStatus expected)
+        ReplyStatus expected)
     {
         var input = Encoding.ASCII.GetBytes($"5522;type=write:status={wire}");
 
-        var packet = KittyPacket.Parse(input);
+        var packet = Packet.Parse(input);
 
         packet.IsValid.ShouldBeTrue();
         packet.ReplyStatus.ShouldBe(expected);
@@ -61,7 +61,7 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenCredentialsAreValid_DecodesButRedactsText()
     {
-        var packet = KittyPacket.Parse(
+        var packet = Packet.Parse(
             "5522;type=read:pw=cGFzc3dvcmQ=:name=ZnJpZW5kbHk=;Lg=="u8);
 
         packet.IsValid.ShouldBeTrue();
@@ -78,7 +78,7 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenMetadataKeyIsUnknown_PreservesKeyName()
     {
-        var packet = KittyPacket.Parse("5522;type=read:future=secret;Lg=="u8);
+        var packet = Packet.Parse("5522;type=read:future=secret;Lg=="u8);
 
         packet.IsValid.ShouldBeTrue();
         packet.UnknownKeys.ShouldBe(["future"]);
@@ -92,7 +92,7 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenPayloadDecodeIsDisabled_PreservesPresenceOnly()
     {
-        var packet = KittyPacket.Parse(
+        var packet = Packet.Parse(
             "5522;type=wdata:mime=dGV4dC9wbGFpbg==;AAEC"u8,
             decodePayload: false);
 
@@ -108,7 +108,7 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenPayloadHasNonZeroPadBitsAndDecodeIsDisabled_ReturnsInvalidBase64()
     {
-        var packet = KittyPacket.Parse("5522;type=wdata;AR=="u8, decodePayload: false);
+        var packet = Packet.Parse("5522;type=wdata;AR=="u8, decodePayload: false);
 
         packet.IsValid.ShouldBeFalse();
         packet.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.InvalidBase64);
@@ -124,7 +124,7 @@ public sealed class KittyPacketTests
     {
         var limits = Limits.Default with { MaxClipboardBytes = 1 };
 
-        var packet = KittyPacket.Parse(
+        var packet = Packet.Parse(
             "5522;type=wdata;AAEC"u8,
             limits,
             decodePayload: false);
@@ -144,7 +144,7 @@ public sealed class KittyPacketTests
     {
         var limits = Limits.Default with { MaxClipboardBytes = 3 };
 
-        var packet = KittyPacket.Parse("5522;type=wdata;AAEC"u8, limits, decodePayload);
+        var packet = Packet.Parse("5522;type=wdata;AAEC"u8, limits, decodePayload);
 
         packet.IsValid.ShouldBeTrue();
     }
@@ -162,8 +162,8 @@ public sealed class KittyPacketTests
     {
         var bytes = Encoding.ASCII.GetBytes(input);
 
-        var decoded = KittyPacket.Parse(bytes, decodePayload: true);
-        var validatedOnly = KittyPacket.Parse(bytes, decodePayload: false);
+        var decoded = Packet.Parse(bytes, decodePayload: true);
+        var validatedOnly = Packet.Parse(bytes, decodePayload: false);
 
         validatedOnly.IsValid.ShouldBe(decoded.IsValid);
     }
@@ -183,7 +183,7 @@ public sealed class KittyPacketTests
     [InlineData("5522;type=read;***", DiagnosticCode.InvalidBase64)]
     public void Parse_WhenPacketIsMalformed_ReturnsDiagnostic(string input, DiagnosticCode code)
     {
-        var packet = KittyPacket.Parse(Encoding.ASCII.GetBytes(input));
+        var packet = Packet.Parse(Encoding.ASCII.GetBytes(input));
 
         packet.IsValid.ShouldBeFalse();
         packet.Diagnostic!.Value.Code.ShouldBe(code);
@@ -199,7 +199,7 @@ public sealed class KittyPacketTests
     {
         var limits = Limits.Default with { MaxMetadataBytes = 8 };
 
-        var packet = KittyPacket.Parse("5522;type=read:id=abc"u8, limits);
+        var packet = Packet.Parse("5522;type=read:id=abc"u8, limits);
 
         packet.IsValid.ShouldBeFalse();
         packet.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.InvalidMetadata);

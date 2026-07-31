@@ -1,9 +1,9 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Terminal.Kitty;
+namespace SharpVision.Terminal.Kitty.Clipboard;
 
-using Clipboard;
+using SharpVision.Terminal.Clipboard;
 
 using ProtocolWriter = Protocols.Writer;
 
@@ -16,7 +16,7 @@ using ProtocolWriter = Protocols.Writer;
 /// finish a write with <see cref="WriteEnd"/>. Invalid requests write no bytes.
 /// </remarks>
 [PublicAPI]
-public static class KittyWriter
+public static class Writer
 {
     private const int _chunkBytes = 4_096;
     private const int _defaultMaxBytes = 16_777_216;

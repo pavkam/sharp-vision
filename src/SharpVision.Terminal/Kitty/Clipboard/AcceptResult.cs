@@ -1,11 +1,11 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Terminal.Kitty;
+namespace SharpVision.Terminal.Kitty.Clipboard;
 
 /// <summary>Describes how one packet affected a Kitty clipboard transaction.</summary>
 [PublicAPI]
-public enum KittyAcceptResult
+public enum AcceptResult
 {
     /// <summary>The matching packet advanced the transaction.</summary>
     Accepted,

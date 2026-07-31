@@ -16,7 +16,7 @@ namespace SharpVision.Terminal.Abstractions
     }
     public interface IProtocolSink : SharpVision.Terminal.Abstractions.IInputSink
     {
-        void Response(SharpVision.Terminal.Kitty.Response value);
+        void Response(SharpVision.Terminal.Kitty.Graphics.Response value);
         void Response(SharpVision.Terminal.Xterm.CapabilityResponse value);
         void Response(in SharpVision.Terminal.Xterm.MetricsResponse value);
         void Response(in SharpVision.Terminal.Xterm.PaletteResponse value);
@@ -173,7 +173,7 @@ namespace SharpVision.Terminal.Capabilities
         public bool IsStarted { get; }
         public SharpVision.Terminal.Protocols.Diagnostic? LastDiagnostic { get; }
         public SharpVision.Terminal.Capabilities.Queries Results { get; }
-        public SharpVision.Terminal.Capabilities.QueryMatch Accept(SharpVision.Terminal.Kitty.Response response) { }
+        public SharpVision.Terminal.Capabilities.QueryMatch Accept(SharpVision.Terminal.Kitty.Graphics.Response response) { }
         public SharpVision.Terminal.Capabilities.QueryMatch Accept(SharpVision.Terminal.Xterm.CapabilityResponse response) { }
         public SharpVision.Terminal.Capabilities.QueryMatch Accept(in SharpVision.Terminal.Xterm.MetricsResponse response) { }
         public SharpVision.Terminal.Capabilities.QueryMatch Accept(in SharpVision.Terminal.Xterm.PaletteResponse response) { }
@@ -671,84 +671,21 @@ namespace SharpVision.Terminal.Iterm
         public static void Write(SharpVision.Terminal.Graphics.ImageSource image, SharpVision.Terminal.Geometry.Size destinationCells, SharpVision.Terminal.Graphics.PlacementMode mode, System.Buffers.IBufferWriter<byte> destination, int maxSequenceBytes = 1048576, int maxOutputBytes = 268435456) { }
     }
 }
-namespace SharpVision.Terminal.Kitty
+namespace SharpVision.Terminal.Kitty.Clipboard
 {
-    public enum Action
-    {
-        Query = 0,
-        Transmit = 1,
-        Place = 2,
-        Delete = 3,
-    }
-    public sealed class Command
-    {
-        public SharpVision.Terminal.Kitty.Action Action { get; }
-        public SharpVision.Terminal.Kitty.Compression Compression { get; }
-        public bool DeleteData { get; }
-        public SharpVision.Terminal.Geometry.Size Destination { get; }
-        public bool DoNotMoveCursor { get; }
-        public SharpVision.Terminal.Kitty.Format Format { get; }
-        public uint ImageId { get; }
-        public SharpVision.Terminal.Kitty.Medium Medium { get; }
-        public bool More { get; }
-        public SharpVision.Terminal.Geometry.Size PixelSize { get; }
-        public uint PlacementId { get; }
-        public int Quiet { get; }
-        public SharpVision.Terminal.Geometry.Rect Source { get; }
-        public int ZIndex { get; }
-        public static SharpVision.Terminal.Kitty.Command DeleteImage(uint imageId, int quiet = 2) { }
-        public static SharpVision.Terminal.Kitty.Command DeletePlacement(uint imageId, uint placementId, int quiet = 2) { }
-        public static SharpVision.Terminal.Kitty.Command Place(uint imageId, uint placementId, SharpVision.Terminal.Geometry.Rect source, SharpVision.Terminal.Geometry.Size destination, int zIndex = 0, int quiet = 2, bool doNotMoveCursor = true) { }
-        public static SharpVision.Terminal.Kitty.Command Query(uint imageId) { }
-        public static SharpVision.Terminal.Kitty.Command Transmit(uint imageId, SharpVision.Terminal.Geometry.Size pixelSize, SharpVision.Terminal.Kitty.Format format, int quiet = 2, SharpVision.Terminal.Kitty.Medium medium = 0, SharpVision.Terminal.Kitty.Compression compression = 0) { }
-    }
-    public enum Compression
-    {
-        None = 0,
-        Zlib = 1,
-    }
-    public enum Format
-    {
-        Rgb = 24,
-        Rgba = 32,
-        Png = 100,
-    }
-    public enum KittyAcceptResult
+    public enum AcceptResult
     {
         Accepted = 0,
         Completed = 1,
         Failed = 2,
         Ignored = 3,
     }
-    [System.Flags]
-    public enum KittyEnhancement
-    {
-        None = 0,
-        Disambiguate = 1,
-        EventTypes = 2,
-        AlternateKeys = 4,
-        AllKeys = 8,
-        AssociatedText = 16,
-    }
-    public enum KittyEnhancementMode
-    {
-        Replace = 1,
-        Set = 2,
-        Clear = 3,
-    }
-    public static class KittyKeyboard
-    {
-        public static void Pop(SharpVision.Terminal.Protocols.Writer writer, int count = 1) { }
-        public static void Push(SharpVision.Terminal.Protocols.Writer writer, SharpVision.Terminal.Kitty.KittyEnhancement flags) { }
-        public static void Query(SharpVision.Terminal.Protocols.Writer writer) { }
-        public static void Set(SharpVision.Terminal.Protocols.Writer writer, SharpVision.Terminal.Kitty.KittyEnhancement flags, SharpVision.Terminal.Kitty.KittyEnhancementMode mode) { }
-    }
-    public sealed class KittyMimeData
+    public sealed class MimeData
     {
         public System.ReadOnlyMemory<byte> Data { get; }
         public string Mime { get; }
     }
-    public enum KittyOperation
+    public enum Operation
     {
         None = 0,
         Read = 1,
@@ -756,7 +693,7 @@ namespace SharpVision.Terminal.Kitty
         WriteData = 3,
         WriteAlias = 4,
     }
-    public sealed class KittyPacket
+    public sealed class Packet
     {
         public System.ReadOnlyMemory<byte> Data { get; }
         public SharpVision.Terminal.Protocols.Diagnostic? Diagnostic { get; }
@@ -765,15 +702,15 @@ namespace SharpVision.Terminal.Kitty
         public bool IsValid { get; }
         public System.ReadOnlyMemory<byte> Mime { get; }
         public System.ReadOnlyMemory<byte> Name { get; }
-        public SharpVision.Terminal.Kitty.KittyOperation Operation { get; }
+        public SharpVision.Terminal.Kitty.Clipboard.Operation Operation { get; }
         public System.ReadOnlyMemory<byte> Password { get; }
-        public SharpVision.Terminal.Kitty.KittyReplyStatus ReplyStatus { get; }
+        public SharpVision.Terminal.Kitty.Clipboard.ReplyStatus ReplyStatus { get; }
         public SharpVision.Terminal.Clipboard.Selection Selection { get; }
         public System.Collections.Generic.IReadOnlyList<string> UnknownKeys { get; }
         public override string ToString() { }
-        public static SharpVision.Terminal.Kitty.KittyPacket Parse(System.ReadOnlySpan<byte> value, SharpVision.Terminal.Terminfo.Limits? limits = null, bool decodePayload = true) { }
+        public static SharpVision.Terminal.Kitty.Clipboard.Packet Parse(System.ReadOnlySpan<byte> value, SharpVision.Terminal.Terminfo.Limits? limits = null, bool decodePayload = true) { }
     }
-    public enum KittyReplyStatus
+    public enum ReplyStatus
     {
         None = 0,
         Ok = 1,
@@ -785,27 +722,27 @@ namespace SharpVision.Terminal.Kitty
         Denied = 7,
         Busy = 8,
     }
-    public sealed class KittyResult : System.IDisposable
+    public sealed class Result : System.IDisposable
     {
-        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Kitty.KittyMimeData> Items { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Kitty.Clipboard.MimeData> Items { get; }
         public void Dispose() { }
     }
-    public sealed class KittyTransaction : System.IDisposable
+    public sealed class Transaction : System.IDisposable
     {
         public System.DateTimeOffset Deadline { get; }
         public SharpVision.Terminal.Protocols.Diagnostic? Diagnostic { get; }
-        public SharpVision.Terminal.Kitty.KittyReplyStatus Failure { get; }
-        public SharpVision.Terminal.Kitty.KittyResult? Result { get; }
-        public SharpVision.Terminal.Kitty.KittyTransactionState State { get; }
-        public SharpVision.Terminal.Kitty.KittyAcceptResult Accept(SharpVision.Terminal.Kitty.KittyPacket packet) { }
+        public SharpVision.Terminal.Kitty.Clipboard.ReplyStatus Failure { get; }
+        public SharpVision.Terminal.Kitty.Clipboard.Result? Result { get; }
+        public SharpVision.Terminal.Kitty.Clipboard.TransactionState State { get; }
+        public SharpVision.Terminal.Kitty.Clipboard.AcceptResult Accept(SharpVision.Terminal.Kitty.Clipboard.Packet packet) { }
         public void Cancel() { }
         public bool CheckTimeout() { }
         public void Dispose() { }
         public override string ToString() { }
-        public static SharpVision.Terminal.Kitty.KittyTransaction Read(SharpVision.Terminal.Terminfo.Limits? limits = null, string? id = null, bool listOnly = false, System.TimeProvider? timeProvider = null) { }
-        public static SharpVision.Terminal.Kitty.KittyTransaction Write(SharpVision.Terminal.Terminfo.Limits? limits = null, string? id = null, System.TimeProvider? timeProvider = null) { }
+        public static SharpVision.Terminal.Kitty.Clipboard.Transaction Read(SharpVision.Terminal.Terminfo.Limits? limits = null, string? id = null, bool listOnly = false, System.TimeProvider? timeProvider = null) { }
+        public static SharpVision.Terminal.Kitty.Clipboard.Transaction Write(SharpVision.Terminal.Terminfo.Limits? limits = null, string? id = null, System.TimeProvider? timeProvider = null) { }
     }
-    public enum KittyTransactionState
+    public enum TransactionState
     {
         Created = 0,
         Accepted = 1,
@@ -816,7 +753,7 @@ namespace SharpVision.Terminal.Kitty
         TimedOut = 6,
         Disposed = 7,
     }
-    public static class KittyWriter
+    public static class Writer
     {
         public static void List(SharpVision.Terminal.Protocols.Writer writer, SharpVision.Terminal.Clipboard.Selection selection = 0, System.ReadOnlySpan<byte> id = default, System.ReadOnlySpan<byte> password = default, System.ReadOnlySpan<byte> name = default) { }
         public static void PasteEvents(SharpVision.Terminal.Protocols.Writer writer, bool enabled) { }
@@ -826,6 +763,49 @@ namespace SharpVision.Terminal.Kitty
         public static void WriteData(SharpVision.Terminal.Protocols.Writer writer, System.ReadOnlySpan<byte> mime, System.ReadOnlySpan<byte> data, int maxBytes = 16777216) { }
         public static void WriteEnd(SharpVision.Terminal.Protocols.Writer writer) { }
         public static void WriteStart(SharpVision.Terminal.Protocols.Writer writer, SharpVision.Terminal.Clipboard.Selection selection = 0, System.ReadOnlySpan<byte> id = default, System.ReadOnlySpan<byte> password = default, System.ReadOnlySpan<byte> name = default) { }
+    }
+}
+namespace SharpVision.Terminal.Kitty.Graphics
+{
+    public enum Action
+    {
+        Query = 0,
+        Transmit = 1,
+        Place = 2,
+        Delete = 3,
+    }
+    public sealed class Command
+    {
+        public SharpVision.Terminal.Kitty.Graphics.Action Action { get; }
+        public SharpVision.Terminal.Kitty.Graphics.Compression Compression { get; }
+        public bool DeleteData { get; }
+        public SharpVision.Terminal.Geometry.Size Destination { get; }
+        public bool DoNotMoveCursor { get; }
+        public SharpVision.Terminal.Kitty.Graphics.Format Format { get; }
+        public uint ImageId { get; }
+        public SharpVision.Terminal.Kitty.Graphics.Medium Medium { get; }
+        public bool More { get; }
+        public SharpVision.Terminal.Geometry.Size PixelSize { get; }
+        public uint PlacementId { get; }
+        public int Quiet { get; }
+        public SharpVision.Terminal.Geometry.Rect Source { get; }
+        public int ZIndex { get; }
+        public static SharpVision.Terminal.Kitty.Graphics.Command DeleteImage(uint imageId, int quiet = 2) { }
+        public static SharpVision.Terminal.Kitty.Graphics.Command DeletePlacement(uint imageId, uint placementId, int quiet = 2) { }
+        public static SharpVision.Terminal.Kitty.Graphics.Command Place(uint imageId, uint placementId, SharpVision.Terminal.Geometry.Rect source, SharpVision.Terminal.Geometry.Size destination, int zIndex = 0, int quiet = 2, bool doNotMoveCursor = true) { }
+        public static SharpVision.Terminal.Kitty.Graphics.Command Query(uint imageId) { }
+        public static SharpVision.Terminal.Kitty.Graphics.Command Transmit(uint imageId, SharpVision.Terminal.Geometry.Size pixelSize, SharpVision.Terminal.Kitty.Graphics.Format format, int quiet = 2, SharpVision.Terminal.Kitty.Graphics.Medium medium = 0, SharpVision.Terminal.Kitty.Graphics.Compression compression = 0) { }
+    }
+    public enum Compression
+    {
+        None = 0,
+        Zlib = 1,
+    }
+    public enum Format
+    {
+        Rgb = 24,
+        Rgba = 32,
+        Png = 100,
     }
     public enum Medium
     {
@@ -843,19 +823,45 @@ namespace SharpVision.Terminal.Kitty
         public string? Message { get; }
         public uint PlacementId { get; }
         public override string ToString() { }
-        public static SharpVision.Terminal.Kitty.Response Parse(System.ReadOnlySpan<byte> value, SharpVision.Terminal.Terminfo.Limits? limits = null) { }
+        public static SharpVision.Terminal.Kitty.Graphics.Response Parse(System.ReadOnlySpan<byte> value, SharpVision.Terminal.Terminfo.Limits? limits = null) { }
     }
     public sealed class Transaction
     {
         public Transaction(uint imageId) { }
-        public SharpVision.Terminal.Kitty.Response? Response { get; }
-        public SharpVision.Terminal.Capabilities.QueryMatch Accept(SharpVision.Terminal.Kitty.Response response) { }
+        public SharpVision.Terminal.Kitty.Graphics.Response? Response { get; }
+        public SharpVision.Terminal.Capabilities.QueryMatch Accept(SharpVision.Terminal.Kitty.Graphics.Response response) { }
     }
     public static class Writer
     {
-        public static void Write(SharpVision.Terminal.Kitty.Command command, System.ReadOnlySpan<byte> payload, System.Buffers.IBufferWriter<byte> destination) { }
-        public static void WriteEncoded(SharpVision.Terminal.Kitty.Command command, System.ReadOnlySpan<byte> encodedPayload, System.Buffers.IBufferWriter<byte> destination) { }
-        public static void WriteTransmission(SharpVision.Terminal.Kitty.Command command, System.ReadOnlySpan<byte> payload, System.Buffers.IBufferWriter<byte> destination, int maxPayloadBytes = 268435456) { }
+        public static void Write(SharpVision.Terminal.Kitty.Graphics.Command command, System.ReadOnlySpan<byte> payload, System.Buffers.IBufferWriter<byte> destination) { }
+        public static void WriteEncoded(SharpVision.Terminal.Kitty.Graphics.Command command, System.ReadOnlySpan<byte> encodedPayload, System.Buffers.IBufferWriter<byte> destination) { }
+        public static void WriteTransmission(SharpVision.Terminal.Kitty.Graphics.Command command, System.ReadOnlySpan<byte> payload, System.Buffers.IBufferWriter<byte> destination, int maxPayloadBytes = 268435456) { }
+    }
+}
+namespace SharpVision.Terminal.Kitty.Keyboard
+{
+    [System.Flags]
+    public enum Enhancement
+    {
+        None = 0,
+        Disambiguate = 1,
+        EventTypes = 2,
+        AlternateKeys = 4,
+        AllKeys = 8,
+        AssociatedText = 16,
+    }
+    public enum EnhancementMode
+    {
+        Replace = 1,
+        Set = 2,
+        Clear = 3,
+    }
+    public static class Keyboard
+    {
+        public static void Pop(SharpVision.Terminal.Protocols.Writer writer, int count = 1) { }
+        public static void Push(SharpVision.Terminal.Protocols.Writer writer, SharpVision.Terminal.Kitty.Keyboard.Enhancement flags) { }
+        public static void Query(SharpVision.Terminal.Protocols.Writer writer) { }
+        public static void Set(SharpVision.Terminal.Protocols.Writer writer, SharpVision.Terminal.Kitty.Keyboard.Enhancement flags, SharpVision.Terminal.Kitty.Keyboard.EnhancementMode mode) { }
     }
 }
 namespace SharpVision.Terminal.Multiplexing
@@ -1456,7 +1462,7 @@ namespace SharpVision.Terminal.Runtime
         public bool Focus { get; init; }
         public bool HideCursor { get; init; }
         public SharpVision.Terminal.Input.Options Input { get; init; }
-        public SharpVision.Terminal.Kitty.KittyEnhancement? Keyboard { get; init; }
+        public SharpVision.Terminal.Kitty.Keyboard.Enhancement? Keyboard { get; init; }
         public int? ModifyOtherKeys { get; init; }
         public SharpVision.Terminal.Capabilities.NegotiationOptions? Negotiation { get; init; }
         public bool Paste { get; init; }

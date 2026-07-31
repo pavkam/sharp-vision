@@ -166,7 +166,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
         if (queryKeyboard)
         {
-            Kitty.KittyKeyboard.Query(preludeWriter);
+            Kitty.Keyboard.Keyboard.Query(preludeWriter);
             remaining--;
         }
 
@@ -288,8 +288,8 @@ internal sealed class ActiveQueryDiscoveryStrategy
         if (graphics)
         {
             Span<byte> queryPixel = [0, 0, 0];
-            Kitty.Writer.Write(
-                Kitty.Command.Query(31),
+            Kitty.Graphics.Writer.Write(
+                Kitty.Graphics.Command.Query(31),
                 queryPixel,
                 queryBatch);
         }
@@ -372,7 +372,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
     /// <returns>The active, duplicate, late, or unknown match classification.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="response"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The negotiator has not started.</exception>
-    public QueryMatch Accept(Kitty.Response response)
+    public QueryMatch Accept(Kitty.Graphics.Response response)
     {
         ArgumentNullException.ThrowIfNull(response);
 

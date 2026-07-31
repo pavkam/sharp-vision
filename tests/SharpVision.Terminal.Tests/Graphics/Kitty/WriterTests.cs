@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Tests.Graphics.Kitty;
 
 using System.Buffers.Binary;
 
-using SharpVision.Terminal.Kitty;
+using SharpVision.Terminal.Kitty.Graphics;
 
 /// <summary>Proves canonical bounded Kitty graphics command encoding.</summary>
 public sealed class WriterTests

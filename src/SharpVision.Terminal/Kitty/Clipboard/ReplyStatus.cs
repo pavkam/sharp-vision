@@ -1,11 +1,11 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Terminal.Kitty;
+namespace SharpVision.Terminal.Kitty.Clipboard;
 
 /// <summary>Identifies a Kitty OSC 5522 response status.</summary>
 [PublicAPI]
-public enum KittyReplyStatus
+public enum ReplyStatus
 {
     /// <summary>The packet has no response status.</summary>
     None,

@@ -1,9 +1,9 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Terminal.Kitty;
+namespace SharpVision.Terminal.Kitty.Clipboard;
 
-using Clipboard;
+using SharpVision.Terminal.Clipboard;
 
 /// <summary>
 /// Enforces bounded Kitty OSC 5522 read or write response ordering.
@@ -11,15 +11,15 @@ using Clipboard;
 /// <remarks>
 /// Instances are single-threaded. Matching uses the optional sanitized ID;
 /// unrelated packets are ignored. A successful result transfers owned data to
-/// <see cref="KittyResult"/>, which the caller must dispose.
+/// <see cref="Result"/>, which the caller must dispose.
 /// </remarks>
 [PublicAPI]
-public sealed class KittyTransaction: IDisposable
+public sealed class Transaction: IDisposable
 {
     private const int _chunkBytes = 4_096;
 
     private readonly Limits _limits;
-    private readonly KittyOperation _operation;
+    private readonly Operation _operation;
     private readonly string? _id;
     private readonly bool _listOnly;
     private readonly TimeProvider _timeProvider;
@@ -29,14 +29,14 @@ public sealed class KittyTransaction: IDisposable
     private string? _currentMime;
     private int _totalBytes;
 
-    private KittyTransaction(
-        KittyOperation operation,
+    private Transaction(
+        Operation operation,
         Limits? limits,
         string? id,
         bool listOnly,
         TimeProvider? timeProvider)
     {
-        if (operation is not (KittyOperation.Read or KittyOperation.Write))
+        if (operation is not (Operation.Read or Operation.Write))
         {
             throw new ArgumentOutOfRangeException(
                 nameof(operation), operation, "A transaction must read or write.");
@@ -58,16 +58,16 @@ public sealed class KittyTransaction: IDisposable
     }
 
     /// <summary>Gets the current lifecycle state.</summary>
-    public KittyTransactionState State { get; private set; }
+    public TransactionState State { get; private set; }
 
     /// <summary>Gets the immutable deadline calculated at construction.</summary>
     public DateTimeOffset Deadline { get; }
 
     /// <summary>Gets the transferred result after successful completion.</summary>
-    public KittyResult? Result { get; private set; }
+    public Result? Result { get; private set; }
 
     /// <summary>Gets a terminal error status after failure.</summary>
-    public KittyReplyStatus Failure { get; private set; }
+    public ReplyStatus Failure { get; private set; }
 
     /// <summary>Gets a redacted local protocol diagnostic after failure.</summary>
     public Diagnostic? Diagnostic { get; private set; }
@@ -79,12 +79,12 @@ public sealed class KittyTransaction: IDisposable
     /// <param name="timeProvider">Optional deterministic clock.</param>
     /// <returns>The new read transaction.</returns>
     /// <exception cref="ArgumentException"><paramref name="id"/> is invalid.</exception>
-    public static KittyTransaction Read(
+    public static Transaction Read(
         Limits? limits = null,
         string? id = null,
         bool listOnly = false,
         TimeProvider? timeProvider = null) =>
-        new(KittyOperation.Read, limits, id, listOnly, timeProvider);
+        new(Operation.Read, limits, id, listOnly, timeProvider);
 
     /// <summary>Creates a bounded clipboard write transaction.</summary>
     /// <param name="limits">Optional immutable protocol limits.</param>
@@ -92,30 +92,30 @@ public sealed class KittyTransaction: IDisposable
     /// <param name="timeProvider">Optional deterministic clock.</param>
     /// <returns>The new write transaction.</returns>
     /// <exception cref="ArgumentException"><paramref name="id"/> is invalid.</exception>
-    public static KittyTransaction Write(
+    public static Transaction Write(
         Limits? limits = null,
         string? id = null,
         TimeProvider? timeProvider = null) =>
-        new(KittyOperation.Write, limits, id, listOnly: false, timeProvider);
+        new(Operation.Write, limits, id, listOnly: false, timeProvider);
 
     /// <summary>Applies one decoded packet to this transaction.</summary>
     /// <param name="packet">The immutable decoded packet.</param>
     /// <returns>How the packet affected the transaction.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="packet"/> is null.</exception>
     /// <exception cref="ObjectDisposedException">The transaction is disposed.</exception>
-    public KittyAcceptResult Accept(KittyPacket packet)
+    public AcceptResult Accept(Packet packet)
     {
-        ObjectDisposedException.ThrowIf(State == KittyTransactionState.Disposed, this);
+        ObjectDisposedException.ThrowIf(State == TransactionState.Disposed, this);
         ArgumentNullException.ThrowIfNull(packet);
 
         if (IsTerminal)
         {
-            return KittyAcceptResult.Ignored;
+            return AcceptResult.Ignored;
         }
 
         if (CheckTimeout())
         {
-            return KittyAcceptResult.Ignored;
+            return AcceptResult.Ignored;
         }
 
         // Correlation is checked before validity so that unrelated malformed
@@ -125,7 +125,7 @@ public sealed class KittyTransaction: IDisposable
         // bound transaction and is ignored rather than treated as ours.
         if (!string.Equals(_id, packet.Id, StringComparison.Ordinal))
         {
-            return KittyAcceptResult.Ignored;
+            return AcceptResult.Ignored;
         }
 
         if (!packet.IsValid)
@@ -144,7 +144,7 @@ public sealed class KittyTransaction: IDisposable
             return Fail(Unexpected());
         }
 
-        return _operation == KittyOperation.Read
+        return _operation == Operation.Read
             ? AcceptRead(packet)
             : AcceptWrite(packet);
     }
@@ -153,7 +153,7 @@ public sealed class KittyTransaction: IDisposable
     /// <exception cref="ObjectDisposedException">The transaction is disposed.</exception>
     public void Cancel()
     {
-        ObjectDisposedException.ThrowIf(State == KittyTransactionState.Disposed, this);
+        ObjectDisposedException.ThrowIf(State == TransactionState.Disposed, this);
 
         if (IsTerminal)
         {
@@ -161,7 +161,7 @@ public sealed class KittyTransaction: IDisposable
         }
 
         ClearBuilders();
-        State = KittyTransactionState.Cancelled;
+        State = TransactionState.Cancelled;
     }
 
     /// <summary>Checks the injected clock and times out an expired transaction.</summary>
@@ -169,7 +169,7 @@ public sealed class KittyTransaction: IDisposable
     /// <exception cref="ObjectDisposedException">The transaction is disposed.</exception>
     public bool CheckTimeout()
     {
-        ObjectDisposedException.ThrowIf(State == KittyTransactionState.Disposed, this);
+        ObjectDisposedException.ThrowIf(State == TransactionState.Disposed, this);
 
         if (IsTerminal || _timeProvider.GetUtcNow() < Deadline)
         {
@@ -177,35 +177,35 @@ public sealed class KittyTransaction: IDisposable
         }
 
         ClearBuilders();
-        State = KittyTransactionState.TimedOut;
+        State = TransactionState.TimedOut;
         return true;
     }
 
     /// <summary>Clears temporary data and makes further use invalid.</summary>
     public void Dispose()
     {
-        if (State == KittyTransactionState.Disposed)
+        if (State == TransactionState.Disposed)
         {
             return;
         }
 
         ClearBuilders();
-        State = KittyTransactionState.Disposed;
+        State = TransactionState.Disposed;
     }
 
     /// <summary>Returns a structural description without ID, MIME, or data.</summary>
     /// <returns>A redacted transaction description.</returns>
     public override string ToString() =>
-        $"KittyTransaction operation={_operation} state={State} bytes={_totalBytes}";
+        $"Transaction operation={_operation} state={State} bytes={_totalBytes}";
 
     private bool IsTerminal => State is
-        KittyTransactionState.Completed or
-        KittyTransactionState.Failed or
-        KittyTransactionState.Cancelled or
-        KittyTransactionState.TimedOut or
-        KittyTransactionState.Disposed;
+        TransactionState.Completed or
+        TransactionState.Failed or
+        TransactionState.Cancelled or
+        TransactionState.TimedOut or
+        TransactionState.Disposed;
 
-    private KittyAcceptResult AcceptData(KittyPacket packet)
+    private AcceptResult AcceptData(Packet packet)
     {
         if (packet.Data.Length > _chunkBytes)
         {
@@ -261,36 +261,36 @@ public sealed class KittyTransaction: IDisposable
         builder.Append(packet.Data.Span);
         _currentMime = mime;
         _totalBytes += packet.Data.Length;
-        State = KittyTransactionState.Receiving;
+        State = TransactionState.Receiving;
 
-        return KittyAcceptResult.Accepted;
+        return AcceptResult.Accepted;
     }
 
-    private KittyAcceptResult AcceptRead(KittyPacket packet)
+    private AcceptResult AcceptRead(Packet packet)
     {
-        if (packet.ReplyStatus == KittyReplyStatus.Ok)
+        if (packet.ReplyStatus == ReplyStatus.Ok)
         {
-            if (State != KittyTransactionState.Created)
+            if (State != TransactionState.Created)
             {
                 return Fail(Unexpected());
             }
 
-            State = KittyTransactionState.Accepted;
-            return KittyAcceptResult.Accepted;
+            State = TransactionState.Accepted;
+            return AcceptResult.Accepted;
         }
 
-        return packet.ReplyStatus == KittyReplyStatus.Data
-            ? State is KittyTransactionState.Accepted or KittyTransactionState.Receiving
+        return packet.ReplyStatus == ReplyStatus.Data
+            ? State is TransactionState.Accepted or TransactionState.Receiving
                 ? AcceptData(packet)
                 : Fail(Unexpected())
-            : packet.ReplyStatus == KittyReplyStatus.Done &&
-              State is KittyTransactionState.Accepted or KittyTransactionState.Receiving
+            : packet.ReplyStatus == ReplyStatus.Done &&
+              State is TransactionState.Accepted or TransactionState.Receiving
                 ? Complete()
                 : Fail(Unexpected());
     }
 
-    private KittyAcceptResult AcceptWrite(KittyPacket packet) =>
-        packet.ReplyStatus == KittyReplyStatus.Done && State == KittyTransactionState.Created
+    private AcceptResult AcceptWrite(Packet packet) =>
+        packet.ReplyStatus == ReplyStatus.Done && State == TransactionState.Created
             ? Complete()
             : Fail(Unexpected());
 
@@ -308,40 +308,40 @@ public sealed class KittyTransaction: IDisposable
         _totalBytes = 0;
     }
 
-    private KittyAcceptResult Complete()
+    private AcceptResult Complete()
     {
         Debug.Assert(!IsTerminal, "Only an active transaction can complete.");
 
-        var items = new KittyMimeData[_mimeOrder.Count];
+        var items = new MimeData[_mimeOrder.Count];
 
         for (var index = 0; index < _mimeOrder.Count; index++)
         {
             var mime = _mimeOrder[index];
-            items[index] = new KittyMimeData(mime, _builders[mime].ToArray());
+            items[index] = new MimeData(mime, _builders[mime].ToArray());
         }
 
         ClearBuilders();
-        Result = new KittyResult(items);
-        State = KittyTransactionState.Completed;
+        Result = new Result(items);
+        State = TransactionState.Completed;
 
-        return KittyAcceptResult.Completed;
+        return AcceptResult.Completed;
     }
 
-    private KittyAcceptResult Fail(Diagnostic diagnostic)
+    private AcceptResult Fail(Diagnostic diagnostic)
     {
         ClearBuilders();
         Diagnostic = diagnostic;
-        State = KittyTransactionState.Failed;
+        State = TransactionState.Failed;
 
-        return KittyAcceptResult.Failed;
+        return AcceptResult.Failed;
     }
 
-    private static bool IsError(KittyReplyStatus status) => status is
-        KittyReplyStatus.Io or
-        KittyReplyStatus.Invalid or
-        KittyReplyStatus.Unavailable or
-        KittyReplyStatus.Denied or
-        KittyReplyStatus.Busy;
+    private static bool IsError(ReplyStatus status) => status is
+        ReplyStatus.Io or
+        ReplyStatus.Invalid or
+        ReplyStatus.Unavailable or
+        ReplyStatus.Denied or
+        ReplyStatus.Busy;
 
     private static bool IsIdentifier(string value)
     {

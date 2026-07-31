@@ -494,8 +494,8 @@ public sealed class Session: IAsyncDisposable
         Debug.Assert(_options.Keyboard.HasValue, "A keyboard lease requires configured enhancement flags.");
         var enable = new ArrayBufferWriter<byte>();
         var disable = new ArrayBufferWriter<byte>();
-        Kitty.KittyKeyboard.Push(new Writer(enable), _options.Keyboard.Value);
-        Kitty.KittyKeyboard.Pop(new Writer(disable));
+        Kitty.Keyboard.Keyboard.Push(new Writer(enable), _options.Keyboard.Value);
+        Kitty.Keyboard.Keyboard.Pop(new Writer(disable));
         return new Lease(enable.WrittenSpan, disable.WrittenSpan);
     }
 

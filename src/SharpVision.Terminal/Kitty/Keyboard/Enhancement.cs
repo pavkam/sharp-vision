@@ -1,12 +1,12 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Terminal.Kitty;
+namespace SharpVision.Terminal.Kitty.Keyboard;
 
 /// <summary>Identifies Kitty progressive keyboard enhancements.</summary>
 [Flags]
 [PublicAPI]
-public enum KittyEnhancement
+public enum Enhancement
 {
     /// <summary>No progressive enhancement.</summary>
     None = 0,

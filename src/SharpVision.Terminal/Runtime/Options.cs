@@ -112,8 +112,8 @@ public sealed record Options
     } = MouseCoordinates.Sgr;
 
     /// <summary>Gets optional Kitty keyboard flags to push when proven supported.</summary>
-    public Kitty.KittyEnhancement? Keyboard { get; init; } =
-        Kitty.KittyEnhancement.Disambiguate | Kitty.KittyEnhancement.EventTypes;
+    public Kitty.Keyboard.Enhancement? Keyboard { get; init; } =
+        Kitty.Keyboard.Enhancement.Disambiguate | Kitty.Keyboard.Enhancement.EventTypes;
 
     /// <summary>Gets the optional xterm modifyOtherKeys level used when Kitty keyboard is unavailable.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside one through three.</exception>
