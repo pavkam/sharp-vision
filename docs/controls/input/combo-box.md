@@ -38,6 +38,14 @@ without claiming its single-content inheritance role.
 | `ScrollBarStyle`, `ActualScrollBarStyle` | `null`, Theme style | Override or inspect the private list's complete rail presentation.                          |
 | `DropDownGlyph`                          | Code-owned          | Overrides the validated one-cell disclosure marker.                                         |
 | `SelectionChanged`                       | No subscribers      | Reports selection after `SelectedIndex` commits.                                            |
+| `ItemTemplate`                           | ListView default    | Forwards directly to the private ListView's own `ItemTemplate`, realizing each popup row.    |
+| `TextSelector`                           | `null`               | Projects an item to its closed-field and type-ahead text; falls back to `Convert.ToString`.  |
+
+`TextSelector` drives both the closed field's displayed text and keyboard
+type-ahead matching through the same projection, so the two cannot drift from
+each other or from a separately assigned `ItemTemplate`. Leave it unset to
+keep the existing `Convert.ToString(item, CultureInfo.InvariantCulture)`
+behavior for items whose `ToString` override is already display-ready.
 
 ## Default field chrome
 

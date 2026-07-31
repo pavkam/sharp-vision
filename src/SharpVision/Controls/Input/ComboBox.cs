@@ -131,6 +131,33 @@ public sealed class ComboBox: Control
         set => SetSelectedIndex(value);
     }
 
+    /// <summary>Gets or sets the non-null detached-control factory that realizes each drop-down row.</summary>
+    /// <remarks>Delegates directly to the private drop-down ListView's own ItemTemplate contract.</remarks>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="ArgumentException">Candidate output is null, disposed, attached, or duplicated.</exception>
+    /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
+    public ItemTemplate ItemTemplate
+    {
+        get => _list.ItemTemplate;
+        set => _list.ItemTemplate = value;
+    }
+
+    /// <summary>Gets or sets the optional projection from an item to its closed-field and
+    /// type-ahead text, or null to fall back to <see cref="Convert.ToString(object?, IFormatProvider?)"/>
+    /// under the invariant culture.</summary>
+    /// <remarks>
+    /// One textual projection drives both the closed field and type-ahead matching, so they cannot
+    /// drift from each other or from a separately assigned <see cref="ItemTemplate"/>.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
+    public Func<object?, string>? TextSelector
+    {
+        get;
+        set => _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+    }
+
     /// <summary>Gets or sets whether Delete and Backspace may clear the selection.</summary>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
@@ -564,8 +591,11 @@ public sealed class ComboBox: Control
 
         return index < 0 || index >= _list.Items.Count
             ? Placeholder
-            : Convert.ToString(_list.Items[index], CultureInfo.InvariantCulture) ?? string.Empty;
+            : ItemText(_list.Items[index]);
     }
+
+    private string ItemText(object? item) =>
+        TextSelector?.Invoke(item) ?? Convert.ToString(item, CultureInfo.InvariantCulture) ?? string.Empty;
 
     private void SetSelectedIndex(int value)
     {
@@ -678,7 +708,7 @@ public sealed class ComboBox: Control
         for (var offset = 0; offset < Items.Count; offset++)
         {
             var index = (start + offset) % Items.Count;
-            var text = Convert.ToString(Items[index], CultureInfo.InvariantCulture) ?? string.Empty;
+            var text = ItemText(Items[index]);
             if (text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {
                 return index;

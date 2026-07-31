@@ -490,6 +490,97 @@ public sealed class ComboBoxTests
         combo.Placeholder.ShouldBe("Choose");
     }
 
+    /// <summary>Verifies TextSelector drives closed-field text instead of Convert.ToString.</summary>
+    [Fact]
+    public void Render_WhenTextSelectorIsSet_ShowsProjectedTextNotToString()
+    {
+        var box = new ComboBox
+        {
+            Width = Length.Cells(12),
+            Height = Length.Cells(3),
+            Items = [new Fruit("Kiwi"), new Fruit("Mango")],
+            TextSelector = static item => ((Fruit) item!).Name,
+            SelectedIndex = 1
+        };
+        var size = new Size(12, 6);
+        new Engine().Layout(box, size);
+        using Frame frame = new(size);
+
+        box.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(1, 1)).ShouldBe("M");
+        FrameOracle.Get(frame, new Point(2, 1)).ShouldBe("a");
+    }
+
+    /// <summary>Verifies TextSelector drives type-ahead matching instead of Convert.ToString.</summary>
+    [Fact]
+    public void Input_WhenTextSelectorIsSet_DrivesTypeAheadMatching()
+    {
+        var combo = new ComboBox
+        {
+            Items = [new Fruit("Kiwi"), new Fruit("Mango"), new Fruit("Grape")],
+            TextSelector = static item => ((Fruit) item!).Name,
+            IsOpen = true
+        };
+
+        var typed = Router.Route(combo, Events.Key, CharacterKey('m'));
+
+        typed.Handled.ShouldBeTrue();
+        combo.SelectedIndex.ShouldBe(1);
+        ((Fruit) combo.SelectedItem!).Name.ShouldBe("Mango");
+    }
+
+    /// <summary>Verifies ItemTemplate forwards directly to the private drop-down ListView.</summary>
+    [Fact]
+    public void ItemTemplate_WhenAssigned_ForwardsToDropDownListAndRealizesRows()
+    {
+        var box = new ComboBox
+        {
+            DropDownHeight = 4,
+            Items = [new Fruit("Kiwi"), new Fruit("Mango")],
+            ItemTemplate = static item => new ControlText($"* {((Fruit) item!).Name}"),
+            IsOpen = true
+        };
+        var size = new Size(24, 12);
+        new Engine().Layout(box, size);
+        using Frame frame = new(size);
+
+        box.Render(frame.Canvas);
+
+        var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
+        var list = popup.Content.ShouldBeOfType<ListView>();
+        list.ItemTemplate.ShouldBeSameAs(box.ItemTemplate);
+        FrameOracle.Get(frame, new Point(list.Bounds.X, list.Bounds.Y)).ShouldBe("*");
+        FrameOracle.Get(frame, new Point(list.Bounds.X + 2, list.Bounds.Y)).ShouldBe("K");
+    }
+
+    /// <summary>Verifies a domain object with no ItemTemplate or TextSelector still falls back to
+    /// Convert.ToString, preserving the pre-existing default behavior.</summary>
+    [Fact]
+    public void Render_WhenNeitherProjectionIsSet_FallsBackToToString()
+    {
+        var box = new ComboBox
+        {
+            Width = Length.Cells(12),
+            Height = Length.Cells(3),
+            Items = [new Fruit("Kiwi")],
+            SelectedIndex = 0
+        };
+        var size = new Size(12, 6);
+        new Engine().Layout(box, size);
+        using Frame frame = new(size);
+
+        box.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(1, 1)).ShouldBe("Z");
+        FrameOracle.Get(frame, new Point(2, 1)).ShouldBe("Z");
+    }
+
+    private sealed record Fruit(string Name)
+    {
+        public override string ToString() => "ZZ";
+    }
+
     /// <summary>Verifies DropDownOpened fires when the drop-down opens and DropDownClosed fires when it closes.</summary>
     [Fact]
     public void DropDownOpened_WhenDropDownOpens_FiresEvent()
