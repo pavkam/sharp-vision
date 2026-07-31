@@ -126,7 +126,7 @@ public static class Tracks
 
             for (var index = 0; index < lengths.Length; index++)
             {
-                if (lengths[index].Kind == Kind.Star &&
+                if (lengths[index].Kind == LengthKind.Star &&
                     destination[index] < MaximumAt(maximum, index))
                 {
                     totalWeight += lengths[index].Value;
@@ -147,7 +147,7 @@ public static class Tracks
 
             for (var index = 0; index < lengths.Length; index++)
             {
-                if (lengths[index].Kind != Kind.Star ||
+                if (lengths[index].Kind != LengthKind.Star ||
                     destination[index] >= MaximumAt(maximum, index))
                 {
                     continue;
@@ -229,7 +229,7 @@ public static class Tracks
         {
             for (var index = 0; index < lengths.Length; index++)
             {
-                var requested = lengths[index].Kind == Kind.Cells
+                var requested = lengths[index].Kind == LengthKind.Cells
                     ? (int) lengths[index].Value
                     : automatic[index];
                 destination[index] = Clamp(requested, minimum, maximum, index);
@@ -248,14 +248,14 @@ public static class Tracks
         {
             var requested = lengths[index].Kind switch
             {
-                Kind.Auto => automatic[index],
-                Kind.Cells => (int) lengths[index].Value,
-                Kind.Percent => ResolvePercentRequest(
+                LengthKind.Auto => automatic[index],
+                LengthKind.Cells => (int) lengths[index].Value,
+                LengthKind.Percent => ResolvePercentRequest(
                     available.Value,
                     lengths[index].Value,
                     ref cumulativePercent,
                     ref previousPercentEdge),
-                Kind.Star => MinimumAt(minimum, index),
+                LengthKind.Star => MinimumAt(minimum, index),
                 _ => throw new UnreachableException()
             };
 
@@ -266,10 +266,10 @@ public static class Tracks
         if (total > available.Value)
         {
             var deficit = total - available.Value;
-            Shrink(Kind.Percent, lengths, minimum, destination, ref deficit);
-            Shrink(Kind.Auto, lengths, minimum, destination, ref deficit);
-            Shrink(Kind.Cells, lengths, minimum, destination, ref deficit);
-            Shrink(Kind.Star, lengths, minimum, destination, ref deficit);
+            Shrink(LengthKind.Percent, lengths, minimum, destination, ref deficit);
+            Shrink(LengthKind.Auto, lengths, minimum, destination, ref deficit);
+            Shrink(LengthKind.Cells, lengths, minimum, destination, ref deficit);
+            Shrink(LengthKind.Star, lengths, minimum, destination, ref deficit);
 
             // When caller minima are infeasible, containment wins. This mirrors
             // tiny-view box layout and prevents negative or overflowing bounds.
@@ -303,7 +303,7 @@ public static class Tracks
     }
 
     private static void Shrink(
-        Kind kind,
+        LengthKind kind,
         ReadOnlySpan<Length> lengths,
         ReadOnlySpan<int> minimum,
         Span<int> destination,
@@ -336,7 +336,7 @@ public static class Tracks
         Debug.Assert(lengths.Length == destination.Length, "Below-minimum shrinking aligns definitions and extents.");
         Debug.Assert(deficit >= 0, "Below-minimum shrinking receives a non-negative deficit.");
 
-        ReadOnlySpan<Kind> priority = [Kind.Percent, Kind.Auto, Kind.Cells, Kind.Star];
+        ReadOnlySpan<LengthKind> priority = [LengthKind.Percent, LengthKind.Auto, LengthKind.Cells, LengthKind.Star];
 
         foreach (var kind in priority)
         {

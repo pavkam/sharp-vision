@@ -332,7 +332,7 @@ public sealed class Overlay: Container
         }
     }
 
-    private static int Fixed(Length? value) => value is { Kind: Kind.Cells }
+    private static int Fixed(Length? value) => value is { Kind: LengthKind.Cells }
         ? (int) value.Value.Value
         : 0;
 
@@ -350,7 +350,7 @@ public sealed class Overlay: Container
         var length = horizontal ? child.Width : child.Height;
         var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
 
-        if (length.Kind == Kind.Auto &&
+        if (length.Kind == LengthKind.Auto &&
             (horizontal ? child.Left : child.Top) is not null &&
             (horizontal ? child.Right : child.Bottom) is not null)
         {
@@ -363,10 +363,10 @@ public sealed class Overlay: Container
 
         var border = length.Kind switch
         {
-            Kind.Auto => desired,
-            Kind.Cells => (int) length.Value,
-            Kind.Percent => Resolve(length, axis),
-            Kind.Star => axis,
+            LengthKind.Auto => desired,
+            LengthKind.Cells => (int) length.Value,
+            LengthKind.Percent => Resolve(length, axis),
+            LengthKind.Star => axis,
             _ => throw new UnreachableException()
         };
 
@@ -389,8 +389,8 @@ public sealed class Overlay: Container
         return value switch
         {
             null => 0,
-            { Kind: Kind.Cells } => (int) value.Value.Value,
-            { Kind: Kind.Percent } => Percent(axis, value.Value.Value),
+            { Kind: LengthKind.Cells } => (int) value.Value.Value,
+            { Kind: LengthKind.Percent } => Percent(axis, value.Value.Value),
             _ => throw new UnreachableException()
         };
     }

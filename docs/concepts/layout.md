@@ -24,7 +24,7 @@ arrangement.
 `Length.Auto`, `Length.Cells(int)`, `Length.Percent(double)`, and
 `Length.Star(double)` are immutable requests. Fixed cells are non-negative
 integers, percentages are finite values from 0 through 100, and proportional
-weights are finite and positive. The public `Length(Kind, double)` constructor
+weights are finite and positive. The public `Length(LengthKind, double)` constructor
 applies the same validation, so callers cannot bypass factory invariants.
 
 `Constraint` represents each measure axis as a nullable non-negative integer;

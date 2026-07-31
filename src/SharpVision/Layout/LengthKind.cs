@@ -5,7 +5,7 @@ namespace SharpVision.Layout;
 
 /// <summary>Identifies how one layout axis resolves its requested extent.</summary>
 [PublicAPI]
-public enum Kind
+public enum LengthKind
 {
     /// <summary>Uses the content's intrinsic desired extent.</summary>
     Auto,

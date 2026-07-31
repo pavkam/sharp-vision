@@ -16,23 +16,23 @@ public sealed class PrimitiveTests
     public void Factory_WhenLengthIsValid_PreservesKindAndValue()
     {
         Length.Auto.ShouldBe(default);
-        Length.Cells(0).ShouldBe(new Length(Kind.Cells, 0));
-        Length.Cells(14).ShouldBe(new Length(Kind.Cells, 14));
-        Length.Percent(37.5).ShouldBe(new Length(Kind.Percent, 37.5));
-        Length.Star(2.5).ShouldBe(new Length(Kind.Star, 2.5));
+        Length.Cells(0).ShouldBe(new Length(LengthKind.Cells, 0));
+        Length.Cells(14).ShouldBe(new Length(LengthKind.Cells, 14));
+        Length.Percent(37.5).ShouldBe(new Length(LengthKind.Percent, 37.5));
+        Length.Star(2.5).ShouldBe(new Length(LengthKind.Star, 2.5));
     }
 
     /// <summary>Verifies invalid fixed, percentage, and proportional values are rejected.</summary>
     [Theory]
-    [InlineData(Kind.Cells, -1)]
-    [InlineData(Kind.Cells, 1.5)]
-    [InlineData(Kind.Percent, -0.1)]
-    [InlineData(Kind.Percent, 100.1)]
-    [InlineData(Kind.Percent, double.NaN)]
-    [InlineData(Kind.Star, 0)]
-    [InlineData(Kind.Star, double.PositiveInfinity)]
+    [InlineData(LengthKind.Cells, -1)]
+    [InlineData(LengthKind.Cells, 1.5)]
+    [InlineData(LengthKind.Percent, -0.1)]
+    [InlineData(LengthKind.Percent, 100.1)]
+    [InlineData(LengthKind.Percent, double.NaN)]
+    [InlineData(LengthKind.Star, 0)]
+    [InlineData(LengthKind.Star, double.PositiveInfinity)]
     public void Constructor_WhenLengthIsInvalid_ThrowsArgumentOutOfRangeException(
-        Kind kind,
+        LengthKind kind,
         double value) =>
         _ = Should.Throw<ArgumentOutOfRangeException>(() => new Length(kind, value));
 
@@ -40,8 +40,8 @@ public sealed class PrimitiveTests
     [Fact]
     public void Constructor_WhenAutomaticLengthHasValue_ThrowsArgumentException()
     {
-        _ = Should.Throw<ArgumentException>(() => new Length(Kind.Auto, 1));
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => new Length((Kind) int.MaxValue, 0));
+        _ = Should.Throw<ArgumentException>(() => new Length(LengthKind.Auto, 1));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new Length((LengthKind) int.MaxValue, 0));
     }
 
     /// <summary>Verifies nullable axes distinguish unbounded from bounded zero.</summary>

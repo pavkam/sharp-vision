@@ -27,7 +27,7 @@ public readonly record struct Length
     /// <exception cref="ArgumentException">
     /// An automatic length carries a non-zero value.
     /// </exception>
-    public Length(Kind kind, double value)
+    public Length(LengthKind kind, double value)
     {
         if (!double.IsFinite(value))
         {
@@ -39,7 +39,7 @@ public readonly record struct Length
 
         switch (kind)
         {
-            case Kind.Auto:
+            case LengthKind.Auto:
                 if (value != 0)
                 {
                     throw new ArgumentException(
@@ -48,7 +48,7 @@ public readonly record struct Length
                 }
 
                 break;
-            case Kind.Cells:
+            case LengthKind.Cells:
                 if (value < 0 || value != Math.Truncate(value))
                 {
                     throw new ArgumentOutOfRangeException(
@@ -58,7 +58,7 @@ public readonly record struct Length
                 }
 
                 break;
-            case Kind.Percent:
+            case LengthKind.Percent:
                 if (value is < 0 or > 100)
                 {
                     throw new ArgumentOutOfRangeException(
@@ -68,7 +68,7 @@ public readonly record struct Length
                 }
 
                 break;
-            case Kind.Star:
+            case LengthKind.Star:
                 if (value <= 0)
                 {
                     throw new ArgumentOutOfRangeException(
@@ -97,24 +97,24 @@ public readonly record struct Length
     /// <returns>The fixed length.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
     [Pure]
-    public static Length Cells(int value) => new(Kind.Cells, value);
+    public static Length Cells(int value) => new(LengthKind.Cells, value);
 
     /// <summary>Creates a percentage of the final containing content extent.</summary>
     /// <param name="value">The finite percentage from zero through one hundred.</param>
     /// <returns>The percentage length.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The percentage is invalid.</exception>
     [Pure]
-    public static Length Percent(double value) => new(Kind.Percent, value);
+    public static Length Percent(double value) => new(LengthKind.Percent, value);
 
     /// <summary>Creates a weighted share of remaining bounded space.</summary>
     /// <param name="value">The finite positive weight.</param>
     /// <returns>The proportional length.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The weight is not positive and finite.</exception>
     [Pure]
-    public static Length Star(double value) => new(Kind.Star, value);
+    public static Length Star(double value) => new(LengthKind.Star, value);
 
     /// <summary>Gets the resolution strategy.</summary>
-    public Kind Kind { get; }
+    public LengthKind Kind { get; }
 
     /// <summary>Gets the validated numeric payload for the strategy.</summary>
     public double Value { get; }
@@ -122,10 +122,10 @@ public readonly record struct Length
     /// <inheritdoc />
     public override string ToString() => Kind switch
     {
-        Kind.Auto => "Auto",
-        Kind.Cells => $"{Value:0}cells",
-        Kind.Percent => $"{Value:0.##}%",
-        Kind.Star => $"{Value:0.##}*",
+        LengthKind.Auto => "Auto",
+        LengthKind.Cells => $"{Value:0}cells",
+        LengthKind.Percent => $"{Value:0.##}%",
+        LengthKind.Star => $"{Value:0.##}*",
         _ => $"{Kind}({Value})"
     };
 }

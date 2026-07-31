@@ -2194,11 +2194,11 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         var requested = length.Kind switch
         {
-            Kind.Auto when stretch => available,
-            Kind.Auto => desired,
-            Kind.Cells => (int) length.Value,
-            Kind.Percent => ResolvePercent(slot, length.Value),
-            Kind.Star => available,
+            LengthKind.Auto when stretch => available,
+            LengthKind.Auto => desired,
+            LengthKind.Cells => (int) length.Value,
+            LengthKind.Percent => ResolvePercent(slot, length.Value),
+            LengthKind.Star => available,
             _ => throw new UnreachableException()
         };
 
@@ -2216,12 +2216,12 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         var requested = length.Kind switch
         {
-            Kind.Auto => LayoutMath.SaturatingAdd(intrinsic, inset),
-            Kind.Cells => (int) length.Value,
-            Kind.Percent => slot.HasValue
+            LengthKind.Auto => LayoutMath.SaturatingAdd(intrinsic, inset),
+            LengthKind.Cells => (int) length.Value,
+            LengthKind.Percent => slot.HasValue
                 ? ResolvePercent(slot.Value, length.Value)
                 : LayoutMath.SaturatingAdd(intrinsic, inset),
-            Kind.Star => slot.HasValue
+            LengthKind.Star => slot.HasValue
                 ? Math.Max(0, slot.Value - margin)
                 : LayoutMath.SaturatingAdd(intrinsic, inset),
             _ => throw new UnreachableException()
@@ -2241,10 +2241,10 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         int? border = length.Kind switch
         {
-            Kind.Auto => slot.HasValue ? Math.Max(0, slot.Value - margin) : null,
-            Kind.Cells => (int) length.Value,
-            Kind.Percent => slot.HasValue ? ResolvePercent(slot.Value, length.Value) : null,
-            Kind.Star => slot.HasValue ? Math.Max(0, slot.Value - margin) : null,
+            LengthKind.Auto => slot.HasValue ? Math.Max(0, slot.Value - margin) : null,
+            LengthKind.Cells => (int) length.Value,
+            LengthKind.Percent => slot.HasValue ? ResolvePercent(slot.Value, length.Value) : null,
+            LengthKind.Star => slot.HasValue ? Math.Max(0, slot.Value - margin) : null,
             _ => throw new UnreachableException()
         };
 
@@ -2265,7 +2265,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
     private static void ValidatePositionOffset(Length? value)
     {
-        if (value is { Kind: Kind.Auto or Kind.Star })
+        if (value is { Kind: LengthKind.Auto or LengthKind.Star })
         {
             throw new ArgumentException("Position offsets must use cells or percentage values.", nameof(value));
         }

@@ -180,7 +180,7 @@ public sealed class Dock: Container
             var axis = horizontal ? remaining.Width : remaining.Height;
             var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
             var length = horizontal ? child.Width : child.Height;
-            var border = length.Kind == Kind.Star
+            var border = length.Kind == LengthKind.Star
                 ? (horizontal ? horizontalStars : verticalStars)[index]
                 : Resolve(child, axis, horizontal);
             var outer = Math.Min(axis, LayoutMath.Add(border, margin));
@@ -239,10 +239,10 @@ public sealed class Dock: Container
 
         var requested = length.Kind switch
         {
-            Kind.Auto => desired,
-            Kind.Cells => (int) length.Value,
-            Kind.Percent => Percent(available, length.Value),
-            Kind.Star => throw new UnreachableException("Star lengths resolve through AllocateStarBorders."),
+            LengthKind.Auto => desired,
+            LengthKind.Cells => (int) length.Value,
+            LengthKind.Percent => Percent(available, length.Value),
+            LengthKind.Star => throw new UnreachableException("Star lengths resolve through AllocateStarBorders."),
             _ => throw new UnreachableException()
         };
 
@@ -282,7 +282,7 @@ public sealed class Dock: Container
             var length = horizontal ? child.Width : child.Height;
             var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
 
-            if (length.Kind == Kind.Star)
+            if (length.Kind == LengthKind.Star)
             {
                 (starIndices ??= []).Add(index);
                 totalWeight += length.Value;

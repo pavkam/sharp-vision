@@ -541,7 +541,7 @@ public sealed class Grid: Container
 
         for (var index = origin; index < origin + span; index++)
         {
-            if (definitions[index].Length.Kind != Kind.Auto)
+            if (definitions[index].Length.Kind != LengthKind.Auto)
             {
                 return false;
             }

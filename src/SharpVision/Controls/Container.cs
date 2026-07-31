@@ -191,12 +191,12 @@ public abstract class Container: Control
             return result;
         }
 
-        var needsVertical = Width.Kind == Kind.Auto &&
+        var needsVertical = Width.Kind == LengthKind.Auto &&
                             (ScrollBars & ScrollBars.Vertical) != 0 &&
                             (VerticalBarVisibility == ScrollBarVisibility.Always ||
                              (VerticalBarVisibility == ScrollBarVisibility.Auto &&
                               ContentExtent.Height > result.Height));
-        var needsHorizontal = Height.Kind == Kind.Auto &&
+        var needsHorizontal = Height.Kind == LengthKind.Auto &&
                               (ScrollBars & ScrollBars.Horizontal) != 0 &&
                               (HorizontalBarVisibility == ScrollBarVisibility.Always ||
                                (HorizontalBarVisibility == ScrollBarVisibility.Auto &&
@@ -215,7 +215,7 @@ public abstract class Container: Control
         Debug.Assert(minimum >= 0 && maximum >= minimum, "Auto-size limits are validated and ordered.");
 
         var content = (long) contentExtent + inset;
-        var floor = AutoSizeMode == AutoSizeMode.GrowOnly && length.Kind == Kind.Cells
+        var floor = AutoSizeMode == AutoSizeMode.GrowOnly && length.Kind == LengthKind.Cells
             ? (int) length.Value
             : 0;
         var requested = Math.Max(content, floor);

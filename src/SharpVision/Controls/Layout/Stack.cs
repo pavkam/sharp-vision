@@ -161,7 +161,7 @@ public sealed class Stack: Container
             // without changing that percentage base or star remainder.
             for (var index = 0; index < count; index++)
             {
-                if (lengths[index].Kind == Kind.Percent)
+                if (lengths[index].Kind == LengthKind.Percent)
                 {
                     lengths[index] = Length.Cells(Percent(axis, lengths[index].Value));
                 }

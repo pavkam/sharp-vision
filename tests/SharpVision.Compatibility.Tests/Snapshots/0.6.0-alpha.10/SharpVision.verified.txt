@@ -2167,24 +2167,24 @@ namespace SharpVision.Layout
         Right = 2,
         Stretch = 3,
     }
-    public enum Kind
-    {
-        Auto = 0,
-        Cells = 1,
-        Percent = 2,
-        Star = 3,
-    }
     [System.Diagnostics.DebuggerDisplay("{ToString(),nq}")]
     public readonly struct Length : System.IEquatable<SharpVision.Layout.Length>
     {
-        public Length(SharpVision.Layout.Kind kind, double value) { }
-        public SharpVision.Layout.Kind Kind { get; }
+        public Length(SharpVision.Layout.LengthKind kind, double value) { }
+        public SharpVision.Layout.LengthKind Kind { get; }
         public double Value { get; }
         public static SharpVision.Layout.Length Auto { get; }
         public override string ToString() { }
         public static SharpVision.Layout.Length Cells(int value) { }
         public static SharpVision.Layout.Length Percent(double value) { }
         public static SharpVision.Layout.Length Star(double value) { }
+    }
+    public enum LengthKind
+    {
+        Auto = 0,
+        Cells = 1,
+        Percent = 2,
+        Star = 3,
     }
     public enum Orientation
     {
