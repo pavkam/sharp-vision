@@ -136,7 +136,7 @@ public sealed class ListView: ItemsControl
             _ = SetProperty(ref field, value, InvalidationImpact.Render);
             // Mode transitions invalidate pending proposals even when normalization leaves selection unchanged.
             _selectionVersion++;
-            _ = ApplySelection(normalized, cancellable: false);
+            _ = ApplySelection(normalized, cancellable: false, requireAvailability: false);
         }
     } = ListSelectionMode.Single;
 
@@ -542,7 +542,7 @@ public sealed class ListView: ItemsControl
             item.CommitSelection(_selection.Contains(item.Index));
         }
 
-        _ = ApplySelection(normalized, cancellable: false);
+        _ = ApplySelection(normalized, cancellable: false, requireAvailability: false);
         SetActiveIndex(nextActiveIndex);
         _selectionAnchor = nextAnchor;
         RefreshSelectedItems();
@@ -665,7 +665,7 @@ public sealed class ListView: ItemsControl
         var removed = previousSelection.Where(selected =>
             selected == index ||
             !mappedSelection.Contains(selected > index ? selected - 1 : selected)).Order().ToArray();
-        _ = ApplySelection(shifted, cancellable: false, added, removed);
+        _ = ApplySelection(shifted, cancellable: false, added, removed, requireAvailability: false);
         var nextActiveIndex = ActiveIndex > index
             ? ActiveIndex - 1
             : ActiveIndex >= _items.Count
@@ -722,7 +722,7 @@ public sealed class ListView: ItemsControl
             _ = normalized.Remove(index);
         }
 
-        _ = ApplySelection(normalized, cancellable: false);
+        _ = ApplySelection(normalized, cancellable: false, requireAvailability: false);
 
         if (_selectionAnchor == index && !Equals(previousValue, item))
         {
@@ -858,13 +858,27 @@ public sealed class ListView: ItemsControl
         HashSet<int> next,
         bool cancellable,
         int[]? stableAdded = null,
-        int[]? stableRemoved = null)
+        int[]? stableRemoved = null,
+        bool requireAvailability = true)
     {
         HashSet<int> selectable = [];
 
         foreach (var index in next)
         {
-            if (ItemAt(index)?.IsAvailable == true)
+            var item = ItemAt(index);
+
+            if (item is null)
+            {
+                continue;
+            }
+
+            // IsAvailable factors in EffectiveIsVisible, which is false for every row while an
+            // ancestor (a closed Popup, a collapsed tab) hides the whole list — that is not a
+            // genuine veto on a value the list is only retaining across a structural remap
+            // (Items/ItemTemplate reassignment, insert, remove, replace), so those call sites
+            // skip this check entirely (see #171). A fresh interactive or programmatic selection
+            // request still requires the target to be genuinely available.
+            if (!requireAvailability || item.IsAvailable)
             {
                 _ = selectable.Add(index);
             }

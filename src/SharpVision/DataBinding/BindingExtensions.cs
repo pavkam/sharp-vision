@@ -324,8 +324,11 @@ public static class BindingExtensions
         this ComboBox target,
         TModel source,
         Expression<Func<TModel, IReadOnlyList<TItem>?>> sourceProperty)
-        where TModel : class =>
-        CreateBinding(
+        where TModel : class
+    {
+        ArgumentNullException.ThrowIfNull(target);
+
+        return CreateBinding(
             target,
             static control => control.Items,
             source,
@@ -336,7 +339,9 @@ public static class BindingExtensions
             Array.Empty<object?>(),
             tracksCollection: true,
             coordinatesItems: true,
-            refreshAfterItems: false);
+            refreshAfterItems: false,
+            applyIncrementalChange: CreateListIncrementalCallback(target.GetDropDownList()));
+    }
 
     /// <summary>Binds one nullable selected item two-way to a single-selection list.</summary>
     public static Binding BindSelection<TModel, TItem>(

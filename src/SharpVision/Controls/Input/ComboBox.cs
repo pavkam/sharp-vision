@@ -32,6 +32,7 @@ public sealed class ComboBox: Control
     private string _typeAhead = string.Empty;
     private int _selectedIndex = -1;
     private bool _synchronizingSelection;
+    private bool _listSelectionChangedFired;
 
     #region Construction and properties
 
@@ -94,6 +95,9 @@ public sealed class ComboBox: Control
     /// <summary>Raised after the drop-down list closes.</summary>
     public event EventHandler? DropDownClosed;
 
+    /// <summary>Gets the private drop-down list, exposed for the incremental data-binding path.</summary>
+    internal ListView GetDropDownList() => _list;
+
     /// <summary>Gets or sets a copied list of choices displayed by the drop-down.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
     /// <exception cref="ArgumentException">A list template cannot realize the supplied values.</exception>
@@ -106,9 +110,16 @@ public sealed class ComboBox: Control
         {
             ArgumentNullException.ThrowIfNull(value);
             VerifyMutable();
+
+            // Captured before forwarding so the auto-select-0 fallback only applies when
+            // nothing was selected coming in — not when this very reassignment is what just
+            // dropped a real selection below the new Items.Count (see #171). The list's own
+            // remap already retains an in-range selection, so _selectedIndex reflects the
+            // correct post-remap value once the forward returns.
+            var wasUnselected = _selectedIndex < 0;
             _list.Items = value;
 
-            if (_selectedIndex < 0 && value.Count > 0)
+            if (wasUnselected && value.Count > 0)
             {
                 SetSelectedIndex(0);
             }
@@ -549,6 +560,7 @@ public sealed class ComboBox: Control
     {
         _ = sender;
         _selectedIndex = _list.SelectedIndex;
+        _listSelectionChangedFired = true;
 
         if (_synchronizingSelection)
         {
@@ -613,6 +625,7 @@ public sealed class ComboBox: Control
 
         var previous = _selectedIndex;
         _selectedIndex = value;
+        _listSelectionChangedFired = false;
 
         try
         {
@@ -624,14 +637,14 @@ public sealed class ComboBox: Control
             throw;
         }
 
-        if (_list.SelectedIndex == value)
+        if (_listSelectionChangedFired)
         {
-            // The list's own SelectionChanged already fired synchronously from inside the
-            // assignment above, publishing this change through OnSelectionChanged.
+            // The list's own SelectionChanged fired synchronously from inside the assignment
+            // above, publishing this change through OnSelectionChanged.
             return;
         }
 
-        if (IsOpen)
+        if (_list.SelectedIndex != value && IsOpen)
         {
             // ListView.SelectedIndex's own availability check factors in ancestor
             // visibility, so a rejection is only a genuine veto (an unavailable item, or a
@@ -642,9 +655,12 @@ public sealed class ComboBox: Control
             return;
         }
 
-        // The drop-down is closed, so every item is effectively invisible and the list
-        // always silently rejects the assignment regardless of real availability — the
-        // list's own notification never fires in that case, so publish explicitly here.
+        // Either the drop-down is closed, so every item is effectively invisible and the
+        // list always silently rejects the assignment regardless of real availability — or
+        // the assignment landed on a value the list was already reporting (for example both
+        // sides already at -1), which is a genuine no-op inside the list and therefore never
+        // fires SelectionChanged at all. Either way this combo box's own value still changed
+        // and nothing else will publish it, so publish explicitly here (see #171).
         PublishSelectionChanged(value, previous);
     }
 

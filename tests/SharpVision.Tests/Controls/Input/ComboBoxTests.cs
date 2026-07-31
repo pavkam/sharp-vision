@@ -554,6 +554,135 @@ public sealed class ComboBoxTests
         FrameOracle.Get(frame, new Point(list.Bounds.X + 2, list.Bounds.Y)).ShouldBe("K");
     }
 
+    /// <summary>Verifies a made selection survives assigning a new ItemTemplate after the
+    /// drop-down was opened and closed again — its collapsed content must not be mistaken for
+    /// every row being genuinely unavailable (see #171).</summary>
+    [Fact]
+    public void ItemTemplate_WhenReassignedAfterOpenedThenClosed_PreservesSelection()
+    {
+        var box = new ComboBox { Items = [new Fruit("Kiwi"), new Fruit("Mango")], SelectedIndex = 1, IsOpen = true };
+        new LayoutEngine().Layout(box, new Size(24, 12));
+        box.IsOpen = false;
+        new LayoutEngine().Layout(box, new Size(24, 12));
+        var selectionChanges = 0;
+        box.SelectionChanged += (_, _) => selectionChanges++;
+
+        box.ItemTemplate = static item => new ControlText($"* {((Fruit) item!).Name}");
+
+        box.SelectedIndex.ShouldBe(1);
+        box.SelectedItem.ShouldBe(new Fruit("Mango"));
+        selectionChanges.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a made selection survives assigning ItemTemplate when the drop-down was
+    /// never opened (the pre-existing, already-correct case, kept as the baseline).</summary>
+    [Fact]
+    public void ItemTemplate_WhenReassignedWhileNeverOpened_PreservesSelection()
+    {
+        var box = new ComboBox { Items = [new Fruit("Kiwi"), new Fruit("Mango")], SelectedIndex = 1 };
+        var selectionChanges = 0;
+        box.SelectionChanged += (_, _) => selectionChanges++;
+
+        box.ItemTemplate = static item => new ControlText($"* {((Fruit) item!).Name}");
+
+        box.SelectedIndex.ShouldBe(1);
+        selectionChanges.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a made selection survives assigning ItemTemplate while the drop-down is
+    /// currently open (the pre-existing, already-correct case, kept as the baseline).</summary>
+    [Fact]
+    public void ItemTemplate_WhenReassignedWhileOpen_PreservesSelection()
+    {
+        var box = new ComboBox
+        {
+            Items = [new Fruit("Kiwi"), new Fruit("Mango")],
+            SelectedIndex = 1,
+            IsOpen = true
+        };
+        new LayoutEngine().Layout(box, new Size(24, 12));
+        var selectionChanges = 0;
+        box.SelectionChanged += (_, _) => selectionChanges++;
+
+        box.ItemTemplate = static item => new ControlText($"* {((Fruit) item!).Name}");
+
+        box.SelectedIndex.ShouldBe(1);
+        selectionChanges.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a made selection at a still-in-range index survives an Items
+    /// reassignment after the drop-down was opened and closed again — a never-opened box already
+    /// preserved this correctly, but the previously buggy path filtered the remapped selection
+    /// away and auto-selected index 0 instead (see #171).</summary>
+    [Fact]
+    public void Items_WhenReassignedAfterOpenedThenClosed_PreservesInRangeSelection()
+    {
+        var box = new ComboBox { Items = ["a", "b", "c"], SelectedIndex = 2, IsOpen = true };
+        new LayoutEngine().Layout(box, new Size(24, 12));
+        box.IsOpen = false;
+        new LayoutEngine().Layout(box, new Size(24, 12));
+        var selectionChanges = 0;
+        box.SelectionChanged += (_, _) => selectionChanges++;
+
+        box.Items = ["a", "b", "c", "d"];
+
+        box.SelectedIndex.ShouldBe(2);
+        box.SelectedItem.ShouldBe("c");
+        selectionChanges.ShouldBe(0);
+    }
+
+    /// <summary>Verifies shrinking Items below the selected index after the drop-down was opened
+    /// and closed again still publishes the transition to no selection, instead of silently
+    /// losing it because the list's own SelectionChanged never fires from an already-rejected
+    /// state (see #171).</summary>
+    [Fact]
+    public void Items_WhenShrunkBelowSelectedIndexAfterOpenedThenClosed_PublishesNoSelection()
+    {
+        var box = new ComboBox { Items = ["a", "b", "c"], SelectedIndex = 2, IsOpen = true };
+        new LayoutEngine().Layout(box, new Size(24, 12));
+        box.IsOpen = false;
+        new LayoutEngine().Layout(box, new Size(24, 12));
+        var selectionChanges = 0;
+        box.SelectionChanged += (_, _) => selectionChanges++;
+
+        box.Items = ["a"];
+
+        box.SelectedIndex.ShouldBe(-1);
+        selectionChanges.ShouldBe(1);
+    }
+
+    /// <summary>Verifies shrinking Items below the selected index while the drop-down was never
+    /// opened still publishes the transition to no selection (the third symptom from #171,
+    /// reproducible even without ever opening the drop-down).</summary>
+    [Fact]
+    public void Items_WhenShrunkBelowSelectedIndexWhileNeverOpened_PublishesNoSelection()
+    {
+        var box = new ComboBox { Items = ["a", "b", "c"], SelectedIndex = 2 };
+        var selectionChanges = 0;
+        box.SelectionChanged += (_, _) => selectionChanges++;
+
+        box.Items = ["a"];
+
+        box.SelectedIndex.ShouldBe(-1);
+        selectionChanges.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a made selection survives an Items reassignment while the drop-down is
+    /// currently open (the pre-existing, already-correct case, kept as the baseline).</summary>
+    [Fact]
+    public void Items_WhenReassignedWhileOpen_PreservesInRangeSelection()
+    {
+        var box = new ComboBox { Items = ["a", "b", "c"], SelectedIndex = 2, IsOpen = true };
+        new LayoutEngine().Layout(box, new Size(24, 12));
+        var selectionChanges = 0;
+        box.SelectionChanged += (_, _) => selectionChanges++;
+
+        box.Items = ["a", "b", "c", "d"];
+
+        box.SelectedIndex.ShouldBe(2);
+        selectionChanges.ShouldBe(0);
+    }
+
     /// <summary>Verifies a domain object with no ItemTemplate or TextSelector still falls back to
     /// Convert.ToString, preserving the pre-existing default behavior.</summary>
     [Fact]
