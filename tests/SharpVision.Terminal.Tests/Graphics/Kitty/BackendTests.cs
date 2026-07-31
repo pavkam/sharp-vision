@@ -128,6 +128,32 @@ public sealed class BackendTests
         Encoding.ASCII.GetString(bytes.Placements).ShouldContain(",p=1,");
     }
 
+    /// <summary>Verifies a placement identifier transferred to a new (image, placement) pair still
+    /// deletes the old pair when its image survives into the new frame, rather than leaving a
+    /// ghost image rendered where the retiring placement used to sit (see #172).</summary>
+    [Fact]
+    public void Prepare_WhenTransferredPlacementIdRetiresFromASurvivingImage_DeletesTheOldPair()
+    {
+        using var backend = new KittyGraphicsBackend(maxImages: 2, maxPlacements: 2);
+        var imageA = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        var imageB = GraphicsImage.FromRgba(new Size(1, 1), [4, 5, 6, 255]);
+        using var first = new RenderFrame(new Size(4, 2));
+        first.Canvas.DrawImage(imageA, new Rect(0, 0, 1, 1), PlacementMode.Stretch);
+        first.Canvas.DrawImage(imageA, new Rect(2, 0, 1, 1), PlacementMode.Stretch);
+        using var second = new RenderFrame(new Size(4, 2));
+        second.Canvas.DrawImage(imageA, new Rect(0, 0, 1, 1), PlacementMode.Stretch);
+        second.Canvas.DrawImage(imageB, new Rect(0, 1, 1, 1), PlacementMode.Stretch);
+        _ = backend.Prepare(null, first, full: true);
+        _ = WritePrepared(backend);
+        backend.Commit();
+
+        var result = backend.Prepare(first, second, full: false);
+        var bytes = WritePrepared(backend);
+
+        result.Removals.ShouldBe(1);
+        Encoding.ASCII.GetString(bytes.Removals).ShouldContain("a=d,d=i,i=1,p=2");
+    }
+
     /// <summary>Verifies removing one shared placement preserves image data through a soft delete.</summary>
     [Fact]
     public void Prepare_WhenSharedImagePlacementIsRemoved_DeletesOnlyExactPlacement()

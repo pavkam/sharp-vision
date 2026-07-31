@@ -320,13 +320,15 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                     candidate.PlacementId == previous.PlacementId &&
                     candidate.ImageId == previous.ImageId);
 
-                if (retained || transferredPlacementIdSet.Contains(previous.PlacementId))
+                if (retained)
                 {
-                    // A transferred placement identifier is reused directly by a new placement
-                    // above (see the transfer branch near line ~203); it is not being retired.
                     continue;
                 }
 
+                // Transferring the placement identifier only means the number is reused by a new
+                // (image, placement) pair above (see the transfer branch near line ~203); the old
+                // pair itself is not that new pair unless retained already matched, so its image
+                // still needs the explicit delete or it stays rendered as a ghost (see #172).
                 if (images.ContainsKey(previous.Placement.ImageIdentity))
                 {
                     Writer.Write(
@@ -336,7 +338,12 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                     removalCount++;
                 }
 
-                retiredPlacements.Add(previous.PlacementId);
+                // A transferred identifier is still actively owned by the new pair, so it must not
+                // be returned to the free pool alongside placements that are genuinely retiring.
+                if (!transferredPlacementIdSet.Contains(previous.PlacementId))
+                {
+                    retiredPlacements.Add(previous.PlacementId);
+                }
             }
 
             var retiredImages = new List<uint>();
