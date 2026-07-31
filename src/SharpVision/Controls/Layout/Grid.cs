@@ -21,6 +21,8 @@ public sealed class Grid: Container
 
     private static readonly ConditionalWeakTable<Control, GridPlacement> _placements = [];
 
+    private Constraint? _lastResolvedContentConstraint;
+
     /// <summary>Initializes permanent row and column definition collections.</summary>
     public Grid()
     {
@@ -202,6 +204,8 @@ public sealed class Grid: Container
         rowRequests = Requests(rows.Length, rows: true);
         rowExtents = Resolve(constraint.Height, RowSpacing, rows, rowRequests);
 
+        _lastResolvedContentConstraint = constraint;
+
         return new Size(
             LayoutMath.Add(Sum(columnExtents), Spacing(ColumnSpacing, columns.Length, constraint.Width)),
             LayoutMath.Add(Sum(rowExtents), Spacing(RowSpacing, rows.Length, constraint.Height)));
@@ -220,12 +224,21 @@ public sealed class Grid: Container
 
         // Final viewport dimensions can differ from measure. Re-measuring the
         // exact spanned slots keeps wrapped content deterministic after resize.
-        MeasureChildren(rowExtents, columnExtents, bounds.Height, bounds.Width);
-        columnRequests = Requests(columns.Length, rows: false);
-        columnExtents = Resolve(bounds.Width, ColumnSpacing, columns, columnRequests);
-        MeasureAutomaticRows(rows, columnExtents, bounds.Width);
-        rowRequests = Requests(rows.Length, rows: true);
-        rowExtents = Resolve(bounds.Height, RowSpacing, rows, rowRequests);
+        // When the arranged viewport is exactly what MeasureOverride already
+        // resolved these same extents against, the repeat is redundant.
+        var viewportChanged = _lastResolvedContentConstraint is not { } measured ||
+            measured.Width != bounds.Width || measured.Height != bounds.Height;
+
+        if (viewportChanged)
+        {
+            MeasureChildren(rowExtents, columnExtents, bounds.Height, bounds.Width);
+            columnRequests = Requests(columns.Length, rows: false);
+            columnExtents = Resolve(bounds.Width, ColumnSpacing, columns, columnRequests);
+            MeasureAutomaticRows(rows, columnExtents, bounds.Width);
+            rowRequests = Requests(rows.Length, rows: true);
+            rowExtents = Resolve(bounds.Height, RowSpacing, rows, rowRequests);
+        }
+
         ArrangeChildren(bounds, rowExtents, columnExtents);
     }
 

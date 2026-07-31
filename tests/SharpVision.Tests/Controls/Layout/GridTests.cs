@@ -101,6 +101,41 @@ public sealed class GridTests
         second.Bounds.ShouldBe(new Rect(2, 0, 8, 1));
     }
 
+    /// <summary>Verifies arrange skips its bounded re-measure entirely when the final viewport
+    /// exactly matches the constraint MeasureOverride already resolved these same extents
+    /// against, instead of unconditionally repeating it (see #175).</summary>
+    [Fact]
+    public void Layout_WhenArrangedViewportMatchesMeasureConstraint_SkipsRedundantRemeasure()
+    {
+        var grid = new Grid();
+        var child = new ProbeControl(new Size(3, 2));
+        grid.Children.Add(child);
+
+        new LayoutEngine().Layout(grid, new Size(8, 5));
+
+        child.MeasureConstraints.Count.ShouldBe(3);
+        child.Bounds.ShouldBe(new Rect(0, 0, 3, 2));
+    }
+
+    /// <summary>Verifies a resize that changes the final viewport still triggers the bounded
+    /// re-measure, so wrapped content stays correct after the arranged size actually
+    /// changes (see #175).</summary>
+    [Fact]
+    public void Layout_WhenArrangedViewportChangesAfterResize_StillRemeasures()
+    {
+        var grid = new Grid();
+        var child = new ProbeControl(new Size(3, 2));
+        grid.Children.Add(child);
+        var engine = new LayoutEngine();
+        engine.Layout(grid, new Size(8, 5));
+        var initialCount = child.MeasureConstraints.Count;
+
+        engine.Layout(grid, new Size(12, 6));
+
+        child.MeasureConstraints.Count.ShouldBeGreaterThan(initialCount);
+        child.Bounds.ShouldBe(new Rect(0, 0, 3, 2));
+    }
+
     /// <summary>Verifies collapsed children contribute no intrinsic requirement.</summary>
     [Fact]
     public void Measure_WhenLargeChildIsCollapsed_IgnoresItsRequest()
