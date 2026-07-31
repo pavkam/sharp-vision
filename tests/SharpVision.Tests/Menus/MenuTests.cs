@@ -491,6 +491,53 @@ public sealed class MenuTests
         submenuPopup.Face.Background.ShouldBe(contextMenuPopup.Face.Background);
     }
 
+    /// <summary>Verifies replacing a standalone item's submenu detaches the previous menu without
+    /// disposing it, while the framework-owned popup that hosted it is disposed (see #181).</summary>
+    [Fact]
+    public void Submenu_WhenReplacedOnStandaloneItem_DetachesPreviousMenuWithoutDisposingIt()
+    {
+        // Arrange
+        var previous = new Menu { Orientation = Orientation.Vertical };
+        previous.Items.Add(new MenuItem { Content = new ControlText("First") });
+        var item = new MenuItem { Content = new ControlText("File"), Submenu = previous };
+        var previousPopup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
+        var replacement = new Menu { Orientation = Orientation.Vertical };
+        replacement.Items.Add(new MenuItem { Content = new ControlText("Second") });
+
+        // Act
+        item.Submenu = replacement;
+
+        // Assert the previous menu survives detached, while its framework popup is disposed
+        previous.IsDisposed.ShouldBeFalse();
+        previousPopup.IsDisposed.ShouldBeTrue();
+        item.Submenu.ShouldBeSameAs(replacement);
+
+        // Assert the detached menu can still be mutated and reassigned elsewhere
+        previous.Items.Add(new MenuItem { Content = new ControlText("Reused") });
+        var other = new MenuItem { Content = new ControlText("Edit"), Submenu = previous };
+        other.Submenu.ShouldBeSameAs(previous);
+    }
+
+    /// <summary>Verifies clearing a standalone item's submenu detaches the previous menu without
+    /// disposing it, while the framework-owned popup that hosted it is disposed (see #181).</summary>
+    [Fact]
+    public void Submenu_WhenClearedOnStandaloneItem_DetachesPreviousMenuWithoutDisposingIt()
+    {
+        // Arrange
+        var previous = new Menu { Orientation = Orientation.Vertical };
+        previous.Items.Add(new MenuItem { Content = new ControlText("First") });
+        var item = new MenuItem { Content = new ControlText("File"), Submenu = previous };
+        var previousPopup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
+
+        // Act
+        item.Submenu = null;
+
+        // Assert
+        previous.IsDisposed.ShouldBeFalse();
+        previousPopup.IsDisposed.ShouldBeTrue();
+        item.Submenu.ShouldBeNull();
+    }
+
     /// <summary>Verifies Shortcut derives ShortcutText's display text when no explicit text is set.</summary>
     [Fact]
     public void ShortcutText_WhenShortcutIsSetAndTextIsNot_DerivesDisplayText()

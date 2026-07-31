@@ -1059,6 +1059,7 @@ public sealed class MenuModalityTests
 
         // Assert replacement keeps exact session
         firstPopup.IsDisposed.ShouldBeTrue();
+        firstSubmenu.IsDisposed.ShouldBeFalse();
         replacementPopup.ShouldNotBeSameAs(firstPopup);
         replacementPopup.IsOpen.ShouldBeTrue();
         replacementPopup.Content.ShouldBeSameAs(replacement);
@@ -1069,6 +1070,7 @@ public sealed class MenuModalityTests
 
         // Assert complete teardown
         replacementPopup.IsDisposed.ShouldBeTrue();
+        replacement.IsDisposed.ShouldBeFalse();
         scope.IsActive.ShouldBeFalse();
         surface.Application.Modality.Active.ShouldBeNull();
     }

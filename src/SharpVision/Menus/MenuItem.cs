@@ -79,17 +79,18 @@ public sealed class MenuItem: Pressable
     /// <param name="value">The replacement submenu, or null to remove the current value.</param>
     internal void CommitSubmenu(Menu? value)
     {
+        if (_submenu is { } previous)
+        {
+            previous.ItemInvoked -= OnSubmenuItemInvoked;
+        }
+
         if (_submenuPopup is not null)
         {
             _submenuPopup.IsOpen = false;
             _ = _submenuSlot.Remove(_submenuPopup);
+            _submenuPopup.Content = null;
             _submenuPopup.Dispose();
             _submenuPopup = null;
-        }
-
-        if (_submenu is { } previous)
-        {
-            previous.ItemInvoked -= OnSubmenuItemInvoked;
         }
 
         _submenu = value;
