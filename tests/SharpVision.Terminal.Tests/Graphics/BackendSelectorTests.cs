@@ -14,6 +14,14 @@ using MultiplexingOperation = Terminal.Multiplexing.Operation;
 /// <summary>Proves authoritative backend priority and mixed per-placement fallback.</summary>
 public sealed class BackendSelectorTests
 {
+    /// <summary>Verifies the shared default prepared-byte budget matches its documented value.
+    /// KittyGraphicsBackend, NonRetainedGraphicsBackend, SixelGraphicsBackend, and
+    /// ItermGraphicsBackend all default their own maxPreparedBytes parameter to this same
+    /// constant instead of independently repeating the literal (see #93).</summary>
+    [Fact]
+    public void DefaultMaxPreparedBytes_WhenRead_Is16Mebibytes() =>
+        GraphicsBackendSelector.DefaultMaxPreparedBytes.ShouldBe(16 * 1024 * 1024);
+
     /// <summary>Verifies authoritative Kitty support dominates both fallback protocols.</summary>
     [Fact]
     public void Create_WhenAllProtocolsAreSupported_SelectsKitty()

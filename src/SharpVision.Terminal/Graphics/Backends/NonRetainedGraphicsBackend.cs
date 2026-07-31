@@ -44,7 +44,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
     public NonRetainedGraphicsBackend(
         bool enableSixel,
         bool enableIterm,
-        int maxPreparedBytes = 16 * 1024 * 1024,
+        int maxPreparedBytes = GraphicsBackendSelector.DefaultMaxPreparedBytes,
         MultiplexerRoute? route = null)
     {
         if (!enableSixel && !enableIterm)

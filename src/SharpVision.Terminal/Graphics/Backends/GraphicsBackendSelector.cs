@@ -10,6 +10,10 @@ using MultiplexerRoute = Multiplexing.Route;
 /// <summary>Selects one renderer backend from authoritative evidence and route policy.</summary>
 internal static class GraphicsBackendSelector
 {
+    /// <summary>The default complete prepared-transaction byte bound every graphics backend
+    /// shares, unless a caller supplies its own (see #93).</summary>
+    public const int DefaultMaxPreparedBytes = 16 * 1024 * 1024;
+
     /// <summary>Creates Kitty or a frame-ordered mixed non-retained backend, or null for fallback.</summary>
     /// <param name="capabilities">The non-null final negotiated capability evidence.</param>
     /// <param name="route">An optional explicit graphics route.</param>
@@ -20,7 +24,7 @@ internal static class GraphicsBackendSelector
     public static IGraphicsBackend? Create(
         TerminalCapabilities capabilities,
         MultiplexerRoute? route = null,
-        int maxPreparedBytes = 16 * 1024 * 1024)
+        int maxPreparedBytes = DefaultMaxPreparedBytes)
     {
         ArgumentNullException.ThrowIfNull(capabilities);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxPreparedBytes);

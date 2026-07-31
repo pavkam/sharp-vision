@@ -20,7 +20,7 @@ internal sealed class SixelGraphicsBackend: IGraphicsBackend
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxPreparedBytes"/> is not positive.</exception>
     /// <exception cref="NotSupportedException"><paramref name="route"/> cannot carry graphics.</exception>
     public SixelGraphicsBackend(
-        int maxPreparedBytes = 16 * 1024 * 1024,
+        int maxPreparedBytes = GraphicsBackendSelector.DefaultMaxPreparedBytes,
         MultiplexerRoute? route = null)
     {
         _inner = new NonRetainedGraphicsBackend(

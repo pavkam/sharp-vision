@@ -54,7 +54,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     public KittyGraphicsBackend(
         int maxImages = 4_096,
         int maxPlacements = 4_096,
-        int maxPreparedBytes = 16 * 1024 * 1024,
+        int maxPreparedBytes = GraphicsBackendSelector.DefaultMaxPreparedBytes,
         MultiplexerRoute? route = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxImages);
