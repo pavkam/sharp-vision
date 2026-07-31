@@ -23,12 +23,11 @@ public sealed class Decoder: IDisposable
     private KeySequenceMatcher? _keyMatcher;
     private byte[]? _keyReplay;
     private readonly TimeProvider _timeProvider;
-    private readonly byte[] _utf8 = new byte[4];
+    private readonly Utf8TextAccumulator _utf8;
     private DateTimeOffset _escapeDeadline;
     private readonly CellMetricsResolver _cellMetricsResolver;
     private readonly MouseDecoder _mouseDecoder;
     private Modifiers _nextTextModifiers;
-    private int _utf8Length;
     private long _skippedBytes;
     private bool _completed;
     private bool _disposed;
@@ -58,6 +57,7 @@ public sealed class Decoder: IDisposable
         _keyReplay = _keyMatcher is null ? null : new byte[_keyMatcher.MaximumLength];
         _cellMetricsResolver = new CellMetricsResolver(_options.CellMetrics);
         _mouseDecoder = new MouseDecoder(_sink, _cellMetricsResolver, _options.PixelMouse, Report);
+        _utf8 = new Utf8TextAccumulator(rune => EmitText(rune));
     }
 
     /// <summary>Consumes one borrowed transport fragment synchronously.</summary>
@@ -134,7 +134,7 @@ public sealed class Decoder: IDisposable
 
         _escapePending = false;
         _skippedBytes = checked(_skippedBytes + 1);
-        FlushUtf8();
+        _utf8.Flush();
         EmitEscape();
         return true;
     }
@@ -171,7 +171,7 @@ public sealed class Decoder: IDisposable
             }
         }
 
-        FlushUtf8();
+        _utf8.Flush();
 
         if (_escapePending)
         {
@@ -232,9 +232,8 @@ public sealed class Decoder: IDisposable
         }
 
         _disposed = true;
-        _utf8.AsSpan().Clear();
+        _utf8.Clear();
         _mouseDecoder.Clear();
-        _utf8Length = 0;
         _pasteAccumulator.Dispose();
 
         if (_keyReplay is { } keyReplay)
@@ -264,7 +263,7 @@ public sealed class Decoder: IDisposable
             return;
         }
 
-        if (_utf8Length == 0 &&
+        if (!_utf8.HasPending &&
             !_escapePending &&
             !_ss3Pending &&
             !_mouseDecoder.IsPending &&
@@ -317,7 +316,7 @@ public sealed class Decoder: IDisposable
         if (_parser.IsGround && value == 0x7f)
         {
             _skippedBytes = checked(_skippedBytes + 1);
-            FlushUtf8();
+            _utf8.Flush();
             HandleControl(value);
             return;
         }
@@ -327,7 +326,7 @@ public sealed class Decoder: IDisposable
     }
 
     private bool CanStartMatcher(byte value) =>
-        _utf8Length == 0 &&
+        !_utf8.HasPending &&
         !_escapePending &&
         !_ss3Pending &&
         !_mouseDecoder.IsPending &&
@@ -409,91 +408,6 @@ public sealed class Decoder: IDisposable
         }
     }
 
-    private void DecodeText(ReadOnlySpan<byte> value)
-    {
-        var position = 0;
-
-        while (position < value.Length)
-        {
-            if (_utf8Length > 0)
-            {
-                Debug.Assert(_utf8Length < _utf8.Length, "Pending UTF-8 must remain bounded.");
-                _utf8[_utf8Length++] = value[position++];
-                ProcessPendingUtf8();
-                continue;
-            }
-
-            var status = Rune.DecodeFromUtf8(value[position..], out var rune, out var consumed);
-
-            if (status == OperationStatus.Done)
-            {
-                EmitText(rune);
-                position += consumed;
-            }
-            else if (status == OperationStatus.NeedMoreData)
-            {
-                var remaining = value[position..];
-                Debug.Assert(remaining.Length <= 3, "A valid UTF-8 prefix retains at most three bytes.");
-                remaining.CopyTo(_utf8);
-                _utf8Length = remaining.Length;
-                return;
-            }
-            else
-            {
-                EmitText(Rune.ReplacementChar);
-                position += Math.Max(1, consumed);
-            }
-        }
-    }
-
-    private void ProcessPendingUtf8()
-    {
-        while (_utf8Length > 0)
-        {
-            var status = Rune.DecodeFromUtf8(
-                _utf8.AsSpan(0, _utf8Length),
-                out var rune,
-                out var consumed);
-
-            if (status == OperationStatus.NeedMoreData)
-            {
-                return;
-            }
-
-            if (status == OperationStatus.Done)
-            {
-                EmitText(rune);
-            }
-            else
-            {
-                EmitText(Rune.ReplacementChar);
-                consumed = Math.Max(1, consumed);
-            }
-
-            ShiftUtf8(consumed);
-        }
-    }
-
-    private void ShiftUtf8(int count)
-    {
-        Debug.Assert(count > 0 && count <= _utf8Length, "UTF-8 consumption must be bounded.");
-        _utf8.AsSpan(count, _utf8Length - count).CopyTo(_utf8);
-        _utf8.AsSpan(_utf8Length - count, count).Clear();
-        _utf8Length -= count;
-    }
-
-    private void FlushUtf8()
-    {
-        if (_utf8Length == 0)
-        {
-            return;
-        }
-
-        _utf8.AsSpan(0, _utf8Length).Clear();
-        _utf8Length = 0;
-        EmitText(Rune.ReplacementChar);
-    }
-
     private void HandleControl(byte value)
     {
         _mouseDecoder.EndIfPending();
@@ -565,7 +479,7 @@ public sealed class Decoder: IDisposable
 
     private void HandleEscape(ReadOnlySpan<byte> intermediates, byte final)
     {
-        FlushUtf8();
+        _utf8.Flush();
         _mouseDecoder.EndIfPending();
         EndSs3IfPending();
 
@@ -606,7 +520,7 @@ public sealed class Decoder: IDisposable
         ReadOnlySpan<byte> intermediates,
         byte final)
     {
-        FlushUtf8();
+        _utf8.Flush();
         _mouseDecoder.EndIfPending();
         EndSs3IfPending();
 
@@ -812,7 +726,7 @@ public sealed class Decoder: IDisposable
 
     private void HandleSs3(byte final)
     {
-        FlushUtf8();
+        _utf8.Flush();
         _ss3Pending = false;
         if (_options.KeyMap.TryGet(
                 KeySignatureKind.Ss3,
@@ -853,7 +767,7 @@ public sealed class Decoder: IDisposable
         ReadOnlySpan<byte> value,
         StringTerminator terminator)
     {
-        FlushUtf8();
+        _utf8.Flush();
         _mouseDecoder.EndIfPending();
         EndSs3IfPending();
 
@@ -902,7 +816,7 @@ public sealed class Decoder: IDisposable
 
     private void HandleParserDiagnostic(in Diagnostic value)
     {
-        FlushUtf8();
+        _utf8.Flush();
         _mouseDecoder.EndIfPending();
         EndSs3IfPending();
         var adjusted = new Diagnostic(
@@ -1510,14 +1424,14 @@ public sealed class Decoder: IDisposable
             value = value[1..];
         }
 
-        DecodeText(value);
+        _utf8.Process(value);
     }
 
     /// <summary>Accepts one parser control byte after flushing pending UTF-8.</summary>
     /// <param name="value">The control byte.</param>
     internal void AcceptControl(byte value)
     {
-        FlushUtf8();
+        _utf8.Flush();
         HandleControl(value);
     }
 
@@ -1558,7 +1472,7 @@ public sealed class Decoder: IDisposable
         ReadOnlySpan<byte> value,
         StringTerminator terminator)
     {
-        FlushUtf8();
+        _utf8.Flush();
         _mouseDecoder.EndIfPending();
         EndSs3IfPending();
 
