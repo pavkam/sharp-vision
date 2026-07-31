@@ -18,7 +18,7 @@ public sealed class Policy
     private const Operation _allOperations = Operation.CapabilityQueries |
                                              Operation.Clipboard |
                                              Operation.Graphics;
-    private readonly ReadOnlyCollection<Kind> _layers;
+    private readonly ReadOnlyCollection<MultiplexerKind> _layers;
 
     /// <summary>Initializes one explicit multiplexer routing policy.</summary>
     /// <param name="layers">Multiplexer layers ordered from nearest to farthest.</param>
@@ -32,7 +32,7 @@ public sealed class Policy
     /// <exception cref="ArgumentOutOfRangeException">An enum or bound is invalid.</exception>
     /// <exception cref="ArgumentException">A layer is none or the route exceeds <paramref name="maxDepth"/>.</exception>
     public Policy(
-        IReadOnlyList<Kind> layers,
+        IReadOnlyList<MultiplexerKind> layers,
         TerminalProfile? outerProfile,
         PassthroughMode passthrough = PassthroughMode.Disabled,
         bool paneVisible = true,
@@ -73,13 +73,13 @@ public sealed class Policy
             throw new ArgumentException("The multiplexer route exceeds its maximum depth.", nameof(layers));
         }
 
-        var copy = new Kind[layers.Count];
+        var copy = new MultiplexerKind[layers.Count];
 
         for (var index = 0; index < copy.Length; index++)
         {
             var layer = layers[index];
 
-            if (layer is Kind.None || !Enum.IsDefined(layer))
+            if (layer is MultiplexerKind.None || !Enum.IsDefined(layer))
             {
                 throw new ArgumentException("Every route layer must identify tmux or GNU screen.", nameof(layers));
             }
@@ -97,10 +97,10 @@ public sealed class Policy
     }
 
     /// <summary>Gets the detected or explicit nearest multiplexer kind.</summary>
-    public Kind Kind => _layers.Count == 0 ? Kind.None : _layers[0];
+    public MultiplexerKind Kind => _layers.Count == 0 ? MultiplexerKind.None : _layers[0];
 
     /// <summary>Gets the owned nearest-to-farthest route.</summary>
-    public IReadOnlyList<Kind> Layers => _layers;
+    public IReadOnlyList<MultiplexerKind> Layers => _layers;
 
     /// <summary>Gets the explicit outer-terminal profile, separate from the active inner profile.</summary>
     public TerminalProfile? OuterProfile { get; }
@@ -128,7 +128,7 @@ public sealed class Policy
                              (Passthrough == PassthroughMode.Visible && PaneVisible));
 
     /// <summary>Gets whether the configured route contains one GNU screen layer.</summary>
-    internal bool ContainsScreen => _layers.Contains(Kind.Screen);
+    internal bool ContainsScreen => _layers.Contains(MultiplexerKind.Screen);
 
     /// <summary>
     /// Gets whether Screen, when present, is the farthest layer and therefore
@@ -142,7 +142,7 @@ public sealed class Policy
 
             for (var index = 0; index < _layers.Count; index++)
             {
-                if (_layers[index] != Kind.Screen)
+                if (_layers[index] != MultiplexerKind.Screen)
                 {
                     continue;
                 }
@@ -168,14 +168,14 @@ public sealed class Policy
         ArgumentNullException.ThrowIfNull(environment);
         _ = environment.TryGetValue(EnvironmentNames.Term, out var term);
         var kind = environment.TryGetValue(EnvironmentNames.Tmux, out var tmux) && !string.IsNullOrWhiteSpace(tmux)
-            ? Kind.Tmux
+            ? MultiplexerKind.Tmux
             : StartsWith(term, "tmux-")
-                ? Kind.Tmux
+                ? MultiplexerKind.Tmux
                 : StartsWith(term, "screen-") || string.Equals(term, "screen", StringComparison.OrdinalIgnoreCase)
-                    ? Kind.Screen
-                    : Kind.None;
+                    ? MultiplexerKind.Screen
+                    : MultiplexerKind.None;
 
-        return new Policy(kind == Kind.None ? [] : [kind], outerProfile: null);
+        return new Policy(kind == MultiplexerKind.None ? [] : [kind], outerProfile: null);
     }
 
     /// <summary>Returns whether one exact typed operation family is authorized.</summary>

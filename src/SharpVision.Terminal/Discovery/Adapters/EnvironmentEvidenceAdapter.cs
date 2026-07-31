@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Discovery.Adapters;
 
 using Capabilities;
 
-using MultiplexingKind = Multiplexing.Kind;
+using MultiplexingKind = Multiplexing.MultiplexerKind;
 using MultiplexingPolicy = Multiplexing.Policy;
 
 /// <summary>Translates caller-supplied environment hints into conservative semantic evidence.</summary>

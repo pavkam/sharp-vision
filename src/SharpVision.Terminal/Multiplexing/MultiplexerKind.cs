@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Multiplexing;
 
 /// <summary>Identifies one terminal multiplexer passthrough layer.</summary>
 [PublicAPI]
-public enum Kind
+public enum MultiplexerKind
 {
     /// <summary>No multiplexer is present.</summary>
     None,

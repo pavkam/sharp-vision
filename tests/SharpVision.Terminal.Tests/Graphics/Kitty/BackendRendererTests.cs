@@ -189,7 +189,7 @@ public sealed class BackendRendererTests
     public async Task ShutdownAsync_WhenRealBackendUsesTmux_RoutesEachDeleteIndependentlyAsync()
     {
         var route = new Route(new Policy(
-            [Kind.Tmux],
+            [MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(KittyCapabilities),
             PassthroughMode.All,
             paneVisible: true,

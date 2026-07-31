@@ -15,10 +15,10 @@ public sealed class RouteTests
 {
     /// <summary>Verifies environment evidence identifies only the nearest multiplexer layer.</summary>
     [Theory]
-    [InlineData(null, null, (int) Kind.None)]
-    [InlineData("xterm-256color", "/tmp/tmux,1,0", (int) Kind.Tmux)]
-    [InlineData("tmux-256color", null, (int) Kind.Tmux)]
-    [InlineData("screen-256color", null, (int) Kind.Screen)]
+    [InlineData(null, null, (int) MultiplexerKind.None)]
+    [InlineData("xterm-256color", "/tmp/tmux,1,0", (int) MultiplexerKind.Tmux)]
+    [InlineData("tmux-256color", null, (int) MultiplexerKind.Tmux)]
+    [InlineData("screen-256color", null, (int) MultiplexerKind.Screen)]
     public void Detect_WhenEnvironmentVaries_IdentifiesNearestLayer(
         string? term,
         string? tmux,
@@ -38,7 +38,7 @@ public sealed class RouteTests
 
         var policy = Policy.Detect(environment);
 
-        policy.Kind.ShouldBe((Kind) expectedValue);
+        policy.Kind.ShouldBe((MultiplexerKind) expectedValue);
         policy.OuterProfile.ShouldBeNull();
         policy.IsActive.ShouldBeFalse();
     }
@@ -53,7 +53,7 @@ public sealed class RouteTests
             ["TERM_PROGRAM"] = "iTerm.app"
         });
 
-        policy.Kind.ShouldBe(Kind.Tmux);
+        policy.Kind.ShouldBe(MultiplexerKind.Tmux);
         policy.OuterProfile.ShouldBeNull();
         policy.ApprovedOperations.ShouldBe(MultiplexingOperation.None);
     }
@@ -70,7 +70,7 @@ public sealed class RouteTests
         bool expected)
     {
         var policy = new Policy(
-            [Kind.Tmux],
+            [MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             (PassthroughMode) modeValue,
             paneVisible,
@@ -83,7 +83,7 @@ public sealed class RouteTests
     [Fact]
     public void TryWriteCapabilityQueries_WhenRouteIsNested_WritesExactEnvelopes()
     {
-        var policy = ActivePolicy([Kind.Tmux, Kind.Screen]);
+        var policy = ActivePolicy([MultiplexerKind.Tmux, MultiplexerKind.Screen]);
         var route = new Route(policy);
         var destination = new ArrayBufferWriter<byte>();
 
@@ -99,7 +99,7 @@ public sealed class RouteTests
     public void TryWriteGraphics_WhenRouteHasNestedTmux_WritesExactEnvelopes()
     {
         var policy = new Policy(
-            [Kind.Tmux, Kind.Tmux],
+            [MultiplexerKind.Tmux, MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,
@@ -121,7 +121,7 @@ public sealed class RouteTests
     public void TryWriteGraphics_WhenRouteContainsScreen_RejectsAtomically()
     {
         var policy = new Policy(
-            [Kind.Screen],
+            [MultiplexerKind.Screen],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,
@@ -138,7 +138,7 @@ public sealed class RouteTests
     [Fact]
     public void TryUnwrapReply_WhenTmuxCarriesDcs_RestoresExactReply()
     {
-        var route = new Route(ActivePolicy([Kind.Tmux]));
+        var route = new Route(ActivePolicy([MultiplexerKind.Tmux]));
         var wrapped = new ArrayBufferWriter<byte>();
         var reply = "\u001bP1+r524742=3234\u001b\\"u8.ToArray();
         route.TryWriteCapabilityQueries(wrapped, reply).ShouldBeTrue();
@@ -164,7 +164,7 @@ public sealed class RouteTests
     [InlineData("\u001bP1+r544e=787465726d\u001b\\")]
     public void TryUnwrapReply_WhenEnvelopeContainsExactlyOneTypedReply_Accepts(string reply)
     {
-        var route = new Route(ActivePolicy([Kind.Tmux]));
+        var route = new Route(ActivePolicy([MultiplexerKind.Tmux]));
         var wrapped = new ArrayBufferWriter<byte>();
         TmuxWriter.WritePassthrough(wrapped, Encoding.ASCII.GetBytes(reply));
 
@@ -183,7 +183,7 @@ public sealed class RouteTests
     [InlineData("\u001bP1$r>4;2m\u001b\\X\u001b\\")]
     public void Route_WhenEnvelopeInjectsBeyondOneTypedReply_RejectsAtEverySplit(string reply)
     {
-        var route = new Route(ActivePolicy([Kind.Tmux]));
+        var route = new Route(ActivePolicy([MultiplexerKind.Tmux]));
         var wrapped = new ArrayBufferWriter<byte>();
         TmuxWriter.WritePassthrough(wrapped, Encoding.ASCII.GetBytes(reply));
         var input = wrapped.WrittenSpan.ToArray();
@@ -208,7 +208,7 @@ public sealed class RouteTests
     [Fact]
     public void Route_WhenWrappedAndRejectedInputPrecedeMalformedCsi_ReportsRawOffsets()
     {
-        var route = new Route(ActivePolicy([Kind.Tmux]));
+        var route = new Route(ActivePolicy([MultiplexerKind.Tmux]));
         var valid = new ArrayBufferWriter<byte>();
         TmuxWriter.WritePassthrough(valid, "\u001b[?1;2c"u8);
         var rejected = new ArrayBufferWriter<byte>();
@@ -233,7 +233,7 @@ public sealed class RouteTests
     [Fact]
     public void Route_WhenNestedTmuxReplyPrecedesMalformedCsi_ReportsRawOffset()
     {
-        var route = new Route(ActivePolicy([Kind.Tmux, Kind.Tmux]));
+        var route = new Route(ActivePolicy([MultiplexerKind.Tmux, MultiplexerKind.Tmux]));
         var inner = new ArrayBufferWriter<byte>();
         TmuxWriter.WritePassthrough(inner, "\u001b[?1;2c"u8);
         var outer = new ArrayBufferWriter<byte>();
@@ -254,7 +254,7 @@ public sealed class RouteTests
     public void TryStart_WhenRouteCannotEncodeBatch_CompletesWithoutBytesOrPendingWork()
     {
         var policy = new Policy(
-            [Kind.Tmux],
+            [MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,
@@ -288,7 +288,7 @@ public sealed class RouteTests
     public void TryWriteCapabilityQueries_WhenScreenRouteContainsStringQuery_RejectsAtomically(
         string query)
     {
-        var route = new Route(ActivePolicy([Kind.Tmux, Kind.Screen]));
+        var route = new Route(ActivePolicy([MultiplexerKind.Tmux, MultiplexerKind.Screen]));
         var destination = new ArrayBufferWriter<byte>();
 
         var written = route.TryWriteCapabilityQueries(
@@ -303,10 +303,10 @@ public sealed class RouteTests
     [Fact]
     public void TryWriteCapabilityQueries_WhenScreenWouldRelayTmuxEnvelope_RejectsAtomically()
     {
-        Kind[][] routes =
+        MultiplexerKind[][] routes =
         [
-            [Kind.Screen, Kind.Tmux],
-            [Kind.Tmux, Kind.Screen, Kind.Screen]
+            [MultiplexerKind.Screen, MultiplexerKind.Tmux],
+            [MultiplexerKind.Tmux, MultiplexerKind.Screen, MultiplexerKind.Screen]
         ];
 
         foreach (var layers in routes)
@@ -325,7 +325,7 @@ public sealed class RouteTests
     [Fact]
     public void TryUnwrapReply_WhenTmuxEscapePairIsMalformed_Rejects()
     {
-        var route = new Route(ActivePolicy([Kind.Tmux]));
+        var route = new Route(ActivePolicy([MultiplexerKind.Tmux]));
 
         var unwrapped = route.TryUnwrapReply(
             "\u001bPtmux;\u001bP1+r524742=3234\u001b\\"u8,
@@ -340,7 +340,7 @@ public sealed class RouteTests
     public void TryWriteCapabilityQueries_WhenEnvelopeExceedsLimit_RejectsWithoutWriting()
     {
         var policy = new Policy(
-            [Kind.Tmux],
+            [MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,
@@ -360,7 +360,7 @@ public sealed class RouteTests
     [Fact]
     public void Policy_WhenOnlyQueriesAreApproved_RejectsOtherTypedFamilies()
     {
-        var policy = ActivePolicy([Kind.Tmux]);
+        var policy = ActivePolicy([MultiplexerKind.Tmux]);
 
         policy.Allows(MultiplexingOperation.CapabilityQueries).ShouldBeTrue();
         policy.Allows(MultiplexingOperation.Clipboard).ShouldBeFalse();
@@ -372,7 +372,7 @@ public sealed class RouteTests
     public void Constructor_WhenRouteExceedsMaximumDepth_Throws()
     {
         _ = Should.Throw<ArgumentException>(() => new Policy(
-            [Kind.Tmux, Kind.Screen, Kind.Tmux],
+            [MultiplexerKind.Tmux, MultiplexerKind.Screen, MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,
@@ -384,7 +384,7 @@ public sealed class RouteTests
     [Fact]
     public void Route_WhenTmuxReplyIsFragmented_UnwrapsBeforeTypedProtocolAtEverySplit()
     {
-        var route = new Route(ActivePolicy([Kind.Tmux]));
+        var route = new Route(ActivePolicy([MultiplexerKind.Tmux]));
         var wrapped = new ArrayBufferWriter<byte>();
         route.TryWriteCapabilityQueries(wrapped, "\u001bP1+r524742=3234\u001b\\"u8).ShouldBeTrue();
         var input = wrapped.WrittenSpan.ToArray();
@@ -409,7 +409,7 @@ public sealed class RouteTests
     [Fact]
     public void Route_WhenScreenEnvelopeContainsInnerDcs_RejectsWithoutInputLeakAtEverySplit()
     {
-        var route = new Route(ActivePolicy([Kind.Screen]));
+        var route = new Route(ActivePolicy([MultiplexerKind.Screen]));
         var wrapped = new ArrayBufferWriter<byte>();
         Screen.WritePassthrough(wrapped, "\u001bP1$r>4;2m\u001b\\"u8);
         var input = wrapped.WrittenSpan.ToArray();
@@ -443,7 +443,7 @@ public sealed class RouteTests
     public void Route_WhenScreenEnvelopeExceedsBound_DiscardsThroughOuterTerminatorAtEverySplit()
     {
         var policy = new Policy(
-            [Kind.Screen],
+            [MultiplexerKind.Screen],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,
@@ -480,7 +480,7 @@ public sealed class RouteTests
     [Fact]
     public void Route_WhenScreenEnvelopeContainsCsi_UnwrapsAtEverySplit()
     {
-        var route = new Route(ActivePolicy([Kind.Screen]));
+        var route = new Route(ActivePolicy([MultiplexerKind.Screen]));
         var wrapped = new ArrayBufferWriter<byte>();
         Screen.WritePassthrough(wrapped, "\u001b[?1;2c"u8);
         var input = wrapped.WrittenSpan.ToArray();
@@ -505,7 +505,7 @@ public sealed class RouteTests
     [Fact]
     public void Start_WhenScreenRouteIsActive_OmitsStringFamiliesWithoutDeadlineWork()
     {
-        var policy = ActivePolicy([Kind.Screen]);
+        var policy = ActivePolicy([MultiplexerKind.Screen]);
         var route = new Route(policy);
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
@@ -565,7 +565,7 @@ public sealed class RouteTests
     [Fact]
     public void Start_WhenQueryRoutingIsActive_WritesOneExactEnvelope()
     {
-        var policy = ActivePolicy([Kind.Tmux]);
+        var policy = ActivePolicy([MultiplexerKind.Tmux]);
         var route = new Route(policy);
         var limits = Limits.Default with { MaxConcurrentQueries = 1 };
         var options = new NegotiationOptions(
@@ -593,7 +593,7 @@ public sealed class RouteTests
         };
         var outerProfile = TerminalProfile.CreateAnsi(outerCapabilities);
         var policy = new Policy(
-            [Kind.Tmux],
+            [MultiplexerKind.Tmux],
             outerProfile,
             PassthroughMode.All,
             paneVisible: true,
@@ -620,7 +620,7 @@ public sealed class RouteTests
     }
 
     /// <summary>Creates one query-only explicit outer-terminal route.</summary>
-    private static Policy ActivePolicy(IReadOnlyList<Kind> layers) => new(
+    private static Policy ActivePolicy(IReadOnlyList<MultiplexerKind> layers) => new(
         layers,
         TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
         PassthroughMode.All,

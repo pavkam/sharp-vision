@@ -103,7 +103,7 @@ public sealed class EnvironmentSnapshotTests
         });
 
         lowercase.Multiplexing.Layers.ShouldBe(canonical.Multiplexing.Layers);
-        lowercase.Multiplexing.Layers.ShouldBe([Kind.Tmux]);
+        lowercase.Multiplexing.Layers.ShouldBe([MultiplexerKind.Tmux]);
     }
 
     /// <summary>

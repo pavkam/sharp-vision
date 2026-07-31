@@ -23,7 +23,7 @@ public sealed class RouteGraphicsPerformanceTests
     public void TryWriteGraphics_WhenNestedFourDeepAndWarmed_StaysAllocationFlatAcrossFrames()
     {
         var policy = new Policy(
-            [Kind.Tmux, Kind.Tmux, Kind.Tmux, Kind.Tmux],
+            [MultiplexerKind.Tmux, MultiplexerKind.Tmux, MultiplexerKind.Tmux, MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,

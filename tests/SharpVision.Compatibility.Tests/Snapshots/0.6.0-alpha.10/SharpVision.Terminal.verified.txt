@@ -860,7 +860,7 @@ namespace SharpVision.Terminal.Kitty
 }
 namespace SharpVision.Terminal.Multiplexing
 {
-    public enum Kind
+    public enum MultiplexerKind
     {
         None = 0,
         Tmux = 1,
@@ -882,11 +882,11 @@ namespace SharpVision.Terminal.Multiplexing
     }
     public sealed class Policy
     {
-        public Policy(System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Multiplexing.Kind> layers, SharpVision.Terminal.Capabilities.TerminalProfile? outerProfile, SharpVision.Terminal.Multiplexing.PassthroughMode passthrough = 0, bool paneVisible = true, SharpVision.Terminal.Multiplexing.Operation approvedOperations = 0, int maxDepth = 4, int maxEnvelopeBytes = 1048576) { }
+        public Policy(System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Multiplexing.MultiplexerKind> layers, SharpVision.Terminal.Capabilities.TerminalProfile? outerProfile, SharpVision.Terminal.Multiplexing.PassthroughMode passthrough = 0, bool paneVisible = true, SharpVision.Terminal.Multiplexing.Operation approvedOperations = 0, int maxDepth = 4, int maxEnvelopeBytes = 1048576) { }
         public SharpVision.Terminal.Multiplexing.Operation ApprovedOperations { get; }
         public bool IsActive { get; }
-        public SharpVision.Terminal.Multiplexing.Kind Kind { get; }
-        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Multiplexing.Kind> Layers { get; }
+        public SharpVision.Terminal.Multiplexing.MultiplexerKind Kind { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Multiplexing.MultiplexerKind> Layers { get; }
         public int MaxDepth { get; }
         public int MaxEnvelopeBytes { get; }
         public SharpVision.Terminal.Capabilities.TerminalProfile? OuterProfile { get; }

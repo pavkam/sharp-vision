@@ -160,7 +160,7 @@ public sealed class BackendTests
     public void Prepare_WhenTmuxRouteIsAuthorized_RoutesDcsOnly()
     {
         var route = new Route(new Policy(
-            [Kind.Tmux],
+            [MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,
@@ -184,7 +184,7 @@ public sealed class BackendTests
     public void Constructor_WhenRouteContainsScreen_ThrowsNotSupportedException()
     {
         var route = new Route(new Policy(
-            [Kind.Screen],
+            [MultiplexerKind.Screen],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,

@@ -85,7 +85,7 @@ public sealed class BackendSelectorTests
     {
         var profile = Profile(iterm: new Feature(CapabilitySupport.Supported, Origin.Override));
         var route = new Route(new Policy(
-            [Kind.Screen],
+            [MultiplexerKind.Screen],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,
@@ -102,7 +102,7 @@ public sealed class BackendSelectorTests
     {
         var profile = Profile(kitty: new Feature(CapabilitySupport.Supported, Origin.Query));
         var route = new Route(new Policy(
-            [Kind.Screen],
+            [MultiplexerKind.Screen],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,
@@ -118,13 +118,13 @@ public sealed class BackendSelectorTests
         var profile = Profile(iterm: new Feature(CapabilitySupport.Supported, Origin.Override));
         var outer = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         var unauthorized = new Route(new Policy(
-            [Kind.Tmux],
+            [MultiplexerKind.Tmux],
             outer,
             PassthroughMode.All,
             paneVisible: true,
             MultiplexingOperation.CapabilityQueries));
         var hidden = new Route(new Policy(
-            [Kind.Tmux],
+            [MultiplexerKind.Tmux],
             outer,
             PassthroughMode.Visible,
             paneVisible: false,

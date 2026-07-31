@@ -55,7 +55,7 @@ public sealed class Route
 
         for (var index = Policy.Layers.Count - 1; index >= 0; index--)
         {
-            Debug.Assert(Policy.Layers[index] == Kind.Tmux, "Graphics routes reject Screen.");
+            Debug.Assert(Policy.Layers[index] == MultiplexerKind.Tmux, "Graphics routes reject Screen.");
             overhead = checked(overhead + escapes + _tmuxFramingBytes);
             escapes = checked((escapes * 2) + 2);
         }
@@ -114,7 +114,7 @@ public sealed class Route
         {
             for (var index = Policy.Layers.Count - 1; index >= 0; index--)
             {
-                if (Policy.Layers[index] == Kind.Screen &&
+                if (Policy.Layers[index] == MultiplexerKind.Screen &&
                     (!allowScreen || !IsCsiQueryBatch(current)))
                 {
                     return false;
@@ -130,7 +130,7 @@ public sealed class Route
                 var next = useA ? bufferA : bufferB;
                 next.Reset(encodedLength);
 
-                if (Policy.Layers[index] == Kind.Tmux)
+                if (Policy.Layers[index] == MultiplexerKind.Tmux)
                 {
                     TmuxWriter.WritePassthrough(next, current);
                 }
@@ -174,7 +174,7 @@ public sealed class Route
         for (var index = 0; index < Policy.Layers.Count; index++)
         {
             var next = new ArrayBufferWriter<byte>();
-            var unwrapped = Policy.Layers[index] == Kind.Tmux
+            var unwrapped = Policy.Layers[index] == MultiplexerKind.Tmux
                 ? TmuxWriter.TryUnwrapEnvelope(current, next)
                 : Screen.TryUnwrap(current, next);
 
@@ -204,9 +204,9 @@ public sealed class Route
     /// <summary>Gets the exact outer prefix used to recognize routed query replies.</summary>
     internal ReadOnlySpan<byte> ReplyPrefix => Policy.Kind switch
     {
-        Kind.None => [],
-        Kind.Tmux => "\u001bPtmux;"u8,
-        Kind.Screen => "\u001bP\u001b"u8,
+        MultiplexerKind.None => [],
+        MultiplexerKind.Tmux => "\u001bPtmux;"u8,
+        MultiplexerKind.Screen => "\u001bP\u001b"u8,
         _ => throw new UnreachableException("Policy validation rejects unknown multiplexer kinds.")
     };
 
@@ -227,7 +227,7 @@ public sealed class Route
             escapes++;
         }
 
-        return Policy.Kind == Kind.Screen ? escapes > 0 : (escapes & 1) != 0;
+        return Policy.Kind == MultiplexerKind.Screen ? escapes > 0 : (escapes & 1) != 0;
     }
 
     /// <summary>Gets whether a rejected candidate reached its complete outer recovery boundary.</summary>
@@ -235,7 +235,7 @@ public sealed class Route
     /// <returns>True when no further byte belongs to the rejected envelope.</returns>
     internal bool IsCompleteRecoveryEnvelope(ReadOnlySpan<byte> candidate)
     {
-        if (Policy.Kind == Kind.Tmux)
+        if (Policy.Kind == MultiplexerKind.Tmux)
         {
             return MayEnd(candidate);
         }
@@ -318,9 +318,9 @@ public sealed class Route
         return position > 0;
     }
 
-    private static int EncodedLength(Kind kind, ReadOnlySpan<byte> input)
+    private static int EncodedLength(MultiplexerKind kind, ReadOnlySpan<byte> input)
     {
-        if (kind == Kind.Screen)
+        if (kind == MultiplexerKind.Screen)
         {
             return checked(input.Length + _screenFramingBytes);
         }

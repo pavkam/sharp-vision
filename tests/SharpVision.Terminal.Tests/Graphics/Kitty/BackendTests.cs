@@ -212,7 +212,7 @@ public sealed class BackendTests
     public void Prepare_WhenTmuxRouteIsAuthorized_RoutesOnlyPlacementApc()
     {
         var policy = new Policy(
-            [Kind.Tmux],
+            [MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,
@@ -235,7 +235,7 @@ public sealed class BackendTests
     public void Constructor_WhenRouteContainsScreen_RejectsBackendSelection()
     {
         var policy = new Policy(
-            [Kind.Screen],
+            [MultiplexerKind.Screen],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,
@@ -249,7 +249,7 @@ public sealed class BackendTests
     public void Prepare_WhenUploadHasMultipleChunks_RoutesEachApcIndependently()
     {
         var policy = new Policy(
-            [Kind.Tmux],
+            [MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,

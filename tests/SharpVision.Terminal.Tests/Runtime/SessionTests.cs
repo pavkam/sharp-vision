@@ -62,7 +62,7 @@ public sealed class SessionTests
                 KittyKeyboard = supported
             });
         var policy = new Policy(
-            [Kind.Tmux],
+            [MultiplexerKind.Tmux],
             outerProfile,
             PassthroughMode.All,
             paneVisible: true,
@@ -120,7 +120,7 @@ public sealed class SessionTests
                 Sixel = supported
             });
         var policy = new Policy(
-            [Kind.Tmux],
+            [MultiplexerKind.Tmux],
             outerProfile,
             PassthroughMode.All,
             paneVisible: true,
@@ -166,7 +166,7 @@ public sealed class SessionTests
         var outerProfile = TerminalProfile.CreateAnsi(
             TerminalCapabilities.Conservative with { Sixel = supported });
         var policy = new Policy(
-            [Kind.Screen],
+            [MultiplexerKind.Screen],
             outerProfile,
             PassthroughMode.All,
             paneVisible: true,

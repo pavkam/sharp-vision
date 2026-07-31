@@ -256,7 +256,7 @@ public sealed class BackendTests
     public void GetMaximumGraphicsFrameBytes_WhenTmuxIsNested_AcceptsBoundAndRejectsBoundPlusOne()
     {
         var route = new Route(new Policy(
-            [Kind.Tmux, Kind.Tmux],
+            [MultiplexerKind.Tmux, MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,
@@ -285,7 +285,7 @@ public sealed class BackendTests
     public void Prepare_WhenAuthorizedRouteIsTooSmall_DeclinesPlacementWithoutThrowing()
     {
         var route = new Route(new Policy(
-            [Kind.Tmux],
+            [MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,
@@ -306,7 +306,7 @@ public sealed class BackendTests
     public void Constructor_WhenRouteContainsScreen_ThrowsNotSupportedException()
     {
         var route = new Route(new Policy(
-            [Kind.Screen],
+            [MultiplexerKind.Screen],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,
@@ -399,7 +399,7 @@ public sealed class BackendTests
     }
 
     private static Route TmuxRoute() => new(new Policy(
-        [Kind.Tmux],
+        [MultiplexerKind.Tmux],
         TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
         PassthroughMode.All,
         paneVisible: true,

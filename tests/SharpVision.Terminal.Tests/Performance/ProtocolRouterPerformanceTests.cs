@@ -27,7 +27,7 @@ public sealed class ProtocolRouterPerformanceTests
         var before = GC.GetAllocatedBytesForCurrentThread();
 
         var policy = new Policy(
-            [Kind.Tmux],
+            [MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
             paneVisible: true,

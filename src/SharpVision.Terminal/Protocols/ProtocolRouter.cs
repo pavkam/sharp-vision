@@ -280,7 +280,7 @@ public sealed class ProtocolRouter: IDisposable
         Debug.Assert(_multiplexerRoute is not null, "Overflow recovery requires an active route.");
         Debug.Assert(_multiplexerCandidate is not null, "Overflow recovery requires bounded storage.");
         var candidate = _multiplexerCandidate.AsSpan(0, _multiplexerLength);
-        var requiredTerminators = _multiplexerRoute.Policy.Kind == Multiplexing.Kind.Screen &&
+        var requiredTerminators = _multiplexerRoute.Policy.Kind == Multiplexing.MultiplexerKind.Screen &&
                                   candidate.Length > 3 &&
                                   candidate[0] == ControlBytes.Escape &&
                                   candidate[1] == (byte) 'P' &&
@@ -312,7 +312,7 @@ public sealed class ProtocolRouter: IDisposable
 
         if (value == (byte) '\\' && _multiplexerDiscardEscapes > 0)
         {
-            var terminates = _multiplexerRoute.Policy.Kind == Multiplexing.Kind.Screen ||
+            var terminates = _multiplexerRoute.Policy.Kind == Multiplexing.MultiplexerKind.Screen ||
                              (_multiplexerDiscardEscapes & 1) != 0;
 
             if (terminates && --_multiplexerDiscardTerminators == 0)
