@@ -7,6 +7,8 @@ namespace SharpVision.Tests.Controls.Display;
 public sealed class StatusBarTests
 {
     /// <summary>Verifies the conventional one-row passive strip and item defaults.</summary>
+    [ComponentUnitEvidence(typeof(StatusBar))]
+    [ComponentUnitEvidence(typeof(StatusBarItem))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {

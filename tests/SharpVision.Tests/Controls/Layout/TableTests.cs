@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Controls.Layout;
 public sealed class TableTests
 {
     /// <summary>Verifies private rail local mechanics publish exact resolved-style notifications.</summary>
+    [ComponentUnitEvidence(typeof(Table))]
     [Fact]
     public void ScrollBarStyle_WhenOwnershipChanges_PublishesLocalAndActualNotifications()
     {

@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Controls.Scrolling;
 public sealed class ScrollBarTests
 {
     /// <summary>Verifies local style ownership overrides Theme fallback and clearing restores it.</summary>
+    [ComponentUnitEvidence(typeof(ScrollBar))]
     [Fact]
     public void Style_WhenThemeAndLocalValuesChange_UsesDocumentedPrecedence()
     {

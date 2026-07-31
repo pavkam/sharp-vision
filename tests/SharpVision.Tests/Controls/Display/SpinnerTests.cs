@@ -23,6 +23,7 @@ public sealed class SpinnerTests
     }
 
     /// <summary>Verifies documented one-cell non-interactive defaults.</summary>
+    [ComponentUnitEvidence(typeof(Spinner))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {

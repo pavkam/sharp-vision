@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Navigation;
 public sealed class NavigationViewTests
 {
     /// <summary>Verifies a navigation view starts as a quiet borderless sidebar surface without caller styling.</summary>
+    [ComponentUnitEvidence(typeof(NavigationView))]
     [Fact]
     public void Constructor_WhenCreated_UsesQuietBackgroundDefaults()
     {
@@ -19,6 +20,7 @@ public sealed class NavigationViewTests
     }
 
     /// <summary>Verifies items are added through the typed collection.</summary>
+    [ComponentUnitEvidence(typeof(NavigationViewItem))]
     [Fact]
     public void Items_WhenAdded_IncreasesCount()
     {
@@ -405,6 +407,7 @@ public sealed class NavigationViewTests
     }
 
     /// <summary>Verifies ItemIndent defaults to 2 cells and rejects negative values.</summary>
+    [ComponentUnitEvidence(typeof(NavigationViewGroup))]
     [Fact]
     public void ItemIndent_WhenDefaulted_Is2AndRejectsNegative()
     {
@@ -415,6 +418,7 @@ public sealed class NavigationViewTests
     }
 
     /// <summary>Verifies separator is non-focusable and non-hit-testable.</summary>
+    [ComponentUnitEvidence(typeof(NavigationViewSeparator))]
     [Fact]
     public void Separator_WhenCreated_IsNonInteractive()
     {

@@ -10,6 +10,7 @@ using UiListView = ListView;
 public sealed class SaveFileDialogTests
 {
     /// <summary>Verifies construction copies configuration and composes one responsive dialog Window.</summary>
+    [ComponentUnitEvidence(typeof(SaveFileDialog))]
     [Fact]
     public void Constructor_WhenConfigured_UsesCopiedOptionsAndSemanticControls()
     {

@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Controls.Display;
 public sealed class FigletTextTests
 {
     /// <summary>Verifies constructor validation and documented defaults.</summary>
+    [ComponentUnitEvidence(typeof(FigletText))]
     [Fact]
     public void Constructor_WhenFontIsProvided_UsesDocumentedDefaults()
     {

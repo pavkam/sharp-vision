@@ -9,6 +9,7 @@ public sealed class DateInputTests
     #region Properties
 
     /// <summary>Verifies a null value is accepted when AllowNull is enabled.</summary>
+    [ComponentUnitEvidence(typeof(DateInput))]
     [Fact]
     public void Properties_WhenValueIsNull_AllowsNullWhenEnabled()
     {

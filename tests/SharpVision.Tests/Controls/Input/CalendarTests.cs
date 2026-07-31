@@ -11,6 +11,7 @@ public sealed class CalendarTests
     #region Interaction and rendering
 
     /// <summary>Verifies Space press activates the active date while release remains inert.</summary>
+    [ComponentUnitEvidence(typeof(UiCalendar))]
     [Fact]
     public void Dispatch_WhenSpaceIsPressed_ActivatesOnlyPress()
     {

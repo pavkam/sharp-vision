@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Controls.Collections;
 public sealed class TabItemTests
 {
     /// <summary>Verifies a new page rejects invalid header text before mutation.</summary>
+    [ComponentUnitEvidence(typeof(TabItem))]
     [Fact]
     public void Properties_WhenCreatedOrAssignedInvalidHeader_PreserveDefaults()
     {

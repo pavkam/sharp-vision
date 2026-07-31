@@ -8,6 +8,7 @@ namespace SharpVision.Tests.Controls.Input;
 public sealed class CheckBoxTests
 {
     /// <summary>Verifies local style ownership overrides Theme fallback and clearing restores it.</summary>
+    [ComponentUnitEvidence(typeof(CheckBox))]
     [Fact]
     public void Style_WhenThemeAndLocalValuesChange_UsesDocumentedPrecedence()
     {

@@ -11,6 +11,7 @@ using UiListView = ListView;
 public sealed class FilePickerDialogTests
 {
     /// <summary>Verifies construction copies configuration and composes one responsive dialog Window.</summary>
+    [ComponentUnitEvidence(typeof(FilePickerDialog))]
     [Fact]
     public void Constructor_WhenConfigured_UsesCopiedOptionsAndSemanticControls()
     {

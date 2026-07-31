@@ -9,6 +9,7 @@ using Panel = Dock;
 public sealed class DockTests
 {
     /// <summary>Verifies defaults and invalid values fail before mutation.</summary>
+    [ComponentUnitEvidence(typeof(Panel))]
     [Fact]
     public void Constructor_WhenCreated_HasValidatedDefaults()
     {

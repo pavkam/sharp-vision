@@ -23,6 +23,7 @@ public sealed class ChaseIndicatorTests
     }
 
     /// <summary>Verifies documented five-cell non-interactive defaults.</summary>
+    [ComponentUnitEvidence(typeof(ChaseIndicator))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {

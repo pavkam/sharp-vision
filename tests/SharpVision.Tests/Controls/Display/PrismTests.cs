@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Controls.Display;
 public sealed class PrismTests
 {
     /// <summary>Verifies a new Prism has stable effect defaults and no required content.</summary>
+    [ComponentUnitEvidence(typeof(Prism))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {

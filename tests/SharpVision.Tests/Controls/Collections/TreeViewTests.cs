@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Controls.Collections;
 public sealed class TreeViewTests
 {
     /// <summary>Verifies a tree view starts as a framed surface with a visible border and semantic background.</summary>
+    [ComponentUnitEvidence(typeof(TreeView))]
     [Fact]
     public void Constructor_WhenCreated_UsesFramedBackgroundDefaults()
     {
@@ -72,6 +73,7 @@ public sealed class TreeViewTests
     }
 
     /// <summary>Verifies items are added through the typed collection.</summary>
+    [ComponentUnitEvidence(typeof(TreeViewItem))]
     [Fact]
     public void Items_WhenAdded_IncreasesCount()
     {

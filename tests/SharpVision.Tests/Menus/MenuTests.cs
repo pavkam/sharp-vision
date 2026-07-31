@@ -27,6 +27,9 @@ public sealed class MenuTests
     }
 
     /// <summary>Verifies typed collection ownership selects the first available item and renders compact shared-width rows.</summary>
+    [ComponentUnitEvidence(typeof(Menu))]
+    [ComponentUnitEvidence(typeof(MenuItem))]
+    [ComponentUnitEvidence(typeof(MenuSeparator))]
     [Fact]
     public void Items_WhenAdded_UseTypedOwnershipSelectionAndVerticalCells()
     {

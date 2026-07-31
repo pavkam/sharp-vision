@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Controls.Display;
 public sealed class SeparatorTests
 {
     /// <summary>Verifies the divider starts horizontal, one-cell, and non-interactive.</summary>
+    [ComponentUnitEvidence(typeof(Separator))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {

@@ -9,6 +9,7 @@ public sealed class TimeInputTests
     #region Properties
 
     /// <summary>Verifies a null value is accepted when AllowNull is enabled.</summary>
+    [ComponentUnitEvidence(typeof(TimeInput))]
     [Fact]
     public void Properties_WhenValueIsNull_AllowsNullWhenEnabled()
     {

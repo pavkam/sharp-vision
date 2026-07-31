@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Controls.Input;
 public sealed class ButtonTests
 {
     /// <summary>Verifies documented defaults and capacity-one content ownership.</summary>
+    [ComponentUnitEvidence(typeof(Button))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {

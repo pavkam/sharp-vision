@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Controls.Layout;
 public sealed class ExpanderTests
 {
     /// <summary>Verifies an Expander starts as a borderless transparent section without caller styling.</summary>
+    [ComponentUnitEvidence(typeof(Expander))]
     [Fact]
     public void Constructor_WhenCreated_UsesBorderlessTransparentDefaults()
     {

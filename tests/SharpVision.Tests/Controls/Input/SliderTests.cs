@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Controls.Input;
 public sealed class SliderTests
 {
     /// <summary>Verifies documented range, presentation, alignment, and interaction defaults.</summary>
+    [ComponentUnitEvidence(typeof(Slider))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {

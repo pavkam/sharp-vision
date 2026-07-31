@@ -9,6 +9,7 @@ using SharpVision.Surfaces;
 public sealed class PopupTests
 {
     /// <summary>Verifies an opaque popup owns standard themed surface and border colors.</summary>
+    [ComponentUnitEvidence(typeof(Popup))]
     [Fact]
     public void Constructor_WhenCreated_HasThemeSurfaceAppearanceDefaults()
     {

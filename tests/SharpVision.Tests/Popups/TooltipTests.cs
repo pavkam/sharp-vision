@@ -11,6 +11,7 @@ using ReflectionBindingFlags = System.Reflection.BindingFlags;
 public sealed class TooltipTests
 {
     /// <summary>Verifies a new tooltip has expected defaults for all properties.</summary>
+    [ComponentUnitEvidence(typeof(Tooltip))]
     [Fact]
     public void Constructor_WhenCreated_HasExpectedDefaults()
     {

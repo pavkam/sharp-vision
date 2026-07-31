@@ -9,6 +9,7 @@ using ReflectionBindingFlags = System.Reflection.BindingFlags;
 public sealed class FlyoutTests
 {
     /// <summary>Verifies a newly constructed flyout has expected defaults for all properties.</summary>
+    [ComponentUnitEvidence(typeof(Flyout))]
     [Fact]
     public void Constructor_WhenCreated_HasExpectedDefaults()
     {

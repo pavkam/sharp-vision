@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Controls.Display;
 public sealed class ProgressBarTests
 {
     /// <summary>Verifies documented range, presentation, alignment, and interaction defaults.</summary>
+    [ComponentUnitEvidence(typeof(ProgressBar))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {

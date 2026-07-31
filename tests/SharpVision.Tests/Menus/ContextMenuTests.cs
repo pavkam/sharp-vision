@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Menus;
 public sealed class ContextMenuTests
 {
     /// <summary>Verifies defaults after construction.</summary>
+    [ComponentUnitEvidence(typeof(ContextMenu))]
     [Fact]
     public void Constructor_WhenCreated_HasExpectedDefaults()
     {
@@ -146,6 +147,7 @@ public sealed class ContextMenuTests
     }
 
     /// <summary>Verifies TextInputContextMenu has 8 items (Undo, Redo, sep, Cut, Copy, Paste, sep, SelectAll).</summary>
+    [ComponentUnitEvidence(typeof(TextInputContextMenu))]
     [Fact]
     public void TextInputContextMenu_WhenCreated_HasExpectedItemCount()
     {

@@ -10,6 +10,7 @@ using UiListView = ListView;
 public sealed class ListViewTests
 {
     /// <summary>Verifies a ListView starts as a quiet borderless collection surface without caller styling.</summary>
+    [ComponentUnitEvidence(typeof(UiListView))]
     [Fact]
     public void Constructor_WhenCreated_UsesQuietBackgroundDefaults()
     {

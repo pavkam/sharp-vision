@@ -9,6 +9,7 @@ using Panel = Stack;
 public sealed class StackTests
 {
     /// <summary>Verifies defaults and invalid setters preserve prior state.</summary>
+    [ComponentUnitEvidence(typeof(Panel))]
     [Fact]
     public void Constructor_WhenCreated_HasValidatedDefaults()
     {

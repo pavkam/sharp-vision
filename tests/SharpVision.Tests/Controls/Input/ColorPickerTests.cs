@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Controls.Input;
 public sealed class ColorPickerTests
 {
     /// <summary>Verifies a picker rejects default colors before changing selection.</summary>
+    [ComponentUnitEvidence(typeof(ColorPicker))]
     [Fact]
     public void Value_WhenColorIsDefault_AcceptsValue()
     {

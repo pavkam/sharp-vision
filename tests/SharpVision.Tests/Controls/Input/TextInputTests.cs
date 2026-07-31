@@ -11,6 +11,7 @@ using TerminalText = Terminal.Input.Text;
 public sealed class TextInputTests
 {
     /// <summary>Verifies a text field is discoverable through light intrinsic chrome by default.</summary>
+    [ComponentUnitEvidence(typeof(TextInput))]
     [Fact]
     public void Properties_WhenConstructed_UsesLightFieldBorder()
     {

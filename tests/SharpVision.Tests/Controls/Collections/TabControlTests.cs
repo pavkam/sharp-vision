@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Controls.Collections;
 public sealed class TabControlTests
 {
     /// <summary>Verifies documented defaults for a new TabControl.</summary>
+    [ComponentUnitEvidence(typeof(TabControl))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {

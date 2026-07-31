@@ -9,6 +9,7 @@ using Layer = Overlay;
 public sealed class OverlayTests
 {
     /// <summary>Verifies conservative defaults and maximum intrinsic desired size.</summary>
+    [ComponentUnitEvidence(typeof(Layer))]
     [Fact]
     public void Measure_WhenChildrenDiffer_UsesMaximumMarginInclusiveSize()
     {

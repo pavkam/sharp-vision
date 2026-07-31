@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Controls.Layout;
 public sealed class GridTests
 {
     /// <summary>Verifies empty definitions behave as one intrinsic automatic cell.</summary>
+    [ComponentUnitEvidence(typeof(Grid))]
     [Fact]
     public void Layout_WhenDefinitionsAreEmpty_UsesOneImplicitAutoTrack()
     {

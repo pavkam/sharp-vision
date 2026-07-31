@@ -11,6 +11,7 @@ using PlacementMode = Terminal.Graphics.PlacementMode;
 public sealed class ImageTests
 {
     /// <summary>Verifies stable borrowed-source, alternate-text, and fitting defaults.</summary>
+    [ComponentUnitEvidence(typeof(Image))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {

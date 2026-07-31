@@ -10,6 +10,7 @@ using SharpVision.Surfaces;
 public sealed class WindowTests
 {
     /// <summary>Verifies a Window owns an opaque semantic background without caller styling.</summary>
+    [ComponentUnitEvidence(typeof(Window))]
     [Fact]
     public void Constructor_WhenCreated_UsesWindowBackgroundRole()
     {

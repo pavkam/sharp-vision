@@ -12,6 +12,7 @@ using TerminalAttributes = Attributes;
 public sealed class TextTests
 {
     /// <summary>Verifies constructor content and documented defaults.</summary>
+    [ComponentUnitEvidence(typeof(ControlText))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {

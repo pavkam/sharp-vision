@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Controls.Input;
 public sealed class HyperlinkButtonTests
 {
     /// <summary>Verifies documented defaults for an empty HyperlinkButton.</summary>
+    [ComponentUnitEvidence(typeof(HyperlinkButton))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {

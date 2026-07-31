@@ -77,8 +77,8 @@ public sealed class ComponentUnitCoverageTests
         { typeof(ContextMenu), typeof(ContextMenuTests) },
         { typeof(TextInputContextMenu), typeof(ContextMenuTests) },
         { typeof(Popup), typeof(PopupTests) },
-        { typeof(Flyout), typeof(PopupTests) },
-        { typeof(Tooltip), typeof(PopupTests) },
+        { typeof(Flyout), typeof(FlyoutTests) },
+        { typeof(Tooltip), typeof(TooltipTests) },
         { typeof(HyperlinkButton), typeof(HyperlinkButtonTests) },
         { typeof(Window), typeof(WindowTests) },
         { typeof(MessageBox), typeof(MessageBoxTests) },
@@ -110,6 +110,24 @@ public sealed class ComponentUnitCoverageTests
 
             hasContractTest.ShouldBeTrue(
                 $"{control.Name} fixture {fixture.Name} must contain an executable contract test.");
+        }
+    }
+
+    /// <summary>Verifies every catalogued fixture proves it actually exercises its mapped control,
+    /// rather than merely containing some unrelated executable test (see #15).</summary>
+    [Fact]
+    public void Fixtures_WhenCatalogued_ContainEvidenceForTheMappedControl()
+    {
+        foreach (var (control, fixture) in _fixtures)
+        {
+            var hasEvidence = fixture.GetMethods()
+                .SelectMany(method => method.GetCustomAttributes(inherit: false))
+                .OfType<ComponentUnitEvidenceAttribute>()
+                .Any(evidence => evidence.ControlType == control);
+
+            hasEvidence.ShouldBeTrue(
+                $"{control.Name} fixture {fixture.Name} must declare " +
+                $"[ComponentUnitEvidence(typeof({control.Name}))] on at least one contract test.");
         }
     }
 }

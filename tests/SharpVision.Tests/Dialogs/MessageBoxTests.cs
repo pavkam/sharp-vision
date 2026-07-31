@@ -23,6 +23,7 @@ public sealed class MessageBoxTests
     }
 
     /// <summary>Verifies construction validates content and retains the requested public contract.</summary>
+    [ComponentUnitEvidence(typeof(MessageBox))]
     [Fact]
     public void Constructor_WhenConfigured_RetainsTitleMessageAndButtons()
     {

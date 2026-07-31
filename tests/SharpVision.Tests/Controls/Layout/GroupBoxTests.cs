@@ -7,6 +7,7 @@ namespace SharpVision.Tests.Controls.Layout;
 public sealed class GroupBoxTests
 {
     /// <summary>Verifies defaults and invalid assignments preserve committed public state.</summary>
+    [ComponentUnitEvidence(typeof(GroupBox))]
     [Fact]
     public void Properties_WhenCreatedOrAssignedInvalidValue_PreserveValidatedDefaults()
     {
