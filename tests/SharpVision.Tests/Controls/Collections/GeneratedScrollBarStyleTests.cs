@@ -16,7 +16,8 @@ public sealed class GeneratedScrollBarStyleTests
 {
     /// <summary>
     /// Verifies neither composite pins a style onto the bar it owns, so an unassigned control
-    /// resolves the library default and leaves the theming slot free.
+    /// resolves the active theme (matching what the generated bar itself renders) and leaves the
+    /// theming slot free (see #159).
     /// </summary>
     [Fact]
     public void ActualScrollBarStyle_WhenUnassigned_LeavesTheBarUnpinned()
@@ -28,8 +29,8 @@ public sealed class GeneratedScrollBarStyleTests
         navigation.ScrollBarStyle.ShouldBeNull();
         GeneratedStyle(tree).ShouldBeNull();
         GeneratedStyle(navigation).ShouldBeNull();
-        tree.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.Default);
-        navigation.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.Default);
+        tree.ActualScrollBarStyle.ShouldBe(ScrollBar.ResolveStyle(null, tree.Theme));
+        navigation.ActualScrollBarStyle.ShouldBe(ScrollBar.ResolveStyle(null, navigation.Theme));
     }
 
     /// <summary>Verifies a local assignment resolves and publishes both surfaces.</summary>
@@ -58,7 +59,7 @@ public sealed class GeneratedScrollBarStyleTests
 
         navigation.ScrollBarStyle.ShouldBeNull();
         GeneratedStyle(navigation).ShouldBeNull();
-        navigation.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.Default);
+        navigation.ActualScrollBarStyle.ShouldBe(ScrollBar.ResolveStyle(null, navigation.Theme));
     }
 
     /// <summary>Verifies assigning the same value publishes nothing.</summary>

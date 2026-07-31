@@ -337,8 +337,7 @@ public sealed class TextInput: Control
     }
 
     /// <summary>Gets the resolved editor-rail style.</summary>
-    public ScrollBarStyle ActualScrollBarStyle =>
-        ScrollBarStyle ?? Scrolling.ScrollBarStyle.Default;
+    public ScrollBarStyle ActualScrollBarStyle => ScrollBar.ResolveStyle(ScrollBarStyle, Theme);
 
     /// <summary>Gets or sets the maximum retained undo snapshots.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>

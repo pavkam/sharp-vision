@@ -289,8 +289,7 @@ public sealed class Table: ItemsControl
     }
 
     /// <summary>Gets the resolved private-scrollbar style.</summary>
-    public ScrollBarStyle ActualScrollBarStyle =>
-        ScrollBarStyle ?? Scrolling.ScrollBarStyle.Default;
+    public ScrollBarStyle ActualScrollBarStyle => ScrollBar.ResolveStyle(ScrollBarStyle, Theme);
 
     /// <inheritdoc/>
     protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>

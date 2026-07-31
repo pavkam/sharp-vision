@@ -618,7 +618,14 @@ public sealed class ScrollBar: Control
         ? value.Literal
         : theme?.ResolveColor(value.ThemeColor) ?? Color.Default;
 
-    private static ScrollBarStyle ResolveStyle(ScrollBarStyle? localStyle, Theme? theme) =>
+    /// <summary>Merges a nullable local style with the active theme's Control profile, exactly as
+    /// <see cref="ScrollBar"/> itself resolves its own style — shared so every composite host
+    /// reports an ActualScrollBarStyle that matches what its generated bar actually renders
+    /// instead of falling back to the code-owned static default (see #159).</summary>
+    /// <param name="localStyle">The optional local style override.</param>
+    /// <param name="theme">The active theme, or null to fall back to the library default theme.</param>
+    /// <returns>The complete style the generated bar would resolve and render.</returns>
+    internal static ScrollBarStyle ResolveStyle(ScrollBarStyle? localStyle, Theme? theme) =>
         localStyle ?? new ScrollBarStyle(
             ScrollBarStyle.Default.Chrome,
             ScrollBarStyle.Default.Fill,

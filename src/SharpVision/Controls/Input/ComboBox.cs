@@ -299,8 +299,7 @@ public sealed class ComboBox: Control
     }
 
     /// <summary>Gets the resolved drop-down scrollbar style.</summary>
-    public ScrollBarStyle ActualScrollBarStyle =>
-        ScrollBarStyle ?? Scrolling.ScrollBarStyle.Default;
+    public ScrollBarStyle ActualScrollBarStyle => ScrollBar.ResolveStyle(ScrollBarStyle, Theme);
 
     /// <inheritdoc/>
     protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>

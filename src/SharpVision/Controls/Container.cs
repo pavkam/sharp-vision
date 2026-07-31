@@ -383,9 +383,8 @@ public abstract class Container: Control
         }
     }
 
-    /// <summary>Gets the complete local or library-default generated-bar style.</summary>
-    public ScrollBarStyle ActualScrollBarStyle =>
-        ScrollBarStyle ?? Scrolling.ScrollBarStyle.Default;
+    /// <summary>Gets the complete local or theme-resolved generated-bar style.</summary>
+    public ScrollBarStyle ActualScrollBarStyle => ScrollBar.ResolveStyle(ScrollBarStyle, Theme);
 
     /// <inheritdoc/>
     protected override InvalidationImpact GetThemeChangeImpact(
