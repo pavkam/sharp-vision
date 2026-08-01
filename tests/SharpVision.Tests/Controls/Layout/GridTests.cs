@@ -136,6 +136,36 @@ public sealed class GridTests
         child.Bounds.ShouldBe(new Rect(0, 0, 3, 2));
     }
 
+    /// <summary>Verifies a consumer that decouples measure from arrange - arranging a Grid at a
+    /// slot different from the constraint it last measured with, repeatedly - always re-measures
+    /// against the arranged bounds instead of comparing against a recorded constraint the arrange
+    /// path itself failed to refresh (see #192, a regression of #175's arrange-skip guard).</summary>
+    [Fact]
+    public void Layout_WhenArrangedAtDecoupledBoundsRepeatedly_NeverArrangesStaleContent()
+    {
+        var grid = new Grid();
+        grid.Columns.Add(Track.Star(1));
+        var child = new WrappingProbeControl(wideWidth: 20, narrowWidth: 3);
+        grid.Children.Add(child);
+
+        // pass1: an ordinary measure/arrange pair at the wide width establishes the baseline.
+        grid.Measure(new Constraint(20, 1));
+        grid.Arrange(new Rect(0, 0, 20, 1));
+
+        // pass2: a decoupled arrange at the narrow width, with no intervening Measure call -
+        // exactly the shape a splitter, pane, or accordion container produces through
+        // MeasureChild/ArrangeChild. The viewport genuinely changed, so this re-measures.
+        grid.Arrange(new Rect(0, 0, 3, 2));
+        child.MeasureConstraints.Last().Width.ShouldBe(3);
+
+        // pass3: another decoupled arrange, back at the wide width. The recorded constraint must
+        // reflect pass2's re-measure (3), not pass1's original measure (20), so this compares
+        // unequal and re-measures again instead of skipping and arranging pass2's stale 3-wide
+        // wrap inside the 20-wide slot.
+        grid.Arrange(new Rect(0, 0, 20, 1));
+        child.MeasureConstraints.Last().Width.ShouldBe(20);
+    }
+
     /// <summary>Verifies collapsed children contribute no intrinsic requirement.</summary>
     [Fact]
     public void Measure_WhenLargeChildIsCollapsed_IgnoresItsRequest()

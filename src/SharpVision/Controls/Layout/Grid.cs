@@ -237,6 +237,11 @@ public sealed class Grid: Container
             MeasureAutomaticRows(rows, columnExtents, bounds.Width);
             rowRequests = Requests(rows.Length, rows: true);
             rowExtents = Resolve(bounds.Height, RowSpacing, rows, rowRequests);
+
+            // Children now describe bounds, not the constraint MeasureOverride last recorded. A
+            // later arrange back at that stale recorded constraint would otherwise compare equal
+            // and skip, arranging Requests() captured at this different width instead.
+            _lastResolvedContentConstraint = new Constraint(bounds.Width, bounds.Height);
         }
 
         ArrangeChildren(bounds, rowExtents, columnExtents);
