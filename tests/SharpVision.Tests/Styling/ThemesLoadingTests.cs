@@ -183,6 +183,52 @@ public sealed class ThemesLoadingTests
         }
     }
 
+    /// <summary>Verifies a leading UTF-8 byte order mark - what Visual Studio's "UTF-8 with
+    /// signature", Notepad, and <c>new StreamWriter(path, false, Encoding.UTF8)</c> all produce -
+    /// does not prevent loading. The Deserialize(ReadOnlySpan&lt;byte&gt;, ...) overload does not
+    /// strip a preamble the way the Stream overload does for free, and buffering into a byte[] to
+    /// enforce the size bound loses that leniency by accident (see #202).</summary>
+    [Fact]
+    public void LoadFile_WhenContentHasUtf8Preamble_ReturnsFrozenTheme()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");
+        var withPreamble = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(_json)).ToArray();
+        File.WriteAllBytes(path, withPreamble);
+
+        try
+        {
+            var theme = Themes.LoadFile(path);
+
+            var accent = ThemeColorHelper.Accent(theme);
+            accent.ShouldBe(Color.Rgb(0x77, 0xaa, 0xff));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    /// <summary>Verifies a root-level parse failure (an empty document, in this case) reports a
+    /// clean message instead of the "... at ''." artifact: error.Path is "$" at the document root,
+    /// which is not whitespace, so the untrimmed guard let it through while interpolating the
+    /// trimmed - empty - value (see #202).</summary>
+    [Fact]
+    public void LoadFile_WhenContentIsEmpty_DoesNotReportDanglingEmptyPath()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");
+        File.WriteAllText(path, string.Empty);
+
+        try
+        {
+            var thrown = Should.Throw<InvalidDataException>(() => Themes.LoadFile(path));
+            thrown.Message.ShouldNotContain("at ''");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     /// <summary>Verifies loading a null file path throws <see cref="ArgumentNullException"/>.</summary>
     [Fact]
     public void LoadFile_WhenNull_Throws() =>

@@ -568,6 +568,8 @@ public static class Themes
     private static string JsonName<T>(T value) where T : struct, Enum =>
         JsonNamingPolicy.CamelCase.ConvertName(value.ToString());
 
+    private static readonly byte[] _utf8Preamble = Encoding.UTF8.GetPreamble();
+
     private static ThemeDefinition Deserialize(ReadOnlyMemory<byte> utf8, string source)
     {
         if (utf8.Length > MaximumDocumentBytes)
@@ -575,16 +577,25 @@ public static class Themes
             throw DocumentTooLarge(source);
         }
 
+        // The Deserialize(ReadOnlySpan<byte>, ...) overload does not strip a leading UTF-8
+        // preamble the way the Stream overload does for free; buffering into a byte[] to enforce
+        // the size bound above loses that leniency by accident. RFC 8259 §8.1 permits ignoring a
+        // BOM, and a BOM'd file is otherwise well-formed UTF-8 (see #202).
+        var content = utf8.Span.StartsWith(_utf8Preamble) ? utf8[_utf8Preamble.Length..] : utf8;
+
         try
         {
-            return JsonSerializer.Deserialize<ThemeDefinition>(utf8.Span, _jsonOptions)
+            return JsonSerializer.Deserialize<ThemeDefinition>(content.Span, _jsonOptions)
                    ?? throw new InvalidDataException($"Theme '{source}' deserialized to null.");
         }
         catch (JsonException error)
         {
-            var path = string.IsNullOrWhiteSpace(error.Path)
-                ? string.Empty
-                : $" at '{error.Path.TrimStart('$', '.')}'";
+            // error.Path is "$" at the document root, which is not whitespace, so this must test
+            // the trimmed value - trimming first and then checking would otherwise interpolate an
+            // empty string while the untrimmed guard let it through, leaving "... at ''." on every
+            // root-level failure (see #202).
+            var trimmedPath = error.Path?.TrimStart('$', '.') ?? string.Empty;
+            var path = string.IsNullOrWhiteSpace(trimmedPath) ? string.Empty : $" at '{trimmedPath}'";
             throw new InvalidDataException($"Theme '{source}' is not valid JSON{path}.", error);
         }
     }
