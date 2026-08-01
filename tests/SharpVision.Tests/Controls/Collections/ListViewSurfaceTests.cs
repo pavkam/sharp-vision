@@ -542,6 +542,39 @@ public sealed class ListViewSurfaceTests
         surface.Cell(new Point(1, 1)).IsContinuation.ShouldBeTrue();
     }
 
+    /// <summary>Verifies PageDown accumulates realized row heights rather than applying the
+    /// viewport's cell height directly as an item-index delta. A 9-cell viewport holding 3-cell
+    /// rows shows exactly 3 rows per page, so one PageDown must land on item 3 - the old bug
+    /// applied 9 as an item count and skipped items 3 through 8 entirely (see #212).</summary>
+    [Fact]
+    public async Task PageDown_WhenRowsAreMultiCell_AdvancesByRealizedHeightNotViewportCellsAsync()
+    {
+        // Arrange
+        List<Label> realized = [];
+        var list = new UiListView
+        {
+            ItemTemplate = item => Add(realized, new Label((string) item!) { Height = Length.Cells(3) }),
+            Items = Enumerable.Range(0, 12).Select(value => (object?) $"Item {value}").ToArray(),
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Never,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            list,
+            new Size(8, 9),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.ClickAsync(realized[0].Parent.ShouldNotBeNull());
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.PageDown);
+
+        // Assert - BringIntoView reveals item 3 with the minimal offset that shows it, distinct
+        // from ActiveIndex, which is the actual bug this test locks in.
+        list.ActiveIndex.ShouldBe(3);
+        list.VerticalOffset.ShouldBe(3);
+    }
+
     private static Label Add(List<Label> controls, Label control)
     {
         controls.Add(control);

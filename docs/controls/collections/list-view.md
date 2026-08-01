@@ -79,9 +79,10 @@ only label cells.
   Keyboard navigation keeps it synchronized with committed selection in Single
   and Multiple modes; None mode retains active navigation without selection.
   `VerticalOffset` exposes the composed viewport offset. `ScrollBars`,
-  `ShowScrollBars` and `ScrollBarStyle` forward the common overflow policy to
-  the owned viewport, so a ListView uses the same canonical rail behavior as any
-  scrollable `Container` rather than a private scrolling dialect.
+  `ShowScrollBars`, `ScrollBarStyle`, and `PageOverlap` forward the common
+  overflow and paging policy to the owned viewport, so a ListView uses the same
+  canonical rail and page behavior as any scrollable `Container` rather than a
+  private scrolling dialect.
 - `SelectionChanging` receives owned sorted added/removed index memories and may
   cancel before commit. `SelectionChanged` reports the same committed delta
   after all selected views and visual states update. Reentrant changes advance a
@@ -99,8 +100,11 @@ order while skipping effectively hidden or disabled template controls. In Single
 and Multiple modes, every move also replaces selection with the active row; a
 cancelled `SelectionChanging` transaction leaves both values unchanged. None
 mode moves only the active index. Home/End choose the first or last eligible
-item. PageUp/PageDown advance by at least one and otherwise by the committed
-viewport height. Every successful move uses the composed `BringIntoView` path.
+item. PageUp/PageDown advance by at least one item and otherwise by as many
+items as fill the committed viewport height (minus `PageOverlap`), accumulating
+each realized row's own height rather than treating the viewport's cell height
+as an item count - so rows taller than one cell are never skipped. Every
+successful move uses the composed `BringIntoView` path.
 
 Space follows press/release activation and changes selection; Enter invokes
 without changing it. Primary pointer release selects and invokes. In Multiple

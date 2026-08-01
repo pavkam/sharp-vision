@@ -228,6 +228,16 @@ public sealed class ListView: ItemsControl
         set => _stack.VerticalOffset = value;
     }
 
+    /// <summary>Gets or sets the non-negative cells of context retained between page commands.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    public int PageOverlap
+    {
+        get => _stack.PageOverlap;
+        set => _stack.PageOverlap = value;
+    }
+
     /// <summary>Scrolls the composed scroll container by signed cell deltas with saturation and
     /// endpoint clamping.</summary>
     /// <param name="x">The requested horizontal delta.</param>
@@ -1141,33 +1151,47 @@ public sealed class ListView: ItemsControl
 
     private ListItem? ResolveNavigation(ListItem current, Code code)
     {
-        if (code is Code.Up or Code.Left)
+        return code is Code.Up or Code.Left
+            ? FindEligible(current.Index - 1, -1)
+            : code is Code.Down or Code.Right
+            ? FindEligible(current.Index + 1, 1)
+            : code == Code.Home
+            ? FindEligible(0, 1)
+            : code == Code.End
+            ? FindEligible(Items.Count - 1, -1)
+            : code == Code.PageUp
+            ? FindEligible(StepPage(current.Index, -1), -1)
+            : code == Code.PageDown ? FindEligible(StepPage(current.Index, 1), 1) : null;
+    }
+
+    // ListView is not virtualized - every realized row's arranged Bounds.Height is already
+    // available - so a page step accumulates realized row heights from the current index until
+    // the sum reaches the committed viewport height (minus the retained overlap), rather than
+    // applying a cell-space distance directly as an item-index delta (see #212). At least one
+    // step always happens because the loop advances before its first accumulated check.
+    private int StepPage(int start, int direction)
+    {
+        var target = Math.Max(1, Viewport.Height - Math.Min(PageOverlap, Viewport.Height));
+        var index = start;
+        var accumulated = 0;
+
+        while (true)
         {
-            return FindEligible(current.Index - 1, -1);
+            var next = index + direction;
+
+            if (next < 0 || next >= Items.Count)
+            {
+                return next;
+            }
+
+            index = next;
+            accumulated += Math.Max(0, ItemAt(index)?.Bounds.Height ?? 0);
+
+            if (accumulated >= target)
+            {
+                return index;
+            }
         }
-
-        if (code is Code.Down or Code.Right)
-        {
-            return FindEligible(current.Index + 1, 1);
-        }
-
-        if (code == Code.Home)
-        {
-            return FindEligible(0, 1);
-        }
-
-        if (code == Code.End)
-        {
-            return FindEligible(Items.Count - 1, -1);
-        }
-
-        var page = Math.Max(1, _stack.Viewport.Height);
-
-        return code == Code.PageUp
-            ? FindEligible(current.Index - page, -1)
-            : code == Code.PageDown
-                ? FindEligible(current.Index + page, 1)
-                : null;
     }
 
     private ListItem? FindEligible(int start, int direction)
