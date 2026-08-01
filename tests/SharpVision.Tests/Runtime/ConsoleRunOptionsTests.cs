@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Runtime;
 
+using SharpVision.Terminal.Kitty.Keyboard;
+
 /// <summary>Verifies <see cref="ConsoleRunOptions"/> defaults and terminal/host mapping.</summary>
 public sealed class ConsoleRunOptionsTests
 {
@@ -19,6 +21,47 @@ public sealed class ConsoleRunOptionsTests
         options.BracketedPaste.ShouldBeTrue();
         options.FocusReporting.ShouldBeTrue();
         options.TreatControlCAsInput.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies an undefined enhancement bit is rejected at the option boundary instead of
+    /// surfacing from Application.StartAsync with a parameter name the caller never wrote.</summary>
+    [Fact]
+    public void KeyboardEnhancement_WhenValueHasUnknownBits_ThrowsArgumentOutOfRangeException()
+    {
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new ConsoleRunOptions { KeyboardEnhancement = (Enhancement) 64 });
+
+        exception.ParamName.ShouldBe("value");
+    }
+
+    /// <summary>Verifies AssociatedText without AllKeys is rejected at the option boundary.</summary>
+    [Fact]
+    public void KeyboardEnhancement_WhenAssociatedTextIsSetWithoutAllKeys_ThrowsArgumentException()
+    {
+        var exception = Should.Throw<ArgumentException>(() =>
+            new ConsoleRunOptions { KeyboardEnhancement = Enhancement.AssociatedText });
+
+        exception.ShouldNotBeOfType<ArgumentOutOfRangeException>();
+        exception.ParamName.ShouldBe("value");
+    }
+
+    /// <summary>Verifies every defined combination, including AssociatedText paired with AllKeys, is accepted.</summary>
+    [Fact]
+    public void KeyboardEnhancement_WhenAssociatedTextIsPairedWithAllKeys_DoesNotThrow()
+    {
+        var options = Should.NotThrow(() =>
+            new ConsoleRunOptions { KeyboardEnhancement = Enhancement.AllKeys | Enhancement.AssociatedText });
+
+        options.KeyboardEnhancement.ShouldBe(Enhancement.AllKeys | Enhancement.AssociatedText);
+    }
+
+    /// <summary>Verifies disabling keyboard enhancement entirely remains accepted.</summary>
+    [Fact]
+    public void KeyboardEnhancement_WhenNull_DoesNotThrow()
+    {
+        var options = Should.NotThrow(() => new ConsoleRunOptions { KeyboardEnhancement = null });
+
+        options.KeyboardEnhancement.ShouldBeNull();
     }
 
     /// <summary>Verifies default startup negotiates cell mouse and SGR any-event input.</summary>

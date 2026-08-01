@@ -12,6 +12,13 @@ using TerminalOptions = Terminal.Runtime.Options;
 [PublicAPI]
 public sealed record ConsoleRunOptions
 {
+    private const Enhancement _allEnhancements =
+        Enhancement.Disambiguate |
+        Enhancement.EventTypes |
+        Enhancement.AlternateKeys |
+        Enhancement.AllKeys |
+        Enhancement.AssociatedText;
+
     /// <summary>Gets the theme published to the tree, or null for <see cref="Themes.Dark"/>.</summary>
     public Theme? Theme { get; init; }
 
@@ -61,8 +68,30 @@ public sealed record ConsoleRunOptions
     public bool FocusReporting { get; init; } = true;
 
     /// <summary>Gets the Kitty keyboard flags to push when supported, or null to disable.</summary>
-    public Enhancement? KeyboardEnhancement { get; init; } =
-        Enhancement.Disambiguate | Enhancement.EventTypes;
+    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown bits.</exception>
+    /// <exception cref="ArgumentException">Associated text is set without all-key reporting.</exception>
+    public Enhancement? KeyboardEnhancement
+    {
+        get;
+        init
+        {
+            if (value is { } flags)
+            {
+                if ((flags & ~_allEnhancements) != 0)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(value), value, "The keyboard enhancement flags contain unknown bits.");
+                }
+
+                if ((flags & Enhancement.AssociatedText) != 0 && (flags & Enhancement.AllKeys) == 0)
+                {
+                    throw new ArgumentException("Associated text requires all-key reporting.", nameof(value));
+                }
+            }
+
+            field = value;
+        }
+    } = Enhancement.Disambiguate | Enhancement.EventTypes;
 
     /// <summary>
     /// Gets a complete explicit terminal profile, or null to use compatibility

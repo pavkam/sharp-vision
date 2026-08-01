@@ -17,6 +17,13 @@ public sealed record Options
     private static readonly IReadOnlyDictionary<string, string?> _emptyEnvironment =
         System.Collections.Immutable.ImmutableDictionary<string, string?>.Empty;
 
+    private const Kitty.Keyboard.Enhancement _allEnhancements =
+        Kitty.Keyboard.Enhancement.Disambiguate |
+        Kitty.Keyboard.Enhancement.EventTypes |
+        Kitty.Keyboard.Enhancement.AlternateKeys |
+        Kitty.Keyboard.Enhancement.AllKeys |
+        Kitty.Keyboard.Enhancement.AssociatedText;
+
     /// <summary>Gets a session profile that enables no terminal modes.</summary>
     public static Options Minimal { get; } = new()
     {
@@ -112,8 +119,31 @@ public sealed record Options
     } = MouseCoordinates.Sgr;
 
     /// <summary>Gets optional Kitty keyboard flags to push when proven supported.</summary>
-    public Kitty.Keyboard.Enhancement? Keyboard { get; init; } =
-        Kitty.Keyboard.Enhancement.Disambiguate | Kitty.Keyboard.Enhancement.EventTypes;
+    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown bits.</exception>
+    /// <exception cref="ArgumentException">Associated text is set without all-key reporting.</exception>
+    public Kitty.Keyboard.Enhancement? Keyboard
+    {
+        get;
+        init
+        {
+            if (value is { } flags)
+            {
+                if ((flags & ~_allEnhancements) != 0)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(value), value, "The keyboard enhancement flags contain unknown bits.");
+                }
+
+                if ((flags & Kitty.Keyboard.Enhancement.AssociatedText) != 0 &&
+                    (flags & Kitty.Keyboard.Enhancement.AllKeys) == 0)
+                {
+                    throw new ArgumentException("Associated text requires all-key reporting.", nameof(value));
+                }
+            }
+
+            field = value;
+        }
+    } = Kitty.Keyboard.Enhancement.Disambiguate | Kitty.Keyboard.Enhancement.EventTypes;
 
     /// <summary>Gets the optional xterm modifyOtherKeys level used when Kitty keyboard is unavailable.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside one through three.</exception>

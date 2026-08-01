@@ -129,8 +129,13 @@ replaces the accumulated options wholesale.
 
 Every timeout and interval must be positive and finite; `ReadBufferSize` must be
 positive; `MouseTracking`, `ColorDepth`, and `MouseCoordinates` must be defined
-enum values. Each violation throws `ArgumentOutOfRangeException` from the `init`
-accessor before any state changes.
+enum values; `KeyboardEnhancement` must contain only defined `Enhancement` bits.
+Each of those violations throws `ArgumentOutOfRangeException` from the `init`
+accessor before any state changes. `KeyboardEnhancement` additionally rejects
+`Enhancement.AssociatedText` set without `Enhancement.AllKeys`, which throws
+`ArgumentException` instead — associated text reporting is meaningless without
+all-key reporting, so this is a cross-flag consistency rule rather than an
+out-of-range value.
 
 `CleanupTimeout` bounds two distinct shutdown steps. It caps the reverse
 terminal-mode restoration writes, and it caps the drain that waits for an
