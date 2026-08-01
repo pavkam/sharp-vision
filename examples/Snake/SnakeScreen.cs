@@ -19,6 +19,8 @@ public sealed class SnakeScreen: Screen
     private CancellationTokenSource? _visualLoopCts;
     private Task? _visualLoopTask;
     private GameState _state;
+    private GameState? _demoState;
+    private bool _demoTickParity;
     private GamePhase _phase;
     private int _gameTickQueued;
     private int _selectedDifficulty;
@@ -165,6 +167,7 @@ public sealed class SnakeScreen: Screen
         _board.State = _state;
         _board.DeathPulse = -1;
         _board.DeathVisibleSegments = 0;
+        _board.ClearEffects();
         TransitionTo(GamePhase.Playing);
         StartGameLoop();
     }
@@ -427,11 +430,43 @@ public sealed class SnakeScreen: Screen
         _board.AnimationFrame = _animation.Frame;
         _board.DeathPulse = _animation.DeathPulse;
         _board.DeathVisibleSegments = _animation.VisibleDeathSegments(_state.Body.Count);
+        _board.AdvanceEffects();
+        AdvanceDemo();
 
         if (deathComplete && _phase == GamePhase.DeathAnimation)
         {
             OnDeathAnimationComplete();
         }
+    }
+
+    // The attract-mode snake plays itself on the visual clock: it recreates its game whenever the
+    // board size changes or the demo runs out of lives, and it moves every second pulse (160 ms)
+    // so the title screen stays lively without stealing attention from the menu cards.
+    private void AdvanceDemo()
+    {
+        if (_phase is not (GamePhase.Title or GamePhase.HighScoreEntry or GamePhase.GameOver))
+        {
+            return;
+        }
+
+        var width = Math.Max(10, _board.Bounds.Width);
+        var height = Math.Max(6, _board.Bounds.Height);
+
+        if (_demoState is null || _demoState.IsGameOver || _demoState.Width != width || _demoState.Height != height)
+        {
+            _demoState = new GameState(width, height, difficulty: 1);
+            _board.DemoState = _demoState;
+        }
+
+        _demoTickParity = !_demoTickParity;
+
+        if (!_demoTickParity)
+        {
+            return;
+        }
+
+        _demoState.ChangeDirection(AttractPilot.ChooseDirection(_demoState));
+        _ = _demoState.Tick();
     }
 
     private void TickGame()
@@ -440,10 +475,33 @@ public sealed class SnakeScreen: Screen
         TransitionTo(GamePhase.Playing);
         _board.RequestRedraw();
 
+        if (result == TickResult.Ate && _state.LastEaten is { } eaten)
+        {
+            SpawnEatEffects(eaten.Position, eaten.Kind);
+        }
+
         if (result == TickResult.Died)
         {
             TriggerDeathAnimation();
         }
+    }
+
+    // Every apple kind announces itself with a floating score label and a sparkle burst in its own
+    // signature color, matching the palette the board already uses for that apple.
+    private void SpawnEatEffects(Point position, AppleKind kind)
+    {
+        var (text, color) = kind switch
+        {
+            AppleKind.Normal => ("+10", Color.Rgb(120, 255, 120)),
+            AppleKind.Golden => ("+50", Color.Rgb(255, 215, 0)),
+            AppleKind.Poison => ("-5", Color.Rgb(220, 80, 220)),
+            AppleKind.Speed => ("+20", Color.Rgb(0, 255, 255)),
+            AppleKind.Life => ("+15 ♥", Color.Rgb(255, 90, 90)),
+            _ => ("+?", Color.Default)
+        };
+
+        _board.AddScorePopup(new ScorePopup(position, text, color));
+        _board.AddSparkleBurst(new SparkleBurst(position, color));
     }
 
     #endregion

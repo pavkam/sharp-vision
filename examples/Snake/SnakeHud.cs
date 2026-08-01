@@ -10,6 +10,7 @@ using SharpVision.Text;
 /// <summary>Displays the retained two-row game metrics, status, and keyboard guidance.</summary>
 internal sealed class SnakeHud: CompositeControl
 {
+    private readonly ProgressBar _boostMeter;
     private readonly Text _guidance;
     private readonly Text _metrics;
     private readonly Text _quit;
@@ -25,6 +26,17 @@ internal sealed class SnakeHud: CompositeControl
         _metrics = new Text("") { HorizontalAlignment = HorizontalAlignment.Stretch, Overflow = Overflow.Clip };
         _status = new Text("") { Overflow = Overflow.Clip };
 
+        // The boost meter drains in sub-cell steps beside the status label while a speed boost is
+        // active; it collapses to zero width the rest of the time.
+        _boostMeter = new ProgressBar
+        {
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            UseSubCellResolution = true,
+            Visibility = Visibility.Collapsed,
+            Margin = new Thickness(1, 0)
+        };
+
         var metricsRow = new Dock
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -33,6 +45,8 @@ internal sealed class SnakeHud: CompositeControl
         };
         Dock.SetSide(_status, DockSide.Right);
         metricsRow.Children.Add(_status);
+        Dock.SetSide(_boostMeter, DockSide.Right);
+        metricsRow.Children.Add(_boostMeter);
         metricsRow.Children.Add(_metrics);
 
         _guidance = new Text("") { HorizontalAlignment = HorizontalAlignment.Stretch, Overflow = Overflow.Clip };
@@ -79,6 +93,7 @@ internal sealed class SnakeHud: CompositeControl
     {
         ValidateGameArguments(state, bestScore);
         UpdateMetrics(state, bestScore);
+        UpdateBoostMeter(state);
         _status.Content = state.IsSpeedBoosted ? "<info><b>⚡ BOOST</b></info>" : "<d>READY</d>";
         _guidance.Content = "<d>ARROWS / WASD</d>  MOVE   <d>P</d>  PAUSE";
     }
@@ -92,6 +107,7 @@ internal sealed class SnakeHud: CompositeControl
     {
         ValidateGameArguments(state, bestScore);
         UpdateMetrics(state, bestScore);
+        UpdateBoostMeter(state);
         _status.Content = "<warning><b>PAUSED</b></warning>";
         _guidance.Content = "<d>ARROWS / WASD</d>  MOVE   <d>P</d>  RESUME";
     }
@@ -106,7 +122,14 @@ internal sealed class SnakeHud: CompositeControl
         var escapedDifficulty = Text.Escape(difficulty.ToUpperInvariant());
         _metrics.Content = $"<accent><b>SNAKE</b></accent>  <b>{escapedDifficulty}</b>";
         _status.Content = "<d>READY</d>";
+        _boostMeter.Visibility = Visibility.Collapsed;
         _guidance.Content = "<accent><b>ENTER</b></accent>  START   <d>1 / 2 / 3</d>  DIFFICULTY";
+    }
+
+    private void UpdateBoostMeter(GameState state)
+    {
+        _boostMeter.Visibility = state.IsSpeedBoosted ? Visibility.Visible : Visibility.Collapsed;
+        _boostMeter.Value = state.BoostFraction;
     }
 
     private void UpdateMetrics(GameState state, int bestScore)

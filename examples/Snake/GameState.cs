@@ -11,11 +11,11 @@ public sealed class GameState
     private readonly List<(Point Position, AppleKind Kind)> _apples = [];
     private readonly HashSet<Point> _obstacles = [];
     private readonly Random _random = new();
-    private Direction _direction = Direction.Right;
     private Direction _pendingDirection = Direction.Right;
     private int _growRemaining;
     private int _shrinkRemaining;
     private int _speedTicksRemaining;
+    private int _speedTicksTotal;
 
     /// <summary>Initializes a new game on the given board dimensions.</summary>
     /// <param name="width">The playable board width. Must be at least 4 to hold the seeded body.</param>
@@ -67,11 +67,23 @@ public sealed class GameState
     /// <summary>Gets whether speed boost is active.</summary>
     public bool IsSpeedBoosted => _speedTicksRemaining > 0;
 
+    /// <summary>Gets the remaining speed-boost budget as a fraction from zero through one.</summary>
+    /// <remarks>The fraction drains from one toward zero across the boost's tick budget.</remarks>
+    public double BoostFraction =>
+        _speedTicksTotal == 0 ? 0d : Math.Clamp((double) _speedTicksRemaining / _speedTicksTotal, 0d, 1d);
+
+    /// <summary>Gets the apple consumed by the most recent <see cref="Tick"/>, or null when none was eaten.</summary>
+    /// <remarks>Each tick clears the previous value before moving, so the event is observable for one tick only.</remarks>
+    public (Point Position, AppleKind Kind)? LastEaten { get; private set; }
+
     /// <summary>Gets the snake body segments (head is first).</summary>
     public IReadOnlyCollection<Point> Body => _body;
 
     /// <summary>Gets the head position.</summary>
     public Point Head => _body.First!.Value;
+
+    /// <summary>Gets the direction the snake moved on the most recent tick.</summary>
+    public Direction Heading { get; private set; } = Direction.Right;
 
     /// <summary>Gets the active apple items.</summary>
     public IReadOnlyList<(Point Position, AppleKind Kind)> Apples => _apples;
@@ -101,7 +113,7 @@ public sealed class GameState
     /// <summary>Queues a direction change for the next tick.</summary>
     public void ChangeDirection(Direction direction)
     {
-        if (IsOpposite(_direction, direction))
+        if (IsOpposite(Heading, direction))
         {
             return;
         }
@@ -112,12 +124,14 @@ public sealed class GameState
     /// <summary>Advances the game by one step.</summary>
     public TickResult Tick()
     {
+        LastEaten = null;
+
         if (IsGameOver || IsPaused)
         {
             return TickResult.Moved;
         }
 
-        _direction = _pendingDirection;
+        Heading = _pendingDirection;
 
         if (_speedTicksRemaining > 0)
         {
@@ -125,7 +139,7 @@ public sealed class GameState
         }
 
         var head = Head;
-        var next = Advance(head, _direction);
+        var next = Advance(head, Heading);
 
         if (next.X < 0 || next.X >= Width || next.Y < 0 || next.Y >= Height)
         {
@@ -165,6 +179,7 @@ public sealed class GameState
         if (ate is { } apple)
         {
             ApplyApple(apple);
+            LastEaten = apple;
             _ = _apples.Remove(apple);
             EnsureApples();
             return TickResult.Ate;
@@ -186,7 +201,9 @@ public sealed class GameState
         _growRemaining = 0;
         _shrinkRemaining = 0;
         _speedTicksRemaining = 0;
-        _direction = Direction.Right;
+        _speedTicksTotal = 0;
+        LastEaten = null;
+        Heading = Direction.Right;
         _pendingDirection = Direction.Right;
 
         SeedBody();
@@ -216,7 +233,7 @@ public sealed class GameState
             _occupied.Clear();
             _growRemaining = 0;
             _shrinkRemaining = 0;
-            _direction = Direction.Right;
+            Heading = Direction.Right;
             _pendingDirection = Direction.Right;
 
             SeedBody();
@@ -299,6 +316,7 @@ public sealed class GameState
                 break;
             case AppleKind.Speed:
                 _speedTicksRemaining = (int) (5000.0 / CurrentTickMs);
+                _speedTicksTotal = _speedTicksRemaining;
                 Score += 20;
                 break;
             case AppleKind.Life:
