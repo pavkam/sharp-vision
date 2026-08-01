@@ -112,18 +112,13 @@ are processed first, then the newest pending UI work. This preserves the
 runtime's single-writer guarantee without dropping mutations that happened
 during asynchronous output.
 
-Applications should be able to request a repaint without owning a control
-subclass, and to force a full redraw when something outside SharpVision wrote to
-the terminal (the conventional Ctrl+L recovery).
-
-> [!IMPORTANT]
->
-> **Implementation gap:** There is currently no public `Refresh`, `Redraw`, or
-> frame-pump API — invalidation is reachable only through the protected control
-> seams, and `Renderer.Invalidate()` is held privately by `Application`.
-> Application authors mutate controls on the dispatcher, and no supported call
-> exists for external terminal corruption. Issue #226 tracks a public repaint
-> and screen-refresh seam.
+Composition-based code that does not own a control subclass can request a
+repaint through the public, render-level `Control.Invalidate()` — measure and
+arrange invalidation stay reserved for a control's own derived state through the
+protected `Invalidate(InvalidationImpact)` overload. When something outside
+SharpVision wrote to the terminal (the conventional Ctrl+L recovery),
+`Application.RefreshScreen()` forces the renderer to redraw the entire screen
+from a clean baseline instead of a differential update.
 
 Application authors mutate controls on the dispatcher. A custom control uses one
 of the protected seams — `SetProperty`, `NotifyPropertyChanged`,

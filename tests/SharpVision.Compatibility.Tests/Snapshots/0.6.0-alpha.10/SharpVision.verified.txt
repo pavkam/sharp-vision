@@ -50,6 +50,7 @@ namespace SharpVision
         public void Input(in SharpVision.Terminal.Input.Text value) { }
         public void Input(in SharpVision.Terminal.Protocols.Diagnostic value) { }
         public void Profile(SharpVision.Terminal.Capabilities.Capabilities value) { }
+        public void RefreshScreen() { }
         public void Response(SharpVision.Terminal.Xterm.CapabilityResponse value) { }
         public void Response(in SharpVision.Terminal.Xterm.MetricsResponse value) { }
         public void Response(in SharpVision.Terminal.Xterm.PaletteResponse value) { }
@@ -57,6 +58,7 @@ namespace SharpVision
         public void Response(in SharpVision.Terminal.Xterm.StatusResponse value) { }
         public System.Threading.Tasks.Task RunAsync(System.Threading.CancellationToken cancellationToken = default) { }
         public void Sequence(SharpVision.Terminal.Protocols.ProtocolSequence value) { }
+        public void Shutdown() { }
         public System.Threading.Tasks.ValueTask StartAsync(System.Threading.CancellationToken cancellationToken = default) { }
         public System.Threading.Tasks.ValueTask StopAsync(System.Threading.CancellationToken cancellationToken = default) { }
     }
@@ -565,6 +567,7 @@ namespace SharpVision.Controls
         protected SharpVision.Terminal.Rendering.CellStyle GetResolvedStyle(SharpVision.Styling.VisualState state) { }
         protected virtual SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
         protected virtual string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
+        public void Invalidate() { }
         protected void Invalidate(SharpVision.Controls.InvalidationImpact impact) { }
         protected void InvalidateVisualState() { }
         protected SharpVision.Terminal.Geometry.Size MeasureChild(SharpVision.Controls.Control child, SharpVision.Layout.Constraint constraint) { }

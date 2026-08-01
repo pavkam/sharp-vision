@@ -65,7 +65,7 @@ _ = AddHandler(Events.Key, (_, args) =>
 
     if (args.Stroke.Code == Code.Escape)
     {
-        Application?.Closed();
+        Application?.Shutdown();
         args.Handled = true;
     }
 });

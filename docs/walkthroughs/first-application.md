@@ -38,7 +38,7 @@ internal sealed class HelloScreen : Screen
     {
         var message = new Text("Ready.");
         var exit = new Button { Content = new Text("Exit") };
-        exit.Click += (_, _) => Application?.Closed();
+        exit.Click += (_, _) => Application?.Shutdown();
 
         InitializeContent(new Stack
         {
@@ -58,12 +58,6 @@ creates the permanent visual tree and calls `InitializeContent` exactly once.
 alignment properties center the stack inside the application viewport. The
 [`Button`](../controls/input/button.md#overview) owns one `Content` child and
 publishes `Click` after a completed activation.
-
-> [!NOTE]
->
-> `Application.Closed()` is currently the public request for an orderly
-> shutdown; a dedicated, intention-named `Shutdown()` API is tracked by issue
-> #228.
 
 ## Run it
 

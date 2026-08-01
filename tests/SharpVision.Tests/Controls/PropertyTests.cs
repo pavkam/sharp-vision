@@ -243,6 +243,34 @@ public sealed class PropertyTests
         control.IsHitTestVisible.ShouldBeTrue();
     }
 
+    /// <summary>Verifies the public Invalidate() requests only Render, leaving composition-based
+    /// code that does not own a subclass able to request a repaint without the protected
+    /// measure/arrange seam (see #226).</summary>
+    [Fact]
+    public void Invalidate_WhenCalled_RequestsRenderOnly()
+    {
+        var control = new ProbeControl();
+        control.Clear(Invalidation.All);
+
+        control.Invalidate();
+
+        control.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies the public Invalidate() is dispatcher-affine, matching every other public
+    /// mutation seam instead of silently deferring (see #226).</summary>
+    [Fact]
+    public async Task Invalidate_WhenAttachedAndCalledOffThread_ThrowsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var control = new ProbeControl();
+        await dispatcher.InvokeAsync(
+            () => control.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(control.Invalidate);
+    }
+
     /// <summary>Verifies invalid enums and disposed access fail before mutation.</summary>
     [Fact]
     public void Setter_WhenStateIsInvalid_ThrowsDocumentedException()

@@ -582,8 +582,49 @@ public sealed class Application: ISink, IAsyncDisposable
         Dispatcher.Post(DrainResize);
     }
 
+    /// <summary>Requests a cooperative, orderly application exit.</summary>
+    /// <remarks>
+    /// The discoverable, intention-named call for application code - an Exit button, an Escape
+    /// handler - as opposed to <see cref="Closed"/>, which is the <see cref="ISink"/> transport
+    /// callback for reporting that terminal input closed. Both funnel through the identical stop
+    /// path today; <see cref="Closed"/> stays free to evolve its transport-facing semantics
+    /// independently of this public lifecycle surface (see #228).
+    /// </remarks>
+    public void Shutdown() => Closed();
+
     /// <inheritdoc/>
+    /// <remarks>Application code that wants to exit should call <see cref="Shutdown"/> instead - this
+    /// member exists to satisfy the <see cref="ISink"/> transport contract.</remarks>
     public void Closed() => Enqueue(Record.Closed());
+
+    /// <summary>Forces the renderer to redraw the entire screen from a clean baseline instead of a
+    /// differential update against its cached state.</summary>
+    /// <remarks>
+    /// The supported recovery when something outside the framework's control - another process
+    /// writing to the same terminal, a resumed session - has left the display out of sync with
+    /// what the renderer believes is on screen: the classic Ctrl-L scenario, which a terminal UI
+    /// needs more than a GUI does because it does not own the display exclusively (see #226).
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The application is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The application is stopping or stopped.</exception>
+    public void RefreshScreen()
+    {
+        Dispatcher.VerifyAccess();
+        ObjectDisposedException.ThrowIf(_stopping, this);
+
+        if (_renderer is not null)
+        {
+            _rendererInvalidationPending = true;
+        }
+
+        if (!_initialized)
+        {
+            return;
+        }
+
+        Root.Invalidate(Invalidation.Render);
+        ProcessInvalidation();
+    }
 
     /// <inheritdoc/>
     public void Fault(Exception exception)

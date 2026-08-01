@@ -135,6 +135,63 @@ public sealed class ApplicationTests
         application.Failure.ShouldBeNull();
     }
 
+    /// <summary>Verifies RefreshScreen forces a render pass - and the pending renderer-invalidation
+    /// flag that starts the next render from a clean baseline - even when nothing else invalidated
+    /// the tree, the supported recovery for external terminal corruption (see #226).</summary>
+    [Fact]
+    public async Task RefreshScreen_WhenNothingElseInvalidated_StillProducesAFrameAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.FrameRendered += (_, _) => rendered.TrySetResult();
+
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                application.Root.Pending.ShouldBe(Invalidation.None);
+                application.RefreshScreen();
+            },
+            TestContext.Current.CancellationToken);
+
+        await rendered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies RefreshScreen throws on the calling thread instead of silently deferring
+    /// when called off the dispatcher, matching every other public mutation seam (see #226, #204).</summary>
+    [Fact]
+    public async Task RefreshScreen_WhenAccessedOffDispatcher_ThrowsOnCallingThreadAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => Task.Run(() => application.RefreshScreen()));
+
+        application.Failure.ShouldBeNull();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        application.Failure.ShouldBeNull();
+    }
+
+    /// <summary>Verifies Shutdown() drives the identical cooperative stop path as the ISink Closed()
+    /// callback, giving application code a discoverable, intention-named exit call (see #228).</summary>
+    [Fact]
+    public async Task Shutdown_WhenCalled_StopsTheApplicationLikeClosedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Shutdown();
+
+        await application.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a visual-only Theme change renders without the former unconditional root measure.</summary>
     [Fact]
     public async Task Theme_WhenOnlyResolvedColorsChange_DoesNotRemeasureRootAsync()

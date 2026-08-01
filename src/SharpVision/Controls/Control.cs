@@ -1153,6 +1153,22 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         Invalidate(InvalidationFor(impact));
     }
 
+    /// <summary>Requests a repaint of this control's rendered output.</summary>
+    /// <remarks>
+    /// Composition-based code that does not own a subclass - an adapter, a view-model bridge, or
+    /// anything wrapping a sealed concrete control - has no other public seam to ask for a
+    /// repaint. This deliberately stays render-level only: measure and arrange invalidation remain
+    /// <see cref="Invalidate(InvalidationImpact)"/>, reserved for a control's own derived state,
+    /// to preserve phase-correctness (see #226).
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public void Invalidate()
+    {
+        VerifyMutable();
+        Invalidate(Invalidation.Render);
+    }
+
     /// <summary>Clears resolved appearance caches and requests the phase required by active styles.</summary>
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
