@@ -22,9 +22,10 @@ no viewport extent or paging buttons participate in geometry.
 ## Behavior
 
 - `Minimum`, `Maximum`, and `Value` are inclusive signed integers. The default
-  range is 0 through 100 with value 0. An endpoint setter that would invert the
-  range or exclude `Value` throws before mutation; direct `Value` assignment
-  outside the range also throws.
+  range is 0 through 100 with value 0. An endpoint setter throws only when it
+  would invert the range; one that would exclude `Value` instead commits and
+  auto-clamps `Value` to the new endpoint, raising `ValueChanged`. Direct
+  `Value` assignment outside the current range throws.
 - `SmallChange` defaults to 1 and `LargeChange` defaults to 10. Both accept
   non-negative integers; zero is a valid no-op.
 - `ChangeBy(int)` adds with widened arithmetic, clamps to the endpoints, and
