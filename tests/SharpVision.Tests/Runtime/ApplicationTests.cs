@@ -845,6 +845,65 @@ public sealed class ApplicationTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a throwing Stopping handler still completes the cleanup chain - including
+    /// host-lease disposal - instead of leaving the request permanently stuck (see #198).</summary>
+    [Fact]
+    public async Task StopAsync_WhenStoppingHandlerThrows_StillCompletesCleanupAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var hostLease = new TrackingLease();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal,
+            hostLease);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var stoppingFailure = new InvalidOperationException("stopping-handler");
+        application.Stopping += (_, _) => throw stoppingFailure;
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await application.StopAsync(TestContext.Current.CancellationToken)
+                .AsTask()
+                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        thrown.ShouldBeSameAs(stoppingFailure);
+        application.Failure.ShouldBeSameAs(stoppingFailure);
+        hostLease.Disposals.ShouldBe(1);
+    }
+
+    /// <summary>Verifies an UnhandledException handler that itself throws does not skip
+    /// terminal-resource cleanup, and that the original failure - not the handler's own exception -
+    /// remains what Failure reports (see #198).</summary>
+    [Fact]
+    public async Task StartAsync_WhenUnhandledExceptionHandlerThrows_StillCompletesCleanupWithOriginalFailureAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var hostLease = new TrackingLease();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal,
+            hostLease);
+        var originalFailure = new NotSupportedException("resize-handler");
+        var handlerFailure = new InvalidOperationException("unhandled-handler");
+        application.Resize += (_, _) => throw originalFailure;
+        application.UnhandledException += (_, _) => throw handlerFailure;
+
+        var thrown = await Should.ThrowAsync<NotSupportedException>(async () =>
+            await application.StartAsync(TestContext.Current.CancellationToken)
+                .AsTask()
+                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        thrown.ShouldBeSameAs(originalFailure);
+        application.Failure.ShouldBeSameAs(originalFailure);
+        application.LastCleanupException.ShouldBeSameAs(handlerFailure);
+        hostLease.Disposals.ShouldBe(1);
+    }
+
     /// <summary>Verifies a throwing input handler does not permanently latch the drain loop's
     /// wake flag: with UnhandledException marked handled, a later keystroke is still delivered
     /// instead of the application silently going deaf while it keeps running (see #206).</summary>

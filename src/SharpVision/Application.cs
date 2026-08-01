@@ -440,23 +440,32 @@ public sealed class Application: ISink, IAsyncDisposable
             return;
         }
 
-        if (Volatile.Read(ref _startState) == 0 && !_stopped)
+        try
         {
-            await FinishWithoutSessionAsync();
+            if (Volatile.Read(ref _startState) == 0 && !_stopped)
+            {
+                await FinishWithoutSessionAsync();
+            }
+            else if (!_stopped)
+            {
+                try
+                {
+                    await StopAsync();
+                }
+                catch when (_stopped)
+                {
+                    // Once cleanup has actually completed, this is StopAsync's documented rethrow
+                    // of the recorded Failure - swallowing it is DisposeAsync's own contract. A
+                    // throw that lands before cleanup completed (e.g. a dead dispatcher) must not
+                    // be reported as success, so it is left to propagate instead (see #198).
+                }
+            }
         }
-        else if (!_stopped)
+        finally
         {
-            try
-            {
-                await StopAsync();
-            }
-            catch when (Failure is not null)
-            {
-            }
+            await Dispatcher.DisposeAsync();
+            _lifetime.Dispose();
         }
-
-        await Dispatcher.DisposeAsync();
-        _lifetime.Dispose();
     }
 
     /// <inheritdoc/>
@@ -612,6 +621,14 @@ public sealed class Application: ISink, IAsyncDisposable
         try
         {
             Stopping?.Invoke(this, eventArgs);
+        }
+        catch (Exception stoppingException)
+        {
+            // A Stopping handler failure must not skip the cleanup chain below - it is recorded
+            // rather than propagated, so shutdown proceeds exactly as if the handler had returned
+            // without cancelling (see #198).
+            Failure ??= stoppingException;
+            LastCleanupException ??= stoppingException;
         }
         finally
         {
@@ -1310,19 +1327,28 @@ public sealed class Application: ISink, IAsyncDisposable
             failure = exception;
         }
 
-        await Dispatcher.InvokeAsync(() => BeginStopping(forced: true, failure));
-        do
+        // BeginStopping's Stopping handler and the render drain both run before terminal-resource
+        // cleanup and FinalizeStopped; wrapping them in try/finally keeps that cleanup chain
+        // unconditional even if either step above throws unexpectedly, matching the promise that
+        // an exit-callback failure cannot skip later application cleanup (see #198).
+        try
         {
-            await _renderTask;
-        } while (_rendering);
-
-        var cleanupFailure = await DisposeTerminalResourcesAsync();
-        await Dispatcher.InvokeAsync(() =>
+            await Dispatcher.InvokeAsync(() => BeginStopping(forced: true, failure));
+            do
+            {
+                await _renderTask;
+            } while (_rendering);
+        }
+        finally
         {
-            Failure ??= cleanupFailure;
-            LastCleanupException ??= cleanupFailure;
-            FinalizeStopped();
-        });
+            var cleanupFailure = await DisposeTerminalResourcesAsync();
+            await Dispatcher.InvokeAsync(() =>
+            {
+                Failure ??= cleanupFailure;
+                LastCleanupException ??= cleanupFailure;
+                FinalizeStopped();
+            });
+        }
     }
 
     private void ProcessInvalidation()
@@ -1348,7 +1374,19 @@ public sealed class Application: ISink, IAsyncDisposable
     {
         Failure ??= exception;
         var eventArgs = new UnhandledEventArgs(exception);
-        UnhandledException?.Invoke(this, eventArgs);
+
+        try
+        {
+            UnhandledException?.Invoke(this, eventArgs);
+        }
+        catch (Exception handlerException)
+        {
+            // A consumer handler that itself throws must be treated as though it never marked
+            // the failure handled, so shutdown still proceeds; the handler's own exception is
+            // recorded separately from the original Failure rather than propagated (see #198).
+            eventArgs.Handled = false;
+            LastCleanupException ??= handlerException;
+        }
 
         if (!eventArgs.Handled)
         {

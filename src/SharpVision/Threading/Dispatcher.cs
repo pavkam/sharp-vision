@@ -24,6 +24,7 @@ public sealed class Dispatcher: IAsyncDisposable
 
     private readonly Thread _thread;
     private int _disposed;
+    private Exception? _fatalException;
     private bool _idleRaised;
     private int _ownerThreadId;
     private int _pending;
@@ -321,7 +322,7 @@ public sealed class Dispatcher: IAsyncDisposable
             SynchronizationContext.SetSynchronizationContext(previousContext);
             Volatile.Write(ref _disposed, 1);
             Volatile.Write(ref _ownerThreadId, 0);
-            _ = _stopped.TrySetResult();
+            _ = _fatalException is { } fatal ? _stopped.TrySetException(fatal) : _stopped.TrySetResult();
         }
     }
 
@@ -365,9 +366,13 @@ public sealed class Dispatcher: IAsyncDisposable
         {
             UnhandledException?.Invoke(this, eventArgs);
         }
-        catch
+        catch (Exception handlerException)
         {
+            // A handler that itself throws must not silently erase the original failure - both
+            // are preserved on _stopped so a DisposeAsync waiter observes the real cause instead
+            // of the dispatcher merely appearing to have stopped cleanly (see #198).
             eventArgs.Handled = false;
+            _fatalException = new AggregateException(exception, handlerException);
         }
 
         if (!eventArgs.Handled)
