@@ -175,6 +175,7 @@ public sealed class FocusManager: IDisposable
         }
 
         var candidates = new List<Control>();
+        var tracker = anchor is null ? null : new AnchorTracker(anchor);
         var modality = Root.ModalityOwner;
         var boundary = anchor is null ? null : modality?.BoundaryFor(anchor);
         var scope = modality?.Active is not null && boundary is null
@@ -183,18 +184,18 @@ public sealed class FocusManager: IDisposable
 
         if (scope is not null)
         {
-            CollectScope(scope, candidates, includeOwner: !ReferenceEquals(scope, Root));
+            CollectScope(scope, candidates, includeOwner: !ReferenceEquals(scope, Root), tracker);
         }
         else if (modality?.Active is not null)
         {
             for (var index = 0; index < modality.ActiveRootCount; index++)
             {
-                CollectScope(modality.ActiveRootAt(index), candidates, includeOwner: true);
+                CollectScope(modality.ActiveRootAt(index), candidates, includeOwner: true, tracker);
             }
         }
         else
         {
-            CollectScope(Root, candidates, includeOwner: false);
+            CollectScope(Root, candidates, includeOwner: false, tracker);
         }
 
         if (candidates.Count == 0)
@@ -203,9 +204,28 @@ public sealed class FocusManager: IDisposable
         }
 
         var current = candidates.FindIndex(item => ReferenceEquals(item, anchor));
-        var next = reverse
-            ? current <= 0 ? candidates.Count - 1 : current - 1
-            : current < 0 || current == candidates.Count - 1 ? 0 : current + 1;
+        int next;
+
+        if (current >= 0)
+        {
+            next = reverse
+                ? current == 0 ? candidates.Count - 1 : current - 1
+                : current == candidates.Count - 1 ? 0 : current + 1;
+        }
+        else
+        {
+            // The anchor is a live focus target that is not itself a candidate - a TabStop=false
+            // leaf, or a descendant excluded by an ancestor's TabNavigation.None. Folding this
+            // into the wrap branch above sent Tab and Shift+Tab to opposite ends of the scope
+            // instead of the nearest candidate in tree order; the tracker built alongside
+            // CollectScope resolves that position directly (see #205).
+            var following = tracker?.FollowingIndex ?? -1;
+            following = following < 0 ? candidates.Count : following;
+            next = reverse
+                ? following == 0 ? candidates.Count - 1 : following - 1
+                : following == candidates.Count ? 0 : following;
+        }
+
         return Focus(candidates[next], FocusReason.Keyboard, cancellable: true);
     }
 
@@ -807,14 +827,18 @@ public sealed class FocusManager: IDisposable
 
     #region Target resolution
 
-    private void CollectScope(Control owner, List<Control> candidates, bool includeOwner)
+    private void CollectScope(
+        Control owner,
+        List<Control> candidates,
+        bool includeOwner,
+        AnchorTracker? tracker = null)
     {
         Debug.Assert(owner is not null, "Focus traversal visits a concrete control.");
         Debug.Assert(candidates is not null, "Focus traversal accumulates into an owned candidate list.");
 
         if (includeOwner)
         {
-            AppendParticipant(owner, candidates);
+            AppendParticipant(owner, candidates, tracker);
             return;
         }
 
@@ -834,11 +858,11 @@ public sealed class FocusManager: IDisposable
 
         foreach (var participant in participants)
         {
-            AppendParticipant(participant.Control, candidates);
+            AppendParticipant(participant.Control, candidates, tracker);
         }
     }
 
-    private void AppendParticipant(Control control, List<Control> candidates)
+    private void AppendParticipant(Control control, List<Control> candidates, AnchorTracker? tracker = null)
     {
         Debug.Assert(control is not null, "Focus traversal visits a concrete control.");
         Debug.Assert(candidates is not null, "Focus traversal accumulates into an owned candidate list.");
@@ -849,8 +873,16 @@ public sealed class FocusManager: IDisposable
             {
                 candidates.Add(control);
             }
+            else
+            {
+                // A TabStop=false control that is nonetheless the live anchor never becomes a
+                // candidate itself, so mark its tree position here - before recursing into any
+                // descendants - so MoveNext can resolve the nearest neighbor instead of treating
+                // it as -1/wrap (see #205).
+                tracker?.MarkIfAnchor(control, candidates.Count);
+            }
 
-            CollectScope(control, candidates, includeOwner: false);
+            CollectScope(control, candidates, includeOwner: false, tracker);
             return;
         }
 
@@ -861,6 +893,10 @@ public sealed class FocusManager: IDisposable
                 candidates.Add(control);
             }
 
+            // Descendants never enter traversal under None, so an anchor anywhere in this
+            // subtree - including control itself - resolves to whatever candidate follows this
+            // contribution (see #205).
+            tracker?.MarkIfAnchorOrDescendant(control, candidates.Count);
             return;
         }
 
@@ -869,14 +905,55 @@ public sealed class FocusManager: IDisposable
         if (IsEligible(control) && control.IsTabStop)
         {
             candidates.Add(control);
-            return;
+        }
+        else
+        {
+            var descendants = new List<Control>();
+            CollectScope(control, descendants, includeOwner: false);
+            if (descendants.Count > 0)
+            {
+                candidates.Add(descendants[0]);
+            }
         }
 
-        var descendants = new List<Control>();
-        CollectScope(control, descendants, includeOwner: false);
-        if (descendants.Count > 0)
+        tracker?.MarkIfAnchorOrDescendant(control, candidates.Count);
+    }
+
+    /// <summary>Resolves an anchor's tree position for <see cref="MoveNext(Control?, bool)"/> when the
+    /// anchor is not itself a tab candidate.</summary>
+    private sealed class AnchorTracker
+    {
+        private readonly HashSet<Control> _ancestors = [];
+        private readonly Control _anchor;
+
+        public AnchorTracker(Control anchor)
         {
-            candidates.Add(descendants[0]);
+            _anchor = anchor;
+
+            for (var current = anchor.Parent; current is not null; current = current.Parent)
+            {
+                _ = _ancestors.Add(current);
+            }
+        }
+
+        /// <summary>Gets the index of the first candidate that follows the anchor's tree
+        /// position, or -1 while unresolved.</summary>
+        public int FollowingIndex { get; private set; } = -1;
+
+        public void MarkIfAnchor(Control control, int candidateCount)
+        {
+            if (FollowingIndex < 0 && ReferenceEquals(control, _anchor))
+            {
+                FollowingIndex = candidateCount;
+            }
+        }
+
+        public void MarkIfAnchorOrDescendant(Control control, int candidateCount)
+        {
+            if (FollowingIndex < 0 && (ReferenceEquals(control, _anchor) || _ancestors.Contains(control)))
+            {
+                FollowingIndex = candidateCount;
+            }
         }
     }
 
@@ -884,7 +961,12 @@ public sealed class FocusManager: IDisposable
     {
         for (var current = focused; current is not null; current = current.Parent)
         {
-            if (current.TabNavigation is TabNavigation.Cycle or TabNavigation.Once)
+            // Once is a contribution rule (contribute one entry, then continue in the parent
+            // scope), not a traversal boundary - treating it as one here collapsed every
+            // enclosing scope to that single entry, trapping Tab and Shift+Tab on it forever
+            // (see #208). AppendParticipant's own Once branch already implements the contribution
+            // correctly and is unaffected by this change.
+            if (current.TabNavigation is TabNavigation.Cycle)
             {
                 return current;
             }

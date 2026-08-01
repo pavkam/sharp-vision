@@ -142,9 +142,17 @@ public sealed class ModalityFocusTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies a local Once scope contributes one entry without escaping the active plane.</summary>
+    /// <summary>Verifies a local Once scope contributes one entry that participates in the enclosing
+    /// plane's ordinary traversal instead of trapping Tab and Shift+Tab on it forever - Once is a
+    /// contribution rule, not a traversal boundary, so <c>once</c> is not itself a scope root and
+    /// its single contributed entry (<c>first</c>) cycles with <c>after</c> like any other pair of
+    /// plane candidates (see #208). This test previously enshrined the pre-fix trap: it asserted
+    /// every step landed back on <c>first</c>, including the very first MoveNext from the initially
+    /// focused <c>second</c> - a control Once never contributes, which is the distinct #205 defect
+    /// this scope directly interacts with. Fixing #205 first means <c>second</c>, not itself a
+    /// candidate, resolves to the nearest following candidate (<c>after</c>) by tree order.</summary>
     [Fact]
-    public async Task MoveNext_WhenPlaneContainsLocalOnce_UsesSingleLocalEntryAsync()
+    public async Task MoveNext_WhenPlaneContainsLocalOnce_CyclesTheContributedEntryWithinThePlaneAsync()
     {
         await using var dispatcher = Dispatcher.Start();
 
@@ -168,11 +176,11 @@ public sealed class ModalityFocusTests
             using var scope = modality.Enter(plane, initialFocus: second);
 
             focus.MoveNext().ShouldBeTrue();
-            focus.Focused.ShouldBeSameAs(first);
+            focus.Focused.ShouldBeSameAs(after);
             focus.MoveNext().ShouldBeTrue();
             focus.Focused.ShouldBeSameAs(first);
             focus.MoveNext(reverse: true).ShouldBeTrue();
-            focus.Focused.ShouldBeSameAs(first);
+            focus.Focused.ShouldBeSameAs(after);
         }, TestContext.Current.CancellationToken);
     }
 

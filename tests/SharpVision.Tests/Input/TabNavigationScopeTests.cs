@@ -444,4 +444,158 @@ public sealed class TabNavigationScopeTests
             focus.Focused.ShouldBeSameAs(a);
         }, TestContext.Current.CancellationToken);
     }
+
+    /// <summary>
+    /// Tree: root > [A, B, Skipped(TabStop=false, focusable), C, D]
+    /// Skipped is focused by a pointer click (CanFocus only), not by MoveNext. Before the #205
+    /// fix, an anchor with no candidate-list position folded into the wrap branch, sending Tab to
+    /// the scope's first candidate and Shift+Tab to its last regardless of where the anchor
+    /// actually was. Tab and Shift+Tab from Skipped must instead be exact inverses that resolve
+    /// by tree order: forward to the nearest following candidate, backward to the nearest
+    /// preceding one.
+    /// </summary>
+    [Fact]
+    public async Task MoveNext_WhenAnchorIsFocusableButNotATabStop_ResolvesByTreeOrderAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var a = new ProbeControl { Focusable = true };
+            var b = new ProbeControl { Focusable = true };
+            var skipped = new ProbeControl { Focusable = true, TabStop = false };
+            var c = new ProbeControl { Focusable = true };
+            var d = new ProbeControl { Focusable = true };
+            root.Children.Add(a);
+            root.Children.Add(b);
+            root.Children.Add(skipped);
+            root.Children.Add(c);
+            root.Children.Add(d);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            focus.Focus(skipped).ShouldBeTrue();
+
+            focus.MoveNext().ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(c);
+
+            focus.Focus(skipped).ShouldBeTrue();
+            focus.MoveNext(reverse: true).ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(b);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// Tree: root > [A, None(TabNavigation.None, focusable) > Inner(focusable), B]
+    /// Inner is focused directly (e.g. by pointer click), even though None excludes it from
+    /// traversal. Before the #205 fix, this anchor also folded into the wrap branch. Tab and
+    /// Shift+Tab from Inner must resolve to the candidates immediately after and before the
+    /// excluding None container itself.
+    /// </summary>
+    [Fact]
+    public async Task MoveNext_WhenAnchorIsExcludedByAncestorTabNavigationNone_ResolvesByTreeOrderAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var a = new ProbeControl { Focusable = true };
+            var excluded = new ProbeContainer { TabNavigation = TabNavigation.None, Focusable = true };
+            var inner = new ProbeControl { Focusable = true };
+            excluded.Children.Add(inner);
+            var b = new ProbeControl { Focusable = true };
+            root.Children.Add(a);
+            root.Children.Add(excluded);
+            root.Children.Add(b);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            focus.Focus(inner).ShouldBeTrue();
+
+            focus.MoveNext().ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(b);
+
+            focus.Focus(inner).ShouldBeTrue();
+            focus.MoveNext(reverse: true).ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(excluded);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// Tree: root > [Before, Once(TabNavigation.Once > Inner1, Inner2), After]
+    /// Before the #208 fix, FindScope treated Once as a traversal scope root, so MoveNext
+    /// collected only Once's single contributed entry and both Tab and Shift+Tab resolved to it
+    /// forever. Once is a contribution rule, not a boundary: Tab and Shift+Tab must traverse the
+    /// enclosing scope normally, with Once contributing exactly its first eligible descendant.
+    /// </summary>
+    [Fact]
+    public async Task MoveNext_WhenScopeContainsOnce_DoesNotTrapTraversalOnTheContributedEntryAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var before = new ProbeControl { Focusable = true };
+            var once = new ProbeContainer { TabNavigation = TabNavigation.Once };
+            var inner1 = new ProbeControl { Focusable = true };
+            var inner2 = new ProbeControl { Focusable = true };
+            once.Children.Add(inner1);
+            once.Children.Add(inner2);
+            var after = new ProbeControl { Focusable = true };
+            root.Children.Add(before);
+            root.Children.Add(once);
+            root.Children.Add(after);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+
+            focus.Focus(before).ShouldBeTrue();
+            focus.MoveNext().ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(inner1);
+            focus.MoveNext().ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(after);
+            focus.MoveNext().ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(before);
+
+            focus.MoveNext(reverse: true).ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(after);
+            focus.MoveNext(reverse: true).ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(inner1);
+            focus.MoveNext(reverse: true).ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(before);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// Tree: root > [Before, Leaf(TabNavigation.Once, childless focusable), After]
+    /// The most alarming #208 shape: Once on a childless leaf with no descendants to contribute.
+    /// Before the fix, Tab and Shift+Tab both trapped on Leaf forever; Leaf must instead be one
+    /// ordinary stop between Before and After.
+    /// </summary>
+    [Fact]
+    public async Task MoveNext_WhenChildlessLeafHasOnce_IsOneOrdinaryStopAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var before = new ProbeControl { Focusable = true };
+            var leaf = new ProbeControl { Focusable = true, TabNavigation = TabNavigation.Once };
+            var after = new ProbeControl { Focusable = true };
+            root.Children.Add(before);
+            root.Children.Add(leaf);
+            root.Children.Add(after);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+
+            focus.Focus(before).ShouldBeTrue();
+            focus.MoveNext().ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(leaf);
+            focus.MoveNext().ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(after);
+            focus.MoveNext().ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(before);
+        }, TestContext.Current.CancellationToken);
+    }
 }

@@ -31,12 +31,18 @@ targets outside the active plane; unhandled Tab and Shift+Tab use the
 
 `MoveNext(reverse)` sorts eligible members by `TabIndex` and then stable tree
 order, wraps at both ends, and uses the same cancellable transaction as an
-explicit request. Stable tree order descends navigation-participating ownership
-slots on every `Control`, in slot-registration then item order; private content
-and framework parts therefore participate when their slot opts in without
-pretending their owner is a public multi-child `Container`. Controls with a
-semantic visual order, such as `Stack.Reverse`, may override only that local
-navigation order while retaining the same registry membership and eligibility.
+explicit request. When the currently focused control is not itself an eligible
+member - for example a `TabStop=false` leaf focused by a pointer press, or a
+descendant excluded by an ancestor's `TabNavigation.None` - traversal resolves
+by that same tree order instead of wrapping: forward moves to the nearest
+following member, backward to the nearest preceding one.
+
+Stable tree order descends navigation-participating ownership slots on every
+`Control`, in slot-registration then item order; private content and framework
+parts therefore participate when their slot opts in without pretending their
+owner is a public multi-child `Container`. Controls with a semantic visual
+order, such as `Stack.Reverse`, may override only that local navigation order
+while retaining the same registry membership and eligibility.
 
 A primary pointer press focuses the nearest eligible `CanFocus` member from the
 hit target toward the owned root before routed pointer behavior runs. Clicking
