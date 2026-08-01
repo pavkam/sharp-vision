@@ -497,6 +497,54 @@ public sealed class TableSurfaceTests
         table.ActiveRow.ShouldNotBeSameAs(initial);
     }
 
+    /// <summary>Verifies PageDown is still handled when the active row is already at the last row
+    /// and cannot move any further, so the keystroke does not escape to page the enclosing
+    /// scrollable container out from under the still-focused table (see #222).</summary>
+    [Fact]
+    public async Task Input_WhenPageKeyCannotMoveActiveRowAtBoundary_StillHandlesWithoutEscapingToOuterContainerAsync()
+    {
+        // Arrange
+        var table = new Table { Height = Length.Cells(4), HorizontalAlignment = HorizontalAlignment.Stretch };
+        table.Columns.Add(TableColumn.Fixed("Value", 8));
+
+        for (var index = 0; index < 3; index++)
+        {
+            table.Rows.Add(new TableRow([new ControlText($"Item {index}")]));
+        }
+
+        var filler = new Button
+        {
+            Content = new ControlText("Filler"),
+            Height = Length.Cells(20),
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+
+        var outer = new Stack
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Children = { table, filler }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            outer,
+            new Size(20, 8),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down);
+        await surface.Keyboard.PressAsync(Code.End);
+        var last = table.ActiveRow.ShouldNotBeNull();
+
+        // Act - PageDown at the last row cannot move the active row any further.
+        await surface.Keyboard.PressAsync(Code.PageDown);
+
+        // Assert - the record was still handled by the table, so the outer Stack never sees it
+        // and the still-focused table is not paged out of view.
+        outer.VerticalOffset.ShouldBe(0);
+        table.ActiveRow.ShouldBeSameAs(last);
+    }
+
     /// <summary>Verifies End brings the endpoint row into view instead of leaving the viewport
     /// pinned at its prior offset, matching every other Table navigation path (see #210).</summary>
     [Fact]

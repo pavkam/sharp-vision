@@ -864,7 +864,7 @@ public sealed class Table: ItemsControl
             return;
         }
 
-        var moved = stroke.Code == TerminalInput.Code.Up
+        _ = stroke.Code == TerminalInput.Code.Up
             ? MoveActive(-1, 0)
             : stroke.Code == TerminalInput.Code.Down
                 ? MoveActive(1, 0)
@@ -880,16 +880,11 @@ public sealed class Table: ItemsControl
                                     ? MovePage(-1)
                                     : stroke.Code == TerminalInput.Code.PageDown && MovePage(1);
 
-        if (moved)
-        {
-            eventArgs.Handled = true;
-            return;
-        }
-
-        if (stroke.Code == TerminalInput.Code.Enter)
-        {
-            eventArgs.Handled = ActivateCurrent();
-        }
+        // Handled whenever the table has rows and columns to navigate, even when the active cell
+        // is already at the boundary and cannot move further - otherwise the keystroke escapes to
+        // page or scroll an enclosing scrollable container out from under the still-focused table
+        // (see #222, mirroring TreeView/NavigationView's #210 fix).
+        eventArgs.Handled = Rows.Count > 0 && Columns.Count > 0;
     }
 
     private void OnPointerRouted(object? sender, PointerEventArgs eventArgs)
