@@ -975,6 +975,36 @@ public sealed class SessionTests
     }
 
     /// <summary>
+    /// Verifies DisposeAsync rejects being awaited from inside an ISink callback raised by the
+    /// run it would need to wait for, instead of deadlocking. The callback itself is synchronous,
+    /// so the guard must reject before the first await point: only then is the returned ValueTask
+    /// already faulted by the time GetAwaiter().GetResult() observes it, rather than genuinely
+    /// blocking the thread the run needs to finish on (see #229).
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenAwaitedFromOwnClosedCallback_ThrowsInsteadOfDeadlockingAsync()
+    {
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        Session? session = null;
+        InvalidOperationException? thrown = null;
+        var sink = new RuntimeSink
+        {
+            OnClosed = () =>
+                thrown = Should.Throw<InvalidOperationException>(
+                    () => session!.DisposeAsync().AsTask().GetAwaiter().GetResult())
+        };
+        transport.Close();
+        session = new Session(transport, resize, sink, RuntimeOptions.Minimal);
+
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        sink.ClosedCount.ShouldBe(1);
+        var exception = thrown.ShouldNotBeNull();
+        exception.Message.ShouldContain("own run");
+    }
+
+    /// <summary>
     /// Verifies repeated disposal remains safe after a completed minimal session.
     /// </summary>
     [Fact]

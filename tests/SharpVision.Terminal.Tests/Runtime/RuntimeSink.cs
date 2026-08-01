@@ -61,6 +61,11 @@ internal sealed class RuntimeSink: ISink
     /// race.</summary>
     internal System.Action? OnResize { get; init; }
 
+    /// <summary>Gets an optional hook invoked synchronously before closure is recorded, so a
+    /// caller can observe state - or call back into the session - from inside the run's own
+    /// callback dispatch.</summary>
+    internal System.Action? OnClosed { get; init; }
+
     /// <summary>Gets reported runtime faults.</summary>
     internal List<Exception> Faults { get; } = [];
 
@@ -146,6 +151,7 @@ internal sealed class RuntimeSink: ISink
     /// <inheritdoc/>
     public void Closed()
     {
+        OnClosed?.Invoke();
         ClosedCount++;
         Order.Add("closed");
     }

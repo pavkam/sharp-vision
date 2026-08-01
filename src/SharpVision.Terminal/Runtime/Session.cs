@@ -27,6 +27,7 @@ public sealed class Session: IAsyncDisposable
     private readonly CancellationTokenSource _lifetime = new();
     private readonly List<Lease> _leases = [];
     private readonly Lock _lifecycle = new();
+    private static readonly AsyncLocal<bool> _dispatchingFromRun = new();
     private TerminalContext _context;
     private TaskCompletionSource? _completion;
     private Task? _disposal;
@@ -163,6 +164,12 @@ public sealed class Session: IAsyncDisposable
         Exception? primary = null;
         LastCleanupException = null;
 
+        // Set for the duration of the run so DisposeAsync can detect - and refuse - being awaited
+        // from inside a sink callback this same run raised, which would otherwise deadlock waiting
+        // for the run to complete from inside itself (see #229). AsyncLocal only flows to this
+        // call's own descendants, so an unrelated caller disposing the session never observes it.
+        _dispatchingFromRun.Value = true;
+
         try
         {
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(
@@ -196,6 +203,8 @@ public sealed class Session: IAsyncDisposable
                 _completion = null;
                 _running = false;
             }
+
+            _dispatchingFromRun.Value = false;
 
             // Signalled only after every reverse-mode byte was written and flushed, so a waiting
             // DisposeAsync can safely tear down the transport from here on.
@@ -232,13 +241,25 @@ public sealed class Session: IAsyncDisposable
     /// </para>
     /// <para>
     /// This call must not be awaited from an <see cref="ISink"/> callback raised by its own run.
-    /// Doing so asks the run to complete from inside itself and deadlocks; dispose the session
-    /// from the code that owns <see cref="RunAsync"/> instead.
+    /// Doing so asks the run to complete from inside itself, which would otherwise deadlock;
+    /// this is detected and rejected with <see cref="InvalidOperationException"/> instead.
+    /// Dispose the session from the code that owns <see cref="RunAsync"/> instead.
     /// </para>
     /// </remarks>
     /// <returns>The complete teardown operation.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Called from inside an <see cref="ISink"/> callback raised by this session's own run.
+    /// </exception>
     public async ValueTask DisposeAsync()
     {
+        if (_dispatchingFromRun.Value)
+        {
+            throw new InvalidOperationException(
+                "DisposeAsync must not be awaited from an ISink callback raised by this session's " +
+                "own run - that asks the run to complete from inside itself. Dispose the session " +
+                "from the code that owns RunAsync instead.");
+        }
+
         TaskCompletionSource? owner = null;
         Task disposal;
 
