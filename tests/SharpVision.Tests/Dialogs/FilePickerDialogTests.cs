@@ -96,6 +96,45 @@ public sealed class FilePickerDialogTests
         OwnedTree.Find<TextInput>(dialog).ShouldNotBeNull().Text.ShouldBe(directory);
     }
 
+    /// <summary>Verifies navigating into a directory whose name contains a control character - legal
+    /// filesystem data on POSIX - degrades to a status message instead of force-stopping the
+    /// application when the unrepresentable name reaches TextInput.Text (see #219).</summary>
+    [Fact]
+    public async Task SelectionAndInvocation_WhenDirectoryNameHasControlCharacter_DoesNotForceStopAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-control-nav"));
+        var childName = "sub\u001bdir";
+        var child = Path.Combine(directory, childName);
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(
+            directory,
+            new FilePickerEntry(childName, child, isDirectory: true, isHidden: false));
+        source.AddDirectory(child);
+        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(80, 24),
+            TestContext.Current.CancellationToken);
+        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                list.SelectedIndex = 0;
+                list.ActivateCurrent(ActivationCause.Keyboard, Code.Enter, Modifiers.None).ShouldBeTrue();
+            },
+            "invoke control-character directory");
+        await surface.UpdateAsync(static () => { }, "settle control-character directory load");
+
+        // Assert
+        dialog.IsDisposed.ShouldBeFalse();
+        dialog.CurrentDirectory.ShouldBe(child);
+        dialog.Status.ShouldStartWith("Cannot display this directory's name.");
+        OwnedTree.Find<TextInput>(dialog).ShouldNotBeNull().Text.ShouldBe(directory);
+    }
+
     /// <summary>Verifies every dialog source receives deterministic directory-first ordering.</summary>
     [Fact]
     public async Task OnAttached_WhenSourceOrderIsUnsorted_OrdersDirectoriesAndNamesAsync()

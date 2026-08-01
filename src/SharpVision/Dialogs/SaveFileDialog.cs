@@ -208,7 +208,7 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>
     /// <inheritdoc/>
     private protected override void OnFileItemInvoked(FilePickerEntry entry, ActivationCause cause)
     {
-        _fileNameInput.Text = entry.Name;
+        TrySetFileName(entry.Name);
         UpdateSaveEnabled();
 
         if (cause == ActivationCause.Keyboard)
@@ -307,10 +307,25 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>
 
         if (selected is not null)
         {
-            _fileNameInput.Text = selected.Name;
+            TrySetFileName(selected.Name);
         }
 
         UpdateSaveEnabled();
+    }
+
+    /// <summary>Assigns a filesystem-supplied name to the file-name field, degrading to a status
+    /// message instead of letting an unrepresentable name (a control character, which POSIX
+    /// permits in a filename) force-stop the application (see #219).</summary>
+    private void TrySetFileName(string name)
+    {
+        try
+        {
+            _fileNameInput.Text = name;
+        }
+        catch (ArgumentException)
+        {
+            SetStatus("Cannot display this file's name.");
+        }
     }
 
     private void UpdateSaveEnabled()

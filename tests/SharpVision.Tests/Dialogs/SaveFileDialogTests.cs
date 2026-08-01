@@ -179,6 +179,40 @@ public sealed class SaveFileDialogTests
         fileNameInput.Text.ShouldBe("readme.md");
     }
 
+    /// <summary>Verifies selecting a file whose name contains a control character - legal filesystem
+    /// data on POSIX - degrades to a status message instead of force-stopping the application when
+    /// the unrepresentable name reaches TextInput.Text (see #219).</summary>
+    [Fact]
+    public async Task Selection_WhenFileNameHasControlCharacter_DoesNotForceStopAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "save-select-control"));
+        var fileName = "re" + '\u001b' + "port.txt";
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(
+            directory,
+            new FilePickerEntry(fileName, Path.Combine(directory, fileName), false, false));
+        var dialog = new SaveFileDialog(
+            new SaveFileOptions { InitialDirectory = directory },
+            source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(100, 40),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(static () => { }, "settle load");
+        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
+        var fileNameInput = OwnedTree.FindAll<TextInput>(dialog)
+            .First(static input => input.Placeholder == "File name");
+
+        // Act
+        await surface.UpdateAsync(() => list.SelectedIndex = 0, "select control-character file");
+
+        // Assert
+        dialog.IsDisposed.ShouldBeFalse();
+        fileNameInput.Text.ShouldBeEmpty();
+        dialog.Status.ShouldBe("Cannot display this file's name.");
+    }
+
     /// <summary>Verifies selecting a directory does not populate the filename input.</summary>
     [Fact]
     public async Task Selection_WhenDirectoryIsSelected_DoesNotPopulateFileNameAsync()

@@ -487,12 +487,27 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         _entries = [.. entries.OrderBy(static entry => entry, FilePickerEntryComparer.Instance)];
         FileList.Items = _entries.Cast<object?>().ToArray();
         CurrentDirectory = directory;
-        PathInput.Text = directory;
+
+        // A directory name is filesystem data, not consumer input - POSIX permits every byte
+        // except NUL and '/', so it can contain control characters TextInput.Text rejects.
+        // Degrading to a status message matches Navigate's existing handling of the same
+        // rejection, instead of letting the exception force-stop the application (see #219).
+        var pathDisplayed = true;
+
+        try
+        {
+            PathInput.Text = directory;
+        }
+        catch (ArgumentException)
+        {
+            pathDisplayed = false;
+        }
+
         _upButton.IsEnabled = FileSystem.GetParent(directory) is not null;
         OnLoadCommitted(_entries);
         SetLoading(false);
         SnapshotStatus = CountStatus(_entries);
-        SetStatus(SnapshotStatus);
+        SetStatus(pathDisplayed ? SnapshotStatus : "Cannot display this directory's name. " + SnapshotStatus);
         NotifyPropertyChanged(nameof(CurrentDirectory), InvalidationImpact.None);
 
         if (_initialFocusPending)
