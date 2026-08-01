@@ -740,12 +740,14 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
 
         var action = eventArgs.Pointer.Action;
 
-        // A Release must always be able to end an active drag/resize and release
+        // A Release or Leave must always be able to end an active drag/resize and release
         // capture, regardless of whether CanMove/CanResize was toggled off mid-gesture or
         // this particular event has no cell coordinates (a legitimate state
-        // in SGR-pixel mouse mode without cell-metrics mapping). Otherwise
-        // the Window keeps pointer capture and the gesture flag stuck true forever.
-        if (action == PointerAction.Release && (_dragging || _resizing))
+        // in SGR-pixel mouse mode without cell-metrics mapping, and true of every
+        // Leave by construction). Otherwise the Window keeps pointer capture and the
+        // gesture flag stuck true forever — releasing the button outside the terminal
+        // delivers only a Leave, never a Release (see #218).
+        if (action is PointerAction.Release or PointerAction.Leave && (_dragging || _resizing))
         {
             _dragging = false;
             _resizing = false;

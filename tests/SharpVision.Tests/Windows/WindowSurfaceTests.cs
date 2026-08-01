@@ -305,6 +305,49 @@ public sealed class WindowSurfaceTests
         surface.Cell(new Point(19, 4)).Text.ShouldBe("│");
     }
 
+    /// <summary>Verifies a terminal pointer-leave mid-drag ends the gesture and releases capture,
+    /// so a later bare-cursor move does not keep dragging the Window (see #218).</summary>
+    [Fact]
+    public async Task Drag_WhenPointerLeavesTerminalMidDrag_EndsGestureAndReleasesCaptureAsync()
+    {
+        // Arrange
+        var window = new Window
+        {
+            Header = "Move",
+            Width = Length.Cells(10),
+            Height = Length.Cells(4),
+            Shadow = AppearanceTestValues.Shadow(visible: false),
+        };
+        Overlay.SetLeft(window, Length.Cells(2));
+        Overlay.SetTop(window, Length.Cells(1));
+        var stage = new Overlay
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(15),
+            Children = { window }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            stage,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+
+        // Act — begin a title drag, then leave the terminal with the button still held
+        await surface.Pointer.MoveToAsync(window, new Point(4, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(stage, new Point(10, 6));
+        await surface.Pointer.LeaveAsync();
+
+        // Assert — the gesture ended and capture is released
+        surface.ShouldHaveCapture(null);
+        var boundsAfterLeave = window.Bounds;
+
+        // Act — a plain move with no button held must not drag the window
+        await surface.Pointer.MoveToAsync(stage, new Point(25, 12));
+
+        // Assert — the window did not follow the bare cursor
+        window.Bounds.ShouldBe(boundsAfterLeave);
+    }
+
     /// <summary>Verifies dragging the bottom-right corner grows the Window without moving its origin.</summary>
     [Fact]
     public async Task Resize_WhenCornerIsDraggedOutward_GrowsInPlaceAsync()
@@ -598,6 +641,50 @@ public sealed class WindowSurfaceTests
         var sizeAfterCancellation = window.Bounds;
         await surface.UpdateAsync(() => window.IsEnabled = true, "re-enable Window");
         window.Bounds.ShouldBe(sizeAfterCancellation);
+    }
+
+    /// <summary>Verifies a terminal pointer-leave mid-resize ends the gesture and releases capture,
+    /// so a later bare-cursor move does not keep resizing the Window (see #218).</summary>
+    [Fact]
+    public async Task Resize_WhenPointerLeavesTerminalMidResize_EndsGestureAndReleasesCaptureAsync()
+    {
+        // Arrange
+        var window = new Window
+        {
+            Header = "Resize",
+            CanResize = true,
+            Width = Length.Cells(10),
+            Height = Length.Cells(4),
+            Shadow = AppearanceTestValues.Shadow(visible: false),
+        };
+        Overlay.SetLeft(window, Length.Cells(2));
+        Overlay.SetTop(window, Length.Cells(1));
+        var stage = new Overlay
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(15),
+            Children = { window }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            stage,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+
+        // Act — begin a corner resize, then leave the terminal with the button still held
+        await surface.Pointer.MoveToAsync(window, new Point(9, 3));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(stage, new Point(13, 6));
+        await surface.Pointer.LeaveAsync();
+
+        // Assert — the gesture ended and capture is released
+        surface.ShouldHaveCapture(null);
+        var boundsAfterLeave = window.Bounds;
+
+        // Act — a plain move with no button held must not resize the window
+        await surface.Pointer.MoveToAsync(stage, new Point(25, 12));
+
+        // Assert — the window did not keep resizing under the bare cursor
+        window.Bounds.ShouldBe(boundsAfterLeave);
     }
 
     /// <summary>Verifies terminal resize pushes an Overlay-hosted Window inside the new client bounds.</summary>
