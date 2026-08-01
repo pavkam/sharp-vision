@@ -177,12 +177,26 @@ public abstract class Container: Control
             return content;
         }
 
+        var scrollsHorizontally = (ScrollBars & ScrollBars.Horizontal) != 0;
+        var scrollsVertically = (ScrollBars & ScrollBars.Vertical) != 0;
+
         // Eligible axes measure unbounded so children report natural extent
-        // (ResolveMeasureAxis clamps DesiredSize, which would otherwise hide overflow).
-        var width = (ScrollBars & ScrollBars.Horizontal) != 0 ? null : content.Width;
-        var height = (ScrollBars & ScrollBars.Vertical) != 0 ? null : content.Height;
+        // (ResolveMeasureAxis clamps DesiredSize, which would otherwise hide overflow). A bounded
+        // cross axis must also account for an always-visible reserved bar cell on the other axis,
+        // or width-dependent content (wrapped text) measures at the full padded width and the
+        // surplus is silently clipped once the bar narrows the committed viewport at arrange time.
+        // Auto-visibility bars are handled separately by Resolve's own re-measure loop (see #221).
+        var width = scrollsHorizontally
+            ? null
+            : ReserveBarCell(content.Width, scrollsVertically && VerticalBarVisibility == ScrollBarVisibility.Always);
+        var height = scrollsVertically
+            ? null
+            : ReserveBarCell(content.Height, scrollsHorizontally && HorizontalBarVisibility == ScrollBarVisibility.Always);
         return new Constraint(width, height);
     }
+
+    private static int? ReserveBarCell(int? bound, bool reserve) =>
+        reserve && bound.HasValue ? Math.Max(0, bound.Value - 1) : bound;
 
     /// <inheritdoc/>
     internal override Size OnMeasuredDesired(Size desired)

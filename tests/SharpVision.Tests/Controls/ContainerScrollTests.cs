@@ -593,6 +593,33 @@ public sealed class ContainerScrollTests
         container.Viewport.ShouldBe(new Size(5, 3));
     }
 
+    /// <summary>Verifies word-wrapping content is measured at the width the reserved always-visible
+    /// vertical bar actually leaves it, not the full padded width - otherwise the extra row the
+    /// narrower width forces is never laid out at all, and no VerticalOffset can reveal it (see #221).</summary>
+    [Fact]
+    public void Layout_WhenVerticalBarIsAlwaysVisible_MeasuresWordWrappedContentAtViewportWidth()
+    {
+        var text = new ControlText("aaaaaaaaa bb") { Overflow = Overflow.Wrap };
+        var container = new LayoutProbe
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            VerticalBarVisibility = ScrollBarVisibility.Always
+        };
+        container.Children.Add(text);
+
+        new LayoutEngine().Layout(container, new Size(12, 4));
+
+        // The viewport is 11 cells wide (12 minus the always-reserved bar column). The 12-character
+        // content ("aaaaaaaaa bb") fits exactly on one row at the full 12-cell width but not at 11,
+        // so it must wrap onto two rows there. Measuring against the unclamped 12-cell width (the
+        // bug) fits it on one row.
+        container.Viewport.Width.ShouldBe(11);
+        container.Extent.Height.ShouldBe(2);
+        text.DesiredSize.Height.ShouldBe(2);
+    }
+
     /// <summary>Verifies wheel, arrows, pages, and endpoint keys share the typed command path.</summary>
     [Fact]
     public void OnEvent_WhenCommandsArrive_UsesLinePageAndEndpointChanges()
