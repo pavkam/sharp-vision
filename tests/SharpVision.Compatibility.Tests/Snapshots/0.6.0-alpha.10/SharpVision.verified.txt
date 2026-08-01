@@ -760,9 +760,11 @@ namespace SharpVision.Controls.Display
     public sealed class Prism : SharpVision.Controls.ContentControl
     {
         public Prism() { }
+        protected override SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
         public int CycleLength { get; set; }
         public SharpVision.Controls.Display.PrismDirection Direction { get; set; }
         public double Phase { get; set; }
+        protected override SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
     }
     public enum PrismDirection
     {
