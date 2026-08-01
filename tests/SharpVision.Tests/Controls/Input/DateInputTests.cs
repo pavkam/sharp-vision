@@ -120,6 +120,44 @@ public sealed class DateInputTests
         Should.NotThrow(() => control.Render(frame.Canvas));
     }
 
+    /// <summary>Verifies a culture whose default calendar cannot represent DateOnly.MaxValue is still
+    /// assignable: the probe date must be representable by every supported calendar, not just the
+    /// Gregorian range, since UmAlQuraCalendar's max supported date (2077-11-16) is exceeded by
+    /// DateOnly.MaxValue (9999-12-31), which previously rejected these otherwise-valid cultures
+    /// with an internal ArgumentOutOfRangeException instead of laying out correctly (see #182).</summary>
+    [Theory]
+    [InlineData("ar-SA")]
+    [InlineData("en-SA")]
+    public void Culture_WhenDefaultCalendarCannotRepresentDateOnlyMaxValue_IsAssignable(string cultureName)
+    {
+        // Arrange
+        using var control = new DateInput { Value = new DateOnly(2026, 7, 19) };
+        var culture = new CultureInfo(cultureName);
+
+        // Act and assert
+        _ = Should.NotThrow(() => control.Culture = culture);
+        control.Culture.ShouldBeSameAs(culture);
+        new LayoutEngine().Layout(control, new Size(30, 3));
+        using Frame frame = new(new Size(30, 3));
+        Should.NotThrow(() => control.Render(frame.Canvas));
+    }
+
+    /// <summary>Verifies a time-bearing Format is still rejected under a culture whose default
+    /// calendar is UmAlQura, and that the exception surfaced is the documented ArgumentException -
+    /// this culture's own probe boundary must not change which patterns are valid, only which
+    /// culture assignments succeed (see #182).</summary>
+    [Fact]
+    public void Format_WhenCultureUsesUmAlQuraCalendarAndPatternHasTimeSpecifier_ThrowsArgumentException()
+    {
+        // Arrange
+        using var control = new DateInput { Culture = new CultureInfo("ar-SA") };
+
+        // Act and assert
+        var thrown = Should.Throw<ArgumentException>(() => control.Format = "HH:mm");
+        thrown.ShouldNotBeOfType<ArgumentOutOfRangeException>();
+        control.Format.ShouldBe("d");
+    }
+
     /// <summary>Verifies setting an invalid Format while Value is still null does not arm a later
     /// crash: the setter rejects it immediately regardless of the current Value, so there is
     /// nothing left to detonate when Value or Culture changes afterward (see #182).</summary>

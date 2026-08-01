@@ -15,6 +15,11 @@ public sealed class DateInput: Control
 {
     /// <inheritdoc/>
     protected override ThemeRole ThemeRole => ThemeRole.Input;
+
+    // Every supported calendar - including the narrowest, UmAlQuraCalendar
+    // (max 2077-11-16) - can represent this date, unlike DateOnly.MaxValue (see #182).
+    private static readonly DateOnly _probeDate = DateOnly.FromDateTime(DateTime.UnixEpoch);
+
     private readonly Calendar _calendar;
     private readonly Popup _popup;
     private readonly OwnedControlSlot _popupSlot;
@@ -177,9 +182,14 @@ public sealed class DateInput: Control
     {
         try
         {
-            _ = DateOnly.MaxValue.ToString(format, culture);
+            // A probe date every calendar can represent - DateOnly.MaxValue (9999-12-31) exceeds
+            // UmAlQuraCalendar.MaxSupportedDateTime (2077-11-16), which threw
+            // ArgumentOutOfRangeException naming an internal probe argument for every culture
+            // whose default calendar is UmAlQura (ar-SA, en-SA), rejecting an otherwise-valid
+            // culture (see #182).
+            _ = _probeDate.ToString(format, culture);
         }
-        catch (FormatException exception)
+        catch (Exception exception) when (exception is FormatException or ArgumentOutOfRangeException)
         {
             throw new ArgumentException(
                 $"The format \"{format}\" cannot be rendered by a DateOnly value.",
