@@ -248,7 +248,16 @@ public sealed class Table: ItemsControl
     public ScrollBars ScrollBars
     {
         get => _presenter.ScrollBars;
-        set => _presenter.ScrollBars = value;
+        set
+        {
+            var previous = _presenter.ScrollBars;
+            _presenter.ScrollBars = value;
+
+            if (previous != _presenter.ScrollBars)
+            {
+                NotifyPropertyChanged(nameof(ScrollBars), InvalidationImpact.None);
+            }
+        }
     }
 
     /// <summary>Gets or sets the common scrollbar reservation policy for the private cell presenter.</summary>
@@ -258,7 +267,16 @@ public sealed class Table: ItemsControl
     public ShowScrollBars ShowScrollBars
     {
         get => _presenter.ShowScrollBars;
-        set => _presenter.ShowScrollBars = value;
+        set
+        {
+            var previous = _presenter.ShowScrollBars;
+            _presenter.ShowScrollBars = value;
+
+            if (previous != _presenter.ShowScrollBars)
+            {
+                NotifyPropertyChanged(nameof(ShowScrollBars), InvalidationImpact.None);
+            }
+        }
     }
 
     /// <summary>Gets or sets the complete local style for both private scrollbars.</summary>
@@ -298,7 +316,16 @@ public sealed class Table: ItemsControl
     public int LineSize
     {
         get => _presenter.LineSize;
-        set => _presenter.LineSize = value;
+        set
+        {
+            var previous = _presenter.LineSize;
+            _presenter.LineSize = value;
+
+            if (previous != _presenter.LineSize)
+            {
+                NotifyPropertyChanged(nameof(LineSize), InvalidationImpact.None);
+            }
+        }
     }
 
     /// <summary>Gets or sets non-negative cells retained between page commands.</summary>
@@ -308,7 +335,16 @@ public sealed class Table: ItemsControl
     public int PageOverlap
     {
         get => _presenter.PageOverlap;
-        set => _presenter.PageOverlap = value;
+        set
+        {
+            var previous = _presenter.PageOverlap;
+            _presenter.PageOverlap = value;
+
+            if (previous != _presenter.PageOverlap)
+            {
+                NotifyPropertyChanged(nameof(PageOverlap), InvalidationImpact.None);
+            }
+        }
     }
 
     /// <summary>Gets or sets the valid horizontal content offset.</summary>
@@ -544,6 +580,8 @@ public sealed class Table: ItemsControl
             SortColumnIndex = -1;
             SortDirection = TableSortDirection.None;
             ReorderRows(_sourceRows);
+            NotifyPropertyChanged(nameof(SortColumnIndex), InvalidationImpact.None);
+            NotifyPropertyChanged(nameof(SortDirection), InvalidationImpact.None);
             SortChanged?.Invoke(this, new TableSortChangedEventArgs(-1, TableSortDirection.None));
             return;
         }
@@ -573,6 +611,8 @@ public sealed class Table: ItemsControl
         }
 
         ReorderRows(ordered);
+        NotifyPropertyChanged(nameof(SortColumnIndex), InvalidationImpact.None);
+        NotifyPropertyChanged(nameof(SortDirection), InvalidationImpact.None);
         SortChanged?.Invoke(this, new TableSortChangedEventArgs(columnIndex, direction));
     }
 
@@ -612,6 +652,7 @@ public sealed class Table: ItemsControl
         editor.Submitted += OnEditorSubmitted;
         _ = editor.Focus();
         editor.Select(0, editor.Text.Length);
+        NotifyPropertyChanged(nameof(IsEditing), InvalidationImpact.None);
         return true;
     }
 
@@ -630,6 +671,7 @@ public sealed class Table: ItemsControl
 
         edit.Editor.Submitted -= OnEditorSubmitted;
         _edit = null;
+        NotifyPropertyChanged(nameof(IsEditing), InvalidationImpact.None);
         SetActive(edit.Row, edit.ColumnIndex);
         return true;
     }
@@ -969,6 +1011,9 @@ public sealed class Table: ItemsControl
         ActiveRow = row;
         ActiveColumnIndex = columnIndex;
         ApplyCellStates();
+        NotifyPropertyChanged(nameof(ActiveRow), InvalidationImpact.None);
+        NotifyPropertyChanged(nameof(ActiveColumnIndex), InvalidationImpact.None);
+        NotifyPropertyChanged(nameof(ActiveCell), InvalidationImpact.None);
     }
 
     private void CommitSelection(
@@ -990,6 +1035,8 @@ public sealed class Table: ItemsControl
         _selectedCells.Clear();
         _selectedCells.UnionWith(nextCells);
         ApplyCellStates();
+        NotifyPropertyChanged(nameof(SelectedRows), InvalidationImpact.None);
+        NotifyPropertyChanged(nameof(SelectedCells), InvalidationImpact.None);
 
         SelectionChanged?.Invoke(
             this,
@@ -1118,6 +1165,7 @@ public sealed class Table: ItemsControl
         edit.Editor.Submitted -= OnEditorSubmitted;
         edit.Editor.Text = edit.OriginalText;
         _edit = null;
+        NotifyPropertyChanged(nameof(IsEditing), InvalidationImpact.None);
 
         if (Rows.Contains(edit.Row))
         {

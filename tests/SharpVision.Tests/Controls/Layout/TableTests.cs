@@ -34,6 +34,92 @@ public sealed class TableTests
         notifications.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies selecting rows/cells, moving the active cell, sorting, and editing each
+    /// publish PropertyChanged for their own state properties - not only their domain event - so a
+    /// generic binding fallback observes them instead of desyncing silently (see #190).</summary>
+    [Fact]
+    public void StateProperties_WhenCommitted_PublishPropertyChanged()
+    {
+        var first = new TableRow([new TextInput { Text = "A" }]);
+        var second = new TableRow([new TextInput { Text = "B" }]);
+        var table = new Table { SelectionMode = TableSelectionMode.MultipleRows };
+        table.Columns.Add(TableColumn.Auto("Name"));
+        table.Rows.Add(first);
+        table.Rows.Add(second);
+        var notifications = new List<string?>();
+        table.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        table.SelectRow(first);
+
+        notifications.ShouldContain(nameof(Table.SelectedRows));
+        notifications.ShouldContain(nameof(Table.SelectedCells));
+        notifications.ShouldContain(nameof(Table.ActiveRow));
+        notifications.ShouldContain(nameof(Table.ActiveColumnIndex));
+        notifications.ShouldContain(nameof(Table.ActiveCell));
+        notifications.Clear();
+
+        table.SelectRow(second, Modifiers.Control);
+
+        notifications.ShouldContain(nameof(Table.ActiveRow));
+        table.ActiveRow.ShouldBe(second);
+        notifications.Clear();
+
+        table.SetSort(0, TableSortDirection.Ascending);
+
+        notifications.ShouldContain(nameof(Table.SortColumnIndex));
+        notifications.ShouldContain(nameof(Table.SortDirection));
+        notifications.Clear();
+
+        table.ResetSort();
+
+        notifications.ShouldContain(nameof(Table.SortColumnIndex));
+        notifications.ShouldContain(nameof(Table.SortDirection));
+        notifications.Clear();
+
+        table.BeginEdit(first, 0).ShouldBeTrue();
+
+        notifications.ShouldContain(nameof(Table.IsEditing));
+        table.IsEditing.ShouldBeTrue();
+        notifications.Clear();
+
+        table.CommitEdit().ShouldBeTrue();
+
+        notifications.ShouldContain(nameof(Table.IsEditing));
+        table.IsEditing.ShouldBeFalse();
+        notifications.Clear();
+
+        table.BeginEdit(first, 0).ShouldBeTrue();
+        notifications.Clear();
+        table.CancelEdit().ShouldBeTrue();
+
+        notifications.ShouldContain(nameof(Table.IsEditing));
+        table.IsEditing.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies the presenter-forwarding scroll properties publish PropertyChanged only
+    /// when the committed value actually changes (see #190).</summary>
+    [Fact]
+    public void PresenterProperties_WhenChanged_PublishPropertyChangedOnce()
+    {
+        var table = new Table();
+        var notifications = new List<string?>();
+        table.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        table.ScrollBars = ScrollBars.Horizontal;
+        table.ScrollBars = ScrollBars.Horizontal;
+        table.ShowScrollBars = ShowScrollBars.Always;
+        table.ShowScrollBars = ShowScrollBars.Always;
+        table.LineSize = 3;
+        table.LineSize = 3;
+        table.PageOverlap = 2;
+        table.PageOverlap = 2;
+
+        notifications.Count(name => name == nameof(Table.ScrollBars)).ShouldBe(1);
+        notifications.Count(name => name == nameof(Table.ShowScrollBars)).ShouldBe(1);
+        notifications.Count(name => name == nameof(Table.LineSize)).ShouldBe(1);
+        notifications.Count(name => name == nameof(Table.PageOverlap)).ShouldBe(1);
+    }
+
     /// <summary>Verifies stable row selection, active cell tracking, clearing, and deterministic copy.</summary>
     [Fact]
     public void Selection_WhenRowsAndCellsAreSelected_TracksActiveStateAndCopiesTabSeparatedText()
