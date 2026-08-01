@@ -98,7 +98,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             enableIterm,
             encodable,
             metricDependent);
-        var blocked = FindFallbackBlockedPlacements(back, encodable);
+        var blocked = GraphicsBackendSupport.FindFallbackBlockedPlacements(back, encodable);
         var currentCount = CountRenderable(
             encodable,
             metricDependent,
@@ -419,36 +419,6 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         }
     }
 
-    private static bool[] FindFallbackBlockedPlacements(Frame frame, ReadOnlySpan<bool> encodable)
-    {
-        var blocked = new bool[frame.PlacementCount];
-
-        // Paint order is a finite DAG: a lower placement depends on every overlapping later
-        // placement being replayable. Walking backwards propagates an ordinary-cell fallback
-        // through all lower transitive overlaps without attempting unsafe image clipping.
-        for (var lower = frame.PlacementCount - 1; lower >= 0; lower--)
-        {
-            if (!encodable[lower])
-            {
-                continue;
-            }
-
-            var lowerBounds = frame.GetPlacement(lower).Destination;
-
-            for (var upper = lower + 1; upper < frame.PlacementCount; upper++)
-            {
-                if (Overlaps(lowerBounds, frame.GetPlacement(upper).Destination) &&
-                    (!encodable[upper] || blocked[upper]))
-                {
-                    blocked[lower] = true;
-                    break;
-                }
-            }
-        }
-
-        return blocked;
-    }
-
     private static int CountRenderable(
         ReadOnlySpan<bool> encodable,
         ReadOnlySpan<bool> metricDependent,
@@ -508,7 +478,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             {
                 if (encodable[upper] &&
                     !blocked[upper] &&
-                    Overlaps(lowerBounds, back.GetPlacement(upper).Destination))
+                    GraphicsBackendSupport.Overlaps(lowerBounds, back.GetPlacement(upper).Destination))
                 {
                     repaint[upper] = true;
                 }
@@ -516,12 +486,6 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         }
 
         return repaint;
-    }
-
-    private static bool Overlaps(Rect first, Rect second)
-    {
-        var intersection = first.Intersect(second);
-        return intersection.Width != 0 && intersection.Height != 0;
     }
 
     private static bool TryGetSixelPixels(

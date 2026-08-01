@@ -116,7 +116,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             encodable[index] = enabled && back.IsPlacementEffective(index);
         }
 
-        var blocked = FindFallbackBlockedPlacements(back, encodable);
+        var blocked = GraphicsBackendSupport.FindFallbackBlockedPlacements(back, encodable);
 
         // Identifiers for images the new frame no longer needs. Renting a fresh identifier for a
         // logical replacement threw at full capacity even though the retiring image's own
@@ -392,41 +392,6 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             output.Reset(_maxPreparedBytes);
             throw;
         }
-    }
-
-    private static bool[] FindFallbackBlockedPlacements(
-        Frame frame,
-        ReadOnlySpan<bool> encodable)
-    {
-        var blocked = new bool[frame.PlacementCount];
-
-        // A lower Kitty placement is safe only when every overlapping later placement can
-        // retain its image semantics. Walk backward so an ordinary-cell fallback propagates
-        // transitively through the finite paint-order DAG without unsafe clipping.
-        for (var lower = frame.PlacementCount - 1; lower >= 0; lower--)
-        {
-            if (!encodable[lower])
-            {
-                continue;
-            }
-
-            var lowerBounds = frame.GetPlacement(lower).Destination;
-
-            for (var upper = lower + 1; upper < frame.PlacementCount; upper++)
-            {
-                var intersection = lowerBounds.Intersect(frame.GetPlacement(upper).Destination);
-
-                if (intersection.Width != 0 &&
-                    intersection.Height != 0 &&
-                    (!encodable[upper] || blocked[upper]))
-                {
-                    blocked[lower] = true;
-                    break;
-                }
-            }
-        }
-
-        return blocked;
     }
 
     /// <inheritdoc />
