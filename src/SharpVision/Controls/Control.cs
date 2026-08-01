@@ -928,7 +928,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
             var available = Margin.Deflate(slot);
             var width = widthResolved
-                ? available.Width
+                ? Math.Min(available.Width, Math.Clamp(available.Width, MinWidth, MaxWidth))
                 : ShrinkWrapsWidth
                     ? Math.Min(available.Width, Math.Clamp(DesiredSize.Width, MinWidth, MaxWidth))
                     : ResolveArrangeAxis(
@@ -940,7 +940,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                         MinWidth,
                         MaxWidth);
             var height = heightResolved
-                ? available.Height
+                ? Math.Min(available.Height, Math.Clamp(available.Height, MinHeight, MaxHeight))
                 : ShrinkWrapsHeight
                     ? Math.Min(available.Height, Math.Clamp(DesiredSize.Height, MinHeight, MaxHeight))
                     : ResolveArrangeAxis(
@@ -2212,7 +2212,9 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         Length length,
         int? slot,
         int margin,
-        int inset)
+        int inset,
+        int minimum,
+        int maximum)
     {
         int? border = length.Kind switch
         {
@@ -2222,6 +2224,18 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             LengthKind.Star => slot.HasValue ? Math.Max(0, slot.Value - margin) : null,
             _ => throw new UnreachableException()
         };
+
+        // Min/Max must bound the border box handed to MeasureOverride the same way
+        // ResolveMeasureAxis bounds the final resolved size - otherwise wrap-capable content
+        // measures against the unclamped slot and the later arrange-time clamp silently clips
+        // the surplus lines it never accounted for (see #215). An unresolved border (Auto,
+        // Percent, or Star with no slot) still respects an explicit MaxWidth/MaxHeight, since a
+        // finite ceiling is knowable even without a slot; MinWidth/MinHeight cannot expand it
+        // without a slot to expand into, so they are left for ResolveDesiredSize to apply to
+        // the reported size after measurement.
+        border = border.HasValue
+            ? Math.Clamp(border.Value, minimum, maximum)
+            : maximum == int.MaxValue ? null : maximum;
 
         if (!border.HasValue)
         {
@@ -2641,8 +2655,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         var horizontalInset = LayoutMath.SaturatingAdd(Padding.Horizontal, BorderInset.Horizontal);
         var verticalInset = LayoutMath.SaturatingAdd(Padding.Vertical, BorderInset.Vertical);
         return new Constraint(
-            ResolveContentAxis(Width, constraint.Width, Margin.Horizontal, horizontalInset),
-            ResolveContentAxis(Height, constraint.Height, Margin.Vertical, verticalInset));
+            ResolveContentAxis(Width, constraint.Width, Margin.Horizontal, horizontalInset, MinWidth, MaxWidth),
+            ResolveContentAxis(Height, constraint.Height, Margin.Vertical, verticalInset, MinHeight, MaxHeight));
     }
 
     private Size ResolveDesiredSize(Constraint constraint, Size content)
