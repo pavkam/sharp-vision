@@ -184,4 +184,40 @@ public sealed class HyperlinkButtonTests
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("G");
         FrameOracle.Get(frame, new Point(1, 0)).ShouldBe("o");
     }
+
+    /// <summary>Verifies the link contributes only its normal-state accent/underline presentation to
+    /// the profile instead of a complete constructor Face, so Focused and Disabled still fold in the
+    /// theme's own state attributes - a complete Face would have made every state identical (see #162).</summary>
+    [Fact]
+    public async Task GetActualFace_WhenStateChanges_DiffersFromNormalAsync()
+    {
+        var link = new HyperlinkButton("Visit");
+        await using var surface = await ComponentSurface.MountAsync(
+            link,
+            new Size(10, 1),
+            TestContext.Current.CancellationToken);
+
+        var normal = link.GetActualFace(VisualState.Normal);
+        var focused = link.GetActualFace(VisualState.Focused);
+        var disabled = link.GetActualFace(VisualState.Disabled);
+
+        focused.ShouldNotBe(normal);
+        disabled.ShouldNotBe(normal);
+        normal.Underline.ShouldBe(Underline.Straight);
+        focused.Underline.ShouldBe(Underline.Straight);
+    }
+
+    /// <summary>Verifies a caller-assigned complete Face still outranks the link's own accent
+    /// presentation contribution in every state, matching the documented precedence contract: a
+    /// complete local Face suppresses ambient inheritance unconditionally.</summary>
+    [Fact]
+    public void Face_WhenAssignedExplicitly_OutranksLinkPresentationInEveryState()
+    {
+        var custom = new Face(Color.Rgb(1, 2, 3), Color.Rgb(4, 5, 6), default, Underline.None, Color.Default);
+        var link = new HyperlinkButton("Visit") { Face = custom };
+
+        link.GetActualFace(VisualState.Normal).ShouldBe(custom);
+        link.GetActualFace(VisualState.Focused).ShouldBe(custom);
+        link.GetActualFace(VisualState.Disabled).ShouldBe(custom);
+    }
 }

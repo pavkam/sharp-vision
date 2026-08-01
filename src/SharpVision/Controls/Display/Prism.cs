@@ -15,6 +15,19 @@ namespace SharpVision.Controls.Display;
 [PublicAPI]
 public sealed class Prism: ContentControl
 {
+    // A complete constructor Face outranks every theme state contribution and disables ambient
+    // inheritance, permanently opting Prism out of visual-state feedback. Only the transparent
+    // background is Prism-specific; the rest matches the Control role's own normal defaults, so a
+    // partial FaceSet contribution keeps state behavior alive (see #162).
+    private static readonly AppearanceProfileSet _prismAppearance = new(
+        normal: new AppearanceSet(
+            face: new FaceSet(
+                foreground: ThemeColor.ControlText,
+                background: Color.Transparent,
+                attributes: ThemeDecoration.NormalText,
+                underline: Underline.None,
+                underlineColor: Color.Default)));
+
     private readonly Action<TerminalCanvas> _draw;
     private readonly Func<Point, Color> _selector;
     private Rect _renderContentClip;
@@ -26,13 +39,15 @@ public sealed class Prism: ContentControl
     {
         _draw = DrawContent;
         _selector = SelectColor;
-        Face = new Face(
-            ThemeColor.ControlText,
-            Color.Transparent,
-            ThemeDecoration.NormalText,
-            Underline.None,
-            Color.Default);
     }
+
+    /// <inheritdoc/>
+    protected override ThemeProfile AppearanceProfile =>
+        StyleResolution.Apply(base.AppearanceProfile, _prismAppearance);
+
+    /// <inheritdoc/>
+    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
+        StyleResolution.Apply(base.GetAppearanceProfile(theme), _prismAppearance);
 
     #endregion
 

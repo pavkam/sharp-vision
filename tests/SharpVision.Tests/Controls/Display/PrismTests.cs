@@ -342,6 +342,25 @@ public sealed class PrismTests
         style.UnderlineColor.ShouldBe(ReferenceColors.Get(5));
     }
 
+    /// <summary>Verifies Prism contributes only a transparent-background face to the profile instead
+    /// of a complete constructor Face, so Disabled still folds in the theme's own state attributes -
+    /// a complete Face would have made every state identical (see #162).</summary>
+    [Fact]
+    public async Task GetActualFace_WhenDisabled_DiffersFromNormalAsync()
+    {
+        var prism = new Prism { Content = new ControlText("Text") };
+        await using var surface = await ComponentSurface.MountAsync(
+            prism,
+            new Size(10, 1),
+            TestContext.Current.CancellationToken);
+
+        var normal = prism.GetActualFace(VisualState.Normal);
+        var disabled = prism.GetActualFace(VisualState.Disabled);
+
+        disabled.ShouldNotBe(normal);
+        normal.Background.ShouldBe(Color.Transparent);
+    }
+
     private static void AssertStoredCellUnchanged(
         Frame frame,
         Point point,

@@ -17,6 +17,19 @@ internal sealed class TablePresenter: Container
     private const int _headerTextHeight = 1;
     private const int _gridLineThickness = 1;
 
+    // A complete constructor Face outranks every theme state contribution and disables ambient
+    // inheritance, permanently opting this presenter out of visual-state feedback. Only the
+    // transparent background is presenter-specific; the rest matches the Control role's own
+    // normal defaults, so a partial FaceSet contribution keeps state behavior alive (see #162).
+    private static readonly AppearanceProfileSet _presenterAppearance = new(
+        normal: new AppearanceSet(
+            face: new FaceSet(
+                foreground: ThemeColor.ControlText,
+                background: Color.Transparent,
+                attributes: ThemeDecoration.NormalText,
+                underline: Underline.None,
+                underlineColor: Color.Default)));
+
     private readonly Table _owner;
     private int? _measuredWidth;
     private bool _hasMeasuredWidth;
@@ -28,17 +41,19 @@ internal sealed class TablePresenter: Container
     {
         ArgumentNullException.ThrowIfNull(owner);
         _owner = owner;
-        Face = new Face(
-            ThemeColor.ControlText,
-            Color.Transparent,
-            ThemeDecoration.NormalText,
-            Underline.None,
-            Color.Default);
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment = VerticalAlignment.Stretch;
         AutoScroll = true;
         ScrollBars = ScrollBars.Vertical;
     }
+
+    /// <inheritdoc/>
+    protected override ThemeProfile AppearanceProfile =>
+        StyleResolution.Apply(base.AppearanceProfile, _presenterAppearance);
+
+    /// <inheritdoc/>
+    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
+        StyleResolution.Apply(base.GetAppearanceProfile(theme), _presenterAppearance);
 
     /// <summary>Gets the currently resolved cell width for each semantic column.</summary>
     public int[] ColumnWidths { get; private set; } = [];
