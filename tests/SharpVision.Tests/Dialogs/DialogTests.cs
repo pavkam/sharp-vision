@@ -100,6 +100,40 @@ public sealed class DialogTests
         host.Children.ShouldBe([opener]);
     }
 
+    /// <summary>Verifies unwinding an older modal scope from underneath a nested dialog settles it
+    /// with cancellation instead of leaving it attached, painted, no longer modal, and awaiting
+    /// forever - ModalityManager.Exit unwinds every younger scope in reverse order when an older
+    /// one is exited, but the dialog previously never observed its own scope's Exited event
+    /// (see #207).</summary>
+    [Fact]
+    public async Task ShowAsync_WhenOlderScopeUnwindsFromUnderneath_SettlesWithCancellationAsync()
+    {
+        var panel = new ProbeContainer { Focusable = true };
+        var host = new Overlay { Children = { panel } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            TestContext.Current.CancellationToken);
+        ModalScope? outerScope = null;
+        await surface.UpdateAsync(
+            () => outerScope = surface.Application.EnterModal(panel),
+            "enter outer modal scope");
+
+        Task<MessageBoxResult>? pending = null;
+        await surface.UpdateAsync(
+            () => pending = MessageBox.ShowAsync(panel, "Overwrite?", "Confirm"),
+            "present nested dialog");
+        var dialog = OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldNotBeNull();
+        _ = surface.Application.Modality.Active.ShouldNotBeNull();
+
+        await surface.UpdateAsync(outerScope!.Dispose, "dispose outer scope");
+
+        (await pending!).ShouldBe(MessageBoxResult.Cancel);
+        dialog.IsDisposed.ShouldBeTrue();
+        dialog.Parent.ShouldBeNull();
+        surface.Application.Modality.Active.ShouldBeNull();
+    }
+
     /// <summary>Verifies modal-entry failure removes and disposes the provisional dialog without replacing the failure.</summary>
     [Fact]
     public async Task ShowAsync_WhenModalEntryFails_RollsBackHostAndPreservesFailureAsync()

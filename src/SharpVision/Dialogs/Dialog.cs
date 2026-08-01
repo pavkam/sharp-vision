@@ -122,6 +122,12 @@ public abstract class Dialog<TResult>: Window
                 throw new InvalidOperationException("A presented dialog requires one active modal scope.");
             }
 
+            // An older scope torn down from underneath this one unwinds this scope too
+            // (ModalityManager.Exit unwinds every younger scope in reverse order). Without this,
+            // the dialog stays attached, painted, and no longer modal, with nothing ever settling
+            // its completion (see #207).
+            _scope.Exited += OnScopeExited;
+
             if (cancellationToken.CanBeCanceled)
             {
                 var dispatcher = Dispatcher;
@@ -315,6 +321,8 @@ public abstract class Dialog<TResult>: Window
         var scope = _scope;
         _scope = null;
 
+        scope?.Exited -= OnScopeExited;
+
         if (scope is { IsActive: true })
         {
             ExceptionAggregation.Capture(scope.Dispose, ref failure);
@@ -372,6 +380,23 @@ public abstract class Dialog<TResult>: Window
         lock (_completionGate)
         {
             return _completion is null;
+        }
+    }
+
+    private void OnScopeExited(object? sender, EventArgs eventArgs)
+    {
+        var dispatcher = Dispatcher;
+
+        // FinishCompletion already begins its result before CleanupPresentation disposes the
+        // scope, so _completed is already true - and TryBeginResult a no-op - for every normal
+        // completion path; this only fires for real when an older scope unwound this one out from
+        // under a still-running dialog. Deferred via ScheduleCompletion because Exited is
+        // published mid-transaction from inside ModalityManager's unwind pump: settling inline
+        // would re-enter CleanupPresentation -> scope.Dispose() -> Exit while the manager is still
+        // walking its scope stack (see #207).
+        if (!_isFinishingCompletion && dispatcher is not null && TryBeginResult(_cancelledResult))
+        {
+            _ = ScheduleCompletion(dispatcher);
         }
     }
 
