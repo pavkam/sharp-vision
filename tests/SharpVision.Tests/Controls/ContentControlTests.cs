@@ -448,6 +448,80 @@ public sealed class ContentControlTests
         owner.DesiredSize.ShouldBe(new Size(3, 1));
     }
 
+    /// <summary>Verifies MaxWidth/MaxHeight bound the constraint handed to MeasureOverride, not only the
+    /// final resolved size - otherwise wrap-capable content measures against the unclamped slot and the
+    /// later arrange-time clamp silently clips the surplus it never accounted for (see #215).</summary>
+    [Fact]
+    public void Measure_WhenMaxWidthAndMaxHeightAreSet_ClampsTheContentConstraint()
+    {
+        var probe = new ProbeControl { MaxWidth = 10, MaxHeight = 3 };
+
+        probe.Measure(new Constraint(40, 40));
+
+        _ = probe.MeasureConstraints.ShouldHaveSingleItem();
+        probe.MeasureConstraints[0].Width.ShouldBe(10);
+        probe.MeasureConstraints[0].Height.ShouldBe(3);
+    }
+
+    /// <summary>Verifies MinWidth/MinHeight bound the content constraint the same way, so a control with
+    /// an explicit floor does not measure its content narrower than it will ultimately be arranged (see #215).</summary>
+    [Fact]
+    public void Measure_WhenMinWidthAndMinHeightExceedAnExplicitCellsSize_RaisesTheContentConstraint()
+    {
+        var probe = new ProbeControl
+        {
+            Width = Length.Cells(4),
+            Height = Length.Cells(2),
+            MinWidth = 10,
+            MinHeight = 5
+        };
+
+        probe.Measure(new Constraint(40, 40));
+
+        _ = probe.MeasureConstraints.ShouldHaveSingleItem();
+        probe.MeasureConstraints[0].Width.ShouldBe(10);
+        probe.MeasureConstraints[0].Height.ShouldBe(5);
+    }
+
+    /// <summary>Verifies content arranged with both axes already resolved by the owner - the shape every
+    /// ContentControl uses under Stretch alignment - still honors MaxWidth/MaxHeight instead of silently
+    /// discarding them, matching the two sibling arrange branches that already clamp (see #216).</summary>
+    [Fact]
+    public void Arrange_WhenBothAxesAreResolvedAndContentHasMaxWidthAndMaxHeight_ClampsArrangedBounds()
+    {
+        var owner = new ProbeContentControl
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var content = new ProbeControl(new Size(30, 6)) { MaxWidth = 10, MaxHeight = 3 };
+        owner.Content = content;
+
+        new LayoutEngine().Layout(owner, new Size(40, 12));
+
+        content.Bounds.ShouldBe(new Rect(0, 0, 10, 3));
+    }
+
+    /// <summary>Verifies a MinWidth/MinHeight that exceeds the owner's resolved slot never grows the
+    /// arranged bounds past that slot - the documented order clamps to min/max first, but the resolved
+    /// slot is always the final cap, "so tiny viewports always produce contained non-negative rectangles"
+    /// (docs/concepts/layout.md) (see #216).</summary>
+    [Fact]
+    public void Arrange_WhenBothAxesAreResolvedAndMinWidthExceedsTheSlot_NeverExceedsResolvedBounds()
+    {
+        var owner = new ProbeContentControl
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var content = new ProbeControl(new Size(2, 1)) { MinWidth = 15, MinHeight = 4 };
+        owner.Content = content;
+
+        new LayoutEngine().Layout(owner, new Size(6, 2));
+
+        content.Bounds.ShouldBe(new Rect(0, 0, 6, 2));
+    }
+
     /// <summary>Verifies a property subscriber can consume the committed layout without leaving a redundant pass.</summary>
     [Fact]
     public void Content_WhenPropertySubscriberLayoutsAtSameViewport_ConsumesCurrentInvalidationOnce()

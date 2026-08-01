@@ -6,7 +6,8 @@ A SharpVision theme is a single bounded UTF-8 JSON document. It defines the
 global semantic colors, terminal attributes, and five high-level appearance
 profiles. Controls bring their own mechanical defaults and select one of those
 profiles; the document contains no control instances and no
-application-defined selector names.
+application-defined selector names. A leading UTF-8 byte order mark is
+accepted and ignored.
 
 ```mermaid
 flowchart LR
