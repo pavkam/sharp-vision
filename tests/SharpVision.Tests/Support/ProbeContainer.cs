@@ -46,6 +46,19 @@ internal sealed class ProbeContainer: Container
         RenderingAdornment?.Invoke(this);
     }
 
+    /// <summary>Gets the number of OnChildrenChanged invocations.</summary>
+    internal int ChildrenChangedCalls { get; private set; }
+
+    /// <summary>Gets or sets work invoked from inside the next OnChildrenChanged pass.</summary>
+    internal Action<ProbeContainer>? ChildrenChanging { get; set; }
+
+    /// <inheritdoc/>
+    protected override void OnChildrenChanged()
+    {
+        ChildrenChangedCalls++;
+        ChildrenChanging?.Invoke(this);
+    }
+
     /// <inheritdoc/>
     protected override bool ClipsChildren => ClipChildren;
 

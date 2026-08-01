@@ -23,6 +23,7 @@ an incomplete layout control a compile-time error.
 | `Container()`                   | Protected    | Creates an effectively unbounded public child collection.         |
 | `Container(int capacity)`       | Protected    | Creates a child collection with a non-negative maximum count.     |
 | `Children`                      | Public       | Gets the mutable ordered caller-managed child collection.         |
+| `OnChildrenChanged()`           | Protected    | Runs after a `Children` mutation structurally commits.            |
 | `MeasureOverride(Constraint)`   | Protected    | Measures owned children and returns their intrinsic content size. |
 | `ArrangeOverride(Rect)`         | Protected    | Assigns the final content-box slots of owned children.            |
 | `AutoSize` and `AutoSizeMode`   | Public       | Select intrinsic grow and shrink behavior.                        |
@@ -45,6 +46,13 @@ Private scrollbar parts use a separate framework slot and never appear in
 `Children`. Cross-cutting rendering, routed ancestry, inherited context,
 lifecycle, focus, capture, and disposal traverse the central ownership registry
 described by the [base ownership contract](control.md#children-and-ownership).
+
+A derived container overrides `OnChildrenChanged` to observe, cache per-child
+metadata for, or react to its own `Children` mutation - the same notification
+`ItemsControl` already consumes on its own private presentation host. It runs
+after the mutation structurally commits and cannot reject a candidate;
+validation belongs at the point of insertion, since layout runs asynchronously
+and cannot serve as a validation seam.
 
 ## Layout
 

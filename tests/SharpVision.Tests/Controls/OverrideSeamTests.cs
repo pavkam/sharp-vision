@@ -55,6 +55,26 @@ public sealed class OverrideSeamTests
         order.ShouldBe(["child", "adornment"]);
     }
 
+    /// <summary>Verifies OnChildrenChanged runs after Children mutations structurally commit -
+    /// add, remove, and clear - giving a derived container the same notification ItemsControl
+    /// already consumes on its own private presentation host (see #186).</summary>
+    [Fact]
+    public void OnChildrenChanged_WhenChildrenMutate_RunsAfterEachStructuralCommit()
+    {
+        var container = new ProbeContainer();
+        var child = new ProbeControl();
+
+        container.Children.Add(child);
+        container.ChildrenChangedCalls.ShouldBe(1);
+
+        _ = container.Children.Remove(child);
+        container.ChildrenChangedCalls.ShouldBe(2);
+
+        container.Children.Add(new ProbeControl());
+        container.Children.Clear();
+        container.ChildrenChangedCalls.ShouldBe(4);
+    }
+
     /// <summary>Verifies lifecycle hooks observe the already-committed attachment state.</summary>
     [Fact]
     public async Task Lifecycle_WhenRootAttachesAndDetaches_PublishesCommittedStateAsync()

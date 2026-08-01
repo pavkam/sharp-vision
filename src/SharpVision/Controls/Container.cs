@@ -19,10 +19,27 @@ public abstract class Container: Control
     /// <summary>Initializes an empty ordered child collection with a finite capacity.</summary>
     /// <param name="capacity">The non-negative maximum child count.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative.</exception>
-    protected Container(int capacity) => Children = new ControlCollection(this, capacity);
+    protected Container(int capacity)
+    {
+        Children = new ControlCollection(this, capacity);
+        Children.Changed += OnChildrenChangedCore;
+    }
 
     /// <summary>Gets the owned ordered children.</summary>
     public ControlCollection Children { get; }
+
+    /// <summary>Responds after one complete <see cref="Children"/> mutation structurally commits.</summary>
+    /// <remarks>
+    /// The callback also runs after child-initiated disposal. It runs during guarded structural
+    /// publication, so reentrant ownership mutation is rejected. Throwing does not roll back the
+    /// committed mutation. This mirrors <see cref="ItemsControl.OnItemControlsChanged"/>, which
+    /// consumes the identical internal notification on its own private presentation host.
+    /// </remarks>
+    protected virtual void OnChildrenChanged()
+    {
+    }
+
+    private void OnChildrenChangedCore() => OnChildrenChanged();
 
     /// <summary>Measures the concrete container's public children within the supplied content constraint.</summary>
     /// <param name="constraint">The non-negative content-box constraint.</param>
