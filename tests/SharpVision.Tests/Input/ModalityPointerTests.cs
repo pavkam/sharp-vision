@@ -795,6 +795,51 @@ public sealed class ModalityPointerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a press consumed as an outside-modal-plane dismiss breaks the multi-click
+    /// chain, so the next physical press at the same spot starts a fresh click sequence instead of
+    /// continuing one the user never performed (see #187).</summary>
+    [Fact]
+    public async Task Dispatch_WhenPressIsConsumedAsOutsideDismiss_BreaksClickChainAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 24, 8) };
+            var background = new ProbeControl { Bounds = new Rect(0, 0, 8, 6), Focusable = true };
+            var plane = new ProbeControl { Bounds = new Rect(12, 0, 8, 6) };
+            root.Children.Add(background);
+            root.Children.Add(plane);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            var clock = new ManualTimeProvider();
+            using var pointer = new PointerManager(root, clock);
+            using var modality = new ModalityManager(root, focus, pointer);
+            List<int> observed = [];
+            _ = background.AddHandler(Events.Pointer, (_, eventArgs) =>
+            {
+                if (eventArgs.Phase == RoutingPhase.Bubble)
+                {
+                    observed.Add(eventArgs.ClickCount);
+                }
+            });
+
+            _ = pointer.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Press));
+            _ = pointer.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Release));
+            clock.Advance(TimeSpan.FromMilliseconds(100));
+
+            var scope = modality.Enter(plane, OutsideInteraction.Dismiss);
+            scope.DismissRequested += (_, _) => scope.Dispose();
+            pointer.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Press, Buttons.Primary))
+                .ShouldBeNull();
+            clock.Advance(TimeSpan.FromMilliseconds(100));
+
+            _ = pointer.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Press));
+
+            observed.ShouldBe([1, 0, 1]);
+        }, TestContext.Current.CancellationToken);
+    }
+
     #endregion
 
     #region Capture reconciliation and lifetime

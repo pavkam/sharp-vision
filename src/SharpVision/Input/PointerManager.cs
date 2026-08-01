@@ -214,6 +214,7 @@ public sealed class PointerManager: IDisposable
         if (!IsInteractionSnapshotValid(targets))
         {
             CompletePress(pointer);
+            BreakClickChainOnSwallowedPress(pointer);
 
             failure?.Throw();
             return null;
@@ -222,6 +223,7 @@ public sealed class PointerManager: IDisposable
         if (targets.IsOutsideModalPlane && targets.CaptureOwner is null)
         {
             CompletePress(pointer);
+            BreakClickChainOnSwallowedPress(pointer);
 
             if (pointer.Action == PointerAction.Wheel ||
                 (pointer.Action == PointerAction.Press &&
@@ -304,6 +306,10 @@ public sealed class PointerManager: IDisposable
                     routedEvent),
                 ref failure);
         }
+        else
+        {
+            BreakClickChainOnSwallowedPress(pointer);
+        }
 
         if (pointer.Action == PointerAction.Wheel &&
             routedEvent is { Handled: false } &&
@@ -328,6 +334,24 @@ public sealed class PointerManager: IDisposable
         {
             PressOrigin = null;
         }
+    }
+
+    /// <summary>
+    /// Breaks the multi-click chain when a press is consumed without ever reaching
+    /// <see cref="ResolveClickCount"/> - an invalid interaction snapshot, an outside-modal-plane
+    /// dismiss, or a press that resolves no target. Left unbroken, the chain state from the last
+    /// routed press survives, and the next physical press after the swallowed one is reported as
+    /// a continuation of a click sequence the user never performed (see #187).
+    /// </summary>
+    private void BreakClickChainOnSwallowedPress(Pointer pointer)
+    {
+        if (pointer.Action != PointerAction.Press)
+        {
+            return;
+        }
+
+        _clickCount = 0;
+        _lastClickTarget = null;
     }
 
     private int ResolveClickCount(Pointer pointer, Control target)
@@ -379,6 +403,7 @@ public sealed class PointerManager: IDisposable
         Captured = null;
         SetPointerPath(control: null, boundary: null);
         PressOrigin = null;
+        _lastClickTarget = null;
         Root.SetCaptureOwner(null);
         IsDisposed = true;
         GC.SuppressFinalize(this);
@@ -511,6 +536,7 @@ public sealed class PointerManager: IDisposable
             if (clearPressed)
             {
                 PressOrigin = null;
+                _lastClickTarget = null;
             }
 
             CaptureFailure(
