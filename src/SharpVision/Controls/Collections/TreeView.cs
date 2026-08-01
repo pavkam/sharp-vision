@@ -774,7 +774,13 @@ public sealed class TreeView: CompositeControl
     {
         var next = new HashSet<TreeViewItem>(items);
         var ownedItems = CollectAllItems();
-        _ = next.RemoveWhere(item => !item.EffectiveIsEnabled || !ownedItems.Contains(item));
+
+        // Retention filters on ownership only - EffectiveIsEnabled walks the whole ancestor chain,
+        // so a disabled ancestor would wipe every realized item's selection on the next rebuild
+        // regardless of the item's own state. "Disabled items are never selected" is instead
+        // enforced by the request paths themselves (SetSelected, ApplyInputSelection, SelectAll)
+        // before they ever reach here (see #201).
+        _ = next.RemoveWhere(item => !ownedItems.Contains(item));
 
         if (SelectionMode == TreeSelectionMode.None)
         {
@@ -933,9 +939,11 @@ public sealed class TreeView: CompositeControl
         }
 
         // Repair selection only when nodes are detached; collapsing a branch does not erase state.
+        // Ownership alone gates retention here too - EffectiveIsEnabled would make a disabled
+        // ancestor wipe every realized item's selection on the next rebuild (see #201).
         var ownedItems = CollectAllItems();
-        var retained = _selectedItems.Where(item => ownedItems.Contains(item) && item.EffectiveIsEnabled).ToArray();
-        if (_selectionAnchor is not null && (!ownedItems.Contains(_selectionAnchor) || !_selectionAnchor.EffectiveIsEnabled))
+        var retained = _selectedItems.Where(ownedItems.Contains).ToArray();
+        if (_selectionAnchor is not null && !ownedItems.Contains(_selectionAnchor))
         {
             _selectionAnchor = retained.FirstOrDefault();
         }

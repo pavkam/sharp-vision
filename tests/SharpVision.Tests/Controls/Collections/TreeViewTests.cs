@@ -567,9 +567,15 @@ public sealed class TreeViewTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies a selected descendant remains owned after its ancestor is collapsed.</summary>
+    /// <summary>Verifies a selected descendant remains owned and selected after its ancestor is
+    /// collapsed, even once the descendant itself is disabled. Retention filters on ownership
+    /// alone, not EffectiveIsEnabled - disabling still blocks new selection requests (SetSelected,
+    /// ApplyInputSelection, SelectAll), but no longer wipes an existing selection on the next
+    /// rebuild, which previously happened inconsistently: a disabled item still selected via a
+    /// collapsed (unparented) branch survived, while an otherwise-identical realized item did not
+    /// (see #201).</summary>
     [Fact]
-    public async Task CollapsedDescendant_WhenDisabled_RemovesSelectionAndRepairsAnchorAsync()
+    public async Task CollapsedDescendant_WhenDisabled_RetainsSelectionAsync()
     {
         await using var dispatcher = Dispatcher.Start();
 
@@ -592,10 +598,10 @@ public sealed class TreeViewTests
 
             first.IsEnabled = false;
 
-            tree.SelectedItems.ShouldBe([parent, second]);
+            tree.SelectedItems.ShouldBe([parent, first, second]);
             tree.SelectedItem.ShouldBeSameAs(parent);
-            selectionChanged.ShouldBe(1);
-            first.IsSelected.ShouldBeFalse();
+            selectionChanged.ShouldBe(0);
+            first.IsSelected.ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
     }
 

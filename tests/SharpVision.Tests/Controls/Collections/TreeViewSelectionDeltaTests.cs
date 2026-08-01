@@ -107,6 +107,43 @@ public sealed class TreeViewSelectionDeltaTests
         tree.SelectedItems.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies an existing selection survives a rebuild while an ancestor is disabled -
+    /// EffectiveIsEnabled walked the whole ancestor chain, so a disabled ancestor wiped every
+    /// realized item's selection on the very next rebuild even though nothing about the item
+    /// itself changed (see #201).</summary>
+    [Fact]
+    public void CommitSelection_WhenAncestorIsDisabledOnRebuild_RetainsExistingSelection()
+    {
+        var tree = Build(out var first, out _, out _);
+        var host = new Stack();
+        host.Children.Add(tree);
+        _ = tree.SetSelected(first, true);
+
+        host.IsEnabled = false;
+        tree.Items.Add(new TreeViewItem { Header = "third" });
+
+        tree.SelectedItems.ShouldBe([first]);
+    }
+
+    /// <summary>Verifies collapsing an unrelated branch never erases selection, matching the
+    /// control's own "collapsing a branch does not erase state" comment - even while an ancestor
+    /// is disabled, which previously wiped every realized item's selection on this exact
+    /// trigger (see #201).</summary>
+    [Fact]
+    public void CommitSelection_WhenCollapsingUnrelatedBranchUnderDisabledAncestor_RetainsSelection()
+    {
+        var tree = Build(out var first, out var second, out _);
+        var host = new Stack();
+        host.Children.Add(tree);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        _ = tree.SetSelected(second, true);
+
+        host.IsEnabled = false;
+        first.IsExpanded = false;
+
+        tree.SelectedItems.ShouldBe([second]);
+    }
+
     /// <summary>Verifies a foreign item is rejected before any mutation.</summary>
     [Fact]
     public void SetSelected_WhenItemIsNotOwned_Throws()
