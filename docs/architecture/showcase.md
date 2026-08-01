@@ -1,12 +1,12 @@
 # Showcase architecture
 
-## Showcase contract
+## Overview
 
 Every enabled authored interactive specimen caption declares an intentional
-ampersand [access key](../concepts/access-keys.md#access-key-contract). Keys are
-unique across the active shell and selected page, and across every
-simultaneously open menu/submenu path. The shell advertises `Alt+key`, while
-Menu and GroupBox pages demonstrate invocation and focus transfer.
+ampersand [access key](../concepts/access-keys.md#overview). Keys are unique
+across the active shell and selected page, and across every simultaneously open
+menu/submenu path. The shell advertises `Alt+key`, while Menu and GroupBox pages
+demonstrate invocation and focus transfer.
 
 The sidebar remains one arrow-key `NavigationView`; its heading, groups, and 47
 catalog items set `UseMnemonic = false` because no useful single-character
@@ -241,7 +241,7 @@ Vendored resources used by examples remain under the documented
 [external-resource boundary](../../extern/README.md#external-resources). Stable
 logical embedded-resource names keep repository paths out of runtime APIs.
 
-## Verification contract
+## Verification
 
 The showcase compiles with the solution as production code and uses only public
 library APIs. Behavioral, input, layout, rendering, and Unicode guarantees are
@@ -278,5 +278,5 @@ and nested-submenu transitions.
 | Surface     | Narrow, normal, and wide layouts preserve containment, semantic defaults, and representative states. |
 | Interaction | Mounted input drives activation, focus, selection, popups, mutation, and final cells.                |
 
-The preceding [verification contract](#verification-contract) owns the exact
+The preceding [verification contract](#verification) owns the exact
 showcase-page and capture expectations.

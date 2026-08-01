@@ -1,22 +1,22 @@
 # ComboBox
 
-## ComboBox contract
+## Overview
 
 `ComboBox` derives directly from `Control`. It displays one selected value in a
-compact field and owns a private [Popup](../popups/popup.md#popup-contract)
-containing a [ListView](../collections/list-view.md#listview-contract)
-immediately below the field when open. The Popup clears its surface before the
-list renders, so choices never show through content behind the drop-down. Its
-connected frame omits the edge that adjoins the field: below placement puts the
-first ListView row at `ComboBox.Bounds.Bottom`, while an above fallback omits
-the bottom edge and puts the last ListView row immediately before
-`ComboBox.Bounds.Y`. The remaining three frame edges stay visible.
+compact field and owns a private [Popup](../popups/popup.md#overview) containing
+a [ListView](../collections/list-view.md#overview) immediately below the field
+when open. The Popup clears its surface before the list renders, so choices
+never show through content behind the drop-down. Its connected frame omits the
+edge that adjoins the field: below placement puts the first ListView row at
+`ComboBox.Bounds.Bottom`, while an above fallback omits the bottom edge and puts
+the last ListView row immediately before `ComboBox.Bounds.Y`. The remaining
+three frame edges stay visible.
 
 The list uses the same keyboard, pointer, selection, and scrolling semantics as
 a standalone list. When the resolved appearance supplies a
 `VisualState.Selected` background, the selected choice fills the complete
 interior row, including trailing blank cells, under the
-[ListView row rendering contract](../collections/list-view.md#listview-contract).
+[ListView row rendering contract](../collections/list-view.md#overview).
 
 The selected value is the field's face; `ComboBox` therefore exposes neither
 `Content` nor `Children`. It owns exactly one popup-layer framework part, and
@@ -76,8 +76,7 @@ the ListView's selection, scrolling, and surface appearance inside the Popup.
   the focus owner. The popup width is at least the field width, while
   `DropDownHeight` limits only the list interior; the Popup adds its three
   visible frame edges outside that limit and keeps the open list above later
-  page content as defined by the
-  [Popup contract](../popups/popup.md#popup-contract).
+  page content as defined by the [Popup contract](../popups/popup.md#overview).
 
 `ComboBox` has no typed-text input path; it selects from `Items` only. Compose
 `TextInput` with a `Popup` directly for an editable suggestion field.

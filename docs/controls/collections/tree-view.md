@@ -1,6 +1,6 @@
 # TreeView
 
-## TreeView contract
+## Overview
 
 `TreeView` displays hierarchical items with expandable nodes, keyboard
 navigation, configurable single or multiple selection, and optional checkable
@@ -8,7 +8,7 @@ items.
 
 ## API
 
-| Member                         | Default                    | Contract                                                 |
+| Member                         | Default                    | Description                                              |
 | ------------------------------ | -------------------------- | -------------------------------------------------------- |
 | `Items`                        | empty                      | Typed owned root-item collection.                        |
 | `SelectedItem`                 | `null`                     | First selected item in stable tree order.                |

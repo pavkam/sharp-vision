@@ -1,6 +1,6 @@
 # Runtime protocol routing
 
-## Runtime routing contract
+## Overview
 
 [`Parser`](ecma-48.md#streaming-grammar) owns bounded ECMA-48 framing.
 `ProtocolRouter` owns the decision between typed input, typed terminal
@@ -137,9 +137,9 @@ surface.
 
 ## Sources
 
-- [ECMA-48](ecma-48.md#ecma-48-contract) owns framing and recovery.
-- [Device attributes](device-attributes.md#device-attribute-contract) owns
-  startup-response correlation.
+- [ECMA-48](ecma-48.md#overview) owns framing and recovery.
+- [Device attributes](device-attributes.md#overview) owns startup-response
+  correlation.
 - [Terminal integration](../architecture/terminal-integration.md#protocol-routing)
   owns the application-facing end-to-end path.
 

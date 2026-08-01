@@ -1,6 +1,6 @@
 # ECMA-48 control functions
 
-## ECMA-48 contract
+## Overview
 
 Primary source:
 [ECMA-48, fifth edition, June 1991](https://ecma-international.org/publications-and-standards/standards/ecma-48/),

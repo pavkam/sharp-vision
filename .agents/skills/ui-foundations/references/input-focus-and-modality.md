@@ -7,10 +7,10 @@ directional navigation, access keys, modal planes, dismissal, or restoration.
 
 ## Normative documentation
 
-- [Input routing](../../../../docs/concepts/input-routing.md#input-routing-contract)
+- [Input routing](../../../../docs/concepts/input-routing.md#overview)
 - [Pointer capture](../../../../docs/concepts/input-routing.md#pointer-capture-and-coordinates)
-- [Focus](../../../../docs/concepts/focus.md#focus-contract)
-- [Modality](../../../../docs/concepts/modality.md#modality-contract)
+- [Focus](../../../../docs/concepts/focus.md#overview)
+- [Modality](../../../../docs/concepts/modality.md#overview)
 - [Modal focus](../../../../docs/concepts/modality.md#modal-focus)
 - [Control state-machine evidence](../../../../docs/testing/controls-integration.md#controls-with-state-machines)
 

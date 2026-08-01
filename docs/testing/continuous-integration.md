@@ -1,6 +1,6 @@
 # Continuous integration
 
-## Continuous integration contract
+## Overview
 
 The pull-request workflow verifies changes proposed to `main` by running the
 shared build-and-test action on Linux, Windows, and macOS in three independent

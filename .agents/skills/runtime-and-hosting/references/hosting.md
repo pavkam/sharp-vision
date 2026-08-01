@@ -8,7 +8,7 @@ portable host selection.
 
 ## Normative documentation
 
-- [Hosting](../../../../docs/concepts/hosting.md#hosting-contract)
+- [Hosting](../../../../docs/concepts/hosting.md#overview)
 - [Entry points](../../../../docs/concepts/hosting.md#entry-points)
 - [ConsoleRunOptions](../../../../docs/concepts/hosting.md#consolerunoptions)
 - [Portable console host](../../../../docs/concepts/hosting.md#portable-console-host)

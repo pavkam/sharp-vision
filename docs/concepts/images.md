@@ -1,6 +1,6 @@
 # Images
 
-## ImageSource ownership contract
+## Overview
 
 `SharpVision.Terminal.Graphics.ImageSource` is an immutable, finite,
 transport-neutral image source. Construction copies caller bytes before
@@ -56,7 +56,7 @@ routing policy independently of `Negotiation`, so a host that pins `Profile` or
 routes graphics through an approved passthrough instead of silently degrading to
 the unsafe direct path.
 
-The public [`Image` control](../controls/display/image.md#image-contract) paints
+The public [`Image` control](../controls/display/image.md#overview) paints
 deterministic cell fallback and records only a semantic placement. Exact resize
 metrics are inherited through the control tree before layout and are passed to
 the renderer for the same frame. Application awaits finite graphics shutdown

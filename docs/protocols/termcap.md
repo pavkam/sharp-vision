@@ -1,16 +1,16 @@
 # Termcap terminal descriptions
 
-## Termcap contract
+## Overview
 
 The Unix provider calls only `setupterm`. When the loaded ncurses build includes
 full termcap compatibility, that one call owns `TERMCAP`, `TERMPATH`, aliases,
 and `tc` resolution and exposes canonical `tiget*` results. A build without
 usable matching inline `TERMCAP` support returns a typed provider failure with a
 structured diagnostic. The
-[terminal integration contract](../architecture/terminal-integration.md#terminal-integration-contract)
+[terminal integration contract](../architecture/terminal-integration.md#overview)
 owns host selection, while the
-[rendering pipeline](../architecture/rendering-pipeline.md#rendering-pipeline-contract)
-owns command emission from the normalized profile.
+[rendering pipeline](../architecture/rendering-pipeline.md#overview) owns
+command emission from the normalized profile.
 
 ## Native provider boundary
 

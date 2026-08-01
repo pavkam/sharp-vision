@@ -1,12 +1,12 @@
 # NavigationView
 
-## NavigationView contract
+## Overview
 
 `NavigationView` provides a sidebar navigation control with typed items, groups,
 separators, an optional header, and a pinned footer section. It extends
-[`CompositeControl`](../composite-control.md#compositecontrol-contract) with an
-internal `Dock` layout: header docked top, footer docked bottom, and a
-scrollable items stack filling the remainder.
+[`CompositeControl`](../composite-control.md#overview) with an internal `Dock`
+layout: header docked top, footer docked bottom, and a scrollable items stack
+filling the remainder.
 
 The view defaults to no border and the active theme's `NavigationView.normal`
 fill. That single continuous plane is the sidebar boundary instead of a frame
@@ -60,9 +60,9 @@ action.
 
 ## NavigationViewItem
 
-Extends [`Pressable`](../pressable.md#pressable-contract). `Header` (string) is
-the label text. `Glyph` (string?) is an optional prefix shown before the header.
-Renders as `› Header` when selected or hovered, `· Header` otherwise. Pointer or
+Extends [`Pressable`](../pressable.md#overview). `Header` (string) is the label
+text. `Glyph` (string?) is an optional prefix shown before the header. Renders
+as `› Header` when selected or hovered, `· Header` otherwise. Pointer or
 programmatic selection updates the owning `NavigationView`; the item remains
 non-focusable and non-tab-stop.
 

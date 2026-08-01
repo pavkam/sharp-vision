@@ -8,12 +8,12 @@ wiring, or repository-wide evidence policy.
 
 ## Normative documentation
 
-- [Correctness model](../../../../docs/testing/correctness-model.md#correctness-model-contract)
+- [Correctness model](../../../../docs/testing/correctness-model.md#overview)
 - [Proof levels](../../../../docs/testing/correctness-model.md#proof-levels)
 - [Discovery gate](../../../../docs/testing/correctness-model.md#discovery-gate)
-- [Continuous integration](../../../../docs/testing/continuous-integration.md#continuous-integration-contract)
+- [Continuous integration](../../../../docs/testing/continuous-integration.md#overview)
 - [Local commands](../../../../docs/testing/continuous-integration.md#local-command-mapping)
-- [Randomized testing](../../../../docs/testing/randomized.md#randomized-testing-contract)
+- [Randomized testing](../../../../docs/testing/randomized.md#overview)
 - [Shape and reflection](../../../../docs/testing/correctness-model.md#shape-and-reflection)
 
 ## Code map

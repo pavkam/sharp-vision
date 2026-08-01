@@ -1,16 +1,15 @@
 # Scrolling
 
-## Scrolling contract
+## Overview
 
 Scrolling is not a dedicated control. `AutoScroll` is an intrinsic, opt-in-only
 (default `false`) property of every
-[`Container`](../controls/container.md#container-contract), following the
-VCL/WinForms lineage of `ScrollableControl.AutoScroll`/`TWinControl`: any panel
-can become scrollable by turning on one flag rather than by wrapping content in
-a dedicated scroll-view control. An armed container owns content, viewport,
-extent, offsets, and independent horizontal/vertical policies: automatic,
-always, or hidden. Hidden suppresses a bar but does not by itself forbid
-programmatic scrolling.
+[`Container`](../controls/container.md#overview), following the VCL/WinForms
+lineage of `ScrollableControl.AutoScroll`/`TWinControl`: any panel can become
+scrollable by turning on one flag rather than by wrapping content in a dedicated
+scroll-view control. An armed container owns content, viewport, extent, offsets,
+and independent horizontal/vertical policies: automatic, always, or hidden.
+Hidden suppresses a bar but does not by itself forbid programmatic scrolling.
 
 `ScrollBars` selects which axes are eligible to scroll and defaults to
 `Vertical`. Eligible axes are measured unbounded so children can report their
@@ -92,8 +91,8 @@ true. A non-container composition or presentation owner never breaks that
 search. Pointer capture owns thumb dragging and is released on disable, detach,
 close, or cancellation.
 
-An armed [`Container`](../controls/container.md#container-contract) implements
-the automatic algorithm with two privately owned framework-part
+An armed [`Container`](../controls/container.md#overview) implements the
+automatic algorithm with two privately owned framework-part
 [`ScrollBar`](../../src/SharpVision/Controls/Scrolling/ScrollBar.cs) controls
 configured through their public orientation, chrome, and fill APIs. The
 reservation probe runs against `ScrollBars` and the per-axis

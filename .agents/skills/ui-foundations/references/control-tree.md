@@ -8,10 +8,10 @@ disposal.
 
 ## Normative documentation
 
-- [Custom components](../../../../docs/concepts/custom-components.md#custom-components-contract)
+- [Custom components](../../../../docs/concepts/custom-components.md#overview)
 - [Retained private composition](../../../../docs/concepts/custom-components.md#retained-private-composition)
 - [Semantic item presentation](../../../../docs/concepts/custom-components.md#semantic-item-presentation)
-- [Control integration](../../../../docs/testing/controls-integration.md#control-and-integration-testing-contract)
+- [Control integration](../../../../docs/testing/controls-integration.md#overview)
 
 ## Code map
 

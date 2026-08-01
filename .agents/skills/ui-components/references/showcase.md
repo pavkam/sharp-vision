@@ -7,9 +7,9 @@ navigation entry, event log, responsive behavior, or visual capture.
 
 ## Normative documentation
 
-- [Showcase contract](../../../../docs/architecture/showcase.md#showcase-contract)
+- [Showcase contract](../../../../docs/architecture/showcase.md#overview)
 - [Responsive behavior](../../../../docs/architecture/showcase.md#responsive-behavior)
-- [Verification contract](../../../../docs/architecture/showcase.md#verification-contract)
+- [Verification contract](../../../../docs/architecture/showcase.md#verification)
 - [Mounted surfaces](../../../../docs/testing/controls-integration.md#mounted-component-surfaces)
 
 ## Code map

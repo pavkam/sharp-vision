@@ -14,11 +14,11 @@ function components, reconciliation, or hook-style state.
 | Expose typed semantic items            | `ItemsControl`     | Public items, private presentation controls       |
 | Expose arbitrary public children       | `Container`        | Ordered caller-managed child collection           |
 
-The contracts for [`Container`](../controls/container.md#container-contract),
-[`ContentControl`](../controls/content-control.md#contentcontrol-contract),
-[`CompositeControl`](../controls/composite-control.md#compositecontrol-contract),
-and [`ItemsControl`](../controls/items-control.md#itemscontrol-contract) define
-the ownership differences.
+The contracts for [`Container`](../controls/container.md#overview),
+[`ContentControl`](../controls/content-control.md#overview),
+[`CompositeControl`](../controls/composite-control.md#overview), and
+[`ItemsControl`](../controls/items-control.md#overview) define the ownership
+differences.
 
 ## Build a retained composite
 
@@ -75,13 +75,13 @@ owns new layout or cell-rendering behavior. Custom content rendering draws
 through the frame-owned `SharpVision.Terminal.Rendering.Canvas` and never writes
 terminal escape bytes. To place ordinary controls above that drawing, compose
 the drawing control and those controls in an
-[`Overlay`](../controls/layout/overlay.md#overlay-contract).
+[`Overlay`](../controls/layout/overlay.md#overview).
 
 ## Complete the component
 
 A shipped control is not complete until its
 [control specification](../controls/index.md#control-catalog), XML
 documentation, behavioral tests, mounted rendering proof, and
-[showcase page](../architecture/showcase.md#showcase-contract) agree. The
-[custom-component contract](../concepts/custom-components.md#custom-components-contract)
-defines the full authoring and testing obligations.
+[showcase page](../architecture/showcase.md#overview) agree. The
+[custom-component contract](../concepts/custom-components.md#overview) defines
+the full authoring and testing obligations.

@@ -12,8 +12,8 @@ cleanup exception behavior.
 - [Shutdown](../../../../docs/architecture/runtime-event-loop.md#shutdown)
 - [Failure and cleanup](../../../../docs/architecture/terminal-integration.md#failure-fallback-and-cleanup)
 - [Exception preservation](../../../../docs/architecture/error-handling.md#exception-preservation)
-- [Memory ownership](../../../../docs/architecture/memory-ownership.md#memory-ownership-contract)
-- [Pseudoterminals](../../../../docs/testing/pseudoterminals.md#pseudoterminal-testing-contract)
+- [Memory ownership](../../../../docs/architecture/memory-ownership.md#overview)
+- [Pseudoterminals](../../../../docs/testing/pseudoterminals.md#overview)
 
 ## Code map
 

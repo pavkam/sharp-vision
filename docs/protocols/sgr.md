@@ -1,6 +1,6 @@
 # Select Graphic Rendition
 
-## SGR contract
+## Overview
 
 SGR is `CSI Pm m`. Empty or zero resets rendition. SharpVision models attributes
 and colors as typed values, then emits the smallest unambiguous transition

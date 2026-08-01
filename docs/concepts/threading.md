@@ -1,6 +1,6 @@
 # Threading and dispatcher
 
-## Threading contract
+## Overview
 
 The dispatcher thread exclusively owns the attached visual tree, control
 properties, style assignment, focus, pointer capture, layout, rendering, and

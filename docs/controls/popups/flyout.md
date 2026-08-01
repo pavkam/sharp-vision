@@ -1,8 +1,8 @@
 # Flyout
 
-## Flyout contract
+## Overview
 
-`Flyout` is a direct [`Popup`](popup.md#popup-contract) specialization for
+`Flyout` is a direct [`Popup`](popup.md#overview) specialization for
 interactive, anchored, light-dismiss content. The Flyout object is the popup
 surface; it does not forward state to a private Popup.
 
@@ -30,8 +30,7 @@ Automatic `IsOpen` presentation uses light dismissal without creating a modal
 scope. The inherited `OpenModal` API remains available when a caller explicitly
 needs application modality. Placement, flipping, root clamping, elevation,
 frame, shadow, content ownership, lifecycle, and disposal follow the Popup and
-[floating-surface](../../concepts/floating-surfaces.md#floating-surface-contract)
-contracts.
+[floating-surface](../../concepts/floating-surfaces.md#overview) contracts.
 
 ## Example
 

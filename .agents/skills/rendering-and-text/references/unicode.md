@@ -8,11 +8,11 @@ wrapping, selection, hit testing, or cursor coordinates.
 
 ## Normative documentation
 
-- [Unicode geometry](../../../../docs/concepts/unicode-cell-geometry.md#unicode-cell-geometry-contract)
+- [Unicode geometry](../../../../docs/concepts/unicode-cell-geometry.md#overview)
 - [Width rules](../../../../docs/concepts/unicode-cell-geometry.md#width-rules)
 - [Cell ownership](../../../../docs/concepts/unicode-cell-geometry.md#cell-ownership)
 - [Shared consumers](../../../../docs/concepts/unicode-cell-geometry.md#shared-consumers)
-- [Unicode evidence](../../../../docs/testing/unicode-rendering.md#unicode-and-rendering-testing-contract)
+- [Unicode evidence](../../../../docs/testing/unicode-rendering.md#overview)
 
 ## Code map
 

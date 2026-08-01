@@ -1,11 +1,10 @@
 # MenuItem and MenuSeparator
 
-## MenuItem contract
+## Overview
 
-`MenuItem` is a sealed [`Pressable`](../pressable.md#pressable-contract)
-command, check, or radio entry inside a [Menu](menu.md#menu-contract). It uses
-inherited `Content` as its sole visible face; there is no competing text-only
-`Header` property.
+`MenuItem` is a sealed [`Pressable`](../pressable.md#overview) command, check,
+or radio entry inside a [Menu](menu.md#overview). It uses inherited `Content` as
+its sole visible face; there is no competing text-only `Header` property.
 
 ## API
 
@@ -58,8 +57,8 @@ provide validated local overrides for the item's current `Kind`.
 `ShortcutText` is an optional string rendered right-aligned with dim attributes
 after the item's content. It describes a command chord without binding it;
 shortcut handling is the application's responsibility. This is distinct from an
-ampersand [access key](../../concepts/access-keys.md#access-key-contract) in the
-item's `Text` content, which SharpVision binds automatically.
+ampersand [access key](../../concepts/access-keys.md#overview) in the item's
+`Text` content, which SharpVision binds automatically.
 
 ```csharp
 new MenuItem
@@ -101,7 +100,7 @@ participates as a descendant of the top owner's
 [single menu plane](../../concepts/modality.md#menu-planes); opening a nested
 item never creates one modal scope per submenu.
 
-## MenuSeparator contract
+## MenuSeparator
 
 `MenuSeparator : Control` is the distinct non-interactive entry role. It is
 never a `Pressable` or a `MenuItemKind`: it cannot focus, hit test, select, or

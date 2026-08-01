@@ -1,6 +1,6 @@
 # Floating surfaces
 
-## Floating-surface contract
+## Overview
 
 A floating surface is one retained `ContentControl` presented above ordinary
 application content. The public surface object is also the mounted, rendered,
@@ -68,18 +68,18 @@ the private presentation Overlay owned by `Screen`.
 
 Modality is an input-plane policy, not a visual wrapper. `FloatingSurface`
 retains the live scope, while the application
-[`ModalityManager`](modality.md#modality-contract) owns confinement, outside
-interaction, nested-scope order, capture cleanup, and focus restoration.
-`Window.ShowModal` defaults to `OutsideInteraction.Ignore`; ordinary `Popup`
-opening defaults to dismissal. `Flyout` manages light dismissal without a modal
-scope, and `Tooltip` never enters modality or pointer targeting.
+[`ModalityManager`](modality.md#overview) owns confinement, outside interaction,
+nested-scope order, capture cleanup, and focus restoration. `Window.ShowModal`
+defaults to `OutsideInteraction.Ignore`; ordinary `Popup` opening defaults to
+dismissal. `Flyout` manages light dismissal without a modal scope, and `Tooltip`
+never enters modality or pointer targeting.
 
 ## Layout and drawing boundaries
 
-[`Overlay`](../controls/layout/overlay.md#overlay-contract) is the only public
-panel for overlapping children, absolute `Left`/`Top`/`Right`/`Bottom` offsets,
-and stable `ZIndex`. Window movement writes Overlay offsets, and Overlay keeps a
-Window border box inside its latest content bounds without changing the authored
+[`Overlay`](../controls/layout/overlay.md#overview) is the only public panel for
+overlapping children, absolute `Left`/`Top`/`Right`/`Bottom` offsets, and stable
+`ZIndex`. Window movement writes Overlay offsets, and Overlay keeps a Window
+border box inside its latest content bounds without changing the authored
 offsets.
 
 `SharpVision.Terminal.Rendering.Canvas` is the frame-owned drawing value passed

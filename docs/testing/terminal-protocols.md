@@ -1,6 +1,6 @@
 # Terminal protocol testing
 
-## Terminal-protocol-testing contract
+## Overview
 
 Each typed encoder has exact-byte tests for default, minimum, maximum, combined,
 and rejected parameter values. Each streaming decoder representative runs once

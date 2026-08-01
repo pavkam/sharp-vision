@@ -4,8 +4,7 @@ SharpVision layout has two passes. Measure computes each control's desired
 terminal-cell size; arrange commits its final rectangle. `Length.Auto` follows
 content, `Length.Cells(n)` requests a fixed count, percentages use available
 space, and stars divide the remainder. The
-[layout contract](../concepts/layout.md#layout-contract) owns the exact
-algorithms.
+[layout contract](../concepts/layout.md#overview) owns the exact algorithms.
 
 ## Build a responsive shell
 
@@ -58,14 +57,14 @@ sizing and alignment properties.
 
 ## Choose a layout control
 
-| Need                            | Control                                                         | Important properties                                 |
-| ------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------- |
-| One-dimensional rows or columns | [`Stack`](../controls/layout/stack.md#stack-contract)           | `Orientation`, `Spacing`, `Reverse`                  |
-| Consume outer edges, then fill  | [`Dock`](../controls/layout/dock.md#dock-contract)              | attached `Side`, `Spacing`, `LastChildFills`         |
-| Rows, columns, and spans        | [`Grid`](../controls/layout/grid.md#grid-contract)              | `Rows`, `Columns`, spacing, attached row/column/span |
-| Absolute or anchored placement  | [`Overlay`](../controls/layout/overlay.md#overlay-contract)     | attached `Left`, `Top`, `Right`, `Bottom`            |
-| Overlapping layers              | [`Overlay`](../controls/layout/overlay.md#overlay-contract)     | attached `ZIndex`, `ClipToBounds`                    |
-| Header plus one child           | [`GroupBox`](../controls/layout/group-box.md#groupbox-contract) | `Header`, `Content`, `BorderGlyphStyle`              |
+| Need                            | Control                                                | Important properties                                 |
+| ------------------------------- | ------------------------------------------------------ | ---------------------------------------------------- |
+| One-dimensional rows or columns | [`Stack`](../controls/layout/stack.md#overview)        | `Orientation`, `Spacing`, `Reverse`                  |
+| Consume outer edges, then fill  | [`Dock`](../controls/layout/dock.md#overview)          | attached `Side`, `Spacing`, `LastChildFills`         |
+| Rows, columns, and spans        | [`Grid`](../controls/layout/grid.md#overview)          | `Rows`, `Columns`, spacing, attached row/column/span |
+| Absolute or anchored placement  | [`Overlay`](../controls/layout/overlay.md#overview)    | attached `Left`, `Top`, `Right`, `Bottom`            |
+| Overlapping layers              | [`Overlay`](../controls/layout/overlay.md#overview)    | attached `ZIndex`, `ClipToBounds`                    |
+| Header plus one child           | [`GroupBox`](../controls/layout/group-box.md#overview) | `Header`, `Content`, `BorderGlyphStyle`              |
 
 ## Make overflowing content scroll
 
@@ -80,7 +79,7 @@ details.ShowScrollBars = ShowScrollBars.WhenNeeded;
 The container measures content, computes the viewport, resolves scrollbar
 feedback, and routes wheel and keyboard input through the common
 [scrolling algorithm](../concepts/scrolling.md#automatic-scrollbar-algorithm).
-Use [`ScrollBar`](../controls/scrolling/scroll-bar.md#scrollbar-contract)
-directly only when the range itself is part of the application's UI.
+Use [`ScrollBar`](../controls/scrolling/scroll-bar.md#overview) directly only
+when the range itself is part of the application's UI.
 
 Next, [connect state and events](state-and-events.md#state-input-and-events).

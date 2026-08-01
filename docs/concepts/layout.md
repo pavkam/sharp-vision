@@ -1,11 +1,11 @@
 # Layout
 
-## Layout contract
+## Overview
 
 Layout uses measure then arrange over integer terminal cells. The
-[box-model contract](box-model.md#box-model-contract) owns margin, border,
-padding, content, painting, and hit-test boundaries. Layout resolves the
-border-box size and position while preserving those shared ownership rules.
+[box-model contract](box-model.md#overview) owns margin, border, padding,
+content, painting, and hit-test boundaries. Layout resolves the border-box size
+and position while preserving those shared ownership rules.
 
 ## Lengths
 
@@ -129,9 +129,9 @@ so the final combined extent is exact.
 
 ## Panels
 
-Every concrete [`Container`](../controls/container.md#container-contract)
-defines both child layout passes. `Stack` uses the common track allocator along
-its sequential axis and the base box model across it. Reverse order affects
+Every concrete [`Container`](../controls/container.md#overview) defines both
+child layout passes. `Stack` uses the common track allocator along its
+sequential axis and the base box model across it. Reverse order affects
 geometry, rendering, and default focus traversal together. Setting `Border` on
 any panel reserves the enabled edges before its panel-specific arrangement runs;
 no wrapper is required for layout reservation.
@@ -152,16 +152,16 @@ layout panel or `Container`. Custom controls draw through it in
 
 ## Grow and shrink
 
-Every [`Container`](../controls/container.md#container-contract) can size itself
-to its content instead of its explicit `Width`/`Height`. `AutoSize` (default
-`false`) sizes the border box to content plus its complete border-and-padding
-inset on the enabled axis, overriding an explicit fixed or star length while
-still honoring `MinWidth`/ `MaxWidth`/`MinHeight`/`MaxHeight`. `AutoSizeMode`
-chooses how the fixed request participates once `AutoSize` is on:
-`GrowAndShrink` (default) fits content exactly, growing or shrinking below an
-explicit fixed-cell size; `GrowOnly` treats an explicit fixed-cell length as a
-floor, so the container grows to fit larger content but never shrinks smaller
-than the requested size. Both modes clamp the final result to `Min`/`Max` before
+Every [`Container`](../controls/container.md#overview) can size itself to its
+content instead of its explicit `Width`/`Height`. `AutoSize` (default `false`)
+sizes the border box to content plus its complete border-and-padding inset on
+the enabled axis, overriding an explicit fixed or star length while still
+honoring `MinWidth`/ `MaxWidth`/`MinHeight`/`MaxHeight`. `AutoSizeMode` chooses
+how the fixed request participates once `AutoSize` is on: `GrowAndShrink`
+(default) fits content exactly, growing or shrinking below an explicit
+fixed-cell size; `GrowOnly` treats an explicit fixed-cell length as a floor, so
+the container grows to fit larger content but never shrinks smaller than the
+requested size. Both modes clamp the final result to `Min`/`Max` before
 arrangement. Content extent and the combined inset use saturated arithmetic
 before that clamp.
 

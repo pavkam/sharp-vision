@@ -1,6 +1,6 @@
 # iTerm2 proprietary protocols
 
-## iTerm2 contract
+## Overview
 
 Primary sources:
 

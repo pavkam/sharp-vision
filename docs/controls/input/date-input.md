@@ -1,13 +1,13 @@
 # DateInput
 
-## DateInput contract
+## Overview
 
 `DateInput` displays a formatted date with inline segment editing and an
 optional Calendar popup.
 
 ## API
 
-| Member                       | Default                                         | Contract                                                  |
+| Member                       | Default                                         | Description                                               |
 | ---------------------------- | ----------------------------------------------- | --------------------------------------------------------- |
 | `Value`                      | current local date                              | Nullable committed date, clamped to the inclusive bounds. |
 | `AllowNull`                  | `true`                                          | Allows clearing; disabling it repairs a null value.       |

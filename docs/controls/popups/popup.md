@@ -1,9 +1,8 @@
 # Popup
 
-## Popup contract
+## Overview
 
-`Popup` is a
-[`FloatingSurface`](../../concepts/floating-surfaces.md#floating-surface-contract)
+`Popup` is a [`FloatingSurface`](../../concepts/floating-surfaces.md#overview)
 that displays inherited `Content` on an opaque, one-cell theme-resolved frame
 relative to an optional anchor. The Popup object renders and hit-tests that
 surface directly; it does not own a second presentation Popup. Setting `IsOpen`

@@ -1,6 +1,6 @@
 # Lifecycle and runtime events
 
-## Lifecycle event contract
+## Overview
 
 The `Application` events are `Starting`, `Started`, `Stopping`, `Stopped`,
 `Idle`, `UnhandledException`, `FrameRendered`, `Resize`, `Diagnostic`,

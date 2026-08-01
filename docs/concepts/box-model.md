@@ -1,6 +1,6 @@
 # Box model
 
-## Box-model contract
+## Overview
 
 Every `Control` uses the same physical box model in terminal-cell units:
 
@@ -19,7 +19,7 @@ a negative width or height.
 
 ## API
 
-| Member                  | Type                  | Default              | Contract                                                                                 |
+| Member                  | Type                  | Default              | Description                                                                              |
 | ----------------------- | --------------------- | -------------------- | ---------------------------------------------------------------------------------------- |
 | `Width`, `Height`       | `Length`              | `Length.Auto`        | Requested border-box dimensions.                                                         |
 | `MinWidth`, `MinHeight` | `int`                 | `0`                  | Non-negative border-box floors; each must not exceed its maximum.                        |
@@ -39,8 +39,8 @@ Every edge is non-negative; an opposing-edge sum that exceeds `int.MaxValue`
 throws `OverflowException` before construction completes.
 
 `Length` and the complete measure/arrange algorithm are specified by
-[Layout](layout.md#layout-contract). Border appearance and shadow overflow are
-specified by [Intrinsic chrome](intrinsic-chrome.md#intrinsic-chrome-contract).
+[Layout](layout.md#overview). Border appearance and shadow overflow are
+specified by [Intrinsic chrome](intrinsic-chrome.md#overview).
 
 ## Measure and arrange
 

@@ -1,12 +1,12 @@
 # Runtime event loop
 
-## Runtime event loop contract
+## Overview
 
 One dispatcher thread owns input delivery, terminal-response delivery, control
 mutation, focus, pointer capture, layout, frame production, and application
 callbacks. Transport and OS watchers enqueue immutable records only. The
-[runtime protocol router](../protocols/runtime-routing.md#runtime-routing-contract)
-separates typed replies from user input before either reaches the queue.
+[runtime protocol router](../protocols/runtime-routing.md#overview) separates
+typed replies from user input before either reaches the queue.
 
 ```mermaid
 sequenceDiagram

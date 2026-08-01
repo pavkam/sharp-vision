@@ -1,6 +1,6 @@
 # xterm compatibility
 
-## xterm contract
+## Overview
 
 Primary source:
 [XTerm Control Sequences, patch 410](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html),

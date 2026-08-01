@@ -1,6 +1,6 @@
 # Rendering equivalence testing
 
-## Rendering-equivalence contract
+## Overview
 
 For a committed frame A and target frame B, the production `Encoder` emits an
 incremental update from A to B. `VirtualScreen`, an independent test terminal

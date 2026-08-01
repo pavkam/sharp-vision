@@ -9,7 +9,7 @@ screen, synchronized output, Kitty, iTerm2, or sixel grammar and encoding.
 
 - [Protocol families](../../../../docs/protocols/index.md#protocol-families)
 - [Coverage matrix](../../../../docs/protocols/coverage-matrix.md#coverage)
-- [Runtime routing](../../../../docs/protocols/runtime-routing.md#runtime-routing-contract)
+- [Runtime routing](../../../../docs/protocols/runtime-routing.md#overview)
 - [Terminal protocol evidence](../../../../docs/testing/terminal-protocols.md#required-evidence)
 
 Read the topic page selected by the protocol map. Verify its primary source and

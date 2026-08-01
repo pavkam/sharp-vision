@@ -9,7 +9,7 @@ release notes, tags, NuGet publication, workflow permissions, or release gates.
 
 - [Package publication](../../../../docs/testing/continuous-integration.md#package-publication)
 - [Failure handling](../../../../docs/testing/continuous-integration.md#failure-handling)
-- [Project structure](../../../../docs/architecture/project-structure.md#project-structure-contract)
+- [Project structure](../../../../docs/architecture/project-structure.md#overview)
 - [Public API compatibility](../../../../docs/testing/correctness-model.md#public-api-compatibility)
 
 ## Code map

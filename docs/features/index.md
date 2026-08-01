@@ -7,19 +7,19 @@ are owned exclusively by the
 
 ## Application and UI
 
-| Need                                             | Public surface                                               | Authoritative contract                                                                  |
-| ------------------------------------------------ | ------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
-| Interactive console hosting                      | `ConsoleApplication` and `ConsoleApplicationBuilder`         | [Hosting](../concepts/hosting.md#hosting-contract)                                      |
-| Retained mutable controls                        | `Control`, `Container`, `ContentControl`, `CompositeControl` | [Control catalog](../controls/index.md#control-catalog)                                 |
-| Strongly typed model binding                     | `Bind`, `BindItems`, `BindSelection`, `BindingMode`          | [Data binding](../concepts/data-binding.md#data-binding-contract)                       |
-| Fixed, auto, percentage, and proportional layout | `Length`, `Stack`, `Dock`, `Grid`, `Overlay`                 | [Layout](../concepts/layout.md#layout-contract)                                         |
-| Elevated windows, dialogs, popups, and tooltips  | `FloatingSurface`, `Window`, `Dialog<TResult>`, `Popup`      | [Floating surfaces](../concepts/floating-surfaces.md#floating-surface-contract)         |
-| Routed keyboard and pointer input                | Preview/bubble events, focus, pointer capture                | [Input routing](../concepts/input-routing.md#input-routing-contract)                    |
-| Scrollable content                               | `Container.AutoScroll` and scrollbar policy                  | [Scrolling](../concepts/scrolling.md#scrolling-contract)                                |
-| Styling and themes                               | `Color` and `Theme`                                          | [Themes](../concepts/themes.md#theme-file-contract)                                     |
-| Unicode-safe cells                               | Grapheme segmentation, width policy, wide-cell repair        | [Unicode geometry](../concepts/unicode-cell-geometry.md#unicode-cell-geometry-contract) |
-| Menus, popups, and windows                       | Retained controls and popup render layer                     | [Control catalog](../controls/index.md#control-catalog)                                 |
-| Images                                           | `Image`, `ImageStretch`, and immutable graphics sources      | [Image control](../controls/display/image.md#image-contract)                            |
+| Need                                             | Public surface                                               | Authoritative contract                                            |
+| ------------------------------------------------ | ------------------------------------------------------------ | ----------------------------------------------------------------- |
+| Interactive console hosting                      | `ConsoleApplication` and `ConsoleApplicationBuilder`         | [Hosting](../concepts/hosting.md#overview)                        |
+| Retained mutable controls                        | `Control`, `Container`, `ContentControl`, `CompositeControl` | [Control catalog](../controls/index.md#control-catalog)           |
+| Strongly typed model binding                     | `Bind`, `BindItems`, `BindSelection`, `BindingMode`          | [Data binding](../concepts/data-binding.md#overview)              |
+| Fixed, auto, percentage, and proportional layout | `Length`, `Stack`, `Dock`, `Grid`, `Overlay`                 | [Layout](../concepts/layout.md#overview)                          |
+| Elevated windows, dialogs, popups, and tooltips  | `FloatingSurface`, `Window`, `Dialog<TResult>`, `Popup`      | [Floating surfaces](../concepts/floating-surfaces.md#overview)    |
+| Routed keyboard and pointer input                | Preview/bubble events, focus, pointer capture                | [Input routing](../concepts/input-routing.md#overview)            |
+| Scrollable content                               | `Container.AutoScroll` and scrollbar policy                  | [Scrolling](../concepts/scrolling.md#overview)                    |
+| Styling and themes                               | `Color` and `Theme`                                          | [Themes](../concepts/themes.md#overview)                          |
+| Unicode-safe cells                               | Grapheme segmentation, width policy, wide-cell repair        | [Unicode geometry](../concepts/unicode-cell-geometry.md#overview) |
+| Menus, popups, and windows                       | Retained controls and popup render layer                     | [Control catalog](../controls/index.md#control-catalog)           |
+| Images                                           | `Image`, `ImageStretch`, and immutable graphics sources      | [Image control](../controls/display/image.md#overview)            |
 
 Every shipped concrete control has a C# example and expected behavior on its
 individual page. The
@@ -28,16 +28,16 @@ shows how the surfaces combine.
 
 ## Terminal input and output
 
-| Need                                        | Current evidence                                                                                                                     |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Keyboard input, including Kitty enhancement | [Kitty keyboard](../protocols/kitty-keyboard.md#kitty-keyboard-contract) and [ANSI/VT](../protocols/ansi-vt.md#ansi-and-vt-contract) |
-| Mouse cells and pixels                      | [Mouse reporting](../protocols/mouse.md#mouse-reporting-contract)                                                                    |
-| Bracketed paste and terminal focus          | [Paste and focus](../protocols/paste-focus.md#paste-and-focus-contract)                                                              |
-| Color and text attributes                   | [SGR](../protocols/sgr.md#sgr-contract)                                                                                              |
-| Bell, title, and clipboard services         | [Terminal-services walkthrough](../walkthroughs/terminal-services.md#use-terminal-services)                                          |
-| Synchronized frame output                   | [Synchronized output](../protocols/synchronized-output.md#synchronized-output-contract)                                              |
-| Device and capability negotiation           | [Capabilities](../architecture/capabilities.md#capability-contract)                                                                  |
-| tmux and GNU screen passthrough             | [tmux](../protocols/tmux.md#tmux-contract) and [GNU screen](../protocols/gnu-screen.md#gnu-screen-contract)                          |
+| Need                                        | Current evidence                                                                                          |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Keyboard input, including Kitty enhancement | [Kitty keyboard](../protocols/kitty-keyboard.md#overview) and [ANSI/VT](../protocols/ansi-vt.md#overview) |
+| Mouse cells and pixels                      | [Mouse reporting](../protocols/mouse.md#overview)                                                         |
+| Bracketed paste and terminal focus          | [Paste and focus](../protocols/paste-focus.md#overview)                                                   |
+| Color and text attributes                   | [SGR](../protocols/sgr.md#overview)                                                                       |
+| Bell, title, and clipboard services         | [Terminal-services walkthrough](../walkthroughs/terminal-services.md#use-terminal-services)               |
+| Synchronized frame output                   | [Synchronized output](../protocols/synchronized-output.md#overview)                                       |
+| Device and capability negotiation           | [Capabilities](../architecture/capabilities.md#overview)                                                  |
+| tmux and GNU screen passthrough             | [tmux](../protocols/tmux.md#overview) and [GNU screen](../protocols/gnu-screen.md#overview)               |
 
 The exact state for every protocol family—typed and implemented, decoded and
 observable, extension API with safe fallback, or unsupported with a specific

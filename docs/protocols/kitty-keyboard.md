@@ -1,6 +1,6 @@
 # Kitty keyboard protocol
 
-## Kitty keyboard contract
+## Overview
 
 Primary source:
 [Kitty comprehensive keyboard protocol](https://sw.kovidgoyal.net/kitty/keyboard-protocol/),

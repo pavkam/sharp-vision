@@ -1,6 +1,6 @@
 # Table
 
-## Table contract
+## Overview
 
 `Table : ItemsControl` owns typed rows of ordinary controls and aligns them
 against titled fixed, automatic, percentage, or proportional columns. It
@@ -75,11 +75,11 @@ code-owned separator glyph values and terminal-safe fallbacks.
 ## Layout and ownership
 
 Columns resolve with the shared
-[track allocator](../../concepts/layout.md#layout-contract): fixed widths
-reserve exact cells, percentage widths resolve from the final table width,
-automatic widths use the largest cell/header request, and fill columns receive
-the remaining cells. Headers and rows remeasure wrapping controls once their
-finite column widths are known.
+[track allocator](../../concepts/layout.md#overview): fixed widths reserve exact
+cells, percentage widths resolve from the final table width, automatic widths
+use the largest cell/header request, and fill columns receive the remaining
+cells. Headers and rows remeasure wrapping controls once their finite column
+widths are known.
 
 Each resolved cell rectangle is an ordinary arrange slot, not a forced border
 box. The cell's `HorizontalAlignment`, `VerticalAlignment`, explicit lengths,
@@ -95,8 +95,8 @@ an unbounded frame loop. A genuinely different final width, such as resize,
 earns exactly one final constrained measurement pass.
 
 `Table` uses the intrinsic
-[`Container` scrolling contract](../../concepts/scrolling.md#scrolling-contract).
-The translated content rectangle is the single origin for headers, grid lines,
+[`Container` scrolling contract](../../concepts/scrolling.md#overview). The
+translated content rectangle is the single origin for headers, grid lines,
 cells, and hit testing. Table chrome renders through the same viewport-clipped
 content canvas before owned scrollbars render above it, so horizontal, vertical,
 and combined offsets cannot separate a header or divider from its row controls.

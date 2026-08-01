@@ -1,6 +1,6 @@
 # Dock
 
-## Dock contract
+## Overview
 
 `Dock` consumes left, top, right, or bottom edges in child order and optionally
 assigns the remaining rectangle to the final visible child.

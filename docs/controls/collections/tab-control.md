@@ -1,6 +1,6 @@
 # TabControl
 
-## TabControl contract
+## Overview
 
 `TabControl` arranges typed [`TabItem`](#tabitem) pages and coordinates a header
 strip, keyboard navigation, and content participation. It extends
@@ -76,11 +76,10 @@ disabled state; hovering the page or the owner does not recolor the strip.
 
 ## TabItem
 
-`TabItem` extends
-[`ContentControl`](../content-control.md#contentcontrol-contract). `Header` is a
-non-null string without terminal controls, rendered in the owning tab strip.
-`Content` is the single caller-replaceable owned child arranged below the rule
-only while selected.
+`TabItem` extends [`ContentControl`](../content-control.md#overview). `Header`
+is a non-null string without terminal controls, rendered in the owning tab
+strip. `Content` is the single caller-replaceable owned child arranged below the
+rule only while selected.
 
 `IsClosable` defaults to `false`. It only enables the semantic close request;
 dirty-state tracking and header adornments remain application concerns.

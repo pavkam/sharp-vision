@@ -1,10 +1,10 @@
 # Custom components
 
-## Custom components contract
+## Overview
 
 SharpVision keeps inheritance honest. Use
-[`Container`](../controls/container.md#container-contract) only when callers may
-add arbitrary controls and the new type's public purpose is laying them out. Use
+[`Container`](../controls/container.md#overview) only when callers may add
+arbitrary controls and the new type's public purpose is laying them out. Use
 `ContentControl` for zero-or-one caller-replaceable content, `CompositeControl`
 for a retained private composition, `ItemsControl` for a typed semantic
 collection with a private presentation host, and direct `Control` inheritance
@@ -20,14 +20,14 @@ lifecycle, rendering, hit-testing, focus, capture, and disposal paths.
 
 ### Choosing a role
 
-| Need                                                 | Base role                                                  | Public ownership surface                       |
-| ---------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------- |
-| New leaf behavior or custom drawing                  | `Control`                                                  | None unless the type explicitly provides one   |
-| General-purpose multi-child layout                   | [`Container`](../controls/container.md#container-contract) | `Children`                                     |
-| One caller-owned replaceable visual                  | `ContentControl`                                           | `Content`                                      |
-| Reusable component built from existing controls      | `CompositeControl`                                         | None; its root is private                      |
-| Typed data/semantic collection with realized visuals | `ItemsControl`                                             | The type's semantic collection, never the host |
-| Focusable activating single face                     | `Pressable`                                                | Inherited `Content`                            |
+| Need                                                 | Base role                                        | Public ownership surface                       |
+| ---------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------- |
+| New leaf behavior or custom drawing                  | `Control`                                        | None unless the type explicitly provides one   |
+| General-purpose multi-child layout                   | [`Container`](../controls/container.md#overview) | `Children`                                     |
+| One caller-owned replaceable visual                  | `ContentControl`                                 | `Content`                                      |
+| Reusable component built from existing controls      | `CompositeControl`                               | None; its root is private                      |
+| Typed data/semantic collection with realized visuals | `ItemsControl`                                   | The type's semantic collection, never the host |
+| Focusable activating single face                     | `Pressable`                                      | Inherited `Content`                            |
 
 Concrete shipped controls are sealed, with three documented exceptions: `Popup`,
 `ContextMenu`, and `Window`. Each stays unsealed only because the library itself

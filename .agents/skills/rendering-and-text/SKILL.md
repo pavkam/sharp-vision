@@ -30,14 +30,14 @@ proves the same final screen.
 
 <!-- markdownlint-disable MD013 -->
 
-| Task signal                                                                      | Read                                        | Normative starting point                                                                                |
-| -------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Canvas, Cell, Frame, damage, cursor, SGR, synchronized output, terminal writes   | [rendering.md](references/rendering.md)     | [Rendering pipeline](../../../docs/architecture/rendering-pipeline.md#rendering-pipeline-contract)      |
-| Graphemes, Rune decoding, width, wide cells, wrapping, clipping, cursor geometry | [unicode.md](references/unicode.md)         | [Unicode cell geometry](../../../docs/concepts/unicode-cell-geometry.md#unicode-cell-geometry-contract) |
-| Image ownership, placement, composition, ordinary-cell fallback                  | [images.md](references/images.md)           | [Images](../../../docs/concepts/images.md#imagesource-ownership-contract)                               |
-| FIGfont parser, catalog, smushing, embedded fonts, provenance                    | [figlet.md](references/figlet.md)           | [FigletText](../../../docs/controls/display/figlet-text.md#figlettext-contract)                         |
-| Allocation, throughput, write counts, performance budgets                        | [performance.md](references/performance.md) | [Performance testing](../../../docs/testing/performance.md#performance-testing-contract)                |
-| Any rendering or text verification                                               | [testing.md](references/testing.md)         | [Rendering evidence](../../../docs/testing/rendering.md#rendering-equivalence-contract)                 |
+| Task signal                                                                      | Read                                        | Normative starting point                                                          |
+| -------------------------------------------------------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------- |
+| Canvas, Cell, Frame, damage, cursor, SGR, synchronized output, terminal writes   | [rendering.md](references/rendering.md)     | [Rendering pipeline](../../../docs/architecture/rendering-pipeline.md#overview)   |
+| Graphemes, Rune decoding, width, wide cells, wrapping, clipping, cursor geometry | [unicode.md](references/unicode.md)         | [Unicode cell geometry](../../../docs/concepts/unicode-cell-geometry.md#overview) |
+| Image ownership, placement, composition, ordinary-cell fallback                  | [images.md](references/images.md)           | [Images](../../../docs/concepts/images.md#overview)                               |
+| FIGfont parser, catalog, smushing, embedded fonts, provenance                    | [figlet.md](references/figlet.md)           | [FigletText](../../../docs/controls/display/figlet-text.md#overview)              |
+| Allocation, throughput, write counts, performance budgets                        | [performance.md](references/performance.md) | [Performance testing](../../../docs/testing/performance.md#overview)              |
+| Any rendering or text verification                                               | [testing.md](references/testing.md)         | [Rendering evidence](../../../docs/testing/rendering.md#overview)                 |
 
 <!-- markdownlint-enable MD013 -->
 

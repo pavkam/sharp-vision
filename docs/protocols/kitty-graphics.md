@@ -1,6 +1,6 @@
 # Kitty graphics protocol
 
-## Kitty graphics contract
+## Overview
 
 Primary source:
 [Kitty terminal graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/),

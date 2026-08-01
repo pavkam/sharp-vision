@@ -63,8 +63,8 @@ timer.Start();
 
 Dispose the timer with its owner. Delayed periods are skipped instead of
 replayed as a burst. The exact queue capacity, shutdown, reentrancy, timer, and
-idle rules live in [threading](../concepts/threading.md#threading-contract) and
-the [runtime event loop](../architecture/runtime-event-loop.md#iteration-order).
+idle rules live in [threading](../concepts/threading.md#overview) and the
+[runtime event loop](../architecture/runtime-event-loop.md#iteration-order).
 
 Next, use
 [capability-gated terminal services](terminal-services.md#use-terminal-services).

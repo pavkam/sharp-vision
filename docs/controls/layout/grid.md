@@ -1,6 +1,6 @@
 # Grid
 
-## Grid contract
+## Overview
 
 `Grid` arranges managed children in fixed, percentage, automatic, and
 proportional row/column tracks with spacing and spans.
@@ -59,8 +59,8 @@ An ancestor with `AutoScroll` may translate a Grid to a negative visual origin;
 track extents and gaps remain non-negative while their committed screen
 coordinates preserve that signed translation. This is the ordinary scrolling
 arrangement defined by the
-[scrolling contract](../../concepts/scrolling.md#scrolling-contract), not an
-invalid Grid placement.
+[scrolling contract](../../concepts/scrolling.md#overview), not an invalid Grid
+placement.
 
 Shrinking a definition collection validates every owned child's candidate origin
 and span before mutation. A failure throws `InvalidOperationException` and

@@ -1,6 +1,6 @@
 # Safe degradation and strict diagnostics
 
-## Safe degradation contract
+## Overview
 
 Unsupported or uncertain environmental features choose a deterministic lower
 capability without throwing by default. Programmer contract violations still

@@ -1,6 +1,6 @@
 # Sixel graphics
 
-## Sixel contract
+## Overview
 
 Primary sources:
 

@@ -7,11 +7,11 @@ incremental parsing, or typed terminal input events.
 
 ## Normative documentation
 
-- [Keyboard protocols](../../../../docs/protocols/kitty-keyboard.md#kitty-keyboard-contract)
-- [Mouse protocols](../../../../docs/protocols/mouse.md#mouse-reporting-contract)
-- [Paste and focus](../../../../docs/protocols/paste-focus.md#paste-and-focus-contract)
-- [Protocol testing](../../../../docs/testing/terminal-protocols.md#terminal-protocol-testing-contract)
-- [Pseudoterminal evidence](../../../../docs/testing/pseudoterminals.md#pseudoterminal-testing-contract)
+- [Keyboard protocols](../../../../docs/protocols/kitty-keyboard.md#overview)
+- [Mouse protocols](../../../../docs/protocols/mouse.md#overview)
+- [Paste and focus](../../../../docs/protocols/paste-focus.md#overview)
+- [Protocol testing](../../../../docs/testing/terminal-protocols.md#overview)
+- [Pseudoterminal evidence](../../../../docs/testing/pseudoterminals.md#overview)
 
 ## Code map
 

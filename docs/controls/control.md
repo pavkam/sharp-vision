@@ -1,16 +1,16 @@
 # Control base API
 
-## Control contract
+## Overview
 
 `Control` is the abstract mutable UI element. It belongs to at most one parent
 and, while attached, exactly one
-[`Dispatcher`](../concepts/threading.md#threading-contract). Detached trees can
-be assembled on any thread. Attached mutation and disposal must run on that
+[`Dispatcher`](../concepts/threading.md#overview). Detached trees can be
+assembled on any thread. Attached mutation and disposal must run on that
 dispatcher.
 
 ## API
 
-| Property                                                                            | Default                         | Contract                                                                   |
+| Property                                                                            | Default                         | Description                                                                |
 | ----------------------------------------------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------- |
 | `Width`, `Height`                                                                   | `Length.Auto`                   | Fixed, percentage, automatic, or proportional `Length`.                    |
 | `MinWidth`, `MinHeight`                                                             | `0`                             | Non-negative cell minimums.                                                |
@@ -47,14 +47,13 @@ visibility, enabled state, or explicit focus.
 Every `Control` has intrinsic face, border, and shadow composites. There are no
 border or shadow wrapper controls.
 
-The shared
-[intrinsic-chrome contract](../concepts/intrinsic-chrome.md#intrinsic-chrome-contract)
+The shared [intrinsic-chrome contract](../concepts/intrinsic-chrome.md#overview)
 owns border/shadow value members, rendering order, geometry, clipping, and proof
 obligations. This page defines how the base control exposes that behavior.
 
 The public surface is:
 
-| Property or method                           | Contract                                                                       |
+| Property or method                           | Description                                                                    |
 | -------------------------------------------- | ------------------------------------------------------------------------------ |
 | `Face`, `ResetFace()`                        | Public complete local face authoring and Theme-ownership reset.                |
 | `Border`, `Shadow`, their reset methods      | Protected derived-control chrome authoring.                                    |
@@ -124,9 +123,8 @@ determines membership and capacity.
 The role vocabulary is container child, content, composition root, item visual,
 item host, or framework part. The foundation instantiates container children,
 item hosts, and private framework parts. The public
-[`ContentControl`](content-control.md#contentcontrol-contract) instantiates the
-capacity-one content role, while
-[`CompositeControl`](composite-control.md#compositecontrol-contract)
+[`ContentControl`](content-control.md#overview) instantiates the capacity-one
+content role, while [`CompositeControl`](composite-control.md#overview)
 instantiates the permanent capacity-one composition-root role. A slot also
 selects normal or popup layer, hit-test and navigation participation, an
 optional stable part key, and the earliest invalidation impact. These are
@@ -190,8 +188,7 @@ Debug.Assert(control.Parent == container);
 
 ## Invalidation API
 
-The shared
-[invalidation contract](../concepts/invalidation.md#invalidation-contract) owns
+The shared [invalidation contract](../concepts/invalidation.md#overview) owns
 phase dependencies, ancestor propagation, dispatcher scheduling, retries, and
 frame coordination. `Control` exposes the authoring seams that let derived
 controls participate without exposing pending phase flags.
@@ -226,7 +223,7 @@ invalidates measure for the caption subtree. Rich/body `Text` specializes its
 default to false; a `Text` used as a `Pressable` caption inherits the owner's
 effective setting. The full syntax, modifier, duplicate, modality, and paired
 text rules live in the shared
-[access-key contract](../concepts/access-keys.md#access-key-contract).
+[access-key contract](../concepts/access-keys.md#overview).
 
 ## Lifecycle and events
 
@@ -283,11 +280,10 @@ again before the exception escapes.
 
 Building a retained component out of existing controls, rather than a new
 primitive, does not use these seams directly; derive from
-[`CompositeControl`](composite-control.md#compositecontrol-contract), construct
-the private tree once, and transfer its root through `InitializeContent`. Derive
-from [`Container`](container.md#container-contract) only when callers own an
-arbitrary public child collection and the concrete type supplies both layout
-passes.
+[`CompositeControl`](composite-control.md#overview), construct the private tree
+once, and transfer its root through `InitializeContent`. Derive from
+[`Container`](container.md#overview) only when callers own an arbitrary public
+child collection and the concrete type supplies both layout passes.
 
 `OnRenderContent` receives a canvas clipped to the control's resolved
 `VisualBounds`. Rendering carries two constraints down each normal-layer branch:

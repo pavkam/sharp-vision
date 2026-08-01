@@ -1,19 +1,18 @@
 # CompositeControl base API
 
-## CompositeControl contract
+## Overview
 
 `CompositeControl` is the abstract authoring role for a reusable component made
 from a retained private tree of existing controls. It derives directly from
-[`Control`](control.md#control-contract); it is not a `Container`, exposes no
-public `Children` collection, and does not expose its implementation root as
-publicly replaceable content.
+[`Control`](control.md#overview); it is not a `Container`, exposes no public
+`Children` collection, and does not expose its implementation root as publicly
+replaceable content.
 
 Use `CompositeControl` when the component owns the identity and lifetime of its
-implementation tree. Use
-[`ContentControl`](content-control.md#contentcontrol-contract) when callers own
-a replaceable semantic content value, and use
-[`Container`](container.md#container-contract) only for a genuine layout control
-whose arbitrary children are part of its public contract.
+implementation tree. Use [`ContentControl`](content-control.md#overview) when
+callers own a replaceable semantic content value, and use
+[`Container`](container.md#overview) only for a genuine layout control whose
+arbitrary children are part of its public contract.
 
 ## API
 

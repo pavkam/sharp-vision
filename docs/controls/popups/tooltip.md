@@ -1,10 +1,10 @@
 # Tooltip
 
-## Tooltip contract
+## Overview
 
-`Tooltip` is a direct [`Popup`](popup.md#popup-contract) specialization for
-passive, delayed information. The Tooltip object is the owned popup-layer
-surface associated with its anchor; it does not create a private Popup.
+`Tooltip` is a direct [`Popup`](popup.md#overview) specialization for passive,
+delayed information. The Tooltip object is the owned popup-layer surface
+associated with its anchor; it does not create a private Popup.
 
 ## API
 
@@ -33,7 +33,7 @@ keyboard navigation, Escape handling, or hit testing. Once available, the
 Tooltip measures and arranges itself against the anchor's root so the first open
 frame has committed content geometry. Placement, edge flipping, root clamping,
 elevation, frame, lifecycle, and ownership otherwise follow Popup and the
-[floating-surface contract](../../concepts/floating-surfaces.md#floating-surface-contract).
+[floating-surface contract](../../concepts/floating-surfaces.md#overview).
 
 ## Example
 

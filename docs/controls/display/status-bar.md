@@ -1,6 +1,6 @@
 # StatusBar and StatusBarItem
 
-## StatusBar contract
+## Overview
 
 `StatusBar` is a persistent horizontal strip for useful, non-critical state
 about the current application context. Applications conventionally place it at

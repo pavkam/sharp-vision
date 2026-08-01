@@ -8,9 +8,9 @@ event, visual state, child role, layout override, or rendered content.
 ## Normative documentation
 
 - [Control catalog](../../../../docs/controls/index.md#control-catalog)
-- [Custom components](../../../../docs/concepts/custom-components.md#custom-components-contract)
-- [Intrinsic chrome](../../../../docs/concepts/intrinsic-chrome.md#intrinsic-chrome-contract)
-- [Theming controls](../../../../docs/concepts/theming-new-controls.md#theming-contract)
+- [Custom components](../../../../docs/concepts/custom-components.md#overview)
+- [Intrinsic chrome](../../../../docs/concepts/intrinsic-chrome.md#overview)
+- [Theming controls](../../../../docs/concepts/theming-new-controls.md#overview)
 - [Control state-machine evidence](../../../../docs/testing/controls-integration.md#controls-with-state-machines)
 
 Read the exact control contract from the control map. A new public control needs

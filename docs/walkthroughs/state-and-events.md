@@ -18,8 +18,8 @@ enabled.Bind(viewModel, model => model.Enabled);
 
 `TextInput` and `CheckBox` default to two-way synchronization. Nested paths,
 observable collections, selection, dispatcher marshaling, and lifetime follow
-the [data-binding contract](../concepts/data-binding.md#data-binding-contract).
-Use direct events when an action is not persistent model state.
+the [data-binding contract](../concepts/data-binding.md#overview). Use direct
+events when an action is not persistent model state.
 
 ## Update state from control events
 
@@ -76,7 +76,7 @@ root. Marking `Handled` stops ordinary handlers later in the route. Focus,
 pointer capture, terminal-focus loss, and control availability are coordinated
 with the same route. The complete ordering is in
 [input routing](../concepts/input-routing.md#route-construction), while
-[focus](../concepts/focus.md#focus-contract) owns navigation and focus transfer.
+[focus](../concepts/focus.md#overview) owns navigation and focus transfer.
 
 ## Pick the right mechanism
 

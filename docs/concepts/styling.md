@@ -1,6 +1,6 @@
 # Appearance
 
-## Styling contract
+## Overview
 
 SharpVision controls use direct CLR properties and immutable global themes.
 There is no selector cascade, control-type map, or mutable style registry.
@@ -85,8 +85,8 @@ is not transparency.
 Border, shadow, and body fill are intrinsic control chrome. The sealed render
 pipeline draws shadow and body before content, then overlays the border. Custom
 controls implement `OnRenderContent` and do not invoke a chrome helper. The
-[intrinsic-chrome contract](intrinsic-chrome.md#intrinsic-chrome-contract) owns
-the exact public values, modes, geometry, clipping, and test matrix.
+[intrinsic-chrome contract](intrinsic-chrome.md#overview) owns the exact public
+values, modes, geometry, clipping, and test matrix.
 
 Border background is an independent channel. A hover or focus face-background
 change does not repaint border-cell backgrounds unless that state's `BorderSet`
@@ -122,9 +122,9 @@ authoritative.
 
 The [Control contract](../controls/control.md#intrinsic-appearance) defines the
 public properties, layout effects, and rendering order. The
-[theme contract](themes.md#theme-file-contract) defines the JSON schema and
-global values. The exact border and shadow value surfaces live in
-[Intrinsic chrome](intrinsic-chrome.md#intrinsic-chrome-contract).
+[theme contract](themes.md#overview) defines the JSON schema and global values.
+The exact border and shadow value surfaces live in
+[Intrinsic chrome](intrinsic-chrome.md#overview).
 
 ## Expected behavior
 

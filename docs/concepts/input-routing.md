@@ -1,6 +1,6 @@
 # Input routing
 
-## Input routing contract
+## Overview
 
 Terminal bytes decode into immutable key, text, pointer, paste, focus, resize,
 query, closure, or fault events before entering the UI project. Controls never
@@ -41,8 +41,8 @@ it only after `Options.EscapeTimeout` on the injected `TimeProvider`, and
 `Complete` resolves it immediately at end-of-stream. The decoder accounts for
 bytes handled outside the protocol parser so later diagnostic offsets remain
 absolute. Bracketed paste, focus, and mouse decoding build on these values in
-the [paste/focus](../protocols/paste-focus.md#paste-and-focus-contract) and
-[mouse](../protocols/mouse.md#mouse-reporting-contract) contracts.
+the [paste/focus](../protocols/paste-focus.md#overview) and
+[mouse](../protocols/mouse.md#overview) contracts.
 
 ## Route construction
 
@@ -250,12 +250,12 @@ byte split, cover malformed recovery and completion, and require warmed ASCII
 and non-ASCII Rune decoding to allocate zero managed bytes per event. The
 fixed-seed hostile-byte suite caps paste/parser retention, injects an explicit
 recovery boundary, and requires a known trailing Rune to survive every case.
-[`Pressable`](../controls/pressable.md#pressable-contract) is the public
-single-content activation role. Space holds pressed state until a matching
-release; Enter activates directly. Primary pointer press focuses and captures,
-movement updates inside/outside pressed state, and release inside activates
-once. Focus loss, capture cancellation, disable, hide, detach, and disposal
-clear all held state without activation. Completed activations carry a validated
-`ActivationCause` of Keyboard, Pointer, or Programmatic. The transient state
-machine is one internal composed behavior also used by direct-`Control`
-`ComboBox`; interaction reuse does not dictate public inheritance.
+[`Pressable`](../controls/pressable.md#overview) is the public single-content
+activation role. Space holds pressed state until a matching release; Enter
+activates directly. Primary pointer press focuses and captures, movement updates
+inside/outside pressed state, and release inside activates once. Focus loss,
+capture cancellation, disable, hide, detach, and disposal clear all held state
+without activation. Completed activations carry a validated `ActivationCause` of
+Keyboard, Pointer, or Programmatic. The transient state machine is one internal
+composed behavior also used by direct-`Control` `ComboBox`; interaction reuse
+does not dictate public inheritance.

@@ -1,6 +1,6 @@
 # Screen
 
-## Screen contract
+## Overview
 
 `Screen : CompositeControl` is the abstract application root. A concrete screen
 creates its retained control tree in its constructor and installs exactly one
@@ -11,9 +11,9 @@ presented object is the concrete floating surface, not a full-screen proxy. The
 empty presentation plane is pointer-transparent; only a presented child claims
 its cells, so authored content remains interactive everywhere else. Neither slot
 is exposed as a public child collection. A Screen is not a
-[`Container`](../controls/container.md#container-contract) and does not expose
-`Children`; use a real layout container such as `Dock`, `Grid`, or `Stack` as
-the authored root when the screen needs multiple visuals.
+[`Container`](../controls/container.md#overview) and does not expose `Children`;
+use a real layout container such as `Dock`, `Grid`, or `Stack` as the authored
+root when the screen needs multiple visuals.
 
 Screen uses the global `Control` semantic role unless its implementation selects
 another role. With no complete local `Face`, `Border`, or `Shadow`, its

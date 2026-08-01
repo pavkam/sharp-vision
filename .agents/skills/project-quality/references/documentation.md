@@ -7,19 +7,19 @@ gap callouts, protocol sources, coverage claims, links, diagrams, or validators.
 
 ## Normative documentation
 
-- [Documentation contract](../../../../docs/documentation-contract.md#documentation-contract)
-- [Document kinds](../../../../docs/documentation-contract.md#document-kinds)
-- [Implementation gaps](../../../../docs/documentation-contract.md#implementation-gaps)
-- [Links and ownership](../../../../docs/documentation-contract.md#links-and-ownership)
-- [Validation](../../../../docs/documentation-contract.md#validation)
+- [Documentation guide](../../../../docs/documentation-guide.md#overview)
+- [Page types](../../../../docs/documentation-guide.md#page-types)
+- [Implementation gaps](../../../../docs/documentation-guide.md#implementation-gaps)
+- [Links and ownership](../../../../docs/documentation-guide.md#links-and-ownership)
+- [Validation](../../../../docs/documentation-guide.md#validation)
 
 ## Required document spines
 
-- Control: contract, API, Example, Expected behavior.
-- Dialog: contract, API, Interaction, Example, Expected behavior.
-- Concept and architecture: contract, topic sections, Expected behavior.
-- Protocol: contract, Sources, protocol sections, Expected behavior.
-- Testing: contract, evidence sections, Required evidence.
+- Control: Overview, API, Example, Expected behavior.
+- Dialog: Overview, API, Interaction, Example, Expected behavior.
+- Concept and architecture: Overview, topic sections, Expected behavior.
+- Protocol: Overview, Sources, protocol sections, Expected behavior.
+- Testing: Overview, evidence sections, Required evidence.
 
 ## Workflow
 

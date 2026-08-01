@@ -1,6 +1,6 @@
 # Control Sequence Introducer
 
-## CSI contract
+## Overview
 
 CSI uses `ESC [` followed by parameter bytes, optional intermediate bytes, and
 one final byte. Private prefixes such as `?`, `>`, and `<` are part of a typed

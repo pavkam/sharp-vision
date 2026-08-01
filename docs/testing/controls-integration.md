@@ -1,6 +1,6 @@
 # Control and integration testing
 
-## Control and integration testing contract
+## Overview
 
 Every concrete control tests property validation before mutation,
 measure/arrange/render invalidation, ownership, dispatcher affinity, focus,
@@ -165,7 +165,7 @@ scenario also asserts public control state and representative semantic cells,
 including resolved colors, attributes, continuation ownership, border cells, and
 shadow cells. This keeps the mounted path aligned with the
 [input-routing](../concepts/input-routing.md#input-routing),
-[focus](../concepts/focus.md#focus-contract),
+[focus](../concepts/focus.md#overview),
 [visual-state](../concepts/styling.md#visual-states), and
 [rendering-equivalence](rendering.md#rendering-equivalence-testing) contracts.
 The StatusBar composition fixture additionally embeds an unstyled CheckBox in an

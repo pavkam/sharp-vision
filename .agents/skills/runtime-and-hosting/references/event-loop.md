@@ -7,12 +7,12 @@ resize, out-of-band writes, stop requests, shutdown, or run/dispose races.
 
 ## Normative documentation
 
-- [Runtime event loop](../../../../docs/architecture/runtime-event-loop.md#runtime-event-loop-contract)
+- [Runtime event loop](../../../../docs/architecture/runtime-event-loop.md#overview)
 - [Iteration order](../../../../docs/architecture/runtime-event-loop.md#iteration-order)
 - [Resize ordering](../../../../docs/architecture/runtime-event-loop.md#resize-ordering)
 - [Out-of-band writes](../../../../docs/architecture/runtime-event-loop.md#out-of-band-protocol-writes)
 - [Shutdown](../../../../docs/architecture/runtime-event-loop.md#shutdown)
-- [Lifecycle events](../../../../docs/concepts/lifecycle-events.md#lifecycle-event-contract)
+- [Lifecycle events](../../../../docs/concepts/lifecycle-events.md#overview)
 
 ## Code map
 

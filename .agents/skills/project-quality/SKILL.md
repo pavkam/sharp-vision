@@ -31,13 +31,13 @@ owns shared policy and infrastructure, not feature-specific behavior.
 
 <!-- markdownlint-disable MD013 -->
 
-| Task signal                                                                   | Read                                                            | Normative starting point                                                                         |
-| ----------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Normative docs, API tables, section spines, links, gaps, coverage claims      | [documentation.md](references/documentation.md)                 | [Documentation contract](../../../docs/documentation-contract.md#documentation-contract)         |
-| Test framework, discovery, fixtures, CI commands, coverage, randomized policy | [testing.md](references/testing.md)                             | [Correctness model](../../../docs/testing/correctness-model.md#correctness-model-contract)       |
-| Public API snapshots, baselines, compatibility project, breaking changes      | [api-compatibility.md](references/api-compatibility.md)         | [Public API compatibility](../../../docs/testing/correctness-model.md#public-api-compatibility)  |
-| Pack, external consumers, NuGet metadata, versioning, publish workflow        | [packaging-and-release.md](references/packaging-and-release.md) | [Package publication](../../../docs/testing/continuous-integration.md#package-publication)       |
-| `.agents/skills`, metadata, progressive disclosure, skill links and commands  | [skill-maintenance.md](references/skill-maintenance.md)         | [Project boundaries](../../../docs/architecture/project-structure.md#project-structure-contract) |
+| Task signal                                                                   | Read                                                            | Normative starting point                                                                        |
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Normative docs, API tables, section spines, links, gaps, coverage claims      | [documentation.md](references/documentation.md)                 | [Documentation guide](../../../docs/documentation-guide.md#overview)                            |
+| Test framework, discovery, fixtures, CI commands, coverage, randomized policy | [testing.md](references/testing.md)                             | [Correctness model](../../../docs/testing/correctness-model.md#overview)                        |
+| Public API snapshots, baselines, compatibility project, breaking changes      | [api-compatibility.md](references/api-compatibility.md)         | [Public API compatibility](../../../docs/testing/correctness-model.md#public-api-compatibility) |
+| Pack, external consumers, NuGet metadata, versioning, publish workflow        | [packaging-and-release.md](references/packaging-and-release.md) | [Package publication](../../../docs/testing/continuous-integration.md#package-publication)      |
+| `.agents/skills`, metadata, progressive disclosure, skill links and commands  | [skill-maintenance.md](references/skill-maintenance.md)         | [Project boundaries](../../../docs/architecture/project-structure.md#overview)                  |
 
 <!-- markdownlint-enable MD013 -->
 

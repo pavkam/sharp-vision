@@ -20,7 +20,7 @@ small geometry rule.
 - [Correctness model](correctness-model.md#correctness-model)
 - [Public API compatibility](correctness-model.md#public-api-compatibility)
 - [Shape and reflection](correctness-model.md#shape-and-reflection)
-- [Continuous integration](continuous-integration.md#continuous-integration-contract)
+- [Continuous integration](continuous-integration.md#overview)
 - [Terminal protocols](terminal-protocols.md#terminal-protocol-testing)
 - [Unicode and rendering](unicode-rendering.md#unicode-and-rendering-testing)
 - [Rendering equivalence](rendering.md#rendering-equivalence-testing)

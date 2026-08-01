@@ -7,11 +7,11 @@ claiming a protocol, discovery, capability, or backend change complete.
 
 ## Normative documentation
 
-- [Correctness model](../../../../docs/testing/correctness-model.md#correctness-model-contract)
+- [Correctness model](../../../../docs/testing/correctness-model.md#overview)
 - [Terminal protocol evidence](../../../../docs/testing/terminal-protocols.md#required-evidence)
-- [Randomized testing](../../../../docs/testing/randomized.md#randomized-testing-contract)
-- [Pseudoterminal testing](../../../../docs/testing/pseudoterminals.md#pseudoterminal-testing-contract)
-- [Continuous integration](../../../../docs/testing/continuous-integration.md#continuous-integration-contract)
+- [Randomized testing](../../../../docs/testing/randomized.md#overview)
+- [Pseudoterminal testing](../../../../docs/testing/pseudoterminals.md#overview)
+- [Continuous integration](../../../../docs/testing/continuous-integration.md#overview)
 
 ## Evidence ladder
 

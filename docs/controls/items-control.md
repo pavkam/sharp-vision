@@ -1,6 +1,6 @@
 # ItemsControl
 
-## ItemsControl contract
+## Overview
 
 `ItemsControl : Control` is the base role for semantic controls that realize an
 ordered set of controls inside one private presentation container. It implements
@@ -42,8 +42,8 @@ scrolling contract.
 | `OnItemControlsChanged`                                    | Observe one committed realized-control snapshot.                      |
 
 `ItemsControl` deliberately exposes no public `Children` collection. Concrete
-types such as [`ListView`](collections/list-view.md#listview-contract) and
-[`Table`](layout/table.md#table-contract) publish typed semantic collections.
+types such as [`ListView`](collections/list-view.md#overview) and
+[`Table`](layout/table.md#overview) publish typed semantic collections.
 
 ## Example
 

@@ -1,6 +1,6 @@
 # Terminal backends
 
-## Terminal backend contract
+## Overview
 
 One SharpVision application uses one physical terminal connection and one fixed
 terminal backend identity. The connection, backend identity, protocol
@@ -20,8 +20,8 @@ immutable family identity and owns no transport, query tracker, or mutable
 capability state. `ProtocolExtension` is composition metadata; existing typed
 encoders, decoders, routers, services, and graphics implementations remain the
 only wire implementations. The
-[discovery pipeline](discovery-pipeline.md#discovery-pipeline-contract) produces
-the evidence used to resolve identity and refine capabilities.
+[discovery pipeline](discovery-pipeline.md#overview) produces the evidence used
+to resolve identity and refine capabilities.
 
 `TerminalContext` binds the selected backend to the current immutable
 `TerminalProfile`. One context lineage exists for an application lifetime.
@@ -78,8 +78,8 @@ replace an already published identity.
 
 A backend's extension collection says which protocol families the library can
 compose for that identity. It is not a support claim and it is not permission to
-emit bytes. The [capability contract](capabilities.md#capability-contract)
-authorizes optional output only from supported evidence with an approved origin.
+emit bytes. The [capability contract](capabilities.md#overview) authorizes
+optional output only from supported evidence with an approved origin.
 Environment hints may remain observable or tentative but never become an output
 grant merely because an extension descriptor exists.
 
@@ -103,10 +103,10 @@ It does not resolve terminal identity.
 Renderer construction fixes the graphics backend family for that application.
 Every frame still rechecks current capability evidence, so later revocation can
 remove or repair graphics without replacing the graphics backend. The
-[rendering pipeline](rendering-pipeline.md#rendering-pipeline-contract) owns
-transaction ordering, cell fallback, invalidation, and cleanup. The
-[memory contract](memory-ownership.md#memory-ownership-contract) owns backend
-state and borrowed buffers.
+[rendering pipeline](rendering-pipeline.md#overview) owns transaction ordering,
+cell fallback, invalidation, and cleanup. The
+[memory contract](memory-ownership.md#overview) owns backend state and borrowed
+buffers.
 
 ## Initialization and ownership
 

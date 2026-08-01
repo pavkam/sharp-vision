@@ -8,10 +8,10 @@ floating interaction, responsive hierarchy, spacing, chrome, or semantic color.
 ## Normative documentation
 
 - [Layout panels](../../../../docs/concepts/layout.md#panels)
-- [Box model](../../../../docs/concepts/box-model.md#box-model-contract)
-- [Styling](../../../../docs/concepts/styling.md#styling-contract)
-- [Intrinsic chrome](../../../../docs/concepts/intrinsic-chrome.md#intrinsic-chrome-contract)
-- [Floating surfaces](../../../../docs/concepts/floating-surfaces.md#floating-surface-contract)
+- [Box model](../../../../docs/concepts/box-model.md#overview)
+- [Styling](../../../../docs/concepts/styling.md#overview)
+- [Intrinsic chrome](../../../../docs/concepts/intrinsic-chrome.md#overview)
+- [Floating surfaces](../../../../docs/concepts/floating-surfaces.md#overview)
 - [Showcase responsive behavior](../../../../docs/architecture/showcase.md#responsive-behavior)
 
 ## Composition guide

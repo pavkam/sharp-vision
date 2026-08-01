@@ -1,6 +1,6 @@
 # Themes
 
-## Theme file contract
+## Overview
 
 A SharpVision theme is one bounded UTF-8 JSON document. It defines global
 semantic colors, terminal attributes, and five high-level appearance profiles.
@@ -19,7 +19,7 @@ flowchart LR
 
 The root accepts only these fields:
 
-| Field                                  | Type     | Contract                                                    |
+| Field                                  | Type     | Description                                                 |
 | -------------------------------------- | -------- | ----------------------------------------------------------- |
 | `name`, `slug`, `colorScheme`, `order` | metadata | Embedded catalog identity and ordering.                     |
 | `author`, `license`, `source`          | metadata | Attribution and provenance.                                 |

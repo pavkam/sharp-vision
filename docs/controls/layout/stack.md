@@ -1,6 +1,6 @@
 # Stack
 
-## Stack contract
+## Overview
 
 `Stack` arranges managed children sequentially on a vertical or horizontal axis.
 Child order is render, navigation, and default z-order.

@@ -1,6 +1,6 @@
 # Focus
 
-## Focus contract
+## Overview
 
 One control within a `FocusManager` root may hold keyboard focus. A focusable
 control is attached, visible, enabled, and has `CanFocus` set. An active
@@ -115,9 +115,8 @@ is deferred behind that cleanup, preserving the same observable ordering. Focus
 eligibility is local to the control and independent of pointer capture, so this
 transition neither releases capture nor evicts a focused descendant.
 
-Terminal focus from
-[mode 1004](../protocols/paste-focus.md#paste-and-focus-contract) is separate
-from control focus and never invents a new focused control.
+Terminal focus from [mode 1004](../protocols/paste-focus.md#overview) is
+separate from control focus and never invents a new focused control.
 
 [Access keys](access-keys.md#focus-and-semantic-actions) reuse this focus
 manager: focusable captions target themselves, captioned scopes target their

@@ -1,6 +1,6 @@
 # ProgressBar
 
-## ProgressBar contract
+## Overview
 
 `ProgressBar` displays a non-interactive visual progress indicator as a filled
 bar. It cannot receive focus, is excluded from hit testing, and owns no

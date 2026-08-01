@@ -32,14 +32,14 @@ shutdown are one lifecycle contract, not independent conveniences.
 
 <!-- markdownlint-disable MD013 -->
 
-| Task signal                                                                     | Read                                                      | Normative starting point                                                                                 |
-| ------------------------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Dispatcher queue, affinity, timers, idle, reentrancy                            | [dispatcher.md](references/dispatcher.md)                 | [Threading](../../../docs/concepts/threading.md#threading-contract)                                      |
-| ConsoleApplication, builder, options, ConsoleHost, preflight, Ctrl+C            | [hosting.md](references/hosting.md)                       | [Hosting](../../../docs/concepts/hosting.md#hosting-contract)                                            |
-| Iteration order, input, timers, layout, render, resize, shutdown                | [event-loop.md](references/event-loop.md)                 | [Runtime event loop](../../../docs/architecture/runtime-event-loop.md#runtime-event-loop-contract)       |
-| Bell, title, clipboard, graphics, out-of-band writes, routing                   | [terminal-services.md](references/terminal-services.md)   | [Terminal integration](../../../docs/architecture/terminal-integration.md#terminal-integration-contract) |
-| Session, transport, Unix/Windows modes, leases, cleanup, exception preservation | [platform-lifecycle.md](references/platform-lifecycle.md) | [Runtime shutdown](../../../docs/architecture/runtime-event-loop.md#shutdown)                            |
-| Any runtime or hosting verification                                             | [testing.md](references/testing.md)                       | [Pseudoterminal testing](../../../docs/testing/pseudoterminals.md#pseudoterminal-testing-contract)       |
+| Task signal                                                                     | Read                                                      | Normative starting point                                                            |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Dispatcher queue, affinity, timers, idle, reentrancy                            | [dispatcher.md](references/dispatcher.md)                 | [Threading](../../../docs/concepts/threading.md#overview)                           |
+| ConsoleApplication, builder, options, ConsoleHost, preflight, Ctrl+C            | [hosting.md](references/hosting.md)                       | [Hosting](../../../docs/concepts/hosting.md#overview)                               |
+| Iteration order, input, timers, layout, render, resize, shutdown                | [event-loop.md](references/event-loop.md)                 | [Runtime event loop](../../../docs/architecture/runtime-event-loop.md#overview)     |
+| Bell, title, clipboard, graphics, out-of-band writes, routing                   | [terminal-services.md](references/terminal-services.md)   | [Terminal integration](../../../docs/architecture/terminal-integration.md#overview) |
+| Session, transport, Unix/Windows modes, leases, cleanup, exception preservation | [platform-lifecycle.md](references/platform-lifecycle.md) | [Runtime shutdown](../../../docs/architecture/runtime-event-loop.md#shutdown)       |
+| Any runtime or hosting verification                                             | [testing.md](references/testing.md)                       | [Pseudoterminal testing](../../../docs/testing/pseudoterminals.md#overview)         |
 
 <!-- markdownlint-enable MD013 -->
 

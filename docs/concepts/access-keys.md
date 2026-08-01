@@ -1,6 +1,6 @@
 # Access keys
 
-## Access-key contract
+## Overview
 
 An access key is a caption-local keyboard action declared by an ampersand. It is
 distinct from a command shortcut such as `Ctrl+S`: the caption owns the access

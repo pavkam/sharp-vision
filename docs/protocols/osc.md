@@ -1,6 +1,6 @@
 # Operating System Commands
 
-## OSC contract
+## Overview
 
 OSC uses `ESC ]`, a numeric selector, semicolon-delimited content, and a string
 terminator. SharpVision emits `ST` (`ESC \`) by default. A compatibility option
@@ -20,7 +20,7 @@ sensitive query responses.
 Typed support covers selectors 0/2 for titles, 4/10/11 for palette/default color
 queries where capabilities allow, 8 for hyperlinks, 52 for clipboard text, and
 5522 through the dedicated
-[Kitty clipboard contract](kitty-clipboard.md#kitty-clipboard-contract).
+[Kitty clipboard contract](kitty-clipboard.md#overview).
 
 ## Typed API and behavior
 

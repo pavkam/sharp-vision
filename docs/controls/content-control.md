@@ -1,21 +1,21 @@
 # ContentControl base API
 
-## ContentControl contract
+## Overview
 
 `ContentControl` is the abstract authoring role for a control that owns zero or
 one publicly replaceable `Control`. It derives directly from
-[`Control`](control.md#control-contract). Its non-virtual `Content` property is
-`null` by default; a derived role may observe committed changes through
+[`Control`](control.md#overview). Its non-virtual `Content` property is `null`
+by default; a derived role may observe committed changes through
 `OnContentChanged(previous, current)` without replacing the ownership engine.
 
 Use `ContentControl` when arbitrary callers may replace one semantic content
 value. A component whose retained implementation tree is private uses the
 separate composition role described by the
-[`CompositeControl`](composite-control.md#compositecontrol-contract) contract. A
-general-purpose panel whose callers may add arbitrary children remains a
-[`Container`](container.md#container-contract). Focusable single-face controls
-derive from [`Pressable`](pressable.md#pressable-contract), which inherits this
-exact content transaction instead of adding another content property.
+[`CompositeControl`](composite-control.md#overview) contract. A general-purpose
+panel whose callers may add arbitrary children remains a
+[`Container`](container.md#overview). Focusable single-face controls derive from
+[`Pressable`](pressable.md#overview), which inherits this exact content
+transaction instead of adding another content property.
 
 ## API
 

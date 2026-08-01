@@ -1,6 +1,6 @@
 # FigletText
 
-## FigletText contract
+## Overview
 
 `FigletText` renders Unicode source text through an immutable `FigletFont` and
 the semantic terminal canvas. Generated rows are cached until `Content`, `Font`,

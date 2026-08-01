@@ -87,10 +87,9 @@ cycle; `Prism` itself owns no timer or animation loop.
   rainbow and death-wave counters.
 
 The reusable effect is defined by the normative
-[`Prism` control contract](../../docs/controls/display/prism.md#prism-contract).
-The surrounding behavior follows SharpVision's
-[routed input](../../docs/concepts/input-routing.md#input-routing-contract),
-[runtime event loop](../../docs/architecture/runtime-event-loop.md#runtime-event-loop-contract),
-and
-[rendering pipeline](../../docs/architecture/rendering-pipeline.md#rendering-pipeline-contract)
+[`Prism` control contract](../../docs/controls/display/prism.md#overview). The
+surrounding behavior follows SharpVision's
+[routed input](../../docs/concepts/input-routing.md#overview),
+[runtime event loop](../../docs/architecture/runtime-event-loop.md#overview),
+and [rendering pipeline](../../docs/architecture/rendering-pipeline.md#overview)
 contracts.

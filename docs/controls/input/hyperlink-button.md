@@ -1,13 +1,13 @@
 # HyperlinkButton
 
-## HyperlinkButton contract
+## Overview
 
 `HyperlinkButton` is a focusable clickable text control styled as a classic
 hyperlink with accent foreground and underline.
 
 ## API
 
-| Member                        | Default        | Contract                                                                |
+| Member                        | Default        | Description                                                             |
 | ----------------------------- | -------------- | ----------------------------------------------------------------------- |
 | `Content`                     | `null`         | Inherited replaceable visual face.                                      |
 | `Text`                        | `null`         | Convenience access to retained `Text` content; assignment rejects null. |

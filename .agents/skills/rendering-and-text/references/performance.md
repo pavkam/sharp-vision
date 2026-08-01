@@ -7,9 +7,9 @@ write-count, pooling, or benchmark behavior.
 
 ## Normative documentation
 
-- [Performance contract](../../../../docs/testing/performance.md#performance-testing-contract)
+- [Performance contract](../../../../docs/testing/performance.md#overview)
 - [Renderer gates](../../../../docs/testing/performance.md#renderer-and-protocol-gates)
-- [Memory ownership](../../../../docs/architecture/memory-ownership.md#memory-ownership-contract)
+- [Memory ownership](../../../../docs/architecture/memory-ownership.md#overview)
 - [Randomized rendering](../../../../docs/testing/rendering.md#randomized-transitions)
 
 ## Workflow

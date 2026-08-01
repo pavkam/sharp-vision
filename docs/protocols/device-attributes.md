@@ -1,11 +1,11 @@
 # Device attributes and capability queries
 
-## Device attribute contract
+## Overview
 
 DA1 uses `CSI c` or `CSI 0 c`; DA2 uses `CSI > c`. DEC private mode reports use
 DECRQM/DECRPM as specified in the
-[DEC mode contract](dec-private-modes.md#dec-private-mode-contract). xterm and
-Kitty add color, cell-size, keyboard, graphics, and clipboard queries.
+[DEC mode contract](dec-private-modes.md#overview). xterm and Kitty add color,
+cell-size, keyboard, graphics, and clipboard queries.
 
 Queries are typed transactions with correlation where the protocol supplies an
 identifier. Startup applies environment/multiplexer hints first, sends only safe
@@ -45,12 +45,12 @@ reports `CSI 4 ; height ; width t`, `CSI 6 ; height ; width t`, and
 `MetricsResponse` is constructed. `Responses.TryOsc` owns `PaletteResponse`
 values for OSC 4, OSC 10, and OSC 11. One-to-four-digit hexadecimal RGB
 components are validated and normalized to 16-bit values before publication. The
-[runtime router](runtime-routing.md#runtime-routing-contract) delivers those
-typed values without allowing them to fall through as keyboard input.
-`QueryTracker` admits at most `QueryLimits.MaxConcurrentQueries`, one active
-uncorrelated query per family, and distinct Kitty clipboard IDs. Completed,
-cancelled, and timed-out correlations remain in a bounded grace window so
-duplicates and late replies cannot mutate a published profile.
+[runtime router](runtime-routing.md#overview) delivers those typed values
+without allowing them to fall through as keyboard input. `QueryTracker` admits
+at most `QueryLimits.MaxConcurrentQueries`, one active uncorrelated query per
+family, and distinct Kitty clipboard IDs. Completed, cancelled, and timed-out
+correlations remain in a bounded grace window so duplicates and late replies
+cannot mutate a published profile.
 
 `StatusResponse` and `CapabilityResponse` own the validated DCS families. Typed
 tracker registration retains the exact `StatusName` or `CapabilityName`;

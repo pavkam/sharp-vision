@@ -1,6 +1,6 @@
 # Calendar
 
-## Calendar contract
+## Overview
 
 `Calendar` is one focusable direct-rendered control for choosing either one
 Gregorian date or one inclusive Gregorian date interval. It owns one fixed
@@ -9,7 +9,7 @@ controls.
 
 ## API
 
-| Member                       | Default                        | Contract                                                        |
+| Member                       | Default                        | Description                                                     |
 | ---------------------------- | ------------------------------ | --------------------------------------------------------------- |
 | `SelectionMode`              | `CalendarSelectionMode.Select` | Selects a single-day or two-activation interval state machine.  |
 | `Selection`                  | `null`                         | Nullable committed inclusive `DateInterval`.                    |

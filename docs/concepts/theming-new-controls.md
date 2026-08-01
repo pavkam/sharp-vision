@@ -1,6 +1,6 @@
 # Theming a new control
 
-## Theming contract
+## Overview
 
 A new control selects one existing semantic `ThemeRole`, keeps control-specific
 glyphs and internal part geometry in code, and exposes complete local appearance

@@ -1,9 +1,8 @@
 # Window
 
-## Window contract
+## Overview
 
-`Window` is a
-[`FloatingSurface`](../../concepts/floating-surfaces.md#floating-surface-contract)
+`Window` is a [`FloatingSurface`](../../concepts/floating-surfaces.md#overview)
 that frames inherited `Content` as a titled terminal surface. The Window object
 is the retained, rendered, hit-tested, and optionally modal identity; it does
 not require a presentation wrapper.
@@ -34,11 +33,11 @@ Automatic measurement includes the child, margins, frame, header, and complete
 close chrome.
 
 A Window is normally a direct child of an
-[`Overlay`](../layout/overlay.md#overlay-contract). Unpositioned fitting Windows
-center on each centered axis. Attached `Left`, `Top`, `Right`, and `Bottom`
-offsets select explicit placement. Every Overlay arrangement constrains the
-complete border box inside the latest content bounds without mutating authored
-offsets. An oversized Window begins at the leading edge and clips normally.
+[`Overlay`](../layout/overlay.md#overview). Unpositioned fitting Windows center
+on each centered axis. Attached `Left`, `Top`, `Right`, and `Bottom` offsets
+select explicit placement. Every Overlay arrangement constrains the complete
+border box inside the latest content bounds without mutating authored offsets.
+An oversized Window begins at the leading edge and clips normally.
 
 When `CanMove` is true, a primary drag from unoccupied title-bar chrome captures
 the pointer and writes Overlay `Left` and `Top` offsets from absolute pointer

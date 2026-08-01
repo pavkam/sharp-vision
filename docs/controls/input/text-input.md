@@ -1,6 +1,6 @@
 # TextInput
 
-## TextInput contract
+## Overview
 
 `TextInput` is a focusable single- or multiline editor whose caret and selection
 indices are valid grapheme boundaries.

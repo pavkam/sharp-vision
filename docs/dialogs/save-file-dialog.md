@@ -1,6 +1,6 @@
 # SaveFileDialog
 
-## SaveFileDialog contract
+## Overview
 
 `SharpVision.Dialogs.SaveFileDialog` is a sealed
 `FileDialogBase<SaveFileResult>` specialization that chooses one canonical file

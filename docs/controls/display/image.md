@@ -1,13 +1,13 @@
 # Image
 
-## Image contract
+## Overview
 
 `Image` is declared `public sealed class Image : Control`. It displays one
 borrowed immutable
-[`Terminal.Graphics.ImageSource`](../../concepts/images.md#imagesource-ownership-contract)
-without exposing a terminal protocol to control code. It is passive,
-non-focusable, and has no input events. The caller retains ownership of the
-source when it is assigned, replaced, cleared, or when the control is disposed.
+[`Terminal.Graphics.ImageSource`](../../concepts/images.md#overview) without
+exposing a terminal protocol to control code. It is passive, non-focusable, and
+has no input events. The caller retains ownership of the source when it is
+assigned, replaced, cleared, or when the control is disposed.
 
 ## API
 

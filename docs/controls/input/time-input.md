@@ -1,6 +1,6 @@
 # TimeInput
 
-## TimeInput contract
+## Overview
 
 `TimeInput` displays a formatted time with inline segment editing.
 
@@ -11,7 +11,7 @@ basic display and editing options.
 
 ## API
 
-| Member                       | Default                                  | Contract                                                 |
+| Member                       | Default                                  | Description                                              |
 | ---------------------------- | ---------------------------------------- | -------------------------------------------------------- |
 | `Value`                      | current local time                       | Nullable committed time clamped to the inclusive bounds. |
 | `AllowNull`                  | `true`                                   | Allows Delete or Backspace to clear the value.           |

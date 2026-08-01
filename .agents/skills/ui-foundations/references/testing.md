@@ -7,11 +7,11 @@ modality, styling, theme, or binding behavior complete.
 
 ## Normative documentation
 
-- [Control and integration testing](../../../../docs/testing/controls-integration.md#control-and-integration-testing-contract)
+- [Control and integration testing](../../../../docs/testing/controls-integration.md#overview)
 - [End-to-end path](../../../../docs/testing/controls-integration.md#end-to-end-path)
-- [Randomized testing](../../../../docs/testing/randomized.md#randomized-testing-contract)
+- [Randomized testing](../../../../docs/testing/randomized.md#overview)
 - [Performance evidence](../../../../docs/testing/performance.md#ui-infrastructure-gates)
-- [Continuous integration](../../../../docs/testing/continuous-integration.md#continuous-integration-contract)
+- [Continuous integration](../../../../docs/testing/continuous-integration.md#overview)
 - [Shape and reflection](../../../../docs/testing/correctness-model.md#shape-and-reflection)
 
 ## Evidence ladder

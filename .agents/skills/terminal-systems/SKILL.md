@@ -34,13 +34,13 @@ prove their declared support.
 
 <!-- markdownlint-disable MD013 -->
 
-| Task signal                                                                       | Read                                                              | Normative starting point                                                                                    |
-| --------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| CSI, OSC, DCS, DEC, xterm, tmux, screen, Kitty, iTerm2, sixel wire grammar        | [protocols.md](references/protocols.md)                           | [Protocol index](../../../docs/protocols/index.md#protocol-families)                                        |
-| Keyboard, mouse, paste, focus, incremental decoding                               | [input.md](references/input.md)                                   | [Terminal protocol testing](../../../docs/testing/terminal-protocols.md#terminal-protocol-testing-contract) |
-| Capabilities, identity, queries, environment evidence, terminfo, backend fallback | [discovery-and-backends.md](references/discovery-and-backends.md) | [Discovery pipeline](../../../docs/architecture/discovery-pipeline.md#discovery-pipeline-contract)          |
-| Kitty, sixel, or iTerm2 image encoding and authorization                          | [graphics-protocols.md](references/graphics-protocols.md)         | [Terminal backends](../../../docs/architecture/terminal-backends.md#terminal-backend-contract)              |
-| Any terminal-system verification                                                  | [testing.md](references/testing.md)                               | [Correctness model](../../../docs/testing/correctness-model.md#correctness-model-contract)                  |
+| Task signal                                                                       | Read                                                              | Normative starting point                                                          |
+| --------------------------------------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| CSI, OSC, DCS, DEC, xterm, tmux, screen, Kitty, iTerm2, sixel wire grammar        | [protocols.md](references/protocols.md)                           | [Protocol index](../../../docs/protocols/index.md#protocol-families)              |
+| Keyboard, mouse, paste, focus, incremental decoding                               | [input.md](references/input.md)                                   | [Terminal protocol testing](../../../docs/testing/terminal-protocols.md#overview) |
+| Capabilities, identity, queries, environment evidence, terminfo, backend fallback | [discovery-and-backends.md](references/discovery-and-backends.md) | [Discovery pipeline](../../../docs/architecture/discovery-pipeline.md#overview)   |
+| Kitty, sixel, or iTerm2 image encoding and authorization                          | [graphics-protocols.md](references/graphics-protocols.md)         | [Terminal backends](../../../docs/architecture/terminal-backends.md#overview)     |
+| Any terminal-system verification                                                  | [testing.md](references/testing.md)                               | [Correctness model](../../../docs/testing/correctness-model.md#overview)          |
 
 For an active graphics-query task, begin with `discovery-and-backends.md`. Add
 `protocols.md` only when parsing or wire grammar changes, and add

@@ -1,6 +1,6 @@
 # tmux passthrough
 
-## tmux contract
+## Overview
 
 Primary source:
 [tmux 3.7a manual](https://man7.org/linux/man-pages/man1/tmux.1.html) and

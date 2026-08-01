@@ -1,6 +1,6 @@
 # Intrinsic chrome
 
-## Intrinsic-chrome contract
+## Overview
 
 Border and shadow are intrinsic `Control` appearance, not wrapper controls.
 Every control has one semantic `Border` and one semantic `Shadow`. Themes and
@@ -14,7 +14,7 @@ shadow control types.
 
 ## Control API
 
-| Member                                       | Visibility | Contract                                                               |
+| Member                                       | Visibility | Description                                                            |
 | -------------------------------------------- | ---------- | ---------------------------------------------------------------------- |
 | `Border`, `ResetBorder()`                    | Protected  | Complete derived-control border authoring and reset.                   |
 | `Shadow`, `ResetShadow()`                    | Protected  | Complete derived-control shadow authoring and reset.                   |
@@ -36,7 +36,7 @@ attributes, and every shadow member affect rendering but not desired size.
 `Border` is a complete immutable value; `BorderSet` is a partial member-wise
 contribution used by themes and states.
 
-| Member       | `Border` type      | `BorderSet` type    | Contract                                                         |
+| Member       | `Border` type      | `BorderSet` type    | Description                                                      |
 | ------------ | ------------------ | ------------------- | ---------------------------------------------------------------- |
 | `Sides`      | `BorderSide`       | `BorderSide?`       | Enabled one-cell physical edges; unknown flag bits are rejected. |
 | `GlyphStyle` | `BorderGlyphStyle` | `BorderGlyphStyle?` | Eight validated single-cell runes for corners and edges.         |
@@ -53,7 +53,7 @@ wide. Partial edges reserve and draw only their selected physical sides.
 
 `Shadow` is complete; `ShadowSet` overlays only supplied members.
 
-| Member       | `Shadow` type    | `ShadowSet` type  | Contract                                                                           |
+| Member       | `Shadow` type    | `ShadowSet` type  | Description                                                                        |
 | ------------ | ---------------- | ----------------- | ---------------------------------------------------------------------------------- |
 | `IsVisible`  | `bool`           | `bool?`           | Enables intrinsic shadow rendering.                                                |
 | `Mode`       | `ShadowMode`     | `ShadowMode?`     | Selects destination composition; undefined values are rejected.                    |

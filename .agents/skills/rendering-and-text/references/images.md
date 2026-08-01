@@ -7,7 +7,7 @@ composition, fallback cells, or graphics-renderer integration.
 
 ## Normative documentation
 
-- [Image ownership](../../../../docs/concepts/images.md#imagesource-ownership-contract)
+- [Image ownership](../../../../docs/concepts/images.md#overview)
 - [Bounds and validation](../../../../docs/concepts/images.md#bounds-and-validation)
 - [Copy boundary](../../../../docs/concepts/images.md#copy-boundary)
 - [Semantic graphics proof](../../../../docs/testing/rendering.md#semantic-graphics-proof)

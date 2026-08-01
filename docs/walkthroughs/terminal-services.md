@@ -66,7 +66,7 @@ families.
 
 Capability absence is expected environmental state, not a control-flow
 exception. The
-[safe-degradation contract](../concepts/safe-degradation.md#safe-degradation-contract)
-owns fallback and strict diagnostics. The
+[safe-degradation contract](../concepts/safe-degradation.md#overview) owns
+fallback and strict diagnostics. The
 [feature support map](../features/index.md#feature-support) links common
 application needs to the exact proof.

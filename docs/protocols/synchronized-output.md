@@ -1,6 +1,6 @@
 # Synchronized output
 
-## Synchronized output contract
+## Overview
 
 Synchronized output uses DEC private mode 2026: `CSI ? 2026 h` begins a buffered
 update and `CSI ? 2026 l` ends it. It is a terminal extension rather than an

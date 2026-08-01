@@ -1,6 +1,6 @@
 # Performance testing
 
-## Performance-testing contract
+## Overview
 
 Performance claims require correctness tests first and versioned scenarios.
 Metrics include elapsed/CPU time, throughput, allocations, retained/peak memory,

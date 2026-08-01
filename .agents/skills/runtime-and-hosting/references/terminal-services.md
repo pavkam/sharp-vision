@@ -8,10 +8,10 @@ availability.
 
 ## Normative documentation
 
-- [Terminal integration](../../../../docs/architecture/terminal-integration.md#terminal-integration-contract)
+- [Terminal integration](../../../../docs/architecture/terminal-integration.md#overview)
 - [Public terminal API](../../../../docs/architecture/terminal-integration.md#public-api)
 - [Protocol routing](../../../../docs/architecture/terminal-integration.md#protocol-routing)
-- [Runtime routing](../../../../docs/protocols/runtime-routing.md#runtime-routing-contract)
+- [Runtime routing](../../../../docs/protocols/runtime-routing.md#overview)
 - [Ordering and ownership](../../../../docs/protocols/runtime-routing.md#ordering-and-ownership)
 
 ## Code map

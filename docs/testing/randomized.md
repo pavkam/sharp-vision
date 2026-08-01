@@ -1,6 +1,6 @@
 # Randomized testing
 
-## Randomized-testing contract
+## Overview
 
 Randomized/property-style tests use explicit reproducible seeds and independent
 oracles. Failures print the seed and serialized minimal case; shrinking may be

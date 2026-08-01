@@ -1,6 +1,6 @@
 # Data binding
 
-## Data-binding contract
+## Overview
 
 SharpVision binds retained control properties to ordinary .NET model properties
 through strongly typed expressions. Models remain caller-owned CLR objects;

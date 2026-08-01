@@ -1,6 +1,6 @@
 # DateTimeInput
 
-## DateTimeInput contract
+## Overview
 
 `DateTimeInput` combines date and time segment editing with an optional Calendar
 popup.
@@ -11,7 +11,7 @@ date navigation options as `Calendar`.
 
 ## API
 
-| Member                         | Default                                         | Contract                                                                 |
+| Member                         | Default                                         | Description                                                              |
 | ------------------------------ | ----------------------------------------------- | ------------------------------------------------------------------------ |
 | `Value`                        | current local date and time                     | Nullable value clamped to the inclusive bounds.                          |
 | `AllowNull`                    | `true`                                          | Allows Delete or Backspace to clear the value.                           |

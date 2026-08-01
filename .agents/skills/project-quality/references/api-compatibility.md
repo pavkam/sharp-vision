@@ -8,7 +8,7 @@ versions, baseline review, assembly selection, or breaking-change evidence.
 ## Normative documentation
 
 - [Public API compatibility](../../../../docs/testing/correctness-model.md#public-api-compatibility)
-- [Project boundaries](../../../../docs/architecture/project-structure.md#project-structure-contract)
+- [Project boundaries](../../../../docs/architecture/project-structure.md#overview)
 - [Change rule](../../../../docs/architecture/project-structure.md#change-rule)
 - [CI required evidence](../../../../docs/testing/continuous-integration.md#required-evidence)
 

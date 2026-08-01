@@ -7,11 +7,11 @@ showcase verification, rendering assertions, or interaction evidence.
 
 ## Normative documentation
 
-- [Control testing](../../../../docs/testing/controls-integration.md#control-and-integration-testing-contract)
+- [Control testing](../../../../docs/testing/controls-integration.md#overview)
 - [Mounted surfaces](../../../../docs/testing/controls-integration.md#mounted-component-surfaces)
 - [State machines](../../../../docs/testing/controls-integration.md#controls-with-state-machines)
 - [Required evidence](../../../../docs/testing/controls-integration.md#required-evidence)
-- [Showcase verification](../../../../docs/architecture/showcase.md#verification-contract)
+- [Showcase verification](../../../../docs/architecture/showcase.md#verification)
 - [Shape and reflection](../../../../docs/testing/correctness-model.md#shape-and-reflection)
 
 ## Evidence levels

@@ -1,6 +1,6 @@
 # Kitty clipboard and OSC 52
 
-## Kitty clipboard contract
+## Overview
 
 Primary source:
 [Kitty clipboard protocol](https://sw.kovidgoyal.net/kitty/clipboard/), accessed

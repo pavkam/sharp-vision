@@ -39,7 +39,7 @@ FIGlet text, theme-aware styling, scrolling, and the control catalog:
 - `tests/` contains the terminal and UI verification suites.
 
 The
-[project structure contract](docs/architecture/project-structure.md#project-structure-contract)
+[project structure specification](docs/architecture/project-structure.md#overview)
 defines the one-way dependency graph and ownership boundaries.
 
 ## Package status
@@ -72,7 +72,7 @@ make test
 ```
 
 Run the interactive gallery with `make run`. The
-[continuous-integration contract](docs/testing/continuous-integration.md#continuous-integration-contract)
+[continuous-integration specification](docs/testing/continuous-integration.md#overview)
 maps these commands to the public gate.
 
 To build an application instead of the repository, start with the
@@ -80,20 +80,20 @@ To build an application instead of the repository, start with the
 
 ## Documentation
 
-The documentation is part of the product contract. Start with the
-[documentation index](docs/index.md#documentation-contract), then choose the
-area you are changing:
+The documentation is part of the product. Start with the
+[documentation index](docs/index.md#documentation-rules), then choose the area
+you are changing:
 
-| Need                                                            | Start here                                                                                                                                                                                 |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| First app, layout, events, background work, and custom controls | [Walkthroughs](docs/walkthroughs/index.md#walkthroughs)                                                                                                                                    |
-| Terminal wire behavior and support                              | [Protocol index](docs/protocols/index.md#protocol-families) and [coverage matrix](docs/protocols/coverage-matrix.md#coverage)                                                              |
-| Reader-facing feature availability                              | [Feature support](docs/features/index.md#feature-support)                                                                                                                                  |
-| Ownership, runtime, rendering, and capabilities                 | [Architecture map](docs/architecture/index.md#architecture-map)                                                                                                                            |
-| Layout, input, threading, lifecycle, themes, and hosting        | [Concept map](docs/concepts/index.md#concept-map)                                                                                                                                          |
-| Public control APIs and composition                             | [Control catalog](docs/controls/index.md#control-catalog)                                                                                                                                  |
-| Test oracles and quality expectations                           | [Test map](docs/testing/index.md#test-map)                                                                                                                                                 |
-| Runnable API examples                                           | [Showcase](docs/architecture/showcase.md#showcase-contract), [text editor](examples/TextEditor/README.md#sharpvision-text-editor), and [Snake](examples/Snake/README.md#sharpvision-snake) |
+| Need                                                            | Start here                                                                                                                                                                        |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| First app, layout, events, background work, and custom controls | [Walkthroughs](docs/walkthroughs/index.md#walkthroughs)                                                                                                                           |
+| Terminal wire behavior and support                              | [Protocol index](docs/protocols/index.md#protocol-families) and [coverage matrix](docs/protocols/coverage-matrix.md#coverage)                                                     |
+| Reader-facing feature availability                              | [Feature support](docs/features/index.md#feature-support)                                                                                                                         |
+| Ownership, runtime, rendering, and capabilities                 | [Architecture map](docs/architecture/index.md#architecture-map)                                                                                                                   |
+| Layout, input, threading, lifecycle, themes, and hosting        | [Concept map](docs/concepts/index.md#concept-map)                                                                                                                                 |
+| Public control APIs and composition                             | [Control catalog](docs/controls/index.md#control-catalog)                                                                                                                         |
+| Test oracles and quality expectations                           | [Test map](docs/testing/index.md#test-map)                                                                                                                                        |
+| Runnable API examples                                           | [Showcase](docs/architecture/showcase.md#overview), [text editor](examples/TextEditor/README.md#sharpvision-text-editor), and [Snake](examples/Snake/README.md#sharpvision-snake) |
 
 ## Contributing and support
 

@@ -1,13 +1,13 @@
 # RadioButton
 
-## RadioButton contract
+## Overview
 
-`RadioButton` is a sealed [`Pressable`](../pressable.md#pressable-contract)
-selection control. At most one owned member in an effective group is checked.
+`RadioButton` is a sealed [`Pressable`](../pressable.md#overview) selection
+control. At most one owned member in an effective group is checked.
 
 ## API
 
-| Member                         | Default            | Contract                                                        |
+| Member                         | Default            | Description                                                     |
 | ------------------------------ | ------------------ | --------------------------------------------------------------- |
 | `IsChecked`                    | `false`            | Selects the member; programmatic false may leave a group empty. |
 | `GroupName`                    | `null`             | Exact-slot unnamed grouping or ordinal named grouping.          |

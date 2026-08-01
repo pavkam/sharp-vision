@@ -1,6 +1,6 @@
 # Hosting
 
-## Hosting contract
+## Overview
 
 `SharpVision.ConsoleApplication` is the fluent public entry point for an
 interactive console host. It replaces the removed

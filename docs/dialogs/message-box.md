@@ -1,17 +1,17 @@
 # MessageBox
 
-## MessageBox contract
+## Overview
 
 `MessageBox` lives in `SharpVision.Dialogs` and is a retained, measured
-[`Window`](../controls/windows/window.md#window-contract) specialization for
-short user decisions. The MessageBox object itself renders the title,
-grapheme-safe wrapped message, centered action row, and
+[`Window`](../controls/windows/window.md#overview) specialization for short user
+decisions. The MessageBox object itself renders the title, grapheme-safe wrapped
+message, centered action row, and
 [modal presentation](../concepts/modality.md#popup-and-window-presentations)
 when shown asynchronously; there is no nested proxy Window.
 
 ## API
 
-| Member              | Default                | Contract                                                                                                          |
+| Member              | Default                | Description                                                                                                       |
 | ------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `Message`           | required               | Non-null message rendered as grapheme-safe wrapped `Text`.                                                        |
 | `Title`             | `"Message"`            | Non-null Window title.                                                                                            |

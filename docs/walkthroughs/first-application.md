@@ -50,12 +50,12 @@ internal sealed class HelloScreen : Screen
 ```
 
 `Screen` is a retained
-[`CompositeControl`](../controls/composite-control.md#compositecontrol-contract).
-Its constructor creates the permanent visual tree and calls `InitializeContent`
-exactly once. `Stack.Spacing` inserts one terminal cell between visible
-children; the two alignment properties center the stack inside the application
-viewport. The [`Button`](../controls/input/button.md#button-contract) owns one
-`Content` child and publishes `Click` after a completed activation.
+[`CompositeControl`](../controls/composite-control.md#overview). Its constructor
+creates the permanent visual tree and calls `InitializeContent` exactly once.
+`Stack.Spacing` inserts one terminal cell between visible children; the two
+alignment properties center the stack inside the application viewport. The
+[`Button`](../controls/input/button.md#overview) owns one `Content` child and
+publishes `Click` after a completed activation.
 
 ## Run it
 
@@ -86,7 +86,7 @@ var status = await ConsoleApplication.RunAsync(
 Do not manually construct `ConsoleHost`, terminal `Options`, or escape sequences
 for an interactive application. The builder coordinates platform mode leases,
 session cleanup, capabilities, and the
-[runtime event loop](../architecture/runtime-event-loop.md#runtime-event-loop-contract).
+[runtime event loop](../architecture/runtime-event-loop.md#overview).
 
 Next,
 [compose a responsive layout](layout-and-controls.md#compose-layout-and-controls).

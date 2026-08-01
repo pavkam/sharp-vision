@@ -1,13 +1,13 @@
 # Spinner
 
-## Spinner contract
+## Overview
 
 `Spinner` displays one automatically advancing glyph. It owns no children,
 cannot focus, and is excluded from pointer hit testing.
 
 ## API
 
-| Member                      | Default          | Contract                                             |
+| Member                      | Default          | Description                                          |
 | --------------------------- | ---------------- | ---------------------------------------------------- |
 | `Style`                     | `null`           | Optional complete developer-authored `SpinnerStyle`. |
 | `ActualStyle`               | Theme spinner    | Always-present resolved style.                       |

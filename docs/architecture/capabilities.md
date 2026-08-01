@@ -1,6 +1,6 @@
 # Terminal capabilities
 
-## Capability contract
+## Overview
 
 `Capabilities` is an immutable value published after bounded detection. It
 states supported protocol features, color/style fidelity, Unicode-width policy,
@@ -8,10 +8,10 @@ cell/pixel metrics, and multiplexer constraints.
 
 Capabilities authorize optional runtime behavior; they do not identify the
 terminal emulator. The
-[terminal backend contract](terminal-backends.md#terminal-backend-contract) owns
-fixed VT/xterm/Kitty/iTerm2 identity, while the
-[discovery pipeline](discovery-pipeline.md#discovery-pipeline-contract) owns
-source precedence, adapters, resolution, and immutable publication.
+[terminal backend contract](terminal-backends.md#overview) owns fixed
+VT/xterm/Kitty/iTerm2 identity, while the
+[discovery pipeline](discovery-pipeline.md#overview) owns source precedence,
+adapters, resolution, and immutable publication.
 
 The capability profile represents each optional protocol as a `Feature`
 containing `Support` and `Origin`. `Support` is unknown, unsupported, tentative,
@@ -44,8 +44,8 @@ flowchart LR
 ```
 
 The arrows describe evidence flow, not equal authority. The
-[discovery pipeline](discovery-pipeline.md#discovery-pipeline-contract) owns the
-ordered precedence and publication rules.
+[discovery pipeline](discovery-pipeline.md#overview) owns the ordered precedence
+and publication rules.
 
 ## Terminal-description boundary
 
@@ -205,10 +205,10 @@ inner profile conservatively narrowed.
 ## Queries and publication
 
 Queries use typed transactions defined by the
-[device-attribute contract](../protocols/device-attributes.md#device-attribute-contract).
-Each has a fake-clock-testable timeout. Publication creates a new immutable
-profile; late replies may inform diagnostics or a later explicit refresh but do
-not mutate values being used by a frame.
+[device-attribute contract](../protocols/device-attributes.md#overview). Each
+has a fake-clock-testable timeout. Publication creates a new immutable profile;
+late replies may inform diagnostics or a later explicit refresh but do not
+mutate values being used by a frame.
 
 `QueryTracker` enforces `QueryLimits.MaxConcurrentQueries`, permits one active
 uncorrelated query per response family, and uses a sanitized identifier for

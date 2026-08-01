@@ -1,6 +1,6 @@
 # ChaseIndicator
 
-## ChaseIndicator contract
+## Overview
 
 `ChaseIndicator` moves one or two highlighted glyphs through a bounded
 horizontal or vertical track with a fading history. It owns no children and is
@@ -8,7 +8,7 @@ excluded from focus and pointer hit testing.
 
 ## API
 
-| Member                                    | Default              | Contract                                                    |
+| Member                                    | Default              | Description                                                 |
 | ----------------------------------------- | -------------------- | ----------------------------------------------------------- |
 | `Style`                                   | `null`               | Optional complete developer-authored `ChaseIndicatorStyle`. |
 | `ActualStyle`                             | Theme chase          | Always-present resolved style.                              |

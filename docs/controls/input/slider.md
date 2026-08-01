@@ -1,12 +1,11 @@
 # Slider
 
-## Slider contract
+## Overview
 
 `Slider` is a focusable signed-integer range control for direct value selection.
-It is distinct from
-[`ScrollBar`](../scrolling/scroll-bar.md#scrollbar-contract): a track press
-selects the mapped value immediately, the thumb has a fixed one-cell extent, and
-no viewport extent or paging buttons participate in geometry.
+It is distinct from [`ScrollBar`](../scrolling/scroll-bar.md#overview): a track
+press selects the mapped value immediately, the thumb has a fixed one-cell
+extent, and no viewport extent or paging buttons participate in geometry.
 
 ## API
 

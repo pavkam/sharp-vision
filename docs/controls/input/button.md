@@ -1,14 +1,14 @@
 # Button
 
-## Button contract
+## Overview
 
-`Button` is a sealed [`Pressable`](../pressable.md#pressable-contract) command
-control with one optional retained `Content` child. One completed activation
-raises `Click` and invokes its command once.
+`Button` is a sealed [`Pressable`](../pressable.md#overview) command control
+with one optional retained `Content` child. One completed activation raises
+`Click` and invokes its command once.
 
 ## API
 
-| Member                        | Default       | Contract                                                                |
+| Member                        | Default       | Description                                                             |
 | ----------------------------- | ------------- | ----------------------------------------------------------------------- |
 | `Style`                       | `null`        | Optional complete developer-authored `ButtonStyle`.                     |
 | `ActualStyle`                 | Theme button  | Always-present style resolved from `Style`, the Theme, or the fallback. |

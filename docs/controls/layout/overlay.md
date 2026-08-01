@@ -1,6 +1,6 @@
 # Overlay
 
-## Overlay contract
+## Overview
 
 `Overlay` owns overlapping managed children, optional absolute positioning, and
 deterministic z-order. Unpositioned children share the complete content box;

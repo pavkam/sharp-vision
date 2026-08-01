@@ -8,7 +8,7 @@ interaction.
 
 ## Normative documentation
 
-- [TextInput](../../../../docs/controls/input/text-input.md#textinput-contract)
+- [TextInput](../../../../docs/controls/input/text-input.md#overview)
 - [Edit model](../../../../docs/controls/input/text-input.md#edit-model-api)
 - [TextInput behavior](../../../../docs/controls/input/text-input.md#behavior)
 - [Unicode shared consumers](../../../../docs/concepts/unicode-cell-geometry.md#shared-consumers)

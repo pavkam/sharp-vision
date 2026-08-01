@@ -1,6 +1,6 @@
 # ListView
 
-## ListView contract
+## Overview
 
 `ListView` is a focusable selection control over an owned item snapshot and
 caller-configurable template. The control realizes every item into a private

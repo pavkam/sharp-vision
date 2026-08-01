@@ -1,6 +1,6 @@
 # Separator
 
-## Separator contract
+## Overview
 
 `Separator` draws one non-interactive horizontal or vertical divider line. It
 cannot receive focus, is excluded from hit testing, and owns no children.

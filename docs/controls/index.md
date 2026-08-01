@@ -36,12 +36,11 @@ The diagram shows authoring roles and representative controls, not every sealed
 type. Choose the role with the
 [custom-control walkthrough](../walkthroughs/custom-controls.md#choose-the-right-base-type).
 
-All controls derive from the
-[base control contract](control.md#control-contract) and use the shared
-[layout](../concepts/layout.md#layout-contract),
-[invalidation](../concepts/invalidation.md#invalidation-contract),
-[styling](../concepts/styling.md#styling-contract), and
-[input](../concepts/input-routing.md#input-routing-contract) rules.
+All controls derive from the [base control contract](control.md#overview) and
+use the shared [layout](../concepts/layout.md#overview),
+[invalidation](../concepts/invalidation.md#overview),
+[styling](../concepts/styling.md#overview), and
+[input](../concepts/input-routing.md#overview) rules.
 
 ### Public namespaces
 
@@ -64,28 +63,28 @@ Complete modal tasks such as `MessageBox` live in
 
 ### Authoring roles
 
-- [Container](container.md#container-contract) owns an ordered public child
-  collection and requires a concrete measure and arrange algorithm.
-- [ContentControl](content-control.md#contentcontrol-contract) owns zero or one
-  publicly replaceable content control.
-- [CompositeControl](composite-control.md#compositecontrol-contract) owns one
-  retained private implementation root initialized by the concrete constructor.
-- [ItemsControl](items-control.md#itemscontrol-contract) exposes typed semantic
-  items through a private presentation host.
-- [Pressable](pressable.md#pressable-contract) adds focus and completed
-  activation to that single-content role.
+- [Container](container.md#overview) owns an ordered public child collection and
+  requires a concrete measure and arrange algorithm.
+- [ContentControl](content-control.md#overview) owns zero or one publicly
+  replaceable content control.
+- [CompositeControl](composite-control.md#overview) owns one retained private
+  implementation root initialized by the concrete constructor.
+- [ItemsControl](items-control.md#overview) exposes typed semantic items through
+  a private presentation host.
+- [Pressable](pressable.md#overview) adds focus and completed activation to that
+  single-content role.
 
 ### Display
 
-- [Text](display/text.md#text-contract)
-- [FigletText](display/figlet-text.md#figlettext-contract)
-- [Image](display/image.md#image-contract)
-- [Prism](display/prism.md#prism-contract)
-- [Separator](display/separator.md#separator-contract)
-- [ProgressBar](display/progress-bar.md#progressbar-contract)
-- [Spinner](display/spinner.md#spinner-contract)
-- [ChaseIndicator](display/chase-indicator.md#chaseindicator-contract)
-- [StatusBar and StatusBarItem](display/status-bar.md#statusbar-contract)
+- [Text](display/text.md#overview)
+- [FigletText](display/figlet-text.md#overview)
+- [Image](display/image.md#overview)
+- [Prism](display/prism.md#overview)
+- [Separator](display/separator.md#overview)
+- [ProgressBar](display/progress-bar.md#overview)
+- [Spinner](display/spinner.md#overview)
+- [ChaseIndicator](display/chase-indicator.md#overview)
+- [StatusBar and StatusBarItem](display/status-bar.md#overview)
 
 Face, border, and shadow are intrinsic `Control` appearance configured through
 the complete `Face`, `Border`, and `Shadow` composites; none is a standalone
@@ -96,49 +95,49 @@ renderer paints configured chrome around `OnRenderContent`. See the
 
 ### Input
 
-- [Button](input/button.md#button-contract)
-- [HyperlinkButton](input/hyperlink-button.md#hyperlinkbutton-contract)
-- [Calendar](input/calendar.md#calendar-contract)
-- [CheckBox](input/check-box.md#checkbox-contract)
-- [ColorPicker](input/color-picker.md#colorpicker-contract)
-- [ComboBox](input/combo-box.md#combobox-contract)
-- [DateInput](input/date-input.md#dateinput-contract)
-- [DateTimeInput](input/date-time-input.md#datetimeinput-contract)
-- [RadioButton](input/radio-button.md#radiobutton-contract)
-- [Slider](input/slider.md#slider-contract)
-- [TextInput](input/text-input.md#textinput-contract)
-- [TimeInput](input/time-input.md#timeinput-contract)
+- [Button](input/button.md#overview)
+- [HyperlinkButton](input/hyperlink-button.md#overview)
+- [Calendar](input/calendar.md#overview)
+- [CheckBox](input/check-box.md#overview)
+- [ColorPicker](input/color-picker.md#overview)
+- [ComboBox](input/combo-box.md#overview)
+- [DateInput](input/date-input.md#overview)
+- [DateTimeInput](input/date-time-input.md#overview)
+- [RadioButton](input/radio-button.md#overview)
+- [Slider](input/slider.md#overview)
+- [TextInput](input/text-input.md#overview)
+- [TimeInput](input/time-input.md#overview)
 
 ### Layout
 
-- [Stack](layout/stack.md#stack-contract)
-- [Grid](layout/grid.md#grid-contract)
-- [Dock](layout/dock.md#dock-contract)
-- [Overlay](layout/overlay.md#overlay-contract)
-- [Table](layout/table.md#table-contract)
-- [GroupBox](layout/group-box.md#groupbox-contract)
-- [Expander](layout/expander.md#expander-contract)
+- [Stack](layout/stack.md#overview)
+- [Grid](layout/grid.md#overview)
+- [Dock](layout/dock.md#overview)
+- [Overlay](layout/overlay.md#overview)
+- [Table](layout/table.md#overview)
+- [GroupBox](layout/group-box.md#overview)
+- [Expander](layout/expander.md#overview)
 
 ### Scrolling
 
-- [ScrollBar](scrolling/scroll-bar.md#scrollbar-contract)
+- [ScrollBar](scrolling/scroll-bar.md#overview)
 
 ### Collections
 
-- [ListView](collections/list-view.md#listview-contract)
-- [TabControl and TabItem](collections/tab-control.md#tabcontrol-contract)
-- [TreeView](collections/tree-view.md#treeview-contract)
+- [ListView](collections/list-view.md#overview)
+- [TabControl and TabItem](collections/tab-control.md#overview)
+- [TreeView](collections/tree-view.md#overview)
 
 ### Menus and navigation
 
-- [Menu](menus/menu.md#menu-contract)
-- [MenuItem and MenuSeparator](menus/menu-item.md#menuitem-contract)
-- [ContextMenu](menus/context-menu.md#contextmenu-contract)
-- [NavigationView](navigation/navigation-view.md#navigationview-contract)
+- [Menu](menus/menu.md#overview)
+- [MenuItem and MenuSeparator](menus/menu-item.md#overview)
+- [ContextMenu](menus/context-menu.md#overview)
+- [NavigationView](navigation/navigation-view.md#overview)
 
 ### Popups and windows
 
-- [Popup](popups/popup.md#popup-contract)
-- [Tooltip](popups/tooltip.md#tooltip-contract)
-- [Flyout](popups/flyout.md#flyout-contract)
-- [Window](windows/window.md#window-contract)
+- [Popup](popups/popup.md#overview)
+- [Tooltip](popups/tooltip.md#overview)
+- [Flyout](popups/flyout.md#overview)
+- [Window](windows/window.md#overview)

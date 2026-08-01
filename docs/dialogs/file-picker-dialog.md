@@ -1,19 +1,18 @@
 # FilePickerDialog
 
-## FilePickerDialog contract
+## Overview
 
 `SharpVision.Dialogs.FilePickerDialog` is a sealed
 `FileDialogBase<FilePickerResult>` specialization that chooses existing local
-files. It is one responsive
-[`Window`](../controls/windows/window.md#window-contract) surface containing a
-location bar, a scrolling `ListView`, a filter selector, a hidden-entry toggle,
-status text, and Open and Cancel actions. Directories are navigation targets and
-never appear in accepted results.
+files. It is one responsive [`Window`](../controls/windows/window.md#overview)
+surface containing a location bar, a scrolling `ListView`, a filter selector, a
+hidden-entry toggle, status text, and Open and Cancel actions. Directories are
+navigation targets and never appear in accepted results.
 
 The picker does not create, rename, delete, save, or select directories. Use
-[`SaveFileDialog`](save-file-dialog.md#savefiledialog-contract) when the user
-must choose a path for a later write. A directory picker requires a separate
-result and validation contract.
+[`SaveFileDialog`](save-file-dialog.md#overview) when the user must choose a
+path for a later write. A directory picker requires a separate result and
+validation contract.
 
 ## API
 

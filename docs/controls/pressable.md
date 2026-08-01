@@ -1,18 +1,18 @@
 # Pressable base API
 
-## Pressable contract
+## Overview
 
 `Pressable : ContentControl` is the public authoring role for one focusable,
 single-face control that completes semantic activation through keyboard or
 pointer input. It inherits the atomic, publicly replaceable `Content` edge from
-[`ContentControl`](content-control.md#contentcontrol-contract); it is not a
-multi-child panel and exposes no `Children` collection or capacity constructor.
+[`ContentControl`](content-control.md#overview); it is not a multi-child panel
+and exposes no `Children` collection or capacity constructor.
 
 Concrete controls implement `Activate(ActivationCause)`. `Button`, `CheckBox`,
 `RadioButton`, `MenuItem`, and each internal `ListItem` use this role. A control
 whose face is derived from data rather than replaceable content, such as
-[`ComboBox`](input/combo-box.md#combobox-contract), derives from `Control`
-instead of pretending to be a `Pressable`.
+[`ComboBox`](input/combo-box.md#overview), derives from `Control` instead of
+pretending to be a `Pressable`.
 
 ## API
 

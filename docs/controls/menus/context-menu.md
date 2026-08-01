@@ -1,13 +1,13 @@
 # ContextMenu
 
-## ContextMenu contract
+## Overview
 
 `ContextMenu` displays a vertical menu at an arbitrary cell position with light
 dismiss.
 
 ## API
 
-| Member                         | Default          | Contract                                                   |
+| Member                         | Default          | Description                                                |
 | ------------------------------ | ---------------- | ---------------------------------------------------------- |
 | `Items`                        | empty            | Typed managed menu entries.                                |
 | `IsOpen`                       | `false`          | Read-only committed popup visibility.                      |

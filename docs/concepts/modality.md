@@ -1,6 +1,6 @@
 # Modality
 
-## Modality contract
+## Overview
 
 Modality limits every interactive route to one logical plane while leaving the
 retained control tree and visual layers unchanged. A modal plane contains one
@@ -274,9 +274,8 @@ Callers remain responsible for placing a modal `Window` in a suitable `Overlay`.
 Screen-hosted dialogs are added directly to its private presentation Overlay.
 Popup, Flyout, Tooltip, and submenu surfaces use the shared popup layer without
 changing logical ownership. The shared
-[floating-surface contract](floating-surfaces.md#floating-surface-contract)
-defines surface identity and lifecycle; modality only defines input-plane
-membership.
+[floating-surface contract](floating-surfaces.md#overview) defines surface
+identity and lifecycle; modality only defines input-plane membership.
 
 ## Expected behavior
 

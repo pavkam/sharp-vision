@@ -1,8 +1,8 @@
 # ANSI and DEC VT compatibility
 
-## ANSI and VT contract
+## Overview
 
-Primary sources are [ECMA-48](ecma-48.md#ecma-48-contract), the
+Primary sources are [ECMA-48](ecma-48.md#overview), the
 [VT100 programmer information](https://vt100.net/docs/vt100-ug/chapter3.html),
 and the
 [VT220 programmer reference](https://vt100.net/docs/vt220-rm/chapter4.html),
@@ -125,8 +125,7 @@ Tests pair each built-in command with its exact compiled source bytes, compare
 the fixed key map byte-for-byte, and prove provider-selection precedence and
 fallback exclusions. Existing typed command tests repeat representative input at
 every split. The frame encoder is independently checked against a semantic
-virtual terminal in the
-[rendering oracle](../testing/rendering.md#rendering-equivalence-contract).
+virtual terminal in the [rendering oracle](../testing/rendering.md#overview).
 
 ## Sources
 

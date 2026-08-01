@@ -1,6 +1,6 @@
 # Invalidation and UI updates
 
-## Invalidation contract
+## Overview
 
 SharpVision is a retained UI library. Application code changes control state; it
 does not repaint cells or call a public refresh method. Each successful mutation
@@ -9,12 +9,11 @@ SharpVision coalesces that work, propagates it to the root, and processes it on
 the owning dispatcher.
 
 This contract owns control-tree invalidation and update scheduling. The
-[layout contract](layout.md#layout-contract) owns measure and arrange
-algorithms, the
-[runtime event loop](../architecture/runtime-event-loop.md#runtime-event-loop-contract)
-owns dispatcher ordering, and the
-[rendering pipeline](../architecture/rendering-pipeline.md#rendering-pipeline-contract)
-owns frame construction, damage comparison, terminal output, and commit.
+[layout contract](layout.md#overview) owns measure and arrange algorithms, the
+[runtime event loop](../architecture/runtime-event-loop.md#overview) owns
+dispatcher ordering, and the
+[rendering pipeline](../architecture/rendering-pipeline.md#overview) owns frame
+construction, damage comparison, terminal output, and commit.
 
 > [!NOTE] `Renderer.Invalidate()` has a different purpose from control
 > invalidation. It marks the physical terminal baseline as unknown and forces a

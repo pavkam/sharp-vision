@@ -7,7 +7,7 @@ reentrancy, callback ordering, cancellation, or exception propagation.
 
 ## Normative documentation
 
-- [Threading](../../../../docs/concepts/threading.md#threading-contract)
+- [Threading](../../../../docs/concepts/threading.md#overview)
 - [Dispatcher timers](../../../../docs/concepts/threading.md#dispatcher-timers)
 - [Locks and reentrancy](../../../../docs/concepts/threading.md#locks-and-reentrancy)
 - [Lifecycle ordering](../../../../docs/concepts/lifecycle-events.md#ordering)

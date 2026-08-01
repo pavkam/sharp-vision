@@ -1,14 +1,13 @@
 # Prism
 
-## Prism contract
+## Overview
 
 `Prism` is declared `public sealed class Prism : ContentControl`. It applies a
 deterministic RGB hue cycle to the foreground of one ordinary, replaceable
-content control through the
-[`ContentControl`](../content-control.md#contentcontrol-contract) role. It adds
-no input, focus, or activation behavior. Content retains the usual parentage,
-inherited context, routed ancestry, measurement, arrangement, rendering, and
-disposal behavior of that single-content role.
+content control through the [`ContentControl`](../content-control.md#overview)
+role. It adds no input, focus, or activation behavior. Content retains the usual
+parentage, inherited context, routed ancestry, measurement, arrangement,
+rendering, and disposal behavior of that single-content role.
 
 Assigning or clearing `Content` uses the complete `ContentControl` ownership
 transaction. Replacing content returns the detached previous control to the

@@ -1,11 +1,11 @@
 # Rendering pipeline
 
-## Rendering pipeline contract
+## Overview
 
 Controls produce semantic cells; the terminal layer owns byte emission. The
-[invalidation contract](../concepts/invalidation.md#invalidation-contract) owns
-which control-tree phases run before a target frame is built. This page owns
-semantic cell generation, terminal-state comparison, output, and commit.
+[invalidation contract](../concepts/invalidation.md#overview) owns which
+control-tree phases run before a target frame is built. This page owns semantic
+cell generation, terminal-state comparison, output, and commit.
 
 ```mermaid
 flowchart LR
@@ -185,7 +185,7 @@ their requested clip, parent clip, and frame.
 The encoder minimizes cursor moves and style transitions only after correctness
 is known. When synchronized output is available, one complete frame is wrapped
 according to the
-[mode 2026 contract](../protocols/synchronized-output.md#synchronized-output-contract).
+[mode 2026 contract](../protocols/synchronized-output.md#overview).
 
 ## Control rendering
 
@@ -316,7 +316,7 @@ transport is borrowed; disposing the renderer releases its front frame, pooled
 batch, and owned graphics backend, but never disposes the transport.
 
 When
-[synchronized output is proven](../protocols/synchronized-output.md#synchronized-output-contract),
+[synchronized output is proven](../protocols/synchronized-output.md#overview),
 the renderer wraps only non-empty batches in mode 2026. If that batch fails, it
 attempts a separate disable-and-flush with a finite independent timeout.
 `LastCleanupException` exposes a cleanup diagnostic without replacing the

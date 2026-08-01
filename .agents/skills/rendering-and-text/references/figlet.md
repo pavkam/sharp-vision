@@ -7,7 +7,7 @@ FigletText, `.flf` or `.tlf` resources, the audited archive, or font provenance.
 
 ## Normative documentation
 
-- [FigletText contract](../../../../docs/controls/display/figlet-text.md#figlettext-contract)
+- [FigletText contract](../../../../docs/controls/display/figlet-text.md#overview)
 - [Rendering pipeline](../../../../docs/architecture/rendering-pipeline.md#control-rendering)
 - [Control evidence](../../../../docs/testing/controls-integration.md#mounted-component-surfaces)
 - [Pinned collection provenance](../../../../extern/figlet/README.md)

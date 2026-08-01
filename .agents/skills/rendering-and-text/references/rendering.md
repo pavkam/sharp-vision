@@ -7,11 +7,11 @@ SGR, synchronized output, terminal writes, resize invalidation, or frame commit.
 
 ## Normative documentation
 
-- [Rendering pipeline](../../../../docs/architecture/rendering-pipeline.md#rendering-pipeline-contract)
+- [Rendering pipeline](../../../../docs/architecture/rendering-pipeline.md#overview)
 - [Cell and frame rules](../../../../docs/architecture/rendering-pipeline.md#cell-and-frame-rules)
 - [Commit and invalidation](../../../../docs/architecture/rendering-pipeline.md#commit-and-terminal-state-invalidation)
-- [Memory ownership](../../../../docs/architecture/memory-ownership.md#memory-ownership-contract)
-- [Rendering evidence](../../../../docs/testing/rendering.md#rendering-equivalence-contract)
+- [Memory ownership](../../../../docs/architecture/memory-ownership.md#overview)
+- [Rendering evidence](../../../../docs/testing/rendering.md#overview)
 
 ## Code map
 

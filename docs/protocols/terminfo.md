@@ -1,6 +1,6 @@
 # Terminfo terminal descriptions
 
-## Terminfo contract
+## Overview
 
 SharpVision loads one requested Unix terminfo description through the ncurses 6
 low-level API, copies the finite allowlist under one process-wide lock, compiles

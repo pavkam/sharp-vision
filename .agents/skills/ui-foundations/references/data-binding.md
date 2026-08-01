@@ -8,7 +8,7 @@ or binding lifetime.
 
 ## Normative documentation
 
-- [Data-binding contract](../../../../docs/concepts/data-binding.md#data-binding-contract)
+- [Data-binding contract](../../../../docs/concepts/data-binding.md#overview)
 - [Notification model](../../../../docs/concepts/data-binding.md#notification-model)
 - [Paths and ordering](../../../../docs/concepts/data-binding.md#paths-nulls-and-ordering)
 - [Dispatcher responsiveness](../../../../docs/concepts/data-binding.md#dispatcher-and-responsiveness)

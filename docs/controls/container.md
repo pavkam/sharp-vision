@@ -1,16 +1,15 @@
 # Container base API
 
-## Container contract
+## Overview
 
 `Container : Control` is the abstract authoring role for a layout control whose
 ordered children are part of its public API. It exposes one caller-managed
 [`Children`](#children-and-ownership) collection and supplies shared auto-size,
 scrolling, rendering, clipping, and pointer-target traversal. It is not the base
 for every control that owns descendants: use
-[`ContentControl`](content-control.md#contentcontrol-contract) for one
-replaceable content value and
-[`CompositeControl`](composite-control.md#compositecontrol-contract) for a
-private retained implementation tree.
+[`ContentControl`](content-control.md#overview) for one replaceable content
+value and [`CompositeControl`](composite-control.md#overview) for a private
+retained implementation tree.
 
 `Container` does not choose a layout algorithm. Every concrete subclass must
 override `MeasureOverride` and `ArrangeOverride`; the abstract declarations make
@@ -64,10 +63,9 @@ fixed by the parent algorithm. Layout code must not add, remove, or replace
 children during measure or arrange.
 
 Use a shipped semantic panel when its algorithm matches the application:
-[`Stack`](layout/stack.md#stack-contract),
-[`Grid`](layout/grid.md#grid-contract), [`Dock`](layout/dock.md#dock-contract),
-or [`Overlay`](layout/overlay.md#overlay-contract). The shared
-[layout contract](../concepts/layout.md#layout-contract) owns constraints,
+[`Stack`](layout/stack.md#overview), [`Grid`](layout/grid.md#overview),
+[`Dock`](layout/dock.md#overview), or [`Overlay`](layout/overlay.md#overview).
+The shared [layout contract](../concepts/layout.md#overview) owns constraints,
 alignment, margins, sizing, and rounding.
 
 ## Auto-size and scrolling
@@ -79,8 +77,8 @@ are defined by [grow and shrink](../concepts/layout.md#grow-and-shrink).
 `AutoScroll` turns the container into a viewport over its own layout algorithm.
 The inherited scroll properties select axes, offsets, bar reservation, chrome,
 line and page changes, and interaction. Generated bars are private framework
-parts. The [scrolling contract](../concepts/scrolling.md#scrolling-contract)
-defines feedback, clipping, nested wheel propagation, and offset validation.
+parts. The [scrolling contract](../concepts/scrolling.md#overview) defines
+feedback, clipping, nested wheel propagation, and offset validation.
 
 ## Example
 

@@ -1,6 +1,6 @@
 # Error handling and diagnostics
 
-## Error handling contract
+## Overview
 
 Programmer errors throw immediately before observable mutation. Environmental
 failures degrade or terminate through typed results/events and structured

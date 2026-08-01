@@ -1,6 +1,6 @@
 # Bracketed paste and focus reporting
 
-## Paste and focus contract
+## Overview
 
 xterm private mode 2004 wraps pasted data between `CSI 200 ~` and `CSI 201 ~`.
 Private mode 1004 reports focus gained as `CSI I` and focus lost as `CSI O`.

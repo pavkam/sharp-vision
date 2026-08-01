@@ -7,11 +7,11 @@ behavior complete.
 
 ## Normative documentation
 
-- [Rendering equivalence](../../../../docs/testing/rendering.md#rendering-equivalence-contract)
+- [Rendering equivalence](../../../../docs/testing/rendering.md#overview)
 - [Unicode evidence](../../../../docs/testing/unicode-rendering.md#required-evidence)
-- [Randomized testing](../../../../docs/testing/randomized.md#randomized-testing-contract)
+- [Randomized testing](../../../../docs/testing/randomized.md#overview)
 - [Performance evidence](../../../../docs/testing/performance.md#required-evidence)
-- [Control integration](../../../../docs/testing/controls-integration.md#control-and-integration-testing-contract)
+- [Control integration](../../../../docs/testing/controls-integration.md#overview)
 
 ## Evidence ladder
 

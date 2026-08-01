@@ -1,11 +1,11 @@
 # Menu
 
-## Menu contract
+## Overview
 
 `Menu` owns a constrained mixture of
-[`MenuItem` and `MenuSeparator`](menu-item.md#menuitem-contract) controls and
-coordinates layout, selected visual state, keyboard navigation, check/radio
-activation, and menu-level invocation notifications.
+[`MenuItem` and `MenuSeparator`](menu-item.md#overview) controls and coordinates
+layout, selected visual state, keyboard navigation, check/radio activation, and
+menu-level invocation notifications.
 
 ## API
 
@@ -51,7 +51,7 @@ backward regardless of orientation. Navigation wraps, skips separators and
 unavailable items, updates `SelectedIndex`, and retains focus on the menu. Enter
 and a completed Space activate the selected private item with a keyboard cause.
 A primary pointer click invokes through the shared
-[`Pressable`](../pressable.md#pressable-contract) contract.
+[`Pressable`](../pressable.md#overview) contract.
 
 An ampersand
 [access key](../../concepts/access-keys.md#focus-and-semantic-actions) on an

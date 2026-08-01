@@ -18,63 +18,57 @@ flowchart LR
     Encode --> BytesOut["Terminal bytes"]
 ```
 
-The [runtime routing contract](runtime-routing.md#runtime-routing-contract) owns
-the middle of this flow. The [coverage matrix](coverage-matrix.md#coverage) is
-the only support summary; parser recognition alone is not implementation. The
+The [runtime routing contract](runtime-routing.md#overview) owns the middle of
+this flow. The [coverage matrix](coverage-matrix.md#coverage) is the only
+support summary; parser recognition alone is not implementation. The
 [terminal backend contract](../architecture/terminal-backends.md#backend-hierarchy)
 composes these families as immutable VT, xterm, Kitty, and iTerm2 extension
 metadata without copying their wire implementations. The
-[discovery pipeline](../architecture/discovery-pipeline.md#discovery-pipeline-contract)
-owns identity evidence and optional capability refinement. The
-application-facing sequence across all of these layers is specified by
-[terminal integration](../architecture/terminal-integration.md#terminal-integration-contract).
+[discovery pipeline](../architecture/discovery-pipeline.md#overview) owns
+identity evidence and optional capability refinement. The application-facing
+sequence across all of these layers is specified by
+[terminal integration](../architecture/terminal-integration.md#overview).
 
 The low-level library recognizes the ECMA-48 control architecture and selected
 DEC, xterm, Kitty, iTerm2, sixel, tmux, and GNU screen extensions. The
 [coverage matrix](coverage-matrix.md#coverage) is the only support claim.
 
-- [ECMA-48](ecma-48.md#ecma-48-contract) defines the control-function model.
-- [Terminfo terminal descriptions](terminfo.md#terminfo-contract) defines the
-  primary retained Unix projection, full-screen suitability, and encoding
-  precedence.
-- [Termcap terminal descriptions](termcap.md#termcap-contract) defines the
-  native legacy fallback used only when the requested terminfo entry is
-  unavailable.
+- [ECMA-48](ecma-48.md#overview) defines the control-function model.
+- [Terminfo terminal descriptions](terminfo.md#overview) defines the primary
+  retained Unix projection, full-screen suitability, and encoding precedence.
+- [Termcap terminal descriptions](termcap.md#overview) defines the native legacy
+  fallback used only when the requested terminfo entry is unavailable.
 
 The terminal-description projection is bounded after the provider returns.
 Native database scanning and allocation are trusted host configuration outside
 SharpVision's resource guarantee; see the
 [native-provider trust boundary](terminfo.md#native-provider-trust-boundary).
 
-- [ANSI and VT](ansi-vt.md#ansi-and-vt-contract) defines compatibility scope.
-- [CSI](csi.md#csi-contract) defines parameterized control sequences.
-- [OSC](osc.md#osc-contract) defines operating-system command strings.
-- [DCS and string commands](dcs-strings.md#dcs-and-string-command-contract)
-  defines bounded string parsing.
-- [Runtime protocol routing](runtime-routing.md#runtime-routing-contract)
-  defines typed dispatch, owned extension values, and runtime fallback.
-- [DEC private modes](dec-private-modes.md#dec-private-mode-contract) defines
-  application modes and lifecycle restoration.
-- [xterm](xterm.md#xterm-contract) defines the modern compatibility baseline.
-- [SGR](sgr.md#sgr-contract) defines colors and text attributes.
-- [Mouse reporting](mouse.md#mouse-reporting-contract) defines cell and pixel
-  input.
-- [Paste and focus](paste-focus.md#paste-and-focus-contract) defines input
-  boundaries.
-- [Synchronized output](synchronized-output.md#synchronized-output-contract)
-  defines atomic frame presentation.
-- [Device attributes](device-attributes.md#device-attribute-contract) defines
-  capability queries.
-- [Kitty keyboard](kitty-keyboard.md#kitty-keyboard-contract) defines
-  unambiguous key events.
-- [Kitty clipboard](kitty-clipboard.md#kitty-clipboard-contract) defines OSC 52
-  and OSC 5522 behavior.
-- [Kitty graphics](kitty-graphics.md#kitty-graphics-contract) defines the image
-  extension boundary.
-- [iTerm2](iterm2.md#iterm2-contract) defines proprietary OSC extensions.
-- [Sixel](sixel.md#sixel-contract) defines DEC raster graphics boundaries.
-- [tmux](tmux.md#tmux-contract) and
-  [GNU screen](gnu-screen.md#gnu-screen-contract) define multiplexer wrapping.
+- [ANSI and VT](ansi-vt.md#overview) defines compatibility scope.
+- [CSI](csi.md#overview) defines parameterized control sequences.
+- [OSC](osc.md#overview) defines operating-system command strings.
+- [DCS and string commands](dcs-strings.md#overview) defines bounded string
+  parsing.
+- [Runtime protocol routing](runtime-routing.md#overview) defines typed
+  dispatch, owned extension values, and runtime fallback.
+- [DEC private modes](dec-private-modes.md#overview) defines application modes
+  and lifecycle restoration.
+- [xterm](xterm.md#overview) defines the modern compatibility baseline.
+- [SGR](sgr.md#overview) defines colors and text attributes.
+- [Mouse reporting](mouse.md#overview) defines cell and pixel input.
+- [Paste and focus](paste-focus.md#overview) defines input boundaries.
+- [Synchronized output](synchronized-output.md#overview) defines atomic frame
+  presentation.
+- [Device attributes](device-attributes.md#overview) defines capability queries.
+- [Kitty keyboard](kitty-keyboard.md#overview) defines unambiguous key events.
+- [Kitty clipboard](kitty-clipboard.md#overview) defines OSC 52 and OSC 5522
+  behavior.
+- [Kitty graphics](kitty-graphics.md#overview) defines the image extension
+  boundary.
+- [iTerm2](iterm2.md#overview) defines proprietary OSC extensions.
+- [Sixel](sixel.md#overview) defines DEC raster graphics boundaries.
+- [tmux](tmux.md#overview) and [GNU screen](gnu-screen.md#overview) define
+  multiplexer wrapping.
 
 ## Discovery and output facade
 
@@ -115,9 +109,9 @@ semantic image placements flow through renderer-owned `IGraphicsBackend` and its
 Sixel and iTerm2 likewise remain graphics implementations rather than terminal
 services or emulator identities. Application uses `GraphicsBackendSelector`
 lazily after profile and resize publication for semantic placements recorded by
-the public [`Image` control](../controls/display/image.md#image-contract), and
-awaits their bounded shutdown before transport disposal. Supported title calls
-reject C0 and DEL control characters before expanding or queueing either
-built-in or described output. Inbound consumption of protocol replies (typed
-responses, capability changes, and redacted diagnostics) is unchanged and
-documented in [runtime routing](runtime-routing.md#inbound-consumption-surface).
+the public [`Image` control](../controls/display/image.md#overview), and awaits
+their bounded shutdown before transport disposal. Supported title calls reject
+C0 and DEL control characters before expanding or queueing either built-in or
+described output. Inbound consumption of protocol replies (typed responses,
+capability changes, and redacted diagnostics) is unchanged and documented in
+[runtime routing](runtime-routing.md#inbound-consumption-surface).

@@ -1,13 +1,13 @@
 # CheckBox
 
-## CheckBox contract
+## Overview
 
-`CheckBox` is a sealed [`Pressable`](../pressable.md#pressable-contract) toggle
-with optional retained `Content` and two- or three-state behavior.
+`CheckBox` is a sealed [`Pressable`](../pressable.md#overview) toggle with
+optional retained `Content` and two- or three-state behavior.
 
 ## API
 
-| Member                         | Default        | Contract                                                     |
+| Member                         | Default        | Description                                                  |
 | ------------------------------ | -------------- | ------------------------------------------------------------ |
 | `IsChecked`                    | `false`        | `false`, `true`, or `null` when three-state mode permits it. |
 | `IsThreeState`                 | `false`        | Selects the two-state or three-state activation cycle.       |

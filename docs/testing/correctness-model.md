@@ -1,6 +1,6 @@
 # Correctness model
 
-## Correctness-model contract
+## Overview
 
 Tests use xUnit v3, Shouldly, explicit Arrange/Act/Assert, and names of the form
 `MethodName_WhenThis_ThatIsExpected`. Every new behavior starts with a focused

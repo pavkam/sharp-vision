@@ -7,10 +7,10 @@ Session, transport, platform, or shutdown behavior complete.
 
 ## Normative documentation
 
-- [Correctness model](../../../../docs/testing/correctness-model.md#correctness-model-contract)
-- [Pseudoterminal testing](../../../../docs/testing/pseudoterminals.md#pseudoterminal-testing-contract)
-- [Continuous integration](../../../../docs/testing/continuous-integration.md#continuous-integration-contract)
-- [Error handling](../../../../docs/architecture/error-handling.md#error-handling-contract)
+- [Correctness model](../../../../docs/testing/correctness-model.md#overview)
+- [Pseudoterminal testing](../../../../docs/testing/pseudoterminals.md#overview)
+- [Continuous integration](../../../../docs/testing/continuous-integration.md#overview)
+- [Error handling](../../../../docs/architecture/error-handling.md#overview)
 - [Lifecycle ordering](../../../../docs/concepts/lifecycle-events.md#ordering)
 
 ## Evidence ladder

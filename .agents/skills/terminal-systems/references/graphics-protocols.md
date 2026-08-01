@@ -8,11 +8,11 @@ bytes.
 
 ## Normative documentation
 
-- [Kitty graphics](../../../../docs/protocols/kitty-graphics.md#kitty-graphics-contract)
-- [Sixel](../../../../docs/protocols/sixel.md#sixel-contract)
-- [iTerm2](../../../../docs/protocols/iterm2.md#iterm2-contract)
+- [Kitty graphics](../../../../docs/protocols/kitty-graphics.md#overview)
+- [Sixel](../../../../docs/protocols/sixel.md#overview)
+- [iTerm2](../../../../docs/protocols/iterm2.md#overview)
 - [Backend graphics boundary](../../../../docs/architecture/terminal-backends.md#graphics-backend-boundary)
-- [Image ownership](../../../../docs/concepts/images.md#imagesource-ownership-contract)
+- [Image ownership](../../../../docs/concepts/images.md#overview)
 
 ## Code map
 

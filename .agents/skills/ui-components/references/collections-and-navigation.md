@@ -7,11 +7,11 @@ selection, current item, incremental collections, templates, or navigation.
 
 ## Normative documentation
 
-- [ItemsControl](../../../../docs/controls/items-control.md#itemscontrol-contract)
-- [ListView](../../../../docs/controls/collections/list-view.md#listview-contract)
-- [TreeView](../../../../docs/controls/collections/tree-view.md#treeview-contract)
-- [TabControl](../../../../docs/controls/collections/tab-control.md#tabcontrol-contract)
-- [NavigationView](../../../../docs/controls/navigation/navigation-view.md#navigationview-contract)
+- [ItemsControl](../../../../docs/controls/items-control.md#overview)
+- [ListView](../../../../docs/controls/collections/list-view.md#overview)
+- [TreeView](../../../../docs/controls/collections/tree-view.md#overview)
+- [TabControl](../../../../docs/controls/collections/tab-control.md#overview)
+- [NavigationView](../../../../docs/controls/navigation/navigation-view.md#overview)
 - [Data-binding proof](../../../../docs/testing/controls-integration.md#data-binding-proof)
 
 ## Code map

@@ -1,12 +1,12 @@
 # Terminal discovery pipeline
 
-## Discovery pipeline contract
+## Overview
 
 Terminal initialization turns bounded, caller-owned evidence into two distinct
 results: one fixed terminal backend identity and one immutable capability
 profile that may be refined before publication. Discovery does not own the TTY,
 does not copy protocol codecs, and does not authorize output outside the
-[capability contract](capabilities.md#capability-contract).
+[capability contract](capabilities.md#overview).
 
 The effective precedence is:
 
@@ -67,7 +67,7 @@ refine capabilities by producing a replacement context, but the exact backend
 reference remains fixed for the application lifetime. Optional sixel, graphics,
 keyboard, clipboard, and mode evidence therefore changes authorization, not
 emulator identity. See the
-[terminal backend contract](terminal-backends.md#terminal-backend-contract).
+[terminal backend contract](terminal-backends.md#overview).
 
 ## Active query strategy
 

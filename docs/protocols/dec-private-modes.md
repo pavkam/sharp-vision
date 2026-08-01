@@ -1,6 +1,6 @@
 # DEC private modes
 
-## DEC private mode contract
+## Overview
 
 DECSET is `CSI ? Pm h`, DECRST is `CSI ? Pm l`, and DECRQM queries a mode with
 `CSI ? Ps $ p`; DECRPM replies with `CSI ? Ps ; Pm $ y`. Mode meanings are

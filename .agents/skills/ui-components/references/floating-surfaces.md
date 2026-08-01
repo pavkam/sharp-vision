@@ -8,11 +8,11 @@ restoration.
 
 ## Normative documentation
 
-- [Floating surfaces](../../../../docs/concepts/floating-surfaces.md#floating-surface-contract)
-- [Modality](../../../../docs/concepts/modality.md#modality-contract)
+- [Floating surfaces](../../../../docs/concepts/floating-surfaces.md#overview)
+- [Modality](../../../../docs/concepts/modality.md#overview)
 - [Popup and Window presentation](../../../../docs/concepts/modality.md#popup-and-window-presentations)
-- [Window](../../../../docs/controls/windows/window.md#window-contract)
-- [Popup](../../../../docs/controls/popups/popup.md#popup-contract)
+- [Window](../../../../docs/controls/windows/window.md#overview)
+- [Popup](../../../../docs/controls/popups/popup.md#overview)
 - [Dialog catalog](../../../../docs/dialogs/index.md#dialog-catalog)
 
 ## Code map

@@ -1,6 +1,6 @@
 # GNU screen compatibility
 
-## GNU screen contract
+## Overview
 
 Primary source:
 [GNU screen 5.0.0 control sequences](https://www.gnu.org/software/screen/manual/html_node/Control-Sequences.html),

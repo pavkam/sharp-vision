@@ -8,10 +8,10 @@ phase invalidation.
 
 ## Normative documentation
 
-- [Layout](../../../../docs/concepts/layout.md#layout-contract)
-- [Box model](../../../../docs/concepts/box-model.md#box-model-contract)
-- [Scrolling](../../../../docs/concepts/scrolling.md#scrolling-contract)
-- [Invalidation](../../../../docs/concepts/invalidation.md#invalidation-contract)
+- [Layout](../../../../docs/concepts/layout.md#overview)
+- [Box model](../../../../docs/concepts/box-model.md#overview)
+- [Scrolling](../../../../docs/concepts/scrolling.md#overview)
+- [Invalidation](../../../../docs/concepts/invalidation.md#overview)
 - [Control evidence](../../../../docs/testing/controls-integration.md#required-evidence)
 
 ## Code map

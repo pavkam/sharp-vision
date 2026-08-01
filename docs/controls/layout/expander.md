@@ -1,13 +1,12 @@
 # Expander
 
-## Expander contract
+## Overview
 
 `Expander` displays a collapsible section with a focusable header toggle and
-optional content. It extends
-[`ContentControl`](../content-control.md#contentcontrol-contract). Enter, Space,
-or a primary pointer click on the header toggles visibility of the content
-region below. The header always renders the theme's expanded or collapsed
-disclosure glyph followed by the header text.
+optional content. It extends [`ContentControl`](../content-control.md#overview).
+Enter, Space, or a primary pointer click on the header toggles visibility of the
+content region below. The header always renders the theme's expanded or
+collapsed disclosure glyph followed by the header text.
 
 `Expander` itself is the focus, hover, and press owner for the header row. The
 header is rendered directly by the control and is not exposed as a public

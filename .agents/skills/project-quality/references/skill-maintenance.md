@@ -7,9 +7,9 @@ their metadata, progressive references, documentation links, or commands.
 
 ## Normative documentation
 
-- [Project structure](../../../../docs/architecture/project-structure.md#project-structure-contract)
+- [Project structure](../../../../docs/architecture/project-structure.md#overview)
 - [Namespace and file boundaries](../../../../docs/architecture/project-structure.md#namespace-and-file-boundaries)
-- [Documentation ownership](../../../../docs/documentation-contract.md#links-and-ownership)
+- [Documentation ownership](../../../../docs/documentation-guide.md#links-and-ownership)
 - [Discovery gate](../../../../docs/testing/correctness-model.md#discovery-gate)
 
 ## Repository contract

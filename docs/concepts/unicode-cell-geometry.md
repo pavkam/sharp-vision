@@ -1,6 +1,6 @@
 # Unicode cell geometry
 
-## Unicode cell geometry contract
+## Overview
 
 SharpVision pins
 [Unicode 17.0.0](https://www.unicode.org/versions/Unicode17.0.0/),

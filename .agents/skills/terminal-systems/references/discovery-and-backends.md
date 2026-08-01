@@ -7,12 +7,12 @@ terminfo, termcap, multiplexer evidence, backend resolution, or safe fallback.
 
 ## Normative documentation
 
-- [Capabilities](../../../../docs/architecture/capabilities.md#capability-contract)
-- [Discovery pipeline](../../../../docs/architecture/discovery-pipeline.md#discovery-pipeline-contract)
-- [Terminal backends](../../../../docs/architecture/terminal-backends.md#terminal-backend-contract)
-- [Terminal integration](../../../../docs/architecture/terminal-integration.md#terminal-integration-contract)
-- [Terminfo](../../../../docs/protocols/terminfo.md#terminfo-contract)
-- [Termcap](../../../../docs/protocols/termcap.md#termcap-contract)
+- [Capabilities](../../../../docs/architecture/capabilities.md#overview)
+- [Discovery pipeline](../../../../docs/architecture/discovery-pipeline.md#overview)
+- [Terminal backends](../../../../docs/architecture/terminal-backends.md#overview)
+- [Terminal integration](../../../../docs/architecture/terminal-integration.md#overview)
+- [Terminfo](../../../../docs/protocols/terminfo.md#overview)
+- [Termcap](../../../../docs/protocols/termcap.md#overview)
 
 ## Code map
 

@@ -1,6 +1,6 @@
 # Memory ownership
 
-## Memory ownership contract
+## Overview
 
 Borrowed spans are valid only for the duration of a synchronous call. Owned
 memory has an explicit owner and disposal point. Pooled storage is never exposed
@@ -223,7 +223,7 @@ the pool contract permits. Disposal is idempotent. Debug assertions verify
 ownership state, continuation-cell references, and non-overlapping active
 leases; public APIs still throw for caller misuse.
 
-## Allocation contract
+## Allocation rules
 
 Steady-state parsing, unchanged measure/arrange, routed-event delivery, damage
 scanning, and frame encoding allocate no object per byte, Rune, grapheme, or

@@ -8,11 +8,11 @@ themes.
 
 ## Normative documentation
 
-- [Styling](../../../../docs/concepts/styling.md#styling-contract)
+- [Styling](../../../../docs/concepts/styling.md#overview)
 - [Visual states](../../../../docs/concepts/styling.md#visual-states)
-- [Intrinsic chrome](../../../../docs/concepts/intrinsic-chrome.md#intrinsic-chrome-contract)
-- [Themes](../../../../docs/concepts/themes.md#theme-file-contract)
-- [Theming controls](../../../../docs/concepts/theming-new-controls.md#theming-contract)
+- [Intrinsic chrome](../../../../docs/concepts/intrinsic-chrome.md#overview)
+- [Themes](../../../../docs/concepts/themes.md#overview)
+- [Theming controls](../../../../docs/concepts/theming-new-controls.md#overview)
 - [Invalidation impact](../../../../docs/concepts/invalidation.md#choosing-an-impact)
 
 ## Code map

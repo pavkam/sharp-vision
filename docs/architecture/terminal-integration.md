@@ -1,6 +1,6 @@
 # Terminal integration
 
-## Terminal-integration contract
+## Overview
 
 Terminal integration is one ordered runtime path from an owned physical console
 connection to typed input, retained UI state, rendered cells, and restored
@@ -35,9 +35,9 @@ evidence arrives, but that replacement cannot silently change the backend.
 | `Application.Capabilities`                                      | Exposes the current immutable semantic profile.                              | Replaced atomically after accepted discovery evidence.                                        |
 | `Application.TerminalProfile`                                   | Exposes description plus current capabilities.                               | Description programs and key maps remain fixed across semantic refinement.                    |
 
-See [Hosting](../concepts/hosting.md#hosting-contract) for every builder option
-and status. See [Terminal capabilities](capabilities.md#capability-contract) for
-the complete feature model.
+See [Hosting](../concepts/hosting.md#overview) for every builder option and
+status. See [Terminal capabilities](capabilities.md#overview) for the complete
+feature model.
 
 ## Startup sequence
 
@@ -67,9 +67,9 @@ sequenceDiagram
 ```
 
 The detailed evidence precedence and query lifecycle live in the
-[discovery pipeline](discovery-pipeline.md#discovery-pipeline-contract). The
-[runtime event loop](runtime-event-loop.md#runtime-event-loop-contract) owns
-ordering after publication.
+[discovery pipeline](discovery-pipeline.md#overview). The
+[runtime event loop](runtime-event-loop.md#overview) owns ordering after
+publication.
 
 ## Discovery evidence
 
@@ -121,8 +121,8 @@ Outbound behavior follows typed ownership:
 
 The [protocol index](../protocols/index.md#protocol-families) maps each family
 to its wire contract, while
-[runtime protocol routing](../protocols/runtime-routing.md#runtime-routing-contract)
-owns typed dispatch and recovery.
+[runtime protocol routing](../protocols/runtime-routing.md#overview) owns typed
+dispatch and recovery.
 
 ## Failure, fallback, and cleanup
 

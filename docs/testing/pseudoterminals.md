@@ -1,6 +1,6 @@
 # Pseudoterminal testing
 
-## Pseudoterminal-testing contract
+## Overview
 
 Unix tests open an owned raw master/slave pseudoterminal pair and control window
 size, input bytes, output bytes, signals, closure, and timing. The current

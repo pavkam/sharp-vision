@@ -1,6 +1,6 @@
 # Project structure
 
-## Project structure contract
+## Overview
 
 The solution contains two production libraries, three executable examples, and
 four top-level validation projects. The UI test project also exercises all three

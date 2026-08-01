@@ -1,6 +1,6 @@
 # Unicode and rendering testing
 
-## Unicode-and-rendering-testing contract
+## Overview
 
 Geometry fixtures pin Unicode 17 grapheme, East Asian Width, and emoji source
 versions. Generated tables have sorted/non-overlap and first/last boundary
@@ -44,8 +44,8 @@ narrow↔wide, combining changes, edge clipping/wrapping, bottom-right behavior,
 resize, failed/partial writes, and full invalidation.
 
 The concrete byte-application oracle and seeded transition matrix are specified
-in [rendering equivalence testing](rendering.md#rendering-equivalence-contract);
-snapshots do not replace semantic screen comparison.
+in [rendering equivalence testing](rendering.md#overview); snapshots do not
+replace semantic screen comparison.
 
 Before diff encoding exists, frame/canvas tests prove lead/continuation
 metadata, complete UTF-8 copying, two-pass arena-limit validation, clip

@@ -1,11 +1,11 @@
 # GroupBox
 
-## GroupBox contract
+## Overview
 
 `GroupBox` frames one owned content control with a titled border, providing a
 visual grouping mechanism. It extends
-[`ContentControl`](../content-control.md#contentcontrol-contract) and renders a
-border frame with an optional header label in the top edge, like a
+[`ContentControl`](../content-control.md#overview) and renders a border frame
+with an optional header label in the top edge, like a
 [`Window`](../windows/window.md) without window-specific drag behavior or a
 default shadow.
 

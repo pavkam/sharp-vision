@@ -1,6 +1,6 @@
 # Text
 
-## Text contract
+## Overview
 
 `Text` is a non-focusable display control that formats Unicode text and applies
 semantic terminal style through compact inline markup. It derives from
@@ -10,7 +10,7 @@ mutable run or inline object model.
 
 ## API
 
-| Member                | Default               | Contract                                                                                 |
+| Member                | Default               | Description                                                                              |
 | --------------------- | --------------------- | ---------------------------------------------------------------------------------------- |
 | `Content`             | empty string          | Non-null markup text; unknown or malformed markup renders literally.                     |
 | `Overflow`            | `Overflow.Visible`    | Selects visible, wrap, wrap-anywhere, clip, or ellipsis behavior at grapheme boundaries. |
@@ -131,7 +131,7 @@ excluded from slices. Empty content and trailing logical newlines produce stable
 empty lines. Tabs advance to four-cell stops.
 
 Segmentation follows the
-[Unicode geometry contract](../../concepts/unicode-cell-geometry.md#unicode-cell-geometry-contract).
+[Unicode geometry contract](../../concepts/unicode-cell-geometry.md#overview).
 Wrapping, clipping, ellipsis, and drawing never split a surrogate pair, extended
 grapheme cluster, or wide-cell owner. If a markup boundary occurs inside one
 grapheme, the style active at the cluster's first UTF-16 code unit applies to

@@ -1,6 +1,6 @@
 # Mouse reporting
 
-## Mouse reporting contract
+## Overview
 
 Primary source:
 [xterm mouse tracking](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html),
