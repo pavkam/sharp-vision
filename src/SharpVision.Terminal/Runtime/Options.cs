@@ -69,6 +69,19 @@ public sealed record Options
     /// <summary>Gets optional bounded startup negotiation policy.</summary>
     public TerminalNegotiationOptions? Negotiation { get; init; }
 
+    /// <summary>
+    /// Gets an explicit multiplexer routing policy independent of <see cref="Negotiation"/>, or null to
+    /// fall back to <see cref="TerminalNegotiationOptions.Multiplexing"/> when
+    /// negotiation runs.
+    /// </summary>
+    /// <remarks>
+    /// A host that pins <see cref="Profile"/> or <see cref="Capabilities"/> to avoid probing still owns a
+    /// separate decision about whether graphics route through an approved multiplexer passthrough. Because
+    /// <see cref="Negotiation"/> being non-null also drives whether startup negotiation actually probes the
+    /// terminal, that policy cannot be carried on <see cref="Negotiation"/> alone once probing is suppressed.
+    /// </remarks>
+    public Multiplexing.Policy? Multiplexing { get; init; }
+
     /// <summary>Gets whether to enter the alternate screen.</summary>
     public bool AlternateScreen { get; init; } = true;
 

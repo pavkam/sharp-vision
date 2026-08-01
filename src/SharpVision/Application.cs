@@ -1559,7 +1559,7 @@ public sealed class Application: ISink, IAsyncDisposable
 
     private Renderer CreateRenderer()
     {
-        var policy = _options.Negotiation?.Multiplexing;
+        var policy = _options.Multiplexing ?? _options.Negotiation?.Multiplexing;
         var route = policy is { Layers.Count: > 0 }
             ? new MultiplexerRoute(policy)
             : null;

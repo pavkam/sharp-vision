@@ -50,7 +50,11 @@ barrier. Kitty accepts RGBA and PNG; sixel accepts RGBA only with measured
 cell-pixel geometry; iTerm2 3.5+ multipart accepts complete PNG with contain or
 stretch under explicit override. A detected multiplexer route is always passed
 to selection, including when passthrough is unauthorized, so direct graphics
-cannot leak around the policy.
+cannot leak around the policy. `TerminalOptions.Multiplexing` carries that
+routing policy independently of `Negotiation`, so a host that pins `Profile` or
+`Capabilities` to avoid probing (which discards the rest of `Negotiation`) still
+routes graphics through an approved passthrough instead of silently degrading to
+the unsafe direct path.
 
 The public [`Image` control](../controls/display/image.md#image-contract) paints
 deterministic cell fallback and records only a semantic placement. Exact resize

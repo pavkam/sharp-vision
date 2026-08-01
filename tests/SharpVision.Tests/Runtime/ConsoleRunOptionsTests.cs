@@ -5,6 +5,9 @@ namespace SharpVision.Tests.Runtime;
 
 using SharpVision.Terminal.Kitty.Keyboard;
 
+using MultiplexerKind = Terminal.Multiplexing.MultiplexerKind;
+using MultiplexingPolicy = Terminal.Multiplexing.Policy;
+
 /// <summary>Verifies <see cref="ConsoleRunOptions"/> defaults and terminal/host mapping.</summary>
 public sealed class ConsoleRunOptionsTests
 {
@@ -162,6 +165,44 @@ public sealed class ConsoleRunOptionsTests
         terminal.Profile.Capabilities.ShouldBeSameAs(capabilities);
         terminal.Profile.Capabilities.Osc52.ShouldBe(database);
         terminal.Negotiation.ShouldBeNull();
+    }
+
+    /// <summary>Verifies pinning compatibility capabilities to avoid probing discards the rest of a
+    /// caller-supplied Negotiation but still preserves its multiplexer routing policy, so pinned
+    /// hosts cannot have graphics silently leak unwrapped around an approved tmux/screen passthrough.</summary>
+    [Fact]
+    public void ToTerminalOptions_WhenCapabilitiesArePinned_PreservesMultiplexingFromNegotiation()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(Capabilities.Conservative));
+        var options = new ConsoleRunOptions
+        {
+            Capabilities = Capabilities.Conservative,
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?>(),
+                overrides: null,
+                limits: null,
+                multiplexing: policy)
+        };
+
+        var terminal = options.ToTerminalOptions();
+
+        terminal.Negotiation.ShouldBeNull();
+        terminal.Multiplexing.ShouldBeSameAs(policy);
+    }
+
+    /// <summary>Verifies pinning without an explicit Negotiation leaves Multiplexing null rather than
+    /// fabricating a policy the caller never supplied.</summary>
+    [Fact]
+    public void ToTerminalOptions_WhenCapabilitiesArePinnedWithoutNegotiation_LeavesMultiplexingNull()
+    {
+        var options = new ConsoleRunOptions { Capabilities = Capabilities.Conservative };
+
+        var terminal = options.ToTerminalOptions();
+
+        terminal.Negotiation.ShouldBeNull();
+        terminal.Multiplexing.ShouldBeNull();
     }
 
     /// <summary>Verifies profile, compatibility, negotiation, and color settings have stable precedence.</summary>

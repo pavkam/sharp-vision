@@ -234,12 +234,19 @@ public sealed record ConsoleRunOptions
             });
         }
 
+        var resolvedNegotiation = Profile is null && Capabilities is null
+            ? Negotiation ?? DefaultNegotiation()
+            : null;
+
         return new TerminalOptions
         {
             Profile = selected,
-            Negotiation = Profile is null && Capabilities is null
-                ? Negotiation ?? DefaultNegotiation()
-                : null,
+            Negotiation = resolvedNegotiation,
+            // Pinning a profile or capabilities suppresses probing (resolvedNegotiation above), but
+            // multiplexer routing is a separate host decision: a caller-supplied Negotiation's
+            // Multiplexing policy must still reach graphics selection even when the rest of that
+            // NegotiationOptions - the probing parts - is discarded.
+            Multiplexing = resolvedNegotiation?.Multiplexing ?? Negotiation?.Multiplexing,
             AlternateScreen = AlternateScreen,
             HideCursor = !ShowCursor,
             Focus = FocusReporting,

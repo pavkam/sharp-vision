@@ -1506,6 +1506,7 @@ namespace SharpVision.Terminal.Runtime
         public SharpVision.Terminal.Input.Options Input { get; init; }
         public SharpVision.Terminal.Kitty.Keyboard.Enhancement? Keyboard { get; init; }
         public int? ModifyOtherKeys { get; init; }
+        public SharpVision.Terminal.Multiplexing.Policy? Multiplexing { get; init; }
         public SharpVision.Terminal.Capabilities.NegotiationOptions? Negotiation { get; init; }
         public bool Paste { get; init; }
         public SharpVision.Terminal.Capabilities.TerminalProfile Profile { get; init; }

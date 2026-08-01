@@ -229,6 +229,41 @@ public sealed class ApplicationGraphicsTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a pinned profile - which suppresses startup negotiation entirely - still
+    /// routes graphics selection through an explicit Multiplexing policy carried independently of
+    /// Negotiation, so an unauthorized route cannot silently degrade into a direct leak just because
+    /// the host pinned capabilities to avoid probing.</summary>
+    [Fact]
+    public async Task StartAsync_WhenProfileIsPinnedWithUnauthorizedMultiplexing_PreservesCellFallbackWithoutDirectLeakAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(1, 1), new Size(2, 3)));
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(Capabilities.Conservative));
+        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative with
+        {
+            Sixel = new Feature(CapabilitySupport.Supported, Origin.Override)
+        });
+        var options = TerminalOptions.Minimal with
+        {
+            Profile = profile,
+            Multiplexing = policy
+        };
+        await using Application application = new(
+            new GraphicsProbeControl(Rgba()),
+            terminal,
+            terminal,
+            options);
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var bytes = Joined(terminal);
+        bytes.AsSpan().IndexOf("\u001bP0;1;0q"u8).ShouldBe(-1);
+        bytes.AsSpan().IndexOf("\u001bPtmux;"u8).ShouldBe(-1);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies Kitty cleanup delete and flush complete before Session disposes transport.</summary>
     [Fact]
     public async Task StopAsync_WhenKittyStateExists_DeletesAndFlushesBeforeTransportDisposalAsync()
