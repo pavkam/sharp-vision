@@ -430,6 +430,48 @@ public sealed class TabControlTests
         IsHeaderSelected(tabs, 0).ShouldBeTrue();
     }
 
+    /// <summary>Verifies a consumer's Visibility write, made from a PropertyChanged handler while
+    /// ApplyPresentation's own write for that item is still in flight, is honored instead of being
+    /// silently discarded and re-issued on every following pass - the reentrancy previously
+    /// misattributed to the control itself by the _updatingPresentation guard (see #199).</summary>
+    [Fact]
+    public void ApplyPresentation_WhenConsumerVetoesVisibilityFromPropertyChanged_HonorsTheVetoAndRepairsSelection()
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        var tabs = Create(first, second);
+        tabs.SelectedIndex = 1;
+
+        first.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(Control.Visibility) && first.Visibility == Visibility.Visible)
+            {
+                first.Visibility = Visibility.Collapsed;
+            }
+        };
+
+        tabs.SelectedIndex = 0;
+
+        first.Visibility.ShouldBe(Visibility.Collapsed);
+        tabs.SelectedIndex.ShouldBe(1);
+        tabs.Items[tabs.SelectedIndex].ShouldBeSameAs(second);
+        second.Visibility.ShouldBe(Visibility.Visible);
+
+        // A further layout pass must not re-issue the discarded request: the veto stands.
+        var laterVisibilityChanges = 0;
+        first.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(Control.Visibility))
+            {
+                laterVisibilityChanges++;
+            }
+        };
+        new LayoutEngine().Layout(tabs, new Size(20, 5));
+
+        laterVisibilityChanges.ShouldBe(0);
+        first.Visibility.ShouldBe(Visibility.Collapsed);
+    }
+
     /// <summary>Verifies Clear detaches every page while clearing selection.</summary>
     [Fact]
     public void Items_WhenCleared_DetachesWithoutDisposalAndClearsSelection()

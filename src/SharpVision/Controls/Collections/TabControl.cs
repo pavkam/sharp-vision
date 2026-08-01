@@ -21,6 +21,8 @@ public sealed class TabControl: ItemsControl
     private readonly LayoutStack _headers;
     private readonly LayoutStack _stack;
     private bool _updatingPresentation;
+    private TabItem? _writingItem;
+    private Visibility _writingVisibility;
     private int _selectedIndex = -1;
     private Rune? _dividerGlyph;
     private Rune? _underlineGlyph;
@@ -720,11 +722,14 @@ public sealed class TabControl: ItemsControl
                     item.ClearPresentedContent();
                 }
 
+                _writingItem = item;
+                _writingVisibility = visibility;
                 item.Visibility = visibility;
             }
         }
         finally
         {
+            _writingItem = null;
             _updatingPresentation = false;
         }
     }
@@ -854,7 +859,12 @@ public sealed class TabControl: ItemsControl
 
         if (eventArgs.PropertyName == nameof(Visibility))
         {
-            if (_updatingPresentation)
+            // _updatingPresentation only says a write from ApplyPresentation is in flight, not that
+            // this particular notification is that write: a consumer can reassign Visibility from
+            // inside this very notification, which reenters here before ApplyPresentation unwinds.
+            // Attribute the write by comparing against what ApplyPresentation actually wrote for this
+            // item (see #199) - a mismatch means a consumer's reentrant request, which must be honored.
+            if (_updatingPresentation && ReferenceEquals(_writingItem, item) && item.Visibility == _writingVisibility)
             {
                 return;
             }
