@@ -226,6 +226,79 @@ public sealed class ContainerScrollTests
         outer.VerticalOffset.ShouldBeGreaterThan(0);
     }
 
+    /// <summary>Verifies an unconsumed keyboard scroll command propagates to the nearest armed
+    /// ancestor exactly like wheel input, instead of dead-ending and marking the key handled
+    /// anyway (see #214).</summary>
+    [Fact]
+    public void Key_WhenLeafAtEnd_PropagatesToArmedAncestor()
+    {
+        var outer = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        var inner = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        inner.Children.Add(new ProbeControl(new Size(4, 4))); // inner cannot scroll (fits)
+        outer.Children.Add(inner);
+        // outer content taller than viewport via a second tall child
+        outer.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(outer, new Size(4, 10));
+
+        inner.RaiseKey(Code.Down);
+
+        outer.VerticalOffset.ShouldBeGreaterThan(0);
+    }
+
+    /// <summary>Verifies a key that cannot move any offset - on an axis this container does not
+    /// scroll, with no armed ancestor to hand off to - is left unhandled instead of being consumed
+    /// for nothing (see #214).</summary>
+    [Fact]
+    public void Key_WhenAxisCannotScrollAndNoAncestor_LeavesEventUnhandled()
+    {
+        var container = new LayoutProbe
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Never
+        };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(container, new Size(4, 10));
+
+        var result = Router.Route(
+            container,
+            Events.Key,
+            new KeyEventArgs(new Stroke(Code.Right, character: null, nativeCode: 0, Modifiers.None, KeyAction.Press)));
+
+        result.Handled.ShouldBeFalse();
+        container.HorizontalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies PageUp/PageDown and Home/End drive the horizontal offset on a
+    /// horizontal-only container instead of being consumed for no effect - the vertical-only
+    /// mapping left it with no fast-travel key at all (see #214).</summary>
+    [Fact]
+    public void Key_WhenHorizontalOnlyContainer_PageAndEndpointKeysMoveHorizontalOffset()
+    {
+        var container = new LayoutProbe
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Horizontal,
+            ShowScrollBars = ShowScrollBars.Never,
+            PageOverlap = 1
+        };
+        container.Children.Add(new ProbeControl(new Size(20, 4)));
+        new LayoutEngine().Layout(container, new Size(5, 4));
+
+        container.RaiseKey(Code.PageDown);
+
+        container.HorizontalOffset.ShouldBe(4); // Viewport.Width(5) - PageOverlap(1)
+        container.VerticalOffset.ShouldBe(0);
+
+        container.RaiseKey(Code.End);
+
+        container.HorizontalOffset.ShouldBe(15); // Extent.Width(20) - Viewport.Width(5)
+
+        container.RaiseKey(Code.Home);
+
+        container.HorizontalOffset.ShouldBe(0);
+    }
+
     /// <summary>Verifies scroll ancestry crosses a non-Container owner but selects only armed Container ancestors.</summary>
     [Fact]
     public void Wheel_WhenNonContainerBridgesArmedContainers_PropagatesToActualContainer()

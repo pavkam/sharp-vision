@@ -592,47 +592,63 @@ public abstract class Container: Control
             return;
         }
 
-        var page = Math.Max(0, Viewport.Height - Math.Min(PageOverlap, Viewport.Height));
         var code = eventArgs.Stroke.Code;
+
+        // PageUp/PageDown and Home/End prefer the vertical axis - matching the pre-existing
+        // vertical-only mapping for the common case - and fall back to horizontal only when this
+        // container cannot scroll vertically at all, so a horizontal-only container still has a
+        // fast-travel key instead of consuming all four for nothing (see #214).
+        var pageAxisIsVertical = (ScrollBars & ScrollBars.Vertical) != 0 || (ScrollBars & ScrollBars.Horizontal) == 0;
+
+        int x;
+        int y;
 
         if (code == Code.Left)
         {
-            _ = ScrollBy(-LineSize, 0, ScrollCause.Keyboard);
+            (x, y) = (-LineSize, 0);
         }
         else if (code == Code.Right)
         {
-            _ = ScrollBy(LineSize, 0, ScrollCause.Keyboard);
+            (x, y) = (LineSize, 0);
         }
         else if (code == Code.Up)
         {
-            _ = ScrollBy(0, -LineSize, ScrollCause.Keyboard);
+            (x, y) = (0, -LineSize);
         }
         else if (code == Code.Down)
         {
-            _ = ScrollBy(0, LineSize, ScrollCause.Keyboard);
+            (x, y) = (0, LineSize);
         }
         else if (code == Code.PageUp)
         {
-            _ = ScrollBy(0, -page, ScrollCause.Keyboard);
+            var page = pageAxisIsVertical
+                ? Math.Max(0, Viewport.Height - Math.Min(PageOverlap, Viewport.Height))
+                : Math.Max(0, Viewport.Width - Math.Min(PageOverlap, Viewport.Width));
+            (x, y) = pageAxisIsVertical ? (0, -page) : (-page, 0);
         }
         else if (code == Code.PageDown)
         {
-            _ = ScrollBy(0, page, ScrollCause.Keyboard);
+            var page = pageAxisIsVertical
+                ? Math.Max(0, Viewport.Height - Math.Min(PageOverlap, Viewport.Height))
+                : Math.Max(0, Viewport.Width - Math.Min(PageOverlap, Viewport.Width));
+            (x, y) = pageAxisIsVertical ? (0, page) : (page, 0);
         }
         else if (code == Code.Home)
         {
-            _ = Apply(HorizontalOffset, 0, ScrollCause.Keyboard);
+            (x, y) = pageAxisIsVertical ? (0, -VerticalOffset) : (-HorizontalOffset, 0);
         }
         else if (code == Code.End)
         {
-            _ = Apply(HorizontalOffset, MaximumY(), ScrollCause.Keyboard);
+            (x, y) = pageAxisIsVertical
+                ? (0, Difference(MaximumY(), VerticalOffset))
+                : (Difference(MaximumX(), HorizontalOffset), 0);
         }
         else
         {
             return;
         }
 
-        eventArgs.Handled = true;
+        eventArgs.Handled = PropagateScroll(x, y, ScrollCause.Keyboard);
     }
 
     private void Handle(PointerEventArgs eventArgs)
@@ -646,6 +662,20 @@ public abstract class Container: Control
 
         var x = MultiplyNegative(pointer.WheelX, LineSize);
         var y = MultiplyNegative(pointer.WheelY, LineSize);
+
+        // A wheel record is this container's to keep only when it actually moved an offset -
+        // AutoScroll only decided whether the loop below ran at all, not what it accomplished; using
+        // it here marked every record handled unconditionally, defeating the outside Ignore/Dismiss
+        // policy documented for a scrollable leaf that changed nothing (see #211).
+        eventArgs.Handled = PropagateScroll(x, y, ScrollCause.Wheel);
+    }
+
+    /// <summary>Applies a scroll delta at this container, then feeds any unconsumed remainder
+    /// outward through each enclosing armed ancestor - the same handoff wheel input has always
+    /// used - stopping at the modal plane. Shared by wheel and keyboard input (see #214).</summary>
+    /// <returns>True when at least one offset changed anywhere along the walk.</returns>
+    private bool PropagateScroll(int x, int y, ScrollCause cause)
+    {
         var remainingX = x;
         var remainingY = y;
 
@@ -655,16 +685,12 @@ public abstract class Container: Control
         {
             var previousX = current.HorizontalOffset;
             var previousY = current.VerticalOffset;
-            _ = current.ScrollBy(remainingX, remainingY, ScrollCause.Wheel);
+            _ = current.ScrollBy(remainingX, remainingY, cause);
             remainingX = Difference(remainingX, current.HorizontalOffset - previousX);
             remainingY = Difference(remainingY, current.VerticalOffset - previousY);
         }
 
-        // A wheel record is this container's to keep only when it actually moved an offset -
-        // AutoScroll only decided whether the loop above ran at all, not what it accomplished; using
-        // it here marked every record handled unconditionally, defeating the outside Ignore/Dismiss
-        // policy documented for a scrollable leaf that changed nothing (see #211).
-        eventArgs.Handled = remainingX != x || remainingY != y;
+        return remainingX != x || remainingY != y;
     }
 
     private static Container? Ancestor(Control control)
