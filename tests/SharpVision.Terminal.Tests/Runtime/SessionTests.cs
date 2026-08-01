@@ -577,6 +577,56 @@ public sealed class SessionTests
         transport.JoinedWrites.ShouldNotContain("\u001b[18t");
     }
 
+    /// <summary>Verifies a resize source whose ReadAsync reports only genuine changes - never an
+    /// initial observation - still delivers its synchronous TryReadCurrent snapshot to the sink,
+    /// so Application's readiness gate, which is driven exclusively by ISink.Resize, is not left
+    /// waiting forever for a change that may never come.</summary>
+    [Fact]
+    public async Task RunAsync_WhenResizeSourceOnlyReportsCurrentDimensions_StillDeliversResizeAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        var dimensions = new Dimensions(new Size(80, 24), new Size(800, 480));
+        await using FakeResizeSource resize = new() { Current = dimensions };
+        var sink = new RuntimeSink();
+        await using Session session = new(transport, resize, sink, RuntimeOptions.Minimal);
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+
+        // Act
+        await sink.ResizeReceived.Task.WaitAsync(TestContext.Current.CancellationToken);
+        transport.Close();
+        await running;
+
+        // Assert
+        sink.Resizes.ShouldBe([dimensions]);
+    }
+
+    /// <summary>Verifies the same change-only source still delivers its snapshot once capability
+    /// negotiation completes, through the pending-resize gate rather than only the earlier
+    /// unconditional path.</summary>
+    [Fact]
+    public async Task RunAsync_WhenResizeSourceOnlyReportsCurrentDimensionsDuringNegotiation_DeliversResizeAfterProfileAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        var dimensions = new Dimensions(new Size(80, 24), new Size(800, 480));
+        await using FakeResizeSource resize = new() { Current = dimensions };
+        var sink = new RuntimeSink();
+        var options = RuntimeOptions.Minimal with
+        {
+            Negotiation = new NegotiationOptions(new Dictionary<string, string?>())
+        };
+        transport.Close();
+        await using Session session = new(transport, resize, sink, options);
+
+        // Act
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        sink.Resizes.ShouldBe([dimensions]);
+        sink.Order.IndexOf("profile").ShouldBeLessThan(sink.Order.IndexOf("resize"));
+    }
+
     /// <summary>Verifies a query write failure remains primary and publishes nothing.</summary>
     [Fact]
     public async Task RunAsync_WhenNegotiationQueryWriteFails_PreservesExceptionAsync()

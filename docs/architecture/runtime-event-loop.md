@@ -90,7 +90,12 @@ Before constructing the batch, a resize source may provide one synchronous local
 dimension snapshot. Unix uses the same `TIOCGWINSZ` boundary as resize delivery.
 Local cells and pixels suppress lower-confidence XTWINOPS queries and seed
 pixel-pointer inference before input reads; the ordinary resize callback still
-owns application geometry ordering.
+owns application geometry ordering. That snapshot, when available, is also
+routed through the same startup-readiness path as an ordinary resize event —
+`Application.StartAsync` only unblocks once a resize reaches its sink, so a
+resize source whose `ReadAsync` reports only genuine changes (never an initial
+observation) still starts normally as long as it implements
+`IResizeSource.TryReadCurrent`.
 
 Missing, generic, hardcopy, incomplete, and padding-dependent profiles stop at
 preflight. `Build()` throws `NotSupportedException`; `RunAsync` returns

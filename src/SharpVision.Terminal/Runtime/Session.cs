@@ -587,6 +587,23 @@ public sealed class Session: IAsyncDisposable
         var hasPendingResize = false;
         var pendingResize = default(Dimensions);
 
+        // A source that only ever reports changes from ReadAsync (never seeding an initial
+        // observation itself) must still unblock Application's readiness gate, which is driven
+        // exclusively by ISink.Resize. Route the synchronous TryReadCurrent snapshot through the
+        // same path as an ordinary resize event instead of leaving it feeding the router alone.
+        if (localDimensions is { } snapshot)
+        {
+            if (ready)
+            {
+                _sink.Resize(in snapshot);
+            }
+            else
+            {
+                pendingResize = snapshot;
+                hasPendingResize = true;
+            }
+        }
+
         // The loop tasks are declared outside the try so cleanup can drain the read
         // that still borrows the rented buffer and observe every abandoned task.
         Task<int>? read = null;
