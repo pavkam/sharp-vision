@@ -572,6 +572,24 @@ public sealed class TreeView: CompositeControl
             return;
         }
 
+        // PageUp/PageDown: move by a viewport's worth of realized item height. Handling the key
+        // here - rather than leaving it unhandled - is what stops it from escaping to page an
+        // enclosing scrollable container out from under the still-focused tree (see #210).
+        if (eventArgs.Stroke.Code is Code.PageUp or Code.PageDown)
+        {
+            var visible = CollectVisibleItems();
+
+            if (visible.Count > 0)
+            {
+                var target = StepPage(visible, eventArgs.Stroke.Code == Code.PageDown ? 1 : -1);
+                _ = _navigator.SetCurrent(target);
+                CommitCurrent(target, eventArgs.Stroke.Modifiers);
+                eventArgs.Handled = true;
+            }
+
+            return;
+        }
+
         // Left: collapse current or navigate to parent
         if (eventArgs.Stroke.Code == Code.Left)
         {
@@ -971,6 +989,41 @@ public sealed class TreeView: CompositeControl
         if (sender is TreeViewItem item)
         {
             NotifyItemInvoked(item, eventArgs.Cause, item.LastModifiers);
+        }
+    }
+
+    // Accumulates realized item heights from the current position until the sum reaches the
+    // committed viewport height, rather than treating the viewport's cell height as an item
+    // count (the defect #212 fixed for ListView's identical shape). At least one step always
+    // happens because the loop advances before its first accumulated check.
+    private Control StepPage(List<Control> visible, int direction)
+    {
+        var index = _navigator.Current is { } current ? visible.IndexOf(current) : -1;
+
+        if (index < 0)
+        {
+            index = direction > 0 ? -1 : visible.Count;
+        }
+
+        var target = Math.Max(1, Viewport.Height);
+        var accumulated = 0;
+
+        while (true)
+        {
+            var next = index + direction;
+
+            if (next < 0 || next >= visible.Count)
+            {
+                return visible[Math.Clamp(next, 0, visible.Count - 1)];
+            }
+
+            index = next;
+            accumulated += Math.Max(0, visible[index].Bounds.Height);
+
+            if (accumulated >= target)
+            {
+                return visible[index];
+            }
         }
     }
 

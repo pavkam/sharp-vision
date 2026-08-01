@@ -523,6 +523,24 @@ public sealed class NavigationView: CompositeControl
             return;
         }
 
+        // PageUp/PageDown: move by a viewport's worth of realized item height. Handling the key
+        // here - rather than leaving it unhandled - is what stops it from escaping to page an
+        // enclosing scrollable container out from under the still-focused view (see #210).
+        if (eventArgs.Stroke.Code is Code.PageUp or Code.PageDown)
+        {
+            var entries = CollectNavigableEntries();
+
+            if (entries.Count > 0)
+            {
+                var target = StepPage(entries, eventArgs.Stroke.Code == Code.PageDown ? 1 : -1);
+                _ = _navigator.SetCurrent(target);
+                CommitCurrent(target);
+                eventArgs.Handled = true;
+            }
+
+            return;
+        }
+
         if (eventArgs.Stroke.Code == Code.Up)
         {
             direction = -1;
@@ -630,6 +648,41 @@ public sealed class NavigationView: CompositeControl
         CollectFrom(_itemsStack, result);
         CollectFrom(_footerStack, result);
         return result;
+    }
+
+    // Accumulates realized entry heights from the current position until the sum reaches the
+    // committed viewport height, rather than treating the viewport's cell height as an entry
+    // count (the defect #212 fixed for ListView's identical shape). At least one step always
+    // happens because the loop advances before its first accumulated check.
+    private Control StepPage(List<Control> entries, int direction)
+    {
+        var index = _navigator.Current is { } current ? entries.IndexOf(current) : -1;
+
+        if (index < 0)
+        {
+            index = direction > 0 ? -1 : entries.Count;
+        }
+
+        var target = Math.Max(1, Viewport.Height);
+        var accumulated = 0;
+
+        while (true)
+        {
+            var next = index + direction;
+
+            if (next < 0 || next >= entries.Count)
+            {
+                return entries[Math.Clamp(next, 0, entries.Count - 1)];
+            }
+
+            index = next;
+            accumulated += Math.Max(0, entries[index].Bounds.Height);
+
+            if (accumulated >= target)
+            {
+                return entries[index];
+            }
+        }
     }
 
     private List<Control> CollectNavigableEntries()

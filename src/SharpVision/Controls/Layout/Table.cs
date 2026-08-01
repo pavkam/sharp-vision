@@ -833,7 +833,7 @@ public sealed class Table: ItemsControl
 
         if (stroke.Code is not (TerminalInput.Code.Up or TerminalInput.Code.Down or
             TerminalInput.Code.Left or TerminalInput.Code.Right or TerminalInput.Code.Home or
-            TerminalInput.Code.End))
+            TerminalInput.Code.End or TerminalInput.Code.PageUp or TerminalInput.Code.PageDown))
         {
             if (stroke.Code == TerminalInput.Code.Enter)
             {
@@ -853,7 +853,11 @@ public sealed class Table: ItemsControl
                         ? MoveActive(0, 1)
                         : stroke.Code == TerminalInput.Code.Home
                             ? MoveToEndpoint(first: true)
-                            : stroke.Code == TerminalInput.Code.End && MoveToEndpoint(first: false);
+                            : stroke.Code == TerminalInput.Code.End
+                                ? MoveToEndpoint(first: false)
+                                : stroke.Code == TerminalInput.Code.PageUp
+                                    ? MovePage(-1)
+                                    : stroke.Code == TerminalInput.Code.PageDown && MovePage(1);
 
         if (moved)
         {
@@ -953,6 +957,66 @@ public sealed class Table: ItemsControl
         return true;
     }
 
+    private bool MovePage(int direction)
+    {
+        if (Rows.Count == 0 || Columns.Count == 0)
+        {
+            return false;
+        }
+
+        var rowIndex = ActiveRow is null ? 0 : Rows.IndexOf(ActiveRow);
+        var columnIndex = ActiveColumnIndex < 0 ? 0 : ActiveColumnIndex;
+        var targetRow = StepPageRow(rowIndex, columnIndex, direction);
+
+        if (ActiveRow is not null && targetRow == rowIndex)
+        {
+            return false;
+        }
+
+        var row = Rows[targetRow];
+
+        if (SelectionMode is TableSelectionMode.Row or TableSelectionMode.MultipleRows)
+        {
+            SelectRowCore(row, TerminalInput.Modifiers.None, columnIndex);
+        }
+        else
+        {
+            SelectCell(row, columnIndex);
+        }
+
+        _ = BringIntoView(row.Cells[columnIndex]);
+        return true;
+    }
+
+    // Accumulates realized row heights from the current row until the sum reaches the committed
+    // viewport height (minus PageOverlap), rather than treating the viewport's cell height as a
+    // row count (the defect #212 fixed for ListView's identical shape). At least one step always
+    // happens because the loop advances before its first accumulated check.
+    private int StepPageRow(int startIndex, int columnIndex, int direction)
+    {
+        var target = Math.Max(1, Viewport.Height - Math.Min(PageOverlap, Viewport.Height));
+        var index = startIndex;
+        var accumulated = 0;
+
+        while (true)
+        {
+            var next = index + direction;
+
+            if (next < 0 || next >= Rows.Count)
+            {
+                return Math.Clamp(next, 0, Rows.Count - 1);
+            }
+
+            index = next;
+            accumulated += Math.Max(0, Rows[index].Cells[columnIndex].Bounds.Height);
+
+            if (accumulated >= target)
+            {
+                return index;
+            }
+        }
+    }
+
     private bool MoveToEndpoint(bool first)
     {
         if (Rows.Count == 0 || Columns.Count == 0)
@@ -974,6 +1038,9 @@ public sealed class Table: ItemsControl
             SelectCell(row, column);
         }
 
+        // Home/End select the endpoint row but previously left the viewport pinned, unlike every
+        // other navigation path here (see #210).
+        _ = BringIntoView(row.Cells[column]);
         return true;
     }
 

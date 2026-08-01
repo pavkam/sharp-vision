@@ -49,11 +49,14 @@ become `SelectedItem`; separators are skipped entirely.
 
 The view is the single sidebar tab stop (`TabNavigation.None`); item and group
 faces never receive keyboard focus. Up/Down arrows move the current entry across
-available group headers and items while skipping separators. Home/End move to
-the first or last available entry. Current entries scroll into view
-automatically. Enter and Space toggle a current group or invoke a current item
-without transferring focus. When no entry is current, activation establishes the
-first available entry before applying its action.
+available group headers and items while skipping separators. PageUp/PageDown
+move by as many entries as fill the committed viewport height, and are handled
+even when they cannot move further, so the key never escapes to page an
+enclosing scrollable container. Home/End move to the first or last available
+entry. Current entries scroll into view automatically. Enter and Space toggle a
+current group or invoke a current item without transferring focus. When no entry
+is current, activation establishes the first available entry before applying its
+action.
 
 ## NavigationViewItem
 

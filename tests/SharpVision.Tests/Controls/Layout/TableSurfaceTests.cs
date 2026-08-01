@@ -458,6 +458,73 @@ public sealed class TableSurfaceTests
         table.IsEditing.ShouldBeTrue();
     }
 
+    /// <summary>Verifies PageDown/PageUp move the active row and mark the record handled, so it
+    /// does not escape to page the enclosing scrollable container out from under the still-focused
+    /// table (see #210).</summary>
+    [Fact]
+    public async Task Input_WhenPageKeysArePressed_MoveActiveRowWithoutEscapingToOuterContainerAsync()
+    {
+        // Arrange
+        var table = new Table { Height = Length.Cells(6), HorizontalAlignment = HorizontalAlignment.Stretch };
+        table.Columns.Add(TableColumn.Fixed("Value", 8));
+
+        for (var index = 0; index < 12; index++)
+        {
+            table.Rows.Add(new TableRow([new ControlText($"Item {index}")]));
+        }
+
+        var outer = new Stack
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Children = { table }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            outer,
+            new Size(20, 8),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down);
+        var initial = table.ActiveRow.ShouldNotBeNull();
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.PageDown);
+
+        // Assert - the record was handled by the table, so the outer Stack never sees it.
+        outer.VerticalOffset.ShouldBe(0);
+        table.ActiveRow.ShouldNotBeSameAs(initial);
+    }
+
+    /// <summary>Verifies End brings the endpoint row into view instead of leaving the viewport
+    /// pinned at its prior offset, matching every other Table navigation path (see #210).</summary>
+    [Fact]
+    public async Task Input_WhenEndSelectsLastRow_BringsItIntoViewAsync()
+    {
+        // Arrange
+        var table = new Table { Height = Length.Cells(4), HorizontalAlignment = HorizontalAlignment.Stretch };
+        table.Columns.Add(TableColumn.Fixed("Value", 8));
+
+        for (var index = 0; index < 20; index++)
+        {
+            table.Rows.Add(new TableRow([new ControlText($"Item {index}")]));
+        }
+
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(20, 4),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.ClickAsync(table, new Point(1, 1));
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.End);
+
+        // Assert
+        table.ActiveRow.ShouldBeSameAs(table.Rows[^1]);
+        table.VerticalOffset.ShouldBeGreaterThan(0);
+    }
+
     /// <summary>Creates one stretched borderless clickable table cell.</summary>
     private static Button Row(string value) => new()
     {

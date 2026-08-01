@@ -42,12 +42,16 @@ separate rendering model.
 
 An interactive table is focusable and tab-stop eligible. Pointer presses select
 the hit row or cell and make the clicked cell active; `Up`, `Down`, `Left`,
-`Right`, `Home`, and `End` move the active cell. `Enter` activates the active
-row, and begins editing when that cell is an editable `TextInput`. While
-editing, `Enter` commits, `Escape` restores the original text, and `Tab` commits
-then moves to the next cell. A `TableColumn` marked `isReadOnly` and a read-only
-`TextInput` reject editing. `Ctrl+A` selects every row or cell when the active
-selection mode supports it.
+`Right`, `Home`, and `End` move the active cell. `PageUp`/`PageDown` move by as
+many rows as fill the committed viewport height minus `PageOverlap`, and are
+handled even when they cannot move further, so the key never escapes to page an
+enclosing scrollable container. Every move brings the active cell into view,
+including `Home`/`End`. `Enter` activates the active row, and begins editing
+when that cell is an editable `TextInput`. While editing, `Enter` commits,
+`Escape` restores the original text, and `Tab` commits then moves to the next
+cell. A `TableColumn` marked `isReadOnly` and a read-only `TextInput` reject
+editing. `Ctrl+A` selects every row or cell when the active selection mode
+supports it.
 
 `SelectRow`, `SelectCell`, `ClearSelection`, and `SelectAll` commit selection
 state and raise `SelectionChanged`. `RowInvoked` reports pointer and keyboard

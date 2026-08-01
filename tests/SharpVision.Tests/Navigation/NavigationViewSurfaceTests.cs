@@ -437,6 +437,45 @@ public sealed class NavigationViewSurfaceTests
                              """);
     }
 
+    /// <summary>Verifies PageDown/PageUp move the current entry and mark the record handled, so it
+    /// does not escape to page the enclosing scrollable container out from under the still-focused
+    /// view (see #210).</summary>
+    [Fact]
+    public async Task Input_WhenPageKeysArePressed_MoveCurrentWithoutEscapingToOuterContainerAsync()
+    {
+        // Arrange
+        var view = new NavigationView { Height = Length.Cells(6), HorizontalAlignment = HorizontalAlignment.Stretch };
+        List<NavigationViewItem> items = [.. Enumerable.Range(0, 12).Select(index => new NavigationViewItem { Header = $"Item {index}" })];
+
+        foreach (var item in items)
+        {
+            view.Items.Add(item);
+        }
+
+        var outer = new Stack
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Children = { view }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            outer,
+            new Size(20, 8),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down);
+        view.SelectedItem.ShouldBeSameAs(items[0]);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.PageDown);
+
+        // Assert - the record was handled by the view, so the outer Stack never sees it.
+        outer.VerticalOffset.ShouldBe(0);
+        view.SelectedItem.ShouldNotBeSameAs(items[0]);
+    }
+
     private static NavigationView CreateView(string? header, int width, bool useDefaultChrome = false)
     {
         var view = new NavigationView
