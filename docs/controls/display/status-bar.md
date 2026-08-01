@@ -24,11 +24,11 @@ also models a context-sensitive bottom bar.
 
 `StatusBar` derives from `ItemsControl` and exposes a typed
 `StatusBarItemCollection` collection through `Items`. The collection accepts
-only detached `StatusBarItem` instances and supports `Add`, `Insert`,
-`Remove`, `RemoveAt`, `Move`, `IndexOf`, `Clear`, a settable indexer, and
-enumeration. Ordinary control ownership rules reject duplicates, cycles, and
-cross-parent insertion. Removing, clearing, or replacing an item detaches it
-without disposing it; disposing the bar disposes items it still owns.
+only detached `StatusBarItem` instances and supports `Add`, `Insert`, `Remove`,
+`RemoveAt`, `Move`, `IndexOf`, `Clear`, a settable indexer, and enumeration.
+Ordinary control ownership rules reject duplicates, cycles, and cross-parent
+insertion. Removing, clearing, or replacing an item detaches it without
+disposing it; disposing the bar disposes items it still owns.
 
 `Spacing` is the non-negative number of terminal cells between adjacent visible
 items. Its default is one. A negative assignment throws

@@ -48,16 +48,15 @@ capture loss, disable, hide, detach, or disposal ends the drag.
 When `CanResize` is true, a primary drag from the single bottom-right corner
 cell captures the pointer and writes `Width`/`Height` from absolute pointer
 movement, keeping the top-left corner fixed by also writing Overlay `Left` and
-`Top` offsets from the corner's position when the gesture began — the same way
-a drag converts the window to an explicitly positioned one, regardless of
-whatever alignment or `Right`/`Bottom` anchoring positioned it beforehand. The
-result is clamped to `MinWidth`/`MaxWidth`, `MinHeight`/`MaxHeight`, and the
-parent content bounds. A
-corner hit is checked before a title-bar hit, so a minimum-height window resizes
-rather than drags when both targets coincide. Release, capture loss, disable,
-hide, detach, or disposal ends the resize the same way as a drag. Only the
-bottom-right corner is an interactive target; the other three corners and the
-four edges are not resize handles.
+`Top` offsets from the corner's position when the gesture began — the same way a
+drag converts the window to an explicitly positioned one, regardless of whatever
+alignment or `Right`/`Bottom` anchoring positioned it beforehand. The result is
+clamped to `MinWidth`/`MaxWidth`, `MinHeight`/`MaxHeight`, and the parent
+content bounds. A corner hit is checked before a title-bar hit, so a
+minimum-height window resizes rather than drags when both targets coincide.
+Release, capture loss, disable, hide, detach, or disposal ends the resize the
+same way as a drag. Only the bottom-right corner is an interactive target; the
+other three corners and the four edges are not resize handles.
 
 ## Chrome and interaction
 

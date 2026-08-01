@@ -13,13 +13,20 @@ they do not replace focused local proof while developing.
 
 The shared composite action runs `make lint`, the Release build, tests with
 coverage, coverage-report generation, and artifact publication in sequence.
-`make lint` covers C# formatting and analyzers, C# source-structure checks,
-external resource checks, GitHub Actions schema and immutable-pin validation,
-Markdown formatting and linting, local-link validation, and
-documentation-tooling tests. Microsoft Testing Platform tests enforce a
-discovery minimum and produce xUnit TRX plus Cobertura output. The action
-publishes the test-result check and uploads both the raw TRX files and an
-HTML/Cobertura/badge coverage report as workflow artifacts.
+`make lint` is exactly four commands: `dotnet format --verify-no-changes`,
+`prettier --check`, `markdownlint-cli2`, and the local-link validator. A lint
+failure does not skip the later gates: the lint step runs with
+`continue-on-error`, every later step in the action still runs, and the action
+fails the job at the end if lint failed, so a formatting violation cannot
+suppress build, test, coverage, or the compatibility snapshot. Microsoft Testing
+Platform tests enforce a discovery minimum and produce xUnit TRX plus Cobertura
+output. The action publishes the test-result check and uploads both the raw TRX
+files and an HTML/Cobertura/badge coverage report as workflow artifacts.
+
+`make test-ci` — the target the action actually runs — also runs
+`npm run test:docs`, the Node unit suite covering the `scripts/` gate layer
+itself (including the control-coverage floor validator); this is not exclusive
+to the local-only `make test` target.
 
 `make test-ci` additionally requires at least 85 percent line coverage across
 instrumented UI classes under `src/SharpVision/Controls/`, `Dialogs/`, `Menus/`,
@@ -91,9 +98,9 @@ terminal, Unicode, rendering, and control behavior.
 
 ## Required evidence
 
-| Gate            | Pass condition                                                                                                          |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Format and lint | No C#, Markdown, link, structure, workflow, or external-resource violations.                                            |
-| Build           | Zero warnings/errors across production, examples, showcase, tests, and XML documentation.                               |
-| Test            | Minimum discovery is met and every discovered test passes without retries.                                              |
-| Package         | The UI package and symbols use the approved version and validated metadata; its terminal dependency is published first. |
+| Gate            | Pass condition                                                                                                           |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Format and lint | No C# formatting/analyzer, Markdown formatting/lint, or local-link violations; failure here does not skip build or test. |
+| Build           | Zero warnings/errors across production, examples, showcase, tests, and XML documentation.                                |
+| Test            | Minimum discovery is met and every discovered test passes without retries.                                               |
+| Package         | The UI package and symbols use the approved version and validated metadata; its terminal dependency is published first.  |

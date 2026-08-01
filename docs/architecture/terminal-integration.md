@@ -5,8 +5,8 @@
 Terminal integration is one ordered runtime path from an owned physical console
 connection to typed input, retained UI state, rendered cells, and restored
 terminal modes. Application code enters through
-`SharpVision.ConsoleApplication`; it does not construct a session,
-transport, parser, renderer, or terminal-description provider by hand.
+`SharpVision.ConsoleApplication`; it does not construct a session, transport,
+parser, renderer, or terminal-description provider by hand.
 
 The integration keeps four concerns separate:
 

@@ -200,10 +200,11 @@ prove `$HOME/.terminfo`, configured directory, `TERMCAP`, `TERMPATH`,
 `/etc/termcap`, `/usr/share/misc/termcap`, and `$HOME/.termcap` source order
 through the single
 [lookup and fallback contract](../protocols/terminfo.md#lookup-and-fallback).
-They cover every retained `DescriptionLimits` and `ProgramLimits` default and hard ceiling, provider
-failures, generic/hardcopy entries, required-capability omissions, and one-sided
-requested cursor or alternate-screen pairs before a frame writes bytes. Native
-lookup remains outside the adversarial parser guarantee described by the
+They cover every retained `DescriptionLimits` and `ProgramLimits` default and
+hard ceiling, provider failures, generic/hardcopy entries, required-capability
+omissions, and one-sided requested cursor or alternate-screen pairs before a
+frame writes bytes. Native lookup remains outside the adversarial parser
+guarantee described by the
 [provider trust boundary](../protocols/terminfo.md#native-provider-trust-boundary):
 tests prove retained snapshot bounds and explicit-`TerminalProfile` native-
 discovery bypass, not an impossible native deadline.

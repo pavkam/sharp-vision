@@ -68,10 +68,10 @@ non-focusable and non-tab-stop.
 A collapsible labeled section. `Header` (string) is the group label rendered
 with the code-owned expanded or collapsed disclosure glyph. `IsExpanded` (bool,
 default true) controls sub-item visibility. Sub-items are `NavigationViewItem`
-instances owned by the group's `Items` collection. Enter or Space on the
-current group toggles its expansion while the owning `NavigationView` retains
-focus. Collapsing a group whose descendant is current moves current state to the
-group header and repairs any now-hidden selection.
+instances owned by the group's `Items` collection. Enter or Space on the current
+group toggles its expansion while the owning `NavigationView` retains focus.
+Collapsing a group whose descendant is current moves current state to the group
+header and repairs any now-hidden selection.
 
 ## NavigationViewSeparator
 

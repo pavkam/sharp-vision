@@ -94,9 +94,9 @@ explicit caller override asserting the 3.5+ contract; environment, database, and
 unimplemented feature-query evidence cannot authorize it. The
 [coverage matrix](coverage-matrix.md#coverage) remains the support claim.
 
-`SharpVision.ITerminalServices` (`Application.Terminal`) exposes the
-implemented **output** protocols behind small interfaces. `Description` exposes
-the active immutable metadata. `IBell.IsSupported` requires an exact described
+`SharpVision.ITerminalServices` (`Application.Terminal`) exposes the implemented
+**output** protocols behind small interfaces. `Description` exposes the active
+immutable metadata. `IBell.IsSupported` requires an exact described
 zero-parameter `bel` program with proven non-empty output, and `Ring()` expands
 it. `IsTitleSupported` gates OSC 2 to a library-proven built-in profile or gates
 a database description to a complete, parameterless `TS` prefix plus `fsl`

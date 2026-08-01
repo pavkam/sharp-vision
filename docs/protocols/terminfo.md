@@ -69,9 +69,9 @@ accepted snapshot, key bindings, RGB component bits) and
 operations, interpreter stack, expansion output, string parameter) own these
 implemented provider limits between them. Default is the ordinary accepted
 limit; hard ceiling is the largest caller-set value. Values are counts, raw
-bytes, or UTF-8 bytes as stated. A caller value above a hard ceiling is
-rejected before lookup. A provider value above its applicable limit rejects
-that description before any command is compiled or emitted.
+bytes, or UTF-8 bytes as stated. A caller value above a hard ceiling is rejected
+before lookup. A provider value above its applicable limit rejects that
+description before any command is compiled or emitted.
 
 | Limit               | Default | Hard ceiling | Unit                                                                                 |
 | ------------------- | ------: | -----------: | ------------------------------------------------------------------------------------ |
@@ -378,7 +378,8 @@ detailed cross-layer ownership is in the
 ## Expected behavior
 
 Fixture databases and runtime tests prove the lookup order, every
-`DescriptionLimits`/`ProgramLimits` boundary, provider-failure distinction, `gn`/`hc` rejection,
-required-command rejection before output, matched cursor/alternate-screen
-fallback, allowlist filtering, parameter-program bounds, and final lifecycle
-bytes coming from a database program rather than an environment terminal name.
+`DescriptionLimits`/`ProgramLimits` boundary, provider-failure distinction,
+`gn`/`hc` rejection, required-command rejection before output, matched
+cursor/alternate-screen fallback, allowlist filtering, parameter-program bounds,
+and final lifecycle bytes coming from a database program rather than an
+environment terminal name.

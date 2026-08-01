@@ -18,10 +18,11 @@ dismiss.
 
 ## Ownership
 
-Assigning a menu to `Control.ContextMenu` gives that control ownership of the menu's
-presentation. A menu's presentation may be owned by only one control at a time; assigning
-the same `IContextMenu` instance to a second control throws `ArgumentException` and leaves
-the second control's existing context menu (if any) unchanged.
+Assigning a menu to `Control.ContextMenu` gives that control ownership of the
+menu's presentation. A menu's presentation may be owned by only one control at a
+time; assigning the same `IContextMenu` instance to a second control throws
+`ArgumentException` and leaves the second control's existing context menu (if
+any) unchanged.
 
 ## Example
 

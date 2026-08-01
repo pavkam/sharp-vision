@@ -37,16 +37,16 @@ A Star-length child shares its axis's leftover space with its Star siblings by
 weight, exactly as `Grid` and `StackPanel` split a Star track: after every
 fixed, percent, and automatic sibling on the same axis is resolved, whatever
 remains is divided among the Star children in proportion to their weight. A
-Star's `MinWidth`/`MaxWidth` (or `MinHeight`/`MaxHeight`) reserves or clips
-that Star's own share; a clipped or reserved amount is redistributed among the
+Star's `MinWidth`/`MaxWidth` (or `MinHeight`/`MaxHeight`) reserves or clips that
+Star's own share; a clipped or reserved amount is redistributed among the
 remaining eligible Star siblings rather than being dropped or taken from an
 unrelated child. Non-Star siblings resolve against the axis with every Star's
-consumption excluded from their own basis — a Star claims whatever the
-non-Star siblings collectively leave, and letting a later Percent sibling see
-a Star's real rendered share would make the Percent's resolution depend on a
-value that in turn depends on it, with no stable answer. Declaring a Star
-before or after a Percent sibling that claims the same nominal share
-therefore yields the same split either way.
+consumption excluded from their own basis — a Star claims whatever the non-Star
+siblings collectively leave, and letting a later Percent sibling see a Star's
+real rendered share would make the Percent's resolution depend on a value that
+in turn depends on it, with no stable answer. Declaring a Star before or after a
+Percent sibling that claims the same nominal share therefore yields the same
+split either way.
 
 Changing an attached side validates the enum and dispatcher affinity before
 mutation, then invalidates measure only when the child belongs to a Dock.

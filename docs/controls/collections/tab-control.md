@@ -42,9 +42,9 @@ attached with empty bounds.
   indexer and enumeration. Null, duplicate, attached, disposed, and cyclic
   candidates are rejected before ownership changes. Removal and replacement
   detach without disposing. Inserting, removing, replacing, or moving a page
-  preserves the identity of an already-selected page: its `SelectedIndex`
-  shifts silently when unaffected, and `SelectionChanged` fires only when the
-  selected page itself is removed or replaced.
+  preserves the identity of an already-selected page: its `SelectedIndex` shifts
+  silently when unaffected, and `SelectionChanged` fires only when the selected
+  page itself is removed or replaced.
 - `SelectedIndex` tracks the selected eligible page; `-1` explicitly clears
   selection. The first effectively visible and enabled tab auto-selects. Invalid
   indexes and unavailable targets are rejected before mutation.

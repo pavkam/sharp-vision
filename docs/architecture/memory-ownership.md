@@ -188,12 +188,12 @@ target, and bubble delivery and clears them before pool return. Handlers must
 copy any data they retain. Terminal `Paste` payloads are already immutable owned
 values and may cross the dispatcher queue without borrowing decoder storage.
 
-`SharpVision.Application` owns its dispatcher, terminal session,
-renderer, focus/capture managers, current UI back frame, transport, and resize
-source. Its bounded input queue stores immutable value records. Resize storms
-use one newest-value slot rather than one allocation per notification. A back
-frame remains application-owned until its asynchronous renderer lease completes;
-only then may it be disposed or replaced.
+`SharpVision.Application` owns its dispatcher, terminal session, renderer,
+focus/capture managers, current UI back frame, transport, and resize source. Its
+bounded input queue stores immutable value records. Resize storms use one
+newest-value slot rather than one allocation per notification. A back frame
+remains application-owned until its asynchronous renderer lease completes; only
+then may it be disposed or replaced.
 
 ## Span and asynchronous boundaries
 
