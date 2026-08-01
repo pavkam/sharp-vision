@@ -138,8 +138,12 @@ owns validation, confinement, nesting, and focus restoration.
 
 Dialogs do not select a Window role through an enum. Instead,
 [`Dialog<TResult>`](../../dialogs/index.md#dialog-catalog) derives from Window
-and sets the fixed placement, centered header, close, Escape, typed completion,
-and modal lifecycle policy.
+and sets a base-class default policy for placement, centered header, close,
+Escape, typed completion, and modal lifecycle. These are defaults a concrete
+dialog is expected to override where its own chrome differs: the base class's
+fixed placement is one example, kept only by the plain `Dialog<TResult>`
+itself and overridden to movable by MessageBox and the file dialogs, while the
+centered header and Escape policy are kept by every shipped dialog.
 
 ## Example
 

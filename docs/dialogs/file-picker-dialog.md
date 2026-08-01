@@ -92,12 +92,12 @@ it starts a fresh load from the last committed directory.
 
 The dialog is a direct Window child of the presentation Overlay. It requests 80%
 of the host's width and 80% of its height, and clamps its width to at most 96
-columns. Its maximum height is 19 chrome rows plus `MaxVisibleRows`, which makes
-the default maximum 39 rows. There is no hard minimum width or height: below the
-caps, both dimensions stay proportional. File dialogs use fixed dialog
-placement, so the presentation Overlay centers them without title dragging.
-Window containment keeps the complete border box inside the host after a resize,
-including tiny hosts.
+columns. Its maximum height is 21 chrome rows plus `MaxVisibleRows`, which makes
+the default maximum 41 rows. There is no hard minimum width or height: below the
+caps, both dimensions stay proportional. File dialogs are movable, like the
+sibling Save dialog, so a user can drag them by the title bar within the
+presentation Overlay. Window containment keeps the complete border box inside
+the host after a resize, including tiny hosts.
 
 One padded Grid uses a single explicit star column, so every row reaches the
 trailing content edge. The grid owns five rows:
