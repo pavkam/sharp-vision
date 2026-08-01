@@ -328,9 +328,14 @@ the physical hit ancestry exposes `PointerOver`. The active theme and local
 appearance overlays determine whether that state changes any channel.
 
 GetAppearanceState derives the local flags from physical pointer membership,
-focus, press behavior, availability, and a control's explicit current,
-selection, checked, or indeterminate facts. A derived control uses
-SetVisualStateProperty when a CLR state property changes one of those facts.
+focus, availability, and a control's explicit pressed, current, selection,
+checked, or indeterminate facts. A derived control uses SetVisualStateProperty
+when a CLR state property changes one of those facts. Pressed defaults to the
+interaction state the framework's own gesture behaviors track; a control with
+its own press concept - continuous drag tracking rather than one-shot
+activation, for example - overrides the protected `IsPressedState` seam
+directly, the same pattern `IsCheckedState`, `IsSelectedState`,
+`IsCurrentState`, and `IsIndeterminateState` already use for their own facts.
 
 Intrinsic body, border, and shadow rendering is framework-owned. Custom
 OnRenderContent implementations draw semantic content with ResolvedStyle; they

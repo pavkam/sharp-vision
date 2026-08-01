@@ -1984,7 +1984,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             result |= VisualState.Focused;
         }
 
-        if (IsPressed)
+        if (IsPressedState)
         {
             result |= VisualState.Pressed;
         }
@@ -2025,6 +2025,16 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <see cref="GetAppearanceState"/>.
     /// </remarks>
     protected virtual bool IsCheckedState => false;
+
+    /// <summary>Gets whether the control currently holds pressed interaction state.</summary>
+    /// <remarks>
+    /// Defaults to the pointer/keyboard press tracked by the framework's own gesture behaviors; a
+    /// control with its own press concept - continuous drag tracking rather than one-shot
+    /// activation, for example - overrides this to drive <see cref="VisualState.Pressed"/> without
+    /// depending on <see cref="PressBehavior"/> or <see cref="DragBehavior"/>. This is the supported
+    /// seam for participating in pressed styling without overriding <see cref="GetAppearanceState"/>.
+    /// </remarks>
+    protected virtual bool IsPressedState => _interactionState.IsPressed;
 
     /// <summary>Gets whether the control is the selected member of an owning collection.</summary>
     /// <remarks>

@@ -115,12 +115,14 @@ internal static class ControlChrome
                 settings.PreserveButtonShadowGap);
         }
 
+        var isPressed = (visualState & VisualState.Pressed) != 0;
+
         if (background == BackgroundMode.Opaque && !settings.SkipBodyFill &&
-            (!settings.ClearBodyWhenPressedWithShadow || !control.IsPressed || !appearance.Shadow.IsVisible))
+            (!settings.ClearBodyWhenPressedWithShadow || !isPressed || !appearance.Shadow.IsVisible))
         {
             canvas.Clear(FillBounds(body, appearance.Border.Sides), bodyStyle);
         }
-        else if (settings.ClearBodyWhenPressedWithShadow && control.IsPressed && appearance.Shadow.IsVisible)
+        else if (settings.ClearBodyWhenPressedWithShadow && isPressed && appearance.Shadow.IsVisible)
         {
             canvas.Clear(FillBounds(body, appearance.Border.Sides), bodyStyle);
         }

@@ -504,6 +504,7 @@ namespace SharpVision.Controls
         public bool IsPointerDirectlyOver { get; }
         public bool IsPointerOver { get; }
         public bool IsPressed { get; }
+        protected virtual bool IsPressedState { get; }
         protected virtual bool IsSelectedState { get; }
         public virtual bool IsTabStop { get; }
         public SharpVision.Terminal.Geometry.Rect LocalBounds { get; }

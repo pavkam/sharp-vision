@@ -103,6 +103,16 @@ internal sealed class ProbeControl: ChromeProbe
     /// <summary>Gets the value most recently committed through the protected property kernel.</summary>
     internal int KernelValue => _kernelValue;
 
+    /// <summary>Gets or sets a forced pressed fact independent of real pointer/keyboard press
+    /// tracking, exercising the protected IsPressedState seam (see #185).</summary>
+    internal bool ForcedPressedState { get; set; }
+
+    /// <inheritdoc/>
+    protected override bool IsPressedState => ForcedPressedState || base.IsPressedState;
+
+    /// <summary>Gets the local appearance-state flags through the protected resolution seam.</summary>
+    internal VisualState ProbeAppearanceState => GetAppearanceState();
+
     /// <summary>Releases pointer capture only when this probe owns it.</summary>
     internal void ReleaseProbePointer() => ReleasePointerCapture();
 

@@ -75,6 +75,24 @@ public sealed class OverrideSeamTests
         container.ChildrenChangedCalls.ShouldBe(4);
     }
 
+    /// <summary>Verifies a control with its own pressed concept can drive VisualState.Pressed
+    /// through the protected IsPressedState seam, independent of the framework's own pointer/
+    /// keyboard press tracking - matching IsCheckedState, IsSelectedState, IsCurrentState, and
+    /// IsIndeterminateState, the four sibling seams that already exist (see #185).</summary>
+    [Fact]
+    public void IsPressedState_WhenOverriddenTrue_DrivesAppearanceStateIndependentlyOfIsPressed()
+    {
+        var control = new ProbeControl();
+
+        control.IsPressed.ShouldBeFalse();
+        control.ProbeAppearanceState.HasFlag(VisualState.Pressed).ShouldBeFalse();
+
+        control.ForcedPressedState = true;
+
+        control.IsPressed.ShouldBeFalse();
+        control.ProbeAppearanceState.HasFlag(VisualState.Pressed).ShouldBeTrue();
+    }
+
     /// <summary>Verifies lifecycle hooks observe the already-committed attachment state.</summary>
     [Fact]
     public async Task Lifecycle_WhenRootAttachesAndDetaches_PublishesCommittedStateAsync()
