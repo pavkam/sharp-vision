@@ -1,8 +1,8 @@
 # State, input, and events
 
 SharpVision controls are ordinary retained CLR objects. Bind persistent model
-state through strongly typed expressions; use typed events for imperative
-actions and assign controls on the dispatcher thread.
+state through strongly typed expressions, use typed events for imperative
+actions, and always assign controls on the dispatcher thread.
 
 ## Bind persistent model state
 
@@ -18,8 +18,8 @@ enabled.Bind(viewModel, model => model.Enabled);
 
 `TextInput` and `CheckBox` default to two-way synchronization. Nested paths,
 observable collections, selection, dispatcher marshaling, and lifetime follow
-the [data-binding contract](../concepts/data-binding.md#overview). Use direct
-events when an action is not persistent model state.
+the [data-binding contract](../concepts/data-binding.md#overview). When an
+action is not persistent model state, use a direct event instead.
 
 ## Update state from control events
 
@@ -45,15 +45,15 @@ enabled.StateChanged += (_, args) =>
 };
 ```
 
-The properties commit before their change events run. `IsEnabled` participates
-in inherited effective state, so disabling an ancestor also disables this
-button. See the [`CheckBox` event order](../controls/input/check-box.md#api) and
-[`Control` inherited-state rules](../controls/control.md#api).
+Properties commit before their change events run. `IsEnabled` participates in
+the inherited effective state, so disabling an ancestor also disables this
+button. See the [`CheckBox` event order](../controls/input/check-box.md#api)
+and the [`Control` inherited-state rules](../controls/control.md#api).
 
 ## Handle routed input
 
-Use a routed handler when a component needs preview/bubble behavior rather than
-a control-specific event:
+Use a routed handler when a component needs preview or bubble behavior rather
+than a control-specific event:
 
 ```csharp
 _ = AddHandler(Events.Key, (_, args) =>
@@ -71,11 +71,11 @@ _ = AddHandler(Events.Key, (_, args) =>
 });
 ```
 
-Preview travels from root toward the target; bubble travels back from target to
-root. Marking `Handled` stops ordinary handlers later in the route. Focus,
-pointer capture, terminal-focus loss, and control availability are coordinated
-with the same route. The complete ordering is in
-[input routing](../concepts/input-routing.md#route-construction), while
+Preview travels from the root toward the target; bubble travels back from the
+target to the root. Marking `Handled` stops ordinary handlers later in the
+route. Focus, pointer capture, terminal-focus loss, and control availability
+are coordinated with the same route. The complete ordering is in
+[input routing](../concepts/input-routing.md#route-construction), and
 [focus](../concepts/focus.md#overview) owns navigation and focus transfer.
 
 ## Pick the right mechanism

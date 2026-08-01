@@ -2,8 +2,9 @@
 
 ## Overview
 
-`Stack` arranges managed children sequentially on a vertical or horizontal axis.
-Child order is render, navigation, and default z-order.
+`Stack` arranges managed children one after another on a vertical or
+horizontal axis. Child order is also the render order, the navigation order,
+and the default z-order.
 
 ## API
 
@@ -16,27 +17,28 @@ Child order is render, navigation, and default z-order.
 
 ## Behavior
 
-- `Children` rejects nulls, duplicates, cycles, and already parented controls.
-- `Orientation` defaults vertical and accepts vertical or horizontal.
-- `Spacing` defaults zero and is a non-negative cell count between non-collapsed
-  children. Hidden children participate; collapsed children do not consume a
-  track or adjacent spacing.
-- `Reverse` defaults false and changes geometry, rendering, and default focus
-  navigation consistently without reparenting children. Elevated popup
-  descendants follow that same order, so reversing the stack also reverses popup
-  drawing and hit priority.
+- `Children` rejects nulls, duplicates, cycles, and controls that already have
+  a parent.
+- `Orientation` defaults to vertical and accepts vertical or horizontal.
+- `Spacing` defaults to zero and is a non-negative cell count inserted between
+  non-collapsed children. Hidden children still participate; collapsed
+  children consume neither a track nor adjacent spacing.
+- `Reverse` defaults to `false`. Setting it reverses geometry, rendering, and
+  default focus navigation consistently, without reparenting any child.
+  Elevated popup descendants follow that same order, so reversing the stack
+  also reverses popup drawing and hit priority.
 
-Along the stack axis, automatic children receive intrinsic space and
-proportional children divide remaining arranged space. Percentages resolve once
-against the final inner stack size; fixed, percentage, automatic, and
-proportional border-box extents are then allocated after external margins and
-saturated spacing reserve their cells. When minimums cannot fit, containment
-wins and later tracks may shrink to zero. Overflow follows ancestor clipping or
-scrolling policy.
+Along the stack axis, automatic children receive their intrinsic space and
+proportional children divide whatever arranged space remains. Percentages
+resolve once against the final inner stack size. Fixed, percentage, automatic,
+and proportional border-box extents are then allocated after external margins
+and saturated spacing have reserved their cells. When the minimums cannot fit,
+containment wins and later tracks may shrink to zero; overflow follows the
+ancestor's clipping or scrolling policy.
 
 The cross axis uses the ordinary child length and alignment contract. Layout
-uses pooled temporary track storage and clears retained child references before
-returning it.
+uses pooled temporary track storage and clears any retained child references
+before returning it.
 
 ## Example
 
@@ -50,13 +52,16 @@ actions.Children.Add(cancelAction);
 
 ## Expected behavior
 
-Cover every orientation, spacing, reverse, fixed/percent/auto/proportional mix,
-collapsed children, alignment, zero/tiny sizes, overflow, resize, ownership,
-navigation order, reversed popup drawing/hit priority, Unicode measurement, and
-exact bounds/cells.
+Layout is deterministic for both orientations and for any mix of fixed,
+percentage, automatic, and proportional children, with spacing and `Reverse`
+applied consistently. Collapsed children are skipped, alignment follows the
+cross-axis contract, and zero or tiny sizes never break containment.
+Overflow, resize, managed ownership, navigation order, reversed popup drawing
+and hit priority, Unicode measurement, and the exact committed bounds and
+cells are all observable guarantees.
 
 Mounted cross-layer coverage in
 [`StackSurfaceTests`](../../../tests/SharpVision.Tests/Controls/Layout/StackSurfaceTests.cs)
-proves exact mixed-track cells and resize reflow, reverse/collapsed visual order
-with a real pointer target, and intrinsic wheel scrolling with Unicode
-continuation ownership and offset repair.
+demonstrates exact mixed-track cells with resize reflow, reversed and
+collapsed visual order with a real pointer target, and intrinsic wheel
+scrolling with Unicode continuation ownership and offset repair.

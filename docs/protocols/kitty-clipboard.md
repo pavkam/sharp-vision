@@ -6,8 +6,8 @@ Primary source:
 [Kitty clipboard protocol](https://sw.kovidgoyal.net/kitty/clipboard/), accessed
 2026-07-11. Plain-text OSC 52 and Kitty OSC 5522 are separate typed protocols.
 
-OSC 52 transfers Base64 text to/from named selections subject to terminal
-permission. OSC 5522 uses `OSC 5522 ; metadata ; payload ST` for MIME-aware
+OSC 52 transfers Base64 text to and from named selections when the terminal
+permits it. OSC 5522 uses `OSC 5522 ; metadata ; payload ST` for MIME-aware
 read/write, aliases, status, permission errors, correlation identifiers, and
 paste events. Metadata values that carry text use Base64 as specified.
 
@@ -34,20 +34,19 @@ chunks, total-size limits, cancellation, and fake-clock deadlines. Successful
 data transfers into an owned `Kitty.Clipboard.Result` whose disposal clears
 every data buffer.
 
-Correlation is checked before validity. An ID-bound transaction ignores any
-packet — malformed or well-formed — whose `id` does not match its own, including
-a malformed packet whose `id` could not be recovered before its structural
-error. Only a packet that both fails validation and carries a matching `id`
-fails the transaction; an unbound transaction (no `id` supplied) fails on any
-malformed packet, since it has no correlation basis to discriminate unrelated
-traffic.
+Correlation is checked before validity. A transaction bound to an `id` ignores
+any packet whose `id` does not match its own — malformed or well-formed,
+including a malformed packet whose `id` could not be recovered before its
+structural error. A packet fails the transaction only when it carries a
+matching `id` and fails validation. A transaction with no `id` cannot tell
+unrelated traffic apart, so any malformed packet fails it.
 
 ## Supported features
 
-Implement OSC 52 text plus typed OSC 5522 MIME reads/writes, aliases,
-permissions/errors, passwords/names, paste events, detection, and multiplexer
-correlation. Unsupported terminals fall back to OSC 52 text when safe, then to
-an unavailable result rather than an exception.
+SharpVision supports OSC 52 text plus typed OSC 5522 MIME reads and writes,
+aliases, permissions and errors, passwords and names, paste events, detection,
+and multiplexer correlation. Unsupported terminals fall back to OSC 52 text
+when safe, then to an unavailable result rather than an exception.
 
 > [!IMPORTANT] **Implementation gap:** The terminal protocol layer provides
 > bounded OSC 5522 packets, writers, transactions, capability evidence, and mode
@@ -60,11 +59,12 @@ an unavailable result rather than an exception.
 
 ## Bounds and recovery
 
-Chunking preserves exact behavior at 0, 1, 4095, 4096, 4097, and 8192 bytes;
-reads, list, aliases, primary selection, credentials, permissions, every status,
-and terminators. The parser accepts all split points and rejects malformed
-metadata, Base64, or ordering before recovery; cancellation, limits, binary
-data, and writer-to-parser-to-transaction integration.
+Chunking behavior is pinned at 0, 1, 4095, 4096, 4097, and 8192 bytes, along
+with reads, list, aliases, primary selection, credentials, permissions, every
+status, and terminators. The parser accepts every split point and rejects
+malformed metadata, Base64, or ordering before recovering. Cancellation,
+limits, binary data, and writer-to-parser-to-transaction integration are also
+covered.
 
 ## Sources
 

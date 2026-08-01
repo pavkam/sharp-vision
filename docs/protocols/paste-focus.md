@@ -19,8 +19,9 @@ to UI policy but does not synthesize arbitrary key releases.
 
 ## Supported features
 
-Manage both modes through lifecycle leases, decode fragmented begin/end markers,
-emit immutable paste/focus events on the dispatcher, and restore modes at exit.
+Both modes are managed through lifecycle leases: fragmented begin/end markers
+are decoded, immutable paste/focus events are emitted on the dispatcher, and the
+modes are restored at exit.
 
 `Input.Decoder` recognizes CSI 200~/201~ and switches to raw paste mode after
 the begin marker. A six-byte exact matcher holds only a possible end-marker

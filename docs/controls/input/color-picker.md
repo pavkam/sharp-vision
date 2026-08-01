@@ -3,10 +3,10 @@
 ## Overview
 
 `ColorPicker` is a retained
-[`CompositeControl`](../composite-control.md#overview) that authors one stable
-RGB color independently of terminal output depth. Its constructor creates one
-permanent layout tree from `Grid`, `Stack`, `Dock`, `Overlay`, `Slider`, and
-focused color surfaces; measure and render never rebuild it.
+[`CompositeControl`](../composite-control.md#overview) that edits one stable
+RGB color independently of the terminal's output depth. Its constructor builds
+one permanent layout tree from `Grid`, `Stack`, `Dock`, `Overlay`, `Slider`,
+and focused color surfaces; measure and render never rebuild it.
 
 ## API
 
@@ -18,34 +18,35 @@ capability changes never rewrite the authored value:
 | `TrueColor`/`Indexed256`/`Basic16` | RGB                      | saturation/value plane, hue ramp, RGB sliders, preview, hex |
 | `Monochrome`                       | RGB or `Color.Default`   | disabled default-only surface                               |
 
-Only the frame encoder projects RGB through the xterm-compatible cube, grayscale
-ramp, or ANSI reference colors. A presentation downgrade is lossy on the wire
-but never changes `Value`, so a later capability upgrade uses the original
-authored RGB automatically.
+Only the frame encoder projects RGB through the xterm-compatible cube, the
+grayscale ramp, or the ANSI reference colors. A presentation downgrade is
+lossy on the wire but never changes `Value`, so a later capability upgrade
+automatically presents the original authored RGB.
 
-`EffectiveColorDepth` exposes the inherited tier. A changed direct assignment or
-user selection commits `Value`, synchronizes every retained part, and then
+`EffectiveColorDepth` exposes the inherited tier. A changed direct assignment
+or user selection commits `Value`, synchronizes every retained part, and then
 raises one `ValueChanged` event with immutable `ColorChangedEventArgs`.
-Capability changes alter presentation without raising a value event. No-op
-changes are silent. All attached mutation is dispatcher-affine.
+Capability changes alter the presentation without raising a value event.
+No-op changes raise nothing. All mutation of an attached control is
+dispatcher-affine.
 
 ## Layout and input
 
-The RGB editor stretches its saturation/value plane into remaining space. The
-hue ramp and horizontal hue `Slider` share one `Overlay`; exact red, green, and
-blue sliders occupy retained rows below it. The selected-color preview and
-uppercase `#RRGGBB` readout share one final-row surface, with contrast-aware
-text drawn over the selected color.
+The RGB editor stretches its saturation/value plane into the remaining space.
+The hue ramp and the horizontal hue `Slider` share one `Overlay`; exact red,
+green, and blue sliders occupy retained rows below it. The selected-color
+preview and the uppercase `#RRGGBB` readout share the final row, with
+contrast-aware text drawn over the selected color.
 
 The plane is one focus stop. Left/Right adjust saturation by one percentage
-point, Up/Down adjust value, and Home/End reach saturation endpoints. Primary
-press and captured movement map committed cell coordinates to both normalized
-axes. Hue and RGB parts use the complete
+point, Up/Down adjust value, and Home/End jump to the saturation endpoints. A
+primary press, and captured movement after it, map the committed cell
+coordinates to both normalized axes. The hue and RGB parts use the complete
 [`Slider` input contract](slider.md#input-and-visual-states).
 
 Every color is drawn to the semantic canvas. The picker never emits escape
-sequences, and terminal output still passes through capability projection at the
-frame boundary.
+sequences itself, and terminal output still passes through capability
+projection at the frame boundary.
 
 ## Example
 
@@ -73,8 +74,11 @@ picker.ValueChanged += (_, change) =>
 
 ## Expected behavior
 
-Tests cover detached assignment, every capability tier, RGB preservation across
-attachment and runtime changes, committed event order, RGB/HSV synchronization,
-exact preview cells, plane keyboard and pointer mapping, capture cancellation,
-focus, disabled state, zero/tiny/resize containment, and dedicated showcase
-interaction.
+`Value` can be assigned while the control is detached, every capability tier
+presents as documented, and the authored RGB survives attachment and runtime
+capability changes. Events are raised in committed order, and the RGB and HSV
+parts stay synchronized. The preview renders its exact cells, the plane's
+keyboard and pointer mapping behave as described, and capture cancellation
+ends a drag without a stray commit. Focus and disabled states render
+correctly; zero, tiny, and resized bounds stay contained; and the dedicated
+showcase page exercises the interaction.

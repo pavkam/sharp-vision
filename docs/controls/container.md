@@ -2,18 +2,18 @@
 
 ## Overview
 
-`Container : Control` is the abstract authoring role for a layout control whose
-ordered children are part of its public API. It exposes one caller-managed
-[`Children`](#children-and-ownership) collection and supplies shared auto-size,
-scrolling, rendering, clipping, and pointer-target traversal. It is not the base
-for every control that owns descendants: use
-[`ContentControl`](content-control.md#overview) for one replaceable content
-value and [`CompositeControl`](composite-control.md#overview) for a private
-retained implementation tree.
+`Container : Control` is the abstract base for layout controls whose ordered
+children are part of their public API. It exposes one caller-managed
+[`Children`](#children-and-ownership) collection and supplies the shared
+auto-size, scrolling, rendering, clipping, and pointer-target traversal
+behavior. It is not the base for every control that owns descendants: use
+[`ContentControl`](content-control.md#overview) when there is one replaceable
+content value, and [`CompositeControl`](composite-control.md#overview) when the
+control keeps a private retained implementation tree.
 
 `Container` does not choose a layout algorithm. Every concrete subclass must
-override `MeasureOverride` and `ArrangeOverride`; the abstract declarations make
-an incomplete layout control a compile-time error.
+override `MeasureOverride` and `ArrangeOverride`; because both declarations are
+abstract, an incomplete layout control fails to compile.
 
 ## API
 
@@ -35,50 +35,53 @@ constructor; specialized presenters may impose a finite semantic limit.
 ## Children and ownership
 
 `Children` is the public adapter over exactly one container-child ownership
-slot. Add, insert, replacement, removal, clearing, and enumeration preserve
-stable order. Mutations reject null, disposed, attached, duplicate,
-cross-parent, and cyclic candidates before changing the existing tree. Attached
-mutation is dispatcher-affine. Removal detaches without disposing; disposing the
-container disposes every child still owned by it.
+slot. Add, insert, replacement, removal, clearing, and enumeration preserve a
+stable order. Every mutation rejects null, disposed, attached, duplicate,
+cross-parent, and cyclic candidates before it changes the existing tree, and
+mutation while attached is dispatcher-affine. Removing a child detaches it
+without disposing it; disposing the container disposes every child it still
+owns.
 
 Private scrollbar parts use a separate framework slot and never appear in
 `Children`. Cross-cutting rendering, routed ancestry, inherited context,
-lifecycle, focus, capture, and disposal traverse the central ownership registry
-described by the [base ownership contract](control.md#children-and-ownership).
+lifecycle, focus, capture, and disposal all traverse the central ownership
+registry described by the
+[base ownership rules](control.md#children-and-ownership).
 
-A derived container overrides `OnChildrenChanged` to observe, cache per-child
-metadata for, or react to its own `Children` mutation - the same notification
-`ItemsControl` already consumes on its own private presentation host. It runs
-after the mutation structurally commits and cannot reject a candidate;
-validation belongs at the point of insertion, since layout runs asynchronously
-and cannot serve as a validation seam.
+A derived container overrides `OnChildrenChanged` to observe a mutation of its
+own `Children`, cache per-child metadata, or react to the change - the same
+notification `ItemsControl` already consumes on its own private presentation
+host. The hook runs after the mutation structurally commits and cannot reject
+a candidate. Validation belongs at the point of insertion, because layout runs
+asynchronously and cannot serve as a validation seam.
 
 ## Layout
 
-`MeasureOverride` must measure each relevant child through `MeasureChild`, honor
-collapsed visibility and margins, and return a non-negative intrinsic content
-extent. `ArrangeOverride` must arrange each relevant child through
-`ArrangeChild`; the supplied `ResolvedAxes` state records dimensions already
-fixed by the parent algorithm. Layout code must not add, remove, or replace
-children during measure or arrange.
+`MeasureOverride` must measure each relevant child through `MeasureChild`,
+honor collapsed visibility and margins, and return a non-negative intrinsic
+content extent. `ArrangeOverride` must arrange each relevant child through
+`ArrangeChild`; the supplied `ResolvedAxes` value records which dimensions the
+parent algorithm has already fixed. Layout code must not add, remove, or
+replace children during measure or arrange.
 
 Use a shipped semantic panel when its algorithm matches the application:
 [`Stack`](layout/stack.md#overview), [`Grid`](layout/grid.md#overview),
 [`Dock`](layout/dock.md#overview), or [`Overlay`](layout/overlay.md#overview).
-The shared [layout contract](../concepts/layout.md#overview) owns constraints,
+The shared [layout rules](../concepts/layout.md#overview) own constraints,
 alignment, margins, sizing, and rounding.
 
 ## Auto-size and scrolling
 
-`AutoSize` sizes the container border box from the measured content extent;
-`AutoSizeMode` selects grow-and-shrink or grow-only behavior. The exact rules
-are defined by [grow and shrink](../concepts/layout.md#grow-and-shrink).
+`AutoSize` sizes the container border box from the measured content extent,
+and `AutoSizeMode` selects grow-and-shrink or grow-only behavior. The exact
+rules are defined by [grow and shrink](../concepts/layout.md#grow-and-shrink).
 
-`AutoScroll` turns the container into a viewport over its own layout algorithm.
-The inherited scroll properties select axes, offsets, bar reservation, chrome,
-line and page changes, and interaction. Generated bars are private framework
-parts. The [scrolling contract](../concepts/scrolling.md#overview) defines
-feedback, clipping, nested wheel propagation, and offset validation.
+`AutoScroll` turns the container into a viewport over its own layout
+algorithm. The inherited scroll properties select axes, offsets, bar
+reservation, chrome, line and page changes, and interaction. Generated bars
+are private framework parts. The
+[scrolling rules](../concepts/scrolling.md#overview) define feedback,
+clipping, nested wheel propagation, and offset validation.
 
 ## Example
 
@@ -122,8 +125,10 @@ public sealed class SharedSlot : Container
 
 ## Expected behavior
 
-Tests prove the abstract public shape, child capacity and ownership rejection,
-dispatcher affinity, stable order, layout invalidation, measure and arrange
-extension points, rendering and pointer traversal, disposal, auto-size, scroll
-geometry, clipping, nested propagation, generated-part encapsulation, and
-reflection proof that concrete subclasses must implement both layout passes.
+Callers can rely on the public shape described above: the child collection
+enforces its capacity and rejects invalid ownership, attached mutation is
+dispatcher-affine, order stays stable, and mutations invalidate layout. The
+measure and arrange extension points, rendering and pointer traversal,
+disposal, auto-size, scroll geometry, clipping, nested wheel propagation, and
+the encapsulation of generated scrollbar parts all behave as documented, and
+tests hold concrete subclasses to implementing both layout passes.

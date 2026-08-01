@@ -15,11 +15,11 @@ a mode still needed by another.
 
 ## Supported features
 
-Track cursor-key/application keypad behavior, origin/wrap, cursor visibility,
-alternate screen, mouse families, focus 1004, bracketed paste 2004, synchronized
-output 2026, and Kitty clipboard paste 5522. Queries are bounded and correlated;
-response values 0 and 4 mean unsupported where the defining protocol states that
-rule.
+Typed modes cover cursor-key/application keypad behavior, origin/wrap, cursor
+visibility, alternate screen, mouse families, focus 1004, bracketed paste 2004,
+synchronized output 2026, and Kitty clipboard paste 5522. Queries are bounded
+and correlated; response values 0 and 4 mean unsupported where the defining
+protocol states that rule.
 
 ## Restoration and tests
 
@@ -32,7 +32,8 @@ Session leases own exact enable and disable bytes captured before their first
 write. Description lifecycle modes use complete compiled pairs; typed focus,
 paste, mouse, and Kitty keyboard modes use their validated protocol encoders
 only with supported database, bounded-query, or explicit-override evidence.
-Default and environment origins never authorize optional mode output. Every
+A default or environment-only origin is never enough for optional mode
+output. Every
 attempted enable is recorded before transport I/O, so a partial write,
 cancellation, or failed flush receives the exact conservative restoration
 attempt. Cleanup continues through later leases in reverse order and preserves

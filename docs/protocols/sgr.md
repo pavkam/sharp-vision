@@ -17,9 +17,9 @@ not pretend it can independently clear one without an extension such as the
 
 ## Supported features
 
-Provide deterministic full-style and transition encoders, semantic equality, and
-a conservative reset path. Colon and semicolon extended-color forms are decoded;
-output uses the profile's preferred form.
+SharpVision provides deterministic full-style and transition encoders, semantic
+equality, and a conservative reset path. Colon and semicolon extended-color
+forms are decoded; output uses the profile's preferred form.
 
 ## Typed API and behavior
 

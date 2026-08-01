@@ -17,13 +17,13 @@ callbacks, or backpressure beyond the current bounded write operation.
 
 ## Supported features
 
-Use synchronized output when explicitly detected or overridden. Otherwise emit
-the same frame without the wrapper. Safe degradation changes presentation
-atomicity, never screen contents.
+The renderer uses synchronized output when it is explicitly detected or
+overridden; otherwise it emits the same frame without the wrapper. Safe
+degradation changes presentation atomicity, never screen contents.
 
 ## Failure recovery
 
-The output contract covers enabled and disabled profiles, empty frames,
+Verified behavior covers enabled and disabled profiles, empty frames,
 exceptions, cancellation, partial writes, flush failure, and cleanup failure. A
 terminal model proves wrapped and unwrapped frames end in identical semantic
 state.

@@ -4,7 +4,8 @@
 
 ECMA string families are DCS (`ESC P`), SOS (`ESC X`), OSC (`ESC ]`), PM
 (`ESC ^`), and APC (`ESC _`), terminated by ST (`ESC \`). OSC has its own
-[contract](osc.md#overview); this file governs shared streaming behavior.
+[page](osc.md#overview); this page covers the streaming behavior all string
+families share.
 
 The parser holds a bounded payload or streams to a registered typed consumer.
 Unregistered strings are skipped with bounded diagnostics. A split `ESC \`
@@ -29,7 +30,7 @@ PM, and SOS commands with ST termination. The
 [runtime router](runtime-routing.md#overview) owns copied observation after
 framing. Known query families are decoded through their protocol-specific typed
 parsers; generic DCS consumer registration is not a public API. Multiplexer
-framing is governed by the tmux and GNU screen contracts.
+framing is described on the tmux and GNU screen pages.
 
 ## Security and tests
 

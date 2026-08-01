@@ -2,63 +2,66 @@
 
 ## Overview
 
-`MenuItem` is a sealed [`Pressable`](../pressable.md#overview) command, check,
-or radio entry inside a [Menu](menu.md#overview). It uses inherited `Content` as
-its sole visible face; there is no competing text-only `Header` property.
+`MenuItem` is a sealed [`Pressable`](../pressable.md#overview) that represents
+a command, check, or radio entry inside a [Menu](menu.md#overview). Its label
+comes from the inherited `Content` property, which is the item's only visible
+face; there is no competing text-only `Header` property.
 
 ## API
 
 | Member                           | Default         | Purpose                                                             |
 | -------------------------------- | --------------- | ------------------------------------------------------------------- |
-| `Content`                        | `null`          | Owns the item label or richer face.                                 |
-| `Kind`                           | `Command`       | Selects command, check, or radio activation semantics.              |
-| `IsChecked`, `GroupName`         | `false`, `null` | Store check state and scope radio exclusivity.                      |
-| `ShortcutText`                   | `null`          | Adds a dim, right-aligned hint without registering a key binding.   |
+| `Content`                        | `null`          | The item's label or richer face; the item owns it.                  |
+| `Kind`                           | `Command`       | Chooses command, check, or radio activation semantics.              |
+| `IsChecked`, `GroupName`         | `false`, `null` | Hold the check state and scope radio exclusivity.                   |
+| `ShortcutText`                   | `null`          | Shows a dim, right-aligned hint; registers no key binding.          |
 | `Shortcut`                       | `null`          | A typed `KeyGesture` that derives `ShortcutText`; also unbound.     |
-| `Submenu`                        | `null`          | Owns an optional popup-layer child menu.                            |
+| `Submenu`                        | `null`          | An optional popup-layer child menu the item owns.                   |
 | `UncheckedGlyph`, `CheckedGlyph` | Code-owned      | Override state marks; `ResetGlyphs()` restores code-owned defaults. |
-| `Invoked`                        | No subscribers  | Reports committed activation after optional check-state updates.    |
-| `PerformInvoke()`                | —               | Runs the programmatic activation path.                              |
+| `Invoked`                        | No subscribers  | Raised after activation commits, once any check state has updated.  |
+| `PerformInvoke()`                | —               | Invokes the item programmatically.                                  |
 
 ## Behavior
 
-- `Content` is the atomic zero-or-one owned face and may contain any Control.
-- `Kind` is command, check, or radio.
-- `IsChecked` is valid only for check/radio kinds; `GroupName` scopes radio
-  selection within its containing menu.
-- `Invoked` reports the committed activation after check/radio state updates.
+- `Content` accepts zero or one control of any type, and the item owns it.
+- `Kind` is one of command, check, or radio.
+- `IsChecked` applies only to the check and radio kinds. `GroupName` scopes
+  radio selection within the containing menu.
+- `Invoked` reports the committed activation after any check or radio state
+  update.
 
-Check and radio entries reserve the corresponding code-owned selection glyph
-plus one separator cell before content. Content is measured through the
-remaining constraint and arranged through the common inherited content slot, so
-state changes do not move it and collapsed content contributes no margin.
-Matching radio fields are all staged before any `PropertyChanged(IsChecked)`
-callback; reentrant selection suppresses stale outer notifications.
+A check or radio entry reserves one cell for its code-owned selection glyph
+plus one separator cell in front of the content. Content is measured against
+the remaining constraint and arranged through the common inherited content
+slot, so state changes do not move it, and collapsed content contributes no
+margin. When a radio selection changes, every matching item's fields are
+staged before the first `PropertyChanged(IsChecked)` callback runs, and a
+reentrant selection suppresses the stale outer notifications.
 
-Menu items default to horizontal stretch. In a vertical menu every item
-therefore consumes the shared menu width, allowing content, shortcut hints, and
-separators to form one aligned surface. An explicit caller alignment remains
-authoritative.
+Menu items stretch horizontally by default. In a vertical menu every item
+therefore fills the shared menu width, which lets content, shortcut hints, and
+separators line up as one aligned surface. An explicit alignment set by the
+caller still wins.
 
-The item's own `Invoked` subscribers complete before `Menu.ItemInvoked` is
-forwarded. Both callbacks observe committed check/radio state.
+An item's own `Invoked` subscribers finish before the menu forwards
+`Menu.ItemInvoked`. Both callbacks observe the committed check or radio state.
 
 ## Code-owned glyphs
 
-Check and radio item markers resolve from
-`the code-owned selection glyph defaults`. `UncheckedGlyph` and `CheckedGlyph`
-provide validated local overrides for the item's current `Kind`.
-`MenuSeparator.Glyph` similarly overrides
-`the code-owned separator glyph defaults.Menu`. `MenuItem.ResetGlyphs()` and
+Check and radio markers resolve from the code-owned selection glyph defaults.
+`UncheckedGlyph` and `CheckedGlyph` provide validated local overrides for the
+item's current `Kind`. `MenuSeparator.Glyph` overrides the code-owned menu
+separator glyph in the same way. `MenuItem.ResetGlyphs()` and
 `MenuSeparator.ResetGlyph()` clear the corresponding overrides.
 
 ## Shortcut text
 
-`ShortcutText` is an optional string rendered right-aligned with dim attributes
-after the item's content. It describes a command chord without binding it;
-shortcut handling is the application's responsibility. This is distinct from an
-ampersand [access key](../../concepts/access-keys.md#overview) in the item's
-`Text` content, which SharpVision binds automatically.
+`ShortcutText` is an optional string drawn right-aligned in dim attributes
+after the item's content. It only describes a command chord; it does not bind
+one, so handling the shortcut remains the application's responsibility. This
+is different from an ampersand
+[access key](../../concepts/access-keys.md#overview) in the item's `Text`
+content, which SharpVision binds automatically.
 
 ```csharp
 new MenuItem
@@ -68,47 +71,49 @@ new MenuItem
 };
 ```
 
-When set, the item's desired width includes the shortcut's Unicode terminal-cell
-width plus a two-cell gutter. A vertical menu reserves one shared width equal to
-its widest label, that gutter, and its widest shortcut. The shortcut text is
-drawn at the trailing edge of the item's arranged bounds using the resolved
-style with `Attributes.Dim` added, while content is clipped before the gutter.
-Every stretched sibling therefore shares one shortcut edge without allowing a
-longer label-only row to collapse the shortcut column. Setting `ShortcutText` to
-null removes it.
+When `ShortcutText` is set, the item's desired width grows by the shortcut's
+Unicode terminal-cell width plus a two-cell gutter. A vertical menu reserves
+one shared width made of its widest label, that gutter, and its widest
+shortcut. The shortcut text draws at the trailing edge of the item's arranged
+bounds using the resolved style with `Attributes.Dim` added, and content clips
+before the gutter. Every stretched sibling therefore shares one shortcut edge,
+and a longer label-only row cannot collapse the shortcut column. Setting
+`ShortcutText` to null removes the hint.
 
-`Shortcut` is an optional typed `SharpVision.Input.KeyGesture` (a validated
-`Code`/`Modifiers`/character combination). When `ShortcutText` is otherwise
-unset, `Shortcut` derives its conventional display text, for example
+`Shortcut` is an optional typed `SharpVision.Input.KeyGesture` — a validated
+`Code`/`Modifiers`/character combination. When `ShortcutText` is not otherwise
+set, `Shortcut` supplies its conventional display text; for example,
 `new KeyGesture(Code.Character, Modifiers.Control, new Rune('s'))` displays as
-`"Ctrl+S"`. An explicit `ShortcutText` assignment always wins over `Shortcut`'s
-derived text, the same local-wins-over-derived precedence used throughout the
-library. `Shortcut` is purely declarative like `ShortcutText` before it: it
-routes no input by itself, so it does not replace the application's own
-responsibility for actually invoking the item on that chord.
+`"Ctrl+S"`. An explicit `ShortcutText` assignment always wins over the derived
+text, following the same local-wins-over-derived precedence used throughout
+the library. Like `ShortcutText`, `Shortcut` is purely declarative: it routes
+no input by itself, so the application is still responsible for actually
+invoking the item when the chord arrives.
 
 ## Submenus
 
-`Submenu` creates one retained popup owned by the item. Menu-item activation
-toggles it; an armed owning menu may also open it while moving selection. The
-popup uses a light square frame and the semantic surface background so it reads
-as part of the menu system. Its preferred placement is below an item in a
-horizontal menu and right of an item in a vertical menu. Generic popup fallback,
-promotion, light dismissal, and ancestor-chain preservation remain unchanged.
-Closing restores focus to the owning menu. Every retained popup and nested Menu
-participates as a descendant of the top owner's
-[single menu plane](../../concepts/modality.md#menu-planes); opening a nested
-item never creates one modal scope per submenu.
+`Submenu` gives the item one retained popup that it owns. Activating the item
+toggles the submenu, and an armed owning menu may also open it while moving
+selection. The popup uses a light square frame and the semantic surface
+background so it reads as part of the menu system. It prefers to open below
+the item in a horizontal menu and to the right of the item in a vertical menu.
+Generic popup fallback, promotion, light dismissal, and ancestor-chain
+preservation are unchanged. Closing the submenu restores focus to the owning
+menu. Every retained popup and nested Menu participates as a descendant of the
+top owner's [single menu plane](../../concepts/modality.md#menu-planes), so
+opening a nested item never creates one modal scope per submenu.
 
 ## MenuSeparator
 
-`MenuSeparator : Control` is the distinct non-interactive entry role. It is
-never a `Pressable` or a `MenuItemKind`: it cannot focus, hit test, select, or
-invoke. It measures three cells by one cell, defaults to horizontal stretch, and
-draws a clipped horizontal rule across the complete arranged menu width.
+`MenuSeparator : Control` is a distinct non-interactive entry role. It is
+never a `Pressable` and never a `MenuItemKind`: it cannot be focused,
+hit-tested, selected, or invoked. It measures three cells by one cell,
+stretches horizontally by default, and draws a clipped horizontal rule across
+the complete arranged menu width.
 
-`MenuEntryCollection` exposes typed `Add` and `Remove` overloads for `MenuItem`
-and `MenuSeparator`; it has no arbitrary `Add(Control)` entry point.
+`MenuEntryCollection` exposes typed `Add` and `Remove` overloads for
+`MenuItem` and `MenuSeparator`; it has no arbitrary `Add(Control)` entry
+point.
 
 ## Example
 
@@ -124,9 +129,18 @@ menu.Items.Add(new MenuItem
 
 ## Expected behavior
 
-Cover each item kind, invalid checked-state assignment, atomic radio observers,
-item-before-menu invocation, inherited content ownership and Unicode layout,
-Unicode shortcut measurement and trailing alignment, keyboard and pointer
-activation, hover styling, submenu placement/lifecycle/focus restoration,
-same-scope nested chains, separator focus/hit/invoke suppression, shared-width
-rules, narrow clipping, styles, and exact cells.
+- Each item kind follows its documented activation semantics, and assigning a
+  checked state that is invalid for the current kind is rejected.
+- Radio observers see atomically staged group state, and an item's `Invoked`
+  subscribers always complete before `Menu.ItemInvoked` is forwarded.
+- The item owns its inherited content, lays out Unicode content correctly,
+  and measures Unicode shortcut text by terminal-cell width, aligning it to
+  the trailing edge.
+- Keyboard and pointer activation and hover styling behave as described
+  above, and shared-width layout holds, including clipping in narrow menus.
+- Submenus open in their documented placement, follow the popup lifecycle,
+  restore focus to the owning menu on close, and share one scope through
+  nested chains.
+- Separators never focus, hit test, or invoke.
+- Styles resolve as documented, and rendering is deterministic down to the
+  exact cells.

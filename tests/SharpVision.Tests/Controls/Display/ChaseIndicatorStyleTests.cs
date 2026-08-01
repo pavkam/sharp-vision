@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Display;
 
-using System.Text.Json;
-
 /// <summary>Verifies complete chase-indicator presentations and partial style composition.</summary>
 public sealed class ChaseIndicatorStyleTests
 {
@@ -107,18 +105,6 @@ public sealed class ChaseIndicatorStyleTests
             new ChaseIndicatorStyle(new Rune('*'), new Rune('.'), null!));
 
         exception.ParamName.ShouldBe("appearance");
-    }
-
-    /// <summary>Verifies authored glyph strings deserialize deterministically.</summary>
-    [Fact]
-    public void Deserialize_WhenChaseGlyphsAreAuthored_PreservesStrings()
-    {
-        var json = /*lang=json,strict*/ """{"active":"*","inactive":"."}""";
-
-        var definition = JsonSerializer.Deserialize<ChaseIndicatorStyleDefinition>(json).ShouldNotBeNull();
-
-        definition.Active.ShouldBe("*");
-        definition.Inactive.ShouldBe(".");
     }
 
     private static ThemeProfile Copy(ThemeProfile profile) => new(

@@ -64,22 +64,22 @@ internal sealed class StatusCard : CompositeControl
 ```
 
 The constructor creates the complete retained subtree and calls
-`InitializeContent` once. Callers see `StatusCard`, not its private `GroupBox`,
-`Stack`, or `Text`. A substantial public property validates before mutation and
-must remain dispatcher-affine while attached; a production property should also
-publish the component's documented property-change contract.
+`InitializeContent` once. Callers see `StatusCard`, never its private
+`GroupBox`, `Stack`, or `Text`. A substantial public property validates before
+mutating and must stay dispatcher-affine while attached; a production property
+should also publish the component's documented property-change contract.
 
 Derive directly from `Control` and override `MeasureOverride`,
-`ArrangeOverride`, or `OnRenderContent` only when the public component genuinely
-owns new layout or cell-rendering behavior. Custom content rendering draws
-through the frame-owned `SharpVision.Terminal.Rendering.Canvas` and never writes
-terminal escape bytes. To place ordinary controls above that drawing, compose
-the drawing control and those controls in an
+`ArrangeOverride`, or `OnRenderContent` only when the public component
+genuinely owns new layout or cell-rendering behavior. Custom content rendering
+draws through the frame-owned `SharpVision.Terminal.Rendering.Canvas` and
+never writes terminal escape bytes. To place ordinary controls above that
+drawing, compose the drawing control and those controls in an
 [`Overlay`](../controls/layout/overlay.md#overview).
 
 ## Complete the component
 
-A shipped control is not complete until its
+A shipped control is complete only when its
 [control specification](../controls/index.md#control-catalog), XML
 documentation, behavioral tests, mounted rendering proof, and
 [showcase page](../architecture/showcase.md#overview) agree. The

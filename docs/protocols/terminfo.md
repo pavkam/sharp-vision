@@ -66,8 +66,8 @@ a terminal name.
 `SharpVision.Terminal.Capabilities.DescriptionLimits` (terminal name, path list,
 accepted snapshot, key bindings, RGB component bits) and
 `SharpVision.Terminal.Terminfo.ProgramLimits` (capability string, compiled
-operations, interpreter stack, expansion output, string parameter) own these
-implemented provider limits between them. Default is the ordinary accepted
+operations, interpreter stack, expansion output, string parameter) together own
+these provider limits. Default is the ordinary accepted
 limit; hard ceiling is the largest caller-set value. Values are counts, raw
 bytes, or UTF-8 bytes as stated. A caller value above a hard ceiling is rejected
 before lookup. A provider value above its applicable limit rejects that
@@ -141,7 +141,7 @@ inheritance graph. A provider failure is a rejected description with a
 diagnostic; it is not an invitation to try a different terminal type. Terminal
 replies and every retained capability value remain untrusted and bounded.
 
-Deployments that require end-to-end bounded lookup MUST provide an explicit,
+Deployments that require end-to-end bounded lookup must provide an explicit,
 already-owned `TerminalProfile` and disable native discovery.
 
 ### Implemented ncurses 6 API boundary

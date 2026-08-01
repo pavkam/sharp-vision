@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
-using System.Text.Json;
-
 /// <summary>Verifies complete radio-button presentations and partial style composition.</summary>
 public sealed class RadioButtonStyleTests
 {
@@ -126,19 +124,6 @@ public sealed class RadioButtonStyleTests
             new RadioButtonStyle(baseline.MarkStyle, baseline.Glyphs, null!));
 
         exception.ParamName.ShouldBe("appearance");
-    }
-
-    /// <summary>Verifies the typed glyph definition retains deterministic authored strings.</summary>
-    [Fact]
-    public void Deserialize_WhenRadioGlyphsAreAuthored_PreservesTypedShape()
-    {
-        var json = /*lang=json,strict*/
-            """{"markStyle":"circle","glyphs":{"unchecked":"o","checked":"x"}}""";
-
-        var definition = JsonSerializer.Deserialize<RadioButtonStyleDefinition>(json).ShouldNotBeNull();
-
-        definition.MarkStyle.ShouldBe("circle");
-        definition.Glyphs.ShouldNotBeNull().Unchecked.ShouldBe("o");
     }
 
     private static ThemeProfile Copy(ThemeProfile profile) => new(

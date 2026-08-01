@@ -22,7 +22,7 @@ oversized strings emit diagnostics and recover at a recognized terminator or new
 control introducer.
 
 Default limits bound parameter count, parameter magnitude, intermediate bytes,
-and string payload length. Options may lower or raise limits but may not disable
+and string payload length. Options may lower or raise limits but cannot disable
 boundedness.
 
 The typed API is `SharpVision.Terminal.Protocols.Parser`. It reports borrowed

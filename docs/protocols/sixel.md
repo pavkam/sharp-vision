@@ -40,7 +40,7 @@ every palette color.
 
 ## Renderer backend
 
-Sixel has no retained remote image identity in this contract. The backend
+Sixel has no retained remote image identity. The backend
 requires measured cell-pixel geometry and maps each destination cell rectangle
 to its exact pixel boundaries. It does not invent a pixel size when metrics are
 missing. Each image is anchored by pane-local CUP, emitted after ordinary cell
@@ -58,9 +58,9 @@ next frame reconstructs cells and all encodable placements. Shutdown is
 byte-quiet because the protocol contract owns no remote IDs or delete command.
 
 Direct output is supported. An explicit tmux route wraps each complete DCS
-independently while CUP remains pane-local. GNU Screen routes are unavailable:
-its passthrough cannot preserve this bounded graphics contract. Route failure
-occurs during preparation, before transport I/O.
+independently while CUP remains pane-local. GNU Screen routes are unavailable
+because its passthrough cannot represent a nested ST-terminated DCS. Route
+failure occurs during preparation, before transport I/O.
 
 ## Detection and selection boundary
 
@@ -78,11 +78,11 @@ direct DCS leakage.
 
 ## Encoding and runtime coverage
 
-The encoder preserves exact DCS parameters, raster attributes, palette ordering,
+Encoder tests pin exact DCS parameters, raster attributes, palette ordering,
 transparency, repeat runs, source clipping, six-row bands, graphics carriage
-return/newline, and canonical ST. They prove PNG rejection, destination failure
-fidelity, atomic output-limit rejection, checked large bounds, and one source
-sample per destination pixel.
+return/newline, and canonical ST. They also prove PNG rejection, destination
+failure fidelity, atomic output-limit rejection, checked large bounds, and one
+source sample per destination pixel.
 
 DA1 parameter 4 runs through the real streaming protocol router at every split;
 negative evidence and both override directions prove precedence. Backend and

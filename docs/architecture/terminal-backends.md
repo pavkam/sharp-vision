@@ -14,12 +14,12 @@ extensions, capabilities, and graphics backend are separate boundaries:
 | Capability evidence | Authorizes optional behavior for the current immutable terminal profile      | May be refined by bounded discovery |
 | Graphics backend    | Prepares and commits renderer-owned image transactions                       | Renderer construction through stop  |
 
-`ConsoleConnection` is the physical connection boundary. It does not identify
-the emulator and does not authorize optional output. `TerminalBackend` is
-immutable family identity and owns no transport, query tracker, or mutable
-capability state. `ProtocolExtension` is composition metadata; existing typed
-encoders, decoders, routers, services, and graphics implementations remain the
-only wire implementations. The
+`ConsoleConnection` is the physical connection boundary; it neither identifies
+the emulator nor authorizes optional output. `TerminalBackend` is immutable
+family identity and owns no transport, no query tracker, and no mutable
+capability state. `ProtocolExtension` is composition metadata: the existing
+typed encoders, decoders, routers, services, and graphics implementations
+remain the only wire implementations. The
 [discovery pipeline](discovery-pipeline.md#overview) produces the evidence used
 to resolve identity and refine capabilities.
 
@@ -47,20 +47,21 @@ classDiagram
     ItermBackend : iTerm2 extension
 ```
 
-`TerminalBackend` assembles one immutable, inherited-before-local extension
-collection. Duplicate extension kinds fail construction. `VtBackend` supplies
-the conservative VT foundation. `XtermBackend` inherits that foundation and adds
-the xterm extension. `KittyBackend` and `ItermBackend` inherit both and add only
-their local extension. Backend classes identify existing protocol families in
-their ordered metadata. Independent existing protocol codecs implement wire
-behavior; backend classes neither reference nor duplicate escape-sequence
-encoding or parsing.
+`TerminalBackend` assembles one immutable extension collection, ordering
+inherited extensions before local ones. Duplicate extension kinds fail
+construction. `VtBackend` supplies the conservative VT foundation.
+`XtermBackend` inherits that foundation and adds the xterm extension.
+`KittyBackend` and `ItermBackend` inherit both and each add only their own
+local extension. Backend classes identify existing protocol families in their
+ordered metadata; the independent protocol codecs implement the wire behavior,
+and backend classes neither reference nor duplicate escape-sequence encoding
+or parsing.
 
 `TerminalBackendResolver` consumes the immutable profile and environment
 snapshots through `DescriptionBackendEvidenceAdapter` and
 `EnvironmentBackendEvidenceAdapter`. Those adapters publish redacted
-`BackendEvidence` containing only typed origin and backend kind. The resolver
-never reads process-global state, issues queries, or inspects semantic
+`BackendEvidence` containing only the typed origin and backend kind. The
+resolver never reads process-global state, issues queries, or inspects semantic
 capability values. The most specific satisfied identity wins in this order:
 
 1. Kitty;
@@ -70,41 +71,41 @@ capability values. The most specific satisfied identity wins in this order:
 
 The fallback authorizes no optional output by itself. A sixel response enables
 the sixel extension when its evidence is authoritative; it never changes the
-identity to a sixel backend. There is no `SixelBackend`. Likewise, Kitty
+identity to a sixel backend, and there is no `SixelBackend`. Likewise, Kitty
 graphics support is a capability of a resolved backend, not evidence that may
 replace an already published identity.
 
 ## Extensions and authorization
 
 A backend's extension collection says which protocol families the library can
-compose for that identity. It is not a support claim and it is not permission to
-emit bytes. The [capability contract](capabilities.md#overview) authorizes
+compose for that identity. It is not a support claim, and it is not permission
+to emit bytes. The [capability contract](capabilities.md#overview) authorizes
 optional output only from supported evidence with an approved origin.
-Environment hints may remain observable or tentative but never become an output
-grant merely because an extension descriptor exists.
+Environment hints may remain observable or tentative, but they never become an
+output grant merely because an extension descriptor exists.
 
-VT, xterm, Kitty, and iTerm2 protocol behavior continues through the focused
+VT, xterm, Kitty, and iTerm2 protocol behavior continues to live in the focused
 typed codecs linked from the
 [protocol index](../protocols/index.md#protocol-families). Sixel remains a DEC
-graphics extension rather than emulator identity. tmux and GNU screen remain
+graphics extension rather than an emulator identity. tmux and GNU screen remain
 typed route adapters around an explicitly described outer terminal. A
-multiplexer neither becomes the backend identity nor permits direct bytes to
+multiplexer neither becomes the backend identity nor permits direct bytes that
 bypass its [routing policy](capabilities.md#multiplexer-boundary).
 
 ## Graphics backend boundary
 
 `IGraphicsBackend` is renderer-owned transactional state. It prepares uploads,
-placements, and removals before transport I/O; commits them after a successful
-flush; and invalidates them after uncertain output. `GraphicsBackendSelector`
+placements, and removals before transport I/O, commits them after a successful
+flush, and invalidates them after uncertain output. `GraphicsBackendSelector`
 chooses a Kitty or shared non-retained graphics backend only from the active
 `TerminalContext`, authoritative capability evidence, and an authorized route.
 It does not resolve terminal identity.
 
 Renderer construction fixes the graphics backend family for that application.
-Every frame still rechecks current capability evidence, so later revocation can
-remove or repair graphics without replacing the graphics backend. The
-[rendering pipeline](rendering-pipeline.md#overview) owns transaction ordering,
-cell fallback, invalidation, and cleanup. The
+Every frame still rechecks the current capability evidence, so a later
+revocation can remove or repair graphics without replacing the graphics
+backend. The [rendering pipeline](rendering-pipeline.md#overview) owns
+transaction ordering, cell fallback, invalidation, and cleanup. The
 [memory contract](memory-ownership.md#overview) owns backend state and borrowed
 buffers.
 
@@ -122,13 +123,13 @@ flowchart LR
     Selector --> Graphics["IGraphicsBackend"]
 ```
 
-The host resolves one usable description before terminal output. Options create
-the initial `TerminalContext`; `Session` and `Application` retain contexts with
-the same backend identity as capability evidence is published. The application
-creates its renderer lazily after profile and resize publication. Shutdown
-awaits graphics cleanup, then disposes session-owned transport and resize state,
-then restores the platform terminal lease as specified by the
-[hosting contract](../concepts/hosting.md#portable-console-host).
+The host resolves one usable description before any terminal output. Options
+create the initial `TerminalContext`; `Session` and `Application` retain
+contexts with the same backend identity as capability evidence is published.
+The application creates its renderer lazily, after profile and resize
+publication. Shutdown awaits graphics cleanup, then disposes session-owned
+transport and resize state, then restores the platform terminal lease as
+specified by the [hosting contract](../concepts/hosting.md#portable-console-host).
 
 ## Failure and fallback
 
@@ -149,11 +150,15 @@ the sole support summary.
 
 ## Expected behavior
 
-Tests MUST prove hierarchy inheritance, immutable inherited-before-local
-extension order, duplicate rejection, and resolver specificity. They MUST prove
-that sixel and multiplexers cannot become terminal identities, capability
-refinement preserves the exact backend reference, and `GraphicsBackendSelector`
-requires authoritative evidence and route approval. Cross-layer initialization
-MUST drive connection, description, discovery, backend publication,
-optional-mode startup, rendering, and reverse cleanup without a second
-identity-selection path.
+Readers can rely on the following, and the test suites keep each point true:
+
+- Backend hierarchy inheritance, the immutable inherited-before-local extension
+  order, duplicate-extension rejection, and resolver specificity behave exactly
+  as described above.
+- Sixel evidence and multiplexers never become terminal identities.
+- Capability refinement preserves the exact backend reference.
+- `GraphicsBackendSelector` requires authoritative evidence and route approval
+  before it selects any graphics backend.
+- One cross-layer initialization path drives connection, description,
+  discovery, backend publication, optional-mode startup, rendering, and reverse
+  cleanup; no second identity-selection path exists.

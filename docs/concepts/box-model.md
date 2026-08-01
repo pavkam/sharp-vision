@@ -2,20 +2,22 @@
 
 ## Overview
 
-Every `Control` uses the same physical box model in terminal-cell units:
+Every `Control` uses the same physical box model, measured in terminal-cell
+units:
 
 ```text
 margin -> border box -> border -> padding -> content
 ```
 
-`Width`, `Height`, minimums, maximums, alignment, `Bounds`, and `DesiredSize`
-describe the border box. `Margin` is external and never painted by the control.
-The enabled one-cell edges of [`Border`](intrinsic-chrome.md#border-api) occupy
-the border box. `Padding` separates that border from `ContentBounds`.
+`Width`, `Height`, the minimums and maximums, alignment, `Bounds`, and
+`DesiredSize` all describe the border box. `Margin` sits outside the border box
+and is never painted by the control itself. The enabled one-cell edges of
+[`Border`](intrinsic-chrome.md#border-api) occupy the border box, and `Padding`
+separates that border from `ContentBounds`.
 
-Margin, border, and padding never collapse. Opposing extents use checked or
-saturating arithmetic at their documented boundary, and deflation never creates
-a negative width or height.
+Margin, border, and padding never collapse into each other. When opposing
+extents are combined, the arithmetic is checked or saturating at its documented
+boundary, and deflating a rectangle never produces a negative width or height.
 
 ## API
 
@@ -33,10 +35,11 @@ a negative width or height.
 | `ContentBounds`         | `Rect`                | derived              | `Bounds` deflated first by enabled border edges and then by `Padding`.                   |
 | `LocalBounds`           | `Rect`                | derived              | Zero-origin rectangle with the committed `Bounds` extent.                                |
 
-`Thickness` is an immutable physical-edge value. Its constructors accept one
-uniform extent, horizontal/vertical extents, or left/top/right/bottom extents.
-Every edge is non-negative; an opposing-edge sum that exceeds `int.MaxValue`
-throws `OverflowException` before construction completes.
+`Thickness` is an immutable value that describes the four physical edges. Its
+constructors accept one uniform extent, separate horizontal and vertical
+extents, or individual left/top/right/bottom extents. Every edge must be
+non-negative, and if the sum of two opposing edges would exceed `int.MaxValue`,
+the constructor throws `OverflowException` before the value is created.
 
 `Length` and the complete measure/arrange algorithm are specified by
 [Layout](layout.md#overview). Border appearance and shadow overflow are
@@ -55,21 +58,24 @@ The common control pipeline applies the box model in this order:
 7. Align the final border box inside the margin-deflated arrange slot.
 8. Commit `Bounds`, then derive `ContentBounds` by border and padding deflation.
 
-Percentage and automatic dimensions inside unbounded measure follow the
-[layout length rules](layout.md#lengths). A shadow expands visual bounds only;
-it never changes desired size, content bounds, or the parent's layout slot.
+Percentage and automatic dimensions measured under an unbounded constraint
+follow the [layout length rules](layout.md#lengths). A shadow only expands the
+control's visual bounds; it never changes the desired size, the content bounds,
+or the layout slot the parent gives the control.
 
 ## Painting and hit testing
 
-- The control body may paint the border box, including padding and the backdrop
-  beneath border glyphs.
-- Margin cells retain the surface already painted by the parent.
-- Border glyphs overlay the body on enabled edges.
-- Content and descendants receive the border-and-padding-deflated rectangle.
-- Hit testing uses arranged ownership and clipping rules; shadow overflow does
-  not enlarge the authored hit target.
-- `Visibility.Collapsed` contributes no desired size and skips content layout;
-  `Visibility.Hidden` participates in layout but not painting or input.
+- The control body may paint anywhere in the border box, including the padding
+  cells and the backdrop beneath border glyphs.
+- Margin cells keep whatever the parent already painted there.
+- Border glyphs are drawn over the body on each enabled edge.
+- Content and descendants receive the rectangle left after border and padding
+  deflation.
+- Hit testing follows arranged ownership and clipping rules, so shadow overflow
+  does not enlarge the authored hit target.
+- A control with `Visibility.Collapsed` contributes no desired size and skips
+  content layout; one with `Visibility.Hidden` participates in layout but is
+  neither painted nor hit-testable.
 
 ## Example
 
@@ -88,20 +94,25 @@ var panel = new Stack
 };
 ```
 
-The parent reserves the margin. `panel.Bounds` begins inside that reservation;
-its border occupies one cell on each enabled edge, and its children are arranged
+The parent reserves the margin. `panel.Bounds` starts inside that reservation,
+the border takes one cell on each enabled edge, and the children are arranged
 inside the remaining padded `ContentBounds`.
 
 ## Expected behavior
 
-| Layer      | Required evidence                                                                                           |
+| Layer      | Observable evidence                                                                                         |
 | ---------- | ----------------------------------------------------------------------------------------------------------- |
 | Unit       | Constructor and setter validation, exact desired size, bounds, content bounds, alignment, and invalidation. |
 | Surface    | Distinct parent/body/border/content styles proving which cells each box layer owns.                         |
 | Randomized | Fixed-seed containment, non-negative extents, deterministic repetition, and saturated tiny-view behavior.   |
 
-- Cover every edge independently and all four edges together.
-- Cover zero-size and smaller-than-inset slots.
-- Cover automatic, fixed, percentage, and proportional dimensions.
-- Cover hidden and collapsed participation.
-- Cover border changes from local values, visual states, and theme publication.
+- The box model behaves the same for each edge independently and for all four
+  edges together.
+- Zero-size slots and slots smaller than the combined insets still produce
+  contained, non-negative geometry.
+- Automatic, fixed, percentage, and proportional dimensions all resolve through
+  the same pipeline.
+- Hidden controls keep their layout participation and collapsed controls
+  contribute nothing, as described above.
+- Border changes take effect whether they come from local values, visual
+  states, or theme publication.

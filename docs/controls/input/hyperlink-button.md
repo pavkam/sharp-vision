@@ -2,18 +2,18 @@
 
 ## Overview
 
-`HyperlinkButton` is a focusable clickable text control styled as a classic
-hyperlink with accent foreground and underline.
+`HyperlinkButton` is a focusable, clickable text control styled like a classic
+hyperlink, with an accent foreground and an underline.
 
 ## API
 
-| Member                        | Default        | Description                                                             |
-| ----------------------------- | -------------- | ----------------------------------------------------------------------- |
-| `Content`                     | `null`         | Inherited replaceable visual face.                                      |
-| `Text`                        | `null`         | Convenience access to retained `Text` content; assignment rejects null. |
-| `Command`, `CommandParameter` | `null`, `null` | Optional command and borrowed parameter.                                |
-| `Click`                       | no subscribers | Raised after released state commits and before command execution.       |
-| `PerformClick()`              | —              | Runs programmatic activation when visible, enabled, and executable.     |
+| Member                        | Default        | Description                                                              |
+| ----------------------------- | -------------- | ------------------------------------------------------------------------ |
+| `Content`                     | `null`         | The inherited replaceable visual face.                                   |
+| `Text`                        | `null`         | Convenience access to retained `Text` content; assigning null is rejected. |
+| `Command`, `CommandParameter` | `null`, `null` | Optional command and borrowed parameter.                                 |
+| `Click`                       | no subscribers | Raised after the released state commits and before the command executes. |
+| `PerformClick()`              | —              | Runs programmatic activation when visible, enabled, and executable.      |
 
 ## Example
 
@@ -26,8 +26,8 @@ link.Click += (_, _) => OpenUrl("https://example.com");
 
 ## Expected behavior
 
-| Layer       | Required evidence                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------------------- |
-| Unit        | Constructors, text/content synchronization, command gating, event order, disposal, and validation. |
-| Surface     | Accent underline, hover/focus/pressed/disabled states, Unicode text, and tiny clipping.            |
-| Integration | Space, Enter, pointer capture, access key, and programmatic activation parity.                     |
+| Layer       | Observable evidence                                                                                                    |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Unit        | Constructors, text and content synchronization, command gating, event order, disposal, and validation behave as documented. |
+| Surface     | The accent underline and the hover, focus, pressed, and disabled states render correctly, Unicode text lays out, and tiny bounds clip safely. |
+| Integration | Space, Enter, pointer capture, the access key, and programmatic activation behave identically.                          |

@@ -1,13 +1,13 @@
 # Feature support
 
-This page maps application needs to the section that proves current behavior. It
-is a navigation surface, not a second coverage ledger. Terminal support states
-are owned exclusively by the
+This page maps common application needs to the documentation that describes and
+proves the current behavior. It is a navigation aid, not a second coverage
+table; the current support state for each terminal protocol lives only in the
 [protocol coverage matrix](../protocols/coverage-matrix.md#coverage).
 
 ## Application and UI
 
-| Need                                             | Public surface                                               | Authoritative contract                                            |
+| Need                                             | Public surface                                               | Reference                                                         |
 | ------------------------------------------------ | ------------------------------------------------------------ | ----------------------------------------------------------------- |
 | Interactive console hosting                      | `ConsoleApplication` and `ConsoleApplicationBuilder`         | [Hosting](../concepts/hosting.md#overview)                        |
 | Retained mutable controls                        | `Control`, `Container`, `ContentControl`, `CompositeControl` | [Control catalog](../controls/index.md#control-catalog)           |
@@ -21,10 +21,10 @@ are owned exclusively by the
 | Menus, popups, and windows                       | Retained controls and popup render layer                     | [Control catalog](../controls/index.md#control-catalog)           |
 | Images                                           | `Image`, `ImageStretch`, and immutable graphics sources      | [Image control](../controls/display/image.md#overview)            |
 
-Every shipped concrete control has a C# example and expected behavior on its
-individual page. The
+Every shipped control documents a C# example and its expected behavior on its
+own page. The
 [layout-and-controls walkthrough](../walkthroughs/layout-and-controls.md#compose-layout-and-controls)
-shows how the surfaces combine.
+shows how these pieces combine.
 
 ## Terminal input and output
 
@@ -39,24 +39,24 @@ shows how the surfaces combine.
 | Device and capability negotiation           | [Capabilities](../architecture/capabilities.md#overview)                                                  |
 | tmux and GNU screen passthrough             | [tmux](../protocols/tmux.md#overview) and [GNU screen](../protocols/gnu-screen.md#overview)               |
 
-The exact state for every protocol family—typed and implemented, decoded and
+The exact state of every protocol family—typed and implemented, decoded and
 observable, extension API with safe fallback, or unsupported with a specific
 reason—is in the [coverage table](../protocols/coverage-matrix.md#coverage).
 
 ## Explicit boundaries
 
-Kitty graphics, sixel, and iTerm2 multipart images are connected from the public
-Image control through Application-owned backend selection and shutdown. A
-generic OSC, DCS, APC, capability parser, or environment name still does not
-authorize raster output; iTerm2 specifically requires an explicit 3.5+ multipart
-override, and detected multiplexer layers never permit an unwrapped direct
-fallback around their route policy.
+The public `Image` control reaches Kitty graphics, sixel, and iTerm2 multipart
+images through backend selection and shutdown that the `Application` owns.
+Detecting a generic OSC, DCS, or APC parser—or recognizing a terminal by
+name—is not enough to turn on raster output: iTerm2 requires an explicit 3.5+
+multipart override, and when a multiplexer is detected, graphics always go
+through its wrapping policy rather than falling back to unwrapped direct
+output.
 
 Windows console hosting is implemented and unit-tested at its mode-flag and
-P/Invoke boundaries, but the current limitation on real Windows-console
-validation is recorded in [hosting](../concepts/hosting.md#windows). Unix
-hosting uses the real tty and can preserve both cell and pixel dimensions where
-the platform reports them.
+P/Invoke boundaries; the gap in real Windows-console validation is recorded in
+[hosting](../concepts/hosting.md#windows). Unix hosting uses the real tty and
+preserves both cell and pixel dimensions where the platform reports them.
 
 ## Proof and limits
 

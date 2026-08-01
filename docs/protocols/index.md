@@ -18,10 +18,10 @@ flowchart LR
     Encode --> BytesOut["Terminal bytes"]
 ```
 
-The [runtime routing contract](runtime-routing.md#overview) owns the middle of
+[Runtime protocol routing](runtime-routing.md#overview) owns the middle of
 this flow. The [coverage matrix](coverage-matrix.md#coverage) is the only
 support summary; parser recognition alone is not implementation. The
-[terminal backend contract](../architecture/terminal-backends.md#backend-hierarchy)
+[terminal backend hierarchy](../architecture/terminal-backends.md#backend-hierarchy)
 composes these families as immutable VT, xterm, Kitty, and iTerm2 extension
 metadata without copying their wire implementations. The
 [discovery pipeline](../architecture/discovery-pipeline.md#overview) owns
@@ -84,8 +84,8 @@ Both members report each protocol's real `Support` state. Kitty graphics may
 become supported only from its strict correlated APC query or explicit caller
 policy; an environment name remains tentative. Sixel may become supported from
 DA1 parameter 4 or explicit caller policy. iTerm2 multipart output requires an
-explicit caller override asserting the 3.5+ contract; environment, database, and
-unimplemented feature-query evidence cannot authorize it. The
+explicit caller override asserting the 3.5+ behavior; environment, database, and
+unimplemented feature-query evidence cannot enable it. The
 [coverage matrix](coverage-matrix.md#coverage) remains the support claim.
 
 `SharpVision.ITerminalServices` (`Application.Terminal`) exposes the implemented

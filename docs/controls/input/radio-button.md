@@ -3,7 +3,7 @@
 ## Overview
 
 `RadioButton` is a sealed [`Pressable`](../pressable.md#overview) selection
-control. At most one owned member in an effective group is checked.
+control. At most one owned member of an effective group is checked at a time.
 
 ## API
 
@@ -12,35 +12,38 @@ control. At most one owned member in an effective group is checked.
 | `IsChecked`                    | `false`            | Selects the member; programmatic false may leave a group empty. |
 | `GroupName`                    | `null`             | Exact-slot unnamed grouping or ordinal named grouping.          |
 | `Style`                        | `null`             | Optional complete developer-authored `RadioButtonStyle`.        |
-| `ActualStyle`                  | Theme radio button | Always-present resolved style.                                  |
+| `ActualStyle`                  | Theme radio button | The resolved style; never null.                                 |
 | `RadioButtonStyle.Parentheses` | Theme default      | Fixed-width `( )` and `(•)` presentation.                       |
 | `RadioButtonStyle.Glyph`       | Preset             | Compact one-cell circle presentation.                           |
-| `Content`                      | `null`             | Owns the optional label or richer visual.                       |
-| Group-selection events         | No subscribers     | Report staged old/new members and activation cause.             |
+| `Content`                      | `null`             | The optional label or richer visual, owned by the radio button. |
+| Group-selection events         | No subscribers     | Report staged old/new members and the activation cause.         |
 
-`RadioButtonStyle` contains `RadioButtonMarkStyle`, complete
+`RadioButtonStyle` bundles a `RadioButtonMarkStyle`, a complete set of
 `RadioButtonGlyphs`, and the full appearance profile. `RadioButtonStyleSet` is
-the partial Theme-file composition type. Assigning `Style` replaces the whole
-Theme-owned presentation; assigning null restores it. `ActualStyle` never
-returns null. Parentheses reserve three cells and use a bullet for the selected
-interior; glyph style reserves one cell. The standard profile supplies the Theme
-accent as its checked foreground. A developer-authored checked appearance
-replaces that color for the complete mark.
+the partial type used to compose Theme files. Assigning `Style` replaces the
+whole Theme-owned presentation, and assigning `null` restores it.
+`ActualStyle` never returns null. The parentheses style reserves three cells
+and marks the selected interior with a bullet; the glyph style reserves one
+cell. The standard profile uses the Theme accent as its checked foreground,
+and a developer-authored checked appearance replaces that color for the
+complete mark.
 
-RadioButton does not publish raw border, shadow, or state-appearance mutation.
-Third-party composition inspects `ActualStyle`, `ActualBorder`, and
-`ActualShadow`.
+RadioButton does not expose raw border, shadow, or state-appearance mutation.
+For third-party composition, inspect `ActualStyle`, `ActualBorder`, and
+`ActualShadow` instead.
 
 ## Group and interaction behavior
 
-User activation selects and never toggles false. Unnamed members group only in
-their exact ownership slot; named groups use ordinal matching throughout the
-ownership root. Reparenting and regrouping resolve exclusivity atomically.
-Unchecked notification precedes Checked, followed by SelectionChanged.
+User activation selects a member and never toggles it back to false. Unnamed
+members group only within their exact ownership slot; named groups match by
+ordinal comparison throughout the ownership root. Reparenting and regrouping
+resolve exclusivity atomically. The Unchecked notification precedes Checked,
+followed by SelectionChanged.
 
-Space and pointer select. Arrow keys move focus and selection through eligible
-members with wrapping. Disabled, hidden, collapsed, and detached members are
-skipped. Disabled styling wins even when a retained member remains selected.
+Space and pointer both select. The arrow keys move focus and selection through
+eligible members, wrapping at the ends. Disabled, hidden, collapsed, and
+detached members are skipped. Disabled styling wins even when a retained
+member remains selected.
 
 ## Example
 
@@ -63,6 +66,10 @@ var glyph = new RadioButton
 
 ## Expected behavior
 
-Cover exclusivity, regroup/reparent, event order, arrows, disabled skipping,
-unnamed/named scope, style validation and precedence, null restoration, Theme
-replacement, both mark layouts, Unicode ownership, and exact terminal rows.
+Group exclusivity holds through regrouping and reparenting, and events arrive
+in the documented order. Arrow keys move the selection while skipping disabled
+members, and unnamed and named scopes group exactly as described. Style
+validation and precedence hold, assigning `null` restores the Theme style, and
+a Theme replacement restyles members that have no local style. Both mark
+layouts render correctly, Unicode content stays owned by its member, and
+rendering produces the exact terminal rows.

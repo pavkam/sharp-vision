@@ -20,9 +20,9 @@ before conversion.
 
 ## Supported features
 
-Decode X10 and VT200 compatibility, SGR cell/pixel, wheel, motion, extra
-buttons, modifiers, and Kitty's pixel-mode leave notification. Encode safe mode
-leases and restore previous tracking on shutdown.
+SharpVision decodes X10 and VT200 compatibility, SGR cell/pixel, wheel, motion,
+extra buttons, modifiers, and Kitty's pixel-mode leave notification. It encodes
+safe mode leases and restores previous tracking on shutdown.
 
 `Input.Decoder` accepts three compatibility families: the three UTF-8 scalar
 fields following X10 `CSI M`, urxvt decimal reports, and SGR reports with `<`.

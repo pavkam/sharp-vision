@@ -49,7 +49,7 @@ internal sealed class ThemeDefinition
     [JsonPropertyName("attributes")]
     public ThemeAttributesDefinition? Attributes { get; set; }
 
-    /// <summary>Gets or sets required semantic profiles and optional typed control presentations.</summary>
+    /// <summary>Gets or sets the required semantic style profiles.</summary>
     [JsonPropertyName("styles")]
     public ThemeStylesDefinition? Styles { get; set; }
 

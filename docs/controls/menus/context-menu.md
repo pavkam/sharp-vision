@@ -2,27 +2,29 @@
 
 ## Overview
 
-`ContextMenu` displays a vertical menu at an arbitrary cell position with light
-dismiss.
+`ContextMenu` shows a vertical menu at any cell position you choose and closes
+through light dismiss when the user interacts outside of it. Attach one to a
+control through `Control.ContextMenu` so it opens on right-click, or open it
+yourself at an explicit position with `Show`.
 
 ## API
 
-| Member                         | Default          | Description                                                |
-| ------------------------------ | ---------------- | ---------------------------------------------------------- |
-| `Items`                        | empty            | Typed managed menu entries.                                |
-| `IsOpen`                       | `false`          | Read-only committed popup visibility.                      |
-| `Presentation`                 | retained `Popup` | Presentation control used by the owning screen.            |
-| `Opening`, `Closing`, `Closed` | no subscribers   | Ordered lifecycle notifications around visibility changes. |
-| `Show(int row, int col)`       | —                | Opens at a zero-based root-cell position when attached.    |
-| `Close()`                      | —                | Idempotently closes and clears the fixed origin.           |
+| Member                         | Default          | Description                                                       |
+| ------------------------------ | ---------------- | ----------------------------------------------------------------- |
+| `Items`                        | empty            | The typed collection of menu entries the menu manages.            |
+| `IsOpen`                       | `false`          | Reports the committed popup visibility. Read-only.                |
+| `Presentation`                 | retained `Popup` | The presentation control the owning screen uses to show the menu. |
+| `Opening`, `Closing`, `Closed` | no subscribers   | Lifecycle notifications raised in order around visibility changes. |
+| `Show(int row, int col)`       | —                | Opens the menu at a zero-based root-cell position while attached. |
+| `Close()`                      | —                | Closes the menu and clears its fixed origin; safe to call again.  |
 
 ## Ownership
 
 Assigning a menu to `Control.ContextMenu` gives that control ownership of the
-menu's presentation. A menu's presentation may be owned by only one control at a
-time; assigning the same `IContextMenu` instance to a second control throws
-`ArgumentException` and leaves the second control's existing context menu (if
-any) unchanged.
+menu's presentation. Only one control can own a menu's presentation at a time:
+assigning the same `IContextMenu` instance to a second control throws
+`ArgumentException`, and the second control keeps whatever context menu it
+already had.
 
 ## Example
 
@@ -34,8 +36,12 @@ var contextMenu = new ContextMenu();
 
 ## Expected behavior
 
-| Layer       | Required evidence                                                                            |
-| ----------- | -------------------------------------------------------------------------------------------- |
-| Unit        | Item ownership, unattached no-op, coordinates, event order, close idempotence, and disposal. |
-| Surface     | Root-relative placement, clipping, menu appearance, and elevated rendering.                  |
-| Integration | Right-click opening, keyboard navigation, invocation close, and outside light dismiss.       |
+- The menu owns its items, `Show` interprets its arguments as zero-based
+  root-cell coordinates, calling `Show` while the menu is unattached does
+  nothing, `Opening`, `Closing`, and `Closed` fire in order, `Close` is
+  idempotent, and disposing the menu cleans it up.
+- The open surface is placed relative to the root, clips to it, renders with
+  menu appearance, and draws elevated above ordinary content.
+- Right-click opens the menu on its owning control, keyboard navigation works
+  within it, invoking an item closes it, and a press outside dismisses it
+  through light dismiss.

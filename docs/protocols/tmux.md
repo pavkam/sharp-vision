@@ -36,9 +36,9 @@ are the currently connected typed output operations. A route wraps the farthest
 layer first, then works inward so the nearest multiplexer sees the outermost
 wire envelope. Each tmux layer doubles every ESC again. It prepares the complete
 bounded result before mutating the caller's destination. Each complete Kitty
-APC, sixel DCS, or iTerm2 multipart OSC is routed independently. Clipboard
-remains a finite policy family reserved for its typed implementation; no generic
-route operation accepts control or caller-supplied raw strings.
+APC, sixel DCS, or iTerm2 multipart OSC is routed independently. Clipboard is a
+policy family reserved for its typed implementation; no route operation accepts
+control strings or caller-supplied raw payloads.
 
 A mixed route may contain at most one GNU screen layer, and that layer must be
 farthest. Screen therefore receives the original CSI query batch rather than a
@@ -75,11 +75,12 @@ and ST boundary. Both reject malformed input before destination mutation.
 
 ## Supported features
 
-Provide typed passthrough wrapping for approved query, clipboard, and graphics
-operations, bounded unwrapping of replies, correct ESC doubling, nested-depth
-limits, and explicit policy when passthrough is disabled. Capability queries and
-Kitty/sixel/iTerm2 graphics are implemented. Clipboard opts in only through its
-typed backend. Do not tunnel arbitrary payloads from controls.
+SharpVision provides typed passthrough wrapping for approved query, clipboard,
+and graphics operations, bounded unwrapping of replies, correct ESC doubling,
+nested-depth limits, and an explicit policy when passthrough is disabled.
+Capability queries and Kitty/sixel/iTerm2 graphics are implemented. Clipboard
+opts in only through its typed backend. Arbitrary payloads from controls are
+never tunneled.
 
 ## Compatibility evidence
 

@@ -2,8 +2,9 @@
 
 ## Overview
 
-`Grid` arranges managed children in fixed, percentage, automatic, and
-proportional row/column tracks with spacing and spans.
+`Grid` arranges managed children in rows and columns. Tracks can be fixed,
+percentage, automatic, or proportional, with configurable spacing between
+tracks and children that span several of them.
 
 ## API
 
@@ -19,52 +20,56 @@ proportional row/column tracks with spacing and spans.
 
 - `Rows` and `Columns` are permanent non-null `TrackCollection` values. Empty
   definitions mean one implicit automatic track.
-- Immutable `Track` stores `Length`, `Minimum`, and `Maximum` and provides
-  `Auto`, `Cells`, `Percent`, and `Star` factories. Limits are non-negative and
-  maximum cannot be below minimum.
-- `RowSpacing` and `ColumnSpacing` default zero and are non-negative cells.
-- Attached `Row`, `Column`, `RowSpan`, and `ColumnSpan` require in-range origins
-  and positive spans after definitions are committed. Defaults are row/column
-  zero and spans one.
+- The immutable `Track` type stores `Length`, `Minimum`, and `Maximum` and
+  provides the `Auto`, `Cells`, `Percent`, and `Star` factories. Limits must
+  be non-negative, and a maximum cannot be below its minimum.
+- `RowSpacing` and `ColumnSpacing` default to zero and are measured in
+  non-negative cells.
+- The attached `Row`, `Column`, `RowSpan`, and `ColumnSpan` properties require
+  in-range origins and positive spans once definitions are committed. The
+  defaults place a child at row and column zero with spans of one.
 - `Children` follows managed ownership.
 
-Track collection and placement mutation validates dispatcher affinity before
-observable state changes, then invalidates measure once after a real change.
+Mutating a track collection or a child placement validates dispatcher affinity
+before any observable state changes, then invalidates measure once per real
+change.
 
 Measure first asks each child for its unbounded intrinsic size. Non-spanning
-children contribute the maximum margin-inclusive request to their track;
-spanning children then expand their track range deterministically after
-subtracting only the gaps inside that span. Fixed, automatic, percentage, and
-proportional tracks are resolved with their limits against the bounded track
-area after saturated outer spacing is reserved.
+children contribute their largest margin-inclusive request to their track;
+spanning children then widen their track range deterministically after
+subtracting only the gaps inside the span. Fixed, automatic, percentage, and
+proportional tracks are then resolved, with their limits applied, against the
+bounded track area left after saturated outer spacing is reserved.
 
-Every child is measured again with its resolved spanned slot. Grid rebuilds the
-intrinsic requests once from that result so wrapping on either axis can affect
-the other. A child spanning only automatic rows is then measured with its
-resolved finite column width and unbounded height, allowing wrapped text to grow
-those rows instead of being clipped to their pre-wrap probe height. Arrange
-repeats that bounded pass when the final viewport differs from measure, computes
-cumulative integer origins, and commits each child to the union of its tracks
-and the actual allocated internal gaps. The bounded remeasurement's child
-arrange invalidation remains local to the active Grid transaction, preventing a
-percentage-sized Grid ancestor from scheduling an identical layout forever.
+Every child is measured again with its resolved spanned slot. The grid
+rebuilds the intrinsic requests once from that result, so wrapping on either
+axis can affect the other. A child that spans only automatic rows is measured
+with its resolved finite column width and unbounded height, which lets wrapped
+text grow those rows instead of being clipped to the height probed before
+wrapping. Arrange repeats the bounded pass when the final viewport differs
+from measure, computes cumulative integer origins, and commits each child to
+the union of its tracks plus the actual allocated internal gaps. The arrange
+invalidation raised by that bounded remeasurement stays local to the active
+Grid transaction, which prevents a percentage-sized Grid ancestor from
+scheduling an identical layout forever.
 
-Rounding uses the shared cumulative-edge allocator. If definitions and spacing
-cannot fit, spacing saturates first and tracks shrink deterministically until
-all slots remain within the Grid. Empty definitions behave exactly as one
-implicit automatic track. Collapsed children contribute no request and receive
-empty bounds.
+Rounding uses the shared cumulative-edge allocator. When the definitions and
+spacing cannot fit, spacing saturates first, then tracks shrink
+deterministically until every slot stays inside the Grid. Empty definitions
+behave exactly like one implicit automatic track. Collapsed children
+contribute no request and receive empty bounds.
 
-An ancestor with `AutoScroll` may translate a Grid to a negative visual origin;
-track extents and gaps remain non-negative while their committed screen
-coordinates preserve that signed translation. This is the ordinary scrolling
+An ancestor with `AutoScroll` may translate a Grid to a negative visual
+origin. Track extents and gaps remain non-negative, while the committed screen
+coordinates preserve the signed translation. This is the ordinary scrolling
 arrangement defined by the
-[scrolling contract](../../concepts/scrolling.md#overview), not an invalid Grid
-placement.
+[scrolling contract](../../concepts/scrolling.md#overview), not an invalid
+Grid placement.
 
-Shrinking a definition collection validates every owned child's candidate origin
-and span before mutation. A failure throws `InvalidOperationException` and
-preserves the definitions and placements unchanged.
+Shrinking a definition collection first validates the candidate origin and
+span of every owned child. When any placement would fall out of range, the
+mutation throws `InvalidOperationException` and leaves the definitions and
+placements unchanged.
 
 ## Example
 
@@ -80,16 +85,21 @@ var grid = new Grid
 
 ## Expected behavior
 
-Cover all track kinds/mixes, min/max, spacing, spans, competing intrinsic
-requirements, rounding/remainders, collapsed children, invalid attached values,
-zero/tiny/overflow sizes, wrapping remeasure, settled percentage-parent resize,
-ownership, signed origins under ancestor scrolling, and exact bounds/cells. Seed
-`0x051A475A` runs 10,000 mixed valid grids twice and proves determinism,
-containment, non-negative geometry, ordered shared edges, and exact axis
-consumption when an uncapped proportional track absorbs the remainder.
+Layout is deterministic across every track kind and mix, minimum and maximum
+limits, spacing, spans, and competing intrinsic requirements. Rounding
+remainders are allocated deterministically, collapsed children are excluded,
+invalid attached values are rejected, and zero, tiny, and overflowing sizes
+never break containment. Wrapping triggers the single documented remeasure, a
+percentage-sized parent settles after resize, ownership stays managed,
+origins may be signed under ancestor scrolling, and the committed bounds and
+cells are exact. Seed `0x051A475A` runs 10,000 mixed valid grids twice and
+demonstrates determinism, containment, non-negative geometry, ordered shared
+edges, and exact axis consumption when an uncapped proportional track absorbs
+the remainder.
 
 Mounted cross-layer coverage in
 [`GridSurfaceTests`](../../../tests/SharpVision.Tests/Controls/Layout/GridSurfaceTests.cs)
-proves mixed fixed/percentage/automatic/proportional tracks, deterministic
-resize remainder, wide-cell ownership, padding, spanning, collapsed exclusion,
-exact bounds and cells, and pointer routing to a final arranged slot.
+demonstrates mixed fixed, percentage, automatic, and proportional tracks,
+deterministic resize remainders, wide-cell ownership, padding, spanning,
+collapsed exclusion, exact bounds and cells, and pointer routing to a final
+arranged slot.

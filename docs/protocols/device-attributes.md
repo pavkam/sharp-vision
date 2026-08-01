@@ -25,9 +25,8 @@ finite
 [xterm DECRQSS and XTGETTCAP subset](xterm.md#status-and-capability-queries).
 Callers may override every detected value for SSH, tmux, GNU screen, CI, and
 known lies. Kitty OSC 5522 defines a DECRQM probe and typed correlation family,
-but the startup batch does not issue it; the
-[Kitty clipboard implementation gap](kitty-clipboard.md#supported-features) owns
-that boundary.
+but the startup batch does not issue it; see the
+[Kitty clipboard implementation gap](kitty-clipboard.md#supported-features).
 
 ## Detection outcomes
 
@@ -61,14 +60,14 @@ finite public allowlist and strict bounded hex pairs; its parser-owned response
 snapshots only a non-empty success or empty failure. It cannot query arbitrary
 resources or transplant raw program bytes into a terminal profile.
 
-Kitty graphics-specific probe decoding remains assigned to its documented
-extension boundary.
+Kitty graphics probe decoding belongs to the graphics extension and is
+documented there.
 
 DA1 parameter 4 is the sixel query boundary. A validated primary-attributes
 reply containing 4 publishes supported query evidence; a reply omitting it
 publishes unsupported query evidence. Explicit `Settings.Sixel` true or false
-retains override precedence. No new `QueryKind` ordinal is required because the
-evidence belongs to the existing append-only primary-attributes transaction.
+retains override precedence. The evidence belongs to the existing append-only
+primary-attributes transaction, so no new `QueryKind` ordinal is required.
 
 ## Kitty keyboard detection
 

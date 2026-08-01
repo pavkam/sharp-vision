@@ -5,18 +5,19 @@
 SharpVision keeps inheritance honest. Use
 [`Container`](../controls/container.md#overview) only when callers may add
 arbitrary controls and the new type's public purpose is laying them out. Use
-`ContentControl` for zero-or-one caller-replaceable content, `CompositeControl`
-for a retained private composition, `ItemsControl` for a typed semantic
-collection with a private presentation host, and direct `Control` inheritance
-for a new primitive leaf. `Pressable` is the focusable, single-content
-interaction role.
+`ContentControl` for zero-or-one caller-replaceable content,
+`CompositeControl` for a retained private composition, `ItemsControl` for a
+typed semantic collection with a private presentation host, and direct
+`Control` inheritance for a new primitive leaf. `Pressable` is the focusable,
+single-content interaction role.
 
-`View` and measure-time `Build()` composition do not exist. Construction is
-never deferred to measure, arrange, or rendering: a component creates its tree
-in its constructor, then transfers exactly one detached root with
-`InitializeContent`. The root is immutable as an ownership edge, remains private
-to the component, and participates in the normal dispatcher, theme, Unicode,
-lifecycle, rendering, hit-testing, focus, capture, and disposal paths.
+There is no `View` type and no measure-time `Build()` composition.
+Construction is never deferred to measure, arrange, or rendering: a component
+creates its tree in its constructor and then hands over exactly one detached
+root with `InitializeContent`. That root is immutable as an ownership edge,
+stays private to the component, and participates in the normal dispatcher,
+theme, Unicode, lifecycle, rendering, hit-testing, focus, capture, and
+disposal paths.
 
 ### Choosing a role
 
@@ -29,32 +30,33 @@ lifecycle, rendering, hit-testing, focus, capture, and disposal paths.
 | Typed data/semantic collection with realized visuals | `ItemsControl`                                   | The type's semantic collection, never the host |
 | Focusable activating single face                     | `Pressable`                                      | Inherited `Content`                            |
 
-Concrete shipped controls are sealed, with three documented exceptions: `Popup`,
-`ContextMenu`, and `Window`. Each stays unsealed only because the library itself
-subclasses it internally — `Flyout`/`Tooltip : Popup`,
+Concrete shipped controls are sealed, with three documented exceptions:
+`Popup`, `ContextMenu`, and `Window`. Each stays unsealed only because the
+library itself subclasses it internally — `Flyout`/`Tooltip : Popup`,
 `TextInputContextMenu : ContextMenu`, and `Dialog<TResult> : Window` (every
 concrete dialog type derives from `Dialog<TResult>` in turn, per the
 [dialog catalog](../dialogs/index.md#dialog-catalog)). `Popup` and `Window`
-expose substantial protected seams for that purpose; `ContextMenu`'s non-public
-surface is a single `internal Menu` field plus one protected override, so
-deriving from it directly gains little over composing one. Third parties derive
-from the abstract roles, compose sealed controls, or subclass one of these three
-documented exceptions; they do not depend on internal ownership, layout, focus,
-capture, or renderer transactions beyond what each type's own protected members
-expose.
+expose substantial protected seams for that purpose; `ContextMenu`'s
+non-public surface is a single `internal Menu` field plus one protected
+override, so deriving from it directly gains little over composing one. Third
+parties derive from the abstract roles, compose sealed controls, or subclass
+one of these three documented exceptions; they do not depend on internal
+ownership, layout, focus, capture, or renderer transactions beyond what each
+type's own protected members expose.
 
 ## Retained private composition
 
-Call `InitializeContent` once from the concrete `CompositeControl` constructor.
-The supplied root must be non-null, detached, available, and outside the
-component's own ancestry. Rejected candidates leave initialization available;
-once ownership commits, direct disposal of the root or a callback failure never
-makes the component reinitializable. Layout is a pass-through over the root and
-does not construct or mutate the tree.
+Call `InitializeContent` once, from the concrete `CompositeControl`
+constructor. The supplied root must be non-null, detached, available, and
+outside the component's own ancestry. A rejected candidate leaves
+initialization still available; once ownership commits, neither direct
+disposal of the root nor a callback failure ever makes the component
+reinitializable. Layout is a pass-through over the root and never constructs
+or mutates the tree.
 
-Use a real layout container as the root when more than one visual child is
-needed. Application-dependent work belongs in lifecycle hooks such as
-`OnAttached` and `OnStarted`, not in composition construction.
+Use a real layout container as the root when the composition needs more than
+one visual child. Application-dependent work belongs in lifecycle hooks such
+as `OnAttached` and `OnStarted`, not in composition construction.
 
 ```csharp
 public sealed class LoginPanel : CompositeControl
@@ -90,35 +92,40 @@ public sealed class LoginPanel : CompositeControl
 
 ## Semantic item presentation
 
-An `ItemsControl` constructor calls `InitializeItemsHost` once with a private
-`Container`. The derived type exposes its own typed collection and realizes
-controls through the protected inspection and insert/remove/replace helpers. The
-host's `Children` collection never becomes public API. `ListView`, `Menu`, and
-`Table` follow this pattern; `Table` keeps its scrolling cell presenter private
-while exposing only `Rows`, `Columns`, and delegated scroll state.
+An `ItemsControl` constructor calls `InitializeItemsHost` once, passing a
+private `Container`. The derived type exposes its own typed collection and
+realizes controls through the protected inspection and
+insert/remove/replace helpers. The host's `Children` collection never becomes
+public API. `ListView`, `Menu`, and `Table` follow this pattern; `Table`
+keeps its scrolling cell presenter private and exposes only `Rows`,
+`Columns`, and delegated scroll state.
 
 ## Chrome and custom rendering
 
 Border and shadow are intrinsic protected `Control` properties, not wrapper
-controls. A derived component may set complete composites when its contract owns
-that chrome, or leave them Theme-owned. Republish them only when arbitrary
-caller-authored chrome is a supported layout feature; otherwise expose one
-complete Style. A custom `OnRenderContent` draws through `ContentBounds`;
-framework-owned chrome runs around it, so it must not repeat border or padding
-deflation. Public `ActualBorder` and `ActualShadow` expose the resolved result.
+controls. A derived component may set the complete composites when its
+contract owns that chrome, or leave them Theme-owned. Republish them only
+when arbitrary caller-authored chrome is a supported layout feature;
+otherwise expose one complete Style. A custom `OnRenderContent` draws through
+`ContentBounds`; the framework-owned chrome is painted around it, so the
+override must not repeat border or padding deflation. The public
+`ActualBorder` and `ActualShadow` properties expose the resolved result.
 
 Rendering runs `OnRenderContent` beneath a control's own children, in a fixed
-order: content, then descendants, then `OnRenderAdornment`, then the framework
-border and any internal overlay chrome. A component that must paint over its own
-subtree - gridlines above cells, a focus ring around an active cell, a splitter
-grip, a drag adorner - overrides `OnRenderAdornment` instead of adding a
-synthetic last child to the public `Children` collection just to paint above
-earlier siblings.
+order: content, then descendants, then `OnRenderAdornment`, then the
+framework border and any internal overlay chrome. A component that needs to
+paint over its own subtree — gridlines above cells, a focus ring around an
+active cell, a splitter grip, a drag adorner — overrides `OnRenderAdornment`
+instead of appending a synthetic last child to the public `Children`
+collection just to paint above earlier siblings.
 
 ## Expected behavior
 
-Prove the public role, absence of leaked `Children` or private parts,
-constructor-time one-shot initialization, rejected ownership candidates, first
-layout without tree mutation, context propagation, layout/render/hit/focus
-traversal, direct-root disposal, owner disposal, and external compilation
-against the packed public API.
+A custom component exposes only its public role: no leaked `Children` or
+private parts, one-shot constructor-time initialization, and rejection of
+invalid ownership candidates. Its first layout runs without mutating the
+tree, context propagates into the private root, and the component
+participates normally in layout, render, hit-test, and focus traversal.
+Direct disposal of the root and disposal of the owner both behave as
+described above, and the component compiles externally against the packed
+public API.

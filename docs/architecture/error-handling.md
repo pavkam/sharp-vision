@@ -2,35 +2,40 @@
 
 ## Overview
 
-Programmer errors throw immediately before observable mutation. Environmental
-failures degrade or terminate through typed results/events and structured
-diagnostics according to whether safe continuation is possible.
+SharpVision separates programmer errors from environmental failures. A
+programmer error throws immediately, before any observable state changes. An
+environmental failure either degrades to a documented fallback or terminates
+the application, depending on whether safe continuation is possible, and is
+reported through typed results, typed events, and structured diagnostics.
 
 ## Programmer errors
 
-Examples include null required values, invalid dimensions/percentages, enum
-values outside the contract, parenting cycles, cross-thread mutation,
-disposed-object access, invalid span lengths, and ownership violations. Public
-XML docs name the exception and validation rule.
+Programmer errors include passing null for a required value, invalid dimensions
+or percentages, enum values outside the documented range, parenting cycles,
+cross-thread mutation, access to a disposed object, invalid span lengths, and
+ownership violations. The public XML documentation for each API names the
+exception type and the validation rule that triggers it.
 
 ## Environmental failures
 
-Unsupported capabilities, missing query replies, malformed/oversized terminal
-input, permission denial, timeout, transport closure, and cleanup failure are
-environmental. The library preserves parser sync where possible, emits a
-redacted diagnostic, and chooses the documented fallback. A disconnected
-transport stops the application after restoration attempts.
+Environmental failures include unsupported capabilities, missing query replies,
+malformed or oversized terminal input, permission denial, timeouts, transport
+closure, and cleanup failure. When one occurs, the library preserves parser
+synchronization where it can, emits a redacted diagnostic, and falls back to
+the documented behavior. A disconnected transport stops the application after
+the library has attempted terminal restoration.
 
 ## Diagnostic model
 
-The protocol `Diagnostic` carries only a stable `DiagnosticCode`, sequence kind,
-stream offset, and discarded-byte count. Its invariant-culture text contains
-those structural fields and no input payload. Kitty packet values, clipboard
-bytes, passwords, names, and terminal-provided secrets are never included.
-Transaction state and sanitized correlation identifiers remain in their typed
-objects rather than being copied into diagnostics. Severity, runtime operation,
-and captured exceptions belong to later host-level diagnostic envelopes; they
-are not falsely claimed by the protocol value.
+A protocol `Diagnostic` carries only a stable `DiagnosticCode`, the sequence
+kind, the stream offset, and the count of discarded bytes. Its
+invariant-culture text repeats those structural fields and contains no input
+payload. Kitty packet values, clipboard bytes, passwords, names, and other
+terminal-provided secrets never appear in a diagnostic. Transaction state and
+sanitized correlation identifiers stay in their typed objects rather than
+being copied into diagnostics. Severity, the runtime operation, and captured
+exceptions belong to the host-level diagnostic envelopes added later; the
+protocol value does not claim them.
 
 ## Exception preservation
 
@@ -47,31 +52,38 @@ sequenceDiagram
     Owner--xCaller: Report or rethrow primary failure
 ```
 
-Mode restoration and disposal execute in `finally`. When cleanup also fails, the
-original exception remains primary and cleanup is attached diagnostically.
-Unhandled application callbacks raise `Application.UnhandledException` at the
-dispatcher boundary. They force the idempotent shutdown path unless that exact
-event is marked handled; handling permits the dispatcher to continue but does
-not erase `Application.Failure`. Terminal session faults always drive shutdown
-after notification because transport ordering can no longer be guaranteed. The
-runtime exposes no separate global continue-after-unhandled policy.
+Mode restoration and disposal run in `finally` blocks. When cleanup itself
+fails, the original exception stays primary and the cleanup failure is
+attached as a diagnostic.
 
-`Renderer.LastCleanupException` preserves the first bounded recovery failure for
-the renderer lifetime; later successful frames and secondary failures neither
-clear nor replace it. `Runtime.Session.LastCleanupException` retains the first
-session recovery failure without replacing a primary write, flush, startup,
-read, resize, input-handler, or cancellation exception. Normal transport EOF is
-a typed closure callback, not a fabricated fault.
-`Application.LastCleanupException` exposes the first later renderer or session
-cleanup failure while preserving the primary application failure.
+An unhandled exception from an application callback raises
+`Application.UnhandledException` at the dispatcher boundary. Unless a handler
+marks that exact event as handled, the exception forces the idempotent
+shutdown path. Marking it handled lets the dispatcher continue, but does not
+erase `Application.Failure`. A terminal session fault always drives shutdown
+after notification, because transport ordering can no longer be guaranteed
+once the session has faulted. The runtime exposes no separate global
+continue-after-unhandled policy; the per-event handled flag is the only
+continuation decision.
 
-Layout and rendering clear dirty state only around an attempted transaction. If
-a control extension point throws, the affected measure, arrange, or render bit
-is restored before the exception escapes, so a caught diagnostic never leaves a
-silently clean but incomplete tree. Routed handler snapshots are always returned
-to their pools from `finally` cleanup.
+`Renderer.LastCleanupException` keeps the first bounded recovery failure for
+the lifetime of the renderer; later successful frames and secondary failures
+neither clear nor replace it. `Runtime.Session.LastCleanupException` retains
+the first session recovery failure and never replaces a primary write, flush,
+startup, read, resize, input-handler, or cancellation exception. A normal
+transport EOF arrives as a typed closure callback; it is not turned into a
+fault. `Application.LastCleanupException` exposes the first later renderer or
+session cleanup failure while preserving the primary application failure.
+
+Layout and rendering clear dirty state only around an attempted transaction.
+If a control extension point throws, the affected measure, arrange, or render
+bit is restored before the exception escapes, so a caught diagnostic never
+leaves a tree that looks clean but is incomplete. Routed handler snapshots are
+always returned to their pools from `finally` cleanup.
 
 ## Expected behavior
+
+The guarantees above are backed by evidence at three layers:
 
 | Layer       | Required evidence                                                                                         |
 | ----------- | --------------------------------------------------------------------------------------------------------- |

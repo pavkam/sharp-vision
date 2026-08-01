@@ -2,11 +2,11 @@
 
 ## Overview
 
-A SharpVision theme is one bounded UTF-8 JSON document. It defines global
-semantic colors, terminal attributes, and five high-level appearance profiles.
-Controls supply their own mechanical defaults and select one of those profiles;
-the document contains no control instances or application-defined selector
-names.
+A SharpVision theme is a single bounded UTF-8 JSON document. It defines the
+global semantic colors, terminal attributes, and five high-level appearance
+profiles. Controls bring their own mechanical defaults and select one of those
+profiles; the document contains no control instances and no
+application-defined selector names.
 
 ```mermaid
 flowchart LR
@@ -17,7 +17,7 @@ flowchart LR
     Theme --> Controls["controls select a ThemeRole"]
 ```
 
-The root accepts only these fields:
+The root object accepts only these fields:
 
 | Field                                  | Type     | Description                                                 |
 | -------------------------------------- | -------- | ----------------------------------------------------------- |
@@ -29,8 +29,8 @@ The root accepts only these fields:
 | `styles`                               | object   | The five fixed semantic appearance profiles.                |
 | `status`                               | object   | Optional compatibility aliases for the six status meanings. |
 
-Unknown and duplicate fields are rejected. Embedded themes require complete
-metadata. External documents default missing identity metadata to `Custom`,
+Unknown and duplicate fields are rejected. Embedded themes must carry complete
+metadata; external documents fill in missing identity metadata with `Custom`,
 `custom`, dark, and order zero.
 
 ## Global values
@@ -46,10 +46,10 @@ disabledText, disabledBorder, accent, muted, hotkey, error, warning,
 success, info
 ```
 
-Each value is `#RGB`, `#RRGGBB`, or an exact palette name. Palette entries are
-RGB literals and cannot reference each other. Theme loading resolves these
-values to concrete `Color` instances. `Theme.ResolveColor(ThemeColor)` is the
-typed public lookup.
+Each value is `#RGB`, `#RRGGBB`, or the exact name of a palette entry. Palette
+entries are RGB literals and cannot reference each other. Loading a theme
+resolves every value to a concrete `Color` instance, and
+`Theme.ResolveColor(ThemeColor)` is the typed public lookup.
 
 `attributes` requires these nine properties:
 
@@ -58,18 +58,19 @@ normalText, activeText, focusedText, pressedText, selectedText,
 disabledText, border, shadow, hotkey
 ```
 
-Each accepts one attribute name or an array of names. Empty arrays mean no
-attributes. `Theme.ResolveAttributes(ThemeDecoration)` is the typed public
-lookup.
+Each accepts a single attribute name or an array of names; an empty array
+means no attributes. `Theme.ResolveAttributes(ThemeDecoration)` is the typed
+public lookup.
 
 The optional `status` object accepts `error`, `warning`, `success`, `info`,
-`muted`, and `hotkey`. Missing entries use the equivalent global color. The
-`Theme.Error`, `Warning`, `Success`, `Info`, `Muted`, and `Hotkey` properties
-remain convenience accessors.
+`muted`, and `hotkey`. Any missing entry falls back to the equivalent global
+color. The `Theme.Error`, `Warning`, `Success`, `Info`, `Muted`, and `Hotkey`
+properties remain convenience accessors.
 
 ## Semantic profiles
 
-`styles` is strongly typed. Five properties are semantic appearance profiles:
+`styles` is strongly typed. Its five properties are the semantic appearance
+profiles:
 
 | JSON property | `ThemeRole` | Intended use                              |
 | ------------- | ----------- | ----------------------------------------- |
@@ -79,40 +80,42 @@ remain convenience accessors.
 | `window`      | `Window`    | Top-level window surfaces.                |
 | `popup`       | `Popup`     | Transient popup surfaces.                 |
 
-Every profile has a complete `normal` appearance after loading and may supply
-partial contributions for `pointerOver`, `focusWithin`, `focused`, `current`,
-`selected`, `checked`, `indeterminate`, `pressed`, and `disabled`. Missing role
-normal values and most missing state contributions inherit from `control`;
-missing members inherit from the earlier complete appearance. `Container` and
-`Window` start `pointerOver` empty instead of inheriting generic hover. `Window`
-also starts `focused` empty and supplies an `activeBorder`-only `focusWithin`
-default, so descendant or direct focus activates the frame without changing the
-window face.
+After loading, every profile has a complete `normal` appearance, and it may
+supply partial contributions for `pointerOver`, `focusWithin`, `focused`,
+`current`, `selected`, `checked`, `indeterminate`, `pressed`, and `disabled`.
+A missing role's normal values, and most missing state contributions, inherit
+from `control`; missing members inherit from the earlier complete appearance.
+Two roles deviate: `Container` and `Window` start `pointerOver` empty instead
+of inheriting the generic hover, and `Window` also starts `focused` empty
+while supplying an `activeBorder`-only `focusWithin` default — so descendant
+or direct focus lights up the frame without changing the window face.
 
 The bundled themes keep `container` and `window` visually unchanged during
 `pointerOver`. The bundled `input` profile uses `surface` for its normal face
-and `activeControl` during hover, while `button` also opts into the filled hover
-background. External themes may still author an explicit passive-role hover
-contribution when that feedback is intentional.
+and `activeControl` during hover, while `button` also opts into the filled
+hover background. An external theme may still author an explicit passive-role
+hover contribution when that feedback is intentional.
 
-An appearance has optional `face`, `border`, and `shadow` objects. Their members
-match `FaceSet`, `BorderSet`, and `ShadowSet`: face colors and decorations;
-border sides, glyph style, colors, and attributes; and shadow visibility, mode,
-offset, glyph, colors, and attributes. A normal profile is completed with the
-role's library defaults. State contributions remain partial.
+An appearance holds optional `face`, `border`, and `shadow` objects whose
+members match `FaceSet`, `BorderSet`, and `ShadowSet`: face colors and
+decorations; border sides, glyph style, colors, and attributes; and shadow
+visibility, mode, offset, glyph, colors, and attributes. A profile's normal
+appearance is completed with the role's library defaults; state contributions
+stay partial.
 
-Colors and attributes inside profiles may be literal values or the JSON name of
-a global semantic value. Border glyph styles and shadow geometry are allowed
-because they define the high-level role's chrome, not a specific control type.
-Individual controls may still set complete local styles that take precedence.
+Colors and attributes inside profiles may be literal values or the JSON name
+of a global semantic value. Border glyph styles and shadow geometry are
+allowed here because they define the high-level role's chrome, not a specific
+control type. Individual controls may still set complete local styles that
+take precedence.
 
-Control-specific structure — paddings, glyph families, frame sequences, and part
-colors — is code-owned and is not part of the theme document. Each styled
-control completes its typed `Style` value from library structural defaults plus
-the appropriate semantic profile above, so a theme influences those controls
-only through its five profiles. A complete local `Style` assignment overrides
-both. The five profile properties are the only members `styles` accepts;
-control-named sections are rejected as unknown fields.
+Control-specific structure — paddings, glyph families, frame sequences, and
+part colors — is code-owned and is not part of the theme document. Each styled
+control completes its typed `Style` value from the library's structural
+defaults plus the appropriate semantic profile above, so a theme influences
+those controls only through its five profiles. A complete local `Style`
+assignment overrides both. The five profile properties are the only members
+`styles` accepts; control-named sections are rejected as unknown fields.
 
 When several state flags are active, contributions apply in this order:
 
@@ -121,8 +124,8 @@ PointerOver -> FocusWithin -> Focused -> Current -> Selected -> Checked
 -> Indeterminate -> Pressed -> Disabled
 ```
 
-The [appearance contract](styling.md) defines local precedence, ambient face
-inheritance, and resolved values.
+The [appearance page](styling.md) defines local precedence, ambient face
+inheritance, and the resolved values.
 
 ## Example
 
@@ -230,32 +233,36 @@ inheritance, and resolved values.
 
 ## Loading and publication
 
-`Themes.Load(slug)` loads an embedded theme, `Themes.Parse(json)` parses text,
-`Themes.Load(stream)` reads a caller-owned stream without closing it, and
-`Themes.LoadFile(path)` reads a file. `Themes.Entries` and `Themes.Slugs` expose
-the ordered embedded catalog. Embedded themes are parsed lazily and cached;
-external loads return a new frozen instance.
+`Themes.Load(slug)` loads an embedded theme, `Themes.Parse(json)` parses a
+string, `Themes.Load(stream)` reads a caller-owned stream without closing it,
+and `Themes.LoadFile(path)` reads a file. `Themes.Entries` and `Themes.Slugs`
+expose the ordered embedded catalog. Embedded themes are parsed lazily and
+cached; each external load returns a new frozen instance.
 
-Input is limited to 64 KiB, JSON depth eight, 256 palette entries, six status
-entries, and 2,048 characters per metadata string. Comments, trailing commas,
-malformed UTF-8, invalid element kinds, unknown names, malformed colors,
-conflicting attributes, and invalid composite members fail with a
+Input is limited to 64 KiB, a JSON depth of eight, 256 palette entries, six
+status entries, and 2,048 characters per metadata string. Comments, trailing
+commas, malformed UTF-8, invalid element kinds, unknown names, malformed
+colors, conflicting attributes, and invalid composite members all fail with a
 source-labelled `InvalidDataException`.
 
 Assigning `Application.Theme` publishes the frozen theme through the retained
-control tree on the dispatcher. Controls are not reconstructed. The resolver
-caches each semantic role and exact visual-state combination; theme replacement,
-local appearance changes, and relevant state changes invalidate those entries.
+control tree on the dispatcher; controls are not reconstructed. The resolver
+caches each semantic role and exact visual-state combination, and theme
+replacement, local appearance changes, and relevant state changes invalidate
+those entries.
 
 ## Expected behavior
 
-| Layer      | Required evidence                                                                                         |
+| Layer      | Observable evidence                                                                                       |
 | ---------- | --------------------------------------------------------------------------------------------------------- |
 | Parser     | Size/depth bounds, malformed UTF-8/JSON, unknown names, invalid composites, and source-labelled failures. |
 | Resolution | Global values, semantic inheritance, state overlays, local precedence, and frozen publication.            |
 | Catalog    | Every embedded theme parses, exposes required roles, and retains stable metadata and slug order.          |
 | Surface    | Theme swaps update mounted controls, chrome, text, and visual states without reconstruction.              |
 
-- Test stream ownership and file/embedded loading separately.
-- Test exact role fallback from `control` and every bundled role override.
-- Test dispatcher-affine publication and phase-appropriate invalidation.
+- Stream loading leaves the caller's stream open, and file and embedded
+  loading each behave as described above.
+- Role fallback from `control` and every bundled role override resolve
+  exactly as specified.
+- Publication is dispatcher-affine and invalidates only the phases the change
+  actually affects.

@@ -13,8 +13,9 @@ nonzero unsigned 32-bit decimal values: leading zeroes, signs, and overflow are
 rejected. The official direct RGB query uses `f=24`; transmission accepts only
 RGBA `f=32` and PNG `f=100`. RGB transmission and zlib compression are explicit
 unsupported values. File, temporary-file, and shared-memory media are rejected
-before output because they cross path and external-lifetime trust boundaries.
-Animation and Unicode placeholder presentation are outside this contract.
+before output because they depend on filesystem paths and externally managed
+lifetimes that SharpVision does not trust. Animation and Unicode placeholder
+presentation are out of scope.
 
 ## Supported features
 
@@ -61,8 +62,9 @@ divisible by four. After the first chunk, only `m` and optional `q` metadata are
 emitted. One image finishes all chunks before another graphics command begins.
 The backend uses quiet mode 2 and never opens a terminal-supplied path.
 
-`Writer.WriteEncoded` is a checked public convenience, not an unchecked framing
-seam. It accepts only query or transmit commands, decodes at most 3,072 bytes,
+`Writer.WriteEncoded` is a checked public convenience, not a way around
+validation. It accepts only query or transmit commands, decodes at most 3,072
+bytes,
 requires an exact canonical re-encoding, and validates the decoded query, RGBA,
 or complete PNG shape before mutating the destination. Complete raw transmission
 always validates payload shape before chunking; there is no public validation

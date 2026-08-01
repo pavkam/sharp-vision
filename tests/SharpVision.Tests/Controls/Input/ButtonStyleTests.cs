@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
-using System.Text.Json;
 
 /// <summary>Verifies immutable Button presentation values and partial style composition.</summary>
 public sealed class ButtonStyleTests
@@ -20,33 +19,6 @@ public sealed class ButtonStyleTests
         ScrollBarStyle.Default.Appearance.ShouldBeSameAs(ControlStyleProfiles.Control);
         SpinnerStyle.Default.Appearance.ShouldBeSameAs(ControlStyleProfiles.Control);
         ChaseIndicatorStyle.Default.Appearance.ShouldBeSameAs(ControlStyleProfiles.Control);
-    }
-
-    /// <summary>Verifies authored physical padding edges survive JSON deserialization and explicit conversion.</summary>
-    [Fact]
-    public void Deserialize_WhenButtonStylePaddingIsAuthored_PreservesPhysicalEdges()
-    {
-        var json = /*lang=json,strict*/
-            """{"padding":{"left":1,"top":2,"right":3,"bottom":4}}""";
-
-        var definition = JsonSerializer.Deserialize<ButtonStyleDefinition>(json).ShouldNotBeNull();
-        var actual = definition.Padding.ShouldNotBeNull().ToThickness();
-
-        actual.ShouldBe(new Thickness(left: 1, top: 2, right: 3, bottom: 4));
-    }
-
-    /// <summary>Verifies invalid authored padding is rejected when the DTO becomes a domain value.</summary>
-    [Fact]
-    public void ToThickness_WhenButtonStylePaddingIsNegative_Throws()
-    {
-        var json = /*lang=json,strict*/
-            """{"padding":{"left":-1,"top":0,"right":0,"bottom":0}}""";
-        var definition = JsonSerializer.Deserialize<ButtonStyleDefinition>(json).ShouldNotBeNull();
-        var padding = definition.Padding.ShouldNotBeNull();
-
-        var exception = Should.Throw<ArgumentOutOfRangeException>(() => padding.ToThickness());
-
-        exception.ParamName.ShouldBe("left");
     }
 
     /// <summary>Verifies the zero-initialized value resolves to the complete standard preset.</summary>

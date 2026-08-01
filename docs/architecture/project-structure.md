@@ -4,7 +4,7 @@
 
 The solution contains two production libraries, three executable examples, and
 four top-level validation projects. The UI test project also exercises all three
-examples; examples do not need duplicate test projects of their own.
+examples, so examples do not need duplicate test projects of their own.
 
 ```mermaid
 flowchart LR
@@ -36,11 +36,12 @@ flowchart LR
 Unicode cell geometry, screen buffers, damage, and terminal output. It has no
 reference to the UI project.
 
-Its public runtime boundaries are `Protocols` for exact encoders and streaming
-framing, `Input.Decoder` for typed values, `Rendering.Frame`/`Canvas` and
-`Renderer` for semantic output, `Transport.ITransport` for bounded I/O, and
-`Runtime.Session` for mode leases plus ordered input/resize/closure/fault
-delivery. Internal pooled storage never becomes a cross-project contract.
+Its public runtime boundaries are: `Protocols`, which provides exact encoders
+and streaming framing; `Input.Decoder`, which produces typed input values;
+`Rendering.Frame`, `Canvas`, and `Renderer`, which handle semantic output;
+`Transport.ITransport`, which performs bounded I/O; and `Runtime.Session`,
+which owns mode leases and ordered input, resize, closure, and fault delivery.
+Internal pooled storage never becomes a cross-project contract.
 
 ### Friend access
 
@@ -62,7 +63,7 @@ Two such seams provide this boundary:
 | Obtain graphics-capable renderer | `Renderer(Capabilities, Route?, …)`     | `IGraphicsBackend`, `GraphicsBackendSelector`, backend identities |
 
 `TerminalContext` and the whole `Backends` namespace also stay internal. The
-session owns the only terminal context; the application retains just the
+session owns the only terminal context, and the application retains just the
 immutable `TerminalProfile`, so no second context lineage can drift from the
 resolved backend identity.
 
@@ -96,7 +97,7 @@ The UI project ships the complete
 [control catalog](../controls/index.md#control-catalog): layout panels, text and
 editing, selection and item controls, menus, context menus, popups, tooltips,
 flyouts, windows, intrinsic container scrolling, styling, focus, and routed
-input follow these feature and shared-service boundaries. Border and shadow
+input all follow these feature and shared-service boundaries. Border and shadow
 properties live on `Control`, and `Border` always participates in its base box
 model. The sealed control render pipeline always paints configured intrinsic
 chrome around `OnRenderContent`; specialized controls select narrow chrome
@@ -121,17 +122,17 @@ these two compositions and nothing else.
 
 The separate [dialog catalog](../dialogs/index.md#dialog-catalog) derives typed
 tasks from Window without moving them into the Controls folder or namespace. The
-dialog object is its direct retained and presented surface. A dialog may own
-private filesystem or workflow collaborators, but its visible tree still follows
-ordinary control ownership, layout, modality, styling, input, and dispatcher
-contracts.
+dialog object is its own directly retained and presented surface. A dialog may
+own private filesystem or workflow collaborators, but its visible tree still
+follows the ordinary control ownership, layout, modality, styling, input, and
+dispatcher contracts.
 
 `examples/Showcase` contains `SharpVision.Showcase`, which owns no library
 behavior and composes public APIs into a responsive gallery. `examples/Snake`
 and `examples/TextEditor` are smaller application examples. The production
 libraries never reference an example or test project.
 
-`SharpVision.Terminal.Probe` is a test support executable for process-level
+`SharpVision.Terminal.Probe` is a test-support executable for process-level
 terminal checks. `SharpVision.Terminal.Tests` owns its lifecycle and assertions;
 production code does not use it.
 
@@ -143,19 +144,22 @@ defined by the
 
 ## Namespace and file boundaries
 
-Namespaces provide context, so public names avoid repeated `Terminal`,
-`SharpVision`, and `Control` affixes. Each file has one primary responsibility.
-Internal helpers stay inside the lowest layer that owns their invariant.
+Namespaces provide context, so public names avoid repeating `Terminal`,
+`SharpVision`, and `Control` as affixes. Each file has one primary
+responsibility, and internal helpers stay inside the lowest layer that owns
+their invariant.
 
 ## Change rule
 
 A feature begins in the lowest layer that owns its invariant. Terminal behavior
-starts with a typed terminal seam before UI consumption; UI-only behavior stays
-in `SharpVision`. User-visible APIs then receive example proof at the
-appropriate scale. Tests at each layer assert that dependency direction remains
-one-way.
+starts with a typed terminal seam before the UI layer consumes it; UI-only
+behavior stays in `SharpVision`. User-visible APIs then receive example proof at
+the appropriate scale. Tests at each layer assert that the dependency direction
+remains one-way.
 
 ## Expected behavior
+
+The boundaries above are backed by evidence at three layers:
 
 | Layer        | Required evidence                                                                                   |
 | ------------ | --------------------------------------------------------------------------------------------------- |

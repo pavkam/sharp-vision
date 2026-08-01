@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
-using System.Text.Json;
-
 /// <summary>Verifies complete checkbox presentations and partial style composition.</summary>
 public sealed class CheckBoxStyleTests
 {
@@ -120,19 +118,6 @@ public sealed class CheckBoxStyleTests
             new CheckBoxStyle(baseline.MarkStyle, baseline.Glyphs, null!));
 
         exception.ParamName.ShouldBe("appearance");
-    }
-
-    /// <summary>Verifies the typed glyph definition retains deterministic authored strings.</summary>
-    [Fact]
-    public void Deserialize_WhenCheckBoxGlyphsAreAuthored_PreservesTypedShape()
-    {
-        var json = /*lang=json,strict*/
-            """{"markStyle":"square","glyphs":{"unchecked":"o","checked":"x","indeterminate":"-"}}""";
-
-        var definition = JsonSerializer.Deserialize<CheckBoxStyleDefinition>(json).ShouldNotBeNull();
-
-        definition.MarkStyle.ShouldBe("square");
-        definition.Glyphs.ShouldNotBeNull().Checked.ShouldBe("x");
     }
 
     private static ThemeProfile Copy(ThemeProfile profile) => new(

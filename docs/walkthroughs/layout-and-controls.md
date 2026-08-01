@@ -1,9 +1,9 @@
 # Compose layout and controls
 
-SharpVision layout has two passes. Measure computes each control's desired
-terminal-cell size; arrange commits its final rectangle. `Length.Auto` follows
-content, `Length.Cells(n)` requests a fixed count, percentages use available
-space, and stars divide the remainder. The
+SharpVision layout runs in two passes: measure computes each control's desired
+size in terminal cells, and arrange commits its final rectangle. `Length.Auto`
+follows content, `Length.Cells(n)` requests a fixed cell count, percentages
+take a share of the available space, and stars divide the remainder. The
 [layout contract](../concepts/layout.md#overview) owns the exact algorithms.
 
 ## Build a responsive shell
@@ -48,11 +48,11 @@ shell.Children.Add(navigation);
 shell.Children.Add(details);
 ```
 
-`Dock` consumes edges in child order. `status` reserves the bottom row,
-`navigation` reserves 22 cells on the left, and the final `details` child fills
-the remainder because `LastChildFills` is `true`. `Padding` is inside a
-control's border box; `Margin` would reserve space outside it. The
-[`Control` property guide](../controls/control.md#api) explains the shared
+`Dock` consumes edges in child order: `status` reserves the bottom row,
+`navigation` reserves 22 cells on the left, and the final `details` child
+fills the remainder because `LastChildFills` is `true`. `Padding` reserves
+space inside a control's border box, while `Margin` would reserve it outside.
+The [`Control` property guide](../controls/control.md#api) explains the shared
 sizing and alignment properties.
 
 ## Choose a layout control
@@ -76,10 +76,10 @@ details.ScrollBars = ScrollBars.Vertical;
 details.ShowScrollBars = ShowScrollBars.WhenNeeded;
 ```
 
-The container measures content, computes the viewport, resolves scrollbar
-feedback, and routes wheel and keyboard input through the common
+The container measures its content, computes the viewport, resolves the
+scrollbar feedback, and routes wheel and keyboard input through the common
 [scrolling algorithm](../concepts/scrolling.md#automatic-scrollbar-algorithm).
-Use [`ScrollBar`](../controls/scrolling/scroll-bar.md#overview) directly only
-when the range itself is part of the application's UI.
+Reach for [`ScrollBar`](../controls/scrolling/scroll-bar.md#overview) directly
+only when the range itself is part of the application's UI.
 
 Next, [connect state and events](state-and-events.md#state-input-and-events).

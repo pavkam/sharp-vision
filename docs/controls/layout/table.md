@@ -3,10 +3,10 @@
 ## Overview
 
 `Table : ItemsControl` owns typed rows of ordinary controls and aligns them
-against titled fixed, automatic, percentage, or proportional columns. It
-measures, arranges, and renders cells through the normal control pipeline, so
-marked text, links, buttons, and input controls can appear in a table without a
-separate rendering model.
+against titled columns whose widths can be fixed, automatic, percentage, or
+proportional. Cells measure, arrange, and render through the normal control
+pipeline, so marked text, links, buttons, and input controls can all appear in
+a table without a separate rendering model.
 
 ## API
 
@@ -27,29 +27,34 @@ separate rendering model.
 
 ## Behavior
 
-- `Columns` owns non-empty `TableColumn` definitions. A column has a non-empty
-  header plus automatic, fixed-cell, percentage, or fill width.
-- `Rows` owns `TableRow` values. Each row transfers its unique detached cells to
-  the table, must be non-null, and must exactly match the column count. Null row
-  insertion and replacement fail at the public collection boundary.
-- `ShowHeader`, `HeaderForeground`, and `HeaderBackground` control header
+- `Columns` owns non-empty `TableColumn` definitions. Every column has a
+  non-empty header and an automatic, fixed-cell, percentage, or fill width.
+- `Rows` owns `TableRow` values. Each row must be non-null, must contain
+  exactly as many cells as there are columns, and transfers its unique
+  detached cells to the table. Inserting or replacing a null row fails at the
+  public collection boundary.
+- `ShowHeader`, `HeaderForeground`, and `HeaderBackground` control the header
   chrome.
-- `CellPadding`, `RowSpacing`, and `ColumnSpacing` define physical cell gaps.
-- `ShowGridLines` and `GridLineColor` draw light Unicode lines in available gaps
-  without covering child controls.
+- `CellPadding`, `RowSpacing`, and `ColumnSpacing` define the physical cell
+  gaps.
+- `ShowGridLines` and `GridLineColor` draw light Unicode lines in the
+  available gaps without covering child controls.
 
 ## Interaction and editing
 
-An interactive table is focusable and tab-stop eligible. Pointer presses select
-the hit row or cell and make the clicked cell active; `Up`, `Down`, `Left`,
-`Right`, `Home`, and `End` move the active cell. `PageUp`/`PageDown` move by as
-many rows as fill the committed viewport height minus `PageOverlap`, and are
-handled even when they cannot move further, so the key never escapes to page an
-enclosing scrollable container. Every move brings the active cell into view,
-including `Home`/`End`. `Enter` activates the active row, and begins editing
-when that cell is an editable `TextInput`. While editing, `Enter` commits,
-`Escape` restores the original text, and `Tab` commits then moves to the next
-cell. A `TableColumn` marked `isReadOnly` and a read-only `TextInput` reject
+An interactive table is focusable and eligible as a tab stop. A pointer press
+selects the hit row or cell and makes the clicked cell active. `Up`, `Down`,
+`Left`, `Right`, `Home`, and `End` move the active cell, and `PageUp` and
+`PageDown` move by as many rows as fill the committed viewport height minus
+`PageOverlap`. The paging keys are handled even when the active cell cannot
+move any further, so the keystroke never escapes to page an enclosing
+scrollable container. Every move — including `Home` and `End` — brings the
+active cell into view.
+
+`Enter` activates the active row, and begins editing when the active cell is
+an editable `TextInput`. While editing, `Enter` commits, `Escape` restores the
+original text, and `Tab` commits and then moves to the next cell. A
+`TableColumn` marked `isReadOnly` and a read-only `TextInput` both refuse
 editing. `Ctrl+A` selects every row or cell when the active selection mode
 supports it.
 
@@ -57,60 +62,63 @@ supports it.
 state and raise `SelectionChanged`. `RowInvoked` reports pointer and keyboard
 activation. `SortBy` cycles a column through ascending, descending, and reset;
 `SetSort` selects an explicit state and raises `SortChanged`. A supplied
-`SortKey` is compared with culture-independent ordering, and equal keys retain
-their original insertion order in both directions.
+`SortKey` is compared with culture-independent ordering, and rows with equal
+keys keep their original insertion order in both directions.
 
-`CopySelection()` returns selected rows or cells as deterministic tab-separated
-text with LF row separators. Hosts can pass that text through the existing
-application clipboard service; the control does not emit clipboard protocol
-bytes itself.
+`CopySelection()` returns the selected rows or cells as deterministic
+tab-separated text with LF row separators. A host can pass that text to the
+existing application clipboard service; the control does not emit clipboard
+protocol bytes itself.
 
 ## Code-owned glyphs
 
 `HorizontalGridGlyph`, `VerticalGridGlyph`, and `CrossGridGlyph` are validated
-one-cell local overrides. Otherwise table chrome resolves the corresponding
-code-owned separator glyph values and terminal-safe fallbacks.
+one-cell local overrides. When they are not set, the table chrome resolves the
+corresponding code-owned separator glyph values with terminal-safe fallbacks.
 `ResetGridGlyphs()` clears all three overrides.
 
 ## Layout and ownership
 
 Columns resolve with the shared
-[track allocator](../../concepts/layout.md#overview): fixed widths reserve exact
-cells, percentage widths resolve from the final table width, automatic widths
-use the largest cell/header request, and fill columns receive the remaining
-cells. Headers and rows remeasure wrapping controls once their finite column
-widths are known.
+[track allocator](../../concepts/layout.md#overview): fixed widths reserve
+exact cells, percentage widths resolve from the final table width, automatic
+widths take the largest cell or header request, and fill columns receive the
+remaining cells. Headers and rows remeasure wrapping controls once their
+finite column widths are known.
 
 Each resolved cell rectangle is an ordinary arrange slot, not a forced border
-box. The cell's `HorizontalAlignment`, `VerticalAlignment`, explicit lengths,
-margin, and desired size therefore retain their normal meaning. An intrinsic
+box, so a cell's `HorizontalAlignment`, `VerticalAlignment`, explicit lengths,
+margin, and desired size keep their normal meaning. An intrinsically sized
 Button or CheckBox stays at its measured size and aligned position inside a
-larger track; a cell explicitly set to Stretch consumes the available slot.
+larger track, while a cell explicitly set to Stretch consumes the available
+slot.
 
-Arrangement reuses the column and row measurement committed for its current
-width basis. A pure scroll-origin, focus, or pointer-state arrangement does not
-repeat the unbounded and constrained cell probes; doing so would let child
-measurement re-invalidate the presenter during its own arrange pass and create
-an unbounded frame loop. A genuinely different final width, such as resize,
-earns exactly one final constrained measurement pass.
+Arrangement reuses the column and row measurement committed for the current
+width basis. An arrangement caused purely by a scroll origin, focus, or
+pointer-state change does not repeat the unbounded and constrained cell
+probes; repeating them would let child measurement re-invalidate the presenter
+during its own arrange pass and create an unbounded frame loop. A genuinely
+different final width, such as a resize, earns exactly one final constrained
+measurement pass.
 
 `Table` uses the intrinsic
 [`Container` scrolling contract](../../concepts/scrolling.md#overview). The
 translated content rectangle is the single origin for headers, grid lines,
 cells, and hit testing. Table chrome renders through the same viewport-clipped
-content canvas before owned scrollbars render above it, so horizontal, vertical,
-and combined offsets cannot separate a header or divider from its row controls.
-Running origins are signed because scrolling may move content above or left of
-zero; only extents and gaps retain the non-negative accumulation invariant.
+content canvas before the owned scrollbars render above it, so horizontal,
+vertical, and combined offsets can never separate a header or divider from its
+row controls. Running origins are signed, because scrolling can move content
+above or left of zero; only extents and gaps keep the non-negative
+accumulation invariant.
 
-A failed row/column count validation leaves the collection and every candidate
-cell detached. Removing a row releases its cells for another owner. `Rows` and
-`Columns` are the only semantic mutation surfaces: the private scrolling table
-presenter owns realized cell controls, so `Table` intentionally exposes no
-general `Children` collection.
+A failed row or column count validation leaves the collection and every
+candidate cell detached. Removing a row releases its cells for another owner.
+`Rows` and `Columns` are the only semantic mutation surfaces: the private
+scrolling table presenter owns the realized cell controls, so `Table`
+intentionally exposes no general `Children` collection.
 
-A header-only table measures and renders only its padded header. It reserves no
-phantom data-row spacing or grid divider until the first row is present.
+A header-only table measures and renders just its padded header. It reserves
+no phantom data-row spacing or grid divider until the first row is present.
 
 ## Example
 
@@ -130,18 +138,22 @@ table.Rows.Add(new TableRow([
 
 ## Expected behavior
 
-Cover column/row ownership and atomic rejection, fixed/percentage/fill/auto
-resolution, intrinsic and stretched cell alignment, header and grid cells, cell
-padding, rich/wide cells, tiny bounds, headerless tables, both-axis scrolling
-with aligned chrome and hit testing, resize, removal/reuse, and final
-continuation ownership.
+Column and row ownership is validated atomically, and a rejected mutation
+leaves every candidate cell detached. Fixed, percentage, fill, and automatic
+widths resolve as described, intrinsic and stretched cells align normally
+inside their slots, and the header, grid lines, and padded cells render
+exactly. Rich or wide cell content, tiny bounds, and headerless tables stay
+well-defined; scrolling on both axes keeps chrome and hit testing aligned;
+resize reflows deterministically; removal releases cells for reuse; and
+continuation ownership holds in the final cells.
 
 Mounted cross-layer coverage in
 [`TableSurfaceTests`](../../../tests/SharpVision.Tests/Controls/Layout/TableSurfaceTests.cs)
-proves all four column kinds with exact header/grid/Unicode cells, clickable row
-removal and ownership reuse without stale cells, both-axis wheel scrolling, and
-resize-driven offset repair. A direct layout regression additionally proves a
-pure scroll-origin arrangement neither remeasures cells nor leaves arrange
-invalidation pending. The same mounted suite covers focusability, pointer and
-keyboard navigation, activation, edit commit/cancel, and read-only policy; unit
-coverage proves selection/copy, stable sort ordering, and reset transitions.
+demonstrates all four column kinds with exact header, grid, and Unicode
+cells; clickable row removal with ownership reuse and no stale cells;
+both-axis wheel scrolling; and resize-driven offset repair. A direct layout
+regression additionally shows that a pure scroll-origin arrangement neither
+remeasures cells nor leaves arrange invalidation pending. The same mounted
+suite covers focusability, pointer and keyboard navigation, activation, edit
+commit and cancel, and the read-only policy, while unit coverage proves
+selection and copy, stable sort ordering, and reset transitions.

@@ -24,9 +24,10 @@ built-in ANSI profile supplements it with generic VT/xterm grammar.
 
 ## Supported features
 
-Enable the minimum flags needed for unambiguous modified keys and event types,
-decode press/repeat/release plus associated text, and restore the previous mode
-on exit. Safe fallback is legacy xterm/VT key decoding.
+SharpVision enables the minimum flags needed for unambiguous modified keys and
+event types, decodes press/repeat/release plus associated text, and restores
+the previous mode on exit. When the protocol is unavailable it falls back to
+legacy xterm/VT key decoding.
 
 ## Implemented API and grammar
 

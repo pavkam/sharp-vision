@@ -14,10 +14,10 @@ containing `xterm` is a hint, not proof of every extension.
 
 ## Supported features
 
-Implement only sequences used by the renderer, input decoder, and capability
-detector. Obsolete X10/UTF-8/urxvt mouse encodings are decoded where safe but
-not preferred for output. Highlight tracking is unsupported because it can block
-a non-cooperating terminal.
+SharpVision implements only the sequences used by the renderer, input decoder,
+and capability detector. Obsolete X10/UTF-8/urxvt mouse encodings are decoded
+where safe but not preferred for output. Highlight tracking is unsupported
+because it can block a non-cooperating terminal.
 
 ## Status and capability queries
 

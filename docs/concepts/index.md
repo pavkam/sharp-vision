@@ -2,8 +2,8 @@
 
 ## Concept map
 
-Concept pages own behavior shared by several controls. A control page links here
-for the common rule and documents only its specialization.
+Concept pages own behavior that several controls share. A control page links
+here for the common rule and documents only its own specialization.
 
 ```mermaid
 flowchart TB

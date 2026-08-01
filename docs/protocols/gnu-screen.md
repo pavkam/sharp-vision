@@ -58,10 +58,10 @@ lease, cleanup sequence, or deadline wait.
 
 ## Supported features
 
-Support the documented VT/ANSI subset, bounded DCS passthrough for approved CSI
-queries, and safe omission of string-terminated or otherwise unsupported modern
-extensions. Do not emit OSC 83 screen commands or other session-control
-operations.
+SharpVision supports the documented VT/ANSI subset and bounded DCS passthrough
+for approved CSI queries, and safely omits string-terminated or otherwise
+unsupported modern extensions. It never emits OSC 83 screen commands or other
+session-control operations.
 
 ## Compatibility evidence
 

@@ -14,11 +14,13 @@ overflow. Unsupported private forms become diagnostic events.
 ## Supported features
 
 Typed commands cover cursor movement/position, erase, insert/delete, scroll
-regions, tabulation, mode set/reset/query, SGR, device attributes, and terminal
-size/cell reports required by the renderer and capability detector.
+up/down, mode set/reset/query (including the mouse tracking and coordinate
+modes), SGR, device attributes, and the terminal size/cell reports required by
+the renderer and capability detector.
 
-The encoder omits optional defaults only when byte equivalence is specified. It
-never accepts negative parameters or writes locale-formatted digits.
+The encoder omits an optional default parameter only where the protocol defines
+the shorter form as byte-equivalent. It never accepts negative parameters or
+writes locale-formatted digits.
 
 ## Typed API and behavior
 
@@ -32,10 +34,10 @@ DA1/DA2, cursor-position DSR, DECRQM, and xterm window-operation queries 14, 16,
 and 18 for text-area pixels, character-cell pixels, and text-area cells.
 `Responses.TryMetricsCsi` accepts only matching 4/6/8 reports with positive
 dimensions no greater than 65535. `Modes` encodes cursor visibility, alternate
-screen 1049, focus 1004, bracketed paste 2004, synchronized output 2026, and
-Kitty clipboard mode 5522. Tabulation, scroll regions, terminal-size reports,
-mouse modes, and lifecycle leases remain in later roadmap phases and are not
-claimed as implemented here.
+screen 1049, focus 1004, bracketed paste 2004, synchronized output 2026, Kitty
+clipboard mode 5522, and the mouse tracking (9/1000/1002/1003) and coordinate
+(1005/1006/1015/1016) modes. Scroll regions (DECSTBM) and tabulation control
+(HTS/TBC/CHT/CBT) have no typed commands and are not claimed as implemented.
 
 ## Recovery and tests
 

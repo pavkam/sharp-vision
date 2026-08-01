@@ -3,14 +3,14 @@
 ## Overview
 
 Border and shadow are intrinsic `Control` appearance, not wrapper controls.
-Every control has one semantic `Border` and one semantic `Shadow`. Themes and
-control styles own ordinary chrome; raw authoring is protected so an unrelated
-descendant cannot silently change layout. The sealed control pipeline paints
-shared chrome around `OnRenderContent`.
+Every control has one semantic `Border` and one semantic `Shadow`. Ordinary
+chrome is owned by themes and control styles; the raw authoring properties are
+protected so an unrelated descendant cannot silently change layout. The
+sealed control pipeline paints this shared chrome around `OnRenderContent`.
 
-Use an ordinary `Container` only when chrome needs its own layout, styling,
-ownership, routed ancestry, focus, or lifetime node. There are no border or
-shadow control types.
+Reach for an ordinary `Container` only when the chrome needs its own layout,
+styling, ownership, routed ancestry, focus, or lifetime node. There are no
+border or shadow control types.
 
 ## Control API
 
@@ -21,19 +21,20 @@ shadow control types.
 | `SetAppearance(VisualState, AppearanceSet?)` | Protected  | Derived-control partial state contribution.                            |
 | `ActualBorder`, `ActualShadow`               | Public     | Always-present current resolved values for inspection and composition. |
 
-`Dock`, `Grid`, `Stack`, `Overlay`, `Window`, and `Popup` intentionally
-republish complete Border/Shadow authoring because their public purpose includes
-caller-defined chrome. Specialized controls such as Button publish a complete
-Style instead. Third-party controls may likewise republish only the chrome their
-layout contract supports.
+`Dock`, `Grid`, `Stack`, `Overlay`, `Window`, and `Popup` deliberately
+republish the complete Border and Shadow authoring surface, because
+caller-defined chrome is part of their public purpose. Specialized controls
+such as Button publish a complete Style instead. Third-party controls may
+likewise republish only the chrome their layout contract supports.
 
-Assignments are dispatcher-affine after attachment. Border-side changes affect
-measure because each enabled side reserves one cell. Border glyphs, colors,
-attributes, and every shadow member affect rendering but not desired size.
+After a control is attached, these assignments must happen on the owning
+dispatcher. Changing which border sides are enabled affects measure, because
+each enabled side reserves one cell. Border glyphs, colors, attributes, and
+every shadow member affect rendering only, not the desired size.
 
 ## Border API
 
-`Border` is a complete immutable value; `BorderSet` is a partial member-wise
+`Border` is a complete immutable value; `BorderSet` is the partial member-wise
 contribution used by themes and states.
 
 | Member       | `Border` type      | `BorderSet` type    | Description                                                      |
@@ -44,14 +45,16 @@ contribution used by themes and states.
 | `Background` | `ColorValue`       | `ColorValue?`       | Independent border-cell background channel.                      |
 | `Attributes` | `AttributeValue`   | `AttributeValue?`   | Terminal attributes or semantic decoration.                      |
 
-`BorderGlyphStyle` provides `Light`, `Heavy`, `Paired`, `Rounded`, `Ascii`,
-`Solid`, `HalfBlock`, `LightShade`, `MediumShade`, and `DarkShade` families.
-Caller-created families validate every rune as printable and exactly one cell
-wide. Partial edges reserve and draw only their selected physical sides.
+`BorderGlyphStyle` provides the `Light`, `Heavy`, `Paired`, `Rounded`,
+`Ascii`, `Solid`, `HalfBlock`, `LightShade`, `MediumShade`, and `DarkShade`
+families. A caller-created family validates every rune as printable and
+exactly one cell wide. Partial edges reserve and draw only the physical sides
+they select.
 
 ## Shadow API
 
-`Shadow` is complete; `ShadowSet` overlays only supplied members.
+`Shadow` is a complete value; `ShadowSet` overlays only the members it
+supplies.
 
 | Member       | `Shadow` type    | `ShadowSet` type  | Description                                                                        |
 | ------------ | ---------------- | ----------------- | ---------------------------------------------------------------------------------- |
@@ -70,9 +73,9 @@ wide. Partial edges reserve and draw only their selected physical sides.
 | `FractionalBlock` | Uses code-owned `▄`, `▀`, and `█` cells; `Glyph` is ignored.       | X is whole columns; Y is half-row steps. |
 
 Shadow overflow is clipped by the owning presentation boundary and never
-replaces cells belonging to the control's own frame. Unsupported or clipped
-footprints degrade to the visible intersection without emitting terminal bytes
-from control code.
+replaces cells that belong to the control's own frame. When a footprint is
+unsupported or clipped, the shadow degrades to the visible intersection;
+control code never emits terminal bytes.
 
 ## Resolution and rendering
 
@@ -87,9 +90,9 @@ For chrome specifically:
 6. Paint shadow and body, call `OnRenderContent`, render normal children, then
    overlay the border.
 
-Border background is independent from face background. Changing a hovered face
-does not recolor border-cell backgrounds unless the corresponding `BorderSet`
-also supplies `Background`.
+The border background is independent from the face background. Changing a
+hovered face does not recolor border-cell backgrounds unless the
+corresponding `BorderSet` also supplies `Background`.
 
 ## Example
 
@@ -113,21 +116,24 @@ var card = new Stack
 };
 ```
 
-On an approved chrome host, assigning either complete value makes it local and
-authoritative. Call `ResetBorder()` or `ResetShadow()` to resume semantic-theme
-ownership.
+On a control that republishes chrome, assigning either complete value makes
+it local and authoritative. Call `ResetBorder()` or `ResetShadow()` to return
+ownership to the semantic theme.
 
 ## Expected behavior
 
-| Layer       | Required evidence                                                                                                 |
+| Layer       | Observable evidence                                                                                               |
 | ----------- | ----------------------------------------------------------------------------------------------------------------- |
 | Unit        | Constructor validation, complete/partial overlay order, reset behavior, invalidation impact, and resolved values. |
 | Surface     | Exact border edges, corners, body backdrop, clipping, shadow modes, signed offsets, and Unicode cell ownership.   |
 | Integration | Theme publication and visual-state changes through a mounted control without private render calls.                |
 
-- Cover no-border/no-shadow, border-only, shadow-only, and combined chrome.
-- Cover every individual border side and tiny rectangles where corners compete.
-- Cover positive and negative shadow offsets at every clipping edge.
-- Cover complete local values winning over themes and partial state sets winning
-  member by member.
-- Cover wide and combining destination graphemes under composite shadows.
+- Chrome behaves consistently with no border and no shadow, border only,
+  shadow only, and both combined.
+- Each individual border side works on its own, and tiny rectangles where
+  corners compete resolve without overlap errors.
+- Positive and negative shadow offsets clip correctly at every edge.
+- Complete local values win over themes, and partial state sets win member by
+  member.
+- Composite shadows handle wide and combining destination graphemes without
+  breaking cell ownership.

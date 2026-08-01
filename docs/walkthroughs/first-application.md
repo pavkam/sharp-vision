@@ -1,8 +1,8 @@
 # Build your first application
 
-This walkthrough creates a .NET 10 console application with one retained screen,
-text, and a button. SharpVision owns the terminal session and restores terminal
-modes when the application exits.
+This walkthrough creates a .NET 10 console application with one retained
+screen, some text, and a button. SharpVision owns the terminal session and
+restores the terminal modes when the application exits.
 
 ## Create the project
 
@@ -13,9 +13,9 @@ cd HelloSharpVision
 dotnet add reference ../sharp-vision/src/SharpVision/SharpVision.csproj
 ```
 
-> [!IMPORTANT] The published UI package currently cannot resolve its unpublished
-> `SharpVision.Terminal` dependency. The project reference above is the
-> supported path until the terminal package exists.
+> [!IMPORTANT] The published UI package currently cannot resolve its
+> unpublished `SharpVision.Terminal` dependency. Until the terminal package
+> exists, the project reference above is the supported path.
 
 ## Add the screen
 
@@ -50,10 +50,11 @@ internal sealed class HelloScreen : Screen
 ```
 
 `Screen` is a retained
-[`CompositeControl`](../controls/composite-control.md#overview). Its constructor
-creates the permanent visual tree and calls `InitializeContent` exactly once.
-`Stack.Spacing` inserts one terminal cell between visible children; the two
-alignment properties center the stack inside the application viewport. The
+[`CompositeControl`](../controls/composite-control.md#overview): its
+constructor creates the permanent visual tree and calls `InitializeContent`
+exactly once. `Stack.Spacing` inserts one terminal cell between visible
+children, and the two alignment properties center the stack inside the
+application viewport. The
 [`Button`](../controls/input/button.md#overview) owns one `Content` child and
 publishes `Click` after a completed activation.
 
@@ -64,10 +65,10 @@ dotnet run
 ```
 
 `ConsoleApplication.RunAsync` detects redirection, opens the platform console,
-starts negotiation and input, commits the first frame, and restores modes during
-shutdown. If the platform description is missing or unsuitable it returns
-`ConsoleRunStatus.UnsupportedTerminal` before emitting terminal bytes. Its
-defaults and fluent alternatives are listed in the
+starts negotiation and input, commits the first frame, and restores the
+terminal modes during shutdown. If the platform description is missing or
+unsuitable, it returns `ConsoleRunStatus.UnsupportedTerminal` before emitting
+any terminal bytes. Its defaults and fluent alternatives are listed in the
 [hosting entry points](../concepts/hosting.md#entry-points).
 
 ## Add host options
@@ -83,9 +84,9 @@ var status = await ConsoleApplication.RunAsync(
         .UseMouse());
 ```
 
-Do not manually construct `ConsoleHost`, terminal `Options`, or escape sequences
-for an interactive application. The builder coordinates platform mode leases,
-session cleanup, capabilities, and the
+Do not construct `ConsoleHost`, terminal `Options`, or escape sequences by
+hand for an interactive application. The builder coordinates platform mode
+leases, session cleanup, capabilities, and the
 [runtime event loop](../architecture/runtime-event-loop.md#overview).
 
 Next,

@@ -52,7 +52,7 @@ file transfer, and every other OSC 1337 feature remain unsupported.
 
 ## Non-retained backend and selection
 
-iTerm2 inline images have no retained remote identity in this contract. The
+iTerm2 inline images have no retained remote identity. The
 backend anchors each image with pane-local CUP, emits multipart frames after
 ordinary cells, and restores the semantic frame cursor. Movement, removal,
 PNG-to-unsupported replacement, resize, or invalidation requests full cell
@@ -78,7 +78,7 @@ origin. This keeps mixed RGBA/PNG order intact and lets PNG remain viable when
 sixel metrics are absent.
 
 `ItermImages=true` is an explicit assertion that the destination implements the
-iTerm2 3.5-or-newer multipart contract. Query, database, and tentative
+iTerm2 3.5-or-newer multipart protocol. Query, database, and tentative
 `TERM_PROGRAM` evidence do not authorize output. Application host selection
 creates the backend lazily after profile and resize publication and consumes
 semantic placements from the public Image control.

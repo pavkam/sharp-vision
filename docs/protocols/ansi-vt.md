@@ -10,7 +10,7 @@ accessed 2026-07-11. The Windows built-in profile additionally follows the
 [Microsoft Console Virtual Terminal Sequences](https://learn.microsoft.com/windows/console/console-virtual-terminal-sequences)
 and
 [`SetConsoleMode`](https://learn.microsoft.com/windows/console/setconsolemode)
-contracts, accessed 2026-07-19.
+documentation, accessed 2026-07-19.
 
 “ANSI” is not a terminal identity. SharpVision models ECMA control functions,
 DEC VT behavior, and named extensions separately. `TERM`, device attributes, and
@@ -33,7 +33,7 @@ in the corresponding typed command rather than hidden behind a generic code.
 ## Implemented output
 
 `Csi`, `Sgr`, `Osc`, and `Modes` provide the exact-byte output subset documented
-in their linked contracts. `Parser` preserves unknown valid ESC/CSI functions as
+on their own pages. `Parser` preserves unknown valid ESC/CSI functions as
 borrowed events instead of guessing a terminal identity. The built-in Windows VT
 description owns the exact compiled subset described below. Runtime preflight
 selects its profile, and the session consumes the matched lifecycle subset.
@@ -43,8 +43,8 @@ selects its profile, and the session consumes the matched lifecycle subset.
 The Windows console host records VT evidence only after it has successfully
 enabled `ENABLE_VIRTUAL_TERMINAL_PROCESSING` for output and
 `ENABLE_VIRTUAL_TERMINAL_INPUT` for input. `DescriptionLoader` selects the
-built-in `windows-vt` profile only when that immutable connection fact is
-present; an operating-system name alone is not evidence.
+built-in `windows-vt` profile only when that connection fact is recorded; an
+operating-system name alone is not evidence.
 
 The profile compiles exact programs for BEL, cursor positioning and movement,
 display and line erasure, reset, Microsoft-documented bold, underline, reverse,
@@ -68,12 +68,12 @@ are present, the session emits the complete `smkx`/`rmkx` pair and restores it
 after cursor visibility and alternate screen in exact reverse acquisition order.
 
 Microsoft documents that classic Windows Console accepts indexed and RGB SGR but
-projects extended values to its configurable 16-color table. Consequently the
-built-in profile records `colors=16` and `ColorDepth.Basic16`; the retained
+projects extended values to its configurable 16-color table. The built-in
+profile therefore records `colors=16` and `ColorDepth.Basic16`; the retained
 indexed/RGB programs describe accepted grammar, not guaranteed color fidelity.
 It records automatic margins because the host explicitly enables
 `ENABLE_WRAP_AT_EOL_OUTPUT` together with delayed newline auto-return. It does
-not claim back-color erase because the Microsoft contract does not guarantee
+not claim back-color erase because Microsoft's documentation does not guarantee
 terminfo `bce` semantics.
 
 Dim, italic, blink, conceal, strike, styled underline, underline color,

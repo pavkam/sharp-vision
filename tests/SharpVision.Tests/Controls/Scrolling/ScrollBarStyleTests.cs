@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Scrolling;
 
-using System.Text.Json;
-
 /// <summary>Verifies complete scrollbar presentations and partial style composition.</summary>
 public sealed class ScrollBarStyleTests
 {
@@ -250,20 +248,6 @@ public sealed class ScrollBarStyleTests
             null!));
 
         exception.ParamName.ShouldBe("appearance");
-    }
-
-    /// <summary>Verifies the typed glyph definition retains deterministic authored strings.</summary>
-    [Fact]
-    public void Deserialize_WhenScrollbarGlyphsAreAuthored_PreservesTypedShape()
-    {
-        var json = /*lang=json,strict*/
-            """{"glyphs":{"verticalDecrement":"^","verticalIncrement":"v","horizontalDecrement":"<","horizontalIncrement":">","blockTrack":".","blockThumb":"#","horizontalLineTrack":"-","horizontalLineThumb":"=","verticalLineTrack":"|","verticalLineThumb":"#"}}""";
-
-        var definition = JsonSerializer.Deserialize<ScrollBarStyleDefinition>(json).ShouldNotBeNull();
-        var glyphs = definition.Glyphs.ShouldNotBeNull();
-
-        glyphs.VerticalDecrement.ShouldBe("^");
-        glyphs.VerticalLineThumb.ShouldBe("#");
     }
 
     private static ScrollBarGlyphs CreateGlyphs(Rune verticalDecrement) => new(

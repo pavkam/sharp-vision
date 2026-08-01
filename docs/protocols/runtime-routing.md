@@ -52,7 +52,7 @@ arrives.
 
 `Session` owns a `ProtocolRouter` and delivers the complete sink contract in
 transport order. `Application` queues typed replies as immutable records and
-raises `ResponseReceived`, `PaletteResponseReceived`, or
+raises `ResponseReceived`, `PaletteResponseReceived`,
 `MetricsResponseReceived`, `StatusResponseReceived`, or
 `CapabilityResponseReceived` only on its dispatcher. These records share one
 ordered input queue. An unregistered raw sequence becomes a

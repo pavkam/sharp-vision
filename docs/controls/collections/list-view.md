@@ -2,29 +2,30 @@
 
 ## Overview
 
-`ListView` is a focusable selection control over an owned item snapshot and
-caller-configurable template. The control realizes every item into a private
+`ListView` is a focusable selection control over an owned snapshot of items
+and a caller-configurable template. It realizes every item into a private
 vertical `Stack` armed with the intrinsic
-[`AutoScroll`](../../concepts/scrolling.md) contract. It makes no virtualization
-or recycling claim.
+[`AutoScroll`](../../concepts/scrolling.md) contract, and it makes no
+virtualization or recycling claim.
 
-Each template result is wrapped by one ordinary pressable `ListItem`. The
+Each template result is wrapped in one ordinary pressable `ListItem`. The
 ListView owns focus and current-item navigation; the wrapper owns activation,
-selected/current visual facts, and exactly one template control through
-inherited `Content`. Selection propagates through that realized control subtree
-so the theme treats the complete row as one selected item; an explicit complete
-local appearance on template content remains authoritative.
+the selected and current visual facts, and exactly one template control
+through its inherited `Content`. Selection propagates through the realized
+control subtree so the theme treats the complete row as one selected item; an
+explicit complete local appearance on template content remains authoritative.
 
-By default, ListView is a quiet borderless collection region whose fill comes
-from the active theme's `ListView.normal` style. The continuous plane is its
-boundary; callers may opt into an inherited frame or replace the background
-through the shared [chrome contract](../../concepts/styling.md#shared-chrome).
+By default a ListView is a quiet, borderless collection region whose fill
+comes from the active theme's `ListView.normal` style. The continuous plane is
+its boundary; callers can opt into an inherited frame or replace the
+background through the shared
+[chrome contract](../../concepts/styling.md#shared-chrome).
 
-ListView paints its complete arranged surface with its normal or disabled
-appearance. Normal and pointer-over realized items keep a transparent background
-when their theme states omit one, so the owning surface remains continuous. A
-`VisualState.Selected` overlay may paint the complete row instead of changing
-only label cells.
+The control paints its complete arranged surface with its normal or disabled
+appearance. Normal and pointer-over realized items keep a transparent
+background when their theme states omit one, so the owning surface stays
+continuous. A `VisualState.Selected` overlay may paint the complete row rather
+than only the label cells.
 
 ## API
 
@@ -41,92 +42,95 @@ only label cells.
 
 ## Behavior
 
-- `Items` rejects null collection replacement and copies the complete
-  `IReadOnlyList<object?>` before realization. Its returned owner-backed view
-  cannot mutate the snapshot. Null items are passed unchanged to the template.
-- `ItemTemplate(object?)` must return one unique, detached, undisposed non-null
-  control per item. The entire candidate set is built and validated before the
-  previous realized tree is detached. Successful replacement disposes every old
-  wrapper and template control; failure preserves items, template, selection,
-  parents, and cells.
-- The invariant-culture default template creates one `Text` control from each
-  item. Custom templates may return Unicode and variable-height controls.
+- `Items` rejects a null collection replacement and copies the complete
+  `IReadOnlyList<object?>` before realizing controls. The returned
+  owner-backed view cannot mutate the snapshot. Null items are passed to the
+  template unchanged.
+- `ItemTemplate(object?)` must return one unique, detached, undisposed,
+  non-null control per item. The entire candidate set is built and validated
+  before the previous realized tree is detached. A successful replacement
+  disposes every old wrapper and template control; a failure preserves the
+  items, template, selection, parents, and cells.
+- The default template creates one invariant-culture `Text` control per item.
+  Custom templates may return Unicode and variable-height controls.
 - `ListSelectionMode.None`, `Single`, and `Multiple` permit zero, at most one,
-  or many indexes. Narrowing a mode normalizes selection deterministically by
-  retaining the lowest applicable index.
-- `SelectedIndex` returns the lowest selected index; `-1` clears. Invalid
-  indexes throw, and non-negative assignment in None mode is rejected. Assigning
-  an unavailable realized row is ignored and preserves the existing valid
-  selection. `SetSelected(index, bool)` changes one index without replacing
-  other Multiple selections; selecting an unavailable realized row returns
-  `false` and leaves valid selection unchanged. `SelectedItem` and the stable
-  owner-backed `SelectedItems` view always reflect committed ascending index
-  order.
-- Replacing `Items` remaps selected and active rows by item equality, preserving
-  each item when it remains in the new snapshot even if its index changes. Equal
-  duplicate values map by occurrence: the first old occurrence maps to the first
-  new occurrence, the second to the second, and so on. Unmatched occurrences are
-  removed. The snapshot map uses equality buckets and runs in expected
-  `O(old count + new count)` time. Removed selected items leave selection
-  cleared or narrowed to the remaining valid items. A removed or unavailable
-  active row falls back to the available realized row with the smallest absolute
-  distance from the clamped prior position, preferring the lower index on a tie;
-  when the prior position is beyond the new snapshot this becomes the last
-  available row, or `-1` when no row is available. Insert, remove, and replace
-  notifications from an observed collection use the same stable index and item
-  rules.
-- `ActiveIndex` identifies the row used by keyboard selection and invocation.
-  Keyboard navigation keeps it synchronized with committed selection in Single
-  and Multiple modes; None mode retains active navigation without selection.
-  `VerticalOffset` exposes the composed viewport offset. `ScrollBars`,
-  `ShowScrollBars`, `ScrollBarStyle`, and `PageOverlap` forward the common
-  overflow and paging policy to the owned viewport, so a ListView uses the same
-  canonical rail and page behavior as any scrollable `Container` rather than a
-  private scrolling dialect.
-- `SelectionChanging` receives owned sorted added/removed index memories and may
-  cancel before commit. `SelectionChanged` reports the same committed delta
-  after all selected views and visual states update. Reentrant changes advance a
-  transaction version so a stale outer proposal cannot overwrite them. Mode or
-  item-realization changes invalidate pending proposals even when the selected
-  index set was already empty; a reentrant change to None mode rejects any
-  pending non-empty proposal.
-- `ItemInvoked` reports index, borrowed item, and `ActivationCause` for Enter or
-  eligible primary pointer invocation.
+  or many selected indexes. Narrowing the mode normalizes the selection
+  deterministically by keeping the lowest applicable index.
+- `SelectedIndex` returns the lowest selected index, and assigning `-1`
+  clears the selection. Invalid indexes throw, and a non-negative assignment
+  in None mode is rejected. Assigning an unavailable realized row is ignored
+  and preserves the existing valid selection. `SetSelected(index, bool)`
+  changes one index without replacing other Multiple selections; selecting an
+  unavailable realized row returns `false` and leaves the valid selection
+  unchanged. `SelectedItem` and the stable owner-backed `SelectedItems` view
+  always reflect the committed selection in ascending index order.
+- Replacing `Items` remaps the selected and active rows by item equality, so
+  an item that remains in the new snapshot stays selected even when its index
+  changes. Equal duplicate values map by occurrence: the first old occurrence
+  maps to the first new occurrence, the second to the second, and so on, and
+  unmatched occurrences are removed. The snapshot map uses equality buckets
+  and runs in expected `O(old count + new count)` time. When selected items
+  are removed, the selection is cleared or narrowed to the remaining valid
+  items. A removed or unavailable active row falls back to the available
+  realized row with the smallest absolute distance from the clamped prior
+  position, preferring the lower index on a tie; when the prior position is
+  beyond the new snapshot this becomes the last available row, or `-1` when
+  no row is available. Insert, remove, and replace notifications from an
+  observed collection follow the same stable index and item rules.
+- `ActiveIndex` identifies the row that keyboard selection and invocation act
+  on. Keyboard navigation keeps it synchronized with the committed selection
+  in Single and Multiple modes; None mode keeps active navigation without
+  selection. `VerticalOffset` exposes the composed viewport offset.
+  `ScrollBars`, `ShowScrollBars`, `ScrollBarStyle`, and `PageOverlap` forward
+  the common overflow and paging policy to the owned viewport, so a ListView
+  scrolls with the same canonical rail and page behavior as any scrollable
+  `Container` rather than a private scrolling dialect.
+- `SelectionChanging` receives owned, sorted added and removed index memories
+  and may cancel the change before it commits. `SelectionChanged` reports the
+  same committed delta after all selected views and visual states have
+  updated. Reentrant changes advance a transaction version, so a stale outer
+  proposal cannot overwrite them. Mode or item-realization changes invalidate
+  pending proposals even when the selected index set was already empty, and a
+  reentrant change to None mode rejects any pending non-empty proposal.
+- `ItemInvoked` reports the index, the borrowed item, and the
+  `ActivationCause` for Enter or an eligible primary pointer invocation.
 
 ## Interaction and layout
 
-Arrows keep focus on the ListView and move its active index in stable realized
-order while skipping effectively hidden or disabled template controls. In Single
-and Multiple modes, every move also replaces selection with the active row; a
-cancelled `SelectionChanging` transaction leaves both values unchanged. None
-mode moves only the active index. Home/End choose the first or last eligible
-item. PageUp/PageDown advance by at least one item and otherwise by as many
-items as fill the committed viewport height (minus `PageOverlap`), accumulating
-each realized row's own height rather than treating the viewport's cell height
-as an item count - so rows taller than one cell are never skipped. Every
-successful move uses the composed `BringIntoView` path.
+Arrow keys keep focus on the ListView and move its active index in stable
+realized order, skipping template controls that are effectively hidden or
+disabled. In Single and Multiple modes every move also replaces the selection
+with the active row; when a `SelectionChanging` transaction is cancelled, both
+values stay unchanged. None mode moves only the active index. Home and End
+choose the first or last eligible item. PageUp and PageDown advance by at
+least one item, and otherwise by as many items as fill the committed viewport
+height minus `PageOverlap`. They accumulate each realized row's own height
+rather than treating the viewport's cell height as an item count, so rows
+taller than one cell are never skipped. Every successful move uses the
+composed `BringIntoView` path.
 
-Space follows press/release activation and changes selection; Enter invokes
-without changing it. Primary pointer release selects and invokes. In Multiple
-mode, Control toggles one index, Shift selects the inclusive range from the
-stable anchor while skipping unavailable rows, and an unmodified activation
-replaces selection. In Single mode activation replaces the sole selection; None
-mode still permits navigation and invocation.
+Space follows press-and-release activation and changes the selection; Enter
+invokes without changing it. A primary pointer release selects and invokes.
+In Multiple mode, Control toggles one index, Shift selects the inclusive
+range from the stable anchor while skipping unavailable rows, and an
+unmodified activation replaces the selection. In Single mode activation
+replaces the sole selection, and None mode still permits navigation and
+invocation.
 
-Pointer hit testing targets the pressable item wrapper rather than swallowing
-activation in its display child. Capture, focus loss, disable, detach, and
-disposal therefore reuse the same cancellation guarantees as `Button` and other
-`Pressable` controls.
+Pointer hit testing targets the pressable item wrapper rather than letting
+its display child swallow the activation. Capture, focus loss, disable,
+detach, and disposal therefore reuse the same cancellation guarantees as
+`Button` and the other `Pressable` controls.
 
-Disabled realized item content remains visible, but its row is not eligible for
-pointer activation, keyboard navigation, or selection. An empty `Items` snapshot
-has no active or selected row and renders only the ListView surface.
+Disabled realized item content stays visible, but its row is not eligible for
+pointer activation, keyboard navigation, or selection. An empty `Items`
+snapshot has no active or selected row and renders only the ListView surface.
 
-The `ListView` owns keyboard focus but never paints a list-wide hover
-appearance. Physical `PointerOver` state remains observable on the list
-ancestry, while the directly targeted internal item wrapper changes only
-foreground and border semantics over the unchanged owner background. Selection
-may paint the paired selection background.
+The ListView owns keyboard focus but never paints a list-wide hover
+appearance. The physical `PointerOver` state remains observable on the list
+ancestry, while the directly targeted internal item wrapper changes only its
+foreground and border semantics over the unchanged owner background.
+Selection may paint the paired selection background.
 
 ## Example
 
@@ -142,13 +146,18 @@ var list = new ListView
 
 ## Expected behavior
 
-Cover empty/items changes, selection modes/events/cancellation, keyboard and
-pointer modifiers, invoke, scrolling/bring-into-view, resize, disabled items,
-Unicode/variable height, template failures/ownership, focus, and final cells.
+Empty lists and item replacement behave as described above. Selection modes,
+events, and cancellation are deterministic; keyboard and pointer input,
+including modifiers, selects and invokes as documented; and scrolling with
+bring-into-view keeps the active item visible across resizes. Disabled items
+are excluded from activation and selection, Unicode and variable-height
+content lays out correctly, template failures preserve state and ownership,
+and focus behavior and the final cells are exact.
 
-Tests retain actual template controls to prove unique parents and deterministic
-disposal, compare final Unicode cells and wide-cell ownership, assert stable
-selected-view identity, drive routed keyboard and pointer input through focus
-and capture managers, and verify active-item scrolling across resize-sized
-viewports. Later performance tests cover 1,000 fully realized items and retained
-memory; they must not relabel realization as virtualization.
+Tests retain the actual template controls to prove unique parents and
+deterministic disposal, compare final Unicode cells and wide-cell ownership,
+assert stable selected-view identity, drive routed keyboard and pointer input
+through the focus and capture managers, and verify active-item scrolling
+across resize-sized viewports. Later performance tests cover 1,000 fully
+realized items and retained memory; they must not relabel realization as
+virtualization.

@@ -2,9 +2,9 @@
 
 ## Overview
 
-Terminal integration is one ordered runtime path from an owned physical console
-connection to typed input, retained UI state, rendered cells, and restored
-terminal modes. Application code enters through
+Terminal integration is one ordered runtime path that starts at an owned
+physical console connection and ends at typed input, retained UI state,
+rendered cells, and restored terminal modes. Application code enters through
 `SharpVision.ConsoleApplication`; it does not construct a session, transport,
 parser, renderer, or terminal-description provider by hand.
 
@@ -17,10 +17,10 @@ The integration keeps four concerns separate:
 | Semantic discovery   | discovery strategies and active negotiation | Immutable `Capabilities` snapshots with evidence origin. |
 | Protocol use         | session, renderer, and `ITerminalServices`  | Typed input/events or ordered output bytes.              |
 
-An emulator identity such as VT, xterm, Kitty, or iTerm2 is not a physical
-connection and is not an optional protocol feature. Backend identity is fixed
-for the application lifetime. Capability snapshots may be replaced as bounded
-evidence arrives, but that replacement cannot silently change the backend.
+An emulator identity such as VT, xterm, Kitty, or iTerm2 is neither a physical
+connection nor an optional protocol feature. Backend identity is fixed for the
+application lifetime. Capability snapshots may be replaced as bounded evidence
+arrives, but replacing a snapshot cannot silently change the backend.
 
 ## Public API
 
@@ -82,15 +82,16 @@ Evidence is applied from weakest to strongest:
    deadline.
 5. Explicit caller overrides.
 
-Environment names may suggest backend identity but do not by themselves
-authorize arbitrary protocol output. Description capabilities authorize only the
-programs that were loaded, validated, and compiled. Query replies pass through
-existing typed codecs before they may refine a feature. Explicit settings apply
-last but cannot inject raw escape strings.
+Environment names may suggest a backend identity, but they do not by themselves
+authorize arbitrary protocol output. Description capabilities authorize only
+the programs that were actually loaded, validated, and compiled. Query replies
+pass through the existing typed codecs before they may refine a feature.
+Explicit settings apply last, but they cannot inject raw escape strings.
 
-Each optional protocol is represented by `Feature`, containing `Support` and
-`Origin`. Consumers call `Capabilities.Support(TerminalProtocol)` or inspect
-`Capabilities.Features`; they do not infer support from terminal names. The
+Each optional protocol is represented by a `Feature`, which carries a `Support`
+state and an `Origin`. Consumers call
+`Capabilities.Support(TerminalProtocol)` or inspect `Capabilities.Features`;
+they do not infer support from terminal names. The
 [coverage matrix](../protocols/coverage-matrix.md#coverage) is the sole summary
 of what the current code and tests prove.
 
@@ -113,7 +114,7 @@ Outbound behavior follows typed ownership:
 - The renderer owns cursor movement, rendition, frame synchronization, and
   graphics-backend selection.
 - `Application.Terminal.Bell.Ring()`, `SetTitle(string)`, and
-  `Application.Terminal.Clipboard` expose implemented out-of-band services.
+  `Application.Terminal.Clipboard` expose the implemented out-of-band services.
 - The session owns optional-mode leases and restores successful acquisitions in
   reverse order.
 - Encoders and terminal-description programs are the only sources of output
@@ -141,13 +142,15 @@ dispatch and recovery.
 
 ## Expected behavior
 
+The integration path is backed by evidence at three layers:
+
 | Layer          | Required evidence                                                                                                                          |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | Unit           | Option validation, evidence precedence, immutable publication, exact typed encoder bytes, parser recovery, and unsupported no-op behavior. |
 | Integration    | Description, backend, discovery, routing, dispatcher, layout, rendering, out-of-band writes, and reverse cleanup through real boundaries.  |
 | Pseudoterminal | Raw mode, fragmented input, resize, cancellation, failure, exact output order, and terminal restoration without privileges.                |
 
-The cross-layer startup scenario must prove, in order:
+The cross-layer startup scenario proves, in order:
 
 1. one physical connection and validated description;
 2. fixed backend identity and conservative capability baseline;

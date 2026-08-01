@@ -1,8 +1,8 @@
 # Walkthroughs
 
-Walkthroughs assemble public SharpVision APIs into complete tasks. They explain
-why each property is set, show runnable C#, and link every deeper rule to the
-section that owns it.
+Walkthroughs assemble public SharpVision APIs into complete tasks. Each one
+explains why a property is set, shows runnable C#, and links every deeper rule
+to the section that owns it.
 
 1. [Build your first application](first-application.md#build-your-first-application)
    creates a project, a retained screen, a button, and a clean exit path.

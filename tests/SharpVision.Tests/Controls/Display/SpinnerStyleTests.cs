@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Display;
 
-using System.Text.Json;
-
 /// <summary>Verifies complete spinner presentations and partial style composition.</summary>
 public sealed class SpinnerStyleTests
 {
@@ -215,17 +213,6 @@ public sealed class SpinnerStyleTests
             new SpinnerStyle([new Rune('|')], null!));
 
         exception.ParamName.ShouldBe("appearance");
-    }
-
-    /// <summary>Verifies authored frame strings deserialize as an explicit sequence shape.</summary>
-    [Fact]
-    public void Deserialize_WhenSpinnerFramesAreAuthored_PreservesSequence()
-    {
-        var json = /*lang=json,strict*/ """{"frames":["|","/","-","\\"]}""";
-
-        var definition = JsonSerializer.Deserialize<SpinnerStyleDefinition>(json).ShouldNotBeNull();
-
-        definition.Frames.ShouldBe(["|", "/", "-", "\\"]);
     }
 
     private static ThemeProfile Copy(ThemeProfile profile) => new(
