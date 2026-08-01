@@ -328,10 +328,7 @@ public abstract class FloatingSurface: ContentControl
 
         if (RemovesPresentation(reason))
         {
-            SurfaceBounds = default;
-            IsSurfacePresented = false;
-            _openingInvalidated = _isOpening;
-            IncrementPresentationVersion();
+            ReleasePresentation();
         }
 
         if (reason == ReleaseReason.Disposed)
@@ -372,6 +369,20 @@ public abstract class FloatingSurface: ContentControl
 
         _modalScope = null;
         scope.Exited -= OnModalExited;
+    }
+
+    /// <summary>
+    /// Clears this surface's presented bounds and flag outside the normal close path, so a caller that
+    /// bypasses <see cref="OnUnavailable"/>'s own <see cref="ReleaseReason.Detached"/> handling — such as
+    /// a descendant of a removed subtree root, which never receives its own <c>OnUnavailable</c> call —
+    /// can still leave <see cref="OpenSurface"/> reopenable afterward.
+    /// </summary>
+    private protected void ReleasePresentation()
+    {
+        SurfaceBounds = default;
+        IsSurfacePresented = false;
+        _openingInvalidated = _isOpening;
+        IncrementPresentationVersion();
     }
 
     private void IncrementPresentationVersion() => _presentationVersion = unchecked(_presentationVersion + 1);

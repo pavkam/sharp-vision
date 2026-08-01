@@ -713,6 +713,44 @@ public sealed class PopupModalityTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies removing an ancestor of an open popup — not the popup itself — still releases
+    /// presentation, so the popup can reopen after the ancestor is reattached instead of permanently
+    /// failing FloatingSurface's already-open guard.</summary>
+    [Fact]
+    public async Task Detach_WhenAncestorOfOpenPopupIsRemoved_ReleasesPresentationAndPermitsReopenAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var popup = new Popup { Content = new ProbeControl { Focusable = true } };
+            var holder = new Overlay { Children = { popup } };
+            var root = new Overlay { Children = { holder } };
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            popup.IsOpen = true;
+            _ = modality.Active.ShouldNotBeNull();
+
+            root.Children.Remove(holder).ShouldBeTrue();
+
+            popup.IsOpen.ShouldBeFalse();
+            popup.SurfaceBounds.ShouldBe(default);
+            modality.Active.ShouldBeNull();
+
+            root.Children.Add(holder);
+
+            popup.IsOpen.ShouldBeFalse();
+
+            _ = Should.NotThrow(() => popup.IsOpen = true);
+
+            popup.IsOpen.ShouldBeTrue();
+            var scope = modality.Active.ShouldNotBeNull();
+            scope.Root.ShouldBeSameAs(popup);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies disabling preserves presentation while ending and later restoring automatic modality.</summary>
     [Fact]
     public async Task IsEnabled_WhenOpenPopupIsDisabled_PreservesPresentationAndRestoresAutomaticModalityAsync()
