@@ -114,5 +114,5 @@ inside the remaining padded `ContentBounds`.
   the same pipeline.
 - Hidden controls keep their layout participation and collapsed controls
   contribute nothing, as described above.
-- Border changes take effect whether they come from local values, visual
-  states, or theme publication.
+- Border changes take effect whether they come from local values, visual states,
+  or theme publication.

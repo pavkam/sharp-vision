@@ -21,8 +21,8 @@ because it can block a non-cooperating terminal.
 
 ## Status and capability queries
 
-`Decrqss.Query` emits `DCS $ q Pt ST` only for SGR (`m`), cursor style (`SP q`),
-vertical and horizontal margins (`r` and `s`), and the selected xterm
+`XtermDecrqss.Query` emits `DCS $ q Pt ST` only for SGR (`m`), cursor style
+(`SP q`), vertical and horizontal margins (`r` and `s`), and the selected xterm
 `>4m`/`>4f` keyboard status names. The router promotes structurally valid
 `DCS 1 $ r Pt ST` and `DCS 0 $ r ST` replies to owned `StatusResponse` values.
 An otherwise valid but unrecognized returned CSI body remains observable as an
@@ -39,7 +39,7 @@ never recognized identities. Public `StatusResponse` construction enforces the
 same name/value grammar; an identity-less failure has unknown name and empty
 value.
 
-`Xtgettcap.Query` emits `DCS + q Pt ST` for a finite public name enumeration.
+`XtermGetCap.Query` emits `DCS + q Pt ST` for a finite public name enumeration.
 Names and values in `DCS 1 + r Pt ST` are strict two-digit hexadecimal,
 semicolon-delimited pairs. `QueryLimits.MaxCapabilityItems` and
 `QueryLimits.MaxCapabilityValueBytes` bound retained state. Duplicate names, odd
@@ -64,15 +64,16 @@ routing; general multiplexer policy remains owned by the tmux/screen contract.
 
 ## Enhanced keyboard fallback
 
-`ModifyOtherKeys` encodes query `CSI ? 4 m`, level set `CSI > 4 ; Pv m`, and
-initial-resource restore `CSI > 4 m`. The input decoder recognizes the legacy
-`CSI 27 ; modifier ; key ~` form and the compatible `CSI key ; modifier u` form
-as typed strokes, with the existing Kitty CSI-u grammar retaining precedence.
-Runtime negotiation probes `>4m` through DECRQSS only for an xterm hint when
-Kitty is not hinted. A matched reply produces query-origin `XtermKeyboard`
-evidence. `Session` prefers an authorized Kitty keyboard lease; otherwise it may
-lease a configured modifyOtherKeys level and always records the exact
-initial-value restore before attempting the enable write.
+`XtermModifyOtherKeys` encodes query `CSI ? 4 m`, level set `CSI > 4 ; Pv m`,
+and initial-resource restore `CSI > 4 m`. The input decoder recognizes the
+legacy `CSI 27 ; modifier ; key ~` form and the compatible
+`CSI key ; modifier u` form as typed strokes, with the existing Kitty CSI-u
+grammar retaining precedence. Runtime negotiation probes `>4m` through DECRQSS
+only for an xterm hint when Kitty is not hinted. A matched reply produces
+query-origin `XtermKeyboard` evidence. `Session` prefers an authorized Kitty
+keyboard lease; otherwise it may lease a configured modifyOtherKeys level and
+always records the exact initial-value restore before attempting the enable
+write.
 
 ## Quirks and tests
 

@@ -45,11 +45,12 @@ Native lookup is governed by the
 [provider trust boundary](terminfo.md#native-provider-trust-boundary). Before
 invocation, SharpVision bounds its copied terminal name, relevant live
 environment values, and inline `TERMCAP`; afterward, it bounds every copied
-canonical value. The provider rejects inline content above the fixed historical
-1023-byte ceiling and never truncates it. SharpVision does not parse termcap
-files to measure raw or resolved entries: ncurses file scanning, `tc` expansion,
-and internal resolution remain trusted stable local-host work outside
-SharpVision's adversarial memory bound.
+canonical value. The provider rejects inline content above the ceiling
+configured by `DescriptionLimits.MaxTermcapVariableBytes` (defaulting to the
+historical 1,023 bytes, with a 4,096-byte hard maximum) and never truncates it.
+SharpVision does not parse termcap files to measure raw or resolved entries:
+ncurses file scanning, `tc` expansion, and internal resolution remain trusted
+stable local-host work outside SharpVision's adversarial memory bound.
 
 ncurses owns `tc` resolution. SharpVision accepts only canonical values that
 satisfy the accepted-snapshot and per-value limits. A cycle, unresolved parent,

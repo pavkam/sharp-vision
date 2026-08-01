@@ -2,11 +2,10 @@
 
 ## Overview
 
-`Slider` is a focusable signed-integer range control for direct value
-selection. It differs from
-[`ScrollBar`](../scrolling/scroll-bar.md#overview): a track press immediately
-selects the mapped value, the thumb always occupies one cell, and no viewport
-extent or paging buttons participate in the geometry.
+`Slider` is a focusable signed-integer range control for direct value selection.
+It differs from [`ScrollBar`](../scrolling/scroll-bar.md#overview): a track
+press immediately selects the mapped value, the thumb always occupies one cell,
+and no viewport extent or paging buttons participate in the geometry.
 
 ## API
 
@@ -23,48 +22,45 @@ extent or paging buttons participate in the geometry.
 
 - `Minimum`, `Maximum`, and `Value` are inclusive signed integers, with a
   default range of 0 through 100 and a default value of 0. An endpoint setter
-  that would invert the range or exclude `Value` throws before any mutation,
-  and assigning `Value` outside the range also throws.
-- `SmallChange` defaults to 1 and `LargeChange` to 10. Both accept
-  non-negative integers, and zero is a valid no-op.
+  that would invert the range or exclude `Value` throws before any mutation, and
+  assigning `Value` outside the range also throws.
+- `SmallChange` defaults to 1 and `LargeChange` to 10. Both accept non-negative
+  integers, and zero is a valid no-op.
 - `ChangeBy(int)` adds using widened arithmetic, clamps to the endpoints, and
   returns whether a changed value committed.
-- `ValueChanged` runs after the value and its property notification commit.
-  Its immutable `SliderValueChangedEventArgs` exposes `PreviousValue` and
-  `Value`. A no-op raises no event.
+- `ValueChanged` runs after the value and its property notification commit. Its
+  immutable `SliderValueChangedEventArgs` exposes `PreviousValue` and `Value`. A
+  no-op raises no event.
 - `Orientation.Horizontal` is the default and measures 5 by 1 cells;
   `Orientation.Vertical` measures 1 by 5 cells. Explicit layout may safely
   stretch or shrink either axis.
 
 Horizontal geometry maps the minimum to the left edge and the maximum to the
-right; vertical geometry maps the minimum to the bottom and the maximum to
-the top. Mapping uses the complete signed range in widened arithmetic with
-inclusive endpoint rounding, and it stays correct across `int.MinValue`
-through `int.MaxValue`.
+right; vertical geometry maps the minimum to the bottom and the maximum to the
+top. Mapping uses the complete signed range in widened arithmetic with inclusive
+endpoint rounding, and it stays correct across `int.MinValue` through
+`int.MaxValue`.
 
 ## Input and visual states
 
-A primary press focuses the control, selects the nearest mapped value, and
-takes pointer capture. Captured movement keeps selecting against the geometry
-captured at press time. Release, leave, focus transfer, terminal focus loss,
-disabling, hiding, detachment, or disposal ends the drag without committing
-another value.
+A primary press focuses the control, selects the nearest mapped value, and takes
+pointer capture. Captured movement keeps selecting against the geometry captured
+at press time. Release, leave, focus transfer, terminal focus loss, disabling,
+hiding, detachment, or disposal ends the drag without committing another value.
 
 Left/Right operate a horizontal slider and Down/Up a vertical one: the
-decreasing key subtracts `SmallChange` and the increasing key adds it. Page
-Down subtracts `LargeChange`, Page Up adds it, and Home/End select the
-minimum and maximum. Key press and repeat are accepted; release is ignored. A
-wheel gesture applies `SmallChange` and is handled only when the value
-actually changes, which leaves endpoint gestures available to an enclosing
-scroll surface.
+decreasing key subtracts `SmallChange` and the increasing key adds it. Page Down
+subtracts `LargeChange`, Page Up adds it, and Home/End select the minimum and
+maximum. Key press and repeat are accepted; release is ignored. A wheel gesture
+applies `SmallChange` and is handled only when the value actually changes, which
+leaves endpoint gestures available to an enclosing scroll surface.
 
 The rail renders its filled, thumb, and unfilled cells with the `Accent`,
-`Accent`, and `Muted` foregrounds respectively. `FillColor`, `ThumbColor`,
-and `TrackColor` are authoritative local overrides. Background, attributes,
-and the normal, pointer-over, focused, pressed, and disabled appearances
-follow the shared
-[styling contract](../../concepts/styling.md#visual-states). Zero and tiny
-bounds stay contained, and ambiguous-width glyphs fall back to one-cell
+`Accent`, and `Muted` foregrounds respectively. `FillColor`, `ThumbColor`, and
+`TrackColor` are authoritative local overrides. Background, attributes, and the
+normal, pointer-over, focused, pressed, and disabled appearances follow the
+shared [styling contract](../../concepts/styling.md#visual-states). Zero and
+tiny bounds stay contained, and ambiguous-width glyphs fall back to one-cell
 ASCII.
 
 ## Example
@@ -88,9 +84,9 @@ volume.ValueChanged += (_, change) => SaveVolume(change.Value);
 ## Expected behavior
 
 Validation runs before any mutation, and the signed extremes are safe. Events
-arrive in committed order, and horizontal and vertical rails render their
-exact cells. Zero and tiny bounds stay contained, keyboard and wheel
-semantics behave as documented, and endpoint gestures bubble to ancestors.
-Pointer presses map directly to values, capture and its cancellation end
-drags safely, focus and disabled states render correctly, resize is handled,
-and the final mounted semantic output is correct.
+arrive in committed order, and horizontal and vertical rails render their exact
+cells. Zero and tiny bounds stay contained, keyboard and wheel semantics behave
+as documented, and endpoint gestures bubble to ancestors. Pointer presses map
+directly to values, capture and its cancellation end drags safely, focus and
+disabled states render correctly, resize is handled, and the final mounted
+semantic output is correct.

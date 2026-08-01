@@ -21,16 +21,15 @@ classDiagram
 
 `FloatingSurface` lives in `SharpVision.Surfaces`. `Window` and `Popup` derive
 from it in their feature namespaces. `Dialog<TResult>` derives from `Window`,
-and the file dialogs and `MessageBox` are direct dialog surfaces. `Flyout`
-and `Tooltip` derive from `Popup` and render their inherited popup surface
-directly.
+and the file dialogs and `MessageBox` are direct dialog surfaces. `Flyout` and
+`Tooltip` derive from `Popup` and render their inherited popup surface directly.
 
 ## Shared lifecycle
 
-`FloatingSurface` owns the replaceable `Content`, the committed
-`SurfaceBounds`, the ordered `Closing` and `Closed` lifecycle, focus and
-pointer-capture cleanup, and at most one application-owned `ModalScope`. Each
-concrete family owns its public open state and chrome:
+`FloatingSurface` owns the replaceable `Content`, the committed `SurfaceBounds`,
+the ordered `Closing` and `Closed` lifecycle, focus and pointer-capture cleanup,
+and at most one application-owned `ModalScope`. Each concrete family owns its
+public open state and chrome:
 
 - `Window` uses `Visibility` and titled window chrome.
 - `Popup` uses `IsOpen`, anchor-relative placement, and popup chrome.
@@ -42,62 +41,61 @@ concrete family owns its public open state and chrome:
 Presenting a Window, or explicitly entering modality, requires an attached,
 available, undisposed surface. A detached Popup may stage `IsOpen = true`: it
 presents - and, under automatic modal behavior, enters modality - when it is
-later attached. A surface cannot present twice or reenter an opening or
-closing transaction.
+later attached. A surface cannot present twice or reenter an opening or closing
+transaction.
 
-Popup-family closure first makes the family ineligible for rendering and
-input, then publishes `Closing`, exits modality, makes the content
-unavailable, clears `SurfaceBounds`, and publishes `Closed`. Changing a
-Window's visibility away from visible performs the same common cleanup
-directly but publishes neither lifecycle event.
+Popup-family closure first makes the family ineligible for rendering and input,
+then publishes `Closing`, exits modality, makes the content unavailable, clears
+`SurfaceBounds`, and publishes `Closed`. Changing a Window's visibility away
+from visible performs the same common cleanup directly but publishes neither
+lifecycle event.
 
-An ordinary Window close affordance, Escape action, or modal dismiss request
-is owner-handled: it publishes `Closing` while the Window remains visible,
+An ordinary Window close affordance, Escape action, or modal dismiss request is
+owner-handled: it publishes `Closing` while the Window remains visible,
 presented, and modal. If the callback hides the Window, the visibility
 transaction performs the common cleanup and the close request then publishes
-`Closed`. If the callback leaves visibility unchanged, the Window stays open
-and `Closed` is not published. Cleanup attempts every stage even after a
-callback failure and rethrows the earliest failure once state is coherent.
-Detachment and disposal release modal, focus, and capture state even when no
-normal close path was requested.
+`Closed`. If the callback leaves visibility unchanged, the Window stays open and
+`Closed` is not published. Cleanup attempts every stage even after a callback
+failure and rethrows the earliest failure once state is coherent. Detachment and
+disposal release modal, focus, and capture state even when no normal close path
+was requested.
 
 ## Ownership, elevation, and modality
 
-Elevation changes the render and hit-test order without reparenting the
-surface or changing its routed ancestry. Popup-family surfaces are promoted
-through the shared popup layer. Windows and dialogs are direct children of an
-`Overlay`, including the private presentation Overlay owned by `Screen`.
+Elevation changes the render and hit-test order without reparenting the surface
+or changing its routed ancestry. Popup-family surfaces are promoted through the
+shared popup layer. Windows and dialogs are direct children of an `Overlay`,
+including the private presentation Overlay owned by `Screen`.
 
 Modality is an input-plane policy, not a visual wrapper. `FloatingSurface`
 retains the live scope, while the application
-[`ModalityManager`](modality.md#overview) owns confinement, outside
-interaction, nested-scope order, capture cleanup, and focus restoration.
-`Window.ShowModal` defaults to `OutsideInteraction.Ignore`, while ordinary
-`Popup` opening defaults to dismissal. `Flyout` manages light dismissal
-without a modal scope, and `Tooltip` never enters modality or pointer
-targeting.
+[`ModalityManager`](modality.md#overview) owns confinement, outside interaction,
+nested-scope order, capture cleanup, and focus restoration. `Window.ShowModal`
+defaults to `OutsideInteraction.Ignore`, while ordinary `Popup` opening defaults
+to dismissal. `Flyout` manages light dismissal without a modal scope, and
+`Tooltip` never enters modality or pointer targeting.
 
 ## Layout and drawing boundaries
 
-[`Overlay`](../controls/layout/overlay.md#overview) is the only public panel
-for overlapping children, absolute `Left`/`Top`/`Right`/`Bottom` offsets, and
-stable `ZIndex`. Window movement writes Overlay offsets, and Overlay keeps a
-Window's border box inside its latest content bounds without changing the
-authored offsets.
+[`Overlay`](../controls/layout/overlay.md#overview) is the only public panel for
+overlapping children, absolute `Left`/`Top`/`Right`/`Bottom` offsets, and stable
+`ZIndex`. Window movement writes Overlay offsets, and Overlay keeps a Window's
+border box inside its latest content bounds without changing the authored
+offsets.
 
-`SharpVision.Terminal.Rendering.Canvas` is the frame-owned drawing value
-passed to control rendering hooks. It draws graphemes, lines, boxes, fills,
-images, and styles; it is not a `Container`, owns no children, and performs
-no layout. To put controls above custom drawing, compose the drawing control
-and those controls in an Overlay.
+`SharpVision.Terminal.Rendering.Canvas` is the frame-owned drawing value passed
+to control rendering hooks. It draws graphemes, lines, boxes, fills, images, and
+styles; it is not a `Container`, owns no children, and performs no layout. To
+put controls above custom drawing, compose the drawing control and those
+controls in an Overlay.
 
 ## Expected behavior
 
 The public inheritance chain is exactly as diagrammed, and the retired layout
-Canvas and proxy surface fields no longer exist. The family-specific
-attachment rules hold, including detached-staged Popup opening. Lifecycle
-order and rollback, detach and disposal cleanup, the single live modal scope,
-focus restoration, capture release, elevated render and hit-test order,
-logical ancestry, direct dialog host identity, Popup placement, Flyout light
-dismiss, Tooltip delay and passivity, and the final semantic cells all behave
-as described above.
+Canvas and proxy surface fields no longer exist. The family-specific attachment
+rules hold, including detached-staged Popup opening. Lifecycle order and
+rollback, detach and disposal cleanup, the single live modal scope, focus
+restoration, capture release, elevated render and hit-test order, logical
+ancestry, direct dialog host identity, Popup placement, Flyout light dismiss,
+Tooltip delay and passivity, and the final semantic cells all behave as
+described above.

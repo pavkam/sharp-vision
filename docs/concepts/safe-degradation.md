@@ -34,12 +34,12 @@ when the enabling write may have failed partway through.
 
 Strict mode promotes configured diagnostics - malformed input, an unsupported
 requested feature, an inconsistent terminal reply, fallback use, or a cleanup
-failure - to exceptions at safe boundaries. It does not change valid wire
-bytes, parser grammar, timeouts, or capability detection.
+failure - to exceptions at safe boundaries. It does not change valid wire bytes,
+parser grammar, timeouts, or capability detection.
 
 ## Expected behavior
 
-For each capability-dependent feature, the preferred path, every fallback
-step, strict promotion, diagnostics, caller overrides, misleading environment
-hints, and missing queries behave as described, and where presentation
-fidelity changes the logical result stays equivalent.
+For each capability-dependent feature, the preferred path, every fallback step,
+strict promotion, diagnostics, caller overrides, misleading environment hints,
+and missing queries behave as described, and where presentation fidelity changes
+the logical result stays equivalent.

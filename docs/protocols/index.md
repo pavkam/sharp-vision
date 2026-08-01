@@ -18,9 +18,9 @@ flowchart LR
     Encode --> BytesOut["Terminal bytes"]
 ```
 
-[Runtime protocol routing](runtime-routing.md#overview) owns the middle of
-this flow. The [coverage matrix](coverage-matrix.md#coverage) is the only
-support summary; parser recognition alone is not implementation. The
+[Runtime protocol routing](runtime-routing.md#overview) owns the middle of this
+flow. The [coverage matrix](coverage-matrix.md#coverage) is the only support
+summary; parser recognition alone is not implementation. The
 [terminal backend hierarchy](../architecture/terminal-backends.md#backend-hierarchy)
 composes these families as immutable VT, xterm, Kitty, and iTerm2 extension
 metadata without copying their wire implementations. The

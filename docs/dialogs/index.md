@@ -16,13 +16,12 @@ contracts as the surfaces your application builds itself.
 `Dialog<TResult>` derives directly from `Window`, so the dialog object you
 construct is the same object that is retained, drawn, made modal, and disposed.
 Each dialog's asynchronous helper publishes `Closing` and `Closed`, removes the
-dialog from its presentation host, disposes it, and only then settles the
-result task.
+dialog from its presentation host, disposes it, and only then settles the result
+task.
 
 You can also construct a dialog and mount it yourself as a retained modeless
 surface. In that mode a semantic action leaves the dialog mounted and raises
 `ResultSelected` instead of closing it, and `HasSelectedResult` and
 `SelectedResult` keep the latest selection. A modeless dialog leaves Escape to
-its routed ancestors rather than silently consuming it as a cancellation
-result. Dialogs do not introduce a second layout, input, or rendering
-framework.
+its routed ancestors rather than silently consuming it as a cancellation result.
+Dialogs do not introduce a second layout, input, or rendering framework.

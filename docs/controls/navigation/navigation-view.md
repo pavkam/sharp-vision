@@ -12,14 +12,14 @@ The view defaults to no border and the active theme's `NavigationView.normal`
 fill. That single continuous plane forms the sidebar boundary, rather than a
 frame around every navigation region. The inherited chrome properties remain
 open to caller overrides. Item rows render with transparent normal and hover
-backgrounds so the view keeps one continuous surface; pointer-over and
-selected rows use their matching theme states. Optional caller chrome follows
-the shared [chrome contract](../../concepts/styling.md#shared-chrome).
+backgrounds so the view keeps one continuous surface; pointer-over and selected
+rows use their matching theme states. Optional caller chrome follows the shared
+[chrome contract](../../concepts/styling.md#shared-chrome).
 
-Items, groups, and separators are managed through typed collections.
-Selection is flat across all `NavigationViewItem` entries in both the main
-and footer sections. Group headers participate in the current keyboard order
-but never become `SelectedItem`, and separators are skipped entirely.
+Items, groups, and separators are managed through typed collections. Selection
+is flat across all `NavigationViewItem` entries in both the main and footer
+sections. Group headers participate in the current keyboard order but never
+become `SelectedItem`, and separators are skipped entirely.
 
 ## API
 
@@ -36,23 +36,21 @@ but never become `SelectedItem`, and separators are skipped entirely.
 
 ## Behavior
 
-- `Header` (string?) is an optional title rendered bold at the top. It is
-  hidden when null or empty.
+- `Header` (string?) is an optional title rendered bold at the top. It is hidden
+  when null or empty.
 - `Items` (NavigationViewEntryCollection) is the typed main collection and
   accepts `NavigationViewItem`, `NavigationViewGroup`, and
   `NavigationViewSeparator`.
-- `FooterItems` (NavigationViewEntryCollection) holds the footer entries
-  pinned to the bottom, with the same typed overloads.
-- `SelectedItem` (NavigationViewItem?) is the currently selected item, or
-  null.
-- `SelectItem(NavigationViewItem)` selects an item this view owns without
-  moving keyboard focus. It rejects null and items owned by another
-  navigation view.
+- `FooterItems` (NavigationViewEntryCollection) holds the footer entries pinned
+  to the bottom, with the same typed overloads.
+- `SelectedItem` (NavigationViewItem?) is the currently selected item, or null.
+- `SelectItem(NavigationViewItem)` selects an item this view owns without moving
+  keyboard focus. It rejects null and items owned by another navigation view.
 - `SelectionChanged` fires after a committed selection change.
 
-The view is the single sidebar tab stop (`TabNavigation.None`); item and
-group faces never receive keyboard focus themselves. Up and Down arrows move
-the current entry across the available group headers and items while skipping
+The view is the single sidebar tab stop (`TabNavigation.None`); item and group
+faces never receive keyboard focus themselves. Up and Down arrows move the
+current entry across the available group headers and items while skipping
 separators. PageUp and PageDown move by as many entries as fit the committed
 viewport height, and they are handled even when the cursor cannot move any
 further, so the key never escapes to page an enclosing scrollable container.
@@ -64,23 +62,21 @@ action.
 
 ## NavigationViewItem
 
-Extends [`Pressable`](../pressable.md#overview). `Header` (string) is the
-label text, and `Glyph` (string?) is an optional prefix shown before the
-header. The item renders as `› Header` when selected or hovered and as
-`· Header` otherwise. Pointer or programmatic selection updates the owning
-`NavigationView`; the item itself stays non-focusable and outside the tab
-order.
+Extends [`Pressable`](../pressable.md#overview). `Header` (string) is the label
+text, and `Glyph` (string?) is an optional prefix shown before the header. The
+item renders as `› Header` when selected or hovered and as `· Header` otherwise.
+Pointer or programmatic selection updates the owning `NavigationView`; the item
+itself stays non-focusable and outside the tab order.
 
 ## NavigationViewGroup
 
 A collapsible labeled section. `Header` (string) is the group label, rendered
-with the code-owned expanded or collapsed disclosure glyph. `IsExpanded`
-(bool, default true) controls sub-item visibility. Sub-items are
-`NavigationViewItem` instances owned by the group's `Items` collection. Enter
-or Space on the current group toggles its expansion while the owning
-`NavigationView` keeps focus. Collapsing a group whose descendant is current
-moves the current state to the group header and repairs any now-hidden
-selection.
+with the code-owned expanded or collapsed disclosure glyph. `IsExpanded` (bool,
+default true) controls sub-item visibility. Sub-items are `NavigationViewItem`
+instances owned by the group's `Items` collection. Enter or Space on the current
+group toggles its expansion while the owning `NavigationView` keeps focus.
+Collapsing a group whose descendant is current moves the current state to the
+group header and repairs any now-hidden selection.
 
 ## NavigationViewSeparator
 
@@ -90,8 +86,8 @@ hit-testable.
 ## Code-owned glyphs
 
 Idle and current item markers, group disclosure markers, and navigation
-separators resolve from the code-owned navigation glyph defaults.
-`IdleMarker`, `CurrentMarker`, `CollapsedGlyph`, `ExpandedGlyph`, and
+separators resolve from the code-owned navigation glyph defaults. `IdleMarker`,
+`CurrentMarker`, `CollapsedGlyph`, `ExpandedGlyph`, and
 `NavigationViewSeparator.Glyph` provide validated local overrides.
 `ResetMarkers()`, `ResetGlyphs()`, and `ResetGlyph()` clear the corresponding
 item, group, and separator overrides.
@@ -118,18 +114,18 @@ nav.SelectionChanged += (_, _) =>
 ```
 
 Ampersands in item and group headers declare
-[access keys](../../concepts/access-keys.md#focus-and-semantic-actions). An
-item mnemonic focuses the view, makes that item current, and invokes and
-selects it. A group mnemonic focuses the view, makes the group current, and
-toggles its expansion.
+[access keys](../../concepts/access-keys.md#focus-and-semantic-actions). An item
+mnemonic focuses the view, makes that item current, and invokes and selects it.
+A group mnemonic focuses the view, makes the group current, and toggles its
+expansion.
 
 ## Expected behavior
 
-- The typed collections accept their documented entry types, and
-  programmatic selection accepts owned items while rejecting foreign ones.
-- The view keeps keyboard focus while navigating across group headers and
-  items, Enter and Space expand or collapse groups, and collapsing a group
-  repairs a now-hidden current entry or selection.
+- The typed collections accept their documented entry types, and programmatic
+  selection accepts owned items while rejecting foreign ones.
+- The view keeps keyboard focus while navigating across group headers and items,
+  Enter and Space expand or collapse groups, and collapsing a group repairs a
+  now-hidden current entry or selection.
 - Separators are non-interactive, footer items stay separated from the main
   section, and the header renders as documented.
 - Pointer selection works both directly and through grouped items, and

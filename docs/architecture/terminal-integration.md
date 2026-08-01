@@ -3,8 +3,8 @@
 ## Overview
 
 Terminal integration is one ordered runtime path that starts at an owned
-physical console connection and ends at typed input, retained UI state,
-rendered cells, and restored terminal modes. Application code enters through
+physical console connection and ends at typed input, retained UI state, rendered
+cells, and restored terminal modes. Application code enters through
 `SharpVision.ConsoleApplication`; it does not construct a session, transport,
 parser, renderer, or terminal-description provider by hand.
 
@@ -83,17 +83,16 @@ Evidence is applied from weakest to strongest:
 5. Explicit caller overrides.
 
 Environment names may suggest a backend identity, but they do not by themselves
-authorize arbitrary protocol output. Description capabilities authorize only
-the programs that were actually loaded, validated, and compiled. Query replies
-pass through the existing typed codecs before they may refine a feature.
-Explicit settings apply last, but they cannot inject raw escape strings.
+authorize arbitrary protocol output. Description capabilities authorize only the
+programs that were actually loaded, validated, and compiled. Query replies pass
+through the existing typed codecs before they may refine a feature. Explicit
+settings apply last, but they cannot inject raw escape strings.
 
 Each optional protocol is represented by a `Feature`, which carries a `Support`
-state and an `Origin`. Consumers call
-`Capabilities.Support(TerminalProtocol)` or inspect `Capabilities.Features`;
-they do not infer support from terminal names. The
-[coverage matrix](../protocols/coverage-matrix.md#coverage) is the sole summary
-of what the current code and tests prove.
+state and an `Origin`. Consumers call `Capabilities.Support(TerminalProtocol)`
+or inspect `Capabilities.Features`; they do not infer support from terminal
+names. The [coverage matrix](../protocols/coverage-matrix.md#coverage) is the
+sole summary of what the current code and tests prove.
 
 ## Protocol routing
 

@@ -2,8 +2,8 @@
 
 SharpVision layout runs in two passes: measure computes each control's desired
 size in terminal cells, and arrange commits its final rectangle. `Length.Auto`
-follows content, `Length.Cells(n)` requests a fixed cell count, percentages
-take a share of the available space, and stars divide the remainder. The
+follows content, `Length.Cells(n)` requests a fixed cell count, percentages take
+a share of the available space, and stars divide the remainder. The
 [layout contract](../concepts/layout.md#overview) owns the exact algorithms.
 
 ## Build a responsive shell
@@ -49,10 +49,10 @@ shell.Children.Add(details);
 ```
 
 `Dock` consumes edges in child order: `status` reserves the bottom row,
-`navigation` reserves 22 cells on the left, and the final `details` child
-fills the remainder because `LastChildFills` is `true`. `Padding` reserves
-space inside a control's border box, while `Margin` would reserve it outside.
-The [`Control` property guide](../controls/control.md#api) explains the shared
+`navigation` reserves 22 cells on the left, and the final `details` child fills
+the remainder because `LastChildFills` is `true`. `Padding` reserves space
+inside a control's border box, while `Margin` would reserve it outside. The
+[`Control` property guide](../controls/control.md#api) explains the shared
 sizing and alignment properties.
 
 ## Choose a layout control

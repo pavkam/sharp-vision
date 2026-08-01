@@ -13,8 +13,8 @@ rendering, and disposal behavior of that single-content role.
 Assigning or clearing `Content` goes through the complete `ContentControl`
 ownership transaction. Replacing content returns the detached previous control
 to the caller without disposing it; disposing the Prism disposes whatever
-content it holds at that moment, exactly once. Content is measured and
-arranged through the ordinary
+content it holds at that moment, exactly once. Content is measured and arranged
+through the ordinary
 [border-and-padding box model](../../concepts/layout.md#passes-and-rounding).
 
 ## API
@@ -25,20 +25,20 @@ arranged through the ordinary
 | `CycleLength` | `18` terminal cells       | Positive integer                           | Divisor    |
 | `Direction`   | `PrismDirection.Diagonal` | Defined `PrismDirection` value             | Axis       |
 
-`PrismDirection.Horizontal` derives the hue from the content-relative
-horizontal coordinate `x`, `Vertical` from `y`, and `Diagonal` from the checked
-sum `x + y`. All of these coordinates are relative to the Prism's
-`ContentBounds` — not to the frame, and not to the child's own origin.
+`PrismDirection.Horizontal` derives the hue from the content-relative horizontal
+coordinate `x`, `Vertical` from `y`, and `Diagonal` from the checked sum
+`x + y`. All of these coordinates are relative to the Prism's `ContentBounds` —
+not to the frame, and not to the child's own origin.
 
 An invalid `Phase`, `CycleLength`, or `Direction` value throws
 `ArgumentOutOfRangeException` before any state change, invalidation, or
 notification. For a valid assignment, lifetime and attached-dispatcher access
-are checked before the equivalence check. A changed value is committed,
-requests render invalidation, and then raises `PropertyChanged` exactly once
-for that property; an equivalent value is a no-op once the access checks pass.
-Effect changes never request measure or arrange, so the existing desired size
-and arranged bounds stay stable. Setting an effect property after disposal
-throws `ObjectDisposedException`, and mutating an attached control from off the
+are checked before the equivalence check. A changed value is committed, requests
+render invalidation, and then raises `PropertyChanged` exactly once for that
+property; an equivalent value is a no-op once the access checks pass. Effect
+changes never request measure or arrange, so the existing desired size and
+arranged bounds stay stable. Setting an effect property after disposal throws
+`ObjectDisposedException`, and mutating an attached control from off the
 dispatcher throws `InvalidOperationException`.
 
 ## Color calculation
@@ -68,9 +68,9 @@ The half-open normalized hue always lands in one of six sectors:
 
 The calculation is culture-independent. Floor-based modulo-one normalization
 wraps both negative and positive lead-relative coordinates, and the public
-property validation keeps `Phase` itself normalized. An owner that straddles
-the region boundary is always colored from its lead coordinate, even when that
-lead lies outside the requested effect region.
+property validation keeps `Phase` itself normalized. An owner that straddles the
+region boundary is always colored from its lead coordinate, even when that lead
+lies outside the requested effect region.
 
 ## Rendering and write provenance
 
@@ -82,9 +82,9 @@ content. The effect region is `ContentBounds` intersected with the child's
 arranged `Bounds`, and every cell in that region can discover its complete
 stored owner. With no content, the pass is a no-op.
 
-Which cells the effect recolors is decided by the frame's bounded internal
-write provenance, not by comparing cell values before and after. A discovered
-stored owner is eligible only when its latest mutation was performed by that
+Which cells the effect recolors is decided by the frame's bounded internal write
+provenance, not by comparing cell values before and after. A discovered stored
+owner is eligible only when its latest mutation was performed by that
 child-render callback. In practice this means:
 
 - identical overwrites count as writes;
@@ -96,13 +96,13 @@ child-render callback. In practice this means:
 - writes performed as a side effect of foreground selection fall after the
   closed draw window and are not picked up by that effect pass.
 
-A cell inside the requested region is enough to discover its owner; the owner
-is not clipped to the region. The selector uses the owner's absolute lead
+A cell inside the requested region is enough to discover its owner; the owner is
+not clipped to the region. The selector uses the owner's absolute lead
 coordinate for the hue calculation, so a selected wide owner is transformed
 atomically across its complete span even when its lead or continuation crosses
 the region boundary. The complete owner must lie inside the active canvas clip,
-including every ancestor clip, or it is skipped. Prism never creates or
-recolors half of a wide owner.
+including every ancestor clip, or it is skipped. Prism never creates or recolors
+half of a wide owner.
 
 The transformation replaces the foreground only. The stored grapheme bytes,
 background, attributes, hyperlink, underline kind, underline color, and
@@ -122,10 +122,10 @@ defined by the
 ### Popup layer
 
 Prism affects only the ordinary retained-child pass. An elevated `Popup`, or a
-promoted popup descendant, is omitted from that pass and rendered later
-through the root popup pass, above ordinary siblings — so its cells are never
-recolored by an ancestor Prism. Ordinary nested descendants remain part of the
-effect. The boundary is visual elevation, not ownership depth.
+promoted popup descendant, is omitted from that pass and rendered later through
+the root popup pass, above ordinary siblings — so its cells are never recolored
+by an ancestor Prism. Ordinary nested descendants remain part of the effect. The
+boundary is visual elevation, not ownership depth.
 
 ### Callback failures
 
@@ -140,13 +140,13 @@ completes.
 ## Animation and threading
 
 Prism owns no timer and advances no state during rendering. To animate the
-effect, update `Phase` yourself — typically from a dispatcher timer. The
-control caches its drawing and selection delegates, so steady-state rendering
-does not allocate a delegate per frame, and neither Prism nor the canvas keeps
-those callbacks after the synchronous render call returns.
+effect, update `Phase` yourself — typically from a dispatcher timer. The control
+caches its drawing and selection delegates, so steady-state rendering does not
+allocate a delegate per frame, and neither Prism nor the canvas keeps those
+callbacks after the synchronous render call returns.
 
-Detached construction and mutation follow the base control threading rules.
-Once attached, content and effect mutation are dispatcher-affine. Rendering is
+Detached construction and mutation follow the base control threading rules. Once
+attached, content and effect mutation are dispatcher-affine. Rendering is
 dispatcher-affine as well, rejects reentrancy, and uses only the semantic
 canvas; the control never emits terminal protocol bytes.
 
@@ -174,15 +174,14 @@ The automated evidence is split across focused Prism, canvas-primitive, and
 shared base-control suites:
 
 - The twelve `PrismTests` demonstrate the defaults; that non-finite,
-  out-of-range, non-positive, and unknown-enum values are rejected without
-  state or notification changes; ordered effect-property notifications,
-  render-only invalidation, and stable layout; the exact sector colors, phase
-  wrap, and all three directions; foreground-only preservation of rich cells
-  alongside Prism chrome and outside-cell isolation; underlay preservation for
-  null content and for a child covering only part of the region; wide-owner
-  atomicity; stored-space versus untouched-blank behavior; empty, tiny, and
-  border-consumed bounds; and ordinary `ContentControl` replacement, clearing,
-  and parentage.
+  out-of-range, non-positive, and unknown-enum values are rejected without state
+  or notification changes; ordered effect-property notifications, render-only
+  invalidation, and stable layout; the exact sector colors, phase wrap, and all
+  three directions; foreground-only preservation of rich cells alongside Prism
+  chrome and outside-cell isolation; underlay preservation for null content and
+  for a child covering only part of the region; wide-owner atomicity;
+  stored-space versus untouched-blank behavior; empty, tiny, and border-consumed
+  bounds; and ordinary `ContentControl` replacement, clearing, and parentage.
 - `CanvasPrimitiveTests` demonstrate row-major once-per-lead selection,
   non-foreground preservation, exclusion of clipped wide owners, null-callback
   and selector-failure behavior, stored spaces versus blanks, and actual-write

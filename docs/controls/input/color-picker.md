@@ -3,10 +3,10 @@
 ## Overview
 
 `ColorPicker` is a retained
-[`CompositeControl`](../composite-control.md#overview) that edits one stable
-RGB color independently of the terminal's output depth. Its constructor builds
-one permanent layout tree from `Grid`, `Stack`, `Dock`, `Overlay`, `Slider`,
-and focused color surfaces; measure and render never rebuild it.
+[`CompositeControl`](../composite-control.md#overview) that edits one stable RGB
+color independently of the terminal's output depth. Its constructor builds one
+permanent layout tree from `Grid`, `Stack`, `Dock`, `Overlay`, `Slider`, and
+focused color surfaces; measure and render never rebuild it.
 
 ## API
 
@@ -19,16 +19,15 @@ capability changes never rewrite the authored value:
 | `Monochrome`                       | RGB or `Color.Default`   | disabled default-only surface                               |
 
 Only the frame encoder projects RGB through the xterm-compatible cube, the
-grayscale ramp, or the ANSI reference colors. A presentation downgrade is
-lossy on the wire but never changes `Value`, so a later capability upgrade
+grayscale ramp, or the ANSI reference colors. A presentation downgrade is lossy
+on the wire but never changes `Value`, so a later capability upgrade
 automatically presents the original authored RGB.
 
-`EffectiveColorDepth` exposes the inherited tier. A changed direct assignment
-or user selection commits `Value`, synchronizes every retained part, and then
+`EffectiveColorDepth` exposes the inherited tier. A changed direct assignment or
+user selection commits `Value`, synchronizes every retained part, and then
 raises one `ValueChanged` event with immutable `ColorChangedEventArgs`.
-Capability changes alter the presentation without raising a value event.
-No-op changes raise nothing. All mutation of an attached control is
-dispatcher-affine.
+Capability changes alter the presentation without raising a value event. No-op
+changes raise nothing. All mutation of an attached control is dispatcher-affine.
 
 ## Layout and input
 
@@ -45,8 +44,8 @@ coordinates to both normalized axes. The hue and RGB parts use the complete
 [`Slider` input contract](slider.md#input-and-visual-states).
 
 Every color is drawn to the semantic canvas. The picker never emits escape
-sequences itself, and terminal output still passes through capability
-projection at the frame boundary.
+sequences itself, and terminal output still passes through capability projection
+at the frame boundary.
 
 ## Example
 
@@ -78,7 +77,7 @@ picker.ValueChanged += (_, change) =>
 presents as documented, and the authored RGB survives attachment and runtime
 capability changes. Events are raised in committed order, and the RGB and HSV
 parts stay synchronized. The preview renders its exact cells, the plane's
-keyboard and pointer mapping behave as described, and capture cancellation
-ends a drag without a stray commit. Focus and disabled states render
-correctly; zero, tiny, and resized bounds stay contained; and the dedicated
-showcase page exercises the interaction.
+keyboard and pointer mapping behave as described, and capture cancellation ends
+a drag without a stray commit. Focus and disabled states render correctly; zero,
+tiny, and resized bounds stay contained; and the dedicated showcase page
+exercises the interaction.

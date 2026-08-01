@@ -29,9 +29,9 @@ complete logical line and reports its full cell width.
 Assigning null to `Content`, or passing null to `Text.Escape`, throws
 `ArgumentNullException` before any mutation or parsing.
 
-An unknown enum value throws `ArgumentOutOfRangeException` before any
-observable state change. Mutating an attached control is dispatcher-affine and
-may throw the base control's documented `InvalidOperationException` or
+An unknown enum value throws `ArgumentOutOfRangeException` before any observable
+state change. Mutating an attached control is dispatcher-affine and may throw
+the base control's documented `InvalidOperationException` or
 `ObjectDisposedException`.
 
 Content, overflow, and ambiguous-width changes invalidate measure. Alignment
@@ -46,9 +46,9 @@ applied before markup parsing and grapheme layout.
 
 ## Markup grammar
 
-A tag is `<name>`, `<name=value>`, `</name>`, or the generic close `</>`.
-Names, named colors, and named values are case-insensitive. Each tag controls
-one facet, and stacking tags composes facets. `</name>` closes the nearest
+A tag is `<name>`, `<name=value>`, `</name>`, or the generic close `</>`. Names,
+named colors, and named values are case-insensitive. Each tag controls one
+facet, and stacking tags composes facets. `</name>` closes the nearest
 still-open tag with that exact name, so independent facets may overlap. `</>`
 closes the most recently opened tag.
 
@@ -68,9 +68,9 @@ closes the most recently opened tag.
 
 Bare `<u>` and valued `<u=...>` tags belong to a single underline facet: the
 most recently opened underline wins until it closes, and `double` maps to the
-semantic paired underline. Slow and rapid blink are likewise mutually
-exclusive, with the most recently opened blink tag winning. The other attribute
-flags simply combine.
+semantic paired underline. Slow and rapid blink are likewise mutually exclusive,
+with the most recently opened blink tag winning. The other attribute flags
+simply combine.
 
 Logical line breaks are literal LF, CR, or CRLF in the content. There is
 deliberately no `<br>` tag.
@@ -85,15 +85,14 @@ Color-valued tags accept:
   `accent`, and `muted`; or
 - RGB values `#rgb` and `#rrggbb`.
 
-Parsing keeps concrete colors attached to each style span. Theme-aware text
-uses its inherited resolved style unless markup supplies a local concrete
-override.
+Parsing keeps concrete colors attached to each style span. Theme-aware text uses
+its inherited resolved style unless markup supplies a local concrete override.
 
 ### Escaping and recovery
 
 The markup metacharacters in visible text are `<` and `\`. Write `\<` for a
-literal opening angle and `\\` for a literal backslash. `>` is literal outside
-a tag. `Text.Escape` performs the required escaping for dynamic visible text:
+literal opening angle and `\\` for a literal backslash. `>` is literal outside a
+tag. `Text.Escape` performs the required escaping for dynamic visible text:
 
 ```csharp
 var user = "2 < 3";
@@ -125,22 +124,21 @@ stays one cell and runtime repair uses the code-owned fallback.
 
 The parser produces one visible string plus internal, non-overlapping semantic
 style spans. `SharpVision.Text.Layout.Format` takes that visible string, a
-non-negative cell width, one `Overflow`, an `Alignment`, an explicit
-`Ambiguous` policy, and caller-owned `Span<Line>` storage. It returns the
-complete required line count even when the destination only has room for a
-prefix.
+non-negative cell width, one `Overflow`, an `Alignment`, an explicit `Ambiguous`
+policy, and caller-owned `Span<Line>` storage. It returns the complete required
+line count even when the destination only has room for a prefix.
 
 Each immutable `Line` records the visible-string UTF-16 `Offset` and `Length`,
-the rendered `Cells`, the alignment `Leading`, and `HasEllipsis`. Delimiters
-are excluded from the slices. Empty content and trailing logical newlines
-produce stable empty lines. Tabs advance to four-cell stops.
+the rendered `Cells`, the alignment `Leading`, and `HasEllipsis`. Delimiters are
+excluded from the slices. Empty content and trailing logical newlines produce
+stable empty lines. Tabs advance to four-cell stops.
 
 Segmentation follows the
 [Unicode geometry contract](../../concepts/unicode-cell-geometry.md#overview).
-Wrapping, clipping, ellipsis, and drawing never split a surrogate pair,
-extended grapheme cluster, or wide-cell owner. If a markup boundary falls
-inside a grapheme, the style active at the cluster's first UTF-16 code unit
-applies to the whole cluster.
+Wrapping, clipping, ellipsis, and drawing never split a surrogate pair, extended
+grapheme cluster, or wide-cell owner. If a markup boundary falls inside a
+grapheme, the style active at the cluster's first UTF-16 code unit applies to
+the whole cluster.
 
 Markup foreground, background, attributes, underline, underline color, and
 hyperlink overlay the control's resolved visual-state style. An explicit markup
@@ -154,10 +152,10 @@ parsing. While enabled, the marked grapheme receives the active `Theme.Hotkey`
 color plus an underline; disabled text keeps its resolved disabled foreground.
 
 `Text` reparses only when content changes, reuses its owned line array, and
-reformats only when the visible text, width, overflow, or ambiguous-width
-policy changes. An alignment-only change rewrites the leading-cell metrics
-without re-enumerating graphemes. No pooled or borrowed parser memory crosses a
-layout or frame boundary.
+reformats only when the visible text, width, overflow, or ambiguous-width policy
+changes. An alignment-only change rewrites the leading-cell metrics without
+re-enumerating graphemes. No pooled or borrowed parser memory crosses a layout
+or frame boundary.
 
 ## Example
 
@@ -176,26 +174,25 @@ status.Content = $"<info>User:</info> {Text.Escape(userName)}";
 
 ## Expected behavior
 
-Callers can rely on the full grammar behaving as documented: every tag and
-every concrete or named color form, named and generic closes, overlapping and
+Callers can rely on the full grammar behaving as documented: every tag and every
+concrete or named color form, named and generic closes, overlapping and
 auto-closed facets, complete-fragment recovery from malformed markup, invalid
-links, escaping round trips, and fixed-seed span tiling all behave as
-described. All overflow modes, invalid values, empty and multiline text, resize
-reflow, alignment, tabs, combining marks, variation selectors, ZWJ emoji, wide
-cells, invalid UTF-16, and both ambiguous-width policies are covered by the
-same guarantees.
+links, escaping round trips, and fixed-seed span tiling all behave as described.
+All overflow modes, invalid values, empty and multiline text, resize reflow,
+alignment, tabs, combining marks, variation selectors, ZWJ emoji, wide cells,
+invalid UTF-16, and both ambiguous-width policies are covered by the same
+guarantees.
 
-The rendering evidence includes exact semantic
-foreground/background/attributes, typed underline and underline color,
-theme-role resolution, OSC 8 metadata, the mutually exclusive blink precedence,
-markup boundaries inside graphemes, transparent background preservation,
-access-key foreground and disabled-state preservation, ellipsis ownership, and
-multi-frame terminal output. `TextSurfaceTests` additionally mounts the control
-beneath a real application and demonstrates combining and wide-grapheme
-ownership, terminal-visible markup styles, ellipsis-to-alignment mutation with
-stale-cell clearing, and transparent composition over an opaque parent surface.
-A mounted resize demonstrates Unicode-safe wrap reflow and removal of the
-obsolete row. The showcase owns one merged `Text` page with live markup,
-Unicode, overflow, hyperlink, and mutation specimens. A warmed, unchanged
-80-column Unicode measure/render loop includes a zero-allocation measured
-window.
+The rendering evidence includes exact semantic foreground/background/attributes,
+typed underline and underline color, theme-role resolution, OSC 8 metadata, the
+mutually exclusive blink precedence, markup boundaries inside graphemes,
+transparent background preservation, access-key foreground and disabled-state
+preservation, ellipsis ownership, and multi-frame terminal output.
+`TextSurfaceTests` additionally mounts the control beneath a real application
+and demonstrates combining and wide-grapheme ownership, terminal-visible markup
+styles, ellipsis-to-alignment mutation with stale-cell clearing, and transparent
+composition over an opaque parent surface. A mounted resize demonstrates
+Unicode-safe wrap reflow and removal of the obsolete row. The showcase owns one
+merged `Text` page with live markup, Unicode, overflow, hyperlink, and mutation
+specimens. A warmed, unchanged 80-column Unicode measure/render loop includes a
+zero-allocation measured window.

@@ -70,11 +70,11 @@ mutating and must stay dispatcher-affine while attached; a production property
 should also publish the component's documented property-change contract.
 
 Derive directly from `Control` and override `MeasureOverride`,
-`ArrangeOverride`, or `OnRenderContent` only when the public component
-genuinely owns new layout or cell-rendering behavior. Custom content rendering
-draws through the frame-owned `SharpVision.Terminal.Rendering.Canvas` and
-never writes terminal escape bytes. To place ordinary controls above that
-drawing, compose the drawing control and those controls in an
+`ArrangeOverride`, or `OnRenderContent` only when the public component genuinely
+owns new layout or cell-rendering behavior. Custom content rendering draws
+through the frame-owned `SharpVision.Terminal.Rendering.Canvas` and never writes
+terminal escape bytes. To place ordinary controls above that drawing, compose
+the drawing control and those controls in an
 [`Overlay`](../controls/layout/overlay.md#overview).
 
 ## Complete the component

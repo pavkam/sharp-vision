@@ -64,11 +64,10 @@ The backend uses quiet mode 2 and never opens a terminal-supplied path.
 
 `Writer.WriteEncoded` is a checked public convenience, not a way around
 validation. It accepts only query or transmit commands, decodes at most 3,072
-bytes,
-requires an exact canonical re-encoding, and validates the decoded query, RGBA,
-or complete PNG shape before mutating the destination. Complete raw transmission
-always validates payload shape before chunking; there is no public validation
-bypass.
+bytes, requires an exact canonical re-encoding, and validates the decoded query,
+RGBA, or complete PNG shape before mutating the destination. Complete raw
+transmission always validates payload shape before chunking; there is no public
+validation bypass.
 
 Placements carry the exact source pixel rectangle, destination cell width and
 height, stable image/placement pair, deterministic frame-order z-index, and

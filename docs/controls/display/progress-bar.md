@@ -21,8 +21,8 @@ focus, is excluded from hit testing, and owns no children.
 
 - `Minimum` and `Maximum` are finite `double` endpoints with
   `Minimum < Maximum`. They default to zero and one.
-- `Value` must be finite and is clamped into the inclusive range. It defaults
-  to zero.
+- `Value` must be finite and is clamped into the inclusive range. It defaults to
+  zero.
 - `IsIndeterminate` selects the deterministic unknown-duration presentation.
 - `Orientation` chooses horizontal left-to-right or vertical bottom-to-top
   filling, defaulting to `Horizontal`.
@@ -43,12 +43,12 @@ would make the range empty or reversed throws `ArgumentException` — in both
 cases before any mutation. Changing an endpoint clamps the current value in the
 same transaction, before any notification fires, so every notification observes
 coherent, already-clamped state: `PropertyChanged(Minimum)` or
-`PropertyChanged(Maximum)` fires first, followed by `PropertyChanged(Value)`
-and `ValueChanged` when the clamp actually changed the value.
+`PropertyChanged(Maximum)` fires first, followed by `PropertyChanged(Value)` and
+`ValueChanged` when the clamp actually changed the value.
 
 Determinate rendering normalizes `(Value - Minimum) / (Maximum - Minimum)` and
-fills `floor(normalized * axisCells)` complete cells; at the maximum, every
-cell is filled. The remaining cells use the code-owned empty-progress glyph.
+fills `floor(normalized * axisCells)` complete cells; at the maximum, every cell
+is filled. The remaining cells use the code-owned empty-progress glyph.
 Horizontal fill grows from the left, vertical fill from the bottom.
 
 Without a local override, all progress cells resolve from the code-owned glyph
@@ -59,14 +59,14 @@ with the code-owned indeterminate glyph.
 
 Without local color overrides, completed and indeterminate progress use the
 theme's accent color (`ThemeColor.Accent`), and incomplete track cells use the
-theme's muted color (`ThemeColor.Muted`). The per-part color properties
-override those fallbacks while preserving background and attributes.
+theme's muted color (`ThemeColor.Muted`). The per-part color properties override
+those fallbacks while preserving background and attributes.
 
 The intrinsic desired size is ten cells on the main axis and one cell on the
 cross axis, and both alignment axes default to `Stretch`. Rendering uses the
 resolved visual-state style, draws inside `ContentBounds`, and participates in
-shared intrinsic chrome. Zero content bounds draw nothing, and the control
-never handles pointer or keyboard input.
+shared intrinsic chrome. Zero content bounds draw nothing, and the control never
+handles pointer or keyboard input.
 
 ## Example
 
@@ -83,13 +83,13 @@ var bar = new ProgressBar
 
 ## Expected behavior
 
-Callers can rely on the following: values and endpoints are validated as
-finite, the range stays strictly increasing, and `Value` is always clamped
-into it; endpoint changes surface through the documented notification order;
-horizontal and vertical bars fill in the documented directions for empty,
-partial, and full values, including sub-cell resolution; indeterminate
-rendering is deterministic; zero and tiny bounds degrade safely; mutation,
-resize, and appearance inheritance behave as documented; the control stays out
-of hit testing; and the rendered output matches exact final cells.
-`ProgressBarSurfaceTests` demonstrates the terminal-visible determinate and
-indeterminate states through a mounted application.
+Callers can rely on the following: values and endpoints are validated as finite,
+the range stays strictly increasing, and `Value` is always clamped into it;
+endpoint changes surface through the documented notification order; horizontal
+and vertical bars fill in the documented directions for empty, partial, and full
+values, including sub-cell resolution; indeterminate rendering is deterministic;
+zero and tiny bounds degrade safely; mutation, resize, and appearance
+inheritance behave as documented; the control stays out of hit testing; and the
+rendered output matches exact final cells. `ProgressBarSurfaceTests`
+demonstrates the terminal-visible determinate and indeterminate states through a
+mounted application.

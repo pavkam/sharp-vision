@@ -2,10 +2,10 @@
 
 ## Overview
 
-A new control selects one of the existing semantic `ThemeRole` values, keeps
-its control-specific glyphs and internal part geometry in code, and exposes
-complete local appearance through the inherited `Control` API. It does not add
-selector syntax, a mutable style registry, or a control-type theme key.
+A new control selects one of the existing semantic `ThemeRole` values, keeps its
+control-specific glyphs and internal part geometry in code, and exposes complete
+local appearance through the inherited `Control` API. It does not add selector
+syntax, a mutable style registry, or a control-type theme key.
 
 Custom controls work with retained objects, direct CLR properties, and the
 global semantic theme. They never register selectors, type recipes, or theme
@@ -31,8 +31,8 @@ public sealed class CommandTile : Control
 The framework handles theme publication, state composition, caching, and
 invalidation on its own; a third-party developer writes no theme plumbing.
 
-The role covers the control's overall face, border, and shadow. When the
-control has an additional semantic part, expose a validated `ColorValue` or
+The role covers the control's overall face, border, and shadow. When the control
+has an additional semantic part, expose a validated `ColorValue` or
 `AttributeValue` property with a library-defined semantic default:
 
 ```csharp
@@ -67,12 +67,12 @@ tile.SetAppearance(
         border: new BorderSet(foreground: ThemeColor.ActiveBorder)));
 ```
 
-Complete values set by the derived control override the Theme, and derived
-state sets override both. `ActualFace`, `ActualBorder`, and `ActualShadow`
-stay public so callers can inspect the fully resolved values. Republish the
-raw chrome properties only when the custom control intentionally supports
-arbitrary caller-authored chrome; otherwise publish one complete Style value
-and keep partial StyleSet values for Theme composition.
+Complete values set by the derived control override the Theme, and derived state
+sets override both. `ActualFace`, `ActualBorder`, and `ActualShadow` stay public
+so callers can inspect the fully resolved values. Republish the raw chrome
+properties only when the custom control intentionally supports arbitrary
+caller-authored chrome; otherwise publish one complete Style value and keep
+partial StyleSet values for Theme composition.
 
 Implement `IsCheckedState`, `IsSelectedState`, or `IsIndeterminateState` only
 when the control genuinely owns that semantic fact. `Focused` means direct
@@ -101,7 +101,6 @@ rather than private resolver calls.
 
 1. The normal semantic profile renders correctly without any local repair
    values.
-2. Each state-specific contribution applies on its own and in combination
-   with the others.
-3. Caller-assigned local values remain authoritative across theme
-   replacement.
+2. Each state-specific contribution applies on its own and in combination with
+   the others.
+3. Caller-assigned local values remain authoritative across theme replacement.

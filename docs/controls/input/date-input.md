@@ -28,8 +28,8 @@ var dateInput = new DateInput();
 
 ## Expected behavior
 
-| Layer       | Observable evidence                                                                                                                |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Unit        | Defaults, bounds, the null policy, format and culture validation, segment editing, and event order behave as documented.           |
+| Layer       | Observable evidence                                                                                                                                   |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit        | Defaults, bounds, the null policy, format and culture validation, segment editing, and event order behave as documented.                              |
 | Surface     | The field and active segment render in their exact cells, the popup places correctly, focused and disabled states apply, and tiny bounds clip safely. |
-| Integration | Keyboard and pointer editing, Calendar selection, light dismiss, and focus restoration work end to end.                            |
+| Integration | Keyboard and pointer editing, Calendar selection, light dismiss, and focus restoration work end to end.                                               |

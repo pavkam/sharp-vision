@@ -18,8 +18,8 @@ extensions, capabilities, and graphics backend are separate boundaries:
 the emulator nor authorizes optional output. `TerminalBackend` is immutable
 family identity and owns no transport, no query tracker, and no mutable
 capability state. `ProtocolExtension` is composition metadata: the existing
-typed encoders, decoders, routers, services, and graphics implementations
-remain the only wire implementations. The
+typed encoders, decoders, routers, services, and graphics implementations remain
+the only wire implementations. The
 [discovery pipeline](discovery-pipeline.md#overview) produces the evidence used
 to resolve identity and refine capabilities.
 
@@ -51,11 +51,11 @@ classDiagram
 inherited extensions before local ones. Duplicate extension kinds fail
 construction. `VtBackend` supplies the conservative VT foundation.
 `XtermBackend` inherits that foundation and adds the xterm extension.
-`KittyBackend` and `ItermBackend` inherit both and each add only their own
-local extension. Backend classes identify existing protocol families in their
-ordered metadata; the independent protocol codecs implement the wire behavior,
-and backend classes neither reference nor duplicate escape-sequence encoding
-or parsing.
+`KittyBackend` and `ItermBackend` inherit both and each add only their own local
+extension. Backend classes identify existing protocol families in their ordered
+metadata; the independent protocol codecs implement the wire behavior, and
+backend classes neither reference nor duplicate escape-sequence encoding or
+parsing.
 
 `TerminalBackendResolver` consumes the immutable profile and environment
 snapshots through `DescriptionBackendEvidenceAdapter` and
@@ -103,9 +103,9 @@ It does not resolve terminal identity.
 
 Renderer construction fixes the graphics backend family for that application.
 Every frame still rechecks the current capability evidence, so a later
-revocation can remove or repair graphics without replacing the graphics
-backend. The [rendering pipeline](rendering-pipeline.md#overview) owns
-transaction ordering, cell fallback, invalidation, and cleanup. The
+revocation can remove or repair graphics without replacing the graphics backend.
+The [rendering pipeline](rendering-pipeline.md#overview) owns transaction
+ordering, cell fallback, invalidation, and cleanup. The
 [memory contract](memory-ownership.md#overview) owns backend state and borrowed
 buffers.
 
@@ -125,11 +125,11 @@ flowchart LR
 
 The host resolves one usable description before any terminal output. Options
 create the initial `TerminalContext`; `Session` and `Application` retain
-contexts with the same backend identity as capability evidence is published.
-The application creates its renderer lazily, after profile and resize
-publication. Shutdown awaits graphics cleanup, then disposes session-owned
-transport and resize state, then restores the platform terminal lease as
-specified by the [hosting contract](../concepts/hosting.md#portable-console-host).
+contexts with the same backend identity as capability evidence is published. The
+application creates its renderer lazily, after profile and resize publication.
+Shutdown awaits graphics cleanup, then disposes session-owned transport and
+resize state, then restores the platform terminal lease as specified by the
+[hosting contract](../concepts/hosting.md#portable-console-host).
 
 ## Failure and fallback
 
@@ -159,6 +159,6 @@ Readers can rely on the following, and the test suites keep each point true:
 - Capability refinement preserves the exact backend reference.
 - `GraphicsBackendSelector` requires authoritative evidence and route approval
   before it selects any graphics backend.
-- One cross-layer initialization path drives connection, description,
-  discovery, backend publication, optional-mode startup, rendering, and reverse
-  cleanup; no second identity-selection path exists.
+- One cross-layer initialization path drives connection, description, discovery,
+  backend publication, optional-mode startup, rendering, and reverse cleanup; no
+  second identity-selection path exists.

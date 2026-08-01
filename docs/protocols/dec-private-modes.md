@@ -31,10 +31,9 @@ responses, contradictory responses, and all failure exits.
 Session leases own exact enable and disable bytes captured before their first
 write. Description lifecycle modes use complete compiled pairs; typed focus,
 paste, mouse, and Kitty keyboard modes use their validated protocol encoders
-only with supported database, bounded-query, or explicit-override evidence.
-A default or environment-only origin is never enough for optional mode
-output. Every
-attempted enable is recorded before transport I/O, so a partial write,
+only with supported database, bounded-query, or explicit-override evidence. A
+default or environment-only origin is never enough for optional mode output.
+Every attempted enable is recorded before transport I/O, so a partial write,
 cancellation, or failed flush receives the exact conservative restoration
 attempt. Cleanup continues through later leases in reverse order and preserves
 the original exception.

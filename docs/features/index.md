@@ -47,11 +47,10 @@ reason—is in the [coverage table](../protocols/coverage-matrix.md#coverage).
 
 The public `Image` control reaches Kitty graphics, sixel, and iTerm2 multipart
 images through backend selection and shutdown that the `Application` owns.
-Detecting a generic OSC, DCS, or APC parser—or recognizing a terminal by
-name—is not enough to turn on raster output: iTerm2 requires an explicit 3.5+
-multipart override, and when a multiplexer is detected, graphics always go
-through its wrapping policy rather than falling back to unwrapped direct
-output.
+Detecting a generic OSC, DCS, or APC parser—or recognizing a terminal by name—is
+not enough to turn on raster output: iTerm2 requires an explicit 3.5+ multipart
+override, and when a multiplexer is detected, graphics always go through its
+wrapping policy rather than falling back to unwrapped direct output.
 
 Windows console hosting is implemented and unit-tested at its mode-flag and
 P/Invoke boundaries; the gap in real Windows-console validation is recorded in

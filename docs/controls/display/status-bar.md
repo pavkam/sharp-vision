@@ -40,8 +40,8 @@ when direct access to a related command makes sense. The item itself adds no
 activation, focus, or keyboard behavior.
 
 `StatusBarItem.Alignment` accepts `StatusBarItemAlignment.Left` or
-`StatusBarItemAlignment.Right` and defaults to `Left`. An undefined value
-throws `ArgumentOutOfRangeException` before any state changes.
+`StatusBarItemAlignment.Right` and defaults to `Left`. An undefined value throws
+`ArgumentOutOfRangeException` before any state changes.
 
 `LeftSeparator` and `RightSeparator` are nullable `Rune` values rendered before
 and after the retained content. Null, the default, reserves no cell. A non-null
@@ -67,12 +67,12 @@ assign any other `Rune` that passes the same validation.
 
 ## Defaults and appearance
 
-`StatusBar` defaults to a one-cell fixed height, stretched horizontal
-alignment, the active theme's `StatusBar.normal` background, and one cell of
-inter-item spacing. It stays hit-testable so ordinary routed pointer events can
-be observed, but it is not focusable and is not a Tab stop. `StatusBarItem` is
-also non-focusable by default. Interactive retained content keeps its own
-normal input and focus behavior.
+`StatusBar` defaults to a one-cell fixed height, stretched horizontal alignment,
+the active theme's `StatusBar.normal` background, and one cell of inter-item
+spacing. It stays hit-testable so ordinary routed pointer events can be
+observed, but it is not focusable and is not a Tab stop. `StatusBarItem` is also
+non-focusable by default. Interactive retained content keeps its own normal
+input and focus behavior.
 
 The inherited `Face` remains theme-owned, so the shared normal appearance
 supplies foreground and background and retained text follows ambient
@@ -97,17 +97,17 @@ application code can update or enumerate status items in one semantic order.
 The trailing group reserves its natural width before the leading group is
 arranged. When width is constrained, the rightmost trailing items keep their
 space first; earlier trailing items receive partial or zero-width slots, and
-leading items get only whatever cells remain. All child bounds stay contained
-by the bar. This keeps compact mode and position indicators stable while a
-longer descriptive message yields first. Collapsed items consume neither width
-nor spacing; hidden items retain their layout space under the shared visibility
+leading items get only whatever cells remain. All child bounds stay contained by
+the bar. This keeps compact mode and position indicators stable while a longer
+descriptive message yields first. Collapsed items consume neither width nor
+spacing; hidden items retain their layout space under the shared visibility
 contract.
 
-Within one item, the left separator receives the first available cell, the
-right separator receives the last distinct available cell, and retained content
-uses the cells between them. At a one-cell width with both separators
-configured, only the left separator renders; content and the right separator
-receive zero width.
+Within one item, the left separator receives the first available cell, the right
+separator receives the last distinct available cell, and retained content uses
+the cells between them. At a one-cell width with both separators configured,
+only the left separator renders; content and the right separator receive zero
+width.
 
 Measure returns the sum of visible item outer widths plus spacing, with the
 maximum visible outer height; the arithmetic saturates at `int.MaxValue`.

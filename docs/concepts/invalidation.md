@@ -2,11 +2,11 @@
 
 ## Overview
 
-SharpVision is a retained UI library. Application code changes control state;
-it does not repaint cells or call a public refresh method. Each successful
-mutation identifies the earliest UI phase whose previous result is no longer
-valid. SharpVision coalesces that work, propagates it to the root, and
-processes it on the owning dispatcher.
+SharpVision is a retained UI library. Application code changes control state; it
+does not repaint cells or call a public refresh method. Each successful mutation
+identifies the earliest UI phase whose previous result is no longer valid.
+SharpVision coalesces that work, propagates it to the root, and processes it on
+the owning dispatcher.
 
 This page covers control-tree invalidation and update scheduling. The
 [layout page](layout.md#overview) owns the measure and arrange algorithms, the
@@ -22,8 +22,8 @@ construction, damage comparison, terminal output, and commit.
 ## Phase dependency
 
 `InvalidationImpact` names the earliest phase affected by a control change.
-Later phases are included automatically, because each phase consumes the
-results of the one before it.
+Later phases are included automatically, because each phase consumes the results
+of the one before it.
 
 ```mermaid
 flowchart LR
@@ -49,9 +49,9 @@ when the desired size changed can leave stale geometry on screen.
 ## Propagation and coalescing
 
 Every control keeps track of its own pending phases. A new request expands to
-its complete dependency set and bubbles up the ownership parent chain.
-Repeating an already-pending request is a no-op, so several related mutations
-end up as one root transaction.
+its complete dependency set and bubbles up the ownership parent chain. Repeating
+an already-pending request is a no-op, so several related mutations end up as
+one root transaction.
 
 ```mermaid
 flowchart BT
@@ -68,16 +68,15 @@ global work list.
 
 During an active parent arrangement, a child that is remeasured for its final
 finite slot may request arrangement. That request stays local, because the
-parent commits the child's arrangement within the same transaction. Bubbling
-the identical request back through the arranging ancestor would schedule
-layout forever. All other measure, arrange, and render requests propagate
-normally.
+parent commits the child's arrangement within the same transaction. Bubbling the
+identical request back through the arranging ancestor would schedule layout
+forever. All other measure, arrange, and render requests propagate normally.
 
 ## Update cycle
 
 The dispatcher processes pending work after input, resize, capability changes,
-posted callbacks, and completed terminal writes. It also checks for pending
-work before raising `Idle`.
+posted callbacks, and completed terminal writes. It also checks for pending work
+before raising `Idle`.
 
 ```mermaid
 sequenceDiagram
@@ -111,9 +110,19 @@ are processed first, then the newest pending UI work. This preserves the
 runtime's single-writer guarantee without dropping mutations that happened
 during asynchronous output.
 
-There is no public `Refresh`, `Redraw`, or frame-pump API. Application authors
-mutate controls on the dispatcher. A custom control uses one of the protected
-seams — `SetProperty`, `NotifyPropertyChanged`,
+Applications should be able to request a repaint without owning a control
+subclass, and to force a full redraw when something outside SharpVision wrote to
+the terminal (the conventional Ctrl+L recovery).
+
+> [!IMPORTANT] **Implementation gap:** There is currently no public `Refresh`,
+> `Redraw`, or frame-pump API — invalidation is reachable only through the
+> protected control seams, and `Renderer.Invalidate()` is held privately by
+> `Application`. Application authors mutate controls on the dispatcher, and no
+> supported call exists for external terminal corruption. Issue #226 tracks a
+> public repaint and screen-refresh seam.
+
+Application authors mutate controls on the dispatcher. A custom control uses one
+of the protected seams — `SetProperty`, `NotifyPropertyChanged`,
 `Invalidate(InvalidationImpact)`, or `InvalidateVisualState()` — depending on
 whether it is committing a CLR property, publishing a coordinated mutation,
 requesting phase work directly, or changing resolved visual state.
@@ -122,8 +131,7 @@ requesting phase work directly, or changing resolved visual state.
 
 A phase clears its own pending flag when it starts. Work requested while that
 phase is running stays pending for a later transaction instead of recursively
-re-entering the phase. Direct measure, arrange, and render reentry is
-rejected.
+re-entering the phase. Direct measure, arrange, and render reentry is rejected.
 
 If measure, arrange, or control rendering throws, the failing phase is marked
 pending again before the exception leaves the transaction, and later dependent
@@ -132,20 +140,20 @@ session continues or stops; a failed pass is never recorded as a successful
 update.
 
 Terminal output has its own transactional boundary. The renderer commits its
-front frame only after the complete write and flush succeed. A partial write,
-a failed flush, a profile change, a size change, or an explicit terminal-state
-invalidation discards trust in that baseline and forces a complete redraw on
-the next frame. See
+front frame only after the complete write and flush succeed. A partial write, a
+failed flush, a profile change, a size change, or an explicit terminal-state
+invalidation discards trust in that baseline and forces a complete redraw on the
+next frame. See
 [terminal-state invalidation](../architecture/rendering-pipeline.md#commit-and-terminal-state-invalidation).
 
 ## Clean subtree reuse
 
-For a render-only update with unchanged layout, the intended pipeline reuses
-the last committed cells for render-clean subtrees and executes rendering only
-for dirty branches. Reuse is valid only while cell geometry is unchanged;
-after a measure or arrange, every affected branch renders at its newly
-committed coordinates. Unicode cell ownership rules still repair any copied
-boundary that would split a wide grapheme.
+For a render-only update with unchanged layout, the intended pipeline reuses the
+last committed cells for render-clean subtrees and executes rendering only for
+dirty branches. Reuse is valid only while cell geometry is unchanged; after a
+measure or arrange, every affected branch renders at its newly committed
+coordinates. Unicode cell ownership rules still repair any copied boundary that
+would split a wide grapheme.
 
 > [!IMPORTANT] **Implementation gap:** `Application` attaches the renderer's
 > committed frame to render-only target frames, and `Canvas.CopyFromPrevious`
@@ -182,7 +190,6 @@ correct pending work.
 | Failure recovery         | A failed phase remains pending; uncertain terminal state forces a complete redraw.                                     |
 
 Control, layout, application, and renderer verification covers exact phase
-selection, ancestor propagation, request coalescing, reentry rejection,
-failure retry, resize, in-flight writes, and full-redraw recovery.
-Render-clean subtree execution remains subject to the implementation gap
-above.
+selection, ancestor propagation, request coalescing, reentry rejection, failure
+retry, resize, in-flight writes, and full-redraw recovery. Render-clean subtree
+execution remains subject to the implementation gap above.

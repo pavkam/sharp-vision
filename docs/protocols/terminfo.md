@@ -67,11 +67,11 @@ a terminal name.
 accepted snapshot, key bindings, RGB component bits) and
 `SharpVision.Terminal.Terminfo.ProgramLimits` (capability string, compiled
 operations, interpreter stack, expansion output, string parameter) together own
-these provider limits. Default is the ordinary accepted
-limit; hard ceiling is the largest caller-set value. Values are counts, raw
-bytes, or UTF-8 bytes as stated. A caller value above a hard ceiling is rejected
-before lookup. A provider value above its applicable limit rejects that
-description before any command is compiled or emitted.
+these provider limits. Default is the ordinary accepted limit; hard ceiling is
+the largest caller-set value. Values are counts, raw bytes, or UTF-8 bytes as
+stated. A caller value above a hard ceiling is rejected before lookup. A
+provider value above its applicable limit rejects that description before any
+command is compiled or emitted.
 
 | Limit               | Default | Hard ceiling | Unit                                                                                 |
 | ------------------- | ------: | -----------: | ------------------------------------------------------------------------------------ |

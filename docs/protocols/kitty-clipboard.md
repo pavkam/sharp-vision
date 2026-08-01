@@ -37,16 +37,16 @@ every data buffer.
 Correlation is checked before validity. A transaction bound to an `id` ignores
 any packet whose `id` does not match its own — malformed or well-formed,
 including a malformed packet whose `id` could not be recovered before its
-structural error. A packet fails the transaction only when it carries a
-matching `id` and fails validation. A transaction with no `id` cannot tell
-unrelated traffic apart, so any malformed packet fails it.
+structural error. A packet fails the transaction only when it carries a matching
+`id` and fails validation. A transaction with no `id` cannot tell unrelated
+traffic apart, so any malformed packet fails it.
 
 ## Supported features
 
 SharpVision supports OSC 52 text plus typed OSC 5522 MIME reads and writes,
 aliases, permissions and errors, passwords and names, paste events, detection,
-and multiplexer correlation. Unsupported terminals fall back to OSC 52 text
-when safe, then to an unavailable result rather than an exception.
+and multiplexer correlation. Unsupported terminals fall back to OSC 52 text when
+safe, then to an unavailable result rather than an exception.
 
 > [!IMPORTANT] **Implementation gap:** The terminal protocol layer provides
 > bounded OSC 5522 packets, writers, transactions, capability evidence, and mode
@@ -62,9 +62,8 @@ when safe, then to an unavailable result rather than an exception.
 Chunking behavior is pinned at 0, 1, 4095, 4096, 4097, and 8192 bytes, along
 with reads, list, aliases, primary selection, credentials, permissions, every
 status, and terminators. The parser accepts every split point and rejects
-malformed metadata, Base64, or ordering before recovering. Cancellation,
-limits, binary data, and writer-to-parser-to-transaction integration are also
-covered.
+malformed metadata, Base64, or ordering before recovering. Cancellation, limits,
+binary data, and writer-to-parser-to-transaction integration are also covered.
 
 ## Sources
 

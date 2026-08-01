@@ -36,11 +36,10 @@ Title support is proven in one of two ways: a library-owned built-in OSC 2
 profile, or a complete, parameterless described `TS` prefix and `fsl` suffix.
 The described programs must prove non-empty paired output; they are emitted
 exactly as described and are never assumed to encode OSC 2. Bell support
-likewise requires `bel` to prove non-empty zero-parameter output. Database
-OSC 52 support additionally requires an executable `Ms` program with exactly
-two string parameters and non-empty representative output; when `Ms` is
-absent, has the wrong arity, or produces no output, clipboard calls stay
-byte-quiet.
+likewise requires `bel` to prove non-empty zero-parameter output. Database OSC
+52 support additionally requires an executable `Ms` program with exactly two
+string parameters and non-empty representative output; when `Ms` is absent, has
+the wrong arity, or produces no output, clipboard calls stay byte-quiet.
 
 `Clipboard.IsSupported` reports authoritative OSC 52 only. Kitty OSC 5522 is
 implemented at the protocol layer but is not reachable through this facade,
@@ -57,11 +56,11 @@ defines ordering and ownership.
 
 ## Inspect support
 
-`Application.TerminalProfile` is the complete immutable active description,
-and `Application.Capabilities` is its semantic capability snapshot. Both are
+`Application.TerminalProfile` is the complete immutable active description, and
+`Application.Capabilities` is its semantic capability snapshot. Both are
 detected and negotiated at startup unless the host supplies an explicit
-override. Prefer a typed service's `IsSupported` member when one exists for
-the operation, and use the
+override. Prefer a typed service's `IsSupported` member when one exists for the
+operation, and use the
 [protocol coverage matrix](../protocols/coverage-matrix.md#coverage) to
 distinguish implemented, observable, fallback-only, and unsupported protocol
 families.

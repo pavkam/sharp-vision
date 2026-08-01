@@ -47,8 +47,8 @@ enabled.StateChanged += (_, args) =>
 
 Properties commit before their change events run. `IsEnabled` participates in
 the inherited effective state, so disabling an ancestor also disables this
-button. See the [`CheckBox` event order](../controls/input/check-box.md#api)
-and the [`Control` inherited-state rules](../controls/control.md#api).
+button. See the [`CheckBox` event order](../controls/input/check-box.md#api) and
+the [`Control` inherited-state rules](../controls/control.md#api).
 
 ## Handle routed input
 
@@ -73,8 +73,8 @@ _ = AddHandler(Events.Key, (_, args) =>
 
 Preview travels from the root toward the target; bubble travels back from the
 target to the root. Marking `Handled` stops ordinary handlers later in the
-route. Focus, pointer capture, terminal-focus loss, and control availability
-are coordinated with the same route. The complete ordering is in
+route. Focus, pointer capture, terminal-focus loss, and control availability are
+coordinated with the same route. The complete ordering is in
 [input routing](../concepts/input-routing.md#route-construction), and
 [focus](../concepts/focus.md#overview) owns navigation and focus transfer.
 

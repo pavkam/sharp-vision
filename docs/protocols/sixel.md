@@ -40,11 +40,11 @@ every palette color.
 
 ## Renderer backend
 
-Sixel has no retained remote image identity. The backend
-requires measured cell-pixel geometry and maps each destination cell rectangle
-to its exact pixel boundaries. It does not invent a pixel size when metrics are
-missing. Each image is anchored by pane-local CUP, emitted after ordinary cell
-output, and followed by restoration of the frame's semantic cursor.
+Sixel has no retained remote image identity. The backend requires measured
+cell-pixel geometry and maps each destination cell rectangle to its exact pixel
+boundaries. It does not invent a pixel size when metrics are missing. Each image
+is anchored by pane-local CUP, emitted after ordinary cell output, and followed
+by restoration of the frame's semantic cursor.
 
 Because sixel pixels are non-retained, placement movement, removal, RGBA-to-PNG
 replacement, resize, invalidation, or cell-metric change forces complete cell

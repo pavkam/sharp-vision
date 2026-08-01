@@ -9,14 +9,14 @@ yourself at an explicit position with `Show`.
 
 ## API
 
-| Member                         | Default          | Description                                                       |
-| ------------------------------ | ---------------- | ----------------------------------------------------------------- |
-| `Items`                        | empty            | The typed collection of menu entries the menu manages.            |
-| `IsOpen`                       | `false`          | Reports the committed popup visibility. Read-only.                |
-| `Presentation`                 | retained `Popup` | The presentation control the owning screen uses to show the menu. |
+| Member                         | Default          | Description                                                        |
+| ------------------------------ | ---------------- | ------------------------------------------------------------------ |
+| `Items`                        | empty            | The typed collection of menu entries the menu manages.             |
+| `IsOpen`                       | `false`          | Reports the committed popup visibility. Read-only.                 |
+| `Presentation`                 | retained `Popup` | The presentation control the owning screen uses to show the menu.  |
 | `Opening`, `Closing`, `Closed` | no subscribers   | Lifecycle notifications raised in order around visibility changes. |
-| `Show(int row, int col)`       | —                | Opens the menu at a zero-based root-cell position while attached. |
-| `Close()`                      | —                | Closes the menu and clears its fixed origin; safe to call again.  |
+| `Show(int row, int col)`       | —                | Opens the menu at a zero-based root-cell position while attached.  |
+| `Close()`                      | —                | Closes the menu and clears its fixed origin; safe to call again.   |
 
 ## Ownership
 

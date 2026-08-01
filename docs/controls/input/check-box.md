@@ -35,8 +35,8 @@ Two-state activation cycles between `false` and `true`; three-state activation
 cycles `false → true → null → false`. Turning three-state mode off while the
 value is indeterminate commits `false` before any notifications are published.
 Space and primary-pointer activation share the same transition path. The
-disabled state wins over all interactive states, and focused or selected
-styling applies to the mark and content together as one semantic item.
+disabled state wins over all interactive states, and focused or selected styling
+applies to the mark and content together as one semantic item.
 
 ## Example
 

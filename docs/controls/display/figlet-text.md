@@ -24,12 +24,12 @@ ordinary border box first, and the transparent FIGlet cells draw on top.
 
 ## API
 
-| Property                       | Default                       | Purpose                                                                            |
-| ------------------------------ | ----------------------------- | ---------------------------------------------------------------------------------- |
-| `Content`                      | `string.Empty`                | The non-null source text rendered through the selected FIGfont.                    |
-| `Font`                         | Required constructor argument | The immutable parsed `FigletFont` to render with.                                  |
-| `Options`                      | `default`                     | Overrides the font's direction and its fitting or smushing layout bits.            |
-| Inherited `Face`, `ActualFace` | semantic role                 | Assign a complete local appearance, or inspect the fully resolved current one.     |
+| Property                       | Default                       | Purpose                                                                        |
+| ------------------------------ | ----------------------------- | ------------------------------------------------------------------------------ |
+| `Content`                      | `string.Empty`                | The non-null source text rendered through the selected FIGfont.                |
+| `Font`                         | Required constructor argument | The immutable parsed `FigletFont` to render with.                              |
+| `Options`                      | `default`                     | Overrides the font's direction and its fitting or smushing layout bits.        |
+| Inherited `Face`, `ActualFace` | semantic role                 | Assign a complete local appearance, or inspect the fully resolved current one. |
 
 ## Example
 
@@ -44,9 +44,9 @@ var title = new FigletText(FigletCatalog.Default.Load("Standard"))
 
 ## Expected behavior
 
-Callers can rely on the following: null `Content` or `Font` is rejected; the
-row cache is invalidated exactly when `Content`, `Font`, or `Options` changes;
-every catalog font renders, including scalar fallback, hardblank handling, both
+Callers can rely on the following: null `Content` or `Font` is rejected; the row
+cache is invalidated exactly when `Content`, `Font`, or `Options` changes; every
+catalog font renders, including scalar fallback, hardblank handling, both
 directions, and the fitting and smushing layout modes; oversized art clips and
 responds to resize as documented; style inheritance applies to generated cells;
 wide output Runes occupy their correct cells; and the rendered result matches

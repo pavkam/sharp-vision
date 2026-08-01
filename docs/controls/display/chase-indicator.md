@@ -9,15 +9,15 @@ hit testing.
 
 ## API
 
-| Member                                    | Default              | Description                                                 |
-| ----------------------------------------- | -------------------- | ----------------------------------------------------------- |
-| `Style`                                   | `null`               | Optional complete developer-authored `ChaseIndicatorStyle`. |
-| `ActualStyle`                             | Theme chase          | The resolved style; always present.                         |
+| Member                                    | Default              | Description                                                  |
+| ----------------------------------------- | -------------------- | ------------------------------------------------------------ |
+| `Style`                                   | `null`               | Optional complete developer-authored `ChaseIndicatorStyle`.  |
+| `ActualStyle`                             | Theme chase          | The resolved style; always present.                          |
 | `Circle`, `Diamond`, `Square`, directions | Presets              | Complete preset styles built on active/inactive glyph pairs. |
-| `Movement`                                | `Bounce`             | Selects the bounce, wrapping, or center-spread sequence.    |
-| `Length`, `Spacing`, `TrailLength`        | `5`, `0`, `2`        | Track geometry and how much history the trail retains.      |
+| `Movement`                                | `Bounce`             | Selects the bounce, wrapping, or center-spread sequence.     |
+| `Length`, `Spacing`, `TrailLength`        | `5`, `0`, `2`        | Track geometry and how much history the trail retains.       |
 | `HeadColor`, `TrailColor`, `TrackColor`   | Theme colors         | Optional semantic or concrete colors for each animated part. |
-| `FadeDuration`, `Interval`, `IsPlaying`   | 400 ms, 200 ms, true | Animation timing and playback.                              |
+| `FadeDuration`, `Interval`, `IsPlaying`   | 400 ms, 200 ms, true | Animation timing and playback.                               |
 
 A `ChaseIndicatorStyle` holds the validated one-cell active/inactive glyph pair
 together with a complete appearance profile. `ChaseIndicatorStyleSet` exists for

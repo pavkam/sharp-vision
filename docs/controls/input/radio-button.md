@@ -21,12 +21,11 @@ control. At most one owned member of an effective group is checked at a time.
 `RadioButtonStyle` bundles a `RadioButtonMarkStyle`, a complete set of
 `RadioButtonGlyphs`, and the full appearance profile. `RadioButtonStyleSet` is
 the partial type used to compose Theme files. Assigning `Style` replaces the
-whole Theme-owned presentation, and assigning `null` restores it.
-`ActualStyle` never returns null. The parentheses style reserves three cells
-and marks the selected interior with a bullet; the glyph style reserves one
-cell. The standard profile uses the Theme accent as its checked foreground,
-and a developer-authored checked appearance replaces that color for the
-complete mark.
+whole Theme-owned presentation, and assigning `null` restores it. `ActualStyle`
+never returns null. The parentheses style reserves three cells and marks the
+selected interior with a bullet; the glyph style reserves one cell. The standard
+profile uses the Theme accent as its checked foreground, and a
+developer-authored checked appearance replaces that color for the complete mark.
 
 RadioButton does not expose raw border, shadow, or state-appearance mutation.
 For third-party composition, inspect `ActualStyle`, `ActualBorder`, and
@@ -42,8 +41,8 @@ followed by SelectionChanged.
 
 Space and pointer both select. The arrow keys move focus and selection through
 eligible members, wrapping at the ends. Disabled, hidden, collapsed, and
-detached members are skipped. Disabled styling wins even when a retained
-member remains selected.
+detached members are skipped. Disabled styling wins even when a retained member
+remains selected.
 
 ## Example
 
@@ -66,10 +65,10 @@ var glyph = new RadioButton
 
 ## Expected behavior
 
-Group exclusivity holds through regrouping and reparenting, and events arrive
-in the documented order. Arrow keys move the selection while skipping disabled
+Group exclusivity holds through regrouping and reparenting, and events arrive in
+the documented order. Arrow keys move the selection while skipping disabled
 members, and unnamed and named scopes group exactly as described. Style
-validation and precedence hold, assigning `null` restores the Theme style, and
-a Theme replacement restyles members that have no local style. Both mark
-layouts render correctly, Unicode content stays owned by its member, and
-rendering produces the exact terminal rows.
+validation and precedence hold, assigning `null` restores the Theme style, and a
+Theme replacement restyles members that have no local style. Both mark layouts
+render correctly, Unicode content stays owned by its member, and rendering
+produces the exact terminal rows.

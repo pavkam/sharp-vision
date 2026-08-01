@@ -5,8 +5,8 @@
 Border and shadow are intrinsic `Control` appearance, not wrapper controls.
 Every control has one semantic `Border` and one semantic `Shadow`. Ordinary
 chrome is owned by themes and control styles; the raw authoring properties are
-protected so an unrelated descendant cannot silently change layout. The
-sealed control pipeline paints this shared chrome around `OnRenderContent`.
+protected so an unrelated descendant cannot silently change layout. The sealed
+control pipeline paints this shared chrome around `OnRenderContent`.
 
 Reach for an ordinary `Container` only when the chrome needs its own layout,
 styling, ownership, routed ancestry, focus, or lifetime node. There are no
@@ -21,11 +21,11 @@ border or shadow control types.
 | `SetAppearance(VisualState, AppearanceSet?)` | Protected  | Derived-control partial state contribution.                            |
 | `ActualBorder`, `ActualShadow`               | Public     | Always-present current resolved values for inspection and composition. |
 
-`Dock`, `Grid`, `Stack`, `Overlay`, `Window`, and `Popup` deliberately
-republish the complete Border and Shadow authoring surface, because
-caller-defined chrome is part of their public purpose. Specialized controls
-such as Button publish a complete Style instead. Third-party controls may
-likewise republish only the chrome their layout contract supports.
+`Dock`, `Grid`, `Stack`, `Overlay`, `Window`, and `Popup` deliberately republish
+the complete Border and Shadow authoring surface, because caller-defined chrome
+is part of their public purpose. Specialized controls such as Button publish a
+complete Style instead. Third-party controls may likewise republish only the
+chrome their layout contract supports.
 
 After a control is attached, these assignments must happen on the owning
 dispatcher. Changing which border sides are enabled affects measure, because
@@ -45,16 +45,14 @@ contribution used by themes and states.
 | `Background` | `ColorValue`       | `ColorValue?`       | Independent border-cell background channel.                      |
 | `Attributes` | `AttributeValue`   | `AttributeValue?`   | Terminal attributes or semantic decoration.                      |
 
-`BorderGlyphStyle` provides the `Light`, `Heavy`, `Paired`, `Rounded`,
-`Ascii`, `Solid`, `HalfBlock`, `LightShade`, `MediumShade`, and `DarkShade`
-families. A caller-created family validates every rune as printable and
-exactly one cell wide. Partial edges reserve and draw only the physical sides
-they select.
+`BorderGlyphStyle` provides the `Light`, `Heavy`, `Paired`, `Rounded`, `Ascii`,
+`Solid`, `HalfBlock`, `LightShade`, `MediumShade`, and `DarkShade` families. A
+caller-created family validates every rune as printable and exactly one cell
+wide. Partial edges reserve and draw only the physical sides they select.
 
 ## Shadow API
 
-`Shadow` is a complete value; `ShadowSet` overlays only the members it
-supplies.
+`Shadow` is a complete value; `ShadowSet` overlays only the members it supplies.
 
 | Member       | `Shadow` type    | `ShadowSet` type  | Description                                                                        |
 | ------------ | ---------------- | ----------------- | ---------------------------------------------------------------------------------- |
@@ -74,8 +72,8 @@ supplies.
 
 Shadow overflow is clipped by the owning presentation boundary and never
 replaces cells that belong to the control's own frame. When a footprint is
-unsupported or clipped, the shadow degrades to the visible intersection;
-control code never emits terminal bytes.
+unsupported or clipped, the shadow degrades to the visible intersection; control
+code never emits terminal bytes.
 
 ## Resolution and rendering
 
@@ -91,8 +89,8 @@ For chrome specifically:
    overlay the border.
 
 The border background is independent from the face background. Changing a
-hovered face does not recolor border-cell backgrounds unless the
-corresponding `BorderSet` also supplies `Background`.
+hovered face does not recolor border-cell backgrounds unless the corresponding
+`BorderSet` also supplies `Background`.
 
 ## Example
 
@@ -116,8 +114,8 @@ var card = new Stack
 };
 ```
 
-On a control that republishes chrome, assigning either complete value makes
-it local and authoritative. Call `ResetBorder()` or `ResetShadow()` to return
+On a control that republishes chrome, assigning either complete value makes it
+local and authoritative. Call `ResetBorder()` or `ResetShadow()` to return
 ownership to the semantic theme.
 
 ## Expected behavior
@@ -128,8 +126,8 @@ ownership to the semantic theme.
 | Surface     | Exact border edges, corners, body backdrop, clipping, shadow modes, signed offsets, and Unicode cell ownership.   |
 | Integration | Theme publication and visual-state changes through a mounted control without private render calls.                |
 
-- Chrome behaves consistently with no border and no shadow, border only,
-  shadow only, and both combined.
+- Chrome behaves consistently with no border and no shadow, border only, shadow
+  only, and both combined.
 - Each individual border side works on its own, and tiny rectangles where
   corners compete resolve without overlap errors.
 - Positive and negative shadow offsets clip correctly at every edge.

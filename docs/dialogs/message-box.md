@@ -3,9 +3,9 @@
 ## Overview
 
 `MessageBox` lives in `SharpVision.Dialogs` and is a retained, measured
-[`Window`](../controls/windows/window.md#overview) specialization for short
-user decisions. The MessageBox object itself renders the title, the
-grapheme-safe wrapped message, the centered action row, and the
+[`Window`](../controls/windows/window.md#overview) specialization for short user
+decisions. The MessageBox object itself renders the title, the grapheme-safe
+wrapped message, the centered action row, and the
 [modal presentation](../concepts/modality.md#popup-and-window-presentations)
 when shown asynchronously; there is no nested proxy Window.
 
@@ -60,45 +60,42 @@ outermost fallback container. In a hosted application the helper adds one
 temporary MessageBox to the Screen's private presentation slot, so a bounded
 card, pane, or showcase stage can identify ownership without constraining the
 modal surface or exposing framework children. Outside a Screen, an explicit or
-outermost container is still a supported host. The helper enters a Window
-modal presentation with outside interaction ignored. On normal completion it
-publishes `Closing` and `Closed`, removes and disposes the MessageBox, and
-then settles the returned task. Calls are dispatcher-affine.
+outermost container is still a supported host. The helper enters a Window modal
+presentation with outside interaction ignored. On normal completion it publishes
+`Closing` and `Closed`, removes and disposes the MessageBox, and then settles
+the returned task. Calls are dispatcher-affine.
 
-A directly mounted MessageBox is modeless. Activating a button with the
-keyboard or pointer updates `SelectedResult`, sets `HasSelectedResult`, and
-raises `ResultSelected` without removing or disposing the surface. In this
-mode the MessageBox leaves Escape unhandled so an ancestor can apply its own
-policy.
+A directly mounted MessageBox is modeless. Activating a button with the keyboard
+or pointer updates `SelectedResult`, sets `HasSelectedResult`, and raises
+`ResultSelected` without removing or disposing the surface. In this mode the
+MessageBox leaves Escape unhandled so an ancestor can apply its own policy.
 
 ## Interaction
 
 The inherited Window uses the dialog defaults: a paired frame, a centered
-header, fixed placement, a leading close control, and the Escape-close
-fallback.
+header, fixed placement, a leading close control, and the Escape-close fallback.
 
-The window sizes itself from its title, wrapped message, and button labels.
-Its content is a two-row grid: the top row is an intrinsic message area whose
-centered, wrapped text begins two empty interior rows below the title edge,
-and the bottom row is an intrinsic action row separated by three cells. Moving
-the Window therefore only adds placement offsets; its measured height does not
-change. Message text is measured against the application host's available
-width and wraps without a hard-coded box width. The window keeps a
-32-by-8-cell minimum footprint for consistent dialog proportions and is
-centered on both axes across that host.
+The window sizes itself from its title, wrapped message, and button labels. Its
+content is a two-row grid: the top row is an intrinsic message area whose
+centered, wrapped text begins two empty interior rows below the title edge, and
+the bottom row is an intrinsic action row separated by three cells. Moving the
+Window therefore only adds placement offsets; its measured height does not
+change. Message text is measured against the application host's available width
+and wraps without a hard-coded box width. The window keeps a 32-by-8-cell
+minimum footprint for consistent dialog proportions and is centered on both axes
+across that host.
 
 The button group is centered horizontally and its buttons share the widest
 label's width. Captions use the Button default centered text alignment, and
-dialog composition does not select a Button kind. `ButtonStyle` overrides
-face, border, shadow, and padding for every generated action, while `null`
-follows the active Theme. Assigning it after construction updates every
-retained button coherently and remeasures when padding or chrome changes.
-`ShowAsync` accepts the same style without exposing the underlying Button
-instances.
+dialog composition does not select a Button kind. `ButtonStyle` overrides face,
+border, shadow, and padding for every generated action, while `null` follows the
+active Theme. Assigning it after construction updates every retained button
+coherently and remeasures when padding or chrome changes. `ShowAsync` accepts
+the same style without exposing the underlying Button instances.
 
-Focus enters the first affirmative button, Tab stays inside the modal plane,
-and pointer, keyboard, text, paste, and wheel input outside the dialog is
-consumed by the shared modality manager.
+Focus enters the first affirmative button, Tab stays inside the modal plane, and
+pointer, keyboard, text, paste, and wheel input outside the dialog is consumed
+by the shared modality manager.
 
 Generated actions declare the conventional `&OK`, `&Cancel`, `&Yes`, and `&No`
 [access keys](../concepts/access-keys.md#focus-and-semantic-actions). Message

@@ -2,8 +2,8 @@
 
 ## Overview
 
-`DateTimeInput` combines date and time segment editing with an optional
-Calendar popup.
+`DateTimeInput` combines date and time segment editing with an optional Calendar
+popup.
 
 The time portion supports `TimeStep`, a positive whole-minute increment that
 Up/Down applies while the minute segment is active. The embedded calendar
@@ -34,8 +34,8 @@ var dateTimeInput = new DateTimeInput { TimeStep = TimeSpan.FromMinutes(15) };
 
 ## Expected behavior
 
-| Layer       | Observable evidence                                                                                                                  |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Unit        | Defaults, bounds, culture, the null policy, the time step, glyph validation, segment edits, and event order behave as documented.    |
-| Surface     | Date and time formats, the active segment, the popup, focus, the disabled state, and tiny clipping render correctly.                 |
-| Integration | Keyboard and pointer editing, Calendar selection, light dismiss, and focus restoration work end to end.                              |
+| Layer       | Observable evidence                                                                                                               |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Unit        | Defaults, bounds, culture, the null policy, the time step, glyph validation, segment edits, and event order behave as documented. |
+| Surface     | Date and time formats, the active segment, the popup, focus, the disabled state, and tiny clipping render correctly.              |
+| Integration | Keyboard and pointer editing, Calendar selection, light dismiss, and focus restoration work end to end.                           |

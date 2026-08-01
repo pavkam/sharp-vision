@@ -2,9 +2,9 @@
 
 ## Overview
 
-`Stack` arranges managed children one after another on a vertical or
-horizontal axis. Child order is also the render order, the navigation order,
-and the default z-order.
+`Stack` arranges managed children one after another on a vertical or horizontal
+axis. Child order is also the render order, the navigation order, and the
+default z-order.
 
 ## API
 
@@ -17,16 +17,16 @@ and the default z-order.
 
 ## Behavior
 
-- `Children` rejects nulls, duplicates, cycles, and controls that already have
-  a parent.
+- `Children` rejects nulls, duplicates, cycles, and controls that already have a
+  parent.
 - `Orientation` defaults to vertical and accepts vertical or horizontal.
 - `Spacing` defaults to zero and is a non-negative cell count inserted between
-  non-collapsed children. Hidden children still participate; collapsed
-  children consume neither a track nor adjacent spacing.
+  non-collapsed children. Hidden children still participate; collapsed children
+  consume neither a track nor adjacent spacing.
 - `Reverse` defaults to `false`. Setting it reverses geometry, rendering, and
-  default focus navigation consistently, without reparenting any child.
-  Elevated popup descendants follow that same order, so reversing the stack
-  also reverses popup drawing and hit priority.
+  default focus navigation consistently, without reparenting any child. Elevated
+  popup descendants follow that same order, so reversing the stack also reverses
+  popup drawing and hit priority.
 
 Along the stack axis, automatic children receive their intrinsic space and
 proportional children divide whatever arranged space remains. Percentages
@@ -55,13 +55,13 @@ actions.Children.Add(cancelAction);
 Layout is deterministic for both orientations and for any mix of fixed,
 percentage, automatic, and proportional children, with spacing and `Reverse`
 applied consistently. Collapsed children are skipped, alignment follows the
-cross-axis contract, and zero or tiny sizes never break containment.
-Overflow, resize, managed ownership, navigation order, reversed popup drawing
-and hit priority, Unicode measurement, and the exact committed bounds and
-cells are all observable guarantees.
+cross-axis contract, and zero or tiny sizes never break containment. Overflow,
+resize, managed ownership, navigation order, reversed popup drawing and hit
+priority, Unicode measurement, and the exact committed bounds and cells are all
+observable guarantees.
 
 Mounted cross-layer coverage in
 [`StackSurfaceTests`](../../../tests/SharpVision.Tests/Controls/Layout/StackSurfaceTests.cs)
-demonstrates exact mixed-track cells with resize reflow, reversed and
-collapsed visual order with a real pointer target, and intrinsic wheel
-scrolling with Unicode continuation ownership and offset repair.
+demonstrates exact mixed-track cells with resize reflow, reversed and collapsed
+visual order with a real pointer target, and intrinsic wheel scrolling with
+Unicode continuation ownership and offset repair.

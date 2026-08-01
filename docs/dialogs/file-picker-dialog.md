@@ -13,8 +13,8 @@ only and never appear in accepted results.
 The picker does not create, rename, delete, or save files, and it does not
 select directories. When the user needs to choose a path for a later write, use
 [`SaveFileDialog`](save-file-dialog.md#overview) instead. Picking a directory
-would need its own result and validation contract, so there is no directory
-mode here.
+would need its own result and validation contract, so there is no directory mode
+here.
 
 ## API
 
@@ -27,10 +27,10 @@ Matching is ordinal and case-insensitive on every platform. Patterns apply only
 to file basenames; directories always stay visible so the user can navigate.
 
 The constructor throws before the filter is created when the name is null or
-blank, the pattern collection is null or empty, any pattern is null or blank,
-a pattern is rooted, or a pattern contains a directory separator.
-`FilePickerFilter.AllFiles` is the canonical `All files` filter with the
-pattern `*`.
+blank, the pattern collection is null or empty, any pattern is null or blank, a
+pattern is rooted, or a pattern contains a directory separator.
+`FilePickerFilter.AllFiles` is the canonical `All files` filter with the pattern
+`*`.
 
 ### FilePickerOptions
 
@@ -44,17 +44,17 @@ pattern `*`.
 | `Filters`          | `[FilePickerFilter.AllFiles]`                    | Copies a non-null, non-empty list without null entries.               |
 | `FilterIndex`      | `0`                                              | Must remain inside `Filters`; replacing Filters cannot invalidate it. |
 
-Each setter validates its value before storing it. `FilePickerDialog` copies
-the complete options value during construction, so changing an options object
+Each setter validates its value before storing it. `FilePickerDialog` copies the
+complete options value during construction, so changing an options object
 afterwards never affects a dialog that is already showing.
 
 ### FilePickerResult
 
-`Accepted` tells you whether the user chose Open rather than Cancel, Escape,
-or the frame close control. `Paths` is a read-only snapshot, owned by the
-result, of fully qualified canonical file paths in stable display order.
-`SelectedPath` returns the first path, or null when there is none. A cancelled
-result has `Accepted == false`, an empty `Paths`, and a null `SelectedPath`.
+`Accepted` tells you whether the user chose Open rather than Cancel, Escape, or
+the frame close control. `Paths` is a read-only snapshot, owned by the result,
+of fully qualified canonical file paths in stable display order. `SelectedPath`
+returns the first path, or null when there is none. A cancelled result has
+`Accepted == false`, an empty `Paths`, and a null `SelectedPath`.
 
 ### FilePickerDialog state
 
@@ -71,8 +71,8 @@ exposing any private controls.
 non-null, undisposed, attached owner and must be called on the owner's
 dispatcher. Passing a container as the owner makes that container the explicit
 host; any other owner uses its owning Screen's private presentation slot.
-Outside a hosted Screen, the outermost container serves as the fallback host,
-so inserting a hosted dialog never rearranges a nested form layout. The helper
+Outside a hosted Screen, the outermost container serves as the fallback host, so
+inserting a hosted dialog never rearranges a nested form layout. The helper
 attaches one temporary picker directly to that host, presents the same object
 through `ShowModal(OutsideInteraction.Ignore, initialFocus)`, and returns a
 `Task<FilePickerResult>`.
@@ -90,45 +90,44 @@ it starts a fresh load from the last committed directory.
 
 ## Layout and appearance
 
-The dialog is a direct Window child of the presentation Overlay. It requests
-80% of the host's width and 80% of its height, and clamps its width to at most
-96 columns. Its maximum height is 19 chrome rows plus `MaxVisibleRows`, which
-makes the default maximum 39 rows. There is no hard minimum width or height:
-below the caps, both dimensions stay proportional. File dialogs use fixed
-dialog placement, so the presentation Overlay centers them without title
-dragging. Window containment keeps the complete border box inside the host
-after a resize, including tiny hosts.
+The dialog is a direct Window child of the presentation Overlay. It requests 80%
+of the host's width and 80% of its height, and clamps its width to at most 96
+columns. Its maximum height is 19 chrome rows plus `MaxVisibleRows`, which makes
+the default maximum 39 rows. There is no hard minimum width or height: below the
+caps, both dimensions stay proportional. File dialogs use fixed dialog
+placement, so the presentation Overlay centers them without title dragging.
+Window containment keeps the complete border box inside the host after a resize,
+including tiny hosts.
 
 One padded Grid uses a single explicit star column, so every row reaches the
 trailing content edge. The grid owns five rows:
 
-1. A bordered parent-directory Button, exactly three cells wide with `↑` in
-   its middle cell, next to a star-sized editable directory path without
-   visible scrollbars.
+1. A bordered parent-directory Button, exactly three cells wide with `↑` in its
+   middle cell, next to a star-sized editable directory path without visible
+   scrollbars.
 2. A star-sized bordered ListView with automatic vertical scrolling. It grows
-   into the available height until its content reaches `MaxVisibleRows`; the
-   two border rows do not count toward that limit.
+   into the available height until its content reaches `MaxVisibleRows`; the two
+   border rows do not count toward that limit.
 3. Ellipsized folder and file counts immediately below the ListView.
 4. The Show hidden CheckBox, above the filter.
 5. A two-row footer with a borderless one-row filter ComboBox at the leading
    edge, followed by naturally sized Open and Cancel actions in the default
    Button appearance.
 
-The Window supplies the outer frame; dialog composition does not select a
-Button kind or override action borders, faces, or shadows. Directory rows use
-a single-cell `▸` prefix and a trailing platform separator, and file rows use
-a single-cell `·` prefix. Filenames are markup-escaped and ellipsized.
-ListView focus, current, selected, hovered, and disabled cells use the shared
-semantic theme roles; the picker assigns no RGB colors and emits no terminal
-bytes.
+The Window supplies the outer frame; dialog composition does not select a Button
+kind or override action borders, faces, or shadows. Directory rows use a
+single-cell `▸` prefix and a trailing platform separator, and file rows use a
+single-cell `·` prefix. Filenames are markup-escaped and ellipsized. ListView
+focus, current, selected, hovered, and disabled cells use the shared semantic
+theme roles; the picker assigns no RGB colors and emits no terminal bytes.
 
 ## Enumeration and ordering
 
 Enumeration runs away from the UI dispatcher and returns only the directory's
 immediate children. Each request owns a cancellation token and an increasing
 generation number. When a request completes, it posts an immutable entry
-snapshot to the dispatcher; completions that are cancelled, stale, detached,
-or disposed can no longer touch any control.
+snapshot to the dispatcher; completions that are cancelled, stale, detached, or
+disposed can no longer touch any control.
 
 Every committed snapshot is ordered directories first, then by name using
 case-insensitive ordinal comparison with an ordinal tie-breaker. The dialog
@@ -142,29 +141,34 @@ Directories always sort before files. Within each group, entries sort by
 ordinal-ignore-case name, then by ordinal name as a deterministic tie-breaker.
 Filters remove only files. An entry counts as hidden when its basename starts
 with `.` or its attributes include `FileAttributes.Hidden`. Symbolic links
-follow their reported entry attributes, and because enumeration never
-recurses, link cycles cannot create traversal cycles.
+follow their reported entry attributes, and because enumeration never recurses,
+link cycles cannot create traversal cycles.
 
 ## Interaction
 
 - When modality begins, focus starts in the location input. After the first
-  successful load, focus moves to the ListView if the location input still
-  owns it.
+  successful load, focus moves to the ListView if the location input still owns
+  it.
 - The bordered `↑` Button, and Backspace pressed in the ListView, navigate to
   the parent directory. The Button disables at a root.
 - Pressing Enter in the location input loads that text's canonical directory.
-- Invoking a directory with the keyboard or the primary pointer navigates
-  into it.
+- Invoking a directory with the keyboard or the primary pointer navigates into
+  it.
 - ListView selection follows the existing single, Control-toggle, and
-  Shift-range semantics. Directory rows can become current or selected
-  visually, but `SelectedPaths` filters them out.
-- Invoking a file with the primary pointer selects it without dismissing the
-  dialog. Pressing Enter on a file accepts the current file selection. Open is
-  enabled only while at least one file is selected.
-- Changing the filter or the Show hidden toggle starts a replacement load.
-  When it succeeds, the selection is remapped by canonical path: entries still
-  present stay selected, while filtered or removed entries leave the
-  selection. When it fails, the previous rows and selection stay in place.
+  Shift-range semantics. Directory rows can become current or selected visually,
+  but `SelectedPaths` filters them out.
+- Invoking a file accepts the current file selection, whether the invocation
+  came from the pointer or from Enter. Open is enabled only while at least one
+  file is selected.
+
+  > [!IMPORTANT] **Implementation gap:** Pointer invocation currently only
+  > selects the file without dismissing the dialog; only keyboard invocation
+  > accepts. Issue #227 tracks pointer acceptance.
+
+- Changing the filter or the Show hidden toggle starts a replacement load. When
+  it succeeds, the selection is remapped by canonical path: entries still
+  present stay selected, while filtered or removed entries leave the selection.
+  When it fails, the previous rows and selection stay in place.
 - Tab and Shift+Tab stay inside the modal Window. Pointer and wheel input
   outside the dialog is consumed without activating the background.
 
@@ -177,10 +181,10 @@ successful directory, rows, and selection stay committed. A file can still
 disappear after a snapshot, so opening a returned path may fail; the result
 never claims a lease on the file.
 
-The attached tree, properties, selection, events, layout, rendering, and
-result completion are all dispatcher-affine. Filesystem work never calls into
-controls, dispatcher callbacks run outside filesystem locks, and no picker
-callback emits ANSI, CSI, OSC, or any other terminal string.
+The attached tree, properties, selection, events, layout, rendering, and result
+completion are all dispatcher-affine. Filesystem work never calls into controls,
+dispatcher callbacks run outside filesystem locks, and no picker callback emits
+ANSI, CSI, OSC, or any other terminal string.
 
 ## Example
 
@@ -213,19 +217,19 @@ if (result.Accepted)
 
 The behavior above is verified end to end, so callers can rely on it:
 
-- Filters and options validate their input, the dialog owns its copied
-  options, results are immutable, and returned paths are canonical.
+- Filters and options validate their input, the dialog owns its copied options,
+  results are immutable, and returned paths are canonical.
 - Ordering is deterministic, filters apply as described, and both dot-prefixed
   and attribute-hidden entries follow the hidden-entry rule.
 - Missing and denied directories, synchronous and asynchronous failures,
-  cancellation, stale completions, detach, and disposal are all handled
-  without violating dispatcher affinity.
-- Single and multiple selection work as configured, directories never reach
-  the result, and parent, path, and Backspace navigation plus keyboard and
-  pointer invocation behave as described.
+  cancellation, stale completions, detach, and disposal are all handled without
+  violating dispatcher affinity.
+- Single and multiple selection work as configured, directories never reach the
+  result, and parent, path, and Backspace navigation plus keyboard and pointer
+  invocation behave as described.
 - Open, Cancel, Escape, and frame close each complete the dialog. Modality
-  isolates the background, Tab stays confined, focus is restored, and the
-  host is cleaned up.
+  isolates the background, Tab stays confined, focus is restored, and the host
+  is cleaned up.
 - Layout holds across tiny, normal, and wide resizes and captured top-border
   dragging, with the default and configured visible-row caps and the exact
   compact-control geometry.

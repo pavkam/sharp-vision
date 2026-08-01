@@ -31,7 +31,7 @@ envelope limit is 1 MiB with a hard maximum of 16 MiB. Construction rejects
 it has at least one layer, an explicit outer profile, an approved operation, and
 a visibility-compatible passthrough mode.
 
-`Route.TryWriteCapabilityQueries` and the Kitty/sixel/iTerm2 graphics backends
+The route's capability query batch and the Kitty/sixel/iTerm2 graphics backends
 are the currently connected typed output operations. A route wraps the farthest
 layer first, then works inward so the nearest multiplexer sees the outermost
 wire envelope. Each tmux layer doubles every ESC again. It prepares the complete

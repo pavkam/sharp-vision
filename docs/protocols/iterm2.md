@@ -52,17 +52,17 @@ file transfer, and every other OSC 1337 feature remain unsupported.
 
 ## Non-retained backend and selection
 
-iTerm2 inline images have no retained remote identity. The
-backend anchors each image with pane-local CUP, emits multipart frames after
-ordinary cells, and restores the semantic frame cursor. Movement, removal,
-PNG-to-unsupported replacement, resize, or invalidation requests full cell
-reconstruction before target placements are repainted. Cell damage intersecting
-an unchanged image repaints it and the transitive closure of later overlapping
-placements in original paint order; unrelated damage is byte-quiet. A later
-overlap that is not encodable keeps itself and every affected lower placement on
-ordinary cell fallback. Failed transport output invalidates the transaction and
-the next render reconstructs cells and images. Shutdown is byte-quiet because no
-remote IDs or delete command exist.
+iTerm2 inline images have no retained remote identity. The backend anchors each
+image with pane-local CUP, emits multipart frames after ordinary cells, and
+restores the semantic frame cursor. Movement, removal, PNG-to-unsupported
+replacement, resize, or invalidation requests full cell reconstruction before
+target placements are repainted. Cell damage intersecting an unchanged image
+repaints it and the transitive closure of later overlapping placements in
+original paint order; unrelated damage is byte-quiet. A later overlap that is
+not encodable keeps itself and every affected lower placement on ordinary cell
+fallback. Failed transport output invalidates the transaction and the next
+render reconstructs cells and images. Shutdown is byte-quiet because no remote
+IDs or delete command exist.
 
 Direct output is supported. An explicitly authorized tmux route wraps
 MultipartFile, every FilePart, and FileEnd independently. CUP remains
@@ -86,7 +86,8 @@ semantic placements from the public Image control.
 > [!IMPORTANT] **Implementation gap:** Capability discovery does not consume
 > iTerm2 `Capabilities` or `TERM_FEATURES` `FILE` evidence. Direct iTerm2 image
 > output therefore requires an explicit `ItermImages=true` override even when a
-> local terminal could provide authoritative FILE support evidence.
+> local terminal could provide authoritative FILE support evidence. Issue #230
+> tracks consuming this evidence.
 
 Unsupported source, fitting, route, or evidence keeps the control's previously
 painted cell fallback.

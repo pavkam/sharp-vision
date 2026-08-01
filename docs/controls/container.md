@@ -51,18 +51,18 @@ registry described by the
 A derived container overrides `OnChildrenChanged` to observe a mutation of its
 own `Children`, cache per-child metadata, or react to the change - the same
 notification `ItemsControl` already consumes on its own private presentation
-host. The hook runs after the mutation structurally commits and cannot reject
-a candidate. Validation belongs at the point of insertion, because layout runs
+host. The hook runs after the mutation structurally commits and cannot reject a
+candidate. Validation belongs at the point of insertion, because layout runs
 asynchronously and cannot serve as a validation seam.
 
 ## Layout
 
-`MeasureOverride` must measure each relevant child through `MeasureChild`,
-honor collapsed visibility and margins, and return a non-negative intrinsic
-content extent. `ArrangeOverride` must arrange each relevant child through
+`MeasureOverride` must measure each relevant child through `MeasureChild`, honor
+collapsed visibility and margins, and return a non-negative intrinsic content
+extent. `ArrangeOverride` must arrange each relevant child through
 `ArrangeChild`; the supplied `ResolvedAxes` value records which dimensions the
-parent algorithm has already fixed. Layout code must not add, remove, or
-replace children during measure or arrange.
+parent algorithm has already fixed. Layout code must not add, remove, or replace
+children during measure or arrange.
 
 Use a shipped semantic panel when its algorithm matches the application:
 [`Stack`](layout/stack.md#overview), [`Grid`](layout/grid.md#overview),
@@ -72,15 +72,14 @@ alignment, margins, sizing, and rounding.
 
 ## Auto-size and scrolling
 
-`AutoSize` sizes the container border box from the measured content extent,
-and `AutoSizeMode` selects grow-and-shrink or grow-only behavior. The exact
-rules are defined by [grow and shrink](../concepts/layout.md#grow-and-shrink).
+`AutoSize` sizes the container border box from the measured content extent, and
+`AutoSizeMode` selects grow-and-shrink or grow-only behavior. The exact rules
+are defined by [grow and shrink](../concepts/layout.md#grow-and-shrink).
 
-`AutoScroll` turns the container into a viewport over its own layout
-algorithm. The inherited scroll properties select axes, offsets, bar
-reservation, chrome, line and page changes, and interaction. Generated bars
-are private framework parts. The
-[scrolling rules](../concepts/scrolling.md#overview) define feedback,
+`AutoScroll` turns the container into a viewport over its own layout algorithm.
+The inherited scroll properties select axes, offsets, bar reservation, chrome,
+line and page changes, and interaction. Generated bars are private framework
+parts. The [scrolling rules](../concepts/scrolling.md#overview) define feedback,
 clipping, nested wheel propagation, and offset validation.
 
 ## Example
@@ -128,7 +127,7 @@ public sealed class SharedSlot : Container
 Callers can rely on the public shape described above: the child collection
 enforces its capacity and rejects invalid ownership, attached mutation is
 dispatcher-affine, order stays stable, and mutations invalidate layout. The
-measure and arrange extension points, rendering and pointer traversal,
-disposal, auto-size, scroll geometry, clipping, nested wheel propagation, and
-the encapsulation of generated scrollbar parts all behave as documented, and
-tests hold concrete subclasses to implementing both layout passes.
+measure and arrange extension points, rendering and pointer traversal, disposal,
+auto-size, scroll geometry, clipping, nested wheel propagation, and the
+encapsulation of generated scrollbar parts all behave as documented, and tests
+hold concrete subclasses to implementing both layout passes.

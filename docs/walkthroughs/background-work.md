@@ -1,9 +1,8 @@
 # Background work and the dispatcher
 
 An attached control tree has one owner: `Application.Dispatcher`. Terminal
-readers and background tasks can compute or perform I/O anywhere, but they
-must bring immutable results back to that dispatcher before touching any
-control.
+readers and background tasks can compute or perform I/O anywhere, but they must
+bring immutable results back to that dispatcher before touching any control.
 
 ```mermaid
 sequenceDiagram
@@ -46,10 +45,10 @@ private async Task RefreshAsync(Application application, CancellationToken cance
 }
 ```
 
-`names` crosses the boundary as an ordinary immutable snapshot value; the
-worker never reads or writes `_list` or `_status`. `InvokeAsync` propagates
-the callback's result, its cancellation, or its original exception. Use `Post`
-only for fire-and-observe work whose failure should follow the dispatcher's
+`names` crosses the boundary as an ordinary immutable snapshot value; the worker
+never reads or writes `_list` or `_status`. `InvokeAsync` propagates the
+callback's result, its cancellation, or its original exception. Use `Post` only
+for fire-and-observe work whose failure should follow the dispatcher's
 unhandled-exception policy.
 
 ## Periodic UI work
@@ -63,9 +62,9 @@ timer.Start();
 ```
 
 Dispose the timer together with its owner. Delayed periods are skipped rather
-than replayed as a burst. The exact queue capacity, shutdown, reentrancy,
-timer, and idle rules live in [threading](../concepts/threading.md#overview)
-and the [runtime event loop](../architecture/runtime-event-loop.md#iteration-order).
+than replayed as a burst. The exact queue capacity, shutdown, reentrancy, timer,
+and idle rules live in [threading](../concepts/threading.md#overview) and the
+[runtime event loop](../architecture/runtime-event-loop.md#iteration-order).
 
 Next, use
 [capability-gated terminal services](terminal-services.md#use-terminal-services).

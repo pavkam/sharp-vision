@@ -2,8 +2,8 @@
 
 ## Overview
 
-`ScrollBar` is a focusable range control over an inclusive integer range. Use
-it on its own, or let an overflowing `Container`, `TextInput`, `ListView`, or
+`ScrollBar` is a focusable range control over an inclusive integer range. Use it
+on its own, or let an overflowing `Container`, `TextInput`, `ListView`, or
 `ComboBox` generate one for you.
 
 ## API
@@ -35,15 +35,15 @@ proxy properties are the only way to reach the bar they generate. Neither
 control pins a style onto that bar, for a deliberate reason: a local complete
 style permanently outranks the Theme, and since the private child cannot be
 reached to reset it, pinning would leave the bar both unreachable and
-unthemeable. A null proxy therefore leaves the bar to the Theme and the
-library default, exactly like every other host. A style change that alters
-`Chrome` invalidates measure, because the reserved extent moves; any other
-difference is render-only.
+unthemeable. A null proxy therefore leaves the bar to the Theme and the library
+default, exactly like every other host. A style change that alters `Chrome`
+invalidates measure, because the reserved extent moves; any other difference is
+render-only.
 
 ## Behavior
 
-Range setters validate before mutating. `ScrollBy` saturates and clamps.
-A vertical bar intrinsically measures `1×3` and a horizontal bar `3×1`; thin
+Range setters validate before mutating. `ScrollBy` saturates and clamps. A
+vertical bar intrinsically measures `1×3` and a horizontal bar `3×1`; thin
 styles omit the directional buttons. The thumb length represents
 `viewport / (range + viewport)`, with a one-cell minimum whenever scrolling is
 possible. Tiny tracks degrade deterministically and never draw outside their
@@ -77,6 +77,6 @@ thumb geometry follows the viewport formula; local styles take precedence over
 the Theme and Theme replacement takes effect immediately, across all presets;
 glyphs are validated with width-policy fallback; keyboard, pointer, and wheel
 input move the value as described, with unconsumed endpoint wheel events
-bubbling to ancestors and drags cancelling cleanly; tiny tracks degrade
-safely; generated hosts forward styles to their bars as documented; and the
-rendered output matches exact cells.
+bubbling to ancestors and drags cancelling cleanly; tiny tracks degrade safely;
+generated hosts forward styles to their bars as documented; and the rendered
+output matches exact cells.

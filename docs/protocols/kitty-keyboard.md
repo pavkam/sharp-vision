@@ -25,13 +25,13 @@ built-in ANSI profile supplements it with generic VT/xterm grammar.
 ## Supported features
 
 SharpVision enables the minimum flags needed for unambiguous modified keys and
-event types, decodes press/repeat/release plus associated text, and restores
-the previous mode on exit. When the protocol is unavailable it falls back to
-legacy xterm/VT key decoding.
+event types, decodes press/repeat/release plus associated text, and restores the
+previous mode on exit. When the protocol is unavailable it falls back to legacy
+xterm/VT key decoding.
 
 ## Implemented API and grammar
 
-`Protocols.Keyboard` writes the official query (`CSI ? u`), push
+`Kitty.Keyboard.Keyboard` writes the official query (`CSI ? u`), push
 (`CSI > flags u`), pop (`CSI < number u`), and direct set/clear forms. The
 `Enhancement` flags are Disambiguate (1), EventTypes (2), AlternateKeys (4),
 AllKeys (8), and AssociatedText (16). Unknown bits are rejected before output;

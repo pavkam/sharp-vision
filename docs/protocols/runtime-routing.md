@@ -52,12 +52,11 @@ arrives.
 
 `Session` owns a `ProtocolRouter` and delivers the complete sink contract in
 transport order. `Application` queues typed replies as immutable records and
-raises `ResponseReceived`, `PaletteResponseReceived`,
-`MetricsResponseReceived`, `StatusResponseReceived`, or
-`CapabilityResponseReceived` only on its dispatcher. These records share one
-ordered input queue. An unregistered raw sequence becomes a
-`DiagnosticCode.Unsupported` record containing its family and byte count, never
-its payload.
+raises `ResponseReceived`, `PaletteResponseReceived`, `MetricsResponseReceived`,
+`StatusResponseReceived`, or `CapabilityResponseReceived` only on its
+dispatcher. These records share one ordered input queue. An unregistered raw
+sequence becomes a `DiagnosticCode.Unsupported` record containing its family and
+byte count, never its payload.
 
 The fixed terminal backend contributes only immutable extension-family metadata.
 Existing `ProtocolRouter` consumers remain the wire implementation; they are not

@@ -21,14 +21,14 @@ from pointer hit testing.
 A `SpinnerStyle` holds a bounded immutable frame sequence and a complete
 appearance profile. `SpinnerStyleSet` exists for partial composition in Theme
 files and is not exposed on Spinner. Assigning `Style` replaces the entire
-Theme-owned presentation, and assigning `null` restores it. A style must
-provide between 1 and 256 printable one-cell frames.
+Theme-owned presentation, and assigning `null` restores it. A style must provide
+between 1 and 256 printable one-cell frames.
 
-Changing the effective frame sequence resets the animation to its first
-frame. Appearance-only changes, local or through the Theme, repaint without
-losing the current frame. Changing `Interval` restarts the timer but keeps
-the current frame. The animation pauses while an ancestor is hidden or
-collapsed; disabling the control does not pause it.
+Changing the effective frame sequence resets the animation to its first frame.
+Appearance-only changes, local or through the Theme, repaint without losing the
+current frame. Changing `Interval` restarts the timer but keeps the current
+frame. The animation pauses while an ancestor is hidden or collapsed; disabling
+the control does not pause it.
 
 ## Example
 

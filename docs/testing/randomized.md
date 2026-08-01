@@ -3,9 +3,9 @@
 ## Overview
 
 Randomized and property-style tests use explicit reproducible seeds and
-independent oracles. A failure prints its seed and the serialized minimal
-case. Shrinking may be custom, but it must preserve the violated invariant.
-Every discovered failure is added back as a named permanent regression.
+independent oracles. A failure prints its seed and the serialized minimal case.
+Shrinking may be custom, but it must preserve the violated invariant. Every
+discovered failure is added back as a named permanent regression.
 
 ## Domains
 
@@ -15,22 +15,22 @@ Every discovered failure is added back as a named permanent regression.
   and wide-cell ownership.
 - Frames: sizes, semantic cells, style transitions, damage density, and
   full-versus-incremental equivalence.
-- Layout: tree shapes, lengths, constraints, margins/padding, spans,
-  visibility, resize, and containment/rounding invariants.
-- Input: tree mutations, route handling, capture/focus changes, modal stack
-  and plane membership, outside dismissal, and event order.
+- Layout: tree shapes, lengths, constraints, margins/padding, spans, visibility,
+  resize, and containment/rounding invariants.
+- Input: tree mutations, route handling, capture/focus changes, modal stack and
+  plane membership, outside dismissal, and event order.
 
 ## Guardrails
 
 Generators enforce only input-domain preconditions, never the property being
-tested, and production functions never create the expected values. Seeded
-quick cases run in pull requests; larger fixed-time corpora run in the
-extended and release gates. No random test uses time-based seeding without
-printing and persisting the seed.
+tested, and production functions never create the expected values. Seeded quick
+cases run in pull requests; larger fixed-time corpora run in the extended and
+release gates. No random test uses time-based seeding without printing and
+persisting the seed.
 
-The hostile mutable-tree corpus uses seed `0x51A47001`. It mixes viewports
-from zero up to 240×80 with layout, visibility, focus, capture, and render
-mutations, and every failure includes the exact case and operation.
+The hostile mutable-tree corpus uses seed `0x51A47001`. It mixes viewports from
+zero up to 240×80 with layout, visibility, focus, capture, and render mutations,
+and every failure includes the exact case and operation.
 
 Grid layout uses seed `0x051A475A` to build 10,000 independently reconstructed
 pairs. Cases mix one through five tracks per axis, every length kind, min/max
@@ -42,34 +42,33 @@ index, derived case seed, and viewport.
 
 Text layout uses seed `0x007E875A` for 5,000 cases assembled from ASCII,
 whitespace, tabs, every newline form, combining sequences, CJK, ambiguous
-characters, emoji ZWJ sequences, selectors, and lone surrogate code units.
-Every overflow, alignment, and ambiguous-width mode participates. The oracle
+characters, emoji ZWJ sequences, selectors, and lone surrogate code units. Every
+overflow, alignment, and ambiguous-width mode participates. The oracle
 enumerates source graphemes and cell widths independently, and it requires
 deterministic output, monotonic source slices, valid grapheme boundaries, and
 finite-width containment whenever overflow is not `Visible`.
 
 Unicode cell-ownership generation interleaves printable bases, orphan marks,
 selectors, modifiers, tags, ZWJ sequences, narrow and wide clusters, clips,
-clears, styles, and overwrites. The oracle keeps source graphemes separate
-from safe terminal presentations and never calls production segmentation or
-width code.
+clears, styles, and overwrites. The oracle keeps source graphemes separate from
+safe terminal presentations and never calls production segmentation or width
+code.
 
-Pixel-grid generation chooses bounded positive cell and pixel totals,
-enumerates the full pixel domain, and compares against the exact rational
-mapping. It also generates missing, suspended, smaller-than-cell, and
-out-of-domain geometry and proves those cases cannot fabricate a cell
-coordinate.
+Pixel-grid generation chooses bounded positive cell and pixel totals, enumerates
+the full pixel domain, and compares against the exact rational mapping. It also
+generates missing, suspended, smaller-than-cell, and out-of-domain geometry and
+proves those cases cannot fabricate a cell coordinate.
 
-The [modal-state test contract](../concepts/modality.md#expected-behavior)
-uses the fixed seeds `0x51A480D1`, `0x27D15C0D`, and `0x0D15C0DE`. Each seed
-runs 16 cases of 48 valid enter, include, focus, capture, pointer, dismissal,
-hide, and dispose operations — 2,304 operations in the pull-request corpus.
-The independent model walks parent ancestry and retains at most six live
-scopes while deliberately keeping historical handles. After every operation it
-checks active-stack identity, focus, capture, hover, press origin, routed
-targets, and exact Ignore/Dismiss callback counts against plane membership.
-The named child-scope-exit regression permanently proves that pointer state
-owned outside the surviving parent plane is cleared.
+The [modal-state test contract](../concepts/modality.md#expected-behavior) uses
+the fixed seeds `0x51A480D1`, `0x27D15C0D`, and `0x0D15C0DE`. Each seed runs 16
+cases of 48 valid enter, include, focus, capture, pointer, dismissal, hide, and
+dispose operations — 2,304 operations in the pull-request corpus. The
+independent model walks parent ancestry and retains at most six live scopes
+while deliberately keeping historical handles. After every operation it checks
+active-stack identity, focus, capture, hover, press origin, routed targets, and
+exact Ignore/Dismiss callback counts against plane membership. The named
+child-scope-exit regression permanently proves that pointer state owned outside
+the surviving parent plane is cleared.
 
 ## Required evidence
 
@@ -81,5 +80,5 @@ owned outside the surviving parent plane is cleared.
 | Runtime state       | Independent focus/capture/modality model after every generated operation.           |
 
 Every failure reports its corpus seed, case index, derived seed when one is
-used, and the smallest available input or state transcript before it becomes
-a named regression.
+used, and the smallest available input or state transcript before it becomes a
+named regression.

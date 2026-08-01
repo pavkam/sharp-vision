@@ -5,9 +5,8 @@
 A SharpVision theme is a single bounded UTF-8 JSON document. It defines the
 global semantic colors, terminal attributes, and five high-level appearance
 profiles. Controls bring their own mechanical defaults and select one of those
-profiles; the document contains no control instances and no
-application-defined selector names. A leading UTF-8 byte order mark is
-accepted and ignored.
+profiles; the document contains no control instances and no application-defined
+selector names. A leading UTF-8 byte order mark is accepted and ignored.
 
 ```mermaid
 flowchart LR
@@ -59,9 +58,9 @@ normalText, activeText, focusedText, pressedText, selectedText,
 disabledText, border, shadow, hotkey
 ```
 
-Each accepts a single attribute name or an array of names; an empty array
-means no attributes. `Theme.ResolveAttributes(ThemeDecoration)` is the typed
-public lookup.
+Each accepts a single attribute name or an array of names; an empty array means
+no attributes. `Theme.ResolveAttributes(ThemeDecoration)` is the typed public
+lookup.
 
 The optional `status` object accepts `error`, `warning`, `success`, `info`,
 `muted`, and `hotkey`. Any missing entry falls back to the equivalent global
@@ -83,19 +82,19 @@ profiles:
 
 After loading, every profile has a complete `normal` appearance, and it may
 supply partial contributions for `pointerOver`, `focusWithin`, `focused`,
-`current`, `selected`, `checked`, `indeterminate`, `pressed`, and `disabled`.
-A missing role's normal values, and most missing state contributions, inherit
-from `control`; missing members inherit from the earlier complete appearance.
-Two roles deviate: `Container` and `Window` start `pointerOver` empty instead
-of inheriting the generic hover, and `Window` also starts `focused` empty
-while supplying an `activeBorder`-only `focusWithin` default — so descendant
-or direct focus lights up the frame without changing the window face.
+`current`, `selected`, `checked`, `indeterminate`, `pressed`, and `disabled`. A
+missing role's normal values, and most missing state contributions, inherit from
+`control`; missing members inherit from the earlier complete appearance. Two
+roles deviate: `Container` and `Window` start `pointerOver` empty instead of
+inheriting the generic hover, and `Window` also starts `focused` empty while
+supplying an `activeBorder`-only `focusWithin` default — so descendant or direct
+focus lights up the frame without changing the window face.
 
 The bundled themes keep `container` and `window` visually unchanged during
 `pointerOver`. The bundled `input` profile uses `surface` for its normal face
-and `activeControl` during hover, while `button` also opts into the filled
-hover background. An external theme may still author an explicit passive-role
-hover contribution when that feedback is intentional.
+and `activeControl` during hover, while `button` also opts into the filled hover
+background. An external theme may still author an explicit passive-role hover
+contribution when that feedback is intentional.
 
 An appearance holds optional `face`, `border`, and `shadow` objects whose
 members match `FaceSet`, `BorderSet`, and `ShadowSet`: face colors and
@@ -104,19 +103,19 @@ visibility, mode, offset, glyph, colors, and attributes. A profile's normal
 appearance is completed with the role's library defaults; state contributions
 stay partial.
 
-Colors and attributes inside profiles may be literal values or the JSON name
-of a global semantic value. Border glyph styles and shadow geometry are
-allowed here because they define the high-level role's chrome, not a specific
-control type. Individual controls may still set complete local styles that
-take precedence.
+Colors and attributes inside profiles may be literal values or the JSON name of
+a global semantic value. Border glyph styles and shadow geometry are allowed
+here because they define the high-level role's chrome, not a specific control
+type. Individual controls may still set complete local styles that take
+precedence.
 
-Control-specific structure — paddings, glyph families, frame sequences, and
-part colors — is code-owned and is not part of the theme document. Each styled
-control completes its typed `Style` value from the library's structural
-defaults plus the appropriate semantic profile above, so a theme influences
-those controls only through its five profiles. A complete local `Style`
-assignment overrides both. The five profile properties are the only members
-`styles` accepts; control-named sections are rejected as unknown fields.
+Control-specific structure — paddings, glyph families, frame sequences, and part
+colors — is code-owned and is not part of the theme document. Each styled
+control completes its typed `Style` value from the library's structural defaults
+plus the appropriate semantic profile above, so a theme influences those
+controls only through its five profiles. A complete local `Style` assignment
+overrides both. The five profile properties are the only members `styles`
+accepts; control-named sections are rejected as unknown fields.
 
 When several state flags are active, contributions apply in this order:
 
@@ -242,8 +241,8 @@ cached; each external load returns a new frozen instance.
 
 Input is limited to 64 KiB, a JSON depth of eight, 256 palette entries, six
 status entries, and 2,048 characters per metadata string. Comments, trailing
-commas, malformed UTF-8, invalid element kinds, unknown names, malformed
-colors, conflicting attributes, and invalid composite members all fail with a
+commas, malformed UTF-8, invalid element kinds, unknown names, malformed colors,
+conflicting attributes, and invalid composite members all fail with a
 source-labelled `InvalidDataException`.
 
 Assigning `Application.Theme` publishes the frozen theme through the retained
@@ -261,9 +260,9 @@ those entries.
 | Catalog    | Every embedded theme parses, exposes required roles, and retains stable metadata and slug order.          |
 | Surface    | Theme swaps update mounted controls, chrome, text, and visual states without reconstruction.              |
 
-- Stream loading leaves the caller's stream open, and file and embedded
-  loading each behave as described above.
-- Role fallback from `control` and every bundled role override resolve
-  exactly as specified.
+- Stream loading leaves the caller's stream open, and file and embedded loading
+  each behave as described above.
+- Role fallback from `control` and every bundled role override resolve exactly
+  as specified.
 - Publication is dispatcher-affine and invalidates only the phases the change
   actually affects.

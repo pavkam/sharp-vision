@@ -27,29 +27,28 @@ items.
 | `ClearSelection()`             | —                          | Clears the current selection.                            |
 | `ExpandAll()`, `CollapseAll()` | —                          | Changes expansion for the complete hierarchy.            |
 
-`SelectionMode` defaults to `Single`. `Multiple` supports Control toggles,
-Shift ranges over enabled visible items, `SelectAll`, `ClearSelection`, and
-Control+A. `None` keeps navigation and invocation but commits no selection.
-Selection belongs to the item model, so an item stays selected while its
-branch is collapsed; removing an item removes it from the selection, and
-disabled items are never selected. Changing `SelectionMode` publishes its own
-property notification before any selection it normalizes, so a two-way
-observer sees the new configuration first.
+`SelectionMode` defaults to `Single`. `Multiple` supports Control toggles, Shift
+ranges over enabled visible items, `SelectAll`, `ClearSelection`, and Control+A.
+`None` keeps navigation and invocation but commits no selection. Selection
+belongs to the item model, so an item stays selected while its branch is
+collapsed; removing an item removes it from the selection, and disabled items
+are never selected. Changing `SelectionMode` publishes its own property
+notification before any selection it normalizes, so a two-way observer sees the
+new configuration first.
 
 Hierarchy depth is caller-controlled and has no fixed limit. Ownership
-propagation, cycle detection, flattening, expand and collapse, item
-collection, and check-state propagation all traverse iteratively, so a deep
-valid tree cannot exhaust the process stack. Check-state snapshots are
-evaluated once per mutation through a shared memo rather than once per
-affected item, which keeps a single toggle linear in the nodes it touches
-instead of quadratic.
+propagation, cycle detection, flattening, expand and collapse, item collection,
+and check-state propagation all traverse iteratively, so a deep valid tree
+cannot exhaust the process stack. Check-state snapshots are evaluated once per
+mutation through a shared memo rather than once per affected item, which keeps a
+single toggle linear in the nodes it touches instead of quadratic.
 
-A structural change replaces the visible presentation as one validated
-snapshot instead of clearing it and re-adding every item, and an unchanged
-flat list costs nothing.
+A structural change replaces the visible presentation as one validated snapshot
+instead of clearing it and re-adding every item, and an unchanged flat list
+costs nothing.
 
-`SetSelected(TreeViewItem, bool)` adds or removes one item without replacing
-the rest, which `SelectItem` cannot do. Selecting through it in `Single` mode
+`SetSelected(TreeViewItem, bool)` adds or removes one item without replacing the
+rest, which `SelectItem` cannot do. Selecting through it in `Single` mode
 replaces the selection exactly as input does, and deselecting is always
 permitted. Selecting a disabled item returns `false` and leaves the selection
 unchanged, and selecting in `None` mode is rejected.
@@ -61,43 +60,42 @@ before the commit. `SelectionChanged` reports the same committed delta after
 every selected view and visual state has updated, because `PreviousItem` and
 `CurrentItem` describe only the first selected identity and cannot express a
 range, a `SelectAll`, a removal repair, or a mode change. Reentrant changes
-advance a transaction version so a stale outer proposal cannot overwrite
-them. Mode narrowing and structural rebuilds invalidate pending proposals,
-and a reentrant change to `None` mode rejects any pending non-empty proposal.
+advance a transaction version so a stale outer proposal cannot overwrite them.
+Mode narrowing and structural rebuilds invalidate pending proposals, and a
+reentrant change to `None` mode rejects any pending non-empty proposal.
 
-Only caller- and input-driven changes are cancellable. Normalization the
-control performs on its own behalf — narrowing `SelectionMode`, or repairing
-the selection after items are detached or disabled — commits regardless,
-because refusing it would leave the control in a state its own configuration
-forbids.
+Only caller- and input-driven changes are cancellable. Normalization the control
+performs on its own behalf — narrowing `SelectionMode`, or repairing the
+selection after items are detached or disabled — commits regardless, because
+refusing it would leave the control in a state its own configuration forbids.
 
-The generated scrollbar is configured through the nullable `ScrollBarStyle`
-and inspected through the resolved `ActualScrollBarStyle`. The control pins
-nothing on the bar it owns, so a null style leaves the choice to the active
-Theme and the library default.
+The generated scrollbar is configured through the nullable `ScrollBarStyle` and
+inspected through the resolved `ActualScrollBarStyle`. The control pins nothing
+on the bar it owns, so a null style leaves the choice to the active Theme and
+the library default.
 
-Set `TreeViewItem.IsCheckable` to display a check mark. Setting `IsChecked`
-on a checkable parent propagates to its checkable descendants, and a parent
-becomes indeterminate when its checkable children do not agree. Space toggles
-the current checkable node, and clicking any cell of its mark does the same.
+Set `TreeViewItem.IsCheckable` to display a check mark. Setting `IsChecked` on a
+checkable parent propagates to its checkable descendants, and a parent becomes
+indeterminate when its checkable children do not agree. Space toggles the
+current checkable node, and clicking any cell of its mark does the same.
 
-`CheckMark` selects the mark layout and glyph family from the same
-`Brackets`, `Tick`, and `Square` families a standalone
-[`CheckBox`](../input/check-box.md) offers, and it defaults to `Brackets` so
-both controls render an unconfigured mark identically. Precedence runs from
-the local `TreeViewItem.CheckMark`, to the owning `TreeView.CheckMark`, to
-the library default, and `ActualCheckMark` reports the resolved value. Only
-the layout and glyphs are shared — a row paints itself from its own resolved
-style, so no CheckBox appearance profile reaches the row.
+`CheckMark` selects the mark layout and glyph family from the same `Brackets`,
+`Tick`, and `Square` families a standalone [`CheckBox`](../input/check-box.md)
+offers, and it defaults to `Brackets` so both controls render an unconfigured
+mark identically. Precedence runs from the local `TreeViewItem.CheckMark`, to
+the owning `TreeView.CheckMark`, to the library default, and `ActualCheckMark`
+reports the resolved value. Only the layout and glyphs are shared — a row paints
+itself from its own resolved style, so no CheckBox appearance profile reaches
+the row.
 
-`CheckGlyphs` is a convenience projection over that mark: reading it reports
-the resolved glyphs, and assigning it keeps the resolved layout while
-replacing only its glyphs.
+`CheckGlyphs` is a convenience projection over that mark: reading it reports the
+resolved glyphs, and assigning it keeps the resolved layout while replacing only
+its glyphs.
 
-A checkable row reserves its indent, one disclosure cell, one gap, the mark,
-and one leading space before the header, and its measured width matches those
-cells exactly. `Brackets` therefore shifts headers two cells further right
-than a one-cell family would. Every cell of the mark is a hit target.
+A checkable row reserves its indent, one disclosure cell, one gap, the mark, and
+one leading space before the header, and its measured width matches those cells
+exactly. `Brackets` therefore shifts headers two cells further right than a
+one-cell family would. Every cell of the mark is a hit target.
 
 ## Example
 
@@ -122,7 +120,7 @@ tree.Items.Add(source);
 
 - A selected descendant stays selected while its branch is collapsed, and the
   selection keeps its stable tree order.
-- Control toggles, Shift ranges, and Control+A behave as described, and
-  disabled items are always excluded from selection.
+- Control toggles, Shift ranges, and Control+A behave as described, and disabled
+  items are always excluded from selection.
 - Parent check state propagates to descendants, and indeterminate state is
   repaired after structural edits.

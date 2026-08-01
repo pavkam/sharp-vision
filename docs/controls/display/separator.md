@@ -7,11 +7,11 @@ It cannot receive focus, is excluded from hit testing, and owns no children.
 
 ## API
 
-| Property                           | Default              | Purpose                                                                       |
-| ---------------------------------- | -------------------- | ----------------------------------------------------------------------------- |
-| `Orientation`                      | `Horizontal`         | Draws a line across the first content row or down the first content column.   |
-| `HorizontalGlyph`, `VerticalGlyph` | Code-owned           | Override the validated one-cell glyph for each orientation.                   |
-| Inherited alignment                | `Stretch`, `Stretch` | Lets the parent determine the final line length.                              |
+| Property                           | Default              | Purpose                                                                     |
+| ---------------------------------- | -------------------- | --------------------------------------------------------------------------- |
+| `Orientation`                      | `Horizontal`         | Draws a line across the first content row or down the first content column. |
+| `HorizontalGlyph`, `VerticalGlyph` | Code-owned           | Override the validated one-cell glyph for each orientation.                 |
+| Inherited alignment                | `Stretch`, `Stretch` | Lets the parent determine the final line length.                            |
 
 Call `ResetGlyphs()` to return both glyphs to their code-owned defaults.
 
@@ -61,6 +61,6 @@ Callers can rely on the following: horizontal and vertical lines render as
 documented; zero bounds draw nothing; orientation changes, resize, and
 appearance inheritance behave as described; the control stays out of hit
 testing; and the rendered output matches exact final cells.
-`SeparatorSurfaceTests` drives pointer movement, dispatcher-affine mutation,
-and terminal resize through a mounted application while asserting exact
+`SeparatorSurfaceTests` drives pointer movement, dispatcher-affine mutation, and
+terminal resize through a mounted application while asserting exact
 terminal-visible rows and representative styles.

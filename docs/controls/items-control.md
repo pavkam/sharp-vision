@@ -2,11 +2,10 @@
 
 ## Overview
 
-`ItemsControl : Control` is the base role for semantic controls that realize
-an ordered set of controls inside one private presentation container. It
-behaves as an ordinary semantic owner: its direct appearance does not create a
-style scope and does not cascade through its private host to the realized
-items.
+`ItemsControl : Control` is the base role for semantic controls that realize an
+ordered set of controls inside one private presentation container. It behaves as
+an ordinary semantic owner: its direct appearance does not create a style scope
+and does not cascade through its private host to the realized items.
 
 A concrete constructor calls `InitializeItemsHost(Container)` exactly once. A
 rejected candidate does not consume the initialization, so the constructor can
@@ -21,20 +20,18 @@ data-item type. Derived controls define their own semantic collection and use
 the protected `ItemControlCount`, `GetItemControl`, `IndexOfItemControl`,
 insert, remove, replace, clear, and complete-snapshot replacement helpers.
 Complete replacement copies and validates every candidate before changing any
-ownership. Removed controls are detached without being disposed; controls
-still owned when the item owner is disposed are disposed along with the
-private host.
+ownership. Removed controls are detached without being disposed; controls still
+owned when the item owner is disposed are disposed along with the private host.
 
 `OnItemControlsChanged` runs once after each committed snapshot, including a
-change caused by direct item disposal. It observes the complete new order
-while guarded ownership publication is still active. A callback failure does
-not roll back the committed snapshot, and reentrant ownership mutation is
-rejected.
+change caused by direct item disposal. It observes the complete new order while
+guarded ownership publication is still active. A callback failure does not roll
+back the committed snapshot, and reentrant ownership mutation is rejected.
 
-The base measures the host inside its own content box, includes a visible
-host margin in its desired size, and arranges the host with both axes
-resolved. The host owns item-specific layout and any optional scrolling;
-`ItemsControl` itself adds no scrolling behavior.
+The base measures the host inside its own content box, includes a visible host
+margin in its desired size, and arranges the host with both axes resolved. The
+host owns item-specific layout and any optional scrolling; `ItemsControl` itself
+adds no scrolling behavior.
 
 ## API
 
@@ -64,8 +61,8 @@ public sealed class TagCloud : ItemsControl
 }
 ```
 
-An application interacts with the semantic `TagCloud` API. It cannot replace
-the host or insert arbitrary presentation children.
+An application interacts with the semantic `TagCloud` API. It cannot replace the
+host or insert arbitrary presentation children.
 
 ## Expected behavior
 

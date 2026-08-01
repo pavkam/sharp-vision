@@ -3,9 +3,9 @@
 ## Control catalog
 
 Every concrete control page answers the same practical questions: when to use
-the control, which properties and events change its behavior, their defaults
-and validation, how layout and input work, and how to construct it in C#.
-Properties inherited by every control are documented once in the
+the control, which properties and events change its behavior, their defaults and
+validation, how layout and input work, and how to construct it in C#. Properties
+inherited by every control are documented once in the
 [`Control` property tables](control.md#api); each concrete page owns only its
 specialized API.
 
@@ -36,8 +36,8 @@ The diagram shows the authoring roles and representative controls, not every
 sealed type. To pick a role for your own control, follow the
 [custom-control walkthrough](../walkthroughs/custom-controls.md#choose-the-right-base-type).
 
-All controls derive from the [`Control` base class](control.md#overview) and
-use the shared [layout](../concepts/layout.md#overview),
+All controls derive from the [`Control` base class](control.md#overview) and use
+the shared [layout](../concepts/layout.md#overview),
 [invalidation](../concepts/invalidation.md#overview),
 [styling](../concepts/styling.md#overview), and
 [input](../concepts/input-routing.md#overview) rules.
@@ -63,16 +63,16 @@ Complete modal tasks such as `MessageBox` live in
 
 ### Authoring roles
 
-- [Container](container.md#overview) owns an ordered public child collection
-  and requires a concrete measure and arrange algorithm.
+- [Container](container.md#overview) owns an ordered public child collection and
+  requires a concrete measure and arrange algorithm.
 - [ContentControl](content-control.md#overview) owns zero or one publicly
   replaceable content control.
 - [CompositeControl](composite-control.md#overview) owns one retained private
   implementation root initialized by the concrete constructor.
-- [ItemsControl](items-control.md#overview) exposes typed semantic items
-  through a private presentation host.
-- [Pressable](pressable.md#overview) adds focus and completed activation to
-  the single-content role.
+- [ItemsControl](items-control.md#overview) exposes typed semantic items through
+  a private presentation host.
+- [Pressable](pressable.md#overview) adds focus and completed activation to the
+  single-content role.
 
 ### Display
 
