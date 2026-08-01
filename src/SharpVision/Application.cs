@@ -944,26 +944,39 @@ public sealed class Application: ISink, IAsyncDisposable
             return;
         }
 
-        while (true)
+        // A throwing Dispatch leaves this loop by exception, so both the latch reset and
+        // ProcessInvalidation must run from finally - otherwise _inputWake stays true forever and
+        // Enqueue's early-return short-circuits every future record, deafening a still-running
+        // application whose UnhandledException handler chose to survive the throw (see #206).
+        try
         {
-            Record record;
-
-            lock (_gate)
+            while (true)
             {
-                if (!_input.TryDequeue(out record))
+                Record record;
+
+                lock (_gate)
                 {
-                    _inputWake = false;
-                    break;
+                    if (!_input.TryDequeue(out record))
+                    {
+                        break;
+                    }
+                }
+
+                if (!_stopping)
+                {
+                    Dispatch(record);
                 }
             }
-
-            if (!_stopping)
-            {
-                Dispatch(record);
-            }
         }
+        finally
+        {
+            lock (_gate)
+            {
+                _inputWake = false;
+            }
 
-        ProcessInvalidation();
+            ProcessInvalidation();
+        }
     }
 
     private void DrainProfile()

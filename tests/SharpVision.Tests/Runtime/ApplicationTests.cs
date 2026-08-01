@@ -845,6 +845,72 @@ public sealed class ApplicationTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a throwing input handler does not permanently latch the drain loop's
+    /// wake flag: with UnhandledException marked handled, a later keystroke is still delivered
+    /// instead of the application silently going deaf while it keeps running (see #206).</summary>
+    [Fact]
+    public async Task Input_WhenHandlerThrowsAndUnhandledExceptionIsHandled_StillDeliversLaterInputAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var root = new ProbeControl { Focusable = true };
+        var deliveries = 0;
+        var shouldThrow = true;
+        _ = root.AddHandler(Events.Key, (_, eventArgs) =>
+        {
+            if (eventArgs.Phase != RoutingPhase.Bubble || eventArgs.Stroke.Code != Code.Character)
+            {
+                return;
+            }
+
+            deliveries++;
+
+            if (shouldThrow)
+            {
+                shouldThrow = false;
+                throw new InvalidOperationException("boom");
+            }
+        });
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        var unhandled = 0;
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            unhandled++;
+            eventArgs.Handled = true;
+        };
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(root).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+
+        await CharacterAsync(application, 'a');
+        await CharacterAsync(application, 'b');
+
+        unhandled.ShouldBe(1);
+        deliveries.ShouldBe(2);
+
+        // Handling UnhandledException lets the dispatcher continue but does not erase Failure
+        // (docs/architecture/error-handling.md), so StopAsync still surfaces it - the assertion
+        // that matters here is that the second keystroke was delivered at all.
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("boom");
+    }
+
+    private static async Task CharacterAsync(Application application, char character)
+    {
+        var stroke = new Stroke(
+            Code.Character,
+            new Rune(character),
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press);
+        application.Input(in stroke);
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+    }
+
     private static async Task ShortcutAsync(Application application, char character)
     {
         var stroke = new Stroke(
