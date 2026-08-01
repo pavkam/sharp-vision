@@ -398,6 +398,23 @@ public sealed class Text: Control, IAccessKeyCaption
         foreach (var grapheme in Graphemes.Enumerate(_display.AsSpan(line.Offset, line.Length)))
         {
             var offset = line.Offset + grapheme.Offset;
+
+            // A tab cannot join a style run: Canvas.Draw resolves control-cluster advance
+            // relative to the run's own origin, not the line's, so a tab inside a run lands at
+            // the wrong stop (see #200). Flush, advance the line counter to the next
+            // line-relative four-cell stop directly (mirroring Layout.cs), and start a fresh
+            // run after it.
+            if (grapheme.Length == 1 && _display[offset] == '\t')
+            {
+                FlushRun();
+                cells += TextLayout.TabSize - (cells % TextLayout.TabSize);
+                spanIndex = AdvanceSpan(spanIndex, offset);
+                runOffset = offset + grapheme.Length;
+                runSpanIndex = spanIndex;
+                runLength = 0;
+                continue;
+            }
+
             var nextSpanIndex = AdvanceSpan(spanIndex, offset);
 
             if (nextSpanIndex != runSpanIndex)

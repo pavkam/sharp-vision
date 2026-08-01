@@ -7,7 +7,7 @@ namespace SharpVision.Text;
 [PublicAPI]
 public static class Layout
 {
-    private const int _tabSize = 4;
+    internal const int TabSize = 4;
 
     /// <summary>Formats text with one overflow policy into caller-owned line storage.</summary>
     /// <param name="value">The UTF-16 text borrowed for this call.</param>
@@ -128,7 +128,7 @@ public static class Layout
         Ambiguous ambiguous)
     {
         return value.Length == 1 && value[0] == '\t'
-            ? _tabSize - (current % _tabSize)
+            ? TabSize - (current % TabSize)
             : Width.Measure(value, ambiguous).Cells;
     }
 

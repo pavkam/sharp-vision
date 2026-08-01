@@ -329,6 +329,58 @@ public sealed class TextTests
         plainForeground.ShouldNotBe(blueForeground);
     }
 
+    /// <summary>Verifies an unstyled tab advances to a line-relative four-cell stop, matching the
+    /// stops Layout reserves (see #200).</summary>
+    [Fact]
+    public void Render_WhenContentContainsUnstyledTab_AdvancesToLineRelativeFourCellStop()
+    {
+        ControlText text = new("a\tb");
+        new LayoutEngine().Layout(text, new Size(6, 1));
+        using Frame frame = new(new Size(6, 1));
+
+        text.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("a");
+        FrameOracle.Get(frame, new Point(1, 0)).ShouldBe(string.Empty);
+        FrameOracle.Get(frame, new Point(2, 0)).ShouldBe(string.Empty);
+        FrameOracle.Get(frame, new Point(3, 0)).ShouldBe(string.Empty);
+        FrameOracle.Get(frame, new Point(4, 0)).ShouldBe("b");
+    }
+
+    /// <summary>Verifies a tab following a style-run boundary at a non-multiple-of-four offset still
+    /// advances to the line-relative stop instead of a stop relative to the run's own origin, which
+    /// previously shifted trailing text (see #200).</summary>
+    [Fact]
+    public void Render_WhenTabFollowsStyleBoundaryAtNonMultipleOfFour_AdvancesToLineRelativeStop()
+    {
+        ControlText text = new("ab<red>\tc</red>");
+        new LayoutEngine().Layout(text, new Size(24, 1));
+        using Frame frame = new(new Size(24, 1));
+
+        text.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("a");
+        FrameOracle.Get(frame, new Point(1, 0)).ShouldBe("b");
+        FrameOracle.Get(frame, new Point(2, 0)).ShouldBe(string.Empty);
+        FrameOracle.Get(frame, new Point(3, 0)).ShouldBe(string.Empty);
+        FrameOracle.Get(frame, new Point(4, 0)).ShouldBe("c");
+        FrameOracle.Get(frame, new Point(5, 0)).ShouldBe(string.Empty);
+    }
+
+    /// <summary>Verifies a tab following a style-run boundary does not push trailing content past
+    /// bounds Layout measured as sufficient, which previously clipped it away entirely (see #200).</summary>
+    [Fact]
+    public void Render_WhenTabFollowsStyleBoundaryAndWidthMatchesLayout_DoesNotClipTrailingContent()
+    {
+        ControlText text = new("ab<red>\tc</red>") { HorizontalAlignment = HorizontalAlignment.Left };
+        new LayoutEngine().Layout(text, new Size(5, 1));
+        using Frame frame = new(new Size(5, 1));
+
+        text.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(4, 0)).ShouldBe("c");
+    }
+
     /// <summary>Verifies markup blink tags override an incompatible inherited blink kind.</summary>
     [Fact]
     public void Render_WhenMarkupOverridesBlink_ProducesValidLatestBlinkStyle()
