@@ -128,6 +128,26 @@ public sealed class LegacyKeyTests
     }
 
     /// <summary>
+    /// Verifies a colon or an extra semicolon-delimited field inside the legacy CSI arrow-key
+    /// parameters reports Malformed instead of silently parsing a truncated prefix - the trailing
+    /// content would otherwise be dropped unread, turning a corrupted or private-use sequence into
+    /// a plausible synthetic stroke (see #97).
+    /// </summary>
+    [Theory]
+    [InlineData("\u001b[1:2A")]
+    [InlineData("\u001b[:5A")]
+    [InlineData("\u001b[1;2;9A")]
+    [InlineData("\u001b[1;2:2;9A")]
+    public void Decode_WhenCsiArrowKeyHasExtraField_ReportsMalformedAndRecovers(string malformed)
+    {
+        var sink = Decode(Encoding.UTF8.GetBytes(malformed + "\u001b[B"));
+
+        sink.Diagnostics.Count.ShouldBe(1);
+        sink.Strokes.ShouldNotContain(static item => item.Code == Code.Up);
+        sink.Strokes.ShouldContain(static item => item.Code == Code.Down);
+    }
+
+    /// <summary>
     /// Verifies adjacent escape sequences produce distinct ordered strokes.
     /// </summary>
     [Fact]

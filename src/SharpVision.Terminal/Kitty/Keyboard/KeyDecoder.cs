@@ -12,7 +12,7 @@ using InputAction = Input.Action;
 /// <see cref="Decoder"/> (see #97 step 5).
 /// </summary>
 /// <remarks>
-/// <see cref="TryDecimal"/> and <see cref="TryReadModifiers"/> also back <c>Decoder</c>'s xterm
+/// <see cref="TryDecimal(ReadOnlySpan{byte}, bool, out int)"/> and <see cref="TryReadModifiers"/> also back <c>Decoder</c>'s xterm
 /// modifyOtherKeys CSI parsing, which reuses the same Kitty-originated modifier encoding.
 /// </remarks>
 internal sealed class KeyDecoder
@@ -83,7 +83,11 @@ internal sealed class KeyDecoder
         var separator = input.IndexOf((byte) ':');
         var modifierField = separator < 0 ? input : input[..separator];
 
-        if (!TryDecimal(modifierField, allowEmpty: true, out var encoded))
+        // The modifier field is the complete remaining input when no colon splits off an event
+        // type, so a stray ';' inside it must fail the field instead of silently truncating to
+        // whatever preceded the ';' (see #97).
+        if (!TryDecimal(modifierField, allowEmpty: true, out var encoded, out var modifierEnd) ||
+            modifierEnd != ParameterSeparator.None)
         {
             modifiers = default;
             action = default;
@@ -110,7 +114,8 @@ internal sealed class KeyDecoder
         var eventField = input[(separator + 1)..];
 
         if (eventField.IndexOf((byte) ':') >= 0 ||
-            !TryDecimal(eventField, allowEmpty: false, out var eventType) ||
+            !TryDecimal(eventField, allowEmpty: false, out var eventType, out var eventEnd) ||
+            eventEnd != ParameterSeparator.None ||
             eventType is < 1 or > 3)
         {
             return false;
@@ -125,7 +130,28 @@ internal sealed class KeyDecoder
     /// <param name="allowEmpty">Whether an empty field is valid, yielding zero.</param>
     /// <param name="value">The decoded non-negative value, or zero when invalid.</param>
     /// <returns>True when the field is empty and allowed, or entirely bounded decimal digits.</returns>
-    internal static bool TryDecimal(ReadOnlySpan<byte> input, bool allowEmpty, out int value)
+    internal static bool TryDecimal(ReadOnlySpan<byte> input, bool allowEmpty, out int value) =>
+        TryDecimal(input, allowEmpty, out value, out _);
+
+    /// <summary>Reads an unsigned decimal field shared by Kitty and xterm CSI parsing, also reporting
+    /// the delimiter that ended it.</summary>
+    /// <param name="input">The borrowed decimal digit bytes.</param>
+    /// <param name="allowEmpty">Whether an empty field is valid, yielding zero.</param>
+    /// <param name="value">The decoded non-negative value, or zero when invalid.</param>
+    /// <param name="separator">The delimiter <paramref name="input"/> ended on, or None.</param>
+    /// <returns>True when the field is empty and allowed, or entirely bounded decimal digits.</returns>
+    /// <remarks>
+    /// A caller that already owns the complete field - nothing legitimate should follow within
+    /// <paramref name="input"/> - must additionally require <paramref name="separator"/> to be
+    /// <see cref="ParameterSeparator.None"/>. Otherwise trailing content past an internal ';' or ':'
+    /// this overload doesn't itself reject is silently dropped instead of failing the field
+    /// (see #97).
+    /// </remarks>
+    internal static bool TryDecimal(
+        ReadOnlySpan<byte> input,
+        bool allowEmpty,
+        out int value,
+        out ParameterSeparator separator)
     {
         // Parameters strips a leading DEC private-marker byte (0x3c-0x3f) before parsing; these
         // fields never carry one, so reject it explicitly rather than silently parsing whatever
@@ -133,11 +159,12 @@ internal sealed class KeyDecoder
         if (!input.IsEmpty && input[0] is >= 0x3c and <= 0x3f)
         {
             value = 0;
+            separator = ParameterSeparator.None;
             return false;
         }
 
         var parameters = new Parameters(input, maxValue: int.MaxValue);
-        var status = parameters.Read(out value, out _);
+        var status = parameters.Read(out value, out separator);
 
         return status switch
         {

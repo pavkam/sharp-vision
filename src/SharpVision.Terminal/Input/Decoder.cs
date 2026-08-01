@@ -1107,11 +1107,18 @@ public sealed class Decoder: IDisposable
         }
 
         var semicolon = parameters.IndexOf((byte) ';');
+        var keycode = semicolon < 0 ? parameters : parameters[..semicolon];
 
-        return semicolon < 0
-            ? Kitty.Keyboard.KeyDecoder.TryDecimal(parameters, allowEmpty: true, out _)
-            : Kitty.Keyboard.KeyDecoder.TryDecimal(parameters[..semicolon], allowEmpty: true, out _)
-              && Kitty.Keyboard.KeyDecoder.TryReadModifiers(parameters[(semicolon + 1)..], out modifiers, out action);
+        // This leading field is a plain CSI parameter, not a Kitty colon sub-parameter - TryDecimal
+        // alone would silently accept "1:2" as the value "1" with the trailing ":2" simply unread,
+        // turning a malformed or private-use sequence into a plausible synthetic key stroke instead
+        // of the diagnostic it should report (see #97).
+        var hasSubParameter = keycode.IndexOf((byte) ':') >= 0;
+
+        return !hasSubParameter && (semicolon < 0
+            ? Kitty.Keyboard.KeyDecoder.TryDecimal(keycode, allowEmpty: true, out _)
+            : Kitty.Keyboard.KeyDecoder.TryDecimal(keycode, allowEmpty: true, out _)
+              && Kitty.Keyboard.KeyDecoder.TryReadModifiers(parameters[(semicolon + 1)..], out modifiers, out action));
     }
 
     private void BeginPaste() => _pasteAccumulator.Begin();
