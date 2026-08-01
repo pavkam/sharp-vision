@@ -502,5 +502,27 @@ public static class Edit
         {
             throw new ArgumentException("Replacement contains a tab.", nameof(value));
         }
+
+        // CR, LF, and tab are the only control characters this policy admits, and only when
+        // explicitly accepted above; every other control cluster (ESC, DEL, NEL, LS/PS, ...) would
+        // otherwise be stored invisibly with no paint width, corrupting the value and freezing the
+        // caret at that index (see #209). Classify with the same grapheme-break data the renderer
+        // itself uses, so this policy can never diverge from what actually paints nothing.
+        foreach (var segment in Graphemes.Enumerate(value.AsSpan()))
+        {
+            var cluster = value.AsSpan(segment.Offset, segment.Length);
+
+            // CRLF forms a single grapheme cluster, so this must clear the whole cluster - not just
+            // its first character - to keep admitting it once accepted above.
+            if (cluster.IndexOfAnyExcept('\r', '\n', '\t') < 0)
+            {
+                continue;
+            }
+
+            if (Width.Measure(cluster, Ambiguous.Narrow).Controls > 0)
+            {
+                throw new ArgumentException("Replacement contains a control character.", nameof(value));
+            }
+        }
     }
 }

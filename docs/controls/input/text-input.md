@@ -56,8 +56,11 @@ direction.
   the source end returns an empty selection.
 - `Backspace` and `Delete` remove the selected range or exactly one neighboring
   cluster. `Replace` validates the complete proposal before allocation, enforces
-  return/tab policy, and truncates maximum-length input only at a grapheme
-  boundary. `MaxLength` zero means unlimited.
+  the control-character policy - CR and LF only with `AcceptsReturn`, tab only
+  with `AcceptsTab`, and every other control character (ESC, DEL, NEL, LS/PS,
+  ...) always rejected, since it would otherwise be stored with no paint width
+  and freeze the caret at that index - and truncates maximum-length input only
+  at a grapheme boundary. `MaxLength` zero means unlimited.
 - `ProjectPassword` validates a printable one-cell mask under the default narrow
   policy and returns exactly one mask `Rune` per source grapheme. Invalid UTF-16
   source units count as their own conservative replacement clusters but are
@@ -68,7 +71,7 @@ direction.
 
 ## Behavior
 
-- `Text` is non-null. Direct assignment validates return/tab policy,
+- `Text` is non-null. Direct assignment validates the control-character policy,
   `MaxLength`, and complete Unicode boundaries before mutation, moves the caret
   to the new end, and participates in cancellable events and undo history.
 - `Placeholder` is an optional nullable string drawn with dim attributes when

@@ -179,6 +179,25 @@ public sealed class EditTests
             acceptsTab: true).Text.ShouldBe("safe\r\n\t");
     }
 
+    /// <summary>Verifies control characters other than CR, LF, and tab are always rejected, even
+    /// with both accepted, since they paint nothing and would silently corrupt the value and
+    /// freeze the caret at that index (see #209).</summary>
+    [Theory]
+    [InlineData('\u0000')] // NUL
+    [InlineData('\u0007')] // BEL
+    [InlineData('\u001b')] // ESC
+    [InlineData('\u007f')] // DEL
+    [InlineData('\u0085')] // NEL
+    public void Replace_WhenNonLineOrTabControlCharacterIsProposed_ThrowsEvenWhenAccepted(char character)
+    {
+        _ = Should.Throw<ArgumentException>(() => Edit.Replace(
+            "safe",
+            new Selection(4, 4),
+            $"a{character}b",
+            acceptsReturn: true,
+            acceptsTab: true));
+    }
+
     /// <summary>Verifies Home and End move within CRLF-delimited logical lines.</summary>
     [Fact]
     public void MoveHome_WhenTextIsMultiline_UsesLogicalLineBoundaries()
