@@ -100,7 +100,10 @@ internal sealed class ComponentSurface: IAsyncDisposable
 
         try
         {
-            screen.Attach(application);
+            // Screen.Attach runs OnAttach, the documented place for theme publication - which now
+            // requires the owning dispatcher thread (see #204); the dispatcher is already live
+            // from the constructor, before StartAsync.
+            await application.Dispatcher.InvokeAsync(() => screen.Attach(application), cancellationToken);
             await application.StartAsync(cancellationToken);
             return new ComponentSurface(
                 application,
@@ -181,7 +184,9 @@ internal sealed class ComponentSurface: IAsyncDisposable
             timeProvider: timeProvider);
         if (theme is not null)
         {
-            application.Theme = theme;
+            // Application.Theme now requires the owning dispatcher thread (see #204); the
+            // dispatcher is already live from the constructor, before StartAsync.
+            await application.Dispatcher.InvokeAsync(() => { application.Theme = theme; }, cancellationToken);
         }
 
         try

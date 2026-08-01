@@ -215,15 +215,10 @@ public sealed class Application: ISink, IAsyncDisposable
         set
         {
             ArgumentNullException.ThrowIfNull(value);
+            Dispatcher.VerifyAccess();
 
             if (ReferenceEquals(_theme, value))
             {
-                return;
-            }
-
-            if (!Dispatcher.CheckAccess())
-            {
-                Dispatcher.Post(() => ApplyThemeChange(value));
                 return;
             }
 

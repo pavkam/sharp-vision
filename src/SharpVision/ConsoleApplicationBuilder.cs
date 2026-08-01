@@ -310,8 +310,19 @@ public sealed class ConsoleApplicationBuilder
                 connection.Resize,
                 Options.ToTerminalOptions(profile),
                 hostLease: connection);
-            _screen.Attach(application);
-            application.Theme = Options.ResolveTheme();
+            // Attach (which runs the screen's OnAttach - the documented place for theme
+            // publication, docs/concepts/screen.md) and the builder's own configured Theme both
+            // now require the owning dispatcher thread (see #204). Build() itself always runs on
+            // the caller's own thread, never the dispatcher thread the constructor just started.
+            var theme = Options.ResolveTheme();
+            application.Dispatcher.InvokeAsync(() =>
+                {
+                    _screen.Attach(application);
+                    application.Theme = theme;
+                })
+                .AsTask()
+                .GetAwaiter()
+                .GetResult();
             return application;
         }
         catch

@@ -115,6 +115,26 @@ public sealed class ApplicationTests
             .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
     }
 
+    /// <summary>Verifies an off-dispatcher Theme assignment throws on the calling thread instead of
+    /// being silently marshaled - a deferred assignment previously surfaced its
+    /// ObjectDisposedException on the dispatcher thread instead, poisoning Failure and faulting an
+    /// unrelated StopAsync for whichever caller happened to be shutting the application down
+    /// (see #204).</summary>
+    [Fact]
+    public async Task Theme_WhenAssignedOffDispatcher_ThrowsOnCallingThreadAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => Task.Run(() => application.Theme = Themes.White));
+
+        application.Failure.ShouldBeNull();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        application.Failure.ShouldBeNull();
+    }
+
     /// <summary>Verifies a visual-only Theme change renders without the former unconditional root measure.</summary>
     [Fact]
     public async Task Theme_WhenOnlyResolvedColorsChange_DoesNotRemeasureRootAsync()
