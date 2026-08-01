@@ -200,8 +200,7 @@ public sealed class Binding: IDisposable
         {
             try
             {
-                _targetPath.Write(Target, targetValue);
-                succeeded = true;
+                succeeded = _targetPath.Write(Target, targetValue);
             }
             catch when (!Equals(targetValue, _fallbackValue))
             {
@@ -212,8 +211,7 @@ public sealed class Binding: IDisposable
                 // dispatcher and stop the whole loop over one out-of-range mutation. Skipped
                 // when the write already attempted the fallback value itself, since a retry
                 // would fail identically — that failure propagates as-is.
-                _targetPath.Write(Target, _fallbackValue);
-                succeeded = true;
+                succeeded = _targetPath.Write(Target, _fallbackValue);
             }
         }
         finally
@@ -281,7 +279,12 @@ public sealed class Binding: IDisposable
 
         try
         {
-            _sourcePath.Write(_source, sourceValue);
+            // A null intermediate is a transient data-population race, not a binding failure:
+            // the model is simply left untouched, and the next forward update (once the
+            // intermediate is non-null) reconciles the target back to the source's real value.
+            // Throwing here would erupt out of the control's own property setter, after the
+            // control already committed its value and raised PropertyChanged (see #232).
+            _ = _sourcePath.Write(_source, sourceValue);
         }
         finally
         {

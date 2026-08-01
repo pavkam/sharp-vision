@@ -83,24 +83,33 @@ internal sealed class PropertyPath
         return true;
     }
 
-    /// <summary>Writes the leaf after requiring every intermediate owner.</summary>
-    public void Write(object root, object? value)
+    /// <summary>Writes the leaf if every intermediate owner is non-null.</summary>
+    /// <returns>
+    /// <see langword="true"/> if the leaf was written; <see langword="false"/> if a null
+    /// intermediate made the path unreachable. A null intermediate is an ordinary transient data
+    /// state - most often a model graph populated asynchronously - not a binding contract
+    /// violation, so it is reported as a skipped write rather than thrown (see #232).
+    /// </returns>
+    /// <exception cref="InvalidOperationException">The leaf property has no public setter.</exception>
+    public bool Write(object root, object? value)
     {
         ArgumentNullException.ThrowIfNull(root);
         var owner = root;
 
-        for (var index = 0; index < _segments.Length - 1; index++)
+        for (var index = 0; index < _segments.Length - 1 && owner is not null; index++)
         {
-            owner = _segments[index].Getter(
-                owner ?? throw new InvalidOperationException(
-                    "A binding cannot write through a null intermediate property."));
+            owner = _segments[index].Getter(owner);
         }
 
-        var leafOwner = owner ?? throw new InvalidOperationException(
-            "A binding cannot write through a null intermediate property.");
+        if (owner is null)
+        {
+            return false;
+        }
+
         var setter = _segments[^1].Setter ??
                      throw new InvalidOperationException("The binding path leaf is read-only.");
-        setter(leafOwner, value);
+        setter(owner, value);
+        return true;
     }
 
     private static PropertyPathSegment CreateSegment(PropertyInfo property)

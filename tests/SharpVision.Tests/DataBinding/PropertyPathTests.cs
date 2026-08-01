@@ -97,17 +97,36 @@ public sealed class PropertyPathTests
         address.City.ShouldBe("Aveiro");
     }
 
-    /// <summary>Verifies a two-way binding never constructs a missing intermediate.</summary>
+    /// <summary>Verifies a two-way binding never constructs a missing intermediate, and skips the
+    /// reverse write instead of throwing from the target's own property setter: the target has
+    /// already committed its value and raised its change event by the time the reverse write would
+    /// run, so throwing there would erupt out of ordinary user input (see #232).</summary>
     [Fact]
-    public void Bind_WhenNestedTargetChangesThroughNull_ThrowsWithoutModelMutation()
+    public void Bind_WhenNestedTargetChangesThroughNull_SkipsWriteWithoutThrowing()
     {
         var model = new BindingModel();
         var target = new TextInput();
         using var binding = target.Bind(model, source => source.Address!.City);
 
-        _ = Should.Throw<InvalidOperationException>(() => target.Text = "Lost");
+        _ = Should.NotThrow(() => target.Text = "Lost");
 
         model.Address.ShouldBeNull();
         target.Text.ShouldBe("Lost");
+    }
+
+    /// <summary>Verifies the next forward update reconciles the target once the previously null
+    /// intermediate becomes reachable, overwriting the transient value a skipped reverse write
+    /// could not commit to the model (see #232).</summary>
+    [Fact]
+    public void Bind_WhenIntermediateBecomesReachableAfterSkippedWrite_ReconcilesTarget()
+    {
+        var model = new BindingModel();
+        var target = new TextInput();
+        using var binding = target.Bind(model, source => source.Address!.City);
+        target.Text = "Lost";
+
+        model.Address = new BindingAddress { City = "Braga" };
+
+        target.Text.ShouldBe("Braga");
     }
 }
