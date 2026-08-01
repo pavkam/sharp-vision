@@ -61,6 +61,36 @@ public sealed class DateTimeInputTests
         control.Value.ShouldBe(new DateTime(2026, 7, 19, 10, 25, 0));
     }
 
+    /// <summary>Verifies IsOpen publishes PropertyChanged on open as well as on close, instead of
+    /// only republishing the private Popup's Closed notification (see #191).</summary>
+    [Fact]
+    public async Task IsOpen_WhenChanged_PublishesPropertyChangedOnBothTransitionsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var control = new DateTimeInput();
+            root.Children.Add(control);
+            new LayoutEngine().Layout(root, new Size(20, 10));
+            root.Attach(dispatcher);
+            var notifications = new List<bool>();
+            control.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(DateTimeInput.IsOpen))
+                {
+                    notifications.Add(control.IsOpen);
+                }
+            };
+
+            control.IsOpen = true;
+            control.IsOpen = false;
+
+            notifications.ShouldBe([true, false]);
+        }, TestContext.Current.CancellationToken);
+    }
+
     #endregion
 
     #region Commit

@@ -24,6 +24,9 @@ public abstract class FloatingSurface: ContentControl
 
     #region Surface lifecycle
 
+    /// <summary>Raised only after the surface becomes presented and its bounds commit.</summary>
+    public event EventHandler? Opened;
+
     /// <summary>Raised when closure is requested or after family-specific closing state commits.</summary>
     /// <remarks>A request handler may retain the surface by leaving its presentation available.</remarks>
     public event EventHandler? Closing;
@@ -39,6 +42,9 @@ public abstract class FloatingSurface: ContentControl
 
     /// <summary>Gets whether this surface currently owns one active application modality scope.</summary>
     protected bool HasActiveSurfaceModal => _modalScope is { IsActive: true };
+
+    /// <summary>Raises the inherited opened notification after the surface becomes presented.</summary>
+    protected void RaiseSurfaceOpened() => Opened?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Raises the inherited closing notification for a family-specific close request.</summary>
     protected void RaiseSurfaceClosing() => Closing?.Invoke(this, EventArgs.Empty);
@@ -119,6 +125,8 @@ public abstract class FloatingSurface: ContentControl
             _openingInvalidated = false;
             _isOpening = false;
         }
+
+        RaiseSurfaceOpened();
     }
 
     /// <summary>Closes one presented surface through the common ordered cleanup transaction.</summary>

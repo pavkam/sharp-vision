@@ -3176,6 +3176,7 @@ namespace SharpVision.Surfaces
         public SharpVision.Terminal.Geometry.Rect SurfaceBounds { get; protected set; }
         public event System.EventHandler? Closed;
         public event System.EventHandler? Closing;
+        public event System.EventHandler? Opened;
         protected System.EventHandler? CaptureClosedHandlers() { }
         protected bool CloseSurface(System.Action commitClosingState, System.Action commitUnavailableState) { }
         protected SharpVision.Input.ModalScope EnterSurfaceModal(SharpVision.Input.OutsideInteraction outsideInteraction, SharpVision.Controls.Control? initialFocus) { }
@@ -3184,6 +3185,7 @@ namespace SharpVision.Surfaces
         protected void OpenSurface(System.Action commitOpenState) { }
         protected void RaiseSurfaceClosed() { }
         protected void RaiseSurfaceClosing() { }
+        protected void RaiseSurfaceOpened() { }
     }
 }
 namespace SharpVision.Text

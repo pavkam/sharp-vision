@@ -49,6 +49,7 @@ public sealed class DateInput: Control
             ConnectsToAnchor = true,
             Placement = PopupPlacement.Below
         };
+        _popup.Opened += OnPopupOpened;
         _popup.Closing += OnPopupClosing;
         _popup.Closed += OnPopupClosed;
         _modalTracker = new PopupModalTracker(_popup, () => IsOpen = false);
@@ -472,6 +473,7 @@ public sealed class DateInput: Control
         if (reason == ReleaseReason.Disposed)
         {
             _calendar.SelectionChanged -= OnCalendarSelectionChanged;
+            _popup.Opened -= OnPopupOpened;
             _popup.Closing -= OnPopupClosing;
             _popup.Closed -= OnPopupClosed;
             ValueChanged = null;
@@ -515,6 +517,13 @@ public sealed class DateInput: Control
         }
 
         IsOpen = false;
+    }
+
+    private void OnPopupOpened(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+        NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None);
     }
 
     private void OnPopupClosing(object? sender, EventArgs eventArgs)

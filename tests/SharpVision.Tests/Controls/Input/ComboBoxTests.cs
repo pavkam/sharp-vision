@@ -736,6 +736,36 @@ public sealed class ComboBoxTests
         closed.ShouldBe(1);
     }
 
+    /// <summary>Verifies IsOpen publishes PropertyChanged on open as well as on close, instead of
+    /// only republishing the private Popup's Closed notification (see #191).</summary>
+    [Fact]
+    public async Task IsOpen_WhenChanged_PublishesPropertyChangedOnBothTransitionsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var box = new ComboBox { Items = ["A", "B"], SelectedIndex = 0 };
+            root.Children.Add(box);
+            new LayoutEngine().Layout(root, new Size(20, 10));
+            root.Attach(dispatcher);
+            var notifications = new List<bool>();
+            box.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(ComboBox.IsOpen))
+                {
+                    notifications.Add(box.IsOpen);
+                }
+            };
+
+            box.IsOpen = true;
+            box.IsOpen = false;
+
+            notifications.ShouldBe([true, false]);
+        }, TestContext.Current.CancellationToken);
+    }
+
     private static KeyEventArgs Tab() => new(new Stroke(
         Code.Tab,
         default,

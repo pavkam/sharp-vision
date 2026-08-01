@@ -55,6 +55,7 @@ public sealed class ComboBox: Control
             TabNavigation = TabNavigation.None,
             ConnectsToAnchor = true
         };
+        _popup.Opened += OnPopupOpened;
         _popup.Closing += OnPopupClosing;
         _popup.Closed += OnPopupClosed;
         _modalTracker = new PopupModalTracker(_popup, () => IsOpen = false);
@@ -517,6 +518,7 @@ public sealed class ComboBox: Control
         {
             _list.ItemInvoked -= OnItemInvoked;
             _list.SelectionChanged -= OnSelectionChanged;
+            _popup.Opened -= OnPopupOpened;
             _popup.Closing -= OnPopupClosing;
             _popup.Closed -= OnPopupClosed;
             SelectionChanged = null;
@@ -573,6 +575,13 @@ public sealed class ComboBox: Control
             ref failure);
         ExceptionAggregation.Capture(() => SelectionChanged?.Invoke(this, eventArgs), ref failure);
         failure?.Throw();
+    }
+
+    private void OnPopupOpened(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+        NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None);
     }
 
     private void OnPopupClosing(object? sender, EventArgs eventArgs)
