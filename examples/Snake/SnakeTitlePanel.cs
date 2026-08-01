@@ -35,6 +35,10 @@ internal sealed class SnakeTitlePanel: CompositeControl
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment = VerticalAlignment.Stretch;
 
+        // The panel floats above the animated attract field, so every stretched container in it
+        // keeps a transparent background; only the cards and headings paint pixels.
+        Face = TransparentFace();
+
         _titlePrism = CreatePrismTitle(_smallFont, "SNAKE");
         _difficulty = new Text("") { HorizontalAlignment = HorizontalAlignment.Center };
         _scores = new Text("") { Overflow = Overflow.Wrap };
@@ -59,6 +63,7 @@ internal sealed class SnakeTitlePanel: CompositeControl
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Center,
+            Face = TransparentFace(),
             Spacing = 1,
             Children =
             {
@@ -76,6 +81,7 @@ internal sealed class SnakeTitlePanel: CompositeControl
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Center,
             Visibility = Visibility.Collapsed,
+            Face = TransparentFace(),
             Spacing = 1,
             Children =
             {
@@ -97,6 +103,7 @@ internal sealed class SnakeTitlePanel: CompositeControl
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Center,
             Visibility = Visibility.Collapsed,
+            Face = TransparentFace(),
             Spacing = 1,
             Children =
             {
@@ -108,7 +115,7 @@ internal sealed class SnakeTitlePanel: CompositeControl
                         Color.Transparent,
                         TerminalAttributes.Bold,
                         Underline.None,
-                        Color.Rgb(0xFF, 0x00, 0x00)),
+                        Color.Default),
                     HorizontalAlignment = HorizontalAlignment.Center
                 },
                 CreateCard(
@@ -124,11 +131,19 @@ internal sealed class SnakeTitlePanel: CompositeControl
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
+            Face = TransparentFace(),
             Children = { _titleView, _recordView, _gameOverView }
         };
 
         InitializeContent(root);
     }
+
+    private static Face TransparentFace() => new(
+        ThemeColor.ControlText,
+        Color.Transparent,
+        ThemeDecoration.NormalText,
+        Underline.None,
+        Color.Default);
 
     /// <summary>Gets or sets the normalized caller-driven phase shared by both rainbow headings.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is non-finite or outside [0, 1).</exception>

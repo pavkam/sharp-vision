@@ -9,11 +9,20 @@ public sealed class SnakeBoard: Control
     private static readonly TerminalStyle _borderStyle = new(
         Color.Rgb(127, 127, 127), Color.Default);
 
-    private static readonly TerminalStyle _snakeBodyStyle = new(
-        Color.Rgb(0, 200, 0), Color.Default, TerminalAttributes.Bold);
-
     private static readonly TerminalStyle _speedBodyStyle = new(
         Color.Rgb(0, 255, 255), Color.Default, TerminalAttributes.Bold);
+
+    private static readonly TerminalStyle _demoBodyStyle = new(
+        Color.Rgb(0, 110, 60), Color.Default, TerminalAttributes.Dim);
+
+    private static readonly TerminalStyle _demoHeadStyle = new(
+        Color.Rgb(0, 170, 90), Color.Default);
+
+    private static readonly TerminalStyle _demoAppleStyle = new(
+        Color.Rgb(140, 60, 60), Color.Default, TerminalAttributes.Dim);
+
+    private static readonly TerminalStyle _demoObstacleStyle = new(
+        Color.Rgb(55, 55, 60), Color.Default, TerminalAttributes.Dim);
 
     private static readonly TerminalStyle _deathBodyStyle = new(
         Color.Rgb(0, 120, 0), Color.Default, TerminalAttributes.Dim);
@@ -32,6 +41,9 @@ public sealed class SnakeBoard: Control
 
     private static readonly TerminalStyle _dimStyle = new(
         Color.Rgb(229, 229, 229), Color.Default, TerminalAttributes.Dim);
+
+    private readonly List<SparkleBurst> _bursts = [];
+    private readonly List<ScorePopup> _popups = [];
 
     #region Construction and properties
 
@@ -53,6 +65,19 @@ public sealed class SnakeBoard: Control
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public GameState? State
+    {
+        get;
+        set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
+    }
+
+    /// <summary>Gets or sets the self-playing demo game rendered dim behind the attract field.</summary>
+    /// <remarks>
+    /// The demo renders only while <see cref="ShowAttractMode"/> is enabled. Changing the state is
+    /// dispatcher-affine while attached and requests render-only invalidation.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public GameState? DemoState
     {
         get;
         set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
@@ -213,6 +238,80 @@ public sealed class SnakeBoard: Control
 
     #endregion
 
+    #region Transient effects
+
+    /// <summary>Adds one floating score popup above the board content.</summary>
+    /// <remarks>Mutation is dispatcher-affine while attached and requests render-only invalidation.</remarks>
+    /// <param name="popup">The popup to add at age zero.</param>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public void AddScorePopup(ScorePopup popup)
+    {
+        _popups.Add(popup);
+        Invalidate(InvalidationImpact.Render);
+    }
+
+    /// <summary>Adds one expanding sparkle burst above the board content.</summary>
+    /// <remarks>Mutation is dispatcher-affine while attached and requests render-only invalidation.</remarks>
+    /// <param name="burst">The burst to add at age zero.</param>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public void AddSparkleBurst(SparkleBurst burst)
+    {
+        _bursts.Add(burst);
+        Invalidate(InvalidationImpact.Render);
+    }
+
+    /// <summary>Ages every transient effect by one visual pulse and drops expired ones.</summary>
+    /// <remarks>Mutation is dispatcher-affine while attached and requests render-only invalidation.</remarks>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public void AdvanceEffects()
+    {
+        for (var index = _popups.Count - 1; index >= 0; index--)
+        {
+            var aged = _popups[index].Aged();
+
+            if (aged.IsExpired)
+            {
+                _popups.RemoveAt(index);
+            }
+            else
+            {
+                _popups[index] = aged;
+            }
+        }
+
+        for (var index = _bursts.Count - 1; index >= 0; index--)
+        {
+            var aged = _bursts[index].Aged();
+
+            if (aged.IsExpired)
+            {
+                _bursts.RemoveAt(index);
+            }
+            else
+            {
+                _bursts[index] = aged;
+            }
+        }
+
+        Invalidate(InvalidationImpact.Render);
+    }
+
+    /// <summary>Removes every transient effect immediately, for example when a new game starts.</summary>
+    /// <remarks>Mutation is dispatcher-affine while attached and requests render-only invalidation.</remarks>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public void ClearEffects()
+    {
+        _popups.Clear();
+        _bursts.Clear();
+        Invalidate(InvalidationImpact.Render);
+    }
+
+    #endregion
+
     #region Rendering helpers
 
     /// <inheritdoc/>
@@ -227,6 +326,7 @@ public sealed class SnakeBoard: Control
         if (ShowAttractMode)
         {
             DrawAttractMode(canvas);
+            DrawDemoGame(canvas);
         }
 
         var state = State;
@@ -236,7 +336,7 @@ public sealed class SnakeBoard: Control
             return;
         }
 
-        canvas.DrawBox(Bounds, LineStyle.Heavy, _borderStyle);
+        canvas.DrawBox(Bounds, LineStyle.Heavy, BorderStyle(state));
 
         var origin = new Point(Bounds.X + 1, Bounds.Y + 1);
         DrawObstacles(canvas, state, origin);
@@ -251,6 +351,9 @@ public sealed class SnakeBoard: Control
             DrawSnake(canvas, state, origin);
         }
 
+        DrawBursts(canvas, origin);
+        DrawPopups(canvas, origin);
+
         if (state.IsSpeedBoosted)
         {
             DrawBoostBanner(canvas);
@@ -260,6 +363,37 @@ public sealed class SnakeBoard: Control
         {
             DrawPause(canvas);
         }
+    }
+
+    // The border doubles as an ambient status ring: it breathes cyan while the speed boost is
+    // active and strobes red during the death wave, so game state reads at a glance even when the
+    // player's eye is not on the HUD.
+    private TerminalStyle BorderStyle(GameState state)
+    {
+        if (DeathPulse >= 0)
+        {
+            return DeathPulse % 2 == 0
+                ? new TerminalStyle(Color.Rgb(255, 60, 60), Color.Default, TerminalAttributes.Bold)
+                : new TerminalStyle(Color.Rgb(140, 30, 30), Color.Default);
+        }
+
+        if (state.IsSpeedBoosted)
+        {
+            var wave = TriangleWave(AnimationFrame, 12);
+            var level = 150 + (wave * 105 / 6);
+            return new TerminalStyle(Color.Rgb(0, level, level), Color.Default, TerminalAttributes.Bold);
+        }
+
+        return _borderStyle;
+    }
+
+    // A triangle wave keeps pulse animation symmetric (rise then fall) using only integer math on
+    // the bounded animation frame.
+    private static int TriangleWave(int frame, int period)
+    {
+        var half = period / 2;
+        var phase = frame % period;
+        return phase <= half ? phase : period - phase;
     }
 
     private void DrawAttractMode(TerminalCanvas canvas)
@@ -305,7 +439,12 @@ public sealed class SnakeBoard: Control
 
     private void DrawSnake(TerminalCanvas canvas, GameState state, Point origin)
     {
+        var count = state.Body.Count;
         var segmentIndex = 0;
+
+        // The shimmer highlight travels the full body once per 60-frame visual cycle, so longer
+        // snakes show a faster-looking glint without any extra timers.
+        var shimmer = count == 0 ? 0 : AnimationFrame * (count + 6) / SnakeAnimationState.RainbowFrames;
 
         foreach (var segment in state.Body)
         {
@@ -315,20 +454,155 @@ public sealed class SnakeBoard: Control
             {
                 var green = 210 + (AnimationFrame % 4 * 15);
                 var style = new TerminalStyle(
-                    Color.Rgb(0, green, 0),
+                    state.IsSpeedBoosted ? Color.Rgb(120, 255, 255) : Color.Rgb(0, green, 0),
                     Color.Default,
                     TerminalAttributes.Bold);
-                canvas.DrawRune(new Rune('◉'), point, style);
+                canvas.DrawRune(HeadGlyph(state.Heading), point, style);
             }
             else
             {
-                var style = state.IsSpeedBoosted && (segmentIndex + AnimationFrame) % 3 == 0
-                    ? _speedBodyStyle
-                    : _snakeBodyStyle;
-                canvas.DrawRune(new Rune('█'), point, style);
+                canvas.DrawRune(new Rune('█'), point, BodyStyle(state, segmentIndex, count, shimmer));
             }
 
             segmentIndex++;
+        }
+    }
+
+    private static Rune HeadGlyph(Direction heading) => heading switch
+    {
+        Direction.Up => new Rune('▲'),
+        Direction.Down => new Rune('▼'),
+        Direction.Left => new Rune('◀'),
+        Direction.Right => new Rune('▶'),
+        _ => new Rune('◉')
+    };
+
+    // Body cells fade from bright near the head to dark at the tail, and a two-cell shimmer
+    // highlight sweeps head-to-tail. The boosted palette swaps the green ramp for cyan.
+    private static TerminalStyle BodyStyle(GameState state, int segmentIndex, int count, int shimmer)
+    {
+        var t = count <= 2 ? 0d : (segmentIndex - 1) / (double) (count - 2);
+        var color = state.IsSpeedBoosted
+            ? Color.Rgb(0, Lerp(255, 90, t), Lerp(255, 110, t))
+            : Color.Rgb(0, Lerp(230, 85, t), Lerp(70, 25, t));
+
+        if (Math.Abs(segmentIndex - shimmer) <= 1)
+        {
+            color = state.IsSpeedBoosted
+                ? Color.Rgb(190, 255, 255)
+                : Color.Rgb(170, 255, 140);
+        }
+
+        return new TerminalStyle(color, Color.Default, TerminalAttributes.Bold);
+    }
+
+    private static int Lerp(int from, int to, double t) =>
+        (int) Math.Round(from + ((to - from) * Math.Clamp(t, 0d, 1d)));
+
+    // The demo game renders entirely in muted colors so the FIGlet title and cards stay dominant;
+    // it exists to make the title screen feel alive, not to compete with it.
+    private void DrawDemoGame(TerminalCanvas canvas)
+    {
+        if (DemoState is not { } demo)
+        {
+            return;
+        }
+
+        foreach (var obstacle in demo.Obstacles)
+        {
+            DrawDemoCell(canvas, obstacle, new Rune('▓'), _demoObstacleStyle);
+        }
+
+        foreach (var (position, _) in demo.Apples)
+        {
+            DrawDemoCell(canvas, position, new Rune('•'), _demoAppleStyle);
+        }
+
+        var segmentIndex = 0;
+
+        foreach (var segment in demo.Body)
+        {
+            if (segmentIndex == 0)
+            {
+                DrawDemoCell(canvas, segment, HeadGlyph(demo.Heading), _demoHeadStyle);
+            }
+            else
+            {
+                DrawDemoCell(canvas, segment, new Rune('█'), _demoBodyStyle);
+            }
+
+            segmentIndex++;
+        }
+    }
+
+    private void DrawDemoCell(TerminalCanvas canvas, Point cell, Rune glyph, TerminalStyle style)
+    {
+        var point = new Point(Bounds.X + cell.X, Bounds.Y + cell.Y);
+
+        if (point.X >= Bounds.X && point.X < Bounds.Right && point.Y >= Bounds.Y && point.Y < Bounds.Bottom)
+        {
+            canvas.DrawRune(glyph, point, style);
+        }
+    }
+
+    private void DrawPopups(TerminalCanvas canvas, Point origin)
+    {
+        foreach (var popup in _popups)
+        {
+            var y = origin.Y + popup.Position.Y - popup.Rise;
+            var x = origin.X + popup.Position.X - (popup.Text.Length / 2);
+            x = Math.Clamp(x, Bounds.X + 1, Math.Max(Bounds.X + 1, Bounds.Right - 1 - popup.Text.Length));
+
+            if (y <= Bounds.Y || y >= Bounds.Bottom - 1)
+            {
+                continue;
+            }
+
+            var attributes = popup.Age switch
+            {
+                < 4 => TerminalAttributes.Bold,
+                < 7 => TerminalAttributes.None,
+                _ => TerminalAttributes.Dim
+            };
+            _ = canvas.Draw(
+                popup.Text.AsSpan(),
+                new Point(x, y),
+                new TerminalStyle(popup.Color, Color.Default, attributes));
+        }
+    }
+
+    private void DrawBursts(TerminalCanvas canvas, Point origin)
+    {
+        foreach (var burst in _bursts)
+        {
+            var center = new Point(origin.X + burst.Center.X, origin.Y + burst.Center.Y);
+            var radius = (burst.Age / 2) + 1;
+            var attributes = burst.Age < 2 ? TerminalAttributes.Bold : TerminalAttributes.Dim;
+            var style = new TerminalStyle(burst.Color, Color.Default, attributes);
+            var glyph = burst.Age < 3 ? new Rune('✧') : new Rune('·');
+
+            if (burst.Age == 0)
+            {
+                DrawBurstCell(canvas, center, new Rune('✦'), style);
+                continue;
+            }
+
+            DrawBurstCell(canvas, new Point(center.X, center.Y - radius), glyph, style);
+            DrawBurstCell(canvas, new Point(center.X, center.Y + radius), glyph, style);
+            DrawBurstCell(canvas, new Point(center.X - radius, center.Y), glyph, style);
+            DrawBurstCell(canvas, new Point(center.X + radius, center.Y), glyph, style);
+            DrawBurstCell(canvas, new Point(center.X - radius, center.Y - radius), new Rune('·'), style);
+            DrawBurstCell(canvas, new Point(center.X + radius, center.Y - radius), new Rune('·'), style);
+            DrawBurstCell(canvas, new Point(center.X - radius, center.Y + radius), new Rune('·'), style);
+            DrawBurstCell(canvas, new Point(center.X + radius, center.Y + radius), new Rune('·'), style);
+        }
+    }
+
+    private void DrawBurstCell(TerminalCanvas canvas, Point point, Rune glyph, TerminalStyle style)
+    {
+        if (point.X > Bounds.X && point.X < Bounds.Right - 1 && point.Y > Bounds.Y && point.Y < Bounds.Bottom - 1)
+        {
+            canvas.DrawRune(glyph, point, style);
         }
     }
 
@@ -385,11 +659,22 @@ public sealed class SnakeBoard: Control
     private (Rune Glyph, TerminalStyle Style) AppleVisual(AppleKind kind)
     {
         var bright = AnimationFrame % 2 == 0;
+
+        // The golden apple twinkles through a four-glyph diamond cycle so the highest-value pickup
+        // is also the most animated object on the board.
+        var goldenTwinkle = (AnimationFrame / 2 % 4) switch
+        {
+            0 => new Rune('◆'),
+            1 => new Rune('◈'),
+            2 => new Rune('◇'),
+            _ => new Rune('◈')
+        };
+
         return kind switch
         {
             AppleKind.Normal => (new Rune('●'), new TerminalStyle(
                 PulseColor(50, 255, 50, bright), Color.Default)),
-            AppleKind.Golden => (new Rune('◆'), new TerminalStyle(
+            AppleKind.Golden => (goldenTwinkle, new TerminalStyle(
                 PulseColor(255, 215, 0, bright), Color.Default, TerminalAttributes.Bold)),
             AppleKind.Poison => (new Rune('✦'), new TerminalStyle(
                 PulseColor(200, 0, 200, bright), Color.Default)),

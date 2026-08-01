@@ -24,11 +24,12 @@ public sealed class HighScoreTable
     /// <summary>Returns whether a non-negative score qualifies for the table.</summary>
     /// <param name="score">The non-negative score to compare.</param>
     /// <returns><see langword="true"/> when the score has a place in the table; otherwise, false.</returns>
+    /// <remarks>A zero score never qualifies, so a pointless run skips the record celebration.</remarks>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="score"/> is negative.</exception>
     public bool Qualifies(int score)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(score);
-        return _entries.Count < 10 || score > _entries[^1].Score;
+        return score > 0 && (_entries.Count < 10 || score > _entries[^1].Score);
     }
 
     /// <summary>Inserts a score with up to three Unicode initials and returns the rank (1-based).</summary>
