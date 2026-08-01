@@ -288,9 +288,11 @@ run: that asks the run to complete from inside itself. The owner of `RunAsync`
 disposes the session instead, and a reentrant dispose attempt should fail fast
 with a clear exception rather than hang.
 
-> [!WARNING] **Implementation gap:** There is currently no reentrancy guard —
-> awaiting `DisposeAsync` from a sink callback deadlocks silently. Issue #229
-> tracks detecting the reentrant call and failing fast or deferring teardown.
+> [!WARNING]
+>
+> **Implementation gap:** There is currently no reentrancy guard — awaiting
+> `DisposeAsync` from a sink callback deadlocks silently. Issue #229 tracks
+> detecting the reentrant call and failing fast or deferring teardown.
 
 ## Expected behavior
 

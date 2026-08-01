@@ -76,12 +76,14 @@ package and pushes both with duplicate skipping. If the main package already
 exists, the workflow skips packing and both pushes — which means it cannot
 repair a missing symbol package on its own.
 
-> [!IMPORTANT] `SharpVision.Terminal` is currently non-packable, while
-> `SharpVision` declares an exact package dependency on it. NuGet contains
-> `SharpVision` `0.5.0-alpha.1` but no matching `SharpVision.Terminal` package,
-> so package installation cannot resolve the dependency. Repository builds and
-> project references remain usable. Publication must ship the terminal
-> dependency before the UI package can be considered installable.
+> [!IMPORTANT]
+>
+> `SharpVision.Terminal` is currently non-packable, while `SharpVision` declares
+> an exact package dependency on it. NuGet contains `SharpVision`
+> `0.5.0-alpha.1` but no matching `SharpVision.Terminal` package, so package
+> installation cannot resolve the dependency. Repository builds and project
+> references remain usable. Publication must ship the terminal dependency before
+> the UI package can be considered installable.
 
 `Directory.Build.targets` refuses to generate a NuGet manifest for a packable
 project when any required public metadata is empty: identity, version, title,

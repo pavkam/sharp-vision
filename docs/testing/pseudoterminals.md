@@ -8,10 +8,12 @@ closure, and timing. The current fixture drives `StreamTransport`,
 `UnixResizeSource`, and `Runtime.Session` directly. Windows console hosting
 should have equivalent coverage through a real ConPTY-backed fixture.
 
-> [!IMPORTANT] **Implementation gap:** No ConPTY-based fixture exists, and the
-> Windows CI job runs only console-mode unit tests that skip when standard input
-> is redirected. Real Windows console lifecycle validation is not currently
-> exercised; issue #35 tracks adding it.
+> [!IMPORTANT]
+>
+> **Implementation gap:** No ConPTY-based fixture exists, and the Windows CI job
+> runs only console-mode unit tests that skip when standard input is redirected.
+> Real Windows console lifecycle validation is not currently exercised; issue
+> #35 tracks adding it.
 
 ## Scenarios
 

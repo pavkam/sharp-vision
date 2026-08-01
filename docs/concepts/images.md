@@ -17,10 +17,12 @@ PNG validation establishes safe ownership and dimensions; it is not raster
 decoding. Sixel therefore consumes RGBA only. The Kitty and iTerm2 backends may
 transmit owned PNG directly when their capability and route are proved.
 
-> [!IMPORTANT] **Implementation gap:** On a terminal whose only graphics
-> protocol is sixel, a PNG placement is skipped and the Image control paints its
-> shaded-cell fallback with no diagnostic. Issue #233 tracks decoding PNG for
-> raster-only backends or at least reporting the degradation.
+> [!IMPORTANT]
+>
+> **Implementation gap:** On a terminal whose only graphics protocol is sixel, a
+> PNG placement is skipped and the Image control paints its shaded-cell fallback
+> with no diagnostic. Issue #233 tracks decoding PNG for raster-only backends or
+> at least reporting the degradation.
 
 ## Bounds and validation
 

@@ -293,10 +293,12 @@ mode read or write failure throws `IOException` wrapping a `Win32Exception`
 (`Marshal.GetLastPInvokeError()`), mirroring the existing Unix
 `Native.GetDimensions` failure shape.
 
-> [!IMPORTANT] The Windows path is unit-tested for console mode-flag computation
-> and the P/Invoke boundary shape, but has not been validated against a real
-> Windows console or in Windows CI. Treat it as implemented but unverified until
-> that platform coverage exists.
+> [!IMPORTANT]
+>
+> The Windows path is unit-tested for console mode-flag computation and the
+> P/Invoke boundary shape, but has not been validated against a real Windows
+> console or in Windows CI. Treat it as implemented but unverified until that
+> platform coverage exists.
 
 ## `TreatControlCAsInput`
 

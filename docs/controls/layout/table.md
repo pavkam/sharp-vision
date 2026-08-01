@@ -51,11 +51,13 @@ any further, so the keystroke never escapes to page an enclosing scrollable
 container. Every move — including `Home` and `End` — brings the active cell into
 view.
 
-> [!IMPORTANT] **Implementation gap:** Table currently marks these keys handled
-> only when the active cell actually moved, so PageUp at the first row (or
-> PageDown at the last) still escapes and pages an enclosing scrollable
-> container. TreeView and NavigationView already handle the boundary press as
-> documented here. Issue #222 tracks the fix.
+> [!IMPORTANT]
+>
+> **Implementation gap:** Table currently marks these keys handled only when the
+> active cell actually moved, so PageUp at the first row (or PageDown at the
+> last) still escapes and pages an enclosing scrollable container. TreeView and
+> NavigationView already handle the boundary press as documented here. Issue
+> #222 tracks the fix.
 
 `Enter` activates the active row, and begins editing when the active cell is an
 editable `TextInput`. While editing, `Enter` commits, `Escape` restores the

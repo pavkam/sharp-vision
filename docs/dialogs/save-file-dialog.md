@@ -29,8 +29,10 @@ complete options object during construction, including an owned filter snapshot,
 so changing an options object afterwards never affects a dialog that is already
 showing.
 
-> [!IMPORTANT] **Implementation gap:** `InitialFileName` is a non-null string by
-> contract, but its option setter currently accepts a runtime null. Constructing
+> [!IMPORTANT]
+>
+> **Implementation gap:** `InitialFileName` is a non-null string by contract,
+> but its option setter currently accepts a runtime null. Constructing
 > `SaveFileDialog` then rejects that value through `TextInput.Text`, after the
 > invalid options object has already been mutated, instead of rejecting it at
 > the public setter boundary.
@@ -107,9 +109,11 @@ are markup-escaped and ellipsized.
 - Invoking a file updates the filename and then attempts the Save, whether the
   invocation came from the pointer or from the keyboard.
 
-  > [!IMPORTANT] **Implementation gap:** Pointer invocation currently only
-  > updates the filename without attempting the Save; only keyboard invocation
-  > saves. Issue #227 tracks pointer acceptance.
+  > [!IMPORTANT]
+  >
+  > **Implementation gap:** Pointer invocation currently only updates the
+  > filename without attempting the Save; only keyboard invocation saves. Issue
+  > #227 tracks pointer acceptance.
 
 - Typing a non-blank filename enables Save. Pressing Enter in the filename input
   and activating the default Save button run the same completion path.

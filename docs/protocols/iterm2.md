@@ -83,11 +83,13 @@ iTerm2 3.5-or-newer multipart protocol. Query, database, and tentative
 creates the backend lazily after profile and resize publication and consumes
 semantic placements from the public Image control.
 
-> [!IMPORTANT] **Implementation gap:** Capability discovery does not consume
-> iTerm2 `Capabilities` or `TERM_FEATURES` `FILE` evidence. Direct iTerm2 image
-> output therefore requires an explicit `ItermImages=true` override even when a
-> local terminal could provide authoritative FILE support evidence. Issue #230
-> tracks consuming this evidence.
+> [!IMPORTANT]
+>
+> **Implementation gap:** Capability discovery does not consume iTerm2
+> `Capabilities` or `TERM_FEATURES` `FILE` evidence. Direct iTerm2 image output
+> therefore requires an explicit `ItermImages=true` override even when a local
+> terminal could provide authoritative FILE support evidence. Issue #230 tracks
+> consuming this evidence.
 
 Unsupported source, fitting, route, or evidence keeps the control's previously
 painted cell fallback.

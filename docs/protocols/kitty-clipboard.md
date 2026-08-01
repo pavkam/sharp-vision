@@ -48,9 +48,11 @@ aliases, permissions and errors, passwords and names, paste events, detection,
 and multiplexer correlation. Unsupported terminals fall back to OSC 52 text when
 safe, then to an unavailable result rather than an exception.
 
-> [!IMPORTANT] **Implementation gap:** The terminal protocol layer provides
-> bounded OSC 5522 packets, writers, transactions, capability evidence, and mode
-> controls, but startup negotiation does not issue the mode-5522 query and
+> [!IMPORTANT]
+>
+> **Implementation gap:** The terminal protocol layer provides bounded OSC 5522
+> packets, writers, transactions, capability evidence, and mode controls, but
+> startup negotiation does not issue the mode-5522 query and
 > `Application.Terminal.Clipboard` currently authorizes and emits only OSC 52. A
 > terminal profile with authoritative Kitty clipboard support but no OSC 52
 > support is therefore reported unavailable and remains byte-quiet; inbound OSC

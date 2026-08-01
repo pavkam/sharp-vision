@@ -116,10 +116,12 @@ randomized, Unicode, and allocation evidence remains in the dedicated
 When code does not do what the page says it should, keep the intended rule and
 place this GitHub callout immediately after it:
 
-> [!IMPORTANT] **Implementation gap:** State the missing or conflicting behavior
-> in user terms. Explain the current observable behavior and identify the
-> affected public type or subsystem. Do not promise a release date or hide the
-> gap in a testing-only section.
+> [!IMPORTANT]
+>
+> **Implementation gap:** State the missing or conflicting behavior in user
+> terms. Explain the current observable behavior and identify the affected
+> public type or subsystem. Do not promise a release date or hide the gap in a
+> testing-only section.
 
 Each gap should have a matching GitHub issue that describes the code change
 needed to close it. Use `NOTE` for compatibility details that do not conflict

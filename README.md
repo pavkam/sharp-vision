@@ -47,10 +47,12 @@ defines the one-way dependency graph and ownership boundaries.
 SharpVision `0.5.0-alpha.1` is a prerelease and may change before the stable
 API.
 
-> [!IMPORTANT] The published UI package currently has an unresolved exact
-> dependency because the matching `SharpVision.Terminal` package is not
-> published. It is not currently installable. Build this repository or use
-> project references until the terminal package is available.
+> [!IMPORTANT]
+>
+> The published UI package currently has an unresolved exact dependency because
+> the matching `SharpVision.Terminal` package is not published. It is not
+> currently installable. Build this repository or use project references until
+> the terminal package is available.
 
 Once published, `SharpVision.Terminal` is installed transitively. Reference that
 lower-level package directly only when building terminal infrastructure without

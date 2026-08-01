@@ -7,9 +7,10 @@ a caller-configurable template. It realizes every item into a private vertical
 `Stack` armed with the intrinsic [`AutoScroll`](../../concepts/scrolling.md)
 contract, and it makes no virtualization or recycling claim.
 
-> [!NOTE] Realization cost and memory scale with the item count, not the
-> viewport. Viewport-window realization for large collections is tracked by
-> issue #231.
+> [!NOTE]
+>
+> Realization cost and memory scale with the item count, not the viewport.
+> Viewport-window realization for large collections is tracked by issue #231.
 
 Each template result is wrapped in one ordinary pressable `ListItem`. The
 ListView owns focus and current-item navigation; the wrapper owns activation,

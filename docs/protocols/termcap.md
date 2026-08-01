@@ -95,7 +95,9 @@ optional normalization without guessed aliases; inline 1023-byte rejection;
 provider-failure handling; absent extended-capability evidence; and no output
 before a required capability failure.
 
-> [!NOTE] The installed ncurses library, rather than SharpVision, owns fallback
-> among `/etc/termcap`, `/usr/share/misc/termcap`, and `$HOME/.termcap`.
-> Repository fixtures cover explicit `TERMCAP` and `TERMPATH` sources; they do
-> not replace platform-specific verification of ncurses' default file ordering.
+> [!NOTE]
+>
+> The installed ncurses library, rather than SharpVision, owns fallback among
+> `/etc/termcap`, `/usr/share/misc/termcap`, and `$HOME/.termcap`. Repository
+> fixtures cover explicit `TERMCAP` and `TERMPATH` sources; they do not replace
+> platform-specific verification of ncurses' default file ordering.

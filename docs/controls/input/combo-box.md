@@ -106,10 +106,12 @@ offset keeps the drop-down open. A wheel over the open drop-down that cannot
 scroll any further is swallowed without closing it, while a wheel aimed outside
 the ComboBox plane closes the drop-down and is consumed.
 
-> [!IMPORTANT] **Implementation gap:** An endpoint wheel inside the open list is
-> currently treated like outside interaction: when the ListView has no scroll
-> range or is already at the requested endpoint, the unhandled wheel dismisses
-> the drop-down. Issue #225 tracks the fix.
+> [!IMPORTANT]
+>
+> **Implementation gap:** An endpoint wheel inside the open list is currently
+> treated like outside interaction: when the ListView has no scroll range or is
+> already at the requested endpoint, the unhandled wheel dismisses the
+> drop-down. Issue #225 tracks the fix.
 
 ### Keyboard navigation inside the popup
 

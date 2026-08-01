@@ -75,12 +75,13 @@ press, leave, reentry, release, and unavailable cleanup. Activating it requests
 closure: the Window raises `Closing` and, unless the application cancels the
 request, hides itself before raising `Closed`.
 
-> [!IMPORTANT] **Implementation gap:** Today every close path — the close
-> affordance, Escape, modal `Dismiss`, and `RequestClose()` — only raises the
-> non-cancellable `Closing` event; nothing hides or disposes the Window unless
-> an application handler does it. A window whose `Closing` is unsubscribed
-> visibly ignores its own close button. Issue #223 tracks close-by-default with
-> a cancellation hook.
+> [!IMPORTANT]
+>
+> **Implementation gap:** Today every close path — the close affordance, Escape,
+> modal `Dismiss`, and `RequestClose()` — only raises the non-cancellable
+> `Closing` event; nothing hides or disposes the Window unless an application
+> handler does it. A window whose `Closing` is unsubscribed visibly ignores its
+> own close button. Issue #223 tracks close-by-default with a cancellation hook.
 
 Pointer ancestry does not restyle the Window face, frame, or shadow. The close
 mark can still react independently while its target is hovered or pressed.
@@ -99,14 +100,16 @@ Activating another Window atomically deactivates the previous one. Activation
 should also raise the activated Window above its sibling windows, and closing or
 hiding the active Window should activate the most recently active remaining one.
 
-> [!IMPORTANT] **Implementation gap:** Activation currently changes `IsActive`
-> only: the activated Window is not promoted in Overlay z-order (a clicked
-> window can stay buried while its border paints the active color), and hiding,
-> collapsing, disabling, detaching, disposing, or shutting down the active
-> Window clears `Application.ActiveWindow` without restoring an older Window.
-> Issue #224 tracks raise-on-activate and activation history. The default Window
-> profile maps `IsActive` onto its existing `FocusWithin` appearance
-> contribution, changing only the frame foreground to `ThemeColor.ActiveBorder`.
+> [!IMPORTANT]
+>
+> **Implementation gap:** Activation currently changes `IsActive` only: the
+> activated Window is not promoted in Overlay z-order (a clicked window can stay
+> buried while its border paints the active color), and hiding, collapsing,
+> disabling, detaching, disposing, or shutting down the active Window clears
+> `Application.ActiveWindow` without restoring an older Window. Issue #224
+> tracks raise-on-activate and activation history. The default Window profile
+> maps `IsActive` onto its existing `FocusWithin` appearance contribution,
+> changing only the frame foreground to `ThemeColor.ActiveBorder`.
 > `ContainsFocus` and `IsFocused` keep their independent keyboard-focus
 > meanings.
 

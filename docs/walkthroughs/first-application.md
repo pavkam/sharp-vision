@@ -13,7 +13,9 @@ cd HelloSharpVision
 dotnet add reference ../sharp-vision/src/SharpVision/SharpVision.csproj
 ```
 
-> [!IMPORTANT] The published UI package currently cannot resolve its unpublished
+> [!IMPORTANT]
+>
+> The published UI package currently cannot resolve its unpublished
 > `SharpVision.Terminal` dependency. Until the terminal package exists, the
 > project reference above is the supported path.
 
@@ -57,7 +59,9 @@ alignment properties center the stack inside the application viewport. The
 [`Button`](../controls/input/button.md#overview) owns one `Content` child and
 publishes `Click` after a completed activation.
 
-> [!NOTE] `Application.Closed()` is currently the public request for an orderly
+> [!NOTE]
+>
+> `Application.Closed()` is currently the public request for an orderly
 > shutdown; a dedicated, intention-named `Shutdown()` API is tracked by issue
 > #228.
 

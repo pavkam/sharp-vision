@@ -15,9 +15,11 @@ dispatcher ordering, and the
 [rendering pipeline](../architecture/rendering-pipeline.md#overview) owns frame
 construction, damage comparison, terminal output, and commit.
 
-> [!NOTE] `Renderer.Invalidate()` has a different purpose from control
-> invalidation. It marks the physical terminal baseline as unknown and forces a
-> complete redraw; it does not request control measurement or arrangement.
+> [!NOTE]
+>
+> `Renderer.Invalidate()` has a different purpose from control invalidation. It
+> marks the physical terminal baseline as unknown and forces a complete redraw;
+> it does not request control measurement or arrangement.
 
 ## Phase dependency
 
@@ -114,12 +116,14 @@ Applications should be able to request a repaint without owning a control
 subclass, and to force a full redraw when something outside SharpVision wrote to
 the terminal (the conventional Ctrl+L recovery).
 
-> [!IMPORTANT] **Implementation gap:** There is currently no public `Refresh`,
-> `Redraw`, or frame-pump API — invalidation is reachable only through the
-> protected control seams, and `Renderer.Invalidate()` is held privately by
-> `Application`. Application authors mutate controls on the dispatcher, and no
-> supported call exists for external terminal corruption. Issue #226 tracks a
-> public repaint and screen-refresh seam.
+> [!IMPORTANT]
+>
+> **Implementation gap:** There is currently no public `Refresh`, `Redraw`, or
+> frame-pump API — invalidation is reachable only through the protected control
+> seams, and `Renderer.Invalidate()` is held privately by `Application`.
+> Application authors mutate controls on the dispatcher, and no supported call
+> exists for external terminal corruption. Issue #226 tracks a public repaint
+> and screen-refresh seam.
 
 Application authors mutate controls on the dispatcher. A custom control uses one
 of the protected seams — `SetProperty`, `NotifyPropertyChanged`,
@@ -155,12 +159,14 @@ measure or arrange, every affected branch renders at its newly committed
 coordinates. Unicode cell ownership rules still repair any copied boundary that
 would split a wide grapheme.
 
-> [!IMPORTANT] **Implementation gap:** `Application` attaches the renderer's
-> committed frame to render-only target frames, and `Canvas.CopyFromPrevious`
-> safely copies complete cell regions. The current control traversal does not
-> call that copy operation for clean subtrees, so every visited control redraws
-> its semantic cells. Output remains correct, but render invalidation does not
-> yet provide the intended per-subtree execution saving.
+> [!IMPORTANT]
+>
+> **Implementation gap:** `Application` attaches the renderer's committed frame
+> to render-only target frames, and `Canvas.CopyFromPrevious` safely copies
+> complete cell regions. The current control traversal does not call that copy
+> operation for clean subtrees, so every visited control redraws its semantic
+> cells. Output remains correct, but render invalidation does not yet provide
+> the intended per-subtree execution saving.
 
 ## Choosing an impact
 
