@@ -220,6 +220,10 @@ public sealed class PointerManager: IDisposable
             return null;
         }
 
+        // This is the sole wheel/press dismiss trigger for a Dismiss-policy scope. A wheel whose
+        // hit lies inside the modal subtree is never dismiss-eligible here or later, even when the
+        // routed target leaves it unhandled (e.g. a list already at its scroll endpoint) - it is
+        // swallowed instead, matching mainstream drop-down behavior (see #225).
         if (targets.IsOutsideModalPlane && targets.CaptureOwner is null)
         {
             CompletePress(pointer);
@@ -309,17 +313,6 @@ public sealed class PointerManager: IDisposable
         else
         {
             BreakClickChainOnSwallowedPress(pointer);
-        }
-
-        if (pointer.Action == PointerAction.Wheel &&
-            routedEvent is { Handled: false } &&
-            targets.CaptureOwner is null &&
-            targets.ModalScope?.OutsideInteraction == OutsideInteraction.Dismiss &&
-            IsInteractionSnapshotValid(targets))
-        {
-            CaptureFailure(
-                () => targets.Modality!.RequestDismiss(targets.ModalScope),
-                ref failure);
         }
 
         CompletePress(pointer);

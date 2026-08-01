@@ -83,7 +83,7 @@ public sealed class ComboBoxSurfaceTests
     /// documented Dismiss policy closes the drop-down instead of leaking to the parent's own
     /// scroll (see #211).</summary>
     [Fact]
-    public async Task Input_WhenDropDownWheelCannotScroll_ClosesWithoutParentScrollAsync()
+    public async Task Input_WhenDropDownWheelCannotScroll_StaysOpenWithoutParentScrollAsync()
     {
         // Arrange
         var combo = new ComboBox
@@ -114,12 +114,13 @@ public sealed class ComboBoxSurfaceTests
         // Act
         await surface.Pointer.WheelAsync(list, default, wheelY: -1);
 
-        // Assert
+        // Assert - an endpoint/no-range wheel over the open drop-down is swallowed, not treated
+        // as outside interaction: it neither scrolls the enclosing parent nor closes the drop-down
+        // (see #225).
         parent.VerticalOffset.ShouldBe(0);
-        combo.IsOpen.ShouldBeFalse();
-        scope.IsActive.ShouldBeFalse();
-        scope.Root.ShouldBeSameAs(combo);
-        surface.Application.Modality.Active.ShouldBeNull();
+        combo.IsOpen.ShouldBeTrue();
+        scope.IsActive.ShouldBeTrue();
+        surface.Application.Modality.Active.ShouldBeSameAs(scope);
     }
 
     /// <summary>Verifies an outside wheel closes the modal drop-down without scrolling its parent.</summary>
