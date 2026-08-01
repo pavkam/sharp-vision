@@ -16,18 +16,18 @@ public sealed class GroupBox: ContentControl
     protected override ThemeRole ThemeRole => ThemeRole.Container;
 
     /// <summary>Gets or sets the non-null title written into the top edge.</summary>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="ArgumentException">The value contains a terminal control character.</exception>
     public string Header
     {
         get;
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-
-            if (Terminal.Unicode.Width.Measure(value).Controls > 0)
-            {
-                throw new ArgumentException("A group header cannot contain terminal controls.", nameof(value));
-            }
-
+            TextValidation.ThrowIfContainsControls(
+                value,
+                nameof(value),
+                "A group header cannot contain terminal controls.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     } = string.Empty;

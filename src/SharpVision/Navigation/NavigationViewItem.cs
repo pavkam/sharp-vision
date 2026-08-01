@@ -3,6 +3,8 @@
 
 namespace SharpVision.Navigation;
 
+using SharpVision.Controls;
+
 /// <summary>Defines one focusable, selectable entry in a <see cref="NavigationView"/>.</summary>
 [PublicAPI]
 public sealed class NavigationViewItem: Pressable
@@ -19,6 +21,7 @@ public sealed class NavigationViewItem: Pressable
 
     /// <summary>Gets or sets the non-null label text.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="ArgumentException">The value contains a terminal control character.</exception>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
     public string Header
@@ -27,6 +30,10 @@ public sealed class NavigationViewItem: Pressable
         set
         {
             ArgumentNullException.ThrowIfNull(value);
+            TextValidation.ThrowIfContainsControls(
+                value,
+                nameof(value),
+                "A navigation item header cannot contain terminal controls.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     } = string.Empty;

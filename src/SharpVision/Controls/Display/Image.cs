@@ -40,12 +40,10 @@ public sealed class Image: Control
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-
-            if (UnicodeWidth.Measure(value).Controls > 0)
-            {
-                throw new ArgumentException("Alternate text cannot contain control characters.", nameof(value));
-            }
-
+            TextValidation.ThrowIfContainsControls(
+                value,
+                nameof(value),
+                "Alternate text cannot contain control characters.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     } = string.Empty;

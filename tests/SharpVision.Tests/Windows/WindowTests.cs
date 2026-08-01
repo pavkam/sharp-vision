@@ -1242,6 +1242,19 @@ public sealed class WindowTests
         window.Header.ShouldBe("Test");
     }
 
+    /// <summary>Verifies a header carrying a terminal control character is rejected instead of
+    /// silently disagreeing with the measured/painted width later (see #183).</summary>
+    [Theory]
+    [InlineData("Save\nAs")]
+    [InlineData("Save\rAs")]
+    [InlineData("Save\tAs")]
+    public void Header_WhenContainingControlCharacter_Throws(string header)
+    {
+        var window = new Window();
+
+        _ = Should.Throw<ArgumentException>(() => window.Header = header);
+    }
+
     private static Pointer Pointer(Point cells, PointerAction action) => new(
         cells,
         pixels: null,

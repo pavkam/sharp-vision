@@ -23,12 +23,10 @@ public sealed class TabItem: ContentControl
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-
-            if (Terminal.Unicode.Width.Measure(value).Controls > 0)
-            {
-                throw new ArgumentException("A tab header cannot contain terminal controls.", nameof(value));
-            }
-
+            TextValidation.ThrowIfContainsControls(
+                value,
+                nameof(value),
+                "A tab header cannot contain terminal controls.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     } = string.Empty;

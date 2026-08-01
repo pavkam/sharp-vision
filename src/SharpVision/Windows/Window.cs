@@ -5,6 +5,7 @@ namespace SharpVision.Windows;
 
 using System.Runtime.ExceptionServices;
 
+using SharpVision.Controls;
 using SharpVision.Controls.Input;
 using SharpVision.Controls.Layout;
 using SharpVision.Surfaces;
@@ -228,6 +229,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
 
     /// <summary>Gets or sets the non-null header written into the top edge.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="ArgumentException">The value contains a terminal control character.</exception>
     /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The window is disposed.</exception>
     public string Header
@@ -236,6 +238,10 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
         set
         {
             ArgumentNullException.ThrowIfNull(value);
+            TextValidation.ThrowIfContainsControls(
+                value,
+                nameof(value),
+                "A window header cannot contain terminal controls.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     } = string.Empty;

@@ -49,18 +49,18 @@ public sealed class Expander: ContentControl
     } = 2;
 
     /// <summary>Gets or sets the non-null header label.</summary>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="ArgumentException">The value contains a terminal control character.</exception>
     public string Header
     {
         get;
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-
-            if (Terminal.Unicode.Width.Measure(value).Controls > 0)
-            {
-                throw new ArgumentException("An expander header cannot contain terminal controls.", nameof(value));
-            }
-
+            TextValidation.ThrowIfContainsControls(
+                value,
+                nameof(value),
+                "An expander header cannot contain terminal controls.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     } = string.Empty;

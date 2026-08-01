@@ -59,12 +59,18 @@ public sealed class TreeViewItem: Control
     public event EventHandler<CheckChangedEventArgs>? CheckStateChanged;
 
     /// <summary>Gets or sets the non-null display text.</summary>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="ArgumentException">The value contains a terminal control character.</exception>
     public string Header
     {
         get;
         set
         {
             ArgumentNullException.ThrowIfNull(value);
+            TextValidation.ThrowIfContainsControls(
+                value,
+                nameof(value),
+                "A tree view item header cannot contain terminal controls.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     } = string.Empty;

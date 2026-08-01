@@ -620,4 +620,30 @@ public sealed class NavigationViewTests
 
         _ = Should.Throw<ArgumentNullException>(() => nav.BringItemIntoView(null!));
     }
+
+    /// <summary>Verifies an item header carrying a terminal control character is rejected instead of
+    /// silently dropping post-newline text at render time (see #183).</summary>
+    [Theory]
+    [InlineData("Save\nAs")]
+    [InlineData("Save\rAs")]
+    [InlineData("Save\tAs")]
+    public void ItemHeader_WhenContainingControlCharacter_Throws(string header)
+    {
+        var item = new NavigationViewItem();
+
+        _ = Should.Throw<ArgumentException>(() => item.Header = header);
+    }
+
+    /// <summary>Verifies a group header carrying a terminal control character is rejected the same
+    /// way an item header is (see #183).</summary>
+    [Theory]
+    [InlineData("Save\nAs")]
+    [InlineData("Save\rAs")]
+    [InlineData("Save\tAs")]
+    public void GroupHeader_WhenContainingControlCharacter_Throws(string header)
+    {
+        var group = new NavigationViewGroup();
+
+        _ = Should.Throw<ArgumentException>(() => group.Header = header);
+    }
 }

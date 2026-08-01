@@ -3,6 +3,7 @@
 
 namespace SharpVision.Navigation;
 
+using SharpVision.Controls;
 using SharpVision.Terminal.Input;
 
 using LayoutStack = Controls.Layout.Stack;
@@ -41,6 +42,7 @@ public sealed class NavigationViewGroup: Control
 
     /// <summary>Gets or sets the non-null group label.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="ArgumentException">The value contains a terminal control character.</exception>
     /// <exception cref="InvalidOperationException">The attached group is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The group is disposed.</exception>
     public string Header
@@ -49,6 +51,10 @@ public sealed class NavigationViewGroup: Control
         set
         {
             ArgumentNullException.ThrowIfNull(value);
+            TextValidation.ThrowIfContainsControls(
+                value,
+                nameof(value),
+                "A navigation group header cannot contain terminal controls.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     } = string.Empty;

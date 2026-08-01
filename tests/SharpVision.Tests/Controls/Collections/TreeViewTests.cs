@@ -920,4 +920,17 @@ public sealed class TreeViewTests
         _ = Should.Throw<ObjectDisposedException>(() => tree.Items[0] = new TreeViewItem { Header = "New" });
         _ = Should.Throw<ObjectDisposedException>(() => tree.Items.Move(0, 1));
     }
+
+    /// <summary>Verifies a header carrying a terminal control character is rejected instead of
+    /// silently dropping post-newline text or shifting later cells at render time (see #183).</summary>
+    [Theory]
+    [InlineData("Save\nAs")]
+    [InlineData("Save\rAs")]
+    [InlineData("Save\tAs")]
+    public void Header_WhenContainingControlCharacter_Throws(string header)
+    {
+        var item = new TreeViewItem();
+
+        _ = Should.Throw<ArgumentException>(() => item.Header = header);
+    }
 }
