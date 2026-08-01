@@ -115,13 +115,22 @@ through arbitrary ownership between nested armed containers. This ancestry walk
 stops at an active [modal plane](modality.md#modal-route-boundaries); no
 remainder may scroll a background container. If no in-plane offset changes, the
 wheel event stays unhandled so the plane's Ignore or Dismiss policy can complete
-it. Keyboard arrows, PageUp/PageDown, and Home/End drive the same typed
-commands. `BringIntoView(Control)` accepts any descendant reached through owned
-`Control.Parent` edges and makes the smallest two-axis offset change that
-exposes the descendant's arranged bounds. Content and resize changes clamp
-offsets before the typed `ScrollChanged` event is raised (carrying the previous
-and committed offsets, `Extent`, `Viewport`, and the typed `ScrollCause`) and
-before the translated arrangement runs.
+it.
+
+Keyboard arrows, PageUp/PageDown, and Home/End drive the same typed commands and
+share the identical ancestry walk: an unconsumed remainder — arrows on an axis
+already at its endpoint, or a page/endpoint command with nothing left to move —
+propagates outward to the nearest enclosing armed container exactly like wheel
+input, and the key is left unhandled only once no container along that walk
+moved an offset. PageUp/PageDown and Home/End prefer the vertical axis; on a
+container armed for horizontal scrolling only, they drive the horizontal offset
+instead, so a horizontal-only container still has a fast-travel key rather than
+swallowing all four for no effect. `BringIntoView(Control)` accepts any
+descendant reached through owned `Control.Parent` edges and makes the smallest
+two-axis offset change that exposes the descendant's arranged bounds. Content
+and resize changes clamp offsets before the typed `ScrollChanged` event is
+raised (carrying the previous and committed offsets, `Extent`, `Viewport`, and
+the typed `ScrollCause`) and before the translated arrangement runs.
 
 Horizontal clipping is grapheme-safe. Hit testing uses viewport coordinates
 after the offset is applied and never targets clipped content.
