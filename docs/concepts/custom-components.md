@@ -29,9 +29,19 @@ lifecycle, rendering, hit-testing, focus, capture, and disposal paths.
 | Typed data/semantic collection with realized visuals | `ItemsControl`                                             | The type's semantic collection, never the host |
 | Focusable activating single face                     | `Pressable`                                                | Inherited `Content`                            |
 
-Concrete shipped controls are sealed. Third parties derive from these abstract
-roles or compose sealed controls; they do not depend on internal ownership,
-layout, focus, capture, or renderer transactions.
+Concrete shipped controls are sealed, with three documented exceptions: `Popup`,
+`ContextMenu`, and `Window`. Each stays unsealed only because the library itself
+subclasses it internally — `Flyout`/`Tooltip : Popup`,
+`TextInputContextMenu : ContextMenu`, and `Dialog<TResult> : Window` (every
+concrete dialog type derives from `Dialog<TResult>` in turn, per the
+[dialog catalog](../dialogs/index.md#dialog-catalog)). `Popup` and `Window`
+expose substantial protected seams for that purpose; `ContextMenu`'s non-public
+surface is a single `internal Menu` field plus one protected override, so
+deriving from it directly gains little over composing one. Third parties derive
+from the abstract roles, compose sealed controls, or subclass one of these three
+documented exceptions; they do not depend on internal ownership, layout, focus,
+capture, or renderer transactions beyond what each type's own protected members
+expose.
 
 ## Retained private composition
 

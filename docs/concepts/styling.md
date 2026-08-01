@@ -9,7 +9,7 @@ There is no selector cascade, control-type map, or mutable style registry.
 terminal default and `Color.Transparent` preserves a destination background.
 `ColorValue` is the discriminated value accepted by appearance composites: it
 contains either a concrete `Color` or a library-defined `ThemeColor`.
-`AttributeValue` likewise contains either concrete `TerminalAttributes` or a
+`AttributeValue` likewise contains either concrete `Attributes` or a
 `ThemeDecoration`. Both provide implicit conversions from either branch.
 
 Appearance is grouped by responsibility:

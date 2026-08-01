@@ -22,7 +22,7 @@ public sealed class CommandTile : Control
 
     protected override void OnRenderContent(Canvas canvas)
     {
-        canvas.DrawText(ContentBounds.X, ContentBounds.Y, "Run", ResolvedStyle);
+        _ = canvas.Draw("Run", new Point(ContentBounds.X, ContentBounds.Y), ResolvedStyle);
     }
 }
 ```
@@ -54,7 +54,7 @@ tile.Border = new Border(
     BorderGlyphStyle.Rounded,
     Color.Rgb(114, 167, 255),
     Color.Transparent,
-    TerminalAttributes.Bold);
+    Attributes.Bold);
 ```
 
 The derived control may use the protected state seam for variation:

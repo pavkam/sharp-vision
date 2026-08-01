@@ -86,12 +86,12 @@ public sealed class SharedSlot : Container
 
         foreach (var child in Children)
         {
-            var desired = MeasureChild(child, constraint);
-
             if (child.Visibility == Visibility.Collapsed)
             {
                 continue;
             }
+
+            var desired = MeasureChild(child, constraint);
 
             width = Math.Max(
                 width,
