@@ -120,6 +120,99 @@ public sealed class TableTests
         notifications.Count(name => name == nameof(Table.PageOverlap)).ShouldBe(1);
     }
 
+    /// <summary>Verifies the row-mutation repair paths that move the active cell outside SetActive —
+    /// removing the active row, replacing it, and cancelling an edit while rows disappear — publish
+    /// PropertyChanged for the active-cell properties they commit (see #190).</summary>
+    [Fact]
+    public void ActiveCell_WhenRepairedByRowMutation_PublishesPropertyChanged()
+    {
+        var first = new TableRow([new TextInput { Text = "A" }]);
+        var second = new TableRow([new TextInput { Text = "B" }]);
+        var third = new TableRow([new TextInput { Text = "C" }]);
+        var table = new Table { SelectionMode = TableSelectionMode.MultipleRows };
+        table.Columns.Add(TableColumn.Auto("Name"));
+        table.Rows.Add(first);
+        table.Rows.Add(second);
+        table.Rows.Add(third);
+        table.SelectRow(first);
+        var notifications = new List<string?>();
+        table.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        // Removing the active row repairs the active cell to the next row.
+        table.Rows.RemoveAt(0);
+
+        table.ActiveRow.ShouldBe(second);
+        notifications.ShouldContain(nameof(Table.ActiveRow));
+        notifications.ShouldContain(nameof(Table.ActiveCell));
+        notifications.Clear();
+
+        // Replacing the active row moves the active cell to the replacement.
+        var replacement = new TableRow([new TextInput { Text = "R" }]);
+        table.Rows[0] = replacement;
+
+        table.ActiveRow.ShouldBe(replacement);
+        notifications.ShouldContain(nameof(Table.ActiveRow));
+        notifications.ShouldContain(nameof(Table.ActiveCell));
+        notifications.Clear();
+
+        // Clearing rows while editing cancels the edit and resets the active cell to null.
+        table.BeginEdit(replacement, 0).ShouldBeTrue();
+        notifications.Clear();
+        table.Rows.Clear();
+
+        table.ActiveRow.ShouldBeNull();
+        table.ActiveColumnIndex.ShouldBe(-1);
+        notifications.ShouldContain(nameof(Table.IsEditing));
+        notifications.ShouldContain(nameof(Table.ActiveRow));
+        notifications.ShouldContain(nameof(Table.ActiveColumnIndex));
+        notifications.ShouldContain(nameof(Table.ActiveCell));
+    }
+
+    /// <summary>Verifies the column-mutation sort remap publishes SortColumnIndex, and SetSort
+    /// publishes each sort property only when its committed value actually changed (see #190).</summary>
+    [Fact]
+    public void SortProperties_WhenRemappedOrRepeated_PublishOnlyActualChanges()
+    {
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("First"));
+        table.Columns.Add(TableColumn.Auto("Sorted"));
+        table.SetSort(1, TableSortDirection.Ascending);
+        var notifications = new List<string?>();
+        table.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        // Inserting a column before the sorted one remaps SortColumnIndex 1 -> 2.
+        table.Columns.Insert(0, TableColumn.Auto("Inserted"));
+
+        table.SortColumnIndex.ShouldBe(2);
+        notifications.ShouldContain(nameof(Table.SortColumnIndex));
+        notifications.ShouldNotContain(nameof(Table.SortDirection));
+        notifications.Clear();
+
+        // Re-committing the identical sort publishes neither property.
+        table.SetSort(2, TableSortDirection.Ascending);
+
+        notifications.ShouldNotContain(nameof(Table.SortColumnIndex));
+        notifications.ShouldNotContain(nameof(Table.SortDirection));
+
+        // Changing only the direction publishes only the direction.
+        table.SetSort(2, TableSortDirection.Descending);
+
+        notifications.ShouldNotContain(nameof(Table.SortColumnIndex));
+        notifications.ShouldContain(nameof(Table.SortDirection));
+        notifications.Clear();
+
+        // Resetting publishes both; a second reset publishes nothing further.
+        table.ResetSort();
+
+        notifications.ShouldContain(nameof(Table.SortColumnIndex));
+        notifications.ShouldContain(nameof(Table.SortDirection));
+        notifications.Clear();
+
+        table.ResetSort();
+
+        notifications.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies stable row selection, active cell tracking, clearing, and deterministic copy.</summary>
     [Fact]
     public void Selection_WhenRowsAndCellsAreSelected_TracksActiveStateAndCopiesTabSeparatedText()

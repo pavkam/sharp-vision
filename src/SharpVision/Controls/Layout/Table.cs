@@ -577,17 +577,29 @@ public sealed class Table: ItemsControl
                 throw new ArgumentOutOfRangeException(nameof(columnIndex));
             }
 
+            var resetColumnChanged = SortColumnIndex != -1;
+            var resetDirectionChanged = SortDirection != TableSortDirection.None;
             SortColumnIndex = -1;
             SortDirection = TableSortDirection.None;
             ReorderRows(_sourceRows);
-            NotifyPropertyChanged(nameof(SortColumnIndex), InvalidationImpact.None);
-            NotifyPropertyChanged(nameof(SortDirection), InvalidationImpact.None);
+
+            if (resetColumnChanged)
+            {
+                NotifyPropertyChanged(nameof(SortColumnIndex), InvalidationImpact.None);
+            }
+
+            if (resetDirectionChanged)
+            {
+                NotifyPropertyChanged(nameof(SortDirection), InvalidationImpact.None);
+            }
             SortChanged?.Invoke(this, new TableSortChangedEventArgs(-1, TableSortDirection.None));
             return;
         }
 
         ArgumentOutOfRangeException.ThrowIfNegative(columnIndex);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual((uint) columnIndex, (uint) Columns.Count);
+        var columnChanged = SortColumnIndex != columnIndex;
+        var directionChanged = SortDirection != direction;
         SortColumnIndex = columnIndex;
         SortDirection = direction;
 
@@ -611,8 +623,17 @@ public sealed class Table: ItemsControl
         }
 
         ReorderRows(ordered);
-        NotifyPropertyChanged(nameof(SortColumnIndex), InvalidationImpact.None);
-        NotifyPropertyChanged(nameof(SortDirection), InvalidationImpact.None);
+
+        if (columnChanged)
+        {
+            NotifyPropertyChanged(nameof(SortColumnIndex), InvalidationImpact.None);
+        }
+
+        if (directionChanged)
+        {
+            NotifyPropertyChanged(nameof(SortDirection), InvalidationImpact.None);
+        }
+
         SortChanged?.Invoke(this, new TableSortChangedEventArgs(columnIndex, direction));
     }
 
@@ -1070,7 +1091,18 @@ public sealed class Table: ItemsControl
         ArgumentOutOfRangeException.ThrowIfNegative(columnIndex);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual((uint) columnIndex, (uint) row.Cells.Count);
 
-        if (ReferenceEquals(ActiveRow, row) && ActiveColumnIndex == columnIndex)
+        CommitActiveCell(row, columnIndex);
+    }
+
+    // Every path that moves the active cell — keyboard navigation, selection, and the
+    // row-mutation repairs — must publish the properties it commits; a repair that assigns
+    // ActiveRow directly is invisible to a two-way binding otherwise (see #190).
+    private void CommitActiveCell(TableRow? row, int columnIndex)
+    {
+        var rowChanged = !ReferenceEquals(ActiveRow, row);
+        var columnChanged = ActiveColumnIndex != columnIndex;
+
+        if (!rowChanged && !columnChanged)
         {
             return;
         }
@@ -1078,8 +1110,17 @@ public sealed class Table: ItemsControl
         ActiveRow = row;
         ActiveColumnIndex = columnIndex;
         ApplyCellStates();
-        NotifyPropertyChanged(nameof(ActiveRow), InvalidationImpact.None);
-        NotifyPropertyChanged(nameof(ActiveColumnIndex), InvalidationImpact.None);
+
+        if (rowChanged)
+        {
+            NotifyPropertyChanged(nameof(ActiveRow), InvalidationImpact.None);
+        }
+
+        if (columnChanged)
+        {
+            NotifyPropertyChanged(nameof(ActiveColumnIndex), InvalidationImpact.None);
+        }
+
         NotifyPropertyChanged(nameof(ActiveCell), InvalidationImpact.None);
     }
 
@@ -1240,9 +1281,7 @@ public sealed class Table: ItemsControl
         }
         else if (ActiveRow is not null && !Rows.Contains(ActiveRow))
         {
-            ActiveRow = null;
-            ActiveColumnIndex = -1;
-            ApplyCellStates();
+            CommitActiveCell(null, -1);
         }
     }
 
@@ -1424,9 +1463,10 @@ public sealed class Table: ItemsControl
             {
                 ResetSort();
             }
-            else
+            else if (SortColumnIndex != newIndex)
             {
                 SortColumnIndex = newIndex;
+                NotifyPropertyChanged(nameof(SortColumnIndex), InvalidationImpact.None);
             }
         }
 
@@ -1509,8 +1549,8 @@ public sealed class Table: ItemsControl
 
             if (ReferenceEquals(ActiveRow, row))
             {
-                ActiveRow = Rows.Count == 0 ? null : Rows[Math.Min(index, Rows.Count - 1)];
-                ActiveColumnIndex = ActiveRow is null ? -1 : 0;
+                var replacement = Rows.Count == 0 ? null : Rows[Math.Min(index, Rows.Count - 1)];
+                CommitActiveCell(replacement, replacement is null ? -1 : 0);
             }
         }
 
@@ -1577,7 +1617,7 @@ public sealed class Table: ItemsControl
 
         if (ReferenceEquals(ActiveRow, previous))
         {
-            ActiveRow = row;
+            CommitActiveCell(row, ActiveColumnIndex);
         }
 
         Invalidate(Invalidation.Measure);
