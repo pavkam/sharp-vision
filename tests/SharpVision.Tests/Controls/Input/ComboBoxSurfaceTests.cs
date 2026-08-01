@@ -79,7 +79,9 @@ public sealed class ComboBoxSurfaceTests
         combo.IsOpen.ShouldBeFalse();
     }
 
-    /// <summary>Verifies a wheel with no ListView range closes the modal drop-down without scrolling its parent.</summary>
+    /// <summary>Verifies a wheel with no ListView range to scroll is left unhandled, so the
+    /// documented Dismiss policy closes the drop-down instead of leaking to the parent's own
+    /// scroll (see #211).</summary>
     [Fact]
     public async Task Input_WhenDropDownWheelCannotScroll_ClosesWithoutParentScrollAsync()
     {
@@ -114,10 +116,10 @@ public sealed class ComboBoxSurfaceTests
 
         // Assert
         parent.VerticalOffset.ShouldBe(0);
-        combo.IsOpen.ShouldBeTrue();
-        scope.IsActive.ShouldBeTrue();
+        combo.IsOpen.ShouldBeFalse();
+        scope.IsActive.ShouldBeFalse();
         scope.Root.ShouldBeSameAs(combo);
-        _ = surface.Application.Modality.Active.ShouldNotBeNull();
+        surface.Application.Modality.Active.ShouldBeNull();
     }
 
     /// <summary>Verifies an outside wheel closes the modal drop-down without scrolling its parent.</summary>

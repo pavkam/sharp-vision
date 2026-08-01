@@ -621,6 +621,35 @@ public sealed class ModalityPointerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an armed Container that could not move any offset leaves the wheel unhandled,
+    /// so the plane's outside policy still completes it - AutoScroll only decides whether the
+    /// container attempts to scroll, not whether the attempt moved anything (see #211).</summary>
+    [Fact]
+    public async Task Dispatch_WhenArmedContainerWheelMovesNoOffset_LeavesRecordUnhandledAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 24, 8) };
+            var plane = new ProbeContainer { Bounds = new Rect(0, 0, 8, 6), AutoScroll = true };
+            root.Children.Add(plane);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            using var scope = modality.Enter(plane, OutsideInteraction.Dismiss);
+            var dismissals = 0;
+            scope.DismissRequested += (_, _) => dismissals++;
+
+            pointer.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Wheel, wheelY: -1))
+                .ShouldBeSameAs(plane);
+
+            dismissals.ShouldBe(1);
+            scope.IsActive.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies ignored outside transitions never route or create background press bookkeeping.</summary>
     [Fact]
     public async Task Dispatch_WhenOutsideInteractionIsIgnored_ConsumesPressReleaseAndWheelAsync()

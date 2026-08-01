@@ -646,7 +646,11 @@ public abstract class Container: Control
             remainingY = Difference(remainingY, current.VerticalOffset - previousY);
         }
 
-        eventArgs.Handled = AutoScroll;
+        // A wheel record is this container's to keep only when it actually moved an offset -
+        // AutoScroll only decided whether the loop above ran at all, not what it accomplished; using
+        // it here marked every record handled unconditionally, defeating the outside Ignore/Dismiss
+        // policy documented for a scrollable leaf that changed nothing (see #211).
+        eventArgs.Handled = remainingX != x || remainingY != y;
     }
 
     private static Container? Ancestor(Control control)
