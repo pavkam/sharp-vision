@@ -828,6 +828,73 @@ public sealed class MenuTests
         menu.SelectedItem.ShouldBeSameAs(first);
     }
 
+    /// <summary>Verifies removing an entry after the selected one leaves the selection's identity
+    /// and index untouched - the removal has nothing to do with the selection (see #184).</summary>
+    [Fact]
+    public void RemoveAt_WhenEntryAfterSelectionIsRemoved_LeavesSelectionUntouched()
+    {
+        var first = new MenuItem { Content = new ControlText("First") };
+        var selected = new MenuItem { Content = new ControlText("Selected") };
+        var third = new MenuItem { Content = new ControlText("Third") };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(selected);
+        menu.Items.Add(third);
+        menu.SelectedIndex = 1;
+
+        menu.Items.RemoveAt(2);
+
+        menu.Items.ShouldBe([first, selected]);
+        menu.SelectedIndex.ShouldBe(1);
+        menu.SelectedItem.ShouldBeSameAs(selected);
+    }
+
+    /// <summary>Verifies removing an entry before the selected one preserves the selection's
+    /// identity, silently shifting only its numeric index - mirroring InsertItem's symmetric
+    /// case (see #184).</summary>
+    [Fact]
+    public void RemoveAt_WhenEntryBeforeSelectionIsRemoved_PreservesIdentityAndShiftsIndex()
+    {
+        var first = new MenuItem { Content = new ControlText("First") };
+        var selected = new MenuItem { Content = new ControlText("Selected") };
+        var third = new MenuItem { Content = new ControlText("Third") };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(selected);
+        menu.Items.Add(third);
+        menu.SelectedIndex = 1;
+
+        menu.Items.RemoveAt(0);
+
+        menu.Items.ShouldBe([selected, third]);
+        menu.SelectedIndex.ShouldBe(0);
+        menu.SelectedItem.ShouldBeSameAs(selected);
+    }
+
+    /// <summary>Verifies removing a MenuSeparator - which can never be selected - never moves the
+    /// highlight, the cleanest demonstration that the repair must key off what is selected rather
+    /// than the removed index alone (see #184).</summary>
+    [Fact]
+    public void Remove_WhenSeparatorIsRemoved_NeverMovesSelection()
+    {
+        var first = new MenuItem { Content = new ControlText("First") };
+        var second = new MenuItem { Content = new ControlText("Second") };
+        var separator = new MenuSeparator();
+        var third = new MenuItem { Content = new ControlText("Third") };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        menu.Items.Add(separator);
+        menu.Items.Add(third);
+        menu.SelectedIndex = 1;
+
+        _ = menu.Items.Remove(separator);
+
+        menu.Items.ShouldBe([first, second, third]);
+        menu.SelectedIndex.ShouldBe(1);
+        menu.SelectedItem.ShouldBeSameAs(second);
+    }
+
     /// <summary>Verifies an out-of-range removal index throws before mutating the collection.</summary>
     [Fact]
     public void RemoveAt_WhenIndexIsOutOfRange_ThrowsBeforeMutation()

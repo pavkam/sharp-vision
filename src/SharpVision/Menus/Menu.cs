@@ -449,7 +449,22 @@ public sealed class Menu: ItemsControl
             _isHandlingKnownMutation = false;
         }
 
-        Select(FindAvailable(Math.Min(index, ItemControlCount - 1), 1), focus: false);
+        // Mirrors InsertItem's symmetric case: a removal that does not touch the selected
+        // entry must never change its identity. Only an actual removal of the selected entry
+        // itself needs FindAvailable repair; an entry before it shifts the index silently, and
+        // an entry after it - including a MenuSeparator, which can never be selected - leaves
+        // the selection untouched (see #184).
+        if (index < _selectedIndex)
+        {
+            _selectedIndex--;
+            NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Render);
+            NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
+        }
+        else if (index == _selectedIndex)
+        {
+            Select(FindAvailable(Math.Min(index, ItemControlCount - 1), 1), focus: false);
+        }
+
         return true;
     }
 
