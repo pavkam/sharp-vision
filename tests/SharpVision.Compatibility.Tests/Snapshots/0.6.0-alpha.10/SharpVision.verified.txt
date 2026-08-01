@@ -579,6 +579,7 @@ namespace SharpVision.Controls
         protected virtual void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected virtual void OnParentChanged(SharpVision.Controls.Control? previous, SharpVision.Controls.Control? current) { }
         protected virtual void OnPressedChanged(bool pressed) { }
+        protected virtual void OnRenderAdornment(SharpVision.Terminal.Rendering.Canvas canvas) { }
         protected virtual void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
         protected virtual void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         protected void ReleasePointerCapture() { }

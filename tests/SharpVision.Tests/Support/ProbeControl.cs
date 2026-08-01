@@ -41,6 +41,12 @@ internal sealed class ProbeControl: ChromeProbe
     /// <summary>Gets or sets work invoked from inside the next render pass.</summary>
     internal Action<ProbeControl>? Rendering { get; set; }
 
+    /// <summary>Gets the number of OnRenderAdornment invocations.</summary>
+    internal int AdornmentRenderCalls { get; private set; }
+
+    /// <summary>Gets or sets work invoked from inside the next OnRenderAdornment pass.</summary>
+    internal Action<ProbeControl>? RenderingAdornment { get; set; }
+
     /// <summary>Gets the number of completed attachment callbacks.</summary>
     internal int AttachedCalls { get; private set; }
 
@@ -145,6 +151,13 @@ internal sealed class ProbeControl: ChromeProbe
             Content.Span,
             new Point(ContentBounds.X, ContentBounds.Y),
             ResolvedStyle);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnRenderAdornment(TerminalCanvas canvas)
+    {
+        AdornmentRenderCalls++;
+        RenderingAdornment?.Invoke(this);
     }
 
     /// <inheritdoc/>

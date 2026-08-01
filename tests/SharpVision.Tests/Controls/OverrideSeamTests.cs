@@ -17,6 +17,44 @@ public sealed class OverrideSeamTests
         control.DesiredSize.ShouldBe(new Size(7, 3));
     }
 
+    /// <summary>Verifies OnRenderAdornment runs after a control's own OnRenderContent, giving a
+    /// third party a seam to paint over its own subtree instead of only beneath it - the seam
+    /// RenderOverlay already provides internally, now exposed protected (see #189).</summary>
+    [Fact]
+    public void OnRenderAdornment_WhenControlRenders_RunsAfterOnRenderContent()
+    {
+        var control = new ProbeControl(new Size(4, 1));
+        var order = new List<string>();
+        control.Rendering = _ => order.Add("content");
+        control.RenderingAdornment = _ => order.Add("adornment");
+        new LayoutEngine().Layout(control, new Size(4, 1));
+        using Frame frame = new(new Size(4, 1));
+
+        control.Render(frame.Canvas);
+
+        order.ShouldBe(["content", "adornment"]);
+        control.AdornmentRenderCalls.ShouldBe(1);
+    }
+
+    /// <summary>Verifies OnRenderAdornment runs after a container's owned children render, so an
+    /// adornment can paint over content the subtree already committed (see #189).</summary>
+    [Fact]
+    public void OnRenderAdornment_WhenContainerHasChildren_RunsAfterChildRendering()
+    {
+        var parent = new ProbeContainer();
+        var child = new ProbeControl(new Size(2, 1));
+        parent.Children.Add(child);
+        var order = new List<string>();
+        child.Rendering = _ => order.Add("child");
+        parent.RenderingAdornment = _ => order.Add("adornment");
+        new LayoutEngine().Layout(parent, new Size(4, 1));
+        using Frame frame = new(new Size(4, 1));
+
+        parent.Render(frame.Canvas);
+
+        order.ShouldBe(["child", "adornment"]);
+    }
+
     /// <summary>Verifies lifecycle hooks observe the already-committed attachment state.</summary>
     [Fact]
     public async Task Lifecycle_WhenRootAttachesAndDetaches_PublishesCommittedStateAsync()

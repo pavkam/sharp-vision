@@ -1089,6 +1089,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 ? canvas.Clip(descendantBounds)
                 : canvas;
             RenderChildren(descendantCanvas, descendantClip);
+            OnRenderAdornment(visual);
             ControlChrome.RenderBorder(this, visual, appearanceState, chrome);
             RenderOverlay(visual);
 
@@ -1890,6 +1891,22 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         _ = canvas.Bounds;
         Debug.Assert(!IsDisposed, "A disposed control cannot render content.");
+    }
+
+    /// <summary>Draws this control's own content after normal-layer descendants render, and before
+    /// the framework border and any internal overlay chrome.</summary>
+    /// <remarks>
+    /// This is the seam for content that must paint over a control's own subtree - gridlines above
+    /// cells, a focus ring around an active cell, a splitter grip, a drag adorner - the counterpart
+    /// to <see cref="OnRenderContent"/>, which always runs beneath descendants. The framework border
+    /// and any internal <c>RenderOverlay</c> chrome still paint after this, so an adornment cannot
+    /// cover specialized frame chrome a control family owns.
+    /// </remarks>
+    /// <param name="canvas">The frame-owned canvas clipped to <see cref="VisualBounds"/>.</param>
+    protected virtual void OnRenderAdornment(TerminalCanvas canvas)
+    {
+        _ = canvas.Bounds;
+        Debug.Assert(!IsDisposed, "A disposed control cannot render an adornment.");
     }
 
     /// <summary>Gets the own-content drawing bounds, including deliberate visual overflow.</summary>

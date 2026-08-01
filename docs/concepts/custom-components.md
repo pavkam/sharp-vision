@@ -97,6 +97,14 @@ complete Style. A custom `OnRenderContent` draws through `ContentBounds`;
 framework-owned chrome runs around it, so it must not repeat border or padding
 deflation. Public `ActualBorder` and `ActualShadow` expose the resolved result.
 
+Rendering runs `OnRenderContent` beneath a control's own children, in a fixed
+order: content, then descendants, then `OnRenderAdornment`, then the framework
+border and any internal overlay chrome. A component that must paint over its own
+subtree - gridlines above cells, a focus ring around an active cell, a splitter
+grip, a drag adorner - overrides `OnRenderAdornment` instead of adding a
+synthetic last child to the public `Children` collection just to paint above
+earlier siblings.
+
 ## Expected behavior
 
 Prove the public role, absence of leaked `Children` or private parts,

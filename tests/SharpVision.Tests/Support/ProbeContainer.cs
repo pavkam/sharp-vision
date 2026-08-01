@@ -3,6 +3,10 @@
 
 namespace SharpVision.Tests.Support;
 
+#pragma warning disable IDE0001 // Keep the terminal drawing alias explicit after retiring layout Canvas.
+using TerminalCanvas = Terminal.Rendering.Canvas;
+#pragma warning restore IDE0001
+
 /// <summary>Provides a concrete parent for shared control infrastructure tests.</summary>
 internal sealed class ProbeContainer: Container
 {
@@ -31,6 +35,16 @@ internal sealed class ProbeContainer: Container
 
     /// <summary>Gets how often rendering requested this container's own visual bounds.</summary>
     internal int VisualBoundsReads { get; private set; }
+
+    /// <summary>Gets or sets work invoked from inside the next OnRenderAdornment pass.</summary>
+    internal Action<ProbeContainer>? RenderingAdornment { get; set; }
+
+    /// <inheritdoc/>
+    protected override void OnRenderAdornment(TerminalCanvas canvas)
+    {
+        _ = canvas;
+        RenderingAdornment?.Invoke(this);
+    }
 
     /// <inheritdoc/>
     protected override bool ClipsChildren => ClipChildren;
