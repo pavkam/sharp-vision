@@ -246,8 +246,14 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             }
 
             field = value;
-            Invalidate(Invalidation.Render);
-            InvalidateDescendants(Invalidation.Render);
+
+            // Disabled is in the appearance profile's chrome-geometry state set (border.sides may
+            // change per-state), so this must route through the same invalidation-impact decision
+            // every other visual-state driver (SetFocused, SetPressed, ...) already makes - a
+            // hard-coded Render here left a themed disabled border painted over content that was
+            // never re-arranged out of the way (see #220).
+            InvalidateVisualState();
+            InvalidateDescendantsVisualState();
             ExceptionDispatchInfo? failure = null;
 
             if (!value)
@@ -2536,6 +2542,18 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         {
             child.Invalidate(value);
             child.InvalidateDescendants(value);
+        });
+
+    /// <summary>Invalidates every descendant's own visual state, letting each one's own appearance
+    /// profile decide its own invalidation impact - the same seam <see cref="InvalidateVisualState"/>
+    /// uses for this control itself. An inherited state change (such as Disabled cascading from an
+    /// ancestor) must repair each descendant's chrome geometry exactly as if that descendant had
+    /// reached the state directly (see #220).</summary>
+    private void InvalidateDescendantsVisualState() =>
+        VisitChildren(child =>
+        {
+            child.InvalidateVisualStateCore();
+            child.InvalidateDescendantsVisualState();
         });
 
     private void ClearHandlers()

@@ -622,6 +622,55 @@ public sealed class ControlCompositeAppearanceTests
         control.Pending.ShouldBe(Invalidation.All);
     }
 
+    /// <summary>Verifies IsEnabled routes through the same invalidation-impact decision every other
+    /// visual-state driver (SetFocused, SetPressed, ...) already makes, instead of the previously
+    /// hard-coded Render - a themed disabled border that changes chrome geometry must re-measure
+    /// and re-arrange, or content is left painted under the new border instead of moved out of its
+    /// way (see #220).</summary>
+    [Fact]
+    public void IsEnabled_WhenDisabledStateChangesBorderSides_RequestsMeasureNotOnlyRender()
+    {
+        var normal = Theme.CreateDefaultAppearance(ThemeRole.Control);
+        var previous = ThemeWithControlProfile(new ThemeProfile(normal));
+        var current = ThemeWithControlProfile(
+            new ThemeProfile(
+                normal,
+                disabled: new AppearanceSet(border: new BorderSet(sides: BorderSide.All))));
+        var control = new ProbeControl();
+        control.SetTheme(previous);
+        control.Clear(Invalidation.All);
+
+        control.SetTheme(current);
+
+        control.Pending.ShouldBe(Invalidation.None);
+        control.IsEnabled = false;
+        control.Pending.ShouldBe(Invalidation.All);
+    }
+
+    /// <summary>Verifies a descendant that inherits Disabled from an ancestor's IsEnabled change
+    /// gets its own invalidation-impact decision, not a hard-coded Render forwarded from the
+    /// ancestor - an inherited state change must repair the descendant's chrome geometry exactly
+    /// as if that descendant had reached the state directly (see #220).</summary>
+    [Fact]
+    public void IsEnabled_WhenDescendantInheritsDisabledAndBorderSidesChange_RequestsMeasureForDescendant()
+    {
+        var normal = Theme.CreateDefaultAppearance(ThemeRole.Control);
+        var theme = ThemeWithControlProfile(
+            new ThemeProfile(
+                normal,
+                disabled: new AppearanceSet(border: new BorderSet(sides: BorderSide.All))));
+        var child = new ProbeControl();
+        var parent = new ProbeContainer();
+        parent.Children.Add(child);
+        parent.PropagateTheme(theme);
+        parent.Clear(Invalidation.All);
+        child.Clear(Invalidation.All);
+
+        parent.IsEnabled = false;
+
+        child.Pending.ShouldBe(Invalidation.All);
+    }
+
     /// <summary>Verifies non-specialized controls retain ThemeRole-based appearance resolution.</summary>
     [Fact]
     public void ActualAppearance_WhenControlIsNotSpecialized_UsesExistingThemeRoleProfile()
