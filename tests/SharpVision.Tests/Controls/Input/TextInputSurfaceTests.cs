@@ -448,6 +448,48 @@ public sealed class TextInputSurfaceTests
         surface.ShouldHaveCursor(default, visible: false);
     }
 
+    /// <summary>Verifies scrolling rightward through wide-cluster content never lands the viewport
+    /// mid-cluster: the leftward branch of the offset arithmetic always assigns the caret's own
+    /// cell x (inherently a cluster start), but the rightward branch's viewport-relative arithmetic
+    /// (caret - viewport + 1) could land inside a two-cell cluster, blanking both edge columns since
+    /// the canvas drops a half-covered cluster with no substitute glyph (see #217).</summary>
+    [Fact]
+    public async Task Keyboard_WhenWideClusterTextScrollsRight_NeverBlanksAColumnAsync()
+    {
+        // Arrange
+        var input = new TextInput
+        {
+            Text = "一二三四五六",
+            Width = Length.Cells(4),
+            Height = Length.Cells(1),
+            ScrollBars = ScrollBars.None
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(4, 1),
+            TestThemes.BorderlessInput,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Home);
+
+        // Act and assert
+        for (var step = 0; step < 6; step++)
+        {
+            await surface.Keyboard.PressAsync(Code.Right);
+
+            for (var x = 0; x < 4; x++)
+            {
+                var cell = surface.Cell(new Point(x, 0));
+                (cell.Text != " " || cell.Width != 1)
+                    .ShouldBeTrue($"column {x} was blank after rightward step {step + 1}");
+            }
+
+            (input.HorizontalOffset % 2).ShouldBe(0, $"offset was misaligned after rightward step {step + 1}");
+        }
+
+        input.HorizontalOffset.ShouldBeGreaterThan(0);
+    }
+
     /// <summary>Verifies resize clamps automatic editor offsets and exposes complete content.</summary>
     [Fact]
     public async Task ResizeAsync_WhenEditorViewportGrows_ClampsOffsetsAndRepositionsCursorAsync()

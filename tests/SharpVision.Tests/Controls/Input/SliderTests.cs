@@ -58,6 +58,43 @@ public sealed class SliderTests
         slider.Orientation.ShouldBe(Orientation.Horizontal);
     }
 
+    /// <summary>Verifies raising Minimum above the current Value commits without throwing and
+    /// auto-clamps Value to the new endpoint, raising ValueChanged - the documented contract only
+    /// throws on an inverting assignment, never on one that merely excludes Value (see #178).</summary>
+    [Fact]
+    public void Minimum_WhenRaisedAboveValue_ClampsValueAndRaisesValueChanged()
+    {
+        var slider = new Slider { Minimum = 0, Maximum = 100, Value = 10 };
+        SliderValueChangedEventArgs? change = null;
+        slider.ValueChanged += (_, args) => change = args;
+
+        _ = Should.NotThrow(() => slider.Minimum = 50);
+
+        slider.Minimum.ShouldBe(50);
+        slider.Value.ShouldBe(50);
+        var raised = change.ShouldNotBeNull();
+        raised.PreviousValue.ShouldBe(10);
+        raised.Value.ShouldBe(50);
+    }
+
+    /// <summary>Verifies lowering Maximum below the current Value commits without throwing and
+    /// auto-clamps Value to the new endpoint, raising ValueChanged (see #178).</summary>
+    [Fact]
+    public void Maximum_WhenLoweredBelowValue_ClampsValueAndRaisesValueChanged()
+    {
+        var slider = new Slider { Minimum = 0, Maximum = 100, Value = 90 };
+        SliderValueChangedEventArgs? change = null;
+        slider.ValueChanged += (_, args) => change = args;
+
+        _ = Should.NotThrow(() => slider.Maximum = 40);
+
+        slider.Maximum.ShouldBe(40);
+        slider.Value.ShouldBe(40);
+        var raised = change.ShouldNotBeNull();
+        raised.PreviousValue.ShouldBe(90);
+        raised.Value.ShouldBe(40);
+    }
+
     /// <summary>Verifies command arithmetic saturates, clamps, and publishes after commit.</summary>
     [Fact]
     public void ChangeBy_WhenDeltaExceedsSignedRange_ClampsAndRaisesOrderedEvent()

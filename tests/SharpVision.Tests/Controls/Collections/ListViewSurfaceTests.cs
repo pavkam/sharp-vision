@@ -575,6 +575,45 @@ public sealed class ListViewSurfaceTests
         list.VerticalOffset.ShouldBe(3);
     }
 
+    /// <summary>Verifies a wrapping item's trailing row is reachable at the maximum offset: an
+    /// automatically-added vertical bar reserves a column, which reflows the wrapped item into an
+    /// extra row. A stale unreserved measurement would commit a shorter Extent, making the reflowed
+    /// row unreachable at any offset and clipped at the item's own arranged height (see #221).</summary>
+    [Fact]
+    public async Task Render_WhenAutoBarReflowsWrappedItem_TrailingRowIsReachableAtMaximumOffsetAsync()
+    {
+        // Arrange
+        var list = new UiListView
+        {
+            Items = new object?[] { "one two three" },
+            ItemTemplate = item => new Label((string) item!) { Overflow = Overflow.Wrap },
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.WhenNeeded,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            list,
+            new Size(5, 2),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        for (var wheel = 0; wheel < 4; wheel++)
+        {
+            await surface.Pointer.WheelAsync(list, new Point(0, 0), wheelY: -1);
+        }
+
+        // Assert - the reserved column narrows wrapping to 4 rows ("one"/"two"/"thre"/"e"); the
+        // last row only exists, and is only reachable, once the reservation is fed back into the
+        // content measurement that decides Extent.
+        list.Extent.ShouldBe(new Size(4, 4));
+        list.VerticalOffset.ShouldBe(2);
+        surface.ShouldRender("""
+                             thre▲
+                             e   ▼
+                             """);
+    }
+
     private static Label Add(List<Label> controls, Label control)
     {
         controls.Add(control);

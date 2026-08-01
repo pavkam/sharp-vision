@@ -1128,8 +1128,63 @@ public sealed class TextInput: Control
 
         Position(_selection.Caret, out var x, out var caretY);
 
-        HorizontalOffset = Offset(HorizontalOffset, x, bounds.Width, _contentWidth);
+        HorizontalOffset = AlignToClusterStart(
+            Offset(HorizontalOffset, x, bounds.Width, _contentWidth),
+            caretY);
         VerticalOffset = Offset(VerticalOffset, caretY, bounds.Height, _contentHeight);
+    }
+
+    /// <summary>Snaps a rightward-scrolled horizontal offset down to the start of whichever cluster
+    /// it lands inside, on the given row.</summary>
+    /// <remarks>
+    /// The leftward branch of <see cref="Offset(int, int, int, int)"/> always assigns the caret's own
+    /// cell x, which is inherently a cluster start; only the rightward branch's viewport-relative
+    /// arithmetic (<c>caret - viewport + 1</c>) can land mid-cluster. Re-snapping unconditionally is
+    /// therefore a no-op for every already-aligned value and only changes the one case that needs it
+    /// (see #217).
+    /// </remarks>
+    private int AlignToClusterStart(int offset, int row)
+    {
+        if (offset <= 0)
+        {
+            return offset;
+        }
+
+        var currentRow = 0;
+        var x = 0;
+
+        foreach (var grapheme in Graphemes.Enumerate(Text))
+        {
+            var cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
+
+            if (IsLineBreak(cluster))
+            {
+                if (currentRow == row)
+                {
+                    break;
+                }
+
+                currentRow++;
+                x = 0;
+                continue;
+            }
+
+            if (currentRow != row)
+            {
+                continue;
+            }
+
+            var width = ClusterWidth(cluster, x);
+
+            if (offset > x && offset < x + width)
+            {
+                return x;
+            }
+
+            x += width;
+        }
+
+        return offset;
     }
 
     private bool ScrollBy(int horizontal, int vertical)

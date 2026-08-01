@@ -20,13 +20,14 @@ and no viewport extent or paging buttons participate in the geometry.
 
 ## Behavior
 
-- `Minimum`, `Maximum`, and `Value` are inclusive signed integers, with a
-  default range of 0 through 100 and a default value of 0. An endpoint setter
-  that would invert the range or exclude `Value` throws before any mutation, and
-  assigning `Value` outside the range also throws.
-- `SmallChange` defaults to 1 and `LargeChange` to 10. Both accept non-negative
-  integers, and zero is a valid no-op.
-- `ChangeBy(int)` adds using widened arithmetic, clamps to the endpoints, and
+- `Minimum`, `Maximum`, and `Value` are inclusive signed integers. The default
+  range is 0 through 100 with value 0. An endpoint setter throws only when it
+  would invert the range; one that would exclude `Value` instead commits and
+  auto-clamps `Value` to the new endpoint, raising `ValueChanged`. Direct
+  `Value` assignment outside the current range throws.
+- `SmallChange` defaults to 1 and `LargeChange` defaults to 10. Both accept
+  non-negative integers; zero is a valid no-op.
+- `ChangeBy(int)` adds with widened arithmetic, clamps to the endpoints, and
   returns whether a changed value committed.
 - `ValueChanged` runs after the value and its property notification commit. Its
   immutable `SliderValueChangedEventArgs` exposes `PreviousValue` and `Value`. A

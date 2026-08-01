@@ -177,12 +177,26 @@ public abstract class Container: Control
             return content;
         }
 
+        var scrollsHorizontally = (ScrollBars & ScrollBars.Horizontal) != 0;
+        var scrollsVertically = (ScrollBars & ScrollBars.Vertical) != 0;
+
         // Eligible axes measure unbounded so children report natural extent
-        // (ResolveMeasureAxis clamps DesiredSize, which would otherwise hide overflow).
-        var width = (ScrollBars & ScrollBars.Horizontal) != 0 ? null : content.Width;
-        var height = (ScrollBars & ScrollBars.Vertical) != 0 ? null : content.Height;
+        // (ResolveMeasureAxis clamps DesiredSize, which would otherwise hide overflow). A bounded
+        // cross axis must also account for an always-visible reserved bar cell on the other axis,
+        // or width-dependent content (wrapped text) measures at the full padded width and the
+        // surplus is silently clipped once the bar narrows the committed viewport at arrange time.
+        // Auto-visibility bars are handled separately by Resolve's own re-measure loop (see #221).
+        var width = scrollsHorizontally
+            ? null
+            : ReserveBarCell(content.Width, scrollsVertically && VerticalBarVisibility == ScrollBarVisibility.Always);
+        var height = scrollsVertically
+            ? null
+            : ReserveBarCell(content.Height, scrollsHorizontally && HorizontalBarVisibility == ScrollBarVisibility.Always);
         return new Constraint(width, height);
     }
+
+    private static int? ReserveBarCell(int? bound, bool reserve) =>
+        reserve && bound.HasValue ? Math.Max(0, bound.Value - 1) : bound;
 
     /// <inheritdoc/>
     internal override Size OnMeasuredDesired(Size desired)
@@ -692,11 +706,11 @@ public abstract class Container: Control
             EnsureBars();
         }
 
-        Resolve(new Size(padded.Width, padded.Height), ContentExtent, out var horizontal, out var vertical,
-            out var viewport);
+        var extent = Resolve(new Size(padded.Width, padded.Height), ContentExtent, out var horizontal,
+            out var vertical, out var viewport);
         _scroll.ViewportBounds = new Rect(padded.X, padded.Y, viewport.Width, viewport.Height);
-        var extentChanged = _scroll.Extent != ContentExtent;
-        _ = SetProperty(ref _scroll.Extent, ContentExtent, InvalidationImpact.None, nameof(Extent));
+        var extentChanged = _scroll.Extent != extent;
+        _ = SetProperty(ref _scroll.Extent, extent, InvalidationImpact.None, nameof(Extent));
         _ = SetProperty(ref _scroll.Viewport, viewport, InvalidationImpact.None, nameof(Viewport));
         _scroll.ReserveHorizontal = horizontal;
         _scroll.ReserveVertical = vertical;
@@ -917,7 +931,7 @@ public abstract class Container: Control
         ? Math.Max(0, Extent.Height - Viewport.Height)
         : 0;
 
-    private void Resolve(
+    private Size Resolve(
         Size available,
         Size extent,
         out bool horizontal,
@@ -934,7 +948,10 @@ public abstract class Container: Control
                    VerticalBarVisibility == ScrollBarVisibility.Always;
 
         // Automatic bars are added monotonically because one reserved axis can
-        // induce overflow on the other. Two additions are the finite maximum.
+        // induce overflow on the other. Two additions are the finite maximum. Each addition
+        // claims a cell from the bounded cross axis, which can change how much width-dependent
+        // content (wrapped text) reflows, so content is re-measured at the narrower axis before
+        // the next probe reads its extent (see #221).
         for (var probe = 0; probe < 2; probe++)
         {
             viewport = new Size(
@@ -951,16 +968,25 @@ public abstract class Container: Control
 
             if (nextHorizontal == horizontal && nextVertical == vertical)
             {
-                return;
+                return extent;
             }
 
             horizontal = nextHorizontal;
             vertical = nextVertical;
+            extent = MeasureContent(available, horizontal, vertical);
         }
 
         viewport = new Size(
             Math.Max(0, available.Width - (vertical ? 1 : 0)),
             Math.Max(0, available.Height - (horizontal ? 1 : 0)));
+        return extent;
+    }
+
+    private Size MeasureContent(Size available, bool horizontal, bool vertical)
+    {
+        var width = (ScrollBars & ScrollBars.Horizontal) != 0 ? null : ReserveBarCell(available.Width, vertical);
+        var height = (ScrollBars & ScrollBars.Vertical) != 0 ? null : ReserveBarCell(available.Height, horizontal);
+        return MeasureOverride(new Constraint(width, height));
     }
 
     private static void ValidateOffset(int value, int maximum, string name)
