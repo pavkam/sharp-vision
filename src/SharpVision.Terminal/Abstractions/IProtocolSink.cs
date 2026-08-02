@@ -92,6 +92,37 @@ public interface IProtocolSink: IInputSink
         Input(in diagnostic);
     }
 
+    /// <summary>
+    /// Receives one decoded OSC 52 clipboard reply. The default implementation reports a synthetic
+    /// unsupported OSC diagnostic through <see cref="IInputSink.Input(in Diagnostic)"/>.
+    /// </summary>
+    /// <param name="value">The immutable owned clipboard reply.</param>
+    public void Response(in Clipboard.ClipboardReply value)
+    {
+        var diagnostic = new Diagnostic(
+            DiagnosticCode.Unsupported,
+            SequenceKind.Osc,
+            offset: 0,
+            discardedBytes: 0);
+        Input(in diagnostic);
+    }
+
+    /// <summary>
+    /// Receives one decoded Kitty OSC 5522 clipboard packet. The default implementation reports a
+    /// synthetic unsupported OSC diagnostic through <see cref="IInputSink.Input(in Diagnostic)"/>.
+    /// </summary>
+    /// <param name="value">The non-null owned clipboard packet.</param>
+    public void Response(Kitty.Clipboard.Packet value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        var diagnostic = value.Diagnostic ?? new Diagnostic(
+            DiagnosticCode.Unsupported,
+            SequenceKind.Osc,
+            offset: 0,
+            discardedBytes: 0);
+        Input(in diagnostic);
+    }
+
     /// <summary>Receives one completed owned terminal string.</summary>
     /// <param name="value">The non-null copied sequence.</param>
     public void Sequence(ProtocolSequence value);

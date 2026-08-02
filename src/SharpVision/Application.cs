@@ -56,6 +56,7 @@ public sealed class Application: ISink, IAsyncDisposable
     private Control? _routedKeyTarget;
     private Rune? _suppressedAccessKeyText;
     private string _clipboardText = string.Empty;
+    private readonly TerminalServices _terminalServices;
     private Dimensions _latestResize;
     private TerminalCellMetrics? _cellMetrics;
     private TerminalCapabilities? _pendingProfile;
@@ -142,7 +143,8 @@ public sealed class Application: ISink, IAsyncDisposable
         CellPolicy = new UnicodePolicy(Capabilities.AmbiguousWidth);
         Dispatcher = Dispatcher.Start(name: "SharpVision.UI", timeProvider: _timeProvider);
         Pointer = new PointerDevice(() => CaptureValue);
-        Terminal = new TerminalServices(this);
+        _terminalServices = new TerminalServices(this);
+        Terminal = _terminalServices;
         Session = new Session(
             transport,
             resize,
@@ -520,6 +522,17 @@ public sealed class Application: ISink, IAsyncDisposable
     }
 
     /// <inheritdoc/>
+    public void Response(in ClipboardReply value) => Enqueue(Record.From(value));
+
+    /// <inheritdoc/>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+    public void Response(Terminal.Kitty.Clipboard.Packet value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        Enqueue(Record.From(value));
+    }
+
+    /// <inheritdoc/>
     public void Sequence(TerminalSequence value)
     {
         ArgumentNullException.ThrowIfNull(value);
@@ -873,6 +886,12 @@ public sealed class Application: ISink, IAsyncDisposable
                 CapabilityResponseReceived?.Invoke(
                     this,
                     new CapabilityResponseEventArgs(record.CapabilityResponse!));
+                break;
+            case RecordKind.ClipboardReply:
+                _terminalServices.ReceiveClipboardReply(record.ClipboardReply);
+                break;
+            case RecordKind.KittyClipboardPacket:
+                _terminalServices.ReceiveKittyClipboardPacket(record.KittyClipboardPacket!);
                 break;
             case RecordKind.Closed:
                 BeginStopping(forced: true, exception: null);

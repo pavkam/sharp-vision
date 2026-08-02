@@ -44,6 +44,12 @@ internal sealed class RecordingProtocolSink: IProtocolSink
     /// <summary>Gets recognized Kitty graphics responses in delivery order.</summary>
     internal List<Kitty.Graphics.Response> KittyGraphicsResponses { get; } = [];
 
+    /// <summary>Gets recognized OSC 52 clipboard replies in delivery order.</summary>
+    internal List<ClipboardReply> ClipboardReplies { get; } = [];
+
+    /// <summary>Gets recognized Kitty OSC 5522 clipboard packets in delivery order.</summary>
+    internal List<Kitty.Clipboard.Packet> KittyClipboardPackets { get; } = [];
+
     /// <summary>Gets owned terminal strings in delivery order.</summary>
     internal List<ProtocolSequence> Sequences { get; } = [];
 
@@ -132,6 +138,20 @@ internal sealed class RecordingProtocolSink: IProtocolSink
     {
         KittyGraphicsResponses.Add(value);
         Order.Add("kitty-graphics-response");
+    }
+
+    /// <inheritdoc/>
+    public void Response(in ClipboardReply value)
+    {
+        ClipboardReplies.Add(value);
+        Order.Add("clipboard-reply");
+    }
+
+    /// <inheritdoc/>
+    public void Response(Kitty.Clipboard.Packet value)
+    {
+        KittyClipboardPackets.Add(value);
+        Order.Add("kitty-clipboard-packet");
     }
 
     /// <inheritdoc/>

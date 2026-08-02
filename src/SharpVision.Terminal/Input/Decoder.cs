@@ -75,6 +75,8 @@ public sealed class Decoder: IDisposable
         _sequenceHandlers =
         [
             TryHandleOscSequence,
+            TryHandleOsc52Sequence,
+            TryHandleKittyClipboardSequence,
             TryHandleKittyGraphicsSequence,
             TryHandleProtocolSequence
         ];
@@ -901,6 +903,47 @@ public sealed class Decoder: IDisposable
         if (_protocolSink is { } protocolSink)
         {
             protocolSink.Response(in response);
+        }
+        else
+        {
+            Report(DiagnosticCode.Unsupported, kind);
+        }
+
+        return true;
+    }
+
+    private bool TryHandleOsc52Sequence(SequenceKind kind, ReadOnlySpan<byte> value, StringTerminator terminator)
+    {
+        if (kind != SequenceKind.Osc || !value.StartsWith("52;"u8))
+        {
+            return false;
+        }
+
+        if (_protocolSink is { } clipboardSink)
+        {
+            clipboardSink.Response(Clipboard.Osc52.Decode(value, _options.TransferLimits.MaxClipboardBytes));
+        }
+        else
+        {
+            Report(DiagnosticCode.Unsupported, kind);
+        }
+
+        return true;
+    }
+
+    private bool TryHandleKittyClipboardSequence(
+        SequenceKind kind,
+        ReadOnlySpan<byte> value,
+        StringTerminator terminator)
+    {
+        if (kind != SequenceKind.Osc || !value.StartsWith("5522;"u8))
+        {
+            return false;
+        }
+
+        if (_protocolSink is { } kittyClipboardSink)
+        {
+            kittyClipboardSink.Response(Kitty.Clipboard.Packet.Parse(value, _options.TransferLimits));
         }
         else
         {
