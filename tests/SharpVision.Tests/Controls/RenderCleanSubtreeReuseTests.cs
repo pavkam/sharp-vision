@@ -120,6 +120,38 @@ public sealed class RenderCleanSubtreeReuseTests
         control.RenderCalls.ShouldBe(2);
     }
 
+    /// <summary>Verifies a render-clean leaf whose resolved background is transparent never takes
+    /// the copy path. A transparent underlay never authors its own uncovered cells - they hold
+    /// whatever the parent painted underneath, which the copy path would resurrect as stale content
+    /// from the frame it copies rather than the parent's current-frame paint (see #239).</summary>
+    [Fact]
+    public async Task Render_WhenLeafBackgroundIsTransparent_NeverSkipsRenderAsync()
+    {
+        var control = new ProbeControl(new Size(2, 1)) { Content = "AA".AsMemory() };
+        var defaultFace = control.Face;
+        control.Face = new Face(
+            defaultFace.Foreground,
+            Color.Transparent,
+            defaultFace.Attributes,
+            defaultFace.Underline,
+            defaultFace.UnderlineColor);
+        var size = new Size(4, 3);
+        new LayoutEngine().Layout(control, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        using var first = new Frame(size);
+        control.Render(first.Canvas);
+        _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
+        control.RenderCalls.ShouldBe(1);
+
+        using var second = new Frame(size);
+        _ = renderer.AttachCommittedFrame(second);
+        control.Render(second.Canvas);
+
+        control.RenderCalls.ShouldBe(2);
+    }
+
     /// <summary>Verifies a render-clean Image with an assigned source always re-records its
     /// semantic placement instead of silently dropping it through the copy path - copying cells
     /// never replays <see cref="Canvas.DrawImage"/> (see #26).</summary>

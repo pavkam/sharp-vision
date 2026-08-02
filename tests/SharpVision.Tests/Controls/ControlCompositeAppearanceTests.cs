@@ -212,6 +212,35 @@ public sealed class ControlCompositeAppearanceTests
         }
     }
 
+    /// <summary>Verifies a Face change render-invalidates every descendant, not only the control it
+    /// was set on. Clearing a descendant's resolved-appearance cache without also marking it render
+    /// bit lets a render-clean descendant take the render-clean-reuse copy path and paint stale
+    /// previous-frame cells that never reflect the freshly cleared cache (see #239).</summary>
+    [Fact]
+    public void Face_WhenChanged_RenderInvalidatesEveryDescendant()
+    {
+        var grandchild = new ProbeControl();
+        var child = new ProbeContainer();
+        var root = new ProbeContainer();
+        child.Children.Add(grandchild);
+        root.Children.Add(child);
+        root.Clear(Invalidation.All);
+        child.Clear(Invalidation.All);
+        grandchild.Clear(Invalidation.All);
+
+        var previousFace = root.Face;
+        root.Face = new Face(
+            previousFace.Foreground,
+            Color.Rgb(1, 2, 3),
+            previousFace.Attributes,
+            previousFace.Underline,
+            previousFace.UnderlineColor);
+
+        ((root.Pending & Invalidation.Render) != 0).ShouldBeTrue();
+        ((child.Pending & Invalidation.Render) != 0).ShouldBeTrue();
+        ((grandchild.Pending & Invalidation.Render) != 0).ShouldBeTrue();
+    }
+
     /// <summary>Verifies a local style suppresses unchanged resolved notifications across Theme identity changes.</summary>
     [Fact]
     public void SetTheme_WhenExplicitStyleKeepsOutputEqual_NotifiesOnlyTheme()

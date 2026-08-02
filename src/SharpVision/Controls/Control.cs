@@ -1139,10 +1139,16 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     // owned popups of its own (OwnedControlCount covers both layers), and no visible shadow
     // (CopyFromPrevious never restores VisualBounds' shadow-expanded overflow region). A control
     // whose paint has an effect beyond cells (Display.Image's placement) opts out via
-    // RequiresCompleteRender. Popup-overlapped and image-bearing subtrees stay excluded and are
-    // tracked separately in #235.
+    // RequiresCompleteRender. A transparent underlay never authors its uncovered cells - those
+    // cells hold whatever the parent painted underneath, so copying them resurrects the parent's
+    // OLD content over content that may have since changed with no invalidation of this otherwise
+    // render-clean control (see #239); requiring an opaque fill excludes exactly that case.
+    // Popup-overlapped and image-bearing subtrees stay excluded and are tracked separately in #235.
     private bool CanReuseCleanRender() =>
-        OwnedControlCount == 0 && !ActualShadow.IsVisible && !RequiresCompleteRender;
+        OwnedControlCount == 0 &&
+        !ActualShadow.IsVisible &&
+        !RequiresCompleteRender &&
+        GetResolvedAppearance(GetAppearanceState()).BackgroundMode == BackgroundMode.Opaque;
 
     /// <summary>Requests a phase and every dependent later phase.</summary>
     /// <param name="value">The earliest dirty phase.</param>
@@ -3164,8 +3170,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
 
         LocalFaceValue = null;
-        InvalidateSubtreeResolvedStyleCache();
-        Invalidate(Invalidation.Render);
+        InvalidateSubtreeAmbientAppearance();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Face)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActualFace)));
     }
@@ -3308,7 +3313,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         {
             if (SetProperty(ref field, value, InvalidationImpact.Render))
             {
-                InvalidateSubtreeResolvedStyleCache();
+                InvalidateSubtreeAmbientAppearance();
             }
         }
     }
@@ -3573,7 +3578,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         if (StateAffectsAmbientAppearance)
         {
-            InvalidateSubtreeResolvedStyleCache();
+            InvalidateSubtreeAmbientAppearance();
         }
         else
         {
@@ -3591,6 +3596,32 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         while (stack.TryPop(out var control))
         {
             control.InvalidateResolvedStyleCache();
+
+            for (var index = control.OwnedControlCount - 1; index >= 0; index--)
+            {
+                stack.Push(control.OwnedControlAt(index));
+            }
+        }
+    }
+
+    /// <summary>Clears the resolved-appearance cache and render-invalidates every visited control in
+    /// this subtree, for a change to an ambient Face-authoring source (<see cref="Face"/>,
+    /// <see cref="ResetFace"/>, <see cref="AppearanceBoundary"/>, or a visual-state change with
+    /// <see cref="StateAffectsAmbientAppearance"/>). A render-clean descendant whose ambient-derived
+    /// appearance depends on this change must repaint instead of taking the render-clean-reuse fast
+    /// path and copying stale previous-frame cells that no longer reflect the new ambient state.
+    /// Unlike the bare cache clear above, this is deliberately unconditional - the caller has no
+    /// precomputed per-descendant impact to compare, since the change may affect an arbitrary number
+    /// of ambiently-inheriting descendants it never resolved (see #239).</summary>
+    private void InvalidateSubtreeAmbientAppearance()
+    {
+        var stack = new Stack<Control>();
+        stack.Push(this);
+
+        while (stack.TryPop(out var control))
+        {
+            control.InvalidateResolvedStyleCache();
+            control.Invalidate(Invalidation.Render);
 
             for (var index = control.OwnedControlCount - 1; index >= 0; index--)
             {
@@ -3629,8 +3660,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
 
         LocalFaceValue = value;
-        InvalidateSubtreeResolvedStyleCache();
-        Invalidate(Invalidation.Render);
+        InvalidateSubtreeAmbientAppearance();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Face)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActualFace)));
     }
