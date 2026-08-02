@@ -11,6 +11,42 @@ public sealed class Calendar: Control
 {
     /// <inheritdoc/>
     protected override ThemeRole ThemeRole => ThemeRole.Input;
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// The day-grid states resolve <see cref="ThemeColor.Accent"/>, <see cref="ThemeColor.ActiveText"/>,
+    /// <see cref="ThemeColor.ActiveControl"/>, <see cref="ThemeColor.SelectedText"/>,
+    /// <see cref="ThemeColor.SelectedControl"/>, <see cref="ThemeColor.DisabledText"/>, and
+    /// <see cref="ThemeColor.DisabledControl"/> directly at render time rather than through a style
+    /// contract (see #161), so the base role-profile comparison alone cannot detect a theme swap
+    /// confined to these roles.
+    /// </remarks>
+    protected override InvalidationImpact GetThemeChangeImpact(
+        Theme? previous,
+        Theme? current,
+        Face? previousParentAmbientFace,
+        Face? currentParentAmbientFace)
+    {
+        var baseImpact = base.GetThemeChangeImpact(
+            previous,
+            current,
+            previousParentAmbientFace,
+            currentParentAmbientFace);
+        var colorImpact = ResolveDirectColor(previous, ThemeColor.Accent) != ResolveDirectColor(current, ThemeColor.Accent) ||
+            ResolveDirectColor(previous, ThemeColor.ActiveText) != ResolveDirectColor(current, ThemeColor.ActiveText) ||
+            ResolveDirectColor(previous, ThemeColor.ActiveControl) != ResolveDirectColor(current, ThemeColor.ActiveControl) ||
+            ResolveDirectColor(previous, ThemeColor.SelectedText) != ResolveDirectColor(current, ThemeColor.SelectedText) ||
+            ResolveDirectColor(previous, ThemeColor.SelectedControl) != ResolveDirectColor(current, ThemeColor.SelectedControl) ||
+            ResolveDirectColor(previous, ThemeColor.DisabledText) != ResolveDirectColor(current, ThemeColor.DisabledText) ||
+            ResolveDirectColor(previous, ThemeColor.DisabledControl) != ResolveDirectColor(current, ThemeColor.DisabledControl)
+                ? InvalidationImpact.Render
+                : InvalidationImpact.None;
+
+        return MaximumImpact(baseImpact, colorImpact);
+    }
+
+    private static Color ResolveDirectColor(Theme? theme, ThemeColor color) =>
+        theme?.ResolveColor(color) ?? Color.Default;
     private const TerminalAttributes _blinkAttributes =
         TerminalAttributes.Blink | TerminalAttributes.RapidBlink;
     private const int _cellWidth = 4;

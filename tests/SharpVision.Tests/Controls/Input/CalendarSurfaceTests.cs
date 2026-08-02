@@ -42,6 +42,64 @@ public sealed class CalendarSurfaceTests
         calendar.Selection.ShouldBe(new DateInterval(active, active));
     }
 
+    /// <summary>Verifies a theme swap confined to the directly-resolved Accent role still repaints
+    /// the header arrow, instead of the base role-profile comparison alone under-invalidating it
+    /// (see #161).</summary>
+    [Fact]
+    public async Task Surface_WhenThemeSwapChangesOnlyAccent_RepaintsHeaderArrowAsync()
+    {
+        // Arrange
+        var themeA = WithAccent(Color.Rgb(10, 20, 30));
+        var themeB = WithAccent(Color.Rgb(200, 210, 220));
+        var calendar = new UiCalendar
+        {
+            Culture = CultureInfo.InvariantCulture,
+            DisplayMonth = new DateOnly(2000, 1, 1)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            calendar,
+            new Size(32, 10),
+            themeA,
+            TestContext.Current.CancellationToken);
+        surface.Cell(new Point(2, 1)).Text.ShouldBe("<");
+        surface.Cell(new Point(2, 1)).Style.Foreground.ShouldBe(Project(Color.Rgb(10, 20, 30)));
+
+        // Act
+        await surface.UpdateAsync(() => surface.Application.Theme = themeB, "swap Accent-only theme");
+
+        // Assert
+        surface.Cell(new Point(2, 1)).Style.Foreground.ShouldBe(Project(Color.Rgb(200, 210, 220)));
+    }
+
+    private static Theme WithAccent(Color accent)
+    {
+        var source = Themes.Dark;
+        var theme = new Theme(
+            source.Palette,
+            source.Name,
+            source.Slug,
+            source.ColorScheme,
+            source.Author,
+            source.License,
+            source.Source);
+
+        foreach (var color in Enum.GetValues<ThemeColor>())
+        {
+            theme.SetColor(color, color == ThemeColor.Accent ? accent : source.ResolveColor(color));
+        }
+
+        foreach (var decoration in Enum.GetValues<ThemeDecoration>())
+        {
+            theme.SetAttributes(decoration, source.ResolveAttributes(decoration));
+        }
+
+        theme.SetStatusColors(Enum.GetValues<StatusColor>()
+            .ToDictionary(status => status, source.ResolveStatusColor));
+        theme.SetProfiles(source.Control, source.Input, source.Container, source.Window, source.Popup);
+        theme.Freeze();
+        return theme;
+    }
+
     /// <summary>Verifies a mounted calendar renders the configured week start and can jump to today.</summary>
     [Fact]
     public async Task Surface_WhenWeekStartAndTodayAreConfigured_UsesBothBasicsAsync()
