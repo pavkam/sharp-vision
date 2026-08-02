@@ -34,19 +34,19 @@ public ref struct GraphemeEnumerator
         var start = _position;
         Decode(_position, out var previous, out var consumed, out var invalid);
         var hasInvalidData = invalid;
-        var previousBreak = Data.GetGraphemeBreak(previous.Value);
+        var previousBreak = previous.Value.GetGraphemeBreak();
         var regionalIndicators = previousBreak == GraphemeBreak.RegionalIndicator ? 1 : 0;
-        var extendedPictographicCandidate = Data.IsExtendedPictographic(previous.Value);
+        var extendedPictographicCandidate = previous.Value.IsExtendedPictographic();
         var previousZwjAfterPictographic = false;
-        var indicState = NextIndicState(0, Data.GetIndicConjunct(previous.Value));
+        var indicState = NextIndicState(0, previous.Value.GetIndicConjunct());
         _position += consumed;
 
         while (_position < _value.Length)
         {
             Decode(_position, out var current, out consumed, out invalid);
-            var currentBreak = Data.GetGraphemeBreak(current.Value);
-            var currentIndic = Data.GetIndicConjunct(current.Value);
-            var currentPictographic = Data.IsExtendedPictographic(current.Value);
+            var currentBreak = current.Value.GetGraphemeBreak();
+            var currentIndic = current.Value.GetIndicConjunct();
+            var currentPictographic = current.Value.IsExtendedPictographic();
 
             if (ShouldBreak(
                     previousBreak,

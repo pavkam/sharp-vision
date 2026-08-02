@@ -96,7 +96,7 @@ public static class Width
             }
 
             var scalar = rune.Value;
-            var graphemeBreak = Data.GetGraphemeBreak(scalar);
+            var graphemeBreak = scalar.GetGraphemeBreak();
 
             if (graphemeBreak is GraphemeBreak.Control or GraphemeBreak.Cr or GraphemeBreak.Lf)
             {
@@ -105,8 +105,8 @@ public static class Width
 
             hasTextSelector |= scalar == 0xfe0e;
             hasEmojiSelector |= scalar == 0xfe0f;
-            hasEmojiPresentation |= Data.IsEmojiPresentation(scalar);
-            hasExtendedPictographic |= Data.IsExtendedPictographic(scalar);
+            hasEmojiPresentation |= scalar.IsEmojiPresentation();
+            hasExtendedPictographic |= scalar.IsExtendedPictographic();
             hasZwj |= graphemeBreak == GraphemeBreak.Zwj;
             hasKeycap |= scalar == 0x20e3 && IsKeycapBase(baseScalar);
 
@@ -116,7 +116,7 @@ public static class Width
                     GraphemeBreak.SpacingMark or
                     GraphemeBreak.Prepend))
             {
-                baseScalar = Data.GetCanonicalBase(scalar);
+                baseScalar = scalar.GetCanonicalBase();
             }
 
             position += consumed;
@@ -127,12 +127,12 @@ public static class Width
             return new Cluster(CellWidth.Narrow, requiresReplacement: true);
         }
 
-        if (!Data.IsAssigned(baseScalar) || IsPrivateUse(baseScalar))
+        if (!baseScalar.IsAssigned() || IsPrivateUse(baseScalar))
         {
             return new Cluster(CellWidth.Narrow, requiresReplacement: false);
         }
 
-        var eastAsianWidth = Data.GetEastAsianWidth(baseScalar);
+        var eastAsianWidth = baseScalar.GetEastAsianWidth();
 
         var width = eastAsianWidth is EastAsianWidth.Wide or EastAsianWidth.Fullwidth
             ? CellWidth.Wide

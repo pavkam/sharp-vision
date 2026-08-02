@@ -6171,33 +6171,40 @@ internal static class Data
     /// <summary>Gets generated assigned-scalar ranges for invariant validation.</summary>
     public static ReadOnlySpan<PropertyRange> AssignedRanges => _assignedRanges;
 
-    /// <summary>Gets the grapheme-break property for one valid scalar value.</summary>
-    public static GraphemeBreak GetGraphemeBreak(int scalar) =>
-        (GraphemeBreak) Find(_graphemeBreakRanges, scalar, (int) GraphemeBreak.Other);
+    extension(int scalar)
+    {
+        /// <summary>Gets the grapheme-break property for one valid scalar value.</summary>
+        public GraphemeBreak GetGraphemeBreak() =>
+            (GraphemeBreak) Find(_graphemeBreakRanges, scalar, (int) GraphemeBreak.Other);
 
-    /// <summary>Gets the Indic conjunct property for one valid scalar value.</summary>
-    public static IndicConjunct GetIndicConjunct(int scalar) =>
-        (IndicConjunct) Find(_indicConjunctRanges, scalar, (int) IndicConjunct.None);
+        /// <summary>Gets the Indic conjunct property for one valid scalar value.</summary>
+        public IndicConjunct GetIndicConjunct() =>
+            (IndicConjunct) Find(_indicConjunctRanges, scalar, (int) IndicConjunct.None);
 
-    /// <summary>Gets the East Asian Width property for one valid scalar value.</summary>
-    public static EastAsianWidth GetEastAsianWidth(int scalar) =>
-        (EastAsianWidth) Find(_eastAsianWidthRanges, scalar, (int) EastAsianWidth.Neutral);
+        /// <summary>Gets the East Asian Width property for one valid scalar value.</summary>
+        public EastAsianWidth GetEastAsianWidth() =>
+            (EastAsianWidth) Find(_eastAsianWidthRanges, scalar, (int) EastAsianWidth.Neutral);
 
-    /// <summary>Gets whether one valid scalar has default emoji presentation.</summary>
-    public static bool IsEmojiPresentation(int scalar) =>
-        Find(_emojiPresentationRanges, scalar, 0) != 0;
+        /// <summary>Gets whether one valid scalar has default emoji presentation.</summary>
+        public bool IsEmojiPresentation() =>
+            Find(_emojiPresentationRanges, scalar, 0) != 0;
 
-    /// <summary>Gets whether one valid scalar has the extended-pictographic property.</summary>
-    public static bool IsExtendedPictographic(int scalar) =>
-        Find(_extendedPictographicRanges, scalar, 0) != 0;
+        /// <summary>Gets whether one valid scalar has the extended-pictographic property.</summary>
+        public bool IsExtendedPictographic() =>
+            Find(_extendedPictographicRanges, scalar, 0) != 0;
 
-    /// <summary>Gets the recursively decomposed first scalar without allocating normalization storage.</summary>
-    public static int GetCanonicalBase(int scalar) =>
-        Find(_canonicalBaseRanges, scalar, scalar);
+        /// <summary>Gets the recursively decomposed first scalar without allocating normalization storage.</summary>
+        public int GetCanonicalBase() =>
+            Find(_canonicalBaseRanges, scalar, scalar);
 
-    /// <summary>Gets whether a scalar is assigned in the pinned Unicode version.</summary>
-    public static bool IsAssigned(int scalar) => Find(_assignedRanges, scalar, 0) != 0;
+        /// <summary>Gets whether a scalar is assigned in the pinned Unicode version.</summary>
+        public bool IsAssigned() => Find(_assignedRanges, scalar, 0) != 0;
+    }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static int Find(PropertyRange[] ranges, int scalar, int fallback)
     {
         var low = 0;

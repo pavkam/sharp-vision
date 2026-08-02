@@ -41,16 +41,16 @@ public sealed class DataTests
     [Fact]
     public void Lookup_WhenKnownScalarsAreRead_ReturnsOfficialProperties()
     {
-        Data.GetGraphemeBreak(0x000d).ShouldBe(GraphemeBreak.Cr);
-        Data.GetGraphemeBreak(0x200d).ShouldBe(GraphemeBreak.Zwj);
-        Data.GetIndicConjunct(0x094d).ShouldBe(IndicConjunct.Linker);
-        Data.GetEastAsianWidth(0x00a1).ShouldBe(EastAsianWidth.Ambiguous);
-        Data.GetEastAsianWidth(0x1100).ShouldBe(EastAsianWidth.Wide);
-        Data.IsEmojiPresentation(0x1f600).ShouldBeTrue();
-        Data.IsExtendedPictographic(0x1f469).ShouldBeTrue();
-        Data.GetCanonicalBase(0x00e9).ShouldBe(0x0065);
-        Data.IsAssigned(0x0061).ShouldBeTrue();
-        Data.IsAssigned(0x0378).ShouldBeFalse();
+        0x000d.GetGraphemeBreak().ShouldBe(GraphemeBreak.Cr);
+        0x200d.GetGraphemeBreak().ShouldBe(GraphemeBreak.Zwj);
+        0x094d.GetIndicConjunct().ShouldBe(IndicConjunct.Linker);
+        0x00a1.GetEastAsianWidth().ShouldBe(EastAsianWidth.Ambiguous);
+        0x1100.GetEastAsianWidth().ShouldBe(EastAsianWidth.Wide);
+        0x1f600.IsEmojiPresentation().ShouldBeTrue();
+        0x1f469.IsExtendedPictographic().ShouldBeTrue();
+        0x00e9.GetCanonicalBase().ShouldBe(0x0065);
+        0x0061.IsAssigned().ShouldBeTrue();
+        0x0378.IsAssigned().ShouldBeFalse();
     }
 
     private static void AssertOrdered(ReadOnlySpan<PropertyRange> ranges)
