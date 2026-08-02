@@ -98,7 +98,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             enableIterm,
             encodable,
             metricDependent);
-        var blocked = GraphicsBackendSupport.FindFallbackBlockedPlacements(back, encodable);
+        var blocked = back.FindFallbackBlockedPlacements(encodable);
         var currentCount = CountRenderable(
             encodable,
             metricDependent,
@@ -495,7 +495,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             {
                 if (encodable[upper] &&
                     !blocked[upper] &&
-                    GraphicsBackendSupport.Overlaps(lowerBounds, back.GetPlacement(upper).Destination))
+                    lowerBounds.Overlaps(back.GetPlacement(upper).Destination))
                 {
                     repaint[upper] = true;
                 }
