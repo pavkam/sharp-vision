@@ -31,7 +31,7 @@ internal sealed class ColorSwatch: Control
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
         var rgb = Value.IsRgb ? Value : Color.Rgb(0, 0, 0);
-        var style = new TerminalStyle(ColorMath.Contrast(rgb), Value);
+        var style = new TerminalStyle(rgb.Contrast(), Value);
         canvas.Fill(ContentBounds, new Rune(' '), style);
     }
 }

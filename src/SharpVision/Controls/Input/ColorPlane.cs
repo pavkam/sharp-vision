@@ -139,10 +139,10 @@ internal sealed class ColorPlane: Control
             for (var x = 0; x < bounds.Width; x++)
             {
                 var saturation = bounds.Width <= 1 ? 0 : x / (double) (bounds.Width - 1);
-                var color = ColorMath.FromHsv(Hue, saturation, value);
+                var color = Color.FromHsv(Hue, saturation, value);
                 var selected = x == selectedX && y == selectedY;
                 var glyph = selected ? new Rune('◆') : new Rune(' ');
-                var foreground = selected ? ColorMath.Contrast(color) : Color.Default;
+                var foreground = selected ? color.Contrast() : Color.Default;
                 canvas.DrawRune(
                     glyph,
                     new Point(bounds.X + x, bounds.Y + y),

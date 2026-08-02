@@ -13,149 +13,152 @@ using SharpVision.Surfaces;
 /// render-tree shape while retaining a single authority for each semantic radio group.</remarks>
 internal static class RadioGroupCoordinator
 {
-    /// <summary>Clears one selected member and leaves its group empty.</summary>
-    /// <param name="value">The non-null member to clear.</param>
-    /// <param name="cause">The defined selection cause.</param>
-    public static void Clear(RadioButton value, ActivationCause cause)
+    extension(RadioButton value)
     {
-        ArgumentNullException.ThrowIfNull(value);
-        Validate(cause);
-        var eventArgs = new RadioButtonSelectionChangedEventArgs(value, current: null, cause);
-        var version = value.StageChecked(false);
-
-        if (version == 0)
+        /// <summary>Clears one selected member and leaves its group empty.</summary>
+        /// <param name="cause">The defined selection cause.</param>
+        public void ClearGroup(ActivationCause cause)
         {
-            return;
-        }
+            ArgumentNullException.ThrowIfNull(value);
+            Validate(cause);
+            var eventArgs = new RadioButtonSelectionChangedEventArgs(value, current: null, cause);
+            var version = value.StageChecked(false);
 
-        ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(value.PublishChecked, ref failure);
-
-        if (value.IsCheckedCommitCurrent(version, value: false))
-        {
-            ExceptionAggregation.Capture(() => value.RaiseUnchecked(eventArgs), ref failure);
-        }
-
-        if (value.IsCheckedCommitCurrent(version, value: false))
-        {
-            ExceptionAggregation.Capture(() => value.RaiseSelectionChanged(eventArgs), ref failure);
-        }
-
-        failure?.Throw();
-    }
-
-    /// <summary>Selects one member after staging the complete mutually exclusive group.</summary>
-    /// <param name="value">The non-null member to select.</param>
-    /// <param name="cause">The defined selection cause.</param>
-    public static void Select(RadioButton value, ActivationCause cause)
-    {
-        ArgumentNullException.ThrowIfNull(value);
-        Validate(cause);
-        RadioButton? previous = null;
-
-        foreach (var member in Members(value))
-        {
-            if (!ReferenceEquals(member, value) && member.IsChecked)
+            if (version == 0)
             {
-                previous = member;
-                break;
+                return;
             }
-        }
 
-        var changed = !value.IsChecked;
-
-        if (previous is null && !changed)
-        {
-            return;
-        }
-
-        var eventArgs = new RadioButtonSelectionChangedEventArgs(previous, value, cause);
-        var previousVersion = previous?.StageChecked(false) ?? 0;
-        var currentVersion = changed ? value.StageChecked(true) : 0;
-        ExceptionDispatchInfo? failure = null;
-
-        if (previous is not null && previous.IsCheckedCommitCurrent(previousVersion, value: false))
-        {
-            ExceptionAggregation.Capture(previous.PublishChecked, ref failure);
-        }
-
-        if (changed && value.IsCheckedCommitCurrent(currentVersion, value: true))
-        {
+            ExceptionDispatchInfo? failure = null;
             ExceptionAggregation.Capture(value.PublishChecked, ref failure);
-        }
 
-        if (previous is not null &&
-            previous.IsCheckedCommitCurrent(previousVersion, value: false) &&
-            value.IsChecked)
-        {
-            ExceptionAggregation.Capture(() => previous.RaiseUnchecked(eventArgs), ref failure);
-        }
-
-        if (changed && value.IsCheckedCommitCurrent(currentVersion, value: true))
-        {
-            ExceptionAggregation.Capture(() => value.RaiseChecked(eventArgs), ref failure);
-        }
-
-        if ((!changed && value.IsChecked) || value.IsCheckedCommitCurrent(currentVersion, value: true))
-        {
-            ExceptionAggregation.Capture(() => value.RaiseSelectionChanged(eventArgs), ref failure);
-        }
-
-        failure?.Throw();
-    }
-
-    /// <summary>Moves selection and focus through eligible group order with wrapping.</summary>
-    /// <param name="value">The non-null current member.</param>
-    /// <param name="reverse">Whether to traverse toward the preceding member.</param>
-    /// <returns>True when one eligible member accepted focus and selection.</returns>
-    public static bool Move(RadioButton value, bool reverse)
-    {
-        ArgumentNullException.ThrowIfNull(value);
-        var members = Members(value);
-        var eligible = members.FindAll(static member =>
-            member is { IsDisposed: false, EffectiveIsEnabled: true, EffectiveIsVisible: true, CanFocus: true });
-
-        if (eligible.Count == 0)
-        {
-            return false;
-        }
-
-        var current = eligible.FindIndex(member => ReferenceEquals(member, value));
-        var next = reverse
-            ? current <= 0 ? eligible.Count - 1 : current - 1
-            : current < 0 || current == eligible.Count - 1 ? 0 : current + 1;
-        var target = eligible[next];
-
-        if (!target.RequestGroupFocus())
-        {
-            return false;
-        }
-
-        Select(target, ActivationCause.Keyboard);
-        return true;
-    }
-
-    /// <summary>Gets whether one eligible member is the group's effective sequential entry.</summary>
-    /// <param name="value">The non-null member to inspect.</param>
-    /// <returns>Whether this is the checked eligible member, or the first eligible member when none is checked.</returns>
-    public static bool IsRovingTabStop(RadioButton value)
-    {
-        ArgumentNullException.ThrowIfNull(value);
-        var eligible = Members(value).Where(static member =>
-            member is
+            if (value.IsCheckedCommitCurrent(version, value: false))
             {
-                IsDisposed: false, EffectiveIsEnabled: true, EffectiveIsVisible: true, TabStop: true, CanFocus: true
-            }).ToList();
+                ExceptionAggregation.Capture(() => value.RaiseUnchecked(eventArgs), ref failure);
+            }
 
-        if (eligible.Count == 0)
-        {
-            return false;
+            if (value.IsCheckedCommitCurrent(version, value: false))
+            {
+                ExceptionAggregation.Capture(() => value.RaiseSelectionChanged(eventArgs), ref failure);
+            }
+
+            failure?.Throw();
         }
 
-        var selected = eligible.FirstOrDefault(static member => member.IsChecked);
-        return ReferenceEquals(selected ?? eligible[0], value);
+        /// <summary>Selects one member after staging the complete mutually exclusive group.</summary>
+        /// <param name="cause">The defined selection cause.</param>
+        public void SelectInGroup(ActivationCause cause)
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            Validate(cause);
+            RadioButton? previous = null;
+
+            foreach (var member in Members(value))
+            {
+                if (!ReferenceEquals(member, value) && member.IsChecked)
+                {
+                    previous = member;
+                    break;
+                }
+            }
+
+            var changed = !value.IsChecked;
+
+            if (previous is null && !changed)
+            {
+                return;
+            }
+
+            var eventArgs = new RadioButtonSelectionChangedEventArgs(previous, value, cause);
+            var previousVersion = previous?.StageChecked(false) ?? 0;
+            var currentVersion = changed ? value.StageChecked(true) : 0;
+            ExceptionDispatchInfo? failure = null;
+
+            if (previous is not null && previous.IsCheckedCommitCurrent(previousVersion, value: false))
+            {
+                ExceptionAggregation.Capture(previous.PublishChecked, ref failure);
+            }
+
+            if (changed && value.IsCheckedCommitCurrent(currentVersion, value: true))
+            {
+                ExceptionAggregation.Capture(value.PublishChecked, ref failure);
+            }
+
+            if (previous is not null &&
+                previous.IsCheckedCommitCurrent(previousVersion, value: false) &&
+                value.IsChecked)
+            {
+                ExceptionAggregation.Capture(() => previous.RaiseUnchecked(eventArgs), ref failure);
+            }
+
+            if (changed && value.IsCheckedCommitCurrent(currentVersion, value: true))
+            {
+                ExceptionAggregation.Capture(() => value.RaiseChecked(eventArgs), ref failure);
+            }
+
+            if ((!changed && value.IsChecked) || value.IsCheckedCommitCurrent(currentVersion, value: true))
+            {
+                ExceptionAggregation.Capture(() => value.RaiseSelectionChanged(eventArgs), ref failure);
+            }
+
+            failure?.Throw();
+        }
+
+        /// <summary>Moves selection and focus through eligible group order with wrapping.</summary>
+        /// <param name="reverse">Whether to traverse toward the preceding member.</param>
+        /// <returns>True when one eligible member accepted focus and selection.</returns>
+        public bool MoveGroup(bool reverse)
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            var members = Members(value);
+            var eligible = members.FindAll(static member =>
+                member is { IsDisposed: false, EffectiveIsEnabled: true, EffectiveIsVisible: true, CanFocus: true });
+
+            if (eligible.Count == 0)
+            {
+                return false;
+            }
+
+            var current = eligible.FindIndex(member => ReferenceEquals(member, value));
+            var next = reverse
+                ? current <= 0 ? eligible.Count - 1 : current - 1
+                : current < 0 || current == eligible.Count - 1 ? 0 : current + 1;
+            var target = eligible[next];
+
+            if (!target.RequestGroupFocus())
+            {
+                return false;
+            }
+
+            target.SelectInGroup(ActivationCause.Keyboard);
+            return true;
+        }
+
+        /// <summary>Gets whether one eligible member is the group's effective sequential entry.</summary>
+        /// <returns>Whether this is the checked eligible member, or the first eligible member when none is checked.</returns>
+        public bool IsRovingTabStop()
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            var eligible = Members(value).Where(static member =>
+                member is
+                {
+                    IsDisposed: false, EffectiveIsEnabled: true, EffectiveIsVisible: true, TabStop: true, CanFocus: true
+                }).ToList();
+
+            if (eligible.Count == 0)
+            {
+                return false;
+            }
+
+            var selected = eligible.FirstOrDefault(static member => member.IsChecked);
+            return ReferenceEquals(selected ?? eligible[0], value);
+        }
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static List<RadioButton> Members(RadioButton value)
     {
         List<RadioButton> result = [];
@@ -224,6 +227,10 @@ internal static class RadioGroupCoordinator
         }
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static void Validate(ActivationCause cause)
     {
         if (!Enum.IsDefined(cause))

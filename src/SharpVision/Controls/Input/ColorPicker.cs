@@ -283,7 +283,7 @@ public sealed class ColorPicker: CompositeControl
     {
         var rgb = _value.IsRgb ? _value : Color.Rgb(0, 0, 0);
 
-        ColorMath.ToHsv(rgb, out var hue, out var saturation, out var value);
+        rgb.ToHsv(out var hue, out var saturation, out var value);
         _synchronizing = true;
 
         try
@@ -299,7 +299,7 @@ public sealed class ColorPicker: CompositeControl
                 : $"#{rgb.Red:X2}{rgb.Green:X2}{rgb.Blue:X2}";
             var statusFace = _status.Face;
             _status.Face = new Face(
-                ColorMath.Contrast(rgb),
+                rgb.Contrast(),
                 statusFace.Background,
                 statusFace.Attributes,
                 statusFace.Underline,
@@ -319,7 +319,7 @@ public sealed class ColorPicker: CompositeControl
 
         if (!_synchronizing)
         {
-            _ = Commit(ColorMath.FromHsv(Plane.Hue, Plane.Saturation, Plane.Value));
+            _ = Commit(Color.FromHsv(Plane.Hue, Plane.Saturation, Plane.Value));
         }
     }
 
@@ -330,7 +330,7 @@ public sealed class ColorPicker: CompositeControl
         if (!_synchronizing)
         {
             Plane.SetSelection(eventArgs.Value, Plane.Saturation, Plane.Value);
-            _ = Commit(ColorMath.FromHsv(eventArgs.Value, Plane.Saturation, Plane.Value));
+            _ = Commit(Color.FromHsv(eventArgs.Value, Plane.Saturation, Plane.Value));
         }
     }
 

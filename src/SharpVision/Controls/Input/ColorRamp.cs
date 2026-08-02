@@ -29,7 +29,7 @@ internal sealed class ColorRamp: Control
         for (var x = 0; x < bounds.Width; x++)
         {
             var hue = bounds.Width <= 1 ? 0 : x * 359 / (bounds.Width - 1);
-            var color = ColorMath.FromHsv(hue, 1, 1);
+            var color = Color.FromHsv(hue, 1, 1);
             canvas.DrawRune(
                 new Rune(' '),
                 new Point(bounds.X + x, bounds.Y),

@@ -67,17 +67,17 @@ public sealed class RadioButton: Pressable
 
             if (value)
             {
-                RadioGroupCoordinator.Select(this, ActivationCause.Programmatic);
+                this.SelectInGroup(ActivationCause.Programmatic);
             }
             else
             {
-                RadioGroupCoordinator.Clear(this, ActivationCause.Programmatic);
+                this.ClearGroup(ActivationCause.Programmatic);
             }
         }
     }
 
     /// <inheritdoc/>
-    public override bool IsTabStop => TabStop && CanFocus && RadioGroupCoordinator.IsRovingTabStop(this);
+    public override bool IsTabStop => TabStop && CanFocus && this.IsRovingTabStop();
 
     /// <summary>Gets or sets an optional ordinal group name scoped to the attached root.</summary>
     /// <exception cref="InvalidOperationException">The attached member is mutated off-dispatcher.</exception>
@@ -100,7 +100,7 @@ public sealed class RadioButton: Pressable
             if (IsChecked)
             {
                 ExceptionAggregation.Capture(
-                    () => RadioGroupCoordinator.Select(this, ActivationCause.Programmatic),
+                    () => this.SelectInGroup(ActivationCause.Programmatic),
                     ref failure);
             }
 
@@ -188,7 +188,7 @@ public sealed class RadioButton: Pressable
     /// <exception cref="ObjectDisposedException">The member is disposed.</exception>
 
     /// <inheritdoc/>
-    protected override void Activate(ActivationCause cause) => RadioGroupCoordinator.Select(this, cause);
+    protected override void Activate(ActivationCause cause) => this.SelectInGroup(cause);
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
@@ -260,7 +260,7 @@ public sealed class RadioButton: Pressable
 
         if (reverse || key.Stroke.Code is Code.Right or Code.Down)
         {
-            eventArgs.Handled = RadioGroupCoordinator.Move(this, reverse);
+            eventArgs.Handled = this.MoveGroup(reverse);
         }
     }
 
@@ -271,7 +271,7 @@ public sealed class RadioButton: Pressable
 
         if (current is not null && IsChecked)
         {
-            RadioGroupCoordinator.Select(this, ActivationCause.Programmatic);
+            this.SelectInGroup(ActivationCause.Programmatic);
         }
     }
 
