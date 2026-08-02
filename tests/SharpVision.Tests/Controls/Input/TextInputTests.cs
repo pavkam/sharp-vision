@@ -137,6 +137,53 @@ public sealed class TextInputTests
         Edit.IsBoundary(control.Text, control.CaretIndex).ShouldBeTrue();
     }
 
+    /// <summary>Verifies Left visits every grapheme boundary exactly once across mixed ASCII,
+    /// combining-mark, and emoji ZWJ graphemes, proving the cached binary-search fast path in
+    /// MoveCaretPrevious matches Edit's own boundary ground truth exactly (see #42).</summary>
+    [Fact]
+    public void Dispatch_WhenHoldingLeftAcrossMixedGraphemeKinds_VisitsEveryGraphemeBoundaryExactlyOnce()
+    {
+        var text = "aé👩‍💻界ébb";
+        var control = new TextInput { Text = text };
+        Key(control, Code.End, Modifiers.None);
+        var steps = 0;
+
+        while (control.CaretIndex > 0)
+        {
+            var before = control.CaretIndex;
+            Key(control, Code.Left, Modifiers.None);
+            control.CaretIndex.ShouldBeLessThan(before);
+            Edit.IsBoundary(text, control.CaretIndex).ShouldBeTrue();
+            steps++;
+        }
+
+        steps.ShouldBe(Edit.GraphemeCount(text));
+    }
+
+    /// <summary>Verifies the boundary cache backing Left rebuilds for a completely replaced Text
+    /// value instead of serving offsets computed for the previous string instance - a stale cache
+    /// from a combining-mark grapheme would skip a boundary once the text becomes plain ASCII of
+    /// the same UTF-16 length (see #42).</summary>
+    [Fact]
+    public void Dispatch_WhenTextIsReplacedAfterCachingBoundaries_RebuildsForTheNewGraphemeStructure()
+    {
+        var control = new TextInput { Text = "ébb" };
+        Key(control, Code.End, Modifiers.None);
+        Key(control, Code.Left, Modifiers.None);
+
+        control.Text = "aaaa";
+        Key(control, Code.End, Modifiers.None);
+
+        Key(control, Code.Left, Modifiers.None);
+        control.CaretIndex.ShouldBe(3);
+        Key(control, Code.Left, Modifiers.None);
+        control.CaretIndex.ShouldBe(2);
+        Key(control, Code.Left, Modifiers.None);
+        control.CaretIndex.ShouldBe(1);
+        Key(control, Code.Left, Modifiers.None);
+        control.CaretIndex.ShouldBe(0);
+    }
+
     /// <summary>Verifies bounded undo and redo retain immutable text and selection snapshots.</summary>
     [Fact]
     public void Undo_WhenHistoryExists_RestoresTextSelectionAndRedo()

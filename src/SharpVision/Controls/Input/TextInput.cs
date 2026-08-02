@@ -21,6 +21,11 @@ public sealed class TextInput: Control
     private readonly List<EditResult> _redo = [];
     private string _text = string.Empty;
     private Selection _selection;
+    private int[]? _boundaryRowCache;
+    private int[]? _boundaryColumnCache;
+    private string? _boundaryCacheSource;
+    private Rune? _boundaryCachePasswordCharacter;
+    private Policy? _boundaryCacheCellPolicy;
     private bool _pointerSelecting;
     private int _pointerAnchor;
     private int _contentWidth;
@@ -816,6 +821,101 @@ public sealed class TextInput: Control
         _ = Commit(new EditResult(Text, selection, selection != _selection), false);
     }
 
+    /// <summary>Moves or extends the caret to the previous complete grapheme in O(log n) instead of
+    /// Edit.MovePreviousUnchecked's O(n) full-prefix rescan, using a lazily built and reference-
+    /// invalidated boundary offset cache. Holding Left through a large document previously cost
+    /// O(n) per keystroke - O(n^2) total across n keystrokes (see #42).</summary>
+    private EditResult MoveCaretPrevious(bool extend)
+    {
+        var caret = !extend && !_selection.IsEmpty
+            ? _selection.Start
+            : PreviousBoundaryFast(_selection.Caret);
+        var selection = extend ? new Selection(_selection.Anchor, caret) : new Selection(caret, caret);
+        return selection == _selection
+            ? new EditResult(Text, _selection, changed: false)
+            : new EditResult(Text, selection, changed: true);
+    }
+
+    /// <summary>Finds the largest cached boundary offset strictly less than <paramref name="index"/>
+    /// via binary search.</summary>
+    private int PreviousBoundaryFast(int index)
+    {
+        var (offsets, _, _) = BoundaryCache();
+        var position = Array.BinarySearch(offsets, index);
+        Debug.Assert(position >= 0, "The caret is always a valid cached boundary.");
+        return position > 0 ? offsets[position - 1] : 0;
+    }
+
+    /// <summary>Looks up the non-word-wrap caret cell position for <paramref name="index"/> in
+    /// O(log n) via the cached boundary/row/column arrays, replacing <see cref="Position"/>'s O(n)
+    /// full-prefix rescan on every keystroke (see #42).</summary>
+    private void PositionFast(int index, out int x, out int y)
+    {
+        var (offsets, rows, columns) = BoundaryCache();
+        var position = Array.BinarySearch(offsets, index);
+        Debug.Assert(position >= 0, "The queried index is always a valid cached boundary.");
+        x = columns[position];
+        y = rows[position];
+    }
+
+    /// <summary>Gets the cached grapheme boundary offsets backing <see cref="MoveCaretPrevious"/>
+    /// and <see cref="PositionFast"/>. Also exposed internally so regression coverage can assert the
+    /// same array instance is reused, not rebuilt, across repeated navigation (see #42).</summary>
+    internal int[]? BoundaryOffsets { get; private set; }
+
+    /// <summary>Gets every grapheme boundary offset in <see cref="Text"/> (including 0 and the
+    /// source length) paired with the non-word-wrap cell column and row at that offset, computed
+    /// with one forward pass and reused while the source text and every other <see cref="ClusterWidth"/>
+    /// input - <see cref="PasswordCharacter"/> and <see cref="Control.CellPolicy"/> - are unchanged.
+    /// The <see cref="Text"/> check is a reference comparison, safe because every assignment routes
+    /// through <see cref="Commit"/>, which either keeps the same string reference or replaces it
+    /// wholesale. Holding Left, or repeatedly committing a selection-only change that must
+    /// reposition the caret, previously cost O(n) per keystroke twice over - once in
+    /// <c>Edit.MovePreviousUnchecked</c> and again in <see cref="Position"/> - for O(n^2) total
+    /// across n keystrokes (see #42).</summary>
+    private (int[] Offsets, int[] Rows, int[] Columns) BoundaryCache()
+    {
+        if (ReferenceEquals(_boundaryCacheSource, Text) &&
+            _boundaryCachePasswordCharacter == PasswordCharacter &&
+            _boundaryCacheCellPolicy == CellPolicy)
+        {
+            return (BoundaryOffsets!, _boundaryRowCache!, _boundaryColumnCache!);
+        }
+
+        var offsets = new List<int> { 0 };
+        var rows = new List<int> { 0 };
+        var columns = new List<int> { 0 };
+        var x = 0;
+        var y = 0;
+
+        foreach (var grapheme in Graphemes.Enumerate(Text))
+        {
+            var cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
+
+            if (IsLineBreak(cluster))
+            {
+                x = 0;
+                y++;
+            }
+            else
+            {
+                x += ClusterWidth(cluster, x);
+            }
+
+            offsets.Add(grapheme.Offset + grapheme.Length);
+            rows.Add(y);
+            columns.Add(x);
+        }
+
+        BoundaryOffsets = [.. offsets];
+        _boundaryRowCache = [.. rows];
+        _boundaryColumnCache = [.. columns];
+        _boundaryCacheSource = Text;
+        _boundaryCachePasswordCharacter = PasswordCharacter;
+        _boundaryCacheCellPolicy = CellPolicy;
+        return (BoundaryOffsets, _boundaryRowCache, _boundaryColumnCache);
+    }
+
     private bool Insert(string value)
     {
         if (IsReadOnly)
@@ -888,7 +988,7 @@ public sealed class TextInput: Control
         {
             result = word
                 ? Edit.MovePreviousWord(Text, _selection, extend)
-                : Edit.MovePreviousUnchecked(Text, _selection, extend);
+                : MoveCaretPrevious(extend);
         }
         else if (eventArgs.Stroke.Code == Code.Right)
         {
@@ -1364,23 +1464,7 @@ public sealed class TextInput: Control
             return;
         }
 
-        x = 0;
-        y = 0;
-
-        foreach (var grapheme in Graphemes.Enumerate(Text.AsSpan(0, index)))
-        {
-            var cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
-
-            if (IsLineBreak(cluster))
-            {
-                x = 0;
-                y++;
-            }
-            else
-            {
-                x += ClusterWidth(cluster, x);
-            }
-        }
+        PositionFast(index, out x, out y);
     }
 
     private void MeasureText(out int width, out int height)
