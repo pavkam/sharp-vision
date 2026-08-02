@@ -80,20 +80,10 @@ internal sealed class ContextTransitionPlan
                 entry.ParentAmbient);
             var profile = control.ResolveAppearanceProfile(currentTheme);
             var state = control.GetAppearanceState();
-            var actual = AppearanceResolver.ResolveSnapshot(
-                control,
-                state,
-                currentTheme,
-                profile,
-                entry.ParentAmbient);
+            var actual = control.ResolveSnapshot(state, currentTheme, profile, entry.ParentAmbient);
             var ambientFace = control.AmbientAppearanceState == state
                 ? actual.Face
-                : AppearanceResolver.ResolveSnapshot(
-                    control,
-                    control.AmbientAppearanceState,
-                    currentTheme,
-                    profile,
-                    entry.ParentAmbient).Face;
+                : control.ResolveSnapshot(control.AmbientAppearanceState, currentTheme, profile, entry.ParentAmbient).Face;
             currentAppearance.Add(
                 control,
                 new AppearanceSnapshot(entry.ParentAmbient, actual, ambientFace));

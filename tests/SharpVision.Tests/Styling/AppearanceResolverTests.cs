@@ -29,7 +29,7 @@ public sealed class AppearanceResolverTests
             foreground: Color.Rgb(9, 9, 9),
             attributes: TerminalAttributes.None);
 
-        var resolved = AppearanceResolver.ResolveSnapshot(control, VisualState.Disabled, parentFace);
+        var resolved = control.ResolveSnapshot(VisualState.Disabled, parentFace);
 
         resolved.Face.Foreground.Literal.ShouldBe(Color.Rgb(9, 9, 9));
         resolved.BackgroundMode.ShouldBe(BackgroundMode.Transparent);
@@ -56,7 +56,7 @@ public sealed class AppearanceResolverTests
             foreground: Color.Rgb(9, 9, 9),
             attributes: TerminalAttributes.None);
 
-        var resolved = AppearanceResolver.ResolveSnapshot(control, VisualState.Checked, parentFace);
+        var resolved = control.ResolveSnapshot(VisualState.Checked, parentFace);
 
         resolved.Face.Foreground.Literal.ShouldBe(Color.Rgb(5, 5, 5));
         resolved.BackgroundMode.ShouldBe(BackgroundMode.Transparent);
@@ -87,7 +87,7 @@ public sealed class AppearanceResolverTests
             foreground: Color.Rgb(9, 9, 9),
             attributes: TerminalAttributes.None);
 
-        var resolved = AppearanceResolver.ResolveSnapshot(control, VisualState.Normal, parentFace);
+        var resolved = control.ResolveSnapshot(VisualState.Normal, parentFace);
 
         resolved.Face.Foreground.Literal.ShouldBe(Color.Rgb(3, 3, 3));
         resolved.BackgroundMode.ShouldBe(BackgroundMode.Transparent);
@@ -116,7 +116,7 @@ public sealed class AppearanceResolverTests
         var control = new StyledProbe { AppearanceProfileOverride = profile };
 
         var exception = Should.Throw<ArgumentException>(
-            () => AppearanceResolver.ResolveSnapshot(control, VisualState.Normal, theme, profile, parentAmbientFace: null));
+            () => control.ResolveSnapshot(VisualState.Normal, theme, profile, parentAmbientFace: null));
 
         exception.Message.ShouldContain("ThemeDecoration.NormalText");
         exception.Message.ShouldContain("Straight");

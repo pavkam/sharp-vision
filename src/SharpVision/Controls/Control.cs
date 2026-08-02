@@ -2458,29 +2458,12 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         var currentProfile = appearance(currentStyle);
         var styleImpact = compareStyle(previousStyle, Theme, currentStyle, Theme);
         ValidateImpact(styleImpact);
-        var appearanceImpact = AppearanceResolver.GetImpact(
-            this,
-            Theme,
-            previousProfile,
-            Theme,
-            currentProfile,
-            parentAmbientFace,
-            parentAmbientFace);
+        var appearanceImpact = this.GetImpact(Theme, previousProfile, Theme, currentProfile, parentAmbientFace, parentAmbientFace);
         var impact = MaximumImpact(styleImpact, appearanceImpact);
         var invalidation = InvalidationFor(impact);
         var resolvedStyleChanged = !previousStyle.Equals(currentStyle);
-        var previousAppearance = AppearanceResolver.ResolveSnapshot(
-            this,
-            appearanceState,
-            Theme,
-            previousProfile,
-            parentAmbientFace);
-        var currentAppearance = AppearanceResolver.ResolveSnapshot(
-            this,
-            appearanceState,
-            Theme,
-            currentProfile,
-            parentAmbientFace);
+        var previousAppearance = this.ResolveSnapshot(appearanceState, Theme, previousProfile, parentAmbientFace);
+        var currentAppearance = this.ResolveSnapshot(appearanceState, Theme, currentProfile, parentAmbientFace);
 
         field = value;
         InvalidateSubtreeResolvedStyleCache();
@@ -2531,14 +2514,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         var currentStyle = resolve(localStyle, currentTheme);
         var styleImpact = compareStyle(previousStyle, previousTheme, currentStyle, currentTheme);
         ValidateImpact(styleImpact);
-        var appearanceImpact = AppearanceResolver.GetImpact(
-            this,
-            previousTheme,
-            appearance(previousStyle),
-            currentTheme,
-            appearance(currentStyle),
-            previousParentAmbientFace,
-            currentParentAmbientFace);
+        var appearanceImpact = this.GetImpact(previousTheme, appearance(previousStyle), currentTheme, appearance(currentStyle), previousParentAmbientFace, currentParentAmbientFace);
         return MaximumImpact(styleImpact, appearanceImpact);
     }
 
@@ -3274,14 +3250,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         Theme? current,
         Face? previousParentAmbientFace,
         Face? currentParentAmbientFace) =>
-        AppearanceResolver.GetImpact(
-            this,
-            previous,
-            (previous ?? Themes.Dark).GetProfile(ThemeRole),
-            current,
-            (current ?? Themes.Dark).GetProfile(ThemeRole),
-            previousParentAmbientFace,
-            currentParentAmbientFace);
+        this.GetImpact(previous, (previous ?? Themes.Dark).GetProfile(ThemeRole), current, (current ?? Themes.Dark).GetProfile(ThemeRole), previousParentAmbientFace, currentParentAmbientFace);
 
     /// <summary>Calculates the exact invalidation impact of one resolved appearance change.</summary>
     /// <param name="previous">The resolved appearance before the change.</param>
@@ -3290,7 +3259,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <remarks>Specialized controls may refine layout impact when intrinsic chrome has control-specific geometry.</remarks>
     internal virtual InvalidationImpact GetAppearanceChangeImpact(
         ResolvedAppearance previous,
-        ResolvedAppearance current) => AppearanceResolver.GetImpact(previous, current);
+        ResolvedAppearance current) => previous.GetImpact(current);
 
     /// <summary>Gets the resolved-style property to publish for one committed Theme change.</summary>
     /// <param name="previous">The previously inherited Theme, or null.</param>
@@ -3492,7 +3461,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
 
         UncachedAppearanceResolutionCount++;
-        var resolved = AppearanceResolver.Resolve(this, state);
+        var resolved = this.Resolve(state);
 
         if (cache is null)
         {

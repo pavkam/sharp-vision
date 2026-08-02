@@ -58,16 +58,10 @@ internal readonly struct AppearanceSnapshot
         while (stack.TryPop(out var entry))
         {
             var state = entry.Control.GetAppearanceState();
-            var actual = AppearanceResolver.ResolveSnapshot(
-                entry.Control,
-                state,
-                entry.ParentAmbient);
+            var actual = entry.Control.ResolveSnapshot(state, entry.ParentAmbient);
             var ambientFace = entry.Control.AmbientAppearanceState == state
                 ? actual.Face
-                : AppearanceResolver.ResolveSnapshot(
-                    entry.Control,
-                    entry.Control.AmbientAppearanceState,
-                    entry.ParentAmbient).Face;
+                : entry.Control.ResolveSnapshot(entry.Control.AmbientAppearanceState, entry.ParentAmbient).Face;
             snapshots.Add(
                 entry.Control,
                 new AppearanceSnapshot(entry.ParentAmbient, actual, ambientFace));
@@ -99,10 +93,7 @@ internal readonly struct AppearanceSnapshot
         for (var index = ancestors.Count - 1; index >= 0; index--)
         {
             var control = ancestors[index];
-            ambientFace = AppearanceResolver.ResolveSnapshot(
-                control,
-                control.AmbientAppearanceState,
-                ambientFace).Face;
+            ambientFace = control.ResolveSnapshot(control.AmbientAppearanceState, ambientFace).Face;
         }
 
         return ambientFace;

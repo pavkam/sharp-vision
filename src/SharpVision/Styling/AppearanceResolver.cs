@@ -6,106 +6,104 @@ namespace SharpVision.Styling;
 /// <summary>Resolves semantic, local, state, and ambient appearance into concrete terminal values.</summary>
 internal static class AppearanceResolver
 {
-    internal static ResolvedAppearance Resolve(Control control, VisualState visualState)
+    extension(Control control)
     {
-        ArgumentNullException.ThrowIfNull(control);
+        internal ResolvedAppearance Resolve(VisualState visualState)
+        {
+            ArgumentNullException.ThrowIfNull(control);
 
-        return Resolve(
-            control,
-            visualState,
-            control.Theme,
-            control.ResolvedAppearanceProfile,
-            parentAmbientFace: null,
-            useExplicitAmbient: false);
+            return Resolve(
+                control,
+                visualState,
+                control.Theme,
+                control.ResolvedAppearanceProfile,
+                parentAmbientFace: null,
+                useExplicitAmbient: false);
+        }
+
+        /// <summary>Resolves one state from an explicit ambient parent without touching appearance caches.</summary>
+        /// <param name="visualState">The exact defined visual-state flags.</param>
+        /// <param name="parentAmbientFace">The explicitly resolved parent ambient face, or null at a root.</param>
+        /// <returns>The exact concrete resolved appearance.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
+        internal ResolvedAppearance ResolveSnapshot(VisualState visualState, Face? parentAmbientFace)
+        {
+            ArgumentNullException.ThrowIfNull(control);
+            return control.ResolveSnapshot(
+                visualState,
+                control.Theme,
+                control.ResolvedAppearanceProfile,
+                parentAmbientFace);
+        }
+
+        /// <summary>Resolves one prospective state from explicit Theme, profile, and ambient context.</summary>
+        /// <param name="visualState">The exact defined visual-state flags.</param>
+        /// <param name="theme">The prospective Theme, or null.</param>
+        /// <param name="profile">The non-null prospective appearance profile.</param>
+        /// <param name="parentAmbientFace">The explicit parent ambient face, or null at a root.</param>
+        /// <returns>The exact concrete resolved appearance.</returns>
+        /// <exception cref="ArgumentNullException">A required control or profile is null.</exception>
+        internal ResolvedAppearance ResolveSnapshot(
+            VisualState visualState,
+            Theme? theme,
+            ThemeProfile profile,
+            Face? parentAmbientFace)
+        {
+            ArgumentNullException.ThrowIfNull(control);
+            ArgumentNullException.ThrowIfNull(profile);
+            return Resolve(
+                control,
+                visualState,
+                theme,
+                profile,
+                parentAmbientFace,
+                useExplicitAmbient: true);
+        }
+
+        /// <summary>Compares the active visual state using explicit old and new ambient parent faces.</summary>
+        /// <param name="previousTheme">The Theme before the prospective change, or null.</param>
+        /// <param name="previousProfile">The non-null complete profile before the change.</param>
+        /// <param name="currentTheme">The prospective Theme after the change, or null.</param>
+        /// <param name="currentProfile">The non-null complete profile after the change.</param>
+        /// <param name="previousParentAmbientFace">The explicit parent ambient face before the change.</param>
+        /// <param name="currentParentAmbientFace">The explicit parent ambient face after the change.</param>
+        /// <returns>The exact invalidation impact for the currently rendered state.</returns>
+        /// <exception cref="ArgumentNullException">A required control or profile is null.</exception>
+        internal InvalidationImpact GetImpact(
+            Theme? previousTheme,
+            ThemeProfile previousProfile,
+            Theme? currentTheme,
+            ThemeProfile currentProfile,
+            Face? previousParentAmbientFace,
+            Face? currentParentAmbientFace)
+        {
+            ArgumentNullException.ThrowIfNull(control);
+            ArgumentNullException.ThrowIfNull(previousProfile);
+            ArgumentNullException.ThrowIfNull(currentProfile);
+
+            var state = control.GetAppearanceState();
+            var previous = Resolve(
+                control,
+                state,
+                previousTheme,
+                previousProfile,
+                previousParentAmbientFace,
+                useExplicitAmbient: true);
+            var current = Resolve(
+                control,
+                state,
+                currentTheme,
+                currentProfile,
+                currentParentAmbientFace,
+                useExplicitAmbient: true);
+            return control.GetAppearanceChangeImpact(previous, current);
+        }
     }
 
-    /// <summary>Resolves one state from an explicit ambient parent without touching appearance caches.</summary>
-    /// <param name="control">The non-null control to resolve.</param>
-    /// <param name="visualState">The exact defined visual-state flags.</param>
-    /// <param name="parentAmbientFace">The explicitly resolved parent ambient face, or null at a root.</param>
-    /// <returns>The exact concrete resolved appearance.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
-    internal static ResolvedAppearance ResolveSnapshot(
-        Control control,
-        VisualState visualState,
-        Face? parentAmbientFace)
-    {
-        ArgumentNullException.ThrowIfNull(control);
-        return ResolveSnapshot(
-            control,
-            visualState,
-            control.Theme,
-            control.ResolvedAppearanceProfile,
-            parentAmbientFace);
-    }
-
-    /// <summary>Resolves one prospective state from explicit Theme, profile, and ambient context.</summary>
-    /// <param name="control">The non-null control whose local values participate.</param>
-    /// <param name="visualState">The exact defined visual-state flags.</param>
-    /// <param name="theme">The prospective Theme, or null.</param>
-    /// <param name="profile">The non-null prospective appearance profile.</param>
-    /// <param name="parentAmbientFace">The explicit parent ambient face, or null at a root.</param>
-    /// <returns>The exact concrete resolved appearance.</returns>
-    /// <exception cref="ArgumentNullException">A required control or profile is null.</exception>
-    internal static ResolvedAppearance ResolveSnapshot(
-        Control control,
-        VisualState visualState,
-        Theme? theme,
-        ThemeProfile profile,
-        Face? parentAmbientFace)
-    {
-        ArgumentNullException.ThrowIfNull(control);
-        ArgumentNullException.ThrowIfNull(profile);
-        return Resolve(
-            control,
-            visualState,
-            theme,
-            profile,
-            parentAmbientFace,
-            useExplicitAmbient: true);
-    }
-
-    /// <summary>Compares the active visual state using explicit old and new ambient parent faces.</summary>
-    /// <param name="control">The non-null control whose local appearance values participate.</param>
-    /// <param name="previousTheme">The Theme before the prospective change, or null.</param>
-    /// <param name="previousProfile">The non-null complete profile before the change.</param>
-    /// <param name="currentTheme">The prospective Theme after the change, or null.</param>
-    /// <param name="currentProfile">The non-null complete profile after the change.</param>
-    /// <param name="previousParentAmbientFace">The explicit parent ambient face before the change.</param>
-    /// <param name="currentParentAmbientFace">The explicit parent ambient face after the change.</param>
-    /// <returns>The exact invalidation impact for the currently rendered state.</returns>
-    /// <exception cref="ArgumentNullException">A required control or profile is null.</exception>
-    internal static InvalidationImpact GetImpact(
-        Control control,
-        Theme? previousTheme,
-        ThemeProfile previousProfile,
-        Theme? currentTheme,
-        ThemeProfile currentProfile,
-        Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace)
-    {
-        ArgumentNullException.ThrowIfNull(control);
-        ArgumentNullException.ThrowIfNull(previousProfile);
-        ArgumentNullException.ThrowIfNull(currentProfile);
-
-        var state = control.GetAppearanceState();
-        var previous = Resolve(
-            control,
-            state,
-            previousTheme,
-            previousProfile,
-            previousParentAmbientFace,
-            useExplicitAmbient: true);
-        var current = Resolve(
-            control,
-            state,
-            currentTheme,
-            currentProfile,
-            currentParentAmbientFace,
-            useExplicitAmbient: true);
-        return control.GetAppearanceChangeImpact(previous, current);
-    }
-
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static ResolvedAppearance Resolve(
         Control control,
         VisualState visualState,
@@ -179,21 +177,23 @@ internal static class AppearanceResolver
         return authored.Apply(localCombined);
     }
 
-    /// <summary>Compares two concrete appearances for their exact earliest invalidation phase.</summary>
-    /// <param name="previous">The concrete appearance before a transaction.</param>
-    /// <param name="current">The concrete appearance after a transaction.</param>
-    /// <returns>The strongest phase affected by the concrete difference.</returns>
-    internal static InvalidationImpact GetImpact(ResolvedAppearance previous, ResolvedAppearance current)
+    extension(ResolvedAppearance previous)
     {
-        return previous.Border.Sides != current.Border.Sides ||
-               previous.Shadow.IsVisible != current.Shadow.IsVisible ||
-               previous.Shadow.Offset != current.Shadow.Offset
-            ? InvalidationImpact.Measure
-            : previous.Face != current.Face ||
-              previous.Border != current.Border ||
-              previous.Shadow != current.Shadow
-                ? InvalidationImpact.Render
-                : InvalidationImpact.None;
+        /// <summary>Compares two concrete appearances for their exact earliest invalidation phase.</summary>
+        /// <param name="current">The concrete appearance after a transaction.</param>
+        /// <returns>The strongest phase affected by the concrete difference.</returns>
+        internal InvalidationImpact GetImpact(ResolvedAppearance current)
+        {
+            return previous.Border.Sides != current.Border.Sides ||
+                   previous.Shadow.IsVisible != current.Shadow.IsVisible ||
+                   previous.Shadow.Offset != current.Shadow.Offset
+                ? InvalidationImpact.Measure
+                : previous.Face != current.Face ||
+                  previous.Border != current.Border ||
+                  previous.Shadow != current.Shadow
+                    ? InvalidationImpact.Render
+                    : InvalidationImpact.None;
+        }
     }
 
     private static Face ResolveFace(Theme? theme, Face face)
