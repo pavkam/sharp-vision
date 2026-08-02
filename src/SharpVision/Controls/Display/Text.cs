@@ -177,7 +177,11 @@ public sealed class Text: Control, IAccessKeyCaption
     /// <param name="value">The non-null visible text.</param>
     /// <returns>The text with opening-angle and backslash metacharacters escaped.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
-    public static string Escape(string value) => Markup.Escape(value);
+    public static string Escape(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        return value.Escape();
+    }
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
@@ -225,7 +229,7 @@ public sealed class Text: Control, IAccessKeyCaption
         }
 
         var hotkeyColor = highlightMnemonic ? Theme?.Hotkey : null;
-        _spans = Markup.Parse(Content.ToMarkup(useMnemonic, highlightMnemonic, hotkeyColor), out _display);
+        _spans = Content.ToMarkup(useMnemonic, highlightMnemonic, hotkeyColor).Parse(out _display);
         _parsedContent = Content;
         _parsedUseMnemonic = useMnemonic;
         _parsedHighlightMnemonic = highlightMnemonic;

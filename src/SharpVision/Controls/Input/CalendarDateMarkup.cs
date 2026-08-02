@@ -14,7 +14,7 @@ internal sealed class CalendarDateMarkup
     public CalendarDateMarkup(string source)
     {
         ArgumentNullException.ThrowIfNull(source);
-        Spans = Markup.Parse(source, out var display);
+        Spans = source.Parse(out var display);
 
         if (display.Length == 0)
         {

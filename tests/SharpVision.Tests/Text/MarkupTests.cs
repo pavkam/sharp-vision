@@ -10,7 +10,7 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenTextIsPlain_YieldsOneInheritingSpan()
     {
-        var spans = Markup.Parse("hello", out var display);
+        var spans = "hello".Parse(out var display);
 
         display.ShouldBe("hello");
         spans.Length.ShouldBe(1);
@@ -25,7 +25,7 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenTextIsEmpty_YieldsNoSpans()
     {
-        var spans = Markup.Parse(string.Empty, out var display);
+        var spans = string.Empty.Parse(out var display);
 
         display.ShouldBeEmpty();
         spans.ShouldBeEmpty();
@@ -35,9 +35,7 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenColorsAreMarked_ResolvesEveryValueForm()
     {
-        var spans = Markup.Parse(
-            "<red>a</red><fg=#f80>b</fg>",
-            out var display);
+        var spans = "<red>a</red><fg=#f80>b</fg>".Parse(out var display);
 
         display.ShouldBe("ab");
         spans.Length.ShouldBe(2);
@@ -49,9 +47,7 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenUnknownColorTagsAreUsed_PassesThroughAsLiteralText()
     {
-        var spans = Markup.Parse(
-            "<fg=#ff8800>hello</fg>",
-            out var display);
+        var spans = "<fg=#ff8800>hello</fg>".Parse(out var display);
 
         display.ShouldBe("hello");
         spans.Length.ShouldBe(1);
@@ -80,7 +76,7 @@ public sealed class MarkupTests
     [InlineData("brightwhite", 15)]
     public void Parse_WhenAnsiColorNameIsMarked_ResolvesReferenceRgb(string name, int index)
     {
-        var spans = Markup.Parse($"<{name}>x</{name}>", out var display);
+        var spans = $"<{name}>x</{name}>".Parse(out var display);
 
         display.ShouldBe("x");
         spans.ShouldHaveSingleItem().Foreground.ShouldBe(ReferenceColors.Get(index));
@@ -106,7 +102,7 @@ public sealed class MarkupTests
         string name,
         Attributes expected)
     {
-        var spans = Markup.Parse($"<{name}>x</{name}>", out var display);
+        var spans = $"<{name}>x</{name}>".Parse(out var display);
 
         display.ShouldBe("x");
         spans.ShouldHaveSingleItem().Attributes.ShouldBe(expected);
@@ -116,9 +112,7 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenValueAliasesAreMarked_ResolvesColorAndLink()
     {
-        var spans = Markup.Parse(
-            "<color=brightblue>a</color><a=https://example.test>b</a>",
-            out var display);
+        var spans = "<color=brightblue>a</color><a=https://example.test>b</a>".Parse(out var display);
 
         display.ShouldBe("ab");
         spans[0].Foreground.ShouldBe(ReferenceColors.Get(12));
@@ -129,7 +123,7 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenTagsOverlap_ClosesNearestMatchingName()
     {
-        var spans = Markup.Parse("<u><b>hi</u> there</b>", out var display);
+        var spans = "<u><b>hi</u> there</b>".Parse(out var display);
 
         display.ShouldBe("hi there");
         spans.Length.ShouldBe(2);
@@ -143,7 +137,7 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenGenericCloseIsUsed_PopsMostRecentTag()
     {
-        var spans = Markup.Parse("<fg=red>a</>b", out var display);
+        var spans = "<fg=red>a</>b".Parse(out var display);
 
         display.ShouldBe("ab");
         spans[0].Foreground.ShouldBe(ReferenceColors.Get(1));
@@ -154,7 +148,7 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenUnderlineShapesNest_UsesLatestOpenShape()
     {
-        var spans = Markup.Parse("<u>a<u=double>b</u>c</u>", out var display);
+        var spans = "<u>a<u=double>b</u>c</u>".Parse(out var display);
 
         display.ShouldBe("abc");
         spans[0].Underline.ShouldBe(Underline.Straight);
@@ -166,7 +160,7 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenBlinkKindsNest_UsesLatestOpenKind()
     {
-        var spans = Markup.Parse("<blink>a<rapidblink>b</rapidblink>c</blink>", out _);
+        var spans = "<blink>a<rapidblink>b</rapidblink>c</blink>".Parse(out _);
 
         spans[0].Attributes.ShouldBe(Attributes.Blink);
         spans[1].Attributes.ShouldBe(Attributes.RapidBlink);
@@ -177,7 +171,7 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenValueFacetsAreMarked_ResolvesStyle()
     {
-        var spans = Markup.Parse("<bg=blue><uc=#0f0><u=curly>x</u></uc></bg>", out _);
+        var spans = "<bg=blue><uc=#0f0><u=curly>x</u></uc></bg>".Parse(out _);
 
         _ = spans.ShouldHaveSingleItem();
         spans[0].Background.ShouldBe(ReferenceColors.Get(4));
@@ -189,7 +183,7 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenLinkIsValid_RecordsTarget()
     {
-        var spans = Markup.Parse("see <link=https://example.test>here</link>", out var display);
+        var spans = "see <link=https://example.test>here</link>".Parse(out var display);
 
         display.ShouldBe("see here");
         spans.Single(span => span.Link is not null).Link.ShouldBe("https://example.test");
@@ -199,7 +193,7 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenLinkContainsControl_PreservesRawFragment()
     {
-        _ = Markup.Parse("<link=bad\u0007>x</link>", out var display);
+        _ = "<link=bad\u0007>x</link>".Parse(out var display);
 
         display.ShouldBe("<link=bad\u0007>x");
     }
@@ -208,7 +202,7 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenMalformedTagContainsOpeningBracket_PreservesWholeFragment()
     {
-        _ = Markup.Parse("a<unknown <b>c", out var display);
+        _ = "a<unknown <b>c".Parse(out var display);
 
         display.ShouldBe("a<unknown <b>c");
     }
@@ -217,7 +211,7 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenTagIsUnterminated_PreservesRemainder()
     {
-        _ = Markup.Parse("a<b", out var display);
+        _ = "a<b".Parse(out var display);
 
         display.ShouldBe("a<b");
     }
@@ -226,7 +220,7 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenKnownTagIsUnclosed_AutoClosesAtEnd()
     {
-        var spans = Markup.Parse("<b>bold", out var display);
+        var spans = "<b>bold".Parse(out var display);
 
         display.ShouldBe("bold");
         _ = spans.ShouldHaveSingleItem();
@@ -237,7 +231,7 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenMetacharactersAreEscaped_EmitsLiterals()
     {
-        _ = Markup.Parse(@"a \< b \\ c", out var display);
+        _ = @"a \< b \\ c".Parse(out var display);
 
         display.ShouldBe(@"a < b \ c");
     }
@@ -246,7 +240,7 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenBrTagIsUsed_PreservesItLiterally()
     {
-        _ = Markup.Parse("a<br>b", out var display);
+        _ = "a<br>b".Parse(out var display);
 
         display.ShouldBe("a<br>b");
     }
@@ -258,7 +252,7 @@ public sealed class MarkupTests
     [InlineData(@"back\slash <tag>")]
     public void Escape_WhenParsed_YieldsOriginalText(string original)
     {
-        _ = Markup.Parse(Markup.Escape(original), out var display);
+        _ = original.Escape().Parse(out var display);
 
         display.ShouldBe(original);
     }

@@ -6,97 +6,105 @@ namespace SharpVision.Text;
 /// <summary>Parses lenient inline text markup into visible text and semantic style spans.</summary>
 internal static class Markup
 {
-    /// <summary>Parses markup without discarding malformed source fragments.</summary>
-    /// <param name="source">The markup borrowed for this synchronous call.</param>
-    /// <param name="display">The visible text with valid tags removed and escapes resolved.</param>
-    /// <returns>Positive spans that tile the complete visible text in source order.</returns>
-    public static StyleSpan[] Parse(ReadOnlySpan<char> source, out string display)
+    extension(ReadOnlySpan<char> source)
     {
-        var text = new StringBuilder(source.Length);
-        List<StyleSpan> spans = [];
-        List<OpenTag> open = [];
-        var spanStart = 0;
-        var current = Style.Inherit;
-        var position = 0;
-
-        while (position < source.Length)
+        /// <summary>Parses markup without discarding malformed source fragments.</summary>
+        /// <param name="display">The visible text with valid tags removed and escapes resolved.</param>
+        /// <returns>Positive spans that tile the complete visible text in source order.</returns>
+        public StyleSpan[] Parse(out string display)
         {
-            var value = source[position];
+            var text = new StringBuilder(source.Length);
+            List<StyleSpan> spans = [];
+            List<OpenTag> open = [];
+            var spanStart = 0;
+            var current = Style.Inherit;
+            var position = 0;
 
-            if (value == '\\' &&
-                position + 1 < source.Length &&
-                source[position + 1] is '<' or '\\')
+            while (position < source.Length)
             {
-                _ = text.Append(source[position + 1]);
-                position += 2;
-                continue;
-            }
+                var value = source[position];
 
-            if (value != '<')
-            {
-                _ = text.Append(value);
-                position++;
-                continue;
-            }
+                if (value == '\\' &&
+                    position + 1 < source.Length &&
+                    source[position + 1] is '<' or '\\')
+                {
+                    _ = text.Append(source[position + 1]);
+                    position += 2;
+                    continue;
+                }
 
-            var close = source[(position + 1)..].IndexOf('>');
+                if (value != '<')
+                {
+                    _ = text.Append(value);
+                    position++;
+                    continue;
+                }
 
-            if (close < 0)
-            {
-                _ = text.Append(source[position..]);
-                _ = source.Length;
-                break;
-            }
+                var close = source[(position + 1)..].IndexOf('>');
 
-            close += position + 1;
-            var body = source[(position + 1)..close];
+                if (close < 0)
+                {
+                    _ = text.Append(source[position..]);
+                    _ = source.Length;
+                    break;
+                }
 
-            if (body.Contains('<') || !TryApplyTag(body, open))
-            {
-                _ = text.Append(source[position..(close + 1)]);
+                close += position + 1;
+                var body = source[(position + 1)..close];
+
+                if (body.Contains('<') || !TryApplyTag(body, open))
+                {
+                    _ = text.Append(source[position..(close + 1)]);
+                    position = close + 1;
+                    continue;
+                }
+
+                var next = Style.From(open);
+
+                if (next != current)
+                {
+                    AddSpan(spans, current, spanStart, text.Length);
+                    spanStart = text.Length;
+                    current = next;
+                }
+
                 position = close + 1;
-                continue;
             }
 
-            var next = Style.From(open);
-
-            if (next != current)
-            {
-                AddSpan(spans, current, spanStart, text.Length);
-                spanStart = text.Length;
-                current = next;
-            }
-
-            position = close + 1;
+            AddSpan(spans, current, spanStart, text.Length);
+            display = text.ToString();
+            return [.. spans];
         }
-
-        AddSpan(spans, current, spanStart, text.Length);
-        display = text.ToString();
-        return [.. spans];
     }
 
-    /// <summary>Escapes visible text so markup metacharacters round-trip literally.</summary>
-    /// <param name="value">The non-null visible text.</param>
-    /// <returns>A string with backslash and opening-angle characters escaped.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
-    public static string Escape(string value)
+    extension(string value)
     {
-        ArgumentNullException.ThrowIfNull(value);
-        var builder = new StringBuilder(value.Length);
-
-        foreach (var character in value)
+        /// <summary>Escapes visible text so markup metacharacters round-trip literally.</summary>
+        /// <returns>A string with backslash and opening-angle characters escaped.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+        public string Escape()
         {
-            if (character is '\\' or '<')
+            ArgumentNullException.ThrowIfNull(value);
+            var builder = new StringBuilder(value.Length);
+
+            foreach (var character in value)
             {
-                _ = builder.Append('\\');
+                if (character is '\\' or '<')
+                {
+                    _ = builder.Append('\\');
+                }
+
+                _ = builder.Append(character);
             }
 
-            _ = builder.Append(character);
+            return builder.ToString();
         }
-
-        return builder.ToString();
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static void AddSpan(List<StyleSpan> spans, Style style, int start, int end)
     {
         if (end > start)
@@ -105,6 +113,10 @@ internal static class Markup
         }
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static bool TryApplyTag(ReadOnlySpan<char> body, List<OpenTag> open)
     {
         body = body.Trim();

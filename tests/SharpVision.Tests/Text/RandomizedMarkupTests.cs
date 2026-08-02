@@ -24,7 +24,7 @@ public sealed class RandomizedMarkupTests
             }
 
             var original = builder.ToString();
-            _ = Markup.Parse(Markup.Escape(original), out var display);
+            _ = original.Escape().Parse(out var display);
 
             display.ShouldBe(original, $"seed 20260715 trial {trial}");
         }
@@ -52,7 +52,7 @@ public sealed class RandomizedMarkupTests
                 _ = builder.Append(fragments[random.Next(fragments.Length)]);
             }
 
-            var spans = Markup.Parse(builder.ToString(), out var display);
+            var spans = builder.ToString().Parse(out var display);
             var cursor = 0;
 
             foreach (var span in spans)
