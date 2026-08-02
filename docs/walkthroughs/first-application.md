@@ -24,9 +24,12 @@ dotnet add reference ../sharp-vision/src/SharpVision/SharpVision.csproj
 Replace `Program.cs` with:
 
 ```csharp
-using SharpVision.Controls;
-using SharpVision.Layout;
 using SharpVision;
+using SharpVision.Controls;
+using SharpVision.Controls.Display;
+using SharpVision.Controls.Input;
+using SharpVision.Controls.Layout;
+using SharpVision.Layout;
 using SharpVision.Styling;
 
 var status = await ConsoleApplication.RunAsync(new HelloScreen());
