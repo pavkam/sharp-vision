@@ -4,7 +4,7 @@
 namespace SharpVision.Terminal.Terminfo.Ncurses;
 
 /// <summary>Discovers a current ncurses or split terminfo library without a package-time dependency.</summary>
-internal static class Library
+internal static class NcursesLibrary
 {
     /// <summary>Attempts each candidate library name in order.</summary>
     /// <param name="names">The non-null ordered candidate names or absolute paths.</param>

@@ -6,12 +6,12 @@ namespace SharpVision.Terminal.Tests.Capabilities;
 using SharpVision.Terminal.Terminfo.Ncurses;
 
 /// <summary>Verifies ncurses native-library discovery attempts a caller-supplied name list.</summary>
-public sealed class LibraryTests
+public sealed class NcursesLibraryTests
 {
     /// <summary>Verifies a null name list is rejected before any platform check.</summary>
     [Fact]
     public void Open_WhenNamesIsNull_Throws() =>
-        _ = Should.Throw<ArgumentNullException>(() => Library.Open(null!));
+        _ = Should.Throw<ArgumentNullException>(() => NcursesLibrary.Open(null!));
 
     /// <summary>Verifies an empty list never resolves a library, matching the documented
     /// "empty means ncurses is never attempted" contract on <c>Limits.NcursesLibraryNames</c>.</summary>
@@ -23,7 +23,7 @@ public sealed class LibraryTests
             return;
         }
 
-        Library.Open([]).ShouldBeNull();
+        NcursesLibrary.Open([]).ShouldBeNull();
     }
 
     /// <summary>Verifies names that resolve to no installed library are exhausted without throwing,
@@ -36,7 +36,7 @@ public sealed class LibraryTests
             return;
         }
 
-        Library.Open(["definitely-not-a-real-library.so.999"]).ShouldBeNull();
+        NcursesLibrary.Open(["definitely-not-a-real-library.so.999"]).ShouldBeNull();
     }
 
     /// <summary>Verifies Windows never attempts native discovery regardless of the configured names.</summary>
@@ -48,6 +48,6 @@ public sealed class LibraryTests
             return;
         }
 
-        Library.Open(["libncursesw.so.6"]).ShouldBeNull();
+        NcursesLibrary.Open(["libncursesw.so.6"]).ShouldBeNull();
     }
 }

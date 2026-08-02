@@ -16,7 +16,7 @@ internal sealed class Provider: IDescriptionProvider
     private readonly Func<string, string?> _readEnvironment;
 
     /// <summary>Initializes a provider using dynamic ncurses library discovery.</summary>
-    public Provider() : this(Library.Open, Environment.GetEnvironmentVariable)
+    public Provider() : this(NcursesLibrary.Open, Environment.GetEnvironmentVariable)
     {
     }
 
