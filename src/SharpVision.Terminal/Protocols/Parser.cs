@@ -26,7 +26,7 @@ public sealed class Parser: IDisposable
     private byte[]? _parameters;
     private byte[]? _intermediates;
     private byte[]? _payload;
-    private State _state;
+    private ParserState _state;
     private int _parameterLength;
     private int _intermediateLength;
     private int _payloadLength;
@@ -73,7 +73,7 @@ public sealed class Parser: IDisposable
         get
         {
             ThrowIfDisposed();
-            return _state == State.Ground;
+            return _state == ParserState.Ground;
         }
     }
 
@@ -84,7 +84,7 @@ public sealed class Parser: IDisposable
     internal void BeginCsiFromEightBit()
     {
         ThrowIfDisposed();
-        Debug.Assert(_state == State.Ground, "Selective CSI recognition begins only from ground.");
+        Debug.Assert(_state == ParserState.Ground, "Selective CSI recognition begins only from ground.");
 
         Offset = checked(Offset + 1);
         BeginCsi();
@@ -110,7 +110,7 @@ public sealed class Parser: IDisposable
 
         while (position < input.Length)
         {
-            if (_state == State.Ground && IsText(input[position]))
+            if (_state == ParserState.Ground && IsText(input[position]))
             {
                 var start = position++;
 
@@ -147,7 +147,7 @@ public sealed class Parser: IDisposable
         ThrowIfDisposed();
         ThrowIfNull(ref sink);
 
-        if (_state != State.Ground)
+        if (_state != ParserState.Ground)
         {
             if (IsIgnoring)
             {
@@ -205,27 +205,27 @@ public sealed class Parser: IDisposable
     }
 
     private bool IsIgnoring => _state is
-        State.EscapeIgnore or
-        State.CsiIgnore or
-        State.DcsHeaderIgnore or
-        State.StringIgnore or
-        State.StringIgnoreEscape;
+        ParserState.EscapeIgnore or
+        ParserState.CsiIgnore or
+        ParserState.DcsHeaderIgnore or
+        ParserState.StringIgnore or
+        ParserState.StringIgnoreEscape;
 
     private bool IsStringState => _state is
-        State.StringPayload or
-        State.StringEscape or
-        State.StringIgnore or
-        State.StringIgnoreEscape;
+        ParserState.StringPayload or
+        ParserState.StringEscape or
+        ParserState.StringIgnore or
+        ParserState.StringIgnoreEscape;
 
     private SequenceKind CurrentKind => _state switch
     {
-        State.Escape or State.EscapeIntermediate or State.EscapeIgnore =>
+        ParserState.Escape or ParserState.EscapeIntermediate or ParserState.EscapeIgnore =>
             SequenceKind.Escape,
-        State.Csi or State.CsiIntermediate or State.CsiIgnore => SequenceKind.Csi,
-        State.Dcs or State.DcsIntermediate or State.DcsHeaderIgnore => SequenceKind.Dcs,
-        State.StringPayload or State.StringEscape => _stringKind,
-        State.StringIgnore or State.StringIgnoreEscape => _pendingKind,
-        State.Ground => SequenceKind.None,
+        ParserState.Csi or ParserState.CsiIntermediate or ParserState.CsiIgnore => SequenceKind.Csi,
+        ParserState.Dcs or ParserState.DcsIntermediate or ParserState.DcsHeaderIgnore => SequenceKind.Dcs,
+        ParserState.StringPayload or ParserState.StringEscape => _stringKind,
+        ParserState.StringIgnore or ParserState.StringIgnoreEscape => _pendingKind,
+        ParserState.Ground => SequenceKind.None,
         _ => throw new UnreachableException()
     };
 
@@ -233,7 +233,7 @@ public sealed class Parser: IDisposable
     {
         ClearPayload();
         ClearHeader();
-        _state = State.Csi;
+        _state = ParserState.Csi;
     }
 
     private void BeginDcs()
@@ -242,7 +242,7 @@ public sealed class Parser: IDisposable
         ClearHeader();
         _stringKind = SequenceKind.Dcs;
         _dcsFinal = 0;
-        _state = State.Dcs;
+        _state = ParserState.Dcs;
     }
 
     private void BeginString(SequenceKind kind)
@@ -254,14 +254,14 @@ public sealed class Parser: IDisposable
         ClearPayload();
         ClearHeader();
         _stringKind = kind;
-        _state = State.StringPayload;
+        _state = ParserState.StringPayload;
     }
 
     private void BeginIgnore(
         DiagnosticCode code,
         SequenceKind kind,
         long offset,
-        State state)
+        ParserState state)
     {
         _pendingCode = code;
         _pendingKind = kind;
@@ -288,7 +288,7 @@ public sealed class Parser: IDisposable
 
     private void EnterGround()
     {
-        _state = State.Ground;
+        _state = ParserState.Ground;
         ClearPayload();
         ClearHeader();
         _stringKind = default;
@@ -303,7 +303,7 @@ public sealed class Parser: IDisposable
     {
         var parameters = _parameters.AsSpan(0, _parameterLength);
         var intermediates = _intermediates.AsSpan(0, _intermediateLength);
-        _state = State.Ground;
+        _state = ParserState.Ground;
 
         try
         {
@@ -319,7 +319,7 @@ public sealed class Parser: IDisposable
         where TSink : ISequenceSink
     {
         var intermediates = _intermediates.AsSpan(0, _intermediateLength);
-        _state = State.Ground;
+        _state = ParserState.Ground;
 
         try
         {
@@ -339,7 +339,7 @@ public sealed class Parser: IDisposable
         var parameters = _parameters.AsSpan(0, _parameterLength);
         var intermediates = _intermediates.AsSpan(0, _intermediateLength);
         var final = _dcsFinal;
-        _state = State.Ground;
+        _state = ParserState.Ground;
 
         try
         {
@@ -402,7 +402,7 @@ public sealed class Parser: IDisposable
     {
         var kind = _stringKind;
         ClearPayload();
-        BeginIgnore(code, kind, currentOffset, State.StringIgnore);
+        BeginIgnore(code, kind, currentOffset, ParserState.StringIgnore);
     }
 
     private bool IsText(byte value) =>
@@ -431,11 +431,11 @@ public sealed class Parser: IDisposable
             }
 
             ClearHeader();
-            _state = State.Escape;
+            _state = ParserState.Escape;
             return;
         }
 
-        if (_state != State.Ground && value is ControlBytes.Cancel or ControlBytes.Substitute)
+        if (_state != ParserState.Ground && value is ControlBytes.Cancel or ControlBytes.Substitute)
         {
             if (IsIgnoring)
             {
@@ -463,41 +463,41 @@ public sealed class Parser: IDisposable
 
         switch (_state)
         {
-            case State.Ground:
+            case ParserState.Ground:
                 ProcessGround(value, ref sink);
                 break;
 
-            case State.Escape:
-            case State.EscapeIntermediate:
+            case ParserState.Escape:
+            case ParserState.EscapeIntermediate:
                 ProcessEscape(value, currentOffset, ref sink);
                 break;
 
-            case State.EscapeIgnore:
+            case ParserState.EscapeIgnore:
                 ProcessEscapeIgnore(value, ref sink);
                 break;
 
-            case State.Csi:
-            case State.CsiIntermediate:
+            case ParserState.Csi:
+            case ParserState.CsiIntermediate:
                 ProcessCsi(value, currentOffset, ref sink);
                 break;
 
-            case State.CsiIgnore:
+            case ParserState.CsiIgnore:
                 ProcessCsiIgnore(value, ref sink);
                 break;
 
-            case State.Dcs:
-            case State.DcsIntermediate:
+            case ParserState.Dcs:
+            case ParserState.DcsIntermediate:
                 ProcessDcs(value, currentOffset, ref sink);
                 break;
 
-            case State.DcsHeaderIgnore:
+            case ParserState.DcsHeaderIgnore:
                 ProcessDcsHeaderIgnore(value);
                 break;
 
-            case State.StringPayload:
-            case State.StringEscape:
-            case State.StringIgnore:
-            case State.StringIgnoreEscape:
+            case ParserState.StringPayload:
+            case ParserState.StringEscape:
+            case ParserState.StringIgnore:
+            case ParserState.StringIgnoreEscape:
                 throw new UnreachableException("String states are processed before general controls.");
 
             default:
@@ -510,9 +510,9 @@ public sealed class Parser: IDisposable
     {
         if (value is >= 0x30 and <= 0x3f)
         {
-            if (_state == State.CsiIntermediate)
+            if (_state == ParserState.CsiIntermediate)
             {
-                BeginIgnore(DiagnosticCode.Malformed, SequenceKind.Csi, currentOffset, State.CsiIgnore);
+                BeginIgnore(DiagnosticCode.Malformed, SequenceKind.Csi, currentOffset, ParserState.CsiIgnore);
             }
             else if (_parameterLength == _limits.MaxParameterBytes)
             {
@@ -520,7 +520,7 @@ public sealed class Parser: IDisposable
                     DiagnosticCode.ParameterLimit,
                     SequenceKind.Csi,
                     currentOffset,
-                    State.CsiIgnore);
+                    ParserState.CsiIgnore);
             }
             else
             {
@@ -538,12 +538,12 @@ public sealed class Parser: IDisposable
                     DiagnosticCode.IntermediateLimit,
                     SequenceKind.Csi,
                     currentOffset,
-                    State.CsiIgnore);
+                    ParserState.CsiIgnore);
             }
             else
             {
                 _intermediates![_intermediateLength++] = value;
-                _state = State.CsiIntermediate;
+                _state = ParserState.CsiIntermediate;
             }
 
             return;
@@ -583,13 +583,13 @@ public sealed class Parser: IDisposable
     {
         if (value is >= 0x30 and <= 0x3f)
         {
-            if (_state == State.DcsIntermediate)
+            if (_state == ParserState.DcsIntermediate)
             {
                 BeginIgnore(
                     DiagnosticCode.Malformed,
                     SequenceKind.Dcs,
                     currentOffset,
-                    State.DcsHeaderIgnore);
+                    ParserState.DcsHeaderIgnore);
             }
             else if (_parameterLength == _limits.MaxParameterBytes)
             {
@@ -597,7 +597,7 @@ public sealed class Parser: IDisposable
                     DiagnosticCode.ParameterLimit,
                     SequenceKind.Dcs,
                     currentOffset,
-                    State.DcsHeaderIgnore);
+                    ParserState.DcsHeaderIgnore);
             }
             else
             {
@@ -615,12 +615,12 @@ public sealed class Parser: IDisposable
                     DiagnosticCode.IntermediateLimit,
                     SequenceKind.Dcs,
                     currentOffset,
-                    State.DcsHeaderIgnore);
+                    ParserState.DcsHeaderIgnore);
             }
             else
             {
                 _intermediates![_intermediateLength++] = value;
-                _state = State.DcsIntermediate;
+                _state = ParserState.DcsIntermediate;
             }
 
             return;
@@ -629,7 +629,7 @@ public sealed class Parser: IDisposable
         if (value is >= 0x40 and <= 0x7e)
         {
             _dcsFinal = value;
-            _state = State.StringPayload;
+            _state = ParserState.StringPayload;
             return;
         }
 
@@ -647,7 +647,7 @@ public sealed class Parser: IDisposable
         if (value is >= 0x40 and <= 0x7e)
         {
             _dcsFinal = value;
-            _state = State.StringIgnore;
+            _state = ParserState.StringIgnore;
         }
         else
         {
@@ -678,13 +678,13 @@ public sealed class Parser: IDisposable
             return;
         }
 
-        if (_state is State.StringIgnore or State.StringIgnoreEscape)
+        if (_state is ParserState.StringIgnore or ParserState.StringIgnoreEscape)
         {
             ProcessStringIgnore(value, ref sink);
             return;
         }
 
-        if (_state == State.StringEscape)
+        if (_state == ParserState.StringEscape)
         {
             if (value == (byte) '\\')
             {
@@ -700,16 +700,16 @@ public sealed class Parser: IDisposable
 
             if (value == ControlBytes.Escape)
             {
-                _state = State.StringEscape;
+                _state = ParserState.StringEscape;
                 return;
             }
 
-            _state = State.StringPayload;
+            _state = ParserState.StringPayload;
         }
 
         if (value == ControlBytes.Escape)
         {
-            _state = State.StringEscape;
+            _state = ParserState.StringEscape;
             return;
         }
 
@@ -739,7 +739,7 @@ public sealed class Parser: IDisposable
     private void ProcessStringIgnore<TSink>(byte value, ref TSink sink)
         where TSink : ISequenceSink
     {
-        if (_state == State.StringIgnoreEscape)
+        if (_state == ParserState.StringIgnoreEscape)
         {
             if (value == (byte) '\\')
             {
@@ -759,12 +759,12 @@ public sealed class Parser: IDisposable
             // here rather than being silently skipped.
             if (value == ControlBytes.Escape)
             {
-                _state = State.StringIgnoreEscape;
+                _state = ParserState.StringIgnoreEscape;
                 _discarded++;
                 return;
             }
 
-            _state = State.StringIgnore;
+            _state = ParserState.StringIgnore;
 
             if ((_limits.AcceptEightBitControls && value == ControlBytes.EightBitSt) ||
                 (_pendingKind == SequenceKind.Osc &&
@@ -782,7 +782,7 @@ public sealed class Parser: IDisposable
 
         if (value == ControlBytes.Escape)
         {
-            _state = State.StringIgnoreEscape;
+            _state = ParserState.StringIgnoreEscape;
             _discarded++;
             return;
         }
@@ -803,7 +803,7 @@ public sealed class Parser: IDisposable
     private void ProcessEscape<TSink>(byte value, long currentOffset, ref TSink sink)
         where TSink : ISequenceSink
     {
-        if (_state == State.Escape)
+        if (_state == ParserState.Escape)
         {
             switch (value)
             {
@@ -844,12 +844,12 @@ public sealed class Parser: IDisposable
                     DiagnosticCode.IntermediateLimit,
                     SequenceKind.Escape,
                     currentOffset,
-                    State.EscapeIgnore);
+                    ParserState.EscapeIgnore);
             }
             else
             {
                 _intermediates![_intermediateLength++] = value;
-                _state = State.EscapeIntermediate;
+                _state = ParserState.EscapeIntermediate;
             }
 
             return;

@@ -4,7 +4,7 @@
 namespace SharpVision.Terminal.Protocols;
 
 /// <summary>Identifies the active bounded parser state.</summary>
-internal enum State
+internal enum ParserState
 {
     /// <summary>Plain text and control processing.</summary>
     Ground,
