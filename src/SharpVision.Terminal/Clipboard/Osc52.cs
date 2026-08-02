@@ -167,7 +167,7 @@ public static class Osc52
 
             var decoded = rented.AsSpan(0, written);
 
-            return Utf8Validation.IsValid(decoded)
+            return decoded.IsValid()
                 ? new ClipboardReply(
                     ClipboardStatus.Success,
                     selection,
@@ -262,7 +262,7 @@ public static class Osc52
 
     private static void ValidateUtf8(ReadOnlySpan<byte> value, string parameterName)
     {
-        if (!Utf8Validation.IsValid(value))
+        if (!value.IsValid())
         {
             throw new ArgumentException("Clipboard text must be valid UTF-8.", parameterName);
         }

@@ -8,67 +8,77 @@ using System.Buffers.Binary;
 /// <summary>Validates the bounded PNG container subset required for owned transmission.</summary>
 internal static class Png
 {
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Read only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static ReadOnlySpan<byte> Signature => [137, 80, 78, 71, 13, 10, 26, 10];
 
-    /// <summary>Reads positive IHDR dimensions after validating bounded chunk structure.</summary>
-    /// <param name="source">The complete borrowed encoded PNG.</param>
-    /// <returns>The validated pixel dimensions.</returns>
-    /// <exception cref="ArgumentException">The PNG structure or required header fields are invalid.</exception>
-    public static Size ReadSize(ReadOnlySpan<byte> source)
+    extension(ReadOnlySpan<byte> source)
     {
-        if (source.Length < 57 || !source.StartsWith(Signature))
+        /// <summary>Reads positive IHDR dimensions after validating bounded chunk structure.</summary>
+        /// <returns>The validated pixel dimensions.</returns>
+        /// <exception cref="ArgumentException">The PNG structure or required header fields are invalid.</exception>
+        public Size ReadSize()
         {
-            throw Invalid();
-        }
-
-        var offset = Signature.Length;
-        var first = true;
-        var hasData = false;
-        Size size = default;
-
-        while (offset <= source.Length - 12)
-        {
-            var length = BinaryPrimitives.ReadUInt32BigEndian(source[offset..]);
-
-            if (length > int.MaxValue || length > (uint) (source.Length - offset - 12))
+            if (source.Length < 57 || !source.StartsWith(Signature))
             {
                 throw Invalid();
             }
 
-            var count = (int) length;
-            var type = source.Slice(offset + 4, 4);
-            var data = source.Slice(offset + 8, count);
-            offset = checked(offset + count + 12);
+            var offset = Signature.Length;
+            var first = true;
+            var hasData = false;
+            Size size = default;
 
-            if (first)
+            while (offset <= source.Length - 12)
             {
-                if (count != 13 || !type.SequenceEqual("IHDR"u8))
+                var length = BinaryPrimitives.ReadUInt32BigEndian(source[offset..]);
+
+                if (length > int.MaxValue || length > (uint) (source.Length - offset - 12))
                 {
                     throw Invalid();
                 }
 
-                size = ReadHeader(data);
-                first = false;
-                continue;
+                var count = (int) length;
+                var type = source.Slice(offset + 4, 4);
+                var data = source.Slice(offset + 8, count);
+                offset = checked(offset + count + 12);
+
+                if (first)
+                {
+                    if (count != 13 || !type.SequenceEqual("IHDR"u8))
+                    {
+                        throw Invalid();
+                    }
+
+                    size = ReadHeader(data);
+                    first = false;
+                    continue;
+                }
+
+                if (type.SequenceEqual("IDAT"u8))
+                {
+                    hasData = true;
+                    continue;
+                }
+
+                if (type.SequenceEqual("IEND"u8))
+                {
+                    return count != 0 || !hasData || offset != source.Length
+                        ? throw Invalid()
+                        : size;
+                }
             }
 
-            if (type.SequenceEqual("IDAT"u8))
-            {
-                hasData = true;
-                continue;
-            }
-
-            if (type.SequenceEqual("IEND"u8))
-            {
-                return count != 0 || !hasData || offset != source.Length
-                    ? throw Invalid()
-                    : size;
-            }
+            throw Invalid();
         }
-
-        throw Invalid();
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static Size ReadHeader(ReadOnlySpan<byte> value)
     {
         var width = BinaryPrimitives.ReadUInt32BigEndian(value);
@@ -96,6 +106,10 @@ internal static class Png
         _ => false
     };
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static ArgumentException Invalid() =>
         new("The source is not a structurally supported PNG.", "source");
 }

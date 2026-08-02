@@ -368,7 +368,7 @@ public static class Writer
 
         if (command.Format == Format.Png)
         {
-            var size = Png.ReadSize(payload);
+            var size = payload.ReadSize();
 
             if (size != command.PixelSize)
             {

@@ -78,7 +78,7 @@ public sealed class RandomizedInputTests
         for (var function = 36; function <= 63; function++)
         {
             var sequence = Encoding.ASCII.GetBytes($"\u001b[{function + 64}~");
-            FunctionKeys.TryGet(function, out var code).ShouldBeTrue();
+            function.TryGet(out var code).ShouldBeTrue();
             bindings.Add(new KeyBinding(sequence, code));
         }
 

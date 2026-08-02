@@ -6,6 +6,10 @@ namespace SharpVision.Terminal.Input;
 /// <summary>Maps the non-contiguous public function-key enum values by logical number.</summary>
 internal static class FunctionKeys
 {
+    [SuppressMessage(
+        "Style",
+        "IDE0052:Remove unread private members",
+        Justification = "Read only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static readonly Code[] _codes =
     [
         Code.F1, Code.F2, Code.F3, Code.F4, Code.F5, Code.F6, Code.F7,
@@ -21,19 +25,21 @@ internal static class FunctionKeys
         Code.F63
     ];
 
-    /// <summary>Maps an inclusive function-key number to its stable public code.</summary>
-    /// <param name="number">The one-based function-key number.</param>
-    /// <param name="code">The mapped code when the number is supported.</param>
-    /// <returns>Whether <paramref name="number"/> is between 1 and 63.</returns>
-    public static bool TryGet(int number, out Code code)
+    extension(int number)
     {
-        if (number is < 1 or > 63)
+        /// <summary>Maps an inclusive function-key number to its stable public code.</summary>
+        /// <param name="code">The mapped code when the number is supported.</param>
+        /// <returns>Whether <paramref name="number"/> is between 1 and 63.</returns>
+        public bool TryGet(out Code code)
         {
-            code = Code.Unknown;
-            return false;
-        }
+            if (number is < 1 or > 63)
+            {
+                code = Code.Unknown;
+                return false;
+            }
 
-        code = _codes[number - 1];
-        return true;
+            code = _codes[number - 1];
+            return true;
+        }
     }
 }

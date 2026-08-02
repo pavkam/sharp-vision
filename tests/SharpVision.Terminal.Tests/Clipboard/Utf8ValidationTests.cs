@@ -10,29 +10,29 @@ public sealed class Utf8ValidationTests
 {
     /// <summary>Verifies an empty span is valid.</summary>
     [Fact]
-    public void IsValid_WhenSpanIsEmpty_ReturnsTrue() => Utf8Validation.IsValid([]).ShouldBeTrue();
+    public void IsValid_WhenSpanIsEmpty_ReturnsTrue() => ReadOnlySpan<byte>.Empty.IsValid().ShouldBeTrue();
 
     /// <summary>Verifies plain ASCII bytes are valid.</summary>
     [Fact]
-    public void IsValid_WhenBytesAreAscii_ReturnsTrue() => Utf8Validation.IsValid("hello"u8).ShouldBeTrue();
+    public void IsValid_WhenBytesAreAscii_ReturnsTrue() => "hello"u8.IsValid().ShouldBeTrue();
 
     /// <summary>Verifies well-formed multi-byte sequences, including one spanning a surrogate pair, are valid.</summary>
     [Fact]
     public void IsValid_WhenBytesAreWellFormedMultiByte_ReturnsTrue() =>
-        Utf8Validation.IsValid("café 👩‍💻"u8).ShouldBeTrue();
+        "café 👩‍💻"u8.IsValid().ShouldBeTrue();
 
     /// <summary>Verifies a lone continuation byte is rejected.</summary>
     [Fact]
     public void IsValid_WhenBytesContainALoneContinuationByte_ReturnsFalse() =>
-        Utf8Validation.IsValid([0x80]).ShouldBeFalse();
+        ((ReadOnlySpan<byte>) [0x80]).IsValid().ShouldBeFalse();
 
     /// <summary>Verifies a truncated multi-byte sequence is rejected.</summary>
     [Fact]
     public void IsValid_WhenBytesEndInATruncatedSequence_ReturnsFalse() =>
-        Utf8Validation.IsValid([0xE2, 0x82]).ShouldBeFalse();
+        ((ReadOnlySpan<byte>) [0xE2, 0x82]).IsValid().ShouldBeFalse();
 
     /// <summary>Verifies the invalid byte 0xFF is rejected.</summary>
     [Fact]
     public void IsValid_WhenBytesContainAnInvalidLeadByte_ReturnsFalse() =>
-        Utf8Validation.IsValid([0xFF]).ShouldBeFalse();
+        ((ReadOnlySpan<byte>) [0xFF]).IsValid().ShouldBeFalse();
 }

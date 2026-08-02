@@ -250,12 +250,12 @@ internal sealed class KeyDecoder
                 return Code.Menu;
             case >= 57364 and <= 57375:
                 var f1Through12 = native - 57364 + 1;
-                var f1Mapped = FunctionKeys.TryGet(f1Through12, out var f1Code);
+                var f1Mapped = f1Through12.TryGet(out var f1Code);
                 Debug.Assert(f1Mapped, "Kitty's named function range maps to F1 through F12.");
                 return f1Code;
             case >= 57376 and <= 57398:
                 var function = native - 57376 + 13;
-                var mapped = FunctionKeys.TryGet(function, out var functionCode);
+                var mapped = function.TryGet(out var functionCode);
                 Debug.Assert(mapped, "Kitty's named function range maps to F13 through F35.");
                 return functionCode;
             default:

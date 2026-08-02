@@ -442,7 +442,7 @@ public sealed class Packet
         ReadOnlySpan<byte> encoded,
         int maximum,
         out byte[] decoded) =>
-        TryDecode(encoded, maximum, out decoded) && Utf8Validation.IsValid(decoded);
+        TryDecode(encoded, maximum, out decoded) && decoded.IsValid();
 
     private static bool TryParseOperation(
         ReadOnlySpan<byte> value,

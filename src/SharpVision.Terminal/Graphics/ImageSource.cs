@@ -68,7 +68,7 @@ public sealed class ImageSource
                 "The image source byte count exceeds policy.");
         }
 
-        var size = Png.ReadSize(source);
+        var size = source.ReadSize();
         policy.Validate(size, source.Length);
         return new ImageSource(size, Format.Png, source);
     }

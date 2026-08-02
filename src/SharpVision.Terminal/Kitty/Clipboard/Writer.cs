@@ -312,7 +312,7 @@ public static class Writer
 
     private static void ValidateUtf8(ReadOnlySpan<byte> value, string parameterName)
     {
-        if (!Utf8Validation.IsValid(value))
+        if (!value.IsValid())
         {
             throw new ArgumentException("The value must be valid UTF-8.", parameterName);
         }

@@ -66,7 +66,7 @@ internal static class Names
 
         if (name.StartsWith("kf", StringComparison.Ordinal) &&
             int.TryParse(name.AsSpan(2), NumberStyles.None, CultureInfo.InvariantCulture, out var function) &&
-            FunctionKeys.TryGet(function, out code))
+            function.TryGet(out code))
         {
             return true;
         }
