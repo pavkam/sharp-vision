@@ -17,7 +17,6 @@ mutable run or inline object model.
 | `TextAlignment`       | `Alignment.Start`     | Places each formatted line at the start, center, or end of the content width.            |
 | `AmbiguousWidth`      | inherited cell policy | Optional local narrow or wide East Asian Ambiguous policy.                               |
 | `UseMnemonic`         | `false`               | Enables access-key marker parsing when this Text acts as a caption.                      |
-| `Lines`               | empty                 | Read-only committed line metrics, valid until the next successful layout.                |
 | `Text.Escape(string)` | —                     | Escapes dynamic visible text for safe markup interpolation.                              |
 
 The overflow modes behave as follows: `Overflow.Wrap` prefers breaking at

@@ -161,8 +161,17 @@ public sealed class Text: Control, IAccessKeyCaption
 
     private Ambiguous AmbiguousWidthValue { get; set; }
 
-    /// <summary>Gets committed visible-text line metrics until the next successful layout.</summary>
-    public ReadOnlyMemory<Line> Lines => _lines.AsMemory(0, _lineCount);
+    /// <summary>
+    /// Gets this control's private, in-place-mutated render/measurement line cache.
+    /// </summary>
+    /// <remarks>
+    /// Not a stable content property: it can be observed empty before the first layout pass, stale
+    /// after <see cref="Content"/> changes until the next layout, and the returned memory can later
+    /// mutate in place or be silently orphaned by a subsequent reformat. Callers that need formatted
+    /// lines for arbitrary text with an unambiguous width, lifetime, and ownership story should use
+    /// <see cref="TextLayout.Format"/> directly instead of inspecting this cache.
+    /// </remarks>
+    internal ReadOnlyMemory<Line> Lines => _lines.AsMemory(0, _lineCount);
 
     /// <summary>Escapes dynamic visible text for safe interpolation into markup content.</summary>
     /// <param name="value">The non-null visible text.</param>
@@ -259,22 +268,6 @@ public sealed class Text: Control, IAccessKeyCaption
             _cachedOverflow != Overflow ||
             _cachedAmbiguous != AmbiguousWidth)
         {
-            Format(width);
-            return;
-        }
-
-        if (_cachedWidth != width)
-        {
-            // The text fits in both the previous and new widths without
-            // wrapping or truncation: lines are identical, only alignment
-            // within the available width may change.
-            if (width >= _measuredMaxCells && _cachedWidth > _measuredMaxCells)
-            {
-                Align(width);
-                _cachedWidth = width;
-                return;
-            }
-
             Format(width);
             return;
         }

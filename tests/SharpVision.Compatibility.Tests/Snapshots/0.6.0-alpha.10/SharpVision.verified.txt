@@ -940,7 +940,6 @@ namespace SharpVision.Controls.Display
         public SharpVision.Terminal.Unicode.Ambiguous AmbiguousWidth { get; set; }
         public string Content { get; set; }
         public System.Text.Rune EllipsisGlyph { get; set; }
-        public System.ReadOnlyMemory<SharpVision.Text.Line> Lines { get; }
         public SharpVision.Text.Overflow Overflow { get; set; }
         public SharpVision.Text.Alignment TextAlignment { get; set; }
         public event System.EventHandler? TextChanged;
