@@ -29,6 +29,20 @@ raises one `ValueChanged` event with immutable `ColorChangedEventArgs`.
 Capability changes alter the presentation without raising a value event. No-op
 changes raise nothing. All mutation of an attached control is dispatcher-affine.
 
+`Style`/`ActualStyle` (`ColorPickerStyle`) expose the presentation applied to
+the owned hue and RGB `Slider`s and to the hex-readout status text, without
+exposing the parts themselves:
+
+| Member        | Type           | Applies to                                                                                                                                                                                                                                    |
+| ------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SliderStyle` | `SliderStyle?` | The hue and all three RGB Sliders, applied uniformly.                                                                                                                                                                                         |
+| `StatusFace`  | `Face?`        | The hex readout's background, attributes, and underline. The Foreground component is always ignored — ColorPicker recomputes it from the current value on every commit, so the readout stays legible regardless of the configured background. |
+
+`null` for either member lets the corresponding part use its own default. A
+style set while the monochrome fallback is active still applies and is retained
+across a later color-capable depth upgrade; the saturation/value plane and the
+preview swatch are not covered by `ColorPickerStyle` today.
+
 ## Layout and input
 
 The RGB editor stretches its saturation/value plane into the remaining space.

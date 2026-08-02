@@ -15,7 +15,13 @@ using LayoutStack = Layout.Stack;
 [PublicAPI]
 public sealed class ColorPicker: CompositeControl
 {
-    private readonly Slider _hue;
+    private static Face DefaultStatusFace { get; } = new(
+        ThemeColor.ControlText,
+        Color.Transparent,
+        ThemeDecoration.NormalText,
+        Underline.None,
+        Color.Default);
+
     private readonly LayoutStack _monochromeRoot;
     private readonly Control _rgbRoot;
     private readonly DisplayText _status;
@@ -29,20 +35,12 @@ public sealed class ColorPicker: CompositeControl
     {
         TabNavigation = TabNavigation.Continue;
         Plane = new ColorPlane();
-        _hue = CreateSlider(359);
+        HueSlider = CreateSlider(359);
         RedSlider = CreateSlider(byte.MaxValue);
         GreenSlider = CreateSlider(byte.MaxValue);
         BlueSlider = CreateSlider(byte.MaxValue);
         Preview = new ColorSwatch { Width = Length.Cells(10) };
-        _status = new DisplayText
-        {
-            Face = new Face(
-                ThemeColor.ControlText,
-                Color.Transparent,
-                ThemeDecoration.NormalText,
-                Underline.None,
-                Color.Default)
-        };
+        _status = new DisplayText { Face = DefaultStatusFace };
         _rgbRoot = CreateRgbRoot();
         _monochromeRoot = CreateMonochromeRoot();
         var root = new Overlay { Children = { _rgbRoot, _monochromeRoot } };
@@ -71,6 +69,28 @@ public sealed class ColorPicker: CompositeControl
     /// <summary>Gets the active terminal color depth inherited from the application.</summary>
     public ColorDepth EffectiveColorDepth => Capabilities.ColorDepth;
 
+    /// <summary>Gets or sets the complete local presentation applied to the owned Sliders and
+    /// status readout, or null to let each use its own semantic profile.</summary>
+    /// <exception cref="InvalidOperationException">The attached ColorPicker is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The ColorPicker is disposed.</exception>
+    public ColorPickerStyle? Style
+    {
+        get;
+        set
+        {
+            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                return;
+            }
+
+            ApplyStyle(value);
+        }
+    }
+
+    /// <summary>Gets the resolved presentation currently applied to the owned Sliders and status
+    /// readout.</summary>
+    public ColorPickerStyle ActualStyle => new(RedSlider.ActualStyle, _status.Face);
+
     /// <summary>Gets the uppercase RGB readout, or DEFAULT for the terminal default color.</summary>
     internal string HexText => _status.Content;
 
@@ -79,6 +99,9 @@ public sealed class ColorPicker: CompositeControl
 
     /// <summary>Gets the retained preview surface.</summary>
     internal ColorSwatch Preview { get; }
+
+    /// <summary>Gets the retained hue slider for interaction tests.</summary>
+    internal Slider HueSlider { get; }
 
     /// <summary>Gets the retained red-component slider.</summary>
     internal Slider RedSlider { get; }
@@ -116,7 +139,7 @@ public sealed class ColorPicker: CompositeControl
     protected override void OnDisposing()
     {
         Plane.Changed -= OnPlaneChanged;
-        _hue.ValueChanged -= OnHueChanged;
+        HueSlider.ValueChanged -= OnHueChanged;
         RedSlider.ValueChanged -= OnRgbChanged;
         GreenSlider.ValueChanged -= OnRgbChanged;
         BlueSlider.ValueChanged -= OnRgbChanged;
@@ -155,7 +178,7 @@ public sealed class ColorPicker: CompositeControl
         Grid.SetRow(Plane, 0);
         root.Children.Add(Plane);
 
-        var hueOverlay = new Overlay { Height = Length.Cells(1), Children = { new ColorRamp(), _hue } };
+        var hueOverlay = new Overlay { Height = Length.Cells(1), Children = { new ColorRamp(), HueSlider } };
         Grid.SetRow(hueOverlay, 1);
         root.Children.Add(hueOverlay);
 
@@ -214,10 +237,21 @@ public sealed class ColorPicker: CompositeControl
     private void Subscribe()
     {
         Plane.Changed += OnPlaneChanged;
-        _hue.ValueChanged += OnHueChanged;
+        HueSlider.ValueChanged += OnHueChanged;
         RedSlider.ValueChanged += OnRgbChanged;
         GreenSlider.ValueChanged += OnRgbChanged;
         BlueSlider.ValueChanged += OnRgbChanged;
+    }
+
+    private void ApplyStyle(ColorPickerStyle? style)
+    {
+        var sliderStyle = style?.SliderStyle;
+        HueSlider.Style = sliderStyle;
+        RedSlider.Style = sliderStyle;
+        GreenSlider.Style = sliderStyle;
+        BlueSlider.Style = sliderStyle;
+        var face = style?.StatusFace ?? DefaultStatusFace;
+        _status.Face = new Face(_status.Face.Foreground, face.Background, face.Attributes, face.Underline, face.UnderlineColor);
     }
 
     #endregion
@@ -255,7 +289,7 @@ public sealed class ColorPicker: CompositeControl
         try
         {
             Plane.SetSelection(hue, saturation, value);
-            _hue.Value = hue;
+            HueSlider.Value = hue;
             RedSlider.Value = rgb.Red;
             GreenSlider.Value = rgb.Green;
             BlueSlider.Value = rgb.Blue;

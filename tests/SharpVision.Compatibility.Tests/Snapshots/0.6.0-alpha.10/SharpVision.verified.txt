@@ -1140,12 +1140,20 @@ namespace SharpVision.Controls.Input
     public sealed class ColorPicker : SharpVision.Controls.CompositeControl
     {
         public ColorPicker() { }
+        public SharpVision.Controls.Input.ColorPickerStyle ActualStyle { get; }
         public SharpVision.Terminal.Capabilities.ColorDepth EffectiveColorDepth { get; }
+        public SharpVision.Controls.Input.ColorPickerStyle? Style { get; set; }
         public SharpVision.Terminal.Protocols.Color Value { get; set; }
         public event System.EventHandler<SharpVision.Input.ColorChangedEventArgs>? ValueChanged;
         protected override void OnAttached() { }
         protected override void OnCapabilitiesChanged(SharpVision.Terminal.Capabilities.Capabilities previous, SharpVision.Terminal.Capabilities.Capabilities current) { }
         protected override void OnDisposing() { }
+    }
+    public readonly struct ColorPickerStyle : System.IEquatable<SharpVision.Controls.Input.ColorPickerStyle>
+    {
+        public ColorPickerStyle(SharpVision.Controls.Input.SliderStyle? SliderStyle, SharpVision.Styling.Face? StatusFace) { }
+        public SharpVision.Controls.Input.SliderStyle? SliderStyle { get; init; }
+        public SharpVision.Styling.Face? StatusFace { get; init; }
     }
     public sealed class ComboBox : SharpVision.Controls.Control
     {
