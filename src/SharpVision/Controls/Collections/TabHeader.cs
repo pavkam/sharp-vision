@@ -56,7 +56,7 @@ internal sealed class TabHeader: Pressable
     protected override Size MeasureOverride(Constraint constraint)
     {
         _ = constraint;
-        var cells = SharpVision.Input.AccessKeyText.Measure(Header, CellPolicy.AmbiguousWidth, UseMnemonic);
+        var cells = Header.Measure(CellPolicy.AmbiguousWidth, UseMnemonic);
         return new Size(
             (int) Math.Min(int.MaxValue, ((long) _headerHorizontalPadding * 2) + cells),
             _headerRowHeight);
@@ -85,9 +85,8 @@ internal sealed class TabHeader: Pressable
             new Point(Bounds.X, Bounds.Y),
             appearance.Style,
             background: BackgroundMode.Transparent);
-        var cells = SharpVision.Input.AccessKeyText.Draw(
+        var cells = Header.Draw(
             canvas,
-            Header,
             leading.Final,
             appearance.Style,
             BackgroundMode.Transparent,

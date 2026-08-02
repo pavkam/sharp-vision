@@ -1602,7 +1602,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                EffectiveIsVisible &&
                EffectiveIsEnabled &&
                AccessKeyText is { } text &&
-               SharpVision.Input.AccessKeyText.TryGetKey(text, out var declared) &&
+               text.TryGetKey(out var declared) &&
                Rune.ToUpperInvariant(declared) == Rune.ToUpperInvariant(key);
     }
 

@@ -211,7 +211,7 @@ public sealed class NavigationViewGroup: Control
     {
         var headerCells = (int) Math.Min(
             int.MaxValue,
-            3L + Input.AccessKeyText.Measure(Header, CellPolicy.AmbiguousWidth, UseMnemonic));
+            3L + Header.Measure(CellPolicy.AmbiguousWidth, UseMnemonic));
         var childConstraint = new Constraint(
             constraint.Width is { } width ? (int) Math.Max(0L, (long) width - ItemIndent) : null,
             constraint.Height);
@@ -251,9 +251,8 @@ public sealed class NavigationViewGroup: Control
             new Point(Bounds.X, Bounds.Y),
             ResolvedStyle,
             background: BackgroundMode.Transparent);
-        _ = Input.AccessKeyText.Draw(
+        _ = Header.Draw(
             canvas,
-            Header,
             leading.Final,
             ResolvedStyle,
             BackgroundMode.Transparent,

@@ -139,7 +139,7 @@ public sealed class Expander: ContentControl
         var hw = (int) Math.Min(
             int.MaxValue,
             (long) _headerChromeWidthCells +
-            SharpVision.Input.AccessKeyText.Measure(Header, CellPolicy.AmbiguousWidth, UseMnemonic));
+            Header.Measure(CellPolicy.AmbiguousWidth, UseMnemonic));
         if (!IsExpanded || Content is not { } child)
         {
             return new Size(hw, _headerHeightCells);
@@ -208,13 +208,12 @@ public sealed class Expander: ContentControl
             background);
         if (Header.Length > 0 && content.Width > _headerChromeWidthCells)
         {
-            _ = SharpVision.Input.AccessKeyText.Draw(
+            _ = Header.Draw(
                 canvas.Clip(new Rect(
                     content.X + _headerChromeWidthCells,
                     content.Y,
                     content.Width - _headerChromeWidthCells,
                     _headerHeightCells)),
-                Header,
                 new Point(content.X + _headerChromeWidthCells, content.Y),
                 s,
                 background,

@@ -42,7 +42,7 @@ public sealed class GroupBox: ContentControl
             ? 0
             : (int) Math.Min(
                 int.MaxValue,
-                2L + SharpVision.Input.AccessKeyText.Measure(Header, CellPolicy.AmbiguousWidth, UseMnemonic));
+                2L + Header.Measure(CellPolicy.AmbiguousWidth, UseMnemonic));
         if (child is null)
         {
             return new Size(hw, 0);
@@ -107,9 +107,8 @@ public sealed class GroupBox: ContentControl
                 new Point(Bounds.X + 1, Bounds.Y),
                 border,
                 background: bg);
-            var cells = SharpVision.Input.AccessKeyText.Draw(
+            var cells = Header.Draw(
                 title,
-                Header,
                 start.Final,
                 border,
                 bg,

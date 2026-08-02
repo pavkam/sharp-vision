@@ -234,7 +234,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>
             _ => throw new ArgumentOutOfRangeException(nameof(buttons), buttons, "The message-box buttons are unknown.")
         };
         var width = result.Max(button => button.Content is DisplayText text
-            ? Input.AccessKeyText.Measure(text.Content, CellPolicy.AmbiguousWidth, button.UseMnemonic) + 4
+            ? text.Content.Measure(CellPolicy.AmbiguousWidth, button.UseMnemonic) + 4
             : 4);
         foreach (var button in result)
         {

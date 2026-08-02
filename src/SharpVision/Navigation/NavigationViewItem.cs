@@ -109,7 +109,7 @@ public sealed class NavigationViewItem: Pressable
         return new Size(
             (int) Math.Min(
                 int.MaxValue,
-                3L + prefix + Input.AccessKeyText.Measure(Header, CellPolicy.AmbiguousWidth, UseMnemonic)),
+                3L + prefix + Header.Measure(CellPolicy.AmbiguousWidth, UseMnemonic)),
             1);
     }
 
@@ -146,9 +146,8 @@ public sealed class NavigationViewItem: Pressable
             new Point(bounds.X, bounds.Y),
             style,
             background: BackgroundMode.Transparent);
-        _ = Input.AccessKeyText.Draw(
+        _ = Header.Draw(
             clipped,
-            Header,
             leading.Final,
             style,
             BackgroundMode.Transparent,

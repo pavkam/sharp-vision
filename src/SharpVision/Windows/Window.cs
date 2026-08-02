@@ -321,7 +321,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
         var child = Content;
         var titleWidth = Header.Length == 0
             ? 0
-            : LayoutMath.Add(2, Input.AccessKeyText.Measure(Header, CellPolicy.AmbiguousWidth, useMnemonic: false));
+            : LayoutMath.Add(2, Header.Measure(CellPolicy.AmbiguousWidth, useMnemonic: false));
         var chromeWidth = CanClose ? _closeChromeWidth : 0;
         chromeWidth = LayoutMath.Add(chromeWidth, titleWidth);
 
@@ -444,7 +444,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
         if (!string.IsNullOrEmpty(Header) && titleLane.Width > 0)
         {
             var headerText = Header;
-            var cells = LayoutMath.Add(2, Input.AccessKeyText.Measure(headerText, CellPolicy.AmbiguousWidth, useMnemonic: false));
+            var cells = LayoutMath.Add(2, headerText.Measure(CellPolicy.AmbiguousWidth, useMnemonic: false));
 
             if (cells > titleLane.Width && titleLane.Width >= 4)
             {
@@ -483,9 +483,8 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
                 new Point(titleLane.X + offset, Bounds.Y),
                 border,
                 background: background);
-            var titleCells = Input.AccessKeyText.Draw(
+            var titleCells = headerText.Draw(
                 title,
-                headerText,
                 leading.Final,
                 border,
                 background,

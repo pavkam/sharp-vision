@@ -37,9 +37,8 @@ public sealed class AccessKeyTextTests
         using Frame frame = new(new Size(12, 1));
 
         // Act
-        var cells = AccessKeyText.Draw(
+        var cells = "&e\u0301dit && close".Draw(
             frame.Canvas,
-            "&e\u0301dit && close",
             default,
             TerminalStyle.Default,
             BackgroundMode.Transparent,

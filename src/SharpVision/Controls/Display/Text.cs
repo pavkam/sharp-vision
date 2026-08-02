@@ -225,7 +225,7 @@ public sealed class Text: Control, IAccessKeyCaption
         }
 
         var hotkeyColor = highlightMnemonic ? Theme?.Hotkey : null;
-        _spans = Markup.Parse(SharpVision.Input.AccessKeyText.ToMarkup(Content, useMnemonic, highlightMnemonic, hotkeyColor), out _display);
+        _spans = Markup.Parse(Content.ToMarkup(useMnemonic, highlightMnemonic, hotkeyColor), out _display);
         _parsedContent = Content;
         _parsedUseMnemonic = useMnemonic;
         _parsedHighlightMnemonic = highlightMnemonic;
