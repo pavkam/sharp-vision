@@ -461,4 +461,151 @@ public sealed class DialogTests
         closed.ShouldBe(1);
         dialog.IsDisposed.ShouldBeTrue();
     }
+
+    /// <summary>Verifies the Control-based PresentAsync overload throws and leaves the dialog
+    /// unattached and undisposed when the owner has no presentation host (see #77).</summary>
+    [Fact]
+    public async Task PresentAsync_WhenOwnerHasNoPresentationHost_ThrowsAndLeavesTheDialogUnattachedAndUndisposedAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var owner = new Button { Content = new ControlText("Bare") };
+            owner.Attach(dispatcher, Policy.Default, Capabilities.Conservative);
+            using var dialog = new TestDialog();
+
+            var exception = Should.Throw<ArgumentException>(
+                () => dialog.Present(owner, initialFocus: null, CancellationToken.None));
+
+            exception.ParamName.ShouldBe("owner");
+            dialog.Parent.ShouldBeNull();
+            dialog.IsDisposed.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a repeated PresentAsync call on an already-presented dialog throws without
+    /// disturbing the still-pending first presentation (see #77).</summary>
+    [Fact]
+    public async Task PresentAsync_WhenCalledTwiceOnTheSameDialog_ThrowsAndLeavesTheFirstTaskPendingAsync()
+    {
+        var opener = new Button { Content = new ControlText("Open") };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            TestContext.Current.CancellationToken);
+        var dialog = new TestDialog();
+        Task<bool>? first = null;
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                first = dialog.Present(opener, initialFocus: null, CancellationToken.None);
+
+                _ = Should.Throw<InvalidOperationException>(
+                    () => dialog.Present(opener, initialFocus: null, CancellationToken.None));
+            },
+            "present the same dialog twice");
+
+        first!.IsCompleted.ShouldBeFalse();
+        _ = dialog.Parent.ShouldNotBeNull();
+        dialog.IsDisposed.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies external cancellation of the token passed to the Control-based PresentAsync
+    /// overload cancels the task and releases modality (see #77).</summary>
+    [Fact]
+    public async Task PresentAsync_WhenExternalDialogIsCancelledByToken_CancelsTaskAndReleasesModalityAsync()
+    {
+        var opener = new Button { Content = new ControlText("Open") };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            TestContext.Current.CancellationToken);
+        using var cancellation = new CancellationTokenSource();
+        Task<bool>? pending = null;
+
+        await surface.UpdateAsync(
+            () => pending = new TestDialog().Present(opener, initialFocus: null, cancellation.Token),
+            "present a token-cancellable dialog");
+        var dialog = OwnedTree.Find<TestDialog>(surface.Application.Root).ShouldNotBeNull();
+        var scope = surface.Application.Modality.Active.ShouldNotBeNull();
+        scope.Root.ShouldBeSameAs(dialog);
+
+        await cancellation.CancelAsync();
+        await surface.UpdateAsync(static () => { }, "settle the cancelled dialog");
+
+        _ = await Should.ThrowAsync<TaskCanceledException>(async () => await pending!);
+        surface.Application.Modality.Active.ShouldBeNull();
+        dialog.Parent.ShouldBeNull();
+        dialog.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a dialog presented through the Control-based overload returns its typed
+    /// result and disposes after host removal (see #77).</summary>
+    [Fact]
+    public async Task PresentAsync_WhenExternalDialogCompletes_ReturnsTypedResultAndDisposesAfterHostRemovalAsync()
+    {
+        var opener = new Button { Content = new ControlText("Open") };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            TestContext.Current.CancellationToken);
+        Task<bool>? pending = null;
+        TestDialog? dialog = null;
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                dialog = new TestDialog();
+                pending = dialog.Present(opener, initialFocus: null, CancellationToken.None);
+            },
+            "present a dialog through the Control-based overload");
+        await surface.UpdateAsync(() => dialog!.Accept(true), "accept the presented dialog");
+
+        (await pending!).ShouldBeTrue();
+        dialog!.Parent.ShouldBeNull();
+        dialog.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a dialog presented through the Control-based overload sets completion state
+    /// correctly, so Escape completes it with the cancelled result instead of silently bubbling as
+    /// modeless input would (see #77).</summary>
+    [Fact]
+    public async Task Escape_WhenExternalDialogIsPresentedThroughPresentAsync_CompletesWithTheCancelledResultAndDoesNotBubbleAsync()
+    {
+        var opener = new Button { Content = new ControlText("Open") };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            TestContext.Current.CancellationToken);
+        Task<bool>? pending = null;
+
+        await surface.UpdateAsync(
+            () => pending = new TestDialog().Present(opener, initialFocus: null, CancellationToken.None),
+            "present a dialog through the Control-based overload");
+
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        (await pending!).ShouldBeFalse();
+        surface.Application.Modality.Active.ShouldBeNull();
+    }
+
+    /// <summary>A minimal Dialog subclass exposing the protected Control-based PresentAsync overload
+    /// and Complete/Cancel to same-assembly tests, mirroring the shape of an externally-derived
+    /// dialog without requiring the packed-package consumer harness for these behavioral checks.</summary>
+    private sealed class TestDialog: Dialog<bool>
+    {
+        public TestDialog() : base(cancelledResult: false) =>
+            Content = new ControlText("Test dialog");
+
+        public Task<bool> Present(Control owner, Control? initialFocus, CancellationToken cancellationToken) =>
+            PresentAsync(owner, initialFocus, cancellationToken);
+
+        public bool Accept(bool result) => Complete(result);
+    }
 }

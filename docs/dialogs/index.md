@@ -19,6 +19,24 @@ Each dialog's asynchronous helper publishes `Closing` and `Closed`, removes the
 dialog from its presentation host, disposes it, and only then settles the result
 task.
 
+Dialog types defined outside this assembly reach this same lifecycle through a
+`protected` `PresentAsync` overload:
+
+```csharp
+protected Task<TResult> PresentAsync(
+    Control owner,
+    Control? initialFocus,
+    CancellationToken cancellationToken)
+```
+
+It resolves the owner's presentation host, attaches the dialog, and presents it
+— the internal presentation-host type never appears in the signature. A subclass
+typically calls this from its own asynchronous factory method, after
+constructing itself, mirroring how the built-in dialogs' own `ShowAsync` helpers
+already resolve their host and roll back on failure. Calling `Window.ShowModal`
+directly instead bypasses this typed result plumbing and the framework's
+rollback and cancellation handling, and is not a supported alternative.
+
 You can also construct a dialog and mount it yourself as a retained modeless
 surface. In that mode a semantic action leaves the dialog mounted and raises
 `ResultSelected` instead of closing it, and `HasSelectedResult` and

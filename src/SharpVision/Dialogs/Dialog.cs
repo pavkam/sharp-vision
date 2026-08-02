@@ -154,6 +154,60 @@ public abstract class Dialog<TResult>: Window
         }
     }
 
+    /// <summary>Resolves an owner's presentation host, attaches this dialog to it, and presents it.</summary>
+    /// <remarks>
+    /// This is the reachable entry point for a dialog type defined outside this assembly — the
+    /// presentation host itself is an internal implementation detail, so this overload takes the
+    /// owning <see cref="Control"/> directly instead. A dialog subclass typically calls this from
+    /// its own static asynchronous factory, after constructing itself, mirroring how the built-in
+    /// dialogs already resolve their host and roll back on failure.
+    /// </remarks>
+    /// <param name="owner">The non-null, attached, undisposed control whose presentation host will
+    /// own this dialog.</param>
+    /// <param name="initialFocus">An optional eligible initial focus target owned by this dialog.</param>
+    /// <param name="cancellationToken">Cancels the pending result and tears down presentation.</param>
+    /// <returns>The one-shot task representing this presentation.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="owner"/> is null.</exception>
+    /// <exception cref="ArgumentException">The owner is detached or has no presentation host.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The call is made off the owner's dispatcher, the dialog is detached, presentation is
+    /// repeated, or modal entry fails.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The owner or this dialog is disposed.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> is already cancelled.</exception>
+    protected Task<TResult> PresentAsync(Control owner, Control? initialFocus, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        ObjectDisposedException.ThrowIf(owner.IsDisposed, owner);
+        cancellationToken.ThrowIfCancellationRequested();
+        var dispatcher = owner.Dispatcher ??
+            throw new ArgumentException("The dialog owner must be attached.", nameof(owner));
+        dispatcher.VerifyAccess();
+        var host = FindHost(owner) ??
+            throw new ArgumentException("The dialog owner must have a presentation host.", nameof(owner));
+
+        // A repeated call on an already-presented dialog must reach the private-protected core's own
+        // "presented only once" guard directly, without re-attaching (host.Add would reject an
+        // already-owned control) or rolling back the first, still-pending presentation on failure.
+        if (host.Owns(this))
+        {
+            return PresentAsync(host, initialFocus, cancellationToken);
+        }
+
+        host.Add(this);
+
+        try
+        {
+            return PresentAsync(host, initialFocus, cancellationToken);
+        }
+        catch
+        {
+            _ = host.Remove(this);
+            Dispose();
+            throw;
+        }
+    }
+
     /// <summary>Completes this dialog once with the supplied semantic result.</summary>
     /// <param name="result">The result returned to the presentation caller.</param>
     /// <returns>True when this call committed the one-shot result; otherwise false.</returns>

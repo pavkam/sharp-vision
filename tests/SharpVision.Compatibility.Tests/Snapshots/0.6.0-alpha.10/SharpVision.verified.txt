@@ -1897,6 +1897,7 @@ namespace SharpVision.Dialogs
         protected override void OnDisposing() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        protected System.Threading.Tasks.Task<TResult> PresentAsync(SharpVision.Controls.Control owner, SharpVision.Controls.Control? initialFocus, System.Threading.CancellationToken cancellationToken) { }
     }
     public abstract class FileDialogBase<TResult> : SharpVision.Dialogs.Dialog<TResult>
         where TResult :  class
