@@ -3,6 +3,8 @@
 
 namespace SharpVision.Runtime;
 
+using Controls.Layout;
+
 using Windows;
 
 /// <summary>Owns the one active Window within an Application control tree.</summary>
@@ -104,6 +106,41 @@ internal sealed class WindowActivationManager: IDisposable
 
             value.SetActive(true);
             Subscribe(value);
+            Raise(value);
+        }
+    }
+
+    // Popups, flyouts, and submenus render through a structurally separate,
+    // always-on-top pass (see Control.RenderOwnedPopupDescendants) and never
+    // share this z-index space, so raising a Window here can never bury one -
+    // this only ever reorders the activated Window among its sibling Windows
+    // (see #224's maintainer decision on window/popup z-index coexistence).
+    private static void Raise(Window window)
+    {
+        if (window.Parent is not Overlay overlay)
+        {
+            return;
+        }
+
+        var currentZ = Overlay.GetZIndex(window);
+        var maxSiblingZ = currentZ;
+        var needsRaise = false;
+
+        foreach (var sibling in overlay.Children)
+        {
+            if (ReferenceEquals(sibling, window) || sibling is not Window)
+            {
+                continue;
+            }
+
+            var siblingZ = Overlay.GetZIndex(sibling);
+            needsRaise |= siblingZ >= currentZ;
+            maxSiblingZ = Math.Max(maxSiblingZ, siblingZ);
+        }
+
+        if (needsRaise)
+        {
+            Overlay.SetZIndex(window, maxSiblingZ == int.MaxValue ? int.MaxValue : maxSiblingZ + 1);
         }
     }
 

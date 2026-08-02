@@ -98,22 +98,19 @@ programmatic, pointer, keyboard, or modal focus transition into a Window also
 activates its nearest Window ancestor. A qualifying press or a committed focus
 move outside all Windows clears activation.
 
-Activating another Window atomically deactivates the previous one. Hiding,
-collapsing, disabling, detaching, disposing, or shutting down the active Window
-activates the most recently active remaining available Window instead of
-clearing activation, walking a small recency history the activation manager
-keeps for this purpose; only when no previously active Window remains available
-does activation clear.
-
-> [!IMPORTANT]
->
-> **Implementation gap:** Activation still changes `IsActive` only: the
-> activated Window is not promoted in Overlay z-order, so a clicked window can
-> stay buried while its border paints the active color. Issue #224 tracks
-> raise-on-activate. The default Window profile maps `IsActive` onto its
-> existing `FocusWithin` appearance contribution, changing only the frame
-> foreground to `ThemeColor.ActiveBorder`. `ContainsFocus` and `IsFocused` keep
-> their independent keyboard-focus meanings.
+Activating another Window atomically deactivates the previous one and raises it
+above its sibling Windows in the owning `Overlay`'s z-order, reusing
+[`Overlay.SetZIndex`](../layout/overlay.md); non-Window overlay children and
+popups are never touched by this reordering (see
+[Floating surfaces](../../concepts/floating-surfaces.md)). Hiding, collapsing,
+disabling, detaching, disposing, or shutting down the active Window activates
+the most recently active remaining available Window instead of clearing
+activation, walking a small recency history the activation manager keeps for
+this purpose; only when no previously active Window remains available does
+activation clear. The default Window profile maps `IsActive` onto its existing
+`FocusWithin` appearance contribution, changing only the frame foreground to
+`ThemeColor.ActiveBorder`. `ContainsFocus` and `IsFocused` keep their
+independent keyboard-focus meanings.
 
 Unhandled Enter and Escape search the owned descendants in deterministic
 ownership order for the first enabled, visible `Button` marked `IsDefault` or

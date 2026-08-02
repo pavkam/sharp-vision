@@ -157,4 +157,98 @@ public sealed class WindowActivationManagerTests
             outer.IsActive.ShouldBeFalse();
         }, TestContext.Current.CancellationToken);
     }
+
+    /// <summary>Verifies activating a Window raises it above its sibling Windows in Overlay
+    /// z-order without disturbing a non-Window sibling (see #224).</summary>
+    [Fact]
+    public async Task Activate_WhenTargetWindowIsBuried_RaisesItAboveSiblingWindowsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var first = new Window();
+            var second = new Window();
+            var background = new ProbeControl();
+            var root = new Overlay { Children = { background, first, second } };
+            root.Attach(dispatcher);
+            Overlay.SetZIndex(second, 5);
+            using var manager = new WindowActivationManager(root);
+
+            _ = manager.Activate(first);
+
+            Overlay.GetZIndex(first).ShouldBe(6);
+            Overlay.GetZIndex(second).ShouldBe(5);
+            Overlay.GetZIndex(background).ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies re-activating the already-topmost Window leaves z-order unchanged
+    /// (see #224).</summary>
+    [Fact]
+    public async Task Activate_WhenTargetWindowIsAlreadyTopmost_LeavesZIndexUnchangedAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var first = new Window();
+            var second = new Window();
+            var root = new Overlay { Children = { first, second } };
+            root.Attach(dispatcher);
+            using var manager = new WindowActivationManager(root);
+
+            _ = manager.Activate(second);
+            var raisedZ = Overlay.GetZIndex(second);
+
+            _ = manager.Activate(second);
+
+            Overlay.GetZIndex(second).ShouldBe(raisedZ);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies restoring the most recently active Window after activation loss also
+    /// raises it above its sibling Windows (see #224).</summary>
+    [Fact]
+    public async Task Availability_WhenActiveWindowBecomesUnavailable_RaisesRestoredWindowAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var first = new Window();
+            var second = new Window();
+            var root = new Overlay { Children = { first, second } };
+            root.Attach(dispatcher);
+            using var manager = new WindowActivationManager(root);
+
+            _ = manager.Activate(first);
+            _ = manager.Activate(second);
+            second.Visibility = Visibility.Hidden;
+
+            manager.ActiveWindow.ShouldBeSameAs(first);
+            Overlay.GetZIndex(first).ShouldBeGreaterThan(Overlay.GetZIndex(second));
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a Window not hosted directly in an Overlay (nested inside another
+    /// Window) activates without attempting to raise a z-index (see #224).</summary>
+    [Fact]
+    public async Task Activate_WhenWindowHasNoOverlayParent_DoesNotThrowAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var target = new ProbeControl();
+            var inner = new Window { Content = target };
+            var outer = new Window { Content = inner };
+            outer.Attach(dispatcher);
+            using var manager = new WindowActivationManager(outer);
+
+            _ = manager.Activate(target);
+
+            manager.ActiveWindow.ShouldBeSameAs(inner);
+        }, TestContext.Current.CancellationToken);
+    }
 }

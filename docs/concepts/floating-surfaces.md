@@ -65,8 +65,15 @@ state even when no normal close path was requested.
 
 Elevation changes the render and hit-test order without reparenting the surface
 or changing its routed ancestry. Popup-family surfaces are promoted through the
-shared popup layer. Windows and dialogs are direct children of an `Overlay`,
-including the private presentation Overlay owned by `Screen`.
+shared popup layer, a structurally separate render and hit-test pass that always
+paints after ordinary Overlay content and orders nested popups, flyouts, and
+submenus by opener depth — this layer never shares an `Overlay`'s `ZIndex`
+space, so it always sits above every Window regardless of Window z-order.
+Windows and dialogs are direct children of an `Overlay`, including the private
+presentation Overlay owned by `Screen`; `WindowActivationManager` raises the
+newly activated Window above its sibling Windows in that shared `ZIndex` space
+on every activation, leaving non-Window overlay children and the popup layer
+untouched.
 
 Modality is an input-plane policy, not a visual wrapper. `FloatingSurface`
 retains the live scope, while the application
