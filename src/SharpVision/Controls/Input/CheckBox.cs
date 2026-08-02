@@ -16,7 +16,7 @@ public sealed class CheckBox: Pressable
         static profile => new CheckBoxStyle(
             CheckBoxStyle.Default.MarkStyle,
             CheckBoxStyle.Default.Glyphs,
-            ControlStyleProfiles.WithoutChrome(profile)),
+            profile.WithoutChrome()),
         static (previous, _, current, _) =>
             previous.MarkWidth != current.MarkWidth
                 ? InvalidationImpact.Measure

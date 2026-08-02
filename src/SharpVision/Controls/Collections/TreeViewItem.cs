@@ -334,7 +334,7 @@ public sealed class TreeViewItem: Control
             // three-cell family degrade identically here and in a standalone CheckBox. The leading
             // space keeps the disclosure glyph and the mark from reading as one cluster.
             var mark = ActualCheckMark;
-            var cells = CheckMarkPresenter.Format(mark, IsChecked, CellPolicy.AmbiguousWidth);
+            var cells = mark.Format(IsChecked, CellPolicy.AmbiguousWidth);
             _ = clipped.Draw(
                 $"{new string(' ', _checkGapCells)}{cells}".AsSpan(),
                 new Point(x, bounds.Y),

@@ -11,20 +11,26 @@ namespace SharpVision.Controls.Input;
 /// </remarks>
 internal static class CheckMarkPresenter
 {
-    /// <summary>Formats the mark for one state, resolving each glyph against its own fallback.</summary>
-    /// <param name="mark">The resolved mark layout and glyph family.</param>
-    /// <param name="state">The checked, unchecked, or indeterminate state.</param>
-    /// <param name="ambiguousWidth">The active ambiguous-width policy.</param>
-    /// <returns>The exact cells to draw, three wide for brackets and one otherwise.</returns>
-    internal static string Format(CheckMark mark, bool? state, Ambiguous ambiguousWidth)
+    extension(CheckMark mark)
     {
-        var resolved = Resolve(mark, state, ambiguousWidth);
+        /// <summary>Formats the mark for one state, resolving each glyph against its own fallback.</summary>
+        /// <param name="state">The checked, unchecked, or indeterminate state.</param>
+        /// <param name="ambiguousWidth">The active ambiguous-width policy.</param>
+        /// <returns>The exact cells to draw, three wide for brackets and one otherwise.</returns>
+        internal string Format(bool? state, Ambiguous ambiguousWidth)
+        {
+            var resolved = Resolve(mark, state, ambiguousWidth);
 
-        return mark.MarkStyle == CheckBoxMarkStyle.Brackets
-            ? $"[{resolved}]"
-            : resolved.ToString();
+            return mark.MarkStyle == CheckBoxMarkStyle.Brackets
+                ? $"[{resolved}]"
+                : resolved.ToString();
+        }
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static Rune Resolve(CheckMark mark, bool? state, Ambiguous ambiguousWidth)
     {
         var selection = ControlGlyphs.Selection;

@@ -18,7 +18,7 @@ public sealed class RadioButton: Pressable
         static profile => new RadioButtonStyle(
             RadioButtonStyle.Default.MarkStyle,
             RadioButtonStyle.Default.Glyphs,
-            RadioButtonStyle.WithCheckedAccent(ControlStyleProfiles.WithoutChrome(profile))),
+            RadioButtonStyle.WithCheckedAccent(profile.WithoutChrome())),
         static (previous, _, current, _) =>
             previous.MarkWidth != current.MarkWidth
                 ? InvalidationImpact.Measure
