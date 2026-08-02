@@ -109,17 +109,17 @@ public sealed class Stack: Container
             }
 
             var desiredAxis = Orientation == Orientation.Vertical
-                ? LayoutMath.Add(child.DesiredSize.Height, child.Margin.Vertical)
-                : LayoutMath.Add(child.DesiredSize.Width, child.Margin.Horizontal);
+                ? child.DesiredSize.Height.Add(child.Margin.Vertical)
+                : child.DesiredSize.Width.Add(child.Margin.Horizontal);
             var desiredCross = Orientation == Orientation.Vertical
-                ? LayoutMath.Add(child.DesiredSize.Width, child.Margin.Horizontal)
-                : LayoutMath.Add(child.DesiredSize.Height, child.Margin.Vertical);
-            axis = LayoutMath.Add(axis, desiredAxis);
+                ? child.DesiredSize.Width.Add(child.Margin.Horizontal)
+                : child.DesiredSize.Height.Add(child.Margin.Vertical);
+            axis = axis.Add(desiredAxis);
             cross = Math.Max(cross, desiredCross);
             count++;
         }
 
-        axis = LayoutMath.Add(axis, SpacingExtent(count, int.MaxValue));
+        axis = axis.Add(SpacingExtent(count, int.MaxValue));
         return Orientation == Orientation.Vertical
             ? new Size(cross, axis)
             : new Size(axis, cross);
@@ -283,9 +283,7 @@ public sealed class Stack: Container
 
         foreach (var child in children)
         {
-            result = LayoutMath.Add(
-                result,
-                Orientation == Orientation.Vertical
+            result = result.Add(Orientation == Orientation.Vertical
                     ? child.Margin.Vertical
                     : child.Margin.Horizontal);
         }
@@ -311,7 +309,7 @@ public sealed class Stack: Container
             var margin = Orientation == Orientation.Vertical
                 ? child.Margin.Vertical
                 : child.Margin.Horizontal;
-            var outer = LayoutMath.Add(extents[index], margin);
+            var outer = extents[index].Add(margin);
             var slot = Orientation == Orientation.Vertical
                 ? new Rect(bounds.X, origin, bounds.Width, outer)
                 : new Rect(origin, bounds.Y, outer, bounds.Height);
@@ -320,12 +318,12 @@ public sealed class Stack: Container
                 slot,
                 widthResolved: Orientation == Orientation.Horizontal,
                 heightResolved: Orientation == Orientation.Vertical);
-            origin = LayoutMath.Add(origin, outer);
+            origin = origin.Add(outer);
 
             if (index < children.Length - 1)
             {
                 var gap = Math.Min(Spacing, remainingSpacing);
-                origin = LayoutMath.Add(origin, gap);
+                origin = origin.Add(gap);
                 remainingSpacing -= gap;
             }
         }

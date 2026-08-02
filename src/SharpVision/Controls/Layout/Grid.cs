@@ -207,8 +207,8 @@ public sealed class Grid: Container
         _lastResolvedContentConstraint = constraint;
 
         return new Size(
-            LayoutMath.Add(Sum(columnExtents), Spacing(ColumnSpacing, columns.Length, constraint.Width)),
-            LayoutMath.Add(Sum(rowExtents), Spacing(RowSpacing, rows.Length, constraint.Height)));
+            Sum(columnExtents).Add(Spacing(ColumnSpacing, columns.Length, constraint.Width)),
+            Sum(rowExtents).Add(Spacing(RowSpacing, rows.Length, constraint.Height)));
     }
 
     /// <inheritdoc/>
@@ -361,7 +361,7 @@ public sealed class Grid: Container
 
         foreach (var value in values)
         {
-            result = LayoutMath.Add(result, value);
+            result = result.Add(value);
         }
 
         return result;
@@ -459,8 +459,8 @@ public sealed class Grid: Container
 
             var origin = rows ? GetRow(child) : GetColumn(child);
             var desired = rows
-                ? LayoutMath.Add(child.DesiredSize.Height, child.Margin.Vertical)
-                : LayoutMath.Add(child.DesiredSize.Width, child.Margin.Horizontal);
+                ? child.DesiredSize.Height.Add(child.Margin.Vertical)
+                : child.DesiredSize.Width.Add(child.Margin.Horizontal);
             result[origin] = Math.Max(result[origin], desired);
         }
 
@@ -482,8 +482,8 @@ public sealed class Grid: Container
 
             var origin = rows ? GetRow(child) : GetColumn(child);
             var desired = rows
-                ? LayoutMath.Add(child.DesiredSize.Height, child.Margin.Vertical)
-                : LayoutMath.Add(child.DesiredSize.Width, child.Margin.Horizontal);
+                ? child.DesiredSize.Height.Add(child.Margin.Vertical)
+                : child.DesiredSize.Width.Add(child.Margin.Horizontal);
             var spacing = rows ? RowSpacing : ColumnSpacing;
             var internalSpacing = Spacing(spacing, span, desired);
             Tracks.Satisfy(result, origin, span, Math.Max(0, desired - internalSpacing));
@@ -583,7 +583,7 @@ public sealed class Grid: Container
 
         for (var index = origin; index < origin + span; index++)
         {
-            result = LayoutMath.Add(result, extents[index]);
+            result = result.Add(extents[index]);
         }
 
         var totalSpacing = Spacing(spacing, extents.Length, available);
@@ -591,7 +591,7 @@ public sealed class Grid: Container
         for (var gap = origin; gap < origin + span - 1; gap++)
         {
             var used = Math.Min(int.MaxValue, (long) gap * spacing);
-            result = LayoutMath.Add(result, (int) Math.Min(spacing, Math.Max(0, totalSpacing - used)));
+            result = result.Add((int) Math.Min(spacing, Math.Max(0, totalSpacing - used)));
         }
 
         return result;

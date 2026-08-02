@@ -394,8 +394,8 @@ public class Popup: FloatingSurface
         _ = MeasureChild(
             child,
             new Constraint(
-                LayoutMath.Subtract(constraint.Width, frame.Horizontal),
-                LayoutMath.Subtract(constraint.Height, frame.Vertical)));
+                constraint.Width.Subtract(frame.Horizontal),
+                constraint.Height.Subtract(frame.Vertical)));
         return IsOpen
             ? SurfaceSize(child, anchorWidth: 0, constraint.Width, constraint.Height, frame)
             : default;
@@ -888,10 +888,10 @@ public class Popup: FloatingSurface
     {
         Debug.Assert(anchorWidth >= 0, "Anchor width is non-negative.");
 
-        var contentWidth = LayoutMath.Add(child.DesiredSize.Width, child.Margin.Horizontal);
-        var contentHeight = LayoutMath.Add(child.DesiredSize.Height, child.Margin.Vertical);
-        var width = Math.Max(anchorWidth, LayoutMath.Add(contentWidth, frame.Horizontal));
-        var height = LayoutMath.Add(contentHeight, frame.Vertical);
+        var contentWidth = child.DesiredSize.Width.Add(child.Margin.Horizontal);
+        var contentHeight = child.DesiredSize.Height.Add(child.Margin.Vertical);
+        var width = Math.Max(anchorWidth, contentWidth.Add(frame.Horizontal));
+        var height = contentHeight.Add(frame.Vertical);
 
         return new Size(
             availableWidth.HasValue ? Math.Min(width, availableWidth.Value) : width,

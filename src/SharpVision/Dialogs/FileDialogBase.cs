@@ -67,7 +67,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         Width = Length.Percent(80);
         Height = Length.Percent(80);
         MaxWidth = 96;
-        MaxHeight = LayoutMath.Add(maxVisibleRows, nonListWindowRows);
+        MaxHeight = maxVisibleRows.Add(nonListWindowRows);
         HorizontalAlignment = HorizontalAlignment.Center;
         VerticalAlignment = VerticalAlignment.Center;
         CurrentDirectory = FileSystem.GetFullPath(initialDirectory);
@@ -98,7 +98,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
-            MaxHeight = LayoutMath.Add(maxVisibleRows, _listChromeRows),
+            MaxHeight = maxVisibleRows.Add(_listChromeRows),
             Border = new Border(
                 BorderSide.All,
                 BorderGlyphStyle.Light,

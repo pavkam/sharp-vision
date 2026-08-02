@@ -206,13 +206,13 @@ public abstract class Container: Control
             : new Size(
                 AutoSizeAxis(
                     ContentExtent.Width,
-                    LayoutMath.Add(Padding.Horizontal, BorderInset.Horizontal),
+                    Padding.Horizontal.Add(BorderInset.Horizontal),
                     Width,
                     MinWidth,
                     MaxWidth),
                 AutoSizeAxis(
                     ContentExtent.Height,
-                    LayoutMath.Add(Padding.Vertical, BorderInset.Vertical),
+                    Padding.Vertical.Add(BorderInset.Vertical),
                     Height,
                     MinHeight,
                     MaxHeight));
@@ -234,8 +234,8 @@ public abstract class Container: Control
                                 ContentExtent.Width > result.Width));
 
         return new Size(
-            needsVertical ? LayoutMath.Add(result.Width, 1) : result.Width,
-            needsHorizontal ? LayoutMath.Add(result.Height, 1) : result.Height);
+            needsVertical ? result.Width.Add(1) : result.Width,
+            needsHorizontal ? result.Height.Add(1) : result.Height);
     }
 
     // GrowAndShrink fits content exactly; GrowOnly never shrinks below an explicit
@@ -521,7 +521,7 @@ public abstract class Container: Control
     {
         cause.ValidateDefined();
         VerifyMutable();
-        return Apply(LayoutMath.Add(HorizontalOffset, x), LayoutMath.Add(VerticalOffset, y), cause);
+        return Apply(HorizontalOffset.Add(x), VerticalOffset.Add(y), cause);
     }
 
     /// <summary>Scrolls minimally to expose one descendant of this container.</summary>
@@ -541,8 +541,8 @@ public abstract class Container: Control
             throw new ArgumentException("The control must be a descendant of this container.", nameof(descendant));
         }
 
-        var logicalX = LayoutMath.Add(Difference(descendant.Bounds.X, _scroll.ViewportBounds.X), HorizontalOffset);
-        var logicalY = LayoutMath.Add(Difference(descendant.Bounds.Y, _scroll.ViewportBounds.Y), VerticalOffset);
+        var logicalX = Difference(descendant.Bounds.X, _scroll.ViewportBounds.X).Add(HorizontalOffset);
+        var logicalY = Difference(descendant.Bounds.Y, _scroll.ViewportBounds.Y).Add(VerticalOffset);
         var x = Reveal(HorizontalOffset, Viewport.Width, logicalX, descendant.Bounds.Width);
         var y = Reveal(VerticalOffset, Viewport.Height, logicalY, descendant.Bounds.Height);
         return Apply(x, y, ScrollCause.BringIntoView);
@@ -945,8 +945,8 @@ public abstract class Container: Control
             return start;
         }
 
-        var end = LayoutMath.Add(start, length);
-        return end > LayoutMath.Add(current, viewport) ? Math.Max(0, end - viewport) : current;
+        var end = start.Add(length);
+        return end > current.Add(viewport) ? Math.Max(0, end - viewport) : current;
     }
 
     private int MaximumX() => AutoScroll && (ScrollBars & ScrollBars.Horizontal) != 0

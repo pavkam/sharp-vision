@@ -85,8 +85,8 @@ public abstract class ContentControl: Control
         return content.Visibility == Visibility.Collapsed
             ? default
             : new Size(
-                LayoutMath.SaturatingAdd(desired.Width, content.Margin.Horizontal),
-                LayoutMath.SaturatingAdd(desired.Height, content.Margin.Vertical));
+                desired.Width.SaturatingAdd(content.Margin.Horizontal),
+                desired.Height.SaturatingAdd(content.Margin.Vertical));
     }
 
     /// <inheritdoc/>

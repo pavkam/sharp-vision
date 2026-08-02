@@ -72,11 +72,11 @@ internal sealed class TablePresenter: Container
 
         if (_owner.ShowHeader && _owner.Columns.Count > 0)
         {
-            y = LayoutMath.Add(y, LayoutMath.Add(_owner.CellPadding.Vertical, _headerTextHeight));
+            y = y.Add(_owner.CellPadding.Vertical.Add(_headerTextHeight));
 
             if (_owner.Rows.Count > 0)
             {
-                y = LayoutMath.Add(y, RowGap);
+                y = y.Add(RowGap);
             }
         }
 
@@ -97,11 +97,11 @@ internal sealed class TablePresenter: Container
                         return true;
                     }
 
-                    x = LayoutMath.Add(x, LayoutMath.Add(ColumnWidths[column], ColumnGap));
+                    x = x.Add(ColumnWidths[column].Add(ColumnGap));
                 }
             }
 
-            y = LayoutMath.Add(y, LayoutMath.Add(RowHeights[rowIndex], RowGap));
+            y = y.Add(RowHeights[rowIndex].Add(RowGap));
         }
 
         for (var rowIndex = 0; rowIndex < _owner.Rows.Count; rowIndex++)
@@ -137,7 +137,7 @@ internal sealed class TablePresenter: Container
             return false;
         }
 
-        var headerHeight = LayoutMath.Add(_owner.CellPadding.Vertical, _headerTextHeight);
+        var headerHeight = _owner.CellPadding.Vertical.Add(_headerTextHeight);
 
         if (point.Y < ContentSlot.Y || point.Y >= ContentSlot.Y + headerHeight)
         {
@@ -154,7 +154,7 @@ internal sealed class TablePresenter: Container
                 return true;
             }
 
-            x = LayoutMath.Add(x, LayoutMath.Add(ColumnWidths[index], ColumnGap));
+            x = x.Add(ColumnWidths[index].Add(ColumnGap));
         }
 
         return false;
@@ -166,16 +166,16 @@ internal sealed class TablePresenter: Container
     protected override Size MeasureOverride(Constraint constraint)
     {
         MeasureCells(constraint.Width);
-        var width = LayoutMath.Add(Sum(ColumnWidths), GapWidth(_owner.Columns.Count));
-        var height = LayoutMath.Add(Sum(RowHeights), GapHeight(_owner.Rows.Count));
+        var width = Sum(ColumnWidths).Add(GapWidth(_owner.Columns.Count));
+        var height = Sum(RowHeights).Add(GapHeight(_owner.Rows.Count));
 
         if (_owner is { ShowHeader: true, Columns.Count: > 0 })
         {
-            height = LayoutMath.Add(height, LayoutMath.Add(_owner.CellPadding.Vertical, _headerTextHeight));
+            height = height.Add(_owner.CellPadding.Vertical.Add(_headerTextHeight));
 
             if (_owner.Rows.Count > 0)
             {
-                height = LayoutMath.Add(height, RowGap);
+                height = height.Add(RowGap);
             }
         }
 
@@ -202,11 +202,11 @@ internal sealed class TablePresenter: Container
 
         if (_owner is { ShowHeader: true, Columns.Count: > 0 })
         {
-            y = LayoutMath.Add(y, LayoutMath.Add(_owner.CellPadding.Vertical, _headerTextHeight));
+            y = y.Add(_owner.CellPadding.Vertical.Add(_headerTextHeight));
 
             if (_owner.Rows.Count > 0)
             {
-                y = LayoutMath.Add(y, RowGap);
+                y = y.Add(RowGap);
             }
         }
 
@@ -219,10 +219,10 @@ internal sealed class TablePresenter: Container
             {
                 var slot = new Rect(x, y, ColumnWidths[columnIndex], RowHeights[rowIndex]);
                 ArrangeChild(row.Cells[columnIndex], _owner.CellPadding.Deflate(slot));
-                x = LayoutMath.Add(x, LayoutMath.Add(ColumnWidths[columnIndex], ColumnGap));
+                x = x.Add(ColumnWidths[columnIndex].Add(ColumnGap));
             }
 
-            y = LayoutMath.Add(y, LayoutMath.Add(RowHeights[rowIndex], RowGap));
+            y = y.Add(RowHeights[rowIndex].Add(RowGap));
         }
     }
 
@@ -269,7 +269,7 @@ internal sealed class TablePresenter: Container
         var horizontalGlyph = _owner.ResolvedHorizontalGridGlyph;
         var verticalGlyph = _owner.ResolvedVerticalGridGlyph;
         var crossGlyph = _owner.ResolvedCrossGridGlyph;
-        var headerHeight = _owner.ShowHeader ? LayoutMath.Add(_owner.CellPadding.Vertical, _headerTextHeight) : 0;
+        var headerHeight = _owner.ShowHeader ? _owner.CellPadding.Vertical.Add(_headerTextHeight) : 0;
 
         if (_owner.ShowHeader)
         {
@@ -289,7 +289,7 @@ internal sealed class TablePresenter: Container
                     new Point(area.X + _owner.CellPadding.Left, area.Y),
                     header,
                     background: BackgroundMode.Transparent);
-                x = LayoutMath.Add(x, LayoutMath.Add(ColumnWidths[index], ColumnGap));
+                x = x.Add(ColumnWidths[index].Add(ColumnGap));
             }
         }
 
@@ -302,28 +302,28 @@ internal sealed class TablePresenter: Container
 
         for (var index = 0; index < _owner.Columns.Count - 1; index++)
         {
-            xLine = LayoutMath.Add(xLine, ColumnWidths[index]);
+            xLine = xLine.Add(ColumnWidths[index]);
             DrawVerticalGridLine(canvas, xLine, verticalGlyph, grid);
-            xLine = LayoutMath.Add(xLine, ColumnGap);
+            xLine = xLine.Add(ColumnGap);
         }
 
         if (_owner is { ShowHeader: true, Rows.Count: > 0 } && RowGap > 0)
         {
             DrawHorizontalGridLine(
                 canvas,
-                LayoutMath.Add(ContentSlot.Y, headerHeight),
+                ContentSlot.Y.Add(headerHeight),
                 horizontalGlyph,
                 crossGlyph,
                 grid);
         }
 
-        var y = LayoutMath.Add(ContentSlot.Y, headerHeight + (_owner.ShowHeader ? RowGap : 0));
+        var y = ContentSlot.Y.Add(headerHeight + (_owner.ShowHeader ? RowGap : 0));
 
         for (var index = 0; index < _owner.Rows.Count - 1; index++)
         {
-            y = LayoutMath.Add(y, RowHeights[index]);
+            y = y.Add(RowHeights[index]);
             DrawHorizontalGridLine(canvas, y, horizontalGlyph, crossGlyph, grid);
-            y = LayoutMath.Add(y, RowGap);
+            y = y.Add(RowGap);
         }
     }
 
@@ -366,14 +366,14 @@ internal sealed class TablePresenter: Container
 
         for (var index = 0; index < _owner.Columns.Count - 1; index++)
         {
-            line = LayoutMath.Add(line, ColumnWidths[index]);
+            line = line.Add(ColumnWidths[index]);
 
             if (line == x)
             {
                 return true;
             }
 
-            line = LayoutMath.Add(line, ColumnGap);
+            line = line.Add(ColumnGap);
         }
 
         return false;
@@ -397,9 +397,7 @@ internal sealed class TablePresenter: Container
         for (var columnIndex = 0; columnIndex < _owner.Columns.Count; columnIndex++)
         {
             lengths[columnIndex] = _owner.Columns[columnIndex].Width;
-            automatic[columnIndex] = LayoutMath.Add(
-                Terminal.Unicode.Width.Measure(_owner.Columns[columnIndex].Header).Cells,
-                _owner.CellPadding.Horizontal);
+            automatic[columnIndex] = Terminal.Unicode.Width.Measure(_owner.Columns[columnIndex].Header).Cells.Add(_owner.CellPadding.Horizontal);
         }
 
         foreach (var row in _owner.Rows)
@@ -410,7 +408,7 @@ internal sealed class TablePresenter: Container
                 _ = MeasureChild(cell, new Constraint(width: null, height: null));
                 automatic[columnIndex] = Math.Max(
                     automatic[columnIndex],
-                    LayoutMath.Add(cell.DesiredSize.Width, LayoutMath.Add(cell.Margin.Horizontal, _owner.CellPadding.Horizontal)));
+                    cell.DesiredSize.Width.Add(cell.Margin.Horizontal.Add(_owner.CellPadding.Horizontal)));
             }
         }
 
@@ -431,7 +429,7 @@ internal sealed class TablePresenter: Container
                 _ = MeasureChild(cell, new Constraint(width, height: null));
                 height = Math.Max(
                     height,
-                    LayoutMath.Add(cell.DesiredSize.Height, LayoutMath.Add(cell.Margin.Vertical, _owner.CellPadding.Vertical)));
+                    cell.DesiredSize.Height.Add(cell.Margin.Vertical.Add(_owner.CellPadding.Vertical)));
             }
 
             RowHeights[rowIndex] = height;
@@ -448,7 +446,7 @@ internal sealed class TablePresenter: Container
 
         foreach (var value in values)
         {
-            total = LayoutMath.Add(total, value);
+            total = total.Add(value);
         }
 
         return total;

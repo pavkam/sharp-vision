@@ -392,18 +392,18 @@ public sealed class MenuItem: Pressable
 
         if (content is null)
         {
-            return new Size(LayoutMath.Add(PrefixWidth, shortcutExtra), 1);
+            return new Size(PrefixWidth.Add(shortcutExtra), 1);
         }
 
         var desired = MeasureChild(
             content,
-            new Constraint(LayoutMath.Subtract(constraint.Width, PrefixWidth), constraint.Height));
+            new Constraint(constraint.Width.Subtract(PrefixWidth), constraint.Height));
 
         return content.Visibility == Visibility.Collapsed
-            ? new Size(LayoutMath.Add(PrefixWidth, shortcutExtra), 1)
+            ? new Size(PrefixWidth.Add(shortcutExtra), 1)
             : new Size(
-                LayoutMath.Add(PrefixWidth, LayoutMath.Add(LayoutMath.Add(desired.Width, content.Margin.Horizontal), shortcutExtra)),
-                Math.Max(1, LayoutMath.Add(desired.Height, content.Margin.Vertical)));
+                PrefixWidth.Add(desired.Width.Add(content.Margin.Horizontal).Add(shortcutExtra)),
+                Math.Max(1, desired.Height.Add(content.Margin.Vertical)));
     }
 
     /// <inheritdoc/>
@@ -672,7 +672,7 @@ public sealed class MenuItem: Pressable
         get
         {
             var width = ShortcutWidth;
-            return width == 0 ? 0 : LayoutMath.Add(width, _shortcutGap);
+            return width == 0 ? 0 : width.Add(_shortcutGap);
         }
     }
 

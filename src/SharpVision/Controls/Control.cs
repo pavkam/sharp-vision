@@ -2189,8 +2189,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         HorizontalAlignment alignment) => alignment switch
         {
             HorizontalAlignment.Left or HorizontalAlignment.Stretch => origin,
-            HorizontalAlignment.Center => LayoutMath.SaturatingAdd(origin, (available - desired) / 2),
-            HorizontalAlignment.Right => LayoutMath.SaturatingAdd(origin, available - desired),
+            HorizontalAlignment.Center => origin.SaturatingAdd((available - desired) / 2),
+            HorizontalAlignment.Right => origin.SaturatingAdd(available - desired),
             _ => throw new UnreachableException()
         };
 
@@ -2201,8 +2201,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         VerticalAlignment alignment) => alignment switch
         {
             VerticalAlignment.Top or VerticalAlignment.Stretch => origin,
-            VerticalAlignment.Center => LayoutMath.SaturatingAdd(origin, (available - desired) / 2),
-            VerticalAlignment.Bottom => LayoutMath.SaturatingAdd(origin, available - desired),
+            VerticalAlignment.Center => origin.SaturatingAdd((available - desired) / 2),
+            VerticalAlignment.Bottom => origin.SaturatingAdd(available - desired),
             _ => throw new UnreachableException()
         };
 
@@ -2239,14 +2239,14 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         var requested = length.Kind switch
         {
-            LengthKind.Auto => LayoutMath.SaturatingAdd(intrinsic, inset),
+            LengthKind.Auto => intrinsic.SaturatingAdd(inset),
             LengthKind.Cells => (int) length.Value,
             LengthKind.Percent => slot.HasValue
                 ? ResolvePercent(slot.Value, length.Value)
-                : LayoutMath.SaturatingAdd(intrinsic, inset),
+                : intrinsic.SaturatingAdd(inset),
             LengthKind.Star => slot.HasValue
                 ? Math.Max(0, slot.Value - margin)
-                : LayoutMath.SaturatingAdd(intrinsic, inset),
+                : intrinsic.SaturatingAdd(inset),
             _ => throw new UnreachableException()
         };
         var clamped = Math.Clamp(requested, minimum, maximum);
@@ -2814,8 +2814,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
     private Constraint CreateContentConstraint(Constraint constraint)
     {
-        var horizontalInset = LayoutMath.SaturatingAdd(Padding.Horizontal, BorderInset.Horizontal);
-        var verticalInset = LayoutMath.SaturatingAdd(Padding.Vertical, BorderInset.Vertical);
+        var horizontalInset = Padding.Horizontal.SaturatingAdd(BorderInset.Horizontal);
+        var verticalInset = Padding.Vertical.SaturatingAdd(BorderInset.Vertical);
         return new Constraint(
             ResolveContentAxis(Width, constraint.Width, Margin.Horizontal, horizontalInset, MinWidth, MaxWidth),
             ResolveContentAxis(Height, constraint.Height, Margin.Vertical, verticalInset, MinHeight, MaxHeight));
@@ -2823,8 +2823,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
     private Size ResolveDesiredSize(Constraint constraint, Size content)
     {
-        var horizontalInset = LayoutMath.SaturatingAdd(Padding.Horizontal, BorderInset.Horizontal);
-        var verticalInset = LayoutMath.SaturatingAdd(Padding.Vertical, BorderInset.Vertical);
+        var horizontalInset = Padding.Horizontal.SaturatingAdd(BorderInset.Horizontal);
+        var verticalInset = Padding.Vertical.SaturatingAdd(BorderInset.Vertical);
         return new Size(
             ResolveMeasureAxis(
                 Width,

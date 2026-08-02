@@ -112,8 +112,8 @@ internal sealed class ListItem: Pressable
         return content.Visibility == Visibility.Collapsed
             ? default
             : new Size(
-                LayoutMath.Add(desired.Width, content.Margin.Horizontal),
-                LayoutMath.Add(desired.Height, content.Margin.Vertical));
+                desired.Width.Add(content.Margin.Horizontal),
+                desired.Height.Add(content.Margin.Vertical));
     }
 
     /// <inheritdoc/>

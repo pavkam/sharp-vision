@@ -374,8 +374,8 @@ public sealed class ComboBox: Control
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        _ = MeasureChild(_popup, new Constraint(constraint.Width, LayoutMath.Add(DropDownHeight, _popupConnectingFrameHeight)));
-        var width = LayoutMath.Add(Terminal.Unicode.Width.Measure(SelectedText()).Cells, _fieldBorderWidth);
+        _ = MeasureChild(_popup, new Constraint(constraint.Width, DropDownHeight.Add(_popupConnectingFrameHeight)));
+        var width = Terminal.Unicode.Width.Measure(SelectedText()).Cells.Add(_fieldBorderWidth);
         return new Size(width, _fieldContentHeight);
     }
 

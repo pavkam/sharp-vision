@@ -321,9 +321,9 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
         var child = Content;
         var titleWidth = Header.Length == 0
             ? 0
-            : LayoutMath.Add(2, Header.Measure(CellPolicy.AmbiguousWidth, useMnemonic: false));
+            : 2.Add(Header.Measure(CellPolicy.AmbiguousWidth, useMnemonic: false));
         var chromeWidth = CanClose ? _closeChromeWidth : 0;
-        chromeWidth = LayoutMath.Add(chromeWidth, titleWidth);
+        chromeWidth = chromeWidth.Add(titleWidth);
 
         if (child is null)
         {
@@ -333,10 +333,10 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
         var desired = MeasureChild(child, constraint);
         var contentWidth = child.Visibility == Visibility.Collapsed
             ? 0
-            : LayoutMath.Add(desired.Width, child.Margin.Horizontal);
+            : desired.Width.Add(child.Margin.Horizontal);
         var contentHeight = child.Visibility == Visibility.Collapsed
             ? 0
-            : LayoutMath.Add(desired.Height, child.Margin.Vertical);
+            : desired.Height.Add(child.Margin.Vertical);
         return new Size(
             Math.Max(contentWidth, chromeWidth),
             contentHeight);
@@ -444,7 +444,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
         if (!string.IsNullOrEmpty(Header) && titleLane.Width > 0)
         {
             var headerText = Header;
-            var cells = LayoutMath.Add(2, headerText.Measure(CellPolicy.AmbiguousWidth, useMnemonic: false));
+            var cells = 2.Add(headerText.Measure(CellPolicy.AmbiguousWidth, useMnemonic: false));
 
             if (cells > titleLane.Width && titleLane.Width >= 4)
             {
@@ -465,7 +465,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
                 var line = lines[0];
                 var truncated = headerText.AsSpan(line.Offset, line.Length);
                 headerText = line.HasEllipsis ? string.Concat(truncated, "…") : truncated.ToString();
-                cells = LayoutMath.Add(2, line.Cells);
+                cells = 2.Add(line.Cells);
             }
 
             var fullInterior = Math.Max(0, Bounds.Width - 2);

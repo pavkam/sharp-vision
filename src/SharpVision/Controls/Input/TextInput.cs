@@ -1055,8 +1055,8 @@ public sealed class TextInput: Control
         if (pointer.Action == PointerAction.Wheel)
         {
             eventArgs.Handled = ScrollBy(
-                LayoutMath.Negate(pointer.WheelX),
-                LayoutMath.Negate(pointer.WheelY));
+                pointer.WheelX.Negate(),
+                pointer.WheelY.Negate());
             return;
         }
 

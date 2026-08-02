@@ -308,8 +308,8 @@ internal static class ControlChrome
     }
 
     public static Rect Shift(Rect value, Point offset) => new(
-        LayoutMath.SaturatingAdd(value.X, offset.X),
-        LayoutMath.SaturatingAdd(value.Y, offset.Y),
+        value.X.SaturatingAdd(offset.X),
+        value.Y.SaturatingAdd(offset.Y),
         value.Width,
         value.Height);
 

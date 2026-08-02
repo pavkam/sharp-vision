@@ -147,7 +147,7 @@ public sealed class Menu: ItemsControl
                 continue;
             }
 
-            labelWidth = Math.Max(labelWidth, LayoutMath.Add(item.DesiredLabelWidth, item.Margin.Horizontal));
+            labelWidth = Math.Max(labelWidth, item.DesiredLabelWidth.Add(item.Margin.Horizontal));
             shortcutWidth = Math.Max(shortcutWidth, item.ShortcutColumnWidth);
         }
 
@@ -156,7 +156,7 @@ public sealed class Menu: ItemsControl
             return desired;
         }
 
-        var columnWidth = LayoutMath.Add(LayoutMath.Add(labelWidth, MenuItem.ShortcutGap), shortcutWidth);
+        var columnWidth = labelWidth.Add(MenuItem.ShortcutGap).Add(shortcutWidth);
         return new Size(Math.Max(desired.Width, columnWidth), desired.Height);
     }
 

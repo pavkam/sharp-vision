@@ -81,10 +81,10 @@ public abstract class Screen: CompositeControl
         var desired = MeasureChild(content, constraint);
         var width = content.Visibility == Visibility.Collapsed
             ? 0
-            : LayoutMath.SaturatingAdd(desired.Width, content.Margin.Horizontal);
+            : desired.Width.SaturatingAdd(content.Margin.Horizontal);
         var height = content.Visibility == Visibility.Collapsed
             ? 0
-            : LayoutMath.SaturatingAdd(desired.Height, content.Margin.Vertical);
+            : desired.Height.SaturatingAdd(content.Margin.Vertical);
 
         desired = MeasureChild(_presentation, constraint);
 
@@ -92,10 +92,10 @@ public abstract class Screen: CompositeControl
         {
             width = Math.Max(
                 width,
-                LayoutMath.SaturatingAdd(desired.Width, _presentation.Margin.Horizontal));
+                desired.Width.SaturatingAdd(_presentation.Margin.Horizontal));
             height = Math.Max(
                 height,
-                LayoutMath.SaturatingAdd(desired.Height, _presentation.Margin.Vertical));
+                desired.Height.SaturatingAdd(_presentation.Margin.Vertical));
         }
 
         return new Size(width, height);

@@ -110,13 +110,13 @@ public sealed class Dock: Container
                 continue;
             }
 
-            var outerWidth = LayoutMath.Add(child.DesiredSize.Width, child.Margin.Horizontal);
-            var outerHeight = LayoutMath.Add(child.DesiredSize.Height, child.Margin.Vertical);
+            var outerWidth = child.DesiredSize.Width.Add(child.Margin.Horizontal);
+            var outerHeight = child.DesiredSize.Height.Add(child.Margin.Vertical);
 
             // Track the union of consumed edges and the last fill participant so
             // the dock reports both intrinsic and edge-reserved minimum sizes.
-            desiredWidth = Math.Max(desiredWidth, LayoutMath.Add(usedWidth, outerWidth));
-            desiredHeight = Math.Max(desiredHeight, LayoutMath.Add(usedHeight, outerHeight));
+            desiredWidth = Math.Max(desiredWidth, usedWidth.Add(outerWidth));
+            desiredHeight = Math.Max(desiredHeight, usedHeight.Add(outerHeight));
 
             // The final participant keeps the remaining slot and does not consume
             // space during measure when LastChildFills is enabled.
@@ -129,15 +129,15 @@ public sealed class Dock: Container
 
             if (GetSide(child) is DockSide.Left or DockSide.Right)
             {
-                var consumed = LayoutMath.Add(outerWidth, spacing);
-                usedWidth = LayoutMath.Add(usedWidth, consumed);
-                remainingWidth = LayoutMath.Subtract(remainingWidth, consumed);
+                var consumed = outerWidth.Add(spacing);
+                usedWidth = usedWidth.Add(consumed);
+                remainingWidth = remainingWidth.Subtract(consumed);
             }
             else
             {
-                var consumed = LayoutMath.Add(outerHeight, spacing);
-                usedHeight = LayoutMath.Add(usedHeight, consumed);
-                remainingHeight = LayoutMath.Subtract(remainingHeight, consumed);
+                var consumed = outerHeight.Add(spacing);
+                usedHeight = usedHeight.Add(consumed);
+                remainingHeight = remainingHeight.Subtract(consumed);
             }
         }
 
@@ -181,7 +181,7 @@ public sealed class Dock: Container
             var axis = horizontal ? remaining.Width : remaining.Height;
             var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
             var border = (horizontal ? horizontalBorders : verticalBorders)[index];
-            var outer = Math.Min(axis, LayoutMath.Add(border, margin));
+            var outer = Math.Min(axis, border.Add(margin));
 
             var slot = side switch
             {
@@ -300,7 +300,7 @@ public sealed class Dock: Container
             {
                 var border = Resolve(child, remaining, horizontal);
                 borders[index] = border;
-                remaining -= Math.Min(remaining, LayoutMath.Add(border, margin));
+                remaining -= Math.Min(remaining, border.Add(margin));
             }
 
             remaining -= Math.Min(remaining, index == last ? 0 : Spacing);

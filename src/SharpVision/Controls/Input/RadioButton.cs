@@ -202,13 +202,13 @@ public sealed class RadioButton: Pressable
 
         var desired = MeasureChild(
             content,
-            new Constraint(LayoutMath.Subtract(constraint.Width, MarkWidth + 1), constraint.Height));
+            new Constraint(constraint.Width.Subtract(MarkWidth + 1), constraint.Height));
 
         return content.Visibility == Visibility.Collapsed
             ? new Size(MarkWidth, 1)
             : new Size(
-                LayoutMath.Add(MarkWidth + 1, LayoutMath.Add(desired.Width, content.Margin.Horizontal)),
-                Math.Max(1, LayoutMath.Add(desired.Height, content.Margin.Vertical)));
+                (MarkWidth + 1).Add(desired.Width.Add(content.Margin.Horizontal)),
+                Math.Max(1, desired.Height.Add(content.Margin.Vertical)));
     }
 
     /// <inheritdoc/>

@@ -5,17 +5,23 @@ namespace SharpVision.Layout;
 
 internal static class LayoutMath
 {
-    public static int Add(int left, int right)
+    extension(int left)
     {
-        var value = (long) left + right;
-        return value >= int.MaxValue ? int.MaxValue : (int) value;
+        public int Add(int right)
+        {
+            var value = (long) left + right;
+            return value >= int.MaxValue ? int.MaxValue : (int) value;
+        }
+
+        public int SaturatingAdd(int right) =>
+            (int) Math.Clamp((long) left + right, int.MinValue, int.MaxValue);
+
+        public int Negate() => left == int.MinValue ? int.MaxValue : -left;
     }
 
-    public static int? Subtract(int? value, int extent) =>
-        value.HasValue ? Math.Max(0, value.Value - extent) : null;
-
-    public static int SaturatingAdd(int left, int right) =>
-        (int) Math.Clamp((long) left + right, int.MinValue, int.MaxValue);
-
-    public static int Negate(int value) => value == int.MinValue ? int.MaxValue : -value;
+    extension(int? value)
+    {
+        public int? Subtract(int extent) =>
+            value.HasValue ? Math.Max(0, value.Value - extent) : null;
+    }
 }

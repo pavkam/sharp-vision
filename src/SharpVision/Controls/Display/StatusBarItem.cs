@@ -63,10 +63,10 @@ public sealed class StatusBarItem: ContentControl
     {
         var separators = SeparatorCount;
         var desired = base.MeasureOverride(
-            new Constraint(LayoutMath.Subtract(constraint.Width, separators), constraint.Height));
+            new Constraint(constraint.Width.Subtract(separators), constraint.Height));
 
         return new Size(
-            LayoutMath.Add(desired.Width, separators),
+            desired.Width.Add(separators),
             separators == 0 ? desired.Height : Math.Max(1, desired.Height));
     }
 

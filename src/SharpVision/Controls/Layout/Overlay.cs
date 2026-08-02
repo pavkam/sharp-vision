@@ -326,13 +326,13 @@ public sealed class Overlay: Container
                 continue;
             }
 
-            var outerWidth = LayoutMath.Add(child.DesiredSize.Width, child.Margin.Horizontal);
-            var outerHeight = LayoutMath.Add(child.DesiredSize.Height, child.Margin.Vertical);
+            var outerWidth = child.DesiredSize.Width.Add(child.Margin.Horizontal);
+            var outerHeight = child.DesiredSize.Height.Add(child.Margin.Vertical);
             var desiredWidth = positionsWidth
-                ? LayoutMath.Add(LayoutMath.Add(Fixed(GetLeft(child)), outerWidth), Fixed(GetRight(child)))
+                ? Fixed(GetLeft(child)).Add(outerWidth).Add(Fixed(GetRight(child)))
                 : outerWidth;
             var desiredHeight = positionsHeight
-                ? LayoutMath.Add(LayoutMath.Add(Fixed(GetTop(child)), outerHeight), Fixed(GetBottom(child)))
+                ? Fixed(GetTop(child)).Add(outerHeight).Add(Fixed(GetBottom(child)))
                 : outerHeight;
             width = Math.Max(width, desiredWidth);
             height = Math.Max(height, desiredHeight);
@@ -365,12 +365,12 @@ public sealed class Overlay: Container
                 ? Outer(child, horizontal: false, bounds.Height, top, bottom)
                 : bounds.Height;
             var x = GetLeft(child) is not null
-                ? LayoutMath.Add(bounds.X, left)
+                ? bounds.X.Add(left)
                 : GetRight(child) is not null
                     ? TrailingOrigin(bounds.Right, right, width)
                     : bounds.X;
             var y = GetTop(child) is not null
-                ? LayoutMath.Add(bounds.Y, top)
+                ? bounds.Y.Add(top)
                 : GetBottom(child) is not null
                     ? TrailingOrigin(bounds.Bottom, bottom, height)
                     : bounds.Y;
@@ -428,7 +428,7 @@ public sealed class Overlay: Container
         };
 
         border = Math.Clamp(border, minimum, maximum);
-        return LayoutMath.Add(border, margin);
+        return border.Add(margin);
     }
 
     // Independently valid offsets and extents may sum past the signed integer

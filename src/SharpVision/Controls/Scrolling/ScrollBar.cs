@@ -378,7 +378,7 @@ public sealed class ScrollBar: Control
 
         if (code == decrement)
         {
-            _ = ScrollBy(LayoutMath.Negate(SmallChange), ScrollCause.Keyboard);
+            _ = ScrollBy(SmallChange.Negate(), ScrollCause.Keyboard);
         }
         else if (code == increment)
         {
@@ -386,7 +386,7 @@ public sealed class ScrollBar: Control
         }
         else if (code == Code.PageUp)
         {
-            _ = ScrollBy(LayoutMath.Negate(LargeChange), ScrollCause.Keyboard);
+            _ = ScrollBy(LargeChange.Negate(), ScrollCause.Keyboard);
         }
         else if (code == Code.PageDown)
         {
@@ -448,7 +448,7 @@ public sealed class ScrollBar: Control
 
         if (buttons != 0 && position == 0)
         {
-            _ = ScrollBy(LayoutMath.Negate(SmallChange), ScrollCause.Pointer);
+            _ = ScrollBy(SmallChange.Negate(), ScrollCause.Pointer);
             return;
         }
 
@@ -465,7 +465,7 @@ public sealed class ScrollBar: Control
 
         if (trackPosition < thumb.Start)
         {
-            _ = ScrollBy(LayoutMath.Negate(LargeChange), ScrollCause.Pointer);
+            _ = ScrollBy(LargeChange.Negate(), ScrollCause.Pointer);
         }
         else if (trackPosition >= thumb.Start + thumb.Length)
         {
@@ -546,7 +546,7 @@ public sealed class ScrollBar: Control
                 "Inferred cell and pixel drag directions must agree.");
         }
 
-        var start = LayoutMath.SaturatingAdd(_dragThumbStart, delta);
+        var start = _dragThumbStart.SaturatingAdd(delta);
         var value = ScrollThumb.ValueAt(_dragRange, _dragTrackLength, start);
         _ = Commit(value, ScrollCause.Pointer);
         eventArgs.Handled = true;
@@ -648,8 +648,8 @@ public sealed class ScrollBar: Control
     private int AxisOrigin(Rect bounds) => Orientation == Orientation.Vertical ? bounds.Y : bounds.X;
 
     private Point PointAt(Rect bounds, int position) => Orientation == Orientation.Vertical
-        ? new Point(bounds.X, LayoutMath.SaturatingAdd(bounds.Y, position))
-        : new Point(LayoutMath.SaturatingAdd(bounds.X, position), bounds.Y);
+        ? new Point(bounds.X, bounds.Y.SaturatingAdd(position))
+        : new Point(bounds.X.SaturatingAdd(position), bounds.Y);
 
     private static int Difference(int left, int right) =>
         (int) Math.Clamp((long) left - right, int.MinValue, int.MaxValue);

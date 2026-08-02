@@ -209,8 +209,8 @@ public abstract class ItemsControl: Control
         return host.Visibility == Visibility.Collapsed
             ? default
             : new Size(
-                LayoutMath.SaturatingAdd(desired.Width, host.Margin.Horizontal),
-                LayoutMath.SaturatingAdd(desired.Height, host.Margin.Vertical));
+                desired.Width.SaturatingAdd(host.Margin.Horizontal),
+                desired.Height.SaturatingAdd(host.Margin.Vertical));
     }
 
     /// <inheritdoc/>

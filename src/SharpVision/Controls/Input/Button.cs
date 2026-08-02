@@ -206,12 +206,8 @@ public sealed partial class Button: Pressable
                 DeflateConstraint(constraint.Height, padding.Vertical)));
 
         return new Size(
-            LayoutMath.Add(
-                LayoutMath.Add(desired.Width, content.Margin.Horizontal),
-                padding.Horizontal),
-            LayoutMath.Add(
-                LayoutMath.Add(desired.Height, content.Margin.Vertical),
-                padding.Vertical));
+            desired.Width.Add(content.Margin.Horizontal).Add(padding.Horizontal),
+            desired.Height.Add(content.Margin.Vertical).Add(padding.Vertical));
     }
 
     /// <inheritdoc/>
@@ -291,7 +287,7 @@ public sealed partial class Button: Pressable
             return;
         }
 
-        var width = Math.Min(face.Width, LayoutMath.Add(content.DesiredSize.Width, content.Margin.Horizontal));
+        var width = Math.Min(face.Width, content.DesiredSize.Width.Add(content.Margin.Horizontal));
         var x = TextAlignment switch
         {
             Alignment.Start => face.X,

@@ -40,12 +40,12 @@ internal sealed class StatusBarHost: Container
                 continue;
             }
 
-            width = LayoutMath.Add(width, LayoutMath.Add(desired.Width, child.Margin.Horizontal));
-            height = Math.Max(height, LayoutMath.Add(desired.Height, child.Margin.Vertical));
+            width = width.Add(desired.Width.Add(child.Margin.Horizontal));
+            height = Math.Max(height, desired.Height.Add(child.Margin.Vertical));
             count++;
         }
 
-        width = LayoutMath.Add(width, SpacingExtent(count, int.MaxValue));
+        width = width.Add(SpacingExtent(count, int.MaxValue));
         return new Size(width, height);
     }
 
@@ -133,7 +133,7 @@ internal sealed class StatusBarHost: Container
         return count;
     }
 
-    private static int OuterWidth(Control item) => LayoutMath.Add(item.DesiredSize.Width, item.Margin.Horizontal);
+    private static int OuterWidth(Control item) => item.DesiredSize.Width.Add(item.Margin.Horizontal);
 
     private int SpacingExtent(int count, int limit)
     {

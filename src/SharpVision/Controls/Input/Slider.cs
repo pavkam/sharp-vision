@@ -353,7 +353,7 @@ public sealed class Slider: Control
         if ((Orientation == Orientation.Horizontal && code == Code.Left) ||
             (Orientation == Orientation.Vertical && code == Code.Down))
         {
-            _ = ChangeBy(LayoutMath.Negate(SmallChange));
+            _ = ChangeBy(SmallChange.Negate());
         }
         else if ((Orientation == Orientation.Horizontal && code == Code.Right) ||
                  (Orientation == Orientation.Vertical && code == Code.Up))
@@ -366,7 +366,7 @@ public sealed class Slider: Control
         }
         else if (code == Code.PageDown)
         {
-            _ = ChangeBy(LayoutMath.Negate(LargeChange));
+            _ = ChangeBy(LargeChange.Negate());
         }
         else if (code == Code.Home)
         {
@@ -495,8 +495,8 @@ public sealed class Slider: Control
         : bounds.Height;
 
     private Point PointAt(Rect bounds, int position) => Orientation == Orientation.Horizontal
-        ? new Point(LayoutMath.SaturatingAdd(bounds.X, position), bounds.Y)
-        : new Point(bounds.X, LayoutMath.SaturatingAdd(bounds.Y, position));
+        ? new Point(bounds.X.SaturatingAdd(position), bounds.Y)
+        : new Point(bounds.X, bounds.Y.SaturatingAdd(position));
 
     private Color ResolveColor(ColorValue value) => ResolveColor(value, Theme);
 

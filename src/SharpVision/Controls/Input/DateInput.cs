@@ -289,8 +289,8 @@ public sealed class DateInput: Control
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        _ = MeasureChild(_popup, new Constraint(constraint.Width, LayoutMath.Add(DropDownHeight, 1)));
-        var width = LayoutMath.Add(Terminal.Unicode.Width.Measure(FormatValue()).Cells, 2);
+        _ = MeasureChild(_popup, new Constraint(constraint.Width, DropDownHeight.Add(1)));
+        var width = Terminal.Unicode.Width.Measure(FormatValue()).Cells.Add(2);
         return new Size(width, 1);
     }
 
