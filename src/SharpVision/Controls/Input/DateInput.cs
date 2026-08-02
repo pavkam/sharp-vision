@@ -410,6 +410,20 @@ public sealed class DateInput: Control
                 return;
             }
 
+            if (key.Code == Code.Home)
+            {
+                MoveToEdge(first: true);
+                eventArgs.Handled = true;
+                return;
+            }
+
+            if (key.Code == Code.End)
+            {
+                MoveToEdge(first: false);
+                eventArgs.Handled = true;
+                return;
+            }
+
             if (key.Code == Code.Delete && AllowNull)
             {
                 Value = null;
@@ -710,6 +724,19 @@ public sealed class DateInput: Control
             _activeSegment = next;
             Invalidate(InvalidationImpact.Render);
         }
+    }
+
+    private void MoveToEdge(bool first)
+    {
+        var target = first ? 0 : SegmentCount() - 1;
+
+        if (_activeSegment == target)
+        {
+            return;
+        }
+
+        _activeSegment = target;
+        Invalidate(InvalidationImpact.Render);
     }
 
     private int SegmentCount()

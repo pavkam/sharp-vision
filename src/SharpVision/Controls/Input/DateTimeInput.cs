@@ -143,7 +143,16 @@ public sealed class DateTimeInput: Control
         set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
     } = true;
 
-    /// <summary>Gets or sets the Gregorian culture used for date ordering and names. Default is <see cref="CultureInfo.CurrentCulture"/>.</summary>
+    /// <summary>
+    /// Gets or sets the Gregorian culture applied to the popup <see cref="Calendar"/>'s month and day
+    /// names and navigation. Default is <see cref="CultureInfo.CurrentCulture"/>.
+    /// </summary>
+    /// <remarks>
+    /// This affects only the popup calendar. The typed field itself always renders a fixed
+    /// month/day/year segment order with invariant digits and separators, regardless of this
+    /// value; it does not currently derive its layout from a culture's date pattern the way
+    /// <see cref="DateInput.Culture"/> does.
+    /// </remarks>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
     /// <exception cref="ArgumentException">The culture's active calendar is not Gregorian.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>

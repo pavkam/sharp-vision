@@ -140,6 +140,56 @@ public sealed class DateInputSurfaceTests
         input.Value.ShouldBe(new DateOnly(2026, 4, 15));
     }
 
+    /// <summary>Verifies Home returns to the first segment from anywhere.</summary>
+    [Fact]
+    public async Task Keyboard_WhenHomeIsPressed_MovesToFirstSegmentAsync()
+    {
+        // Arrange
+        var input = new DateInput
+        {
+            Value = new DateOnly(2026, 3, 15),
+            Culture = CultureInfo.InvariantCulture
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(20, 3),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act — go Right twice to year, then Home to return to month
+        await surface.Keyboard.PressAsync(Code.Right);
+        await surface.Keyboard.PressAsync(Code.Right);
+        await surface.Keyboard.PressAsync(Code.Home);
+        await surface.Keyboard.PressAsync(Code.Up);
+
+        // Assert — month increments (proves we're on the first segment)
+        input.Value.ShouldBe(new DateOnly(2026, 4, 15));
+    }
+
+    /// <summary>Verifies End moves to the last segment.</summary>
+    [Fact]
+    public async Task Keyboard_WhenEndIsPressed_MovesToLastSegmentAsync()
+    {
+        // Arrange
+        var input = new DateInput
+        {
+            Value = new DateOnly(2026, 3, 15),
+            Culture = CultureInfo.InvariantCulture
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(20, 3),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act — End moves to last segment (year for invariant MM/dd/yyyy)
+        await surface.Keyboard.PressAsync(Code.End);
+        await surface.Keyboard.PressAsync(Code.Up);
+
+        // Assert — year increments (proves we're on the last segment)
+        input.Value.ShouldBe(new DateOnly(2027, 3, 15));
+    }
+
     /// <summary>Verifies navigating Right twice reaches the year segment.</summary>
     [Fact]
     public async Task Keyboard_WhenNavigatedToYear_IncrementsYearAsync()
