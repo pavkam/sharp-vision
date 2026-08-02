@@ -414,6 +414,35 @@ public sealed class TextInputSurfaceTests
         surface.ShouldHaveCursor(new Point(4, 0), visible: true);
     }
 
+    /// <summary>Verifies clicking either cell of a wide grapheme maps to the nearer caret boundary,
+    /// not always the leading edge (see #240).</summary>
+    [Fact]
+    public async Task Pointer_WhenWideClusterIsClicked_MapsEachCellToItsNearerBoundaryAsync()
+    {
+        // Arrange
+        var input = new TextInput
+        {
+            Text = "A界B",
+            Width = Length.Cells(8),
+            Height = Length.Cells(1)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(8, 1),
+            TestThemes.BorderlessInput,
+            TestContext.Current.CancellationToken);
+
+        // Act and assert - leading cell of 界 (cell 1) caret before it
+        await surface.Pointer.ClickAsync(input, new Point(1, 0));
+        input.SelectionStart.ShouldBe(1);
+        input.SelectionLength.ShouldBe(0);
+
+        // Act and assert - trailing cell of 界 (cell 2) caret after it
+        await surface.Pointer.ClickAsync(input, new Point(2, 0));
+        input.SelectionStart.ShouldBe(2);
+        input.SelectionLength.ShouldBe(0);
+    }
+
     /// <summary>Verifies horizontal and vertical wheel reports scroll the rendered editor viewport.</summary>
     [Fact]
     public async Task Pointer_WhenOverflowingEditorIsWheeled_UpdatesOffsetsAndVisibleCellsAsync()

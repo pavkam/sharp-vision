@@ -1146,7 +1146,7 @@ public sealed class TextInput: Control
 
                 if (targetX < x + width)
                 {
-                    return targetX <= x + (width / 2)
+                    return targetX < x + ((width + 1) / 2)
                         ? line.Offset + g.Offset
                         : line.Offset + g.Offset + g.Length;
                 }
@@ -1187,7 +1187,7 @@ public sealed class TextInput: Control
 
             if (yOrig == targetYOrig && targetXOrig < xOrig + width)
             {
-                return targetXOrig <= xOrig + (width / 2)
+                return targetXOrig < xOrig + ((width + 1) / 2)
                     ? grapheme.Offset
                     : grapheme.Offset + grapheme.Length;
             }
