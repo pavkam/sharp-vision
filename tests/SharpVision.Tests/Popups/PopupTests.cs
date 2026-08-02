@@ -583,6 +583,31 @@ public sealed class PopupTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies Closed still fires exactly once even when a Closing handler disposes the
+    /// Popup synchronously, mirroring Window's equivalent contract (see #223).</summary>
+    [Fact]
+    public async Task Closed_WhenClosingHandlerDisposesPopupSynchronously_FiresOnceAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var popup = new Popup { Content = new ProbeControl() };
+            var root = new Overlay();
+            root.Children.Add(popup);
+            root.Attach(dispatcher);
+            popup.IsOpen = true;
+            new LayoutEngine().Layout(root, new Size(12, 6));
+            var closed = 0;
+            popup.Closing += (_, _) => popup.Dispose();
+            popup.Closed += (_, _) => closed++;
+
+            popup.IsOpen = false;
+
+            closed.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a callback cannot reverse an active open-state transaction.</summary>
     [Fact]
     public void IsOpen_WhenPropertyCallbackReenters_RejectsNestedTransitionAndKeepsOuterStateCoherent()

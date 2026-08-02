@@ -217,6 +217,7 @@ public abstract class FloatingSurface: ContentControl
 
         _isClosing = true;
         ExceptionDispatchInfo? failure = null;
+        var closedHandlers = CaptureClosedHandlers();
 
         try
         {
@@ -232,7 +233,11 @@ public abstract class FloatingSurface: ContentControl
             SurfaceBounds = default;
             IsSurfacePresented = false;
             IncrementPresentationVersion();
-            ExceptionAggregation.Capture(RaiseSurfaceClosed, ref failure);
+
+            if (closedHandlers is { } capturedClosed)
+            {
+                ExceptionAggregation.Capture(() => capturedClosed.Invoke(this, EventArgs.Empty), ref failure);
+            }
         }
         finally
         {
