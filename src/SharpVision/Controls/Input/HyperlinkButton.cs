@@ -3,8 +3,6 @@
 
 namespace SharpVision.Controls.Input;
 
-using System.Windows.Input;
-
 using DisplayText = Display.Text;
 
 /// <summary>Defines a focusable clickable text control styled as a classic hyperlink.</summary>
@@ -18,8 +16,6 @@ public sealed class HyperlinkButton: Pressable
                 attributes: ThemeDecoration.NormalText,
                 underline: Underline.Straight,
                 underlineColor: ThemeColor.Accent)));
-
-    private ICommand? _command;
 
     /// <summary>Initializes an empty focusable HyperlinkButton with accent-colored underlined text.</summary>
     public HyperlinkButton()
@@ -72,36 +68,6 @@ public sealed class HyperlinkButton: Pressable
     /// <summary>Raised after released state commits and before command execution.</summary>
     public event EventHandler<ActivationEventArgs>? Click;
 
-    /// <summary>Gets or sets the optional command invoked after Click.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public ICommand? Command
-    {
-        get => _command;
-        set
-        {
-            VerifyMutable();
-
-            if (EqualityComparer<ICommand?>.Default.Equals(_command, value))
-            {
-                return;
-            }
-
-            _command?.CanExecuteChanged -= OnCanExecuteChanged;
-            _ = SetProperty(ref _command, value, InvalidationImpact.Render);
-            _command?.CanExecuteChanged += OnCanExecuteChanged;
-        }
-    }
-
-    /// <summary>Gets or sets the borrowed parameter passed to command queries and execution.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public object? CommandParameter
-    {
-        get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
-    }
-
     /// <summary>Activates an available executable HyperlinkButton through its public API.</summary>
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -136,38 +102,9 @@ public sealed class HyperlinkButton: Pressable
     {
         base.OnUnavailable(reason);
 
-        if (reason == ReleaseReason.Disposed && _command is not null)
+        if (reason == ReleaseReason.Disposed)
         {
-            _command.CanExecuteChanged -= OnCanExecuteChanged;
-            _command = null;
             Click = null;
         }
-    }
-
-    private void OnCanExecuteChanged(object? sender, EventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-
-        if (IsDisposed)
-        {
-            return;
-        }
-
-        var dispatcher = Dispatcher;
-
-        if (dispatcher is not null && !dispatcher.CheckAccess())
-        {
-            dispatcher.Post(() =>
-            {
-                if (!IsDisposed)
-                {
-                    Invalidate(Invalidation.Render);
-                }
-            });
-            return;
-        }
-
-        Invalidate(Invalidation.Render);
     }
 }

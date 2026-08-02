@@ -3,8 +3,6 @@
 
 namespace SharpVision.Controls.Input;
 
-using System.Windows.Input;
-
 using Text;
 
 using DisplayText = Display.Text;
@@ -23,7 +21,6 @@ public sealed partial class Button: Pressable
                     ? InvalidationImpact.Arrange
                     : InvalidationImpact.None,
         static style => style.Appearance);
-    private ICommand? _command;
     private ButtonStyle? _actualStyleCache;
     private ButtonStyle? _actualStyleCacheKey;
     private Theme? _actualStyleCacheTheme;
@@ -120,36 +117,6 @@ public sealed partial class Button: Pressable
 
     /// <summary>Raised after released state commits and before command execution.</summary>
     public event EventHandler<ActivationEventArgs>? Click;
-
-    /// <summary>Gets or sets the optional command invoked after Click.</summary>
-    /// <exception cref="InvalidOperationException">The attached Button is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Button is disposed.</exception>
-    public ICommand? Command
-    {
-        get => _command;
-        set
-        {
-            VerifyMutable();
-
-            if (EqualityComparer<ICommand?>.Default.Equals(_command, value))
-            {
-                return;
-            }
-
-            _command?.CanExecuteChanged -= OnCanExecuteChanged;
-            _ = SetProperty(ref _command, value, InvalidationImpact.Render);
-            _command?.CanExecuteChanged += OnCanExecuteChanged;
-        }
-    }
-
-    /// <summary>Gets or sets the borrowed parameter passed to command queries and execution.</summary>
-    /// <exception cref="InvalidOperationException">The attached Button is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Button is disposed.</exception>
-    public object? CommandParameter
-    {
-        get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
-    }
 
     /// <summary>Gets or sets whether an owning Window treats Enter as a fallback activation.</summary>
     /// <exception cref="InvalidOperationException">The attached Button is mutated off-dispatcher.</exception>
@@ -302,10 +269,8 @@ public sealed partial class Button: Pressable
     {
         base.OnUnavailable(reason);
 
-        if (reason == ReleaseReason.Disposed && _command is not null)
+        if (reason == ReleaseReason.Disposed)
         {
-            _command.CanExecuteChanged -= OnCanExecuteChanged;
-            _command = null;
             Click = null;
         }
     }
@@ -394,37 +359,6 @@ public sealed partial class Button: Pressable
 
     private static int? DeflateConstraint(int? value, int inset) =>
         value.HasValue ? Math.Max(0, value.Value - inset) : null;
-
-    #endregion
-
-    #region Command notification
-
-    private void OnCanExecuteChanged(object? sender, EventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-
-        if (IsDisposed)
-        {
-            return;
-        }
-
-        var dispatcher = Dispatcher;
-
-        if (dispatcher is not null && !dispatcher.CheckAccess())
-        {
-            dispatcher.Post(() =>
-            {
-                if (!IsDisposed)
-                {
-                    Invalidate(Invalidation.Render);
-                }
-            });
-            return;
-        }
-
-        Invalidate(Invalidation.Render);
-    }
 
     #endregion
 }

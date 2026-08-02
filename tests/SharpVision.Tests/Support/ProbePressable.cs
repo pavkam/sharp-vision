@@ -24,7 +24,19 @@ internal sealed class ProbePressable: Pressable
     internal bool WasPressedDuringCancellation { get; private set; }
 
     /// <inheritdoc/>
-    protected override void Activate(ActivationCause cause) => Activations.Add(cause);
+    protected override void Activate(ActivationCause cause)
+    {
+        var command = Command;
+        var parameter = CommandParameter;
+
+        if (command is not null && !command.CanExecute(parameter))
+        {
+            return;
+        }
+
+        Activations.Add(cause);
+        command?.Execute(parameter);
+    }
 
     /// <inheritdoc/>
     protected override void OnLostPointerCapture(PointerCaptureLossReason reason)

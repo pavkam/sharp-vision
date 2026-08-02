@@ -646,6 +646,8 @@ namespace SharpVision.Controls
     {
         protected Pressable() { }
         protected override string? AccessKeyText { get; }
+        public System.Windows.Input.ICommand? Command { get; set; }
+        public object? CommandParameter { get; set; }
         protected abstract void Activate(SharpVision.Input.ActivationCause cause);
         protected override bool OnAccessKey(System.Text.Rune key) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
@@ -960,8 +962,6 @@ namespace SharpVision.Controls.Input
         public Button(string text) { }
         public SharpVision.Controls.Input.ButtonStyle ActualStyle { get; }
         protected override SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
-        public System.Windows.Input.ICommand? Command { get; set; }
-        public object? CommandParameter { get; set; }
         public bool IsCancel { get; set; }
         public bool IsDefault { get; set; }
         public SharpVision.Controls.Input.ButtonStyle? Style { get; set; }
@@ -1241,8 +1241,6 @@ namespace SharpVision.Controls.Input
         public HyperlinkButton() { }
         public HyperlinkButton(string text) { }
         protected override SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
-        public System.Windows.Input.ICommand? Command { get; set; }
-        public object? CommandParameter { get; set; }
         public string? Text { get; set; }
         protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public event System.EventHandler<SharpVision.Input.ActivationEventArgs>? Click;
@@ -1854,9 +1852,9 @@ namespace SharpVision.DataBinding
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Input.TextInput target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, string?>> sourceProperty, SharpVision.DataBinding.BindingMode mode)
             where TModel :  class { }
-        public static SharpVision.DataBinding.Binding BindCommand<TModel>(this SharpVision.Controls.Input.Button target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, System.Windows.Input.ICommand?>> sourceProperty)
+        public static SharpVision.DataBinding.Binding BindCommand<TModel>(this SharpVision.Controls.Pressable target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, System.Windows.Input.ICommand?>> sourceProperty)
             where TModel :  class { }
-        public static SharpVision.DataBinding.Binding BindCommandParameter<TModel, TValue>(this SharpVision.Controls.Input.Button target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, TValue>> sourceProperty)
+        public static SharpVision.DataBinding.Binding BindCommandParameter<TModel, TValue>(this SharpVision.Controls.Pressable target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, TValue>> sourceProperty)
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding BindExpanded<TModel>(this SharpVision.Controls.Collections.TreeViewItem target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, bool>> sourceProperty)
             where TModel :  class { }

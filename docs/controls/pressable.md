@@ -9,8 +9,9 @@ It inherits the atomic, publicly replaceable `Content` edge from
 and exposes no `Children` collection or capacity constructor.
 
 Concrete controls implement `Activate(ActivationCause)`. `Button`, `CheckBox`,
-`RadioButton`, `MenuItem`, and each internal `ListItem` use this role. A control
-whose face is derived from data rather than replaceable content, such as
+`RadioButton`, `HyperlinkButton`, `MenuItem`, `NavigationViewItem`, and each
+internal `ListItem` and `TabHeader` use this role. A control whose face is
+derived from data rather than replaceable content, such as
 [`ComboBox`](input/combo-box.md#overview), derives from `Control` instead of
 pretending to be a `Pressable`.
 
@@ -19,12 +20,20 @@ pretending to be a `Pressable`.
 | Member                                          | Purpose                                                                                            |
 | ----------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | Inherited `Content`                             | Owns the replaceable control face.                                                                 |
+| `Command`, `CommandParameter`                   | Optional `ICommand` a concrete control invokes on activation, and its borrowed parameter.          |
 | `Activate(ActivationCause)`                     | Commits the concrete semantic action after keyboard, pointer, or programmatic activation succeeds. |
 | `IsCheckedState` and related visual-state seams | Let a derived toggle add semantic state without replacing the shared press or capture behavior.    |
 
-`Pressable` makes the control focusable and supplies the shared input state
-machine; concrete classes publish their own events and their own programmatic
-activation method.
+`Pressable` makes the control focusable, supplies the shared input state
+machine, and owns `Command`/`CommandParameter` lifetime — including
+`CanExecuteChanged` subscription and dispatcher-marshaled invalidation. Concrete
+classes still publish their own events and their own programmatic activation
+method (`Button.Click`/`PerformClick`, `MenuItem.Invoked`/ `PerformInvoke`, and
+so on); only the command lifetime itself is shared. A concrete `Activate`
+override decides whether and how `Command` factors into its own semantics —
+`Button` and `HyperlinkButton` check `CanExecute` and call `Execute` after their
+`Click` event; toggles and menu items that have not opted into command support
+simply leave the inherited property unused.
 
 ## Interaction
 

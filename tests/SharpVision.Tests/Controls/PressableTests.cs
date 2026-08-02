@@ -191,6 +191,72 @@ public sealed class PressableTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a consumer-derived Pressable's activation is recorded before command execution.</summary>
+    [Fact]
+    public void Dispatch_WhenConsumerDerivedPressableHasCommand_ActivatesBeforeExecute()
+    {
+        var parameter = new object();
+        var activationCountDuringExecute = -1;
+        ProbePressable control = null!;
+        var command = new ProbeCommand { Executing = _ => activationCountDuringExecute = control.Activations.Count };
+        control = new ProbePressable { Command = command, CommandParameter = parameter };
+
+        Key(control, Code.Enter, character: null, KeyAction.Press);
+
+        activationCountDuringExecute.ShouldBe(1);
+        control.Activations.ShouldBe([ActivationCause.Keyboard]);
+        command.Queries.ShouldBe([parameter]);
+        command.Executions.ShouldBe([parameter]);
+    }
+
+    /// <summary>Verifies a command that cannot execute suppresses both activation and execution.</summary>
+    [Fact]
+    public void Dispatch_WhenCommandCanExecuteIsFalse_RaisesNoActivationAndDoesNotExecute()
+    {
+        var command = new ProbeCommand { CanExecuteValue = false };
+        var control = new ProbePressable { Command = command };
+
+        Key(control, Code.Enter, character: null, KeyAction.Press);
+
+        control.Activations.ShouldBeEmpty();
+        command.Executions.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies replacing Command unsubscribes the previous instance's CanExecuteChanged
+    /// and subscribes the new one, so only the currently assigned command can invalidate render.</summary>
+    [Fact]
+    public void Command_WhenReplaced_UnsubscribesPreviousAndSubscribesNew()
+    {
+        var previous = new ProbeCommand();
+        var next = new ProbeCommand();
+        var control = new ProbePressable { Command = previous };
+        previous.HasCanExecuteChangedSubscribers.ShouldBeTrue();
+
+        control.Command = next;
+
+        previous.HasCanExecuteChangedSubscribers.ShouldBeFalse();
+        next.HasCanExecuteChangedSubscribers.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies disposing a Pressable with an assigned Command unsubscribes
+    /// CanExecuteChanged exactly once, leaving no dangling subscription.</summary>
+    [Fact]
+    public async Task Dispose_WhenCommandIsAssigned_UnsubscribesCanExecuteChangedAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var command = new ProbeCommand();
+            var control = new ProbePressable { Command = command };
+            control.Attach(dispatcher);
+
+            control.Dispose();
+
+            command.HasCanExecuteChangedSubscribers.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     private static void Key(
         ProbePressable control,
         Code code,

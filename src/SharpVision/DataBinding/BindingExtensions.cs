@@ -225,9 +225,9 @@ public static class BindingExtensions
             BindingMode.OneWay,
             string.Empty);
 
-    /// <summary>Binds a command property one-way to a button.</summary>
+    /// <summary>Binds a command property one-way to a pressable control.</summary>
     public static Binding BindCommand<TModel>(
-        this Button target,
+        this Pressable target,
         TModel source,
         Expression<Func<TModel, ICommand?>> sourceProperty)
         where TModel : class =>
@@ -238,9 +238,9 @@ public static class BindingExtensions
             sourceProperty,
             BindingMode.OneWay);
 
-    /// <summary>Binds a borrowed parameter property one-way to a button.</summary>
+    /// <summary>Binds a borrowed parameter property one-way to a pressable control.</summary>
     public static Binding BindCommandParameter<TModel, TValue>(
-        this Button target,
+        this Pressable target,
         TModel source,
         Expression<Func<TModel, TValue>> sourceProperty)
         where TModel : class =>

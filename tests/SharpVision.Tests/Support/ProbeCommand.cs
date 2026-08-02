@@ -11,6 +11,9 @@ internal sealed class ProbeCommand: ICommand
     /// <inheritdoc/>
     public event EventHandler? CanExecuteChanged;
 
+    /// <summary>Gets whether anything is currently subscribed to <see cref="CanExecuteChanged"/>.</summary>
+    internal bool HasCanExecuteChangedSubscribers => CanExecuteChanged is not null;
+
     /// <summary>Gets or sets the query result.</summary>
     internal bool CanExecuteValue { get; set; } = true;
 
