@@ -39,20 +39,30 @@ The constructors accept a non-null `message`, an optional non-null `title`
 overloads are:
 
 ```csharp
-var result = await MessageBox.ShowAsync(owner, "Delete the draft?");
-var result = await MessageBox.ShowAsync(owner, "Delete the draft?", "Confirm");
-var result = await MessageBox.ShowAsync(owner, "Delete the draft?", MessageBoxButtons.YesNo);
-var result = await MessageBox.ShowAsync(
-    owner,
-    "Delete the draft?",
-    "Confirm",
-    MessageBoxButtons.YesNoCancel);
-var result = await MessageBox.ShowAsync(
-    owner,
-    "Delete the draft?",
-    "Confirm",
-    MessageBoxButtons.YesNoCancel,
-    buttonStyle);
+{
+    var result = await MessageBox.ShowAsync(owner, "Delete the draft?");
+}
+{
+    var result = await MessageBox.ShowAsync(owner, "Delete the draft?", "Confirm");
+}
+{
+    var result = await MessageBox.ShowAsync(owner, "Delete the draft?", MessageBoxButtons.YesNo);
+}
+{
+    var result = await MessageBox.ShowAsync(
+        owner,
+        "Delete the draft?",
+        "Confirm",
+        MessageBoxButtons.YesNoCancel);
+}
+{
+    var result = await MessageBox.ShowAsync(
+        owner,
+        "Delete the draft?",
+        "Confirm",
+        MessageBoxButtons.YesNoCancel,
+        buttonStyle);
+}
 ```
 
 `owner` must resolve to an owning Screen, an explicit container, or the

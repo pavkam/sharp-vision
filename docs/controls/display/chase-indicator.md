@@ -42,7 +42,13 @@ it. The trail history never grows beyond `min(TrailLength, Length - 1)` entries.
 var indicator = new ChaseIndicator
 {
     Movement = ChaseMovement.Spread,
-    Style = ChaseIndicatorStyle.Diamond with { HeadColor = Color.Rgb(90, 247, 142) },
+    Style = new ChaseIndicatorStyle(
+        ChaseIndicatorStyle.Diamond.Active,
+        ChaseIndicatorStyle.Diamond.Inactive,
+        Color.Rgb(90, 247, 142),
+        ChaseIndicatorStyle.Diamond.TrailColor,
+        ChaseIndicatorStyle.Diamond.TrackColor,
+        ChaseIndicatorStyle.Diamond.Appearance),
     Length = 21,
     TrailLength = 5
 };

@@ -1,4 +1,4 @@
-.PHONY: build clean format format-check help lint restore run test test-ci test-tty watch
+.PHONY: build clean docs-samples format format-check help lint restore run test test-ci test-tty watch
 
 .DEFAULT_GOAL := help
 
@@ -15,6 +15,7 @@ help:
 	@echo "  make test-tty      Run controlling-terminal-gated Unix console host tests (Linux/macOS only)"
 	@echo "  make run           Run the showcase"
 	@echo "  make watch         Run the showcase in watch mode"
+	@echo "  make docs-samples  Compile every documentation C# sample"
 	@echo "  make lint          Check C#, Markdown, and documentation links"
 	@echo "  make format        Format C# and Markdown"
 	@echo "  make format-check  Check formatting without changing files"
@@ -56,7 +57,13 @@ test-tty: build
 	fi
 	@echo "✅ Controlling-terminal Unix host tests complete."
 
-lint: restore
+docs-samples:
+	@echo "📖 Compiling documentation C# samples..."
+	@dotnet build src/SharpVision/SharpVision.csproj --configuration Release
+	@npm run lint:docs-samples
+	@echo "✅ Documentation samples compile."
+
+lint: restore docs-samples
 	@echo "🔍 Checking source and documentation..."
 	@dotnet format $(SOLUTION) --verify-no-changes --no-restore --verbosity diagnostic
 	@npm run format:check

@@ -21,7 +21,7 @@ public sealed class CommandTile : Control
 {
     protected override ThemeRole ThemeRole => ThemeRole.Input;
 
-    protected override void OnRenderContent(Canvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         _ = canvas.Draw("Run", new Point(ContentBounds.X, ContentBounds.Y), ResolvedStyle);
     }

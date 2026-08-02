@@ -23,10 +23,16 @@ Dialog types defined outside this assembly reach this same lifecycle through a
 `protected` `PresentAsync` overload:
 
 ```csharp
-protected Task<TResult> PresentAsync(
-    Control owner,
-    Control? initialFocus,
-    CancellationToken cancellationToken)
+public sealed class ExampleDialog : Dialog<bool>
+{
+    public ExampleDialog()
+        : base(cancelledResult: false)
+    {
+    }
+
+    public Task<bool> ShowAsync(Control owner, Control? initialFocus, CancellationToken cancellationToken) =>
+        PresentAsync(owner, initialFocus, cancellationToken);
+}
 ```
 
 It resolves the owner's presentation host, attaches the dialog, and presents it
