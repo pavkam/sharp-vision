@@ -1611,9 +1611,10 @@ public sealed class Application: ISink, IAsyncDisposable
         var frame = new Frame(Size, ambiguousWidth: CellPolicy.AmbiguousWidth);
 
         // Let render-clean subtrees copy their cells on demand instead of re-executing
-        // OnRenderContent. After layout, cell positions may have changed, so the optimization is
-        // disabled to avoid copying stale cells from the previous frame.
-        if (skipCleanSubtrees && !_layoutSinceLastRender)
+        // OnRenderContent. After layout, cell positions may have changed, so the caller already
+        // resolves skipCleanSubtrees from _layoutSinceLastRender before this call - copying stale
+        // cells from the previous frame is avoided at the source, not rechecked here.
+        if (skipCleanSubtrees)
         {
             _ = renderer.AttachCommittedFrame(frame);
         }

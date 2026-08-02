@@ -1069,6 +1069,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
 
         IsRendering = true;
+        var wasRenderDirty = (Pending & Invalidation.Render) != 0;
         Clear(Invalidation.Render);
 
         try
@@ -1084,21 +1085,34 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             var visualBounds = VisualBounds;
             var visual = canvas.Clip(
                 ControlChrome.ResolveVisualClip(contentClip, Bounds, visualBounds, canvas.Bounds));
-            var appearanceState = GetAppearanceState();
-            var chrome = GetChromeRenderOptions();
-            ControlChrome.RenderUnderlay(this, visual, appearanceState, chrome);
-            OnRenderContent(visual);
-            var descendantBounds = DescendantRenderBounds;
-            var descendantClip = ClipsChildren
-                ? contentClip.Intersect(descendantBounds)
-                : contentClip;
-            var descendantCanvas = ClipsDescendantVisualOverflow
-                ? canvas.Clip(descendantBounds)
-                : canvas;
-            RenderChildren(descendantCanvas, descendantClip);
-            OnRenderAdornment(visual);
-            ControlChrome.RenderBorder(this, visual, appearanceState, chrome);
-            RenderOverlay(visual);
+
+            if (!wasRenderDirty && canvas.HasPreviousFrame && CanReuseCleanRender())
+            {
+                // canvas.HasPreviousFrame already guarantees no layout ran anywhere in the tree
+                // since the frame it copies from (see Application.StartRender), so this control's
+                // own Bounds - and therefore visual - are unchanged. Combined with an unset render
+                // bit and CanReuseCleanRender's leaf/image-free/shadow-free/popup-free requirement,
+                // the previous frame's cells for this exact region are still correct (see #26).
+                visual.CopyFromPrevious(visual.Bounds);
+            }
+            else
+            {
+                var appearanceState = GetAppearanceState();
+                var chrome = GetChromeRenderOptions();
+                ControlChrome.RenderUnderlay(this, visual, appearanceState, chrome);
+                OnRenderContent(visual);
+                var descendantBounds = DescendantRenderBounds;
+                var descendantClip = ClipsChildren
+                    ? contentClip.Intersect(descendantBounds)
+                    : contentClip;
+                var descendantCanvas = ClipsDescendantVisualOverflow
+                    ? canvas.Clip(descendantBounds)
+                    : canvas;
+                RenderChildren(descendantCanvas, descendantClip);
+                OnRenderAdornment(visual);
+                ControlChrome.RenderBorder(this, visual, appearanceState, chrome);
+                RenderOverlay(visual);
+            }
 
             if (Parent is null)
             {
@@ -1115,6 +1129,16 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             IsRendering = false;
         }
     }
+
+    // Narrow, maintainer-approved first cut (#26): reuse is safe only for a subtree whose own
+    // paint is fully reproduced by copying cells - no children (nothing else to composite), no
+    // owned popups of its own (OwnedControlCount covers both layers), and no visible shadow
+    // (CopyFromPrevious never restores VisualBounds' shadow-expanded overflow region). A control
+    // whose paint has an effect beyond cells (Display.Image's placement) opts out via
+    // RequiresCompleteRender. Popup-overlapped and image-bearing subtrees stay excluded and are
+    // tracked separately in #235.
+    private bool CanReuseCleanRender() =>
+        OwnedControlCount == 0 && !ActualShadow.IsVisible && !RequiresCompleteRender;
 
     /// <summary>Requests a phase and every dependent later phase.</summary>
     /// <param name="value">The earliest dirty phase.</param>
@@ -1949,6 +1973,13 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Gets whether this control forms a hard clip for descendant visual overflow.</summary>
     /// <remarks>Own visual overflow remains eligible for propagation through the control's parent.</remarks>
     internal virtual bool ClipsDescendantVisualOverflow => false;
+
+    /// <summary>Gets whether this control's own paint has an effect a copied cell region cannot
+    /// reproduce, so it always runs the complete paint sequence instead of a render-clean copy.</summary>
+    /// <remarks>Overridden by <see cref="Display.Image"/>: <see cref="TerminalCanvas.DrawImage"/>
+    /// records a backend-neutral placement alongside the cells it paints, and copying previous cells
+    /// never replays that call (see #26).</remarks>
+    internal virtual bool RequiresCompleteRender => false;
 
     /// <summary>Gets the soft layout aperture applied to normal-layer descendants.</summary>
     /// <remarks>The default is the arranged border box. Specialized translated faces may override it.</remarks>

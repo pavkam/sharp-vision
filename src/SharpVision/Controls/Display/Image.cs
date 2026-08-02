@@ -91,6 +91,9 @@ public sealed class Image: Control
     }
 
     /// <inheritdoc/>
+    internal override bool RequiresCompleteRender => Source is not null;
+
+    /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
         var bounds = ContentBounds;

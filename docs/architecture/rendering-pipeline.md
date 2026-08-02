@@ -197,6 +197,19 @@ render invalidation before extension code runs, clips its own drawing to
 during either callback therefore remains pending for the next frame. An
 exception restores render dirtiness before propagating.
 
+A control that was already render-clean copies its previous frame's cells
+instead of running that paint sequence, when a previous frame is available
+(`Canvas.HasPreviousFrame`, attached only when no layout ran anywhere in the
+tree since that frame) and the control owns no children of its own
+(`OwnedControlCount == 0`, covering both the normal and popup layers), casts no
+visible shadow (`!ActualShadow.IsVisible`), and does not itself override
+`RequiresCompleteRender` to opt out - the
+[`Image`](../controls/display/image.md#overview) control does when it has an
+assigned source, since `Canvas.CopyFromPrevious` restores cells only and never
+replays the semantic placement `DrawImage` records alongside them. This is a
+narrow, conservative first cut (see #26); shadow-bearing, popup-overlapped, and
+image-bearing subtrees stay excluded and are tracked separately in #235.
+
 Hidden, collapsed, and effectively hidden subtrees draw nothing. Every control
 renders its normal-layer ownership slots in slot-registration then item order,
 so a later eligible target has the higher default z-order. After the root's
@@ -209,8 +222,10 @@ hard canvas and one soft content aperture down each branch. Each control expands
 only its own soft aperture for deliberate `VisualBounds` overflow, so shadows
 cross arbitrary ordinary nesting without granting that space to siblings. The
 frame, the caller canvas, explicit Overlay bounds, and the scroll viewport are
-hard intersections. This single downward traversal remains allocation-free and
-linear in the rendered control count. Coordinates remain absolute terminal
+hard intersections. This single downward traversal visits every rendered control
+and remains allocation-free and linear in the rendered control count, though a
+qualifying render-clean leaf's own paint work is a constant-cost cell copy
+instead of running its full paint sequence. Coordinates remain absolute terminal
 cells, which avoids accumulated transform rounding.
 
 The framework render path draws intrinsic chrome around content, in order:
