@@ -226,6 +226,33 @@ public sealed class Expander: ContentControl
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// The focused header background resolves <see cref="ThemeColor.FocusedControl"/> directly at
+    /// render time rather than through a style contract (see #161), so the base role-profile
+    /// comparison alone cannot detect a theme swap confined to that role.
+    /// </remarks>
+    protected override InvalidationImpact GetThemeChangeImpact(
+        Theme? previous,
+        Theme? current,
+        Face? previousParentAmbientFace,
+        Face? currentParentAmbientFace)
+    {
+        var baseImpact = base.GetThemeChangeImpact(
+            previous,
+            current,
+            previousParentAmbientFace,
+            currentParentAmbientFace);
+        var colorImpact = ResolveDirectColor(previous, ThemeColor.FocusedControl) != ResolveDirectColor(current, ThemeColor.FocusedControl)
+            ? InvalidationImpact.Render
+            : InvalidationImpact.None;
+
+        return MaximumImpact(baseImpact, colorImpact);
+    }
+
+    private static Color ResolveDirectColor(Theme? theme, ThemeColor color) =>
+        theme?.ResolveColor(color) ?? Color.Default;
+
+    /// <inheritdoc/>
     protected override bool OnAccessKey(Rune key)
     {
         _ = key;

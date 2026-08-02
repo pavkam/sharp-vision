@@ -260,6 +260,64 @@ public sealed class WindowSurfaceTests
         surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(normal);
     }
 
+    /// <summary>Verifies a theme swap confined to the directly-resolved FocusedText role still
+    /// repaints the close-mark glyph, instead of the base role-profile comparison alone
+    /// under-invalidating it (see #161).</summary>
+    [Fact]
+    public async Task Surface_WhenThemeSwapChangesOnlyFocusedText_RepaintsCloseMarkAsync()
+    {
+        // Arrange
+        var themeA = WithColor(ThemeColor.FocusedText, Color.Rgb(10, 20, 30));
+        var themeB = WithColor(ThemeColor.FocusedText, Color.Rgb(200, 210, 220));
+        var window = new Window
+        {
+            CanClose = true,
+            Width = Length.Cells(12),
+            Height = Length.Cells(4)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            window,
+            new Size(14, 6),
+            themeA,
+            TestContext.Current.CancellationToken);
+        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(Palette.Project(Color.Rgb(10, 20, 30), ColorDepth.Basic16));
+
+        // Act
+        await surface.UpdateAsync(() => surface.Application.Theme = themeB, "swap FocusedText-only theme");
+
+        // Assert
+        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(Palette.Project(Color.Rgb(200, 210, 220), ColorDepth.Basic16));
+    }
+
+    private static Theme WithColor(ThemeColor role, Color value)
+    {
+        var source = Themes.Dark;
+        var theme = new Theme(
+            source.Palette,
+            source.Name,
+            source.Slug,
+            source.ColorScheme,
+            source.Author,
+            source.License,
+            source.Source);
+
+        foreach (var color in Enum.GetValues<ThemeColor>())
+        {
+            theme.SetColor(color, color == role ? value : source.ResolveColor(color));
+        }
+
+        foreach (var decoration in Enum.GetValues<ThemeDecoration>())
+        {
+            theme.SetAttributes(decoration, source.ResolveAttributes(decoration));
+        }
+
+        theme.SetStatusColors(Enum.GetValues<StatusColor>()
+            .ToDictionary(status => status, source.ResolveStatusColor));
+        theme.SetProfiles(source.Control, source.Input, source.Container, source.Window, source.Popup);
+        theme.Freeze();
+        return theme;
+    }
+
     /// <summary>Verifies a dragged Window remains in the client area without repainting its parent's frame.</summary>
     [Fact]
     public async Task Drag_WhenMovedToClientEdges_PreservesParentBorderAsync()

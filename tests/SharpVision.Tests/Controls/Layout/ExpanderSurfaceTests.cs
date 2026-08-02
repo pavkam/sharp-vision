@@ -382,4 +382,64 @@ public sealed class ExpanderSurfaceTests
         expander.Content.Bounds.ShouldBe(default);
         surface.ShouldRender("▶ Details");
     }
+
+    /// <summary>Verifies a theme swap confined to the directly-resolved FocusedControl role still
+    /// repaints the focused header background, instead of the base role-profile comparison alone
+    /// under-invalidating it (see #161).</summary>
+    [Fact]
+    public async Task Surface_WhenThemeSwapChangesOnlyFocusedControl_RepaintsFocusedHeaderAsync()
+    {
+        // Arrange
+        var themeA = WithColor(ThemeColor.FocusedControl, Color.Rgb(10, 20, 30));
+        var themeB = WithColor(ThemeColor.FocusedControl, Color.Rgb(200, 210, 220));
+        var expander = new Expander
+        {
+            Header = "Details",
+            Content = new ControlText("Body"),
+            Width = Length.Cells(12),
+            Height = Length.Cells(4)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            expander,
+            new Size(12, 4),
+            themeA,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.Cell(default).Style.Background.ShouldBe(Palette.Project(Color.Rgb(10, 20, 30), ColorDepth.Basic16));
+
+        // Act
+        await surface.UpdateAsync(() => surface.Application.Theme = themeB, "swap FocusedControl-only theme");
+
+        // Assert
+        surface.Cell(default).Style.Background.ShouldBe(Palette.Project(Color.Rgb(200, 210, 220), ColorDepth.Basic16));
+    }
+
+    private static Theme WithColor(ThemeColor role, Color value)
+    {
+        var source = Themes.Dark;
+        var theme = new Theme(
+            source.Palette,
+            source.Name,
+            source.Slug,
+            source.ColorScheme,
+            source.Author,
+            source.License,
+            source.Source);
+
+        foreach (var color in Enum.GetValues<ThemeColor>())
+        {
+            theme.SetColor(color, color == role ? value : source.ResolveColor(color));
+        }
+
+        foreach (var decoration in Enum.GetValues<ThemeDecoration>())
+        {
+            theme.SetAttributes(decoration, source.ResolveAttributes(decoration));
+        }
+
+        theme.SetStatusColors(Enum.GetValues<StatusColor>()
+            .ToDictionary(status => status, source.ResolveStatusColor));
+        theme.SetProfiles(source.Control, source.Input, source.Container, source.Window, source.Popup);
+        theme.Freeze();
+        return theme;
+    }
 }

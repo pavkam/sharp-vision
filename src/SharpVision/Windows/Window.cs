@@ -555,6 +555,39 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
         return new TerminalStyle(foreground, border.Background, border.Attributes);
     }
 
+    /// <inheritdoc/>
+    /// <remarks>
+    /// The close-button glyph states resolve <see cref="ThemeColor.DisabledText"/>,
+    /// <see cref="ThemeColor.PressedText"/>, <see cref="ThemeColor.ActiveText"/>, and
+    /// <see cref="ThemeColor.FocusedText"/> directly at render time rather than through a style
+    /// contract (see #161), so the base role-profile comparison alone cannot detect a theme swap
+    /// confined to these roles.
+    /// </remarks>
+    protected override InvalidationImpact GetThemeChangeImpact(
+        Theme? previous,
+        Theme? current,
+        Face? previousParentAmbientFace,
+        Face? currentParentAmbientFace)
+    {
+        var baseImpact = base.GetThemeChangeImpact(
+            previous,
+            current,
+            previousParentAmbientFace,
+            currentParentAmbientFace);
+        var colorImpact =
+            ResolveDirectColor(previous, ThemeColor.DisabledText) != ResolveDirectColor(current, ThemeColor.DisabledText) ||
+            ResolveDirectColor(previous, ThemeColor.PressedText) != ResolveDirectColor(current, ThemeColor.PressedText) ||
+            ResolveDirectColor(previous, ThemeColor.ActiveText) != ResolveDirectColor(current, ThemeColor.ActiveText) ||
+            ResolveDirectColor(previous, ThemeColor.FocusedText) != ResolveDirectColor(current, ThemeColor.FocusedText)
+                ? InvalidationImpact.Render
+                : InvalidationImpact.None;
+
+        return MaximumImpact(baseImpact, colorImpact);
+    }
+
+    private static Color ResolveDirectColor(Theme? theme, ThemeColor color) =>
+        theme?.ResolveColor(color) ?? Color.Default;
+
     private Rect ResolveCloseChromeBounds()
     {
         if (!CanClose || Bounds.Height == 0 || Bounds.Width < _minimumCloseWidth)
