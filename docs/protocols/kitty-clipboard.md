@@ -44,20 +44,20 @@ traffic apart, so any malformed packet fails it.
 ## Supported features
 
 SharpVision supports OSC 52 text plus typed OSC 5522 MIME reads and writes,
-aliases, permissions and errors, passwords and names, paste events, detection,
-and multiplexer correlation. Unsupported terminals fall back to OSC 52 text when
-safe, then to an unavailable result rather than an exception.
+aliases, permissions and errors, passwords and names, detection, and multiplexer
+correlation. `Application.Terminal.Clipboard` performs Kitty-preferred
+selection: `Write` and `Request` use Kitty OSC 5522 when it is authoritatively
+proven, fall back to OSC 52 text when only that is proven, and stay byte-quiet
+when neither is. Inbound OSC 52 and OSC 5522 replies route through the decoder
+into `TerminalServices`, which owns the `Transaction` lifecycle (correlation,
+deadline, cancellation) and reports every outcome through the single
+`IClipboard.KittyClipboardReplyReceived` event, whichever protocol actually
+served the request.
 
-> [!IMPORTANT]
->
-> **Implementation gap:** The terminal protocol layer provides bounded OSC 5522
-> packets, writers, transactions, capability evidence, and mode controls, but
-> startup negotiation does not issue the mode-5522 query and
-> `Application.Terminal.Clipboard` currently authorizes and emits only OSC 52. A
-> terminal profile with authoritative Kitty clipboard support but no OSC 52
-> support is therefore reported unavailable and remains byte-quiet; inbound OSC
-> 5522 results and paste events are not yet connected to runtime routing or the
-> application service.
+Unsolicited/proactive Kitty paste events (mode 5522 also lets a terminal push
+clipboard changes without a request) remain intentionally out of scope: no
+runtime path currently reports a mode-5522 paste notification that did not
+originate from an explicit `Write` or `Request`.
 
 ## Bounds and recovery
 

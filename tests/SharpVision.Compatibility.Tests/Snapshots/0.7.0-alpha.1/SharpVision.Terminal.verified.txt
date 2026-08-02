@@ -16,8 +16,10 @@ namespace SharpVision.Terminal.Abstractions
     }
     public interface IProtocolSink : SharpVision.Terminal.Abstractions.IInputSink
     {
+        void Response(SharpVision.Terminal.Kitty.Clipboard.Packet value);
         void Response(SharpVision.Terminal.Kitty.Graphics.Response value);
         void Response(SharpVision.Terminal.Xterm.CapabilityResponse value);
+        void Response(in SharpVision.Terminal.Clipboard.ClipboardReply value);
         void Response(in SharpVision.Terminal.Xterm.MetricsResponse value);
         void Response(in SharpVision.Terminal.Xterm.PaletteResponse value);
         void Response(in SharpVision.Terminal.Xterm.Response value);

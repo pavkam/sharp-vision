@@ -51,7 +51,9 @@ namespace SharpVision
         public void Input(in SharpVision.Terminal.Protocols.Diagnostic value) { }
         public void Profile(SharpVision.Terminal.Capabilities.Capabilities value) { }
         public void RefreshScreen() { }
+        public void Response(SharpVision.Terminal.Kitty.Clipboard.Packet value) { }
         public void Response(SharpVision.Terminal.Xterm.CapabilityResponse value) { }
+        public void Response(in SharpVision.Terminal.Clipboard.ClipboardReply value) { }
         public void Response(in SharpVision.Terminal.Xterm.MetricsResponse value) { }
         public void Response(in SharpVision.Terminal.Xterm.PaletteResponse value) { }
         public void Response(in SharpVision.Terminal.Xterm.Response value) { }
@@ -161,6 +163,7 @@ namespace SharpVision
     public interface IClipboard
     {
         bool IsSupported { get; }
+        event System.EventHandler<SharpVision.KittyClipboardReplyEventArgs>? KittyClipboardReplyReceived;
         void Request(SharpVision.Terminal.Clipboard.Selection selection = 0);
         void Write(System.ReadOnlySpan<char> text, SharpVision.Terminal.Clipboard.Selection selection = 0);
     }
@@ -171,6 +174,16 @@ namespace SharpVision
         SharpVision.Terminal.Capabilities.Description Description { get; }
         bool IsTitleSupported { get; }
         void SetTitle(string title);
+    }
+    public sealed class KittyClipboardReplyEventArgs : System.EventArgs
+    {
+        public KittyClipboardReplyEventArgs(SharpVision.Terminal.Clipboard.Selection selection, SharpVision.Terminal.Kitty.Clipboard.Result? kittyResult, System.ReadOnlyMemory<byte>? text, SharpVision.Terminal.Kitty.Clipboard.ReplyStatus failure, SharpVision.Terminal.Protocols.Diagnostic? diagnostic) { }
+        public SharpVision.Terminal.Protocols.Diagnostic? Diagnostic { get; }
+        public SharpVision.Terminal.Kitty.Clipboard.ReplyStatus Failure { get; }
+        public bool IsSuccess { get; }
+        public SharpVision.Terminal.Kitty.Clipboard.Result? KittyResult { get; }
+        public SharpVision.Terminal.Clipboard.Selection Selection { get; }
+        public System.ReadOnlyMemory<byte>? Text { get; }
     }
     public sealed class MetricsResponseEventArgs : System.EventArgs
     {
