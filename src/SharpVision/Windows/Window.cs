@@ -199,7 +199,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
     {
         get;
         set => _ = SetProperty(ref field, value, InvalidationImpact.Measure);
-    }
+    } = true;
 
     /// <summary>Gets or sets whether Escape requests closure when no cancel button handles it.</summary>
     /// <remarks>This independent policy keeps keyboard dismissal explicit instead of inferring a Window role.</remarks>

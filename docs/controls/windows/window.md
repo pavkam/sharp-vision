@@ -13,7 +13,7 @@ identity — there is no separate presentation wrapper to manage.
 | ------------------------------------------------------ | ------------------------- | --------------------------------------------------------------------- |
 | `Content`                                              | `null`                    | Owns one child inside the titled frame.                               |
 | `Header`, `HeaderPlacement`                            | Empty, `Left`             | Supply and align non-null header text within the top edge.            |
-| `CanMove`, `CanClose`, `CloseOnEscape`                 | `true`, `false`, `false`  | Configure Overlay drag movement and explicit close requests.          |
+| `CanMove`, `CanClose`, `CloseOnEscape`                 | `true`, `true`, `false`   | Configure Overlay drag movement and explicit close requests.          |
 | `CanResize`                                            | `false`                   | Enable pointer-driven resizing from the bottom-right corner.          |
 | `ClosePlacement`                                       | `Left`                    | Places close chrome after the left corner or before the right corner. |
 | Inherited `Border`, `CloseGlyph`                       | Window profile, `■`       | Configure the complete frame and the close-button glyph.              |

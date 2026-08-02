@@ -1241,6 +1241,7 @@ public sealed class WindowSurfaceTests
             Height = Length.Cells(5),
             Shadow = AppearanceTestValues.Shadow(visible: false),
             Content = button,
+            CanClose = false,
         };
         Overlay.SetLeft(window, Length.Cells(3));
         Overlay.SetTop(window, Length.Cells(2));

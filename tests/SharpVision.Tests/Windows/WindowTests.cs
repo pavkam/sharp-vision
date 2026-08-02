@@ -39,7 +39,7 @@ public sealed class WindowTests
         window.HeaderPlacement.ShouldBe(WindowTitlePlacement.Left);
         window.ClosePlacement.ShouldBe(WindowClosePlacement.Left);
         window.CanMove.ShouldBeTrue();
-        window.CanClose.ShouldBeFalse();
+        window.CanClose.ShouldBeTrue();
         window.CloseOnEscape.ShouldBeFalse();
     }
 
@@ -237,7 +237,7 @@ public sealed class WindowTests
     public void Layout_WhenContentCollapses_PreservesFrameMinimumAndClearsContentGeometry()
     {
         var content = new ProbeControl(new Size(4, 2)) { Margin = new Thickness(3) };
-        var window = new Window { Content = content };
+        var window = new Window { Content = content, CanClose = false };
         var engine = new LayoutEngine();
 
         engine.Layout(window, new Size(20, 10));
@@ -265,7 +265,8 @@ public sealed class WindowTests
         {
             Header = "Tools",
             Content = child,
-            HorizontalAlignment = HorizontalAlignment.Stretch
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            CanClose = false
         };
         var size = new Size(10, 4);
         new LayoutEngine().Layout(window, size);
@@ -292,7 +293,8 @@ public sealed class WindowTests
         {
             Header = "中中中中中中中中中中",
             Width = Length.Cells(12),
-            Height = Length.Cells(3)
+            Height = Length.Cells(3),
+            CanClose = false
         };
         var size = new Size(12, 3);
         new LayoutEngine().Layout(window, size);
@@ -1029,7 +1031,8 @@ public sealed class WindowTests
             {
                 Header = "Draggable",
                 Width = Length.Cells(12),
-                Height = Length.Cells(5)
+                Height = Length.Cells(5),
+                CanClose = false
             };
             Overlay.SetLeft(window, Length.Cells(2));
             Overlay.SetTop(window, Length.Cells(1));
@@ -1060,7 +1063,8 @@ public sealed class WindowTests
             {
                 Header = "Burst",
                 Width = Length.Cells(12),
-                Height = Length.Cells(5)
+                Height = Length.Cells(5),
+                CanClose = false
             };
             Overlay.SetLeft(window, Length.Cells(2));
             Overlay.SetTop(window, Length.Cells(1));
@@ -1242,7 +1246,8 @@ public sealed class WindowTests
             {
                 Header = "Release",
                 Width = Length.Cells(10),
-                Height = Length.Cells(4)
+                Height = Length.Cells(4),
+                CanClose = false
             };
             Overlay.SetLeft(window, Length.Cells(0));
             Overlay.SetTop(window, Length.Cells(0));
@@ -1353,7 +1358,8 @@ public sealed class WindowTests
             {
                 Header = "Clamp",
                 Width = Length.Cells(10),
-                Height = Length.Cells(4)
+                Height = Length.Cells(4),
+                CanClose = false
             };
             Overlay.SetLeft(window, Length.Cells(2));
             Overlay.SetTop(window, Length.Cells(2));
