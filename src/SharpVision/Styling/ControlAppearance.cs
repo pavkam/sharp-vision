@@ -6,12 +6,15 @@ namespace SharpVision.Styling;
 /// <summary>Provides shared resolved-appearance helpers for chrome renderers.</summary>
 internal static class ControlAppearance
 {
-    public static TerminalStyle ResolveTerminalStyle(Control control, VisualState state) =>
-        control.GetResolvedAppearance(state).Style;
+    extension(Control control)
+    {
+        public TerminalStyle ResolveTerminalStyle(VisualState state) =>
+            control.GetResolvedAppearance(state).Style;
 
-    public static bool HasOpaqueFill(Control control, VisualState state) =>
-        control.GetResolvedAppearance(state).BackgroundMode == BackgroundMode.Opaque;
+        public bool HasOpaqueFill(VisualState state) =>
+            control.GetResolvedAppearance(state).BackgroundMode == BackgroundMode.Opaque;
 
-    public static TerminalStyle ResolveBorderStyle(Control control, VisualState state) =>
-        control.GetResolvedAppearance(state).BorderStyle;
+        public TerminalStyle ResolveBorderStyle(VisualState state) =>
+            control.GetResolvedAppearance(state).BorderStyle;
+    }
 }

@@ -439,7 +439,7 @@ public sealed class MenuItem: Pressable
 
         var style = ResolvedStyle;
 
-        if (ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
+        if (this.HasOpaqueFill(GetAppearanceState()))
         {
             canvas.Clear(Bounds, style);
         }

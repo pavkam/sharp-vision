@@ -334,7 +334,7 @@ public sealed class ScrollBar: Control
         var thumbStyle = inherited.WithForeground(ResolveColor(style.ThumbColor));
         var buttonStyle = inherited.WithForeground(ResolveColor(style.ButtonColor));
 
-        if (ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
+        if (this.HasOpaqueFill(GetAppearanceState()))
         {
             canvas.Clear(bounds, inherited);
         }

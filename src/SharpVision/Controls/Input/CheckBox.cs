@@ -233,7 +233,7 @@ public sealed class CheckBox: Pressable
 
         var style = ResolvedStyle;
 
-        if (ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
+        if (this.HasOpaqueFill(GetAppearanceState()))
         {
             canvas.Clear(Bounds, style);
         }

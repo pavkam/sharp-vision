@@ -312,7 +312,7 @@ public sealed class Slider: Control
         var trackStyle = inherited.WithForeground(ResolveColor(actualStyle.TrackColor));
         var thumbStyle = inherited.WithForeground(ResolveColor(actualStyle.ThumbColor));
 
-        if (ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
+        if (this.HasOpaqueFill(GetAppearanceState()))
         {
             canvas.Clear(bounds, inherited);
         }

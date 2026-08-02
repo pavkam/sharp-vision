@@ -123,7 +123,7 @@ public sealed class NavigationViewItem: Pressable
     {
         var style = ResolvedStyle;
 
-        if (ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
+        if (this.HasOpaqueFill(GetAppearanceState()))
         {
             canvas.Clear(Bounds, style);
         }

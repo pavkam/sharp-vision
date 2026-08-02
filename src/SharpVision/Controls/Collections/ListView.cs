@@ -387,7 +387,7 @@ public sealed class ListView: ItemsControl
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        if (Bounds.Width == 0 || Bounds.Height == 0 || !ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
+        if (Bounds.Width == 0 || Bounds.Height == 0 || !this.HasOpaqueFill(GetAppearanceState()))
         {
             return;
         }

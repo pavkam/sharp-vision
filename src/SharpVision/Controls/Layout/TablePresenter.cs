@@ -273,7 +273,7 @@ internal sealed class TablePresenter: Container
 
         if (_owner.ShowHeader)
         {
-            if (_owner.HeaderBackground.HasValue || ControlAppearance.HasOpaqueFill(_owner, _owner.CurrentVisualState))
+            if (_owner.HeaderBackground.HasValue || _owner.HasOpaqueFill(_owner.CurrentVisualState))
             {
                 canvas.Clear(new Rect(ContentSlot.X, ContentSlot.Y, ContentSlot.Width, headerHeight), header);
             }

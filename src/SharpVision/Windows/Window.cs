@@ -401,7 +401,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        var opaque = ControlAppearance.HasOpaqueFill(this, GetAppearanceState());
+        var opaque = this.HasOpaqueFill(GetAppearanceState());
 
         if (opaque)
         {
@@ -419,14 +419,14 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
     /// <inheritdoc/>
     internal override void RenderOverlay(TerminalCanvas canvas)
     {
-        var opaque = ControlAppearance.HasOpaqueFill(this, GetAppearanceState());
+        var opaque = this.HasOpaqueFill(GetAppearanceState());
 
         if (Bounds.Width == 0 || Bounds.Height == 0)
         {
             return;
         }
 
-        var border = ControlAppearance.ResolveBorderStyle(this, GetAppearanceState());
+        var border = this.ResolveBorderStyle(GetAppearanceState());
         var closeMark = ResolveCloseMarkStyle(border);
         var background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
         var actualBorder = ActualBorder;

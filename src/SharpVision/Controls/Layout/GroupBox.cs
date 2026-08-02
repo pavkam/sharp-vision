@@ -73,7 +73,7 @@ public sealed class GroupBox: ContentControl
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        var opaque = ControlAppearance.HasOpaqueFill(this, GetAppearanceState());
+        var opaque = this.HasOpaqueFill(GetAppearanceState());
         if (opaque)
         {
             canvas.Clear(Bounds, ResolvedStyle);
@@ -88,8 +88,8 @@ public sealed class GroupBox: ContentControl
             return;
         }
 
-        var opaque = ControlAppearance.HasOpaqueFill(this, GetAppearanceState());
-        var border = ControlAppearance.ResolveBorderStyle(this, GetAppearanceState());
+        var opaque = this.HasOpaqueFill(GetAppearanceState());
+        var border = this.ResolveBorderStyle(GetAppearanceState());
         var bg = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
         var actualBorder = ActualBorder;
         ControlChrome.DrawPartialBorder(
