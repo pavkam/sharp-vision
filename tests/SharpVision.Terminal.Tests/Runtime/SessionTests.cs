@@ -362,7 +362,7 @@ public sealed class SessionTests
         transport.JoinedWrites.ShouldBe(
             "\u001b[?u\u001b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\u001b\\" +
             "\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p" +
-            "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p" +
+            "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[?5522$p" +
             "\u001b[14t\u001b[16t\u001b[18t" +
             "\u001b]4;0;?\u001b\\\u001b]10;?\u001b\\\u001b]11;?\u001b\\");
     }

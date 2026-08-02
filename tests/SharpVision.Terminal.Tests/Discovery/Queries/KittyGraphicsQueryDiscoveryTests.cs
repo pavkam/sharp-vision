@@ -70,7 +70,8 @@ public sealed class KittyGraphicsQueryDiscoveryTests
     /// <param name="expected">Whether the graphics query is expected.</param>
     [Theory]
     [InlineData(14, false)]
-    [InlineData(15, true)]
+    [InlineData(15, false)]
+    [InlineData(16, true)]
     public void TryStart_WhenQueryCapacityCrossesGraphicsSlot_EmitsExpectedProbe(
         int capacity,
         bool expected)

@@ -143,6 +143,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     [InlineData(6, "\u001b[?u\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p")]
     [InlineData(7, "\u001b[?u\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p")]
     [InlineData(8, "\u001b[?u\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p")]
+    [InlineData(9, "\u001b[?u\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[?5522$p")]
     public void TryStart_WhenCapacityVaries_TruncatesByPriority(
         int capacity,
         string expected)
@@ -179,7 +180,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         Encoding.ASCII.GetString(output.WrittenSpan).ShouldBe(
             "\u001b[?u\u001b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\u001b\\" +
             "\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p" +
-            "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p" +
+            "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[?5522$p" +
             "\u001b[14t\u001b[16t\u001b[18t" +
             "\u001b]4;0;?\u001b\\\u001b]10;?\u001b\\\u001b]11;?\u001b\\");
         negotiator.IsComplete.ShouldBeFalse();
@@ -198,7 +199,8 @@ public sealed class ActiveQueryDiscoveryStrategyTests
             FocusReporting = database,
             BracketedPaste = database,
             CellMouse = database,
-            PixelMouse = database
+            PixelMouse = database,
+            KittyClipboard = database
         };
         var limits = QueryLimits.Default with { MaxConcurrentQueries = 3 };
         var options = new NegotiationOptions(
@@ -253,7 +255,8 @@ public sealed class ActiveQueryDiscoveryStrategyTests
             FocusReporting = new Feature(CapabilitySupport.Supported, Origin.Database),
             BracketedPaste = new Feature(CapabilitySupport.Supported, Origin.Database),
             CellMouse = new Feature(CapabilitySupport.Supported, Origin.Database),
-            PixelMouse = new Feature(CapabilitySupport.Supported, Origin.Database)
+            PixelMouse = new Feature(CapabilitySupport.Supported, Origin.Database),
+            KittyClipboard = new Feature(CapabilitySupport.Supported, Origin.Database)
         };
         var negotiator = new ActiveQueryDiscoveryStrategy(
             new NegotiationOptions(new Dictionary<string, string?>(), limits: limits),
@@ -347,7 +350,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         var keyboard = Response("?3"u8, [], (byte) 'u');
         negotiator.Accept(in keyboard).ShouldBe(QueryMatch.Matched);
 
-        foreach (var mode in new[] { 1016, 1006, 2004, 1004, 2026 })
+        foreach (var mode in new[] { 1016, 1006, 2004, 1004, 2026, 5522 })
         {
             var response = PrivateMode(mode, state: 1);
             negotiator.Accept(in response).ShouldBe(QueryMatch.Matched);

@@ -34,6 +34,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
     private bool? _pixelMouse;
     private bool? _sixel;
     private bool? _synchronizedOutput;
+    private bool? _kittyClipboard;
     private bool _keyboardQueried;
     private bool _graphicsQueried;
     private bool _usesExplicitOuterProfile;
@@ -207,6 +208,12 @@ internal sealed class ActiveQueryDiscoveryStrategy
             DecPrivateMode.PixelMouse,
             _baseline.PixelMouse,
             _options.Overrides?.PixelMouse,
+            ref remaining);
+        AddModeQuery(
+            writer,
+            DecPrivateMode.ClipboardPasteEvents,
+            _baseline.KittyClipboard,
+            _options.Overrides?.KittyClipboard,
             ref remaining);
 
         if (!HasPositive(pixels) && TryRegister(QueryKind.WindowPixels, ref remaining))
@@ -649,6 +656,9 @@ internal sealed class ActiveQueryDiscoveryStrategy
             case DecPrivateMode.PixelMouse:
                 _pixelMouse = supported;
                 break;
+            case DecPrivateMode.ClipboardPasteEvents:
+                _kittyClipboard = supported;
+                break;
             default:
                 throw new UnreachableException("Only selected modes can be completed.");
         }
@@ -690,6 +700,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
             CellMouse = _cellMouse,
             KittyKeyboard = _kittyKeyboard,
             KittyGraphics = _kittyGraphics,
+            KittyClipboard = _kittyClipboard,
             Sixel = _sixel,
             XtermKeyboard = _xtermKeyboard,
             CapabilityString = _capabilityString

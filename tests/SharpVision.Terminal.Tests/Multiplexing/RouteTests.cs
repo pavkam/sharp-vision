@@ -523,13 +523,13 @@ public sealed class RouteTests
             Encoding.ASCII.GetBytes(
                 "\u001b[?u\u001b[c\u001b[>c" +
                 "\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p" +
-                "\u001b[?1006$p\u001b[?1016$p" +
+                "\u001b[?1006$p\u001b[?1016$p\u001b[?5522$p" +
                 "\u001b[14t\u001b[16t\u001b[18t"));
 
         var keyboard = Csi("?3"u8, [], (byte) 'u');
         negotiator.Accept(in keyboard).ShouldBe(QueryMatch.Matched);
 
-        foreach (var mode in new[] { 1016, 1006, 2004, 1004, 2026 })
+        foreach (var mode in new[] { 1016, 1006, 2004, 1004, 2026, 5522 })
         {
             var response = Csi(
                 Encoding.ASCII.GetBytes($"?{mode};1"),
