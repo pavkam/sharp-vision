@@ -6,142 +6,153 @@ namespace SharpVision.Fonts;
 /// <summary>Parses complete bounded FIG-font version 2 payloads.</summary>
 internal static class FigletParser
 {
+    [SuppressMessage(
+        "Style",
+        "IDE0052:Remove unread private members",
+        Justification = "Read only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static readonly int[] _additionalCodes = [196, 214, 220, 228, 246, 252, 223];
 
-    /// <summary>Parses one complete UTF-8 payload after byte-limit validation.</summary>
-    /// <param name="bytes">The complete borrowed encoded payload.</param>
-    /// <param name="name">The validated logical font name.</param>
-    /// <param name="limits">The validated finite limits.</param>
-    /// <returns>A fully validated immutable font.</returns>
-    /// <exception cref="FormatException">The payload violates FIG-font syntax.</exception>
-    /// <exception cref="InvalidDataException">A structural limit is exceeded.</exception>
-    public static FigletFont Parse(ReadOnlySpan<byte> bytes, string name, FigletLimits limits)
+    extension(FigletFont)
     {
-        string text;
-
-        try
+        /// <summary>Parses one complete UTF-8 payload after byte-limit validation.</summary>
+        /// <param name="bytes">The complete borrowed encoded payload.</param>
+        /// <param name="name">The validated logical font name.</param>
+        /// <param name="limits">The validated finite limits.</param>
+        /// <returns>A fully validated immutable font.</returns>
+        /// <exception cref="FormatException">The payload violates FIG-font syntax.</exception>
+        /// <exception cref="InvalidDataException">A structural limit is exceeded.</exception>
+        public static FigletFont Parse(ReadOnlySpan<byte> bytes, string name, FigletLimits limits)
         {
-            text = new UTF8Encoding(false, true).GetString(bytes);
-        }
-        catch (DecoderFallbackException exception)
-        {
-            _ = exception;
-            // FIGfont 2 predates Unicode and many catalog fonts retain an
-            // undeclared single-byte encoding. Latin-1 is the only lossless
-            // byte-to-scalar fallback; callers still receive deterministic text.
-            text = Encoding.Latin1.GetString(bytes);
-        }
+            string text;
 
-        var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
-        var cursor = 0;
-        var header = ReadLine(lines, ref cursor, "header").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            try
+            {
+                text = new UTF8Encoding(false, true).GetString(bytes);
+            }
+            catch (DecoderFallbackException exception)
+            {
+                _ = exception;
+                // FIGfont 2 predates Unicode and many catalog fonts retain an
+                // undeclared single-byte encoding. Latin-1 is the only lossless
+                // byte-to-scalar fallback; callers still receive deterministic text.
+                text = Encoding.Latin1.GetString(bytes);
+            }
 
-        if (header.Length < 6 ||
-            header[0].Length < 6 ||
-            (!header[0].StartsWith("flf2a", StringComparison.Ordinal) &&
-             !header[0].StartsWith("tlf2a", StringComparison.Ordinal)))
-        {
-            throw new FormatException("The FIG-font header signature is invalid.");
-        }
+            var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
+            var cursor = 0;
+            var header = ReadLine(lines, ref cursor, "header").Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-        var hardblank = header[0][5];
-        var height = Positive(header[1], "height");
-        var baseline = NonNegative(header[2], "baseline");
-        var maxLength = Positive(header[3], "maximum row length");
-        var oldLayout = Integer(header[4], "old layout");
-        var comments = NonNegative(header[5], "comment count");
+            if (header.Length < 6 ||
+                header[0].Length < 6 ||
+                (!header[0].StartsWith("flf2a", StringComparison.Ordinal) &&
+                 !header[0].StartsWith("tlf2a", StringComparison.Ordinal)))
+            {
+                throw new FormatException("The FIG-font header signature is invalid.");
+            }
 
-        if (height > limits.MaxHeight)
-        {
-            throw new InvalidDataException("The FIG-font height exceeds the configured limit.");
-        }
+            var hardblank = header[0][5];
+            var height = Positive(header[1], "height");
+            var baseline = NonNegative(header[2], "baseline");
+            var maxLength = Positive(header[3], "maximum row length");
+            var oldLayout = Integer(header[4], "old layout");
+            var comments = NonNegative(header[5], "comment count");
 
-        baseline = Math.Min(baseline, height);
+            if (height > limits.MaxHeight)
+            {
+                throw new InvalidDataException("The FIG-font height exceeds the configured limit.");
+            }
 
-        if (maxLength > limits.MaxRowWidth)
-        {
-            throw new InvalidDataException("The FIG-font row width exceeds the configured limit.");
-        }
+            baseline = Math.Min(baseline, height);
 
-        if (comments > limits.MaxComments)
-        {
-            throw new InvalidDataException("The FIG-font comment count exceeds the configured limit.");
-        }
+            if (maxLength > limits.MaxRowWidth)
+            {
+                throw new InvalidDataException("The FIG-font row width exceeds the configured limit.");
+            }
 
-        var direction = header.Length > 6 &&
-                        int.TryParse(header[6], NumberStyles.Integer, CultureInfo.InvariantCulture,
-                            out var directionValue)
-            ? Direction(directionValue)
-            : FigletDirection.LeftToRight;
-        var fullLayout = header.Length > 7 &&
-                         int.TryParse(header[7], NumberStyles.Integer, CultureInfo.InvariantCulture,
-                             out var layoutValue)
-            ? layoutValue
-            : -1;
-        var layout = fullLayout >= 0 ? Layout(fullLayout) : Layout(oldLayout);
+            if (comments > limits.MaxComments)
+            {
+                throw new InvalidDataException("The FIG-font comment count exceeds the configured limit.");
+            }
 
-        for (var index = 0; index < comments; index++)
-        {
-            _ = ReadLine(lines, ref cursor, "comment");
-        }
+            var direction = header.Length > 6 &&
+                            int.TryParse(header[6], NumberStyles.Integer, CultureInfo.InvariantCulture,
+                                out var directionValue)
+                ? Direction(directionValue)
+                : FigletDirection.LeftToRight;
+            var fullLayout = header.Length > 7 &&
+                             int.TryParse(header[7], NumberStyles.Integer, CultureInfo.InvariantCulture,
+                                 out var layoutValue)
+                ? layoutValue
+                : -1;
+            var layout = fullLayout >= 0 ? Layout(fullLayout) : Layout(oldLayout);
 
-        Dictionary<int, FigletGlyph> glyphs = [];
-        for (var code = 32; code <= 126; code++)
-        {
-            glyphs.Add(code, ReadGlyph(lines, ref cursor, height, limits));
-        }
+            for (var index = 0; index < comments; index++)
+            {
+                _ = ReadLine(lines, ref cursor, "comment");
+            }
 
-        if (lines.Length - cursor >= _additionalCodes.Length * height)
-        {
-            foreach (var code in _additionalCodes)
+            Dictionary<int, FigletGlyph> glyphs = [];
+            for (var code = 32; code <= 126; code++)
             {
                 glyphs.Add(code, ReadGlyph(lines, ref cursor, height, limits));
             }
+
+            if (lines.Length - cursor >= _additionalCodes.Length * height)
+            {
+                foreach (var code in _additionalCodes)
+                {
+                    glyphs.Add(code, ReadGlyph(lines, ref cursor, height, limits));
+                }
+            }
+
+            while (cursor < lines.Length && glyphs.Count < limits.MaxGlyphs)
+            {
+                var tag = lines[cursor++].Trim();
+
+                if (tag.Length == 0)
+                {
+                    continue;
+                }
+
+                var separator = tag.IndexOfAny([' ', '\t']);
+                var token = separator < 0 ? tag : tag[..separator];
+                var code = CodePoint(token);
+                var glyph = ReadGlyph(lines, ref cursor, height, limits);
+
+                // Negative code tags are FIGlet extension records such as legacy
+                // character maps. They own normal glyph rows but do not identify a
+                // Unicode scalar and are therefore consumed without publication.
+                if (code < 0)
+                {
+                    continue;
+                }
+
+                if (!Rune.IsValid(code))
+                {
+                    throw new FormatException($"The FIG-font code tag '{token}' is not a Unicode scalar.");
+                }
+
+                glyphs[code] = glyph;
+            }
+
+            return cursor < lines.Length && lines[cursor..].Any(line => line.Length != 0)
+                ? throw new InvalidDataException("The FIG-font glyph count exceeds the configured limit.")
+                : new FigletFont(
+                    name,
+                    height,
+                    baseline,
+                    hardblank,
+                    direction,
+                    layout,
+                    glyphs,
+                    limits);
         }
-
-        while (cursor < lines.Length && glyphs.Count < limits.MaxGlyphs)
-        {
-            var tag = lines[cursor++].Trim();
-
-            if (tag.Length == 0)
-            {
-                continue;
-            }
-
-            var separator = tag.IndexOfAny([' ', '\t']);
-            var token = separator < 0 ? tag : tag[..separator];
-            var code = CodePoint(token);
-            var glyph = ReadGlyph(lines, ref cursor, height, limits);
-
-            // Negative code tags are FIGlet extension records such as legacy
-            // character maps. They own normal glyph rows but do not identify a
-            // Unicode scalar and are therefore consumed without publication.
-            if (code < 0)
-            {
-                continue;
-            }
-
-            if (!Rune.IsValid(code))
-            {
-                throw new FormatException($"The FIG-font code tag '{token}' is not a Unicode scalar.");
-            }
-
-            glyphs[code] = glyph;
-        }
-
-        return cursor < lines.Length && lines[cursor..].Any(line => line.Length != 0)
-            ? throw new InvalidDataException("The FIG-font glyph count exceeds the configured limit.")
-            : new FigletFont(
-                name,
-                height,
-                baseline,
-                hardblank,
-                direction,
-                layout,
-                glyphs,
-                limits);
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static FigletGlyph ReadGlyph(
         string[] lines,
         ref int cursor,
@@ -187,12 +198,20 @@ internal static class FigletParser
             ? lines[cursor++]
             : throw new FormatException($"The FIG-font ended inside {area}.");
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static int Positive(string value, string area)
     {
         var result = Integer(value, area);
         return result > 0 ? result : throw new FormatException($"The FIG-font {area} must be positive.");
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static int NonNegative(string value, string area)
     {
         var result = Integer(value, area);
@@ -204,6 +223,10 @@ internal static class FigletParser
             ? result
             : throw new FormatException($"The FIGfont {area} is not an integer.");
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static int CodePoint(string value)
     {
         var sign = 1;
@@ -247,12 +270,20 @@ internal static class FigletParser
             : throw new FormatException($"The FIG-font code tag '{value}' is invalid.");
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static FigletDirection Direction(int value) => value switch
     {
         1 => FigletDirection.RightToLeft,
         _ => FigletDirection.LeftToRight
     };
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static FigletLayout Layout(int value)
     {
         if (value == -1)

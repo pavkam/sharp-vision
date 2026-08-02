@@ -104,7 +104,7 @@ public sealed class FigletFont
                 buffer.Write(rented, 0, read);
             }
 
-            return FigletParser.Parse(buffer.GetBuffer().AsSpan(0, checked((int) buffer.Length)), name, limits);
+            return FigletFont.Parse(buffer.GetBuffer().AsSpan(0, checked((int) buffer.Length)), name, limits);
         }
         finally
         {
