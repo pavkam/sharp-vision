@@ -24,90 +24,93 @@ internal static class Names
     /// <summary>Gets the exact canonical string identifiers.</summary>
     public static IReadOnlyList<string> Strings { get; } = CreateStrings();
 
-    /// <summary>Gets whether an exact identifier is an input key byte sequence rather than an output program.</summary>
-    public static bool IsKey(string name) =>
-        name is "kbs" or "kcbt" or "kent" or "kcuu1" or "kcud1" or "kcub1" or "kcuf1" or
-        "khome" or "kend" or "kich1" or "kdch1" or "kpp" or "knp" or "kbeg" or "ka1" or
-        "ka3" or "kb2" or "kc1" or "kc3" || name.StartsWith("kf", StringComparison.Ordinal) ||
-        IsModifiedKey(name);
-
-    /// <summary>Maps one exact retained input identifier to its typed logical key and modifiers.</summary>
-    public static bool TryMapKey(string name, out Code code, out Modifiers modifiers)
+    extension(string name)
     {
-        modifiers = Modifiers.None;
-        code = name switch
-        {
-            "kbs" => Code.Backspace,
-            "kcbt" => Code.Tab,
-            "kent" => Code.Enter,
-            "kcuu1" => Code.Up,
-            "kcud1" => Code.Down,
-            "kcub1" => Code.Left,
-            "kcuf1" => Code.Right,
-            "khome" => Code.Home,
-            "kend" => Code.End,
-            "kich1" => Code.Insert,
-            "kdch1" => Code.Delete,
-            "kpp" => Code.PageUp,
-            "knp" => Code.PageDown,
-            "kbeg" or "kb2" => Code.Begin,
-            "ka1" => Code.Home,
-            "ka3" => Code.PageUp,
-            "kc1" => Code.End,
-            "kc3" => Code.PageDown,
-            _ => Code.Unknown
-        };
+        /// <summary>Gets whether an exact identifier is an input key byte sequence rather than an output program.</summary>
+        public bool IsKey() =>
+            name is "kbs" or "kcbt" or "kent" or "kcuu1" or "kcud1" or "kcub1" or "kcuf1" or
+            "khome" or "kend" or "kich1" or "kdch1" or "kpp" or "knp" or "kbeg" or "ka1" or
+            "ka3" or "kb2" or "kc1" or "kc3" || name.StartsWith("kf", StringComparison.Ordinal) ||
+            IsModifiedKey(name);
 
-        if (code != Code.Unknown)
+        /// <summary>Maps one exact retained input identifier to its typed logical key and modifiers.</summary>
+        public bool TryMapKey(out Code code, out Modifiers modifiers)
         {
-            modifiers = name == "kcbt" ? Modifiers.Shift : Modifiers.None;
+            modifiers = Modifiers.None;
+            code = name switch
+            {
+                "kbs" => Code.Backspace,
+                "kcbt" => Code.Tab,
+                "kent" => Code.Enter,
+                "kcuu1" => Code.Up,
+                "kcud1" => Code.Down,
+                "kcub1" => Code.Left,
+                "kcuf1" => Code.Right,
+                "khome" => Code.Home,
+                "kend" => Code.End,
+                "kich1" => Code.Insert,
+                "kdch1" => Code.Delete,
+                "kpp" => Code.PageUp,
+                "knp" => Code.PageDown,
+                "kbeg" or "kb2" => Code.Begin,
+                "ka1" => Code.Home,
+                "ka3" => Code.PageUp,
+                "kc1" => Code.End,
+                "kc3" => Code.PageDown,
+                _ => Code.Unknown
+            };
+
+            if (code != Code.Unknown)
+            {
+                modifiers = name == "kcbt" ? Modifiers.Shift : Modifiers.None;
+                return true;
+            }
+
+            if (name.StartsWith("kf", StringComparison.Ordinal) &&
+                int.TryParse(name.AsSpan(2), NumberStyles.None, CultureInfo.InvariantCulture, out var function) &&
+                function.TryGet(out code))
+            {
+                return true;
+            }
+
+            var suffixIndex = name.Length - 1;
+            var suffix = suffixIndex >= 0 && name[suffixIndex] is >= '3' and <= '8'
+                ? name[suffixIndex] - '0'
+                : 0;
+            var baseName = suffix == 0 ? name : name[..suffixIndex];
+
+            code = baseName switch
+            {
+                "kUP" => Code.Up,
+                "kDN" => Code.Down,
+                "kLFT" => Code.Left,
+                "kRIT" => Code.Right,
+                "kHOM" => Code.Home,
+                "kEND" => Code.End,
+                "kIC" => Code.Insert,
+                "kDC" => Code.Delete,
+                "kNXT" => Code.PageDown,
+                "kPRV" => Code.PageUp,
+                _ => Code.Unknown
+            };
+
+            if (code == Code.Unknown)
+            {
+                return false;
+            }
+
+            modifiers = suffix switch
+            {
+                3 => Modifiers.Alt,
+                4 => Modifiers.Shift | Modifiers.Alt,
+                5 => Modifiers.Control,
+                6 => Modifiers.Shift | Modifiers.Control,
+                7 => Modifiers.Alt | Modifiers.Control,
+                8 => Modifiers.Shift | Modifiers.Alt | Modifiers.Control,
+                _ => Modifiers.Shift
+            };
             return true;
         }
-
-        if (name.StartsWith("kf", StringComparison.Ordinal) &&
-            int.TryParse(name.AsSpan(2), NumberStyles.None, CultureInfo.InvariantCulture, out var function) &&
-            function.TryGet(out code))
-        {
-            return true;
-        }
-
-        var suffixIndex = name.Length - 1;
-        var suffix = suffixIndex >= 0 && name[suffixIndex] is >= '3' and <= '8'
-            ? name[suffixIndex] - '0'
-            : 0;
-        var baseName = suffix == 0 ? name : name[..suffixIndex];
-
-        code = baseName switch
-        {
-            "kUP" => Code.Up,
-            "kDN" => Code.Down,
-            "kLFT" => Code.Left,
-            "kRIT" => Code.Right,
-            "kHOM" => Code.Home,
-            "kEND" => Code.End,
-            "kIC" => Code.Insert,
-            "kDC" => Code.Delete,
-            "kNXT" => Code.PageDown,
-            "kPRV" => Code.PageUp,
-            _ => Code.Unknown
-        };
-
-        if (code == Code.Unknown)
-        {
-            return false;
-        }
-
-        modifiers = suffix switch
-        {
-            3 => Modifiers.Alt,
-            4 => Modifiers.Shift | Modifiers.Alt,
-            5 => Modifiers.Control,
-            6 => Modifiers.Shift | Modifiers.Control,
-            7 => Modifiers.Alt | Modifiers.Control,
-            8 => Modifiers.Shift | Modifiers.Alt | Modifiers.Control,
-            _ => Modifiers.Shift
-        };
-        return true;
     }
 
     private static ReadOnlyCollection<string> CreateStrings()
@@ -145,6 +148,10 @@ internal static class Names
         return Array.AsReadOnly(values.ToArray());
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static bool IsModifiedKey(string name)
     {
         foreach (var prefix in new[] { "kUP", "kDN", "kLFT", "kRIT", "kHOM", "kEND", "kIC", "kDC", "kNXT", "kPRV" })

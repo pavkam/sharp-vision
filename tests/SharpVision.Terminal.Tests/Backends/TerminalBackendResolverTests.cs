@@ -52,7 +52,7 @@ public sealed class TerminalBackendResolverTests
             var environment = new Dictionary<string, string?> { ["TERM"] = term, ["TERM_PROGRAM"] = program };
 
             // Act
-            var resolution = TerminalBackendResolver.Resolve(TerminalProfile.Conservative, environment);
+            var resolution = TerminalProfile.Conservative.Resolve(environment);
 
             // Assert
             resolution.Backend.ShouldBeSameAs(expected, $"TERM={term}; TERM_PROGRAM={program}");
@@ -72,7 +72,7 @@ public sealed class TerminalBackendResolverTests
             ["TMUX"] = "/tmp/tmux-1000/default,1234,0"
         };
 
-        var resolution = TerminalBackendResolver.Resolve(TerminalProfile.Conservative, environment);
+        var resolution = TerminalProfile.Conservative.Resolve(environment);
 
         resolution.Backend.ShouldBeSameAs(VtBackend.Instance);
     }
@@ -88,7 +88,7 @@ public sealed class TerminalBackendResolverTests
         var environment = new Dictionary<string, string?> { ["TERM"] = "xterm-256color" };
 
         // Act
-        var resolution = TerminalBackendResolver.Resolve(profile, environment);
+        var resolution = profile.Resolve(environment);
 
         // Assert
         resolution.Backend.ShouldBeSameAs(XtermBackend.Instance);
@@ -109,7 +109,7 @@ public sealed class TerminalBackendResolverTests
             TerminalCapabilities.Conservative);
 
         // Act
-        var resolution = TerminalBackendResolver.Resolve(profile, new Dictionary<string, string?>());
+        var resolution = profile.Resolve(new Dictionary<string, string?>());
 
         // Assert
         resolution.Backend.ShouldBeSameAs(KittyBackend.Instance);
@@ -128,7 +128,7 @@ public sealed class TerminalBackendResolverTests
         var environment = new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" };
 
         // Act
-        var resolution = TerminalBackendResolver.Resolve(profile, environment);
+        var resolution = profile.Resolve(environment);
 
         // Assert
         resolution.Backend.ShouldBeSameAs(KittyBackend.Instance);
@@ -152,7 +152,7 @@ public sealed class TerminalBackendResolverTests
         var environment = new Dictionary<string, string?> { ["TERM"] = "xterm-256color" };
 
         // Act
-        var resolution = TerminalBackendResolver.Resolve(profile, environment);
+        var resolution = profile.Resolve(environment);
 
         // Assert
         resolution.Backend.ShouldBeSameAs(XtermBackend.Instance);
@@ -166,7 +166,7 @@ public sealed class TerminalBackendResolverTests
         var environment = new Dictionary<string, string?> { ["TERM"] = "screen-xterm-kitty" };
 
         // Act
-        var resolution = TerminalBackendResolver.Resolve(TerminalProfile.Conservative, environment);
+        var resolution = TerminalProfile.Conservative.Resolve(environment);
 
         // Assert
         resolution.Backend.ShouldBeSameAs(VtBackend.Instance);
@@ -186,7 +186,7 @@ public sealed class TerminalBackendResolverTests
         var environment = new Dictionary<string, string?> { ["TERM"] = term };
 
         // Act
-        var resolution = TerminalBackendResolver.Resolve(profile, environment);
+        var resolution = profile.Resolve(environment);
 
         // Assert
         resolution.Evidence.ShouldAllBe(evidence =>
@@ -228,8 +228,8 @@ public sealed class TerminalBackendResolverTests
         var environment = new Dictionary<string, string?>();
 
         // Act and assert
-        _ = Should.Throw<ArgumentNullException>(() => TerminalBackendResolver.Resolve(null!, environment));
-        _ = Should.Throw<ArgumentNullException>(() => TerminalBackendResolver.Resolve(TerminalProfile.Conservative, null!));
+        _ = Should.Throw<ArgumentNullException>(() => ((TerminalProfile) null!).Resolve(environment));
+        _ = Should.Throw<ArgumentNullException>(() => TerminalProfile.Conservative.Resolve(null!));
         _ = Should.Throw<ArgumentNullException>(() => new EnvironmentBackendEvidenceAdapter(null!));
         _ = Should.Throw<ArgumentNullException>(() => new DescriptionBackendEvidenceAdapter(null!));
         _ = Should.Throw<ArgumentNullException>(() => new BackendResolution(null!, []));

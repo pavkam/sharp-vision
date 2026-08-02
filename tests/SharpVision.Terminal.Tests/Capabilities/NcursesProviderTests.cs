@@ -760,7 +760,7 @@ public sealed class NcursesProviderTests
         {
             var name = $"kf{function.ToString(CultureInfo.InvariantCulture)}";
 
-            Names.TryMapKey(name, out var code, out var modifiers).ShouldBeTrue(name);
+            name.TryMapKey(out var code, out var modifiers).ShouldBeTrue(name);
             code.ShouldBe(Enum.Parse<Code>($"F{function.ToString(CultureInfo.InvariantCulture)}"), name);
             modifiers.ShouldBe(Modifiers.None, name);
         }
@@ -802,7 +802,7 @@ public sealed class NcursesProviderTests
                     ? item.Name
                     : $"{item.Name}{suffix.Suffix.ToString(CultureInfo.InvariantCulture)}";
 
-                Names.TryMapKey(name, out var code, out var modifiers).ShouldBeTrue(name);
+                name.TryMapKey(out var code, out var modifiers).ShouldBeTrue(name);
                 code.ShouldBe(item.Code, name);
                 modifiers.ShouldBe(suffix.Modifiers, name);
             }

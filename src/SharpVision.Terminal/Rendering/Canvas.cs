@@ -692,7 +692,7 @@ public readonly struct Canvas
             throw new ArgumentOutOfRangeException(nameof(shade), shade, "The shade is unknown.");
         }
 
-        Fill(region, BlockResolver.Resolve(shade, _frame.AmbiguousWidth), style);
+        Fill(region, shade.Resolve(_frame.AmbiguousWidth), style);
     }
 
     /// <summary>Draws and merges filled quadrants in one clipped cell.</summary>
@@ -725,12 +725,12 @@ public readonly struct Canvas
 
         if (Rune.DecodeFromUtf8(bytes, out var existing, out var consumed) == OperationStatus.Done &&
             consumed == bytes.Length &&
-            BlockResolver.TryDecode(existing, out var previous))
+            existing.TryDecode(out Quadrants previous))
         {
             quadrants |= previous;
         }
 
-        DrawRune(BlockResolver.Resolve(quadrants, _frame.AmbiguousWidth), point, style);
+        DrawRune(quadrants.Resolve(_frame.AmbiguousWidth), point, style);
     }
 
     #endregion
@@ -1155,13 +1155,13 @@ public readonly struct Canvas
         if (mergeExisting &&
             Rune.DecodeFromUtf8(bytes, out var existing, out var consumed) == OperationStatus.Done &&
             consumed == bytes.Length &&
-            LineResolver.TryDecode(existing, out var previous))
+            existing.TryDecode(out Topology previous))
         {
-            topology = LineResolver.Merge(previous, topology);
+            topology = previous.Merge(topology);
         }
 
         DrawRune(
-            LineResolver.Resolve(topology, _frame.AmbiguousWidth),
+            topology.Resolve(_frame.AmbiguousWidth),
             point,
             style,
             BackgroundMode.Transparent);

@@ -10,45 +10,49 @@ using Discovery.Adapters;
 /// <summary>Resolves canonical terminal identity from source-specific redacted evidence only.</summary>
 internal static class TerminalBackendResolver
 {
-    /// <summary>Resolves the most specific canonical backend without inspecting capability values or process state.</summary>
-    /// <param name="profile">The non-null immutable terminal profile supplying description evidence.</param>
-    /// <param name="environment">The non-null caller-supplied environment snapshot.</param>
-    /// <returns>A canonical backend and immutable ordered redacted evidence snapshot.</returns>
-    /// <exception cref="ArgumentNullException">
-    /// <paramref name="profile"/> or <paramref name="environment"/> is <see langword="null"/>.
-    /// </exception>
-    public static BackendResolution Resolve(
-        TerminalProfile profile,
-        IReadOnlyDictionary<string, string?> environment)
+    extension(TerminalProfile profile)
     {
-        ArgumentNullException.ThrowIfNull(profile);
-        ArgumentNullException.ThrowIfNull(environment);
-
-        var adapters = new IBackendEvidenceAdapter[]
+        /// <summary>Resolves the most specific canonical backend without inspecting capability values or process state.</summary>
+        /// <param name="environment">The non-null caller-supplied environment snapshot.</param>
+        /// <returns>A canonical backend and immutable ordered redacted evidence snapshot.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="profile"/> or <paramref name="environment"/> is <see langword="null"/>.
+        /// </exception>
+        public BackendResolution Resolve(IReadOnlyDictionary<string, string?> environment)
         {
-            new DescriptionBackendEvidenceAdapter(profile.Description),
-            new EnvironmentBackendEvidenceAdapter(environment),
-        };
-        var evidence = new List<BackendEvidence>(adapters.Length);
-        var selected = new BackendEvidence(TerminalBackendKind.Vt, BackendEvidenceOrigin.Description);
+            ArgumentNullException.ThrowIfNull(profile);
+            ArgumentNullException.ThrowIfNull(environment);
 
-        foreach (var adapter in adapters)
-        {
-            if (!adapter.TryAdapt(out var item))
+            var adapters = new IBackendEvidenceAdapter[]
             {
-                continue;
+                new DescriptionBackendEvidenceAdapter(profile.Description),
+                new EnvironmentBackendEvidenceAdapter(environment),
+            };
+            var evidence = new List<BackendEvidence>(adapters.Length);
+            var selected = new BackendEvidence(TerminalBackendKind.Vt, BackendEvidenceOrigin.Description);
+
+            foreach (var adapter in adapters)
+            {
+                if (!adapter.TryAdapt(out var item))
+                {
+                    continue;
+                }
+
+                evidence.Add(item);
+                if (IsPreferred(item, selected))
+                {
+                    selected = item;
+                }
             }
 
-            evidence.Add(item);
-            if (IsPreferred(item, selected))
-            {
-                selected = item;
-            }
+            return new BackendResolution(GetBackend(selected.Kind), evidence);
         }
-
-        return new BackendResolution(GetBackend(selected.Kind), evidence);
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static bool IsPreferred(BackendEvidence candidate, BackendEvidence current) =>
         Specificity(candidate.Kind) > Specificity(current.Kind) ||
         (Specificity(candidate.Kind) == Specificity(current.Kind) &&
@@ -64,6 +68,10 @@ internal static class TerminalBackendResolver
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "The terminal backend kind is unknown.")
     };
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static VtBackend GetBackend(TerminalBackendKind kind) => kind switch
     {
         TerminalBackendKind.Kitty => KittyBackend.Instance,

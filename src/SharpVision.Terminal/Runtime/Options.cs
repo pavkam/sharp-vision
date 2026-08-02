@@ -226,7 +226,7 @@ public sealed record Options
     internal TerminalContext CreateContext()
     {
         var environment = Negotiation?.Environment ?? _emptyEnvironment;
-        var resolution = TerminalBackendResolver.Resolve(Profile, environment);
+        var resolution = Profile.Resolve(environment);
 
         return new TerminalContext(Profile, resolution.Backend);
     }

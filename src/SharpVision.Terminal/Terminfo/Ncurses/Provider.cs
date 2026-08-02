@@ -336,7 +336,7 @@ internal sealed class Provider: IDescriptionProvider
 
         foreach (var pair in strings)
         {
-            if (Names.IsKey(pair.Key) || pair.Key == "RGB")
+            if (pair.Key.IsKey() || pair.Key == "RGB")
             {
                 continue;
             }
@@ -377,8 +377,8 @@ internal sealed class Provider: IDescriptionProvider
 
         foreach (var pair in strings)
         {
-            if (!Names.IsKey(pair.Key) ||
-                !Names.TryMapKey(pair.Key, out var code, out var modifiers))
+            if (!pair.Key.IsKey() ||
+                !pair.Key.TryMapKey(out var code, out var modifiers))
             {
                 continue;
             }
