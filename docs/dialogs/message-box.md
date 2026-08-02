@@ -72,12 +72,11 @@ MessageBox leaves Escape unhandled so an ancestor can apply its own policy.
 
 ## Interaction
 
-The inherited Window uses the dialog defaults for a paired frame and a
-centered header, but overrides the rest: the box is movable rather than
-fixed, renders no close control (`CanClose` is `false`), and implements its
-own Escape-to-Cancel handling rather than the inherited Escape-close
-fallback, which is dead code here because that fallback also requires
-`CanClose`.
+The inherited Window uses the dialog defaults for a paired frame and a centered
+header, but overrides the rest: the box is movable rather than fixed, renders no
+close control (`CanClose` is `false`), and implements its own Escape-to-Cancel
+handling rather than the inherited Escape-close fallback, which is dead code
+here because that fallback also requires `CanClose`.
 
 The window sizes itself from its title, wrapped message, and button labels. Its
 content is a two-row grid: the top row is an intrinsic message area whose

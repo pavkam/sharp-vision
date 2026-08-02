@@ -100,8 +100,8 @@ Activating another Window atomically deactivates the previous one. Hiding,
 collapsing, disabling, detaching, disposing, or shutting down the active Window
 activates the most recently active remaining available Window instead of
 clearing activation, walking a small recency history the activation manager
-keeps for this purpose; only when no previously active Window remains
-available does activation clear.
+keeps for this purpose; only when no previously active Window remains available
+does activation clear.
 
 > [!IMPORTANT]
 >
@@ -110,8 +110,8 @@ available does activation clear.
 > stay buried while its border paints the active color. Issue #224 tracks
 > raise-on-activate. The default Window profile maps `IsActive` onto its
 > existing `FocusWithin` appearance contribution, changing only the frame
-> foreground to `ThemeColor.ActiveBorder`. `ContainsFocus` and `IsFocused`
-> keep their independent keyboard-focus meanings.
+> foreground to `ThemeColor.ActiveBorder`. `ContainsFocus` and `IsFocused` keep
+> their independent keyboard-focus meanings.
 
 Unhandled Enter and Escape search the owned descendants in deterministic
 ownership order for the first enabled, visible `Button` marked `IsDefault` or
@@ -141,9 +141,9 @@ Dialogs do not select a Window role through an enum. Instead,
 and sets a base-class default policy for placement, centered header, close,
 Escape, typed completion, and modal lifecycle. These are defaults a concrete
 dialog is expected to override where its own chrome differs: the base class's
-fixed placement is one example, kept only by the plain `Dialog<TResult>`
-itself and overridden to movable by MessageBox and the file dialogs, while the
-centered header and Escape policy are kept by every shipped dialog.
+fixed placement is one example, kept only by the plain `Dialog<TResult>` itself
+and overridden to movable by MessageBox and the file dialogs, while the centered
+header and Escape policy are kept by every shipped dialog.
 
 ## Example
 
