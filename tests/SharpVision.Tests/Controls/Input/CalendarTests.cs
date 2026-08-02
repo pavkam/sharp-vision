@@ -348,6 +348,92 @@ public sealed class CalendarTests
 
     #endregion
 
+    #region Style surface
+
+    /// <summary>Verifies a default unstyled Calendar falls back to the semantic input profile.</summary>
+    [Fact]
+    public void Constructor_WhenStyleIsUnset_FallsBackToDefaultCalendarStyle()
+    {
+        // Arrange and act
+        var theme = new Theme();
+        theme.Freeze();
+        using var calendar = new UiCalendar();
+        calendar.SetTheme(theme);
+
+        // Assert
+        calendar.Style.ShouldBeNull();
+        calendar.ActualStyle.ShouldBe(CalendarStyle.Default);
+        calendar.ActualStyle.SelectedDayColor.ShouldBe((ColorValue) ThemeColor.SelectedText);
+        calendar.ActualStyle.TodayMarkerColor.ShouldBe((ColorValue) ThemeColor.ActiveText);
+        calendar.ActualStyle.OutOfMonthDayColor.ShouldBe((ColorValue) ThemeColor.Muted);
+        calendar.ActualStyle.WeekdayHeaderColor.ShouldBe((ColorValue) ThemeColor.Muted);
+        calendar.ActualStyle.DisabledDayColor.ShouldBe((ColorValue) ThemeColor.DisabledText);
+        calendar.ActualStyle.ContentInset.ShouldBe(new Thickness(horizontal: 1, vertical: 0));
+        calendar.Padding.ShouldBe(new Thickness(horizontal: 1, vertical: 0));
+    }
+
+    /// <summary>Verifies assigning a local style propagates to ActualStyle and reports one notification,
+    /// while a no-op reassignment of an equal style raises no duplicate ActualStyle notification.</summary>
+    [Fact]
+    public void Style_WhenAssigned_PropagatesOnceWithoutDuplicateOnNoOpReassignment()
+    {
+        // Arrange
+        var style = new CalendarStyle(
+            Color.Rgb(10, 20, 30),
+            CalendarStyle.Default.TodayMarkerColor,
+            CalendarStyle.Default.OutOfMonthDayColor,
+            CalendarStyle.Default.WeekdayHeaderColor,
+            CalendarStyle.Default.DisabledDayColor,
+            CalendarStyle.Default.ContentInset,
+            CalendarStyle.Default.Appearance);
+        using var calendar = new UiCalendar();
+        var names = new List<string?>();
+        calendar.PropertyChanged += (_, eventArgs) => names.Add(eventArgs.PropertyName);
+
+        // Act
+        calendar.Style = style;
+
+        // Assert
+        calendar.Style.ShouldBe(style);
+        calendar.ActualStyle.ShouldBe(style);
+        names.ShouldContain(nameof(UiCalendar.Style));
+        names.Count(name => name == nameof(UiCalendar.ActualStyle)).ShouldBe(1);
+
+        // Act no-op reassignment
+        names.Clear();
+        calendar.Style = style;
+
+        // Assert no duplicate notification
+        names.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies restyling the content inset invalidates measurement and updates Padding, matching
+    /// the pre-#244 literal Thickness(1, 0) default while allowing a styled replacement.</summary>
+    [Fact]
+    public void Style_WhenContentInsetChanges_RemeasuresAndUpdatesPadding()
+    {
+        // Arrange
+        using var calendar = new UiCalendar();
+        calendar.Clear(Invalidation.All);
+        var restyled = new CalendarStyle(
+            CalendarStyle.Default.SelectedDayColor,
+            CalendarStyle.Default.TodayMarkerColor,
+            CalendarStyle.Default.OutOfMonthDayColor,
+            CalendarStyle.Default.WeekdayHeaderColor,
+            CalendarStyle.Default.DisabledDayColor,
+            new Thickness(horizontal: 2, vertical: 1),
+            CalendarStyle.Default.Appearance);
+
+        // Act
+        calendar.Style = restyled;
+
+        // Assert
+        calendar.Padding.ShouldBe(new Thickness(horizontal: 2, vertical: 1));
+        calendar.Pending.ShouldBe(Invalidation.All);
+    }
+
+    #endregion
+
     #region State and blocked ranges
 
     /// <summary>Verifies an attached blocked-range collection rejects off-dispatcher mutation.</summary>

@@ -18,6 +18,8 @@ child controls.
 | `Select(DateOnly, DateOnly)` | —                              | Commits one ordered selectable inclusive interval.                  |
 | `ClearSelection()`           | —                              | Clears the committed selection and any pending interval anchor.     |
 | `GoToToday()`                | —                              | Moves to the current local date when available and reports success. |
+| `Style`                      | `null`                         | Optional complete developer-authored `CalendarStyle`.               |
+| `ActualStyle`                | Theme calendar                 | The resolved style; always present.                                 |
 
 `CalendarSelectionMode` chooses the interaction state machine:
 
@@ -123,11 +125,24 @@ week slots and remain selectable while they are inside the bounds; selecting one
 navigates to its month. Smaller explicit bounds clip safely, and zero content
 draws nothing.
 
-The control uses existing theme values only: the focused foreground for the
-header commands, `Theme.Muted` for weekday and adjacent-month text, pointer-over
-colors for hover and pending interval preview, selected colors for committed
-values, disabled colors for unavailable values, and an underline for the focused
-active date. There is no Calendar-specific theme entry.
+A `CalendarStyle` holds five `ColorValue` day-grid foregrounds —
+`SelectedDayColor`, `TodayMarkerColor` (the hovered date and pending interval
+preview), `OutOfMonthDayColor`, `WeekdayHeaderColor`, and `DisabledDayColor` —
+plus the `ContentInset` `Thickness` and a complete appearance profile. Each
+color accepts either a concrete `Color` or a `ThemeColor` role and defaults to
+`SelectedText`, `ActiveText`, `Muted`, `Muted`, and `DisabledText` respectively;
+`ContentInset` defaults to one horizontal cell, matching the prior fixed
+padding. `CalendarStyleSet` exists for partial composition in Theme files; it is
+not a control property. Assigning `Style` replaces the entire Theme-owned
+day-grid foreground and inset presentation, and assigning `null` restores it;
+restyling `ContentInset` remeasures the control.
+
+The selected, hovered/preview, and disabled day-cell backgrounds, and the header
+arrow foreground, still resolve directly against the active Theme's
+`SelectedControl`, `ActiveControl`, `DisabledControl`, and `Accent` roles rather
+than through `CalendarStyle` — they remain themeable through a custom `Theme`,
+just not overridable per instance in this pass. The focused active date still
+renders with an underline.
 
 ## Keyboard and pointer input
 

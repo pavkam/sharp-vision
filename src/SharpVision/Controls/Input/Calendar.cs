@@ -9,44 +9,110 @@ using SharpVision.Terminal.Input;
 [PublicAPI]
 public sealed class Calendar: Control
 {
-    /// <inheritdoc/>
-    protected override ThemeRole ThemeRole => ThemeRole.Input;
+    /// <summary>
+    /// The day-grid background halves for the hovered/preview, selected, and disabled states
+    /// (<see cref="ThemeColor.ActiveControl"/>, <see cref="ThemeColor.SelectedControl"/>,
+    /// <see cref="ThemeColor.DisabledControl"/>) and the header's <see cref="ThemeColor.Accent"/>
+    /// arrows still resolve directly against the Theme rather than through
+    /// <see cref="CalendarStyle"/> (see #244) — only the five day-grid foregrounds and the content
+    /// inset are exposed on the style surface in this pass. The style contract's structural
+    /// comparison still compares all of them so a theme swap confined to any one role continues to
+    /// repaint, exactly as the pre-#244 manual diff block did (see #161).
+    /// </summary>
+    private static readonly StyleContract<CalendarStyle> _styleContract = new(
+        ThemeRole.Input,
+        static profile => new CalendarStyle(
+            CalendarStyle.Default.SelectedDayColor,
+            CalendarStyle.Default.TodayMarkerColor,
+            CalendarStyle.Default.OutOfMonthDayColor,
+            CalendarStyle.Default.WeekdayHeaderColor,
+            CalendarStyle.Default.DisabledDayColor,
+            CalendarStyle.Default.ContentInset,
+            profile),
+        static (previous, previousTheme, current, currentTheme) =>
+            previous.ContentInset != current.ContentInset
+                ? InvalidationImpact.Measure
+                : previous != current ||
+                  ResolveColor(previous.SelectedDayColor, previousTheme) != ResolveColor(current.SelectedDayColor, currentTheme) ||
+                  ResolveColor(previous.TodayMarkerColor, previousTheme) != ResolveColor(current.TodayMarkerColor, currentTheme) ||
+                  ResolveColor(previous.OutOfMonthDayColor, previousTheme) != ResolveColor(current.OutOfMonthDayColor, currentTheme) ||
+                  ResolveColor(previous.WeekdayHeaderColor, previousTheme) != ResolveColor(current.WeekdayHeaderColor, currentTheme) ||
+                  ResolveColor(previous.DisabledDayColor, previousTheme) != ResolveColor(current.DisabledDayColor, currentTheme) ||
+                  ResolveDirectColor(previousTheme, ThemeColor.Accent) != ResolveDirectColor(currentTheme, ThemeColor.Accent) ||
+                  ResolveDirectColor(previousTheme, ThemeColor.ActiveControl) != ResolveDirectColor(currentTheme, ThemeColor.ActiveControl) ||
+                  ResolveDirectColor(previousTheme, ThemeColor.SelectedControl) != ResolveDirectColor(currentTheme, ThemeColor.SelectedControl) ||
+                  ResolveDirectColor(previousTheme, ThemeColor.DisabledControl) != ResolveDirectColor(currentTheme, ThemeColor.DisabledControl)
+                    ? InvalidationImpact.Render
+                    : InvalidationImpact.None,
+        static style => style.Appearance);
+    private CalendarStyle? _actualStyleCache;
+    private CalendarStyle? _actualStyleCacheKey;
+    private Theme? _actualStyleCacheTheme;
+
+    /// <summary>Gets or sets the complete local presentation, or null to use the semantic input profile.</summary>
+    /// <exception cref="InvalidOperationException">The attached Calendar is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The Calendar is disposed.</exception>
+    public CalendarStyle? Style
+    {
+        get;
+        set
+        {
+            if (SetControlStyle(
+                ref field,
+                value,
+                _styleContract.Resolve,
+                _styleContract.CompareStructure,
+                _styleContract.Appearance,
+                nameof(Style),
+                nameof(ActualStyle)))
+            {
+                Padding = ActualStyle.ContentInset;
+            }
+        }
+    }
+
+    /// <summary>Gets the complete local presentation or the library day-grid mechanics completed with the semantic input profile.</summary>
+    public CalendarStyle ActualStyle =>
+        ResolveContractStyle(
+            _styleContract,
+            ref _actualStyleCache,
+            ref _actualStyleCacheKey,
+            ref _actualStyleCacheTheme,
+            Style,
+            Theme);
 
     /// <inheritdoc/>
-    /// <remarks>
-    /// The day-grid states resolve <see cref="ThemeColor.Accent"/>, <see cref="ThemeColor.ActiveText"/>,
-    /// <see cref="ThemeColor.ActiveControl"/>, <see cref="ThemeColor.SelectedText"/>,
-    /// <see cref="ThemeColor.SelectedControl"/>, <see cref="ThemeColor.DisabledText"/>, and
-    /// <see cref="ThemeColor.DisabledControl"/> directly at render time rather than through a style
-    /// contract (see #161), so the base role-profile comparison alone cannot detect a theme swap
-    /// confined to these roles.
-    /// </remarks>
+    protected override ThemeRole ThemeRole => _styleContract.Role;
+
+    /// <inheritdoc/>
+    protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
+
+    /// <inheritdoc/>
+    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
+        GetContractAppearanceProfile(_styleContract, Style, theme);
+
+    /// <inheritdoc/>
     protected override InvalidationImpact GetThemeChangeImpact(
         Theme? previous,
         Theme? current,
         Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace)
-    {
-        var baseImpact = base.GetThemeChangeImpact(
+        Face? currentParentAmbientFace) =>
+        GetContractThemeChangeImpact(
+            _styleContract,
+            Style,
             previous,
             current,
             previousParentAmbientFace,
             currentParentAmbientFace);
-        var colorImpact = ResolveDirectColor(previous, ThemeColor.Accent) != ResolveDirectColor(current, ThemeColor.Accent) ||
-            ResolveDirectColor(previous, ThemeColor.ActiveText) != ResolveDirectColor(current, ThemeColor.ActiveText) ||
-            ResolveDirectColor(previous, ThemeColor.ActiveControl) != ResolveDirectColor(current, ThemeColor.ActiveControl) ||
-            ResolveDirectColor(previous, ThemeColor.SelectedText) != ResolveDirectColor(current, ThemeColor.SelectedText) ||
-            ResolveDirectColor(previous, ThemeColor.SelectedControl) != ResolveDirectColor(current, ThemeColor.SelectedControl) ||
-            ResolveDirectColor(previous, ThemeColor.DisabledText) != ResolveDirectColor(current, ThemeColor.DisabledText) ||
-            ResolveDirectColor(previous, ThemeColor.DisabledControl) != ResolveDirectColor(current, ThemeColor.DisabledControl)
-                ? InvalidationImpact.Render
-                : InvalidationImpact.None;
 
-        return MaximumImpact(baseImpact, colorImpact);
-    }
+    /// <inheritdoc/>
+    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
+        GetContractResolvedStylePropertyName(_styleContract, Style, previous, current, nameof(ActualStyle));
 
     private static Color ResolveDirectColor(Theme? theme, ThemeColor color) =>
         theme?.ResolveColor(color) ?? Color.Default;
+
+    private Color ResolveColor(ColorValue value) => ResolveColor(value, Theme);
     private const TerminalAttributes _blinkAttributes =
         TerminalAttributes.Blink | TerminalAttributes.RapidBlink;
     private const int _cellWidth = 4;
@@ -85,7 +151,7 @@ public sealed class Calendar: Control
         Focusable = true;
         TabStop = true;
         TabNavigation = TabNavigation.None;
-        Padding = new Thickness(horizontal: 1, vertical: 0);
+        Padding = ActualStyle.ContentInset;
     }
 
     /// <summary>Gets the normalized collection of dates unavailable for selection.</summary>
@@ -718,7 +784,7 @@ public sealed class Calendar: Control
         }
 
         var first = (int) FirstDayOfWeek;
-        var style = ResolvedStyle.WithForeground(Theme?.Muted ?? Color.Default);
+        var style = ResolvedStyle.WithForeground(ResolveColor(ActualStyle.WeekdayHeaderColor));
         Span<SharpVision.Text.Line> lines = stackalloc SharpVision.Text.Line[1];
 
         for (var column = 0; column < _columnCount; column++)
@@ -822,17 +888,18 @@ public sealed class Calendar: Control
     {
         var style = markup is { } span ? ResolveMarkupStyle(span) : ResolvedStyle;
         var adjacent = date.Year != DisplayMonth.Year || date.Month != DisplayMonth.Month;
+        var actualStyle = ActualStyle;
 
         if (adjacent)
         {
-            style = style.WithForeground(Theme?.Muted ?? Color.Default);
+            style = style.WithForeground(ResolveColor(actualStyle.OutOfMonthDayColor));
         }
 
         if (_hoveredDate == date)
         {
             style = WithColors(
                 style,
-                Theme?.ResolveColor(ThemeColor.ActiveText) ?? Color.Default,
+                ResolveColor(actualStyle.TodayMarkerColor),
                 Theme?.ResolveColor(ThemeColor.ActiveControl) ?? Color.Default);
         }
 
@@ -847,7 +914,7 @@ public sealed class Calendar: Control
             {
                 style = WithColors(
                     style,
-                    Theme?.ResolveColor(ThemeColor.ActiveText) ?? Color.Default,
+                    ResolveColor(actualStyle.TodayMarkerColor),
                     Theme?.ResolveColor(ThemeColor.ActiveControl) ?? Color.Default);
             }
         }
@@ -856,7 +923,7 @@ public sealed class Calendar: Control
         {
             style = WithColors(
                 style,
-                Theme?.ResolveColor(ThemeColor.SelectedText) ?? Color.Default,
+                ResolveColor(actualStyle.SelectedDayColor),
                 Theme?.ResolveColor(ThemeColor.SelectedControl) ?? Color.Default);
         }
 
@@ -864,7 +931,7 @@ public sealed class Calendar: Control
         {
             style = WithColors(
                 style,
-                Theme?.ResolveColor(ThemeColor.DisabledText) ?? Color.Default,
+                ResolveColor(actualStyle.DisabledDayColor),
                 Theme?.ResolveColor(ThemeColor.DisabledControl) ?? Color.Default);
         }
 

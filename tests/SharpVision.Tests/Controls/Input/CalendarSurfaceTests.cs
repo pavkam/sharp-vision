@@ -284,6 +284,41 @@ public sealed class CalendarSurfaceTests
             Project(ThemeColorHelper.DisabledForeground(Themes.Dark)));
     }
 
+    /// <summary>Verifies a local CalendarStyle's selected-day and out-of-month-day colors reach the
+    /// rendered cells, proving the day-grid render path reads ActualStyle instead of a hardcoded
+    /// theme role (see #244).</summary>
+    [Fact]
+    public async Task Surface_WhenStyleReplacesSelectedAndOutOfMonthColors_RendersStyledCellsAsync()
+    {
+        // Arrange
+        var selected = new DateOnly(2026, 7, 19);
+        var style = new CalendarStyle(
+            Color.Rgb(200, 30, 30),
+            CalendarStyle.Default.TodayMarkerColor,
+            Color.Rgb(30, 30, 200),
+            CalendarStyle.Default.WeekdayHeaderColor,
+            CalendarStyle.Default.DisabledDayColor,
+            CalendarStyle.Default.ContentInset,
+            CalendarStyle.Default.Appearance);
+        var calendar = new UiCalendar
+        {
+            Culture = CultureInfo.InvariantCulture,
+            DisplayMonth = new DateOnly(2026, 7, 1),
+            Style = style,
+            Selection = new DateInterval(selected, selected)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            calendar,
+            new Size(32, 10),
+            TestContext.Current.CancellationToken);
+
+        // Assert selected-day foreground (19 July falls in week 3, Sunday column)
+        surface.Cell(new Point(2, 6)).Style.Foreground.ShouldBe(Project(Color.Rgb(200, 30, 30)));
+
+        // Assert out-of-month-day foreground (28 July preceding the displayed month, first grid cell)
+        surface.Cell(new Point(2, 3)).Style.Foreground.ShouldBe(Project(Color.Rgb(30, 30, 200)));
+    }
+
     private static Color Project(Color color) =>
         Palette.Project(color, ColorDepth.Basic16);
 }

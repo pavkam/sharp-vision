@@ -1007,6 +1007,8 @@ namespace SharpVision.Controls.Input
     {
         public Calendar() { }
         public System.DateOnly ActiveDate { get; }
+        public SharpVision.Controls.Input.CalendarStyle ActualStyle { get; }
+        protected override SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
         public SharpVision.Controls.Input.CalendarBlockedDateCollection BlockedDates { get; }
         public System.Globalization.CultureInfo Culture { get; set; }
         public System.DateOnly DisplayMonth { get; set; }
@@ -1015,11 +1017,14 @@ namespace SharpVision.Controls.Input
         public System.DateOnly MinimumDate { get; set; }
         public SharpVision.Controls.Input.DateInterval? Selection { get; set; }
         public SharpVision.Controls.Input.CalendarSelectionMode SelectionMode { get; set; }
+        public SharpVision.Controls.Input.CalendarStyle? Style { get; set; }
         protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public event System.EventHandler<SharpVision.Controls.Input.CalendarSelectionChangedEventArgs>? SelectionChanged;
         public void ClearMarkup() { }
         public bool ClearSelection() { }
+        protected override SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
+        protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
         public bool GoToToday() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
@@ -1051,6 +1056,35 @@ namespace SharpVision.Controls.Input
     {
         Select = 0,
         Interval = 1,
+    }
+    public readonly struct CalendarStyle : System.IEquatable<SharpVision.Controls.Input.CalendarStyle>
+    {
+        public CalendarStyle(SharpVision.Styling.ColorValue selectedDayColor, SharpVision.Styling.ColorValue todayMarkerColor, SharpVision.Styling.ColorValue outOfMonthDayColor, SharpVision.Styling.ColorValue weekdayHeaderColor, SharpVision.Styling.ColorValue disabledDayColor, SharpVision.Layout.Thickness contentInset, SharpVision.Styling.ThemeProfile appearance) { }
+        public SharpVision.Styling.ThemeProfile Appearance { get; }
+        public SharpVision.Layout.Thickness ContentInset { get; }
+        public SharpVision.Styling.ColorValue DisabledDayColor { get; }
+        public SharpVision.Styling.ColorValue OutOfMonthDayColor { get; }
+        public SharpVision.Styling.ColorValue SelectedDayColor { get; }
+        public SharpVision.Styling.ColorValue TodayMarkerColor { get; }
+        public SharpVision.Styling.ColorValue WeekdayHeaderColor { get; }
+        public static SharpVision.Controls.Input.CalendarStyle Default { get; }
+        public bool Equals(SharpVision.Controls.Input.CalendarStyle other) { }
+        public override bool Equals(object? obj) { }
+        public override int GetHashCode() { }
+        public static bool operator !=(SharpVision.Controls.Input.CalendarStyle left, SharpVision.Controls.Input.CalendarStyle right) { }
+        public static bool operator ==(SharpVision.Controls.Input.CalendarStyle left, SharpVision.Controls.Input.CalendarStyle right) { }
+    }
+    public readonly struct CalendarStyleSet : System.IEquatable<SharpVision.Controls.Input.CalendarStyleSet>
+    {
+        public CalendarStyleSet(SharpVision.Styling.ColorValue? selectedDayColor = default, SharpVision.Styling.ColorValue? todayMarkerColor = default, SharpVision.Styling.ColorValue? outOfMonthDayColor = default, SharpVision.Styling.ColorValue? weekdayHeaderColor = default, SharpVision.Styling.ColorValue? disabledDayColor = default, SharpVision.Layout.Thickness? contentInset = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
+        public SharpVision.Styling.AppearanceProfileSet? Appearance { get; }
+        public SharpVision.Layout.Thickness? ContentInset { get; }
+        public SharpVision.Styling.ColorValue? DisabledDayColor { get; }
+        public SharpVision.Styling.ColorValue? OutOfMonthDayColor { get; }
+        public SharpVision.Styling.ColorValue? SelectedDayColor { get; }
+        public SharpVision.Styling.ColorValue? TodayMarkerColor { get; }
+        public SharpVision.Styling.ColorValue? WeekdayHeaderColor { get; }
+        public SharpVision.Controls.Input.CalendarStyle Apply(SharpVision.Controls.Input.CalendarStyle baseline) { }
     }
     public sealed class CheckBox : SharpVision.Controls.Pressable
     {
