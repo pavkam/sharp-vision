@@ -44,7 +44,7 @@ defines the one-way dependency graph and ownership boundaries.
 
 ## Package status
 
-SharpVision `0.5.0-alpha.1` is a prerelease and may change before the stable
+SharpVision `0.7.0-alpha.1` is a prerelease and may change before the stable
 API.
 
 > [!IMPORTANT]
