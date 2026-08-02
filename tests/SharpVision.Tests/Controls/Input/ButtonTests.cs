@@ -6,6 +6,19 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Verifies Button ownership, command ordering, activation, layout, and cells.</summary>
 public sealed class ButtonTests
 {
+    /// <summary>Verifies the reported ThemeRole matches the Input-derived profile ActualStyle
+    /// actually resolves against. Button's own ThemeRole override was previously dead code
+    /// (every base member that consumes it was independently overridden), reachable only through
+    /// this seam even before the refactor; now the contract makes the override the sole source
+    /// of truth (see #157).</summary>
+    [Fact]
+    public void ThemeRole_WhenResolved_MatchesTheInputProfileActualStyleUses()
+    {
+        var button = new Button();
+
+        button.ResolvedThemeRole.ShouldBe(ThemeRole.Input);
+    }
+
     /// <summary>Verifies documented defaults and capacity-one content ownership.</summary>
     [ComponentUnitEvidence(typeof(Button))]
     [Fact]

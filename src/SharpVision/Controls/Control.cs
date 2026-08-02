@@ -2373,7 +2373,10 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <param name="field">The nullable local style storage.</param>
     /// <param name="value">The proposed nullable local style.</param>
     /// <param name="resolve">Resolves the complete style from explicit local and inherited values.</param>
-    /// <param name="compareStyle">Compares non-appearance structural and visual members of two styles.</param>
+    /// <param name="compareStyle">
+    /// Compares non-appearance structural and directly-resolved visual members of two styles,
+    /// each under its own resolving Theme.
+    /// </param>
     /// <param name="appearance">Selects the complete appearance profile owned by a style.</param>
     /// <param name="propertyName">The public nullable local style property name.</param>
     /// <param name="actualPropertyName">The public complete resolved style property name.</param>
@@ -2387,7 +2390,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         ref TStyle? field,
         TStyle? value,
         Func<TStyle?, Theme?, TStyle> resolve,
-        Func<TStyle, TStyle, InvalidationImpact> compareStyle,
+        Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> compareStyle,
         Func<TStyle, ThemeProfile> appearance,
         string propertyName,
         string actualPropertyName)
@@ -2411,7 +2414,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         var currentStyle = resolve(value, Theme);
         var previousProfile = appearance(previousStyle);
         var currentProfile = appearance(currentStyle);
-        var styleImpact = compareStyle(previousStyle, currentStyle);
+        var styleImpact = compareStyle(previousStyle, Theme, currentStyle, Theme);
         ValidateImpact(styleImpact);
         var appearanceImpact = AppearanceResolver.GetImpact(
             this,
@@ -2458,7 +2461,10 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <param name="currentTheme">The prospective inherited Theme, or null.</param>
     /// <param name="localStyle">The explicit local style, or null for Theme ownership.</param>
     /// <param name="resolve">Resolves the complete style from explicit local and inherited values.</param>
-    /// <param name="compareStyle">Compares non-appearance structural and visual members of two styles.</param>
+    /// <param name="compareStyle">
+    /// Compares non-appearance structural and directly-resolved visual members of two styles,
+    /// each under its own resolving Theme.
+    /// </param>
     /// <param name="appearance">Selects the complete appearance profile owned by a style.</param>
     /// <param name="previousParentAmbientFace">The explicit parent ambient face before Theme replacement.</param>
     /// <param name="currentParentAmbientFace">The explicit parent ambient face after Theme replacement.</param>
@@ -2470,7 +2476,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         Theme? previousTheme,
         Theme? currentTheme,
         Func<TStyle?, Theme?, TStyle> resolve,
-        Func<TStyle, TStyle, InvalidationImpact> compareStyle,
+        Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> compareStyle,
         Func<TStyle, ThemeProfile> appearance,
         Face? previousParentAmbientFace,
         Face? currentParentAmbientFace)
@@ -2481,7 +2487,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         ArgumentNullException.ThrowIfNull(appearance);
         var previousStyle = resolve(localStyle, previousTheme);
         var currentStyle = resolve(localStyle, currentTheme);
-        var styleImpact = compareStyle(previousStyle, currentStyle);
+        var styleImpact = compareStyle(previousStyle, previousTheme, currentStyle, currentTheme);
         ValidateImpact(styleImpact);
         var appearanceImpact = AppearanceResolver.GetImpact(
             this,
@@ -2492,6 +2498,114 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             previousParentAmbientFace,
             currentParentAmbientFace);
         return MaximumImpact(styleImpact, appearanceImpact);
+    }
+
+    /// <summary>Resolves a styled control's memoized complete style against its own descriptor.</summary>
+    /// <typeparam name="TStyle">The complete immutable style value.</typeparam>
+    /// <param name="contract">The non-null style-resolution contract.</param>
+    /// <param name="cache">The cached resolved style, or null when unset.</param>
+    /// <param name="cacheKey">The local style the cache was resolved from.</param>
+    /// <param name="cacheTheme">The Theme the cache was resolved from.</param>
+    /// <param name="local">The current explicit local style, or null for Theme ownership.</param>
+    /// <param name="theme">The current inherited Theme, or null for the library fallback.</param>
+    /// <returns>The complete resolved style.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="contract"/> is null.</exception>
+    internal static TStyle ResolveContractStyle<TStyle>(
+        StyleContract<TStyle> contract,
+        ref TStyle? cache,
+        ref TStyle? cacheKey,
+        ref Theme? cacheTheme,
+        TStyle? local,
+        Theme? theme)
+        where TStyle : struct, IEquatable<TStyle>
+    {
+        ArgumentNullException.ThrowIfNull(contract);
+
+        if (cache is { } cached && cacheKey.Equals(local) && ReferenceEquals(cacheTheme, theme))
+        {
+            return cached;
+        }
+
+        var resolved = contract.Resolve(local, theme);
+        cache = resolved;
+        cacheKey = local;
+        cacheTheme = theme;
+        return resolved;
+    }
+
+    /// <summary>Resolves a styled control's complete appearance profile for one explicit prospective Theme.</summary>
+    /// <typeparam name="TStyle">The complete immutable style value.</typeparam>
+    /// <param name="contract">The non-null style-resolution contract.</param>
+    /// <param name="local">The current explicit local style, or null for Theme ownership.</param>
+    /// <param name="theme">The inherited Theme to resolve, or null for the library fallback.</param>
+    /// <returns>The non-null complete appearance profile.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="contract"/> is null.</exception>
+    internal ThemeProfile GetContractAppearanceProfile<TStyle>(
+        StyleContract<TStyle> contract,
+        TStyle? local,
+        Theme? theme)
+        where TStyle : struct, IEquatable<TStyle>
+    {
+        ArgumentNullException.ThrowIfNull(contract);
+        return ReferenceEquals(theme, Theme)
+            ? contract.Appearance(contract.Resolve(local, Theme))
+            : contract.Appearance(contract.Resolve(local, theme));
+    }
+
+    /// <summary>Calculates one styled control's exact invalidation impact for a prospective Theme replacement.</summary>
+    /// <typeparam name="TStyle">The complete immutable style value.</typeparam>
+    /// <param name="contract">The non-null style-resolution contract.</param>
+    /// <param name="local">The current explicit local style, or null for Theme ownership.</param>
+    /// <param name="previous">The currently inherited Theme, or null.</param>
+    /// <param name="current">The prospective inherited Theme, or null.</param>
+    /// <param name="previousParentAmbientFace">The explicit parent ambient face before Theme replacement.</param>
+    /// <param name="currentParentAmbientFace">The explicit parent ambient face after Theme replacement.</param>
+    /// <returns>The strongest affected UI phase.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="contract"/> is null.</exception>
+    internal InvalidationImpact GetContractThemeChangeImpact<TStyle>(
+        StyleContract<TStyle> contract,
+        TStyle? local,
+        Theme? previous,
+        Theme? current,
+        Face? previousParentAmbientFace,
+        Face? currentParentAmbientFace)
+        where TStyle : struct, IEquatable<TStyle>
+    {
+        ArgumentNullException.ThrowIfNull(contract);
+        return GetControlStyleThemeImpact(
+            local,
+            previous,
+            current,
+            contract.Resolve,
+            contract.CompareStructure,
+            contract.Appearance,
+            previousParentAmbientFace,
+            currentParentAmbientFace);
+    }
+
+    /// <summary>Selects the resolved-style property name affected by a prospective Theme-owned change.</summary>
+    /// <typeparam name="TStyle">The complete immutable style value.</typeparam>
+    /// <param name="contract">The non-null style-resolution contract.</param>
+    /// <param name="local">The current explicit local style, or null for Theme ownership.</param>
+    /// <param name="previous">The currently inherited Theme, or null.</param>
+    /// <param name="current">The prospective inherited Theme, or null.</param>
+    /// <param name="actualPropertyName">The public complete resolved style property name.</param>
+    /// <returns>The resolved-style property name, or null when the local style owns presentation.</returns>
+    /// <exception cref="ArgumentNullException">A required argument is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="actualPropertyName"/> is empty.</exception>
+    internal static string? GetContractResolvedStylePropertyName<TStyle>(
+        StyleContract<TStyle> contract,
+        TStyle? local,
+        Theme? previous,
+        Theme? current,
+        string actualPropertyName)
+        where TStyle : struct, IEquatable<TStyle>
+    {
+        ArgumentNullException.ThrowIfNull(contract);
+        ArgumentException.ThrowIfNullOrEmpty(actualPropertyName);
+        return local is null && !contract.Resolve(local, previous).Equals(contract.Resolve(local, current))
+            ? actualPropertyName
+            : null;
     }
 
     /// <summary>Commits one derived semantic state and invalidates the active visual-state cascade.</summary>
@@ -3306,6 +3420,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     internal IReadOnlyDictionary<VisualState, AppearanceSet> AppearanceSets => _appearanceSets;
 
     internal ThemeProfile ResolvedAppearanceProfile => AppearanceProfile;
+
+    internal ThemeRole ResolvedThemeRole => ThemeRole;
 
     /// <summary>Resolves one prospective profile through the derived control hook.</summary>
     /// <param name="theme">The explicit prospective inherited Theme, or null.</param>

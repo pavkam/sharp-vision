@@ -9,14 +9,18 @@ using System.Collections.Immutable;
 [PublicAPI]
 public sealed class Spinner: Control
 {
-    private static readonly Func<SpinnerStyle?, Theme?, SpinnerStyle> _styleResolver = ResolveStyle;
-    private static readonly Func<SpinnerStyle, SpinnerStyle, InvalidationImpact> _styleComparer =
-        static (previous, current) => previous == current ? InvalidationImpact.None : InvalidationImpact.Render;
-    private static readonly Func<SpinnerStyle, ThemeProfile> _appearanceSelector = static style => style.Appearance;
+    private static readonly StyleContract<SpinnerStyle> _styleContract = new(
+        ThemeRole.Control,
+        static profile => new SpinnerStyle(SpinnerStyle.Default.Frames, profile),
+        static (previous, _, current, _) => previous == current ? InvalidationImpact.None : InvalidationImpact.Render,
+        static style => style.Appearance);
     private int _frameIndex;
     private ImmutableArray<Rune> _phaseFrames;
     private bool _hasPhaseFrames;
     private readonly AnimationTimer _animation;
+    private SpinnerStyle? _actualStyleCache;
+    private SpinnerStyle? _actualStyleCacheKey;
+    private Theme? _actualStyleCacheTheme;
 
     /// <summary>Initializes a playing one-cell Braille spinner.</summary>
     public Spinner()
@@ -40,9 +44,9 @@ public sealed class Spinner: Control
             if (!SetControlStyle(
                     ref field,
                     value,
-                    _styleResolver,
-                    _styleComparer,
-                    _appearanceSelector,
+                    _styleContract.Resolve,
+                    _styleContract.CompareStructure,
+                    _styleContract.Appearance,
                     nameof(Style),
                     nameof(ActualStyle)))
             {
@@ -54,13 +58,24 @@ public sealed class Spinner: Control
     }
 
     /// <summary>Gets the complete local presentation or library frames completed with the semantic control profile.</summary>
-    public SpinnerStyle ActualStyle => ResolveStyle(Style, Theme);
+    public SpinnerStyle ActualStyle =>
+        ResolveContractStyle(
+            _styleContract,
+            ref _actualStyleCache,
+            ref _actualStyleCacheKey,
+            ref _actualStyleCacheTheme,
+            Style,
+            Theme);
+
+    /// <inheritdoc/>
+    protected override ThemeRole ThemeRole => _styleContract.Role;
 
     /// <inheritdoc/>
     protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
 
     /// <inheritdoc/>
-    protected override ThemeProfile GetAppearanceProfile(Theme? theme) => ResolveStyle(Style, theme).Appearance;
+    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
+        GetContractAppearanceProfile(_styleContract, Style, theme);
 
     /// <inheritdoc/>
     protected override InvalidationImpact GetThemeChangeImpact(
@@ -68,21 +83,17 @@ public sealed class Spinner: Control
         Theme? current,
         Face? previousParentAmbientFace,
         Face? currentParentAmbientFace) =>
-        GetControlStyleThemeImpact(
+        GetContractThemeChangeImpact(
+            _styleContract,
             Style,
             previous,
             current,
-            _styleResolver,
-            _styleComparer,
-            _appearanceSelector,
             previousParentAmbientFace,
             currentParentAmbientFace);
 
     /// <inheritdoc/>
     protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        Style is null && ResolveStyle(Style, previous) != ResolveStyle(Style, current)
-            ? nameof(ActualStyle)
-            : null;
+        GetContractResolvedStylePropertyName(_styleContract, Style, previous, current, nameof(ActualStyle));
 
     /// <summary>Gets or sets the duration between frame advances.</summary>
     /// <remarks>The default is 200 milliseconds. Changing a running spinner restarts one complete interval.</remarks>
@@ -209,9 +220,6 @@ public sealed class Spinner: Control
         _frameIndex = (_frameIndex + 1) % frames.Length;
         Invalidate(InvalidationImpact.Render);
     }
-
-    private static SpinnerStyle ResolveStyle(SpinnerStyle? localStyle, Theme? theme) =>
-        localStyle ?? new SpinnerStyle(SpinnerStyle.Default.Frames, (theme ?? Themes.Dark).Control);
 
     #endregion
 }

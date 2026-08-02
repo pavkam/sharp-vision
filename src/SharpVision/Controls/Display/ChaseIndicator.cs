@@ -11,10 +11,17 @@ public sealed class ChaseIndicator: Control
 {
     private static readonly TimeSpan _maximumFadeRefresh = TimeSpan.FromMilliseconds(50);
     private static readonly long _minimumTimerTicks = TimeSpan.TicksPerMillisecond;
-    private static readonly Func<ChaseIndicatorStyle?, Theme?, ChaseIndicatorStyle> _styleResolver = ResolveStyle;
-    private static readonly Func<ChaseIndicatorStyle, ChaseIndicatorStyle, InvalidationImpact> _styleComparer =
-        static (previous, current) => previous == current ? InvalidationImpact.None : InvalidationImpact.Render;
-    private static readonly Func<ChaseIndicatorStyle, ThemeProfile> _appearanceSelector = static style => style.Appearance;
+    private static readonly StyleContract<ChaseIndicatorStyle> _styleContract = new(
+        ThemeRole.Control,
+        static profile => new ChaseIndicatorStyle(
+            ChaseIndicatorStyle.Default.Active,
+            ChaseIndicatorStyle.Default.Inactive,
+            profile),
+        static (previous, _, current, _) => previous == current ? InvalidationImpact.None : InvalidationImpact.Render,
+        static style => style.Appearance);
+    private ChaseIndicatorStyle? _actualStyleCache;
+    private ChaseIndicatorStyle? _actualStyleCacheKey;
+    private Theme? _actualStyleCacheTheme;
 
     private int[] _trailFirstPositions = [];
     private int[] _trailSecondPositions = [];
@@ -84,9 +91,9 @@ public sealed class ChaseIndicator: Control
             if (!SetControlStyle(
                     ref field,
                     value,
-                    _styleResolver,
-                    _styleComparer,
-                    _appearanceSelector,
+                    _styleContract.Resolve,
+                    _styleContract.CompareStructure,
+                    _styleContract.Appearance,
                     nameof(Style),
                     nameof(ActualStyle)))
             {
@@ -98,28 +105,43 @@ public sealed class ChaseIndicator: Control
     }
 
     /// <summary>Gets the complete local presentation or library glyph mechanics completed with the semantic control profile.</summary>
-    public ChaseIndicatorStyle ActualStyle => ResolveStyle(Style, Theme);
+    public ChaseIndicatorStyle ActualStyle =>
+        ResolveContractStyle(
+            _styleContract,
+            ref _actualStyleCache,
+            ref _actualStyleCacheKey,
+            ref _actualStyleCacheTheme,
+            Style,
+            Theme);
+
+    /// <inheritdoc/>
+    protected override ThemeRole ThemeRole => _styleContract.Role;
 
     /// <inheritdoc/>
     protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
 
     /// <inheritdoc/>
-    protected override ThemeProfile GetAppearanceProfile(Theme? theme) => ResolveStyle(Style, theme).Appearance;
+    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
+        GetContractAppearanceProfile(_styleContract, Style, theme);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// HeadColor/TrailColor/TrackColor are per-instance nullable overrides layered on top of the
+    /// theme-resolved default, not members of <see cref="ChaseIndicatorStyle"/> itself, so their
+    /// impact can't live in the shared <see cref="StyleContract{TStyle}.CompareStructure"/>
+    /// delegate the way Slider/ScrollBar/ProgressBar's style-owned colors do.
+    /// </remarks>
     protected override InvalidationImpact GetThemeChangeImpact(
         Theme? previous,
         Theme? current,
         Face? previousParentAmbientFace,
         Face? currentParentAmbientFace)
     {
-        var styleImpact = GetControlStyleThemeImpact(
+        var styleImpact = GetContractThemeChangeImpact(
+            _styleContract,
             Style,
             previous,
             current,
-            _styleResolver,
-            _styleComparer,
-            _appearanceSelector,
             previousParentAmbientFace,
             currentParentAmbientFace);
         var colorImpact = ResolveHeadColor(previous) != ResolveHeadColor(current) ||
@@ -133,9 +155,7 @@ public sealed class ChaseIndicator: Control
 
     /// <inheritdoc/>
     protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        Style is null && ResolveStyle(Style, previous) != ResolveStyle(Style, current)
-            ? nameof(ActualStyle)
-            : null;
+        GetContractResolvedStylePropertyName(_styleContract, Style, previous, current, nameof(ActualStyle));
 
     /// <summary>Gets or sets the number of glyph positions in the track.</summary>
     /// <remarks>Changing the length resets playback to the first position.</remarks>
@@ -422,12 +442,6 @@ public sealed class ChaseIndicator: Control
                 inherited.WithForeground(headColor));
         }
     }
-
-    private static ChaseIndicatorStyle ResolveStyle(ChaseIndicatorStyle? localStyle, Theme? theme) =>
-        localStyle ?? new ChaseIndicatorStyle(
-            ChaseIndicatorStyle.Default.Active,
-            ChaseIndicatorStyle.Default.Inactive,
-            (theme ?? Themes.Dark).Control);
 
     private ChaseIndicatorStyle SynchronizeStylePhase()
     {

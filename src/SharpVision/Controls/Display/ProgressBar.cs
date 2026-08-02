@@ -7,10 +7,26 @@ namespace SharpVision.Controls.Display;
 [PublicAPI]
 public sealed class ProgressBar: Control
 {
-    private static readonly Func<ProgressBarStyle?, Theme?, ProgressBarStyle> _styleResolver = ResolveStyle;
-    private static readonly Func<ProgressBarStyle, ProgressBarStyle, InvalidationImpact> _styleComparer = CompareStructure;
-    private static readonly Func<ProgressBarStyle, ThemeProfile> _appearanceSelector = static style => style.Appearance;
+    private static readonly StyleContract<ProgressBarStyle> _styleContract = new(
+        ThemeRole.Control,
+        static profile => new ProgressBarStyle(
+            ProgressBarStyle.Default.FillColor,
+            ProgressBarStyle.Default.TrackColor,
+            ProgressBarStyle.Default.IndeterminateColor,
+            ProgressBarStyle.Default.Glyphs,
+            profile),
+        static (previous, previousTheme, current, currentTheme) =>
+            previous != current ||
+            ResolveColor(previous.FillColor, previousTheme) != ResolveColor(current.FillColor, currentTheme) ||
+            ResolveColor(previous.TrackColor, previousTheme) != ResolveColor(current.TrackColor, currentTheme) ||
+            ResolveColor(previous.IndeterminateColor, previousTheme) != ResolveColor(current.IndeterminateColor, currentTheme)
+                ? InvalidationImpact.Render
+                : InvalidationImpact.None,
+        static style => style.Appearance);
     private double _value;
+    private ProgressBarStyle? _actualStyleCache;
+    private ProgressBarStyle? _actualStyleCacheKey;
+    private Theme? _actualStyleCacheTheme;
 
     /// <summary>Initializes a non-focusable horizontal progress bar at zero progress.</summary>
     public ProgressBar()
@@ -155,57 +171,50 @@ public sealed class ProgressBar: Control
         set => _ = SetControlStyle(
             ref field,
             value,
-            _styleResolver,
-            _styleComparer,
-            _appearanceSelector,
+            _styleContract.Resolve,
+            _styleContract.CompareStructure,
+            _styleContract.Appearance,
             nameof(Style),
             nameof(ActualStyle));
     }
 
     /// <summary>Gets the complete local presentation or the library fill-and-track mechanics completed with the semantic control profile.</summary>
-    public ProgressBarStyle ActualStyle => ResolveStyle(Style, Theme);
+    public ProgressBarStyle ActualStyle =>
+        ResolveContractStyle(
+            _styleContract,
+            ref _actualStyleCache,
+            ref _actualStyleCacheKey,
+            ref _actualStyleCacheTheme,
+            Style,
+            Theme);
+
+    /// <inheritdoc/>
+    protected override ThemeRole ThemeRole => _styleContract.Role;
 
     /// <inheritdoc/>
     protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
 
     /// <inheritdoc/>
-    protected override ThemeProfile GetAppearanceProfile(Theme? theme) => ResolveStyle(Style, theme).Appearance;
+    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
+        GetContractAppearanceProfile(_styleContract, Style, theme);
 
     /// <inheritdoc/>
     protected override InvalidationImpact GetThemeChangeImpact(
         Theme? previous,
         Theme? current,
         Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace)
-    {
-        var styleImpact = GetControlStyleThemeImpact(
+        Face? currentParentAmbientFace) =>
+        GetContractThemeChangeImpact(
+            _styleContract,
             Style,
             previous,
             current,
-            _styleResolver,
-            _styleComparer,
-            _appearanceSelector,
             previousParentAmbientFace,
             currentParentAmbientFace);
-        var previousStyle = ResolveStyle(Style, previous);
-        var currentStyle = ResolveStyle(Style, current);
-        var colorImpact = ResolveColor(previousStyle.FillColor, previous) !=
-                          ResolveColor(currentStyle.FillColor, current) ||
-                          ResolveColor(previousStyle.TrackColor, previous) !=
-                          ResolveColor(currentStyle.TrackColor, current) ||
-                          ResolveColor(previousStyle.IndeterminateColor, previous) !=
-                          ResolveColor(currentStyle.IndeterminateColor, current)
-            ? InvalidationImpact.Render
-            : InvalidationImpact.None;
-
-        return MaximumImpact(styleImpact, colorImpact);
-    }
 
     /// <inheritdoc/>
     protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        Style is null && ResolveStyle(Style, previous) != ResolveStyle(Style, current)
-            ? nameof(ActualStyle)
-            : null;
+        GetContractResolvedStylePropertyName(_styleContract, Style, previous, current, nameof(ActualStyle));
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
@@ -368,17 +377,6 @@ public sealed class ProgressBar: Control
         CellGlyphResolver.Resolve(themed.Value, themed.Fallback, CellPolicy.AmbiguousWidth);
 
     private Color ResolveColor(ColorValue value) => ResolveColor(value, Theme);
-
-    private static ProgressBarStyle ResolveStyle(ProgressBarStyle? localStyle, Theme? theme) =>
-        localStyle ?? new ProgressBarStyle(
-            ProgressBarStyle.Default.FillColor,
-            ProgressBarStyle.Default.TrackColor,
-            ProgressBarStyle.Default.IndeterminateColor,
-            ProgressBarStyle.Default.Glyphs,
-            (theme ?? Themes.Dark).Control);
-
-    private static InvalidationImpact CompareStructure(ProgressBarStyle previous, ProgressBarStyle current) =>
-        previous != current ? InvalidationImpact.Render : InvalidationImpact.None;
 
     // Raised for every committed Value transition regardless of which public
     // setter caused it — Value directly, or Minimum/Maximum clamping it — so

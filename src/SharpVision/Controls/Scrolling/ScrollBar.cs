@@ -9,9 +9,26 @@ using SharpVision.Terminal.Input;
 [PublicAPI]
 public sealed class ScrollBar: Control
 {
-    private static readonly Func<ScrollBarStyle?, Theme?, ScrollBarStyle> _styleResolver = ResolveStyle;
-    private static readonly Func<ScrollBarStyle, ScrollBarStyle, InvalidationImpact> _styleComparer = CompareStructure;
-    private static readonly Func<ScrollBarStyle, ThemeProfile> _appearanceSelector = static style => style.Appearance;
+    private static readonly StyleContract<ScrollBarStyle> _styleContract = new(
+        ThemeRole.Control,
+        static profile => new ScrollBarStyle(
+            ScrollBarStyle.Default.Chrome,
+            ScrollBarStyle.Default.Fill,
+            ScrollBarStyle.Default.Glyphs,
+            ScrollBarStyle.Default.TrackColor,
+            ScrollBarStyle.Default.ThumbColor,
+            ScrollBarStyle.Default.ButtonColor,
+            profile),
+        static (previous, previousTheme, current, currentTheme) =>
+            previous.Chrome != current.Chrome
+                ? InvalidationImpact.Measure
+                : previous != current ||
+                  ResolveColor(previous.TrackColor, previousTheme) != ResolveColor(current.TrackColor, currentTheme) ||
+                  ResolveColor(previous.ThumbColor, previousTheme) != ResolveColor(current.ThumbColor, currentTheme) ||
+                  ResolveColor(previous.ButtonColor, previousTheme) != ResolveColor(current.ButtonColor, currentTheme)
+                    ? InvalidationImpact.Render
+                    : InvalidationImpact.None,
+        static style => style.Appearance);
     private int _value;
     private readonly DragBehavior _drag;
     private int _dragPointerStart;
@@ -19,6 +36,9 @@ public sealed class ScrollBar: Control
     private int _dragThumbStart;
     private int _dragTrackLength;
     private ScrollRange _dragRange;
+    private ScrollBarStyle? _actualStyleCache;
+    private ScrollBarStyle? _actualStyleCacheKey;
+    private Theme? _actualStyleCacheTheme;
 
     /// <summary>Initializes a vertical focusable range from zero through one hundred.</summary>
     public ScrollBar()
@@ -176,57 +196,50 @@ public sealed class ScrollBar: Control
         set => _ = SetControlStyle(
             ref field,
             value,
-            _styleResolver,
-            _styleComparer,
-            _appearanceSelector,
+            _styleContract.Resolve,
+            _styleContract.CompareStructure,
+            _styleContract.Appearance,
             nameof(Style),
             nameof(ActualStyle));
     }
 
     /// <summary>Gets the complete local presentation or library scrollbar mechanics completed with the semantic control profile.</summary>
-    public ScrollBarStyle ActualStyle => ResolveStyle(Style, Theme);
+    public ScrollBarStyle ActualStyle =>
+        ResolveContractStyle(
+            _styleContract,
+            ref _actualStyleCache,
+            ref _actualStyleCacheKey,
+            ref _actualStyleCacheTheme,
+            Style,
+            Theme);
+
+    /// <inheritdoc/>
+    protected override ThemeRole ThemeRole => _styleContract.Role;
 
     /// <inheritdoc/>
     protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
 
     /// <inheritdoc/>
-    protected override ThemeProfile GetAppearanceProfile(Theme? theme) => ResolveStyle(Style, theme).Appearance;
+    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
+        GetContractAppearanceProfile(_styleContract, Style, theme);
 
     /// <inheritdoc/>
     protected override InvalidationImpact GetThemeChangeImpact(
         Theme? previous,
         Theme? current,
         Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace)
-    {
-        var styleImpact = GetControlStyleThemeImpact(
+        Face? currentParentAmbientFace) =>
+        GetContractThemeChangeImpact(
+            _styleContract,
             Style,
             previous,
             current,
-            _styleResolver,
-            _styleComparer,
-            _appearanceSelector,
             previousParentAmbientFace,
             currentParentAmbientFace);
-        var previousStyle = ResolveStyle(Style, previous);
-        var currentStyle = ResolveStyle(Style, current);
-        var colorImpact = ResolveColor(previousStyle.TrackColor, previous) !=
-                          ResolveColor(currentStyle.TrackColor, current) ||
-                          ResolveColor(previousStyle.ThumbColor, previous) !=
-                          ResolveColor(currentStyle.ThumbColor, current) ||
-                          ResolveColor(previousStyle.ButtonColor, previous) !=
-                          ResolveColor(currentStyle.ButtonColor, current)
-            ? InvalidationImpact.Render
-            : InvalidationImpact.None;
-
-        return MaximumImpact(styleImpact, colorImpact);
-    }
 
     /// <inheritdoc/>
     protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        Style is null && ResolveStyle(Style, previous) != ResolveStyle(Style, current)
-            ? nameof(ActualStyle)
-            : null;
+        GetContractResolvedStylePropertyName(_styleContract, Style, previous, current, nameof(ActualStyle));
 
     /// <summary>Adds a signed command delta with saturation and endpoint clamping.</summary>
     /// <param name="delta">The signed requested change.</param>
@@ -622,21 +635,7 @@ public sealed class ScrollBar: Control
     /// <param name="theme">The active theme, or null to fall back to the library default theme.</param>
     /// <returns>The complete style the generated bar would resolve and render.</returns>
     internal static ScrollBarStyle ResolveStyle(ScrollBarStyle? localStyle, Theme? theme) =>
-        localStyle ?? new ScrollBarStyle(
-            ScrollBarStyle.Default.Chrome,
-            ScrollBarStyle.Default.Fill,
-            ScrollBarStyle.Default.Glyphs,
-            ScrollBarStyle.Default.TrackColor,
-            ScrollBarStyle.Default.ThumbColor,
-            ScrollBarStyle.Default.ButtonColor,
-            (theme ?? Themes.Dark).Control);
-
-    private static InvalidationImpact CompareStructure(ScrollBarStyle previous, ScrollBarStyle current) =>
-        previous.Chrome != current.Chrome
-            ? InvalidationImpact.Measure
-            : previous != current
-                ? InvalidationImpact.Render
-                : InvalidationImpact.None;
+        _styleContract.Resolve(localStyle, theme);
 
     private static void Draw(TerminalCanvas canvas, Point point, Rune glyph, TerminalStyle style) =>
         canvas.DrawRune(glyph, point, style, BackgroundMode.Transparent);

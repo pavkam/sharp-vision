@@ -13,9 +13,19 @@ using DisplayText = Display.Text;
 [PublicAPI]
 public sealed class RadioButton: Pressable
 {
-    private static readonly Func<RadioButtonStyle?, Theme?, RadioButtonStyle> _styleResolver = ResolveStyle;
-    private static readonly Func<RadioButtonStyle, RadioButtonStyle, InvalidationImpact> _styleComparer = CompareStructure;
-    private static readonly Func<RadioButtonStyle, ThemeProfile> _appearanceSelector = static style => style.Appearance;
+    private static readonly StyleContract<RadioButtonStyle> _styleContract = new(
+        ThemeRole.Input,
+        static profile => new RadioButtonStyle(
+            RadioButtonStyle.Default.MarkStyle,
+            RadioButtonStyle.Default.Glyphs,
+            RadioButtonStyle.WithCheckedAccent(ControlStyleProfiles.WithoutChrome(profile))),
+        static (previous, _, current, _) =>
+            previous.MarkWidth != current.MarkWidth
+                ? InvalidationImpact.Measure
+                : previous.MarkStyle != current.MarkStyle || previous.Glyphs != current.Glyphs
+                    ? InvalidationImpact.Render
+                    : InvalidationImpact.None,
+        static style => style.Appearance);
     private bool _isChecked;
     private int _checkedVersion;
     private RadioButtonStyle? _actualStyleCache;
@@ -110,9 +120,9 @@ public sealed class RadioButton: Pressable
         set => _ = SetControlStyle(
             ref field,
             value,
-            _styleResolver,
-            _styleComparer,
-            _appearanceSelector,
+            _styleContract.Resolve,
+            _styleContract.CompareStructure,
+            _styleContract.Appearance,
             nameof(Style),
             nameof(ActualStyle));
     }
@@ -123,30 +133,24 @@ public sealed class RadioButton: Pressable
     /// resolving the default style rebuilds two themed <see cref="ThemeProfile"/> instances from
     /// scratch (see #179), and this property is read from multiple per-frame paths.
     /// </remarks>
-    public RadioButtonStyle ActualStyle
-    {
-        get
-        {
-            var theme = Theme;
+    public RadioButtonStyle ActualStyle =>
+        ResolveContractStyle(
+            _styleContract,
+            ref _actualStyleCache,
+            ref _actualStyleCacheKey,
+            ref _actualStyleCacheTheme,
+            Style,
+            Theme);
 
-            if (_actualStyleCache is { } cached && _actualStyleCacheKey == Style && ReferenceEquals(_actualStyleCacheTheme, theme))
-            {
-                return cached;
-            }
-
-            var resolved = ResolveStyle(Style, theme);
-            _actualStyleCache = resolved;
-            _actualStyleCacheKey = Style;
-            _actualStyleCacheTheme = theme;
-            return resolved;
-        }
-    }
+    /// <inheritdoc/>
+    protected override ThemeRole ThemeRole => _styleContract.Role;
 
     /// <inheritdoc/>
     protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
 
     /// <inheritdoc/>
-    protected override ThemeProfile GetAppearanceProfile(Theme? theme) => ResolveStyle(Style, theme).Appearance;
+    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
+        GetContractAppearanceProfile(_styleContract, Style, theme);
 
     /// <inheritdoc/>
     protected override InvalidationImpact GetThemeChangeImpact(
@@ -154,21 +158,17 @@ public sealed class RadioButton: Pressable
         Theme? current,
         Face? previousParentAmbientFace,
         Face? currentParentAmbientFace) =>
-        GetControlStyleThemeImpact(
+        GetContractThemeChangeImpact(
+            _styleContract,
             Style,
             previous,
             current,
-            _styleResolver,
-            _styleComparer,
-            _appearanceSelector,
             previousParentAmbientFace,
             currentParentAmbientFace);
 
     /// <inheritdoc/>
     protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        Style is null && ResolveStyle(Style, previous) != ResolveStyle(Style, current)
-            ? nameof(ActualStyle)
-            : null;
+        GetContractResolvedStylePropertyName(_styleContract, Style, previous, current, nameof(ActualStyle));
 
     /// <summary>Activates an available RadioButton through its public API.</summary>
     /// <exception cref="InvalidOperationException">The attached member is accessed off-dispatcher.</exception>
@@ -364,18 +364,4 @@ public sealed class RadioButton: Pressable
 
     private string Mark(Rune value, Rune fallback) =>
         CellGlyphResolver.Resolve(value, fallback, CellPolicy.AmbiguousWidth).ToString();
-
-    private static RadioButtonStyle ResolveStyle(RadioButtonStyle? localStyle, Theme? theme) =>
-        localStyle ?? new RadioButtonStyle(
-            RadioButtonStyle.Default.MarkStyle,
-            RadioButtonStyle.Default.Glyphs,
-            RadioButtonStyle.WithCheckedAccent(ControlStyleProfiles.WithoutChrome((theme ?? Themes.Dark).Input)));
-
-    private static InvalidationImpact CompareStructure(RadioButtonStyle previous, RadioButtonStyle current) =>
-        previous.MarkWidth != current.MarkWidth
-            ? InvalidationImpact.Measure
-            : previous.MarkStyle != current.MarkStyle || previous.Glyphs != current.Glyphs
-                ? InvalidationImpact.Render
-                : InvalidationImpact.None;
-
 }

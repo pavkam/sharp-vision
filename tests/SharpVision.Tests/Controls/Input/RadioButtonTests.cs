@@ -7,6 +7,17 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Verifies RadioButton grouping, transactions, navigation, ownership, and cells.</summary>
 public sealed class RadioButtonTests
 {
+    /// <summary>Verifies the reported ThemeRole matches the Input-derived profile ActualStyle
+    /// actually resolves against, instead of the unrelated default ThemeRole.Control the
+    /// unoverridden base property previously reported (see #157).</summary>
+    [Fact]
+    public void ThemeRole_WhenResolved_MatchesTheInputProfileActualStyleUses()
+    {
+        var radio = new RadioButton();
+
+        radio.ResolvedThemeRole.ShouldBe(ThemeRole.Input);
+    }
+
     /// <summary>Verifies local style ownership overrides Theme fallback and clearing restores it.</summary>
     [Fact]
     public void Style_WhenThemeAndLocalValuesChange_UsesDocumentedPrecedence()

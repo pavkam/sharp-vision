@@ -11,9 +11,19 @@ using DisplayText = Display.Text;
 [PublicAPI]
 public sealed class CheckBox: Pressable
 {
-    private static readonly Func<CheckBoxStyle?, Theme?, CheckBoxStyle> _styleResolver = ResolveStyle;
-    private static readonly Func<CheckBoxStyle, CheckBoxStyle, InvalidationImpact> _styleComparer = CompareStructure;
-    private static readonly Func<CheckBoxStyle, ThemeProfile> _appearanceSelector = static style => style.Appearance;
+    private static readonly StyleContract<CheckBoxStyle> _styleContract = new(
+        ThemeRole.Input,
+        static profile => new CheckBoxStyle(
+            CheckBoxStyle.Default.MarkStyle,
+            CheckBoxStyle.Default.Glyphs,
+            ControlStyleProfiles.WithoutChrome(profile)),
+        static (previous, _, current, _) =>
+            previous.MarkWidth != current.MarkWidth
+                ? InvalidationImpact.Measure
+                : previous.MarkStyle != current.MarkStyle || previous.Glyphs != current.Glyphs
+                    ? InvalidationImpact.Render
+                    : InvalidationImpact.None,
+        static style => style.Appearance);
     private bool? _isChecked = false;
     private CheckBoxStyle? _actualStyleCache;
     private CheckBoxStyle? _actualStyleCacheKey;
@@ -100,9 +110,9 @@ public sealed class CheckBox: Pressable
         set => _ = SetControlStyle(
             ref field,
             value,
-            _styleResolver,
-            _styleComparer,
-            _appearanceSelector,
+            _styleContract.Resolve,
+            _styleContract.CompareStructure,
+            _styleContract.Appearance,
             nameof(Style),
             nameof(ActualStyle));
     }
@@ -113,30 +123,24 @@ public sealed class CheckBox: Pressable
     /// resolving the default style rebuilds a themed <see cref="ThemeProfile"/> from scratch (see
     /// #179), and this property is read from multiple per-frame paths.
     /// </remarks>
-    public CheckBoxStyle ActualStyle
-    {
-        get
-        {
-            var theme = Theme;
+    public CheckBoxStyle ActualStyle =>
+        ResolveContractStyle(
+            _styleContract,
+            ref _actualStyleCache,
+            ref _actualStyleCacheKey,
+            ref _actualStyleCacheTheme,
+            Style,
+            Theme);
 
-            if (_actualStyleCache is { } cached && _actualStyleCacheKey == Style && ReferenceEquals(_actualStyleCacheTheme, theme))
-            {
-                return cached;
-            }
-
-            var resolved = ResolveStyle(Style, theme);
-            _actualStyleCache = resolved;
-            _actualStyleCacheKey = Style;
-            _actualStyleCacheTheme = theme;
-            return resolved;
-        }
-    }
+    /// <inheritdoc/>
+    protected override ThemeRole ThemeRole => _styleContract.Role;
 
     /// <inheritdoc/>
     protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
 
     /// <inheritdoc/>
-    protected override ThemeProfile GetAppearanceProfile(Theme? theme) => ResolveStyle(Style, theme).Appearance;
+    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
+        GetContractAppearanceProfile(_styleContract, Style, theme);
 
     /// <inheritdoc/>
     protected override InvalidationImpact GetThemeChangeImpact(
@@ -144,21 +148,17 @@ public sealed class CheckBox: Pressable
         Theme? current,
         Face? previousParentAmbientFace,
         Face? currentParentAmbientFace) =>
-        GetControlStyleThemeImpact(
+        GetContractThemeChangeImpact(
+            _styleContract,
             Style,
             previous,
             current,
-            _styleResolver,
-            _styleComparer,
-            _appearanceSelector,
             previousParentAmbientFace,
             currentParentAmbientFace);
 
     /// <inheritdoc/>
     protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        Style is null && ResolveStyle(Style, previous) != ResolveStyle(Style, current)
-            ? nameof(ActualStyle)
-            : null;
+        GetContractResolvedStylePropertyName(_styleContract, Style, previous, current, nameof(ActualStyle));
 
     /// <summary>Activates an available CheckBox through its public API.</summary>
     /// <exception cref="InvalidOperationException">The attached CheckBox is accessed off-dispatcher.</exception>
@@ -337,17 +337,4 @@ public sealed class CheckBox: Pressable
 
     private string Mark(Rune value, Rune fallback) =>
         CellGlyphResolver.Resolve(value, fallback, CellPolicy.AmbiguousWidth).ToString();
-
-    private static CheckBoxStyle ResolveStyle(CheckBoxStyle? localStyle, Theme? theme) =>
-        localStyle ?? new CheckBoxStyle(
-            CheckBoxStyle.Default.MarkStyle,
-            CheckBoxStyle.Default.Glyphs,
-            ControlStyleProfiles.WithoutChrome((theme ?? Themes.Dark).Input));
-
-    private static InvalidationImpact CompareStructure(CheckBoxStyle previous, CheckBoxStyle current) =>
-        previous.MarkWidth != current.MarkWidth
-            ? InvalidationImpact.Measure
-            : previous.MarkStyle != current.MarkStyle || previous.Glyphs != current.Glyphs
-                ? InvalidationImpact.Render
-                : InvalidationImpact.None;
 }

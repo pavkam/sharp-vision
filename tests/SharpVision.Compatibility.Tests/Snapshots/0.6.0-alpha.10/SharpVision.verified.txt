@@ -562,7 +562,7 @@ namespace SharpVision.Controls
         protected bool FocusAccessKeyTarget() { }
         protected virtual SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
         protected virtual SharpVision.Styling.ChromeRenderOptions GetChromeRenderOptions() { }
-        protected SharpVision.Controls.InvalidationImpact GetControlStyleThemeImpact<TStyle>(TStyle? localStyle, SharpVision.Styling.Theme? previousTheme, SharpVision.Styling.Theme? currentTheme, System.Func<TStyle?, SharpVision.Styling.Theme?, TStyle> resolve, System.Func<TStyle, TStyle, SharpVision.Controls.InvalidationImpact> compareStyle, System.Func<TStyle, SharpVision.Styling.ThemeProfile> appearance, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace)
+        protected SharpVision.Controls.InvalidationImpact GetControlStyleThemeImpact<TStyle>(TStyle? localStyle, SharpVision.Styling.Theme? previousTheme, SharpVision.Styling.Theme? currentTheme, System.Func<TStyle?, SharpVision.Styling.Theme?, TStyle> resolve, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compareStyle, System.Func<TStyle, SharpVision.Styling.ThemeProfile> appearance, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace)
             where TStyle :  struct, System.IEquatable<TStyle> { }
         protected SharpVision.Terminal.Rendering.CellStyle GetResolvedStyle(SharpVision.Styling.VisualState state) { }
         protected virtual SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
@@ -596,7 +596,7 @@ namespace SharpVision.Controls
         protected void ResetShadow() { }
         protected SharpVision.Terminal.Geometry.Rect RootBounds(SharpVision.Terminal.Geometry.Rect fallback) { }
         protected void SetAppearance(SharpVision.Styling.VisualState state, SharpVision.Styling.AppearanceSet? appearance) { }
-        protected bool SetControlStyle<TStyle>(ref TStyle? field, TStyle? value, System.Func<TStyle?, SharpVision.Styling.Theme?, TStyle> resolve, System.Func<TStyle, TStyle, SharpVision.Controls.InvalidationImpact> compareStyle, System.Func<TStyle, SharpVision.Styling.ThemeProfile> appearance, string propertyName, string actualPropertyName)
+        protected bool SetControlStyle<TStyle>(ref TStyle? field, TStyle? value, System.Func<TStyle?, SharpVision.Styling.Theme?, TStyle> resolve, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compareStyle, System.Func<TStyle, SharpVision.Styling.ThemeProfile> appearance, string propertyName, string actualPropertyName)
             where TStyle :  struct, System.IEquatable<TStyle> { }
         protected void SetOptionalGlyph(ref System.Text.Rune? storage, System.Text.Rune value, string propertyName) { }
         protected bool SetProperty<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
@@ -686,6 +686,7 @@ namespace SharpVision.Controls.Display
         public SharpVision.Layout.Orientation Orientation { get; set; }
         public int Spacing { get; set; }
         public SharpVision.Controls.Display.ChaseIndicatorStyle? Style { get; set; }
+        protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public SharpVision.Terminal.Protocols.Color? TrackColor { get; set; }
         public SharpVision.Terminal.Protocols.Color? TrailColor { get; set; }
         public int TrailLength { get; set; }
@@ -782,6 +783,7 @@ namespace SharpVision.Controls.Display
         public double Minimum { get; set; }
         public SharpVision.Layout.Orientation Orientation { get; set; }
         public SharpVision.Controls.Display.ProgressBarStyle? Style { get; set; }
+        protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public bool UseSubCellResolution { get; set; }
         public double Value { get; set; }
         public event System.EventHandler<SharpVision.Controls.Display.ProgressValueChangedEventArgs>? ValueChanged;
@@ -854,6 +856,7 @@ namespace SharpVision.Controls.Display
         public System.TimeSpan Interval { get; set; }
         public bool IsPlaying { get; set; }
         public SharpVision.Controls.Display.SpinnerStyle? Style { get; set; }
+        protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         protected override SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
         protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
@@ -1019,6 +1022,7 @@ namespace SharpVision.Controls.Input
         public event System.EventHandler<SharpVision.Controls.Input.CalendarSelectionChangedEventArgs>? SelectionChanged;
         public void ClearMarkup() { }
         public bool ClearSelection() { }
+        protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
         public bool GoToToday() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
@@ -1062,6 +1066,7 @@ namespace SharpVision.Controls.Input
         protected override bool IsIndeterminateState { get; }
         public bool IsThreeState { get; set; }
         public SharpVision.Controls.Input.CheckBoxStyle? Style { get; set; }
+        protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public event System.EventHandler<SharpVision.Input.CheckChangedEventArgs>? Checked;
         public event System.EventHandler<SharpVision.Input.CheckChangedEventArgs>? Indeterminate;
         public event System.EventHandler<SharpVision.Input.CheckChangedEventArgs>? StateChanged;
@@ -1255,6 +1260,7 @@ namespace SharpVision.Controls.Input
         protected override bool IsCheckedState { get; }
         public override bool IsTabStop { get; }
         public SharpVision.Controls.Input.RadioButtonStyle? Style { get; set; }
+        protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public event System.EventHandler<SharpVision.Controls.Input.RadioButtonSelectionChangedEventArgs>? Checked;
         public event System.EventHandler<SharpVision.Controls.Input.RadioButtonSelectionChangedEventArgs>? SelectionChanged;
         public event System.EventHandler<SharpVision.Controls.Input.RadioButtonSelectionChangedEventArgs>? Unchecked;
@@ -1331,6 +1337,7 @@ namespace SharpVision.Controls.Input
         public SharpVision.Layout.Orientation Orientation { get; set; }
         public int SmallChange { get; set; }
         public SharpVision.Controls.Input.SliderStyle? Style { get; set; }
+        protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public int Value { get; set; }
         public event System.EventHandler<SharpVision.Input.SliderValueChangedEventArgs>? ValueChanged;
         public bool ChangeBy(int delta) { }
@@ -1730,6 +1737,7 @@ namespace SharpVision.Controls.Scrolling
         public SharpVision.Layout.Orientation Orientation { get; set; }
         public int SmallChange { get; set; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? Style { get; set; }
+        protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public int Value { get; set; }
         public int ViewportSize { get; set; }
         public event System.EventHandler<SharpVision.Scrolling.ScrollEventArgs>? ValueChanged;

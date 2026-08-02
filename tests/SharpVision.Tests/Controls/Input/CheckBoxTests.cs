@@ -7,6 +7,17 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Verifies CheckBox transitions, events, ownership, styling, and cells.</summary>
 public sealed class CheckBoxTests
 {
+    /// <summary>Verifies the reported ThemeRole matches the Input-derived profile ActualStyle
+    /// actually resolves against, instead of the unrelated default ThemeRole.Control the
+    /// unoverridden base property previously reported (see #157).</summary>
+    [Fact]
+    public void ThemeRole_WhenResolved_MatchesTheInputProfileActualStyleUses()
+    {
+        var checkBox = new CheckBox();
+
+        checkBox.ResolvedThemeRole.ShouldBe(ThemeRole.Input);
+    }
+
     /// <summary>Verifies local style ownership overrides Theme fallback and clearing restores it.</summary>
     [ComponentUnitEvidence(typeof(CheckBox))]
     [Fact]

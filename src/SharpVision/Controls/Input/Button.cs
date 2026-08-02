@@ -13,9 +13,16 @@ using DisplayText = Display.Text;
 [PublicAPI]
 public sealed partial class Button: Pressable
 {
-    private static readonly Func<ButtonStyle?, Theme?, ButtonStyle> _styleResolver = ResolveStyle;
-    private static readonly Func<ButtonStyle, ButtonStyle, InvalidationImpact> _styleComparer = CompareStructure;
-    private static readonly Func<ButtonStyle, ThemeProfile> _appearanceSelector = static style => style.Appearance;
+    private static readonly StyleContract<ButtonStyle> _styleContract = new(
+        ThemeRole.Input,
+        static profile => new ButtonStyle(ButtonStyle.Standard.Padding, profile),
+        static (previous, _, current, _) =>
+            previous.Padding != current.Padding
+                ? InvalidationImpact.Measure
+                : PressedTranslationChanged(previous.Appearance, current.Appearance)
+                    ? InvalidationImpact.Arrange
+                    : InvalidationImpact.None,
+        static style => style.Appearance);
     private ICommand? _command;
     private ButtonStyle? _actualStyleCache;
     private ButtonStyle? _actualStyleCacheKey;
@@ -46,9 +53,9 @@ public sealed partial class Button: Pressable
         set => _ = SetControlStyle(
             ref field,
             value,
-            _styleResolver,
-            _styleComparer,
-            _appearanceSelector,
+            _styleContract.Resolve,
+            _styleContract.CompareStructure,
+            _styleContract.Appearance,
             nameof(Style),
             nameof(ActualStyle));
     }
@@ -60,33 +67,24 @@ public sealed partial class Button: Pressable
     /// against the shadow/border invariant (see #179), and this property is read from multiple
     /// per-frame paths.
     /// </remarks>
-    public ButtonStyle ActualStyle
-    {
-        get
-        {
-            var theme = Theme;
-
-            if (_actualStyleCache is { } cached && _actualStyleCacheKey == Style && ReferenceEquals(_actualStyleCacheTheme, theme))
-            {
-                return cached;
-            }
-
-            var resolved = ResolveStyle(Style, theme);
-            _actualStyleCache = resolved;
-            _actualStyleCacheKey = Style;
-            _actualStyleCacheTheme = theme;
-            return resolved;
-        }
-    }
+    public ButtonStyle ActualStyle =>
+        ResolveContractStyle(
+            _styleContract,
+            ref _actualStyleCache,
+            ref _actualStyleCacheKey,
+            ref _actualStyleCacheTheme,
+            Style,
+            Theme);
 
     /// <inheritdoc/>
-    protected override ThemeRole ThemeRole => ThemeRole.Input;
+    protected override ThemeRole ThemeRole => _styleContract.Role;
 
     /// <inheritdoc/>
     protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
 
     /// <inheritdoc/>
-    protected override ThemeProfile GetAppearanceProfile(Theme? theme) => ResolveStyle(Style, theme).Appearance;
+    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
+        GetContractAppearanceProfile(_styleContract, Style, theme);
 
     /// <inheritdoc/>
     protected override InvalidationImpact GetThemeChangeImpact(
@@ -94,21 +92,17 @@ public sealed partial class Button: Pressable
         Theme? current,
         Face? previousParentAmbientFace,
         Face? currentParentAmbientFace) =>
-        GetControlStyleThemeImpact(
+        GetContractThemeChangeImpact(
+            _styleContract,
             Style,
             previous,
             current,
-            _styleResolver,
-            _styleComparer,
-            _appearanceSelector,
             previousParentAmbientFace,
             currentParentAmbientFace);
 
     /// <inheritdoc/>
     protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        Style is null && ResolveStyle(Style, previous) != ResolveStyle(Style, current)
-            ? nameof(ActualStyle)
-            : null;
+        GetContractResolvedStylePropertyName(_styleContract, Style, previous, current, nameof(ActualStyle));
 
     /// <inheritdoc/>
     internal override InvalidationImpact GetAppearanceChangeImpact(
@@ -366,18 +360,6 @@ public sealed partial class Button: Pressable
         IsPressed && UsesWholeCellPressedTranslation
             ? ControlChrome.Shift(bounds, PressedTranslation)
             : bounds;
-
-    private static ButtonStyle ResolveStyle(ButtonStyle? localStyle, Theme? theme) =>
-        localStyle ?? new ButtonStyle(
-            ButtonStyle.Standard.Padding,
-            (theme ?? Themes.Dark).Input);
-
-    private static InvalidationImpact CompareStructure(ButtonStyle previous, ButtonStyle current) =>
-        previous.Padding != current.Padding
-            ? InvalidationImpact.Measure
-            : PressedTranslationChanged(previous.Appearance, current.Appearance)
-                ? InvalidationImpact.Arrange
-                : InvalidationImpact.None;
 
     private static bool PressedTranslationChanged(ThemeProfile previous, ThemeProfile current)
     {

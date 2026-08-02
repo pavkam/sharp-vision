@@ -21,9 +21,9 @@ public sealed class StyledProbe: Control
                     : ResolveStyle(local, theme)
                 : ResolveStyle,
             ThrowOnCompareStructure
-                ? static (_, _) => throw new InvalidOperationException("compare")
+                ? static (_, _, _, _) => throw new InvalidOperationException("compare")
                 : ReturnInvalidImpact
-                    ? static (_, _) => (InvalidationImpact) int.MaxValue
+                    ? static (_, _, _, _) => (InvalidationImpact) int.MaxValue
                     : CompareStructure,
             ThrowOnAppearanceSelection
                 ? static _ => throw new InvalidOperationException("appearance")
@@ -144,6 +144,10 @@ public sealed class StyledProbe: Control
     private static ButtonStyle ResolveStyle(ButtonStyle? localStyle, Theme? theme) =>
         localStyle ?? new ButtonStyle(ButtonStyle.Standard.Padding, (theme ?? Themes.Dark).Input);
 
-    private static InvalidationImpact CompareStructure(ButtonStyle previous, ButtonStyle current) =>
+    private static InvalidationImpact CompareStructure(
+        ButtonStyle previous,
+        Theme? previousTheme,
+        ButtonStyle current,
+        Theme? currentTheme) =>
         previous.Padding == current.Padding ? InvalidationImpact.None : InvalidationImpact.Measure;
 }
