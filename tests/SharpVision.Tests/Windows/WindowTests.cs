@@ -762,6 +762,144 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies Escape actually collapses a closable, presented window by default, instead of only raising Closing.</summary>
+    [Fact]
+    public async Task Dispatch_WhenDialogEscapeHasNoCancelButton_CollapsesWindowByDefaultAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var window = new Window
+            {
+                CanMove = false,
+                CanClose = true,
+                CloseOnEscape = true,
+                HeaderPlacement = WindowTitlePlacement.Center
+            };
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+
+            _ = Router.Route(window, Events.Key, Key(Code.Escape));
+
+            window.Visibility.ShouldBe(Visibility.Collapsed);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Closed fires once the window's default close behavior actually collapses it.</summary>
+    [Fact]
+    public async Task Dispatch_WhenDialogEscapeHasNoCancelButton_RaisesClosedAfterClosingAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var closing = 0;
+            var closed = 0;
+            var window = new Window
+            {
+                CanMove = false,
+                CanClose = true,
+                CloseOnEscape = true,
+                HeaderPlacement = WindowTitlePlacement.Center
+            };
+            window.Closing += (_, _) => closing++;
+            window.Closed += (_, _) => closed++;
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+
+            _ = Router.Route(window, Events.Key, Key(Code.Escape));
+
+            closing.ShouldBe(1);
+            closed.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a Closing handler that already hides the window is not double-collapsed.</summary>
+    [Fact]
+    public async Task Dispatch_WhenClosingHandlerAlreadyHidesWindow_DoesNotDoubleCollapseAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var closed = 0;
+            var window = new Window
+            {
+                CanMove = false,
+                CanClose = true,
+                CloseOnEscape = true,
+                HeaderPlacement = WindowTitlePlacement.Center
+            };
+            window.Closing += (_, _) => window.Visibility = Visibility.Collapsed;
+            window.Closed += (_, _) => closed++;
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+
+            _ = Router.Route(window, Events.Key, Key(Code.Escape));
+
+            window.Visibility.ShouldBe(Visibility.Collapsed);
+            closed.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a Closing handler that re-shows the window keeps it open instead of being force-collapsed.</summary>
+    [Fact]
+    public async Task Dispatch_WhenClosingHandlerReopensTheWindow_LeavesItVisibleAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var closed = 0;
+            var window = new Window
+            {
+                CanMove = false,
+                CanClose = true,
+                CloseOnEscape = true,
+                HeaderPlacement = WindowTitlePlacement.Center
+            };
+            window.Closing += (_, _) =>
+            {
+                window.Visibility = Visibility.Collapsed;
+                window.Visibility = Visibility.Visible;
+            };
+            window.Closed += (_, _) => closed++;
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+
+            _ = Router.Route(window, Events.Key, Key(Code.Escape));
+
+            window.Visibility.ShouldBe(Visibility.Visible);
+            closed.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies the close-affordance press collapses the window by default, matching Escape and Dismiss.</summary>
+    [Fact]
+    public async Task Close_WhenPrimaryPressReleasesOnTarget_CollapsesWindowByDefaultAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var window = ClosableWindow();
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+            using PointerManager pointer = new(root);
+
+            _ = pointer.Dispatch(Pointer(new Point(4, 0), PointerAction.Press));
+            _ = pointer.Dispatch(Pointer(new Point(4, 0), PointerAction.Release));
+
+            window.Visibility.ShouldBe(Visibility.Collapsed);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies close activation waits for an armed primary release.</summary>
     [Fact]
     public async Task Close_WhenPrimaryPressIsHeld_WaitsForReleaseAsync()

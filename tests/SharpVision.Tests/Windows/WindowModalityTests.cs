@@ -593,9 +593,9 @@ public sealed class WindowModalityTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies the close glyph raises the same retained Closing request until its owner hides the Window.</summary>
+    /// <summary>Verifies the close glyph collapses the Window and ends its modal scope on a single press by default.</summary>
     [Fact]
-    public async Task ShowModal_WhenCloseGlyphRequestsClosing_RetainsOrEndsAccordingToHandlerAsync()
+    public async Task ShowModal_WhenCloseGlyphRequestsClosing_ClosesOnOnePressByDefaultAsync()
     {
         await using var dispatcher = Dispatcher.Start();
 
@@ -617,39 +617,62 @@ public sealed class WindowModalityTests
             using var modality = new ModalityManager(root, focus, pointer);
             var closing = 0;
             var closed = 0;
-            window.Closing += (_, _) =>
-            {
-                closing++;
-
-                if (closing == 2)
-                {
-                    window.Visibility = Visibility.Collapsed;
-                }
-            };
+            window.Closing += (_, _) => closing++;
             window.Closed += (_, _) => closed++;
             var scope = window.ShowModal();
             var close = new Point(window.Bounds.X + 4, window.Bounds.Y);
-            var presentedBounds = window.SurfaceBounds;
 
             _ = pointer.Dispatch(Pointer(close, PointerAction.Press));
             _ = pointer.Dispatch(Pointer(close, PointerAction.Release));
 
             closing.ShouldBe(1);
-            closed.ShouldBe(0);
-            scope.IsActive.ShouldBeTrue();
-            modality.Active.ShouldBeSameAs(scope);
-            window.Visibility.ShouldBe(Visibility.Visible);
-            window.SurfaceBounds.ShouldBe(presentedBounds);
-
-            _ = pointer.Dispatch(Pointer(close, PointerAction.Press));
-            _ = pointer.Dispatch(Pointer(close, PointerAction.Release));
-
-            closing.ShouldBe(2);
             closed.ShouldBe(1);
             scope.IsActive.ShouldBeFalse();
             modality.Active.ShouldBeNull();
             window.Visibility.ShouldBe(Visibility.Collapsed);
             window.SurfaceBounds.ShouldBe(default);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a Closing handler that explicitly hides the Window on its own is not double-collapsed.</summary>
+    [Fact]
+    public async Task ShowModal_WhenClosingHandlerHidesWindowItself_DoesNotDoubleCloseAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var window = new Window
+            {
+                CanClose = true,
+                Width = Length.Cells(12),
+                Height = Length.Cells(5),
+            };
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(24, 10));
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            var closing = 0;
+            var closed = 0;
+            window.Closing += (_, _) =>
+            {
+                closing++;
+                window.Visibility = Visibility.Hidden;
+            };
+            window.Closed += (_, _) => closed++;
+            var scope = window.ShowModal();
+            var close = new Point(window.Bounds.X + 4, window.Bounds.Y);
+
+            _ = pointer.Dispatch(Pointer(close, PointerAction.Press));
+            _ = pointer.Dispatch(Pointer(close, PointerAction.Release));
+
+            closing.ShouldBe(1);
+            closed.ShouldBe(1);
+            scope.IsActive.ShouldBeFalse();
+            modality.Active.ShouldBeNull();
+            window.Visibility.ShouldBe(Visibility.Hidden);
         }, TestContext.Current.CancellationToken);
     }
 

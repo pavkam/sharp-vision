@@ -50,15 +50,16 @@ then publishes `Closing`, exits modality, makes the content unavailable, clears
 from visible performs the same common cleanup directly but publishes neither
 lifecycle event.
 
-An ordinary Window close affordance, Escape action, or modal dismiss request is
-owner-handled: it publishes `Closing` while the Window remains visible,
-presented, and modal. If the callback hides the Window, the visibility
-transaction performs the common cleanup and the close request then publishes
-`Closed`. If the callback leaves visibility unchanged, the Window stays open and
-`Closed` is not published. Cleanup attempts every stage even after a callback
-failure and rethrows the earliest failure once state is coherent. Detachment and
-disposal release modal, focus, and capture state even when no normal close path
-was requested.
+An ordinary Window close affordance, Escape action, or modal dismiss request
+publishes `Closing`, then, by default, collapses the Window itself: the
+visibility transaction performs the common cleanup and the close request then
+publishes `Closed`. A `Closing` handler that itself changes visibility (hiding
+it to a different state, restoring it, or disposing the Window) takes
+responsibility for the outcome instead — if it leaves the Window visible and
+presented, the Window stays open and `Closed` is not published. Cleanup attempts
+every stage even after a callback failure and rethrows the earliest failure once
+state is coherent. Detachment and disposal release modal, focus, and capture
+state even when no normal close path was requested.
 
 ## Ownership, elevation, and modality
 

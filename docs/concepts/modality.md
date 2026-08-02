@@ -241,9 +241,11 @@ owner-managed and keeps one top-menu-rooted scope for the complete chain.
 
 `Window.ShowModal` makes the window visible, enters a scope rooted at it, and
 returns that scope. Its default outside policy is `Ignore`. Under `Dismiss`, an
-outside request raises the existing `Window.Closing` event; the window stays
-visible and modal until its owner changes `Visibility` or disposes the scope.
-Changing visibility away from visible exits the presentation.
+outside request raises `Window.Closing` and, by default, collapses and closes
+the window afterward, ending the modal presentation. A `Closing` handler that
+itself changes `Visibility` takes responsibility for the outcome instead, and
+the window stays visible and modal until its owner does so or disposes the
+scope. Changing visibility away from visible exits the presentation.
 
 Neither control has a permanent `IsModal` flag. A normal Window remains
 modeless, and disposing a Window's returned scope ends its modal presentation

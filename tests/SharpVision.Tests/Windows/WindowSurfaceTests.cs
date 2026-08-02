@@ -201,6 +201,7 @@ public sealed class WindowSurfaceTests
     }
 
     /// <summary>Verifies close-mark states remain local while its primary press activates the Window frame.</summary>
+    /// <remarks>Releases outside the close target to cancel activation, since a completed click now closes the Window by default.</remarks>
     [Fact]
     public async Task Pointer_WhenCloseAffordanceChangesState_ChangesOnlyMarkForegroundAsync()
     {
@@ -211,6 +212,7 @@ public sealed class WindowSurfaceTests
             Width = Length.Cells(12),
             Height = Length.Cells(4)
         };
+
         await using var surface = await ComponentSurface.MountAsync(
             window,
             new Size(14, 6),
@@ -242,10 +244,16 @@ public sealed class WindowSurfaceTests
         activeFrame.ShouldNotBe(hoveredFrame);
         surface.Cell(new Point(4, 0)).Style.Background.ShouldBe(background);
 
-        // Act and assert release
+        // Act and assert releasing outside the target cancels activation, leaving the Window
+        // presented so the remaining visual states below still apply.
+        await surface.Pointer.MovePressedToAsync(window, new Point(9, 0));
         await surface.Pointer.ReleaseAsync();
-        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(hovered);
         surface.Cell(new Point(3, 0)).Style.Foreground.ShouldBe(activeFrame);
+        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(normal);
+
+        // Act and assert re-hovering the close mark still works normally afterward
+        await surface.Pointer.MoveToAsync(window, new Point(4, 0));
+        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(hovered);
 
         // Act and assert pointer departure
         await surface.Pointer.MoveToAsync(window, new Point(9, 0));
@@ -951,13 +959,14 @@ public sealed class WindowSurfaceTests
         surface.Cell(bodyCell).Text.ShouldNotBe("░");
     }
 
-    /// <summary>Verifies every mounted outside press requests dismissal again while Closing retains the Window.</summary>
+    /// <summary>Verifies an outside press under Dismiss actually closes the Window by default, without ever activating the background control it swallowed the press from.</summary>
     [Fact]
-    public async Task ShowModal_WhenDismissClosingRetainsWindow_RequestsAgainWithoutBackgroundActivationAsync()
+    public async Task ShowModal_WhenDismissRequestsClosing_ClosesByDefaultWithoutBackgroundActivationAsync()
     {
         // Arrange
         var activations = 0;
         var closing = 0;
+        var closed = 0;
         var background = new Button
         {
             Content = new ControlText("Background"),
@@ -976,6 +985,7 @@ public sealed class WindowSurfaceTests
         Overlay.SetLeft(window, Length.Cells(1));
         Overlay.SetTop(window, Length.Cells(1));
         window.Closing += (_, _) => closing++;
+        window.Closed += (_, _) => closed++;
         var root = new Overlay { Children = { background, window } };
         await using var surface = await ComponentSurface.MountAsync(
             root,
@@ -988,16 +998,14 @@ public sealed class WindowSurfaceTests
             () => scope = window.ShowModal(OutsideInteraction.Dismiss),
             "show dismissing modal Window");
         await surface.Pointer.ClickAsync(background);
-        await surface.Pointer.ClickAsync(background);
 
         // Assert
-        closing.ShouldBe(2);
+        closing.ShouldBe(1);
+        closed.ShouldBe(1);
         activations.ShouldBe(0);
-        scope.ShouldNotBeNull().IsActive.ShouldBeTrue();
-        surface.Application.Modality.Active.ShouldBeSameAs(scope);
-        window.Visibility.ShouldBe(Visibility.Visible);
-
-        await surface.UpdateAsync(scope.Dispose, "end retained modal Window presentation");
+        scope.ShouldNotBeNull().IsActive.ShouldBeFalse();
+        surface.Application.Modality.Active.ShouldBeNull();
+        window.Visibility.ShouldBe(Visibility.Collapsed);
     }
 
     /// <summary>Verifies a closable Window renders its complete paired frame, left-placed close chrome, and title.</summary>
@@ -1097,7 +1105,39 @@ public sealed class WindowSurfaceTests
     /// <summary>Verifies mounted close-glyph requests retain modality until the Closing owner hides the Window.</summary>
     [ComponentBehaviorEvidence(typeof(Window), ComponentBehavior.PointerActivation)]
     [Fact]
-    public async Task ShowModal_WhenCloseGlyphIsActivated_ClosingOwnerDecidesModalLifetimeAsync()
+    public async Task ShowModal_WhenCloseGlyphIsActivated_ClosesModalWindowByDefaultAsync()
+    {
+        // Arrange
+        var closing = 0;
+        var window = new Window
+        {
+            CanClose = true,
+            Content = new Button { Content = new ControlText("Action") },
+            Width = Length.Cells(14),
+            Height = Length.Cells(6),
+        };
+        window.Closing += (_, _) => closing++;
+        await using var surface = await ComponentSurface.MountAsync(
+            window,
+            new Size(24, 10),
+            TestContext.Current.CancellationToken);
+        ModalScope? scope = null;
+
+        // Act
+        await surface.UpdateAsync(() => scope = window.ShowModal(), "show closable modal Window");
+        await surface.Pointer.ClickAsync(window, new Point(4, 0));
+
+        // Assert
+        closing.ShouldBe(1);
+        scope.ShouldNotBeNull().IsActive.ShouldBeFalse();
+        surface.Application.Modality.Active.ShouldBeNull();
+        window.Visibility.ShouldBe(Visibility.Collapsed);
+    }
+
+    /// <summary>Verifies a Closing handler that hides the Window itself is respected instead of being force-collapsed.</summary>
+    [ComponentBehaviorEvidence(typeof(Window), ComponentBehavior.PointerActivation)]
+    [Fact]
+    public async Task ShowModal_WhenClosingHandlerHidesTheWindowItself_RespectsThatOutcomeAsync()
     {
         // Arrange
         var closing = 0;
@@ -1111,11 +1151,7 @@ public sealed class WindowSurfaceTests
         window.Closing += (_, _) =>
         {
             closing++;
-
-            if (closing == 2)
-            {
-                window.Visibility = Visibility.Hidden;
-            }
+            window.Visibility = Visibility.Hidden;
         };
         await using var surface = await ComponentSurface.MountAsync(
             window,
@@ -1123,21 +1159,13 @@ public sealed class WindowSurfaceTests
             TestContext.Current.CancellationToken);
         ModalScope? scope = null;
 
-        // Act retain
+        // Act
         await surface.UpdateAsync(() => scope = window.ShowModal(), "show closable modal Window");
         await surface.Pointer.ClickAsync(window, new Point(4, 0));
 
-        // Assert retain
+        // Assert
         closing.ShouldBe(1);
-        scope.ShouldNotBeNull().IsActive.ShouldBeTrue();
-        window.Visibility.ShouldBe(Visibility.Visible);
-
-        // Act close
-        await surface.Pointer.ClickAsync(window, new Point(4, 0));
-
-        // Assert close
-        closing.ShouldBe(2);
-        scope.IsActive.ShouldBeFalse();
+        scope.ShouldNotBeNull().IsActive.ShouldBeFalse();
         surface.Application.Modality.Active.ShouldBeNull();
         window.Visibility.ShouldBe(Visibility.Hidden);
     }

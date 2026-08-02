@@ -10,13 +10,14 @@ The `Application` events are `Starting`, `Started`, `Stopping`, `Stopped`,
 enter the control tree through typed routed events. Session closure and faults
 drive shutdown instead of leaking terminal callbacks through the UI API.
 
-`Popup` publishes `Closing` and `Closed`. `Window` publishes an owner-handled
-`Closing` request while it remains visible and presented: when the handler hides
-the Window, the visibility transaction completes the common cleanup and the
-close request then publishes `Closed`; when the handler leaves visibility
-unchanged, `Closed` is suppressed. Changing a Window's visibility directly
-performs the cleanup without publishing `Closing` or `Closed`. Modal scopes
-publish `DismissRequested` and one committed `Exited` notification under the
+`Popup` publishes `Closing` and `Closed`. `Window` publishes a `Closing` request
+and, by default, collapses itself afterward: the visibility transaction
+completes the common cleanup and the close request then publishes `Closed`. A
+`Closing` handler that itself changes visibility takes responsibility for the
+outcome instead — if it leaves the Window visible and presented, `Closed` is
+suppressed. Changing a Window's visibility directly performs the cleanup without
+publishing `Closing` or `Closed`. Modal scopes publish `DismissRequested` and
+one committed `Exited` notification under the
 [modal lifetime contract](modality.md#nested-scopes-and-lifetime).
 
 ## Ordering

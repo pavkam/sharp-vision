@@ -72,16 +72,18 @@ edge. At full width the chrome is `[■]` with two frame glyphs on each side;
 narrow widths degrade to a single close glyph, or omit it entirely when no
 interior cell can be represented. The pointer target supports hover, capture,
 press, leave, reentry, release, and unavailable cleanup. Activating it requests
-closure: the Window raises `Closing` and, unless the application cancels the
-request, hides itself before raising `Closed`.
+closure: the Window raises `Closing` and, by default, collapses itself before
+raising `Closed`. A `Closing` handler that itself changes `Visibility` — hiding
+it to a different state, restoring it, or disposing the Window — takes
+responsibility for the outcome instead of the default collapse; there is no
+separate cancel flag.
 
 > [!IMPORTANT]
 >
-> **Implementation gap:** Today every close path — the close affordance, Escape,
-> modal `Dismiss`, and `RequestClose()` — only raises the non-cancellable
-> `Closing` event; nothing hides or disposes the Window unless an application
-> handler does it. A window whose `Closing` is unsubscribed visibly ignores its
-> own close button. Issue #223 tracks close-by-default with a cancellation hook.
+> **Implementation gap:** `Closing` remains a plain, non-cancellable event.
+> Applications that need to veto a close outright (rather than deciding
+> `Visibility` themselves inside the handler) have no dedicated hook yet. Issue
+> #223 tracks a genuinely cancellable `Closing`/`CloseRequested` contract.
 
 Pointer ancestry does not restyle the Window face, frame, or shadow. The close
 mark can still react independently while its target is hovered or pressed.
@@ -129,10 +131,10 @@ capture, bounds, and lifecycle cleanup.
 `ShowModal(outsideInteraction, initialFocus)` makes the Window visible and
 returns its application-owned `ModalScope`. The default
 `OutsideInteraction.Ignore` consumes outside input without requesting closure.
-`Dismiss` raises `Closing`; it does not implicitly hide the Window. One Window
-cannot own two live modal presentations. Disposing the returned scope from
-outside ends modality without changing visibility, so the same surface can
-continue modelessly. The shared
+`Dismiss` raises `Closing` and, by default, collapses and closes the Window
+afterward, ending its modal presentation. One Window cannot own two live modal
+presentations. Disposing the returned scope from outside ends modality without
+changing visibility, so the same surface can continue modelessly. The shared
 [modality contract](../../concepts/modality.md#popup-and-window-presentations)
 owns validation, confinement, nesting, and focus restoration.
 

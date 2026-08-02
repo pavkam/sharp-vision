@@ -105,8 +105,10 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
     /// visual lifetime: disposing it externally leaves <see cref="Visibility"/> unchanged and returns
     /// the Window to modeless interaction. Changing visibility away from <see cref="Visibility.Visible"/>
     /// ordinarily ends a live presentation before the visibility notification. A dismiss request raises
-    /// <see cref="FloatingSurface.Closing"/>; the Window remains visible and modal unless its owner changes visibility or
-    /// disposes the returned scope. This call suppresses only the legacy visibility autofocus transaction,
+    /// <see cref="FloatingSurface.Closing"/> and, by default, collapses and closes the Window afterward,
+    /// ending its modal presentation; a <see cref="FloatingSurface.Closing"/> handler that itself changes
+    /// <see cref="Visibility"/> (hiding, restoring, or disposing the Window) takes responsibility for the
+    /// outcome instead. This call suppresses only the legacy visibility autofocus transaction,
     /// allowing modal entry to snapshot background focus and select <paramref name="initialFocus"/> once.
     /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">
@@ -687,11 +689,30 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
         _isRequestingClose = true;
         var wasPresented = IsSurfacePresented;
         var closedHandlers = CaptureClosedHandlers();
+        var visibilityTouchedByHandler = false;
+        void OnVisibilityChangedDuringClosing(object? sender, EventArgs eventArgs) => visibilityTouchedByHandler = true;
         ExceptionDispatchInfo? failure = null;
 
         try
         {
-            ExceptionAggregation.Capture(RaiseSurfaceClosing, ref failure);
+            VisibilityChanged += OnVisibilityChangedDuringClosing;
+
+            try
+            {
+                ExceptionAggregation.Capture(RaiseSurfaceClosing, ref failure);
+            }
+            finally
+            {
+                VisibilityChanged -= OnVisibilityChangedDuringClosing;
+            }
+
+            // Close by default: only skip when a Closing handler already took responsibility for
+            // visibility itself (hid it, restored it, or disposed the Window), whether or not that
+            // left Visibility back at its original value.
+            if (wasPresented && IsSurfacePresented && !visibilityTouchedByHandler)
+            {
+                ExceptionAggregation.Capture(() => Visibility = Visibility.Collapsed, ref failure);
+            }
 
             if (wasPresented && !IsSurfacePresented)
             {
