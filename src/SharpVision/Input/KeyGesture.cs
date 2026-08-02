@@ -28,15 +28,22 @@ public readonly record struct KeyGesture
     /// <param name="code">The logical key.</param>
     /// <param name="modifiers">The active modifiers.</param>
     /// <param name="character">The character for <see cref="Code.Character"/>.</param>
+    /// <remarks>
+    /// <see cref="Modifiers.CapsLock"/> and <see cref="Modifiers.NumLock"/> are accepted but stripped
+    /// from the stored, compared, and displayed gesture, since a lock key is state rather than part of
+    /// a chord. The character for <see cref="Code.Character"/> is stored case-folded to uppercase, so
+    /// two gestures that differ only in the case of the same letter compare and hash equal.
+    /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="code"/> is unknown, or <paramref name="modifiers"/> contains unknown flags.
+    /// <paramref name="code"/> is unknown or <see cref="Code.Unknown"/>, or <paramref name="modifiers"/>
+    /// contains unknown flags.
     /// </exception>
     /// <exception cref="ArgumentException">
     /// Character presence does not agree with <paramref name="code"/>.
     /// </exception>
     public KeyGesture(Code code, Modifiers modifiers = Modifiers.None, Rune? character = null)
     {
-        if (!Enum.IsDefined(code))
+        if (!Enum.IsDefined(code) || code == Code.Unknown)
         {
             throw new ArgumentOutOfRangeException(nameof(code), code, "The logical code is unknown.");
         }
@@ -57,8 +64,8 @@ public readonly record struct KeyGesture
         }
 
         Code = code;
-        Modifiers = modifiers;
-        Character = character;
+        Modifiers = modifiers & ~(Modifiers.CapsLock | Modifiers.NumLock);
+        Character = character is { } value ? Rune.ToUpperInvariant(value) : null;
     }
 
     /// <summary>Gets the logical key.</summary>
@@ -107,7 +114,7 @@ public readonly record struct KeyGesture
         }
 
         _ = Code == Code.Character
-            ? builder.Append(Character!.Value.ToString().ToUpperInvariant())
+            ? builder.Append(Character!.Value.ToString())
             : builder.Append(Code);
 
         return builder.ToString();

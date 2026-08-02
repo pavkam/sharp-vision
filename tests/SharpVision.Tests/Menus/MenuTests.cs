@@ -602,6 +602,18 @@ public sealed class MenuTests
         item.ShortcutText.ShouldBeNull();
     }
 
+    /// <summary>Verifies ShortcutText's derived text is memoized once on assignment, not recomputed per read.</summary>
+    [Fact]
+    public void ShortcutText_WhenReadRepeatedlyAfterShortcutIsSet_ReusesTheSameDerivedStringInstance()
+    {
+        var item = new MenuItem { Shortcut = new KeyGesture(Code.Character, Modifiers.Control, new Rune('s')) };
+
+        var first = item.ShortcutText;
+        var second = item.ShortcutText;
+
+        ReferenceEquals(first, second).ShouldBeTrue();
+    }
+
     /// <summary>Verifies every vertical row shares one trailing shortcut edge.</summary>
     [Fact]
     public void Render_WhenVerticalItemsHaveDifferentShortcuts_RightAlignsEveryHint()

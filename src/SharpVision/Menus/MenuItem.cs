@@ -22,6 +22,7 @@ public sealed class MenuItem: Pressable
     private Rune? _uncheckedGlyph;
     private Rune? _checkedGlyph;
     private string? _shortcutTextValue;
+    private string? _derivedShortcutText;
 
     /// <summary>Initializes an ordinary command item with no content.</summary>
     public MenuItem()
@@ -133,7 +134,7 @@ public sealed class MenuItem: Pressable
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
     public string? ShortcutText
     {
-        get => _shortcutTextValue ?? Shortcut?.ToString();
+        get => _shortcutTextValue ?? _derivedShortcutText;
         set => _ = SetProperty(ref _shortcutTextValue, value, InvalidationImpact.Measure);
     }
 
@@ -151,9 +152,14 @@ public sealed class MenuItem: Pressable
         get;
         set
         {
-            if (SetProperty(ref field, value, InvalidationImpact.Measure) && _shortcutTextValue is null)
+            if (SetProperty(ref field, value, InvalidationImpact.Measure))
             {
-                NotifyPropertyChanged(nameof(ShortcutText), InvalidationImpact.Measure);
+                _derivedShortcutText = value?.ToString();
+
+                if (_shortcutTextValue is null)
+                {
+                    NotifyPropertyChanged(nameof(ShortcutText), InvalidationImpact.Measure);
+                }
             }
         }
     }
@@ -661,7 +667,14 @@ public sealed class MenuItem: Pressable
         ? Terminal.Unicode.Width.Measure(shortcut, CellPolicy.AmbiguousWidth).Cells
         : 0;
 
-    private int ShortcutExtent => ShortcutWidth == 0 ? 0 : LayoutMath.Add(ShortcutWidth, _shortcutGap);
+    private int ShortcutExtent
+    {
+        get
+        {
+            var width = ShortcutWidth;
+            return width == 0 ? 0 : LayoutMath.Add(width, _shortcutGap);
+        }
+    }
 
     private ControlGlyph ThemeMenuGlyph(bool checkedValue)
     {

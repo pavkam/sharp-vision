@@ -38,6 +38,11 @@ public sealed class KeyGestureTests
     public void Constructor_WhenCodeIsUndefined_Throws() =>
         _ = Should.Throw<ArgumentOutOfRangeException>(() => new KeyGesture((Code) (-1)));
 
+    /// <summary>Verifies the constructor rejects the unmapped native-key sentinel, which can never form a real chord.</summary>
+    [Fact]
+    public void Constructor_WhenCodeIsUnknown_Throws() =>
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new KeyGesture(Code.Unknown));
+
     /// <summary>Verifies the constructor rejects an undefined modifier flag.</summary>
     [Fact]
     public void Constructor_WhenModifiersContainUndefinedFlags_Throws() =>
@@ -62,5 +67,29 @@ public sealed class KeyGestureTests
 
         first.ShouldBe(second);
         first.GetHashCode().ShouldBe(second.GetHashCode());
+    }
+
+    /// <summary>Verifies CapsLock and NumLock are stripped from the stored, compared modifier set.</summary>
+    [Fact]
+    public void Constructor_WhenModifiersIncludeLockKeys_StripsThemFromTheStoredValue()
+    {
+        var withLocks = new KeyGesture(Code.F5, Modifiers.Control | Modifiers.CapsLock | Modifiers.NumLock);
+        var withoutLocks = new KeyGesture(Code.F5, Modifiers.Control);
+
+        withLocks.Modifiers.ShouldBe(Modifiers.Control);
+        withLocks.ShouldBe(withoutLocks);
+        withLocks.GetHashCode().ShouldBe(withoutLocks.GetHashCode());
+    }
+
+    /// <summary>Verifies two gestures that differ only in character case compare and hash equal.</summary>
+    [Fact]
+    public void Equals_WhenCharacterCaseDiffers_IsEqual()
+    {
+        var lower = new KeyGesture(Code.Character, Modifiers.Control, new Rune('s'));
+        var upper = new KeyGesture(Code.Character, Modifiers.Control, new Rune('S'));
+
+        lower.ShouldBe(upper);
+        lower.GetHashCode().ShouldBe(upper.GetHashCode());
+        lower.ToString().ShouldBe(upper.ToString());
     }
 }
