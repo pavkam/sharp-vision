@@ -3,6 +3,9 @@
 
 namespace SharpVision.Dialogs;
 
+using SharpVision.Controls.Input;
+using SharpVision.Controls.Scrolling;
+
 /// <summary>Configures one save-file dialog presentation before its retained dialog is constructed.</summary>
 [PublicAPI]
 public sealed class SaveFileOptions
@@ -116,6 +119,27 @@ public sealed class SaveFileOptions
         }
     }
 
+    /// <summary>Gets or sets the complete local presentation applied to the dialog's Cancel Button,
+    /// or null to let it use its own semantic input profile.</summary>
+    public ButtonStyle? CancelButtonStyle { get; set; }
+
+    /// <summary>Gets or sets the complete local presentation applied to the Show-hidden toggle, or
+    /// null to let it use its own semantic input profile.</summary>
+    public CheckBoxStyle? ShowHiddenCheckBoxStyle { get; set; }
+
+    /// <summary>Gets or sets the complete local style for the file list's generated scrollbars, or
+    /// null to let it use its own semantic profile.</summary>
+    public ScrollBarStyle? FileListScrollBarStyle { get; set; }
+
+    /// <summary>Gets or sets the complete local style for the filter picker's generated scrollbar,
+    /// or null to let it use its own semantic profile.</summary>
+    public ScrollBarStyle? FilterScrollBarStyle { get; set; }
+
+    /// <summary>Gets or sets the complete local presentation applied to the Save Button and to the
+    /// overwrite-confirmation MessageBox's action Buttons, or null to let them use their own
+    /// semantic input profile.</summary>
+    public ButtonStyle? SaveButtonStyle { get; set; }
+
     /// <summary>Creates an independent configuration snapshot for one dialog.</summary>
     /// <returns>A new options object with equivalent owned values.</returns>
     internal SaveFileOptions Copy() => new()
@@ -127,6 +151,11 @@ public sealed class SaveFileOptions
         ShowHidden = ShowHidden,
         MaxVisibleRows = MaxVisibleRows,
         Filters = Filters,
-        FilterIndex = FilterIndex
+        FilterIndex = FilterIndex,
+        CancelButtonStyle = CancelButtonStyle,
+        ShowHiddenCheckBoxStyle = ShowHiddenCheckBoxStyle,
+        FileListScrollBarStyle = FileListScrollBarStyle,
+        FilterScrollBarStyle = FilterScrollBarStyle,
+        SaveButtonStyle = SaveButtonStyle
     };
 }

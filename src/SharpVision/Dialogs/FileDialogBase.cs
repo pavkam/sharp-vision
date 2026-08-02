@@ -7,6 +7,7 @@ using Controls.Collections;
 
 using SharpVision.Controls.Input;
 using SharpVision.Controls.Layout;
+using SharpVision.Controls.Scrolling;
 using SharpVision.Terminal.Input;
 
 using Text;
@@ -164,6 +165,110 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
 
     /// <summary>Gets the status text last committed by a successful directory load.</summary>
     protected string SnapshotStatus { get; private set; } = "Ready";
+
+    /// <summary>Gets or sets the complete local presentation applied to the Cancel Button, or null
+    /// to let it use its own semantic input profile.</summary>
+    /// <exception cref="InvalidOperationException">The attached dialog is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
+    public ButtonStyle? CancelButtonStyle
+    {
+        get;
+        set
+        {
+            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                return;
+            }
+
+            _cancelButton.Style = value;
+        }
+    }
+
+    /// <summary>Gets the resolved Cancel Button style.</summary>
+    public ButtonStyle ActualCancelButtonStyle => _cancelButton.ActualStyle;
+
+    /// <summary>Gets or sets the complete local presentation applied to the hidden-entry toggle, or
+    /// null to let it use its own semantic input profile.</summary>
+    /// <exception cref="InvalidOperationException">The attached dialog is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
+    public CheckBoxStyle? ShowHiddenCheckBoxStyle
+    {
+        get;
+        set
+        {
+            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                return;
+            }
+
+            HiddenToggle.Style = value;
+        }
+    }
+
+    /// <summary>Gets the resolved hidden-entry toggle style.</summary>
+    public CheckBoxStyle ActualShowHiddenCheckBoxStyle => HiddenToggle.ActualStyle;
+
+    /// <summary>Gets or sets the complete local style for the file list's generated scrollbars, or
+    /// null to let it use its own semantic profile.</summary>
+    /// <exception cref="InvalidOperationException">The attached dialog is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
+    public ScrollBarStyle? FileListScrollBarStyle
+    {
+        get => FileList.ScrollBarStyle;
+        set
+        {
+            VerifyMutable();
+
+            if (FileList.ScrollBarStyle == value)
+            {
+                return;
+            }
+
+            var previous = ActualFileListScrollBarStyle;
+            FileList.ScrollBarStyle = value;
+            var current = ActualFileListScrollBarStyle;
+            NotifyPropertyChanged(nameof(FileListScrollBarStyle), InvalidationImpact.None);
+
+            if (previous != current)
+            {
+                NotifyPropertyChanged(nameof(ActualFileListScrollBarStyle), InvalidationImpact.None);
+            }
+        }
+    }
+
+    /// <summary>Gets the resolved file-list generated-scrollbar style.</summary>
+    public ScrollBarStyle ActualFileListScrollBarStyle => FileList.ActualScrollBarStyle;
+
+    /// <summary>Gets or sets the complete local style for the filter picker's generated scrollbar,
+    /// or null to let it use its own semantic profile.</summary>
+    /// <exception cref="InvalidOperationException">The attached dialog is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
+    public ScrollBarStyle? FilterScrollBarStyle
+    {
+        get => _filterPicker.ScrollBarStyle;
+        set
+        {
+            VerifyMutable();
+
+            if (_filterPicker.ScrollBarStyle == value)
+            {
+                return;
+            }
+
+            var previous = ActualFilterScrollBarStyle;
+            _filterPicker.ScrollBarStyle = value;
+            var current = ActualFilterScrollBarStyle;
+            NotifyPropertyChanged(nameof(FilterScrollBarStyle), InvalidationImpact.None);
+
+            if (previous != current)
+            {
+                NotifyPropertyChanged(nameof(ActualFilterScrollBarStyle), InvalidationImpact.None);
+            }
+        }
+    }
+
+    /// <summary>Gets the resolved filter-picker generated-scrollbar style.</summary>
+    public ScrollBarStyle ActualFilterScrollBarStyle => _filterPicker.ActualScrollBarStyle;
 
     #endregion
 

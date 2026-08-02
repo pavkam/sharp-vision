@@ -48,6 +48,17 @@ Each setter validates its value before storing it. `FilePickerDialog` copies the
 complete options value during construction, so changing an options object
 afterwards never affects a dialog that is already showing.
 
+| Style property            | Default | Applies to                                 |
+| ------------------------- | ------- | ------------------------------------------ |
+| `CancelButtonStyle`       | `null`  | The Cancel Button.                         |
+| `ShowHiddenCheckBoxStyle` | `null`  | The Show hidden CheckBox.                  |
+| `FileListScrollBarStyle`  | `null`  | The file ListView's generated scrollbars.  |
+| `FilterScrollBarStyle`    | `null`  | The filter ComboBox's generated scrollbar. |
+| `OpenButtonStyle`         | `null`  | The Open Button.                           |
+
+`null` for a style property lets the corresponding owned part use its own
+semantic input profile.
+
 ### FilePickerResult
 
 `Accepted` tells you whether the user chose Open rather than Cancel, Escape, or
@@ -64,6 +75,16 @@ canonical path. `ShowHidden` and `FilterIndex` report the current options.
 whether an enumeration is still outstanding, and `Status` describes loading
 progress, entry counts, the current selection, or a recoverable error without
 exposing any private controls.
+
+`CancelButtonStyle`/`ActualCancelButtonStyle`, `ShowHiddenCheckBoxStyle`/
+`ActualShowHiddenCheckBoxStyle`, `FileListScrollBarStyle`/
+`ActualFileListScrollBarStyle`, `FilterScrollBarStyle`/
+`ActualFilterScrollBarStyle` (inherited from `FileDialogBase`), and
+`OpenButtonStyle`/`ActualOpenButtonStyle` expose the complete local
+presentation applied to each owned part, and the value each part actually
+resolves, without exposing the owned control instances themselves. Each
+`Actual*` property reads back the owned part's own resolved style — the
+picker performs no independent Theme resolution of its own.
 
 ## Presentation and ownership
 
@@ -114,8 +135,7 @@ trailing content edge. The grid owns five rows:
    edge, followed by naturally sized Open and Cancel actions in the default
    Button appearance.
 
-The Window supplies the outer frame; dialog composition does not select a Button
-kind or override action borders, faces, or shadows. Directory rows use a
+The Window supplies the outer frame. Directory rows use a
 single-cell `▸` prefix and a trailing platform separator, and file rows use a
 single-cell `·` prefix. Filenames are markup-escaped and ellipsized. ListView
 focus, current, selected, hovered, and disabled cells use the shared semantic

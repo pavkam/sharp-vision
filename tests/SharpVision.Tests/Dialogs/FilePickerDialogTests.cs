@@ -455,6 +455,122 @@ public sealed class FilePickerDialogTests
         ((FilePickerEntry) list.Items[0]!).Name.ShouldBe("Fresh.cs");
     }
 
+    /// <summary>Verifies every owned-part style defaults to null and its resolved value follows the
+    /// owned part's own semantic profile until an explicit local style is assigned.</summary>
+    [Fact]
+    public void OwnedPartStyles_WhenUnset_FollowTheOwnedPartsOwnSemanticProfile()
+    {
+        using var dialog = new FilePickerDialog(null, new FakeFilePickerFileSystem());
+        using var expectedButton = new Button();
+        using var expectedCheckBox = new CheckBox();
+
+        dialog.CancelButtonStyle.ShouldBeNull();
+        dialog.ShowHiddenCheckBoxStyle.ShouldBeNull();
+        dialog.FileListScrollBarStyle.ShouldBeNull();
+        dialog.FilterScrollBarStyle.ShouldBeNull();
+        dialog.OpenButtonStyle.ShouldBeNull();
+        dialog.ActualCancelButtonStyle.ShouldBe(expectedButton.ActualStyle);
+        dialog.ActualShowHiddenCheckBoxStyle.ShouldBe(expectedCheckBox.ActualStyle);
+        dialog.ActualOpenButtonStyle.ShouldBe(expectedButton.ActualStyle);
+    }
+
+    /// <summary>Verifies each owned-part style propagates to its owned control and resolves back
+    /// through the dialog's own Actual* property.</summary>
+    [Fact]
+    public void OwnedPartStyles_WhenSet_PropagateToTheOwnedPart()
+    {
+        using var dialog = new FilePickerDialog(null, new FakeFilePickerFileSystem());
+        var buttonStyle = new ButtonStyle(
+            new Thickness(horizontal: 2, vertical: 1),
+            ButtonStyle.Standard.Appearance);
+        var checkBoxStyle = CheckBoxStyle.Default;
+        var scrollBarStyle = ScrollBarStyle.Default;
+
+        dialog.CancelButtonStyle = buttonStyle;
+        dialog.ShowHiddenCheckBoxStyle = checkBoxStyle;
+        dialog.FileListScrollBarStyle = scrollBarStyle;
+        dialog.FilterScrollBarStyle = scrollBarStyle;
+        dialog.OpenButtonStyle = buttonStyle;
+
+        dialog.ActualCancelButtonStyle.ShouldBe(buttonStyle);
+        dialog.ActualShowHiddenCheckBoxStyle.ShouldBe(checkBoxStyle);
+        dialog.ActualFileListScrollBarStyle.ShouldBe(scrollBarStyle);
+        dialog.ActualFilterScrollBarStyle.ShouldBe(scrollBarStyle);
+        dialog.ActualOpenButtonStyle.ShouldBe(buttonStyle);
+
+        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
+        var filter = OwnedTree.Find<ComboBox>(dialog).ShouldNotBeNull();
+        var hidden = OwnedTree.Find<CheckBox>(dialog).ShouldNotBeNull();
+        list.ScrollBarStyle.ShouldBe(scrollBarStyle);
+        filter.ScrollBarStyle.ShouldBe(scrollBarStyle);
+        hidden.Style.ShouldBe(checkBoxStyle);
+    }
+
+    /// <summary>Verifies FilePickerOptions carries every owned-part style through construction and
+    /// through Copy(), matching how ShowAsync's copied snapshot reaches the constructed dialog.</summary>
+    [Fact]
+    public void Constructor_WhenOptionsCarryStyles_AppliesThemToTheConstructedDialog()
+    {
+        var buttonStyle = new ButtonStyle(
+            new Thickness(horizontal: 1, vertical: 0),
+            ButtonStyle.Standard.Appearance);
+        var checkBoxStyle = CheckBoxStyle.Default;
+        var scrollBarStyle = ScrollBarStyle.Default;
+        var options = new FilePickerOptions
+        {
+            CancelButtonStyle = buttonStyle,
+            ShowHiddenCheckBoxStyle = checkBoxStyle,
+            FileListScrollBarStyle = scrollBarStyle,
+            FilterScrollBarStyle = scrollBarStyle,
+            OpenButtonStyle = buttonStyle
+        };
+        var copy = options.Copy();
+
+        using var dialog = new FilePickerDialog(options, new FakeFilePickerFileSystem());
+
+        copy.CancelButtonStyle.ShouldBe(buttonStyle);
+        copy.ShowHiddenCheckBoxStyle.ShouldBe(checkBoxStyle);
+        copy.FileListScrollBarStyle.ShouldBe(scrollBarStyle);
+        copy.FilterScrollBarStyle.ShouldBe(scrollBarStyle);
+        copy.OpenButtonStyle.ShouldBe(buttonStyle);
+        dialog.ActualCancelButtonStyle.ShouldBe(buttonStyle);
+        dialog.ActualShowHiddenCheckBoxStyle.ShouldBe(checkBoxStyle);
+        dialog.ActualFileListScrollBarStyle.ShouldBe(scrollBarStyle);
+        dialog.ActualFilterScrollBarStyle.ShouldBe(scrollBarStyle);
+        dialog.ActualOpenButtonStyle.ShouldBe(buttonStyle);
+    }
+
+    /// <summary>Verifies ShowAsync forwards an explicit Open Button style to the presented dialog
+    /// without exposing the underlying Button instance.</summary>
+    [Fact]
+    public async Task ShowAsync_WhenOpenButtonStyleIsSupplied_AppliesItToThePresentedDialogAsync()
+    {
+        // Arrange
+        var opener = new Button { Content = new ControlText("Browse") };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(100, 40),
+            TestContext.Current.CancellationToken);
+        var style = new ButtonStyle(
+            new Thickness(horizontal: 2, vertical: 1),
+            ButtonStyle.Standard.Appearance);
+        Task<FilePickerResult>? pending = null;
+
+        // Act
+        await surface.UpdateAsync(
+            () => pending = FilePickerDialog.ShowAsync(opener, new FilePickerOptions { OpenButtonStyle = style }),
+            "show file picker with an explicit Open Button style");
+        var dialog = OwnedTree.Find<FilePickerDialog>(surface.Application.Root).ShouldNotBeNull();
+
+        // Assert
+        dialog.ActualOpenButtonStyle.ShouldBe(style);
+
+        // Cancel to complete the pending task and let the surface tear down cleanly.
+        await surface.Keyboard.PressAsync(Code.Escape);
+        _ = await pending!;
+    }
+
     private static async Task WaitUntilAsync(ComponentSurface surface, Func<bool> predicate)
     {
         for (var attempt = 0; attempt < 100; attempt++)

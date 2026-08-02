@@ -29,6 +29,17 @@ complete options object during construction, including an owned filter snapshot,
 so changing an options object afterwards never affects a dialog that is already
 showing.
 
+| Style property            | Default | Applies to                                                                  |
+| ------------------------- | ------- | --------------------------------------------------------------------------- |
+| `CancelButtonStyle`       | `null`  | The Cancel Button.                                                          |
+| `ShowHiddenCheckBoxStyle` | `null`  | The Show hidden CheckBox.                                                   |
+| `FileListScrollBarStyle`  | `null`  | The file ListView's generated scrollbars.                                   |
+| `FilterScrollBarStyle`    | `null`  | The filter ComboBox's generated scrollbar.                                  |
+| `SaveButtonStyle`         | `null`  | The Save Button and the overwrite-confirmation MessageBox's Yes/No actions. |
+
+`null` for a style property lets the corresponding owned part use its own
+semantic input profile.
+
 > [!IMPORTANT]
 >
 > **Implementation gap:** `InitialFileName` is a non-null string by contract,
@@ -52,6 +63,18 @@ canonical path. `ShowHidden` and `FilterIndex` report the active browser
 options. `IsLoading` reports whether a directory enumeration is still
 outstanding, and `Status` describes loading progress, entry counts, or a
 recoverable error without exposing any private controls.
+
+`CancelButtonStyle`/`ActualCancelButtonStyle`, `ShowHiddenCheckBoxStyle`/
+`ActualShowHiddenCheckBoxStyle`, `FileListScrollBarStyle`/
+`ActualFileListScrollBarStyle`, `FilterScrollBarStyle`/
+`ActualFilterScrollBarStyle` (inherited from `FileDialogBase`), and
+`SaveButtonStyle`/`ActualSaveButtonStyle` expose the complete local
+presentation applied to each owned part, and the value each part actually
+resolves, without exposing the owned control instances themselves. Since the
+overwrite-confirmation `MessageBox` is constructed fresh and discarded per
+confirmation rather than retained, it has no independent style surface of its
+own — its Yes/No actions inherit `SaveButtonStyle` instead, on the reasoning
+that "replace it" is the confirmation's affirmative, accept-like action.
 
 ## Presentation and ownership
 
@@ -92,10 +115,9 @@ One padded Grid owns six rows:
 5. The Show hidden CheckBox.
 6. A two-row footer with the filter ComboBox and the Save and Cancel actions.
 
-The Window supplies the outer frame. Save and Cancel keep the standard Button
-appearance, and the dialog assigns no RGB colors and emits no terminal bytes.
-Directory rows use `▸` plus the platform separator, file rows use `·`, and names
-are markup-escaped and ellipsized.
+The Window supplies the outer frame, and the dialog assigns no RGB colors and
+emits no terminal bytes on its own. Directory rows use `▸` plus the platform
+separator, file rows use `·`, and names are markup-escaped and ellipsized.
 
 ## Interaction
 

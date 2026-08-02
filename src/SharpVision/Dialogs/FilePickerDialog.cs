@@ -63,10 +63,36 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>
             IsEnabled = false
         };
         Initialize();
+        CancelButtonStyle = options.CancelButtonStyle;
+        ShowHiddenCheckBoxStyle = options.ShowHiddenCheckBoxStyle;
+        FileListScrollBarStyle = options.FileListScrollBarStyle;
+        FilterScrollBarStyle = options.FilterScrollBarStyle;
+        OpenButtonStyle = options.OpenButtonStyle;
     }
 
     /// <summary>Gets the selected canonical file paths in stable display order.</summary>
     public IReadOnlyList<string> SelectedPaths { get; private set; } = Array.AsReadOnly<string>([]);
+
+    /// <summary>Gets or sets the complete local presentation applied to the Open Button, or null to
+    /// let it use its own semantic input profile.</summary>
+    /// <exception cref="InvalidOperationException">The attached dialog is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
+    public ButtonStyle? OpenButtonStyle
+    {
+        get;
+        set
+        {
+            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                return;
+            }
+
+            _openButton.Style = value;
+        }
+    }
+
+    /// <summary>Gets the resolved Open Button style.</summary>
+    public ButtonStyle ActualOpenButtonStyle => _openButton.ActualStyle;
 
     #endregion
 

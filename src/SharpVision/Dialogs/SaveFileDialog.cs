@@ -75,10 +75,37 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>
             IsEnabled = !string.IsNullOrEmpty(options.InitialFileName)
         };
         Initialize();
+        CancelButtonStyle = options.CancelButtonStyle;
+        ShowHiddenCheckBoxStyle = options.ShowHiddenCheckBoxStyle;
+        FileListScrollBarStyle = options.FileListScrollBarStyle;
+        FilterScrollBarStyle = options.FilterScrollBarStyle;
+        SaveButtonStyle = options.SaveButtonStyle;
     }
 
     /// <summary>Gets the current filename typed or selected by the user.</summary>
     public string FileName => _fileNameInput.Text;
+
+    /// <summary>Gets or sets the complete local presentation applied to the Save Button and to the
+    /// overwrite-confirmation MessageBox's action Buttons, or null to let them use their own
+    /// semantic input profile.</summary>
+    /// <exception cref="InvalidOperationException">The attached dialog is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
+    public ButtonStyle? SaveButtonStyle
+    {
+        get;
+        set
+        {
+            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                return;
+            }
+
+            _saveButton.Style = value;
+        }
+    }
+
+    /// <summary>Gets the resolved Save Button style.</summary>
+    public ButtonStyle ActualSaveButtonStyle => _saveButton.ActualStyle;
 
     #endregion
 
@@ -248,7 +275,8 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>
                 this,
                 $"'{Path.GetFileName(fullPath)}' already exists.\nDo you want to replace it?",
                 "Confirm Save As",
-                MessageBoxButtons.YesNo);
+                MessageBoxButtons.YesNo,
+                SaveButtonStyle);
 
             // The MessageBox completion resumes on a background thread. Post back to the
             // owning dispatcher so that Complete can safely modify attached control state.

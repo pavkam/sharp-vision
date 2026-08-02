@@ -1899,14 +1899,22 @@ namespace SharpVision.Dialogs
     public abstract class FileDialogBase<TResult> : SharpVision.Dialogs.Dialog<TResult>
         where TResult :  class
     {
+        public SharpVision.Controls.Input.ButtonStyle ActualCancelButtonStyle { get; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualFileListScrollBarStyle { get; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualFilterScrollBarStyle { get; }
+        public SharpVision.Controls.Input.CheckBoxStyle ActualShowHiddenCheckBoxStyle { get; }
+        public SharpVision.Controls.Input.ButtonStyle? CancelButtonStyle { get; set; }
         public string CurrentDirectory { get; }
         protected SharpVision.Controls.Collections.ListView FileList { get; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? FileListScrollBarStyle { get; set; }
         protected SharpVision.Controls.Layout.Dock FileListSurface { get; }
         public int FilterIndex { get; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? FilterScrollBarStyle { get; set; }
         protected SharpVision.Controls.Input.CheckBox HiddenToggle { get; }
         public bool IsLoading { get; }
         protected SharpVision.Controls.Input.TextInput PathInput { get; }
         public bool ShowHidden { get; }
+        public SharpVision.Controls.Input.CheckBoxStyle? ShowHiddenCheckBoxStyle { get; set; }
         protected string SnapshotStatus { get; }
         public string Status { get; }
         protected SharpVision.Controls.Display.Text StatusText { get; }
@@ -1927,6 +1935,8 @@ namespace SharpVision.Dialogs
     {
         public FilePickerDialog() { }
         public FilePickerDialog(SharpVision.Dialogs.FilePickerOptions? options) { }
+        public SharpVision.Controls.Input.ButtonStyle ActualOpenButtonStyle { get; }
+        public SharpVision.Controls.Input.ButtonStyle? OpenButtonStyle { get; set; }
         public System.Collections.Generic.IReadOnlyList<string> SelectedPaths { get; }
         protected override SharpVision.Controls.Layout.Grid CreateContent() { }
         protected override SharpVision.Controls.Control GetInitialLoadFocusTarget() { }
@@ -1947,11 +1957,16 @@ namespace SharpVision.Dialogs
     {
         public FilePickerOptions() { }
         public bool AllowMultiple { get; set; }
+        public SharpVision.Controls.Input.ButtonStyle? CancelButtonStyle { get; set; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? FileListScrollBarStyle { get; set; }
         public int FilterIndex { get; set; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? FilterScrollBarStyle { get; set; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.Dialogs.FilePickerFilter> Filters { get; set; }
         public string InitialDirectory { get; set; }
         public int MaxVisibleRows { get; set; }
+        public SharpVision.Controls.Input.ButtonStyle? OpenButtonStyle { get; set; }
         public bool ShowHidden { get; set; }
+        public SharpVision.Controls.Input.CheckBoxStyle? ShowHiddenCheckBoxStyle { get; set; }
         public string Title { get; set; }
     }
     public sealed class FilePickerResult
@@ -1992,7 +2007,9 @@ namespace SharpVision.Dialogs
     {
         public SaveFileDialog() { }
         public SaveFileDialog(SharpVision.Dialogs.SaveFileOptions? options) { }
+        public SharpVision.Controls.Input.ButtonStyle ActualSaveButtonStyle { get; }
         public string FileName { get; }
+        public SharpVision.Controls.Input.ButtonStyle? SaveButtonStyle { get; set; }
         protected override SharpVision.Controls.Layout.Grid CreateContent() { }
         protected override SharpVision.Controls.Control GetInitialLoadFocusTarget() { }
         protected override SharpVision.Controls.Control GetModalFocusTarget() { }
@@ -2003,13 +2020,18 @@ namespace SharpVision.Dialogs
     public sealed class SaveFileOptions
     {
         public SaveFileOptions() { }
+        public SharpVision.Controls.Input.ButtonStyle? CancelButtonStyle { get; set; }
         public bool ConfirmOverwrite { get; set; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? FileListScrollBarStyle { get; set; }
         public int FilterIndex { get; set; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? FilterScrollBarStyle { get; set; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.Dialogs.FilePickerFilter> Filters { get; set; }
         public string InitialDirectory { get; set; }
         public string InitialFileName { get; set; }
         public int MaxVisibleRows { get; set; }
+        public SharpVision.Controls.Input.ButtonStyle? SaveButtonStyle { get; set; }
         public bool ShowHidden { get; set; }
+        public SharpVision.Controls.Input.CheckBoxStyle? ShowHiddenCheckBoxStyle { get; set; }
         public string Title { get; set; }
     }
     public sealed class SaveFileResult

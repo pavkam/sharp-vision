@@ -507,6 +507,150 @@ public sealed class SaveFileDialogTests
         }
     }
 
+    /// <summary>Verifies every owned-part style defaults to null and its resolved value follows the
+    /// owned part's own semantic profile until an explicit local style is assigned.</summary>
+    [Fact]
+    public void OwnedPartStyles_WhenUnset_FollowTheOwnedPartsOwnSemanticProfile()
+    {
+        using var dialog = new SaveFileDialog(null, new FakeFilePickerFileSystem());
+        using var expectedButton = new Button();
+        using var expectedCheckBox = new CheckBox();
+
+        dialog.CancelButtonStyle.ShouldBeNull();
+        dialog.ShowHiddenCheckBoxStyle.ShouldBeNull();
+        dialog.FileListScrollBarStyle.ShouldBeNull();
+        dialog.FilterScrollBarStyle.ShouldBeNull();
+        dialog.SaveButtonStyle.ShouldBeNull();
+        dialog.ActualCancelButtonStyle.ShouldBe(expectedButton.ActualStyle);
+        dialog.ActualShowHiddenCheckBoxStyle.ShouldBe(expectedCheckBox.ActualStyle);
+        dialog.ActualSaveButtonStyle.ShouldBe(expectedButton.ActualStyle);
+    }
+
+    /// <summary>Verifies each owned-part style propagates to its owned control and resolves back
+    /// through the dialog's own Actual* property.</summary>
+    [Fact]
+    public void OwnedPartStyles_WhenSet_PropagateToTheOwnedPart()
+    {
+        using var dialog = new SaveFileDialog(null, new FakeFilePickerFileSystem());
+        var buttonStyle = new ButtonStyle(
+            new Thickness(horizontal: 2, vertical: 1),
+            ButtonStyle.Standard.Appearance);
+        var checkBoxStyle = CheckBoxStyle.Default;
+        var scrollBarStyle = ScrollBarStyle.Default;
+
+        dialog.CancelButtonStyle = buttonStyle;
+        dialog.ShowHiddenCheckBoxStyle = checkBoxStyle;
+        dialog.FileListScrollBarStyle = scrollBarStyle;
+        dialog.FilterScrollBarStyle = scrollBarStyle;
+        dialog.SaveButtonStyle = buttonStyle;
+
+        dialog.ActualCancelButtonStyle.ShouldBe(buttonStyle);
+        dialog.ActualShowHiddenCheckBoxStyle.ShouldBe(checkBoxStyle);
+        dialog.ActualFileListScrollBarStyle.ShouldBe(scrollBarStyle);
+        dialog.ActualFilterScrollBarStyle.ShouldBe(scrollBarStyle);
+        dialog.ActualSaveButtonStyle.ShouldBe(buttonStyle);
+
+        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
+        var filter = OwnedTree.Find<ComboBox>(dialog).ShouldNotBeNull();
+        var hidden = OwnedTree.Find<CheckBox>(dialog).ShouldNotBeNull();
+        list.ScrollBarStyle.ShouldBe(scrollBarStyle);
+        filter.ScrollBarStyle.ShouldBe(scrollBarStyle);
+        hidden.Style.ShouldBe(checkBoxStyle);
+    }
+
+    /// <summary>Verifies SaveFileOptions carries every owned-part style through construction and
+    /// through Copy(), matching how ShowAsync's copied snapshot reaches the constructed dialog.</summary>
+    [Fact]
+    public void Constructor_WhenOptionsCarryStyles_AppliesThemToTheConstructedDialog()
+    {
+        var buttonStyle = new ButtonStyle(
+            new Thickness(horizontal: 1, vertical: 0),
+            ButtonStyle.Standard.Appearance);
+        var checkBoxStyle = CheckBoxStyle.Default;
+        var scrollBarStyle = ScrollBarStyle.Default;
+        var options = new SaveFileOptions
+        {
+            CancelButtonStyle = buttonStyle,
+            ShowHiddenCheckBoxStyle = checkBoxStyle,
+            FileListScrollBarStyle = scrollBarStyle,
+            FilterScrollBarStyle = scrollBarStyle,
+            SaveButtonStyle = buttonStyle
+        };
+        var copy = options.Copy();
+
+        using var dialog = new SaveFileDialog(options, new FakeFilePickerFileSystem());
+
+        copy.CancelButtonStyle.ShouldBe(buttonStyle);
+        copy.ShowHiddenCheckBoxStyle.ShouldBe(checkBoxStyle);
+        copy.FileListScrollBarStyle.ShouldBe(scrollBarStyle);
+        copy.FilterScrollBarStyle.ShouldBe(scrollBarStyle);
+        copy.SaveButtonStyle.ShouldBe(buttonStyle);
+        dialog.ActualCancelButtonStyle.ShouldBe(buttonStyle);
+        dialog.ActualShowHiddenCheckBoxStyle.ShouldBe(checkBoxStyle);
+        dialog.ActualFileListScrollBarStyle.ShouldBe(scrollBarStyle);
+        dialog.ActualFilterScrollBarStyle.ShouldBe(scrollBarStyle);
+        dialog.ActualSaveButtonStyle.ShouldBe(buttonStyle);
+    }
+
+    /// <summary>Verifies the overwrite-confirmation MessageBox's Yes/No actions inherit the dialog's
+    /// SaveButtonStyle, since this dialog-generated child has no persistent instance of its own to
+    /// expose a separate style surface through.</summary>
+    [Fact]
+    public async Task Save_WhenFileExistsAndSaveButtonStyleIsSet_AppliesItToTheConfirmationActionsAsync()
+    {
+        // Arrange — use a real temporary directory so the dialog can load and FileExists works.
+        var directory = Path.Combine(Path.GetTempPath(), $"save-confirm-style-{Guid.NewGuid():N}");
+        _ = Directory.CreateDirectory(directory);
+
+        try
+        {
+            var existingPath = Path.Combine(directory, "existing.txt");
+            await File.WriteAllTextAsync(existingPath, "content", TestContext.Current.CancellationToken);
+            var opener = new Button { Content = new ControlText("Save") };
+            var host = new Overlay { Children = { opener } };
+            await using var surface = await ComponentSurface.MountAsync(
+                host,
+                new Size(100, 40),
+                TestContext.Current.CancellationToken);
+            var style = new ButtonStyle(
+                new Thickness(horizontal: 2, vertical: 1),
+                ButtonStyle.Standard.Appearance);
+            Task<SaveFileResult>? pending = null;
+
+            // Act
+            await surface.UpdateAsync(
+                () => pending = SaveFileDialog.ShowAsync(
+                    opener,
+                    new SaveFileOptions
+                    {
+                        InitialDirectory = directory,
+                        InitialFileName = "existing.txt",
+                        ConfirmOverwrite = true,
+                        SaveButtonStyle = style
+                    }),
+                "show save dialog with an explicit Save Button style");
+            var dialog = OwnedTree.Find<SaveFileDialog>(surface.Application.Root).ShouldNotBeNull();
+            await WaitUntilAsync(surface, () => !dialog.IsLoading);
+
+            // Trigger save — this should show a MessageBox confirmation since the file exists.
+            await surface.Keyboard.PressAsync(Code.Enter);
+            await surface.UpdateAsync(static () => { }, "settle confirmation dialog");
+
+            // Assert
+            var confirmation = OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldNotBeNull();
+            confirmation.ActualButtonStyle.ShouldBe(style);
+
+            // Confirm overwrite by pressing Enter on the MessageBox's Yes button.
+            await surface.Keyboard.PressAsync(Code.Enter);
+            var result = await pending!;
+            result.Confirmed.ShouldBeTrue();
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static async Task WaitUntilAsync(ComponentSurface surface, Func<bool> predicate)
     {
         for (var attempt = 0; attempt < 100; attempt++)

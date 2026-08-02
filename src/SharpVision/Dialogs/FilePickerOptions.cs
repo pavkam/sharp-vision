@@ -3,6 +3,9 @@
 
 namespace SharpVision.Dialogs;
 
+using SharpVision.Controls.Input;
+using SharpVision.Controls.Scrolling;
+
 /// <summary>Configures one file-picker presentation before its retained dialog is constructed.</summary>
 [PublicAPI]
 public sealed class FilePickerOptions
@@ -113,6 +116,26 @@ public sealed class FilePickerOptions
         }
     }
 
+    /// <summary>Gets or sets the complete local presentation applied to the dialog's Cancel Button,
+    /// or null to let it use its own semantic input profile.</summary>
+    public ButtonStyle? CancelButtonStyle { get; set; }
+
+    /// <summary>Gets or sets the complete local presentation applied to the Show-hidden toggle, or
+    /// null to let it use its own semantic input profile.</summary>
+    public CheckBoxStyle? ShowHiddenCheckBoxStyle { get; set; }
+
+    /// <summary>Gets or sets the complete local style for the file list's generated scrollbars, or
+    /// null to let it use its own semantic profile.</summary>
+    public ScrollBarStyle? FileListScrollBarStyle { get; set; }
+
+    /// <summary>Gets or sets the complete local style for the filter picker's generated scrollbar,
+    /// or null to let it use its own semantic profile.</summary>
+    public ScrollBarStyle? FilterScrollBarStyle { get; set; }
+
+    /// <summary>Gets or sets the complete local presentation applied to the Open Button, or null to
+    /// let it use its own semantic input profile.</summary>
+    public ButtonStyle? OpenButtonStyle { get; set; }
+
     /// <summary>Creates an independent configuration snapshot for one dialog.</summary>
     /// <returns>A new options object with equivalent owned values.</returns>
     internal FilePickerOptions Copy() => new()
@@ -123,6 +146,11 @@ public sealed class FilePickerOptions
         ShowHidden = ShowHidden,
         MaxVisibleRows = MaxVisibleRows,
         Filters = Filters,
-        FilterIndex = FilterIndex
+        FilterIndex = FilterIndex,
+        CancelButtonStyle = CancelButtonStyle,
+        ShowHiddenCheckBoxStyle = ShowHiddenCheckBoxStyle,
+        FileListScrollBarStyle = FileListScrollBarStyle,
+        FilterScrollBarStyle = FilterScrollBarStyle,
+        OpenButtonStyle = OpenButtonStyle
     };
 }
