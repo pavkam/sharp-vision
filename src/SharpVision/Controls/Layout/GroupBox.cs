@@ -92,8 +92,7 @@ public sealed class GroupBox: ContentControl
         var border = this.ResolveBorderStyle(GetAppearanceState());
         var bg = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
         var actualBorder = ActualBorder;
-        ControlChrome.DrawPartialBorder(
-            canvas,
+        canvas.DrawPartialBorder(
             Bounds,
             actualBorder.Sides,
             ResolveBorderGlyphs(actualBorder.GlyphStyle),

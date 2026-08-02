@@ -1103,7 +1103,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             {
                 var appearanceState = GetAppearanceState();
                 var chrome = GetChromeRenderOptions();
-                ControlChrome.RenderUnderlay(this, visual, appearanceState, chrome);
+                this.RenderUnderlay(visual, appearanceState, chrome);
                 OnRenderContent(visual);
                 var descendantBounds = DescendantRenderBounds;
                 var descendantClip = ClipsChildren
@@ -1114,7 +1114,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                     : canvas;
                 RenderChildren(descendantCanvas, descendantClip);
                 OnRenderAdornment(visual);
-                ControlChrome.RenderBorder(this, visual, appearanceState, chrome);
+                this.RenderBorder(visual, appearanceState, chrome);
                 RenderOverlay(visual);
             }
 
@@ -1976,7 +1976,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         get
         {
             var shadow = ActualShadow;
-            return ControlChrome.ExpandVisualBounds(Bounds, shadow.IsVisible, shadow.Mode, shadow.Offset);
+            return Bounds.ExpandVisualBounds(shadow.IsVisible, shadow.Mode, shadow.Offset);
         }
     }
 

@@ -6,22 +6,23 @@ namespace SharpVision.Styling;
 /// <summary>Draws shared control border, shadow, and body-fill chrome into semantic cells.</summary>
 internal static class ControlChrome
 {
-    /// <summary>Expands one body rectangle by a signed shadow offset when enabled.</summary>
-    /// <param name="body">The non-negative body rectangle.</param>
-    /// <param name="hasShadow">Whether visual overflow is active.</param>
-    /// <param name="mode">The composition mode that determines vertical shadow units.</param>
-    /// <param name="offset">The signed shadow translation.</param>
-    /// <returns>The union of the body and translated shadow footprint.</returns>
-    public static Rect ExpandVisualBounds(
-        Rect body,
-        bool hasShadow,
-        ShadowMode mode,
-        Point offset) =>
-        hasShadow
-            ? Union(body, mode == ShadowMode.FractionalBlock
-                ? FractionalShadowBounds(body, offset)
-                : Shift(body, offset))
-            : body;
+    extension(Rect body)
+    {
+        /// <summary>Expands one body rectangle by a signed shadow offset when enabled.</summary>
+        /// <param name="hasShadow">Whether visual overflow is active.</param>
+        /// <param name="mode">The composition mode that determines vertical shadow units.</param>
+        /// <param name="offset">The signed shadow translation.</param>
+        /// <returns>The union of the body and translated shadow footprint.</returns>
+        public Rect ExpandVisualBounds(
+            bool hasShadow,
+            ShadowMode mode,
+            Point offset) =>
+            hasShadow
+                ? body.Union(mode == ShadowMode.FractionalBlock
+                    ? FractionalShadowBounds(body, offset)
+                    : body.Shift(offset))
+                : body;
+    }
 
     /// <summary>Resolves one control's own visual clip from hard and soft branch constraints.</summary>
     /// <param name="contentClip">The inherited ordinary-layout aperture.</param>
@@ -83,236 +84,239 @@ internal static class ControlChrome
         VisualState visualState,
         ChromeRenderOptions? options = null)
     {
-        RenderUnderlay(control, canvas, visualState, options);
-        RenderBorder(control, canvas, visualState, options);
+        control.RenderUnderlay(canvas, visualState, options);
+        control.RenderBorder(canvas, visualState, options);
     }
 
-    /// <summary>Draws framework-owned shadow and body fill before content.</summary>
-    public static void RenderUnderlay(
-        Control control,
-        TerminalCanvas canvas,
-        VisualState visualState,
-        ChromeRenderOptions? options = null)
+    extension(Control control)
     {
-        ArgumentNullException.ThrowIfNull(control);
-
-        var settings = options ?? default;
-        var body = settings.BodyBounds ?? control.Bounds;
-        var appearance = control.GetResolvedAppearance(visualState);
-        var bodyStyle = appearance.Style;
-        var background = appearance.BackgroundMode;
-
-        if (appearance.Shadow.IsVisible && !settings.SkipShadow)
+        /// <summary>Draws framework-owned shadow and body fill before content.</summary>
+        public void RenderUnderlay(
+            TerminalCanvas canvas,
+            VisualState visualState,
+            ChromeRenderOptions? options = null)
         {
-            DrawShadow(
-                canvas,
-                control,
-                body,
-                settings.ShadowExcludeBounds ?? body,
-                appearance.Shadow,
-                appearance.ShadowStyle,
-                appearance.ShadowBackgroundMode,
-                settings.PreserveButtonShadowGap);
+            ArgumentNullException.ThrowIfNull(control);
+
+            var settings = options ?? default;
+            var body = settings.BodyBounds ?? control.Bounds;
+            var appearance = control.GetResolvedAppearance(visualState);
+            var bodyStyle = appearance.Style;
+            var background = appearance.BackgroundMode;
+
+            if (appearance.Shadow.IsVisible && !settings.SkipShadow)
+            {
+                canvas.DrawShadow(
+                    control,
+                    body,
+                    settings.ShadowExcludeBounds ?? body,
+                    appearance.Shadow,
+                    appearance.ShadowStyle,
+                    appearance.ShadowBackgroundMode,
+                    settings.PreserveButtonShadowGap);
+            }
+
+            var isPressed = (visualState & VisualState.Pressed) != 0;
+
+            if (background == BackgroundMode.Opaque && !settings.SkipBodyFill &&
+                (!settings.ClearBodyWhenPressedWithShadow || !isPressed || !appearance.Shadow.IsVisible))
+            {
+                canvas.Clear(FillBounds(body, appearance.Border.Sides), bodyStyle);
+            }
+            else if (settings.ClearBodyWhenPressedWithShadow && isPressed && appearance.Shadow.IsVisible)
+            {
+                canvas.Clear(FillBounds(body, appearance.Border.Sides), bodyStyle);
+            }
         }
 
-        var isPressed = (visualState & VisualState.Pressed) != 0;
+        /// <summary>Draws framework-owned border chrome after normal-layer content and children.</summary>
+        public void RenderBorder(
+            TerminalCanvas canvas,
+            VisualState visualState,
+            ChromeRenderOptions? options = null)
+        {
+            ArgumentNullException.ThrowIfNull(control);
+            var settings = options ?? default;
+            var body = settings.BodyBounds ?? control.Bounds;
+            var appearance = control.GetResolvedAppearance(visualState);
+            var border = appearance.Border;
 
-        if (background == BackgroundMode.Opaque && !settings.SkipBodyFill &&
-            (!settings.ClearBodyWhenPressedWithShadow || !isPressed || !appearance.Shadow.IsVisible))
-        {
-            canvas.Clear(FillBounds(body, appearance.Border.Sides), bodyStyle);
-        }
-        else if (settings.ClearBodyWhenPressedWithShadow && isPressed && appearance.Shadow.IsVisible)
-        {
-            canvas.Clear(FillBounds(body, appearance.Border.Sides), bodyStyle);
+            if (!settings.SkipBorder && border.Sides != BorderSide.None)
+            {
+                var glyphs = control.ResolveBorderGlyphs(settings.BorderGlyphStyle ?? border.GlyphStyle);
+                canvas.DrawPartialBorder(
+                    body,
+                    border.Sides,
+                    glyphs,
+                    appearance.BorderStyle,
+                    appearance.BorderBackgroundMode);
+            }
         }
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static Rect FillBounds(Rect body, BorderSide sides) => new Thickness(
         (sides & BorderSide.Left) != 0 ? 1 : 0,
         (sides & BorderSide.Top) != 0 ? 1 : 0,
         (sides & BorderSide.Right) != 0 ? 1 : 0,
         (sides & BorderSide.Bottom) != 0 ? 1 : 0).Deflate(body);
 
-    /// <summary>Draws framework-owned border chrome after normal-layer content and children.</summary>
-    public static void RenderBorder(
-        Control control,
-        TerminalCanvas canvas,
-        VisualState visualState,
-        ChromeRenderOptions? options = null)
+    extension(TerminalCanvas canvas)
     {
-        ArgumentNullException.ThrowIfNull(control);
-        var settings = options ?? default;
-        var body = settings.BodyBounds ?? control.Bounds;
-        var appearance = control.GetResolvedAppearance(visualState);
-        var border = appearance.Border;
-
-        if (!settings.SkipBorder && border.Sides != BorderSide.None)
+        /// <summary>Draws one complete one-cell-wide border frame.</summary>
+        /// <param name="bounds">The frame rectangle.</param>
+        /// <param name="glyphs">The validated glyph family.</param>
+        /// <param name="style">The border semantic style.</param>
+        /// <param name="background">Whether border backgrounds replace destination cells.</param>
+        public void DrawUniformBorder(
+            Rect bounds,
+            BorderGlyphStyle glyphs,
+            TerminalStyle style,
+            BackgroundMode background)
         {
-            var glyphs = control.ResolveBorderGlyphs(settings.BorderGlyphStyle ?? border.GlyphStyle);
-            DrawPartialBorder(
-                canvas,
-                body,
-                border.Sides,
-                glyphs,
-                appearance.BorderStyle,
-                appearance.BorderBackgroundMode);
-        }
-    }
+            if (bounds.Width == 0 || bounds.Height == 0)
+            {
+                return;
+            }
 
-    /// <summary>Draws one complete one-cell-wide border frame.</summary>
-    /// <param name="canvas">The semantic canvas.</param>
-    /// <param name="bounds">The frame rectangle.</param>
-    /// <param name="glyphs">The validated glyph family.</param>
-    /// <param name="style">The border semantic style.</param>
-    /// <param name="background">Whether border backgrounds replace destination cells.</param>
-    public static void DrawUniformBorder(
-        TerminalCanvas canvas,
-        Rect bounds,
-        BorderGlyphStyle glyphs,
-        TerminalStyle style,
-        BackgroundMode background)
-    {
-        if (bounds.Width == 0 || bounds.Height == 0)
-        {
-            return;
+            for (var x = bounds.X; x < bounds.Right; x++)
+            {
+                var top = x == bounds.X ? glyphs.TopLeft : x == bounds.Right - 1 ? glyphs.TopRight : glyphs.Top;
+                var bottom = x == bounds.X ? glyphs.BottomLeft : x == bounds.Right - 1 ? glyphs.BottomRight : glyphs.Bottom;
+                canvas.DrawRune(top, new Point(x, bounds.Y), style, background);
+
+                if (bounds.Height > 1)
+                {
+                    canvas.DrawRune(bottom, new Point(x, bounds.Bottom - 1), style, background);
+                }
+            }
+
+            for (var y = bounds.Y + 1; y < bounds.Bottom - 1; y++)
+            {
+                canvas.DrawRune(glyphs.Left, new Point(bounds.X, y), style, background);
+
+                if (bounds.Width > 1)
+                {
+                    canvas.DrawRune(glyphs.Right, new Point(bounds.Right - 1, y), style, background);
+                }
+            }
         }
 
-        for (var x = bounds.X; x < bounds.Right; x++)
+        /// <summary>Draws independently enabled zero-or-one-cell border edges.</summary>
+        /// <param name="bounds">The frame rectangle.</param>
+        /// <param name="border">The enabled border edges.</param>
+        /// <param name="glyphs">The validated glyph family.</param>
+        /// <param name="style">The border semantic style.</param>
+        /// <param name="background">Whether border backgrounds replace destination cells.</param>
+        public void DrawPartialBorder(
+            Rect bounds,
+            BorderSide border,
+            BorderGlyphStyle glyphs,
+            TerminalStyle style,
+            BackgroundMode background)
         {
-            var top = x == bounds.X ? glyphs.TopLeft : x == bounds.Right - 1 ? glyphs.TopRight : glyphs.Top;
-            var bottom = x == bounds.X ? glyphs.BottomLeft : x == bounds.Right - 1 ? glyphs.BottomRight : glyphs.Bottom;
-            canvas.DrawRune(top, new Point(x, bounds.Y), style, background);
+            if (bounds.Width == 0 || bounds.Height == 0)
+            {
+                return;
+            }
 
+            DrawHorizontalEdge(canvas, bounds, border, glyphs, style, background, top: true);
             if (bounds.Height > 1)
             {
-                canvas.DrawRune(bottom, new Point(x, bounds.Bottom - 1), style, background);
+                DrawHorizontalEdge(canvas, bounds, border, glyphs, style, background, top: false);
             }
-        }
 
-        for (var y = bounds.Y + 1; y < bounds.Bottom - 1; y++)
-        {
-            canvas.DrawRune(glyphs.Left, new Point(bounds.X, y), style, background);
-
+            DrawVerticalEdge(canvas, bounds, border, glyphs, style, background, left: true);
             if (bounds.Width > 1)
             {
-                canvas.DrawRune(glyphs.Right, new Point(bounds.Right - 1, y), style, background);
+                DrawVerticalEdge(canvas, bounds, border, glyphs, style, background, left: false);
             }
         }
-    }
 
-    /// <summary>Draws independently enabled zero-or-one-cell border edges.</summary>
-    /// <param name="canvas">The semantic canvas.</param>
-    /// <param name="bounds">The frame rectangle.</param>
-    /// <param name="border">The enabled border edges.</param>
-    /// <param name="glyphs">The validated glyph family.</param>
-    /// <param name="style">The border semantic style.</param>
-    /// <param name="background">Whether border backgrounds replace destination cells.</param>
-    public static void DrawPartialBorder(
-        TerminalCanvas canvas,
-        Rect bounds,
-        BorderSide border,
-        BorderGlyphStyle glyphs,
-        TerminalStyle style,
-        BackgroundMode background)
-    {
-        if (bounds.Width == 0 || bounds.Height == 0)
+        /// <summary>Draws translated shadow overflow outside one excluded body region.</summary>
+        /// <param name="control">The control supplying shadow theme values.</param>
+        /// <param name="sourceBounds">The rectangle translated to form the shadow footprint.</param>
+        /// <param name="excludeBounds">Cells inside this rectangle are not shadowed.</param>
+        /// <param name="shadow">The fully resolved shadow geometry and glyph.</param>
+        /// <param name="style">The fully resolved shadow cell style.</param>
+        /// <param name="background">Whether shadow backgrounds replace destination cells.</param>
+        /// <param name="preserveButtonShadowGap">Whether to leave one cell before the bottom strip.</param>
+        public void DrawShadow(
+            Control control,
+            Rect sourceBounds,
+            Rect excludeBounds,
+            Shadow shadow,
+            TerminalStyle style,
+            BackgroundMode background,
+            bool preserveButtonShadowGap = false)
         {
-            return;
-        }
+            ArgumentNullException.ThrowIfNull(control);
 
-        DrawHorizontalEdge(canvas, bounds, border, glyphs, style, background, top: true);
-        if (bounds.Height > 1)
-        {
-            DrawHorizontalEdge(canvas, bounds, border, glyphs, style, background, top: false);
-        }
+            var target = sourceBounds.Shift(shadow.Offset).Intersect(canvas.Bounds);
 
-        DrawVerticalEdge(canvas, bounds, border, glyphs, style, background, left: true);
-        if (bounds.Width > 1)
-        {
-            DrawVerticalEdge(canvas, bounds, border, glyphs, style, background, left: false);
-        }
-    }
-
-    /// <summary>Draws translated shadow overflow outside one excluded body region.</summary>
-    /// <param name="canvas">The semantic canvas.</param>
-    /// <param name="control">The control supplying shadow theme values.</param>
-    /// <param name="sourceBounds">The rectangle translated to form the shadow footprint.</param>
-    /// <param name="excludeBounds">Cells inside this rectangle are not shadowed.</param>
-    /// <param name="shadow">The fully resolved shadow geometry and glyph.</param>
-    /// <param name="style">The fully resolved shadow cell style.</param>
-    /// <param name="background">Whether shadow backgrounds replace destination cells.</param>
-    /// <param name="preserveButtonShadowGap">Whether to leave one cell before the bottom strip.</param>
-    public static void DrawShadow(
-        TerminalCanvas canvas,
-        Control control,
-        Rect sourceBounds,
-        Rect excludeBounds,
-        Shadow shadow,
-        TerminalStyle style,
-        BackgroundMode background,
-        bool preserveButtonShadowGap = false)
-    {
-        ArgumentNullException.ThrowIfNull(control);
-
-        var target = Shift(sourceBounds, shadow.Offset).Intersect(canvas.Bounds);
-
-        if (shadow.Mode == ShadowMode.FractionalBlock)
-        {
-            DrawFractionalShadow(
-                canvas,
-                control,
-                sourceBounds,
-                excludeBounds,
-                new TerminalStyle(style.Foreground, Color.Default, style.Attributes,
-                    style.Hyperlink, style.Underline, style.UnderlineColor),
-                BackgroundMode.Transparent);
-            return;
-        }
-
-        for (var y = target.Y; y < target.Bottom; y++)
-        {
-            for (var x = target.X; x < target.Right; x++)
+            if (shadow.Mode == ShadowMode.FractionalBlock)
             {
-                var point = new Point(x, y);
+                DrawFractionalShadow(
+                    canvas,
+                    control,
+                    sourceBounds,
+                    excludeBounds,
+                    new TerminalStyle(style.Foreground, Color.Default, style.Attributes,
+                        style.Hyperlink, style.Underline, style.UnderlineColor),
+                    BackgroundMode.Transparent);
+                return;
+            }
 
-                if (excludeBounds.Contains(point))
+            for (var y = target.Y; y < target.Bottom; y++)
+            {
+                for (var x = target.X; x < target.Right; x++)
                 {
-                    continue;
-                }
+                    var point = new Point(x, y);
 
-                if (preserveButtonShadowGap &&
-                    y >= sourceBounds.Bottom &&
-                    x == target.X)
-                {
-                    continue;
-                }
+                    if (excludeBounds.Contains(point))
+                    {
+                        continue;
+                    }
 
-                if (shadow.Mode == ShadowMode.Composite)
-                {
-                    canvas.ApplyStyle(new Rect(x, y, 1, 1), style, background);
-                }
-                else
-                {
-                    Debug.Assert(
-                        shadow.Mode == ShadowMode.BlockGlyph,
-                        "Public validation limits shadow modes.");
-                    var glyph = shadow.Glyph.Resolve(ControlGlyphs.Chrome.Shadow.Fallback, control.CellPolicy.AmbiguousWidth);
-                    canvas.DrawRune(glyph, point, style, background);
+                    if (preserveButtonShadowGap &&
+                        y >= sourceBounds.Bottom &&
+                        x == target.X)
+                    {
+                        continue;
+                    }
+
+                    if (shadow.Mode == ShadowMode.Composite)
+                    {
+                        canvas.ApplyStyle(new Rect(x, y, 1, 1), style, background);
+                    }
+                    else
+                    {
+                        Debug.Assert(
+                            shadow.Mode == ShadowMode.BlockGlyph,
+                            "Public validation limits shadow modes.");
+                        var glyph = shadow.Glyph.Resolve(ControlGlyphs.Chrome.Shadow.Fallback, control.CellPolicy.AmbiguousWidth);
+                        canvas.DrawRune(glyph, point, style, background);
+                    }
                 }
             }
         }
     }
 
-    public static Rect Shift(Rect value, Point offset) => new(
-        value.X.SaturatingAdd(offset.X),
-        value.Y.SaturatingAdd(offset.Y),
-        value.Width,
-        value.Height);
+    extension(Rect value)
+    {
+        public Rect Shift(Point offset) => new(
+            value.X.SaturatingAdd(offset.X),
+            value.Y.SaturatingAdd(offset.Y),
+            value.Width,
+            value.Height);
+    }
 
     private static Rect FractionalShadowBounds(Rect source, Point offset)
     {
-        var horizontal = Shift(source, new Point(offset.X, 0));
+        var horizontal = source.Shift(new Point(offset.X, 0));
         var topHalf = (2L * source.Y) + offset.Y;
         var bottomHalf = (2L * source.Bottom) + offset.Y;
         var top = SaturatingToInt(FloorHalf(topHalf));
@@ -320,6 +324,10 @@ internal static class ControlChrome
         return new Rect(horizontal.X, top, horizontal.Width, Extent(top, bottom));
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static void DrawFractionalShadow(
         TerminalCanvas canvas,
         Control control,
@@ -369,23 +377,30 @@ internal static class ControlChrome
         }
     }
 
-    public static Rect Union(Rect left, Rect right)
+    extension(Rect left)
     {
-        var x = Math.Min(left.X, right.X);
-        var y = Math.Min(left.Y, right.Y);
-        var rightEdge = Math.Max(left.Right, right.Right);
-        var bottom = Math.Max(left.Bottom, right.Bottom);
-        var width = (long) rightEdge - x;
-        var height = (long) bottom - y;
+        public Rect Union(Rect right)
+        {
+            var x = Math.Min(left.X, right.X);
+            var y = Math.Min(left.Y, right.Y);
+            var rightEdge = Math.Max(left.Right, right.Right);
+            var bottom = Math.Max(left.Bottom, right.Bottom);
+            var width = (long) rightEdge - x;
+            var height = (long) bottom - y;
 
-        // A single Rect cannot represent a span wider than Int32.MaxValue.
-        // Preserve the arranged body rather than clipping valid body content
-        // in favor of a practically unreachable translated shadow.
-        return width > int.MaxValue || height > int.MaxValue
-            ? left
-            : new Rect(x, y, (int) width, (int) height);
+            // A single Rect cannot represent a span wider than Int32.MaxValue.
+            // Preserve the arranged body rather than clipping valid body content
+            // in favor of a practically unreachable translated shadow.
+            return width > int.MaxValue || height > int.MaxValue
+                ? left
+                : new Rect(x, y, (int) width, (int) height);
+        }
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static void DrawHorizontalEdge(
         TerminalCanvas canvas,
         Rect bounds,
@@ -421,6 +436,10 @@ internal static class ControlChrome
         }
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static void DrawVerticalEdge(
         TerminalCanvas canvas,
         Rect bounds,
@@ -448,16 +467,18 @@ internal static class ControlChrome
         }
     }
 
-    /// <summary>Draws one horizontal line of identical glyphs across the full width of a bounds rectangle.</summary>
-    public static void DrawHorizontalLine(
-        TerminalCanvas canvas,
-        Rect bounds,
-        Rune glyph,
-        TerminalStyle style)
+    extension(TerminalCanvas canvas)
     {
-        for (var x = bounds.X; x < bounds.Right; x++)
+        /// <summary>Draws one horizontal line of identical glyphs across the full width of a bounds rectangle.</summary>
+        public void DrawHorizontalLine(
+            Rect bounds,
+            Rune glyph,
+            TerminalStyle style)
         {
-            canvas.DrawRune(glyph, new Point(x, bounds.Y), style, BackgroundMode.Transparent);
+            for (var x = bounds.X; x < bounds.Right; x++)
+            {
+                canvas.DrawRune(glyph, new Point(x, bounds.Y), style, BackgroundMode.Transparent);
+            }
         }
     }
 

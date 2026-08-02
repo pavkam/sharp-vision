@@ -80,7 +80,7 @@ public sealed class Separator: Control
         var glyph = selected.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
         if (Orientation == Orientation.Horizontal)
         {
-            ControlChrome.DrawHorizontalLine(canvas, Bounds, glyph, s);
+            canvas.DrawHorizontalLine(Bounds, glyph, s);
         }
         else
         {

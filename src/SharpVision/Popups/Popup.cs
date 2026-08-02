@@ -364,7 +364,7 @@ public class Popup: FloatingSurface
             }
 
             var shadow = ActualShadow;
-            return ControlChrome.ExpandVisualBounds(SurfaceBounds, shadow.IsVisible, shadow.Mode, shadow.Offset);
+            return SurfaceBounds.ExpandVisualBounds(shadow.IsVisible, shadow.Mode, shadow.Offset);
         }
     }
 

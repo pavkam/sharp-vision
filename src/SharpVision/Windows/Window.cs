@@ -311,7 +311,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
         get
         {
             var shadow = ActualShadow;
-            return ControlChrome.ExpandVisualBounds(Bounds, shadow.IsVisible, shadow.Mode, shadow.Offset);
+            return Bounds.ExpandVisualBounds(shadow.IsVisible, shadow.Mode, shadow.Offset);
         }
     }
 
@@ -431,8 +431,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
         var background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
         var actualBorder = ActualBorder;
         var borderGlyphs = ResolveBorderGlyphs(actualBorder.GlyphStyle);
-        ControlChrome.DrawPartialBorder(
-            canvas,
+        canvas.DrawPartialBorder(
             Bounds,
             actualBorder.Sides,
             borderGlyphs,

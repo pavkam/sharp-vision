@@ -227,7 +227,7 @@ public sealed partial class Button: Pressable
             var shadow = ActualShadow;
             return IsPressed && shadow.IsVisible
                 ? FaceBounds
-                : ControlChrome.ExpandVisualBounds(Bounds, shadow.IsVisible, shadow.Mode, shadow.Offset);
+                : Bounds.ExpandVisualBounds(shadow.IsVisible, shadow.Mode, shadow.Offset);
         }
     }
 
@@ -314,12 +314,12 @@ public sealed partial class Button: Pressable
 
     private Rect FaceBounds =>
         IsPressed && UsesWholeCellPressedTranslation
-            ? ControlChrome.Shift(Bounds, PressedTranslation)
+            ? Bounds.Shift(PressedTranslation)
             : Bounds;
 
     private Rect FaceContentBounds(Rect bounds) =>
         IsPressed && UsesWholeCellPressedTranslation
-            ? ControlChrome.Shift(bounds, PressedTranslation)
+            ? bounds.Shift(PressedTranslation)
             : bounds;
 
     private static bool PressedTranslationChanged(ThemeProfile previous, ThemeProfile current)
