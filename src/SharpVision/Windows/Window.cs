@@ -710,6 +710,11 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
             return;
         }
 
+        if (!RaiseCloseRequested())
+        {
+            return;
+        }
+
         _isRequestingClose = true;
         var wasPresented = IsSurfacePresented;
         var closedHandlers = CaptureClosedHandlers();

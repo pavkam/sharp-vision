@@ -64,6 +64,20 @@ public abstract class FloatingSurface: ContentControl
     /// <summary>Raises the inherited closed notification after a family confirms presentation unavailability.</summary>
     protected void RaiseSurfaceClosed() => Closed?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>Raises <see cref="CloseRequested"/> and reports whether a handler vetoed the request.</summary>
+    /// <returns>False when a handler set <see cref="SurfaceCloseRequestedEventArgs.Cancel"/>; otherwise true.</returns>
+    protected bool RaiseCloseRequested()
+    {
+        if (CloseRequested is not { } closeRequested)
+        {
+            return true;
+        }
+
+        var requestArgs = new SurfaceCloseRequestedEventArgs();
+        closeRequested.Invoke(this, requestArgs);
+        return !requestArgs.Cancel;
+    }
+
     /// <summary>
     /// Captures the current <see cref="Closed"/> invocation list so it can still be raised after a
     /// synchronous <see cref="Closing"/> handler disposes the surface, which otherwise nulls the field
@@ -204,15 +218,9 @@ public abstract class FloatingSurface: ContentControl
             return false;
         }
 
-        if (CloseRequested is { } closeRequested)
+        if (!RaiseCloseRequested())
         {
-            var requestArgs = new SurfaceCloseRequestedEventArgs();
-            closeRequested.Invoke(this, requestArgs);
-
-            if (requestArgs.Cancel)
-            {
-                return false;
-            }
+            return false;
         }
 
         _isClosing = true;

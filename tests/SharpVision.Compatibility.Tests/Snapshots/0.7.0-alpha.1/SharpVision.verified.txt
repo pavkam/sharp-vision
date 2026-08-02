@@ -3234,6 +3234,7 @@ namespace SharpVision.Surfaces
         protected void ExitSurfaceModal() { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         protected void OpenSurface(System.Action commitOpenState) { }
+        protected bool RaiseCloseRequested() { }
         protected void RaiseSurfaceClosed() { }
         protected void RaiseSurfaceClosing() { }
         protected void RaiseSurfaceOpened() { }

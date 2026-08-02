@@ -10,19 +10,21 @@ The `Application` events are `Starting`, `Started`, `Stopping`, `Stopped`,
 enter the control tree through typed routed events. Session closure and faults
 drive shutdown instead of leaking terminal callbacks through the UI API.
 
-Every `FloatingSurface` that closes through the shared `CloseSurface` engine
-(the whole `Popup` family, and `Dialog<TResult>`'s typed completion) first
-raises `CloseRequested`, a pre-commit veto hook
+Every `FloatingSurface` first raises `CloseRequested`, a pre-commit veto hook
 (`SurfaceCloseRequestedEventArgs.Cancel`) that leaves the surface untouched and
-skips `Closing`/`Closed` entirely when set. `Popup` then publishes `Closing` and
-`Closed`. `Window` publishes a `Closing` request and, by default, collapses
-itself afterward: the visibility transaction completes the common cleanup and
-the close request then publishes `Closed`. A `Closing` handler that itself
-changes visibility takes responsibility for the outcome instead — if it leaves
-the Window visible and presented, `Closed` is suppressed. Changing a Window's
-visibility directly performs the cleanup without publishing `Closing` or
-`Closed`. Window's close affordance, `CloseOnEscape`, and modal dismiss do not
-yet raise `CloseRequested` — see
+skips `Closing`/`Closed` entirely when set — both the shared `CloseSurface`
+engine (the whole `Popup` family, and `Dialog<TResult>`'s typed completion) and
+Window's own close affordance, `CloseOnEscape`, and modal dismiss raise it
+through the same `FloatingSurface.RaiseCloseRequested` helper. `Popup` then
+publishes `Closing` and `Closed`. `Window` publishes a `Closing` request and, by
+default, collapses itself afterward: the visibility transaction completes the
+common cleanup and the close request then publishes `Closed`. A `Closing`
+handler that itself changes visibility takes responsibility for the outcome
+instead — if it leaves the Window visible and presented, `Closed` is suppressed.
+Changing a Window's visibility directly performs the cleanup without publishing
+`Closing` or `Closed`. Window's three close entry points still hand-roll their
+own sequence around that shared veto hook rather than routing through the
+`CloseSurface` engine itself — see
 [floating-surfaces.md](floating-surfaces.md#shared-lifecycle). Modal scopes
 publish `DismissRequested` and one committed `Exited` notification under the
 [modal lifetime contract](modality.md#nested-scopes-and-lifetime).

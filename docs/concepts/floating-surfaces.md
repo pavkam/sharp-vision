@@ -53,22 +53,26 @@ publishes `Closing`, exits modality, makes the content unavailable, clears
 from visible performs the same common cleanup directly but publishes neither
 lifecycle event.
 
-`CloseRequested` currently fires wherever the shared `CloseSurface` engine runs
-— the whole Popup family, and `Dialog<TResult>`'s own typed-completion path —
-but not yet from Window's close affordance, `CloseOnEscape`, or modal dismiss,
-which still hand-roll their own sequence ahead of routing through the shared
-engine (tracked in [#223](https://github.com/pavkam/sharp-vision/issues/223)).
+`CloseRequested` fires wherever the shared `CloseSurface` engine runs — the
+whole Popup family, and `Dialog<TResult>`'s own typed-completion path — and also
+from Window's close affordance, `CloseOnEscape`, and modal dismiss, each of
+which still hand-rolls its own sequence rather than routing through the shared
+`CloseSurface` engine (that unification remains tracked in
+[#223](https://github.com/pavkam/sharp-vision/issues/223)), but now raises
+`CloseRequested` first via the same `FloatingSurface.RaiseCloseRequested` helper
+the engine uses, honoring the same veto contract.
 
 An ordinary Window close affordance, Escape action, or modal dismiss request
-publishes `Closing`, then, by default, collapses the Window itself: the
-visibility transaction performs the common cleanup and the close request then
-publishes `Closed`. A `Closing` handler that itself changes visibility (hiding
-it to a different state, restoring it, or disposing the Window) takes
-responsibility for the outcome instead — if it leaves the Window visible and
-presented, the Window stays open and `Closed` is not published. Cleanup attempts
-every stage even after a callback failure and rethrows the earliest failure once
-state is coherent. Detachment and disposal release modal, focus, and capture
-state even when no normal close path was requested.
+first raises `CloseRequested`; an uncancelled request then publishes `Closing`,
+then, by default, collapses the Window itself: the visibility transaction
+performs the common cleanup and the close request then publishes `Closed`. A
+`Closing` handler that itself changes visibility (hiding it to a different
+state, restoring it, or disposing the Window) takes responsibility for the
+outcome instead — if it leaves the Window visible and presented, the Window
+stays open and `Closed` is not published. Cleanup attempts every stage even
+after a callback failure and rethrows the earliest failure once state is
+coherent. Detachment and disposal release modal, focus, and capture state even
+when no normal close path was requested.
 
 ## Ownership, elevation, and modality
 

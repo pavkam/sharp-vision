@@ -764,6 +764,77 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a CloseRequested handler can veto Escape-driven closure, leaving the window
+    /// presented and raising neither Closing nor Closed (see #223).</summary>
+    [Fact]
+    public async Task CloseRequested_WhenHandlerCancels_LeavesWindowPresentedAndRaisesNeitherClosingNorClosedAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var window = new Window
+            {
+                CanMove = false,
+                CanClose = true,
+                CloseOnEscape = true,
+                HeaderPlacement = WindowTitlePlacement.Center
+            };
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+            var closingCalls = 0;
+            var closedCalls = 0;
+            window.CloseRequested += (_, eventArgs) => eventArgs.Cancel = true;
+            window.Closing += (_, _) => closingCalls++;
+            window.Closed += (_, _) => closedCalls++;
+
+            var key = Key(Code.Escape);
+            _ = Router.Route(window, Events.Key, key);
+
+            window.Visibility.ShouldBe(Visibility.Visible);
+            closingCalls.ShouldBe(0);
+            closedCalls.ShouldBe(0);
+            key.Handled.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an uncancelled CloseRequested still closes normally, publishing the request
+    /// once before Closing and Closed each fire exactly once (see #223).</summary>
+    [Fact]
+    public async Task CloseRequested_WhenNotCancelled_PublishesRequestThenClosingThenClosedExactlyOnceAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var window = new Window
+            {
+                CanMove = false,
+                CanClose = true,
+                CloseOnEscape = true,
+                HeaderPlacement = WindowTitlePlacement.Center
+            };
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+            var order = new List<string>();
+            window.CloseRequested += (_, eventArgs) =>
+            {
+                order.Add("requested");
+                eventArgs.Cancel.ShouldBeFalse();
+                window.Visibility.ShouldBe(Visibility.Visible);
+            };
+            window.Closing += (_, _) => order.Add("closing");
+            window.Closed += (_, _) => order.Add("closed");
+
+            _ = Router.Route(window, Events.Key, Key(Code.Escape));
+
+            order.ShouldBe(["requested", "closing", "closed"]);
+            window.Visibility.ShouldBe(Visibility.Collapsed);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies Escape actually collapses a closable, presented window by default, instead of only raising Closing.</summary>
     [Fact]
     public async Task Dispatch_WhenDialogEscapeHasNoCancelButton_CollapsesWindowByDefaultAsync()
