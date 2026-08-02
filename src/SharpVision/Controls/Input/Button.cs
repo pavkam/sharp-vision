@@ -17,6 +17,9 @@ public sealed partial class Button: Pressable
     private static readonly Func<ButtonStyle, ButtonStyle, InvalidationImpact> _styleComparer = CompareStructure;
     private static readonly Func<ButtonStyle, ThemeProfile> _appearanceSelector = static style => style.Appearance;
     private ICommand? _command;
+    private ButtonStyle? _actualStyleCache;
+    private ButtonStyle? _actualStyleCacheKey;
+    private Theme? _actualStyleCacheTheme;
 
     #region Construction and command properties
 
@@ -51,7 +54,30 @@ public sealed partial class Button: Pressable
     }
 
     /// <summary>Gets the complete local presentation or the library structure completed with the semantic input profile.</summary>
-    public ButtonStyle ActualStyle => ResolveStyle(Style, Theme);
+    /// <remarks>
+    /// Memoized against the exact (<see cref="Style"/>, <see cref="Theme"/>) pair that produced it:
+    /// resolving the default style re-validates all 512 <see cref="VisualState"/> combinations
+    /// against the shadow/border invariant (see #179), and this property is read from multiple
+    /// per-frame paths.
+    /// </remarks>
+    public ButtonStyle ActualStyle
+    {
+        get
+        {
+            var theme = Theme;
+
+            if (_actualStyleCache is { } cached && _actualStyleCacheKey == Style && ReferenceEquals(_actualStyleCacheTheme, theme))
+            {
+                return cached;
+            }
+
+            var resolved = ResolveStyle(Style, theme);
+            _actualStyleCache = resolved;
+            _actualStyleCacheKey = Style;
+            _actualStyleCacheTheme = theme;
+            return resolved;
+        }
+    }
 
     /// <inheritdoc/>
     protected override ThemeRole ThemeRole => ThemeRole.Input;

@@ -18,6 +18,9 @@ public sealed class RadioButton: Pressable
     private static readonly Func<RadioButtonStyle, ThemeProfile> _appearanceSelector = static style => style.Appearance;
     private bool _isChecked;
     private int _checkedVersion;
+    private RadioButtonStyle? _actualStyleCache;
+    private RadioButtonStyle? _actualStyleCacheKey;
+    private Theme? _actualStyleCacheTheme;
 
     /// <summary>Initializes an unselected RadioButton.</summary>
     public RadioButton()
@@ -115,7 +118,29 @@ public sealed class RadioButton: Pressable
     }
 
     /// <summary>Gets the complete local presentation or library mark mechanics completed with the semantic input profile.</summary>
-    public RadioButtonStyle ActualStyle => ResolveStyle(Style, Theme);
+    /// <remarks>
+    /// Memoized against the exact (<see cref="Style"/>, <see cref="Theme"/>) pair that produced it:
+    /// resolving the default style rebuilds two themed <see cref="ThemeProfile"/> instances from
+    /// scratch (see #179), and this property is read from multiple per-frame paths.
+    /// </remarks>
+    public RadioButtonStyle ActualStyle
+    {
+        get
+        {
+            var theme = Theme;
+
+            if (_actualStyleCache is { } cached && _actualStyleCacheKey == Style && ReferenceEquals(_actualStyleCacheTheme, theme))
+            {
+                return cached;
+            }
+
+            var resolved = ResolveStyle(Style, theme);
+            _actualStyleCache = resolved;
+            _actualStyleCacheKey = Style;
+            _actualStyleCacheTheme = theme;
+            return resolved;
+        }
+    }
 
     /// <inheritdoc/>
     protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;

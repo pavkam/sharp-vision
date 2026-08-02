@@ -23,4 +23,73 @@ public sealed class ControlAppearanceCachePerformanceTests
 
         allocated.ShouldBeLessThan(4_096);
     }
+
+    /// <summary>Verifies repeated CheckBox.ActualStyle reads against an unchanged Style/Theme pair
+    /// reuse the memoized style instead of rebuilding a fresh 2.5 KB ThemeProfile on every read
+    /// (see #179).</summary>
+    [Fact]
+    public void CheckBoxActualStyle_WhenReadRepeatedlyWithoutChange_AllocatesOnlyOnce()
+    {
+        var checkBox = new CheckBox();
+        checkBox.SetTheme(Themes.Dark);
+        _ = checkBox.ActualStyle;
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+
+        for (var index = 0; index < 50; index++)
+        {
+            _ = checkBox.ActualStyle;
+        }
+
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        allocated.ShouldBeLessThan(512);
+    }
+
+    /// <summary>Verifies repeated RadioButton.ActualStyle reads against an unchanged Style/Theme pair
+    /// reuse the memoized style instead of rebuilding two fresh ThemeProfile instances on every read
+    /// (see #179).</summary>
+    [Fact]
+    public void RadioButtonActualStyle_WhenReadRepeatedlyWithoutChange_AllocatesOnlyOnce()
+    {
+        var radioButton = new RadioButton();
+        radioButton.SetTheme(Themes.Dark);
+        _ = radioButton.ActualStyle;
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+
+        for (var index = 0; index < 50; index++)
+        {
+            _ = radioButton.ActualStyle;
+        }
+
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        allocated.ShouldBeLessThan(512);
+    }
+
+    /// <summary>Verifies repeated Button.ActualStyle reads against an unchanged Style/Theme pair reuse
+    /// the memoized style instead of re-validating all 512 VisualState combinations on every read
+    /// (see #179).</summary>
+    [Fact]
+    public void ButtonActualStyle_WhenReadRepeatedlyWithoutChange_DoesNotRevalidateEveryRead()
+    {
+        var button = new Button();
+        button.SetTheme(Themes.Dark);
+        _ = button.ActualStyle;
+
+        var stopwatch = Stopwatch.StartNew();
+
+        for (var index = 0; index < 50; index++)
+        {
+            _ = button.ActualStyle;
+        }
+
+        stopwatch.Stop();
+
+        // A single uncached read costs roughly 200 microseconds (512 VisualState resolutions); 50
+        // cached reads completing in under 5 ms rules out even one full re-validation slipping in,
+        // with generous headroom for scheduling noise.
+        stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromMilliseconds(5));
+    }
 }

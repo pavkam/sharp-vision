@@ -15,6 +15,9 @@ public sealed class CheckBox: Pressable
     private static readonly Func<CheckBoxStyle, CheckBoxStyle, InvalidationImpact> _styleComparer = CompareStructure;
     private static readonly Func<CheckBoxStyle, ThemeProfile> _appearanceSelector = static style => style.Appearance;
     private bool? _isChecked = false;
+    private CheckBoxStyle? _actualStyleCache;
+    private CheckBoxStyle? _actualStyleCacheKey;
+    private Theme? _actualStyleCacheTheme;
 
     /// <summary>Initializes an unchecked two-state CheckBox.</summary>
     public CheckBox() => HorizontalAlignment = HorizontalAlignment.Left;
@@ -105,7 +108,29 @@ public sealed class CheckBox: Pressable
     }
 
     /// <summary>Gets the complete local presentation or library mark mechanics completed with the semantic input profile.</summary>
-    public CheckBoxStyle ActualStyle => ResolveStyle(Style, Theme);
+    /// <remarks>
+    /// Memoized against the exact (<see cref="Style"/>, <see cref="Theme"/>) pair that produced it:
+    /// resolving the default style rebuilds a themed <see cref="ThemeProfile"/> from scratch (see
+    /// #179), and this property is read from multiple per-frame paths.
+    /// </remarks>
+    public CheckBoxStyle ActualStyle
+    {
+        get
+        {
+            var theme = Theme;
+
+            if (_actualStyleCache is { } cached && _actualStyleCacheKey == Style && ReferenceEquals(_actualStyleCacheTheme, theme))
+            {
+                return cached;
+            }
+
+            var resolved = ResolveStyle(Style, theme);
+            _actualStyleCache = resolved;
+            _actualStyleCacheKey = Style;
+            _actualStyleCacheTheme = theme;
+            return resolved;
+        }
+    }
 
     /// <inheritdoc/>
     protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
