@@ -168,7 +168,7 @@ internal sealed class WindowsVtProvider: IDescriptionProvider
         foreach (var specification in ProgramSpecifications)
         {
             var source = Encoding.UTF8.GetBytes(specification.Source);
-            compiled.Add(specification.Name, Compiler.Compile(source, limits));
+            compiled.Add(specification.Name, source.Compile(limits));
         }
 
         return new Programs(compiled);

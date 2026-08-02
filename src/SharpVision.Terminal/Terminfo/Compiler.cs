@@ -14,305 +14,315 @@ internal static class Compiler
 
     #region Compilation
 
-    /// <summary>Compiles one raw terminal-description program without executing native tparm or tputs.</summary>
-    /// <param name="source">The non-empty raw program bytes to own.</param>
-    /// <param name="limits">The non-null finite compilation and execution limits.</param>
-    /// <returns>An immutable compile-once program.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="limits"/> is <see langword="null"/>.</exception>
-    /// <exception cref="ArgumentException">The program exceeds a configured bound.</exception>
-    /// <exception cref="FormatException">The program is empty, malformed, unsupported, or stack-invalid.</exception>
-    /// <exception cref="NotSupportedException">The program requests hardware padding.</exception>
-    public static Program Compile(ReadOnlySpan<byte> source, ProgramLimits limits)
+    extension(ReadOnlySpan<byte> source)
     {
-        ArgumentNullException.ThrowIfNull(limits);
-
-        if (source.IsEmpty)
+        /// <summary>Compiles one raw terminal-description program without executing native tparm or tputs.</summary>
+        /// <param name="limits">The non-null finite compilation and execution limits.</param>
+        /// <returns>An immutable compile-once program.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="limits"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentException">The program exceeds a configured bound.</exception>
+        /// <exception cref="FormatException">The program is empty, malformed, unsupported, or stack-invalid.</exception>
+        /// <exception cref="NotSupportedException">The program requests hardware padding.</exception>
+        [SuppressMessage(
+            "Design",
+            "CA2208:Instantiate argument exceptions correctly",
+            Justification = "'source' is the extension receiver, which the analyzer doesn't recognize as a valid ArgumentException paramName yet.")]
+        public Program Compile(ProgramLimits limits)
         {
-            throw new FormatException("A terminfo parameter program cannot be empty.");
-        }
+            ArgumentNullException.ThrowIfNull(limits);
 
-        if (source.Length > limits.MaxProgramBytes)
-        {
-            throw new ArgumentException("The terminfo program exceeds the configured byte limit.", nameof(source));
-        }
-
-        if (source.IndexOf("$<"u8) >= 0)
-        {
-            throw new NotSupportedException("SharpVision does not execute terminfo padding requests.");
-        }
-
-        var operations = new List<Operation>(Math.Min(source.Length, limits.MaxProgramOperations));
-        var literals = new List<byte>(source.Length);
-        var conditionalBase = new int[limits.MaxProgramStackDepth];
-        var conditionalFalseJump = new int[limits.MaxProgramStackDepth];
-        var conditionalEndJumps = new List<int>?[limits.MaxProgramStackDepth];
-        var conditionalThenDepth = new int[limits.MaxProgramStackDepth];
-        var conditionalHasThenDepth = new bool[limits.MaxProgramStackDepth];
-        var conditionalState = new byte[limits.MaxProgramStackDepth];
-        var conditionalDepth = 0;
-        var stackDepth = 0;
-        var maximumStackDepth = 0;
-        var index = 0;
-
-        while (index < source.Length)
-        {
-            if (source[index] != (byte) '%')
+            if (source.IsEmpty)
             {
-                var start = index;
-
-                while (index < source.Length && source[index] != (byte) '%')
-                {
-                    index++;
-                }
-
-                var literalOffset = literals.Count;
-
-                for (var literalIndex = start; literalIndex < index; literalIndex++)
-                {
-                    literals.Add(source[literalIndex]);
-                }
-
-                AddOperation(
-                    operations,
-                    new Operation(Operation.Literal, literalOffset, index - start),
-                    limits);
-                continue;
+                throw new FormatException("A terminfo parameter program cannot be empty.");
             }
 
-            index++;
-
-            if (index >= source.Length)
+            if (source.Length > limits.MaxProgramBytes)
             {
-                throw Malformed("A percent introducer is missing its directive.");
+                throw new ArgumentException("The terminfo program exceeds the configured byte limit.", nameof(source));
             }
 
-            var directive = source[index++];
-
-            switch (directive)
+            if (source.IndexOf("$<"u8) >= 0)
             {
-                case (byte) '%':
+                throw new NotSupportedException("SharpVision does not execute terminfo padding requests.");
+            }
+
+            var operations = new List<Operation>(Math.Min(source.Length, limits.MaxProgramOperations));
+            var literals = new List<byte>(source.Length);
+            var conditionalBase = new int[limits.MaxProgramStackDepth];
+            var conditionalFalseJump = new int[limits.MaxProgramStackDepth];
+            var conditionalEndJumps = new List<int>?[limits.MaxProgramStackDepth];
+            var conditionalThenDepth = new int[limits.MaxProgramStackDepth];
+            var conditionalHasThenDepth = new bool[limits.MaxProgramStackDepth];
+            var conditionalState = new byte[limits.MaxProgramStackDepth];
+            var conditionalDepth = 0;
+            var stackDepth = 0;
+            var maximumStackDepth = 0;
+            var index = 0;
+
+            while (index < source.Length)
+            {
+                if (source[index] != (byte) '%')
+                {
+                    var start = index;
+
+                    while (index < source.Length && source[index] != (byte) '%')
                     {
-                        var literalOffset = literals.Count;
-                        literals.Add((byte) '%');
-                        AddOperation(operations, new Operation(Operation.Literal, literalOffset, 1), limits);
-                        break;
+                        index++;
                     }
-                case (byte) 'p':
-                    if (index >= source.Length || source[index] is < (byte) '1' or > (byte) '9')
+
+                    var literalOffset = literals.Count;
+
+                    for (var literalIndex = start; literalIndex < index; literalIndex++)
                     {
-                        throw Malformed("A parameter directive requires an index from 1 through 9.");
+                        literals.Add(source[literalIndex]);
                     }
 
                     AddOperation(
                         operations,
-                        new Operation(Operation.PushParameter, source[index++] - (byte) '1'),
+                        new Operation(Operation.Literal, literalOffset, index - start),
                         limits);
-                    Push(ref stackDepth, ref maximumStackDepth, limits);
-                    break;
-                case (byte) 'i':
-                    AddOperation(operations, new Operation(Operation.IncrementParameters), limits);
-                    break;
-                case (byte) '{':
-                    {
-                        var value = ParseInteger(source, ref index, (byte) '}');
-                        AddOperation(operations, new Operation(Operation.PushConstant, value), limits);
+                    continue;
+                }
+
+                index++;
+
+                if (index >= source.Length)
+                {
+                    throw Malformed("A percent introducer is missing its directive.");
+                }
+
+                var directive = source[index++];
+
+                switch (directive)
+                {
+                    case (byte) '%':
+                        {
+                            var literalOffset = literals.Count;
+                            literals.Add((byte) '%');
+                            AddOperation(operations, new Operation(Operation.Literal, literalOffset, 1), limits);
+                            break;
+                        }
+                    case (byte) 'p':
+                        if (index >= source.Length || source[index] is < (byte) '1' or > (byte) '9')
+                        {
+                            throw Malformed("A parameter directive requires an index from 1 through 9.");
+                        }
+
+                        AddOperation(
+                            operations,
+                            new Operation(Operation.PushParameter, source[index++] - (byte) '1'),
+                            limits);
                         Push(ref stackDepth, ref maximumStackDepth, limits);
                         break;
-                    }
-                case (byte) '\'':
-                    if (index + 1 >= source.Length || source[index + 1] != (byte) '\'')
-                    {
-                        throw Malformed("A character constant must contain exactly one raw byte.");
-                    }
+                    case (byte) 'i':
+                        AddOperation(operations, new Operation(Operation.IncrementParameters), limits);
+                        break;
+                    case (byte) '{':
+                        {
+                            var value = ParseInteger(source, ref index, (byte) '}');
+                            AddOperation(operations, new Operation(Operation.PushConstant, value), limits);
+                            Push(ref stackDepth, ref maximumStackDepth, limits);
+                            break;
+                        }
+                    case (byte) '\'':
+                        if (index + 1 >= source.Length || source[index + 1] != (byte) '\'')
+                        {
+                            throw Malformed("A character constant must contain exactly one raw byte.");
+                        }
 
-                    AddOperation(
-                        operations,
-                        new Operation(Operation.PushConstant, source[index]),
-                        limits);
-                    index += 2;
-                    Push(ref stackDepth, ref maximumStackDepth, limits);
-                    break;
-                case (byte) 'P':
-                    AddOperation(
-                        operations,
-                        new Operation(Operation.StoreVariable, ParseVariable(source, ref index)),
-                        limits);
-                    Pop(ref stackDepth);
-                    break;
-                case (byte) 'g':
-                    AddOperation(
-                        operations,
-                        new Operation(Operation.LoadVariable, ParseVariable(source, ref index)),
-                        limits);
-                    Push(ref stackDepth, ref maximumStackDepth, limits);
-                    break;
-                case (byte) 'l':
-                    Unary(operations, Operation.StringLength, limits, stackDepth);
-                    break;
-                case (byte) '+':
-                    Binary(operations, Operation.Add, limits, ref stackDepth);
-                    break;
-                case (byte) '-':
-                    Binary(operations, Operation.Subtract, limits, ref stackDepth);
-                    break;
-                case (byte) '*':
-                    Binary(operations, Operation.Multiply, limits, ref stackDepth);
-                    break;
-                case (byte) '/':
-                    Binary(operations, Operation.Divide, limits, ref stackDepth);
-                    break;
-                case (byte) 'm':
-                    Binary(operations, Operation.Modulo, limits, ref stackDepth);
-                    break;
-                case (byte) '&':
-                    Binary(operations, Operation.BitAnd, limits, ref stackDepth);
-                    break;
-                case (byte) '|':
-                    Binary(operations, Operation.BitOr, limits, ref stackDepth);
-                    break;
-                case (byte) '^':
-                    Binary(operations, Operation.BitXor, limits, ref stackDepth);
-                    break;
-                case (byte) '=':
-                    Binary(operations, Operation.Equal, limits, ref stackDepth);
-                    break;
-                case (byte) '<':
-                    Binary(operations, Operation.LessThan, limits, ref stackDepth);
-                    break;
-                case (byte) '>':
-                    Binary(operations, Operation.GreaterThan, limits, ref stackDepth);
-                    break;
-                case (byte) 'A':
-                    Binary(operations, Operation.LogicalAnd, limits, ref stackDepth);
-                    break;
-                case (byte) 'O':
-                    Binary(operations, Operation.LogicalOr, limits, ref stackDepth);
-                    break;
-                case (byte) '!':
-                    Unary(operations, Operation.LogicalNot, limits, stackDepth);
-                    break;
-                case (byte) '~':
-                    Unary(operations, Operation.BitNot, limits, stackDepth);
-                    break;
-                case (byte) '?':
-                    if (conditionalDepth >= conditionalBase.Length)
-                    {
-                        throw new ArgumentException(
-                            "Conditional nesting exceeds the configured stack-depth limit.",
-                            nameof(source));
-                    }
+                        AddOperation(
+                            operations,
+                            new Operation(Operation.PushConstant, source[index]),
+                            limits);
+                        index += 2;
+                        Push(ref stackDepth, ref maximumStackDepth, limits);
+                        break;
+                    case (byte) 'P':
+                        AddOperation(
+                            operations,
+                            new Operation(Operation.StoreVariable, ParseVariable(source, ref index)),
+                            limits);
+                        Pop(ref stackDepth);
+                        break;
+                    case (byte) 'g':
+                        AddOperation(
+                            operations,
+                            new Operation(Operation.LoadVariable, ParseVariable(source, ref index)),
+                            limits);
+                        Push(ref stackDepth, ref maximumStackDepth, limits);
+                        break;
+                    case (byte) 'l':
+                        Unary(operations, Operation.StringLength, limits, stackDepth);
+                        break;
+                    case (byte) '+':
+                        Binary(operations, Operation.Add, limits, ref stackDepth);
+                        break;
+                    case (byte) '-':
+                        Binary(operations, Operation.Subtract, limits, ref stackDepth);
+                        break;
+                    case (byte) '*':
+                        Binary(operations, Operation.Multiply, limits, ref stackDepth);
+                        break;
+                    case (byte) '/':
+                        Binary(operations, Operation.Divide, limits, ref stackDepth);
+                        break;
+                    case (byte) 'm':
+                        Binary(operations, Operation.Modulo, limits, ref stackDepth);
+                        break;
+                    case (byte) '&':
+                        Binary(operations, Operation.BitAnd, limits, ref stackDepth);
+                        break;
+                    case (byte) '|':
+                        Binary(operations, Operation.BitOr, limits, ref stackDepth);
+                        break;
+                    case (byte) '^':
+                        Binary(operations, Operation.BitXor, limits, ref stackDepth);
+                        break;
+                    case (byte) '=':
+                        Binary(operations, Operation.Equal, limits, ref stackDepth);
+                        break;
+                    case (byte) '<':
+                        Binary(operations, Operation.LessThan, limits, ref stackDepth);
+                        break;
+                    case (byte) '>':
+                        Binary(operations, Operation.GreaterThan, limits, ref stackDepth);
+                        break;
+                    case (byte) 'A':
+                        Binary(operations, Operation.LogicalAnd, limits, ref stackDepth);
+                        break;
+                    case (byte) 'O':
+                        Binary(operations, Operation.LogicalOr, limits, ref stackDepth);
+                        break;
+                    case (byte) '!':
+                        Unary(operations, Operation.LogicalNot, limits, stackDepth);
+                        break;
+                    case (byte) '~':
+                        Unary(operations, Operation.BitNot, limits, stackDepth);
+                        break;
+                    case (byte) '?':
+                        if (conditionalDepth >= conditionalBase.Length)
+                        {
+                            throw new ArgumentException(
+                                "Conditional nesting exceeds the configured stack-depth limit.",
+                                nameof(source));
+                        }
 
-                    conditionalBase[conditionalDepth] = stackDepth;
-                    conditionalState[conditionalDepth] = 0;
-                    conditionalHasThenDepth[conditionalDepth] = false;
-                    conditionalEndJumps[conditionalDepth] = [];
-                    conditionalDepth++;
-                    break;
-                case (byte) 't':
-                    if (conditionalDepth == 0 ||
-                        conditionalState[conditionalDepth - 1] is not (0 or 2))
-                    {
-                        throw Malformed("A conditional test marker is out of place.");
-                    }
+                        conditionalBase[conditionalDepth] = stackDepth;
+                        conditionalState[conditionalDepth] = 0;
+                        conditionalHasThenDepth[conditionalDepth] = false;
+                        conditionalEndJumps[conditionalDepth] = [];
+                        conditionalDepth++;
+                        break;
+                    case (byte) 't':
+                        if (conditionalDepth == 0 ||
+                            conditionalState[conditionalDepth - 1] is not (0 or 2))
+                        {
+                            throw Malformed("A conditional test marker is out of place.");
+                        }
 
-                    Pop(ref stackDepth);
+                        Pop(ref stackDepth);
 
-                    if (stackDepth != conditionalBase[conditionalDepth - 1])
-                    {
-                        throw Malformed("A conditional expression must leave exactly one test value.");
-                    }
+                        if (stackDepth != conditionalBase[conditionalDepth - 1])
+                        {
+                            throw Malformed("A conditional expression must leave exactly one test value.");
+                        }
 
-                    conditionalFalseJump[conditionalDepth - 1] = operations.Count;
-                    AddOperation(operations, new Operation(Operation.JumpIfFalse, -1), limits);
-                    conditionalState[conditionalDepth - 1] = 1;
-                    break;
-                case (byte) 'e':
-                    if (conditionalDepth == 0 || conditionalState[conditionalDepth - 1] != 1)
-                    {
-                        throw Malformed("A conditional else marker is out of place.");
-                    }
+                        conditionalFalseJump[conditionalDepth - 1] = operations.Count;
+                        AddOperation(operations, new Operation(Operation.JumpIfFalse, -1), limits);
+                        conditionalState[conditionalDepth - 1] = 1;
+                        break;
+                    case (byte) 'e':
+                        if (conditionalDepth == 0 || conditionalState[conditionalDepth - 1] != 1)
+                        {
+                            throw Malformed("A conditional else marker is out of place.");
+                        }
 
-                    var elseIndex = conditionalDepth - 1;
+                        var elseIndex = conditionalDepth - 1;
 
-                    if (conditionalHasThenDepth[elseIndex] &&
-                        conditionalThenDepth[elseIndex] != stackDepth)
-                    {
-                        throw Malformed("Conditional branches must leave the same stack depth.");
-                    }
-
-                    conditionalThenDepth[elseIndex] = stackDepth;
-                    conditionalHasThenDepth[elseIndex] = true;
-                    conditionalEndJumps[elseIndex]!.Add(operations.Count);
-                    AddOperation(operations, new Operation(Operation.Jump, -1), limits);
-                    PatchJump(operations, conditionalFalseJump[elseIndex], operations.Count);
-                    stackDepth = conditionalBase[elseIndex];
-                    conditionalState[elseIndex] = 2;
-                    break;
-                case (byte) ';':
-                    if (conditionalDepth == 0 || conditionalState[conditionalDepth - 1] == 0)
-                    {
-                        throw Malformed("A conditional end marker is out of place.");
-                    }
-
-                    var conditionIndex = conditionalDepth - 1;
-
-                    if (conditionalState[conditionIndex] == 2)
-                    {
-                        if (stackDepth != conditionalThenDepth[conditionIndex])
+                        if (conditionalHasThenDepth[elseIndex] &&
+                            conditionalThenDepth[elseIndex] != stackDepth)
                         {
                             throw Malformed("Conditional branches must leave the same stack depth.");
                         }
 
-                    }
-                    else
-                    {
-                        if (conditionalHasThenDepth[conditionIndex] &&
-                            stackDepth != conditionalThenDepth[conditionIndex])
+                        conditionalThenDepth[elseIndex] = stackDepth;
+                        conditionalHasThenDepth[elseIndex] = true;
+                        conditionalEndJumps[elseIndex]!.Add(operations.Count);
+                        AddOperation(operations, new Operation(Operation.Jump, -1), limits);
+                        PatchJump(operations, conditionalFalseJump[elseIndex], operations.Count);
+                        stackDepth = conditionalBase[elseIndex];
+                        conditionalState[elseIndex] = 2;
+                        break;
+                    case (byte) ';':
+                        if (conditionalDepth == 0 || conditionalState[conditionalDepth - 1] == 0)
                         {
-                            throw Malformed("Conditional branches must leave the same stack depth.");
+                            throw Malformed("A conditional end marker is out of place.");
                         }
 
-                        if (stackDepth != conditionalBase[conditionIndex])
+                        var conditionIndex = conditionalDepth - 1;
+
+                        if (conditionalState[conditionIndex] == 2)
                         {
-                            throw Malformed("A conditional without else must leave its stack unchanged.");
+                            if (stackDepth != conditionalThenDepth[conditionIndex])
+                            {
+                                throw Malformed("Conditional branches must leave the same stack depth.");
+                            }
+
+                        }
+                        else
+                        {
+                            if (conditionalHasThenDepth[conditionIndex] &&
+                                stackDepth != conditionalThenDepth[conditionIndex])
+                            {
+                                throw Malformed("Conditional branches must leave the same stack depth.");
+                            }
+
+                            if (stackDepth != conditionalBase[conditionIndex])
+                            {
+                                throw Malformed("A conditional without else must leave its stack unchanged.");
+                            }
+
+                            PatchJump(operations, conditionalFalseJump[conditionIndex], operations.Count);
                         }
 
-                        PatchJump(operations, conditionalFalseJump[conditionIndex], operations.Count);
-                    }
+                        foreach (var jump in conditionalEndJumps[conditionIndex]!)
+                        {
+                            PatchJump(operations, jump, operations.Count);
+                        }
 
-                    foreach (var jump in conditionalEndJumps[conditionIndex]!)
-                    {
-                        PatchJump(operations, jump, operations.Count);
-                    }
-
-                    conditionalEndJumps[conditionIndex] = null;
-                    conditionalDepth--;
-                    break;
-                default:
-                    CompileFormat(
-                        directive,
-                        source,
-                        ref index,
-                        operations,
-                        limits,
-                        ref stackDepth);
-                    break;
+                        conditionalEndJumps[conditionIndex] = null;
+                        conditionalDepth--;
+                        break;
+                    default:
+                        CompileFormat(
+                            directive,
+                            source,
+                            ref index,
+                            operations,
+                            limits,
+                            ref stackDepth);
+                        break;
+                }
             }
-        }
 
-        return conditionalDepth != 0
-            ? throw Malformed("A conditional is missing its end marker.")
-            : new Program(
-            source,
-            CollectionsMarshal.AsSpan(operations),
-            CollectionsMarshal.AsSpan(literals),
-            maximumStackDepth);
+            return conditionalDepth != 0
+                ? throw Malformed("A conditional is missing its end marker.")
+                : new Program(
+                source,
+                CollectionsMarshal.AsSpan(operations),
+                CollectionsMarshal.AsSpan(literals),
+                maximumStackDepth);
+        }
     }
 
     #endregion
 
     #region Directives
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static void CompileFormat(
         byte first,
         ReadOnlySpan<byte> source,
@@ -420,6 +430,10 @@ internal static class Compiler
         AddOperation(operations, new Operation(code, directive, width, PackFormat(flags, precision)), limits);
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static void Binary(
         List<Operation> operations,
         byte code,
@@ -432,6 +446,10 @@ internal static class Compiler
         AddOperation(operations, new Operation(code), limits);
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static void Unary(
         List<Operation> operations,
         byte code,
@@ -450,6 +468,10 @@ internal static class Compiler
 
     #region Parsing and bounds
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static void Push(ref int stackDepth, ref int maximumStackDepth, ProgramLimits limits)
     {
         stackDepth++;
@@ -472,6 +494,10 @@ internal static class Compiler
         stackDepth--;
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static int ParseInteger(ReadOnlySpan<byte> source, ref int index, byte terminator)
     {
         var negative = index < source.Length && source[index] == (byte) '-';
@@ -507,6 +533,10 @@ internal static class Compiler
             : negative ? checked((int) -value) : (int) value;
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static int ParseVariable(ReadOnlySpan<byte> source, ref int index)
     {
         if (index >= source.Length)
@@ -566,6 +596,10 @@ internal static class Compiler
         operations.Add(operation);
     }
 
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static void PatchJump(List<Operation> operations, int index, int target)
     {
         var operation = operations[index];

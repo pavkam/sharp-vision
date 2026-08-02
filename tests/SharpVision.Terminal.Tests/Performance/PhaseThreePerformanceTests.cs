@@ -244,10 +244,9 @@ public sealed class PhaseThreePerformanceTests
     public void Write_WhenTerminfoProgramsAreWarm_AllocatesZeroBytes()
     {
         // ncurses 6.6 terminfo.src xterm cursor-address and xterm-256color setaf forms.
-        var cursor = Compiler.Compile("\u001b[%i%p1%d;%p2%dH"u8, ProgramLimits.Default);
-        var color = Compiler.Compile(
-            "\u001b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m"u8,
-            ProgramLimits.Default);
+        var cursor = "\u001b[%i%p1%d;%p2%dH"u8.Compile(ProgramLimits.Default);
+        var color = "\u001b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m"u8
+            .Compile(ProgramLimits.Default);
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>(64);
         object?[] cursorParameters = [4, 9];

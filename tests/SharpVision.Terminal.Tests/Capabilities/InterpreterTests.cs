@@ -91,8 +91,8 @@ public sealed class InterpreterTests
     public void Write_WhenInterpreterIsReused_AppliesNcursesVariableLifetimes()
     {
         // Arrange
-        var store = Compiler.Compile("%p1%PA%p1%Pa"u8, ProgramLimits.Default);
-        var load = Compiler.Compile("%gA%d:%ga%d"u8, ProgramLimits.Default);
+        var store = "%p1%PA%p1%Pa"u8.Compile(ProgramLimits.Default);
+        var load = "%gA%d:%ga%d"u8.Compile(ProgramLimits.Default);
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
 
@@ -109,8 +109,8 @@ public sealed class InterpreterTests
     public void Write_WhenStaticStringIsStored_OwnsPersistedBytes()
     {
         // Arrange
-        var store = Compiler.Compile("%p1%PA"u8, ProgramLimits.Default);
-        var load = Compiler.Compile("%gA%s"u8, ProgramLimits.Default);
+        var store = "%p1%PA"u8.Compile(ProgramLimits.Default);
+        var load = "%gA%s"u8.Compile(ProgramLimits.Default);
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
         var source = "owned"u8.ToArray();
@@ -291,7 +291,7 @@ public sealed class InterpreterTests
     public void Write_WhenStringLengthReceivesNumber_ThrowsWithoutWriting()
     {
         // Arrange
-        var program = Compiler.Compile("%p1%l%d"u8, ProgramLimits.Default);
+        var program = "%p1%l%d"u8.Compile(ProgramLimits.Default);
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
 
@@ -306,7 +306,7 @@ public sealed class InterpreterTests
     public void Write_WhenLoadedStaticStringIsReassigned_PreservesLoadedSnapshot()
     {
         // Arrange
-        var program = Compiler.Compile("%p1%PA%gA%p2%PA%s"u8, ProgramLimits.Default);
+        var program = "%p1%PA%gA%p2%PA%s"u8.Compile(ProgramLimits.Default);
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
         object?[] parameters = ["first"u8.ToArray(), "other"u8.ToArray()];
@@ -323,8 +323,8 @@ public sealed class InterpreterTests
     public void Write_WhenStaticStringIsAssignedRepeatedly_OwnsLatestSuccessfulBytes()
     {
         // Arrange
-        var store = Compiler.Compile("%p1%PA"u8, ProgramLimits.Default);
-        var load = Compiler.Compile("%gA%s"u8, ProgramLimits.Default);
+        var store = "%p1%PA"u8.Compile(ProgramLimits.Default);
+        var load = "%gA%s"u8.Compile(ProgramLimits.Default);
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
         var first = "first"u8.ToArray();
@@ -347,7 +347,7 @@ public sealed class InterpreterTests
     {
         // Arrange
         byte[] template = [0xc3, 0x28, (byte) '%', (byte) '{', (byte) '2', (byte) '5', (byte) '5', (byte) '}', (byte) '%', (byte) 'c'];
-        var program = Compiler.Compile(template, ProgramLimits.Default);
+        var program = template.Compile(ProgramLimits.Default);
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
 
@@ -372,7 +372,7 @@ public sealed class InterpreterTests
         object? parameter)
     {
         // Arrange
-        var program = Compiler.Compile(Encoding.UTF8.GetBytes(template), ProgramLimits.Default);
+        var program = Encoding.UTF8.GetBytes(template).Compile(ProgramLimits.Default);
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
         destination.Write("prior"u8);
@@ -388,7 +388,7 @@ public sealed class InterpreterTests
     public void Write_WhenStringParameterContainsNonUtf8Bytes_PreservesRawBytes()
     {
         // Arrange
-        var program = Compiler.Compile("%p1%s"u8, ProgramLimits.Default);
+        var program = "%p1%s"u8.Compile(ProgramLimits.Default);
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
         object?[] parameters = [new byte[] { 0xc3, 0x28, 0xff }];
@@ -408,7 +408,7 @@ public sealed class InterpreterTests
     {
         // Arrange
         var limits = ProgramLimits.Default with { MaxStringParameterBytes = 3 };
-        var program = Compiler.Compile(Encoding.ASCII.GetBytes(template), limits);
+        var program = Encoding.ASCII.GetBytes(template).Compile(limits);
         var interpreter = new Interpreter(limits);
         var destination = new ArrayBufferWriter<byte>();
         object?[] parameters = ["four"u8.ToArray()];
@@ -426,7 +426,7 @@ public sealed class InterpreterTests
     public void Write_WhenNumericParameterIsNotSignedInt32_ThrowsWithoutWriting(object value)
     {
         // Arrange
-        var program = Compiler.Compile("%p1%d"u8, ProgramLimits.Default);
+        var program = "%p1%d"u8.Compile(ProgramLimits.Default);
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
 
@@ -443,9 +443,7 @@ public sealed class InterpreterTests
     public void Write_WhenDivisorIsZero_ThrowsWithoutWriting(string operation)
     {
         // Arrange
-        var program = Compiler.Compile(
-            Encoding.UTF8.GetBytes($"%p1%p2%{operation}%d"),
-            ProgramLimits.Default);
+        var program = Encoding.UTF8.GetBytes($"%p1%p2%{operation}%d").Compile(ProgramLimits.Default);
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
         object?[] parameters = [7, 0];
@@ -460,8 +458,8 @@ public sealed class InterpreterTests
     public void Write_WhenEvaluationFails_DoesNotCommitStaticVariables()
     {
         // Arrange
-        var failing = Compiler.Compile("%{9}%PA%{1}%{0}%/%d"u8, ProgramLimits.Default);
-        var load = Compiler.Compile("%gA%d"u8, ProgramLimits.Default);
+        var failing = "%{9}%PA%{1}%{0}%/%d"u8.Compile(ProgramLimits.Default);
+        var load = "%gA%d"u8.Compile(ProgramLimits.Default);
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
 
@@ -478,9 +476,9 @@ public sealed class InterpreterTests
     public void Write_WhenStaticStringAssignmentFails_PreservesPreviousValue()
     {
         // Arrange
-        var store = Compiler.Compile("%p1%PA"u8, ProgramLimits.Default);
-        var failing = Compiler.Compile("%p1%PA%{1}%{0}%/%d"u8, ProgramLimits.Default);
-        var load = Compiler.Compile("%gA%s"u8, ProgramLimits.Default);
+        var store = "%p1%PA"u8.Compile(ProgramLimits.Default);
+        var failing = "%p1%PA%{1}%{0}%/%d"u8.Compile(ProgramLimits.Default);
+        var load = "%gA%s"u8.Compile(ProgramLimits.Default);
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
 
@@ -500,7 +498,7 @@ public sealed class InterpreterTests
     {
         // Arrange
         var limits = ProgramLimits.Default with { MaxProgramOutputBytes = 3 };
-        var program = Compiler.Compile("four"u8, limits);
+        var program = "four"u8.Compile(limits);
         var interpreter = new Interpreter(limits);
         var destination = new ArrayBufferWriter<byte>();
 
@@ -532,7 +530,7 @@ public sealed class InterpreterTests
     public void ConstructorOrWrite_WhenRequiredArgumentIsNull_Throws()
     {
         // Arrange
-        var program = Compiler.Compile("ok"u8, ProgramLimits.Default);
+        var program = "ok"u8.Compile(ProgramLimits.Default);
         var interpreter = new Interpreter(ProgramLimits.Default);
 
         // Act / Assert
@@ -546,7 +544,7 @@ public sealed class InterpreterTests
     public void WritePair_WhenDestinationIsNull_Throws()
     {
         // Arrange
-        var program = Compiler.Compile("ok"u8, ProgramLimits.Default);
+        var program = "ok"u8.Compile(ProgramLimits.Default);
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
 
@@ -562,8 +560,8 @@ public sealed class InterpreterTests
     public void WritePair_WhenProgramExceedsInterpreterLimit_ThrowsWithoutWriting()
     {
         // Arrange
-        var withinLimit = Compiler.Compile("ok"u8, ProgramLimits.Default);
-        var outsideLimit = Compiler.Compile("four"u8, ProgramLimits.Default);
+        var withinLimit = "ok"u8.Compile(ProgramLimits.Default);
+        var outsideLimit = "four"u8.Compile(ProgramLimits.Default);
         var interpreter = new Interpreter(ProgramLimits.Default with { MaxProgramBytes = 3 });
         var first = new ArrayBufferWriter<byte>();
         var second = new ArrayBufferWriter<byte>();
@@ -579,7 +577,7 @@ public sealed class InterpreterTests
 
     private static string Expand(string template, object?[] parameters)
     {
-        var program = Compiler.Compile(Encoding.UTF8.GetBytes(template), ProgramLimits.Default);
+        var program = Encoding.UTF8.GetBytes(template).Compile(ProgramLimits.Default);
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
 

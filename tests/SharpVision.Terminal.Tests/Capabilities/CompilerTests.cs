@@ -29,7 +29,7 @@ public sealed class CompilerTests
         var bytes = Encoding.UTF8.GetBytes(template);
 
         // Act
-        var program = Compiler.Compile(bytes, ProgramLimits.Default);
+        var program = bytes.Compile(ProgramLimits.Default);
         bytes.AsSpan().Fill((byte) 'x');
 
         // Assert
@@ -48,7 +48,7 @@ public sealed class CompilerTests
         var template = "%p1%d%p2%d%p3%d%p4%d%p5%d%p6%d%p7%d%p8%d%p9%d"u8;
 
         // Act
-        var program = Compiler.Compile(template, ProgramLimits.Default);
+        var program = template.Compile(ProgramLimits.Default);
 
         // Assert
         program.OperationCount.ShouldBe(18);
@@ -85,7 +85,7 @@ public sealed class CompilerTests
         var bytes = Encoding.UTF8.GetBytes(template);
 
         // Act / Assert
-        _ = Should.Throw<FormatException>(() => Compiler.Compile(bytes, ProgramLimits.Default));
+        _ = Should.Throw<FormatException>(() => bytes.Compile(ProgramLimits.Default));
     }
 
     /// <summary>Verifies hardware padding requests are rejected rather than delayed or stripped.</summary>
@@ -99,7 +99,7 @@ public sealed class CompilerTests
         var bytes = Encoding.UTF8.GetBytes(template);
 
         // Act / Assert
-        _ = Should.Throw<NotSupportedException>(() => Compiler.Compile(bytes, ProgramLimits.Default));
+        _ = Should.Throw<NotSupportedException>(() => bytes.Compile(ProgramLimits.Default));
     }
 
     /// <summary>Verifies a command cannot consume a value absent from the compile-time stack.</summary>
@@ -114,14 +114,14 @@ public sealed class CompilerTests
         var bytes = Encoding.UTF8.GetBytes(template);
 
         // Act / Assert
-        _ = Should.Throw<FormatException>(() => Compiler.Compile(bytes, ProgramLimits.Default));
+        _ = Should.Throw<FormatException>(() => bytes.Compile(ProgramLimits.Default));
     }
 
     /// <summary>Verifies raw string length is a stack-consuming directive.</summary>
     [Fact]
     public void Compile_WhenStringLengthHasNoOperand_Throws() =>
         // Arrange / Act / Assert
-        _ = Should.Throw<FormatException>(() => Compiler.Compile("%l"u8, ProgramLimits.Default));
+        _ = Should.Throw<FormatException>(() => "%l"u8.Compile(ProgramLimits.Default));
 
     /// <summary>Verifies the configured program-byte bound is enforced.</summary>
     [Fact]
@@ -131,7 +131,7 @@ public sealed class CompilerTests
         var limits = ProgramLimits.Default with { MaxProgramBytes = 3 };
 
         // Act / Assert
-        _ = Should.Throw<ArgumentException>(() => Compiler.Compile("abcd"u8, limits));
+        _ = Should.Throw<ArgumentException>(() => "abcd"u8.Compile(limits));
     }
 
     /// <summary>Verifies the configured operation bound is enforced.</summary>
@@ -142,7 +142,7 @@ public sealed class CompilerTests
         var limits = ProgramLimits.Default with { MaxProgramOperations = 1 };
 
         // Act / Assert
-        _ = Should.Throw<ArgumentException>(() => Compiler.Compile("a%{1}"u8, limits));
+        _ = Should.Throw<ArgumentException>(() => "a%{1}"u8.Compile(limits));
     }
 
     /// <summary>Verifies the configured evaluation-stack bound is enforced.</summary>
@@ -153,7 +153,7 @@ public sealed class CompilerTests
         var limits = ProgramLimits.Default with { MaxProgramStackDepth = 2 };
 
         // Act / Assert
-        _ = Should.Throw<ArgumentException>(() => Compiler.Compile("%{1}%{2}%{3}"u8, limits));
+        _ = Should.Throw<ArgumentException>(() => "%{1}%{2}%{3}"u8.Compile(limits));
     }
 
     /// <summary>Verifies printf width and precision are bounded during compilation.</summary>
@@ -167,7 +167,7 @@ public sealed class CompilerTests
 
         // Act / Assert
         _ = Should.Throw<ArgumentException>(() =>
-            Compiler.Compile(Encoding.ASCII.GetBytes(template), limits));
+            Encoding.ASCII.GetBytes(template).Compile(limits));
     }
 
     /// <summary>Verifies numeric printf fields cannot overflow compiler arithmetic.</summary>
@@ -178,7 +178,7 @@ public sealed class CompilerTests
         var template = "%p1%:999999999999999999999d"u8.ToArray();
 
         // Act / Assert
-        _ = Should.Throw<FormatException>(() => Compiler.Compile(template, ProgramLimits.Default));
+        _ = Should.Throw<FormatException>(() => template.Compile(ProgramLimits.Default));
     }
 
     /// <summary>Verifies non-directive bytes remain valid opaque terminal program data.</summary>
@@ -189,7 +189,7 @@ public sealed class CompilerTests
         byte[] template = [0xc3, 0x28, 0xff];
 
         // Act
-        var program = Compiler.Compile(template, ProgramLimits.Default);
+        var program = template.Compile(ProgramLimits.Default);
 
         // Assert
         program.Representation.Span.ToArray().ShouldBe(template);
@@ -203,7 +203,7 @@ public sealed class CompilerTests
         var template = "literal"u8.ToArray();
 
         // Act / Assert
-        _ = Should.Throw<ArgumentNullException>(() => Compiler.Compile(template, null!));
+        _ = Should.Throw<ArgumentNullException>(() => template.Compile(null!));
     }
 
     /// <summary>Verifies all new terminfo limits remain finite and positive.</summary>

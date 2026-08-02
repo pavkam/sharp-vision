@@ -34,7 +34,7 @@ internal readonly struct Program
             return;
         }
 
-        this = Compiler.Compile(representation, limits ?? ProgramLimits.Default);
+        this = representation.Compile(limits ?? ProgramLimits.Default);
     }
 
     private Program(bool isIntrinsic)

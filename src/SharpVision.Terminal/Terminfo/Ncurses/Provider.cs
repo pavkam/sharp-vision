@@ -349,7 +349,7 @@ internal sealed class Provider: IDescriptionProvider
                     continue;
                 }
 
-                programs.Add(pair.Key, Compiler.Compile(pair.Value, ProgramLimits.Default));
+                programs.Add(pair.Key, pair.Value.Compile(ProgramLimits.Default));
             }
             catch (NotSupportedException)
             {
