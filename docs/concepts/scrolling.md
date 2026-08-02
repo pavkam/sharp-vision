@@ -61,8 +61,9 @@ presentation by default.
 
 The normal precedence applies: a local complete style wins over the Theme, which
 wins over the code-owned fallback. The partial `ScrollBarStyleSet` type composes
-overlay values onto a complete style but currently has no consumer in the theme
-pipeline.
+overlay values onto a complete style; it is the composition input a themed
+section will supply once the registrable style-section mechanism tracked by
+[#155](https://github.com/pavkam/sharp-vision/issues/155) lands.
 
 ## Thumb geometry
 
