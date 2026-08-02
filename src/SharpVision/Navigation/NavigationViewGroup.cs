@@ -244,8 +244,7 @@ public sealed class NavigationViewGroup: Control
         var themed = IsExpanded
             ? ControlGlyphs.Navigation.GroupExpanded
             : ControlGlyphs.Navigation.GroupCollapsed;
-        var glyph = CellGlyphResolver.Resolve(IsExpanded ? ExpandedGlyph : CollapsedGlyph, themed.Fallback,
-            CellPolicy.AmbiguousWidth);
+        var glyph = (IsExpanded ? ExpandedGlyph : CollapsedGlyph).Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
         var leading = canvas.Draw(
             $" {glyph} ".AsSpan(),
             new Point(Bounds.X, Bounds.Y),

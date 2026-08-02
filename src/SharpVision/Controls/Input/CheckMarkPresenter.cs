@@ -57,6 +57,6 @@ internal static class CheckMarkPresenter
             _ => throw new UnreachableException()
         };
 
-        return CellGlyphResolver.Resolve(mark.GlyphFor(state), fallback, ambiguousWidth);
+        return mark.GlyphFor(state).Resolve(fallback, ambiguousWidth);
     }
 }

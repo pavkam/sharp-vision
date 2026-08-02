@@ -83,10 +83,10 @@ public readonly record struct SliderStyleSet
 
     private static void ValidateGlyphs(SliderGlyphs glyphs)
     {
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.HorizontalTrack, nameof(glyphs));
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.HorizontalFill, nameof(glyphs));
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.VerticalTrack, nameof(glyphs));
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.VerticalFill, nameof(glyphs));
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.Thumb, nameof(glyphs));
+        _ = glyphs.HorizontalTrack.ValidateSingleCell(nameof(glyphs));
+        _ = glyphs.HorizontalFill.ValidateSingleCell(nameof(glyphs));
+        _ = glyphs.VerticalTrack.ValidateSingleCell(nameof(glyphs));
+        _ = glyphs.VerticalFill.ValidateSingleCell(nameof(glyphs));
+        _ = glyphs.Thumb.ValidateSingleCell(nameof(glyphs));
     }
 }

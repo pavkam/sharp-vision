@@ -504,20 +504,20 @@ public sealed class Slider: Control
     {
         var glyphs = ActualStyle.Glyphs;
         var themed = Orientation == Orientation.Horizontal ? glyphs.HorizontalTrackGlyph : glyphs.VerticalTrackGlyph;
-        return CellGlyphResolver.Resolve(themed.Value, themed.Fallback, CellPolicy.AmbiguousWidth);
+        return themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
     }
 
     private Rune FillRune()
     {
         var glyphs = ActualStyle.Glyphs;
         var themed = Orientation == Orientation.Horizontal ? glyphs.HorizontalFillGlyph : glyphs.VerticalFillGlyph;
-        return CellGlyphResolver.Resolve(themed.Value, themed.Fallback, CellPolicy.AmbiguousWidth);
+        return themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
     }
 
     private Rune ThumbRune()
     {
         var themed = ActualStyle.Glyphs.ThumbGlyph;
-        return CellGlyphResolver.Resolve(themed.Value, themed.Fallback, CellPolicy.AmbiguousWidth);
+        return themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
     }
 
 }

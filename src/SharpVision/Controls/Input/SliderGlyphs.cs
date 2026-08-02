@@ -123,7 +123,7 @@ public readonly struct SliderGlyphs: IEquatable<SliderGlyphs>
 
     private static ControlGlyph WithFallback(Rune value, char fallback, string parameterName)
     {
-        var validated = CellGlyphResolver.ValidateSingleCell(value, parameterName);
+        var validated = value.ValidateSingleCell(parameterName);
         return new ControlGlyph(validated, new Rune(fallback));
     }
 

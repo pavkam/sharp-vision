@@ -64,7 +64,7 @@ public sealed class MenuSeparator: Control
         }
 
         var themed = ControlGlyphs.Separators.Menu;
-        var glyph = CellGlyphResolver.Resolve(Glyph, themed.Fallback, CellPolicy.AmbiguousWidth);
+        var glyph = Glyph.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
         ControlChrome.DrawHorizontalLine(canvas, Bounds, glyph, ResolvedStyle);
     }
 }

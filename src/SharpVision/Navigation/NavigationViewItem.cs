@@ -137,8 +137,7 @@ public sealed class NavigationViewItem: Pressable
 
         var current = _isSelected || IsPointerOver;
         var themed = current ? ControlGlyphs.Navigation.ItemCurrent : ControlGlyphs.Navigation.ItemIdle;
-        var marker = CellGlyphResolver.Resolve(current ? CurrentMarker : IdleMarker, themed.Fallback,
-            CellPolicy.AmbiguousWidth);
+        var marker = (current ? CurrentMarker : IdleMarker).Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
         var prefix = Glyph is not null ? $"{Glyph} " : string.Empty;
         var clipped = canvas.Clip(bounds);
         var leading = clipped.Draw(

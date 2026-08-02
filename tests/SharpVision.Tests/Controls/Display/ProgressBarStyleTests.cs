@@ -101,10 +101,7 @@ public sealed class ProgressBarStyleTests
             glyphs.TrackGlyph.Fallback,
             glyphs.IndeterminateGlyph.Fallback
         }.ShouldBe([new Rune('#'), new Rune('.'), new Rune('?')]);
-        CellGlyphResolver.Resolve(
-            glyphs.Fill,
-            glyphs.FillGlyph.Fallback,
-            Ambiguous.Wide).ShouldBe(new Rune('#'));
+        glyphs.Fill.Resolve(glyphs.FillGlyph.Fallback, Ambiguous.Wide).ShouldBe(new Rune('#'));
     }
 
     /// <summary>Verifies equality and hashing include repair behavior as well as public primary runes.</summary>

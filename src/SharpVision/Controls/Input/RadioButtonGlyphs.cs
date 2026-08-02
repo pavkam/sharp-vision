@@ -16,8 +16,8 @@ public readonly struct RadioButtonGlyphs: IEquatable<RadioButtonGlyphs>
     /// <exception cref="ArgumentException">A mark is a control or is not one cell wide.</exception>
     public RadioButtonGlyphs(Rune uncheckedMark, Rune checkedMark)
     {
-        var validatedUnchecked = CellGlyphResolver.ValidateSingleCell(uncheckedMark, nameof(uncheckedMark));
-        var validatedChecked = CellGlyphResolver.ValidateSingleCell(checkedMark, nameof(checkedMark));
+        var validatedUnchecked = uncheckedMark.ValidateSingleCell(nameof(uncheckedMark));
+        var validatedChecked = checkedMark.ValidateSingleCell(nameof(checkedMark));
 
         _unchecked = validatedUnchecked;
         _checked = validatedChecked;

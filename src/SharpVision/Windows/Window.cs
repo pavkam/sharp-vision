@@ -505,7 +505,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
         {
             var themed = ControlGlyphs.Chrome.WindowClose;
             canvas.DrawRune(
-                CellGlyphResolver.Resolve(CloseGlyph, themed.Fallback, CellPolicy.AmbiguousWidth),
+                CloseGlyph.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth),
                 new Point(closeChrome.X, closeChrome.Y),
                 closeMark,
                 background);
@@ -522,15 +522,9 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
     {
         Debug.Assert(closeChrome.Width == _closeChromeWidth, "Full close chrome has its fixed width.");
         var themed = ControlGlyphs.Chrome.WindowClose;
-        var glyph = CellGlyphResolver.Resolve(CloseGlyph, themed.Fallback, CellPolicy.AmbiguousWidth);
-        var leftBracket = CellGlyphResolver.Resolve(
-            ControlGlyphs.Chrome.WindowCloseLeft.Value,
-            ControlGlyphs.Chrome.WindowCloseLeft.Fallback,
-            CellPolicy.AmbiguousWidth);
-        var rightBracket = CellGlyphResolver.Resolve(
-            ControlGlyphs.Chrome.WindowCloseRight.Value,
-            ControlGlyphs.Chrome.WindowCloseRight.Fallback,
-            CellPolicy.AmbiguousWidth);
+        var glyph = CloseGlyph.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
+        var leftBracket = ControlGlyphs.Chrome.WindowCloseLeft.Value.Resolve(ControlGlyphs.Chrome.WindowCloseLeft.Fallback, CellPolicy.AmbiguousWidth);
+        var rightBracket = ControlGlyphs.Chrome.WindowCloseRight.Value.Resolve(ControlGlyphs.Chrome.WindowCloseRight.Fallback, CellPolicy.AmbiguousWidth);
         var y = closeChrome.Y;
         canvas.DrawRune(borderGlyphs.Top, new Point(closeChrome.X, y), border, background);
         canvas.DrawRune(borderGlyphs.Top, new Point(closeChrome.X + 1, y), border, background);

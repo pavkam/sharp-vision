@@ -32,8 +32,8 @@ public readonly struct ChaseIndicatorStyle: IEquatable<ChaseIndicatorStyle>
         ColorValue trackColor,
         ThemeProfile appearance)
     {
-        var validatedActive = CellGlyphResolver.ValidateSingleCell(active, nameof(active));
-        var validatedInactive = CellGlyphResolver.ValidateSingleCell(inactive, nameof(inactive));
+        var validatedActive = active.ValidateSingleCell(nameof(active));
+        var validatedInactive = inactive.ValidateSingleCell(nameof(inactive));
         ColorValue.ValidatePaint(headColor, nameof(headColor));
         ColorValue.ValidatePaint(trailColor, nameof(trailColor));
         ColorValue.ValidatePaint(trackColor, nameof(trackColor));

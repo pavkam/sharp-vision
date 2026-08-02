@@ -3,8 +3,8 @@
 
 namespace SharpVision.Tests.Styling;
 
-/// <summary>Verifies <see cref="CellGlyphResolver.ValidateSingleCell(Rune, string)"/> accepts narrow
-/// printable runes and rejects wide or control runes.</summary>
+/// <summary>Verifies <see cref="CellGlyphResolver.ValidateSingleCell(Rune, string)"/> accepts
+/// narrow printable runes and rejects wide or control runes.</summary>
 public sealed class CellGlyphResolverTests
 {
     /// <summary>Verifies a standard ASCII letter passes validation.</summary>
@@ -12,7 +12,7 @@ public sealed class CellGlyphResolverTests
     public void ValidateSingleCell_WhenNarrowAsciiRune_ReturnsRune()
     {
         var rune = new Rune('A');
-        var result = CellGlyphResolver.ValidateSingleCell(rune, "test");
+        var result = rune.ValidateSingleCell("test");
         result.ShouldBe(rune);
     }
 
@@ -23,7 +23,7 @@ public sealed class CellGlyphResolverTests
         // U+4E16 '世' is a wide CJK ideograph (two cells wide).
         var wide = new Rune(0x4E16);
         var ex = Should.Throw<ArgumentException>(
-            () => CellGlyphResolver.ValidateSingleCell(wide, "glyph"));
+            () => wide.ValidateSingleCell("glyph"));
         ex.ParamName.ShouldBe("glyph");
     }
 
@@ -34,7 +34,7 @@ public sealed class CellGlyphResolverTests
         // U+0000 NUL is a control character.
         var control = new Rune('\0');
         var ex = Should.Throw<ArgumentException>(
-            () => CellGlyphResolver.ValidateSingleCell(control, "value"));
+            () => control.ValidateSingleCell("value"));
         ex.ParamName.ShouldBe("value");
     }
 
@@ -47,7 +47,7 @@ public sealed class CellGlyphResolverTests
         // U+00B7 MIDDLE DOT is East Asian Ambiguous: one cell under Narrow, two under Wide.
         var ambiguous = new Rune(0x00B7);
 
-        var result = CellGlyphResolver.ValidateSingleCell(ambiguous, "glyph");
+        var result = ambiguous.ValidateSingleCell("glyph");
 
         result.ShouldBe(ambiguous);
     }
@@ -59,7 +59,7 @@ public sealed class CellGlyphResolverTests
         var ambiguous = new Rune(0x00B7);
 
         var ex = Should.Throw<ArgumentException>(
-            () => CellGlyphResolver.ValidateSingleCell(ambiguous, "glyph", Ambiguous.Wide));
+            () => ambiguous.ValidateSingleCell("glyph", Ambiguous.Wide));
 
         ex.ParamName.ShouldBe("glyph");
     }
@@ -70,7 +70,7 @@ public sealed class CellGlyphResolverTests
     {
         var ambiguous = new Rune(0x00B7);
 
-        var result = CellGlyphResolver.ValidateSingleCell(ambiguous, "glyph", Ambiguous.Narrow);
+        var result = ambiguous.ValidateSingleCell("glyph", Ambiguous.Narrow);
 
         result.ShouldBe(ambiguous);
     }

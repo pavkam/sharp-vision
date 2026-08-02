@@ -432,7 +432,7 @@ public sealed class Text: Control, IAccessKeyCaption
             var span = spanIndex >= 0 ? _spans[spanIndex] : default;
             var themed = ControlGlyphs.Text.Ellipsis;
             canvas.DrawRune(
-                CellGlyphResolver.Resolve(EllipsisGlyph, themed.Fallback, AmbiguousWidth),
+                EllipsisGlyph.Resolve(themed.Fallback, AmbiguousWidth),
                 new Point(bounds.X + line.Leading + cells, bounds.Y + row),
                 ResolveSpanStyle(span),
                 ResolveBackgroundMode(span));

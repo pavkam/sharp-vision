@@ -767,22 +767,13 @@ public sealed class Table: ItemsControl
     internal VisualState CurrentVisualState => GetAppearanceState();
 
     /// <summary>Gets the terminal-safe horizontal grid glyph for the current theme and cell policy.</summary>
-    internal Rune ResolvedHorizontalGridGlyph => CellGlyphResolver.Resolve(
-        HorizontalGridGlyph,
-        ControlGlyphs.Separators.TableHorizontal.Fallback,
-        CellPolicy.AmbiguousWidth);
+    internal Rune ResolvedHorizontalGridGlyph => HorizontalGridGlyph.Resolve(ControlGlyphs.Separators.TableHorizontal.Fallback, CellPolicy.AmbiguousWidth);
 
     /// <summary>Gets the terminal-safe vertical grid glyph for the current theme and cell policy.</summary>
-    internal Rune ResolvedVerticalGridGlyph => CellGlyphResolver.Resolve(
-        VerticalGridGlyph,
-        ControlGlyphs.Separators.TableVertical.Fallback,
-        CellPolicy.AmbiguousWidth);
+    internal Rune ResolvedVerticalGridGlyph => VerticalGridGlyph.Resolve(ControlGlyphs.Separators.TableVertical.Fallback, CellPolicy.AmbiguousWidth);
 
     /// <summary>Gets the terminal-safe grid-intersection glyph for the current theme and cell policy.</summary>
-    internal Rune ResolvedCrossGridGlyph => CellGlyphResolver.Resolve(
-        CrossGridGlyph,
-        ControlGlyphs.Separators.TableCross.Fallback,
-        CellPolicy.AmbiguousWidth);
+    internal Rune ResolvedCrossGridGlyph => CrossGridGlyph.Resolve(ControlGlyphs.Separators.TableCross.Fallback, CellPolicy.AmbiguousWidth);
 
     #endregion
 

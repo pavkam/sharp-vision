@@ -297,10 +297,7 @@ internal static class ControlChrome
                     Debug.Assert(
                         shadow.Mode == ShadowMode.BlockGlyph,
                         "Public validation limits shadow modes.");
-                    var glyph = CellGlyphResolver.Resolve(
-                        shadow.Glyph,
-                        ControlGlyphs.Chrome.Shadow.Fallback,
-                        control.CellPolicy.AmbiguousWidth);
+                    var glyph = shadow.Glyph.Resolve(ControlGlyphs.Chrome.Shadow.Fallback, control.CellPolicy.AmbiguousWidth);
                     canvas.DrawRune(glyph, point, style, background);
                 }
             }

@@ -205,10 +205,7 @@ public sealed class ScrollBarStyleTests
             new Rune('^'), new Rune('v'), new Rune('<'), new Rune('>'), new Rune('.'),
             new Rune('#'), new Rune('-'), new Rune('='), new Rune('|'), new Rune('#')
         ]);
-        CellGlyphResolver.Resolve(
-            glyphs.VerticalDecrement,
-            glyphs.VerticalDecrementGlyph.Fallback,
-            Ambiguous.Wide).ShouldBe(new Rune('^'));
+        glyphs.VerticalDecrement.Resolve(glyphs.VerticalDecrementGlyph.Fallback, Ambiguous.Wide).ShouldBe(new Rune('^'));
     }
 
     /// <summary>Verifies equality and hashing include repair behavior as well as public primary runes.</summary>

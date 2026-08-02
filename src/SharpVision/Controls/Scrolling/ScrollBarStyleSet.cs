@@ -109,16 +109,16 @@ public readonly record struct ScrollBarStyleSet
 
     private static void ValidateGlyphs(ScrollBarGlyphs glyphs)
     {
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.VerticalDecrement, nameof(glyphs));
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.VerticalIncrement, nameof(glyphs));
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.HorizontalDecrement, nameof(glyphs));
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.HorizontalIncrement, nameof(glyphs));
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.BlockTrack, nameof(glyphs));
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.BlockThumb, nameof(glyphs));
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.HorizontalLineTrack, nameof(glyphs));
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.HorizontalLineThumb, nameof(glyphs));
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.VerticalLineTrack, nameof(glyphs));
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.VerticalLineThumb, nameof(glyphs));
+        _ = glyphs.VerticalDecrement.ValidateSingleCell(nameof(glyphs));
+        _ = glyphs.VerticalIncrement.ValidateSingleCell(nameof(glyphs));
+        _ = glyphs.HorizontalDecrement.ValidateSingleCell(nameof(glyphs));
+        _ = glyphs.HorizontalIncrement.ValidateSingleCell(nameof(glyphs));
+        _ = glyphs.BlockTrack.ValidateSingleCell(nameof(glyphs));
+        _ = glyphs.BlockThumb.ValidateSingleCell(nameof(glyphs));
+        _ = glyphs.HorizontalLineTrack.ValidateSingleCell(nameof(glyphs));
+        _ = glyphs.HorizontalLineThumb.ValidateSingleCell(nameof(glyphs));
+        _ = glyphs.VerticalLineTrack.ValidateSingleCell(nameof(glyphs));
+        _ = glyphs.VerticalLineThumb.ValidateSingleCell(nameof(glyphs));
     }
 }
 

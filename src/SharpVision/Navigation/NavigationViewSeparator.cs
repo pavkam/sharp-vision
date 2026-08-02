@@ -64,7 +64,7 @@ public sealed class NavigationViewSeparator: Control
         }
 
         var themed = ControlGlyphs.Navigation.Separator;
-        var glyph = CellGlyphResolver.Resolve(Glyph, themed.Fallback, CellPolicy.AmbiguousWidth);
+        var glyph = Glyph.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
         ControlChrome.DrawHorizontalLine(canvas, Bounds, glyph, ResolvedStyle);
     }
 }

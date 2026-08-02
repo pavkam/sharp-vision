@@ -36,7 +36,7 @@ public readonly record struct Shadow
         Offset = offset;
         Glyph = glyph.Value == 0
             ? ControlGlyphs.Chrome.Shadow.Value
-            : CellGlyphResolver.ValidateSingleCell(glyph, nameof(glyph));
+            : glyph.ValidateSingleCell(nameof(glyph));
         Foreground = foreground;
         Background = background;
         Attributes = attributes;

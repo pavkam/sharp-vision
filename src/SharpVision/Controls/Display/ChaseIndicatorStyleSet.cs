@@ -24,10 +24,10 @@ public readonly record struct ChaseIndicatorStyleSet
         AppearanceProfileSet? appearance = null)
     {
         var validatedActive = active is { } activeValue
-            ? CellGlyphResolver.ValidateSingleCell(activeValue, nameof(active))
+            ? activeValue.ValidateSingleCell(nameof(active))
             : (Rune?) null;
         var validatedInactive = inactive is { } inactiveValue
-            ? CellGlyphResolver.ValidateSingleCell(inactiveValue, nameof(inactive))
+            ? inactiveValue.ValidateSingleCell(nameof(inactive))
             : (Rune?) null;
 
         if (headColor is { } headColorValue)

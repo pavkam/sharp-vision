@@ -117,7 +117,7 @@ public readonly struct SpinnerStyle: IEquatable<SpinnerStyle>
                     parameterName);
             }
 
-            builder.Add(CellGlyphResolver.ValidateSingleCell(frame, parameterName));
+            builder.Add(frame.ValidateSingleCell(parameterName));
         }
 
         return builder.Count == 0

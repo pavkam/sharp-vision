@@ -101,10 +101,7 @@ public sealed class SliderStyleTests
             glyphs.VerticalFillGlyph.Fallback,
             glyphs.ThumbGlyph.Fallback
         }.ShouldBe([new Rune('.'), new Rune('='), new Rune('.'), new Rune('='), new Rune('#')]);
-        CellGlyphResolver.Resolve(
-            glyphs.HorizontalTrack,
-            glyphs.HorizontalTrackGlyph.Fallback,
-            Ambiguous.Wide).ShouldBe(new Rune('.'));
+        glyphs.HorizontalTrack.Resolve(glyphs.HorizontalTrackGlyph.Fallback, Ambiguous.Wide).ShouldBe(new Rune('.'));
     }
 
     /// <summary>Verifies equality and hashing include repair behavior as well as public primary runes.</summary>

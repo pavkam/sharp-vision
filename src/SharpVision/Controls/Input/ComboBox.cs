@@ -416,7 +416,7 @@ public sealed class ComboBox: Control
             style,
             background: BackgroundMode.Transparent);
         var themed = ControlGlyphs.Disclosure.DropDown;
-        var glyph = CellGlyphResolver.Resolve(DropDownGlyph, themed.Fallback, CellPolicy.AmbiguousWidth);
+        var glyph = DropDownGlyph.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
         canvas.DrawRune(
             glyph,
             new Point(Math.Max(content.X, content.Right - _indicatorWidth), content.Y),

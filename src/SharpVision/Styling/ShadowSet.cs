@@ -23,7 +23,7 @@ public readonly record struct ShadowSet
 
         if (glyph is { } glyphValue)
         {
-            _ = CellGlyphResolver.ValidateSingleCell(glyphValue, nameof(glyph));
+            _ = glyphValue.ValidateSingleCell(nameof(glyph));
         }
 
         if (foreground is { } foregroundValue)

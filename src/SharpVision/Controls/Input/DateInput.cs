@@ -330,7 +330,7 @@ public sealed class DateInput: Control
         }
 
         var themed = ControlGlyphs.Disclosure.DropDown;
-        var glyph = CellGlyphResolver.Resolve(themed.Value, themed.Fallback, CellPolicy.AmbiguousWidth);
+        var glyph = themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
         canvas.DrawRune(
             glyph,
             new Point(Math.Max(content.X, content.Right - 1), content.Y),

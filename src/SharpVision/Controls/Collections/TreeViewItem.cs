@@ -307,12 +307,9 @@ public sealed class TreeViewItem: Control
                 ? ControlGlyphs.Disclosure.Expanded
                 : ControlGlyphs.Disclosure.Collapsed;
             canvas.DrawRune(
-                CellGlyphResolver.Resolve(
-                    IsExpanded
+                (IsExpanded
                         ? ControlGlyphs.Disclosure.Expanded.Value
-                        : ControlGlyphs.Disclosure.Collapsed.Value,
-                    themed.Fallback,
-                    CellPolicy.AmbiguousWidth),
+                        : ControlGlyphs.Disclosure.Collapsed.Value).Resolve(themed.Fallback, CellPolicy.AmbiguousWidth),
                 new Point(x, bounds.Y),
                 style,
                 BackgroundMode.Transparent);

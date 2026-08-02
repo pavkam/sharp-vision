@@ -323,14 +323,8 @@ public sealed class ChaseIndicator: Control
 
         var presentation = SynchronizeStylePhase();
 
-        var active = CellGlyphResolver.Resolve(
-            presentation.Active,
-            new Rune('*'),
-            CellPolicy.AmbiguousWidth);
-        var inactive = CellGlyphResolver.Resolve(
-            presentation.Inactive,
-            new Rune('.'),
-            CellPolicy.AmbiguousWidth);
+        var active = presentation.Active.Resolve(new Rune('*'), CellPolicy.AmbiguousWidth);
+        var inactive = presentation.Inactive.Resolve(new Rune('.'), CellPolicy.AmbiguousWidth);
         var axisLength = Orientation == Orientation.Horizontal ? Bounds.Width : Bounds.Height;
         var stride = Spacing + 1;
         var visible = Math.Min(Length, ((axisLength - 1) / stride) + 1);

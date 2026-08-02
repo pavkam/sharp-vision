@@ -363,5 +363,5 @@ public sealed class RadioButton: Pressable
     }
 
     private string Mark(Rune value, Rune fallback) =>
-        CellGlyphResolver.Resolve(value, fallback, CellPolicy.AmbiguousWidth).ToString();
+        value.Resolve(fallback, CellPolicy.AmbiguousWidth).ToString();
 }

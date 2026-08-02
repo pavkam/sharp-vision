@@ -180,7 +180,7 @@ public readonly record struct BorderGlyphStyle
     public override string ToString() => $"BorderGlyphStyle '{TopLeft}'";
 
     private static Rune Validate(Rune value, string name) =>
-        CellGlyphResolver.ValidateSingleCell(value, name);
+        value.ValidateSingleCell(name);
 
     private static BorderGlyphStyle Uniform(Rune value) => new(value, value, value, value, value, value, value, value);
 }

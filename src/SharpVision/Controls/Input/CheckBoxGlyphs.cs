@@ -32,5 +32,5 @@ public readonly record struct CheckBoxGlyphs
     public Rune Indeterminate { get; }
 
     private static Rune Validate(Rune value, string name) =>
-        CellGlyphResolver.ValidateSingleCell(value, name);
+        value.ValidateSingleCell(name);
 }

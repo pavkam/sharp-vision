@@ -3471,20 +3471,20 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         : theme?.ResolveColor(value.ThemeColor) ?? Color.Default;
 
     internal Rune ResolveControlGlyph(ControlGlyph glyph) =>
-        CellGlyphResolver.Resolve(glyph.Value, glyph.Fallback, CellPolicy.AmbiguousWidth);
+        glyph.Value.Resolve(glyph.Fallback, CellPolicy.AmbiguousWidth);
 
     internal BorderGlyphStyle ResolveBorderGlyphs(BorderGlyphStyle glyphs)
     {
         var fallback = ControlGlyphs.Chrome;
         return new BorderGlyphStyle(
-            CellGlyphResolver.Resolve(glyphs.TopLeft, fallback.TopLeft.Fallback, CellPolicy.AmbiguousWidth),
-            CellGlyphResolver.Resolve(glyphs.Top, fallback.Top.Fallback, CellPolicy.AmbiguousWidth),
-            CellGlyphResolver.Resolve(glyphs.TopRight, fallback.TopRight.Fallback, CellPolicy.AmbiguousWidth),
-            CellGlyphResolver.Resolve(glyphs.Right, fallback.Right.Fallback, CellPolicy.AmbiguousWidth),
-            CellGlyphResolver.Resolve(glyphs.BottomRight, fallback.BottomRight.Fallback, CellPolicy.AmbiguousWidth),
-            CellGlyphResolver.Resolve(glyphs.Bottom, fallback.Bottom.Fallback, CellPolicy.AmbiguousWidth),
-            CellGlyphResolver.Resolve(glyphs.BottomLeft, fallback.BottomLeft.Fallback, CellPolicy.AmbiguousWidth),
-            CellGlyphResolver.Resolve(glyphs.Left, fallback.Left.Fallback, CellPolicy.AmbiguousWidth));
+            glyphs.TopLeft.Resolve(fallback.TopLeft.Fallback, CellPolicy.AmbiguousWidth),
+            glyphs.Top.Resolve(fallback.Top.Fallback, CellPolicy.AmbiguousWidth),
+            glyphs.TopRight.Resolve(fallback.TopRight.Fallback, CellPolicy.AmbiguousWidth),
+            glyphs.Right.Resolve(fallback.Right.Fallback, CellPolicy.AmbiguousWidth),
+            glyphs.BottomRight.Resolve(fallback.BottomRight.Fallback, CellPolicy.AmbiguousWidth),
+            glyphs.Bottom.Resolve(fallback.Bottom.Fallback, CellPolicy.AmbiguousWidth),
+            glyphs.BottomLeft.Resolve(fallback.BottomLeft.Fallback, CellPolicy.AmbiguousWidth),
+            glyphs.Left.Resolve(fallback.Left.Fallback, CellPolicy.AmbiguousWidth));
     }
 
     /// <summary>Gets the number of direct resolved-appearance cache clears for instrumentation.</summary>

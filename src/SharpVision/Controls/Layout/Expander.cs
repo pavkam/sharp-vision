@@ -202,7 +202,7 @@ public sealed class Expander: ContentControl
         var themed = IsExpanded ? ControlGlyphs.Disclosure.Expanded : ControlGlyphs.Disclosure.Collapsed;
         var selected = IsExpanded ? ExpandedGlyph : CollapsedGlyph;
         canvas.DrawRune(
-            CellGlyphResolver.Resolve(selected, themed.Fallback, CellPolicy.AmbiguousWidth),
+            selected.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth),
             new Point(content.X, content.Y),
             s,
             background);

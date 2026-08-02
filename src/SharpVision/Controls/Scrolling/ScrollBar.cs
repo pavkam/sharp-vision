@@ -584,25 +584,25 @@ public sealed class ScrollBar: Control
     private Rune DecrementRune()
     {
         var themed = DecrementDefaultGlyph();
-        return CellGlyphResolver.Resolve(themed.Value, themed.Fallback, CellPolicy.AmbiguousWidth);
+        return themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
     }
 
     private Rune IncrementRune()
     {
         var themed = IncrementDefaultGlyph();
-        return CellGlyphResolver.Resolve(themed.Value, themed.Fallback, CellPolicy.AmbiguousWidth);
+        return themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
     }
 
     private Rune TrackRune()
     {
         var themed = TrackDefaultGlyph();
-        return CellGlyphResolver.Resolve(themed.Value, themed.Fallback, CellPolicy.AmbiguousWidth);
+        return themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
     }
 
     private Rune ThumbRune()
     {
         var themed = ThumbDefaultGlyph();
-        return CellGlyphResolver.Resolve(themed.Value, themed.Fallback, CellPolicy.AmbiguousWidth);
+        return themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
     }
 
     private ControlGlyph DecrementDefaultGlyph() => Orientation == Orientation.Vertical

@@ -77,7 +77,7 @@ public sealed class Separator: Control
             ? ControlGlyphs.Separators.Horizontal
             : ControlGlyphs.Separators.Vertical;
         var selected = Orientation == Orientation.Horizontal ? HorizontalGlyph : VerticalGlyph;
-        var glyph = CellGlyphResolver.Resolve(selected, themed.Fallback, CellPolicy.AmbiguousWidth);
+        var glyph = selected.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
         if (Orientation == Orientation.Horizontal)
         {
             ControlChrome.DrawHorizontalLine(canvas, Bounds, glyph, s);

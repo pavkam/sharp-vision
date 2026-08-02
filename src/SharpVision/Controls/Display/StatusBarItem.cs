@@ -122,13 +122,13 @@ public sealed class StatusBarItem: ContentControl
     }
 
     private Rune ResolveSeparator(Rune value) =>
-        CellGlyphResolver.Resolve(value, new Rune('|'), CellPolicy.AmbiguousWidth);
+        value.Resolve(new Rune('|'), CellPolicy.AmbiguousWidth);
 
     private static void ValidateSeparator(Rune? value, string parameterName)
     {
         if (value.HasValue)
         {
-            _ = CellGlyphResolver.ValidateSingleCell(value.Value, parameterName);
+            _ = value.Value.ValidateSingleCell(parameterName);
         }
     }
 

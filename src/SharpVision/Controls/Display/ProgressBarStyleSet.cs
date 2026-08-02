@@ -83,8 +83,8 @@ public readonly record struct ProgressBarStyleSet
 
     private static void ValidateGlyphs(ProgressBarGlyphs glyphs)
     {
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.Fill, nameof(glyphs));
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.Track, nameof(glyphs));
-        _ = CellGlyphResolver.ValidateSingleCell(glyphs.Indeterminate, nameof(glyphs));
+        _ = glyphs.Fill.ValidateSingleCell(nameof(glyphs));
+        _ = glyphs.Track.ValidateSingleCell(nameof(glyphs));
+        _ = glyphs.Indeterminate.ValidateSingleCell(nameof(glyphs));
     }
 }

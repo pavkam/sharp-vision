@@ -445,10 +445,7 @@ public sealed class MenuItem: Pressable
         }
 
         var themed = ThemeMenuGlyph(_isChecked);
-        var glyph = CellGlyphResolver.Resolve(
-            _isChecked ? CheckedGlyph : UncheckedGlyph,
-            themed.Fallback,
-            CellPolicy.AmbiguousWidth);
+        var glyph = (_isChecked ? CheckedGlyph : UncheckedGlyph).Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
         var marker = Kind switch
         {
             MenuItemKind.Check => $"[{glyph}] ",

@@ -374,7 +374,7 @@ public sealed class ProgressBar: Control
     }
 
     private Rune ResolveConfiguredGlyph(ControlGlyph themed) =>
-        CellGlyphResolver.Resolve(themed.Value, themed.Fallback, CellPolicy.AmbiguousWidth);
+        themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
 
     private Color ResolveColor(ColorValue value) => ResolveColor(value, Theme);
 
