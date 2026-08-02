@@ -250,21 +250,6 @@ public static class Writer
         return true;
     }
 
-    private static bool IsValidUtf8(ReadOnlySpan<byte> value)
-    {
-        while (!value.IsEmpty)
-        {
-            if (Rune.DecodeFromUtf8(value, out _, out var consumed) != OperationStatus.Done)
-            {
-                return false;
-            }
-
-            value = value[consumed..];
-        }
-
-        return true;
-    }
-
     private static void ValidateIdentifier(ReadOnlySpan<byte> value, string parameterName)
     {
         if (!IsIdentifier(value))
@@ -327,7 +312,7 @@ public static class Writer
 
     private static void ValidateUtf8(ReadOnlySpan<byte> value, string parameterName)
     {
-        if (!IsValidUtf8(value))
+        if (!Utf8Validation.IsValid(value))
         {
             throw new ArgumentException("The value must be valid UTF-8.", parameterName);
         }

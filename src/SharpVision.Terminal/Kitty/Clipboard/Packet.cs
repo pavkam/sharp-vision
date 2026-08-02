@@ -383,22 +383,6 @@ public sealed class Packet
         return true;
     }
 
-    private static bool IsValidUtf8(ReadOnlySpan<byte> value)
-    {
-        while (!value.IsEmpty)
-        {
-            if (Rune.DecodeFromUtf8(value, out _, out var consumed) != OperationStatus.Done)
-            {
-                return false;
-            }
-
-            Debug.Assert(consumed > 0, "Successful UTF-8 decoding always advances the input span.");
-            value = value[consumed..];
-        }
-
-        return true;
-    }
-
     private static bool TryDecode(
         ReadOnlySpan<byte> encoded,
         int maximum,
@@ -458,7 +442,7 @@ public sealed class Packet
         ReadOnlySpan<byte> encoded,
         int maximum,
         out byte[] decoded) =>
-        TryDecode(encoded, maximum, out decoded) && IsValidUtf8(decoded);
+        TryDecode(encoded, maximum, out decoded) && Utf8Validation.IsValid(decoded);
 
     private static bool TryParseOperation(
         ReadOnlySpan<byte> value,

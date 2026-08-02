@@ -167,7 +167,7 @@ public static class Osc52
 
             var decoded = rented.AsSpan(0, written);
 
-            return IsValidUtf8(decoded)
+            return Utf8Validation.IsValid(decoded)
                 ? new ClipboardReply(
                     ClipboardStatus.Success,
                     selection,
@@ -234,23 +234,6 @@ public static class Osc52
         return true;
     }
 
-    private static bool IsValidUtf8(ReadOnlySpan<byte> value)
-    {
-        while (!value.IsEmpty)
-        {
-            var status = Rune.DecodeFromUtf8(value, out _, out var consumed);
-
-            if (status != OperationStatus.Done)
-            {
-                return false;
-            }
-
-            value = value[consumed..];
-        }
-
-        return true;
-    }
-
     private static ClipboardReply Malformed(Selection selection = Selection.Clipboard) =>
         new(ClipboardStatus.Malformed, selection, ReadOnlyMemory<byte>.Empty);
 
@@ -279,7 +262,7 @@ public static class Osc52
 
     private static void ValidateUtf8(ReadOnlySpan<byte> value, string parameterName)
     {
-        if (!IsValidUtf8(value))
+        if (!Utf8Validation.IsValid(value))
         {
             throw new ArgumentException("Clipboard text must be valid UTF-8.", parameterName);
         }
