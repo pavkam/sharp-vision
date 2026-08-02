@@ -80,11 +80,11 @@ exposing any private controls.
 `ActualShowHiddenCheckBoxStyle`, `FileListScrollBarStyle`/
 `ActualFileListScrollBarStyle`, `FilterScrollBarStyle`/
 `ActualFilterScrollBarStyle` (inherited from `FileDialogBase`), and
-`OpenButtonStyle`/`ActualOpenButtonStyle` expose the complete local
-presentation applied to each owned part, and the value each part actually
-resolves, without exposing the owned control instances themselves. Each
-`Actual*` property reads back the owned part's own resolved style — the
-picker performs no independent Theme resolution of its own.
+`OpenButtonStyle`/`ActualOpenButtonStyle` expose the complete local presentation
+applied to each owned part, and the value each part actually resolves, without
+exposing the owned control instances themselves. Each `Actual*` property reads
+back the owned part's own resolved style — the picker performs no independent
+Theme resolution of its own.
 
 ## Presentation and ownership
 
@@ -135,11 +135,11 @@ trailing content edge. The grid owns five rows:
    edge, followed by naturally sized Open and Cancel actions in the default
    Button appearance.
 
-The Window supplies the outer frame. Directory rows use a
-single-cell `▸` prefix and a trailing platform separator, and file rows use a
-single-cell `·` prefix. Filenames are markup-escaped and ellipsized. ListView
-focus, current, selected, hovered, and disabled cells use the shared semantic
-theme roles; the picker assigns no RGB colors and emits no terminal bytes.
+The Window supplies the outer frame. Directory rows use a single-cell `▸` prefix
+and a trailing platform separator, and file rows use a single-cell `·` prefix.
+Filenames are markup-escaped and ellipsized. ListView focus, current, selected,
+hovered, and disabled cells use the shared semantic theme roles; the picker
+assigns no RGB colors and emits no terminal bytes.
 
 ## Enumeration and ordering
 

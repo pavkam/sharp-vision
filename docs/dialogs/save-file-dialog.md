@@ -68,9 +68,9 @@ recoverable error without exposing any private controls.
 `ActualShowHiddenCheckBoxStyle`, `FileListScrollBarStyle`/
 `ActualFileListScrollBarStyle`, `FilterScrollBarStyle`/
 `ActualFilterScrollBarStyle` (inherited from `FileDialogBase`), and
-`SaveButtonStyle`/`ActualSaveButtonStyle` expose the complete local
-presentation applied to each owned part, and the value each part actually
-resolves, without exposing the owned control instances themselves. Since the
+`SaveButtonStyle`/`ActualSaveButtonStyle` expose the complete local presentation
+applied to each owned part, and the value each part actually resolves, without
+exposing the owned control instances themselves. Since the
 overwrite-confirmation `MessageBox` is constructed fresh and discarded per
 confirmation rather than retained, it has no independent style surface of its
 own — its Yes/No actions inherit `SaveButtonStyle` instead, on the reasoning
