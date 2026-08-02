@@ -3,8 +3,6 @@
 
 namespace SharpVision.Terminal.Tests.Runtime;
 
-using RuntimeNative = Terminal.Runtime.Native;
-
 /// <summary>Verifies the Windows console lease restores both handles and reports failures.</summary>
 /// <remarks>
 /// These tests need a real console to enter the lease, so they skip elsewhere. The console-mode
@@ -103,7 +101,7 @@ public sealed class WindowsConsoleModeTests
     {
         Assert.SkipUnless(OperatingSystem.IsWindows(), "The Windows console lease requires Windows.");
         Assert.SkipUnless(
-            RuntimeNative.TryGetConsoleMode(RuntimeNative.GetStandardHandle(RuntimeNative.StdInputHandle), out _),
+            RuntimeInterop.TryGetConsoleMode(RuntimeInterop.GetStandardHandle(RuntimeInterop.StdInputHandle), out _),
             "The Windows console lease requires a real console.");
     }
 }

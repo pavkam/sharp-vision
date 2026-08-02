@@ -427,7 +427,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
     /// <exception cref="ArgumentNullException"><paramref name="update"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="description"/> is empty.</exception>
     /// <exception cref="TimeoutException">The component application does not settle within two seconds.</exception>
-    internal async Task UpdateAsync(System.Action update, string description)
+    internal async Task UpdateAsync(Action update, string description)
     {
         ArgumentNullException.ThrowIfNull(update);
         ArgumentException.ThrowIfNullOrEmpty(description);

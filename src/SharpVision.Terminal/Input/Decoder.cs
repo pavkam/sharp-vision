@@ -5,8 +5,6 @@ namespace SharpVision.Terminal.Input;
 
 using Xterm;
 
-using InputAction = Action;
-
 /// <summary>
 /// Incrementally decodes UTF-8 and legacy VT keyboard input into stable values.
 /// </summary>
@@ -975,7 +973,7 @@ public sealed class Decoder: IDisposable
         Rune? character = null,
         int nativeCode = 0,
         Modifiers modifiers = Modifiers.None,
-        InputAction action = InputAction.Press)
+        KeyAction action = KeyAction.Press)
     {
         var stroke = new Stroke(code, character, nativeCode, modifiers, action);
         _sink.Input(in stroke);
@@ -1096,10 +1094,10 @@ public sealed class Decoder: IDisposable
     private static bool TryReadCsiModifiers(
         ReadOnlySpan<byte> parameters,
         out Modifiers modifiers,
-        out InputAction action)
+        out KeyAction action)
     {
         modifiers = Modifiers.None;
-        action = InputAction.Press;
+        action = KeyAction.Press;
 
         if (parameters.IsEmpty)
         {

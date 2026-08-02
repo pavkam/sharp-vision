@@ -579,7 +579,7 @@ public sealed class PointerManager: IDisposable
         }
     }
 
-    private static void CaptureFailure(System.Action action, ref ExceptionDispatchInfo? failure)
+    private static void CaptureFailure(Action action, ref ExceptionDispatchInfo? failure)
     {
         try
         {

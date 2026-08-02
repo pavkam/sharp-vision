@@ -4,8 +4,6 @@
 
 namespace SharpVision.Terminal.Tests.Transport;
 
-using RuntimeNative = Terminal.Runtime.Native;
-
 
 /// <summary>
 /// Verifies real Unix pseudoterminal transport, EOF, and resize behavior.
@@ -102,7 +100,7 @@ public sealed class PseudoterminalTests
         var expected = new Dimensions(new Size(91, 31), new Size(1092, 620));
         await using var terminal = UnixPseudoterminal.Open(expected);
 
-        var actual = RuntimeNative.GetDimensions(terminal.SlaveDescriptor);
+        var actual = RuntimeInterop.GetDimensions(terminal.SlaveDescriptor);
 
         actual.ShouldBe(expected);
     }

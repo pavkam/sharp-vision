@@ -22,10 +22,10 @@ internal sealed class FakeTerminal: ITransport, IResizeSource
     internal event Action<ReadOnlyMemory<byte>>? InputRead;
 
     /// <summary>Raised after one transport flush completes.</summary>
-    internal event System.Action? Flushed;
+    internal event Action? Flushed;
 
     /// <summary>Raised when transport disposal first commits.</summary>
-    internal event System.Action? Disposed;
+    internal event Action? Disposed;
 
     /// <summary>Gets or sets the one-based write attempt that should fail.</summary>
     internal int FailWriteNumber { get; set; }

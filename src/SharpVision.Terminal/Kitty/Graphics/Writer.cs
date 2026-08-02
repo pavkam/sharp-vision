@@ -58,7 +58,7 @@ public static class Writer
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(destination);
 
-        if (command.Action is not Action.Query and not Action.Transmit ||
+        if (command.Action is not GraphicsAction.Query and not GraphicsAction.Transmit ||
             encodedPayload.Length > _encodedChunkBytes ||
             !IsCanonicalBase64(encodedPayload))
         {
@@ -107,7 +107,7 @@ public static class Writer
         ArgumentNullException.ThrowIfNull(destination);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxPayloadBytes);
 
-        if (command.Action is not Action.Transmit and not Action.Query)
+        if (command.Action is not GraphicsAction.Transmit and not GraphicsAction.Query)
         {
             throw new ArgumentException("Only query and transmit actions carry direct data.", nameof(command));
         }
@@ -214,7 +214,7 @@ public static class Writer
     {
         var position = 0;
 
-        if (command.Action == Action.Query)
+        if (command.Action == GraphicsAction.Query)
         {
             position = AppendField(destination, position, (byte) 'i', command.ImageId);
             position = AppendField(destination, position, (byte) 's', command.PixelSize.Width);
@@ -224,7 +224,7 @@ public static class Writer
             return AppendField(destination, position, (byte) 'f', (int) command.Format);
         }
 
-        if (command.Action == Action.Transmit && command.ImageId == 0)
+        if (command.Action == GraphicsAction.Transmit && command.ImageId == 0)
         {
             position = AppendField(destination, position, (byte) 'm', command.More ? 1 : 0);
 
@@ -233,7 +233,7 @@ public static class Writer
                 : AppendField(destination, position, (byte) 'q', command.Quiet);
         }
 
-        if (command.Action == Action.Transmit)
+        if (command.Action == GraphicsAction.Transmit)
         {
             position = AppendLiteralField(destination, position, (byte) 'a', (byte) 't');
             position = AppendField(destination, position, (byte) 'f', (int) command.Format);
@@ -262,7 +262,7 @@ public static class Writer
                 : AppendField(destination, position, (byte) 'q', command.Quiet);
         }
 
-        if (command.Action == Action.Place)
+        if (command.Action == GraphicsAction.Place)
         {
             position = AppendLiteralField(destination, position, (byte) 'a', (byte) 'p');
             position = AppendField(destination, position, (byte) 'i', command.ImageId);
@@ -356,7 +356,7 @@ public static class Writer
 
     private static void ValidatePayload(Command command, ReadOnlySpan<byte> payload)
     {
-        if (command.Action is Action.Place or Action.Delete)
+        if (command.Action is GraphicsAction.Place or GraphicsAction.Delete)
         {
             if (!payload.IsEmpty)
             {

@@ -5,8 +5,6 @@ namespace SharpVision.Terminal.Tests.Input;
 
 using SharpVision.Terminal.Input;
 
-using InputAction = Terminal.Input.Action;
-
 /// <summary>
 /// Verifies Kitty CSI-u key identity, modifiers, events, text, and recovery.
 /// </summary>
@@ -27,7 +25,7 @@ public sealed class KittyKeyboardTests
                 new Rune('a'),
                 97,
                 Modifiers.Shift | Modifiers.Control,
-                InputAction.Repeat,
+                KeyAction.Repeat,
                 new Rune('A'),
                 new Rune('c'))
         ]);
@@ -39,12 +37,12 @@ public sealed class KittyKeyboardTests
     /// Verifies press/repeat/release and every modifier bit.
     /// </summary>
     [Theory]
-    [InlineData("\u001b[97;256:1u", InputAction.Press)]
-    [InlineData("\u001b[97;256:2u", InputAction.Repeat)]
-    [InlineData("\u001b[97;256:3u", InputAction.Release)]
+    [InlineData("\u001b[97;256:1u", KeyAction.Press)]
+    [InlineData("\u001b[97;256:2u", KeyAction.Repeat)]
+    [InlineData("\u001b[97;256:3u", KeyAction.Release)]
     public void Decode_WhenKittyActionVaries_MapsModifiersAndAction(
         string input,
-        InputAction action)
+        KeyAction action)
     {
         var stroke = Decode(Encoding.UTF8.GetBytes(input)).Strokes.Single();
 
@@ -97,7 +95,7 @@ public sealed class KittyKeyboardTests
         var sink = Decode(Encoding.ASCII.GetBytes($"\u001b[{native}u"));
 
         sink.Strokes.Single().ShouldBe(
-            new Stroke(code, null, native, Modifiers.None, InputAction.Press));
+            new Stroke(code, null, native, Modifiers.None, KeyAction.Press));
     }
 
     /// <summary>
@@ -122,7 +120,7 @@ public sealed class KittyKeyboardTests
 
         sink.Strokes.ShouldBe(
         [
-            new Stroke(Code.Unknown, null, 0, Modifiers.None, InputAction.Press)
+            new Stroke(Code.Unknown, null, 0, Modifiers.None, KeyAction.Press)
         ]);
         sink.Text.Select(static value => value.Value)
             .ShouldBe([new Rune('å'), new Rune('β')]);
@@ -181,7 +179,7 @@ public sealed class KittyKeyboardTests
         var stroke = Decode("[97u"u8.ToArray()).Strokes.Single();
 
         stroke.ShouldBe(
-            new Stroke(Code.Character, new Rune('a'), 97, Modifiers.None, InputAction.Press));
+            new Stroke(Code.Character, new Rune('a'), 97, Modifiers.None, KeyAction.Press));
     }
 
     /// <summary>
@@ -210,7 +208,7 @@ public sealed class KittyKeyboardTests
         stroke.Character.ShouldBe(new Rune('a'));
         stroke.NativeCode.ShouldBe(97);
         stroke.Modifiers.ShouldBe(expected);
-        stroke.Action.ShouldBe(InputAction.Press);
+        stroke.Action.ShouldBe(KeyAction.Press);
     }
 
     // ── Event types ───────────────────────────────────────────────────────
@@ -219,12 +217,12 @@ public sealed class KittyKeyboardTests
     /// Verifies press, repeat, and release event types with no modifiers.
     /// </summary>
     [Theory]
-    [InlineData("[97;1:1u", InputAction.Press)]
-    [InlineData("[97;1:2u", InputAction.Repeat)]
-    [InlineData("[97;1:3u", InputAction.Release)]
+    [InlineData("[97;1:1u", KeyAction.Press)]
+    [InlineData("[97;1:2u", KeyAction.Repeat)]
+    [InlineData("[97;1:3u", KeyAction.Release)]
     public void Decode_WhenEventTypeVariesWithoutModifiers_MapsAction(
         string input,
-        InputAction action)
+        KeyAction action)
     {
         var stroke = Decode(Encoding.UTF8.GetBytes(input)).Strokes.Single();
 
@@ -239,13 +237,13 @@ public sealed class KittyKeyboardTests
     /// Verifies event types combined with a modifier.
     /// </summary>
     [Theory]
-    [InlineData("[97;2:1u", Modifiers.Shift, InputAction.Press)]
-    [InlineData("[97;5:2u", Modifiers.Control, InputAction.Repeat)]
-    [InlineData("[97;3:3u", Modifiers.Alt, InputAction.Release)]
+    [InlineData("[97;2:1u", Modifiers.Shift, KeyAction.Press)]
+    [InlineData("[97;5:2u", Modifiers.Control, KeyAction.Repeat)]
+    [InlineData("[97;3:3u", Modifiers.Alt, KeyAction.Release)]
     public void Decode_WhenEventTypeAndModifierBothPresent_MapsBoth(
         string input,
         Modifiers modifiers,
-        InputAction action)
+        KeyAction action)
     {
         var stroke = Decode(Encoding.UTF8.GetBytes(input)).Strokes.Single();
 
@@ -275,7 +273,7 @@ public sealed class KittyKeyboardTests
         var sink = Decode(Encoding.ASCII.GetBytes($"[{native}u"));
 
         sink.Strokes.Single().ShouldBe(
-            new Stroke(code, null, native, Modifiers.None, InputAction.Press));
+            new Stroke(code, null, native, Modifiers.None, KeyAction.Press));
     }
 
     /// <summary>
@@ -298,7 +296,7 @@ public sealed class KittyKeyboardTests
         stroke.Code.ShouldBe(code);
         stroke.NativeCode.ShouldBe(native);
         stroke.Modifiers.ShouldBe(modifiers);
-        stroke.Action.ShouldBe(InputAction.Press);
+        stroke.Action.ShouldBe(KeyAction.Press);
     }
 
     // ── Function keys via Kitty range ─────────────────────────────────────
@@ -335,7 +333,7 @@ public sealed class KittyKeyboardTests
         var sink = Decode(Encoding.ASCII.GetBytes($"[{native}u"));
 
         sink.Strokes.Single().ShouldBe(
-            new Stroke(code, null, native, Modifiers.None, InputAction.Press));
+            new Stroke(code, null, native, Modifiers.None, KeyAction.Press));
     }
 
     // ── Shifted and base layout keys ──────────────────────────────────────
@@ -382,7 +380,7 @@ public sealed class KittyKeyboardTests
         stroke.Character.ShouldBe(new Rune('a'));
         stroke.Shifted.ShouldBe(new Rune('A'));
         stroke.Modifiers.ShouldBe(Modifiers.Shift);
-        stroke.Action.ShouldBe(InputAction.Press);
+        stroke.Action.ShouldBe(KeyAction.Press);
     }
 
     // ── Associated text ───────────────────────────────────────────────────
@@ -396,7 +394,7 @@ public sealed class KittyKeyboardTests
         var sink = Decode("[97;1;97u"u8.ToArray());
 
         sink.Strokes.Single().ShouldBe(
-            new Stroke(Code.Character, new Rune('a'), 97, Modifiers.None, InputAction.Press));
+            new Stroke(Code.Character, new Rune('a'), 97, Modifiers.None, KeyAction.Press));
         sink.Text.Single().Value.ShouldBe(new Rune('a'));
     }
 
@@ -409,7 +407,7 @@ public sealed class KittyKeyboardTests
         var sink = Decode("[97;1;97:98u"u8.ToArray());
 
         sink.Strokes.Single().ShouldBe(
-            new Stroke(Code.Character, new Rune('a'), 97, Modifiers.None, InputAction.Press));
+            new Stroke(Code.Character, new Rune('a'), 97, Modifiers.None, KeyAction.Press));
         sink.Text.Select(static value => value.Value)
             .ShouldBe([new Rune('a'), new Rune('b')]);
     }
@@ -582,7 +580,7 @@ public sealed class KittyKeyboardTests
 
             sink.Strokes.Count.ShouldBe(1, $"split {split}");
             sink.Strokes[0].Modifiers.ShouldBe(Modifiers.Control, $"split {split}");
-            sink.Strokes[0].Action.ShouldBe(InputAction.Repeat, $"split {split}");
+            sink.Strokes[0].Action.ShouldBe(KeyAction.Repeat, $"split {split}");
             sink.Diagnostics.ShouldBeEmpty($"split {split}");
         }
     }
@@ -646,7 +644,7 @@ public sealed class KittyKeyboardTests
 
         sink.Diagnostics.Count.ShouldBe(1);
         sink.Strokes.ShouldContain(
-            new Stroke(Code.Character, new Rune('b'), 98, Modifiers.None, InputAction.Press));
+            new Stroke(Code.Character, new Rune('b'), 98, Modifiers.None, KeyAction.Press));
     }
 
     /// <summary>

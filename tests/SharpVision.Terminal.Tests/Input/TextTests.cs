@@ -5,8 +5,6 @@ namespace SharpVision.Terminal.Tests.Input;
 
 using SharpVision.Terminal.Input;
 
-using InputAction = Terminal.Input.Action;
-
 /// <summary>
 /// Verifies streaming UTF-8, Alt text, Escape ambiguity, and allocation behavior.
 /// </summary>
@@ -74,8 +72,8 @@ public sealed class TextTests
 
         sink.Strokes.ShouldBe(
         [
-            new Stroke(Code.Character, new Rune('x'), 0, Modifiers.None, InputAction.Press),
-            new Stroke(Code.Character, new Rune('y'), 0, Modifiers.Alt, InputAction.Press)
+            new Stroke(Code.Character, new Rune('x'), 0, Modifiers.None, KeyAction.Press),
+            new Stroke(Code.Character, new Rune('y'), 0, Modifiers.Alt, KeyAction.Press)
         ]);
         sink.Text.ShouldBe([new InputText(new Rune('x')), new InputText(new Rune('y'))]);
     }
@@ -103,7 +101,7 @@ public sealed class TextTests
                         new Rune('é'),
                         0,
                         Modifiers.Alt,
-                        InputAction.Press)
+                        KeyAction.Press)
                 ], $"split {split}");
             sink.Text.ShouldBe([new InputText(new Rune('é'))], $"split {split}");
         }
@@ -132,7 +130,7 @@ public sealed class TextTests
 
         sink.Strokes.ShouldBe(
         [
-            new Stroke(Code.Escape, null, 0, Modifiers.None, InputAction.Press)
+            new Stroke(Code.Escape, null, 0, Modifiers.None, KeyAction.Press)
         ]);
     }
 

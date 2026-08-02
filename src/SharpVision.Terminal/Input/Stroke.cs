@@ -26,7 +26,7 @@ public readonly record struct Stroke
         Rune? character,
         int nativeCode,
         Modifiers modifiers,
-        Action action,
+        KeyAction action,
         Rune? shifted = null,
         Rune? baseLayout = null)
     {
@@ -90,7 +90,7 @@ public readonly record struct Stroke
     public Modifiers Modifiers { get; }
 
     /// <summary>Gets the transition kind.</summary>
-    public Action Action { get; }
+    public KeyAction Action { get; }
 
     /// <summary>Gets the optional shifted key identity reported by Kitty.</summary>
     public Rune? Shifted { get; }

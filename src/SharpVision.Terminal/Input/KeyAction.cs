@@ -3,9 +3,9 @@
 
 namespace SharpVision.Terminal.Input;
 
-/// <summary>Identifies a key or pointer transition.</summary>
+/// <summary>Identifies a key transition.</summary>
 [PublicAPI]
-public enum Action
+public enum KeyAction
 {
     /// <summary>The input became active.</summary>
     Press,

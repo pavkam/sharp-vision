@@ -507,12 +507,6 @@ namespace SharpVision.Terminal.Graphics
 }
 namespace SharpVision.Terminal.Input
 {
-    public enum Action
-    {
-        Press = 0,
-        Repeat = 1,
-        Release = 2,
-    }
     [System.Flags]
     public enum Buttons
     {
@@ -626,6 +620,12 @@ namespace SharpVision.Terminal.Input
         public bool Gained { get; }
         public void Deconstruct(out bool gained) { }
     }
+    public enum KeyAction
+    {
+        Press = 0,
+        Repeat = 1,
+        Release = 2,
+    }
     [System.Flags]
     public enum Modifiers
     {
@@ -680,8 +680,8 @@ namespace SharpVision.Terminal.Input
     }
     public readonly struct Stroke : System.IEquatable<SharpVision.Terminal.Input.Stroke>
     {
-        public Stroke(SharpVision.Terminal.Input.Code code, System.Text.Rune? character, int nativeCode, SharpVision.Terminal.Input.Modifiers modifiers, SharpVision.Terminal.Input.Action action, System.Text.Rune? shifted = default, System.Text.Rune? baseLayout = default) { }
-        public SharpVision.Terminal.Input.Action Action { get; }
+        public Stroke(SharpVision.Terminal.Input.Code code, System.Text.Rune? character, int nativeCode, SharpVision.Terminal.Input.Modifiers modifiers, SharpVision.Terminal.Input.KeyAction action, System.Text.Rune? shifted = default, System.Text.Rune? baseLayout = default) { }
+        public SharpVision.Terminal.Input.KeyAction Action { get; }
         public System.Text.Rune? BaseLayout { get; }
         public System.Text.Rune? Character { get; }
         public SharpVision.Terminal.Input.Code Code { get; }
@@ -799,16 +799,9 @@ namespace SharpVision.Terminal.Kitty.Clipboard
 }
 namespace SharpVision.Terminal.Kitty.Graphics
 {
-    public enum Action
-    {
-        Query = 0,
-        Transmit = 1,
-        Place = 2,
-        Delete = 3,
-    }
     public sealed class Command
     {
-        public SharpVision.Terminal.Kitty.Graphics.Action Action { get; }
+        public SharpVision.Terminal.Kitty.Graphics.GraphicsAction Action { get; }
         public SharpVision.Terminal.Kitty.Graphics.Compression Compression { get; }
         public bool DeleteData { get; }
         public SharpVision.Terminal.Geometry.Size Destination { get; }
@@ -838,6 +831,13 @@ namespace SharpVision.Terminal.Kitty.Graphics
         Rgb = 24,
         Rgba = 32,
         Png = 100,
+    }
+    public enum GraphicsAction
+    {
+        Query = 0,
+        Transmit = 1,
+        Place = 2,
+        Delete = 3,
     }
     public enum Medium
     {

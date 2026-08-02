@@ -10,7 +10,7 @@ public sealed class Command
     #region Construction and state
 
     private Command(
-        Action action,
+        GraphicsAction action,
         Medium medium,
         Format format,
         Compression compression,
@@ -42,7 +42,7 @@ public sealed class Command
     }
 
     /// <summary>Gets the typed action.</summary>
-    public Action Action { get; }
+    public GraphicsAction Action { get; }
 
     /// <summary>Gets the direct-only transmission medium.</summary>
     public Medium Medium { get; }
@@ -95,7 +95,7 @@ public sealed class Command
     {
         RequireId(imageId, nameof(imageId));
         return new Command(
-            Action.Query,
+            GraphicsAction.Query,
             Medium.Direct,
             Format.Rgb,
             Compression.None,
@@ -122,7 +122,7 @@ public sealed class Command
         RequireId(placementId, nameof(placementId));
         ValidateQuiet(quiet);
         return new Command(
-            Action.Delete,
+            GraphicsAction.Delete,
             Medium.Direct,
             Format.Rgba,
             Compression.None,
@@ -170,7 +170,7 @@ public sealed class Command
             : medium != Medium.Direct
             ? throw new NotSupportedException("Only direct Kitty graphics transmission is supported.")
             : new Command(
-            Action.Transmit,
+            GraphicsAction.Transmit,
             medium,
             format,
             compression,
@@ -210,7 +210,7 @@ public sealed class Command
         ValidateSize(destination, nameof(destination));
         ValidateQuiet(quiet);
         return new Command(
-            Action.Place,
+            GraphicsAction.Place,
             Medium.Direct,
             Format.Rgba,
             Compression.None,
@@ -235,7 +235,7 @@ public sealed class Command
         RequireId(imageId, nameof(imageId));
         ValidateQuiet(quiet);
         return new Command(
-            Action.Delete,
+            GraphicsAction.Delete,
             Medium.Direct,
             Format.Rgba,
             Compression.None,
@@ -270,7 +270,7 @@ public sealed class Command
 
     /// <summary>Creates a metadata-minimal continuation chunk.</summary>
     internal static Command Continuation(bool more, int quiet) => new(
-        Action.Transmit,
+        GraphicsAction.Transmit,
         Medium.Direct,
         Format.Rgba,
         Compression.None,

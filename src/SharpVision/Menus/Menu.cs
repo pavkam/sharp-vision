@@ -1167,7 +1167,7 @@ public sealed class Menu: ItemsControl
         failure?.Throw();
     }
 
-    private void ExecuteSubmenuTransition(System.Action action)
+    private void ExecuteSubmenuTransition(Action action)
     {
         Debug.Assert(action is not null, "A submenu transition requires one operation.");
         _submenuTransitionDepth++;

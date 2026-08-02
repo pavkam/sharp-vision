@@ -204,7 +204,7 @@ public sealed class InteractivePerformanceTests
         isMotion: action == PointerAction.Move,
         isCellPositionInferred: false);
 
-    private static long Minimum(System.Action action, int iterations, out TimeSpan elapsed)
+    private static long Minimum(Action action, int iterations, out TimeSpan elapsed)
     {
         for (var index = 0; index < iterations; index++)
         {

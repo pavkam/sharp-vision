@@ -17,7 +17,7 @@ internal sealed class FloatingSurfaceProbe: FloatingSurface
 
     /// <summary>Runs one test-owned family commit through the protected opening transaction.</summary>
     /// <param name="commitOpenState">The non-null test-owned state commit.</param>
-    internal void OpenForTest(System.Action commitOpenState) => OpenSurface(commitOpenState);
+    internal void OpenForTest(Action commitOpenState) => OpenSurface(commitOpenState);
 
     /// <summary>Commits bounds and then raises the supplied failure from the family callback.</summary>
     /// <param name="bounds">The provisional surface rectangle.</param>
@@ -34,8 +34,8 @@ internal sealed class FloatingSurfaceProbe: FloatingSurface
     /// <param name="commitUnavailableState">Makes family-specific content unavailable.</param>
     /// <returns><see langword="true"/> when a presented surface was closed.</returns>
     internal bool CloseForTest(
-        System.Action? commitClosingState = null,
-        System.Action? commitUnavailableState = null) =>
+        Action? commitClosingState = null,
+        Action? commitUnavailableState = null) =>
         CloseSurface(
             commitClosingState ?? (static () => { }),
             commitUnavailableState ?? (static () => { }));

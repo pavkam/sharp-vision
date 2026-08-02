@@ -152,7 +152,7 @@ public sealed class RandomizedInputTests
 
             sink.Strokes.ShouldBe(
             [
-                new Stroke(Code.F63, null, 0, Modifiers.None, Action.Press)
+                new Stroke(Code.F63, null, 0, Modifiers.None, KeyAction.Press)
             ], $"split {split}");
             sink.Text.ShouldBeEmpty($"split {split}");
         }

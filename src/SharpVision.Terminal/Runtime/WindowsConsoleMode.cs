@@ -42,22 +42,22 @@ internal sealed class WindowsConsoleMode: IDisposable
         bool captureControlKeys,
         Func<nint, uint, bool>? setConsoleMode = null)
     {
-        var write = setConsoleMode ?? Native.TrySetConsoleMode;
-        var input = Native.GetStandardHandle(Native.StdInputHandle);
-        var output = Native.GetStandardHandle(Native.StdOutputHandle);
+        var write = setConsoleMode ?? RuntimeInterop.TrySetConsoleMode;
+        var input = RuntimeInterop.GetStandardHandle(RuntimeInterop.StdInputHandle);
+        var output = RuntimeInterop.GetStandardHandle(RuntimeInterop.StdOutputHandle);
 
-        if (!Native.TryGetConsoleMode(input, out var savedInput) ||
-            !Native.TryGetConsoleMode(output, out var savedOutput))
+        if (!RuntimeInterop.TryGetConsoleMode(input, out var savedInput) ||
+            !RuntimeInterop.TryGetConsoleMode(output, out var savedOutput))
         {
             throw Failure();
         }
 
-        if (!write(input, Native.ComputeInputMode(savedInput, captureControlKeys)))
+        if (!write(input, RuntimeInterop.ComputeInputMode(savedInput, captureControlKeys)))
         {
             throw Failure();
         }
 
-        if (!write(output, Native.ComputeOutputMode(savedOutput)))
+        if (!write(output, RuntimeInterop.ComputeOutputMode(savedOutput)))
         {
             var failure = Failure();
             _ = write(input, savedInput);

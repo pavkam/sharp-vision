@@ -108,7 +108,7 @@ public sealed class InfrastructurePerformanceTests
         Report("dispatcher post/drain", watch.Elapsed, iterations);
     }
 
-    private static (long Allocated, TimeSpan Elapsed) Measure(System.Action action, int iterations)
+    private static (long Allocated, TimeSpan Elapsed) Measure(Action action, int iterations)
     {
         for (var index = 0; index < iterations; index++)
         {

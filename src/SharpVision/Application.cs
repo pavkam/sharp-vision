@@ -1274,7 +1274,7 @@ public sealed class Application: ISink, IAsyncDisposable
     }
 
     private static void CaptureCleanup(
-        System.Action action,
+        Action action,
         ref ExceptionDispatchInfo? failure)
     {
         try

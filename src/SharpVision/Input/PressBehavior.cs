@@ -15,7 +15,7 @@ internal sealed class PressBehavior
     private readonly Func<bool> _requestFocus;
     private readonly Func<bool> _capturePointer;
     private readonly Func<bool> _hasPointerCapture;
-    private readonly System.Action _releasePointerCapture;
+    private readonly Action _releasePointerCapture;
     private readonly Action<bool> _setPressed;
     private readonly Action<ActivationCause> _activate;
     private bool _pointerHeld;
@@ -28,7 +28,7 @@ internal sealed class PressBehavior
         Func<bool> requestFocus,
         Func<bool> capturePointer,
         Func<bool> hasPointerCapture,
-        System.Action releasePointerCapture,
+        Action releasePointerCapture,
         Action<bool> setPressed,
         Action<ActivationCause> activate)
     {

@@ -4,7 +4,7 @@
 namespace SharpVision.Terminal.Runtime;
 
 /// <summary>Provides the Unix terminal-size native boundary.</summary>
-internal static partial class Native
+internal static partial class RuntimeInterop
 {
     private const nuint _linuxGetSize = 0x5413;
 

@@ -96,7 +96,7 @@ public sealed class ModifyOtherKeysTests
             var stroke = sink.Strokes.ShouldHaveSingleItem($"split {split}");
             stroke.Character.ShouldBe(new Rune('x'), $"split {split}");
             stroke.Modifiers.ShouldBe(Modifiers.Alt, $"split {split}");
-            stroke.Action.ShouldBe(Action.Repeat, $"split {split}");
+            stroke.Action.ShouldBe(KeyAction.Repeat, $"split {split}");
         }
     }
 }

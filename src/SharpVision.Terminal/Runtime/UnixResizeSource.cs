@@ -70,7 +70,7 @@ public sealed class UnixResizeSource: IResizeSource
             {
             }
 
-            return Native.GetDimensions(_fileDescriptor);
+            return RuntimeInterop.GetDimensions(_fileDescriptor);
         }
         finally
         {
@@ -82,7 +82,7 @@ public sealed class UnixResizeSource: IResizeSource
     public bool TryReadCurrent(out Dimensions value)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
-        value = Native.GetDimensions(_fileDescriptor);
+        value = RuntimeInterop.GetDimensions(_fileDescriptor);
         return true;
     }
 

@@ -5,8 +5,6 @@ namespace SharpVision.Terminal.Kitty.Keyboard;
 
 using Input;
 
-using InputAction = Input.Action;
-
 /// <summary>
 /// Decodes Kitty progressive-enhancement keyboard CSI-<c>u</c> reports, extracted from
 /// <see cref="Decoder"/> (see #97 step 5).
@@ -78,7 +76,7 @@ internal sealed class KeyDecoder
     internal static bool TryReadModifiers(
         ReadOnlySpan<byte> input,
         out Modifiers modifiers,
-        out InputAction action)
+        out KeyAction action)
     {
         var separator = input.IndexOf((byte) ':');
         var modifierField = separator < 0 ? input : input[..separator];
@@ -104,7 +102,7 @@ internal sealed class KeyDecoder
         }
 
         modifiers = (Modifiers) (encoded - 1);
-        action = InputAction.Press;
+        action = KeyAction.Press;
 
         if (separator < 0)
         {
@@ -121,7 +119,7 @@ internal sealed class KeyDecoder
             return false;
         }
 
-        action = (InputAction) (eventType - 1);
+        action = (KeyAction) (eventType - 1);
         return true;
     }
 

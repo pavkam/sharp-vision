@@ -620,7 +620,7 @@ public sealed class CalendarTests
         var end = start.AddDays(-1);
 
         // Act
-        System.Action action = () => _ = new DateInterval(start, end);
+        Action action = () => _ = new DateInterval(start, end);
 
         // Assert
         var exception = action.ShouldThrow<ArgumentException>();

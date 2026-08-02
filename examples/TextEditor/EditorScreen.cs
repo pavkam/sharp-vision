@@ -535,7 +535,7 @@ public sealed class EditorScreen: Screen
 
     #region Editor commands and status
 
-    private void QueueEditorCommand(System.Action command)
+    private void QueueEditorCommand(Action command)
     {
         Debug.Assert(command is not null, "A TextEditor menu command must be provided.");
         var application = Application;

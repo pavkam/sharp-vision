@@ -5,8 +5,6 @@ namespace SharpVision.Terminal.Tests.Input;
 
 using SharpVision.Terminal.Input;
 
-using InputAction = Terminal.Input.Action;
-
 /// <summary>
 /// Verifies legacy VT key mappings, modifiers, fragmentation, and recovery.
 /// </summary>
@@ -27,7 +25,7 @@ public sealed class LegacyKeyTests
 
         sink.Strokes.ShouldBe(
         [
-            new Stroke(code, null, 0, Modifiers.None, InputAction.Press)
+            new Stroke(code, null, 0, Modifiers.None, KeyAction.Press)
         ]);
     }
 
@@ -69,7 +67,7 @@ public sealed class LegacyKeyTests
 
             sink.Strokes.ShouldBe(
                 [
-                    new Stroke(code, null, nativeCode, modifiers, InputAction.Press)
+                    new Stroke(code, null, nativeCode, modifiers, KeyAction.Press)
                 ], $"split {split}");
             sink.Text.ShouldBeEmpty($"split {split}");
         }
@@ -97,7 +95,7 @@ public sealed class LegacyKeyTests
 
         sink.Strokes.ShouldBe(
         [
-            new Stroke(code, null, native, Modifiers.None, InputAction.Press)
+            new Stroke(code, null, native, Modifiers.None, KeyAction.Press)
         ]);
     }
 
@@ -110,7 +108,7 @@ public sealed class LegacyKeyTests
         var sink = Decode("\u001b[99~x"u8.ToArray());
 
         sink.Strokes[0].ShouldBe(
-            new Stroke(Code.Unknown, null, 99, Modifiers.None, InputAction.Press));
+            new Stroke(Code.Unknown, null, 99, Modifiers.None, KeyAction.Press));
         sink.Strokes[1].Code.ShouldBe(Code.Character);
         sink.Text.Single().Value.ShouldBe(new Rune('x'));
     }
@@ -182,19 +180,19 @@ public sealed class LegacyKeyTests
     /// These are sent when the terminal enables <c>KittyEnhancement.EventTypes</c>.
     /// </summary>
     [Theory]
-    [InlineData("[1;1:1A", Code.Up, Modifiers.None, InputAction.Press)]
-    [InlineData("[1;1:2A", Code.Up, Modifiers.None, InputAction.Repeat)]
-    [InlineData("[1;1:3A", Code.Up, Modifiers.None, InputAction.Release)]
-    [InlineData("[1;1:1B", Code.Down, Modifiers.None, InputAction.Press)]
-    [InlineData("[1;1:1C", Code.Right, Modifiers.None, InputAction.Press)]
-    [InlineData("[1;1:1D", Code.Left, Modifiers.None, InputAction.Press)]
-    [InlineData("[1;1:1H", Code.Home, Modifiers.None, InputAction.Press)]
-    [InlineData("[1;1:1F", Code.End, Modifiers.None, InputAction.Press)]
+    [InlineData("[1;1:1A", Code.Up, Modifiers.None, KeyAction.Press)]
+    [InlineData("[1;1:2A", Code.Up, Modifiers.None, KeyAction.Repeat)]
+    [InlineData("[1;1:3A", Code.Up, Modifiers.None, KeyAction.Release)]
+    [InlineData("[1;1:1B", Code.Down, Modifiers.None, KeyAction.Press)]
+    [InlineData("[1;1:1C", Code.Right, Modifiers.None, KeyAction.Press)]
+    [InlineData("[1;1:1D", Code.Left, Modifiers.None, KeyAction.Press)]
+    [InlineData("[1;1:1H", Code.Home, Modifiers.None, KeyAction.Press)]
+    [InlineData("[1;1:1F", Code.End, Modifiers.None, KeyAction.Press)]
     public void Decode_WhenCsiKeyHasKittyEventType_MapsCodeAndAction(
         string input,
         Code code,
         Modifiers modifiers,
-        InputAction action)
+        KeyAction action)
     {
         var sink = Decode(Encoding.UTF8.GetBytes(input));
 
@@ -210,19 +208,19 @@ public sealed class LegacyKeyTests
     /// Format: <c>CSI 1;modifier:event_type final</c>.
     /// </summary>
     [Theory]
-    [InlineData("[1;2:1A", Code.Up, Modifiers.Shift, InputAction.Press)]
-    [InlineData("[1;3:1D", Code.Left, Modifiers.Alt, InputAction.Press)]
-    [InlineData("[1;5:1C", Code.Right, Modifiers.Control, InputAction.Press)]
-    [InlineData("[1;5:3C", Code.Right, Modifiers.Control, InputAction.Release)]
-    [InlineData("[1;2:2B", Code.Down, Modifiers.Shift, InputAction.Repeat)]
-    [InlineData("[1;3:3A", Code.Up, Modifiers.Alt, InputAction.Release)]
-    [InlineData("[1;6:1H", Code.Home, Modifiers.Shift | Modifiers.Control, InputAction.Press)]
-    [InlineData("[1;7:1F", Code.End, Modifiers.Alt | Modifiers.Control, InputAction.Press)]
+    [InlineData("[1;2:1A", Code.Up, Modifiers.Shift, KeyAction.Press)]
+    [InlineData("[1;3:1D", Code.Left, Modifiers.Alt, KeyAction.Press)]
+    [InlineData("[1;5:1C", Code.Right, Modifiers.Control, KeyAction.Press)]
+    [InlineData("[1;5:3C", Code.Right, Modifiers.Control, KeyAction.Release)]
+    [InlineData("[1;2:2B", Code.Down, Modifiers.Shift, KeyAction.Repeat)]
+    [InlineData("[1;3:3A", Code.Up, Modifiers.Alt, KeyAction.Release)]
+    [InlineData("[1;6:1H", Code.Home, Modifiers.Shift | Modifiers.Control, KeyAction.Press)]
+    [InlineData("[1;7:1F", Code.End, Modifiers.Alt | Modifiers.Control, KeyAction.Press)]
     public void Decode_WhenCsiKeyHasModifierAndEventType_MapsBoth(
         string input,
         Code code,
         Modifiers modifiers,
-        InputAction action)
+        KeyAction action)
     {
         var sink = Decode(Encoding.UTF8.GetBytes(input));
 
@@ -250,7 +248,7 @@ public sealed class LegacyKeyTests
 
         sink.Strokes.ShouldBe(
         [
-            new Stroke(code, null, 0, modifiers, InputAction.Press)
+            new Stroke(code, null, 0, modifiers, KeyAction.Press)
         ]);
         sink.Diagnostics.ShouldBeEmpty();
     }
@@ -273,7 +271,7 @@ public sealed class LegacyKeyTests
 
         sink.Strokes.ShouldBe(
         [
-            new Stroke(code, null, 0, Modifiers.None, InputAction.Press)
+            new Stroke(code, null, 0, Modifiers.None, KeyAction.Press)
         ]);
         sink.Diagnostics.ShouldBeEmpty();
     }
@@ -298,7 +296,7 @@ public sealed class LegacyKeyTests
 
         sink.Strokes.ShouldBe(
         [
-            new Stroke(code, null, 0, Modifiers.None, InputAction.Press)
+            new Stroke(code, null, 0, Modifiers.None, KeyAction.Press)
         ]);
         sink.Diagnostics.ShouldBeEmpty();
     }
@@ -329,7 +327,7 @@ public sealed class LegacyKeyTests
 
         sink.Strokes.ShouldBe(
         [
-            new Stroke(Code.Unknown, null, (byte) 'X', Modifiers.None, InputAction.Press)
+            new Stroke(Code.Unknown, null, (byte) 'X', Modifiers.None, KeyAction.Press)
         ]);
         sink.Diagnostics.ShouldBeEmpty();
     }
@@ -338,16 +336,16 @@ public sealed class LegacyKeyTests
     /// Verifies CSI keys with Kitty event types decode identically at every byte split.
     /// </summary>
     [Theory]
-    [InlineData("[1;1:1A", Code.Up, Modifiers.None, InputAction.Press)]
-    [InlineData("[1;1:2A", Code.Up, Modifiers.None, InputAction.Repeat)]
-    [InlineData("[1;1:3A", Code.Up, Modifiers.None, InputAction.Release)]
-    [InlineData("[1;5:1C", Code.Right, Modifiers.Control, InputAction.Press)]
-    [InlineData("[1;2:3D", Code.Left, Modifiers.Shift, InputAction.Release)]
+    [InlineData("[1;1:1A", Code.Up, Modifiers.None, KeyAction.Press)]
+    [InlineData("[1;1:2A", Code.Up, Modifiers.None, KeyAction.Repeat)]
+    [InlineData("[1;1:3A", Code.Up, Modifiers.None, KeyAction.Release)]
+    [InlineData("[1;5:1C", Code.Right, Modifiers.Control, KeyAction.Press)]
+    [InlineData("[1;2:3D", Code.Left, Modifiers.Shift, KeyAction.Release)]
     public void Decode_WhenCsiEventTypeIsFragmented_MapsAtEverySplit(
         string input,
         Code code,
         Modifiers modifiers,
-        InputAction action)
+        KeyAction action)
     {
         var bytes = Encoding.UTF8.GetBytes(input);
 
@@ -408,7 +406,7 @@ public sealed class LegacyKeyTests
 
         sink.Strokes.Select(static item => item.Code)
             .ShouldBe([Code.Up, Code.Down]);
-        sink.Strokes.ShouldAllBe(static item => item.Action == InputAction.Press);
+        sink.Strokes.ShouldAllBe(static item => item.Action == KeyAction.Press);
         sink.Diagnostics.ShouldBeEmpty();
     }
 
@@ -422,8 +420,8 @@ public sealed class LegacyKeyTests
 
         sink.Strokes.ShouldBe(
         [
-            new Stroke(Code.Up, null, 0, Modifiers.None, InputAction.Press),
-            new Stroke(Code.Up, null, 0, Modifiers.None, InputAction.Release)
+            new Stroke(Code.Up, null, 0, Modifiers.None, KeyAction.Press),
+            new Stroke(Code.Up, null, 0, Modifiers.None, KeyAction.Release)
         ]);
         sink.Diagnostics.ShouldBeEmpty();
     }
@@ -439,10 +437,10 @@ public sealed class LegacyKeyTests
 
         sink.Strokes.Select(static item => item.Action)
             .ShouldBe([
-                InputAction.Press,
-                InputAction.Repeat,
-                InputAction.Repeat,
-                InputAction.Release
+                KeyAction.Press,
+                KeyAction.Repeat,
+                KeyAction.Repeat,
+                KeyAction.Release
             ]);
         sink.Strokes.ShouldAllBe(static item => item.Code == Code.Up);
         sink.Diagnostics.ShouldBeEmpty();
@@ -471,9 +469,9 @@ public sealed class LegacyKeyTests
 
         sink.Strokes.ShouldBe(
         [
-            new Stroke(Code.Up, null, 0, Modifiers.None, InputAction.Press),
-            new Stroke(Code.Up, null, 0, Modifiers.Shift, InputAction.Press),
-            new Stroke(Code.Right, null, 0, Modifiers.None, InputAction.Press)
+            new Stroke(Code.Up, null, 0, Modifiers.None, KeyAction.Press),
+            new Stroke(Code.Up, null, 0, Modifiers.Shift, KeyAction.Press),
+            new Stroke(Code.Right, null, 0, Modifiers.None, KeyAction.Press)
         ]);
         sink.Diagnostics.ShouldBeEmpty();
     }
@@ -484,21 +482,21 @@ public sealed class LegacyKeyTests
     /// and only the key map and standard CSI handlers are active.
     /// </summary>
     [Theory]
-    [InlineData("[1;1:1A", Code.Up, Modifiers.None, InputAction.Press)]
-    [InlineData("[1;1:3A", Code.Up, Modifiers.None, InputAction.Release)]
-    [InlineData("[1;1:1B", Code.Down, Modifiers.None, InputAction.Press)]
-    [InlineData("[1;1:1C", Code.Right, Modifiers.None, InputAction.Press)]
-    [InlineData("[1;1:1D", Code.Left, Modifiers.None, InputAction.Press)]
-    [InlineData("[1;1:1H", Code.Home, Modifiers.None, InputAction.Press)]
-    [InlineData("[1;1:1F", Code.End, Modifiers.None, InputAction.Press)]
-    [InlineData("[1;5:1C", Code.Right, Modifiers.Control, InputAction.Press)]
-    [InlineData("[A", Code.Up, Modifiers.None, InputAction.Press)]
-    [InlineData("[B", Code.Down, Modifiers.None, InputAction.Press)]
+    [InlineData("[1;1:1A", Code.Up, Modifiers.None, KeyAction.Press)]
+    [InlineData("[1;1:3A", Code.Up, Modifiers.None, KeyAction.Release)]
+    [InlineData("[1;1:1B", Code.Down, Modifiers.None, KeyAction.Press)]
+    [InlineData("[1;1:1C", Code.Right, Modifiers.None, KeyAction.Press)]
+    [InlineData("[1;1:1D", Code.Left, Modifiers.None, KeyAction.Press)]
+    [InlineData("[1;1:1H", Code.Home, Modifiers.None, KeyAction.Press)]
+    [InlineData("[1;1:1F", Code.End, Modifiers.None, KeyAction.Press)]
+    [InlineData("[1;5:1C", Code.Right, Modifiers.Control, KeyAction.Press)]
+    [InlineData("[A", Code.Up, Modifiers.None, KeyAction.Press)]
+    [InlineData("[B", Code.Down, Modifiers.None, KeyAction.Press)]
     public void Decode_WhenAnsiGrammarIsDisabled_StillDecodesCsiKeys(
         string input,
         Code code,
         Modifiers modifiers,
-        InputAction action)
+        KeyAction action)
     {
         var sink = new RecordingInputSink();
         var options = Options.Default with { UseAnsiKeyGrammar = false };

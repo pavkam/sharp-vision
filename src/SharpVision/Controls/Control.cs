@@ -741,7 +741,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         Dispatcher dispatcher,
         Policy cellPolicy,
         Theme theme,
-        System.Action configure)
+        Action configure)
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
         ArgumentNullException.ThrowIfNull(cellPolicy);
@@ -2869,7 +2869,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         PointerManager? captureOwner,
         ModalityManager? modalityOwner,
         Theme? theme,
-        System.Action? configure)
+        Action? configure)
     {
         OwnedControlRegistry.VerifyMutationAllowed(this);
         var entered = OwnedControlRegistry.EnterPublication(this);

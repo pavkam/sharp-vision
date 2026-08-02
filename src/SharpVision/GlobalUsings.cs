@@ -27,7 +27,7 @@ global using SharpVision.Terminal.Xterm;
 global using SharpVision.Threading;
 
 global using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
-global using KeyAction = SharpVision.Terminal.Input.Action;
+global using KeyAction = SharpVision.Terminal.Input.KeyAction;
 global using PublicAPI = JetBrains.Annotations.PublicAPIAttribute;
 global using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
 global using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;

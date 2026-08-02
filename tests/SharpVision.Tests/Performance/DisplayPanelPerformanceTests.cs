@@ -3,7 +3,7 @@
 
 namespace SharpVision.Tests.Performance;
 
-using Action = System.Action;
+using Action = Action;
 
 /// <summary>Gates allocation reuse for representative and large display trees.</summary>
 [Collection(PerformanceGroup.Name)]

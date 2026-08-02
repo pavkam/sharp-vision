@@ -5,8 +5,6 @@
 
 namespace SharpVision.Terminal.Tests.Runtime;
 
-using RuntimeNative = Terminal.Runtime.Native;
-
 
 /// <summary>
 /// Verifies the pure bit-math behind the Windows console-mode boundary.
@@ -19,14 +17,14 @@ public sealed class NativeConsoleModeTests
     [Fact]
     public void ComputeInputMode_WhenDefault_EnablesVtInputAndClearsLineAndEcho()
     {
-        var current = RuntimeNative.EnableProcessedInput | RuntimeNative.EnableLineInput | RuntimeNative.EnableEchoInput;
+        var current = RuntimeInterop.EnableProcessedInput | RuntimeInterop.EnableLineInput | RuntimeInterop.EnableEchoInput;
 
-        var result = RuntimeNative.ComputeInputMode(current, captureControlKeys: false);
+        var result = RuntimeInterop.ComputeInputMode(current, captureControlKeys: false);
 
-        (result & RuntimeNative.EnableVirtualTerminalInput).ShouldNotBe(0u);
-        (result & RuntimeNative.EnableLineInput).ShouldBe(0u);
-        (result & RuntimeNative.EnableEchoInput).ShouldBe(0u);
-        (result & RuntimeNative.EnableProcessedInput).ShouldNotBe(0u); // signals still processed
+        (result & RuntimeInterop.EnableVirtualTerminalInput).ShouldNotBe(0u);
+        (result & RuntimeInterop.EnableLineInput).ShouldBe(0u);
+        (result & RuntimeInterop.EnableEchoInput).ShouldBe(0u);
+        (result & RuntimeInterop.EnableProcessedInput).ShouldNotBe(0u); // signals still processed
     }
 
     /// <summary>
@@ -35,12 +33,12 @@ public sealed class NativeConsoleModeTests
     [Fact]
     public void ComputeInputMode_WhenCapturingControlKeys_ClearsProcessedInput()
     {
-        var current = RuntimeNative.EnableProcessedInput | RuntimeNative.EnableLineInput | RuntimeNative.EnableEchoInput;
+        var current = RuntimeInterop.EnableProcessedInput | RuntimeInterop.EnableLineInput | RuntimeInterop.EnableEchoInput;
 
-        var result = RuntimeNative.ComputeInputMode(current, captureControlKeys: true);
+        var result = RuntimeInterop.ComputeInputMode(current, captureControlKeys: true);
 
-        (result & RuntimeNative.EnableProcessedInput).ShouldBe(0u);
-        (result & RuntimeNative.EnableVirtualTerminalInput).ShouldNotBe(0u);
+        (result & RuntimeInterop.EnableProcessedInput).ShouldBe(0u);
+        (result & RuntimeInterop.EnableVirtualTerminalInput).ShouldNotBe(0u);
     }
 
     /// <summary>
@@ -53,13 +51,13 @@ public sealed class NativeConsoleModeTests
         const uint unrelatedSavedMode = 0x4000_0000;
 
         // Act
-        var result = RuntimeNative.ComputeOutputMode(unrelatedSavedMode);
+        var result = RuntimeInterop.ComputeOutputMode(unrelatedSavedMode);
 
         // Assert
-        (result & RuntimeNative.EnableProcessedOutput).ShouldNotBe(0u);
-        (result & RuntimeNative.EnableWrapAtEolOutput).ShouldNotBe(0u);
-        (result & RuntimeNative.EnableVirtualTerminalProcessing).ShouldNotBe(0u);
-        (result & RuntimeNative.DisableNewlineAutoReturn).ShouldNotBe(0u);
+        (result & RuntimeInterop.EnableProcessedOutput).ShouldNotBe(0u);
+        (result & RuntimeInterop.EnableWrapAtEolOutput).ShouldNotBe(0u);
+        (result & RuntimeInterop.EnableVirtualTerminalProcessing).ShouldNotBe(0u);
+        (result & RuntimeInterop.DisableNewlineAutoReturn).ShouldNotBe(0u);
         (result & unrelatedSavedMode).ShouldBe(unrelatedSavedMode);
     }
 }

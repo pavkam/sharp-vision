@@ -15,10 +15,10 @@ and calls `IInputSink` synchronously. The sink receives immutable `Stroke`,
 
 A `Stroke` carries a logical `Code`, an optional Unicode `Rune` for character
 keys, a non-negative native numeric code, composable `Modifiers`, and a
-press/repeat/release `Action`. A `Text` value contains exactly one valid Rune.
-Printable input emits a stroke/text pair, which keeps keyboard commands and text
-composition distinct. Legacy Escape-prefixed printable text sets Alt on the
-stroke while preserving the same text Rune.
+press/repeat/release `KeyAction`. A `Text` value contains exactly one valid
+Rune. Printable input emits a stroke/text pair, which keeps keyboard commands
+and text composition distinct. Legacy Escape-prefixed printable text sets Alt on
+the stroke while preserving the same text Rune.
 
 The decoder retains at most three incomplete UTF-8 bytes and replaces malformed
 subsequences minimally with U+FFFD. It maps Enter, Tab, Backspace, cursor keys,

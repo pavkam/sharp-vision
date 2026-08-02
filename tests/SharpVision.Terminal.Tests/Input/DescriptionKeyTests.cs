@@ -5,8 +5,6 @@ namespace SharpVision.Terminal.Tests.Input;
 
 using SharpVision.Terminal.Input;
 
-using InputAction = Terminal.Input.Action;
-
 /// <summary>Verifies terminal-description key decoding, precedence, and streaming recovery.</summary>
 public sealed class DescriptionKeyTests
 {
@@ -30,7 +28,7 @@ public sealed class DescriptionKeyTests
 
             sink.Strokes.ShouldBe(
             [
-                new Stroke(Code.F63, null, 0, Modifiers.None, InputAction.Press)
+                new Stroke(Code.F63, null, 0, Modifiers.None, KeyAction.Press)
             ], $"split {split}");
             sink.Diagnostics.ShouldBeEmpty($"split {split}");
         }
@@ -318,7 +316,7 @@ public sealed class DescriptionKeyTests
 
         sink.Strokes.ShouldBe(
         [
-            new Stroke(Code.Unknown, null, 0x8f, Modifiers.None, InputAction.Press)
+            new Stroke(Code.Unknown, null, 0x8f, Modifiers.None, KeyAction.Press)
         ]);
         sink.Diagnostics.ShouldBeEmpty();
     }
@@ -531,7 +529,7 @@ public sealed class DescriptionKeyTests
 
             sink.Strokes.ShouldBe(
             [
-                new Stroke(code, null, 0, Modifiers.None, InputAction.Press)
+                new Stroke(code, null, 0, Modifiers.None, KeyAction.Press)
             ], $"{Convert.ToHexString(sequence)} split {split}");
             sink.Diagnostics.ShouldBeEmpty($"{Convert.ToHexString(sequence)} split {split}");
         }

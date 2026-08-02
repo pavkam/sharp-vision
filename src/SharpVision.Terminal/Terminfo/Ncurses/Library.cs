@@ -28,7 +28,7 @@ internal static class Library
 
             try
             {
-                return new Native(handle);
+                return new NcursesBinding(handle);
             }
             catch (EntryPointNotFoundException)
             {

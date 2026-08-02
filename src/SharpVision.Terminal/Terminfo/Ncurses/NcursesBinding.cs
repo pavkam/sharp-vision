@@ -4,7 +4,7 @@
 namespace SharpVision.Terminal.Terminfo.Ncurses;
 
 /// <summary>Owns the ncurses 6 low-level terminfo exports and validates pointer sentinels.</summary>
-internal sealed class Native: INative
+internal sealed class NcursesBinding: INative
 {
     private readonly SetupTermDelegate _setupTerm;
     private readonly GetIntegerDelegate _getFlag;
@@ -19,7 +19,7 @@ internal sealed class Native: INative
     /// <param name="handle">The nonzero owned dynamic-library handle.</param>
     /// <exception cref="ArgumentException"><paramref name="handle"/> is zero.</exception>
     /// <exception cref="EntryPointNotFoundException">A required ncurses 6 export is absent.</exception>
-    public Native(nint handle)
+    public NcursesBinding(nint handle)
     {
         if (handle == 0)
         {
