@@ -24,6 +24,7 @@ public sealed class PointerManager: IDisposable
     private Control? _lastClickTarget;
     private int _clickCount;
     private Control? _hoverBoundary;
+    private Point? _lastPointerCells;
 
     #region Construction and state
 
@@ -474,6 +475,44 @@ public sealed class PointerManager: IDisposable
         SetPointerPath(hovered, Root);
     }
 
+    /// <summary>Re-hit-tests at the last known pointer cell and repairs the hover path when the
+    /// control under that cell changed - covering wheel scroll, programmatic scroll, and terminal
+    /// resize, none of which move the physical pointer itself and so never dispatch a pointer
+    /// record of their own (see #242).</summary>
+    /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The manager is disposed.</exception>
+    /// <exception cref="Exception">A hover callback fails after the complete path commits.</exception>
+    internal void ReconcileHover()
+    {
+        VerifyAccess();
+
+        if (_lastPointerCells is not { } cells)
+        {
+            return;
+        }
+
+        var physical = Root.HitTest(cells);
+        var (hoverTarget, hoverBoundary) = ResolveHoverTarget(physical, Root.ModalityOwner?.Active);
+
+        if (ReferenceEquals(hoverTarget, Hovered) && ReferenceEquals(hoverBoundary, _hoverBoundary))
+        {
+            return;
+        }
+
+        SetPointerPath(hoverTarget, hoverBoundary);
+    }
+
+    /// <summary>Resolves the hover target and its inclusive boundary for a physical hit-test
+    /// result, honoring the active modal scope exactly as <see cref="ResolveTargets"/> does.</summary>
+    private (Control? Target, Control? Boundary) ResolveHoverTarget(Control? physical, ModalScope? scope)
+    {
+        var hoverBoundary = scope is null
+            ? physical is null ? null : Root
+            : physical is null ? null : scope.BoundaryFor(physical);
+        var hoverTarget = hoverBoundary is null ? null : physical;
+        return (hoverTarget, hoverBoundary);
+    }
+
     /// <summary>Severs manager ownership while the root is being disposed.</summary>
     internal void RootDisposed()
     {
@@ -797,15 +836,11 @@ public sealed class PointerManager: IDisposable
 
     private InteractionTargets ResolveTargets(Pointer pointer)
     {
-        var physical = pointer.Action == PointerAction.Leave || pointer.Cells is not { } cells
-            ? null
-            : Root.HitTest(cells);
+        _lastPointerCells = pointer.Action == PointerAction.Leave ? null : pointer.Cells;
+        var physical = _lastPointerCells is not { } cells ? null : Root.HitTest(cells);
         var modality = Root.ModalityOwner;
         var scope = modality?.Active;
-        var hoverBoundary = scope is null
-            ? physical is null ? null : Root
-            : physical is null ? null : scope.BoundaryFor(physical);
-        var hoverTarget = hoverBoundary is null ? null : physical;
+        var (hoverTarget, hoverBoundary) = ResolveHoverTarget(physical, scope);
         var capture = IsEligible(Captured) &&
             (scope is null || scope.BoundaryFor(Captured!) is not null)
             ? Captured

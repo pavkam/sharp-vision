@@ -1113,8 +1113,7 @@ public sealed class Application: ISink, IAsyncDisposable
 
         Size = value.Cells;
         _cellMetrics = value.CellMetrics;
-        _engine.Layout(Root, Size);
-        _layoutSinceLastRender = true;
+        PerformLayout();
         Resize?.Invoke(this, new ResizeEventArgs(value));
 
         if (value.IsSuspended)
@@ -1392,6 +1391,17 @@ public sealed class Application: ISink, IAsyncDisposable
         }
     }
 
+    private void PerformLayout()
+    {
+        _engine.Layout(Root, Size);
+        _layoutSinceLastRender = true;
+
+        // Wheel scroll, programmatic scroll, and resize all move geometry under a stationary
+        // pointer without dispatching a pointer record of their own, so hover would otherwise
+        // keep pointing at whatever was under the cursor before the layout moved (see #242).
+        CaptureValue?.ReconcileHover();
+    }
+
     private void ProcessInvalidation()
     {
         if (!_initialized || _stopping || IsSuspended())
@@ -1401,8 +1411,7 @@ public sealed class Application: ISink, IAsyncDisposable
 
         if ((Root.Pending & (Invalidation.Measure | Invalidation.Arrange)) != 0)
         {
-            _engine.Layout(Root, Size);
-            _layoutSinceLastRender = true;
+            PerformLayout();
         }
 
         if ((Root.Pending & Invalidation.Render) != 0)
