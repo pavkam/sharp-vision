@@ -44,11 +44,20 @@ presents - and, under automatic modal behavior, enters modality - when it is
 later attached. A surface cannot present twice or reenter an opening or closing
 transaction.
 
-Popup-family closure first makes the family ineligible for rendering and input,
-then publishes `Closing`, exits modality, makes the content unavailable, clears
+Before any of that commits, `FloatingSurface` raises `CloseRequested` with a
+`SurfaceCloseRequestedEventArgs.Cancel` flag a handler can set to veto the
+request: nothing changes, and neither `Closing` nor `Closed` follows. Popup-
+family closure first makes the family ineligible for rendering and input, then
+publishes `Closing`, exits modality, makes the content unavailable, clears
 `SurfaceBounds`, and publishes `Closed`. Changing a Window's visibility away
 from visible performs the same common cleanup directly but publishes neither
 lifecycle event.
+
+`CloseRequested` currently fires wherever the shared `CloseSurface` engine runs
+— the whole Popup family, and `Dialog<TResult>`'s own typed-completion path —
+but not yet from Window's close affordance, `CloseOnEscape`, or modal dismiss,
+which still hand-roll their own sequence ahead of routing through the shared
+engine (tracked in [#223](https://github.com/pavkam/sharp-vision/issues/223)).
 
 An ordinary Window close affordance, Escape action, or modal dismiss request
 publishes `Closing`, then, by default, collapses the Window itself: the

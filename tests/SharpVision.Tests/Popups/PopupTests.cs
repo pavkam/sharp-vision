@@ -518,6 +518,71 @@ public sealed class PopupTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a cancelled CloseRequested leaves the surface exactly as it was: still
+    /// presented, with committed bounds unchanged, and no Closing or Closed notification (see
+    /// #223).</summary>
+    [Fact]
+    public async Task CloseRequested_WhenHandlerCancels_LeavesSurfacePresentedAndRaisesNeitherClosingNorClosedAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var popup = new Popup { Content = new ProbeControl() };
+            var root = new Overlay();
+            root.Children.Add(popup);
+            root.Attach(dispatcher);
+            popup.IsOpen = true;
+            new LayoutEngine().Layout(root, new Size(12, 6));
+            var openBounds = popup.SurfaceBounds;
+            openBounds.ShouldNotBe(default);
+            var closingCalls = 0;
+            var closedCalls = 0;
+            popup.CloseRequested += (_, eventArgs) => eventArgs.Cancel = true;
+            popup.Closing += (_, _) => closingCalls++;
+            popup.Closed += (_, _) => closedCalls++;
+
+            popup.IsOpen = false;
+
+            popup.IsOpen.ShouldBeTrue();
+            popup.SurfaceBounds.ShouldBe(openBounds);
+            closingCalls.ShouldBe(0);
+            closedCalls.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an uncancelled CloseRequested still closes normally, publishing the
+    /// request once before Closing and Closed each fire exactly once (see #223).</summary>
+    [Fact]
+    public async Task CloseRequested_WhenNotCancelled_PublishesRequestThenClosingThenClosedExactlyOnceAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var popup = new Popup { Content = new ProbeControl() };
+            var root = new Overlay();
+            root.Children.Add(popup);
+            root.Attach(dispatcher);
+            popup.IsOpen = true;
+            new LayoutEngine().Layout(root, new Size(12, 6));
+            var order = new List<string>();
+            popup.CloseRequested += (_, eventArgs) =>
+            {
+                order.Add("requested");
+                eventArgs.Cancel.ShouldBeFalse();
+                popup.IsOpen.ShouldBeTrue();
+            };
+            popup.Closing += (_, _) => order.Add("closing");
+            popup.Closed += (_, _) => order.Add("closed");
+
+            popup.IsOpen = false;
+
+            order.ShouldBe(["requested", "closing", "closed"]);
+            popup.IsOpen.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a callback cannot reverse an active open-state transaction.</summary>
     [Fact]
     public void IsOpen_WhenPropertyCallbackReenters_RejectsNestedTransitionAndKeepsOuterStateCoherent()

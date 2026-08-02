@@ -3224,6 +3224,7 @@ namespace SharpVision.Surfaces
         protected bool HasActiveSurfaceModal { get; }
         protected bool IsSurfacePresented { get; }
         public SharpVision.Terminal.Geometry.Rect SurfaceBounds { get; protected set; }
+        public event System.EventHandler<SharpVision.Surfaces.SurfaceCloseRequestedEventArgs>? CloseRequested;
         public event System.EventHandler? Closed;
         public event System.EventHandler? Closing;
         public event System.EventHandler? Opened;
@@ -3236,6 +3237,11 @@ namespace SharpVision.Surfaces
         protected void RaiseSurfaceClosed() { }
         protected void RaiseSurfaceClosing() { }
         protected void RaiseSurfaceOpened() { }
+    }
+    public sealed class SurfaceCloseRequestedEventArgs : System.EventArgs
+    {
+        public SurfaceCloseRequestedEventArgs() { }
+        public bool Cancel { get; set; }
     }
 }
 namespace SharpVision.Text

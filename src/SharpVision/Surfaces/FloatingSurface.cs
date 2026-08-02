@@ -27,6 +27,18 @@ public abstract class FloatingSurface: ContentControl
     /// <summary>Raised only after the surface becomes presented and its bounds commit.</summary>
     public event EventHandler? Opened;
 
+    /// <summary>
+    /// Raised before anything commits, letting a handler veto the request by setting
+    /// <see cref="SurfaceCloseRequestedEventArgs.Cancel"/>.
+    /// </summary>
+    /// <remarks>
+    /// Nothing has changed yet when this runs: the surface is still fully presented, its modal
+    /// scope (if any) is still active, and setting <c>Cancel</c> leaves every bit of that state
+    /// untouched - no <see cref="Closing"/> or <see cref="Closed"/> notification follows a
+    /// cancelled request.
+    /// </remarks>
+    public event EventHandler<SurfaceCloseRequestedEventArgs>? CloseRequested;
+
     /// <summary>Raised when closure is requested or after family-specific closing state commits.</summary>
     /// <remarks>A request handler may retain the surface by leaving its presentation available.</remarks>
     public event EventHandler? Closing;
@@ -192,6 +204,17 @@ public abstract class FloatingSurface: ContentControl
             return false;
         }
 
+        if (CloseRequested is { } closeRequested)
+        {
+            var requestArgs = new SurfaceCloseRequestedEventArgs();
+            closeRequested.Invoke(this, requestArgs);
+
+            if (requestArgs.Cancel)
+            {
+                return false;
+            }
+        }
+
         _isClosing = true;
         ExceptionDispatchInfo? failure = null;
 
@@ -341,6 +364,7 @@ public abstract class FloatingSurface: ContentControl
 
         if (reason == ReleaseReason.Disposed)
         {
+            CloseRequested = null;
             Closing = null;
             Closed = null;
         }
