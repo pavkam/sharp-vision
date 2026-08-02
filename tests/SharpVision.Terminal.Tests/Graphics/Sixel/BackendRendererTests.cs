@@ -120,9 +120,62 @@ public sealed class BackendRendererTests
         bytes.AsSpan().IndexOf("\u001bP0;1;0q"u8).ShouldBeGreaterThanOrEqualTo(0);
     }
 
+    /// <summary>Verifies a PNG placement on a sixel-only backend reports a format diagnostic instead of failing silently.</summary>
+    [Fact]
+    public async Task RenderAsync_WhenPngPlacementHasNoSixelPath_ReportsFormatDiagnosticAsync()
+    {
+        using var renderer = new Renderer(new SixelGraphicsBackend());
+        await using var transport = new FakeTransport();
+        var image = Png();
+        using var frame = Frame(image, new Rect(0, 0, 1, 1));
+        var profile = Profile();
+
+        _ = await renderer.RenderAsync(
+            frame,
+            transport,
+            profile,
+            new CellMetrics(1, 6),
+            TestContext.Current.CancellationToken);
+
+        var diagnostic = renderer.LastGraphicsDiagnostics.ShouldHaveSingleItem();
+        diagnostic.ImageIdentity.ShouldBe(image.Identity);
+        diagnostic.Reason.ShouldBe(GraphicsPlacementSkipReason.FormatNotEncodable);
+    }
+
+    /// <summary>Verifies an ordinary encodable placement reports no diagnostics.</summary>
+    [Fact]
+    public async Task RenderAsync_WhenPlacementEncodesNormally_ReportsNoDiagnosticsAsync()
+    {
+        using var renderer = new Renderer(new SixelGraphicsBackend());
+        await using var transport = new FakeTransport();
+        using var frame = Frame(Red(), new Rect(0, 0, 1, 1));
+        var profile = Profile();
+
+        _ = await renderer.RenderAsync(
+            frame,
+            transport,
+            profile,
+            new CellMetrics(1, 6),
+            TestContext.Current.CancellationToken);
+
+        renderer.LastGraphicsDiagnostics.ShouldBeEmpty();
+    }
+
     private static GraphicsImage Red() => GraphicsImage.FromRgba(
         new Size(1, 1),
         [255, 0, 0, 255]);
+
+    private static GraphicsImage Png() => GraphicsImage.FromPng([
+        137, 80, 78, 71, 13, 10, 26, 10,
+        0, 0, 0, 13, 73, 72, 68, 82,
+        0, 0, 0, 1, 0, 0, 0, 1,
+        8, 6, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0, 73, 68, 65, 84,
+        0, 0, 0, 0,
+        0, 0, 0, 0, 73, 69, 78, 68,
+        0, 0, 0, 0
+    ]);
 
     private static TerminalProfile Profile() => TerminalProfile.CreateAnsi(
         TerminalCapabilities.Conservative with

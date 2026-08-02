@@ -464,6 +464,16 @@ namespace SharpVision.Terminal.Graphics
         Rgba = 0,
         Png = 1,
     }
+    public readonly struct GraphicsPlacementDiagnostic : System.IEquatable<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic>
+    {
+        public GraphicsPlacementDiagnostic(ulong ImageIdentity, SharpVision.Terminal.Graphics.GraphicsPlacementSkipReason Reason) { }
+        public ulong ImageIdentity { get; init; }
+        public SharpVision.Terminal.Graphics.GraphicsPlacementSkipReason Reason { get; init; }
+    }
+    public enum GraphicsPlacementSkipReason
+    {
+        FormatNotEncodable = 0,
+    }
     public sealed class ImageSource
     {
         public int ByteCount { get; }
@@ -1443,6 +1453,7 @@ namespace SharpVision.Terminal.Rendering
         public Renderer(int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
         public Renderer(SharpVision.Terminal.Capabilities.Capabilities capabilities, SharpVision.Terminal.Multiplexing.Route? route = null, int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
         public System.Exception? LastCleanupException { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic> LastGraphicsDiagnostics { get; }
         public bool AttachCommittedFrame(SharpVision.Terminal.Rendering.Frame back) { }
         public void Dispose() { }
         public void Invalidate() { }

@@ -91,7 +91,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             allowQuery: false));
         var encodable = new bool[back.PlacementCount];
         var metricDependent = new bool[back.PlacementCount];
-        ClassifyPlacements(
+        var skippedPlacements = ClassifyPlacements(
             back,
             metrics,
             enableSixel,
@@ -167,7 +167,8 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
                 uploads: 0,
                 placements: placementCount,
                 removals: 0,
-                fullCellRedraw);
+                fullCellRedraw,
+                skippedPlacements);
         }
         catch
         {
@@ -390,7 +391,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
 
     #region Eligibility and damage
 
-    private void ClassifyPlacements(
+    private List<GraphicsPlacementDiagnostic>? ClassifyPlacements(
         Frame frame,
         Geometry.Metrics? metrics,
         bool enableSixel,
@@ -398,6 +399,8 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         Span<bool> encodable,
         Span<bool> metricDependent)
     {
+        List<GraphicsPlacementDiagnostic>? skipped = null;
+
         for (var index = 0; index < frame.PlacementCount; index++)
         {
             if (!frame.IsPlacementEffective(index))
@@ -416,8 +419,22 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             {
                 encodable[index] = true;
             }
+            else if (!IsFormatEncodable(placement.Image!.Format, enableSixel, enableIterm))
+            {
+                // Isolated from the mode/rect/metrics checks above: this placement's format has
+                // no encodable path on any enabled protocol, distinct from an otherwise-encodable
+                // format that failed on some other eligibility condition (see #233).
+                (skipped ??= []).Add(new GraphicsPlacementDiagnostic(
+                    placement.ImageIdentity,
+                    GraphicsPlacementSkipReason.FormatNotEncodable));
+            }
         }
+
+        return skipped;
     }
+
+    private static bool IsFormatEncodable(Format format, bool enableSixel, bool enableIterm) =>
+        (enableSixel && format == Format.Rgba) || (enableIterm && format == Format.Png);
 
     private static int CountRenderable(
         ReadOnlySpan<bool> encodable,

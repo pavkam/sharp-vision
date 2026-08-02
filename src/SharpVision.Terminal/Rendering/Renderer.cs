@@ -143,6 +143,15 @@ public sealed class Renderer: IDisposable
     /// </remarks>
     public Exception? LastCleanupException { get; private set; }
 
+    /// <summary>Gets graphics placements that fell back to ordinary cells during the most recent prepare.</summary>
+    /// <remarks>
+    /// Empty when the active backend encoded every placement, or when no graphics backend is
+    /// configured. Reflects only the most recently prepared frame; it is replaced (not merged)
+    /// on the next successful prepare, unlike <see cref="LastCleanupException"/>.
+    /// </remarks>
+    public IReadOnlyList<GraphicsPlacementDiagnostic> LastGraphicsDiagnostics { get; private set; } =
+        Array.Empty<GraphicsPlacementDiagnostic>();
+
     /// <summary>Gets the last committed front buffer, or null before the first successful render.</summary>
     /// <remarks>
     /// Renderer-owned and therefore not public. Damage tracking compares every target against this
@@ -332,6 +341,7 @@ public sealed class Renderer: IDisposable
                     back,
                     forceFull,
                     new GraphicsContext(profile, cellMetrics));
+                LastGraphicsDiagnostics = backendResult.SkippedPlacements;
             }
 
             _buffer.Reset();
