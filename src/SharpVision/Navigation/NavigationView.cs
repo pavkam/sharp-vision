@@ -232,7 +232,11 @@ public sealed class NavigationView: CompositeControl
         (isFooter ? _footerStack : _itemsStack).Children[index];
 
     /// <summary>Adds one typed entry to a section.</summary>
-    internal void AddEntry(Control entry, bool isFooter)
+    internal void AddEntry(Control entry, bool isFooter) => InsertEntry(GetItemCount(isFooter), entry, isFooter);
+
+    /// <summary>Inserts one typed entry at a position in a section.</summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
+    internal void InsertEntry(int index, Control entry, bool isFooter)
     {
         Debug.Assert(
             entry is NavigationViewItem or NavigationViewGroup or NavigationViewSeparator,
@@ -242,7 +246,7 @@ public sealed class NavigationView: CompositeControl
         // Ownership is secured before any authored property is captured or
         // overwritten. A rejected insertion must leave the caller's object
         // exactly as it found it.
-        stack.Children.Add(entry);
+        stack.Children.Insert(index, entry);
         _requestedPresentations.Add(
             entry,
             new NavigationEntryPresentation(entry.Focusable, entry.TabStop));
@@ -287,6 +291,110 @@ public sealed class NavigationView: CompositeControl
         CompleteRemoval(repair);
 
         return true;
+    }
+
+    /// <summary>Removes the owned entry at a position in a section.</summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current entries.</exception>
+    internal void RemoveEntryAt(int index, bool isFooter)
+    {
+        var stack = isFooter ? _footerStack : _itemsStack;
+
+        if ((uint) index >= (uint) stack.Children.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), index, "The removal index is outside the section.");
+        }
+
+        _ = RemoveEntry(stack.Children[index], isFooter);
+    }
+
+    /// <summary>Moves one owned entry to a different position within the same section, preserving its
+    /// identity. SelectedItem is tracked by reference, not index, so a move never needs the
+    /// PrepareRemoval/CompleteRemoval repair a removal does.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="oldIndex"/> or <paramref name="newIndex"/> is outside the current entries.
+    /// </exception>
+    internal void MoveEntry(int oldIndex, int newIndex, bool isFooter)
+    {
+        var stack = isFooter ? _footerStack : _itemsStack;
+
+        if ((uint) oldIndex >= (uint) stack.Children.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(oldIndex), oldIndex, "The source index is outside the section.");
+        }
+
+        if ((uint) newIndex >= (uint) stack.Children.Count)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(newIndex), newIndex, "The destination index is outside the section.");
+        }
+
+        if (oldIndex == newIndex)
+        {
+            return;
+        }
+
+        var entry = stack.Children[oldIndex];
+        stack.Children.RemoveAt(oldIndex);
+        stack.Children.Insert(newIndex, entry);
+    }
+
+    /// <summary>Gets the position of one entry within a section, or -1 when not owned there.</summary>
+    internal int IndexOfEntry(Control entry, bool isFooter) =>
+        (isFooter ? _footerStack : _itemsStack).Children.IndexOf(entry);
+
+    /// <summary>Replaces the owned entry at a position in a section, preserving position.</summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current entries.</exception>
+    internal void ReplaceEntryAt(int index, Control entry, bool isFooter)
+    {
+        Debug.Assert(
+            entry is NavigationViewItem or NavigationViewGroup or NavigationViewSeparator,
+            "Navigation view entries are constrained by typed collection overloads.");
+        var stack = isFooter ? _footerStack : _itemsStack;
+
+        if ((uint) index >= (uint) stack.Children.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), index, "The replacement index is outside the section.");
+        }
+
+        var old = stack.Children[index];
+
+        if (ReferenceEquals(old, entry))
+        {
+            return;
+        }
+
+        var repair = PrepareRemoval(old);
+
+        if (old is NavigationViewItem oldItem)
+        {
+            oldItem.Invoked -= OnItemInvoked;
+        }
+
+        RestorePresentation(old);
+
+        _isHandlingKnownRemoval = true;
+
+        try
+        {
+            stack.Children[index] = entry;
+        }
+        finally
+        {
+            _isHandlingKnownRemoval = false;
+        }
+
+        _requestedPresentations.Add(
+            entry,
+            new NavigationEntryPresentation(entry.Focusable, entry.TabStop));
+
+        if (entry is NavigationViewItem newItem)
+        {
+            newItem.Focusable = false;
+            newItem.TabStop = false;
+            newItem.Invoked += OnItemInvoked;
+        }
+
+        CompleteRemoval(repair);
     }
 
     // Repairs selection/current-item state for a top-level entry that left the tree without

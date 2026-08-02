@@ -646,4 +646,200 @@ public sealed class NavigationViewTests
 
         _ = Should.Throw<ArgumentException>(() => group.Header = header);
     }
+
+    /// <summary>Verifies Insert places an entry at the requested position instead of appending
+    /// (see #71).</summary>
+    [Fact]
+    public void Insert_WhenGivenIndex_PlacesItAtRequestedPosition()
+    {
+        var nav = new NavigationView();
+        var a = new NavigationViewItem { Header = "A" };
+        var b = new NavigationViewItem { Header = "B" };
+        var middle = new NavigationViewItem { Header = "Middle" };
+        nav.Items.Add(a);
+        nav.Items.Add(b);
+
+        nav.Items.Insert(1, middle);
+
+        nav.Items.Count.ShouldBe(3);
+        nav.Items[0].ShouldBeSameAs(a);
+        nav.Items[1].ShouldBeSameAs(middle);
+        nav.Items[2].ShouldBeSameAs(b);
+    }
+
+    /// <summary>Verifies Insert also accepts a separator or a group at a position (see #71).</summary>
+    [Fact]
+    public void Insert_WhenGivenSeparatorOrGroup_PlacesItAtRequestedPosition()
+    {
+        var nav = new NavigationView();
+        var a = new NavigationViewItem { Header = "A" };
+        var b = new NavigationViewItem { Header = "B" };
+        var separator = new NavigationViewSeparator();
+        var group = new NavigationViewGroup { Header = "Group" };
+        nav.Items.Add(a);
+        nav.Items.Add(b);
+
+        nav.Items.Insert(1, separator);
+        nav.Items.Insert(2, group);
+
+        nav.Items.Count.ShouldBe(4);
+        nav.Items[0].ShouldBeSameAs(a);
+        nav.Items[1].ShouldBeSameAs(separator);
+        nav.Items[2].ShouldBeSameAs(group);
+        nav.Items[3].ShouldBeSameAs(b);
+    }
+
+    /// <summary>Verifies an out-of-range Insert throws before mutating the collection (see #71).</summary>
+    [Fact]
+    public void Insert_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var nav = new NavigationView();
+        nav.Items.Add(new NavigationViewItem { Header = "A" });
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => nav.Items.Insert(5, new NavigationViewItem { Header = "B" }));
+
+        nav.Items.Count.ShouldBe(1);
+    }
+
+    /// <summary>Verifies removing the selected entry by position repairs selection to the nearest
+    /// remaining selectable item, matching Remove's own repair (see #71).</summary>
+    [Fact]
+    public void RemoveAt_WhenSelectedEntryIsRemoved_RepairsSelectionToNearestAvailable()
+    {
+        var nav = new NavigationView();
+        var a = new NavigationViewItem { Header = "A" };
+        var b = new NavigationViewItem { Header = "B" };
+        var c = new NavigationViewItem { Header = "C" };
+        nav.Items.Add(a);
+        nav.Items.Add(b);
+        nav.Items.Add(c);
+        nav.SelectItem(b);
+
+        nav.Items.RemoveAt(1);
+
+        nav.Items.Count.ShouldBe(2);
+        nav.SelectedItem.ShouldBeSameAs(c);
+    }
+
+    /// <summary>Verifies removing an entry that is not the selected one leaves SelectedItem's
+    /// identity untouched, since selection here is tracked by reference, not index (see #71).</summary>
+    [Fact]
+    public void RemoveAt_WhenEntryOtherThanSelectionIsRemoved_PreservesSelectedItemIdentity()
+    {
+        var nav = new NavigationView();
+        var a = new NavigationViewItem { Header = "A" };
+        var b = new NavigationViewItem { Header = "B" };
+        nav.Items.Add(a);
+        nav.Items.Add(b);
+        nav.SelectItem(b);
+
+        nav.Items.RemoveAt(0);
+
+        nav.Items.Count.ShouldBe(1);
+        nav.SelectedItem.ShouldBeSameAs(b);
+    }
+
+    /// <summary>Verifies an out-of-range RemoveAt throws before mutating the collection (see #71).</summary>
+    [Fact]
+    public void RemoveAt_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var nav = new NavigationView();
+        nav.Items.Add(new NavigationViewItem { Header = "A" });
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => nav.Items.RemoveAt(5));
+
+        nav.Items.Count.ShouldBe(1);
+    }
+
+    /// <summary>Verifies replacing the selected entry through the indexer detaches the old entry
+    /// without disposing it and selects the replacement (see #71).</summary>
+    [Fact]
+    public void Indexer_WhenSelectedEntryIsReplaced_DetachesOldWithoutDisposalAndSelectsReplacement()
+    {
+        var nav = new NavigationView();
+        var original = new NavigationViewItem { Header = "Original" };
+        var replacement = new NavigationViewItem { Header = "Replacement" };
+        nav.Items.Add(original);
+        nav.SelectItem(original);
+
+        nav.Items[0] = replacement;
+
+        nav.Items.Count.ShouldBe(1);
+        nav.Items[0].ShouldBeSameAs(replacement);
+        original.IsDisposed.ShouldBeFalse();
+        original.Parent.ShouldBeNull();
+        nav.SelectedItem.ShouldBeSameAs(replacement);
+    }
+
+    /// <summary>Verifies an out-of-range indexer assignment throws before mutating the collection
+    /// (see #71).</summary>
+    [Fact]
+    public void Indexer_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var nav = new NavigationView();
+        nav.Items.Add(new NavigationViewItem { Header = "A" });
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => nav.Items[5] = new NavigationViewItem { Header = "B" });
+
+        nav.Items.Count.ShouldBe(1);
+    }
+
+    /// <summary>Verifies Move repositions an entry while preserving its identity and, since
+    /// selection here is reference-tracked, the selected item's identity (see #71).</summary>
+    [Fact]
+    public void Move_WhenEntryMoves_PreservesIdentityAndSelection()
+    {
+        var nav = new NavigationView();
+        var a = new NavigationViewItem { Header = "A" };
+        var b = new NavigationViewItem { Header = "B" };
+        var c = new NavigationViewItem { Header = "C" };
+        nav.Items.Add(a);
+        nav.Items.Add(b);
+        nav.Items.Add(c);
+        nav.SelectItem(a);
+
+        nav.Items.Move(0, 2);
+
+        nav.Items.Count.ShouldBe(3);
+        nav.Items[0].ShouldBeSameAs(b);
+        nav.Items[1].ShouldBeSameAs(c);
+        nav.Items[2].ShouldBeSameAs(a);
+        nav.SelectedItem.ShouldBeSameAs(a);
+    }
+
+    /// <summary>Verifies an out-of-range Move throws before mutating the collection (see #71).</summary>
+    [Fact]
+    public void Move_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var nav = new NavigationView();
+        var a = new NavigationViewItem { Header = "A" };
+        nav.Items.Add(a);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => nav.Items.Move(0, 5));
+
+        nav.Items.Count.ShouldBe(1);
+        nav.Items[0].ShouldBeSameAs(a);
+    }
+
+    /// <summary>Verifies IndexOf reports an owned entry's position and -1 for a foreign one, and that
+    /// the header and footer sections are independently indexed (see #71).</summary>
+    [Fact]
+    public void IndexOf_WhenItemIsOwnedOrForeign_ReportsPositionOrNegativeOne()
+    {
+        var nav = new NavigationView();
+        var a = new NavigationViewItem { Header = "A" };
+        var b = new NavigationViewItem { Header = "B" };
+        var footer = new NavigationViewItem { Header = "Footer" };
+        var foreign = new NavigationViewItem { Header = "Elsewhere" };
+        nav.Items.Add(a);
+        nav.Items.Add(b);
+        nav.FooterItems.Add(footer);
+
+        nav.Items.IndexOf(b).ShouldBe(1);
+        nav.Items.IndexOf(footer).ShouldBe(-1);
+        nav.FooterItems.IndexOf(footer).ShouldBe(0);
+        nav.Items.IndexOf(foreign).ShouldBe(-1);
+    }
 }

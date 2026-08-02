@@ -2638,15 +2638,21 @@ namespace SharpVision.Navigation
     public sealed class NavigationViewEntryCollection : System.Collections.Generic.IEnumerable<SharpVision.Controls.Control>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.Control>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Control>, System.Collections.IEnumerable
     {
         public int Count { get; }
-        public SharpVision.Controls.Control this[int index] { get; }
+        public SharpVision.Controls.Control this[int index] { get; set; }
         public void Add(SharpVision.Navigation.NavigationViewGroup group) { }
         public void Add(SharpVision.Navigation.NavigationViewItem item) { }
         public void Add(SharpVision.Navigation.NavigationViewSeparator separator) { }
         public void Clear() { }
         public System.Collections.Generic.IEnumerator<SharpVision.Controls.Control> GetEnumerator() { }
+        public int IndexOf(SharpVision.Controls.Control item) { }
+        public void Insert(int index, SharpVision.Navigation.NavigationViewGroup group) { }
+        public void Insert(int index, SharpVision.Navigation.NavigationViewItem item) { }
+        public void Insert(int index, SharpVision.Navigation.NavigationViewSeparator separator) { }
+        public void Move(int oldIndex, int newIndex) { }
         public bool Remove(SharpVision.Navigation.NavigationViewGroup group) { }
         public bool Remove(SharpVision.Navigation.NavigationViewItem item) { }
         public bool Remove(SharpVision.Navigation.NavigationViewSeparator separator) { }
+        public void RemoveAt(int index) { }
     }
     public sealed class NavigationViewGroup : SharpVision.Controls.Control
     {
