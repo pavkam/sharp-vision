@@ -8,7 +8,7 @@ namespace SharpVision.Terminal.Terminfo;
 /// degrade a feature, so a typo in one consumption site cannot drift from the others (see #93).
 /// </summary>
 /// <remarks>
-/// This is not the complete terminfo capability catalog -- <see cref="Ncurses.Names"/> already
+/// This is not the complete terminfo capability catalog -- <see cref="Ncurses.NcursesNames"/> already
 /// owns that database-level list. This type names only the capabilities multiple consumption sites
 /// independently re-type today, starting with the pairs <see cref="Programs.IsFullScreenReady"/>
 /// and the enable/disable terminal-mode leases depend on.

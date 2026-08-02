@@ -642,9 +642,9 @@ public sealed class NcursesProviderTests
     [Fact]
     public void Names_WhenEnumerated_AreCaseSensitiveAndDuplicateFree()
     {
-        Names.Strings.Distinct(StringComparer.Ordinal).Count().ShouldBe(Names.Strings.Count);
-        Names.Strings.ShouldContain("Ms");
-        Names.Strings.ShouldNotContain("ms");
+        NcursesNames.Strings.Distinct(StringComparer.Ordinal).Count().ShouldBe(NcursesNames.Strings.Count);
+        NcursesNames.Strings.ShouldContain("Ms");
+        NcursesNames.Strings.ShouldNotContain("ms");
     }
 
     /// <summary>Verifies conflicting key bytes are removed rather than published ambiguously.</summary>

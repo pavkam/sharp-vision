@@ -6,7 +6,7 @@ namespace SharpVision.Terminal.Terminfo.Ncurses;
 using Input;
 
 /// <summary>Owns the finite, case-sensitive ncurses capability allowlist consumed by SharpVision.</summary>
-internal static class Names
+internal static class NcursesNames
 {
     /// <summary>Gets the exact canonical Boolean identifiers.</summary>
     public static IReadOnlyList<string> Booleans { get; } =

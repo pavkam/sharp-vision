@@ -244,7 +244,7 @@ internal sealed class Provider: IDescriptionProvider
     {
         var values = new Dictionary<string, bool>(StringComparer.Ordinal);
 
-        foreach (var name in Names.Booleans)
+        foreach (var name in NcursesNames.Booleans)
         {
             var value = native.GetFlag(name);
 
@@ -267,7 +267,7 @@ internal sealed class Provider: IDescriptionProvider
     {
         var values = new Dictionary<string, int>(StringComparer.Ordinal);
 
-        foreach (var name in Names.Numbers)
+        foreach (var name in NcursesNames.Numbers)
         {
             var value = native.GetNumber(name);
 
@@ -292,7 +292,7 @@ internal sealed class Provider: IDescriptionProvider
         var values = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         var acceptedBytes = 0;
 
-        foreach (var name in Names.Strings)
+        foreach (var name in NcursesNames.Strings)
         {
             var value = native.GetString(name, ProgramLimits.Default.MaxProgramBytes);
 
