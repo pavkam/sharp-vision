@@ -201,6 +201,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 return;
             }
 
+            var derivedSnapshot = SnapshotDerivedFocusState();
             field = value;
             var invalidation = InvalidationFor(impact);
             Invalidate(invalidation);
@@ -222,6 +223,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             ExceptionAggregation.Capture(
                 () => VisibilityChanged?.Invoke(this, EventArgs.Empty),
                 ref failure);
+            ExceptionAggregation.Capture(() => PublishDerivedFocusStateChanges(derivedSnapshot), ref failure);
             failure?.Throw();
         }
     } = Visibility.Visible;
@@ -246,6 +248,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 return;
             }
 
+            var derivedSnapshot = SnapshotDerivedFocusState();
             field = value;
 
             // Disabled is in the appearance profile's chrome-geometry state set (border.sides may
@@ -272,6 +275,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             ExceptionAggregation.Capture(
                 () => IsEnabledChanged?.Invoke(this, EventArgs.Empty),
                 ref failure);
+            ExceptionAggregation.Capture(() => PublishDerivedFocusStateChanges(derivedSnapshot), ref failure);
             failure?.Throw();
         }
     } = true;
@@ -2731,6 +2735,73 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             child.InvalidateVisualStateCore();
             child.InvalidateDescendantsVisualState();
         });
+
+    /// <summary>Captures this control's and every descendant's current derived focus/visibility
+    /// state, for comparison against a later snapshot once an inherited change (Visibility or
+    /// IsEnabled) has committed. Nothing has changed yet when this runs, so each live property
+    /// getter is already the correct "before" value (see #241).</summary>
+    private List<(Control Control, bool EffectiveIsVisible, bool EffectiveIsEnabled, bool CanFocus, bool IsTabStop)>
+        SnapshotDerivedFocusState()
+    {
+        List<(Control, bool, bool, bool, bool)> snapshot = [Capture(this)];
+        VisitChildren(Add);
+        return snapshot;
+
+        void Add(Control control)
+        {
+            snapshot.Add(Capture(control));
+            control.VisitChildren(Add);
+        }
+
+        static (Control, bool, bool, bool, bool) Capture(Control control) =>
+            (control, control.EffectiveIsVisible, control.EffectiveIsEnabled, control.CanFocus, control.IsTabStop);
+    }
+
+    /// <summary>Raises <see cref="PropertyChanged"/> for exactly the derived properties that
+    /// actually changed, on exactly the controls where they changed - comparing the given
+    /// pre-mutation snapshot against each control's current (post-mutation) value (see #241).</summary>
+    private static void PublishDerivedFocusStateChanges(
+        List<(Control Control, bool EffectiveIsVisible, bool EffectiveIsEnabled, bool CanFocus, bool IsTabStop)> before)
+    {
+        ExceptionDispatchInfo? failure = null;
+
+        foreach (var (control, effectiveIsVisible, effectiveIsEnabled, canFocus, isTabStop) in before)
+        {
+            if (effectiveIsVisible != control.EffectiveIsVisible)
+            {
+                ExceptionAggregation.Capture(
+                    () => control.PropertyChanged?.Invoke(
+                        control,
+                        new PropertyChangedEventArgs(nameof(EffectiveIsVisible))),
+                    ref failure);
+            }
+
+            if (effectiveIsEnabled != control.EffectiveIsEnabled)
+            {
+                ExceptionAggregation.Capture(
+                    () => control.PropertyChanged?.Invoke(
+                        control,
+                        new PropertyChangedEventArgs(nameof(EffectiveIsEnabled))),
+                    ref failure);
+            }
+
+            if (canFocus != control.CanFocus)
+            {
+                ExceptionAggregation.Capture(
+                    () => control.PropertyChanged?.Invoke(control, new PropertyChangedEventArgs(nameof(CanFocus))),
+                    ref failure);
+            }
+
+            if (isTabStop != control.IsTabStop)
+            {
+                ExceptionAggregation.Capture(
+                    () => control.PropertyChanged?.Invoke(control, new PropertyChangedEventArgs(nameof(IsTabStop))),
+                    ref failure);
+            }
+        }
+
+        failure?.Throw();
+    }
 
     private void ClearHandlers()
     {

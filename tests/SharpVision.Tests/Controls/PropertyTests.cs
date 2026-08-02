@@ -131,6 +131,56 @@ public sealed class PropertyTests
         child.EffectiveIsEnabled.ShouldBeTrue();
     }
 
+    /// <summary>Verifies an ancestor's IsEnabled change publishes the derived properties it flips
+    /// on itself and on every descendant whose derived value actually changed, and stays silent
+    /// where nothing changed (see #241).</summary>
+    [Fact]
+    public void IsEnabled_WhenAncestorChanges_PublishesDerivedPropertiesOnAffectedDescendants()
+    {
+        var parent = new ProbeContainer();
+        var focusableChild = new ProbeControl { Focusable = true };
+        var alreadyDisabledChild = new ProbeControl { Focusable = true, IsEnabled = false };
+        parent.Children.Add(focusableChild);
+        parent.Children.Add(alreadyDisabledChild);
+        List<string?> parentEvents = [];
+        List<string?> childEvents = [];
+        List<string?> alreadyDisabledEvents = [];
+        parent.PropertyChanged += (_, eventArgs) => parentEvents.Add(eventArgs.PropertyName);
+        focusableChild.PropertyChanged += (_, eventArgs) => childEvents.Add(eventArgs.PropertyName);
+        alreadyDisabledChild.PropertyChanged += (_, eventArgs) => alreadyDisabledEvents.Add(eventArgs.PropertyName);
+
+        parent.IsEnabled = false;
+
+        parentEvents.ShouldBe([nameof(Control.IsEnabled), nameof(Control.EffectiveIsEnabled)]);
+        childEvents.ShouldBe([
+            nameof(Control.EffectiveIsEnabled),
+            nameof(Control.CanFocus),
+            nameof(Control.IsTabStop)
+        ]);
+        alreadyDisabledEvents.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a Visibility change publishes the derived properties it flips, leaving
+    /// the unrelated EffectiveIsEnabled axis untouched (see #241).</summary>
+    [Fact]
+    public void Visibility_WhenAncestorChanges_PublishesDerivedPropertiesWithoutTouchingEnabledAxis()
+    {
+        var parent = new ProbeContainer();
+        var child = new ProbeControl { Focusable = true };
+        parent.Children.Add(child);
+        List<string?> childEvents = [];
+        child.PropertyChanged += (_, eventArgs) => childEvents.Add(eventArgs.PropertyName);
+
+        parent.Visibility = Visibility.Collapsed;
+
+        childEvents.ShouldBe([
+            nameof(Control.EffectiveIsVisible),
+            nameof(Control.CanFocus),
+            nameof(Control.IsTabStop)
+        ]);
+        child.EffectiveIsEnabled.ShouldBeTrue();
+    }
+
     /// <summary>Verifies a throwing visibility subscriber cannot strand manager ownership.</summary>
     [Fact]
     public async Task Visibility_WhenPropertySubscriberThrows_ReleasesFocusAndCaptureBeforeRethrowAsync()
