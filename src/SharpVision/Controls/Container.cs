@@ -660,7 +660,7 @@ public abstract class Container: Control
             return;
         }
 
-        var x = MultiplyNegative(pointer.WheelX, LineSize);
+        var x = Multiply(pointer.WheelX, LineSize);
         var y = MultiplyNegative(pointer.WheelY, LineSize);
 
         // A wheel record is this container's to keep only when it actually moved an offset -
@@ -1031,6 +1031,9 @@ public abstract class Container: Control
 
     private static int MultiplyNegative(int left, int right) =>
         (int) Math.Clamp(-(long) left * right, int.MinValue, int.MaxValue);
+
+    private static int Multiply(int left, int right) =>
+        (int) Math.Clamp((long) left * right, int.MinValue, int.MaxValue);
 
     #endregion
 }

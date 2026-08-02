@@ -207,7 +207,7 @@ public sealed class TableSurfaceTests
 
         // Act wheel both axes
         await surface.Pointer.WheelAsync(table, default, wheelY: -1);
-        await surface.Pointer.WheelAsync(table, default, wheelX: -1);
+        await surface.Pointer.WheelAsync(table, default, wheelX: 1);
 
         // Assert scrolled cells
         table.HorizontalOffset.ShouldBe(1);

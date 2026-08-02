@@ -464,7 +464,7 @@ public sealed class TextInputSurfaceTests
 
         // Act
         await surface.Pointer.WheelAsync(input, default, wheelY: -1);
-        await surface.Pointer.WheelAsync(input, default, wheelX: -1);
+        await surface.Pointer.WheelAsync(input, default, wheelX: 1);
 
         // Assert
         input.HorizontalOffset.ShouldBe(1);

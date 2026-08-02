@@ -56,7 +56,7 @@ public sealed class ScrollingTests
             inner.VerticalOffset = 0;
         }, TestContext.Current.CancellationToken);
         await rendered.WaitAsync(TestContext.Current.CancellationToken);
-        var horizontal = string.Concat(Enumerable.Repeat("\u001b[<66;16;16M", 10));
+        var horizontal = string.Concat(Enumerable.Repeat("\u001b[<67;16;16M", 10));
         var vertical = string.Concat(Enumerable.Repeat("\u001b[<65;16;16M", 10));
         terminal.QueueInput(Encoding.ASCII.GetBytes(horizontal + vertical));
         await WaitUntilAsync(

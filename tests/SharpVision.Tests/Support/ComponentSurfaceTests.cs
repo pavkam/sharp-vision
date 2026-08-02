@@ -201,7 +201,7 @@ public sealed class ComponentSurfaceTests
         // Act
         await surface.Pointer.ClickAsync(bar, new Point(11, 0));
         bar.Value.ShouldBe(1);
-        await surface.Pointer.WheelAsync(bar, new Point(6, 0), wheelX: -1);
+        await surface.Pointer.WheelAsync(bar, new Point(6, 0), wheelX: 1);
         bar.Value.ShouldBe(2);
         await surface.Pointer.DragAsync(bar, new Point(1, 0), new Point(10, 0));
 

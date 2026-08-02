@@ -488,7 +488,8 @@ public sealed class ScrollBar: Control
             return;
         }
 
-        var requested = -(long) wheel * SmallChange;
+        var signed = Orientation == Orientation.Vertical ? -(long) wheel : wheel;
+        var requested = signed * SmallChange;
         var delta = (int) Math.Clamp(requested, int.MinValue, int.MaxValue);
 
         // A pinned rail must not swallow the next viewport's wheel gesture.

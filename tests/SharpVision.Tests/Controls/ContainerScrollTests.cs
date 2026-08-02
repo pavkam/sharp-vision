@@ -736,7 +736,7 @@ public sealed class ContainerScrollTests
         container.Children.Add(new ProbeControl(new Size(20, 20)));
         new LayoutEngine().Layout(container, new Size(5, 4));
 
-        container.RaiseWheel(-1, -2);
+        container.RaiseWheel(1, -2);
         container.RaiseKey(Code.Right);
         container.RaiseKey(Code.PageDown);
         container.RaiseKey(Code.End);
@@ -745,6 +745,42 @@ public sealed class ContainerScrollTests
         container.VerticalOffset.ShouldBe(16);
         container.RaiseKey(Code.Home);
         container.VerticalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies wheel tilt/scroll direction agrees with the equivalent arrow key on both
+    /// axes: tilting right moves the content exactly like pressing Right, and scrolling down moves
+    /// it exactly like pressing Down (see #243).</summary>
+    [Fact]
+    public void OnEvent_WhenWheelIsUsed_MatchesTheEquivalentArrowKeyDirection()
+    {
+        var wheelContainer = new LayoutProbe
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Hidden,
+            LineSize = 2
+        };
+        wheelContainer.Children.Add(new ProbeControl(new Size(20, 20)));
+        new LayoutEngine().Layout(wheelContainer, new Size(5, 4));
+
+        var keyContainer = new LayoutProbe
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Hidden,
+            LineSize = 2
+        };
+        keyContainer.Children.Add(new ProbeControl(new Size(20, 20)));
+        new LayoutEngine().Layout(keyContainer, new Size(5, 4));
+
+        wheelContainer.RaiseWheel(1, -1);
+        keyContainer.RaiseKey(Code.Right);
+        keyContainer.RaiseKey(Code.Down);
+
+        wheelContainer.HorizontalOffset.ShouldBe(keyContainer.HorizontalOffset);
+        wheelContainer.VerticalOffset.ShouldBe(keyContainer.VerticalOffset);
     }
 
     /// <summary>

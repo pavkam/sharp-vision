@@ -436,18 +436,18 @@ public sealed class TextInputTests
         control.SetTheme(TestThemes.BorderlessInput);
         new LayoutEngine().Layout(control, new Size(4, 2));
 
-        var first = Wheel(wheelX: -1, wheelY: -1);
+        var first = Wheel(wheelX: 1, wheelY: -1);
         Route(control, first, Events.Pointer);
 
         control.HorizontalOffset.ShouldBe(1);
         control.VerticalOffset.ShouldBe(1);
         first.Handled.ShouldBeTrue();
 
-        Route(control, Wheel(wheelX: -100, wheelY: -100), Events.Pointer);
+        Route(control, Wheel(wheelX: 100, wheelY: -100), Events.Pointer);
         control.HorizontalOffset.ShouldBe(4);
         control.VerticalOffset.ShouldBe(4);
 
-        var endpoint = Wheel(wheelX: -1, wheelY: -1);
+        var endpoint = Wheel(wheelX: 1, wheelY: -1);
         Route(control, endpoint, Events.Pointer);
 
         endpoint.Handled.ShouldBeFalse();

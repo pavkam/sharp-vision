@@ -326,7 +326,7 @@ public sealed class ScrollBarTests
         control.Orientation = Orientation.Horizontal;
         Route(control, Wheel(wheelX: -4, wheelY: 0));
 
-        control.Value.ShouldBe(52);
+        control.Value.ShouldBe(36);
         causes.ShouldBe([ScrollCause.Wheel, ScrollCause.Wheel]);
     }
 

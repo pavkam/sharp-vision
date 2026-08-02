@@ -286,20 +286,20 @@ public sealed class ScrollBarSurfaceTests
         await surface.Pointer.WheelAsync(bar, new Point(6, 0), wheelX: 1);
 
         // Assert changed paths
-        bar.Value.ShouldBe(48);
+        bar.Value.ShouldBe(52);
         changes.ShouldBe([
             (48, ScrollCause.Pointer),
             (50, ScrollCause.Pointer),
             (30, ScrollCause.Pointer),
             (50, ScrollCause.Pointer),
-            (48, ScrollCause.Wheel)
+            (52, ScrollCause.Wheel)
         ]);
         surface.ShouldRender("<....##....>");
 
         // Act pinned wheel
         await surface.UpdateAsync(() => bar.Value = 0, "move ScrollBar to minimum");
         changes.Clear();
-        await surface.Pointer.WheelAsync(bar, new Point(6, 0), wheelX: 1);
+        await surface.Pointer.WheelAsync(bar, new Point(6, 0), wheelX: -1);
 
         // Assert pinned wheel
         bar.Value.ShouldBe(0);
