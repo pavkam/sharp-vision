@@ -161,14 +161,19 @@ public sealed class Table: ItemsControl
     } = true;
 
     /// <summary>Gets or sets an optional foreground override for header text, resolved through the theme.</summary>
+    /// <exception cref="ArgumentException">The value is transparent.</exception>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    public Color? HeaderForeground
+    public ColorValue? HeaderForeground
     {
         get;
         set
         {
-            ColorValidation.ValidatePaint(value, nameof(value));
+            if (value is { } headerForeground)
+            {
+                ColorValue.ValidatePaint(headerForeground, nameof(value));
+            }
+
             _ = SetProperty(ref field, value, InvalidationImpact.Render);
         }
     }
@@ -176,21 +181,26 @@ public sealed class Table: ItemsControl
     /// <summary>Gets or sets an optional background override for the header row.</summary>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    public Color? HeaderBackground
+    public ColorValue? HeaderBackground
     {
         get;
         set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
     }
 
     /// <summary>Gets or sets an optional grid-line color.</summary>
+    /// <exception cref="ArgumentException">The value is transparent.</exception>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    public Color? GridLineColor
+    public ColorValue? GridLineColor
     {
         get;
         set
         {
-            ColorValidation.ValidatePaint(value, nameof(value));
+            if (value is { } gridLineColor)
+            {
+                ColorValue.ValidatePaint(gridLineColor, nameof(value));
+            }
+
             _ = SetProperty(ref field, value, InvalidationImpact.Render);
         }
     }

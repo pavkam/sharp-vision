@@ -110,11 +110,15 @@ internal sealed class ChaseIndicatorPane: CompositeControl
                     new ChaseIndicator
                     {
                         Length = 15,
-                        HeadColor = Color.Rgb(0xff, 0x40, 0x40),
-                        TrailColor = Color.Rgb(0x80, 0x20, 0x20),
-                        TrackColor = Color.Rgb(0x30, 0x30, 0x30)
+                        Style = new ChaseIndicatorStyle(
+                            ChaseIndicatorStyle.Default.Active,
+                            ChaseIndicatorStyle.Default.Inactive,
+                            Color.Rgb(0xff, 0x40, 0x40),
+                            Color.Rgb(0x80, 0x20, 0x20),
+                            Color.Rgb(0x30, 0x30, 0x30),
+                            ChaseIndicatorStyle.Default.Appearance)
                     },
-                    "chase.HeadColor = Color.Rgb(0xFF, 0x40, 0x40);")),
+                    "chase.Style = chase.Style.Value with { HeadColor = Color.Rgb(0xFF, 0x40, 0x40) };")),
             Doc.Section(
                 "⏱️",
                 "Playback",

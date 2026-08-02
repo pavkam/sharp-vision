@@ -155,12 +155,16 @@ public sealed class TabControl: ItemsControl
     /// <exception cref="ArgumentException">The value is transparent.</exception>
     /// <exception cref="InvalidOperationException">The attached tab control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The tab control is disposed.</exception>
-    public Color? DividerColor
+    public ColorValue? DividerColor
     {
         get;
         set
         {
-            ColorValidation.ValidatePaint(value, nameof(value));
+            if (value is { } dividerColor)
+            {
+                ColorValue.ValidatePaint(dividerColor, nameof(value));
+            }
+
             _ = SetProperty(ref field, value, InvalidationImpact.Render);
         }
     }
@@ -169,12 +173,16 @@ public sealed class TabControl: ItemsControl
     /// <exception cref="ArgumentException">The value is transparent.</exception>
     /// <exception cref="InvalidOperationException">The attached tab control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The tab control is disposed.</exception>
-    public Color? SelectionIndicatorColor
+    public ColorValue? SelectionIndicatorColor
     {
         get;
         set
         {
-            ColorValidation.ValidatePaint(value, nameof(value));
+            if (value is { } selectionIndicatorColor)
+            {
+                ColorValue.ValidatePaint(selectionIndicatorColor, nameof(value));
+            }
+
             _ = SetProperty(ref field, value, InvalidationImpact.Render);
         }
     }
@@ -233,8 +241,8 @@ public sealed class TabControl: ItemsControl
         }
 
         var inherited = NormalStyle;
-        var dividerStyle = inherited.WithForeground(DividerColor ?? Theme?.ResolveColor(ThemeColor.ControlBorder) ?? Color.Default);
-        var indicatorStyle = inherited.WithForeground(SelectionIndicatorColor ?? Theme?.ResolveColor(ThemeColor.Accent) ?? Color.Default);
+        var dividerStyle = inherited.WithForeground(ResolveColor(DividerColor ?? ThemeColor.ControlBorder, Theme));
+        var indicatorStyle = inherited.WithForeground(ResolveColor(SelectionIndicatorColor ?? ThemeColor.Accent, Theme));
         var separators = ControlGlyphs.Separators;
         var divider = CellGlyphResolver.Resolve(DividerGlyph, separators.TabDivider.Fallback, CellPolicy.AmbiguousWidth);
         var underline = CellGlyphResolver.Resolve(UnderlineGlyph, separators.TabUnderline.Fallback, CellPolicy.AmbiguousWidth);

@@ -247,14 +247,20 @@ internal sealed class TablePresenter: Container
         var inherited = _owner.ResolvedStyle;
         var (attributes, underline, underlineColor) = DecorationResolver.Resolve(inherited);
         var header = new TerminalStyle(
-            _owner.HeaderForeground ?? inherited.Foreground,
-            _owner.HeaderBackground ?? inherited.Background,
+            _owner.HeaderForeground is { } headerForeground
+                ? ResolveColor(headerForeground, _owner.Theme)
+                : inherited.Foreground,
+            _owner.HeaderBackground is { } headerBackground
+                ? ResolveColor(headerBackground, _owner.Theme)
+                : inherited.Background,
             attributes,
             inherited.Hyperlink,
             underline,
             underlineColor);
         var grid = new TerminalStyle(
-            _owner.GridLineColor ?? inherited.Foreground,
+            _owner.GridLineColor is { } gridLineColor
+                ? ResolveColor(gridLineColor, _owner.Theme)
+                : inherited.Foreground,
             inherited.Background,
             attributes,
             inherited.Hyperlink,

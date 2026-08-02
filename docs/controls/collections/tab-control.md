@@ -102,7 +102,9 @@ catalog on every render, and `ResetGlyphs()` clears both overrides.
 
 A null `DividerColor` uses the normal theme border, and a null
 `SelectionIndicatorColor` uses the focused theme foreground. Callers override
-only the part whose meaning they need to change.
+only the part whose meaning they need to change, with either a concrete `Color`
+or a `ThemeColor` role — a role keeps following theme swaps, while a literal
+pins one exact color.
 
 ## Example
 

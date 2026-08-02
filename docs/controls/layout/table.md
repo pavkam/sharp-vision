@@ -10,20 +10,20 @@ table without a separate rendering model.
 
 ## API
 
-| Member group                                            | Default                             | Purpose                                                        |
-| ------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------------- |
-| `Columns`, `Rows`                                       | Empty typed collections             | Own column definitions and rows of ordinary detached controls. |
-| `ShowHeader`                                            | `true`                              | Includes the titled header row.                                |
-| `CellPadding`, `RowSpacing`, `ColumnSpacing`            | Zero                                | Reserve cells inside cells and between rows or columns.        |
-| `ShowGridLines`                                         | `true`                              | Draws code-owned separators in available gaps.                 |
-| `HeaderForeground`, `HeaderBackground`, `GridLineColor` | ControlText, Surface, ControlBorder | Nullable concrete color overrides over semantic defaults.      |
-| `ScrollBars`, `ShowScrollBars`, rail appearance         | Presenter defaults                  | Configure the private scrolling table viewport.                |
-| `HorizontalOffset`, `VerticalOffset`                    | `0`                                 | Inspect or set committed scroll positions.                     |
-| `Extent`, `Viewport`                                    | Read-only                           | Report complete content and visible terminal-cell dimensions.  |
-| `SelectionMode`                                         | `Row`                               | Select rows or cells with pointer and keyboard input.          |
-| `SelectedRows`, `SelectedCells`                         | Empty                               | Report the committed selection in display order.               |
-| `ActiveRow`, `ActiveColumnIndex`                        | No active cell                      | Report the current keyboard and pointer navigation cell.       |
-| `SortColumnIndex`, `SortDirection`                      | Reset                               | Report the current stable column sort state.                   |
+| Member group                                            | Default                             | Purpose                                                                |
+| ------------------------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------- |
+| `Columns`, `Rows`                                       | Empty typed collections             | Own column definitions and rows of ordinary detached controls.         |
+| `ShowHeader`                                            | `true`                              | Includes the titled header row.                                        |
+| `CellPadding`, `RowSpacing`, `ColumnSpacing`            | Zero                                | Reserve cells inside cells and between rows or columns.                |
+| `ShowGridLines`                                         | `true`                              | Draws code-owned separators in available gaps.                         |
+| `HeaderForeground`, `HeaderBackground`, `GridLineColor` | ControlText, Surface, ControlBorder | Nullable literal-or-theme-role color overrides over semantic defaults. |
+| `ScrollBars`, `ShowScrollBars`, rail appearance         | Presenter defaults                  | Configure the private scrolling table viewport.                        |
+| `HorizontalOffset`, `VerticalOffset`                    | `0`                                 | Inspect or set committed scroll positions.                             |
+| `Extent`, `Viewport`                                    | Read-only                           | Report complete content and visible terminal-cell dimensions.          |
+| `SelectionMode`                                         | `Row`                               | Select rows or cells with pointer and keyboard input.                  |
+| `SelectedRows`, `SelectedCells`                         | Empty                               | Report the committed selection in display order.                       |
+| `ActiveRow`, `ActiveColumnIndex`                        | No active cell                      | Report the current keyboard and pointer navigation cell.               |
+| `SortColumnIndex`, `SortDirection`                      | Reset                               | Report the current stable column sort state.                           |
 
 ## Behavior
 
@@ -39,6 +39,9 @@ table without a separate rendering model.
   gaps.
 - `ShowGridLines` and `GridLineColor` draw light Unicode lines in the available
   gaps without covering child controls.
+- `HeaderForeground`, `HeaderBackground`, and `GridLineColor` accept either a
+  concrete `Color` or a `ThemeColor` role, so an override can either pin a
+  literal color or continue following theme swaps through a named role.
 
 ## Interaction and editing
 

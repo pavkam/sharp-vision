@@ -268,14 +268,14 @@ namespace SharpVision.Controls.Collections
     public sealed class TabControl : SharpVision.Controls.ItemsControl
     {
         public TabControl() { }
-        public SharpVision.Terminal.Protocols.Color? DividerColor { get; set; }
+        public SharpVision.Styling.ColorValue? DividerColor { get; set; }
         public System.Text.Rune DividerGlyph { get; set; }
         public SharpVision.Controls.Collections.TabHeaderOverflowPolicy HeaderOverflowPolicy { get; set; }
         public SharpVision.Layout.Length HeaderWidth { get; set; }
         public SharpVision.Controls.Collections.TabItemCollection Items { get; }
         public int SelectedIndex { get; set; }
         public SharpVision.Controls.Collections.TabItem? SelectedItem { get; set; }
-        public SharpVision.Terminal.Protocols.Color? SelectionIndicatorColor { get; set; }
+        public SharpVision.Styling.ColorValue? SelectionIndicatorColor { get; set; }
         public System.Text.Rune UnderlineGlyph { get; set; }
         public event System.EventHandler<SharpVision.Controls.Collections.TabCloseRequestedEventArgs>? CloseRequested;
         public event System.EventHandler<SharpVision.Controls.Collections.TabSelectionChangedEventArgs>? SelectionChanged;
@@ -675,7 +675,6 @@ namespace SharpVision.Controls.Display
         public SharpVision.Controls.Display.ChaseIndicatorStyle ActualStyle { get; }
         protected override SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
         public System.TimeSpan FadeDuration { get; set; }
-        public SharpVision.Terminal.Protocols.Color? HeadColor { get; set; }
         public System.TimeSpan Interval { get; set; }
         public bool IsPlaying { get; set; }
         public int Length { get; set; }
@@ -684,8 +683,6 @@ namespace SharpVision.Controls.Display
         public int Spacing { get; set; }
         public SharpVision.Controls.Display.ChaseIndicatorStyle? Style { get; set; }
         protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
-        public SharpVision.Terminal.Protocols.Color? TrackColor { get; set; }
-        public SharpVision.Terminal.Protocols.Color? TrailColor { get; set; }
         public int TrailLength { get; set; }
         protected override SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
@@ -698,10 +695,13 @@ namespace SharpVision.Controls.Display
     }
     public readonly struct ChaseIndicatorStyle : System.IEquatable<SharpVision.Controls.Display.ChaseIndicatorStyle>
     {
-        public ChaseIndicatorStyle(System.Text.Rune active, System.Text.Rune inactive, SharpVision.Styling.ThemeProfile appearance) { }
+        public ChaseIndicatorStyle(System.Text.Rune active, System.Text.Rune inactive, SharpVision.Styling.ColorValue headColor, SharpVision.Styling.ColorValue trailColor, SharpVision.Styling.ColorValue trackColor, SharpVision.Styling.ThemeProfile appearance) { }
         public System.Text.Rune Active { get; }
         public SharpVision.Styling.ThemeProfile Appearance { get; }
+        public SharpVision.Styling.ColorValue HeadColor { get; }
         public System.Text.Rune Inactive { get; }
+        public SharpVision.Styling.ColorValue TrackColor { get; }
+        public SharpVision.Styling.ColorValue TrailColor { get; }
         public static SharpVision.Controls.Display.ChaseIndicatorStyle Circle { get; }
         public static SharpVision.Controls.Display.ChaseIndicatorStyle Default { get; }
         public static SharpVision.Controls.Display.ChaseIndicatorStyle Diamond { get; }
@@ -718,10 +718,13 @@ namespace SharpVision.Controls.Display
     }
     public readonly struct ChaseIndicatorStyleSet : System.IEquatable<SharpVision.Controls.Display.ChaseIndicatorStyleSet>
     {
-        public ChaseIndicatorStyleSet(System.Text.Rune? active = default, System.Text.Rune? inactive = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
+        public ChaseIndicatorStyleSet(System.Text.Rune? active = default, System.Text.Rune? inactive = default, SharpVision.Styling.ColorValue? headColor = default, SharpVision.Styling.ColorValue? trailColor = default, SharpVision.Styling.ColorValue? trackColor = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
         public System.Text.Rune? Active { get; }
         public SharpVision.Styling.AppearanceProfileSet? Appearance { get; }
+        public SharpVision.Styling.ColorValue? HeadColor { get; }
         public System.Text.Rune? Inactive { get; }
+        public SharpVision.Styling.ColorValue? TrackColor { get; }
+        public SharpVision.Styling.ColorValue? TrailColor { get; }
         public SharpVision.Controls.Display.ChaseIndicatorStyle Apply(SharpVision.Controls.Display.ChaseIndicatorStyle baseline) { }
     }
     public enum ChaseMovement
@@ -1583,9 +1586,9 @@ namespace SharpVision.Controls.Layout
         public SharpVision.Controls.Layout.TableColumnCollection Columns { get; }
         public System.Text.Rune CrossGridGlyph { get; set; }
         public SharpVision.Terminal.Geometry.Size Extent { get; }
-        public SharpVision.Terminal.Protocols.Color? GridLineColor { get; set; }
-        public SharpVision.Terminal.Protocols.Color? HeaderBackground { get; set; }
-        public SharpVision.Terminal.Protocols.Color? HeaderForeground { get; set; }
+        public SharpVision.Styling.ColorValue? GridLineColor { get; set; }
+        public SharpVision.Styling.ColorValue? HeaderBackground { get; set; }
+        public SharpVision.Styling.ColorValue? HeaderForeground { get; set; }
         public System.Text.Rune HorizontalGridGlyph { get; set; }
         public int HorizontalOffset { get; set; }
         public bool IsEditing { get; }

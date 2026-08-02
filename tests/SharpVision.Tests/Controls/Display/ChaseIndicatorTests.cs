@@ -38,9 +38,6 @@ public sealed class ChaseIndicatorTests
         indicator.Orientation.ShouldBe(Orientation.Horizontal);
         indicator.Spacing.ShouldBe(0);
         indicator.TrailLength.ShouldBe(2);
-        indicator.HeadColor.ShouldBeNull();
-        indicator.TrailColor.ShouldBeNull();
-        indicator.TrackColor.ShouldBeNull();
         indicator.FadeDuration.ShouldBe(TimeSpan.FromMilliseconds(400));
         indicator.Interval.ShouldBe(TimeSpan.FromMilliseconds(200));
         indicator.IsPlaying.ShouldBeTrue();
@@ -166,20 +163,37 @@ public sealed class ChaseIndicatorTests
         actual.ShouldBe(expected);
     }
 
-    /// <summary>Verifies color properties reject transparent values before mutation.</summary>
+    /// <summary>Verifies a style with a transparent part color throws before mutation.</summary>
+    /// <remarks>See #160.</remarks>
     [Fact]
-    public void ColorProperties_WhenTransparentIsAssigned_ThrowBeforeMutation()
+    public void Style_WhenAssignedStyleHasTransparentPartColor_ThrowsBeforeMutation()
     {
         // Arrange
         var indicator = new ChaseIndicator();
 
         // Act and assert
-        _ = Should.Throw<ArgumentException>(() => indicator.HeadColor = Color.Transparent);
-        _ = Should.Throw<ArgumentException>(() => indicator.TrailColor = Color.Transparent);
-        _ = Should.Throw<ArgumentException>(() => indicator.TrackColor = Color.Transparent);
-        indicator.HeadColor.ShouldBeNull();
-        indicator.TrailColor.ShouldBeNull();
-        indicator.TrackColor.ShouldBeNull();
+        _ = Should.Throw<ArgumentException>(() => indicator.Style = new ChaseIndicatorStyle(
+            ChaseIndicatorStyle.Default.Active,
+            ChaseIndicatorStyle.Default.Inactive,
+            Color.Transparent,
+            ChaseIndicatorStyle.Default.TrailColor,
+            ChaseIndicatorStyle.Default.TrackColor,
+            ChaseIndicatorStyle.Default.Appearance));
+        _ = Should.Throw<ArgumentException>(() => indicator.Style = new ChaseIndicatorStyle(
+            ChaseIndicatorStyle.Default.Active,
+            ChaseIndicatorStyle.Default.Inactive,
+            ChaseIndicatorStyle.Default.HeadColor,
+            Color.Transparent,
+            ChaseIndicatorStyle.Default.TrackColor,
+            ChaseIndicatorStyle.Default.Appearance));
+        _ = Should.Throw<ArgumentException>(() => indicator.Style = new ChaseIndicatorStyle(
+            ChaseIndicatorStyle.Default.Active,
+            ChaseIndicatorStyle.Default.Inactive,
+            ChaseIndicatorStyle.Default.HeadColor,
+            ChaseIndicatorStyle.Default.TrailColor,
+            Color.Transparent,
+            ChaseIndicatorStyle.Default.Appearance));
+        indicator.Style.ShouldBeNull();
     }
 
     /// <summary>Verifies disposing the chase indicator prevents mutation.</summary>
@@ -220,9 +234,13 @@ public sealed class ChaseIndicatorTests
         // Arrange
         var indicator = new ChaseIndicator
         {
-            HeadColor = Color.Rgb(240, 120, 60),
-            TrailColor = Color.Rgb(60, 30, 0),
-            TrackColor = Color.Rgb(15, 15, 15)
+            Style = new ChaseIndicatorStyle(
+                ChaseIndicatorStyle.Default.Active,
+                ChaseIndicatorStyle.Default.Inactive,
+                Color.Rgb(240, 120, 60),
+                Color.Rgb(60, 30, 0),
+                Color.Rgb(15, 15, 15),
+                ChaseIndicatorStyle.Default.Appearance)
         };
         new LayoutEngine().Layout(indicator, new Size(5, 1));
         using Frame frame = new(new Size(5, 1));
@@ -246,5 +264,11 @@ public sealed class ChaseIndicatorTests
     }
 
     private static ChaseIndicatorStyle ThemeOwnedStyle(ThemeProfile control) =>
-        new(ChaseIndicatorStyle.Default.Active, ChaseIndicatorStyle.Default.Inactive, control);
+        new(
+            ChaseIndicatorStyle.Default.Active,
+            ChaseIndicatorStyle.Default.Inactive,
+            ChaseIndicatorStyle.Default.HeadColor,
+            ChaseIndicatorStyle.Default.TrailColor,
+            ChaseIndicatorStyle.Default.TrackColor,
+            control);
 }

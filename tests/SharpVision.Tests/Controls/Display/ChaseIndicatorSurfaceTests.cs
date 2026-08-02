@@ -266,10 +266,16 @@ public sealed class ChaseIndicatorSurfaceTests
         var firstStyle = new ChaseIndicatorStyle(
             glyphs.Active,
             glyphs.Inactive,
+            ChaseIndicatorStyle.Default.HeadColor,
+            ChaseIndicatorStyle.Default.TrailColor,
+            ChaseIndicatorStyle.Default.TrackColor,
             LiteralProfile(Color.Rgb(0x40, 0x80, 0xC0)));
         var secondStyle = new ChaseIndicatorStyle(
             glyphs.Active,
             glyphs.Inactive,
+            ChaseIndicatorStyle.Default.HeadColor,
+            ChaseIndicatorStyle.Default.TrailColor,
+            ChaseIndicatorStyle.Default.TrackColor,
             LiteralProfile(Color.Rgb(0xC0, 0x80, 0x40)));
         var indicator = new ChaseIndicator
         {
@@ -327,6 +333,9 @@ public sealed class ChaseIndicatorSurfaceTests
             Style = new ChaseIndicatorStyle(
                 baseline.Active,
                 baseline.Inactive,
+                ChaseIndicatorStyle.Default.HeadColor,
+                ChaseIndicatorStyle.Default.TrailColor,
+                ChaseIndicatorStyle.Default.TrackColor,
                 LiteralProfile(Color.Rgb(0xE0, 0xE0, 0xE0)))
         };
         await using var surface = await ComponentSurface.MountAsync(
@@ -346,7 +355,7 @@ public sealed class ChaseIndicatorSurfaceTests
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(
             Palette.Project(secondTheme.ResolveColor(ThemeColor.Accent), ColorDepth.Basic16));
         surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(secondTheme.Muted, ColorDepth.Basic16));
+            Palette.Project(secondTheme.ResolveColor(ThemeColor.Muted), ColorDepth.Basic16));
     }
 
     /// <summary>Verifies the default trail endpoint follows the Theme status palette independently.</summary>
@@ -366,8 +375,13 @@ public sealed class ChaseIndicatorSurfaceTests
             TrailLength = 1,
             Interval = TimeSpan.FromSeconds(1),
             FadeDuration = TimeSpan.FromMilliseconds(400),
-            HeadColor = Color.Rgb(0xFF, 0xFF, 0xFF),
-            TrackColor = Color.Rgb(0x00, 0x00, 0xFF)
+            Style = new ChaseIndicatorStyle(
+                ChaseIndicatorStyle.Default.Active,
+                ChaseIndicatorStyle.Default.Inactive,
+                Color.Rgb(0xFF, 0xFF, 0xFF),
+                ChaseIndicatorStyle.Default.TrailColor,
+                Color.Rgb(0x00, 0x00, 0xFF),
+                ChaseIndicatorStyle.Default.Appearance)
         };
         await using var surface = await ComponentSurface.MountAsync(
             indicator,
@@ -387,7 +401,7 @@ public sealed class ChaseIndicatorSurfaceTests
 
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldNotBe(firstTrail);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(secondTheme.Muted, ColorDepth.Basic16));
+            Palette.Project(secondTheme.ResolveColor(ThemeColor.Muted), ColorDepth.Basic16));
     }
 
     /// <summary>Verifies vertical spacing and cyclic trail history through one endpoint.</summary>
@@ -423,9 +437,13 @@ public sealed class ChaseIndicatorSurfaceTests
         var clock = new ManualTimeProvider();
         var indicator = new ChaseIndicator
         {
-            HeadColor = Color.Rgb(255, 255, 255),
-            TrailColor = Color.Rgb(0, 0, 0),
-            TrackColor = Color.Rgb(0, 0, 0),
+            Style = new ChaseIndicatorStyle(
+                ChaseIndicatorStyle.Default.Active,
+                ChaseIndicatorStyle.Default.Inactive,
+                Color.Rgb(255, 255, 255),
+                Color.Rgb(0, 0, 0),
+                Color.Rgb(0, 0, 0),
+                ChaseIndicatorStyle.Default.Appearance),
             FadeDuration = TimeSpan.FromMilliseconds(400),
         };
         await using var surface = await ComponentSurface.MountAsync(
@@ -486,9 +504,13 @@ public sealed class ChaseIndicatorSurfaceTests
         {
             Movement = ChaseMovement.Wrap,
             TrailLength = 1,
-            HeadColor = Color.Rgb(255, 255, 255),
-            TrailColor = Color.Rgb(0, 0, 0),
-            TrackColor = Color.Rgb(0, 0, 0),
+            Style = new ChaseIndicatorStyle(
+                ChaseIndicatorStyle.Default.Active,
+                ChaseIndicatorStyle.Default.Inactive,
+                Color.Rgb(255, 255, 255),
+                Color.Rgb(0, 0, 0),
+                Color.Rgb(0, 0, 0),
+                ChaseIndicatorStyle.Default.Appearance),
             FadeDuration = TimeSpan.FromMilliseconds(400)
         };
         await using var surface = await ComponentSurface.MountAsync(
@@ -518,9 +540,13 @@ public sealed class ChaseIndicatorSurfaceTests
         {
             Movement = ChaseMovement.Spread,
             TrailLength = 2,
-            HeadColor = Color.Rgb(255, 255, 255),
-            TrailColor = Color.Rgb(0, 0, 0),
-            TrackColor = Color.Rgb(0, 0, 0),
+            Style = new ChaseIndicatorStyle(
+                ChaseIndicatorStyle.Default.Active,
+                ChaseIndicatorStyle.Default.Inactive,
+                Color.Rgb(255, 255, 255),
+                Color.Rgb(0, 0, 0),
+                Color.Rgb(0, 0, 0),
+                ChaseIndicatorStyle.Default.Appearance),
             FadeDuration = TimeSpan.FromMilliseconds(400)
         };
         await using var surface = await ComponentSurface.MountAsync(
@@ -563,10 +589,7 @@ public sealed class ChaseIndicatorSurfaceTests
     {
         var theme = new Theme();
         theme.SetColor(ThemeColor.Accent, accent);
-        theme.SetStatusColors(new Dictionary<StatusColor, Color>
-        {
-            [StatusColor.Muted] = muted
-        });
+        theme.SetColor(ThemeColor.Muted, muted);
         theme.Freeze();
         return theme;
     }

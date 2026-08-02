@@ -38,6 +38,36 @@ public sealed class TabBehaviorSurfaceTests
         surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(accent);
     }
 
+    /// <summary>Verifies DividerColor and SelectionIndicatorColor accept a theme-role reference that
+    /// resolves through the mounted Theme, not only a literal color.</summary>
+    /// <remarks>See #160.</remarks>
+    [Fact]
+    public async Task Render_WhenColorPropertiesAreThemeRoles_ResolvesThroughTheMountedThemeAsync()
+    {
+        // Arrange
+        var tabs = new TabControl
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            DividerColor = ThemeColor.Warning,
+            SelectionIndicatorColor = ThemeColor.Warning
+        };
+        tabs.Items.Add(new TabItem { Header = "General", Content = new ControlText("General content") });
+        tabs.Items.Add(new TabItem { Header = "Advanced", Content = new ControlText("Advanced content") });
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            tabs,
+            new Size(30, 4),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        var warning = Palette.Project(
+            tabs.Theme.ShouldNotBeNull().ResolveColor(ThemeColor.Warning),
+            ColorDepth.Basic16);
+        surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(warning);
+    }
+
     /// <summary>Verifies clicking the second tab header switches the visible content and selected index.</summary>
     [Fact]
     public async Task Pointer_WhenSecondTabHeaderIsClicked_SwitchesContentAndSelectionAsync()

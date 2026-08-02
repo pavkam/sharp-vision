@@ -6,6 +6,49 @@ namespace SharpVision.Tests.Controls.Layout;
 /// <summary>Verifies table ownership, track geometry, headers, grid cells, and row validation.</summary>
 public sealed class TableTests
 {
+    /// <summary>Verifies header and grid-line color overrides default to null and reject transparent values.</summary>
+    /// <remarks>See #160.</remarks>
+    [Fact]
+    public void ColorProperties_WhenDefaultOrTransparentIsAssigned_UsesDocumentedDefaultsAndThrowsBeforeMutation()
+    {
+        // Arrange
+        var table = new Table();
+
+        // Assert defaults
+        table.HeaderForeground.ShouldBeNull();
+        table.HeaderBackground.ShouldBeNull();
+        table.GridLineColor.ShouldBeNull();
+
+        // Act and assert transparent rejection
+        _ = Should.Throw<ArgumentException>(() => table.HeaderForeground = Color.Transparent);
+        _ = Should.Throw<ArgumentException>(() => table.GridLineColor = Color.Transparent);
+        table.HeaderForeground.ShouldBeNull();
+        table.GridLineColor.ShouldBeNull();
+
+        // Act and assert HeaderBackground allows transparent, matching its existing unvalidated asymmetry.
+        table.HeaderBackground = Color.Transparent;
+        table.HeaderBackground.ShouldBe((ColorValue?) Color.Transparent);
+    }
+
+    /// <summary>Verifies header and grid-line color overrides accept a theme-role reference, not only a literal.</summary>
+    /// <remarks>See #160.</remarks>
+    [Fact]
+    public void ColorProperties_WhenSetToThemeRole_RoundTripsTheRole()
+    {
+        // Arrange
+        var table = new Table
+        {
+            HeaderForeground = ThemeColor.Accent,
+            HeaderBackground = ThemeColor.Surface,
+            GridLineColor = ThemeColor.Muted
+        };
+
+        // Assert
+        table.HeaderForeground.ShouldBe((ColorValue?) ThemeColor.Accent);
+        table.HeaderBackground.ShouldBe((ColorValue?) ThemeColor.Surface);
+        table.GridLineColor.ShouldBe((ColorValue?) ThemeColor.Muted);
+    }
+
     /// <summary>Verifies private rail local mechanics publish exact resolved-style notifications.</summary>
     [ComponentUnitEvidence(typeof(Table))]
     [Fact]

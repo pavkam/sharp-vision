@@ -16,16 +16,18 @@ hit testing.
 | `Circle`, `Diamond`, `Square`, directions | Presets              | Complete preset styles built on active/inactive glyph pairs. |
 | `Movement`                                | `Bounce`             | Selects the bounce, wrapping, or center-spread sequence.     |
 | `Length`, `Spacing`, `TrailLength`        | `5`, `0`, `2`        | Track geometry and how much history the trail retains.       |
-| `HeadColor`, `TrailColor`, `TrackColor`   | Theme colors         | Optional semantic or concrete colors for each animated part. |
 | `FadeDuration`, `Interval`, `IsPlaying`   | 400 ms, 200 ms, true | Animation timing and playback.                               |
 
-A `ChaseIndicatorStyle` holds the validated one-cell active/inactive glyph pair
-together with a complete appearance profile. `ChaseIndicatorStyleSet` exists for
-partial composition in Theme files; it is not a control property. Assigning
-`Style` replaces the entire Theme-owned presentation, and assigning `null`
-restores it. If the active cell-width policy is wide and a configured glyph
-becomes ambiguous, the control falls back to a role-appropriate one-cell ASCII
-head and a `.` track glyph.
+A `ChaseIndicatorStyle` holds the validated one-cell active/inactive glyph pair,
+the `HeadColor`, `TrailColor`, and `TrackColor` foregrounds for each animated
+part, and a complete appearance profile. Each color accepts either a concrete
+`Color` or a `ThemeColor` role and defaults to `Accent`, `Muted`, and `Muted`
+respectively when not overridden. `ChaseIndicatorStyleSet` exists for partial
+composition in Theme files; it is not a control property. Assigning `Style`
+replaces the entire Theme-owned presentation, and assigning `null` restores it.
+If the active cell-width policy is wide and a configured glyph becomes
+ambiguous, the control falls back to a role-appropriate one-cell ASCII head and
+a `.` track glyph.
 
 Changing the effective glyph pair resets the animation phase. Appearance-only
 Theme changes repaint without losing the phase. Changing `Movement` or `Length`
@@ -40,10 +42,9 @@ it. The trail history never grows beyond `min(TrailLength, Length - 1)` entries.
 var indicator = new ChaseIndicator
 {
     Movement = ChaseMovement.Spread,
-    Style = ChaseIndicatorStyle.Diamond,
+    Style = ChaseIndicatorStyle.Diamond with { HeadColor = Color.Rgb(90, 247, 142) },
     Length = 21,
-    TrailLength = 5,
-    HeadColor = Color.Rgb(90, 247, 142)
+    TrailLength = 5
 };
 ```
 

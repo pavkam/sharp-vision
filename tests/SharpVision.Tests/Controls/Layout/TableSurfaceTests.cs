@@ -46,6 +46,38 @@ public sealed class TableSurfaceTests
         surface.Cell(new Point(nameOrigin.X + 2, nameOrigin.Y)).IsContinuation.ShouldBeTrue();
     }
 
+    /// <summary>Verifies header foreground, header background, and grid-line theme-role overrides resolve
+    /// through the mounted Theme rather than only accepting a literal color.</summary>
+    /// <remarks>See #160.</remarks>
+    [Fact]
+    public async Task Render_WhenColorPropertiesAreThemeRoles_ResolvesThroughTheMountedThemeAsync()
+    {
+        // Arrange
+        var theme = WithColor(ThemeColor.ControlBorder, Color.Rgb(0x11, 0x22, 0x33));
+        var table = new Table
+        {
+            HeaderForeground = ThemeColor.Accent,
+            GridLineColor = ThemeColor.ControlBorder,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        table.Columns.Add(TableColumn.Fixed("A", 4));
+        table.Rows.Add(new TableRow([new ControlText("one")]));
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(6, 3),
+            theme,
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(
+            Palette.Project(theme.ResolveColor(ThemeColor.Accent), ColorDepth.Basic16));
+        surface.Cell(new Point(4, 1)).Style.Foreground.ShouldBe(
+            Palette.Project(theme.ResolveColor(ThemeColor.ControlBorder), ColorDepth.Basic16));
+    }
+
     /// <summary>Verifies mounted Table hover, focus, tab, and directional behavior.</summary>
     [ComponentBehaviorEvidence(typeof(Table), ComponentBehavior.Hover)]
     [Fact]
@@ -571,6 +603,35 @@ public sealed class TableSurfaceTests
         // Assert
         table.ActiveRow.ShouldBeSameAs(table.Rows[^1]);
         table.VerticalOffset.ShouldBeGreaterThan(0);
+    }
+
+    private static Theme WithColor(ThemeColor role, Color value)
+    {
+        var source = Themes.Dark;
+        var theme = new Theme(
+            source.Palette,
+            source.Name,
+            source.Slug,
+            source.ColorScheme,
+            source.Author,
+            source.License,
+            source.Source);
+
+        foreach (var color in Enum.GetValues<ThemeColor>())
+        {
+            theme.SetColor(color, color == role ? value : source.ResolveColor(color));
+        }
+
+        foreach (var decoration in Enum.GetValues<ThemeDecoration>())
+        {
+            theme.SetAttributes(decoration, source.ResolveAttributes(decoration));
+        }
+
+        theme.SetStatusColors(Enum.GetValues<StatusColor>()
+            .ToDictionary(status => status, source.ResolveStatusColor));
+        theme.SetProfiles(source.Control, source.Input, source.Container, source.Window, source.Popup);
+        theme.Freeze();
+        return theme;
     }
 
     /// <summary>Creates one stretched borderless clickable table cell.</summary>

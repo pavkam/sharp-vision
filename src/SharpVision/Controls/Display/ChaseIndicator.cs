@@ -16,8 +16,17 @@ public sealed class ChaseIndicator: Control
         static profile => new ChaseIndicatorStyle(
             ChaseIndicatorStyle.Default.Active,
             ChaseIndicatorStyle.Default.Inactive,
+            ChaseIndicatorStyle.Default.HeadColor,
+            ChaseIndicatorStyle.Default.TrailColor,
+            ChaseIndicatorStyle.Default.TrackColor,
             profile),
-        static (previous, _, current, _) => previous == current ? InvalidationImpact.None : InvalidationImpact.Render,
+        static (previous, previousTheme, current, currentTheme) =>
+            previous != current ||
+            ResolveColor(previous.HeadColor, previousTheme) != ResolveColor(current.HeadColor, currentTheme) ||
+            ResolveColor(previous.TrailColor, previousTheme) != ResolveColor(current.TrailColor, currentTheme) ||
+            ResolveColor(previous.TrackColor, previousTheme) != ResolveColor(current.TrackColor, currentTheme)
+                ? InvalidationImpact.Render
+                : InvalidationImpact.None,
         static style => style.Appearance);
     private ChaseIndicatorStyle? _actualStyleCache;
     private ChaseIndicatorStyle? _actualStyleCacheKey;
@@ -125,33 +134,18 @@ public sealed class ChaseIndicator: Control
         GetContractAppearanceProfile(_styleContract, Style, theme);
 
     /// <inheritdoc/>
-    /// <remarks>
-    /// HeadColor/TrailColor/TrackColor are per-instance nullable overrides layered on top of the
-    /// theme-resolved default, not members of <see cref="ChaseIndicatorStyle"/> itself, so their
-    /// impact can't live in the shared <see cref="StyleContract{TStyle}.CompareStructure"/>
-    /// delegate the way Slider/ScrollBar/ProgressBar's style-owned colors do.
-    /// </remarks>
     protected override InvalidationImpact GetThemeChangeImpact(
         Theme? previous,
         Theme? current,
         Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace)
-    {
-        var styleImpact = GetContractThemeChangeImpact(
+        Face? currentParentAmbientFace) =>
+        GetContractThemeChangeImpact(
             _styleContract,
             Style,
             previous,
             current,
             previousParentAmbientFace,
             currentParentAmbientFace);
-        var colorImpact = ResolveHeadColor(previous) != ResolveHeadColor(current) ||
-                          ResolveTrailColor(previous) != ResolveTrailColor(current) ||
-                          ResolveTrackColor(previous) != ResolveTrackColor(current)
-            ? InvalidationImpact.Render
-            : InvalidationImpact.None;
-
-        return MaximumImpact(styleImpact, colorImpact);
-    }
 
     /// <inheritdoc/>
     protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
@@ -236,48 +230,6 @@ public sealed class ChaseIndicator: Control
             }
         }
     } = 2;
-
-    /// <summary>Gets or sets the optional foreground override of every current head position.</summary>
-    /// <exception cref="ArgumentException">The value is transparent.</exception>
-    /// <exception cref="InvalidOperationException">The attached indicator is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The indicator is disposed of.</exception>
-    public Color? HeadColor
-    {
-        get;
-        set
-        {
-            ColorValidation.ValidatePaint(value, nameof(value));
-            _ = SetProperty(ref field, value, InvalidationImpact.Render);
-        }
-    }
-
-    /// <summary>Gets or sets the foreground endpoint of the oldest retained trail frame.</summary>
-    /// <exception cref="ArgumentException">The value is transparent.</exception>
-    /// <exception cref="InvalidOperationException">The attached indicator is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The indicator is disposed of.</exception>
-    public Color? TrailColor
-    {
-        get;
-        set
-        {
-            ColorValidation.ValidatePaint(value, nameof(value));
-            _ = SetProperty(ref field, value, InvalidationImpact.Render);
-        }
-    }
-
-    /// <summary>Gets or sets the foreground of inactive positions.</summary>
-    /// <exception cref="ArgumentException">The value is transparent.</exception>
-    /// <exception cref="InvalidOperationException">The attached indicator is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The indicator is disposed of.</exception>
-    public Color? TrackColor
-    {
-        get;
-        set
-        {
-            ColorValidation.ValidatePaint(value, nameof(value));
-            _ = SetProperty(ref field, value, InvalidationImpact.Render);
-        }
-    }
 
     /// <summary>Gets or sets the duration for one abandoned head frame to reach the trail color.</summary>
     /// <remarks>The default is 400 milliseconds. Every retained frame fades independently.</remarks>
@@ -383,9 +335,9 @@ public sealed class ChaseIndicator: Control
         var stride = Spacing + 1;
         var visible = Math.Min(Length, ((axisLength - 1) / stride) + 1);
         var inherited = ResolvedStyle;
-        var headColor = ResolveHeadColor(Theme);
-        var trailColor = ResolveTrailColor(Theme);
-        var trackStyle = inherited.WithForeground(ResolveTrackColor(Theme));
+        var headColor = ResolveColor(presentation.HeadColor);
+        var trailColor = ResolveColor(presentation.TrailColor);
+        var trackStyle = inherited.WithForeground(ResolveColor(presentation.TrackColor));
 
         for (var position = 0; position < visible; position++)
         {
@@ -457,12 +409,7 @@ public sealed class ChaseIndicator: Control
         return style;
     }
 
-    private Color ResolveHeadColor(Theme? theme) =>
-        HeadColor ?? theme?.ResolveColor(ThemeColor.Accent) ?? Color.Default;
-
-    private Color ResolveTrailColor(Theme? theme) => TrailColor ?? theme?.Muted ?? Color.Default;
-
-    private Color ResolveTrackColor(Theme? theme) => TrackColor ?? theme?.Muted ?? Color.Default;
+    private Color ResolveColor(ColorValue value) => ResolveColor(value, Theme);
 
     #endregion
 
