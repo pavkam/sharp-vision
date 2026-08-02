@@ -82,6 +82,60 @@ public sealed class WindowActivationManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies losing the active Window restores the most recently active remaining
+    /// available Window instead of leaving no Window active (see #224).</summary>
+    [Fact]
+    public async Task Availability_WhenActiveWindowBecomesUnavailable_RestoresMostRecentlyActiveWindowAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var first = new Window();
+            var second = new Window();
+            var root = new Overlay { Children = { first, second } };
+            root.Attach(dispatcher);
+            using var manager = new WindowActivationManager(root);
+
+            _ = manager.Activate(first);
+            _ = manager.Activate(second);
+
+            second.Visibility = Visibility.Hidden;
+
+            manager.ActiveWindow.ShouldBeSameAs(first);
+            first.IsActive.ShouldBeTrue();
+            second.IsActive.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies the fallback walk skips a history entry that is itself unavailable and
+    /// restores the next-most-recently active available Window instead (see #224).</summary>
+    [Fact]
+    public async Task Availability_WhenMostRecentFallbackCandidateIsUnavailable_SkipsToNextAvailableInHistoryAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var first = new Window();
+            var second = new Window();
+            var third = new Window();
+            var root = new Overlay { Children = { first, second, third } };
+            root.Attach(dispatcher);
+            using var manager = new WindowActivationManager(root);
+
+            _ = manager.Activate(first);
+            _ = manager.Activate(second);
+            _ = manager.Activate(third);
+
+            second.Visibility = Visibility.Hidden;
+            third.Visibility = Visibility.Hidden;
+
+            manager.ActiveWindow.ShouldBeSameAs(first);
+            first.IsActive.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies nested Window ancestry selects the Window nearest the target.</summary>
     [Fact]
     public async Task Activate_WhenWindowsAreNested_SelectsNearestWindowAsync()

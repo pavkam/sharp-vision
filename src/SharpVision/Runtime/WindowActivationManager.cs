@@ -8,7 +8,10 @@ using Windows;
 /// <summary>Owns the one active Window within an Application control tree.</summary>
 internal sealed class WindowActivationManager: IDisposable
 {
+    private const int _maxHistory = 8;
+
     private readonly Control _root;
+    private readonly List<Window> _history = [];
     private bool _isDisposed;
 
     /// <summary>Initializes activation ownership for one attached application root.</summary>
@@ -46,6 +49,7 @@ internal sealed class WindowActivationManager: IDisposable
 
         _root.VerifyMutable();
         SetActive(null);
+        _history.Clear();
         _isDisposed = true;
     }
 
@@ -90,9 +94,56 @@ internal sealed class WindowActivationManager: IDisposable
 
         if (value is not null)
         {
+            _ = _history.Remove(value);
+            _history.Insert(0, value);
+
+            if (_history.Count > _maxHistory)
+            {
+                _history.RemoveRange(_maxHistory, _history.Count - _maxHistory);
+            }
+
             value.SetActive(true);
             Subscribe(value);
         }
+    }
+
+    // Walks recency order for the next window this manager previously activated that is
+    // still available and still attached under this manager's own root, so activation loss
+    // (hide, close, detach) falls back the way every desktop windowing model does instead of
+    // leaving the application with no active window (see #224).
+    private Window? FindNextAvailable()
+    {
+        for (var index = 0; index < _history.Count; index++)
+        {
+            var candidate = _history[index];
+
+            if (candidate.IsDisposed)
+            {
+                _history.RemoveAt(index);
+                index--;
+                continue;
+            }
+
+            if (IsAvailable(candidate) && IsReachableFromRoot(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private bool IsReachableFromRoot(Window window)
+    {
+        for (Control? current = window; current is not null; current = current.Parent)
+        {
+            if (ReferenceEquals(current, _root))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void Subscribe(Window window)
@@ -116,7 +167,7 @@ internal sealed class WindowActivationManager: IDisposable
 
         if (!IsAvailable(ActiveWindow) || FindWindow(ActiveWindow) is null)
         {
-            SetActive(null);
+            SetActive(FindNextAvailable());
         }
     }
 
