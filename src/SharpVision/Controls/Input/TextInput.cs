@@ -1241,7 +1241,11 @@ public sealed class TextInput: Control
     /// cell x, which is inherently a cluster start; only the rightward branch's viewport-relative
     /// arithmetic (<c>caret - viewport + 1</c>) can land mid-cluster. Re-snapping unconditionally is
     /// therefore a no-op for every already-aligned value and only changes the one case that needs it
-    /// (see #217).
+    /// (see #217). Looks the target row up in the same cached boundary/row/column arrays
+    /// <see cref="PositionFast"/> uses instead of rescanning <see cref="Text"/> from its start on
+    /// every call - the prior linear scan cost O(document) per navigation event that calls
+    /// <see cref="EnsureCaretVisible"/>, the other half of the O(n^2) total this cache was built to
+    /// eliminate (see #42).
     /// </remarks>
     private int AlignToClusterStart(int offset, int row)
     {
@@ -1250,41 +1254,50 @@ public sealed class TextInput: Control
             return offset;
         }
 
-        var currentRow = 0;
-        var x = 0;
+        var (_, rows, columns) = BoundaryCache();
 
-        foreach (var grapheme in Graphemes.Enumerate(Text))
+        for (var index = LowerBoundByRow(rows, row); index < rows.Length && rows[index] == row; index++)
         {
-            var cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
-
-            if (IsLineBreak(cluster))
-            {
-                if (currentRow == row)
-                {
-                    break;
-                }
-
-                currentRow++;
-                x = 0;
-                continue;
-            }
-
-            if (currentRow != row)
+            if (index == 0 || rows[index - 1] != row)
             {
                 continue;
             }
 
-            var width = ClusterWidth(cluster, x);
+            var before = columns[index - 1];
+            var after = columns[index];
 
-            if (offset > x && offset < x + width)
+            if (offset > before && offset < after)
             {
-                return x;
+                return before;
             }
-
-            x += width;
         }
 
         return offset;
+    }
+
+    /// <summary>Finds the first index whose cached row is at least <paramref name="row"/> via binary
+    /// search over the non-decreasing row array, so <see cref="AlignToClusterStart"/> starts scanning
+    /// at the target row instead of the document start.</summary>
+    private static int LowerBoundByRow(int[] rows, int row)
+    {
+        var low = 0;
+        var high = rows.Length;
+
+        while (low < high)
+        {
+            var mid = low + ((high - low) / 2);
+
+            if (rows[mid] < row)
+            {
+                low = mid + 1;
+            }
+            else
+            {
+                high = mid;
+            }
+        }
+
+        return low;
     }
 
     private bool ScrollBy(int horizontal, int vertical)

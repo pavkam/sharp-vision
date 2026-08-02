@@ -519,6 +519,49 @@ public sealed class TextInputSurfaceTests
         input.HorizontalOffset.ShouldBeGreaterThan(0);
     }
 
+    /// <summary>Verifies the cached-boundary rewrite of the cluster-start snap (see #42) still snaps
+    /// correctly on a row other than the first, since the cache-backed lookup scopes its scan to the
+    /// target row via the cached row array rather than always starting from the document's first
+    /// character (see #217, #42).</summary>
+    [Fact]
+    public async Task Keyboard_WhenWideClusterTextOnASecondRowScrollsRight_NeverBlanksAColumnAsync()
+    {
+        // Arrange
+        var input = new TextInput
+        {
+            AcceptsReturn = true,
+            Text = "first\n一二三四五六",
+            Width = Length.Cells(4),
+            Height = Length.Cells(2),
+            ScrollBars = ScrollBars.None
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(4, 2),
+            TestThemes.BorderlessInput,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down);
+        await surface.Keyboard.PressAsync(Code.Home);
+
+        // Act and assert
+        for (var step = 0; step < 6; step++)
+        {
+            await surface.Keyboard.PressAsync(Code.Right);
+
+            for (var x = 0; x < 4; x++)
+            {
+                var cell = surface.Cell(new Point(x, 1));
+                (cell.Text != " " || cell.Width != 1)
+                    .ShouldBeTrue($"column {x} was blank after rightward step {step + 1}");
+            }
+
+            (input.HorizontalOffset % 2).ShouldBe(0, $"offset was misaligned after rightward step {step + 1}");
+        }
+
+        input.HorizontalOffset.ShouldBeGreaterThan(0);
+    }
+
     /// <summary>Verifies resize clamps automatic editor offsets and exposes complete content.</summary>
     [Fact]
     public async Task ResizeAsync_WhenEditorViewportGrows_ClampsOffsetsAndRepositionsCursorAsync()
