@@ -7,10 +7,11 @@ using Popups;
 
 /// <summary>Displays a vertical menu at an arbitrary cell position with light dismiss.</summary>
 [PublicAPI]
-public class ContextMenu: Control, IContextMenu
+public class ContextMenu: IDisposable
 {
     private readonly Popup _popup;
     private LightDismiss? _lightDismiss;
+    private bool _isDisposed;
 
     /// <summary>Initializes a closed context menu.</summary>
     public ContextMenu()
@@ -43,14 +44,17 @@ public class ContextMenu: Control, IContextMenu
     /// <summary>Gets whether the context menu is currently open.</summary>
     public bool IsOpen => _popup.IsOpen;
 
-    /// <inheritdoc/>
-    public Control Presentation => _popup;
+    internal Control Presentation => _popup;
 
     internal Menu Menu { get; }
 
     /// <summary>Opens the context menu at the specified cell position.</summary>
     /// <param name="row">The zero-based row in root coordinates.</param>
     /// <param name="col">The zero-based column in root coordinates.</param>
+    /// <remarks>
+    /// A no-op until this menu is assigned to some <see cref="Control.ContextMenu"/> — only that
+    /// assignment attaches the retained popup this method opens.
+    /// </remarks>
     public void Show(int row, int col)
     {
         if (_popup.Parent is null)
@@ -74,21 +78,30 @@ public class ContextMenu: Control, IContextMenu
     }
 
     /// <inheritdoc/>
-    protected override void OnUnavailable(ReleaseReason reason)
+    public void Dispose()
     {
-        if (reason == ReleaseReason.Disposed)
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>Releases owned handlers and light-dismiss state.</summary>
+    /// <param name="disposing">True when called from <see cref="Dispose()"/> rather than a finalizer.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_isDisposed || !disposing)
         {
-            _lightDismiss?.Dispose();
-            _popup.Closing -= OnPopupClosing;
-            _popup.Closed -= OnPopupClosed;
-            _popup.PropertyChanged -= OnPopupPropertyChanged;
-            Menu.ItemInvoked -= OnMenuItemInvoked;
-            Opening = null;
-            Closing = null;
-            Closed = null;
+            return;
         }
 
-        base.OnUnavailable(reason);
+        _isDisposed = true;
+        _lightDismiss?.Dispose();
+        _popup.Closing -= OnPopupClosing;
+        _popup.Closed -= OnPopupClosed;
+        _popup.PropertyChanged -= OnPopupPropertyChanged;
+        Menu.ItemInvoked -= OnMenuItemInvoked;
+        Opening = null;
+        Closing = null;
+        Closed = null;
     }
 
     private void OnMenuItemInvoked(object? sender, MenuItemInvokedEventArgs e) => Close();

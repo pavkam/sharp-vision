@@ -8,6 +8,7 @@ using System.Runtime.ExceptionServices;
 
 using DataBinding;
 
+using SharpVision.Menus;
 using SharpVision.Terminal.Input;
 
 /// <summary>
@@ -445,7 +446,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// </exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public IContextMenu? ContextMenu
+    public ContextMenu? ContextMenu
     {
         get;
         set

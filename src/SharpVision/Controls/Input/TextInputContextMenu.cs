@@ -108,9 +108,9 @@ public sealed class TextInputContextMenu: ContextMenu
         _textInput.Redo();
 
     /// <inheritdoc/>
-    protected override void OnUnavailable(ReleaseReason reason)
+    protected override void Dispose(bool disposing)
     {
-        if (reason == ReleaseReason.Disposed)
+        if (disposing)
         {
             Opening -= OnOpening;
             _cutItem.Invoked -= OnCut;
@@ -121,6 +121,6 @@ public sealed class TextInputContextMenu: ContextMenu
             _redoItem.Invoked -= OnRedo;
         }
 
-        base.OnUnavailable(reason);
+        base.Dispose(disposing);
     }
 }

@@ -79,7 +79,8 @@ public sealed class ContextMenuTests
         button.ContextMenu.ShouldBeSameAs(menu);
     }
 
-    /// <summary>Verifies replacing the property detaches the previous popup.</summary>
+    /// <summary>Verifies replacing the property detaches the previous popup — observed through
+    /// Show's documented unattached no-op rather than the internal Presentation surface.</summary>
     [Fact]
     public void ContextMenu_WhenReplaced_DetachesPreviousPopup()
     {
@@ -87,27 +88,43 @@ public sealed class ContextMenuTests
         var first = new ContextMenu();
         var second = new ContextMenu();
         button.ContextMenu = first;
-        first.Presentation.Parent.ShouldBeSameAs(button);
+        var firstOpened = false;
+        first.Opening += (_, _) => firstOpened = true;
+        first.Show(0, 0);
+        firstOpened.ShouldBeTrue("the first menu is attached before replacement");
+        first.Close();
 
         button.ContextMenu = second;
 
         button.ContextMenu.ShouldBeSameAs(second);
-        first.Presentation.Parent.ShouldBeNull();
-        second.Presentation.Parent.ShouldBeSameAs(button);
+        firstOpened = false;
+        first.Show(0, 0);
+        firstOpened.ShouldBeFalse("the first menu is no longer attached after replacement");
+        var secondOpened = false;
+        second.Opening += (_, _) => secondOpened = true;
+        second.Show(0, 0);
+        secondOpened.ShouldBeTrue("the second menu is attached after replacement");
     }
 
-    /// <summary>Verifies clearing the property detaches the popup.</summary>
+    /// <summary>Verifies clearing the property detaches the popup — observed through Show's
+    /// documented unattached no-op rather than the internal Presentation surface.</summary>
     [Fact]
     public void ContextMenu_WhenCleared_DetachesPopup()
     {
         using var button = new Button { Content = new ControlText("Test") };
         var menu = new ContextMenu();
         button.ContextMenu = menu;
-        menu.Presentation.Parent.ShouldBeSameAs(button);
+        var opened = false;
+        menu.Opening += (_, _) => opened = true;
+        menu.Show(0, 0);
+        opened.ShouldBeTrue("the menu is attached before clearing");
+        menu.Close();
 
         button.ContextMenu = null;
 
-        menu.Presentation.Parent.ShouldBeNull();
+        opened = false;
+        menu.Show(0, 0);
+        opened.ShouldBeFalse("the menu is no longer attached after clearing");
     }
 
     /// <summary>Verifies Close() after an indirect detach-driven close does not throw.</summary>
@@ -124,18 +141,21 @@ public sealed class ContextMenuTests
         menu.IsOpen.ShouldBeFalse();
     }
 
-    /// <summary>Verifies setting the same instance is a no-op.</summary>
+    /// <summary>Verifies setting the same instance is a no-op — reassigning an already-open menu
+    /// must not force a detach/reattach that would have closed it.</summary>
     [Fact]
     public void ContextMenu_WhenSetToSameInstance_DoesNothing()
     {
         using var button = new Button { Content = new ControlText("Test") };
         var menu = new ContextMenu();
         button.ContextMenu = menu;
-        var presentation = menu.Presentation;
+        menu.Show(0, 0);
+        menu.IsOpen.ShouldBeTrue();
 
         button.ContextMenu = menu;
 
-        menu.Presentation.ShouldBeSameAs(presentation);
+        menu.IsOpen.ShouldBeTrue();
+        button.ContextMenu.ShouldBeSameAs(menu);
     }
 
     /// <summary>Verifies assigning one menu instance to a second control while it is still owned
@@ -154,13 +174,19 @@ public sealed class ContextMenuTests
         // Act and assert
         _ = Should.Throw<ArgumentException>(() => b.ContextMenu = shared);
 
-        // Assert b's own menu and its presentation stay exactly as they were
+        // Assert b's own menu stays attached and untouched
         b.ContextMenu.ShouldBeSameAs(existing);
-        existing.Presentation.Parent.ShouldBeSameAs(b);
+        var existingOpened = false;
+        existing.Opening += (_, _) => existingOpened = true;
+        existing.Show(0, 0);
+        existingOpened.ShouldBeTrue();
 
         // Assert a's menu is untouched by the rejected assignment
         a.ContextMenu.ShouldBeSameAs(shared);
-        shared.Presentation.Parent.ShouldBeSameAs(a);
+        var sharedOpened = false;
+        shared.Opening += (_, _) => sharedOpened = true;
+        shared.Show(0, 0);
+        sharedOpened.ShouldBeTrue();
     }
 
     /// <summary>Verifies TextInput default context menu type.</summary>

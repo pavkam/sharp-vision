@@ -253,10 +253,6 @@ public sealed class ComponentSurfaceCoverageTests
             _passive | ComponentBehavior.Hover | ComponentBehavior.Composition) },
         { typeof(Popup), Requirement<PopupSurfaceTests>(
             _passive | ComponentBehavior.Hover | ComponentBehavior.Transient | ComponentBehavior.Composition) },
-        { typeof(ContextMenu), Requirement<ContextMenuSurfaceTests>(
-            _passive | ComponentBehavior.Hover | ComponentBehavior.Transient | ComponentBehavior.Composition) },
-        { typeof(TextInputContextMenu), Requirement<ContextMenuSurfaceTests>(
-            _passive | ComponentBehavior.Hover | ComponentBehavior.Transient | ComponentBehavior.Composition) },
         { typeof(Flyout), Requirement<PopupSurfaceTests>(
             _passive | ComponentBehavior.Hover | ComponentBehavior.Transient | ComponentBehavior.Composition) },
         { typeof(Tooltip), Requirement<PopupSurfaceTests>(

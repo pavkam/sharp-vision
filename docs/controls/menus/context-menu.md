@@ -9,22 +9,21 @@ yourself at an explicit position with `Show`.
 
 ## API
 
-| Member                         | Default          | Description                                                        |
-| ------------------------------ | ---------------- | ------------------------------------------------------------------ |
-| `Items`                        | empty            | The typed collection of menu entries the menu manages.             |
-| `IsOpen`                       | `false`          | Reports the committed popup visibility. Read-only.                 |
-| `Presentation`                 | retained `Popup` | The presentation control the owning screen uses to show the menu.  |
-| `Opening`, `Closing`, `Closed` | no subscribers   | Lifecycle notifications raised in order around visibility changes. |
-| `Show(int row, int col)`       | —                | Opens the menu at a zero-based root-cell position while attached.  |
-| `Close()`                      | —                | Closes the menu and clears its fixed origin; safe to call again.   |
+| Member                         | Default        | Description                                                                                                          |
+| ------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `Items`                        | empty          | The typed collection of menu entries the menu manages.                                                               |
+| `IsOpen`                       | `false`        | Reports the committed popup visibility. Read-only.                                                                   |
+| `Opening`, `Closing`, `Closed` | no subscribers | Lifecycle notifications raised in order around visibility changes.                                                   |
+| `Show(int row, int col)`       | —              | Opens the menu at a zero-based root-cell position; a no-op until the menu is assigned to some `Control.ContextMenu`. |
+| `Close()`                      | —              | Closes the menu and clears its fixed origin; safe to call again.                                                     |
 
 ## Ownership
 
 Assigning a menu to `Control.ContextMenu` gives that control ownership of the
-menu's presentation. Only one control can own a menu's presentation at a time:
-assigning the same `IContextMenu` instance to a second control throws
-`ArgumentException`, and the second control keeps whatever context menu it
-already had.
+menu's retained popup presentation, an internal implementation detail not
+exposed on the public API. Only one control can own a menu at a time: assigning
+the same `ContextMenu` instance to a second control throws `ArgumentException`,
+and the second control keeps whatever context menu it already had.
 
 ## Example
 

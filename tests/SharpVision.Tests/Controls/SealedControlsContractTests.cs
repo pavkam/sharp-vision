@@ -9,11 +9,13 @@ namespace SharpVision.Tests.Controls;
 public sealed class SealedControlsContractTests
 {
     // Unsealed only because the library itself subclasses them internally: Flyout/Tooltip : Popup;
-    // TextInputContextMenu : ContextMenu; Dialog<TResult> : Window (and every concrete dialog type
-    // derives from Dialog<TResult> in turn) — the extensibility seam WindowTests.cs already
-    // asserts explicitly (type.IsSealed.ShouldBeFalse()).
+    // Dialog<TResult> : Window (and every concrete dialog type derives from Dialog<TResult> in
+    // turn) — the extensibility seam WindowTests.cs already asserts explicitly
+    // (type.IsSealed.ShouldBeFalse()). ContextMenu is not a Control (see #79) and TextInputContextMenu
+    // : ContextMenu is unsealed for the same internal-subclassing reason, but neither is scanned here
+    // since the predicate below is scoped to Control-assignable types.
     private static readonly HashSet<Type> _documentedExceptions =
-        [typeof(Popup), typeof(ContextMenu), typeof(Window)];
+        [typeof(Popup), typeof(Window)];
 
     private static readonly string[] _controlNamespaces =
     [

@@ -487,7 +487,7 @@ namespace SharpVision.Controls
         protected virtual bool ClipsChildren { get; }
         public bool ContainsFocus { get; }
         public SharpVision.Terminal.Geometry.Rect ContentBounds { get; }
-        public SharpVision.Controls.IContextMenu? ContextMenu { get; set; }
+        public SharpVision.Menus.ContextMenu? ContextMenu { get; set; }
         public SharpVision.Terminal.Geometry.Size DesiredSize { get; }
         public SharpVision.Threading.Dispatcher? Dispatcher { get; }
         public bool EffectiveIsEnabled { get; }
@@ -616,11 +616,6 @@ namespace SharpVision.Controls
         public void Insert(int index, SharpVision.Controls.Control item) { }
         public bool Remove(SharpVision.Controls.Control item) { }
         public void RemoveAt(int index) { }
-    }
-    public interface IContextMenu
-    {
-        SharpVision.Controls.Control Presentation { get; }
-        void Show(int row, int col);
     }
     public enum InvalidationImpact
     {
@@ -1447,7 +1442,7 @@ namespace SharpVision.Controls.Input
     }
     public sealed class TextInputContextMenu : SharpVision.Menus.ContextMenu
     {
-        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        protected override void Dispose(bool disposing) { }
     }
     public sealed class TimeInput : SharpVision.Controls.Control
     {
@@ -2544,17 +2539,17 @@ namespace SharpVision.Layout
 }
 namespace SharpVision.Menus
 {
-    public class ContextMenu : SharpVision.Controls.Control, SharpVision.Controls.IContextMenu
+    public class ContextMenu : System.IDisposable
     {
         public ContextMenu() { }
         public bool IsOpen { get; }
         public SharpVision.Menus.MenuEntryCollection Items { get; }
-        public SharpVision.Controls.Control Presentation { get; }
         public event System.EventHandler? Closed;
         public event System.EventHandler? Closing;
         public event System.EventHandler? Opening;
         public void Close() { }
-        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        public void Dispose() { }
+        protected virtual void Dispose(bool disposing) { }
         public void Show(int row, int col) { }
     }
     public sealed class Menu : SharpVision.Controls.ItemsControl

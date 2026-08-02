@@ -74,8 +74,6 @@ public sealed class ComponentUnitCoverageTests
         { typeof(MenuSeparator), typeof(MenuTests) },
         { typeof(StatusBar), typeof(StatusBarTests) },
         { typeof(StatusBarItem), typeof(StatusBarTests) },
-        { typeof(ContextMenu), typeof(ContextMenuTests) },
-        { typeof(TextInputContextMenu), typeof(ContextMenuTests) },
         { typeof(Popup), typeof(PopupTests) },
         { typeof(Flyout), typeof(FlyoutTests) },
         { typeof(Tooltip), typeof(TooltipTests) },
