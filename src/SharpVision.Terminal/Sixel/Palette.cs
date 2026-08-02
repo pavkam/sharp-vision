@@ -11,14 +11,14 @@ internal sealed class Palette
     private readonly byte[] _identifiers;
 
     /// <summary>Builds a deterministic palette from one complete borrowed indexed raster.</summary>
-    /// <param name="raster">Cube indices or <see cref="Quantizer.Transparent"/>.</param>
+    /// <param name="raster">Cube indices or <see cref="SixelQuantizer.Transparent"/>.</param>
     public Palette(ReadOnlySpan<byte> raster)
     {
         Span<bool> used = stackalloc bool[_cubeSize];
 
         foreach (var color in raster)
         {
-            if (color != Quantizer.Transparent)
+            if (color != SixelQuantizer.Transparent)
             {
                 used[color] = true;
             }
@@ -36,7 +36,7 @@ internal sealed class Palette
 
         _colors = new byte[count];
         _identifiers = new byte[_cubeSize];
-        _identifiers.AsSpan().Fill(Quantizer.Transparent);
+        _identifiers.AsSpan().Fill(SixelQuantizer.Transparent);
         var identifier = 0;
 
         for (var color = 0; color < used.Length; color++)
@@ -66,7 +66,7 @@ internal sealed class Palette
     public byte GetIdentifier(byte color)
     {
         var identifier = _identifiers[color];
-        Debug.Assert(identifier != Quantizer.Transparent, "Only used colors have sixel identifiers.");
+        Debug.Assert(identifier != SixelQuantizer.Transparent, "Only used colors have sixel identifiers.");
         return identifier;
     }
 }

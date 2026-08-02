@@ -4,7 +4,7 @@
 namespace SharpVision.Terminal.Sixel;
 
 /// <summary>Maps sRGB RGBA pixels deterministically into the DEC 216-color cube.</summary>
-internal static class Quantizer
+internal static class SixelQuantizer
 {
     /// <summary>Identifies a fully transparent raster sample.</summary>
     public const byte Transparent = byte.MaxValue;

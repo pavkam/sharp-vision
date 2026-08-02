@@ -101,14 +101,14 @@ internal static class Encoder
 
                 if (!TryMapPixel(source, destination, mode, x, y, out var sourceX, out var sourceY))
                 {
-                    raster[index] = Quantizer.Transparent;
+                    raster[index] = SixelQuantizer.Transparent;
                     samples++;
                     continue;
                 }
 
                 var offset = checked(((sourceY * image.Size.Width) + sourceX) * 4);
                 var pixels = image.Source;
-                raster[index] = Quantizer.Quantize(
+                raster[index] = SixelQuantizer.Quantize(
                     pixels[offset],
                     pixels[offset + 1],
                     pixels[offset + 2],
@@ -282,7 +282,7 @@ internal static class Encoder
             {
                 var color = row[x];
 
-                if (color == Quantizer.Transparent)
+                if (color == SixelQuantizer.Transparent)
                 {
                     continue;
                 }
