@@ -336,7 +336,7 @@ public abstract class Container: Control
         get;
         set
         {
-            EnumValidation.ValidateDefined(value);
+            value.ValidateDefined();
 
             if (!SetProperty(ref field, value, InvalidationImpact.Measure))
             {
@@ -364,7 +364,7 @@ public abstract class Container: Control
         get;
         set
         {
-            EnumValidation.ValidateDefined(value);
+            value.ValidateDefined();
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     } = ScrollBarVisibility.Auto;
@@ -378,7 +378,7 @@ public abstract class Container: Control
         get;
         set
         {
-            EnumValidation.ValidateDefined(value);
+            value.ValidateDefined();
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     } = ScrollBarVisibility.Auto;
@@ -519,7 +519,7 @@ public abstract class Container: Control
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
     public bool ScrollBy(int x, int y, ScrollCause cause = ScrollCause.Programmatic)
     {
-        EnumValidation.ValidateDefined(cause);
+        cause.ValidateDefined();
         VerifyMutable();
         return Apply(LayoutMath.Add(HorizontalOffset, x), LayoutMath.Add(VerticalOffset, y), cause);
     }

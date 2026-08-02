@@ -157,7 +157,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         get;
         set
         {
-            EnumValidation.ValidateDefined(value);
+            value.ValidateDefined();
             _ = SetProperty(ref field, value, InvalidationImpact.Arrange);
         }
     } = HorizontalAlignment.Left;
@@ -171,7 +171,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         get;
         set
         {
-            EnumValidation.ValidateDefined(value);
+            value.ValidateDefined();
             _ = SetProperty(ref field, value, InvalidationImpact.Arrange);
         }
     } = VerticalAlignment.Stretch;
@@ -190,7 +190,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         get;
         set
         {
-            EnumValidation.ValidateDefined(value);
+            value.ValidateDefined();
             var impact = value == Visibility.Collapsed || field == Visibility.Collapsed
                 ? InvalidationImpact.Measure
                 : InvalidationImpact.Render;

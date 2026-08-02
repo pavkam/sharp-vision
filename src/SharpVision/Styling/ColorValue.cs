@@ -70,7 +70,7 @@ public readonly record struct ColorValue
     {
         if (value.IsLiteral)
         {
-            ColorValidation.ValidatePaint(value.Literal, parameterName);
+            ((Color?) value.Literal).ValidatePaint(parameterName);
         }
     }
 }

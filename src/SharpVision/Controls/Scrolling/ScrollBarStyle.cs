@@ -36,8 +36,8 @@ public readonly struct ScrollBarStyle: IEquatable<ScrollBarStyle>
         ColorValue buttonColor,
         ThemeProfile appearance)
     {
-        EnumValidation.ValidateDefined(chrome);
-        EnumValidation.ValidateDefined(fill);
+        chrome.ValidateDefined();
+        fill.ValidateDefined();
         ColorValue.ValidatePaint(trackColor, nameof(trackColor));
         ColorValue.ValidatePaint(thumbColor, nameof(thumbColor));
         ColorValue.ValidatePaint(buttonColor, nameof(buttonColor));

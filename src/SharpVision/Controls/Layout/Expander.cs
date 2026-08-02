@@ -57,8 +57,7 @@ public sealed class Expander: ContentControl
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            TextValidation.ThrowIfContainsControls(
-                value,
+            value.ThrowIfContainsControls(
                 nameof(value),
                 "An expander header cannot contain terminal controls.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);

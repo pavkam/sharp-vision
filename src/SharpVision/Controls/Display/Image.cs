@@ -40,8 +40,7 @@ public sealed class Image: Control
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            TextValidation.ThrowIfContainsControls(
-                value,
+            value.ThrowIfContainsControls(
                 nameof(value),
                 "Alternate text cannot contain control characters.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);

@@ -67,8 +67,7 @@ public sealed class TreeViewItem: Control
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            TextValidation.ThrowIfContainsControls(
-                value,
+            value.ThrowIfContainsControls(
                 nameof(value),
                 "A tree view item header cannot contain terminal controls.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);

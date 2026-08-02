@@ -6,15 +6,17 @@ namespace SharpVision.Styling;
 /// <summary>Validates unresolved UI colors before observable state changes.</summary>
 internal static class ColorValidation
 {
-    /// <summary>Rejects transparency for a channel that paints terminal glyphs.</summary>
-    /// <param name="color">The optional terminal-default or RGB color.</param>
-    /// <param name="parameterName">The public parameter name used by diagnostics.</param>
-    /// <exception cref="ArgumentException"><paramref name="color"/> is transparent.</exception>
-    public static void ValidatePaint(Color? color, string parameterName)
+    extension(Color? color)
     {
-        if (color is { IsTransparent: true })
+        /// <summary>Rejects transparency for a channel that paints terminal glyphs.</summary>
+        /// <param name="parameterName">The public parameter name used by diagnostics.</param>
+        /// <exception cref="ArgumentException"><paramref name="color"/> is transparent.</exception>
+        public void ValidatePaint(string parameterName)
         {
-            throw new ArgumentException("Transparent is valid only for background composition.", parameterName);
+            if (color is { IsTransparent: true })
+            {
+                throw new ArgumentException("Transparent is valid only for background composition.", parameterName);
+            }
         }
     }
 }

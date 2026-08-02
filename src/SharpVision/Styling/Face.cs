@@ -31,7 +31,7 @@ public readonly record struct Face
 
         if (attributes.IsLiteral && underlineColor.IsLiteral)
         {
-            DecorationResolver.Validate(attributes.Literal, underline, underlineColor.Literal);
+            ((TerminalAttributes?) attributes.Literal).Validate(underline, underlineColor.Literal);
         }
 
         Foreground = foreground;

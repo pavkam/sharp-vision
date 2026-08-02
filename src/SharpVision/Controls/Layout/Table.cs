@@ -57,7 +57,7 @@ public sealed class Table: ItemsControl
         get;
         set
         {
-            EnumValidation.ValidateDefined(value);
+            value.ValidateDefined();
 
             if (SetProperty(ref field, value, InvalidationImpact.Render))
             {
@@ -578,7 +578,7 @@ public sealed class Table: ItemsControl
     public void SetSort(int columnIndex, TableSortDirection direction)
     {
         VerifyMutable();
-        EnumValidation.ValidateDefined(direction);
+        direction.ValidateDefined();
 
         if (direction == TableSortDirection.None)
         {

@@ -21,7 +21,7 @@ public readonly struct CheckBoxStyle: IEquatable<CheckBoxStyle>
     /// <exception cref="ArgumentNullException"><paramref name="appearance"/> is <see langword="null"/>.</exception>
     public CheckBoxStyle(CheckBoxMarkStyle markStyle, CheckBoxGlyphs glyphs, ThemeProfile appearance)
     {
-        EnumValidation.ValidateDefined(markStyle);
+        markStyle.ValidateDefined();
         var validatedGlyphs = new CheckBoxGlyphs(glyphs.Unchecked, glyphs.Checked, glyphs.Indeterminate);
         ArgumentNullException.ThrowIfNull(appearance);
 

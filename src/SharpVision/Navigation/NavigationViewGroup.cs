@@ -51,8 +51,7 @@ public sealed class NavigationViewGroup: Control
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            TextValidation.ThrowIfContainsControls(
-                value,
+            value.ThrowIfContainsControls(
                 nameof(value),
                 "A navigation group header cannot contain terminal controls.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);

@@ -23,8 +23,7 @@ public sealed class TabItem: ContentControl
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            TextValidation.ThrowIfContainsControls(
-                value,
+            value.ThrowIfContainsControls(
                 nameof(value),
                 "A tab header cannot contain terminal controls.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);

@@ -134,7 +134,7 @@ public sealed class Theme
             throw new InvalidOperationException("A frozen theme cannot be changed.");
         }
 
-        DecorationResolver.Validate(value, null, null);
+        ((TerminalAttributes?) value).Validate(null, null);
         _attributes[(int) decoration] = value;
     }
 

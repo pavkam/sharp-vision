@@ -91,7 +91,7 @@ public sealed class TabControl: ItemsControl
         get;
         set
         {
-            EnumValidation.ValidateDefined(value);
+            value.ValidateDefined();
 
             if (!SetProperty(ref field, value, InvalidationImpact.Measure))
             {

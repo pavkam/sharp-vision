@@ -35,7 +35,7 @@ public readonly struct CheckMark: IEquatable<CheckMark>
     /// <exception cref="ArgumentException">A glyph is a control or is not one cell wide.</exception>
     public CheckMark(CheckBoxMarkStyle markStyle, CheckBoxGlyphs glyphs)
     {
-        EnumValidation.ValidateDefined(markStyle);
+        markStyle.ValidateDefined();
 
         // Reconstructing the family revalidates every glyph, so a default-constructed
         // CheckBoxGlyphs cannot smuggle an unvalidated rune through.

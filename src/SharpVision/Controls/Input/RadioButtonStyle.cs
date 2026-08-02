@@ -20,7 +20,7 @@ public readonly struct RadioButtonStyle: IEquatable<RadioButtonStyle>
     /// <exception cref="ArgumentNullException"><paramref name="appearance"/> is <see langword="null"/>.</exception>
     public RadioButtonStyle(RadioButtonMarkStyle markStyle, RadioButtonGlyphs glyphs, ThemeProfile appearance)
     {
-        EnumValidation.ValidateDefined(markStyle);
+        markStyle.ValidateDefined();
         ArgumentNullException.ThrowIfNull(appearance);
 
         _markStyle = markStyle;

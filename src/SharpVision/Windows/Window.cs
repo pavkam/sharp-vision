@@ -240,8 +240,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            TextValidation.ThrowIfContainsControls(
-                value,
+            value.ThrowIfContainsControls(
                 nameof(value),
                 "A window header cannot contain terminal controls.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);

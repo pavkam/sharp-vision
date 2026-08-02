@@ -17,7 +17,7 @@ public readonly record struct AttributeValue
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="literal"/> contains unknown flags.</exception>
     public AttributeValue(TerminalAttributes literal)
     {
-        DecorationResolver.Validate(literal, null, null);
+        ((TerminalAttributes?) literal).Validate(null, null);
         LiteralValue = literal;
         ThemeDecorationValue = default;
         ContainsThemeValue = false;

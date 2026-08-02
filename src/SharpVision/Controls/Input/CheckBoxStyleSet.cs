@@ -20,7 +20,7 @@ public readonly record struct CheckBoxStyleSet
     {
         if (markStyle is { } markStyleValue)
         {
-            EnumValidation.ValidateDefined(markStyleValue);
+            markStyleValue.ValidateDefined();
         }
 
         CheckBoxGlyphs? validatedGlyphs = null;

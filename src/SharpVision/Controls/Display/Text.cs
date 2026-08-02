@@ -80,7 +80,7 @@ public sealed class Text: Control, IAccessKeyCaption
         get;
         set
         {
-            EnumValidation.ValidateDefined(value);
+            value.ValidateDefined();
 
             if (SetProperty(ref field, value, InvalidationImpact.Measure))
             {
@@ -98,7 +98,7 @@ public sealed class Text: Control, IAccessKeyCaption
         get;
         set
         {
-            EnumValidation.ValidateDefined(value);
+            value.ValidateDefined();
             _ = SetProperty(ref field, value, InvalidationImpact.Arrange);
         }
     }
@@ -112,7 +112,7 @@ public sealed class Text: Control, IAccessKeyCaption
         get => _hasAmbiguousWidth ? AmbiguousWidthValue : CellPolicy.AmbiguousWidth;
         set
         {
-            EnumValidation.ValidateDefined(value);
+            value.ValidateDefined();
             VerifyMutable();
 
             if (_hasAmbiguousWidth && AmbiguousWidthValue == value)

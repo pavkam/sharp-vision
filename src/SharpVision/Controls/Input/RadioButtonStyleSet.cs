@@ -20,7 +20,7 @@ public readonly record struct RadioButtonStyleSet
     {
         if (markStyle is { } markStyleValue)
         {
-            EnumValidation.ValidateDefined(markStyleValue);
+            markStyleValue.ValidateDefined();
         }
 
         RadioButtonGlyphs? validatedGlyphs = null;

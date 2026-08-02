@@ -28,12 +28,12 @@ public readonly record struct ScrollBarStyleSet
     {
         if (chrome is { } chromeValue)
         {
-            EnumValidation.ValidateDefined(chromeValue);
+            chromeValue.ValidateDefined();
         }
 
         if (fill is { } fillValue)
         {
-            EnumValidation.ValidateDefined(fillValue);
+            fillValue.ValidateDefined();
         }
 
         if (glyphs is { } glyphValues)

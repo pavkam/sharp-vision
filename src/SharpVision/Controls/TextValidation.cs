@@ -6,16 +6,18 @@ namespace SharpVision.Controls;
 /// <summary>Validates single-line text accepted by control label contracts.</summary>
 internal static class TextValidation
 {
-    /// <summary>Rejects a value containing a terminal control character.</summary>
-    /// <param name="value">The proposed non-null label text.</param>
-    /// <param name="paramName">The validated parameter name.</param>
-    /// <param name="message">The exception message naming the specific label.</param>
-    /// <exception cref="ArgumentException"><paramref name="value"/> contains a control cluster.</exception>
-    public static void ThrowIfContainsControls(string value, string paramName, string message)
+    extension(string value)
     {
-        if (Width.Measure(value).Controls > 0)
+        /// <summary>Rejects a value containing a terminal control character.</summary>
+        /// <param name="paramName">The validated parameter name.</param>
+        /// <param name="message">The exception message naming the specific label.</param>
+        /// <exception cref="ArgumentException"><paramref name="value"/> contains a control cluster.</exception>
+        public void ThrowIfContainsControls(string paramName, string message)
         {
-            throw new ArgumentException(message, paramName);
+            if (Width.Measure(value).Controls > 0)
+            {
+                throw new ArgumentException(message, paramName);
+            }
         }
     }
 }

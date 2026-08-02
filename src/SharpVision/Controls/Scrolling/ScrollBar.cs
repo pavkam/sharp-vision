@@ -182,7 +182,7 @@ public sealed class ScrollBar: Control
         get;
         set
         {
-            EnumValidation.ValidateDefined(value);
+            value.ValidateDefined();
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     }
@@ -250,7 +250,7 @@ public sealed class ScrollBar: Control
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public bool ScrollBy(int delta, ScrollCause cause = ScrollCause.Programmatic)
     {
-        EnumValidation.ValidateDefined(cause);
+        cause.ValidateDefined();
         VerifyMutable();
         var range = CurrentRange();
         return Commit(range.Move(delta), cause);

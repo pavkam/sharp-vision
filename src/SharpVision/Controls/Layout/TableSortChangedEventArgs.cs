@@ -14,7 +14,7 @@ public sealed class TableSortChangedEventArgs: EventArgs
     public TableSortChangedEventArgs(int columnIndex, TableSortDirection direction)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(columnIndex, -1);
-        EnumValidation.ValidateDefined(direction);
+        direction.ValidateDefined();
         ColumnIndex = columnIndex;
         Direction = direction;
     }

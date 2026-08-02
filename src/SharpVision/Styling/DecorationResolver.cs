@@ -41,17 +41,18 @@ internal static class DecorationResolver
         return (resolvedAttributes, resolvedUnderline, resolvedColor);
     }
 
-    /// <summary>Validates optional attributes, underline variant, and underline color together.</summary>
-    /// <param name="attributes">The optional complete rendition flag set.</param>
-    /// <param name="underline">The optional typed underline variant.</param>
-    /// <param name="underlineColor">The optional semantic underline color.</param>
-    /// <exception cref="ArgumentException">The decoration fields conflict.</exception>
-    /// <exception cref="ArgumentOutOfRangeException">An enum or flag value is unknown.</exception>
-    public static void Validate(
-        TerminalAttributes? attributes,
-        Underline? underline,
-        Color? underlineColor) => _ = new TerminalStyle(
-        attributes: attributes ?? TerminalAttributes.None,
-        underline: underline ?? Underline.None,
-        underlineColor: underlineColor ?? Color.Default);
+    extension(TerminalAttributes? attributes)
+    {
+        /// <summary>Validates optional attributes, underline variant, and underline color together.</summary>
+        /// <param name="underline">The optional typed underline variant.</param>
+        /// <param name="underlineColor">The optional semantic underline color.</param>
+        /// <exception cref="ArgumentException">The decoration fields conflict.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">An enum or flag value is unknown.</exception>
+        public void Validate(
+            Underline? underline,
+            Color? underlineColor) => _ = new TerminalStyle(
+            attributes: attributes ?? TerminalAttributes.None,
+            underline: underline ?? Underline.None,
+            underlineColor: underlineColor ?? Color.Default);
+    }
 }
