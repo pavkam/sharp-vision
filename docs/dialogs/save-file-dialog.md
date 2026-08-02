@@ -108,13 +108,6 @@ are markup-escaped and ellipsized.
   into `FileName`; selecting a directory does not.
 - Invoking a file updates the filename and then attempts the Save, whether the
   invocation came from the pointer or from the keyboard.
-
-  > [!IMPORTANT]
-  >
-  > **Implementation gap:** Pointer invocation currently only updates the
-  > filename without attempting the Save; only keyboard invocation saves. Issue
-  > #227 tracks pointer acceptance.
-
 - Typing a non-blank filename enables Save. Pressing Enter in the filename input
   and activating the default Save button run the same completion path.
 - The result path is `GetFullPath(Path.Combine(CurrentDirectory, trimmedName))`.

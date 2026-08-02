@@ -160,13 +160,6 @@ link cycles cannot create traversal cycles.
 - Invoking a file accepts the current file selection, whether the invocation
   came from the pointer or from Enter. Open is enabled only while at least one
   file is selected.
-
-  > [!IMPORTANT]
-  >
-  > **Implementation gap:** Pointer invocation currently only selects the file
-  > without dismissing the dialog; only keyboard invocation accepts. Issue #227
-  > tracks pointer acceptance.
-
 - Changing the filter or the Show hidden toggle starts a replacement load. When
   it succeeds, the selection is remapped by canonical path: entries still
   present stay selected, while filtered or removed entries leave the selection.

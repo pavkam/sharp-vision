@@ -174,10 +174,8 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>
     /// <inheritdoc/>
     private protected override void OnFileItemInvoked(FilePickerEntry entry, ActivationCause cause)
     {
-        if (cause == ActivationCause.Keyboard)
-        {
-            CompleteAccepted();
-        }
+        _ = cause;
+        CompleteAccepted();
     }
 
     private void CompleteAccepted()

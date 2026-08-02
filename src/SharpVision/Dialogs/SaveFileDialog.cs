@@ -208,13 +208,10 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>
     /// <inheritdoc/>
     private protected override void OnFileItemInvoked(FilePickerEntry entry, ActivationCause cause)
     {
+        _ = cause;
         TrySetFileName(entry.Name);
         UpdateSaveEnabled();
-
-        if (cause == ActivationCause.Keyboard)
-        {
-            CompleteAcceptedAsync();
-        }
+        CompleteAcceptedAsync();
     }
 
     private async void CompleteAcceptedAsync()

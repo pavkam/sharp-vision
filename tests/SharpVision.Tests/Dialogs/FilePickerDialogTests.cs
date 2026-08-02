@@ -96,6 +96,40 @@ public sealed class FilePickerDialogTests
         OwnedTree.Find<TextInput>(dialog).ShouldNotBeNull().Text.ShouldBe(directory);
     }
 
+    /// <summary>Verifies invoking a file with the pointer accepts the dialog exactly like invoking it
+    /// with the keyboard, instead of only updating the selection and leaving the dialog open
+    /// (see #227).</summary>
+    [Fact]
+    public async Task SelectionAndInvocation_WhenFileIsInvokedWithPointer_AcceptsAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-pointer-accept"));
+        var file = Path.Combine(directory, "notes.txt");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory, new FilePickerEntry("notes.txt", file, isDirectory: false, isHidden: false));
+        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(80, 24),
+            TestContext.Current.CancellationToken);
+        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                list.SelectedIndex = 0;
+                list.ActivateCurrent(ActivationCause.Pointer, null, Modifiers.None).ShouldBeTrue();
+            },
+            "invoke file with pointer");
+
+        // Assert
+        dialog.HasSelectedResult.ShouldBeTrue();
+        var result = dialog.SelectedResult.ShouldNotBeNull();
+        result.Accepted.ShouldBeTrue();
+        result.Paths.ShouldHaveSingleItem().ShouldBe(file);
+    }
+
     /// <summary>Verifies navigating into a directory whose name contains a control character - legal
     /// filesystem data on POSIX - degrades to a status message instead of force-stopping the
     /// application when the unrepresentable name reaches TextInput.Text (see #219).</summary>

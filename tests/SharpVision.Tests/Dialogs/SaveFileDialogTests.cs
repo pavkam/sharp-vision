@@ -243,6 +243,43 @@ public sealed class SaveFileDialogTests
         fileNameInput.Text.ShouldBe(string.Empty);
     }
 
+    /// <summary>Verifies invoking a file with the pointer updates the filename and attempts the save
+    /// exactly like invoking it with the keyboard, instead of only updating the filename and leaving
+    /// the dialog open (see #227).</summary>
+    [Fact]
+    public async Task Selection_WhenFileIsInvokedWithPointer_AttemptsSaveAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "save-pointer-accept"));
+        var existingPath = Path.Combine(directory, "existing.txt");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory, new FilePickerEntry("existing.txt", existingPath, false, false));
+        var dialog = new SaveFileDialog(
+            new SaveFileOptions { InitialDirectory = directory, ConfirmOverwrite = false },
+            source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(100, 40),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(static () => { }, "settle load");
+        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                list.SelectedIndex = 0;
+                list.ActivateCurrent(ActivationCause.Pointer, null, Modifiers.None).ShouldBeTrue();
+            },
+            "invoke file with pointer");
+
+        // Assert
+        dialog.HasSelectedResult.ShouldBeTrue();
+        var result = dialog.SelectedResult.ShouldNotBeNull();
+        result.Confirmed.ShouldBeTrue();
+        result.Path.ShouldBe(existingPath);
+    }
+
     /// <summary>Verifies the dialog loads a directory and publishes file count on attachment.</summary>
     [Fact]
     public async Task OnAttached_WhenDirectoryLoads_PublishesCommittedSnapshotAsync()
