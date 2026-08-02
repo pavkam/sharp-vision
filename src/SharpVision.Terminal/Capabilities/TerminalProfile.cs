@@ -117,7 +117,7 @@ public sealed class TerminalProfile
         // general profile still crosses the normal evidence-validation boundary.
         Capabilities = preserveExactCapabilities
             ? capabilities
-            : DescriptionEvidenceAdapter.Apply(capabilities, Description, programs);
+            : capabilities.Apply(Description, programs);
         Programs = programs;
         KeyMap = keyMap;
     }

@@ -26,6 +26,6 @@ internal sealed class QueryDiscoveryStrategy: IDiscoveryStrategy
         ArgumentNullException.ThrowIfNull(current);
         ArgumentNullException.ThrowIfNull(context);
 
-        return QueryEvidenceAdapter.Apply(current, context.Queries);
+        return current.Apply(context.Queries);
     }
 }

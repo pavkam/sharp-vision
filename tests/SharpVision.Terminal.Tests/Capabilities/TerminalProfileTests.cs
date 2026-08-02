@@ -30,9 +30,7 @@ public sealed class TerminalProfileTests
         });
 
         // Act
-        var capabilities = DescriptionEvidenceAdapter.Apply(
-            TerminalCapabilities.Conservative,
-            description,
+        var capabilities = TerminalCapabilities.Conservative.Apply(description,
             programs);
 
         // Assert
@@ -111,9 +109,7 @@ public sealed class TerminalProfileTests
         var capabilities = TerminalCapabilities.Conservative with { Osc52 = existing };
 
         // Act
-        var projected = DescriptionEvidenceAdapter.Apply(
-            capabilities,
-            DatabaseDescription(),
+        var projected = capabilities.Apply(DatabaseDescription(),
             DatabasePrograms(includeOsc52: true));
 
         // Assert
@@ -129,9 +125,7 @@ public sealed class TerminalProfileTests
         var capabilities = TerminalCapabilities.Conservative with { Osc52 = existing };
 
         // Act
-        var projected = DescriptionEvidenceAdapter.Apply(
-            capabilities,
-            DatabaseDescription(),
+        var projected = capabilities.Apply(DatabaseDescription(),
             DatabasePrograms(includeOsc52: true));
 
         // Assert
@@ -151,9 +145,7 @@ public sealed class TerminalProfileTests
         var capabilities = TerminalCapabilities.Conservative with { Osc52 = existing };
 
         // Act
-        var projected = DescriptionEvidenceAdapter.Apply(
-            capabilities,
-            DatabaseDescription(),
+        var projected = capabilities.Apply(DatabaseDescription(),
             DatabasePrograms(includeOsc52: true));
 
         // Assert
@@ -506,9 +498,7 @@ public sealed class TerminalProfileTests
         });
 
         // Act
-        var capabilities = DescriptionEvidenceAdapter.Apply(
-            TerminalCapabilities.Conservative,
-            description,
+        var capabilities = TerminalCapabilities.Conservative.Apply(description,
             programs);
 
         // Assert

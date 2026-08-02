@@ -65,5 +65,5 @@ public static class Detector
     internal static TerminalCapabilities ApplyDescriptionEvidence(
         TerminalCapabilities capabilities,
         Description description,
-        Programs programs) => DescriptionEvidenceAdapter.Apply(capabilities, description, programs);
+        Programs programs) => capabilities.Apply(description, programs);
 }

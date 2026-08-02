@@ -26,6 +26,6 @@ internal sealed class EnvironmentDiscoveryStrategy: IDiscoveryStrategy
         ArgumentNullException.ThrowIfNull(current);
         ArgumentNullException.ThrowIfNull(context);
 
-        return EnvironmentEvidenceAdapter.Apply(current, context.Environment);
+        return current.Apply(context.Environment);
     }
 }

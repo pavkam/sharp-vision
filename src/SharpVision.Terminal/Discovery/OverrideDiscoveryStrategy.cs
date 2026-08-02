@@ -26,6 +26,6 @@ internal sealed class OverrideDiscoveryStrategy: IDiscoveryStrategy
         ArgumentNullException.ThrowIfNull(current);
         ArgumentNullException.ThrowIfNull(context);
 
-        return OverrideEvidenceAdapter.Apply(current, context.Overrides);
+        return current.Apply(context.Overrides);
     }
 }
