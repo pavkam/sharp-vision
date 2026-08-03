@@ -99,6 +99,42 @@ public sealed class ListView: ItemsControl
         }
     } = DefaultTemplate;
 
+    /// <summary>Gets or sets the fixed per-row cell height that opts into virtualized viewport-window
+    /// realization; <see langword="null"/> retains today's eager realization.</summary>
+    /// <remarks>
+    /// This is scaffolding tracked by #231. A <see langword="null"/> value (the default) is
+    /// guaranteed to keep today's eager, byte-for-byte realization unchanged - ComboBox,
+    /// the file-picker dialogs, and every existing showcase and test embed a <see cref="ListView"/>
+    /// on that guarantee. Assigning a non-null value currently only records the requested row height;
+    /// the windowing realization engine that consumes it (extent synthesis, overscan, and the four
+    /// selection/navigation sites that must ignore unrealized rows) has not shipped yet, so setting
+    /// this property has no observable effect on realization, layout, or navigation until that engine
+    /// lands.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The value is zero or negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    public int? RowHeight
+    {
+        get;
+        set
+        {
+            if (value is <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "RowHeight must be a positive cell count.");
+            }
+
+            VerifyMutable();
+
+            if (field == value)
+            {
+                return;
+            }
+
+            _ = SetProperty(ref field, value, InvalidationImpact.None);
+        }
+    }
+
     /// <summary>Gets or sets whether no, one, or many indexes may be selected.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>

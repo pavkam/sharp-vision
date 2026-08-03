@@ -566,6 +566,85 @@ public sealed class ListViewTests
         _ = changes.ShouldHaveSingleItem();
     }
 
+    /// <summary>Verifies RowHeight defaults to null and that leaving it unset produces byte-identical
+    /// eager realization, rendering, and disposal - the one guarantee #231's scaffolding must never
+    /// break, since ComboBox and the file-picker dialogs embed a ListView on it.</summary>
+    [Fact]
+    public void RowHeight_WhenUnset_KeepsEagerRealizationByteIdentical()
+    {
+        List<Label> realizedWithoutRowHeight = [];
+        var baseline = new UiListView
+        {
+            ItemTemplate = item => Add(realizedWithoutRowHeight, new Label(item?.ToString() ?? "null")),
+            Items = Enumerable.Range(0, 5).Select(value => (object?) $"Item {value}").ToArray()
+        };
+        new LayoutEngine().Layout(baseline, new Size(10, 3));
+        using Frame baselineFrame = new(new Size(10, 3));
+        baseline.Render(baselineFrame.Canvas);
+
+        List<Label> realizedWithNullRowHeight = [];
+        var control = new UiListView
+        {
+            RowHeight = null,
+            ItemTemplate = item => Add(realizedWithNullRowHeight, new Label(item?.ToString() ?? "null")),
+            Items = Enumerable.Range(0, 5).Select(value => (object?) $"Item {value}").ToArray()
+        };
+        new LayoutEngine().Layout(control, new Size(10, 3));
+        using Frame frame = new(new Size(10, 3));
+        control.Render(frame.Canvas);
+
+        control.RowHeight.ShouldBeNull();
+        realizedWithNullRowHeight.Count.ShouldBe(realizedWithoutRowHeight.Count);
+        realizedWithNullRowHeight.Count.ShouldBe(5);
+        realizedWithNullRowHeight.All(item => item.Parent is not null).ShouldBeTrue();
+
+        for (var y = 0; y < 3; y++)
+        {
+            for (var x = 0; x < 10; x++)
+            {
+                var point = new Point(x, y);
+                FrameOracle.Get(frame, point).ShouldBe(FrameOracle.Get(baselineFrame, point));
+            }
+        }
+    }
+
+    /// <summary>Verifies RowHeight can be assigned and read back without altering eager realization,
+    /// since the windowing engine that would consume it has not shipped yet (#231 scaffolding).</summary>
+    [Fact]
+    public void RowHeight_WhenAssigned_RoundTripsWithoutAlteringEagerRealization()
+    {
+        List<Label> realized = [];
+        var control = new UiListView
+        {
+            RowHeight = 1,
+            ItemTemplate = item => Add(realized, new Label(item?.ToString() ?? "null")),
+            Items = Enumerable.Range(0, 5).Select(value => (object?) $"Item {value}").ToArray()
+        };
+
+        control.RowHeight.ShouldBe(1);
+        new LayoutEngine().Layout(control, new Size(10, 3));
+        using Frame frame = new(new Size(10, 3));
+        control.Render(frame.Canvas);
+
+        realized.Count.ShouldBe(5);
+        realized.All(item => item.Parent is not null).ShouldBeTrue();
+
+        control.RowHeight = 4;
+        control.RowHeight.ShouldBe(4);
+    }
+
+    /// <summary>Verifies RowHeight rejects non-positive cell counts.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void RowHeight_WhenNonPositive_ThrowsArgumentOutOfRangeException(int value)
+    {
+        var control = Create("A", "B", "C");
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.RowHeight = value);
+        control.RowHeight.ShouldBeNull();
+    }
+
     /// <summary>Verifies BringIntoView(index) scrolls minimally to reveal an item below the
     /// viewport, addressed by position rather than a realized private control.</summary>
     [Fact]
