@@ -3,8 +3,6 @@
 
 namespace SharpVision.Controls.Input;
 
-using DisplayText = Display.Text;
-
 /// <summary>Defines a focusable clickable text control styled as a classic hyperlink.</summary>
 [PublicAPI]
 public sealed class HyperlinkButton: PressableBase
@@ -39,30 +37,7 @@ public sealed class HyperlinkButton: PressableBase
     public HyperlinkButton(string text) : this()
     {
         ArgumentNullException.ThrowIfNull(text);
-        Content = new DisplayText(text);
-    }
-
-    /// <summary>Gets or sets the displayed link text.</summary>
-    /// <exception cref="ArgumentNullException">The value is null.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public string? Text
-    {
-        get => Content is DisplayText text ? text.Content : null;
-        set
-        {
-            ArgumentNullException.ThrowIfNull(value);
-            VerifyMutable();
-
-            if (Content is DisplayText existing)
-            {
-                existing.Content = value;
-            }
-            else
-            {
-                Content = new DisplayText(value);
-            }
-        }
+        Text = text;
     }
 
     /// <summary>Raised after released state commits and before command execution.</summary>

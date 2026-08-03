@@ -11,7 +11,7 @@ public sealed class CheckBoxSurfaceTests
     public async Task Render_WhenUncheckedUnicodeContentIsMounted_ShowsExactNormalCellsAsync()
     {
         // Arrange
-        var checkBox = new CheckBox { Content = new ControlText("界") };
+        var checkBox = new CheckBox { Text = "界" };
 
         // Act
         await using var surface = await ComponentSurface.MountAsync(
@@ -45,7 +45,7 @@ public sealed class CheckBoxSurfaceTests
     {
         // Arrange
         ActivationCause? cause = null;
-        var checkBox = new CheckBox { Content = new ControlText("Choice") };
+        var checkBox = new CheckBox { Text = "Choice" };
         checkBox.Checked += (_, eventArgs) => cause = eventArgs.Cause;
         await using var surface = await ComponentSurface.MountAsync(
             checkBox,
@@ -99,7 +99,7 @@ public sealed class CheckBoxSurfaceTests
     {
         // Arrange
         List<ActivationCause> causes = [];
-        var checkBox = new CheckBox { Content = new ControlText("Option"), IsThreeState = true };
+        var checkBox = new CheckBox { Text = "Option", IsThreeState = true };
         checkBox.StateChanged += (_, eventArgs) => causes.Add(eventArgs.Cause);
         await using var surface = await ComponentSurface.MountAsync(
             checkBox,
@@ -136,7 +136,7 @@ public sealed class CheckBoxSurfaceTests
     {
         // Arrange
         var changes = 0;
-        var checkBox = new CheckBox { Content = new ControlText("Disabled"), IsChecked = true };
+        var checkBox = new CheckBox { Text = "Disabled", IsChecked = true };
         checkBox.StateChanged += (_, _) => changes++;
         await using var surface = await ComponentSurface.MountAsync(
             checkBox,
@@ -177,7 +177,7 @@ public sealed class CheckBoxSurfaceTests
     public async Task Render_WhenCheckBoxIsTwoCellsWide_ClipsMarkAndContentAsync()
     {
         // Arrange
-        var checkBox = new CheckBox { Content = new ControlText("Hidden") };
+        var checkBox = new CheckBox { Text = "Hidden" };
 
         // Act
         await using var surface = await ComponentSurface.MountAsync(

@@ -10,13 +10,13 @@ public sealed class MenuItemShortcutTests
     [Fact]
     public void Render_WhenShortcutTextIsSet_DrawsDimTextAtRightEdge()
     {
-        var content = new ControlText("Save");
         var item = new MenuItem
         {
-            Content = content,
+            Text = "Save",
             ShortcutText = "Ctrl+S",
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
+        var content = item.TextControl!;
         var size = new Size(20, 1);
         new LayoutEngine().Layout(item, size);
         using Frame frame = new(size);
@@ -37,7 +37,7 @@ public sealed class MenuItemShortcutTests
     [Fact]
     public void Measure_WhenShortcutTextIsSet_IncludesShortcutWidthPlusSpacing()
     {
-        var item = new MenuItem { Content = new ControlText("Open"), ShortcutText = "Ctrl+O" };
+        var item = new MenuItem { Text = "Open", ShortcutText = "Ctrl+O" };
 
         new LayoutEngine().Layout(item, new Size(100, 1));
 
@@ -50,7 +50,7 @@ public sealed class MenuItemShortcutTests
     [Fact]
     public void Render_WhenShortcutTextIsNull_RendersNormally()
     {
-        var item = new MenuItem { Content = new ControlText("Exit") };
+        var item = new MenuItem { Text = "Exit" };
         var size = new Size(10, 1);
         new LayoutEngine().Layout(item, size);
         using Frame frame = new(size);
@@ -69,7 +69,7 @@ public sealed class MenuItemShortcutTests
         // Arrange
         var item = new MenuItem
         {
-            Content = new ControlText("Open"),
+            Text = "Open",
             ShortcutText = "界",
             HorizontalAlignment = HorizontalAlignment.Stretch
         };

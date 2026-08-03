@@ -40,7 +40,7 @@ internal sealed class MessageBoxPane: CompositeControlBase
         MessageBoxButtons buttons,
         string message)
     {
-        var launcher = new Button { Content = new Text(label) };
+        var launcher = new Button { Text = label };
         launcher.Click += async (_, _) =>
         {
             var result = await MessageBox.ShowAsync(launcher, message, "MessageBox", buttons);

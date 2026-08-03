@@ -62,8 +62,8 @@ internal sealed class WindowPane: CompositeControlBase
         };
         var windowStatus = new Text("Window: open");
         var activationStatus = new Text("Active Window: none");
-        var reopenWindow = new Button { Content = new Text("Reopen &window") };
-        var closeWindow = new Button { Content = new Text("&Close via API") };
+        var reopenWindow = new Button { Text = "Reopen &window" };
+        var closeWindow = new Button { Text = "&Close via API" };
         draggable.Closing += (_, _) =>
         {
             draggable.Visibility = Visibility.Collapsed;
@@ -146,15 +146,15 @@ internal sealed class WindowPane: CompositeControlBase
         };
         var dialogStatus = new Text("Dialog: closed");
         var workspaceStatus = new Text("Workspace action: untouched");
-        var workspaceAction = new Button { Content = new Text("Wor&kspace action") };
+        var workspaceAction = new Button { Text = "Wor&kspace action" };
         var closeButton = new Button
         {
-            Content = new Text("Ca&ncel"),
+            Text = "Ca&ncel",
             IsCancel = true
         };
         var okButton = new Button
         {
-            Content = new Text("&Deploy"),
+            Text = "&Deploy",
             IsDefault = true
         };
         workspaceAction.Click += (_, _) => workspaceStatus.Content = "Workspace action: activated";
@@ -172,7 +172,7 @@ internal sealed class WindowPane: CompositeControlBase
             new Text("Proceed with deployment?") { Overflow = Overflow.Wrap },
             new DocRow(okButton, closeButton));
 
-        var openButton = new Button { Content = new Text("&Open dialog") };
+        var openButton = new Button { Text = "&Open dialog" };
         openButton.Click += (_, _) =>
         {
             // Ignore blocks background activation while the modal scope owns focus.
@@ -332,8 +332,8 @@ internal sealed class WindowPane: CompositeControlBase
 
     private static DocColumn CreateSettingsForm()
     {
-        var apply = new Button { Content = new Text("Appl&y"), IsDefault = true };
-        var cancel = new Button { Content = new Text("&Cancel"), IsCancel = true };
+        var apply = new Button { Text = "Appl&y", IsDefault = true };
+        var cancel = new Button { Text = "&Cancel", IsCancel = true };
         var actions = new DocRow(apply, cancel)
         {
             HorizontalAlignment = HorizontalAlignment.Center
@@ -344,8 +344,8 @@ internal sealed class WindowPane: CompositeControlBase
 
         return new DocColumn(
             new Text("Choose project options."),
-            new CheckBox { Content = new Text("&Restore last session"), IsChecked = true },
-            new CheckBox { Content = new Text("Start in saf&e mode") },
+            new CheckBox { Text = "&Restore last session", IsChecked = true },
+            new CheckBox { Text = "Start in saf&e mode" },
             actions,
             status);
     }

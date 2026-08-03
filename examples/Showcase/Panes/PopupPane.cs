@@ -20,8 +20,8 @@ internal sealed class PopupPane: CompositeControlBase
         var status = new Text("Selected action: none");
         var scopeStatus = new Text("Modal scope: closed");
         var backdropStatus = new Text("Workspace action: untouched");
-        var trigger = new Button { Content = new Text("&Actions ▼") };
-        var backdropAction = new Button { Content = new Text("&Workspace action") };
+        var trigger = new Button { Text = "&Actions ▼" };
+        var backdropAction = new Button { Text = "&Workspace action" };
         var choices = new ListView
         {
             Width = Length.Cells(24),
@@ -112,7 +112,7 @@ internal sealed class PopupPane: CompositeControlBase
         placementSurface.Border = PopupBorder(BorderGlyphStyle.Rounded);
 
         // Lower-edge anchor forces flip-above fallback inside a short host.
-        var edgeTrigger = new Button { Content = new Text("&Edge anchor") };
+        var edgeTrigger = new Button { Text = "&Edge anchor" };
         var edgePopup = new Popup
         {
             Anchor = edgeTrigger,
@@ -131,7 +131,7 @@ internal sealed class PopupPane: CompositeControlBase
 
         // Closing runs while content is still available; Closed follows afterward.
         var lifecycleStatus = new Text("Lifecycle: closed");
-        var lifecycleAnchor = new Button { Content = new Text("&Show lifecycle popup") };
+        var lifecycleAnchor = new Button { Text = "&Show lifecycle popup" };
         var lifecyclePopup = new Popup { Anchor = lifecycleAnchor, Content = new Text("Lifecycle content") };
         lifecyclePopup.Closing += (_, _) => lifecycleStatus.Content = "Lifecycle: Closing";
         lifecyclePopup.Closed += (_, _) => lifecycleStatus.Content += " → Closed";
@@ -159,7 +159,7 @@ internal sealed class PopupPane: CompositeControlBase
             lifecycleStatus);
 
         // Open popup recomputes placement on the next layout pass after resize.
-        var resizeAnchor = new Button { Content = new Text("Resi&ze anchor") };
+        var resizeAnchor = new Button { Text = "Resi&ze anchor" };
         var resizePopup = new Popup
         {
             Anchor = resizeAnchor,
@@ -249,7 +249,7 @@ internal sealed class PopupPane: CompositeControlBase
 
     private static Button PlacementControl(string label) => new()
     {
-        Content = new Text(label),
+        Text = label,
         Padding = new Thickness(1, 0)
     };
 }

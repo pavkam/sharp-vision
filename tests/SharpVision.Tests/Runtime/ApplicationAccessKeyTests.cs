@@ -14,7 +14,7 @@ public sealed class ApplicationAccessKeyTests
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 4)));
         var input = new TextInput { Text = "seed" };
-        var button = new Button { Content = new ControlText("&Name") };
+        var button = new Button { Text = "&Name" };
         var root = new Stack { Children = { input, button } };
         await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
         var clicks = 0;
@@ -50,7 +50,7 @@ public sealed class ApplicationAccessKeyTests
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 4)));
         var input = new TextInput();
-        var button = new Button { Content = new ControlText("&Name") };
+        var button = new Button { Text = "&Name" };
         var root = new Stack { Children = { input, button } };
         _ = root.AddHandler(Events.Key, (_, eventArgs) =>
         {

@@ -134,7 +134,7 @@ public sealed class Gallery: Screen
 
                 var item = new NavigationViewItem
                 {
-                    Header = Pages[index],
+                    Text = Pages[index],
                     UseMnemonic = false,
                     HorizontalAlignment = HorizontalAlignment.Stretch
                 };
@@ -164,7 +164,7 @@ public sealed class Gallery: Screen
             SelectedIndex = darkIndex >= 0 ? darkIndex : 0
         };
         _themePicker.SelectionChanged += OnThemeSelected;
-        _quit = new Button { Content = new Text("&Quit  Ctrl+Q") };
+        _quit = new Button { Text = "&Quit  Ctrl+Q" };
         _quit.Click += OnQuitClicked;
         Dock.SetSide(_pageFilter, DockSide.Top);
         sidebarLayout.Children.Add(_pageFilter);
@@ -308,7 +308,7 @@ public sealed class Gallery: Screen
             throw new ArgumentOutOfRangeException(nameof(index), index, "The page index is outside the catalog.");
         }
 
-        Debug.Assert(DocCaption.PlainCaption(_navigation[index].Header) == _catalog[index].Name);
+        Debug.Assert(DocCaption.PlainCaption(_navigation[index].Text) == _catalog[index].Name);
         var previous = _main.Children.Count > 0 ? _main.Children[0] : null;
         SelectedIndex = index;
         NavigationControl.SelectItem(_navigation[index]);

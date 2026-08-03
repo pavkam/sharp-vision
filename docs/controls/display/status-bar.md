@@ -139,7 +139,7 @@ status.Items.Add(new StatusBarItem
 status.Items.Add(new StatusBarItem
 {
     Alignment = StatusBarItemAlignment.Right,
-    Content = new CheckBox { Content = new Text("Autosave") }
+    Content = new CheckBox { Text = "Autosave" }
 });
 
 Dock.SetSide(status, DockSide.Bottom);

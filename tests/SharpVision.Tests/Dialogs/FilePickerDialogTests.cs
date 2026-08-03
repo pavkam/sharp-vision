@@ -546,7 +546,7 @@ public sealed class FilePickerDialogTests
     public async Task ShowAsync_WhenOpenButtonStyleIsSupplied_AppliesItToThePresentedDialogAsync()
     {
         // Arrange
-        var opener = new Button { Content = new ControlText("Browse") };
+        var opener = new Button { Text = "Browse" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,

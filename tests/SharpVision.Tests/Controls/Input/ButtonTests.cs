@@ -26,7 +26,7 @@ public sealed class ButtonTests
     {
         var button = new Button();
 
-        button.Content.ShouldBeNull();
+        button.Text.ShouldBeEmpty();
         button.Command.ShouldBeNull();
         button.CommandParameter.ShouldBeNull();
         button.IsDefault.ShouldBeFalse();
@@ -39,9 +39,8 @@ public sealed class ButtonTests
         button.ActualBorder.GlyphStyle.ShouldBe(BorderGlyphStyle.Heavy);
         button.ActualShadow.IsVisible.ShouldBeFalse();
         button.ActualShadow.Offset.ShouldBe(default);
-        var content = new ProbeControl();
-        button.Content = content;
-        content.Parent.ShouldBeSameAs(button);
+        button.Text = "Save";
+        button.TextControl!.Parent.ShouldBeSameAs(button);
         typeof(Button).GetProperty("Children").ShouldBeNull();
     }
 
@@ -146,7 +145,8 @@ public sealed class ButtonTests
         var button = new Button { Style = style };
         if (collapsed)
         {
-            button.Content = new ProbeControl(new Size(9, 4)) { Visibility = Visibility.Collapsed };
+            button.Text = "content";
+            button.TextControl!.Visibility = Visibility.Collapsed;
         }
 
         new LayoutEngine().Layout(button, new Size(20, 10));
@@ -169,7 +169,7 @@ public sealed class ButtonTests
         var button = new Button
         {
             Style = composite,
-            Content = new ProbeControl(new Size(2, 1))
+            Text = "Hi"
         };
         new LayoutEngine().Layout(button, new Size(10, 5));
         _ = Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
@@ -234,28 +234,13 @@ public sealed class ButtonTests
         button.Pending.ShouldBe(Invalidation.Render);
     }
 
-    /// <summary>Verifies assigning text content preserves the caller's layout and text-alignment choices.</summary>
-    [Fact]
-    public void Content_WhenTextIsAssigned_PreservesChildAlignment()
-    {
-        var content = new ControlText("Save")
-        {
-            HorizontalAlignment = HorizontalAlignment.Right,
-            TextAlignment = Alignment.End
-        };
-        _ = new Button { Content = content };
-
-        content.HorizontalAlignment.ShouldBe(HorizontalAlignment.Right);
-        content.TextAlignment.ShouldBe(Alignment.End);
-    }
-
     /// <summary>Verifies a filled style does not silently replace the caller's layout alignment.</summary>
     [Fact]
     public void Arrange_WhenFilledButtonSharesTallHorizontalRow_PreservesStretchAlignment()
     {
         // Arrange
-        var filled = new Button { Style = ButtonStyle.Filled, Content = new ControlText("Add") };
-        var standard = new Button { Content = new ControlText("Standard") };
+        var filled = new Button { Style = ButtonStyle.Filled, Text = "Add" };
+        var standard = new Button { Text = "Standard" };
         using var row = new Stack
         {
             Orientation = Orientation.Horizontal,
@@ -279,9 +264,9 @@ public sealed class ButtonTests
         {
             Style = ButtonStyle.Filled,
             VerticalAlignment = VerticalAlignment.Center,
-            Content = new ControlText("Add")
+            Text = "Add"
         };
-        var standard = new Button { Content = new ControlText("Standard") };
+        var standard = new Button { Text = "Standard" };
         using var row = new Stack
         {
             Orientation = Orientation.Horizontal,
@@ -300,12 +285,10 @@ public sealed class ButtonTests
     [Fact]
     public void Arrange_WhenDefaultChromeIsUsed_PreservesOneCellContentInset()
     {
-        var content = new ProbeControl
-        {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch
-        };
-        var button = new Button { Width = Length.Cells(10), Height = Length.Cells(3), Content = content };
+        var button = new Button { Width = Length.Cells(10), Height = Length.Cells(3), Text = "X" };
+        var content = button.TextControl!;
+        content.Width = Length.Cells(6);
+        content.Height = Length.Cells(1);
 
         new LayoutEngine().Layout(button, new Size(10, 3));
 
@@ -317,11 +300,6 @@ public sealed class ButtonTests
     [Fact]
     public void Arrange_WhenPressedWithShadow_TranslatesContentByShadowOffset()
     {
-        var content = new ProbeControl
-        {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch
-        };
         var button = new Button
         {
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -330,8 +308,11 @@ public sealed class ButtonTests
             Height = Length.Cells(3),
             Style = TestButtonStyles.WithShadow(
                 AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1), attributes: Attributes.Dim)),
-            Content = content
+            Text = "X"
         };
+        var content = button.TextControl!;
+        content.Width = Length.Cells(4);
+        content.Height = Length.Cells(3);
         new LayoutEngine().Layout(button, new Size(10, 6));
         var released = content.Bounds;
 
@@ -355,18 +336,16 @@ public sealed class ButtonTests
     public void Arrange_WhenFilledButtonIsPressed_PreservesContentBounds()
     {
         // Arrange
-        var content = new ProbeControl
-        {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch
-        };
         using var button = new Button
         {
             Style = ButtonStyle.Filled,
             Width = Length.Cells(8),
             Height = Length.Cells(1),
-            Content = content
+            Text = "X"
         };
+        var content = button.TextControl!;
+        content.Width = Length.Cells(4);
+        content.Height = Length.Cells(1);
         new LayoutEngine().Layout(button, new Size(9, 2));
         var released = content.Bounds;
 
@@ -388,7 +367,7 @@ public sealed class ButtonTests
     [Fact]
     public void Render_WhenDefaultStyleIsUsed_DrawsBorderWithoutShadow()
     {
-        var button = new Button { Content = new ControlText("Apply") };
+        var button = new Button { Text = "Apply" };
         var size = new Size(9, 5);
         button.Width = Length.Cells(size.Width);
         button.Height = Length.Cells(size.Height);
@@ -409,7 +388,7 @@ public sealed class ButtonTests
     {
         var button = new Button
         {
-            Content = new ControlText("Apply"),
+            Text = "Apply",
             Style = TestButtonStyles.WithShadow(
                 AppearanceTestValues.Shadow(visible: true, mode: ShadowMode.BlockGlyph, offset: new Point(1, 1), glyph: new Rune('▓'), attributes: Attributes.Dim)),
             Width = Length.Cells(9),
@@ -437,7 +416,7 @@ public sealed class ButtonTests
             Height = Length.Cells(3),
             Style = TestButtonStyles.WithShadow(
                 AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1), attributes: Attributes.Dim)),
-            Content = new ControlText("Go")
+            Text = "Go"
         };
         var size = new Size(10, 6);
         new LayoutEngine().Layout(button, size);
@@ -470,7 +449,7 @@ public sealed class ButtonTests
             Height = Length.Cells(3),
             Style = TestButtonStyles.WithShadow(
                 AppearanceTestValues.Shadow(visible: true, offset: new Point(-5, 0))),
-            Content = new ControlText("Go")
+            Text = "Go"
         };
         button.Measure(new Constraint(6, 3));
         button.Arrange(new Rect(5, 0, 6, 3));
@@ -485,7 +464,7 @@ public sealed class ButtonTests
         button.Render(frame.Canvas);
 
         button.IsPressed.ShouldBeTrue();
-        button.Content.Bounds.ShouldBe(new Rect(2, 0, 2, 3));
+        button.TextControl!.Bounds.ShouldBe(new Rect(2, 0, 2, 3));
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBeEmpty();
         FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("G");
         FrameOracle.Get(frame, new Point(3, 0)).ShouldBe("o");
@@ -533,7 +512,7 @@ public sealed class ButtonTests
             Height = Length.Cells(3),
             Style = TestButtonStyles.Flat,
             Face = AppearanceTestValues.Face(foreground: ReferenceColors.Get(255), background: ReferenceColors.Get(24)),
-            Content = new ControlText("Go")
+            Text = "Go"
         };
         var size = new Size(10, 6);
         new LayoutEngine().Layout(button, size);
@@ -548,7 +527,7 @@ public sealed class ButtonTests
         button.Render(frame.Canvas);
 
         button.IsPressed.ShouldBeTrue();
-        button.Content.Bounds.ShouldBe(new Rect(2, 0, 2, 3));
+        button.TextControl!.Bounds.ShouldBe(new Rect(2, 0, 2, 3));
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBeEmpty();
         frame.GetCell(new Point(0, 0)).Style.Background.ShouldBe(ReferenceColors.Get(24));
         FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("G");
@@ -576,24 +555,6 @@ public sealed class ButtonTests
 
         frame.GetCell(new Point(0, 0)).Style.Attributes.ShouldNotBe(Attributes.Dim);
         frame.GetCell(new Point(6, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
-    }
-
-    /// <summary>Verifies invalid replacement preserves the previous child and its parent.</summary>
-    [Fact]
-    public void Content_WhenReplacementIsOwned_ThrowsBeforeMutation()
-    {
-        var button = new Button();
-        var previous = new ProbeControl();
-        var owner = new Overlay();
-        var invalid = new ProbeControl();
-        button.Content = previous;
-        owner.Children.Add(invalid);
-
-        _ = Should.Throw<ArgumentException>(() => button.Content = invalid);
-
-        button.Content.ShouldBeSameAs(previous);
-        previous.Parent.ShouldBeSameAs(button);
-        invalid.Parent.ShouldBeSameAs(owner);
     }
 
     /// <summary>Verifies Click observes released state and precedes command execution.</summary>
@@ -676,7 +637,7 @@ public sealed class ButtonTests
     public async Task Dispatch_WhenContentIsPointerTarget_ActivatesOwningButtonAsync()
     {
         await using var dispatcher = Dispatcher.Start();
-        var button = new Button { Bounds = new Rect(0, 0, 6, 1), Content = new ControlText("Click") };
+        var button = new Button { Bounds = new Rect(0, 0, 6, 1), Text = "Click" };
         new LayoutEngine().Layout(button, new Size(6, 1));
         var clicks = 0;
         button.Click += (_, _) => clicks++;
@@ -697,8 +658,8 @@ public sealed class ButtonTests
     public async Task Dispatch_WhenPointerMovesOverContent_HoversButtonInsteadOfTextAsync()
     {
         await using var dispatcher = Dispatcher.Start();
-        var content = new ControlText("Hover");
-        var button = new Button { Bounds = new Rect(0, 0, 6, 1), Content = content };
+        var button = new Button { Bounds = new Rect(0, 0, 6, 1), Text = "Hover" };
+        var content = button.TextControl!;
         new LayoutEngine().Layout(button, new Size(6, 1));
 
         await dispatcher.InvokeAsync(() =>
@@ -718,8 +679,9 @@ public sealed class ButtonTests
     [Fact]
     public void Render_WhenButtonHasUnicodeContent_ComputesExactBoundsAndCells()
     {
-        var content = new ControlText("界") { Margin = new Thickness(1, 0) };
-        var button = new Button { Content = content };
+        var button = new Button { Text = "界" };
+        var content = button.TextControl!;
+        content.Margin = new Thickness(1, 0);
         new LayoutEngine().Layout(button, new Size(8, 3));
         using Frame frame = new(new Size(8, 3));
 
@@ -737,7 +699,7 @@ public sealed class ButtonTests
     {
         var button = new Button
         {
-            Content = new ControlText("Run"),
+            Text = "Run",
             Style = TestButtonStyles.Flat,
             Face = AppearanceTestValues.Face(foreground: ReferenceColors.Get(255), background: ReferenceColors.Get(24)),
             Width = Length.Cells(8),
@@ -774,7 +736,8 @@ public sealed class ButtonTests
     public void Constructor_WithText_SetsTextContent()
     {
         var button = new Button("Save");
-        button.Content.ShouldBeOfType<ControlText>().Content.ShouldBe("Save");
+        button.Text.ShouldBe("Save");
+        button.TextControl.ShouldNotBeNull().Content.ShouldBe("Save");
     }
 
     /// <summary>Verifies the string constructor rejects null text.</summary>
@@ -796,7 +759,7 @@ public sealed class ButtonTests
         button.Dispose();
 
         // Assert
-        _ = Should.Throw<ObjectDisposedException>(() => button.Content = new ControlText("late"));
+        _ = Should.Throw<ObjectDisposedException>(() => button.Text = "late");
     }
 
     /// <summary>Verifies setting the same command reference is a no-op.</summary>

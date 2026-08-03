@@ -55,7 +55,7 @@ internal sealed class ComboBoxPane: CompositeControlBase
             Placeholder = "Choose an item…"
         };
         ShowcasePaneHelpers.WireComboSelectionStatus(emptyCombo, emptyStatus, "Selected");
-        var clearSelection = new Button { Content = new Text("&Clear selection") };
+        var clearSelection = new Button { Text = "&Clear selection" };
         clearSelection.Click += (_, _) => emptyCombo.SelectedIndex = -1;
 
         // DropDownHeight caps visible rows; the owned ListView scrolls inside the popup.

@@ -14,7 +14,7 @@ public sealed class ModalityTransitionTests
         var background = new ProbeControl { Focusable = true };
         var dialogContent = new ProbeControl { Focusable = true };
         var dialog = new Popup { Content = dialogContent };
-        var actionItem = new MenuItem { Content = new ControlText("Action") };
+        var actionItem = new MenuItem { Text = "Action" };
         ModalScope? dialogScope = null;
         actionItem.Invoked += (_, _) =>
         {

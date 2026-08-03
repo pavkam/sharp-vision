@@ -34,9 +34,9 @@ public sealed class MenuTests
     public void Items_WhenAdded_UseTypedOwnershipSelectionAndVerticalCells()
     {
         var menu = new Menu { Orientation = Orientation.Vertical };
-        menu.Items.Add(new MenuItem { Content = new ControlText("Open") });
+        menu.Items.Add(new MenuItem { Text = "Open" });
         menu.Items.Add(
-            new MenuItem { Content = new ControlText("Pinned"), Kind = MenuItemKind.Check, IsChecked = true });
+            new MenuItem { Text = "Pinned", Kind = MenuItemKind.Check, IsChecked = true });
         menu.Items.Add(new MenuSeparator());
         var first = menu.Items[0];
         var second = menu.Items[1];
@@ -63,8 +63,8 @@ public sealed class MenuTests
     [Fact]
     public void SelectedItem_WhenSet_UpdatesSelectedIndexAndReportsIdentity()
     {
-        var first = new MenuItem { Content = new ControlText("First") };
-        var second = new MenuItem { Content = new ControlText("Second") };
+        var first = new MenuItem { Text = "First" };
+        var second = new MenuItem { Text = "Second" };
         var menu = new Menu();
         menu.Items.Add(first);
         menu.Items.Add(second);
@@ -84,7 +84,7 @@ public sealed class MenuTests
     public void SelectedItem_WhenSetToNull_ClearsSelection()
     {
         var menu = new Menu();
-        menu.Items.Add(new MenuItem { Content = new ControlText("First") });
+        menu.Items.Add(new MenuItem { Text = "First" });
 
         menu.SelectedItem = null;
 
@@ -97,8 +97,8 @@ public sealed class MenuTests
     public void SelectedItem_WhenItemIsNotOwned_ClearsSelection()
     {
         var menu = new Menu();
-        menu.Items.Add(new MenuItem { Content = new ControlText("First") });
-        var foreign = new MenuItem { Content = new ControlText("Foreign") };
+        menu.Items.Add(new MenuItem { Text = "First" });
+        var foreign = new MenuItem { Text = "Foreign" };
 
         menu.SelectedItem = foreign;
 
@@ -115,9 +115,9 @@ public sealed class MenuTests
         await dispatcher.InvokeAsync(() =>
         {
             var menu = new Menu { Orientation = Orientation.Vertical };
-            var first = new MenuItem { Content = new ControlText("First") };
+            var first = new MenuItem { Text = "First" };
             var separator = new MenuSeparator();
-            var second = new MenuItem { Content = new ControlText("Second") };
+            var second = new MenuItem { Text = "Second" };
             menu.Items.Add(first);
             menu.Items.Add(separator);
             menu.Items.Add(second);
@@ -142,17 +142,17 @@ public sealed class MenuTests
     public void PerformInvoke_WhenCheckAndRadioItemsActivate_CommitsStateBeforeEvent()
     {
         var menu = new Menu();
-        var check = new MenuItem { Content = new ControlText("Auto save"), Kind = MenuItemKind.Check };
+        var check = new MenuItem { Text = "Auto save", Kind = MenuItemKind.Check };
         var first = new MenuItem
         {
-            Content = new ControlText("Small"),
+            Text = "Small",
             Kind = MenuItemKind.Radio,
             GroupName = "size",
             IsChecked = true
         };
         var second = new MenuItem
         {
-            Content = new ControlText("Large"),
+            Text = "Large",
             Kind = MenuItemKind.Radio,
             GroupName = "size"
         };
@@ -161,7 +161,7 @@ public sealed class MenuTests
         menu.Items.Add(first);
         menu.Items.Add(second);
         menu.ItemInvoked += (_, eventArgs) =>
-            observed.Add($"{eventArgs.Item.Content.ShouldBeOfType<ControlText>().Content}:{eventArgs.Item.IsChecked}");
+            observed.Add($"{eventArgs.Item.Text}:{eventArgs.Item.IsChecked}");
 
         check.PerformInvoke();
         second.PerformInvoke();
@@ -259,7 +259,7 @@ public sealed class MenuTests
         await dispatcher.InvokeAsync(() =>
         {
             var menu = new Menu();
-            var item = new MenuItem { Content = new ControlText("Open") };
+            var item = new MenuItem { Text = "Open" };
             var separator = new MenuSeparator();
             menu.Items.Add(item);
             menu.Items.Add(separator);
@@ -285,9 +285,9 @@ public sealed class MenuTests
         {
             var root = new ProbeContainer();
             var menu = new Menu { Orientation = Orientation.Vertical };
-            var a = new MenuItem { Content = new ControlText("A") };
-            var b = new MenuItem { Content = new ControlText("B") };
-            var c = new MenuItem { Content = new ControlText("C") };
+            var a = new MenuItem { Text = "A" };
+            var b = new MenuItem { Text = "B" };
+            var c = new MenuItem { Text = "C" };
             var outside = new ProbeControl { Focusable = true };
             menu.Items.Add(a);
             menu.Items.Add(b);
@@ -324,8 +324,8 @@ public sealed class MenuTests
         {
             // Arrange
             var menu = new Menu { Orientation = Orientation.Vertical };
-            var first = new MenuItem { Content = new ControlText("First") };
-            var second = new MenuItem { Content = new ControlText("Second") };
+            var first = new MenuItem { Text = "First" };
+            var second = new MenuItem { Text = "Second" };
             menu.Items.Add(first);
             menu.Items.Add(second);
             menu.SelectedIndex = 1;
@@ -355,7 +355,7 @@ public sealed class MenuTests
         {
             // Arrange
             var menu = new Menu { Orientation = Orientation.Vertical };
-            var item = new MenuItem { Content = new ControlText("Run") };
+            var item = new MenuItem { Text = "Run" };
             menu.Items.Add(item);
             menu.Attach(dispatcher);
             using var focus = new FocusManager(menu);
@@ -387,7 +387,7 @@ public sealed class MenuTests
         await dispatcher.InvokeAsync(() =>
         {
             var menu = new Menu { Orientation = Orientation.Vertical };
-            var item = new MenuItem { Content = new ControlText("Run") };
+            var item = new MenuItem { Text = "Run" };
             menu.Items.Add(item);
             menu.Attach(dispatcher);
             using var focus = new FocusManager(menu);
@@ -411,9 +411,9 @@ public sealed class MenuTests
         await dispatcher.InvokeAsync(() =>
         {
             var menu = new Menu { Orientation = Orientation.Vertical };
-            var a = new MenuItem { Content = new ControlText("A") };
-            var b = new MenuItem { Content = new ControlText("B") };
-            var c = new MenuItem { Content = new ControlText("C") };
+            var a = new MenuItem { Text = "A" };
+            var b = new MenuItem { Text = "B" };
+            var c = new MenuItem { Text = "C" };
             menu.Items.Add(a);
             menu.Items.Add(b);
             menu.Items.Add(c);
@@ -433,9 +433,9 @@ public sealed class MenuTests
         await dispatcher.InvokeAsync(() =>
         {
             var menu = new Menu { Orientation = Orientation.Vertical };
-            var a = new MenuItem { Content = new ControlText("A") };
-            var b = new MenuItem { Content = new ControlText("B") };
-            var c = new MenuItem { Content = new ControlText("C") };
+            var a = new MenuItem { Text = "A" };
+            var b = new MenuItem { Text = "B" };
+            var c = new MenuItem { Text = "C" };
             menu.Items.Add(a);
             menu.Items.Add(b);
             menu.Items.Add(c);
@@ -462,8 +462,8 @@ public sealed class MenuTests
     {
         // Arrange horizontal menu
         var horizontalSubmenu = new Menu { Orientation = Orientation.Vertical };
-        horizontalSubmenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
-        var horizontalItem = new MenuItem { Content = new ControlText("File"), Submenu = horizontalSubmenu };
+        horizontalSubmenu.Items.Add(new MenuItem { Text = "Open" });
+        var horizontalItem = new MenuItem { Text = "File", Submenu = horizontalSubmenu };
         var horizontal = new Menu
         {
             Orientation = Orientation.Horizontal,
@@ -488,8 +488,8 @@ public sealed class MenuTests
 
         // Arrange vertical menu
         var verticalSubmenu = new Menu { Orientation = Orientation.Vertical };
-        verticalSubmenu.Items.Add(new MenuItem { Content = new ControlText("Recent") });
-        var verticalItem = new MenuItem { Content = new ControlText("Open"), Submenu = verticalSubmenu };
+        verticalSubmenu.Items.Add(new MenuItem { Text = "Recent" });
+        var verticalItem = new MenuItem { Text = "Open", Submenu = verticalSubmenu };
         var vertical = new Menu { Orientation = Orientation.Vertical, Width = Length.Cells(8) };
         vertical.Items.Add(verticalItem);
         var verticalRoot = new Overlay { Children = { vertical } };
@@ -511,8 +511,8 @@ public sealed class MenuTests
     public void Submenu_WhenOpened_RendersIdenticalChromeToContextMenu()
     {
         var submenu = new Menu { Orientation = Orientation.Vertical };
-        submenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
-        var item = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var item = new MenuItem { Text = "File", Submenu = submenu };
         var owner = new Menu { Orientation = Orientation.Horizontal };
         owner.Items.Add(item);
         _ = new Overlay { Children = { owner } };
@@ -520,7 +520,7 @@ public sealed class MenuTests
         var submenuPopup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
 
         var contextMenu = new ContextMenu();
-        contextMenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
+        contextMenu.Items.Add(new MenuItem { Text = "Open" });
         var contextMenuPopup = (Popup) contextMenu.Presentation;
 
         submenuPopup.Border.GlyphStyle.ShouldBe(contextMenuPopup.Border.GlyphStyle);
@@ -535,11 +535,11 @@ public sealed class MenuTests
     {
         // Arrange
         var previous = new Menu { Orientation = Orientation.Vertical };
-        previous.Items.Add(new MenuItem { Content = new ControlText("First") });
-        var item = new MenuItem { Content = new ControlText("File"), Submenu = previous };
+        previous.Items.Add(new MenuItem { Text = "First" });
+        var item = new MenuItem { Text = "File", Submenu = previous };
         var previousPopup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
         var replacement = new Menu { Orientation = Orientation.Vertical };
-        replacement.Items.Add(new MenuItem { Content = new ControlText("Second") });
+        replacement.Items.Add(new MenuItem { Text = "Second" });
 
         // Act
         item.Submenu = replacement;
@@ -550,8 +550,8 @@ public sealed class MenuTests
         item.Submenu.ShouldBeSameAs(replacement);
 
         // Assert the detached menu can still be mutated and reassigned elsewhere
-        previous.Items.Add(new MenuItem { Content = new ControlText("Reused") });
-        var other = new MenuItem { Content = new ControlText("Edit"), Submenu = previous };
+        previous.Items.Add(new MenuItem { Text = "Reused" });
+        var other = new MenuItem { Text = "Edit", Submenu = previous };
         other.Submenu.ShouldBeSameAs(previous);
     }
 
@@ -562,8 +562,8 @@ public sealed class MenuTests
     {
         // Arrange
         var previous = new Menu { Orientation = Orientation.Vertical };
-        previous.Items.Add(new MenuItem { Content = new ControlText("First") });
-        var item = new MenuItem { Content = new ControlText("File"), Submenu = previous };
+        previous.Items.Add(new MenuItem { Text = "First" });
+        var item = new MenuItem { Text = "File", Submenu = previous };
         var previousPopup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
 
         // Act
@@ -582,11 +582,11 @@ public sealed class MenuTests
     {
         // Arrange
         var shared = new Menu { Orientation = Orientation.Vertical };
-        shared.Items.Add(new MenuItem { Content = new ControlText("Shared") });
-        var owner = new MenuItem { Content = new ControlText("File"), Submenu = shared };
+        shared.Items.Add(new MenuItem { Text = "Shared" });
+        var owner = new MenuItem { Text = "File", Submenu = shared };
         var existing = new Menu { Orientation = Orientation.Vertical };
-        existing.Items.Add(new MenuItem { Content = new ControlText("Existing") });
-        var target = new MenuItem { Content = new ControlText("Edit"), Submenu = existing };
+        existing.Items.Add(new MenuItem { Text = "Existing" });
+        var target = new MenuItem { Text = "Edit", Submenu = existing };
         var targetPopup = OwnedTree.Find<Popup>(target).ShouldNotBeNull();
 
         // Act and assert
@@ -656,9 +656,9 @@ public sealed class MenuTests
     public void Render_WhenVerticalItemsHaveDifferentShortcuts_RightAlignsEveryHint()
     {
         // Arrange
-        var labelOnly = new MenuItem { Content = new ControlText("Open Recent") };
-        var shortHint = new MenuItem { Content = new ControlText("Run"), ShortcutText = "F5" };
-        var longHint = new MenuItem { Content = new ControlText("Save"), ShortcutText = "Ctrl+S" };
+        var labelOnly = new MenuItem { Text = "Open Recent" };
+        var shortHint = new MenuItem { Text = "Run", ShortcutText = "F5" };
+        var longHint = new MenuItem { Text = "Save", ShortcutText = "Ctrl+S" };
         var menu = new Menu { Orientation = Orientation.Vertical };
         menu.Items.Add(labelOnly);
         menu.Items.Add(shortHint);
@@ -754,7 +754,7 @@ public sealed class MenuTests
     public void Items_WhenMenuItemInsertionFails_LeavesCandidateFocusableAndTabStopUnchanged()
     {
         var menu = new Menu();
-        var item = new MenuItem { Content = new ControlText("Open") };
+        var item = new MenuItem { Text = "Open" };
         item.Dispose();
 
         // A disposed candidate fails insertion before any of this menu's
@@ -774,7 +774,7 @@ public sealed class MenuTests
         var menu = new Menu();
         var item = new MenuItem
         {
-            Content = new ControlText("Open"),
+            Text = "Open",
             Width = Length.Cells(30)
         };
 
@@ -791,7 +791,7 @@ public sealed class MenuTests
         var menu = new Menu();
         var item = new MenuItem
         {
-            Content = new ControlText("Open"),
+            Text = "Open",
             Width = Length.Cells(30),
             Height = Length.Cells(3),
             Focusable = false,
@@ -811,13 +811,13 @@ public sealed class MenuTests
     [Fact]
     public void Insert_WhenIndexPrecedesSelection_ShiftsSelectedIndexPreservingIdentity()
     {
-        var first = new MenuItem { Content = new ControlText("First") };
-        var second = new MenuItem { Content = new ControlText("Second") };
+        var first = new MenuItem { Text = "First" };
+        var second = new MenuItem { Text = "Second" };
         var menu = new Menu();
         menu.Items.Add(first);
         menu.Items.Add(second);
         menu.SelectedIndex = 1;
-        var inserted = new MenuItem { Content = new ControlText("Inserted") };
+        var inserted = new MenuItem { Text = "Inserted" };
 
         menu.Items.Insert(0, inserted);
 
@@ -830,8 +830,8 @@ public sealed class MenuTests
     [Fact]
     public void Insert_WhenGivenSeparator_PlacesItAtRequestedPosition()
     {
-        var first = new MenuItem { Content = new ControlText("First") };
-        var second = new MenuItem { Content = new ControlText("Second") };
+        var first = new MenuItem { Text = "First" };
+        var second = new MenuItem { Text = "Second" };
         var menu = new Menu();
         menu.Items.Add(first);
         menu.Items.Add(second);
@@ -847,11 +847,11 @@ public sealed class MenuTests
     public void Insert_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
     {
         var menu = new Menu();
-        var item = new MenuItem { Content = new ControlText("First") };
+        var item = new MenuItem { Text = "First" };
         menu.Items.Add(item);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
-            () => menu.Items.Insert(2, new MenuItem { Content = new ControlText("New") }));
+            () => menu.Items.Insert(2, new MenuItem { Text = "New" }));
 
         menu.Items.ShouldBe([item]);
     }
@@ -860,9 +860,9 @@ public sealed class MenuTests
     [Fact]
     public void RemoveAt_WhenSelectedEntryIsRemoved_RepairsSelectionToNearestAvailable()
     {
-        var first = new MenuItem { Content = new ControlText("First") };
-        var selected = new MenuItem { Content = new ControlText("Selected") };
-        var third = new MenuItem { Content = new ControlText("Third") };
+        var first = new MenuItem { Text = "First" };
+        var selected = new MenuItem { Text = "Selected" };
+        var third = new MenuItem { Text = "Third" };
         var menu = new Menu();
         menu.Items.Add(first);
         menu.Items.Add(selected);
@@ -882,9 +882,9 @@ public sealed class MenuTests
     [Fact]
     public void RemoveAt_WhenEntryAfterSelectionIsRemoved_LeavesSelectionUntouched()
     {
-        var first = new MenuItem { Content = new ControlText("First") };
-        var selected = new MenuItem { Content = new ControlText("Selected") };
-        var third = new MenuItem { Content = new ControlText("Third") };
+        var first = new MenuItem { Text = "First" };
+        var selected = new MenuItem { Text = "Selected" };
+        var third = new MenuItem { Text = "Third" };
         var menu = new Menu();
         menu.Items.Add(first);
         menu.Items.Add(selected);
@@ -904,9 +904,9 @@ public sealed class MenuTests
     [Fact]
     public void RemoveAt_WhenEntryBeforeSelectionIsRemoved_PreservesIdentityAndShiftsIndex()
     {
-        var first = new MenuItem { Content = new ControlText("First") };
-        var selected = new MenuItem { Content = new ControlText("Selected") };
-        var third = new MenuItem { Content = new ControlText("Third") };
+        var first = new MenuItem { Text = "First" };
+        var selected = new MenuItem { Text = "Selected" };
+        var third = new MenuItem { Text = "Third" };
         var menu = new Menu();
         menu.Items.Add(first);
         menu.Items.Add(selected);
@@ -926,10 +926,10 @@ public sealed class MenuTests
     [Fact]
     public void Remove_WhenSeparatorIsRemoved_NeverMovesSelection()
     {
-        var first = new MenuItem { Content = new ControlText("First") };
-        var second = new MenuItem { Content = new ControlText("Second") };
+        var first = new MenuItem { Text = "First" };
+        var second = new MenuItem { Text = "Second" };
         var separator = new MenuSeparator();
-        var third = new MenuItem { Content = new ControlText("Third") };
+        var third = new MenuItem { Text = "Third" };
         var menu = new Menu();
         menu.Items.Add(first);
         menu.Items.Add(second);
@@ -949,7 +949,7 @@ public sealed class MenuTests
     public void RemoveAt_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
     {
         var menu = new Menu();
-        var item = new MenuItem { Content = new ControlText("First") };
+        var item = new MenuItem { Text = "First" };
         menu.Items.Add(item);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => menu.Items.RemoveAt(1));
@@ -961,13 +961,13 @@ public sealed class MenuTests
     [Fact]
     public void Indexer_WhenSelectedEntryIsReplaced_DetachesOldWithoutDisposalAndSelectsReplacement()
     {
-        var first = new MenuItem { Content = new ControlText("First") };
-        var second = new MenuItem { Content = new ControlText("Second") };
+        var first = new MenuItem { Text = "First" };
+        var second = new MenuItem { Text = "Second" };
         var menu = new Menu();
         menu.Items.Add(first);
         menu.Items.Add(second);
         menu.SelectedIndex = 0;
-        var replacement = new MenuItem { Content = new ControlText("Replacement") };
+        var replacement = new MenuItem { Text = "Replacement" };
 
         menu.Items[0] = replacement;
 
@@ -982,7 +982,7 @@ public sealed class MenuTests
     public void Indexer_WhenReplacementIsNotAnEntry_ThrowsAndLeavesCollectionUnchanged()
     {
         var menu = new Menu();
-        var item = new MenuItem { Content = new ControlText("First") };
+        var item = new MenuItem { Text = "First" };
         menu.Items.Add(item);
 
         _ = Should.Throw<InvalidOperationException>(() => menu.Items[0] = new Button());
@@ -995,7 +995,7 @@ public sealed class MenuTests
     public void Indexer_WhenAssignedNull_Throws()
     {
         var menu = new Menu();
-        menu.Items.Add(new MenuItem { Content = new ControlText("First") });
+        menu.Items.Add(new MenuItem { Text = "First" });
 
         _ = Should.Throw<ArgumentNullException>(() => menu.Items[0] = null!);
     }
@@ -1004,9 +1004,9 @@ public sealed class MenuTests
     [Fact]
     public void Move_WhenSelectedEntryMoves_PreservesIdentityAndUpdatesSelectedIndex()
     {
-        var first = new MenuItem { Content = new ControlText("First") };
-        var selected = new MenuItem { Content = new ControlText("Selected") };
-        var third = new MenuItem { Content = new ControlText("Third") };
+        var first = new MenuItem { Text = "First" };
+        var selected = new MenuItem { Text = "Selected" };
+        var third = new MenuItem { Text = "Third" };
         var menu = new Menu();
         menu.Items.Add(first);
         menu.Items.Add(selected);
@@ -1024,8 +1024,8 @@ public sealed class MenuTests
     [Fact]
     public void Move_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
     {
-        var first = new MenuItem { Content = new ControlText("First") };
-        var second = new MenuItem { Content = new ControlText("Second") };
+        var first = new MenuItem { Text = "First" };
+        var second = new MenuItem { Text = "Second" };
         var menu = new Menu();
         menu.Items.Add(first);
         menu.Items.Add(second);
@@ -1039,12 +1039,12 @@ public sealed class MenuTests
     [Fact]
     public void IndexOf_WhenItemIsOwnedOrForeign_ReportsPositionOrNegativeOne()
     {
-        var first = new MenuItem { Content = new ControlText("First") };
-        var second = new MenuItem { Content = new ControlText("Second") };
+        var first = new MenuItem { Text = "First" };
+        var second = new MenuItem { Text = "Second" };
         var menu = new Menu();
         menu.Items.Add(first);
         menu.Items.Add(second);
-        var foreign = new MenuItem { Content = new ControlText("Foreign") };
+        var foreign = new MenuItem { Text = "Foreign" };
 
         menu.Items.IndexOf(second).ShouldBe(1);
         menu.Items.IndexOf(foreign).ShouldBe(-1);
@@ -1055,15 +1055,15 @@ public sealed class MenuTests
     public void Items_WhenOwnerIsDisposed_RejectsInsertRemoveAtIndexerAndMove()
     {
         var menu = new Menu();
-        menu.Items.Add(new MenuItem { Content = new ControlText("First") });
-        menu.Items.Add(new MenuItem { Content = new ControlText("Second") });
+        menu.Items.Add(new MenuItem { Text = "First" });
+        menu.Items.Add(new MenuItem { Text = "Second" });
         menu.Dispose();
 
         _ = Should.Throw<ObjectDisposedException>(
-            () => menu.Items.Insert(0, new MenuItem { Content = new ControlText("New") }));
+            () => menu.Items.Insert(0, new MenuItem { Text = "New" }));
         _ = Should.Throw<ObjectDisposedException>(() => menu.Items.RemoveAt(0));
         _ = Should.Throw<ObjectDisposedException>(
-            () => menu.Items[0] = new MenuItem { Content = new ControlText("New") });
+            () => menu.Items[0] = new MenuItem { Text = "New" });
         _ = Should.Throw<ObjectDisposedException>(() => menu.Items.Move(0, 1));
     }
 }

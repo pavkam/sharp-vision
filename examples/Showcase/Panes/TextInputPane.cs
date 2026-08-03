@@ -23,7 +23,7 @@ internal sealed class TextInputPane: CompositeControlBase
 
         var selectionEditor = new TextInput { Width = Length.Cells(28), Text = "Select café 👩‍💻" };
         var selectionStatus = new Text("Selection: none");
-        var selectAll = new Button { Content = new Text("&Select all") };
+        var selectAll = new Button { Text = "&Select all" };
         selectAll.Click += (_, _) =>
         {
             selectionEditor.Select(0, selectionEditor.Text.Length);
@@ -32,19 +32,19 @@ internal sealed class TextInputPane: CompositeControlBase
 
         var history = new TextInput { Width = Length.Cells(28), Text = "Draft" };
         var historyStatus = new Text("History: ready");
-        var revise = new Button { Content = new Text("&Append revision") };
+        var revise = new Button { Text = "&Append revision" };
         revise.Click += (_, _) =>
         {
             history.Text += " revised";
             historyStatus.Content = $"History: undo={history.CanUndo}, redo={history.CanRedo}";
         };
-        var undo = new Button { Content = new Text("&Undo") };
+        var undo = new Button { Text = "&Undo" };
         undo.Click += (_, _) =>
         {
             _ = history.Undo();
             historyStatus.Content = $"History: undo={history.CanUndo}, redo={history.CanRedo}";
         };
-        var redo = new Button { Content = new Text("&Redo") };
+        var redo = new Button { Text = "&Redo" };
         redo.Click += (_, _) =>
         {
             _ = history.Redo();
@@ -54,9 +54,9 @@ internal sealed class TextInputPane: CompositeControlBase
         var clipboard = new TextInput { Width = Length.Cells(28), Text = "Copy café 👩‍💻" };
         clipboard.Select(0, clipboard.Text.Length);
         var clipboardStatus = new Text("Clipboard: select Copy or Cut");
-        var copy = new Button { Content = new Text("&Copy selection") };
+        var copy = new Button { Text = "&Copy selection" };
         copy.Click += (_, _) => clipboardStatus.Content = $"Clipboard: copied {clipboard.CopySelection()}";
-        var cut = new Button { Content = new Text("Cu&t selection") };
+        var cut = new Button { Text = "Cu&t selection" };
         cut.Click += (_, _) => clipboardStatus.Content = $"Clipboard: cut {clipboard.CutSelection()}";
 
         var eventEditor = new TextInput { Width = Length.Cells(28), Text = "Accepted" };
@@ -75,9 +75,9 @@ internal sealed class TextInputPane: CompositeControlBase
         };
         eventEditor.TextChanged += (_, _) => eventStatus.Content += " → TextChanged";
         eventEditor.SelectionChanged += (_, _) => eventStatus.Content += " → SelectionChanged";
-        var rejectEdit = new Button { Content = new Text("Try re&jected edit") };
+        var rejectEdit = new Button { Text = "Try re&jected edit" };
         rejectEdit.Click += (_, _) => eventEditor.Text += "!";
-        var acceptEdit = new Button { Content = new Text("Co&mmit accepted edit") };
+        var acceptEdit = new Button { Text = "Co&mmit accepted edit" };
         acceptEdit.Click += (_, _) => eventEditor.Text += " revision";
 
         var readOnly = new TextInput { Width = Length.Cells(28), Text = "Read-only value", IsReadOnly = true };
@@ -98,7 +98,7 @@ internal sealed class TextInputPane: CompositeControlBase
             Text = "Multiline editor\nWheel here to scroll\nwithout losing focus\nAt the edge, the page scrolls"
         };
         var offsetStatus = new Text("Offsets: horizontal=0, vertical=0");
-        var reportOffsets = new Button { Content = new Text("Report editor &offsets") };
+        var reportOffsets = new Button { Text = "Report editor &offsets" };
         reportOffsets.Click += (_, _) =>
             offsetStatus.Content =
                 $"Offsets: horizontal={multiline.HorizontalOffset}, vertical={multiline.VerticalOffset}";

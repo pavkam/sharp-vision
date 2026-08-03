@@ -24,7 +24,7 @@ public sealed partial class Button: Pressable<ButtonStyle>
     public Button(string text) : this()
     {
         ArgumentNullException.ThrowIfNull(text);
-        Content = new DisplayText(text);
+        Text = text;
     }
 
     /// <inheritdoc/>
@@ -117,7 +117,7 @@ public sealed partial class Button: Pressable<ButtonStyle>
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        var content = Content;
+        var content = TextControl;
         var padding = ActualStyle.Padding;
 
         if (content is null || content.Visibility == Visibility.Collapsed)
@@ -139,7 +139,7 @@ public sealed partial class Button: Pressable<ButtonStyle>
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        if (Content is { } content)
+        if (TextControl is { } content)
         {
             ArrangeContent(content, bounds);
         }
@@ -175,7 +175,7 @@ public sealed partial class Button: Pressable<ButtonStyle>
     {
         base.OnPressedChanged(pressed);
 
-        if (!UsesWholeCellPressedTranslation || Content is not { } content)
+        if (!UsesWholeCellPressedTranslation || TextControl is not { } content)
         {
             return;
         }
@@ -203,16 +203,9 @@ public sealed partial class Button: Pressable<ButtonStyle>
 
     private bool UsesWholeCellPressedTranslation => ActualShadow.IsVisible;
 
-    private void ArrangeContent(ControlBase content, Rect bounds)
+    private void ArrangeContent(DisplayText content, Rect bounds)
     {
         var face = ActualStyle.Padding.Deflate(FaceContentBounds(bounds));
-
-        if (content is not DisplayText)
-        {
-            ArrangeChild(content, face, ResolvedAxes.Both);
-            return;
-        }
-
         var width = Math.Min(face.Width, content.DesiredSize.Width.Add(content.Margin.Horizontal));
         var x = TextAlignment switch
         {

@@ -142,7 +142,7 @@ internal sealed class OverlayPane: CompositeControlBase
         // ClipToBounds affects hit testing — a pointer press outside the clipped
         // Overlay returns null; the unclipped Overlay still reports the child.
         var clippedStatus = new Text("Hit: —");
-        var clippedChild = new Button { Content = new Text("Visible"), UseMnemonic = false };
+        var clippedChild = new Button { Text = "Visible", UseMnemonic = false };
         clippedChild.Click += (_, _) => clippedStatus.Content = "Hit: inside clipped";
         Overlay clipped = new()
         {
@@ -158,7 +158,7 @@ internal sealed class OverlayPane: CompositeControlBase
         };
         clipped.Children.Add(clippedChild);
 
-        var unclippedChild = new Button { Content = new Text("Visible"), UseMnemonic = false };
+        var unclippedChild = new Button { Text = "Visible", UseMnemonic = false };
         unclippedChild.Click += (_, _) => clippedStatus.Content = "Hit: inside unclipped";
         Overlay unclipped = new()
         {
@@ -183,7 +183,7 @@ internal sealed class OverlayPane: CompositeControlBase
         equalTies.Children.Add(tieSecond);
 
         var pointerStatus = new Text("Pointer: waiting");
-        var underlying = new Button { Content = new Text("&Underlying action") };
+        var underlying = new Button { Text = "&Underlying action" };
         underlying.Click += (_, eventArgs) => pointerStatus.Content = $"Pointer: action received ({eventArgs.Cause})";
         ShowcasePaneHelpers.Place(underlying, 2, 1);
         var decoration = new Text("Decorative overlay")

@@ -2,29 +2,35 @@
 
 ## Overview
 
-`PressableBase : ContentControl` is the public base for a focusable, single-face
-control that completes a semantic activation through keyboard or pointer input.
-`Pressable<TStyle>` adds the standard primary `Style`/`ActualStyle` slot for a
-pressable with an immutable complete typed style. It inherits the atomic,
-publicly replaceable `Content` edge from
-[`ContentControl`](content-control.md#overview); it is not a multi-child panel
-and exposes no `Children` collection or capacity constructor.
+`PressableBase : ControlBase` is the public base for a focusable,
+single-text-caption control that completes a semantic activation through
+keyboard or pointer input. `Pressable<TStyle>` adds the standard primary
+`Style`/`ActualStyle` slot on top of `PressableBase` for a pressable with an
+immutable complete typed style. `PressableBase` has no `Content` and no
+`Children` collection: the only caption surface is the string `Text` property,
+backed by a lazily materialized owned caption child that never allocates until a
+control's text is first assigned. A control that needs arbitrary owned content
+instead of a plain caption does not derive from `PressableBase` — `ListItem`
+composes the same shared press behavior directly while keeping
+[`ContentControl`](content-control.md#overview)'s replaceable `Content` edge for
+realized template output.
 
 Concrete controls implement `Activate(ActivationCause)`. `Button`, `CheckBox`,
-and `RadioButton` use `Pressable<TStyle>`; `HyperlinkButton`, `MenuItem`,
-`NavigationViewItem`, and each internal `ListItem` and `TabHeader` use this
-role. A control whose face is derived from data rather than replaceable content,
+and `RadioButton` use `Pressable<TStyle>`; `HyperlinkButton`, `MenuItem`, and
+`NavigationViewItem` use `PressableBase` directly; each internal `TabHeader`
+also does, with its own field-backed `Text` override that never materializes a
+caption child. A control whose face is derived from data rather than a caption,
 such as [`ComboBox`](input/combo-box.md#overview), derives from `ControlBase`
 instead of pretending to be a `PressableBase`.
 
 ## API
 
-| Member                                          | Purpose                                                                                            |
-| ----------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Inherited `Content`                             | Owns the replaceable control face.                                                                 |
-| `Command`, `CommandParameter`                   | Optional `ICommand` a concrete control invokes on activation, and its borrowed parameter.          |
-| `Activate(ActivationCause)`                     | Commits the concrete semantic action after keyboard, pointer, or programmatic activation succeeds. |
-| `IsCheckedState` and related visual-state seams | Let a derived toggle add semantic state without replacing the shared press or capture behavior.    |
+| Member                                          | Purpose                                                                                                                                |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `Text`                                          | The non-null caption string; virtual, so `NavigationViewItem` and `TabHeader` back it with their own field instead of a caption child. |
+| `Command`, `CommandParameter`                   | Optional `ICommand` a concrete control invokes on activation, and its borrowed parameter.                                              |
+| `Activate(ActivationCause)`                     | Commits the concrete semantic action after keyboard, pointer, or programmatic activation succeeds.                                     |
+| `IsCheckedState` and related visual-state seams | Let a derived toggle add semantic state without replacing the shared press or capture behavior.                                        |
 
 `PressableBase` makes the control focusable, supplies the shared input state
 machine, and owns `Command`/`CommandParameter` lifetime — including
@@ -39,20 +45,19 @@ simply leave the inherited property unused.
 
 ## Interaction
 
-When its `Content` is a `Text`, a `PressableBase` treats that text as its
-caption. The owner's `UseMnemonic` value controls both marker rendering and
-automatic
-[access-key activation](../concepts/access-keys.md#focus-and-semantic-actions).
-An accepted access key focuses the semantic owner and calls `Activate` with
-`ActivationCause.Keyboard`.
+The owner's `UseMnemonic` value controls both marker rendering and automatic
+[access-key activation](../concepts/access-keys.md#focus-and-semantic-actions)
+against `Text`. An accepted access key focuses the semantic owner and calls
+`Activate` with `ActivationCause.Keyboard`.
 
 Space commits the pressed state on its first key press and ignores key repeats.
 The matching release activates the control when it is still focused, or when it
 is detached and therefore has no focus owner at all. Enter activates immediately
 on press. A primary pointer press inside the arranged box requests focus and
-capture for the `PressableBase` itself, even when `Content` was the original hit
-target. Pointer motion updates the pressed state by containment: releasing
-inside the bounds activates once, and releasing outside cancels.
+capture for the `PressableBase` itself, even when the owned caption child was
+the original hit target. Pointer motion updates the pressed state by
+containment: releasing inside the bounds activates once, and releasing outside
+cancels.
 
 Focus loss, disable, hide, collapse, detach, disposal, terminal-focus loss, and
 capture cancellation all clear any held state without activating. The protected
@@ -106,11 +111,12 @@ public sealed class ActionChip : PressableBase
 
 ## Expected behavior
 
-A `PressableBase` inherits from `ContentControl` and exposes no `Children`; its
-content edge stays replaceable and follows the documented ownership rules. Space
-and Enter follow the transitions above, pointer presses that originate on the
-content still route focus and capture to the owner, and an inside release
+A `PressableBase` derives from `ControlBase`, not `ContentControl`, and exposes
+no `Content` or `Children`; `Text` is the sole caption surface, and assigning it
+notifies exactly once and is silent on same-value assignment. Space and Enter
+follow the transitions above, pointer presses that originate on the owned
+caption child still route focus and capture to the owner, and an inside release
 activates exactly once while an outside release cancels. Every availability
 change cancels a held press without activating, visual-state changes request
 their combined impact, callbacks arrive in the documented order, and Unicode
-content and tiny bounds render safely. Tests cover each of these paths.
+captions and tiny bounds render safely. Tests cover each of these paths.

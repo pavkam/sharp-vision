@@ -128,11 +128,11 @@ var menu = new Menu
     MinWidth = 14,
     MaxWidth = 30,
 };
-menu.Items.Add(new MenuItem { Content = new Text("Open") });
+menu.Items.Add(new MenuItem { Text = "Open" });
 menu.Items.Add(new MenuSeparator());
 menu.Items.Add(new MenuItem
 {
-    Content = new Text("Auto save"),
+    Text = "Auto save",
     Kind = MenuItemKind.Check,
 });
 ```

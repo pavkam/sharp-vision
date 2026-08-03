@@ -863,7 +863,7 @@ public sealed class TabControl: ItemsControl
 
         if (eventArgs.PropertyName == nameof(TabItem.Header))
         {
-            header.Header = item.Header;
+            header.Text = item.Header;
             return;
         }
 

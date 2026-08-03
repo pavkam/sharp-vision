@@ -37,7 +37,7 @@ public sealed class MenuBuilderTests
 
         menu.Items.Count.ShouldBe(1);
         var item = menu.Items[0].ShouldBeOfType<MenuItem>();
-        item.Content.ShouldBeOfType<ControlText>().Content.ShouldBe("Save");
+        item.Text.ShouldBe("Save");
         item.ShortcutText.ShouldBe("Ctrl+S");
         item.Kind.ShouldBe(MenuItemKind.Command);
     }
@@ -156,7 +156,7 @@ public sealed class MenuBuilderTests
 
         menu.Items.Count.ShouldBe(1);
         var item = menu.Items[0].ShouldBeOfType<MenuItem>();
-        item.Content.ShouldBeOfType<ControlText>().Content.ShouldBe("File");
+        item.Text.ShouldBe("File");
         var submenu = item.Submenu.ShouldNotBeNull();
         submenu.Items.Count.ShouldBe(3);
         _ = submenu.Items[0].ShouldBeOfType<MenuItem>();

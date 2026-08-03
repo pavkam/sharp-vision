@@ -763,7 +763,7 @@ public sealed class WindowModalityTests
     public async Task ShowAsync_WhenCalledInsideModalWindow_StacksScopesAndRestoresWindowFocusAsync()
     {
         // Arrange
-        var trigger = new Button { Content = new ControlText("Trigger") };
+        var trigger = new Button { Text = "Trigger" };
         var parentWindow = new Window
         {
             Content = trigger,

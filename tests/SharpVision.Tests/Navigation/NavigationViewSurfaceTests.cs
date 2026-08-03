@@ -11,7 +11,7 @@ public sealed class NavigationViewSurfaceTests
     public async Task Pointer_WhenMovedOverItem_ChangesForegroundWithoutPaintingBackgroundAsync()
     {
         // Arrange
-        var item = new NavigationViewItem { Header = "Home" };
+        var item = new NavigationViewItem { Text = "Home" };
         var view = CreateView(header: null, 12, useDefaultChrome: true);
         view.Items.Add(item);
         await using var surface = await ComponentSurface.MountAsync(
@@ -47,10 +47,10 @@ public sealed class NavigationViewSurfaceTests
     public async Task Render_WhenEverySectionIsPresent_DrawsExactRetainedSidebarAsync()
     {
         // Arrange
-        var home = new NavigationViewItem { Header = "Home", Glyph = "◆" };
+        var home = new NavigationViewItem { Text = "Home", Glyph = "◆" };
         var group = new NavigationViewGroup { Header = "Tools" };
-        group.Items.Add(new NavigationViewItem { Header = "Edit" });
-        var about = new NavigationViewItem { Header = "About", Glyph = "界" };
+        group.Items.Add(new NavigationViewItem { Text = "Edit" });
+        var about = new NavigationViewItem { Text = "About", Glyph = "界" };
         var mainSeparator = new NavigationViewSeparator();
         var footerSeparator = new NavigationViewSeparator();
         var view = CreateView("界 NAV", 20, useDefaultChrome: true);
@@ -121,19 +121,19 @@ public sealed class NavigationViewSurfaceTests
     public async Task Input_WhenItemsNavigate_UsesOneFlatEligibleSelectionOrderAsync()
     {
         // Arrange
-        var first = new NavigationViewItem { Header = "First" };
-        var disabled = new NavigationViewItem { Header = "Disabled", IsEnabled = false };
-        var child = new NavigationViewItem { Header = "Child" };
+        var first = new NavigationViewItem { Text = "First" };
+        var disabled = new NavigationViewItem { Text = "Disabled", IsEnabled = false };
+        var child = new NavigationViewItem { Text = "Child" };
         var group = new NavigationViewGroup { Header = "Group" };
         group.Items.Add(child);
-        var footer = new NavigationViewItem { Header = "Footer" };
+        var footer = new NavigationViewItem { Text = "Footer" };
         var view = CreateView(header: null, 14);
         view.Items.Add(first);
         view.Items.Add(disabled);
         view.Items.Add(group);
         view.FooterItems.Add(footer);
         var observations = new List<string>();
-        view.SelectionChanged += (_, _) => observations.Add(view.SelectedItem?.Header ?? "none");
+        view.SelectionChanged += (_, _) => observations.Add(view.SelectedItem?.Text ?? "none");
         await using var surface = await ComponentSurface.MountAsync(
             view,
             new Size(14, 5),
@@ -220,12 +220,12 @@ public sealed class NavigationViewSurfaceTests
     public async Task Input_WhenSelectedGroupCollapses_RepairsSelectionAndRetainedBoundsAsync()
     {
         // Arrange
-        var first = new NavigationViewItem { Header = "First" };
-        var second = new NavigationViewItem { Header = "Second" };
+        var first = new NavigationViewItem { Text = "First" };
+        var second = new NavigationViewItem { Text = "Second" };
         var group = new NavigationViewGroup { Header = "Group" };
         group.Items.Add(first);
         group.Items.Add(second);
-        var after = new NavigationViewItem { Header = "After" };
+        var after = new NavigationViewItem { Text = "After" };
         var view = CreateView(header: null, 14);
         view.Items.Add(group);
         view.Items.Add(after);
@@ -279,10 +279,10 @@ public sealed class NavigationViewSurfaceTests
     public async Task Pointer_WhenSecondGroupHeaderIsClicked_TogglesThatGroupIndependentlyAsync()
     {
         // Arrange
-        var firstItem = new NavigationViewItem { Header = "First" };
+        var firstItem = new NavigationViewItem { Text = "First" };
         var first = new NavigationViewGroup { Header = "First group" };
         first.Items.Add(firstItem);
-        var secondItem = new NavigationViewItem { Header = "Second" };
+        var secondItem = new NavigationViewItem { Text = "Second" };
         var second = new NavigationViewGroup { Header = "Second group" };
         second.Items.Add(secondItem);
         var view = CreateView(header: null, 16);
@@ -310,8 +310,8 @@ public sealed class NavigationViewSurfaceTests
     {
         // Arrange
         var group = new NavigationViewGroup { Header = "Core" };
-        var models = new NavigationViewItem { Header = "Models" };
-        var services = new NavigationViewItem { Header = "Services" };
+        var models = new NavigationViewItem { Text = "Models" };
+        var services = new NavigationViewItem { Text = "Services" };
         group.Items.Add(models);
         group.Items.Add(services);
         var view = CreateView(header: null, 18);
@@ -336,10 +336,10 @@ public sealed class NavigationViewSurfaceTests
     {
         // Arrange
         var core = new NavigationViewGroup { Header = "Core" };
-        var models = new NavigationViewItem { Header = "Models" };
+        var models = new NavigationViewItem { Text = "Models" };
         core.Items.Add(models);
         var tests = new NavigationViewGroup { Header = "Tests" };
-        var unit = new NavigationViewItem { Header = "Unit" };
+        var unit = new NavigationViewItem { Text = "Unit" };
         tests.Items.Add(unit);
         var view = CreateView(header: null, 14);
         view.Items.Add(core);
@@ -380,9 +380,9 @@ public sealed class NavigationViewSurfaceTests
     {
         // Arrange
         var items = Enumerable.Range(1, 8)
-            .Select(index => new NavigationViewItem { Header = $"Page {index}" })
+            .Select(index => new NavigationViewItem { Text = $"Page {index}" })
             .ToArray();
-        var footer = new NavigationViewItem { Header = "Footer" };
+        var footer = new NavigationViewItem { Text = "Footer" };
         var view = CreateView("NAV", 12);
 
         foreach (var item in items)
@@ -445,7 +445,7 @@ public sealed class NavigationViewSurfaceTests
     {
         // Arrange
         var view = new NavigationView { Height = Length.Cells(6), HorizontalAlignment = HorizontalAlignment.Stretch };
-        List<NavigationViewItem> items = [.. Enumerable.Range(0, 12).Select(index => new NavigationViewItem { Header = $"Item {index}" })];
+        List<NavigationViewItem> items = [.. Enumerable.Range(0, 12).Select(index => new NavigationViewItem { Text = $"Item {index}" })];
 
         foreach (var item in items)
         {

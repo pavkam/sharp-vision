@@ -42,7 +42,7 @@ internal sealed class PrismPane: CompositeControlBase
             Content = new FigletText(FigletCatalog.Default.Load("Small")) { Content = "PRISM" }
         };
         var status = new Text("Phase 0 / 60");
-        var advance = new Button { Content = new Text("&Advance phase") };
+        var advance = new Button { Text = "&Advance phase" };
         var frame = 0;
         advance.Click += (_, _) =>
         {

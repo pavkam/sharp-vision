@@ -11,7 +11,7 @@ public sealed class MessageBoxSurfaceTests
     public async Task Layout_WhenMessageBoxIsMoved_PreservesInitialHeightAsync()
     {
         // Arrange
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var screen = new HostedControlScreen(opener);
         await using var surface = await ComponentSurface.MountScreenAsync(
             screen,
@@ -40,7 +40,7 @@ public sealed class MessageBoxSurfaceTests
     public async Task Render_WhenMessageBoxIsShown_CentersDialogWindowInSurfaceAsync()
     {
         // Arrange
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -85,7 +85,7 @@ public sealed class MessageBoxSurfaceTests
         int expectedButtonCount)
     {
         // Arrange
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -130,7 +130,7 @@ public sealed class MessageBoxSurfaceTests
     public async Task Render_WhenMessageIsLong_WrapsWithinDialogBoundsAsync()
     {
         // Arrange
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -166,7 +166,7 @@ public sealed class MessageBoxSurfaceTests
     public async Task Input_WhenTabAndEnterAreUsed_CyclesToSecondButtonAndActivatesAsync()
     {
         // Arrange
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -190,7 +190,7 @@ public sealed class MessageBoxSurfaceTests
         await surface.Keyboard.PressAsync(Code.Tab);
         var noButton = FindAll<Button>(
                 OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldNotBeNull())
-            .FirstOrDefault(static b => b.Content is ControlText { Content: "&No" });
+            .FirstOrDefault(static b => b.Text == "&No");
         _ = noButton.ShouldNotBeNull();
         noButton.IsFocused.ShouldBeTrue();
 
@@ -207,7 +207,7 @@ public sealed class MessageBoxSurfaceTests
     public async Task Render_WhenDialogShadowIsVisible_UsesShadowWithTransparentBackgroundAsync()
     {
         // Arrange
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -245,7 +245,7 @@ public sealed class MessageBoxSurfaceTests
     [Fact]
     public async Task Render_WhenShown_CentersTitleWithoutCloseButtonAsync()
     {
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,

@@ -21,8 +21,8 @@ internal sealed class ExpanderPane: CompositeControlBase
                 Spacing = 1,
                 Children =
                 {
-                    new CheckBox { Content = new Text("&Debug mode") },
-                    new CheckBox { Content = new Text("&Verbose logging") }
+                    new CheckBox { Text = "&Debug mode" },
+                    new CheckBox { Text = "&Verbose logging" }
                 }
             }
         };
@@ -114,8 +114,8 @@ internal sealed class ExpanderPane: CompositeControlBase
                             Spacing = 1,
                             Children =
                             {
-                                new CheckBox { Content = new Text("&Use proxy") },
-                                new CheckBox { Content = new Text("Verify &SSL") }
+                                new CheckBox { Text = "&Use proxy" },
+                                new CheckBox { Text = "Verify &SSL" }
                             }
                         }
                     },

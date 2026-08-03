@@ -147,8 +147,8 @@ public sealed class PressableTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            var content = new ControlText("Go");
-            var control = new Button { Content = content };
+            var control = new Button { Text = "Go" };
+            var content = control.TextControl!;
             new LayoutEngine().Layout(control, new Size(8, 3));
             control.Attach(dispatcher);
             using FocusManager focus = new(control);

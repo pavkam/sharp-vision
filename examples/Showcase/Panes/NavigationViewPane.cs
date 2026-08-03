@@ -18,32 +18,32 @@ internal sealed class NavigationViewPane: CompositeControlBase
     {
         var status = new Text("Selected: Dashboard");
         var basic = new NavigationView { Header = "&MY APP", Width = Length.Cells(24), Height = Length.Cells(12) };
-        basic.Items.Add(new NavigationViewItem { Header = "&界 Dashboard" });
-        basic.Items.Add(new NavigationViewItem { Header = "&Reports", Glyph = "📈" });
-        basic.Items.Add(new NavigationViewItem { Header = "&Settings", Glyph = "⚙", IsEnabled = false });
-        basic.SelectionChanged += (_, _) => status.Content = $"Selected: {basic.SelectedItem?.Header ?? "none"}";
+        basic.Items.Add(new NavigationViewItem { Text = "&界 Dashboard" });
+        basic.Items.Add(new NavigationViewItem { Text = "&Reports", Glyph = "📈" });
+        basic.Items.Add(new NavigationViewItem { Text = "&Settings", Glyph = "⚙", IsEnabled = false });
+        basic.SelectionChanged += (_, _) => status.Content = $"Selected: {basic.SelectedItem?.Text ?? "none"}";
 
         var grouped = new NavigationView { Header = "&PROJECT", Width = Length.Cells(24), Height = Length.Cells(16) };
         var core = new NavigationViewGroup { Header = "&Core" };
-        core.Items.Add(new NavigationViewItem { Header = "Mo&dels" });
-        core.Items.Add(new NavigationViewItem { Header = "&Services" });
+        core.Items.Add(new NavigationViewItem { Text = "Mo&dels" });
+        core.Items.Add(new NavigationViewItem { Text = "&Services" });
         var tests = new NavigationViewGroup { Header = "&Tests" };
-        tests.Items.Add(new NavigationViewItem { Header = "&Unit" });
-        tests.Items.Add(new NavigationViewItem { Header = "&Integration" });
+        tests.Items.Add(new NavigationViewItem { Text = "&Unit" });
+        tests.Items.Add(new NavigationViewItem { Text = "&Integration" });
         grouped.Items.Add(core);
         grouped.Items.Add(new NavigationViewSeparator());
         grouped.Items.Add(tests);
 
         var footer = new NavigationView { Header = "S&ETTINGS", Width = Length.Cells(24), Height = Length.Cells(10) };
-        footer.Items.Add(new NavigationViewItem { Header = "&General" });
-        footer.Items.Add(new NavigationViewItem { Header = "&Appearance" });
+        footer.Items.Add(new NavigationViewItem { Text = "&General" });
+        footer.Items.Add(new NavigationViewItem { Text = "&Appearance" });
         footer.FooterItems.Add(new NavigationViewSeparator());
-        footer.FooterItems.Add(new NavigationViewItem { Header = "A&bout" });
+        footer.FooterItems.Add(new NavigationViewItem { Text = "A&bout" });
 
         var overflow = new NavigationView { Header = "&LONG", Width = Length.Cells(24), Height = Length.Cells(8) };
         for (var index = 1; index <= 8; index++)
         {
-            overflow.Items.Add(new NavigationViewItem { Header = $"Destination &{index}" });
+            overflow.Items.Add(new NavigationViewItem { Text = $"Destination &{index}" });
         }
 
         return new DocPage(Title,

@@ -37,7 +37,7 @@ internal sealed class StatusBarWorkspace: CompositeControlBase
         {
             Height = Length.Cells(1),
             Padding = default,
-            Content = new Text("&Autosave") { Overflow = Overflow.Clip }
+            Text = "&Autosave"
         };
         AutoSave.StateChanged += (_, _) =>
             ActivityStatus.Content = AutoSave.IsChecked == true ? "Saved" : "Modified";

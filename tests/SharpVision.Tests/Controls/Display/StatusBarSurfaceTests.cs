@@ -65,7 +65,7 @@ public sealed class StatusBarSurfaceTests
             Style = TestButtonStyles.FlatWithPadding(default),
             Padding = default,
             Height = Length.Cells(1),
-            Content = new ControlText("Sync")
+            Text = "Sync"
         };
         button.Click += (_, _) => clicks++;
         var item = new StatusBarItem
@@ -95,7 +95,7 @@ public sealed class StatusBarSurfaceTests
     public async Task Pointer_WhenAccentStatusBarContainsCheckBox_UsesThemeSafeInteractiveStatesAsync()
     {
         // Arrange
-        var checkBox = new CheckBox { Content = new ControlText("Autosave") };
+        var checkBox = new CheckBox { Text = "Autosave" };
         var context = new ControlText("Ready");
         var bar = new StatusBar
         {

@@ -17,32 +17,32 @@ internal sealed class CheckBoxPane: CompositeControlBase
     private static DocPage CreateContent()
     {
         var status = new Text("State log: waiting");
-        var live = new CheckBox { Content = new Text("&Toggle with Space, Enter, or a pointer click") };
+        var live = new CheckBox { Text = "&Toggle with Space, Enter, or a pointer click" };
         live.StateChanged += (_, eventArgs) =>
             status.Content = $"State log: {eventArgs.Current?.ToString() ?? "indeterminate"} ({eventArgs.Cause})";
 
         // Built-in mark families and one validated custom glyph set.
         var square = new CheckBox
         {
-            Content = new Text("&Square marks"),
+            Text = "&Square marks",
             Style = CheckBoxStyle.Square,
             IsChecked = true
         };
         var brackets = new CheckBox
         {
-            Content = new Text("&Bracket marks"),
+            Text = "&Bracket marks",
             Style = CheckBoxStyle.Brackets,
             IsChecked = true
         };
         var tick = new CheckBox
         {
-            Content = new Text("Tic&k marks"),
+            Text = "Tic&k marks",
             Style = CheckBoxStyle.Tick,
             IsChecked = true
         };
         var custom = new CheckBox
         {
-            Content = new Text("Custo&m marks"),
+            Text = "Custo&m marks",
             Style = new CheckBoxStyle(
                 CheckBoxMarkStyle.Square,
                 new CheckBoxGlyphs(new Rune('·'), new Rune('✓'), new Rune('~')),
@@ -51,16 +51,16 @@ internal sealed class CheckBoxPane: CompositeControlBase
         };
 
         // Three-state specimens: unchecked, checked, and indeterminate.
-        var @unchecked = new CheckBox { Content = new Text("&Unchecked"), Style = CheckBoxStyle.Brackets };
+        var @unchecked = new CheckBox { Text = "&Unchecked", Style = CheckBoxStyle.Brackets };
         var @checked = new CheckBox
         {
-            Content = new Text("&Checked"),
+            Text = "&Checked",
             Style = CheckBoxStyle.Brackets,
             IsChecked = true
         };
         var indeterminate = new CheckBox
         {
-            Content = new Text("&Indeterminate"),
+            Text = "&Indeterminate",
             Style = CheckBoxStyle.Brackets,
             IsThreeState = true,
             IsChecked = null
@@ -74,7 +74,7 @@ internal sealed class CheckBoxPane: CompositeControlBase
 
         var disabled = new CheckBox
         {
-            Content = new Text("&Disabled, checked"),
+            Text = "&Disabled, checked",
             Style = CheckBoxStyle.Brackets,
             IsChecked = true,
             IsEnabled = false
@@ -84,11 +84,11 @@ internal sealed class CheckBoxPane: CompositeControlBase
         var policyStatus = new Text("Policy: indeterminate");
         var policy = new CheckBox
         {
-            Content = new Text("&Optional inherited value"),
+            Text = "&Optional inherited value",
             IsThreeState = true,
             IsChecked = null
         };
-        var twoState = new Button { Content = new Text("&Return to two states") };
+        var twoState = new Button { Text = "&Return to two states" };
         twoState.Click += (_, _) =>
         {
             policy.IsThreeState = false;
@@ -97,7 +97,7 @@ internal sealed class CheckBoxPane: CompositeControlBase
 
         // State-specific notifications precede the general StateChanged notification.
         var eventStatus = new Text("Events: waiting");
-        var eventProbe = new CheckBox { Content = new Text("Obser&ve event order") };
+        var eventProbe = new CheckBox { Text = "Obser&ve event order" };
         eventProbe.Checked += (_, _) => eventStatus.Content = "Events: Checked";
         eventProbe.Unchecked += (_, _) => eventStatus.Content = "Events: Unchecked";
         eventProbe.Indeterminate += (_, _) => eventStatus.Content = "Events: Indeterminate";
@@ -105,10 +105,10 @@ internal sealed class CheckBoxPane: CompositeControlBase
 
         // PerformClick reports Programmatic as the activation cause.
         var programmaticStatus = new Text("Programmatic toggle: waiting");
-        var programmaticTarget = new CheckBox { Content = new Text("&Programmatic target") };
+        var programmaticTarget = new CheckBox { Text = "&Programmatic target" };
         programmaticTarget.StateChanged += (_, eventArgs) =>
             programmaticStatus.Content = $"Programmatic toggle: {eventArgs.Current} ({eventArgs.Cause})";
-        var programmaticTrigger = new Button { Content = new Text("Toggle pro&grammatically") };
+        var programmaticTrigger = new Button { Text = "Toggle pro&grammatically" };
         programmaticTrigger.Click += (_, _) => programmaticTarget.PerformClick();
 
         // Form recipe: grouped options with one disabled retained value.
@@ -122,8 +122,8 @@ internal sealed class CheckBoxPane: CompositeControlBase
                 Underline.None,
                 Color.Default)
             },
-            new CheckBox { Content = new Text("Include meta&data"), IsChecked = true },
-            new CheckBox { Content = new Text("Compr&ess output") },
+            new CheckBox { Text = "Include meta&data", IsChecked = true },
+            new CheckBox { Text = "Compr&ess output" },
             disabled));
 
         return new DocPage(

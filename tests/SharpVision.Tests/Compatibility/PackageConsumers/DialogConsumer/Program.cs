@@ -9,7 +9,7 @@ internal static class Program
 {
     private static async Task Main()
     {
-        var opener = new Button { Content = new DisplayText("Open") };
+        var opener = new Button { Text = "Open" };
         var root = new Overlay { Children = { opener } };
         var terminal = new ConsumerTerminal();
         await using var application = new Application(

@@ -16,7 +16,7 @@ public sealed class ShortcutManagerTests
         {
             using var root = new Stack();
             var menu = new Menu();
-            var item = new MenuItem { Content = new ControlText("Save"), Shortcut = CtrlS };
+            var item = new MenuItem { Text = "Save", Shortcut = CtrlS };
             menu.Items.Add(item);
             root.Children.Add(menu);
             root.Attach(dispatcher);
@@ -45,9 +45,9 @@ public sealed class ShortcutManagerTests
             using var root = new Stack();
             var menu = new Menu();
             var submenu = new Menu();
-            var inner = new MenuItem { Content = new ControlText("Save"), Shortcut = CtrlS };
+            var inner = new MenuItem { Text = "Save", Shortcut = CtrlS };
             submenu.Items.Add(inner);
-            var outer = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+            var outer = new MenuItem { Text = "File", Submenu = submenu };
             menu.Items.Add(outer);
             root.Children.Add(menu);
             root.Attach(dispatcher);
@@ -78,7 +78,7 @@ public sealed class ShortcutManagerTests
             var menu = new Menu();
             var item = new MenuItem
             {
-                Content = new ControlText("Save"),
+                Text = "Save",
                 Shortcut = CtrlS,
                 IsEnabled = false
             };
@@ -109,7 +109,7 @@ public sealed class ShortcutManagerTests
         {
             using var root = new Stack();
             var menu = new Menu();
-            var item = new MenuItem { Content = new ControlText("Save"), Shortcut = CtrlS };
+            var item = new MenuItem { Text = "Save", Shortcut = CtrlS };
             menu.Items.Add(item);
             root.Children.Add(menu);
             root.Attach(dispatcher);
@@ -144,8 +144,8 @@ public sealed class ShortcutManagerTests
         {
             using var root = new Stack();
             var menu = new Menu();
-            var first = new MenuItem { Content = new ControlText("First"), Shortcut = CtrlS };
-            var second = new MenuItem { Content = new ControlText("Second"), Shortcut = CtrlS };
+            var first = new MenuItem { Text = "First", Shortcut = CtrlS };
+            var second = new MenuItem { Text = "Second", Shortcut = CtrlS };
             menu.Items.Add(first);
             menu.Items.Add(second);
             root.Children.Add(menu);
@@ -167,42 +167,6 @@ public sealed class ShortcutManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies a duplicate gesture cycles past a match that contains current focus,
-    /// exactly like AccessKeyManager.FindAnchor - reachable when a match's own content hosts a
-    /// separately focusable control.</summary>
-    [Fact]
-    public async Task Process_WhenFocusIsWithinAMatch_CyclesToTheNextMatchAsync()
-    {
-        await using var dispatcher = Dispatcher.Start();
-
-        await dispatcher.InvokeAsync(() =>
-        {
-            using var root = new Stack();
-            var menu = new Menu();
-            var anchorContent = new Button();
-            var first = new MenuItem { Content = anchorContent, Shortcut = CtrlS };
-            var second = new MenuItem { Content = new ControlText("Second"), Shortcut = CtrlS };
-            menu.Items.Add(first);
-            menu.Items.Add(second);
-            root.Children.Add(menu);
-            root.Attach(dispatcher);
-            using var focus = new FocusManager(root);
-            using var pointer = new PointerManager(root);
-            using var modality = new ModalityManager(root, focus, pointer);
-            var manager = new ShortcutManager(root, focus, modality);
-            var firstInvocations = 0;
-            var secondInvocations = 0;
-            first.Invoked += (_, _) => firstInvocations++;
-            second.Invoked += (_, _) => secondInvocations++;
-            focus.Focus(anchorContent).ShouldBeTrue();
-
-            manager.Process(Ctrl('s')).ShouldBeTrue();
-
-            firstInvocations.ShouldBe(0);
-            secondInvocations.ShouldBe(1);
-        }, TestContext.Current.CancellationToken);
-    }
-
     /// <summary>Verifies an active modal plane excludes matching background item shortcuts.</summary>
     [Fact]
     public async Task Process_WhenModalPlaneIsActive_UsesOnlyPlaneMatchesAsync()
@@ -213,11 +177,11 @@ public sealed class ShortcutManagerTests
         {
             using var root = new Stack();
             var backgroundMenu = new Menu();
-            var background = new MenuItem { Content = new ControlText("Background"), Shortcut = CtrlS };
+            var background = new MenuItem { Text = "Background", Shortcut = CtrlS };
             backgroundMenu.Items.Add(background);
             var plane = new Stack();
             var planeMenu = new Menu();
-            var inside = new MenuItem { Content = new ControlText("Inside"), Shortcut = CtrlS };
+            var inside = new MenuItem { Text = "Inside", Shortcut = CtrlS };
             planeMenu.Items.Add(inside);
             plane.Children.Add(planeMenu);
             root.Children.Add(backgroundMenu);

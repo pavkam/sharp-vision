@@ -16,11 +16,11 @@ internal sealed class RadioButtonPane: CompositeControlBase
     /// <inheritdoc/>
     private static DocPage CreateContent()
     {
-        var fast = new RadioButton { Content = new Text("&Fast"), GroupName = "quality", IsChecked = true };
-        var balanced = new RadioButton { Content = new Text("&Balanced"), GroupName = "quality" };
+        var fast = new RadioButton { Text = "&Fast", GroupName = "quality", IsChecked = true };
+        var balanced = new RadioButton { Text = "&Balanced", GroupName = "quality" };
         var unavailable = new RadioButton
         {
-            Content = new Text("&Unavailable"),
+            Text = "&Unavailable",
             GroupName = "quality",
             IsEnabled = false
         };
@@ -67,14 +67,14 @@ internal sealed class RadioButtonPane: CompositeControlBase
         var traversalStatus = new Text("Traversal: one");
         var traversalOne = new RadioButton
         {
-            Content = new Text("&Traversal one"),
+            Text = "&Traversal one",
             GroupName = "traversal",
             IsChecked = true
         };
-        var traversalTwo = new RadioButton { Content = new Text("Traversal t&wo"), GroupName = "traversal" };
+        var traversalTwo = new RadioButton { Text = "Traversal t&wo", GroupName = "traversal" };
         var traversalUnavailable = new RadioButton
         {
-            Content = new Text("Traversal &unavailable"),
+            Text = "Traversal &unavailable",
             GroupName = "traversal",
             IsEnabled = false
         };
@@ -82,25 +82,25 @@ internal sealed class RadioButtonPane: CompositeControlBase
         traversalTwo.Checked += (_, _) => traversalStatus.Content = "Traversal: two";
 
         var regroupStatus = new Text("Regrouped: waiting");
-        var movable = new RadioButton { Content = new Text("&Movable option"), GroupName = "left", IsChecked = true };
-        var leftPeer = new RadioButton { Content = new Text("&Left peer"), GroupName = "left" };
-        var rightPeer = new RadioButton { Content = new Text("&Right peer"), GroupName = "right", IsChecked = true };
-        var regroup = new Button { Content = new Text("Mo&ve selected option to right group") };
+        var movable = new RadioButton { Text = "&Movable option", GroupName = "left", IsChecked = true };
+        var leftPeer = new RadioButton { Text = "&Left peer", GroupName = "left" };
+        var rightPeer = new RadioButton { Text = "&Right peer", GroupName = "right", IsChecked = true };
+        var regroup = new Button { Text = "Mo&ve selected option to right group" };
         regroup.Click += (_, _) =>
         {
             movable.GroupName = "right";
             regroupStatus.Content = "Regrouped: Movable option → right";
         };
 
-        var localA = new RadioButton { Content = new Text("Loc&al A"), IsChecked = true };
-        var localB = new RadioButton { Content = new Text("Lo&cal B") };
-        var otherA = new RadioButton { Content = new Text("&Other A"), IsChecked = true };
-        var otherB = new RadioButton { Content = new Text("Ot&her B") };
+        var localA = new RadioButton { Text = "Loc&al A", IsChecked = true };
+        var localB = new RadioButton { Text = "Lo&cal B" };
+        var otherA = new RadioButton { Text = "&Other A", IsChecked = true };
+        var otherB = new RadioButton { Text = "Ot&her B" };
 
         var emptyStatus = new Text("Empty group: none");
-        var emptyFirst = new RadioButton { Content = new Text("F&irst"), GroupName = "empty" };
-        var emptySecond = new RadioButton { Content = new Text("&Second"), GroupName = "empty" };
-        var selectFirst = new Button { Content = new Text("Select first &programmatically") };
+        var emptyFirst = new RadioButton { Text = "F&irst", GroupName = "empty" };
+        var emptySecond = new RadioButton { Text = "&Second", GroupName = "empty" };
+        var selectFirst = new Button { Text = "Select first &programmatically" };
         selectFirst.Click += (_, _) =>
         {
             emptyFirst.IsChecked = true;
@@ -108,21 +108,21 @@ internal sealed class RadioButtonPane: CompositeControlBase
         };
 
         var eventStatus = new Text("Events: waiting");
-        var eventFirst = new RadioButton { Content = new Text("&Event first"), GroupName = "events", IsChecked = true };
-        var eventSecond = new RadioButton { Content = new Text("Eve&nt second"), GroupName = "events" };
+        var eventFirst = new RadioButton { Text = "&Event first", GroupName = "events", IsChecked = true };
+        var eventSecond = new RadioButton { Text = "Eve&nt second", GroupName = "events" };
         eventFirst.Unchecked += (_, _) => eventStatus.Content = "Events: Unchecked";
         eventSecond.Checked += (_, _) => eventStatus.Content += " → Checked";
         eventSecond.SelectionChanged += (_, _) => eventStatus.Content += " → SelectionChanged";
 
         var parenthesizedUnchecked = new RadioButton
         {
-            Content = new Text("Unselected option"),
+            Text = "Unselected option",
             GroupName = "parenthesized",
             Style = RadioButtonStyle.Parentheses
         };
         var parenthesizedChecked = new RadioButton
         {
-            Content = new Text("Selected option"),
+            Text = "Selected option",
             GroupName = "parenthesized",
             Style = RadioButtonStyle.Parentheses,
             IsChecked = true
@@ -190,7 +190,7 @@ internal sealed class RadioButtonPane: CompositeControlBase
                     new DocColumn(
                         new RadioButton
                         {
-                            Content = new Text("Picked option"),
+                            Text = "Picked option",
                             GroupName = "custom-glyph",
                             UseMnemonic = false,
                             Style = new RadioButtonStyle(
@@ -201,7 +201,7 @@ internal sealed class RadioButtonPane: CompositeControlBase
                         },
                         new RadioButton
                         {
-                            Content = new Text("Rival option"),
+                            Text = "Rival option",
                             GroupName = "custom-glyph",
                             UseMnemonic = false,
                             Style = new RadioButtonStyle(

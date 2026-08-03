@@ -44,9 +44,11 @@ public sealed class ComponentRoleTests
         arrange.IsAbstract.ShouldBeTrue();
     }
 
-    /// <summary>Verifies every single-face pressable uses the single-content authoring role.</summary>
+    /// <summary>Verifies every pressable uses the single-text-caption authoring role: Content is
+    /// structurally absent (not merely hidden), and the only caption surface is the string
+    /// <see cref="PressableBase.Text"/> property.</summary>
     [Fact]
-    public void Type_WhenInspected_UsesSingleContentPressableRole()
+    public void Type_WhenInspected_UsesSingleTextCaptionPressableRole()
     {
         var pressable = typeof(PressableBase);
         Type[] concrete =
@@ -55,15 +57,17 @@ public sealed class ComponentRoleTests
             typeof(CheckBox),
             typeof(RadioButton),
             typeof(MenuItem),
-            typeof(ListItem),
             typeof(ProbePressable)
         ];
 
-        pressable.BaseType.ShouldBe(typeof(ContentControl));
+        pressable.BaseType.ShouldBe(typeof(ControlBase));
         pressable.GetProperty(nameof(ContentControl.Content),
-                BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                BindingFlags.Public | BindingFlags.Instance)
             .ShouldBeNull();
         pressable.GetProperty("Children", BindingFlags.Public | BindingFlags.Instance).ShouldBeNull();
+        pressable.GetProperty(nameof(PressableBase.Text), BindingFlags.Public | BindingFlags.Instance)
+            .ShouldNotBeNull()
+            .PropertyType.ShouldBe(typeof(string));
         pressable.GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance)
             .ShouldAllBe(constructor => constructor.GetParameters().Length == 0);
         pressable.GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
@@ -71,13 +75,26 @@ public sealed class ComponentRoleTests
 
         foreach (var type in concrete)
         {
-            typeof(ContentControl).IsAssignableFrom(type).ShouldBeTrue(type.FullName);
+            typeof(PressableBase).IsAssignableFrom(type).ShouldBeTrue(type.FullName);
+            typeof(ContentControl).IsAssignableFrom(type).ShouldBeFalse(type.FullName);
             typeof(Container).IsAssignableFrom(type).ShouldBeFalse(type.FullName);
             type.GetProperty(nameof(ContentControl.Content),
-                    BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                    BindingFlags.Public | BindingFlags.Instance)
                 .ShouldBeNull(type.FullName);
             type.GetProperty("Children", BindingFlags.Public | BindingFlags.Instance).ShouldBeNull(type.FullName);
         }
+    }
+
+    /// <summary>Verifies ListItem composes press behavior directly instead of inheriting Pressable,
+    /// so it keeps arbitrary owned <see cref="ContentControl.Content"/> for realized template
+    /// output, which the text-only Pressable family no longer supports.</summary>
+    [Fact]
+    public void ListItem_WhenInspected_ComposesPressBehaviorInsteadOfInheritingPressable()
+    {
+        var type = typeof(ListItem);
+
+        typeof(PressableBase).IsAssignableFrom(type).ShouldBeFalse();
+        typeof(ContentControl).IsAssignableFrom(type).ShouldBeTrue();
     }
 
     /// <summary>Verifies ComboBox is a composed primitive with no public access to private presentation parts.</summary>

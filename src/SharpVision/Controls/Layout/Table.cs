@@ -1272,6 +1272,7 @@ public sealed class Table: ItemsControl
     {
         Text text => text.Content,
         TextInput input => input.Text,
+        PressableBase { Text: var text } => text,
         ContentControl { Content: Text text } => text.Content,
         ContentControl { Content: TextInput input } => input.Text,
         _ => string.Empty

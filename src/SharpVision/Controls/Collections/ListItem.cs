@@ -6,8 +6,16 @@ namespace SharpVision.Controls.Collections;
 using SharpVision.Terminal.Input;
 
 /// <summary>Owns one realized ListView template control and its selection behavior.</summary>
-internal sealed class ListItem: PressableBase
+/// <remarks>
+/// Composes <see cref="PressBehavior"/> directly instead of inheriting <see cref="PressableBase"/> so
+/// it can keep arbitrary owned <see cref="ContentControl.Content"/> for realized template output,
+/// which <see cref="PressableBase"/> no longer supports now that it converges on a single text
+/// caption.
+/// </remarks>
+internal sealed class ListItem: ContentControl
 {
+    private readonly PressBehavior _interaction;
+
     /// <summary>Initializes one indexed detached realized control.</summary>
     /// <param name="index">The non-negative stable item index.</param>
     /// <param name="content">The non-null detached template control.</param>
@@ -15,6 +23,16 @@ internal sealed class ListItem: PressableBase
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentNullException.ThrowIfNull(content);
+        _interaction = new PressBehavior(
+            () => Bounds,
+            () => EffectiveIsEnabled && EffectiveIsVisible,
+            () => FocusOwner is null || IsFocused,
+            RequestFocus,
+            CapturePointer,
+            () => HasPointerCapture,
+            ReleasePointerCapture,
+            SetPressed,
+            Activate);
         HorizontalAlignment = HorizontalAlignment.Stretch;
         Focusable = false;
         TabStop = false;
@@ -64,7 +82,12 @@ internal sealed class ListItem: PressableBase
             : null;
 
     /// <inheritdoc/>
-    protected override void Activate(ActivationCause cause)
+    internal override VisualState AmbientAppearanceState => GetAppearanceState();
+
+    /// <inheritdoc/>
+    internal override bool StateAffectsAmbientAppearance => true;
+
+    private void Activate(ActivationCause cause)
     {
         if (IsAvailable)
         {
@@ -76,6 +99,7 @@ internal sealed class ListItem: PressableBase
     protected override void OnFocusChanged(bool focused)
     {
         base.OnFocusChanged(focused);
+        _interaction.FocusChanged(focused);
 
         if (focused)
         {
@@ -83,6 +107,13 @@ internal sealed class ListItem: PressableBase
             Debug.Assert(list is not null, "A focused ListItem belongs to a ListView.");
             list.NotifyItemFocused(this);
         }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
+    {
+        base.OnLostPointerCapture(reason);
+        _interaction.CaptureLost();
     }
 
     /// <inheritdoc/>
@@ -100,6 +131,7 @@ internal sealed class ListItem: PressableBase
         }
 
         base.OnEvent(eventArgs);
+        _interaction.Handle(eventArgs);
     }
 
     /// <inheritdoc/>
@@ -139,6 +171,7 @@ internal sealed class ListItem: PressableBase
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
+        _interaction.Unavailable();
 
         if (reason == ReleaseReason.Disposed)
         {

@@ -52,12 +52,12 @@ internal sealed class DataBindingPane: CompositeControlBase
         NameInput = new TextInput { Width = Length.Cells(28) };
         var enabled = new CheckBox
         {
-            Content = new Text("&Model-enabled option"),
+            Text = "&Model-enabled option",
             IsThreeState = true
         };
         var primary = new RadioButton
         {
-            Content = new Text("Primary option"),
+            Text = "Primary option",
             UseMnemonic = false
         };
         var slider = new Slider { Width = Length.Cells(30), Minimum = 0, Maximum = 100 };
@@ -101,18 +101,18 @@ internal sealed class DataBindingPane: CompositeControlBase
         _ = tabs.Bind(Model, source => source.SelectedIndex);
 
         var menu = new Menu { Orientation = Orientation.Horizontal };
-        menu.Items.Add(new MenuItem { Content = new Text("First"), UseMnemonic = false });
-        menu.Items.Add(new MenuItem { Content = new Text("Second"), UseMnemonic = false });
+        menu.Items.Add(new MenuItem { Text = "First", UseMnemonic = false });
+        menu.Items.Add(new MenuItem { Text = "Second", UseMnemonic = false });
         _ = menu.Bind(Model, source => source.SelectedIndex);
 
         _status = new Text("Binding log: ready");
         NameInput.TextChanged += (_, _) => _status.Content = $"Model city: {Model.Address?.City ?? "none"}";
         Items.SelectionChanged += (_, _) =>
             _status.Content = $"Selected: {Model.SelectedItem?.Name ?? "none"}";
-        var replaceAddress = new Button { Content = new Text("&Replace address") };
+        var replaceAddress = new Button { Text = "&Replace address" };
         replaceAddress.Click += (_, _) =>
             Model.Address = new DataBindingShowcaseAddress { City = "Coimbra" };
-        var addItem = new Button { Content = new Text("&Add item") };
+        var addItem = new Button { Text = "&Add item" };
         addItem.Click += (_, _) =>
             Model.Items.Add(new DataBindingShowcaseItem($"Item {Model.Items.Count + 1}"));
 
@@ -132,7 +132,7 @@ internal sealed class DataBindingPane: CompositeControlBase
         Model.Command = new DataBindingShowcaseCommand(parameter =>
             commandStatus.Content = $"Command parameter: {parameter ?? "null"}");
         Model.CommandParameter = "bound payload";
-        var command = new Button { Content = new Text("Run bound command"), UseMnemonic = false };
+        var command = new Button { Text = "Run bound command", UseMnemonic = false };
         _ = command.BindCommand(Model, source => source.Command);
         _ = command.BindCommandParameter(Model, source => source.CommandParameter);
 

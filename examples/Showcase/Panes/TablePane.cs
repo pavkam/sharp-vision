@@ -69,13 +69,13 @@ internal sealed class TablePane: CompositeControlBase
         interactive.Columns.Add(TableColumn.Fill("Configuration"));
         var interactiveOption = new CheckBox
         {
-            Content = new Text("&Include integration tests"),
+            Text = "&Include integration tests",
             IsChecked = true,
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top
         };
         interactive.Rows.Add(new TableRow([
-            new Button { Content = new Text("&Run checks") },
+            new Button { Text = "&Run checks" },
             interactiveOption
         ]));
 
@@ -113,19 +113,19 @@ internal sealed class TablePane: CompositeControlBase
                 ? "Sort reset."
                 : $"Sorted {args.Direction.ToString().ToLowerInvariant()}.";
         var copyStatus = new Text("Clipboard: no selection copied.");
-        var selectAllCells = new Button { Content = new Text("Select &all cells") };
+        var selectAllCells = new Button { Text = "Select &all cells" };
         selectAllCells.Click += (_, _) =>
         {
             behavior.SelectAll();
             copyStatus.Content = $"Clipboard: {behavior.CopySelection().Length} characters ready.";
         };
-        var clearCells = new Button { Content = new Text("&Clear cells") };
+        var clearCells = new Button { Text = "&Clear cells" };
         clearCells.Click += (_, _) =>
         {
             behavior.ClearSelection();
             copyStatus.Content = "Clipboard: selection cleared.";
         };
-        var copyCells = new Button { Content = new Text("&Copy selection") };
+        var copyCells = new Button { Text = "&Copy selection" };
         copyCells.Click += (_, _) => copyStatus.Content =
             $"Clipboard: {behavior.CopySelection().Length} characters ready.";
 
@@ -134,7 +134,7 @@ internal sealed class TablePane: CompositeControlBase
         dynamic.Columns.Add(TableColumn.Fill("State"));
         dynamic.Rows.Add(new TableRow([new Text("1.0"), new Text("Stable")]));
         var rowStatus = new Text("Rows: 1");
-        var addRow = new Button { Content = new Text("&Add release row") };
+        var addRow = new Button { Text = "&Add release row" };
         addRow.Click += (_, _) =>
         {
             dynamic.Rows.Add(new TableRow([new Text("1.1"), new Text("Preview")]));

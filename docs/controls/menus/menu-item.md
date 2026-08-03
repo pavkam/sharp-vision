@@ -4,14 +4,14 @@
 
 `MenuItem` is a sealed [`PressableBase`](../pressable.md#overview) that
 represents a command, check, or radio entry inside a [Menu](menu.md#overview).
-Its label comes from the inherited `Content` property, which is the item's only
-visible face; there is no competing text-only `Header` property.
+Its label comes from the inherited `Text` property, which is the item's only
+caption surface.
 
 ## API
 
 | Member                           | Default         | Purpose                                                                                        |
 | -------------------------------- | --------------- | ---------------------------------------------------------------------------------------------- |
-| `Content`                        | `null`          | The item's label or richer face; the item owns it.                                             |
+| Inherited `Text`                 | `""`            | The item's label.                                                                              |
 | `Kind`                           | `Command`       | Chooses command, check, or radio activation semantics.                                         |
 | `IsChecked`, `GroupName`         | `false`, `null` | Hold the check state and scope radio exclusivity.                                              |
 | `ShortcutText`                   | `null`          | Shows a dim, right-aligned hint; registers no key binding.                                     |
@@ -24,7 +24,6 @@ visible face; there is no competing text-only `Header` property.
 
 ## Behavior
 
-- `Content` accepts zero or one control of any type, and the item owns it.
 - `Kind` is one of command, check, or radio.
 - `IsChecked` applies only to the check and radio kinds. `GroupName` scopes
   radio selection within the containing menu.
@@ -35,11 +34,11 @@ visible face; there is no competing text-only `Header` property.
   and no `Invoked` or `Command` fires.
 
 A check or radio entry reserves one cell for its code-owned selection glyph plus
-one separator cell in front of the content. Content is measured against the
-remaining constraint and arranged through the common inherited content slot, so
-state changes do not move it, and collapsed content contributes no margin. When
-a radio selection changes, every matching item's fields are staged before the
-first `PropertyChanged(IsChecked)` callback runs, and a reentrant selection
+one separator cell in front of the caption. The caption is measured against the
+remaining constraint and arranged through the common inherited caption slot, so
+state changes do not move it, and a collapsed caption contributes no margin.
+When a radio selection changes, every matching item's fields are staged before
+the first `PropertyChanged(IsChecked)` callback runs, and a reentrant selection
 suppresses the stale outer notifications.
 
 Menu items stretch horizontally by default. In a vertical menu every item
@@ -69,7 +68,7 @@ in the item's `Text` content, which SharpVision binds automatically.
 ```csharp
 new MenuItem
 {
-    Content = new Text("Save"),
+    Text = "Save",
     ShortcutText = "Ctrl+S",
 };
 ```
@@ -120,7 +119,7 @@ removed, disposed, reparented, or as a submenu opens and closes.
 ```csharp
 var save = new MenuItem
 {
-    Content = new Text("Save"),
+    Text = "Save",
     Shortcut = new KeyGesture(Code.Character, Modifiers.Control, new Rune('s')),
 };
 save.Invoked += (_, _) => SaveDocument();
@@ -153,11 +152,11 @@ and `MenuSeparator`; it has no arbitrary `Add(Control)` entry point.
 ## Example
 
 ```csharp
-menu.Items.Add(new MenuItem { Content = new Text("Open") });
+menu.Items.Add(new MenuItem { Text = "Open" });
 menu.Items.Add(new MenuSeparator());
 menu.Items.Add(new MenuItem
 {
-    Content = new Text("Auto save"),
+    Text = "Auto save",
     Kind = MenuItemKind.Check,
 });
 ```
@@ -168,7 +167,7 @@ menu.Items.Add(new MenuItem
   checked state that is invalid for the current kind is rejected.
 - Radio observers see atomically staged group state, and an item's `Invoked`
   subscribers always complete before `Menu.ItemInvoked` is forwarded.
-- The item owns its inherited content, lays out Unicode content correctly, and
+- The item owns its inherited caption, lays out Unicode captions correctly, and
   measures Unicode shortcut text by terminal-cell width, aligning it to the
   trailing edge.
 - Keyboard and pointer activation and hover styling behave as described above,

@@ -67,7 +67,7 @@ internal sealed class FilePickerPane: CompositeControlBase
         bool allowMultiple,
         bool showHidden)
     {
-        var launcher = new Button { Content = new Text(label) };
+        var launcher = new Button { Text = label };
         launcher.Click += async (_, _) =>
         {
             var result = await FilePickerDialog.ShowAsync(
@@ -94,7 +94,7 @@ internal sealed class FilePickerPane: CompositeControlBase
 
     private static Button CreateSaveLauncher(Text status)
     {
-        var launcher = new Button { Content = new Text("&Save a file") };
+        var launcher = new Button { Text = "&Save a file" };
         launcher.Click += async (_, _) =>
         {
             var result = await SaveFileDialog.ShowAsync(

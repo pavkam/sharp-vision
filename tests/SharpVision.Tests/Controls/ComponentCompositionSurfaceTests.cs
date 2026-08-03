@@ -14,12 +14,12 @@ public sealed class ComponentCompositionSurfaceTests
         // Arrange
         var button = new Button
         {
-            Content = new ControlText("Run"),
+            Text = "Run",
             Style = TestButtonStyles.Flat,
             Padding = default,
             Height = Length.Cells(1)
         };
-        var checkBox = new CheckBox { Content = new ControlText("Choice") };
+        var checkBox = new CheckBox { Text = "Choice" };
         var input = new TextInput { Text = "AB", Height = Length.Cells(1) };
         var combo = new ComboBox { Items = ["One", "Two"], Height = Length.Cells(1) };
         var root = new Stack
@@ -76,8 +76,8 @@ public sealed class ComponentCompositionSurfaceTests
     public async Task Input_WhenInteractiveLeafIsDeeplyNested_ComposesAncestryAndCleanupAsync()
     {
         // Arrange
-        var label = new ControlText("Deep");
-        var leaf = new CheckBox { Content = label };
+        var leaf = new CheckBox { Text = "Deep" };
+        var label = leaf.TextControl!;
         var inner = new Stack { Children = { leaf } };
         var expander = new Expander
         {

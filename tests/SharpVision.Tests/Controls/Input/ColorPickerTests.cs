@@ -173,7 +173,7 @@ public sealed class ColorPickerTests
         await dispatcher.InvokeAsync(() =>
         {
             var picker = new ColorPicker();
-            var button = new Button { Content = new ControlText("Next") };
+            var button = new Button { Text = "Next" };
             Dock.SetSide(button, DockSide.Bottom);
             var root = new Dock { Children = { button, picker } };
             root.SetCapabilities(

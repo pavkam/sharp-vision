@@ -336,13 +336,13 @@ public sealed class TabControlTests
         // Arrange
         var item = Create("Original", "Content");
         var tabs = Create(item);
-        tabs.HeaderAt(0).Header.ShouldBe("Original");
+        tabs.HeaderAt(0).Text.ShouldBe("Original");
 
         // Act
         item.Header = "Updated";
 
         // Assert
-        tabs.HeaderAt(0).Header.ShouldBe("Updated");
+        tabs.HeaderAt(0).Text.ShouldBe("Updated");
     }
 
     /// <summary>Verifies the first eligible page auto-selects and every semantic item enters the private host.</summary>
@@ -668,9 +668,9 @@ public sealed class TabControlTests
 
         tabs.Items.Insert(0, inserted);
 
-        tabs.HeaderAt(0).Header.ShouldBe("Inserted");
-        tabs.HeaderAt(1).Header.ShouldBe("First");
-        tabs.HeaderAt(2).Header.ShouldBe("Second");
+        tabs.HeaderAt(0).Text.ShouldBe("Inserted");
+        tabs.HeaderAt(1).Text.ShouldBe("First");
+        tabs.HeaderAt(2).Text.ShouldBe("Second");
     }
 
     /// <summary>Verifies an out-of-range insertion index throws before mutating the collection.</summary>
@@ -798,7 +798,7 @@ public sealed class TabControlTests
         tabs.SelectedIndex.ShouldBe(2);
         tabs.SelectedItem.ShouldBeSameAs(selected);
         changes.ShouldBeEmpty();
-        tabs.HeaderAt(2).Header.ShouldBe("Selected");
+        tabs.HeaderAt(2).Text.ShouldBe("Selected");
     }
 
     /// <summary>Verifies an out-of-range move index throws without mutating the collection.</summary>

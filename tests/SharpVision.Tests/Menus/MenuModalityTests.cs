@@ -14,11 +14,11 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
-        fileMenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
+        fileMenu.Items.Add(new MenuItem { Text = "Open" });
         var editMenu = new Menu { Orientation = Orientation.Vertical };
-        editMenu.Items.Add(new MenuItem { Content = new ControlText("Copy") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
-        var edit = new MenuItem { Content = new ControlText("Edit"), Submenu = editMenu };
+        editMenu.Items.Add(new MenuItem { Text = "Copy" });
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
+        var edit = new MenuItem { Text = "Edit", Submenu = editMenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         menu.Items.Add(edit);
@@ -58,9 +58,9 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var submenu = new Menu { Orientation = Orientation.Vertical };
-        submenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
-        var command = new MenuItem { Content = new ControlText("Exit") };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var file = new MenuItem { Text = "File", Submenu = submenu };
+        var command = new MenuItem { Text = "Exit" };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         menu.Items.Add(command);
@@ -91,8 +91,8 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var submenu = new Menu { Orientation = Orientation.Vertical };
-        submenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var file = new MenuItem { Text = "File", Submenu = submenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         await using var surface = await ComponentSurface.MountAsync(
@@ -118,11 +118,11 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var deepestMenu = new Menu { Orientation = Orientation.Vertical };
-        deepestMenu.Items.Add(new MenuItem { Content = new ControlText("Leaf") });
-        var nested = new MenuItem { Content = new ControlText("Nested"), Submenu = deepestMenu };
+        deepestMenu.Items.Add(new MenuItem { Text = "Leaf" });
+        var nested = new MenuItem { Text = "Nested", Submenu = deepestMenu };
         var submenu = new Menu { Orientation = Orientation.Vertical };
         submenu.Items.Add(nested);
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+        var file = new MenuItem { Text = "File", Submenu = submenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         await using var surface = await ComponentSurface.MountAsync(
@@ -151,12 +151,12 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
-        fileMenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
-        var copy = new MenuItem { Content = new ControlText("Copy") };
+        fileMenu.Items.Add(new MenuItem { Text = "Open" });
+        var copy = new MenuItem { Text = "Copy" };
         var editMenu = new Menu { Orientation = Orientation.Vertical };
         editMenu.Items.Add(copy);
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
-        var edit = new MenuItem { Content = new ControlText("Edit"), Submenu = editMenu };
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
+        var edit = new MenuItem { Text = "Edit", Submenu = editMenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         menu.Items.Add(edit);
@@ -185,13 +185,13 @@ public sealed class MenuModalityTests
     public async Task Pointer_WhenHoverOpenedNestedAnchorIsLeftAndClickedLater_ClosesBranchOnlyAsync()
     {
         // Arrange
-        var leaf = new MenuItem { Content = new ControlText("Today") };
+        var leaf = new MenuItem { Text = "Today" };
         var recentMenu = new Menu { Orientation = Orientation.Vertical };
         recentMenu.Items.Add(leaf);
-        var recent = new MenuItem { Content = new ControlText("Recent"), Submenu = recentMenu };
+        var recent = new MenuItem { Text = "Recent", Submenu = recentMenu };
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
         fileMenu.Items.Add(recent);
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         await using var surface = await ComponentSurface.MountAsync(
@@ -223,17 +223,17 @@ public sealed class MenuModalityTests
         // Arrange
         var background = new Button
         {
-            Content = new ControlText("Background"),
+            Text = "Background",
             Width = Length.Cells(12),
             Height = Length.Cells(1),
         };
         Overlay.SetTop(background, Length.Cells(7));
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
-        fileMenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
+        fileMenu.Items.Add(new MenuItem { Text = "Open" });
         var editMenu = new Menu { Orientation = Orientation.Vertical };
-        editMenu.Items.Add(new MenuItem { Content = new ControlText("Copy") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
-        var edit = new MenuItem { Content = new ControlText("Edit"), Submenu = editMenu };
+        editMenu.Items.Add(new MenuItem { Text = "Copy" });
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
+        var edit = new MenuItem { Text = "Edit", Submenu = editMenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         menu.Items.Add(edit);
@@ -267,17 +267,17 @@ public sealed class MenuModalityTests
         // Arrange
         var background = new Button
         {
-            Content = new ControlText("Background"),
+            Text = "Background",
             Width = Length.Cells(12),
             Height = Length.Cells(1),
         };
         Overlay.SetTop(background, Length.Cells(8));
         var recentMenu = new Menu { Orientation = Orientation.Vertical };
-        recentMenu.Items.Add(new MenuItem { Content = new ControlText("Today") });
-        var recent = new MenuItem { Content = new ControlText("Recent"), Submenu = recentMenu };
+        recentMenu.Items.Add(new MenuItem { Text = "Today" });
+        var recent = new MenuItem { Text = "Recent", Submenu = recentMenu };
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
         fileMenu.Items.Add(recent);
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         var root = new Overlay { Children = { menu, background } };
@@ -313,11 +313,11 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
-        fileMenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
+        fileMenu.Items.Add(new MenuItem { Text = "Open" });
         var editMenu = new Menu { Orientation = Orientation.Vertical };
-        editMenu.Items.Add(new MenuItem { Content = new ControlText("Copy") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
-        var edit = new MenuItem { Content = new ControlText("Edit"), Submenu = editMenu };
+        editMenu.Items.Add(new MenuItem { Text = "Copy" });
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
+        var edit = new MenuItem { Text = "Edit", Submenu = editMenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         menu.Items.Add(edit);
@@ -353,10 +353,10 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var menu = new Menu { Orientation = Orientation.Horizontal };
-        menu.Items.Add(new MenuItem { Content = new ControlText("File") });
+        menu.Items.Add(new MenuItem { Text = "File" });
         var cancel = new Button
         {
-            Content = new ControlText("Cancel"),
+            Text = "Cancel",
             IsCancel = true,
         };
         var content = new Stack { Orientation = Orientation.Vertical };
@@ -388,14 +388,14 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var deepestMenu = new Menu { Orientation = Orientation.Vertical };
-        deepestMenu.Items.Add(new MenuItem { Content = new ControlText("Leaf") });
-        var deepest = new MenuItem { Content = new ControlText("Third"), Submenu = deepestMenu };
+        deepestMenu.Items.Add(new MenuItem { Text = "Leaf" });
+        var deepest = new MenuItem { Text = "Third", Submenu = deepestMenu };
         var secondMenu = new Menu { Orientation = Orientation.Vertical };
         secondMenu.Items.Add(deepest);
-        var second = new MenuItem { Content = new ControlText("Second"), Submenu = secondMenu };
+        var second = new MenuItem { Text = "Second", Submenu = secondMenu };
         var firstMenu = new Menu { Orientation = Orientation.Vertical };
         firstMenu.Items.Add(second);
-        var first = new MenuItem { Content = new ControlText("First"), Submenu = firstMenu };
+        var first = new MenuItem { Text = "First", Submenu = firstMenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(first);
         await using var surface = await ComponentSurface.MountAsync(
@@ -448,7 +448,7 @@ public sealed class MenuModalityTests
         var wheelRoutes = 0;
         var background = new Button
         {
-            Content = new ControlText("Background"),
+            Text = "Background",
             Width = Length.Cells(12),
             Height = Length.Cells(1),
         };
@@ -462,8 +462,8 @@ public sealed class MenuModalityTests
         });
         Overlay.SetTop(background, Length.Cells(6));
         var submenu = new Menu { Orientation = Orientation.Vertical };
-        submenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var file = new MenuItem { Text = "File", Submenu = submenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         var root = new Overlay { Children = { menu, background } };
@@ -509,11 +509,11 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
-        fileMenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
+        fileMenu.Items.Add(new MenuItem { Text = "Open" });
         var editMenu = new Menu { Orientation = Orientation.Vertical };
-        editMenu.Items.Add(new MenuItem { Content = new ControlText("Copy") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
-        var edit = new MenuItem { Content = new ControlText("Edit"), Submenu = editMenu };
+        editMenu.Items.Add(new MenuItem { Text = "Copy" });
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
+        var edit = new MenuItem { Text = "Edit", Submenu = editMenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         menu.Items.Add(edit);
@@ -560,11 +560,11 @@ public sealed class MenuModalityTests
         // Arrange
         var expected = new InvalidOperationException("The modal-entry focus callback failed.");
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
-        fileMenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
+        fileMenu.Items.Add(new MenuItem { Text = "Open" });
         var editMenu = new Menu { Orientation = Orientation.Vertical };
-        editMenu.Items.Add(new MenuItem { Content = new ControlText("Copy") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
-        var edit = new MenuItem { Content = new ControlText("Edit"), Submenu = editMenu };
+        editMenu.Items.Add(new MenuItem { Text = "Copy" });
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
+        var edit = new MenuItem { Text = "Edit", Submenu = editMenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         menu.Items.Add(edit);
@@ -610,11 +610,11 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
-        fileMenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
+        fileMenu.Items.Add(new MenuItem { Text = "Open" });
         var editMenu = new Menu { Orientation = Orientation.Vertical };
-        editMenu.Items.Add(new MenuItem { Content = new ControlText("Copy") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
-        var edit = new MenuItem { Content = new ControlText("Edit"), Submenu = editMenu };
+        editMenu.Items.Add(new MenuItem { Text = "Copy" });
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
+        var edit = new MenuItem { Text = "Edit", Submenu = editMenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         menu.Items.Add(edit);
@@ -674,11 +674,11 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var expected = new InvalidOperationException("The early nested menu subscriber failed.");
-        var leaf = new MenuItem { Content = new ControlText("Leaf") };
+        var leaf = new MenuItem { Text = "Leaf" };
         var submenu = new Menu { Orientation = Orientation.Vertical };
         submenu.Items.Add(leaf);
         submenu.ItemInvoked += (_, _) => throw expected;
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+        var file = new MenuItem { Text = "File", Submenu = submenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         var rootInvocations = 0;
@@ -713,10 +713,10 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var expected = new InvalidOperationException("The late nested menu subscriber failed.");
-        var leaf = new MenuItem { Content = new ControlText("Leaf") };
+        var leaf = new MenuItem { Text = "Leaf" };
         var submenu = new Menu { Orientation = Orientation.Vertical };
         submenu.Items.Add(leaf);
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+        var file = new MenuItem { Text = "File", Submenu = submenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         await using var surface = await ComponentSurface.MountAsync(
@@ -751,8 +751,8 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var submenu = new Menu { Orientation = Orientation.Vertical };
-        submenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var file = new MenuItem { Text = "File", Submenu = submenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         await using var surface = await ComponentSurface.MountAsync(
@@ -787,11 +787,11 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var deepestMenu = new Menu { Orientation = Orientation.Vertical };
-        deepestMenu.Items.Add(new MenuItem { Content = new ControlText("Leaf") });
-        var nested = new MenuItem { Content = new ControlText("Nested"), Submenu = deepestMenu };
+        deepestMenu.Items.Add(new MenuItem { Text = "Leaf" });
+        var nested = new MenuItem { Text = "Nested", Submenu = deepestMenu };
         var submenu = new Menu { Orientation = Orientation.Vertical };
         submenu.Items.Add(nested);
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+        var file = new MenuItem { Text = "File", Submenu = submenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         await using var surface = await ComponentSurface.MountAsync(
@@ -840,9 +840,9 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var submenu = new Menu { Orientation = Orientation.Vertical };
-        submenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
-        var command = new MenuItem { Content = new ControlText("Close") };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var file = new MenuItem { Text = "File", Submenu = submenu };
+        var command = new MenuItem { Text = "Close" };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         menu.Items.Add(command);
@@ -876,8 +876,8 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var submenu = new Menu { Orientation = Orientation.Vertical };
-        submenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var file = new MenuItem { Text = "File", Submenu = submenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         await using var surface = await ComponentSurface.MountAsync(
@@ -915,8 +915,8 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var submenu = new Menu { Orientation = Orientation.Vertical };
-        submenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var file = new MenuItem { Text = "File", Submenu = submenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         var other = new Menu { Orientation = Orientation.Horizontal };
@@ -958,7 +958,7 @@ public sealed class MenuModalityTests
     {
         // Arrange
         const int depth = 128;
-        var leaf = new MenuItem { Content = new ControlText("Leaf") };
+        var leaf = new MenuItem { Text = "Leaf" };
         var child = new Menu { Orientation = Orientation.Vertical };
         child.Items.Add(leaf);
         var anchors = new List<MenuItem>(depth);
@@ -968,7 +968,7 @@ public sealed class MenuModalityTests
         {
             var anchor = new MenuItem
             {
-                Content = new ControlText($"Level {index}"),
+                Text = $"Level {index}",
                 Submenu = child,
             };
             var parent = new Menu { Orientation = Orientation.Vertical };
@@ -1008,11 +1008,11 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var nestedMenu = new Menu { Orientation = Orientation.Vertical };
-        nestedMenu.Items.Add(new MenuItem { Content = new ControlText("Leaf") });
-        var nested = new MenuItem { Content = new ControlText("Nested"), Submenu = nestedMenu };
+        nestedMenu.Items.Add(new MenuItem { Text = "Leaf" });
+        var nested = new MenuItem { Text = "Nested", Submenu = nestedMenu };
         var submenu = new Menu { Orientation = Orientation.Vertical };
         submenu.Items.Add(nested);
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+        var file = new MenuItem { Text = "File", Submenu = submenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         await using var surface = await ComponentSurface.MountAsync(
@@ -1041,8 +1041,8 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var firstSubmenu = new Menu { Orientation = Orientation.Vertical };
-        firstSubmenu.Items.Add(new MenuItem { Content = new ControlText("First") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = firstSubmenu };
+        firstSubmenu.Items.Add(new MenuItem { Text = "First" });
+        var file = new MenuItem { Text = "File", Submenu = firstSubmenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         await using var surface = await ComponentSurface.MountAsync(
@@ -1053,7 +1053,7 @@ public sealed class MenuModalityTests
         var scope = surface.Application.Modality.Active.ShouldNotBeNull();
         var firstPopup = OwnedTree.Find<Popup>(file).ShouldNotBeNull();
         var replacement = new Menu { Orientation = Orientation.Vertical };
-        replacement.Items.Add(new MenuItem { Content = new ControlText("Replacement") });
+        replacement.Items.Add(new MenuItem { Text = "Replacement" });
 
         // Act replace while open
         await surface.UpdateAsync(() => file.Submenu = replacement, "replace open submenu");
@@ -1083,11 +1083,11 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var nestedMenu = new Menu { Orientation = Orientation.Vertical };
-        nestedMenu.Items.Add(new MenuItem { Content = new ControlText("Leaf") });
-        var nested = new MenuItem { Content = new ControlText("Nested"), Submenu = nestedMenu };
+        nestedMenu.Items.Add(new MenuItem { Text = "Leaf" });
+        var nested = new MenuItem { Text = "Nested", Submenu = nestedMenu };
         var submenu = new Menu { Orientation = Orientation.Vertical };
         submenu.Items.Add(nested);
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+        var file = new MenuItem { Text = "File", Submenu = submenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         await using var surface = await ComponentSurface.MountAsync(
@@ -1125,8 +1125,8 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var submenu = new Menu { Orientation = Orientation.Vertical };
-        submenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var file = new MenuItem { Text = "File", Submenu = submenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         await using var surface = await ComponentSurface.MountAsync(
@@ -1191,11 +1191,11 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var recentMenu = new Menu { Orientation = Orientation.Vertical };
-        recentMenu.Items.Add(new MenuItem { Content = new ControlText("Today") });
-        var recent = new MenuItem { Content = new ControlText("Recent"), Submenu = recentMenu };
+        recentMenu.Items.Add(new MenuItem { Text = "Today" });
+        var recent = new MenuItem { Text = "Recent", Submenu = recentMenu };
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
         fileMenu.Items.Add(recent);
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         await using var surface = await ComponentSurface.MountAsync(
@@ -1253,8 +1253,8 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var submenu = new Menu { Orientation = Orientation.Vertical };
-        submenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var file = new MenuItem { Text = "File", Submenu = submenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         var other = new Menu { Orientation = Orientation.Horizontal };
@@ -1306,11 +1306,11 @@ public sealed class MenuModalityTests
         var closeFailure = new InvalidOperationException("The unavailable anchor close callback failed.");
         var propertyFailure = new InvalidOperationException("The unavailable anchor property callback failed.");
         var recentMenu = new Menu { Orientation = Orientation.Vertical };
-        recentMenu.Items.Add(new MenuItem { Content = new ControlText("Today") });
-        var recent = new MenuItem { Content = new ControlText("Recent"), Submenu = recentMenu };
+        recentMenu.Items.Add(new MenuItem { Text = "Today" });
+        var recent = new MenuItem { Text = "Recent", Submenu = recentMenu };
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
         fileMenu.Items.Add(recent);
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         await using var surface = await ComponentSurface.MountAsync(
@@ -1364,8 +1364,8 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var submenu = new Menu { Orientation = Orientation.Vertical };
-        submenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var file = new MenuItem { Text = "File", Submenu = submenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         await using var surface = await ComponentSurface.MountAsync(
@@ -1418,11 +1418,11 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var recentMenu = new Menu { Orientation = Orientation.Vertical };
-        recentMenu.Items.Add(new MenuItem { Content = new ControlText("Today") });
-        var recent = new MenuItem { Content = new ControlText("Recent"), Submenu = recentMenu };
+        recentMenu.Items.Add(new MenuItem { Text = "Today" });
+        var recent = new MenuItem { Text = "Recent", Submenu = recentMenu };
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
         fileMenu.Items.Add(recent);
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         await using var surface = await ComponentSurface.MountAsync(
@@ -1486,11 +1486,11 @@ public sealed class MenuModalityTests
         var focusFailure = new InvalidOperationException("The focus-restoration callback failed.");
         var closedFailure = new InvalidOperationException("The later closed callback failed.");
         var recentMenu = new Menu { Orientation = Orientation.Vertical };
-        recentMenu.Items.Add(new MenuItem { Content = new ControlText("Today") });
-        var recent = new MenuItem { Content = new ControlText("Recent"), Submenu = recentMenu };
+        recentMenu.Items.Add(new MenuItem { Text = "Today" });
+        var recent = new MenuItem { Text = "Recent", Submenu = recentMenu };
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
         fileMenu.Items.Add(recent);
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         await using var surface = await ComponentSurface.MountAsync(
@@ -1544,8 +1544,8 @@ public sealed class MenuModalityTests
     {
         // Arrange
         var submenu = new Menu { Orientation = Orientation.Vertical };
-        submenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var file = new MenuItem { Text = "File", Submenu = submenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         var window = new Window

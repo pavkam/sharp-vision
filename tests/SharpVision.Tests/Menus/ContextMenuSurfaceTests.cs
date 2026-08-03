@@ -21,11 +21,11 @@ public sealed class ContextMenuSurfaceTests
     public async Task Pointer_WhenSecondaryPressOnButtonWithContextMenu_OpensMenuAsync()
     {
         var menu = new ContextMenu();
-        menu.Items.Add(new MenuItem { Content = new ControlText("Inspect") });
-        menu.Items.Add(new MenuItem { Content = new ControlText("Run") });
+        menu.Items.Add(new MenuItem { Text = "Inspect" });
+        menu.Items.Add(new MenuItem { Text = "Run" });
         var button = new Button
         {
-            Content = new ControlText("Target"),
+            Text = "Target",
             Width = Length.Cells(10),
             Height = Length.Cells(1),
             ContextMenu = menu
@@ -75,7 +75,7 @@ public sealed class ContextMenuSurfaceTests
     {
         var button = new Button
         {
-            Content = new ControlText("Plain"),
+            Text = "Plain",
             Width = Length.Cells(10),
             Height = Length.Cells(1)
         };
@@ -93,10 +93,10 @@ public sealed class ContextMenuSurfaceTests
     public async Task Pointer_WhenSecondaryPressOnDisabledControl_DoesNotOpenMenuAsync()
     {
         var menu = new ContextMenu();
-        menu.Items.Add(new MenuItem { Content = new ControlText("Action") });
+        menu.Items.Add(new MenuItem { Text = "Action" });
         var button = new Button
         {
-            Content = new ControlText("Disabled"),
+            Text = "Disabled",
             Width = Length.Cells(12),
             Height = Length.Cells(1),
             IsEnabled = false,
@@ -115,10 +115,10 @@ public sealed class ContextMenuSurfaceTests
     public async Task Pointer_WhenClickOutsideOpenMenu_ClosesMenuAsync()
     {
         var menu = new ContextMenu();
-        menu.Items.Add(new MenuItem { Content = new ControlText("Action") });
+        menu.Items.Add(new MenuItem { Text = "Action" });
         var button = new Button
         {
-            Content = new ControlText("Target"),
+            Text = "Target",
             Width = Length.Cells(10),
             Height = Length.Cells(1),
             ContextMenu = menu
@@ -301,10 +301,10 @@ public sealed class ContextMenuSurfaceTests
     public async Task Pointer_WhenSecondaryPressOnCheckBox_OpensAttachedMenuAsync()
     {
         var menu = new ContextMenu();
-        menu.Items.Add(new MenuItem { Content = new ControlText("Info") });
+        menu.Items.Add(new MenuItem { Text = "Info" });
         var check = new CheckBox
         {
-            Content = new ControlText("Option"),
+            Text = "Option",
             Width = Length.Cells(12),
             ContextMenu = menu
         };
@@ -321,12 +321,12 @@ public sealed class ContextMenuSurfaceTests
     public async Task Pointer_WhenMenuReplacedWhileOpen_ClosesOldMenuAsync()
     {
         var first = new ContextMenu();
-        first.Items.Add(new MenuItem { Content = new ControlText("First") });
+        first.Items.Add(new MenuItem { Text = "First" });
         var second = new ContextMenu();
-        second.Items.Add(new MenuItem { Content = new ControlText("Second") });
+        second.Items.Add(new MenuItem { Text = "Second" });
         var button = new Button
         {
-            Content = new ControlText("Host"),
+            Text = "Host",
             Width = Length.Cells(10),
             Height = Length.Cells(1),
             ContextMenu = first
@@ -354,12 +354,12 @@ public sealed class ContextMenuSurfaceTests
     public async Task Pointer_WhenMenuReplacedWhileOpen_DisposesOldLightDismissWithoutThrowingAsync()
     {
         var first = new ContextMenu();
-        first.Items.Add(new MenuItem { Content = new ControlText("First") });
+        first.Items.Add(new MenuItem { Text = "First" });
         var second = new ContextMenu();
-        second.Items.Add(new MenuItem { Content = new ControlText("Second") });
+        second.Items.Add(new MenuItem { Text = "Second" });
         var button = new Button
         {
-            Content = new ControlText("Host"),
+            Text = "Host",
             Width = Length.Cells(10),
             Height = Length.Cells(1),
             ContextMenu = first
@@ -397,10 +397,10 @@ public sealed class ContextMenuSurfaceTests
             stack, new Size(30, 10), TestContext.Current.CancellationToken);
 
         var menu = new ContextMenu();
-        menu.Items.Add(new MenuItem { Content = new ControlText("Item") });
+        menu.Items.Add(new MenuItem { Text = "Item" });
         var button = new Button
         {
-            Content = new ControlText("Host"),
+            Text = "Host",
             Width = Length.Cells(10),
             Height = Length.Cells(1),
             ContextMenu = menu
@@ -426,12 +426,12 @@ public sealed class ContextMenuSurfaceTests
     public async Task Pointer_WhenOpeningEventFires_FiresBeforeIsOpenChangesAsync()
     {
         var menu = new ContextMenu();
-        menu.Items.Add(new MenuItem { Content = new ControlText("Test") });
+        menu.Items.Add(new MenuItem { Text = "Test" });
         var wasOpenDuringOpening = true;
         menu.Opening += (_, _) => wasOpenDuringOpening = menu.IsOpen;
         var button = new Button
         {
-            Content = new ControlText("Host"),
+            Text = "Host",
             Width = Length.Cells(10),
             Height = Length.Cells(1),
             ContextMenu = menu
@@ -450,12 +450,12 @@ public sealed class ContextMenuSurfaceTests
     public async Task Pointer_WhenClosedEventFires_ReportsClosedStateAsync()
     {
         var menu = new ContextMenu();
-        menu.Items.Add(new MenuItem { Content = new ControlText("Test") });
+        menu.Items.Add(new MenuItem { Text = "Test" });
         var closedRaised = false;
         menu.Closed += (_, _) => closedRaised = true;
         var button = new Button
         {
-            Content = new ControlText("Host"),
+            Text = "Host",
             Width = Length.Cells(10),
             Height = Length.Cells(1),
             ContextMenu = menu

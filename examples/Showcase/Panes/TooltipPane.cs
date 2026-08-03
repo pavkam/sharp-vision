@@ -17,9 +17,9 @@ internal sealed class TooltipPane: CompositeControlBase
     private static DocPage CreateContent()
     {
         // Text tooltips on a row of buttons.
-        var saveButton = new Button { Content = new Text("&Save") };
-        var copyButton = new Button { Content = new Text("&Copy") };
-        var deleteButton = new Button { Content = new Text("&Delete") };
+        var saveButton = new Button { Text = "&Save" };
+        var copyButton = new Button { Text = "&Copy" };
+        var deleteButton = new Button { Text = "&Delete" };
         Tooltip.SetText(saveButton, "Save the current document");
         Tooltip.SetText(copyButton, "Copy selection to clipboard");
         Tooltip.SetText(deleteButton, "Delete the selected item");
@@ -38,7 +38,7 @@ internal sealed class TooltipPane: CompositeControlBase
         // Rich content tooltip.
         var richAnchor = new Button
         {
-            Content = new Text("&User info"),
+            Text = "&User info",
             Padding = new Thickness(1, 0)
         };
         var richContent = new Stack
@@ -55,9 +55,9 @@ internal sealed class TooltipPane: CompositeControlBase
         var richDemo = new Stack { Spacing = 1, Children = { richAnchor } };
 
         // Configurable delay demo.
-        var fastButton = new Button { Content = new Text("&Fast (100ms)") };
-        var normalButton = new Button { Content = new Text("&Normal (500ms)") };
-        var slowButton = new Button { Content = new Text("S&low (1500ms)") };
+        var fastButton = new Button { Text = "&Fast (100ms)" };
+        var normalButton = new Button { Text = "&Normal (500ms)" };
+        var slowButton = new Button { Text = "S&low (1500ms)" };
         Tooltip.SetText(fastButton, "Appears quickly", PopupPlacement.Below, TimeSpan.FromMilliseconds(100));
         Tooltip.SetText(normalButton, "Default delay");
         Tooltip.SetText(slowButton, "Slow to appear", PopupPlacement.Below, TimeSpan.FromMilliseconds(1500));
@@ -81,10 +81,10 @@ internal sealed class TooltipPane: CompositeControlBase
         };
 
         // Placement demo.
-        var belowAnchor = new Button { Content = new Text("B&elow") };
-        var aboveAnchor = new Button { Content = new Text("&Above") };
-        var rightAnchor = new Button { Content = new Text("&Right") };
-        var leftAnchor = new Button { Content = new Text("Lef&t") };
+        var belowAnchor = new Button { Text = "B&elow" };
+        var aboveAnchor = new Button { Text = "&Above" };
+        var rightAnchor = new Button { Text = "&Right" };
+        var leftAnchor = new Button { Text = "Lef&t" };
         Tooltip.SetText(belowAnchor, "Placed below", PopupPlacement.Below);
         Tooltip.SetText(aboveAnchor, "Placed above", PopupPlacement.Above);
         Tooltip.SetText(rightAnchor, "Placed right", PopupPlacement.Right);

@@ -229,7 +229,7 @@ internal sealed class ControlPane: CompositeControlBase
 
     private static Button CreateParticipationButton(string caption, Visibility visibility, bool isEnabled) => new()
     {
-        Content = new Text(caption),
+        Text = caption,
         Visibility = visibility,
         IsEnabled = isEnabled,
         UseMnemonic = false

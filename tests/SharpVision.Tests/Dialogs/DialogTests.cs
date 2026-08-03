@@ -46,7 +46,7 @@ public sealed class DialogTests
     [Fact]
     public async Task ShowAsync_WhenDialogCompletes_UsesOneIdentityAndDisposesAfterRemovalAsync()
     {
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -77,7 +77,7 @@ public sealed class DialogTests
     [Fact]
     public async Task Dispose_WhenDialogIsPending_CompletesCancellationWithoutLeaksAsync()
     {
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -139,7 +139,7 @@ public sealed class DialogTests
     public async Task ShowAsync_WhenModalEntryFails_RollsBackHostAndPreservesFailureAsync()
     {
         var expected = new InvalidOperationException("Dialog focus failed.");
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -180,7 +180,7 @@ public sealed class DialogTests
     [Fact]
     public async Task ShowAsync_WhenModalEntryIsInvalidated_RollsBackInsteadOfLeakingPendingTaskAsync()
     {
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -218,7 +218,7 @@ public sealed class DialogTests
     [Fact]
     public async Task HostRemoval_WhenDialogIsPending_CancelsDisposesAndReleasesModalityAsync()
     {
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -247,7 +247,7 @@ public sealed class DialogTests
     [Fact]
     public async Task Dispose_WhenSelectedResultIsQueued_PreservesSelectionAndSettlesAfterDisposalAsync()
     {
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -277,7 +277,7 @@ public sealed class DialogTests
     [Fact]
     public async Task Dispose_WhenCompletionQueueIsFull_CancelsIdleScheduleAndSettlesBeforeShutdownAsync()
     {
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -334,7 +334,7 @@ public sealed class DialogTests
     [Fact]
     public async Task Complete_WhenOwningDispatcherIsStopping_SettlesInsteadOfHangingAsync()
     {
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         var surface = await ComponentSurface.MountAsync(
             host,
@@ -388,7 +388,7 @@ public sealed class DialogTests
     [Fact]
     public async Task Complete_WhenDialogIsPresented_PublishesOrderedCloseLifecycleAsync()
     {
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -433,7 +433,7 @@ public sealed class DialogTests
     [Fact]
     public async Task Escape_WhenDialogIsPresented_PublishesOneClosingAndOneClosedAsync()
     {
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -471,7 +471,7 @@ public sealed class DialogTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            var owner = new Button { Content = new ControlText("Bare") };
+            var owner = new Button { Text = "Bare" };
             owner.Attach(dispatcher, Policy.Default, Capabilities.Conservative);
             using var dialog = new TestDialog();
 
@@ -489,7 +489,7 @@ public sealed class DialogTests
     [Fact]
     public async Task PresentAsync_WhenCalledTwiceOnTheSameDialog_ThrowsAndLeavesTheFirstTaskPendingAsync()
     {
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -518,7 +518,7 @@ public sealed class DialogTests
     [Fact]
     public async Task PresentAsync_WhenExternalDialogIsCancelledByToken_CancelsTaskAndReleasesModalityAsync()
     {
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -548,7 +548,7 @@ public sealed class DialogTests
     [Fact]
     public async Task PresentAsync_WhenExternalDialogCompletes_ReturnsTypedResultAndDisposesAfterHostRemovalAsync()
     {
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -577,7 +577,7 @@ public sealed class DialogTests
     [Fact]
     public async Task Escape_WhenExternalDialogIsPresentedThroughPresentAsync_CompletesWithTheCancelledResultAndDoesNotBubbleAsync()
     {
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,

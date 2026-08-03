@@ -34,7 +34,7 @@ public sealed class ComponentSurfaceTests
     public async Task ShouldHaveState_WhenOwnedDescendantIsPassed_ObservesItsStateAsync()
     {
         // Arrange
-        var checkBox = new CheckBox { Content = new ControlText("Choice") };
+        var checkBox = new CheckBox { Text = "Choice" };
         var stack = new Stack { Children = { checkBox } };
         await using var surface = await ComponentSurface.MountAsync(
             stack,
@@ -55,7 +55,7 @@ public sealed class ComponentSurfaceTests
     {
         // Arrange
         ActivationCause? cause = null;
-        var checkBox = new CheckBox { Content = new ControlText("Choice") };
+        var checkBox = new CheckBox { Text = "Choice" };
         checkBox.Checked += (_, eventArgs) => cause = eventArgs.Cause;
         await using var surface = await ComponentSurface.MountAsync(
             checkBox,
@@ -77,7 +77,7 @@ public sealed class ComponentSurfaceTests
     public async Task Keyboard_WhenSpacePressAndReleaseAreSeparate_ExposesBothStatesAsync()
     {
         // Arrange
-        var checkBox = new CheckBox { Content = new ControlText("Choice") };
+        var checkBox = new CheckBox { Text = "Choice" };
         await using var surface = await ComponentSurface.MountAsync(
             checkBox,
             new Size(10, 1),
@@ -248,7 +248,7 @@ public sealed class ComponentSurfaceTests
     public async Task Pointer_WhenDisabledControlIgnoresRelease_SettlesWithoutInvalidationAsync()
     {
         // Arrange
-        var checkBox = new CheckBox { Content = new ControlText("Disabled"), IsEnabled = false };
+        var checkBox = new CheckBox { Text = "Disabled", IsEnabled = false };
         await using var surface = await ComponentSurface.MountAsync(
             checkBox,
             new Size(12, 1),
@@ -268,8 +268,8 @@ public sealed class ComponentSurfaceTests
     public async Task Keyboard_WhenShiftTabIsPressed_MovesFocusBackwardThroughMountedRootAsync()
     {
         // Arrange
-        var first = new Button { Content = new ControlText("First") };
-        var second = new Button { Content = new ControlText("Second") };
+        var first = new Button { Text = "First" };
+        var second = new Button { Text = "Second" };
         var root = new Stack { Children = { first, second } };
         await using var surface = await ComponentSurface.MountAsync(
             root,
@@ -290,7 +290,7 @@ public sealed class ComponentSurfaceTests
     public async Task Pointer_WhenTerminalLeaveArrives_ClearsHoverHeldStateAndCaptureAsync()
     {
         // Arrange
-        var button = new Button { Content = new ControlText("Leave") };
+        var button = new Button { Text = "Leave" };
         await using var surface = await ComponentSurface.MountAsync(
             button,
             new Size(10, 3),

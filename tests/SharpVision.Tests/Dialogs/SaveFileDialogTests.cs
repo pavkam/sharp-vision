@@ -92,7 +92,7 @@ public sealed class SaveFileDialogTests
 
         // Assert
         var saveButton = OwnedTree.FindAll<Button>(dialog)
-            .First(static button => button.Content is ControlText text && text.Content.Contains("Save"));
+            .First(static button => button.Text.Contains("Save"));
         saveButton.IsEnabled.ShouldBeFalse();
     }
 
@@ -116,7 +116,7 @@ public sealed class SaveFileDialogTests
 
         // Assert
         var saveButton = OwnedTree.FindAll<Button>(dialog)
-            .First(static button => button.Content is ControlText text && text.Content.Contains("Save"));
+            .First(static button => button.Text.Contains("Save"));
         saveButton.IsEnabled.ShouldBeTrue();
     }
 
@@ -138,7 +138,7 @@ public sealed class SaveFileDialogTests
         var fileNameInput = OwnedTree.FindAll<TextInput>(dialog)
             .First(static input => input.Placeholder == "File name");
         var saveButton = OwnedTree.FindAll<Button>(dialog)
-            .First(static button => button.Content is ControlText text && text.Content.Contains("Save"));
+            .First(static button => button.Text.Contains("Save"));
 
         // Act
         saveButton.IsEnabled.ShouldBeFalse();
@@ -332,7 +332,7 @@ public sealed class SaveFileDialogTests
 
         try
         {
-            var opener = new Button { Content = new ControlText("Save") };
+            var opener = new Button { Text = "Save" };
             var host = new Overlay { Children = { opener } };
             await using var surface = await ComponentSurface.MountAsync(
                 host,
@@ -376,7 +376,7 @@ public sealed class SaveFileDialogTests
 
         try
         {
-            var opener = new Button { Content = new ControlText("Save") };
+            var opener = new Button { Text = "Save" };
             var host = new Overlay { Children = { opener } };
             await using var surface = await ComponentSurface.MountAsync(
                 host,
@@ -421,7 +421,7 @@ public sealed class SaveFileDialogTests
         {
             var existingPath = Path.Combine(directory, "existing.txt");
             await File.WriteAllTextAsync(existingPath, "content", TestContext.Current.CancellationToken);
-            var opener = new Button { Content = new ControlText("Save") };
+            var opener = new Button { Text = "Save" };
             var host = new Overlay { Children = { opener } };
             await using var surface = await ComponentSurface.MountAsync(
                 host,
@@ -467,7 +467,7 @@ public sealed class SaveFileDialogTests
         {
             var existingPath = Path.Combine(directory, "existing.txt");
             await File.WriteAllTextAsync(existingPath, "content", TestContext.Current.CancellationToken);
-            var opener = new Button { Content = new ControlText("Save") };
+            var opener = new Button { Text = "Save" };
             var host = new Overlay { Children = { opener } };
             await using var surface = await ComponentSurface.MountAsync(
                 host,
@@ -606,7 +606,7 @@ public sealed class SaveFileDialogTests
         {
             var existingPath = Path.Combine(directory, "existing.txt");
             await File.WriteAllTextAsync(existingPath, "content", TestContext.Current.CancellationToken);
-            var opener = new Button { Content = new ControlText("Save") };
+            var opener = new Button { Text = "Save" };
             var host = new Overlay { Children = { opener } };
             await using var surface = await ComponentSurface.MountAsync(
                 host,

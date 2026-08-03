@@ -12,8 +12,8 @@ public sealed class MenuSurfaceTests
     {
         // Arrange
         var submenu = new Menu { Orientation = Orientation.Vertical };
-        submenu.Items.Add(new MenuItem { Content = new ControlText("About") });
-        var help = new MenuItem { Content = new ControlText("Help"), Submenu = submenu };
+        submenu.Items.Add(new MenuItem { Text = "About" });
+        var help = new MenuItem { Text = "Help", Submenu = submenu };
         var menu = new Menu();
         menu.Items.Add(help);
         await using var surface = await ComponentSurface.MountAsync(
@@ -49,8 +49,8 @@ public sealed class MenuSurfaceTests
             MinWidth = 14,
             MaxWidth = 18
         };
-        submenu.Items.Add(new MenuItem { Content = new ControlText("About") });
-        var help = new MenuItem { Content = new ControlText("Help"), Submenu = submenu };
+        submenu.Items.Add(new MenuItem { Text = "About" });
+        var help = new MenuItem { Text = "Help", Submenu = submenu };
         var menu = new Menu();
         menu.Items.Add(help);
         await using var surface = await ComponentSurface.MountAsync(
@@ -78,8 +78,8 @@ public sealed class MenuSurfaceTests
             MinWidth = 0,
             MaxWidth = 6
         };
-        submenu.Items.Add(new MenuItem { Content = new ControlText("Documentation") });
-        var help = new MenuItem { Content = new ControlText("Help"), Submenu = submenu };
+        submenu.Items.Add(new MenuItem { Text = "Documentation" });
+        var help = new MenuItem { Text = "Help", Submenu = submenu };
         var menu = new Menu();
         menu.Items.Add(help);
         await using var surface = await ComponentSurface.MountAsync(
@@ -102,8 +102,8 @@ public sealed class MenuSurfaceTests
     {
         // Arrange
         var submenu = new Menu { Orientation = Orientation.Vertical };
-        submenu.Items.Add(new MenuItem { Content = new ControlText("About") });
-        var help = new MenuItem { Content = new ControlText("Help"), Submenu = submenu };
+        submenu.Items.Add(new MenuItem { Text = "About" });
+        var help = new MenuItem { Text = "Help", Submenu = submenu };
         var menu = new Menu();
         menu.Items.Add(help);
         await using var surface = await ComponentSurface.MountAsync(
@@ -128,8 +128,8 @@ public sealed class MenuSurfaceTests
     {
         // Arrange
         var submenu = new Menu { Orientation = Orientation.Vertical };
-        submenu.Items.Add(new MenuItem { Content = new ControlText("About") });
-        var help = new MenuItem { Content = new ControlText("Help"), Submenu = submenu };
+        submenu.Items.Add(new MenuItem { Text = "About" });
+        var help = new MenuItem { Text = "Help", Submenu = submenu };
         var menu = new Menu();
         menu.Items.Add(help);
         await using var surface = await ComponentSurface.MountAsync(
@@ -184,9 +184,9 @@ public sealed class MenuSurfaceTests
     public async Task Input_WhenMenuNavigatesAndInvokes_UsesOwnedFacesWithoutFocusTheftAsync()
     {
         // Arrange
-        var first = new MenuItem { Content = new ControlText("Open") };
+        var first = new MenuItem { Text = "Open" };
         var separator = new MenuSeparator();
-        var second = new MenuItem { Content = new ControlText("Save") };
+        var second = new MenuItem { Text = "Save" };
         var menu = new Menu { Orientation = Orientation.Vertical, Spacing = 0 };
         menu.Items.Add(first);
         menu.Items.Add(separator);
@@ -248,8 +248,8 @@ public sealed class MenuSurfaceTests
     public async Task Pointer_WhenMovedOverItem_SelectsAndHighlightsTargetRowAsync()
     {
         // Arrange
-        var first = new MenuItem { Content = new ControlText("First") };
-        var second = new MenuItem { Content = new ControlText("Second") };
+        var first = new MenuItem { Text = "First" };
+        var second = new MenuItem { Text = "Second" };
         var menu = new Menu { Orientation = Orientation.Vertical };
         menu.Items.Add(first);
         menu.Items.Add(second);
@@ -275,7 +275,7 @@ public sealed class MenuSurfaceTests
     public async Task Selection_WhenEditorOwnsFocus_DoesNotHighlightRetainedCursorAsync()
     {
         // Arrange
-        var file = new MenuItem { Content = new ControlText("File") };
+        var file = new MenuItem { Text = "File" };
         var menu = new Menu();
         menu.Items.Add(file);
         var editor = new TextInput { Width = Length.Cells(8), Height = Length.Cells(1) };
@@ -302,10 +302,10 @@ public sealed class MenuSurfaceTests
     public async Task Selection_WhenLeafInvocationCompletesAndEditorReceivesFocus_DoesNotRemainHighlightedAsync()
     {
         // Arrange
-        var open = new MenuItem { Content = new ControlText("Open") };
+        var open = new MenuItem { Text = "Open" };
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
         fileMenu.Items.Add(open);
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
         var menu = new Menu();
         menu.Items.Add(file);
         var editor = new TextInput { Width = Length.Cells(8), Height = Length.Cells(1) };
@@ -340,13 +340,13 @@ public sealed class MenuSurfaceTests
     {
         // Arrange
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
-        fileMenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
-        var close = new MenuItem { Content = new ControlText("Close") };
+        fileMenu.Items.Add(new MenuItem { Text = "Open" });
+        var close = new MenuItem { Text = "Close" };
         fileMenu.Items.Add(close);
         var editMenu = new Menu { Orientation = Orientation.Vertical };
-        editMenu.Items.Add(new MenuItem { Content = new ControlText("Copy") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
-        var edit = new MenuItem { Content = new ControlText("Edit"), Submenu = editMenu };
+        editMenu.Items.Add(new MenuItem { Text = "Copy" });
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
+        var edit = new MenuItem { Text = "Edit", Submenu = editMenu };
         var menu = new Menu { Orientation = Orientation.Horizontal, Spacing = 1 };
         menu.Items.Add(file);
         menu.Items.Add(edit);
@@ -390,9 +390,9 @@ public sealed class MenuSurfaceTests
     {
         // Arrange
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
-        fileMenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
-        var command = new MenuItem { Content = new ControlText("Exit") };
+        fileMenu.Items.Add(new MenuItem { Text = "Open" });
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
+        var command = new MenuItem { Text = "Exit" };
         var menu = new Menu { Orientation = Orientation.Horizontal, Spacing = 1 };
         menu.Items.Add(file);
         menu.Items.Add(command);
@@ -421,11 +421,11 @@ public sealed class MenuSurfaceTests
     {
         // Arrange
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
-        fileMenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
+        fileMenu.Items.Add(new MenuItem { Text = "Open" });
         var editMenu = new Menu { Orientation = Orientation.Vertical };
-        editMenu.Items.Add(new MenuItem { Content = new ControlText("Copy") });
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
-        var edit = new MenuItem { Content = new ControlText("Edit"), Submenu = editMenu };
+        editMenu.Items.Add(new MenuItem { Text = "Copy" });
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
+        var edit = new MenuItem { Text = "Edit", Submenu = editMenu };
         var menu = new Menu { Orientation = Orientation.Horizontal, Spacing = 1 };
         menu.Items.Add(file);
         menu.Items.Add(edit);
@@ -453,14 +453,14 @@ public sealed class MenuSurfaceTests
     {
         // Arrange
         var invoked = 0;
-        var command = new MenuItem { Content = new ControlText("Today") };
+        var command = new MenuItem { Text = "Today" };
         command.Invoked += (_, _) => invoked++;
         var recentMenu = new Menu { Orientation = Orientation.Vertical };
         recentMenu.Items.Add(command);
-        var recent = new MenuItem { Content = new ControlText("Open Recent"), Submenu = recentMenu };
+        var recent = new MenuItem { Text = "Open Recent", Submenu = recentMenu };
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
         fileMenu.Items.Add(recent);
-        var file = new MenuItem { Content = new ControlText("File"), Submenu = fileMenu };
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
         var menu = new Menu { Orientation = Orientation.Horizontal };
         menu.Items.Add(file);
         await using var surface = await ComponentSurface.MountAsync(
@@ -492,21 +492,21 @@ public sealed class MenuSurfaceTests
     public async Task Keyboard_WhenAltMnemonicIsPressed_OpensMenuAndEntersModalAsync()
     {
         // Arrange
-        var fileItem = new MenuItem { Content = new ControlText("&File") };
-        var editItem = new MenuItem { Content = new ControlText("&Edit") };
+        var fileItem = new MenuItem { Text = "&File" };
+        var editItem = new MenuItem { Text = "&Edit" };
         var fileSubmenu = new Menu
         {
             Items =
             {
-                new MenuItem { Content = new ControlText("New") },
-                new MenuItem { Content = new ControlText("Open") },
+                new MenuItem { Text = "New" },
+                new MenuItem { Text = "Open" },
             },
         };
         var editSubmenu = new Menu
         {
             Items =
             {
-                new MenuItem { Content = new ControlText("Undo") },
+                new MenuItem { Text = "Undo" },
             },
         };
         fileItem.Submenu = fileSubmenu;

@@ -8,8 +8,6 @@ using Controls.Collections;
 using SharpVision.Controls.Input;
 using SharpVision.Controls.Layout;
 
-using Text = Controls.Display.Text;
-
 /// <summary>Provides a responsive modal surface for choosing one or more existing local files.</summary>
 /// <remarks>
 /// The retained dialog enumerates one directory away from the dispatcher and commits only the newest
@@ -59,7 +57,7 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>
     {
         _openButton = new Button
         {
-            Content = new Text("&Open"),
+            Text = "&Open",
             IsDefault = true,
             IsEnabled = false
         };

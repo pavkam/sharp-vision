@@ -23,7 +23,7 @@ public sealed class OverlaySurfaceTests
         var clicked = string.Empty;
         var low = new Button
         {
-            Content = new ControlText("LLLLL\nLLLLL"),
+            Text = "LLLLL\nLLLLL",
             Style = TestButtonStyles.FlatWithPadding(default),
             Padding = default,
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -32,7 +32,7 @@ public sealed class OverlaySurfaceTests
         low.Click += (_, _) => clicked = "low";
         var high = new Button
         {
-            Content = new ControlText("HH"),
+            Text = "HH",
             Style = TestButtonStyles.FlatWithPadding(default),
             Padding = default,
             Width = Length.Cells(2),
@@ -134,7 +134,7 @@ public sealed class OverlaySurfaceTests
         var clicked = 0;
         var child = new Button
         {
-            Content = new ControlText("界"),
+            Text = "界",
             Style = TestButtonStyles.FlatWithPadding(default),
             Padding = default,
             Width = Length.Cells(2),

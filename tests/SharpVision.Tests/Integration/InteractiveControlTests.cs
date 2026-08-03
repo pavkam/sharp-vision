@@ -254,16 +254,16 @@ public sealed class InteractiveControlTests
         out Stack scroll,
         out UiListView list)
     {
-        button = new Button { Content = new Label("Go"), Width = Length.Cells(20) };
-        checkBox = new CheckBox { Content = new Label("Check"), Width = Length.Cells(20) };
+        button = new Button { Text = "Go", Width = Length.Cells(20) };
+        checkBox = new CheckBox { Text = "Check", Width = Length.Cells(20) };
         firstRadio = new RadioButton
         {
-            Content = new Label("A"),
+            Text = "A",
             GroupName = "choice",
             IsChecked = true,
             Width = Length.Cells(20)
         };
-        secondRadio = new RadioButton { Content = new Label("B"), GroupName = "choice", Width = Length.Cells(20) };
+        secondRadio = new RadioButton { Text = "B", GroupName = "choice", Width = Length.Cells(20) };
         input = new TextInput { Width = Length.Cells(20), Height = Length.Cells(3) };
         scrollBar = new ScrollBar
         {

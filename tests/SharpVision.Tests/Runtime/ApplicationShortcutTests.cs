@@ -17,7 +17,7 @@ public sealed class ApplicationShortcutTests
         var input = new TextInput { Text = "seed" };
         var menu = new Menu();
         var gesture = new KeyGesture(Code.Character, Modifiers.Control, new Rune('s'));
-        var save = new MenuItem { Content = new ControlText("Save"), Shortcut = gesture };
+        var save = new MenuItem { Text = "Save", Shortcut = gesture };
         menu.Items.Add(save);
         var root = new Stack { Children = { input, menu } };
         var routedKeyPresses = 0;
@@ -60,7 +60,7 @@ public sealed class ApplicationShortcutTests
         var menu = new Menu();
         var save = new MenuItem
         {
-            Content = new ControlText("Save"),
+            Text = "Save",
             Shortcut = new KeyGesture(Code.Character, Modifiers.Control, new Rune('s'))
         };
         menu.Items.Add(save);
