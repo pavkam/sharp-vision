@@ -226,7 +226,7 @@ public sealed class TextEditorSurfaceTests
         FindAll<Button>(window).ShouldAllBe(button => !button.ActualShadow.IsVisible);
         foreach (var button in FindAll<Button>(window))
         {
-            button.Text.ShouldBeOfType<ControlText>().TextAlignment.ShouldBe(Alignment.Center);
+            button.TextAlignment.ShouldBe(Alignment.Center);
         }
 
         var status = FindAll<ControlText>(window).Single(text => text.Content == "<d>Enter a search term</d>");

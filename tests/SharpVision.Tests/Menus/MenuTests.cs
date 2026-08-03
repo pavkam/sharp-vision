@@ -161,7 +161,7 @@ public sealed class MenuTests
         menu.Items.Add(first);
         menu.Items.Add(second);
         menu.ItemInvoked += (_, eventArgs) =>
-            observed.Add($"{eventArgs.Item.Text.ShouldBeOfType<ControlText>().Content}:{eventArgs.Item.IsChecked}");
+            observed.Add($"{eventArgs.Item.Text}:{eventArgs.Item.IsChecked}");
 
         check.PerformInvoke();
         second.PerformInvoke();

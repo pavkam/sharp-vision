@@ -287,8 +287,8 @@ public sealed class ButtonTests
     {
         var button = new Button { Width = Length.Cells(10), Height = Length.Cells(3), Text = "X" };
         var content = button.TextControl!;
-        content.HorizontalAlignment = HorizontalAlignment.Stretch;
-        content.VerticalAlignment = VerticalAlignment.Stretch;
+        content.Width = Length.Cells(6);
+        content.Height = Length.Cells(1);
 
         new LayoutEngine().Layout(button, new Size(10, 3));
 
@@ -311,8 +311,8 @@ public sealed class ButtonTests
             Text = "X"
         };
         var content = button.TextControl!;
-        content.HorizontalAlignment = HorizontalAlignment.Stretch;
-        content.VerticalAlignment = VerticalAlignment.Stretch;
+        content.Width = Length.Cells(4);
+        content.Height = Length.Cells(3);
         new LayoutEngine().Layout(button, new Size(10, 6));
         var released = content.Bounds;
 
@@ -344,8 +344,8 @@ public sealed class ButtonTests
             Text = "X"
         };
         var content = button.TextControl!;
-        content.HorizontalAlignment = HorizontalAlignment.Stretch;
-        content.VerticalAlignment = VerticalAlignment.Stretch;
+        content.Width = Length.Cells(4);
+        content.Height = Length.Cells(1);
         new LayoutEngine().Layout(button, new Size(9, 2));
         var released = content.Bounds;
 
@@ -736,7 +736,8 @@ public sealed class ButtonTests
     public void Constructor_WithText_SetsTextContent()
     {
         var button = new Button("Save");
-        button.Text.ShouldBeOfType<ControlText>().Content.ShouldBe("Save");
+        button.Text.ShouldBe("Save");
+        button.TextControl.ShouldNotBeNull().Content.ShouldBe("Save");
     }
 
     /// <summary>Verifies the string constructor rejects null text.</summary>

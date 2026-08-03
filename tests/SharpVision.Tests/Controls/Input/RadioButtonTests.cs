@@ -421,7 +421,8 @@ public sealed class RadioButtonTests
     public void Constructor_WithText_SetsTextContent()
     {
         var radio = new RadioButton("Option A");
-        radio.Text.ShouldBeOfType<ControlText>().Content.ShouldBe("Option A");
+        radio.Text.ShouldBe("Option A");
+        radio.TextControl.ShouldNotBeNull().Content.ShouldBe("Option A");
         radio.IsChecked.ShouldBeFalse();
     }
 
@@ -441,7 +442,7 @@ public sealed class RadioButtonTests
         // Assert
         radio.IsChecked.ShouldBeFalse();
         radio.GroupName.ShouldBeNull();
-        radio.Text.ShouldBeNull();
+        radio.Text.ShouldBeEmpty();
         radio.CanFocus.ShouldBeTrue();
         radio.IsHitTestVisible.ShouldBeTrue();
         radio.Style.ShouldBeNull();

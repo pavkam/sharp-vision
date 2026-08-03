@@ -55,7 +55,7 @@ public sealed class CheckBoxTests
 
         checkBox.IsChecked.ShouldBe(false);
         checkBox.IsThreeState.ShouldBeFalse();
-        checkBox.Text.ShouldBeNull();
+        checkBox.Text.ShouldBeEmpty();
         checkBox.HorizontalAlignment.ShouldBe(HorizontalAlignment.Left);
         checkBox.Style.ShouldBeNull();
         checkBox.ActualStyle.ShouldBe(ThemeOwnedStyle(Themes.Dark.Input));
@@ -292,7 +292,8 @@ public sealed class CheckBoxTests
     public void Constructor_WithText_SetsTextContent()
     {
         var checkBox = new CheckBox("Accept");
-        checkBox.Text.ShouldBeOfType<ControlText>().Content.ShouldBe("Accept");
+        checkBox.Text.ShouldBe("Accept");
+        checkBox.TextControl.ShouldNotBeNull().Content.ShouldBe("Accept");
         checkBox.IsChecked.ShouldBe(false);
     }
 
