@@ -33,6 +33,15 @@ runs:
         restore-keys: |
           ${{ runner.os }}-dotnet-
 
+    # windows-latest has no GNU Make preinstalled. The Makefile stays the single source of
+    # truth for how tests run on every platform (see issue #35), so this installs the same
+    # `make` the other lanes already have rather than adding a second, hand-maintained command
+    # surface for Windows.
+    - name: ⚙️ Install make (Windows)
+      if: ${{ runner.os == 'Windows' }}
+      shell: bash
+      run: choco install make --no-progress -y
+
     - name: 📦 Restore repository dependencies
       shell: bash
       run: make restore

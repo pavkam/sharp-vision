@@ -5,15 +5,28 @@
 Unix tests open a raw master/slave pseudoterminal pair that they own outright,
 which gives them control over window size, input bytes, output bytes, signals,
 closure, and timing. The current fixture drives `StreamTransport`,
-`UnixResizeSource`, and `Runtime.Session` directly. Windows console hosting
-should have equivalent coverage through a real ConPTY-backed fixture.
+`UnixResizeSource`, and `Runtime.Session` directly. Windows console hosting has
+equivalent coverage through a real ConPTY-backed fixture.
 
-> [!IMPORTANT]
+A Windows pseudo console has no "slave" the current process can enter raw mode
+on directly: only a process created attached to it via
+`PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE` ever sees a real console. `Support/
+WindowsPseudoterminal.cs` creates the pseudo console and spawns the
+`SharpVision.Terminal.Probe` helper attached to it; `Runtime/
+WindowsConsoleHostConPtyTests.cs` drives that probe through the
+`ConsoleHost.Open`/`ConsoleConnection.Dispose` lifecycle and reads its
+plain-text and raw-byte reports back over the pseudo console's own pipes.
+These tests skip only on non-Windows platforms — creating and attaching to a
+pseudo console does not depend on the CI job's own console, so a fixture
+attach failure surfaces as a real test failure rather than a silent skip.
+
+> [!NOTE]
 >
-> **Implementation gap:** No ConPTY-based fixture exists, and the Windows CI job
-> runs only console-mode unit tests that skip when standard input is redirected.
-> Real Windows console lifecycle validation is not currently exercised; issue
-> #35 tracks adding it.
+> The production `WindowsConsoleMode.Enter` output-mode-set failure path (the
+> rollback that restores the input mode before throwing) still has no test: it
+> needs the same native-call injection seam issue #27 is tracked to add. See
+> the `Skip` reason on
+> `Open_WhenOutputModeCannotBeSet_RestoresInputModeBeforeThrowing`.
 
 ## Scenarios
 
