@@ -4,7 +4,7 @@
 namespace SharpVision.Terminal.Terminfo;
 
 /// <summary>Compiles the bounded ncurses terminfo parameter language into immutable instructions.</summary>
-internal static class Compiler
+internal static class TerminfoCompiler
 {
     private const int _flagAlternate = 1 << 0;
     private const int _flagZeroPad = 1 << 1;

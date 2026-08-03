@@ -3,7 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Capabilities;
 /// <summary>Verifies bounded compilation of ncurses terminfo parameter programs.</summary>
-public sealed class CompilerTests
+public sealed class TerminfoCompilerTests
 {
     #region Representative programs
 
