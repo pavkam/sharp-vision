@@ -1212,6 +1212,7 @@ namespace SharpVision.Controls.Input
         public DateInput() { }
         public bool AllowNull { get; set; }
         public System.Globalization.CultureInfo Culture { get; set; }
+        public System.Text.Rune DropDownGlyph { get; set; }
         public int DropDownHeight { get; set; }
         public string Format { get; set; }
         public bool IsOpen { get; set; }
@@ -1219,6 +1220,8 @@ namespace SharpVision.Controls.Input
         public System.DateOnly MinimumDate { get; set; }
         protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public System.DateOnly? Value { get; set; }
+        public event System.EventHandler? DropDownClosed;
+        public event System.EventHandler? DropDownOpened;
         public event System.EventHandler<SharpVision.Input.DateInputValueChangedEventArgs>? ValueChanged;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
@@ -1228,6 +1231,7 @@ namespace SharpVision.Controls.Input
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        public void ResetDropDownGlyph() { }
     }
     public readonly struct DateInterval : System.IEquatable<SharpVision.Controls.Input.DateInterval>
     {
@@ -1244,6 +1248,7 @@ namespace SharpVision.Controls.Input
         public bool AllowNull { get; set; }
         public System.Globalization.CultureInfo Culture { get; set; }
         public System.Text.Rune DropDownGlyph { get; set; }
+        public int DropDownHeight { get; set; }
         public bool IsOpen { get; set; }
         public System.DateTime MaximumValue { get; set; }
         public System.DateTime MinimumValue { get; set; }
@@ -1252,6 +1257,8 @@ namespace SharpVision.Controls.Input
         public System.TimeSpan TimeStep { get; set; }
         public bool Use24HourFormat { get; set; }
         public System.DateTime? Value { get; set; }
+        public event System.EventHandler? DropDownClosed;
+        public event System.EventHandler? DropDownOpened;
         public event System.EventHandler<SharpVision.Input.DateTimeInputValueChangedEventArgs>? ValueChanged;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }

@@ -129,6 +129,66 @@ public sealed class DateTimeInputTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies DropDownOpened fires when the Calendar popup opens and DropDownClosed
+    /// fires when it closes, matching ComboBox's and DateInput's drop-down event shape (see #69).</summary>
+    [Fact]
+    public async Task DropDownOpened_WhenDropDownOpens_FiresEventAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var control = new DateTimeInput();
+            root.Children.Add(control);
+            new LayoutEngine().Layout(root, new Size(20, 10));
+            root.Attach(dispatcher);
+            var opened = 0;
+            var closed = 0;
+            control.DropDownOpened += (_, _) => opened++;
+            control.DropDownClosed += (_, _) => closed++;
+
+            control.IsOpen = true;
+
+            opened.ShouldBe(1);
+            closed.ShouldBe(0);
+
+            control.IsOpen = false;
+
+            opened.ShouldBe(1);
+            closed.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies DropDownHeight rejects a non-positive value and otherwise bounds the
+    /// measured Calendar popup height, matching DateInput's and ComboBox's identically named
+    /// property (see #69).</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Properties_WhenDropDownHeightIsNonPositive_ThrowsArgumentOutOfRangeException(int value)
+    {
+        // Arrange
+        using var control = new DateTimeInput();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.DropDownHeight = value);
+    }
+
+    /// <summary>Verifies DropDownHeight round-trips a valid value.</summary>
+    [Fact]
+    public void Properties_WhenDropDownHeightIsSet_RoundTrips()
+    {
+        // Arrange
+        using var control = new DateTimeInput();
+
+        // Act
+        control.DropDownHeight = 4;
+
+        // Assert
+        control.DropDownHeight.ShouldBe(4);
+    }
+
     #endregion
 
     #region Commit

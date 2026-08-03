@@ -28,6 +28,7 @@ public sealed class DateInput: ControlBase
     private DateOnly? _value;
     private CultureInfo _culture;
     private int _activeSegment;
+    private Rune? _dropDownGlyph;
 
     #region Construction and properties
 
@@ -85,6 +86,12 @@ public sealed class DateInput: ControlBase
 
     /// <summary>Raised after a committed value transition.</summary>
     public event EventHandler<DateInputValueChangedEventArgs>? ValueChanged;
+
+    /// <summary>Raised after the Calendar popup opens.</summary>
+    public event EventHandler? DropDownOpened;
+
+    /// <summary>Raised after the Calendar popup closes.</summary>
+    public event EventHandler? DropDownClosed;
 
     /// <summary>Gets or sets the committed date, or null when cleared.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -261,6 +268,42 @@ public sealed class DateInput: ControlBase
         }
     } = 10;
 
+    /// <summary>Gets or sets the local one-cell drop-down indicator.</summary>
+    /// <exception cref="ArgumentException">The value is a control or does not occupy exactly one cell.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Rune DropDownGlyph
+    {
+        get => _dropDownGlyph ?? ControlGlyphs.Disclosure.DropDown.Value;
+        set
+        {
+            _ = new ControlGlyph(value, value);
+            VerifyMutable();
+
+            if (_dropDownGlyph == value)
+            {
+                return;
+            }
+
+            _dropDownGlyph = value;
+            NotifyPropertyChanged(nameof(DropDownGlyph), InvalidationImpact.Render);
+        }
+    }
+
+    /// <summary>Clears the local drop-down indicator to the code-owned default.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public void ResetDropDownGlyph()
+    {
+        VerifyMutable();
+
+        if (_dropDownGlyph.HasValue)
+        {
+            _dropDownGlyph = null;
+            NotifyPropertyChanged(nameof(DropDownGlyph), InvalidationImpact.Render);
+        }
+    }
+
     /// <summary>Gets or sets whether the Calendar popup is open.</summary>
     /// <exception cref="ArgumentException">The attached DateInput is not an eligible modal root.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -335,7 +378,7 @@ public sealed class DateInput: ControlBase
         }
 
         var themed = ControlGlyphs.Disclosure.DropDown;
-        var glyph = themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
+        var glyph = DropDownGlyph.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
         canvas.DrawRune(
             glyph,
             new Point(Math.Max(content.X, content.Right - 1), content.Y),
@@ -533,6 +576,8 @@ public sealed class DateInput: ControlBase
             _popup.Closing -= OnPopupClosing;
             _popup.Closed -= OnPopupClosed;
             ValueChanged = null;
+            DropDownOpened = null;
+            DropDownClosed = null;
         }
     }
 
@@ -555,12 +600,14 @@ public sealed class DateInput: ControlBase
         SyncCalendar();
         _popup.IsOpen = true;
         _modalTracker.Enter(this);
+        DropDownOpened?.Invoke(this, EventArgs.Empty);
     }
 
     private void CloseDropDown()
     {
         _modalTracker.Exit();
         _popup.IsOpen = false;
+        DropDownClosed?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnCalendarSelectionChanged(object? sender, CalendarSelectionChangedEventArgs eventArgs)

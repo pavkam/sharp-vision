@@ -290,6 +290,60 @@ public sealed class DateInputTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies DropDownOpened fires when the Calendar popup opens and DropDownClosed
+    /// fires when it closes, matching ComboBox's drop-down event shape (see #69).</summary>
+    [Fact]
+    public async Task DropDownOpened_WhenDropDownOpens_FiresEventAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var control = new DateInput();
+            root.Children.Add(control);
+            new LayoutEngine().Layout(root, new Size(20, 10));
+            root.Attach(dispatcher);
+            var opened = 0;
+            var closed = 0;
+            control.DropDownOpened += (_, _) => opened++;
+            control.DropDownClosed += (_, _) => closed++;
+
+            control.IsOpen = true;
+
+            opened.ShouldBe(1);
+            closed.ShouldBe(0);
+
+            control.IsOpen = false;
+
+            opened.ShouldBe(1);
+            closed.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies DropDownGlyph round-trips a valid one-cell glyph and rejects a wide one,
+    /// matching ComboBox's local-override contract (see #69).</summary>
+    [Fact]
+    public void Properties_WhenDropDownGlyphIsSet_RoundTripsAndValidates()
+    {
+        // Arrange
+        using var control = new DateInput();
+        var defaultGlyph = control.DropDownGlyph;
+
+        // Act
+        control.DropDownGlyph = new Rune('▾');
+
+        // Assert
+        control.DropDownGlyph.ShouldBe(new Rune('▾'));
+        _ = Should.Throw<ArgumentException>(() => control.DropDownGlyph = new Rune('界'));
+
+        // Act
+        control.ResetDropDownGlyph();
+
+        // Assert
+        control.DropDownGlyph.ShouldBe(defaultGlyph);
+    }
+
     #endregion
 
     #region Commit

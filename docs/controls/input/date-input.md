@@ -16,16 +16,18 @@ left unhandled while popup and clearing commands remain available.
 
 ## API
 
-| Member                       | Default                                         | Description                                                   |
-| ---------------------------- | ----------------------------------------------- | ------------------------------------------------------------- |
-| `Value`                      | current local date                              | The nullable committed date, clamped to the inclusive bounds. |
-| `AllowNull`                  | `true`                                          | Allows clearing the value; disabling it repairs a null value. |
-| `Culture`                    | current Gregorian culture or invariant fallback | Supplies the segment order and formatting.                    |
-| `Format`                     | `"d"`                                           | A non-null, non-empty date format string.                     |
-| `MinimumDate`, `MaximumDate` | `DateOnly.MinValue`, `DateOnly.MaxValue`        | Ordered inclusive bounds that repair the current value.       |
-| `DropDownHeight`             | `10` cells                                      | The positive maximum visible calendar height.                 |
-| `IsOpen`                     | `false`                                         | Opens or closes the retained Calendar popup.                  |
-| `ValueChanged`               | no subscribers                                  | Raised after a committed value transition.                    |
+| Member                             | Default                                         | Description                                                           |
+| ---------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------- |
+| `Value`                            | current local date                              | The nullable committed date, clamped to the inclusive bounds.         |
+| `AllowNull`                        | `true`                                          | Allows clearing the value; disabling it repairs a null value.         |
+| `Culture`                          | current Gregorian culture or invariant fallback | Supplies the segment order and formatting.                            |
+| `Format`                           | `"d"`                                           | A non-null, non-empty date format string.                             |
+| `MinimumDate`, `MaximumDate`       | `DateOnly.MinValue`, `DateOnly.MaxValue`        | Ordered inclusive bounds that repair the current value.               |
+| `DropDownHeight`                   | `10` cells                                      | The positive maximum visible calendar height.                         |
+| `IsOpen`                           | `false`                                         | Opens or closes the retained Calendar popup.                          |
+| `DropDownGlyph`                    | code-owned disclosure glyph                     | The validated one-cell indicator; `ResetDropDownGlyph()` restores it. |
+| `ValueChanged`                     | no subscribers                                  | Raised after a committed value transition.                            |
+| `DropDownOpened`, `DropDownClosed` | no subscribers                                  | Raised after the Calendar popup opens or closes.                      |
 
 ## Example
 

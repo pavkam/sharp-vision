@@ -26,7 +26,7 @@ public sealed class DateTimeInput: ControlBase
     private const int _fieldContentHeight = 1;
     private const int _fieldBorderWidth = 2;
     private const int _indicatorWidth = 1;
-    private const int _calendarPopupHeight = 10;
+    private const int _defaultDropDownHeight = 10;
     // Date/time faces use fixed-width terminal cells for numeric segments and separators.
     private const int _dateSegmentWidth = 2;
     private const int _yearSegmentWidth = 4;
@@ -124,6 +124,12 @@ public sealed class DateTimeInput: ControlBase
 
     /// <summary>Raised after a committed value transition.</summary>
     public event EventHandler<DateTimeInputValueChangedEventArgs>? ValueChanged;
+
+    /// <summary>Raised after the Calendar popup opens.</summary>
+    public event EventHandler? DropDownOpened;
+
+    /// <summary>Raised after the Calendar popup closes.</summary>
+    public event EventHandler? DropDownClosed;
 
     /// <summary>Gets or sets the current date-time value, or null when cleared.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -285,6 +291,20 @@ public sealed class DateTimeInput: ControlBase
         }
     } = DateTime.MaxValue;
 
+    /// <summary>Gets or sets the maximum visible calendar height in terminal cells.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is zero or negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public int DropDownHeight
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
+            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+        }
+    } = _defaultDropDownHeight;
+
     /// <summary>Gets or sets whether the private calendar popup owns a dismissing modal plane rooted at this field.</summary>
     /// <exception cref="ArgumentException">The attached control is not an eligible modal root.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -354,7 +374,7 @@ public sealed class DateTimeInput: ControlBase
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        _ = MeasureChild(_popup, new Constraint(constraint.Width, _calendarPopupHeight));
+        _ = MeasureChild(_popup, new Constraint(constraint.Width, DropDownHeight));
         var width = FormatWidth() + _fieldBorderWidth;
         return new Size(width, _fieldContentHeight);
     }
@@ -515,6 +535,8 @@ public sealed class DateTimeInput: ControlBase
             _popup.Closing -= OnPopupClosing;
             _popup.Closed -= OnPopupClosed;
             ValueChanged = null;
+            DropDownOpened = null;
+            DropDownClosed = null;
         }
     }
 
@@ -904,12 +926,14 @@ public sealed class DateTimeInput: ControlBase
 
         _popup.IsOpen = true;
         _modalTracker.Enter(this);
+        DropDownOpened?.Invoke(this, EventArgs.Empty);
     }
 
     private void CloseDropDown()
     {
         _modalTracker.Exit();
         _popup.IsOpen = false;
+        DropDownClosed?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnCalendarSelectionChanged(object? sender, CalendarSelectionChangedEventArgs eventArgs)
