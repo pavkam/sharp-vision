@@ -62,7 +62,13 @@ public sealed class TimeInput: Control
     public bool AllowNull
     {
         get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
+        set
+        {
+            if (SetProperty(ref field, value, InvalidationImpact.None) && !value && _value is null)
+            {
+                _ = Commit(ClampToRange(TimeOnly.FromDateTime(TimeProvider.System.GetLocalNow().DateTime)));
+            }
+        }
     } = true;
 
     /// <summary>Gets or sets whether a 24-hour clock is displayed. Default is true.</summary>

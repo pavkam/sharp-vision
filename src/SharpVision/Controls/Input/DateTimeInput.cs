@@ -140,7 +140,13 @@ public sealed class DateTimeInput: Control
     public bool AllowNull
     {
         get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
+        set
+        {
+            if (SetProperty(ref field, value, InvalidationImpact.None) && !value && _value is null)
+            {
+                _ = Commit(ClampToRange(TimeProvider.System.GetLocalNow().DateTime));
+            }
+        }
     } = true;
 
     /// <summary>

@@ -40,6 +40,20 @@ public sealed class TimeInputTests
         control.Value.ShouldBe(initialValue);
     }
 
+    /// <summary>Verifies disabling null support repairs an already-cleared value.</summary>
+    [Fact]
+    public void AllowNull_WhenDisabledAfterValueWasCleared_RepairsValue()
+    {
+        // Arrange
+        using var control = new TimeInput { Value = null };
+
+        // Act
+        control.AllowNull = false;
+
+        // Assert
+        _ = control.Value.ShouldNotBeNull();
+    }
+
     /// <summary>Verifies the value is clamped to the minimum when set below the allowed range.</summary>
     [Fact]
     public void Properties_WhenMinMaxAreSet_ClampsValue()

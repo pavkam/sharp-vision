@@ -14,7 +14,7 @@ editing options.
 | Member                       | Default                                  | Description                                                   |
 | ---------------------------- | ---------------------------------------- | ------------------------------------------------------------- |
 | `Value`                      | current local time                       | The nullable committed time, clamped to the inclusive bounds. |
-| `AllowNull`                  | `true`                                   | Allows Delete or Backspace to clear the value.                |
+| `AllowNull`                  | `true`                                   | Allows clearing; disabling it repairs a null value.           |
 | `Use24HourFormat`            | `true`                                   | Selects 24-hour or AM/PM segments.                            |
 | `ShowSeconds`                | `false`                                  | Adds the seconds segment.                                     |
 | `TimeStep`                   | one minute                               | The positive whole-minute increment for the minute segment.   |
