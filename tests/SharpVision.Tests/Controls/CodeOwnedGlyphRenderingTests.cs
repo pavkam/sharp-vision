@@ -46,7 +46,7 @@ public sealed class CodeOwnedGlyphRenderingTests
         Render(progress, new Size(4, 1), Themes.White).ShouldBe("██░░");
     }
 
-    private static string Render(Control control, Size size, Theme theme)
+    private static string Render(ControlBase control, Size size, Theme theme)
     {
         control.SetTheme(theme);
         new LayoutEngine().Layout(control, size);

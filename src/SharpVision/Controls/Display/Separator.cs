@@ -5,7 +5,7 @@ namespace SharpVision.Controls.Display;
 
 /// <summary>Draws a non-interactive horizontal or vertical divider line.</summary>
 [PublicAPI]
-public sealed class Separator: Control
+public sealed class Separator: ControlBase
 {
     private Rune? _horizontalGlyph;
     private Rune? _verticalGlyph;

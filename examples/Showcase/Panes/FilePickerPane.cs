@@ -7,7 +7,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents live single- and multiple-selection FilePickerDialog presentation.</summary>
-internal sealed class FilePickerPane: CompositeControl
+internal sealed class FilePickerPane: CompositeControlBase
 {
     /// <summary>Initializes the retained FilePicker showcase content.</summary>
     internal FilePickerPane() => InitializeContent(CreateContent());

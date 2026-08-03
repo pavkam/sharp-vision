@@ -15,7 +15,7 @@ using UnicodeWidth = Width;
 
 /// <summary>Defines a focusable grapheme-safe single- or multiline text editor.</summary>
 [PublicAPI]
-public sealed class TextInput: Control
+public sealed class TextInput: ControlBase
 {
     private readonly List<EditResult> _undo = [];
     private readonly List<EditResult> _redo = [];
@@ -33,6 +33,7 @@ public sealed class TextInput: Control
     private readonly OwnedControlSlot _chrome;
     private readonly ScrollBar _horizontal;
     private readonly ScrollBar _vertical;
+    private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private Rect _editorBounds;
     private VisualLine[] _visualLines = [];
 
@@ -54,6 +55,11 @@ public sealed class TextInput: Control
         _vertical.ValueChanged += OnVerticalChanged;
         _chrome.Add(_horizontal);
         _chrome.Add(_vertical);
+        _scrollBarStyle = InitializePartStyle(
+            Scrolling.ScrollBarStyle.ArrangePartDefinition,
+            nameof(ScrollBarStyle));
+        BindStyle(_scrollBarStyle, _horizontal);
+        BindStyle(_scrollBarStyle, _vertical);
         Focusable = true;
         TabStop = true;
         ContextMenu = new TextInputContextMenu(this);
@@ -61,36 +67,6 @@ public sealed class TextInput: Control
 
     /// <inheritdoc/>
     protected override ThemeRole ThemeRole => ThemeRole.Input;
-
-    /// <inheritdoc/>
-    protected override InvalidationImpact GetThemeChangeImpact(
-        Theme? previous,
-        Theme? current,
-        Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace)
-    {
-        var appearanceImpact = base.GetThemeChangeImpact(
-            previous,
-            current,
-            previousParentAmbientFace,
-            currentParentAmbientFace);
-        var previousStyle = ScrollBar.ResolveStyle(ScrollBarStyle, previous);
-        var currentStyle = ScrollBar.ResolveStyle(ScrollBarStyle, current);
-        var styleImpact = previousStyle.Chrome != currentStyle.Chrome
-            ? InvalidationImpact.Measure
-            : previousStyle == currentStyle
-                ? InvalidationImpact.None
-                : InvalidationImpact.Render;
-
-        return MaximumImpact(appearanceImpact, styleImpact);
-    }
-
-    /// <inheritdoc/>
-    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        ScrollBarStyle is null &&
-        ScrollBar.ResolveStyle(ScrollBarStyle, previous) != ScrollBar.ResolveStyle(ScrollBarStyle, current)
-            ? nameof(ActualScrollBarStyle)
-            : null;
 
     /// <inheritdoc/>
     /// <summary>Raised before a text mutation and cancellable before commit.</summary>
@@ -317,36 +293,12 @@ public sealed class TextInput: Control
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public ScrollBarStyle? ScrollBarStyle
     {
-        get;
-        set
-        {
-            VerifyMutable();
-            if (field == value)
-            {
-                return;
-            }
-
-            var previous = ActualScrollBarStyle;
-            field = value;
-            var current = ActualScrollBarStyle;
-            _horizontal.Style = value;
-            _vertical.Style = value;
-            NotifyPropertyChanged(
-                nameof(ScrollBarStyle),
-                previous.Chrome != current.Chrome
-                    ? InvalidationImpact.Arrange
-                    : previous == current
-                        ? InvalidationImpact.None
-                        : InvalidationImpact.Render);
-            if (previous != current)
-            {
-                NotifyPropertyChanged(nameof(ActualScrollBarStyle), InvalidationImpact.None);
-            }
-        }
+        get => _scrollBarStyle.Local;
+        set => _scrollBarStyle.Local = value;
     }
 
     /// <summary>Gets the resolved editor-rail style.</summary>
-    public ScrollBarStyle ActualScrollBarStyle => ScrollBar.ResolveStyle(ScrollBarStyle, Theme);
+    public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
 
     /// <summary>Gets or sets the maximum retained undo snapshots.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
@@ -497,7 +449,7 @@ public sealed class TextInput: Control
     }
 
     /// <inheritdoc/>
-    internal override Control? HitTest(Point point)
+    internal override ControlBase? HitTest(Point point)
     {
         return IsDisposed || !IsHitTestVisible || !EffectiveIsVisible || !EffectiveIsEnabled || !Bounds.Contains(point)
             ? null
@@ -871,7 +823,7 @@ public sealed class TextInput: Control
     /// <summary>Gets every grapheme boundary offset in <see cref="Text"/> (including 0 and the
     /// source length) paired with the non-word-wrap cell column and row at that offset, computed
     /// with one forward pass and reused while the source text and every other <see cref="ClusterWidth"/>
-    /// input - <see cref="PasswordCharacter"/> and <see cref="Control.CellPolicy"/> - are unchanged.
+    /// input - <see cref="PasswordCharacter"/> and <see cref="ControlBase.CellPolicy"/> - are unchanged.
     /// The <see cref="Text"/> check is a reference comparison, safe because every assignment routes
     /// through <see cref="Commit"/>, which either keeps the same string reference or replaces it
     /// wholesale. Holding Left, or repeatedly committing a selection-only change that must
@@ -1341,8 +1293,6 @@ public sealed class TextInput: Control
 
     private void ArrangeChrome()
     {
-        _horizontal.Style = ScrollBarStyle;
-        _vertical.Style = ScrollBarStyle;
         var bounds = ContentBounds;
 
         if (WordWrap)

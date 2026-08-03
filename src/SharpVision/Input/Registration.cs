@@ -9,7 +9,7 @@ internal sealed class Registration<TArgs>: IHandler, IDisposable where TArgs : R
 {
     /// <summary>Initializes one live handler registration.</summary>
     public Registration(
-        Control owner,
+        ControlBase owner,
         Event<TArgs> routedEvent,
         EventHandler<TArgs> handler,
         bool handledEventsToo,
@@ -22,7 +22,7 @@ internal sealed class Registration<TArgs>: IHandler, IDisposable where TArgs : R
         Order = sequence;
     }
 
-    private Control? Owner { get; set; }
+    private ControlBase? Owner { get; set; }
 
     private Event<TArgs>? RoutedEvent { get; set; }
 
@@ -51,7 +51,7 @@ internal sealed class Registration<TArgs>: IHandler, IDisposable where TArgs : R
 
     /// <inheritdoc/>
     public void Invoke(
-        Control sender,
+        ControlBase sender,
         IEvent routedEvent,
         RoutedEventArgs eventArgs,
         long sequence)

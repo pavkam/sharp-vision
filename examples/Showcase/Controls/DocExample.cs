@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Controls;
 using TextControl = SharpVision.Controls.Display.Text;
 
 /// <summary>Builds one example block: a bold heading and dim description above a live specimen.</summary>
-internal sealed class DocExample: CompositeControl
+internal sealed class DocExample: CompositeControlBase
 {
     /// <summary>Initializes one labeled showcase example with an optional collapsed source recipe.</summary>
     /// <param name="heading">The example heading.</param>
@@ -18,7 +18,7 @@ internal sealed class DocExample: CompositeControl
     internal DocExample(
         string heading,
         string descriptionMarkup,
-        Control specimen,
+        ControlBase specimen,
         string? source = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(heading);

@@ -8,7 +8,7 @@ using TerminalCanvas = Terminal.Rendering.Canvas;
 #pragma warning restore IDE0001
 
 /// <summary>Provides a third-party-style control with one custom style property.</summary>
-internal sealed class DemoPanel: Control
+internal sealed class DemoPanel: ControlBase
 {
     /// <summary>Initializes a compact panel specimen for theme extensibility tests.</summary>
     internal DemoPanel()

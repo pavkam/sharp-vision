@@ -131,19 +131,19 @@ public sealed class PointerTests
             root.Children.Add(child);
             root.Attach(dispatcher);
             using PointerManager manager = new(root);
-            List<(Control Sender, Point? Local)> observed = [];
+            List<(ControlBase Sender, Point? Local)> observed = [];
             _ = root.AddHandler(Events.Pointer, (sender, eventArgs) =>
             {
                 if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
-                    observed.Add(((Control) sender!, eventArgs.LocalCells));
+                    observed.Add(((ControlBase) sender!, eventArgs.LocalCells));
                 }
             });
             _ = child.AddHandler(Events.Pointer, (sender, eventArgs) =>
             {
                 if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
-                    observed.Add(((Control) sender!, eventArgs.LocalCells));
+                    observed.Add(((ControlBase) sender!, eventArgs.LocalCells));
                 }
             });
 
@@ -298,12 +298,12 @@ public sealed class PointerTests
             root.Children.Add(second);
             root.Attach(dispatcher);
             using PointerManager manager = new(root);
-            List<Control> routed = [];
+            List<ControlBase> routed = [];
             _ = first.AddHandler(Events.Pointer, (sender, eventArgs) =>
             {
                 if (eventArgs.Phase == RoutingPhase.Bubble)
                 {
-                    routed.Add((Control) sender!);
+                    routed.Add((ControlBase) sender!);
                 }
             });
 
@@ -662,7 +662,7 @@ public sealed class PointerTests
             var child = new ProbeControl { Bounds = new Rect(1, 1, 8, 4) };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            List<Control?> activated = [];
+            List<ControlBase?> activated = [];
             using var manager = new PointerManager(
                 root,
                 null,
@@ -695,7 +695,7 @@ public sealed class PointerTests
         {
             var root = new ProbeControl { Bounds = new Rect(0, 0, 20, 10) };
             root.Attach(dispatcher);
-            List<Control?> activated = [];
+            List<ControlBase?> activated = [];
             using var manager = new PointerManager(
                 root,
                 null,

@@ -79,7 +79,7 @@ internal static class ControlChrome
     /// <param name="visualState">The active visual-state flags.</param>
     /// <param name="options">Optional body and shadow overrides.</param>
     public static void Render(
-        Control control,
+        ControlBase control,
         TerminalCanvas canvas,
         VisualState visualState,
         ChromeRenderOptions? options = null)
@@ -88,7 +88,7 @@ internal static class ControlChrome
         control.RenderBorder(canvas, visualState, options);
     }
 
-    extension(Control control)
+    extension(ControlBase control)
     {
         /// <summary>Draws framework-owned shadow and body fill before content.</summary>
         public void RenderUnderlay(
@@ -245,7 +245,7 @@ internal static class ControlChrome
         /// <param name="background">Whether shadow backgrounds replace destination cells.</param>
         /// <param name="preserveButtonShadowGap">Whether to leave one cell before the bottom strip.</param>
         public void DrawShadow(
-            Control control,
+            ControlBase control,
             Rect sourceBounds,
             Rect excludeBounds,
             Shadow shadow,
@@ -330,7 +330,7 @@ internal static class ControlChrome
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static void DrawFractionalShadow(
         TerminalCanvas canvas,
-        Control control,
+        ControlBase control,
         Rect sourceBounds,
         Rect excludeBounds,
         TerminalStyle style,

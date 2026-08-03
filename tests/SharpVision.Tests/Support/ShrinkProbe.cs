@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Support;
 
 /// <summary>A probe that shrink-wraps its width for arrange-seam tests.</summary>
-internal sealed class ShrinkProbe: Control
+internal sealed class ShrinkProbe: ControlBase
 {
     private readonly Size _intrinsic;
 

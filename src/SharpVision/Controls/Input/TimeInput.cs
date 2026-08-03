@@ -13,7 +13,7 @@ using SharpVision.Terminal.Input;
 /// Delete or Backspace clears the value to null when <see cref="AllowNull"/> is set.
 /// </remarks>
 [PublicAPI]
-public sealed class TimeInput: Control
+public sealed class TimeInput: ControlBase
 {
     /// <inheritdoc/>
     protected override ThemeRole ThemeRole => ThemeRole.Input;

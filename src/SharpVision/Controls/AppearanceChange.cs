@@ -13,7 +13,7 @@ internal readonly struct AppearanceChange
     /// <param name="currentAppearance">The resolved appearance after the complete transaction.</param>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     internal AppearanceChange(
-        Control control,
+        ControlBase control,
         ThemeTransition? themeTransition,
         ResolvedAppearance previousAppearance,
         ResolvedAppearance currentAppearance)
@@ -36,13 +36,13 @@ internal readonly struct AppearanceChange
     /// <exception cref="KeyNotFoundException">A captured control is absent from the current snapshot map.</exception>
     internal static List<AppearanceChange> CreateChanges(
         List<ThemeTransition> transitions,
-        Dictionary<Control, AppearanceSnapshot> previous,
-        Dictionary<Control, AppearanceSnapshot> current)
+        Dictionary<ControlBase, AppearanceSnapshot> previous,
+        Dictionary<ControlBase, AppearanceSnapshot> current)
     {
         ArgumentNullException.ThrowIfNull(transitions);
         ArgumentNullException.ThrowIfNull(previous);
         ArgumentNullException.ThrowIfNull(current);
-        var transitionsByControl = new Dictionary<Control, ThemeTransition>(transitions.Count);
+        var transitionsByControl = new Dictionary<ControlBase, ThemeTransition>(transitions.Count);
 
         foreach (var transition in transitions)
         {
@@ -67,7 +67,7 @@ internal readonly struct AppearanceChange
             {
                 // A prospective all-state impact remains authoritative when stronger. Internal
                 // invalidation is monotonic, so the exact active snapshot may only strengthen it.
-                control.Invalidate(Control.InvalidationFor(impact));
+                control.Invalidate(ControlBase.InvalidationFor(impact));
             }
 
             changes.Add(new AppearanceChange(
@@ -81,7 +81,7 @@ internal readonly struct AppearanceChange
     }
 
     /// <summary>Gets the control receiving this publication.</summary>
-    internal Control Control { get; }
+    internal ControlBase Control { get; }
 
     /// <summary>Gets committed Theme metadata, or null for an appearance-only publication.</summary>
     internal ThemeTransition? ThemeTransition { get; }

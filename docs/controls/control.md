@@ -1,9 +1,12 @@
-# Control base API
+# Control base APIs
 
 ## Overview
 
-`Control` is the abstract base class for every mutable UI element. A control
-belongs to at most one parent and, while attached, to exactly one
+`ControlBase` is the abstract base class for every mutable UI element. It owns
+the tree, layout, input, appearance, invalidation, and lifecycle contract.
+`Control<TStyle>` adds the framework-owned primary `Style`/`ActualStyle` slot
+for controls with an immutable complete typed style. A control belongs to at
+most one parent and, while attached, to exactly one
 [`Dispatcher`](../concepts/threading.md#overview). You can assemble a detached
 tree on any thread; once the tree is attached, all mutation and disposal must
 run on that dispatcher.
@@ -45,8 +48,8 @@ suppress drawing, visibility, enabled state, or explicit focus.
 
 ## Intrinsic appearance
 
-Every `Control` carries its own face, border, and shadow composites; there are
-no border or shadow wrapper controls.
+Every `ControlBase` carries its own face, border, and shadow composites; there
+are no border or shadow wrapper controls.
 
 The shared [intrinsic-chrome rules](../concepts/intrinsic-chrome.md#overview)
 define the border and shadow value members, rendering order, geometry, clipping,
@@ -111,9 +114,9 @@ already accounts for border and padding.
 
 ## Children and ownership
 
-Every `Control` owns one central registry of distinct, ordered visual slots.
-`Control.Parent` is therefore typed `Control?`: having a parent does not imply
-that the parent exposes a public child collection. Each slot records a
+Every `ControlBase` owns one central registry of distinct, ordered visual slots.
+`ControlBase.Parent` is therefore typed `ControlBase?`: having a parent does not
+imply that the parent exposes a public child collection. Each slot records a
 structural role, a render layer, hit-test and navigation participation, an
 optional stable part key, and the invalidation impact of a committed mutation.
 
@@ -128,7 +131,7 @@ The role vocabulary is container child, content, composition root, item visual,
 item host, and framework part. The foundation itself instantiates container
 children, item hosts, and private framework parts. The public
 [`ContentControl`](content-control.md#overview) instantiates the capacity-one
-content role, while [`CompositeControl`](composite-control.md#overview)
+content role, while [`CompositeControlBase`](composite-control.md#overview)
 instantiates the permanent capacity-one composition-root role. A slot also
 selects the normal or popup layer, hit-test and navigation participation, an
 optional stable part key, and the earliest invalidation impact. These policies
@@ -198,8 +201,8 @@ Debug.Assert(control.Parent == container);
 
 The shared [invalidation rules](../concepts/invalidation.md#overview) own phase
 dependencies, ancestor propagation, dispatcher scheduling, retries, and frame
-coordination. `Control` exposes the authoring seams that let derived controls
-participate without exposing pending phase flags.
+coordination. `ControlBase` exposes the authoring seams that let derived
+controls participate without exposing pending phase flags.
 
 | Seam                                       | Use                                                             |
 | ------------------------------------------ | --------------------------------------------------------------- |
@@ -228,8 +231,8 @@ machine. Returning `false` lets the next duplicate candidate handle the key.
 
 `UseMnemonic` controls both marker rendering and discovery, and changing it
 invalidates measure for the caption subtree. Rich or body `Text` changes its own
-default to `false`; a `Text` used as a `Pressable` caption inherits the owner's
-effective setting. The full syntax, modifier, duplicate, modality, and
+default to `false`; a `Text` used as a `PressableBase` caption inherits the
+owner's effective setting. The full syntax, modifier, duplicate, modality, and
 paired-text rules live in the shared
 [access-key rules](../concepts/access-keys.md#overview).
 
@@ -289,8 +292,8 @@ before the exception escapes.
 
 Building a retained component out of existing controls, rather than a new
 primitive, does not use these seams directly: derive from
-[`CompositeControl`](composite-control.md#overview), construct the private tree
-once, and transfer its root through `InitializeContent`. Derive from
+[`CompositeControlBase`](composite-control.md#overview), construct the private
+tree once, and transfer its root through `InitializeContent`. Derive from
 [`Container`](container.md#overview) only when callers own an arbitrary public
 child collection and the concrete type supplies both layout passes.
 

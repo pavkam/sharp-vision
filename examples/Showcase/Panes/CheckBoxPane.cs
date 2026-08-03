@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the CheckBox control with live, themed toggle specimens.</summary>
-internal sealed class CheckBoxPane: CompositeControl
+internal sealed class CheckBoxPane: CompositeControlBase
 {
     internal CheckBoxPane() => InitializeContent(CreateContent());
 

@@ -52,7 +52,7 @@ shell.Children.Add(details);
 `navigation` reserves 22 cells on the left, and the final `details` child fills
 the remainder because `LastChildFills` is `true`. `Padding` reserves space
 inside a control's border box, while `Margin` would reserve it outside. The
-[`Control` property guide](../controls/control.md#api) explains the shared
+[`ControlBase` property guide](../controls/control.md#api) explains the shared
 sizing and alignment properties.
 
 ## Choose a layout control

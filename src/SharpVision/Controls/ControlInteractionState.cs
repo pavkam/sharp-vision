@@ -6,7 +6,7 @@ namespace SharpVision.Controls;
 /// <summary>Owns one control's committed local interaction facts.</summary>
 /// <remarks>Focus, physical pointer-over, direct pointer-over, and press are distinct facts.
 /// The focus and pointer managers decide when they change; this value merely commits the local
-/// state atomically so <see cref="Control"/> does not become a second interaction authority.</remarks>
+/// state atomically so <see cref="ControlBase"/> does not become a second interaction authority.</remarks>
 internal sealed class ControlInteractionState
 {
     /// <summary>Gets whether the control owns direct keyboard focus.</summary>

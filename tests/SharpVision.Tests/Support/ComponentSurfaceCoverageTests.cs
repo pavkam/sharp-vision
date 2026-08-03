@@ -303,12 +303,12 @@ public sealed class ComponentSurfaceCoverageTests
             ComponentBehavior.Composition) },
     };
 
-    /// <summary>Verifies every exported concrete Control has one explicit complete behavior requirement.</summary>
+    /// <summary>Verifies every exported concrete ControlBase has one explicit complete behavior requirement.</summary>
     [Fact]
     public void Catalog_WhenPublicConcreteControlsChange_RequiresExplicitBehaviorClassification()
     {
-        var controls = typeof(Control).Assembly.GetExportedTypes()
-            .Where(type => !type.IsAbstract && typeof(Control).IsAssignableFrom(type))
+        var controls = typeof(ControlBase).Assembly.GetExportedTypes()
+            .Where(type => !type.IsAbstract && typeof(ControlBase).IsAssignableFrom(type))
             .ToHashSet();
 
         _requirements.Keys.ShouldBe(controls, ignoreOrder: true);

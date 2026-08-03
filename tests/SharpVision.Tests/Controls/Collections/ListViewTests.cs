@@ -518,7 +518,7 @@ public sealed class ListViewTests
 
     private static string Join(ReadOnlyMemory<int> values) => string.Join(',', values.ToArray());
 
-    private static void Key(Control target, Code code, Rune? character = null) =>
+    private static void Key(ControlBase target, Code code, Rune? character = null) =>
         _ = Router.Route(
             target,
             Events.Key,
@@ -529,7 +529,7 @@ public sealed class ListViewTests
                 Modifiers.None,
                 KeyAction.Press)));
 
-    private static void Space(Control target)
+    private static void Space(ControlBase target)
     {
         Key(target, Code.Character, new Rune(' '));
         _ = Router.Route(

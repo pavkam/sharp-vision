@@ -4,7 +4,7 @@
 namespace SharpVision.Showcase.Panes;
 
 /// <summary>Demonstrates grapheme-safe semantic drawing and clip-edge repair.</summary>
-internal sealed class CanvasUnicodeSample: Control
+internal sealed class CanvasUnicodeSample: ControlBase
 {
     /// <summary>Initializes the Unicode drawing sample.</summary>
     internal CanvasUnicodeSample()

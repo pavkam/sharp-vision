@@ -143,14 +143,14 @@ public sealed class InteractivePerformanceTests
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static WeakReference<Control>[] PopulateAndReplace(UiListView list, int count)
+    private static WeakReference<ControlBase>[] PopulateAndReplace(UiListView list, int count)
     {
-        var weak = new WeakReference<Control>[count];
+        var weak = new WeakReference<ControlBase>[count];
         var created = 0;
         list.ItemTemplate = item =>
         {
             var control = new Label(Convert.ToString(item, CultureInfo.InvariantCulture) ?? string.Empty);
-            weak[created++] = new WeakReference<Control>(control);
+            weak[created++] = new WeakReference<ControlBase>(control);
             return control;
         };
         list.Items = Enumerable.Range(0, count).Select(static value => (object?) value).ToArray();
@@ -185,7 +185,7 @@ public sealed class InteractivePerformanceTests
         return root;
     }
 
-    private static Stack Hidden(Control content) => new()
+    private static Stack Hidden(ControlBase content) => new()
     {
         AutoScroll = true,
         ScrollBars = ScrollBars.Both,

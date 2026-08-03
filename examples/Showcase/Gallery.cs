@@ -21,7 +21,7 @@ public sealed class Gallery: Screen
         "Windows"
     ];
 
-    private static readonly (string Group, string Name, Func<CompositeControl> Create)[] _catalog =
+    private static readonly (string Group, string Name, Func<CompositeControlBase> Create)[] _catalog =
     [
         ("Concepts", ControlPane.Title, static () => new ControlPane()),
         ("Concepts", BorderPane.Title, static () => new BorderPane()),
@@ -216,7 +216,7 @@ public sealed class Gallery: Screen
     internal StatusBar StatusBar { get; }
 
     /// <summary>Gets the current documentation page content.</summary>
-    public Control CurrentPage => (_main.Children.Count > 0 ? _main.Children[0] : null)!;
+    public ControlBase CurrentPage => (_main.Children.Count > 0 ? _main.Children[0] : null)!;
 
     /// <summary>Gets the current exact concrete control name.</summary>
     public string SelectedPage => Pages[SelectedIndex];
@@ -237,7 +237,7 @@ public sealed class Gallery: Screen
     /// <param name="index">The zero-based page index.</param>
     /// <returns>A new showcase pane instance.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the catalog.</exception>
-    internal static CompositeControl CreatePage(int index)
+    internal static CompositeControlBase CreatePage(int index)
     {
         return (uint) index >= (uint) _catalog.Length
             ? throw new ArgumentOutOfRangeException(nameof(index), index, "The page index is outside the catalog.")

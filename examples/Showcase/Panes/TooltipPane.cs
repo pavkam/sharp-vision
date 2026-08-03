@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the Tooltip control with hover, focus, and rich-content specimens.</summary>
-internal sealed class TooltipPane: CompositeControl
+internal sealed class TooltipPane: CompositeControlBase
 {
     internal TooltipPane() => InitializeContent(CreateContent());
 

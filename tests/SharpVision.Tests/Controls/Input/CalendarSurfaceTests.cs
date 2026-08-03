@@ -292,14 +292,9 @@ public sealed class CalendarSurfaceTests
     {
         // Arrange
         var selected = new DateOnly(2026, 7, 19);
-        var style = new CalendarStyle(
-            Color.Rgb(200, 30, 30),
-            CalendarStyle.Default.TodayMarkerColor,
-            Color.Rgb(30, 30, 200),
-            CalendarStyle.Default.WeekdayHeaderColor,
-            CalendarStyle.Default.DisabledDayColor,
-            CalendarStyle.Default.ContentInset,
-            CalendarStyle.Default.Appearance);
+        var style = CalendarStyle.Default.With(
+            selectedDayColor: Color.Rgb(200, 30, 30),
+            outOfMonthDayColor: Color.Rgb(30, 30, 200));
         var calendar = new UiCalendar
         {
             Culture = CultureInfo.InvariantCulture,

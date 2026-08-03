@@ -12,7 +12,7 @@ namespace SharpVision.Controls;
 /// inherited context, style-scope resolution, and disposal.
 /// </remarks>
 [PublicAPI]
-public abstract class ItemsControl: Control
+public abstract class ItemsControl: ControlBase
 {
     private readonly OwnedControlSlot _itemsHostSlot;
     private Container? _itemsHost;
@@ -87,14 +87,14 @@ public abstract class ItemsControl: Control
     /// <returns>The realized control at <paramref name="index"/>.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the realized controls.</exception>
     /// <exception cref="InvalidOperationException">The presentation host is not available.</exception>
-    protected Control GetItemControl(int index) => GetItemsHost().Children[index];
+    protected ControlBase GetItemControl(int index) => GetItemsHost().Children[index];
 
     /// <summary>Gets the identity position of one realized item control.</summary>
     /// <param name="control">The non-null candidate.</param>
     /// <returns>The zero-based position, or -1 when the control is not realized by this owner.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The presentation host is not available.</exception>
-    protected int IndexOfItemControl(Control control)
+    protected int IndexOfItemControl(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         return GetItemsHost().Children.IndexOf(control);
@@ -111,7 +111,7 @@ public abstract class ItemsControl: Control
     /// ownership transaction is active.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The owner, host, or control is disposed.</exception>
-    protected void InsertItemControl(int index, Control control)
+    protected void InsertItemControl(int index, ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         GetItemsHost().Children.Insert(index, control);
@@ -126,7 +126,7 @@ public abstract class ItemsControl: Control
     /// ownership transaction is active.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The owner or host is disposed.</exception>
-    protected bool RemoveItemControl(Control control)
+    protected bool RemoveItemControl(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         return GetItemsHost().Children.Remove(control);
@@ -153,7 +153,7 @@ public abstract class ItemsControl: Control
     /// ownership transaction is active.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The owner, host, or replacement is disposed.</exception>
-    protected void ReplaceItemControl(int index, Control control)
+    protected void ReplaceItemControl(int index, ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         GetItemsHost().Children[index] = control;
@@ -184,7 +184,7 @@ public abstract class ItemsControl: Control
     /// ownership transaction is active.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The owner, host, or a candidate is disposed.</exception>
-    protected void ReplaceItemControls(IEnumerable<Control> controls)
+    protected void ReplaceItemControls(IEnumerable<ControlBase> controls)
     {
         ArgumentNullException.ThrowIfNull(controls);
         GetItemsHost().Children.ReplaceAll(controls);

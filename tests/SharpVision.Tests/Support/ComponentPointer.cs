@@ -26,7 +26,7 @@ internal sealed class ComponentPointer
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="control"/> is not owned by the surface.</exception>
     /// <exception cref="InvalidOperationException"><paramref name="control"/> has empty arranged bounds.</exception>
-    internal async Task MoveToAsync(Control control)
+    internal async Task MoveToAsync(ControlBase control)
     {
         var point = await _surface.ResolvePointAsync(control);
         var value = Encode(button: 35, point, final: 'M');
@@ -42,7 +42,7 @@ internal sealed class ComponentPointer
     /// <exception cref="ArgumentException"><paramref name="control"/> is not owned by the surface.</exception>
     /// <exception cref="InvalidOperationException"><paramref name="control"/> has empty arranged bounds.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="relative"/> lies outside the control.</exception>
-    internal async Task MoveToAsync(Control control, Point relative)
+    internal async Task MoveToAsync(ControlBase control, Point relative)
     {
         var point = await _surface.ResolvePointAsync(control, relative);
         await _surface.SendAsync(Encode(button: 35, point, final: 'M'), $"move pointer to {point}");
@@ -91,7 +91,7 @@ internal sealed class ComponentPointer
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="control"/> is not owned by the surface.</exception>
     /// <exception cref="InvalidOperationException"><paramref name="control"/> has empty arranged bounds.</exception>
-    internal async Task ClickAsync(Control control)
+    internal async Task ClickAsync(ControlBase control)
     {
         await MoveToAsync(control);
         await PressAsync();
@@ -106,7 +106,7 @@ internal sealed class ComponentPointer
     /// <exception cref="ArgumentException"><paramref name="control"/> is not owned by the surface.</exception>
     /// <exception cref="InvalidOperationException"><paramref name="control"/> has empty arranged bounds.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="relative"/> lies outside the control.</exception>
-    internal async Task ClickAsync(Control control, Point relative)
+    internal async Task ClickAsync(ControlBase control, Point relative)
     {
         await MoveToAsync(control, relative);
         await PressAsync();
@@ -115,14 +115,14 @@ internal sealed class ComponentPointer
 
     /// <summary>Clicks a control's current arranged center with supported terminal pointer modifiers.</summary>
     /// <param name="control">The mounted control or one of its owned descendants.</param>
-    /// <param name="modifiers">The Shift, Alt, and Control flags carried by both pointer transitions.</param>
+    /// <param name="modifiers">The Shift, Alt, and ControlBase flags carried by both pointer transitions.</param>
     /// <returns>A task completed after move, modified press/release, activation, and rendering settle.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="control"/> is not owned by the surface.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="modifiers"/> contains an undefined flag.</exception>
     /// <exception cref="NotSupportedException"><paramref name="modifiers"/> contains a defined non-pointer modifier.</exception>
     /// <exception cref="InvalidOperationException">The control is empty or the primary pointer is already pressed.</exception>
-    internal async Task ClickAsync(Control control, Modifiers modifiers)
+    internal async Task ClickAsync(ControlBase control, Modifiers modifiers)
     {
         var bits = ModifierBits(modifiers);
         await MoveToAsync(control);
@@ -150,7 +150,7 @@ internal sealed class ComponentPointer
     /// <exception cref="ArgumentException">The control is foreign, or both or neither wheel axes are requested.</exception>
     /// <exception cref="InvalidOperationException"><paramref name="control"/> has empty arranged bounds.</exception>
     internal async Task WheelAsync(
-        Control control,
+        ControlBase control,
         Point relative,
         int wheelX = 0,
         int wheelY = 0)
@@ -184,7 +184,7 @@ internal sealed class ComponentPointer
     /// <exception cref="ArgumentException"><paramref name="control"/> is not owned by the surface.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="relative"/> lies outside the control.</exception>
     /// <exception cref="InvalidOperationException">The primary button is not pressed or the control is empty.</exception>
-    internal async Task MovePressedToAsync(Control control, Point relative)
+    internal async Task MovePressedToAsync(ControlBase control, Point relative)
     {
         if (!_primaryPressed)
         {
@@ -207,7 +207,7 @@ internal sealed class ComponentPointer
     /// <exception cref="ArgumentException"><paramref name="control"/> is not owned by the surface.</exception>
     /// <exception cref="ArgumentOutOfRangeException">A relative endpoint lies outside the control.</exception>
     /// <exception cref="InvalidOperationException"><paramref name="control"/> is empty.</exception>
-    internal async Task DragAsync(Control control, Point start, Point end)
+    internal async Task DragAsync(ControlBase control, Point start, Point end)
     {
         await MoveToAsync(control, start);
         await PressAsync();
@@ -221,7 +221,7 @@ internal sealed class ComponentPointer
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="control"/> is not owned by the surface.</exception>
     /// <exception cref="InvalidOperationException"><paramref name="control"/> has empty arranged bounds.</exception>
-    internal async Task RightClickAsync(Control control)
+    internal async Task RightClickAsync(ControlBase control)
     {
         await MoveToAsync(control);
         var point = _lastPoint ?? throw new InvalidOperationException(
@@ -238,7 +238,7 @@ internal sealed class ComponentPointer
     /// <exception cref="ArgumentException"><paramref name="control"/> is not owned by the surface.</exception>
     /// <exception cref="InvalidOperationException"><paramref name="control"/> has empty arranged bounds.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="relative"/> lies outside the control.</exception>
-    internal async Task RightClickAsync(Control control, Point relative)
+    internal async Task RightClickAsync(ControlBase control, Point relative)
     {
         await MoveToAsync(control, relative);
         var point = _lastPoint ?? throw new InvalidOperationException(

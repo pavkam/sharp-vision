@@ -4,12 +4,12 @@
 namespace SharpVision.Showcase.Controls;
 
 /// <summary>Stacks children horizontally with standard showcase spacing.</summary>
-internal sealed class DocRow: CompositeControl
+internal sealed class DocRow: CompositeControlBase
 {
     /// <summary>Initializes a horizontal row of showcase specimens.</summary>
     /// <param name="children">The children in order.</param>
     /// <exception cref="ArgumentNullException"><paramref name="children"/> or one of its entries is null.</exception>
-    internal DocRow(params Control[] children)
+    internal DocRow(params ControlBase[] children)
     {
         ArgumentNullException.ThrowIfNull(children);
 

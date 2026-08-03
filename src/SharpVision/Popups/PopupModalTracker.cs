@@ -13,7 +13,7 @@ using System.Runtime.ExceptionServices;
 /// <remarks>
 /// This tracker owns only the composite owner's modal policy: its popup uses
 /// <see cref="PopupModalBehavior.None"/>, while the scope is rooted at the public owner.
-/// Popup-owned surface modality remains exclusively in <see cref="Surfaces.FloatingSurface"/>.
+/// Popup-owned surface modality remains exclusively in <see cref="Surfaces.FloatingSurfaceBase"/>.
 /// </remarks>
 internal sealed class PopupModalTracker
 {
@@ -32,7 +32,7 @@ internal sealed class PopupModalTracker
 
     /// <summary>Enters a dismiss-mode modal scope on the owner's modality manager.</summary>
     /// <param name="owner">The control that owns the popup and serves as modal root and initial focus.</param>
-    public void Enter(Control owner)
+    public void Enter(ControlBase owner)
     {
         if (_scope?.IsActive == true || owner.ModalityOwner is not { } modality)
         {

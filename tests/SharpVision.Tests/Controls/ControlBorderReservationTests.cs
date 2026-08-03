@@ -126,7 +126,7 @@ public sealed class ControlBorderReservationTests
         VerticalAlignment = VerticalAlignment.Stretch
     };
 
-    private static LayoutProbe StretchingContainer(Control child)
+    private static LayoutProbe StretchingContainer(ControlBase child)
     {
         var container = new LayoutProbe
         {

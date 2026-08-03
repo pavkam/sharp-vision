@@ -6,12 +6,12 @@ namespace SharpVision.Controls.Collections;
 using SharpVision.Terminal.Input;
 
 /// <summary>Owns one realized ListView template control and its selection behavior.</summary>
-internal sealed class ListItem: Pressable
+internal sealed class ListItem: PressableBase
 {
     /// <summary>Initializes one indexed detached realized control.</summary>
     /// <param name="index">The non-negative stable item index.</param>
     /// <param name="content">The non-null detached template control.</param>
-    public ListItem(int index, Control content)
+    public ListItem(int index, ControlBase content)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentNullException.ThrowIfNull(content);
@@ -57,7 +57,7 @@ internal sealed class ListItem: Pressable
     }
 
     /// <inheritdoc/>
-    internal override Control? HitTest(Point point) =>
+    internal override ControlBase? HitTest(Point point) =>
         !IsDisposed && IsHitTestVisible && EffectiveIsVisible && EffectiveIsEnabled &&
         Bounds.Contains(point)
             ? this

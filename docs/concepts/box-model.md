@@ -2,7 +2,7 @@
 
 ## Overview
 
-Every `Control` uses the same physical box model, measured in terminal-cell
+Every `ControlBase` uses the same physical box model, measured in terminal-cell
 units:
 
 ```text

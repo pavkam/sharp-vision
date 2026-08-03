@@ -6,7 +6,7 @@ namespace SharpVision
     [System.Diagnostics.DebuggerDisplay("Application {_screen?.GetType().Name,nq}")]
     public sealed class Application : SharpVision.Terminal.Abstractions.ICapabilityResponseSink, SharpVision.Terminal.Abstractions.IClipboardReplySink, SharpVision.Terminal.Abstractions.IInputSink, SharpVision.Terminal.Abstractions.IKittyClipboardPacketSink, SharpVision.Terminal.Abstractions.IMetricsResponseSink, SharpVision.Terminal.Abstractions.IPaletteResponseSink, SharpVision.Terminal.Abstractions.IProtocolSink, SharpVision.Terminal.Abstractions.ISink, SharpVision.Terminal.Abstractions.IStatusResponseSink, System.IAsyncDisposable
     {
-        public Application(SharpVision.Controls.Control root, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Abstractions.IResizeSource resize, SharpVision.Terminal.Runtime.Options? options = null, System.IAsyncDisposable? hostLease = null, System.TimeProvider? timeProvider = null) { }
+        public Application(SharpVision.Controls.ControlBase root, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Abstractions.IResizeSource resize, SharpVision.Terminal.Runtime.Options? options = null, System.IAsyncDisposable? hostLease = null, System.TimeProvider? timeProvider = null) { }
         public SharpVision.Windows.Window? ActiveWindow { get; }
         public SharpVision.Terminal.Capabilities.Capabilities Capabilities { get; }
         public SharpVision.Input.PointerManager Capture { get; }
@@ -19,7 +19,7 @@ namespace SharpVision
         public System.Exception? LastCleanupException { get; }
         public SharpVision.Input.ModalityManager Modality { get; }
         public SharpVision.PointerDevice Pointer { get; }
-        public SharpVision.Controls.Control Root { get; }
+        public SharpVision.Controls.ControlBase Root { get; }
         public SharpVision.Terminal.Geometry.Size Size { get; }
         public SharpVision.ITerminalServices Terminal { get; }
         public SharpVision.Terminal.Capabilities.TerminalProfile TerminalProfile { get; }
@@ -42,7 +42,7 @@ namespace SharpVision
         public event System.EventHandler<SharpVision.Threading.UnhandledEventArgs>? UnhandledException;
         public void Closed() { }
         public System.Threading.Tasks.ValueTask DisposeAsync() { }
-        public SharpVision.Input.ModalScope EnterModal(SharpVision.Controls.Control root, SharpVision.Input.OutsideInteraction outsideInteraction = 0, SharpVision.Controls.Control? initialFocus = null) { }
+        public SharpVision.Input.ModalScope EnterModal(SharpVision.Controls.ControlBase root, SharpVision.Input.OutsideInteraction outsideInteraction = 0, SharpVision.Controls.ControlBase? initialFocus = null) { }
         public void Fault(System.Exception exception) { }
         public void Input(SharpVision.Terminal.Input.Paste value) { }
         public void Input(in SharpVision.Terminal.Input.Pointer value) { }
@@ -204,13 +204,13 @@ namespace SharpVision
     public sealed class PointerDevice
     {
         public SharpVision.Terminal.Input.Buttons Buttons { get; }
-        public SharpVision.Controls.Control? Captured { get; }
-        public SharpVision.Controls.Control? Hovered { get; }
+        public SharpVision.Controls.ControlBase? Captured { get; }
+        public SharpVision.Controls.ControlBase? Hovered { get; }
         public SharpVision.Terminal.Input.PointerAction LastAction { get; }
         public SharpVision.Terminal.Input.Modifiers Modifiers { get; }
         public SharpVision.Terminal.Geometry.Point? PixelPosition { get; }
         public SharpVision.Terminal.Geometry.Point? Position { get; }
-        public SharpVision.Controls.Control? PressOrigin { get; }
+        public SharpVision.Controls.ControlBase? PressOrigin { get; }
     }
     public sealed class ProtocolResponseEventArgs : System.EventArgs
     {
@@ -240,7 +240,7 @@ namespace SharpVision
 }
 namespace SharpVision.Controls.Collections
 {
-    public delegate SharpVision.Controls.Control ItemTemplate(object? item);
+    public delegate SharpVision.Controls.ControlBase ItemTemplate(object? item);
     public enum ListSelectionMode
     {
         None = 0,
@@ -344,7 +344,7 @@ namespace SharpVision.Controls.Collections
         Single = 1,
         Multiple = 2,
     }
-    public sealed class TreeView : SharpVision.Controls.CompositeControl
+    public sealed class TreeView : SharpVision.Controls.CompositeControlBase
     {
         public TreeView() { }
         public SharpVision.Controls.Input.CheckMark ActualCheckMark { get; }
@@ -377,7 +377,7 @@ namespace SharpVision.Controls.Collections
         public void SelectItem(SharpVision.Controls.Collections.TreeViewItem item) { }
         public bool SetSelected(SharpVision.Controls.Collections.TreeViewItem item, bool selected) { }
     }
-    public sealed class TreeViewItem : SharpVision.Controls.Control
+    public sealed class TreeViewItem : SharpVision.Controls.ControlBase
     {
         public TreeViewItem() { }
         public TreeViewItem(string header) { }
@@ -441,15 +441,24 @@ namespace SharpVision.Controls.Collections
 }
 namespace SharpVision.Controls
 {
-    public abstract class CompositeControl : SharpVision.Controls.Control
+    public abstract class CompositeControlBase : SharpVision.Controls.ControlBase
     {
-        protected CompositeControl() { }
-        protected SharpVision.Controls.Control Content { get; }
+        protected CompositeControlBase() { }
+        protected SharpVision.Controls.ControlBase Content { get; }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
-        protected void InitializeContent(SharpVision.Controls.Control content) { }
+        protected void InitializeContent(SharpVision.Controls.ControlBase content) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
     }
-    public abstract class Container : SharpVision.Controls.Control
+    public abstract class CompositeControl<TStyle> : SharpVision.Controls.CompositeControlBase
+        where TStyle :  struct, System.IEquatable<TStyle>
+    {
+        protected CompositeControl(SharpVision.Controls.StyleDefinition<TStyle> definition) { }
+        public virtual TStyle ActualStyle { get; }
+        public TStyle? Style { get; set; }
+        protected SharpVision.Controls.StyleSlot<TStyle> StyleSlot { get; }
+        protected virtual void OnStyleChanged(TStyle previous, TStyle current) { }
+    }
+    public abstract class Container : SharpVision.Controls.ControlBase
     {
         protected Container() { }
         protected Container(int capacity) { }
@@ -471,27 +480,25 @@ namespace SharpVision.Controls
         public SharpVision.Terminal.Geometry.Size Viewport { get; }
         public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         protected abstract override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
-        public bool BringIntoView(SharpVision.Controls.Control descendant) { }
-        protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
-        protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
+        public bool BringIntoView(SharpVision.Controls.ControlBase descendant) { }
         protected abstract override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected virtual void OnChildrenChanged() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
     }
-    public abstract class ContentControl : SharpVision.Controls.Control
+    public abstract class ContentControl : SharpVision.Controls.ControlBase
     {
         protected ContentControl() { }
-        public SharpVision.Controls.Control? Content { get; set; }
+        public SharpVision.Controls.ControlBase? Content { get; set; }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected virtual void OnContentChanged(SharpVision.Controls.Control? previous, SharpVision.Controls.Control? current) { }
+        protected virtual void OnContentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
     }
     [System.Diagnostics.DebuggerDisplay("{DebuggerSummary,nq}")]
-    public abstract class Control : System.ComponentModel.INotifyPropertyChanged, System.IDisposable
+    public abstract class ControlBase : System.ComponentModel.INotifyPropertyChanged, System.IDisposable
     {
-        protected Control() { }
+        protected ControlBase() { }
         protected virtual string? AccessKeyText { get; }
         public SharpVision.Styling.Border ActualBorder { get; }
         public SharpVision.Styling.Face ActualFace { get; }
@@ -539,7 +546,7 @@ namespace SharpVision.Controls
         public string? Name { get; set; }
         protected SharpVision.Terminal.Rendering.CellStyle NormalStyle { get; }
         public SharpVision.Layout.Thickness Padding { get; set; }
-        public SharpVision.Controls.Control? Parent { get; }
+        public SharpVision.Controls.ControlBase? Parent { get; }
         protected SharpVision.Terminal.Rendering.CellStyle ResolvedStyle { get; }
         protected SharpVision.Styling.Shadow Shadow { get; set; }
         public int TabIndex { get; set; }
@@ -572,25 +579,28 @@ namespace SharpVision.Controls
         public event System.EventHandler? VisibilityChanged;
         public System.IDisposable AddHandler<TArgs>(SharpVision.Input.Event<TArgs> routedEvent, System.EventHandler<TArgs> handler, bool handledEventsToo = false)
             where TArgs : SharpVision.Input.RoutedEventArgs { }
-        protected void ArrangeChild(SharpVision.Controls.Control child, SharpVision.Terminal.Geometry.Rect slot, SharpVision.Layout.ResolvedAxes resolvedAxes = 0) { }
+        protected void ArrangeChild(SharpVision.Controls.ControlBase child, SharpVision.Terminal.Geometry.Rect slot, SharpVision.Layout.ResolvedAxes resolvedAxes = 0) { }
         protected virtual void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected void BindStyle<TStyle>(SharpVision.Controls.StyleSlot<TStyle> source, SharpVision.Controls.ControlBase target, string targetPropertyName = "Style")
+            where TStyle :  struct, System.IEquatable<TStyle> { }
         protected bool CapturePointer() { }
         public void Dispose() { }
         protected T? FindAncestor<T>()
-            where T : SharpVision.Controls.Control { }
+            where T : SharpVision.Controls.ControlBase { }
         public bool Focus() { }
         protected bool FocusAccessKeyTarget() { }
         protected virtual SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
         protected virtual SharpVision.Styling.ChromeRenderOptions GetChromeRenderOptions() { }
-        protected SharpVision.Controls.InvalidationImpact GetControlStyleThemeImpact<TStyle>(TStyle? localStyle, SharpVision.Styling.Theme? previousTheme, SharpVision.Styling.Theme? currentTheme, System.Func<TStyle?, SharpVision.Styling.Theme?, TStyle> resolve, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compareStyle, System.Func<TStyle, SharpVision.Styling.ThemeProfile> appearance, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace)
-            where TStyle :  struct, System.IEquatable<TStyle> { }
         protected SharpVision.Terminal.Rendering.CellStyle GetResolvedStyle(SharpVision.Styling.VisualState state) { }
         protected virtual SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
-        protected virtual string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
+        protected SharpVision.Controls.StyleSlot<TStyle> InitializePartStyle<TStyle>(SharpVision.Controls.StyleDefinition<TStyle> definition, string propertyName, System.Action<TStyle, TStyle>? changed = null)
+            where TStyle :  struct, System.IEquatable<TStyle> { }
+        protected SharpVision.Controls.StyleSlot<TStyle> InitializeStyle<TStyle>(SharpVision.Controls.StyleDefinition<TStyle> definition, System.Action<TStyle, TStyle>? changed = null)
+            where TStyle :  struct, System.IEquatable<TStyle> { }
         public void Invalidate() { }
         protected void Invalidate(SharpVision.Controls.InvalidationImpact impact) { }
         protected void InvalidateVisualState() { }
-        protected SharpVision.Terminal.Geometry.Size MeasureChild(SharpVision.Controls.Control child, SharpVision.Layout.Constraint constraint) { }
+        protected SharpVision.Terminal.Geometry.Size MeasureChild(SharpVision.Controls.ControlBase child, SharpVision.Layout.Constraint constraint) { }
         protected virtual SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected void NotifyPropertyChanged(string propertyName, SharpVision.Controls.InvalidationImpact impact) { }
         protected virtual bool OnAccessKey(System.Text.Rune key) { }
@@ -603,7 +613,7 @@ namespace SharpVision.Controls
         protected virtual void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected virtual void OnFocusChanged(bool focused) { }
         protected virtual void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
-        protected virtual void OnParentChanged(SharpVision.Controls.Control? previous, SharpVision.Controls.Control? current) { }
+        protected virtual void OnParentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
         protected virtual void OnPressedChanged(bool pressed) { }
         protected virtual void OnRenderAdornment(SharpVision.Terminal.Rendering.Canvas canvas) { }
         protected virtual void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
@@ -616,26 +626,33 @@ namespace SharpVision.Controls
         protected void ResetShadow() { }
         protected SharpVision.Terminal.Geometry.Rect RootBounds(SharpVision.Terminal.Geometry.Rect fallback) { }
         protected void SetAppearance(SharpVision.Styling.VisualState state, SharpVision.Styling.AppearanceSet? appearance) { }
-        protected bool SetControlStyle<TStyle>(ref TStyle? field, TStyle? value, System.Func<TStyle?, SharpVision.Styling.Theme?, TStyle> resolve, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compareStyle, System.Func<TStyle, SharpVision.Styling.ThemeProfile> appearance, string propertyName, string actualPropertyName)
-            where TStyle :  struct, System.IEquatable<TStyle> { }
         protected void SetOptionalGlyph(ref System.Text.Rune? storage, System.Text.Rune value, string propertyName) { }
         protected bool SetProperty<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
         protected bool SetVisualStateProperty<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
     }
-    public sealed class ControlCollection : System.Collections.Generic.ICollection<SharpVision.Controls.Control>, System.Collections.Generic.IEnumerable<SharpVision.Controls.Control>, System.Collections.Generic.IList<SharpVision.Controls.Control>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.Control>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Control>, System.Collections.IEnumerable
+    public sealed class ControlCollection : System.Collections.Generic.ICollection<SharpVision.Controls.ControlBase>, System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase>, System.Collections.Generic.IList<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.ControlBase>, System.Collections.IEnumerable
     {
         public int Count { get; }
         public bool IsReadOnly { get; }
-        public SharpVision.Controls.Control this[int index] { get; set; }
-        public void Add(SharpVision.Controls.Control item) { }
+        public SharpVision.Controls.ControlBase this[int index] { get; set; }
+        public void Add(SharpVision.Controls.ControlBase item) { }
         public void Clear() { }
-        public bool Contains(SharpVision.Controls.Control item) { }
-        public void CopyTo(SharpVision.Controls.Control[] array, int arrayIndex) { }
-        public System.Collections.Generic.List<SharpVision.Controls.Control>.Enumerator GetEnumerator() { }
-        public int IndexOf(SharpVision.Controls.Control item) { }
-        public void Insert(int index, SharpVision.Controls.Control item) { }
-        public bool Remove(SharpVision.Controls.Control item) { }
+        public bool Contains(SharpVision.Controls.ControlBase item) { }
+        public void CopyTo(SharpVision.Controls.ControlBase[] array, int arrayIndex) { }
+        public System.Collections.Generic.List<SharpVision.Controls.ControlBase>.Enumerator GetEnumerator() { }
+        public int IndexOf(SharpVision.Controls.ControlBase item) { }
+        public void Insert(int index, SharpVision.Controls.ControlBase item) { }
+        public bool Remove(SharpVision.Controls.ControlBase item) { }
         public void RemoveAt(int index) { }
+    }
+    public abstract class Control<TStyle> : SharpVision.Controls.ControlBase
+        where TStyle :  struct, System.IEquatable<TStyle>
+    {
+        protected Control(SharpVision.Controls.StyleDefinition<TStyle> definition) { }
+        public virtual TStyle ActualStyle { get; }
+        public TStyle? Style { get; set; }
+        protected SharpVision.Controls.StyleSlot<TStyle> StyleSlot { get; }
+        protected virtual void OnStyleChanged(TStyle previous, TStyle current) { }
     }
     public enum InvalidationImpact
     {
@@ -644,27 +661,27 @@ namespace SharpVision.Controls
         Arrange = 2,
         Measure = 3,
     }
-    public abstract class ItemsControl : SharpVision.Controls.Control
+    public abstract class ItemsControl : SharpVision.Controls.ControlBase
     {
         protected ItemsControl() { }
         protected int ItemControlCount { get; }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected void ClearItemControls() { }
-        protected SharpVision.Controls.Control GetItemControl(int index) { }
-        protected int IndexOfItemControl(SharpVision.Controls.Control control) { }
+        protected SharpVision.Controls.ControlBase GetItemControl(int index) { }
+        protected int IndexOfItemControl(SharpVision.Controls.ControlBase control) { }
         protected void InitializeItemsHost(SharpVision.Controls.Container host) { }
-        protected void InsertItemControl(int index, SharpVision.Controls.Control control) { }
+        protected void InsertItemControl(int index, SharpVision.Controls.ControlBase control) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnDisposing() { }
         protected virtual void OnItemControlsChanged() { }
-        protected bool RemoveItemControl(SharpVision.Controls.Control control) { }
+        protected bool RemoveItemControl(SharpVision.Controls.ControlBase control) { }
         protected void RemoveItemControlAt(int index) { }
-        protected void ReplaceItemControl(int index, SharpVision.Controls.Control control) { }
-        protected void ReplaceItemControls(System.Collections.Generic.IEnumerable<SharpVision.Controls.Control> controls) { }
+        protected void ReplaceItemControl(int index, SharpVision.Controls.ControlBase control) { }
+        protected void ReplaceItemControls(System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase> controls) { }
     }
-    public abstract class Pressable : SharpVision.Controls.ContentControl
+    public abstract class PressableBase : SharpVision.Controls.ContentControl
     {
-        protected Pressable() { }
+        protected PressableBase() { }
         protected override string? AccessKeyText { get; }
         public System.Windows.Input.ICommand? Command { get; set; }
         public object? CommandParameter { get; set; }
@@ -676,7 +693,16 @@ namespace SharpVision.Controls
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
-    public abstract class Screen : SharpVision.Controls.CompositeControl
+    public abstract class Pressable<TStyle> : SharpVision.Controls.PressableBase
+        where TStyle :  struct, System.IEquatable<TStyle>
+    {
+        protected Pressable(SharpVision.Controls.StyleDefinition<TStyle> definition) { }
+        public virtual TStyle ActualStyle { get; }
+        public TStyle? Style { get; set; }
+        protected SharpVision.Controls.StyleSlot<TStyle> StyleSlot { get; }
+        protected virtual void OnStyleChanged(TStyle previous, TStyle current) { }
+    }
+    public abstract class Screen : SharpVision.Controls.CompositeControlBase
     {
         protected Screen() { }
         protected SharpVision.Application? Application { get; }
@@ -687,14 +713,27 @@ namespace SharpVision.Controls
         protected virtual void OnStarted(SharpVision.Application application) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
+    public sealed class StyleDefinition<TStyle>
+        where TStyle :  struct, System.IEquatable<TStyle> { }
+    public static class StyleDefinitions
+    {
+        public static SharpVision.Controls.StyleDefinition<TStyle> Control<TStyle>(SharpVision.Styling.ThemeRole role, System.Func<SharpVision.Styling.ThemeProfile, TStyle> complete, System.Func<TStyle, SharpVision.Styling.ThemeProfile> appearance, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compare)
+            where TStyle :  struct, System.IEquatable<TStyle> { }
+        public static SharpVision.Controls.StyleDefinition<TStyle> Part<TStyle>(System.Func<SharpVision.Styling.Theme?, TStyle> fallback, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compare)
+            where TStyle :  struct, System.IEquatable<TStyle> { }
+    }
+    public sealed class StyleSlot<TStyle>
+        where TStyle :  struct, System.IEquatable<TStyle>
+    {
+        public TStyle Actual { get; }
+        public TStyle? Local { get; set; }
+    }
 }
 namespace SharpVision.Controls.Display
 {
-    public sealed class ChaseIndicator : SharpVision.Controls.Control
+    public sealed class ChaseIndicator : SharpVision.Controls.Control<SharpVision.Controls.Display.ChaseIndicatorStyle>
     {
         public ChaseIndicator() { }
-        public SharpVision.Controls.Display.ChaseIndicatorStyle ActualStyle { get; }
-        protected override SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
         public System.TimeSpan FadeDuration { get; set; }
         public System.TimeSpan Interval { get; set; }
         public bool IsPlaying { get; set; }
@@ -702,17 +741,13 @@ namespace SharpVision.Controls.Display
         public SharpVision.Controls.Display.ChaseMovement Movement { get; set; }
         public SharpVision.Layout.Orientation Orientation { get; set; }
         public int Spacing { get; set; }
-        public SharpVision.Controls.Display.ChaseIndicatorStyle? Style { get; set; }
-        protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public int TrailLength { get; set; }
-        protected override SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
-        protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
-        protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnAttached() { }
         protected override void OnDetached() { }
         protected override void OnDisposing() { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnStyleChanged(SharpVision.Controls.Display.ChaseIndicatorStyle previous, SharpVision.Controls.Display.ChaseIndicatorStyle current) { }
     }
     public readonly struct ChaseIndicatorStyle : System.IEquatable<SharpVision.Controls.Display.ChaseIndicatorStyle>
     {
@@ -734,19 +769,9 @@ namespace SharpVision.Controls.Display
         public bool Equals(SharpVision.Controls.Display.ChaseIndicatorStyle other) { }
         public override bool Equals(object? obj) { }
         public override int GetHashCode() { }
+        public SharpVision.Controls.Display.ChaseIndicatorStyle With(System.Text.Rune? active = default, System.Text.Rune? inactive = default, SharpVision.Styling.ColorValue? headColor = default, SharpVision.Styling.ColorValue? trailColor = default, SharpVision.Styling.ColorValue? trackColor = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
         public static bool operator !=(SharpVision.Controls.Display.ChaseIndicatorStyle left, SharpVision.Controls.Display.ChaseIndicatorStyle right) { }
         public static bool operator ==(SharpVision.Controls.Display.ChaseIndicatorStyle left, SharpVision.Controls.Display.ChaseIndicatorStyle right) { }
-    }
-    public readonly struct ChaseIndicatorStyleSet : System.IEquatable<SharpVision.Controls.Display.ChaseIndicatorStyleSet>
-    {
-        public ChaseIndicatorStyleSet(System.Text.Rune? active = default, System.Text.Rune? inactive = default, SharpVision.Styling.ColorValue? headColor = default, SharpVision.Styling.ColorValue? trailColor = default, SharpVision.Styling.ColorValue? trackColor = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
-        public System.Text.Rune? Active { get; }
-        public SharpVision.Styling.AppearanceProfileSet? Appearance { get; }
-        public SharpVision.Styling.ColorValue? HeadColor { get; }
-        public System.Text.Rune? Inactive { get; }
-        public SharpVision.Styling.ColorValue? TrackColor { get; }
-        public SharpVision.Styling.ColorValue? TrailColor { get; }
-        public SharpVision.Controls.Display.ChaseIndicatorStyle Apply(SharpVision.Controls.Display.ChaseIndicatorStyle baseline) { }
     }
     public enum ChaseMovement
     {
@@ -754,7 +779,7 @@ namespace SharpVision.Controls.Display
         Wrap = 1,
         Spread = 2,
     }
-    public sealed class FigletText : SharpVision.Controls.Control
+    public sealed class FigletText : SharpVision.Controls.ControlBase
     {
         public FigletText(SharpVision.Fonts.FigletFont font) { }
         public string Content { get; set; }
@@ -763,7 +788,7 @@ namespace SharpVision.Controls.Display
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
     }
-    public sealed class Image : SharpVision.Controls.Control
+    public sealed class Image : SharpVision.Controls.ControlBase
     {
         public Image() { }
         public string AlternateText { get; set; }
@@ -794,23 +819,16 @@ namespace SharpVision.Controls.Display
         Vertical = 1,
         Diagonal = 2,
     }
-    public sealed class ProgressBar : SharpVision.Controls.Control
+    public sealed class ProgressBar : SharpVision.Controls.Control<SharpVision.Controls.Display.ProgressBarStyle>
     {
         public ProgressBar() { }
-        public SharpVision.Controls.Display.ProgressBarStyle ActualStyle { get; }
-        protected override SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
         public bool IsIndeterminate { get; set; }
         public double Maximum { get; set; }
         public double Minimum { get; set; }
         public SharpVision.Layout.Orientation Orientation { get; set; }
-        public SharpVision.Controls.Display.ProgressBarStyle? Style { get; set; }
-        protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public bool UseSubCellResolution { get; set; }
         public double Value { get; set; }
         public event System.EventHandler<SharpVision.Controls.Display.ProgressValueChangedEventArgs>? ValueChanged;
-        protected override SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
-        protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
-        protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
@@ -840,18 +858,9 @@ namespace SharpVision.Controls.Display
         public bool Equals(SharpVision.Controls.Display.ProgressBarStyle other) { }
         public override bool Equals(object? obj) { }
         public override int GetHashCode() { }
+        public SharpVision.Controls.Display.ProgressBarStyle With(SharpVision.Styling.ColorValue? fillColor = default, SharpVision.Styling.ColorValue? trackColor = default, SharpVision.Styling.ColorValue? indeterminateColor = default, SharpVision.Controls.Display.ProgressBarGlyphs? glyphs = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
         public static bool operator !=(SharpVision.Controls.Display.ProgressBarStyle left, SharpVision.Controls.Display.ProgressBarStyle right) { }
         public static bool operator ==(SharpVision.Controls.Display.ProgressBarStyle left, SharpVision.Controls.Display.ProgressBarStyle right) { }
-    }
-    public readonly struct ProgressBarStyleSet : System.IEquatable<SharpVision.Controls.Display.ProgressBarStyleSet>
-    {
-        public ProgressBarStyleSet(SharpVision.Styling.ColorValue? fillColor = default, SharpVision.Styling.ColorValue? trackColor = default, SharpVision.Styling.ColorValue? indeterminateColor = default, SharpVision.Controls.Display.ProgressBarGlyphs? glyphs = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
-        public SharpVision.Styling.AppearanceProfileSet? Appearance { get; }
-        public SharpVision.Styling.ColorValue? FillColor { get; }
-        public SharpVision.Controls.Display.ProgressBarGlyphs? Glyphs { get; }
-        public SharpVision.Styling.ColorValue? IndeterminateColor { get; }
-        public SharpVision.Styling.ColorValue? TrackColor { get; }
-        public SharpVision.Controls.Display.ProgressBarStyle Apply(SharpVision.Controls.Display.ProgressBarStyle baseline) { }
     }
     public sealed class ProgressValueChangedEventArgs : System.EventArgs
     {
@@ -859,7 +868,7 @@ namespace SharpVision.Controls.Display
         public double PreviousValue { get; }
         public double Value { get; }
     }
-    public sealed class Separator : SharpVision.Controls.Control
+    public sealed class Separator : SharpVision.Controls.ControlBase
     {
         public Separator() { }
         public System.Text.Rune HorizontalGlyph { get; set; }
@@ -869,23 +878,17 @@ namespace SharpVision.Controls.Display
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
         public void ResetGlyphs() { }
     }
-    public sealed class Spinner : SharpVision.Controls.Control
+    public sealed class Spinner : SharpVision.Controls.Control<SharpVision.Controls.Display.SpinnerStyle>
     {
         public Spinner() { }
-        public SharpVision.Controls.Display.SpinnerStyle ActualStyle { get; }
-        protected override SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
         public System.TimeSpan Interval { get; set; }
         public bool IsPlaying { get; set; }
-        public SharpVision.Controls.Display.SpinnerStyle? Style { get; set; }
-        protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
-        protected override SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
-        protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
-        protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnAttached() { }
         protected override void OnDetached() { }
         protected override void OnDisposing() { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnStyleChanged(SharpVision.Controls.Display.SpinnerStyle previous, SharpVision.Controls.Display.SpinnerStyle current) { }
     }
     public readonly struct SpinnerStyle : System.IEquatable<SharpVision.Controls.Display.SpinnerStyle>
     {
@@ -900,20 +903,9 @@ namespace SharpVision.Controls.Display
         public bool Equals(SharpVision.Controls.Display.SpinnerStyle other) { }
         public override bool Equals(object? obj) { }
         public override int GetHashCode() { }
+        public SharpVision.Controls.Display.SpinnerStyle With(System.Collections.Generic.IEnumerable<System.Text.Rune>? frames = null, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
         public static bool operator !=(SharpVision.Controls.Display.SpinnerStyle left, SharpVision.Controls.Display.SpinnerStyle right) { }
         public static bool operator ==(SharpVision.Controls.Display.SpinnerStyle left, SharpVision.Controls.Display.SpinnerStyle right) { }
-    }
-    public readonly struct SpinnerStyleSet : System.IEquatable<SharpVision.Controls.Display.SpinnerStyleSet>
-    {
-        public SpinnerStyleSet(System.Collections.Generic.IEnumerable<System.Text.Rune>? frames = null, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
-        public SharpVision.Styling.AppearanceProfileSet? Appearance { get; }
-        public System.Collections.Immutable.ImmutableArray<System.Text.Rune>? Frames { get; }
-        public SharpVision.Controls.Display.SpinnerStyle Apply(SharpVision.Controls.Display.SpinnerStyle baseline) { }
-        public bool Equals(SharpVision.Controls.Display.SpinnerStyleSet other) { }
-        public override bool Equals(object? obj) { }
-        public override int GetHashCode() { }
-        public static bool operator !=(SharpVision.Controls.Display.SpinnerStyleSet left, SharpVision.Controls.Display.SpinnerStyleSet right) { }
-        public static bool operator ==(SharpVision.Controls.Display.SpinnerStyleSet left, SharpVision.Controls.Display.SpinnerStyleSet right) { }
     }
     public sealed class StatusBar : SharpVision.Controls.ItemsControl
     {
@@ -957,11 +949,11 @@ namespace SharpVision.Controls.Display
         public static System.Text.Rune Diamond { get; }
         public static System.Text.Rune Whitespace { get; }
     }
-    public sealed class Text : SharpVision.Controls.Control
+    public sealed class Text : SharpVision.Controls.ControlBase
     {
         public Text() { }
         public Text(string content) { }
-        public SharpVision.Controls.Control? AccessKeyTarget { get; set; }
+        public SharpVision.Controls.ControlBase? AccessKeyTarget { get; set; }
         protected override string? AccessKeyText { get; }
         public SharpVision.Terminal.Unicode.Ambiguous AmbiguousWidth { get; set; }
         public string Content { get; set; }
@@ -980,25 +972,18 @@ namespace SharpVision.Controls.Display
 }
 namespace SharpVision.Controls.Input
 {
-    public sealed class Button : SharpVision.Controls.Pressable
+    public sealed class Button : SharpVision.Controls.Pressable<SharpVision.Controls.Input.ButtonStyle>
     {
         public Button() { }
         public Button(string text) { }
-        public SharpVision.Controls.Input.ButtonStyle ActualStyle { get; }
-        protected override SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
         public bool IsCancel { get; set; }
         public bool IsDefault { get; set; }
-        public SharpVision.Controls.Input.ButtonStyle? Style { get; set; }
         public SharpVision.Text.Alignment TextAlignment { get; set; }
-        protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         protected override SharpVision.Terminal.Geometry.Rect VisualBounds { get; }
         public event System.EventHandler<SharpVision.Input.ActivationEventArgs>? Click;
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
-        protected override SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Styling.ChromeRenderOptions GetChromeRenderOptions() { }
-        protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
-        protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnPressedChanged(bool pressed) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
@@ -1014,22 +999,14 @@ namespace SharpVision.Controls.Input
         public bool Equals(SharpVision.Controls.Input.ButtonStyle other) { }
         public override bool Equals(object? obj) { }
         public override int GetHashCode() { }
+        public SharpVision.Controls.Input.ButtonStyle With(SharpVision.Layout.Thickness? padding = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
         public static bool operator !=(SharpVision.Controls.Input.ButtonStyle left, SharpVision.Controls.Input.ButtonStyle right) { }
         public static bool operator ==(SharpVision.Controls.Input.ButtonStyle left, SharpVision.Controls.Input.ButtonStyle right) { }
     }
-    public readonly struct ButtonStyleSet : System.IEquatable<SharpVision.Controls.Input.ButtonStyleSet>
-    {
-        public ButtonStyleSet(SharpVision.Layout.Thickness? padding = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
-        public SharpVision.Styling.AppearanceProfileSet? Appearance { get; }
-        public SharpVision.Layout.Thickness? Padding { get; }
-        public SharpVision.Controls.Input.ButtonStyle Apply(SharpVision.Controls.Input.ButtonStyle baseline) { }
-    }
-    public sealed class Calendar : SharpVision.Controls.Control
+    public sealed class Calendar : SharpVision.Controls.Control<SharpVision.Controls.Input.CalendarStyle>
     {
         public Calendar() { }
         public System.DateOnly ActiveDate { get; }
-        public SharpVision.Controls.Input.CalendarStyle ActualStyle { get; }
-        protected override SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
         public SharpVision.Controls.Input.CalendarBlockedDateCollection BlockedDates { get; }
         public System.Globalization.CultureInfo Culture { get; set; }
         public System.DateOnly DisplayMonth { get; set; }
@@ -1038,14 +1015,9 @@ namespace SharpVision.Controls.Input
         public System.DateOnly MinimumDate { get; set; }
         public SharpVision.Controls.Input.DateInterval? Selection { get; set; }
         public SharpVision.Controls.Input.CalendarSelectionMode SelectionMode { get; set; }
-        public SharpVision.Controls.Input.CalendarStyle? Style { get; set; }
-        protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public event System.EventHandler<SharpVision.Controls.Input.CalendarSelectionChangedEventArgs>? SelectionChanged;
         public void ClearMarkup() { }
         public bool ClearSelection() { }
-        protected override SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
-        protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
-        protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
         public bool GoToToday() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
@@ -1080,11 +1052,15 @@ namespace SharpVision.Controls.Input
     }
     public readonly struct CalendarStyle : System.IEquatable<SharpVision.Controls.Input.CalendarStyle>
     {
-        public CalendarStyle(SharpVision.Styling.ColorValue selectedDayColor, SharpVision.Styling.ColorValue todayMarkerColor, SharpVision.Styling.ColorValue outOfMonthDayColor, SharpVision.Styling.ColorValue weekdayHeaderColor, SharpVision.Styling.ColorValue disabledDayColor, SharpVision.Layout.Thickness contentInset, SharpVision.Styling.ThemeProfile appearance) { }
+        public CalendarStyle(SharpVision.Styling.ColorValue selectedDayColor, SharpVision.Styling.ColorValue todayMarkerColor, SharpVision.Styling.ColorValue outOfMonthDayColor, SharpVision.Styling.ColorValue weekdayHeaderColor, SharpVision.Styling.ColorValue disabledDayColor, SharpVision.Styling.ColorValue navigationColor, SharpVision.Styling.ColorValue activeDayBackground, SharpVision.Styling.ColorValue selectedDayBackground, SharpVision.Styling.ColorValue disabledDayBackground, SharpVision.Layout.Thickness contentInset, SharpVision.Styling.ThemeProfile appearance) { }
+        public SharpVision.Styling.ColorValue ActiveDayBackground { get; }
         public SharpVision.Styling.ThemeProfile Appearance { get; }
         public SharpVision.Layout.Thickness ContentInset { get; }
+        public SharpVision.Styling.ColorValue DisabledDayBackground { get; }
         public SharpVision.Styling.ColorValue DisabledDayColor { get; }
+        public SharpVision.Styling.ColorValue NavigationColor { get; }
         public SharpVision.Styling.ColorValue OutOfMonthDayColor { get; }
+        public SharpVision.Styling.ColorValue SelectedDayBackground { get; }
         public SharpVision.Styling.ColorValue SelectedDayColor { get; }
         public SharpVision.Styling.ColorValue TodayMarkerColor { get; }
         public SharpVision.Styling.ColorValue WeekdayHeaderColor { get; }
@@ -1092,42 +1068,24 @@ namespace SharpVision.Controls.Input
         public bool Equals(SharpVision.Controls.Input.CalendarStyle other) { }
         public override bool Equals(object? obj) { }
         public override int GetHashCode() { }
+        public SharpVision.Controls.Input.CalendarStyle With(SharpVision.Styling.ColorValue? selectedDayColor = default, SharpVision.Styling.ColorValue? todayMarkerColor = default, SharpVision.Styling.ColorValue? outOfMonthDayColor = default, SharpVision.Styling.ColorValue? weekdayHeaderColor = default, SharpVision.Styling.ColorValue? disabledDayColor = default, SharpVision.Styling.ColorValue? navigationColor = default, SharpVision.Styling.ColorValue? activeDayBackground = default, SharpVision.Styling.ColorValue? selectedDayBackground = default, SharpVision.Styling.ColorValue? disabledDayBackground = default, SharpVision.Layout.Thickness? contentInset = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
         public static bool operator !=(SharpVision.Controls.Input.CalendarStyle left, SharpVision.Controls.Input.CalendarStyle right) { }
         public static bool operator ==(SharpVision.Controls.Input.CalendarStyle left, SharpVision.Controls.Input.CalendarStyle right) { }
     }
-    public readonly struct CalendarStyleSet : System.IEquatable<SharpVision.Controls.Input.CalendarStyleSet>
-    {
-        public CalendarStyleSet(SharpVision.Styling.ColorValue? selectedDayColor = default, SharpVision.Styling.ColorValue? todayMarkerColor = default, SharpVision.Styling.ColorValue? outOfMonthDayColor = default, SharpVision.Styling.ColorValue? weekdayHeaderColor = default, SharpVision.Styling.ColorValue? disabledDayColor = default, SharpVision.Layout.Thickness? contentInset = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
-        public SharpVision.Styling.AppearanceProfileSet? Appearance { get; }
-        public SharpVision.Layout.Thickness? ContentInset { get; }
-        public SharpVision.Styling.ColorValue? DisabledDayColor { get; }
-        public SharpVision.Styling.ColorValue? OutOfMonthDayColor { get; }
-        public SharpVision.Styling.ColorValue? SelectedDayColor { get; }
-        public SharpVision.Styling.ColorValue? TodayMarkerColor { get; }
-        public SharpVision.Styling.ColorValue? WeekdayHeaderColor { get; }
-        public SharpVision.Controls.Input.CalendarStyle Apply(SharpVision.Controls.Input.CalendarStyle baseline) { }
-    }
-    public sealed class CheckBox : SharpVision.Controls.Pressable
+    public sealed class CheckBox : SharpVision.Controls.Pressable<SharpVision.Controls.Input.CheckBoxStyle>
     {
         public CheckBox() { }
         public CheckBox(string text) { }
-        public SharpVision.Controls.Input.CheckBoxStyle ActualStyle { get; }
-        protected override SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
         public bool? IsChecked { get; set; }
         protected override bool IsCheckedState { get; }
         protected override bool IsIndeterminateState { get; }
         public bool IsThreeState { get; set; }
-        public SharpVision.Controls.Input.CheckBoxStyle? Style { get; set; }
-        protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public event System.EventHandler<SharpVision.Input.CheckChangedEventArgs>? Checked;
         public event System.EventHandler<SharpVision.Input.CheckChangedEventArgs>? Indeterminate;
         public event System.EventHandler<SharpVision.Input.CheckChangedEventArgs>? StateChanged;
         public event System.EventHandler<SharpVision.Input.CheckChangedEventArgs>? Unchecked;
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
-        protected override SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
-        protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
-        protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
@@ -1161,16 +1119,9 @@ namespace SharpVision.Controls.Input
         public bool Equals(SharpVision.Controls.Input.CheckBoxStyle other) { }
         public override bool Equals(object? obj) { }
         public override int GetHashCode() { }
+        public SharpVision.Controls.Input.CheckBoxStyle With(SharpVision.Controls.Input.CheckBoxMarkStyle? markStyle = default, SharpVision.Controls.Input.CheckBoxGlyphs? glyphs = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
         public static bool operator !=(SharpVision.Controls.Input.CheckBoxStyle left, SharpVision.Controls.Input.CheckBoxStyle right) { }
         public static bool operator ==(SharpVision.Controls.Input.CheckBoxStyle left, SharpVision.Controls.Input.CheckBoxStyle right) { }
-    }
-    public readonly struct CheckBoxStyleSet : System.IEquatable<SharpVision.Controls.Input.CheckBoxStyleSet>
-    {
-        public CheckBoxStyleSet(SharpVision.Controls.Input.CheckBoxMarkStyle? markStyle = default, SharpVision.Controls.Input.CheckBoxGlyphs? glyphs = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
-        public SharpVision.Styling.AppearanceProfileSet? Appearance { get; }
-        public SharpVision.Controls.Input.CheckBoxGlyphs? Glyphs { get; }
-        public SharpVision.Controls.Input.CheckBoxMarkStyle? MarkStyle { get; }
-        public SharpVision.Controls.Input.CheckBoxStyle Apply(SharpVision.Controls.Input.CheckBoxStyle baseline) { }
     }
     public readonly struct CheckMark : System.IEquatable<SharpVision.Controls.Input.CheckMark>
     {
@@ -1189,25 +1140,30 @@ namespace SharpVision.Controls.Input
         public static bool operator !=(SharpVision.Controls.Input.CheckMark left, SharpVision.Controls.Input.CheckMark right) { }
         public static bool operator ==(SharpVision.Controls.Input.CheckMark left, SharpVision.Controls.Input.CheckMark right) { }
     }
-    public sealed class ColorPicker : SharpVision.Controls.CompositeControl
+    public sealed class ColorPicker : SharpVision.Controls.CompositeControl<SharpVision.Controls.Input.ColorPickerStyle>
     {
         public ColorPicker() { }
-        public SharpVision.Controls.Input.ColorPickerStyle ActualStyle { get; }
+        public override SharpVision.Controls.Input.ColorPickerStyle ActualStyle { get; }
         public SharpVision.Terminal.Capabilities.ColorDepth EffectiveColorDepth { get; }
-        public SharpVision.Controls.Input.ColorPickerStyle? Style { get; set; }
         public SharpVision.Terminal.Protocols.Color Value { get; set; }
         public event System.EventHandler<SharpVision.Input.ColorChangedEventArgs>? ValueChanged;
         protected override void OnAttached() { }
         protected override void OnCapabilitiesChanged(SharpVision.Terminal.Capabilities.Capabilities previous, SharpVision.Terminal.Capabilities.Capabilities current) { }
         protected override void OnDisposing() { }
+        protected override void OnStyleChanged(SharpVision.Controls.Input.ColorPickerStyle previous, SharpVision.Controls.Input.ColorPickerStyle current) { }
     }
     public readonly struct ColorPickerStyle : System.IEquatable<SharpVision.Controls.Input.ColorPickerStyle>
     {
-        public ColorPickerStyle(SharpVision.Controls.Input.SliderStyle? SliderStyle, SharpVision.Styling.Face? StatusFace) { }
-        public SharpVision.Controls.Input.SliderStyle? SliderStyle { get; init; }
-        public SharpVision.Styling.Face? StatusFace { get; init; }
+        public ColorPickerStyle(SharpVision.Controls.Input.SliderStyle? sliderStyle, SharpVision.Styling.Face? statusFace) { }
+        public SharpVision.Controls.Input.SliderStyle? SliderStyle { get; }
+        public SharpVision.Styling.Face? StatusFace { get; }
+        public bool Equals(SharpVision.Controls.Input.ColorPickerStyle other) { }
+        public override bool Equals(object? obj) { }
+        public override int GetHashCode() { }
+        public static bool operator !=(SharpVision.Controls.Input.ColorPickerStyle left, SharpVision.Controls.Input.ColorPickerStyle right) { }
+        public static bool operator ==(SharpVision.Controls.Input.ColorPickerStyle left, SharpVision.Controls.Input.ColorPickerStyle right) { }
     }
-    public sealed class ComboBox : SharpVision.Controls.Control
+    public sealed class ComboBox : SharpVision.Controls.ControlBase
     {
         public ComboBox() { }
         public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
@@ -1238,7 +1194,7 @@ namespace SharpVision.Controls.Input
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetDropDownGlyph() { }
     }
-    public sealed class DateInput : SharpVision.Controls.Control
+    public sealed class DateInput : SharpVision.Controls.ControlBase
     {
         public DateInput() { }
         public bool AllowNull { get; set; }
@@ -1269,7 +1225,7 @@ namespace SharpVision.Controls.Input
         public bool Contains(System.DateOnly date) { }
         public bool Intersects(SharpVision.Controls.Input.DateInterval other) { }
     }
-    public sealed class DateTimeInput : SharpVision.Controls.Control
+    public sealed class DateTimeInput : SharpVision.Controls.ControlBase
     {
         public DateTimeInput() { }
         public bool AllowNull { get; set; }
@@ -1294,7 +1250,7 @@ namespace SharpVision.Controls.Input
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetDropDownGlyph() { }
     }
-    public sealed class HyperlinkButton : SharpVision.Controls.Pressable
+    public sealed class HyperlinkButton : SharpVision.Controls.PressableBase
     {
         public HyperlinkButton() { }
         public HyperlinkButton(string text) { }
@@ -1307,29 +1263,22 @@ namespace SharpVision.Controls.Input
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void PerformClick() { }
     }
-    public sealed class RadioButton : SharpVision.Controls.Pressable
+    public sealed class RadioButton : SharpVision.Controls.Pressable<SharpVision.Controls.Input.RadioButtonStyle>
     {
         public RadioButton() { }
         public RadioButton(string text) { }
-        public SharpVision.Controls.Input.RadioButtonStyle ActualStyle { get; }
-        protected override SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
         public string? GroupName { get; set; }
         public bool IsChecked { get; set; }
         protected override bool IsCheckedState { get; }
         public override bool IsTabStop { get; }
-        public SharpVision.Controls.Input.RadioButtonStyle? Style { get; set; }
-        protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public event System.EventHandler<SharpVision.Controls.Input.RadioButtonSelectionChangedEventArgs>? Checked;
         public event System.EventHandler<SharpVision.Controls.Input.RadioButtonSelectionChangedEventArgs>? SelectionChanged;
         public event System.EventHandler<SharpVision.Controls.Input.RadioButtonSelectionChangedEventArgs>? Unchecked;
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
-        protected override SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
-        protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
-        protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnParentChanged(SharpVision.Controls.Control? previous, SharpVision.Controls.Control? current) { }
+        protected override void OnParentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void PerformClick() { }
@@ -1373,35 +1322,21 @@ namespace SharpVision.Controls.Input
         public bool Equals(SharpVision.Controls.Input.RadioButtonStyle other) { }
         public override bool Equals(object? obj) { }
         public override int GetHashCode() { }
+        public SharpVision.Controls.Input.RadioButtonStyle With(SharpVision.Controls.Input.RadioButtonMarkStyle? markStyle = default, SharpVision.Controls.Input.RadioButtonGlyphs? glyphs = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
         public static bool operator !=(SharpVision.Controls.Input.RadioButtonStyle left, SharpVision.Controls.Input.RadioButtonStyle right) { }
         public static bool operator ==(SharpVision.Controls.Input.RadioButtonStyle left, SharpVision.Controls.Input.RadioButtonStyle right) { }
     }
-    public readonly struct RadioButtonStyleSet : System.IEquatable<SharpVision.Controls.Input.RadioButtonStyleSet>
-    {
-        public RadioButtonStyleSet(SharpVision.Controls.Input.RadioButtonMarkStyle? markStyle = default, SharpVision.Controls.Input.RadioButtonGlyphs? glyphs = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
-        public SharpVision.Styling.AppearanceProfileSet? Appearance { get; }
-        public SharpVision.Controls.Input.RadioButtonGlyphs? Glyphs { get; }
-        public SharpVision.Controls.Input.RadioButtonMarkStyle? MarkStyle { get; }
-        public SharpVision.Controls.Input.RadioButtonStyle Apply(SharpVision.Controls.Input.RadioButtonStyle baseline) { }
-    }
-    public sealed class Slider : SharpVision.Controls.Control
+    public sealed class Slider : SharpVision.Controls.Control<SharpVision.Controls.Input.SliderStyle>
     {
         public Slider() { }
-        public SharpVision.Controls.Input.SliderStyle ActualStyle { get; }
-        protected override SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
         public int LargeChange { get; set; }
         public int Maximum { get; set; }
         public int Minimum { get; set; }
         public SharpVision.Layout.Orientation Orientation { get; set; }
         public int SmallChange { get; set; }
-        public SharpVision.Controls.Input.SliderStyle? Style { get; set; }
-        protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public int Value { get; set; }
         public event System.EventHandler<SharpVision.Input.SliderValueChangedEventArgs>? ValueChanged;
         public bool ChangeBy(int delta) { }
-        protected override SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
-        protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
-        protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
@@ -1436,20 +1371,11 @@ namespace SharpVision.Controls.Input
         public bool Equals(SharpVision.Controls.Input.SliderStyle other) { }
         public override bool Equals(object? obj) { }
         public override int GetHashCode() { }
+        public SharpVision.Controls.Input.SliderStyle With(SharpVision.Styling.ColorValue? fillColor = default, SharpVision.Styling.ColorValue? trackColor = default, SharpVision.Styling.ColorValue? thumbColor = default, SharpVision.Controls.Input.SliderGlyphs? glyphs = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
         public static bool operator !=(SharpVision.Controls.Input.SliderStyle left, SharpVision.Controls.Input.SliderStyle right) { }
         public static bool operator ==(SharpVision.Controls.Input.SliderStyle left, SharpVision.Controls.Input.SliderStyle right) { }
     }
-    public readonly struct SliderStyleSet : System.IEquatable<SharpVision.Controls.Input.SliderStyleSet>
-    {
-        public SliderStyleSet(SharpVision.Styling.ColorValue? fillColor = default, SharpVision.Styling.ColorValue? trackColor = default, SharpVision.Styling.ColorValue? thumbColor = default, SharpVision.Controls.Input.SliderGlyphs? glyphs = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
-        public SharpVision.Styling.AppearanceProfileSet? Appearance { get; }
-        public SharpVision.Styling.ColorValue? FillColor { get; }
-        public SharpVision.Controls.Input.SliderGlyphs? Glyphs { get; }
-        public SharpVision.Styling.ColorValue? ThumbColor { get; }
-        public SharpVision.Styling.ColorValue? TrackColor { get; }
-        public SharpVision.Controls.Input.SliderStyle Apply(SharpVision.Controls.Input.SliderStyle baseline) { }
-    }
-    public sealed class TextInput : SharpVision.Controls.Control
+    public sealed class TextInput : SharpVision.Controls.ControlBase
     {
         public TextInput() { }
         public bool AcceptsReturn { get; set; }
@@ -1482,8 +1408,6 @@ namespace SharpVision.Controls.Input
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public string CopySelection() { }
         public string CutSelection() { }
-        protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
-        protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
@@ -1499,7 +1423,7 @@ namespace SharpVision.Controls.Input
     {
         protected override void Dispose(bool disposing) { }
     }
-    public sealed class TimeInput : SharpVision.Controls.Control
+    public sealed class TimeInput : SharpVision.Controls.ControlBase
     {
         public TimeInput() { }
         public bool AllowNull { get; set; }
@@ -1531,8 +1455,8 @@ namespace SharpVision.Controls.Layout
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         public new void ResetBorder() { }
         public new void ResetShadow() { }
-        public static SharpVision.Layout.DockSide GetSide(SharpVision.Controls.Control control) { }
-        public static void SetSide(SharpVision.Controls.Control control, SharpVision.Layout.DockSide value) { }
+        public static SharpVision.Layout.DockSide GetSide(SharpVision.Controls.ControlBase control) { }
+        public static void SetSide(SharpVision.Controls.ControlBase control, SharpVision.Layout.DockSide value) { }
     }
     public sealed class ExpandedChangedEventArgs : System.EventArgs
     {
@@ -1553,7 +1477,7 @@ namespace SharpVision.Controls.Layout
         protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
-        protected override void OnContentChanged(SharpVision.Controls.Control? previous, SharpVision.Controls.Control? current) { }
+        protected override void OnContentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
@@ -1574,14 +1498,14 @@ namespace SharpVision.Controls.Layout
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         public new void ResetBorder() { }
         public new void ResetShadow() { }
-        public static int GetColumn(SharpVision.Controls.Control control) { }
-        public static int GetColumnSpan(SharpVision.Controls.Control control) { }
-        public static int GetRow(SharpVision.Controls.Control control) { }
-        public static int GetRowSpan(SharpVision.Controls.Control control) { }
-        public static void SetColumn(SharpVision.Controls.Control control, int value) { }
-        public static void SetColumnSpan(SharpVision.Controls.Control control, int value) { }
-        public static void SetRow(SharpVision.Controls.Control control, int value) { }
-        public static void SetRowSpan(SharpVision.Controls.Control control, int value) { }
+        public static int GetColumn(SharpVision.Controls.ControlBase control) { }
+        public static int GetColumnSpan(SharpVision.Controls.ControlBase control) { }
+        public static int GetRow(SharpVision.Controls.ControlBase control) { }
+        public static int GetRowSpan(SharpVision.Controls.ControlBase control) { }
+        public static void SetColumn(SharpVision.Controls.ControlBase control, int value) { }
+        public static void SetColumnSpan(SharpVision.Controls.ControlBase control, int value) { }
+        public static void SetRow(SharpVision.Controls.ControlBase control, int value) { }
+        public static void SetRowSpan(SharpVision.Controls.ControlBase control, int value) { }
     }
     public sealed class GroupBox : SharpVision.Controls.ContentControl
     {
@@ -1605,16 +1529,16 @@ namespace SharpVision.Controls.Layout
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         public new void ResetBorder() { }
         public new void ResetShadow() { }
-        public static SharpVision.Layout.Length? GetBottom(SharpVision.Controls.Control control) { }
-        public static SharpVision.Layout.Length? GetLeft(SharpVision.Controls.Control control) { }
-        public static SharpVision.Layout.Length? GetRight(SharpVision.Controls.Control control) { }
-        public static SharpVision.Layout.Length? GetTop(SharpVision.Controls.Control control) { }
-        public static int GetZIndex(SharpVision.Controls.Control control) { }
-        public static void SetBottom(SharpVision.Controls.Control control, SharpVision.Layout.Length? value) { }
-        public static void SetLeft(SharpVision.Controls.Control control, SharpVision.Layout.Length? value) { }
-        public static void SetRight(SharpVision.Controls.Control control, SharpVision.Layout.Length? value) { }
-        public static void SetTop(SharpVision.Controls.Control control, SharpVision.Layout.Length? value) { }
-        public static void SetZIndex(SharpVision.Controls.Control control, int value) { }
+        public static SharpVision.Layout.Length? GetBottom(SharpVision.Controls.ControlBase control) { }
+        public static SharpVision.Layout.Length? GetLeft(SharpVision.Controls.ControlBase control) { }
+        public static SharpVision.Layout.Length? GetRight(SharpVision.Controls.ControlBase control) { }
+        public static SharpVision.Layout.Length? GetTop(SharpVision.Controls.ControlBase control) { }
+        public static int GetZIndex(SharpVision.Controls.ControlBase control) { }
+        public static void SetBottom(SharpVision.Controls.ControlBase control, SharpVision.Layout.Length? value) { }
+        public static void SetLeft(SharpVision.Controls.ControlBase control, SharpVision.Layout.Length? value) { }
+        public static void SetRight(SharpVision.Controls.ControlBase control, SharpVision.Layout.Length? value) { }
+        public static void SetTop(SharpVision.Controls.ControlBase control, SharpVision.Layout.Length? value) { }
+        public static void SetZIndex(SharpVision.Controls.ControlBase control, int value) { }
     }
     public sealed class Stack : SharpVision.Controls.Container
     {
@@ -1670,7 +1594,7 @@ namespace SharpVision.Controls.Layout
         public event System.EventHandler<SharpVision.Controls.Layout.TableSortChangedEventArgs>? SortChanged;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public bool BeginEdit(SharpVision.Controls.Layout.TableRow row, int columnIndex) { }
-        public bool BringIntoView(SharpVision.Controls.Control descendant) { }
+        public bool BringIntoView(SharpVision.Controls.ControlBase descendant) { }
         public bool CancelEdit() { }
         public void ClearSelection() { }
         public bool CommitEdit() { }
@@ -1696,21 +1620,21 @@ namespace SharpVision.Controls.Layout
     public readonly struct TableCellReference : System.IEquatable<SharpVision.Controls.Layout.TableCellReference>
     {
         public TableCellReference(SharpVision.Controls.Layout.TableRow row, int columnIndex) { }
-        public SharpVision.Controls.Control Cell { get; }
+        public SharpVision.Controls.ControlBase Cell { get; }
         public int ColumnIndex { get; }
         public SharpVision.Controls.Layout.TableRow Row { get; }
     }
     public readonly struct TableColumn : System.IEquatable<SharpVision.Controls.Layout.TableColumn>
     {
-        public TableColumn(string header, SharpVision.Layout.Length width, bool isReadOnly = false, System.Func<SharpVision.Controls.Control, System.IComparable?>? sortKey = null) { }
+        public TableColumn(string header, SharpVision.Layout.Length width, bool isReadOnly = false, System.Func<SharpVision.Controls.ControlBase, System.IComparable?>? sortKey = null) { }
         public string Header { get; }
         public bool IsReadOnly { get; }
-        public System.Func<SharpVision.Controls.Control, System.IComparable?>? SortKey { get; }
+        public System.Func<SharpVision.Controls.ControlBase, System.IComparable?>? SortKey { get; }
         public SharpVision.Layout.Length Width { get; }
-        public static SharpVision.Controls.Layout.TableColumn Auto(string header, bool isReadOnly = false, System.Func<SharpVision.Controls.Control, System.IComparable?>? sortKey = null) { }
-        public static SharpVision.Controls.Layout.TableColumn Fill(string header, double weight = 1, bool isReadOnly = false, System.Func<SharpVision.Controls.Control, System.IComparable?>? sortKey = null) { }
-        public static SharpVision.Controls.Layout.TableColumn Fixed(string header, int width, bool isReadOnly = false, System.Func<SharpVision.Controls.Control, System.IComparable?>? sortKey = null) { }
-        public static SharpVision.Controls.Layout.TableColumn Percent(string header, double percent, bool isReadOnly = false, System.Func<SharpVision.Controls.Control, System.IComparable?>? sortKey = null) { }
+        public static SharpVision.Controls.Layout.TableColumn Auto(string header, bool isReadOnly = false, System.Func<SharpVision.Controls.ControlBase, System.IComparable?>? sortKey = null) { }
+        public static SharpVision.Controls.Layout.TableColumn Fill(string header, double weight = 1, bool isReadOnly = false, System.Func<SharpVision.Controls.ControlBase, System.IComparable?>? sortKey = null) { }
+        public static SharpVision.Controls.Layout.TableColumn Fixed(string header, int width, bool isReadOnly = false, System.Func<SharpVision.Controls.ControlBase, System.IComparable?>? sortKey = null) { }
+        public static SharpVision.Controls.Layout.TableColumn Percent(string header, double percent, bool isReadOnly = false, System.Func<SharpVision.Controls.ControlBase, System.IComparable?>? sortKey = null) { }
     }
     public sealed class TableColumnCollection : System.Collections.Generic.ICollection<SharpVision.Controls.Layout.TableColumn>, System.Collections.Generic.IEnumerable<SharpVision.Controls.Layout.TableColumn>, System.Collections.Generic.IList<SharpVision.Controls.Layout.TableColumn>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.Layout.TableColumn>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Layout.TableColumn>, System.Collections.IEnumerable
     {
@@ -1729,8 +1653,8 @@ namespace SharpVision.Controls.Layout
     }
     public sealed class TableRow
     {
-        public TableRow(System.Collections.Generic.IEnumerable<SharpVision.Controls.Control> cells) { }
-        public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Control> Cells { get; }
+        public TableRow(System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase> cells) { }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.ControlBase> Cells { get; }
     }
     public sealed class TableRowCollection : System.Collections.Generic.ICollection<SharpVision.Controls.Layout.TableRow>, System.Collections.Generic.IEnumerable<SharpVision.Controls.Layout.TableRow>, System.Collections.Generic.IList<SharpVision.Controls.Layout.TableRow>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.Layout.TableRow>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Layout.TableRow>, System.Collections.IEnumerable
     {
@@ -1785,24 +1709,17 @@ namespace SharpVision.Controls.Layout
 }
 namespace SharpVision.Controls.Scrolling
 {
-    public sealed class ScrollBar : SharpVision.Controls.Control
+    public sealed class ScrollBar : SharpVision.Controls.Control<SharpVision.Controls.Scrolling.ScrollBarStyle>
     {
         public ScrollBar() { }
-        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualStyle { get; }
-        protected override SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
         public int LargeChange { get; set; }
         public int Maximum { get; set; }
         public int Minimum { get; set; }
         public SharpVision.Layout.Orientation Orientation { get; set; }
         public int SmallChange { get; set; }
-        public SharpVision.Controls.Scrolling.ScrollBarStyle? Style { get; set; }
-        protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public int Value { get; set; }
         public int ViewportSize { get; set; }
         public event System.EventHandler<SharpVision.Scrolling.ScrollEventArgs>? ValueChanged;
-        protected override SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
-        protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
-        protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
@@ -1849,20 +1766,9 @@ namespace SharpVision.Controls.Scrolling
         public bool Equals(SharpVision.Controls.Scrolling.ScrollBarStyle other) { }
         public override bool Equals(object? obj) { }
         public override int GetHashCode() { }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle With(SharpVision.Scrolling.ScrollBarChrome? chrome = default, SharpVision.Scrolling.ScrollBarFill? fill = default, SharpVision.Controls.Scrolling.ScrollBarGlyphs? glyphs = default, SharpVision.Styling.ColorValue? trackColor = default, SharpVision.Styling.ColorValue? thumbColor = default, SharpVision.Styling.ColorValue? buttonColor = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
         public static bool operator !=(SharpVision.Controls.Scrolling.ScrollBarStyle left, SharpVision.Controls.Scrolling.ScrollBarStyle right) { }
         public static bool operator ==(SharpVision.Controls.Scrolling.ScrollBarStyle left, SharpVision.Controls.Scrolling.ScrollBarStyle right) { }
-    }
-    public readonly struct ScrollBarStyleSet : System.IEquatable<SharpVision.Controls.Scrolling.ScrollBarStyleSet>
-    {
-        public ScrollBarStyleSet(SharpVision.Scrolling.ScrollBarChrome? chrome = default, SharpVision.Scrolling.ScrollBarFill? fill = default, SharpVision.Controls.Scrolling.ScrollBarGlyphs? glyphs = default, SharpVision.Styling.ColorValue? trackColor = default, SharpVision.Styling.ColorValue? thumbColor = default, SharpVision.Styling.ColorValue? buttonColor = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
-        public SharpVision.Styling.AppearanceProfileSet? Appearance { get; }
-        public SharpVision.Styling.ColorValue? ButtonColor { get; }
-        public SharpVision.Scrolling.ScrollBarChrome? Chrome { get; }
-        public SharpVision.Scrolling.ScrollBarFill? Fill { get; }
-        public SharpVision.Controls.Scrolling.ScrollBarGlyphs? Glyphs { get; }
-        public SharpVision.Styling.ColorValue? ThumbColor { get; }
-        public SharpVision.Styling.ColorValue? TrackColor { get; }
-        public SharpVision.Controls.Scrolling.ScrollBarStyle Apply(SharpVision.Controls.Scrolling.ScrollBarStyle baseline) { }
     }
 }
 namespace SharpVision.DataBinding
@@ -1871,7 +1777,7 @@ namespace SharpVision.DataBinding
     {
         public bool IsDisposed { get; }
         public SharpVision.DataBinding.BindingMode Mode { get; }
-        public SharpVision.Controls.Control Target { get; }
+        public SharpVision.Controls.ControlBase Target { get; }
         public void Dispose() { }
     }
     public static class BindingExtensions
@@ -1910,9 +1816,9 @@ namespace SharpVision.DataBinding
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Input.TextInput target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, string?>> sourceProperty, SharpVision.DataBinding.BindingMode mode)
             where TModel :  class { }
-        public static SharpVision.DataBinding.Binding BindCommand<TModel>(this SharpVision.Controls.Pressable target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, System.Windows.Input.ICommand?>> sourceProperty)
+        public static SharpVision.DataBinding.Binding BindCommand<TModel>(this SharpVision.Controls.PressableBase target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, System.Windows.Input.ICommand?>> sourceProperty)
             where TModel :  class { }
-        public static SharpVision.DataBinding.Binding BindCommandParameter<TModel, TValue>(this SharpVision.Controls.Pressable target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, TValue>> sourceProperty)
+        public static SharpVision.DataBinding.Binding BindCommandParameter<TModel, TValue>(this SharpVision.Controls.PressableBase target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, TValue>> sourceProperty)
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding BindExpanded<TModel>(this SharpVision.Controls.Collections.TreeViewItem target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, bool>> sourceProperty)
             where TModel :  class { }
@@ -1921,10 +1827,10 @@ namespace SharpVision.DataBinding
         public static SharpVision.DataBinding.Binding BindItems<TModel, TItem>(this SharpVision.Controls.Input.ComboBox target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, System.Collections.Generic.IReadOnlyList<TItem>?>> sourceProperty)
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding BindProperty<TControl, TModel, TValue>(this TControl target, System.Linq.Expressions.Expression<System.Func<TControl, TValue>> targetProperty, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, TValue>> sourceProperty, SharpVision.DataBinding.BindingMode mode)
-            where TControl : SharpVision.Controls.Control
+            where TControl : SharpVision.Controls.ControlBase
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding BindProperty<TControl, TModel, TSource, TTarget>(this TControl target, System.Linq.Expressions.Expression<System.Func<TControl, TTarget>> targetProperty, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, TSource>> sourceProperty, System.Func<TSource, TTarget> convert, System.Func<TTarget, TSource>? convertBack, SharpVision.DataBinding.BindingMode mode, TTarget fallbackValue)
-            where TControl : SharpVision.Controls.Control
+            where TControl : SharpVision.Controls.ControlBase
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding BindSelection<TModel, TItem>(this SharpVision.Controls.Collections.ListView target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, TItem?>> sourceProperty)
             where TModel :  class
@@ -1954,7 +1860,7 @@ namespace SharpVision.Dialogs
         protected override void OnDisposing() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
-        protected System.Threading.Tasks.Task<TResult> PresentAsync(SharpVision.Controls.Control owner, SharpVision.Controls.Control? initialFocus, System.Threading.CancellationToken cancellationToken) { }
+        protected System.Threading.Tasks.Task<TResult> PresentAsync(SharpVision.Controls.ControlBase owner, SharpVision.Controls.ControlBase? initialFocus, System.Threading.CancellationToken cancellationToken) { }
     }
     public abstract class FileDialogBase<TResult> : SharpVision.Dialogs.Dialog<TResult>
         where TResult :  class
@@ -1981,8 +1887,8 @@ namespace SharpVision.Dialogs
         protected abstract SharpVision.Controls.Layout.Grid CreateContent();
         protected SharpVision.Controls.Layout.Grid CreateFooter(SharpVision.Controls.Input.Button acceptButton) { }
         protected SharpVision.Controls.Layout.Grid CreateLocationBar() { }
-        protected abstract SharpVision.Controls.Control GetInitialLoadFocusTarget();
-        protected abstract SharpVision.Controls.Control GetModalFocusTarget();
+        protected abstract SharpVision.Controls.ControlBase GetInitialLoadFocusTarget();
+        protected abstract SharpVision.Controls.ControlBase GetModalFocusTarget();
         protected void Initialize() { }
         protected override void OnAttached() { }
         protected override void OnDetached() { }
@@ -1999,11 +1905,11 @@ namespace SharpVision.Dialogs
         public SharpVision.Controls.Input.ButtonStyle? OpenButtonStyle { get; set; }
         public System.Collections.Generic.IReadOnlyList<string> SelectedPaths { get; }
         protected override SharpVision.Controls.Layout.Grid CreateContent() { }
-        protected override SharpVision.Controls.Control GetInitialLoadFocusTarget() { }
-        protected override SharpVision.Controls.Control GetModalFocusTarget() { }
+        protected override SharpVision.Controls.ControlBase GetInitialLoadFocusTarget() { }
+        protected override SharpVision.Controls.ControlBase GetModalFocusTarget() { }
         protected override void OnListSelectionChanged() { }
         protected override void WireAcceptInteraction() { }
-        public static System.Threading.Tasks.Task<SharpVision.Dialogs.FilePickerResult> ShowAsync(SharpVision.Controls.Control owner, SharpVision.Dialogs.FilePickerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) { }
+        public static System.Threading.Tasks.Task<SharpVision.Dialogs.FilePickerResult> ShowAsync(SharpVision.Controls.ControlBase owner, SharpVision.Dialogs.FilePickerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) { }
     }
     public sealed class FilePickerFilter
     {
@@ -2044,10 +1950,10 @@ namespace SharpVision.Dialogs
         public SharpVision.Dialogs.MessageBoxButtons Buttons { get; }
         public string Message { get; }
         public string Title { get; }
-        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.Control owner, string message) { }
-        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.Control owner, string message, SharpVision.Dialogs.MessageBoxButtons buttons) { }
-        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.Control owner, string message, string title) { }
-        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.Control owner, string message, string title, SharpVision.Dialogs.MessageBoxButtons buttons, SharpVision.Controls.Input.ButtonStyle? buttonStyle = default) { }
+        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message) { }
+        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, SharpVision.Dialogs.MessageBoxButtons buttons) { }
+        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, string title) { }
+        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, string title, SharpVision.Dialogs.MessageBoxButtons buttons, SharpVision.Controls.Input.ButtonStyle? buttonStyle = default) { }
     }
     public enum MessageBoxButtons
     {
@@ -2071,11 +1977,11 @@ namespace SharpVision.Dialogs
         public string FileName { get; }
         public SharpVision.Controls.Input.ButtonStyle? SaveButtonStyle { get; set; }
         protected override SharpVision.Controls.Layout.Grid CreateContent() { }
-        protected override SharpVision.Controls.Control GetInitialLoadFocusTarget() { }
-        protected override SharpVision.Controls.Control GetModalFocusTarget() { }
+        protected override SharpVision.Controls.ControlBase GetInitialLoadFocusTarget() { }
+        protected override SharpVision.Controls.ControlBase GetModalFocusTarget() { }
         protected override void OnListSelectionChanged() { }
         protected override void WireAcceptInteraction() { }
-        public static System.Threading.Tasks.Task<SharpVision.Dialogs.SaveFileResult> ShowAsync(SharpVision.Controls.Control owner, SharpVision.Dialogs.SaveFileOptions? options = null, System.Threading.CancellationToken cancellationToken = default) { }
+        public static System.Threading.Tasks.Task<SharpVision.Dialogs.SaveFileResult> ShowAsync(SharpVision.Controls.ControlBase owner, SharpVision.Dialogs.SaveFileOptions? options = null, System.Threading.CancellationToken cancellationToken = default) { }
     }
     public sealed class SaveFileOptions
     {
@@ -2236,33 +2142,33 @@ namespace SharpVision.Input
     }
     public sealed class FocusChangedEventArgs : System.EventArgs
     {
-        public FocusChangedEventArgs(SharpVision.Controls.Control? previous, SharpVision.Controls.Control? current) { }
-        public FocusChangedEventArgs(SharpVision.Controls.Control? previous, SharpVision.Controls.Control? current, SharpVision.Input.FocusReason reason) { }
-        public SharpVision.Controls.Control? Current { get; }
-        public SharpVision.Controls.Control? Previous { get; }
+        public FocusChangedEventArgs(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
+        public FocusChangedEventArgs(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current, SharpVision.Input.FocusReason reason) { }
+        public SharpVision.Controls.ControlBase? Current { get; }
+        public SharpVision.Controls.ControlBase? Previous { get; }
         public SharpVision.Input.FocusReason Reason { get; }
     }
     public sealed class FocusChangingEventArgs : System.EventArgs
     {
-        public FocusChangingEventArgs(SharpVision.Controls.Control? previous, SharpVision.Controls.Control? next) { }
-        public FocusChangingEventArgs(SharpVision.Controls.Control? previous, SharpVision.Controls.Control? next, SharpVision.Input.FocusReason reason) { }
+        public FocusChangingEventArgs(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? next) { }
+        public FocusChangingEventArgs(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? next, SharpVision.Input.FocusReason reason) { }
         public bool Cancel { get; set; }
-        public SharpVision.Controls.Control? Next { get; }
-        public SharpVision.Controls.Control? Previous { get; }
+        public SharpVision.Controls.ControlBase? Next { get; }
+        public SharpVision.Controls.ControlBase? Previous { get; }
         public SharpVision.Input.FocusReason Reason { get; }
     }
     public sealed class FocusManager : System.IDisposable
     {
-        public FocusManager(SharpVision.Controls.Control root) { }
-        public SharpVision.Controls.Control? Focused { get; }
-        public SharpVision.Controls.Control Root { get; }
+        public FocusManager(SharpVision.Controls.ControlBase root) { }
+        public SharpVision.Controls.ControlBase? Focused { get; }
+        public SharpVision.Controls.ControlBase Root { get; }
         public event System.EventHandler<SharpVision.Input.FocusChangingEventArgs>? Changing;
         public event System.EventHandler<SharpVision.Input.FocusChangedEventArgs>? Gained;
         public event System.EventHandler<SharpVision.Input.FocusChangedEventArgs>? Lost;
         public void Dispose() { }
-        public bool Focus(SharpVision.Controls.Control? control) { }
+        public bool Focus(SharpVision.Controls.ControlBase? control) { }
         public bool MoveNext(bool reverse = false) { }
-        public bool MoveNext(SharpVision.Controls.Control? anchor, bool reverse = false) { }
+        public bool MoveNext(SharpVision.Controls.ControlBase? anchor, bool reverse = false) { }
     }
     public enum FocusReason
     {
@@ -2315,17 +2221,17 @@ namespace SharpVision.Input
     {
         public bool IsActive { get; }
         public SharpVision.Input.OutsideInteraction OutsideInteraction { get; }
-        public SharpVision.Controls.Control Root { get; }
+        public SharpVision.Controls.ControlBase Root { get; }
         public event System.EventHandler? DismissRequested;
         public event System.EventHandler? Exited;
         public void Dispose() { }
-        public void Include(SharpVision.Controls.Control root) { }
+        public void Include(SharpVision.Controls.ControlBase root) { }
     }
     public sealed class ModalityManager : System.IDisposable
     {
         public SharpVision.Input.ModalScope? Active { get; }
         public void Dispose() { }
-        public SharpVision.Input.ModalScope Enter(SharpVision.Controls.Control root, SharpVision.Input.OutsideInteraction outsideInteraction = 0, SharpVision.Controls.Control? initialFocus = null) { }
+        public SharpVision.Input.ModalScope Enter(SharpVision.Controls.ControlBase root, SharpVision.Input.OutsideInteraction outsideInteraction = 0, SharpVision.Controls.ControlBase? initialFocus = null) { }
     }
     public enum OutsideInteraction
     {
@@ -2359,13 +2265,13 @@ namespace SharpVision.Input
     }
     public sealed class PointerManager : System.IDisposable
     {
-        public PointerManager(SharpVision.Controls.Control root, System.TimeProvider? timeProvider = null) { }
-        public SharpVision.Controls.Control? Captured { get; }
-        public SharpVision.Controls.Control? Hovered { get; }
-        public SharpVision.Controls.Control? PressOrigin { get; }
-        public SharpVision.Controls.Control Root { get; }
-        public bool Capture(SharpVision.Controls.Control control) { }
-        public SharpVision.Controls.Control? Dispatch(SharpVision.Terminal.Input.Pointer pointer) { }
+        public PointerManager(SharpVision.Controls.ControlBase root, System.TimeProvider? timeProvider = null) { }
+        public SharpVision.Controls.ControlBase? Captured { get; }
+        public SharpVision.Controls.ControlBase? Hovered { get; }
+        public SharpVision.Controls.ControlBase? PressOrigin { get; }
+        public SharpVision.Controls.ControlBase Root { get; }
+        public bool Capture(SharpVision.Controls.ControlBase control) { }
+        public SharpVision.Controls.ControlBase? Dispatch(SharpVision.Terminal.Input.Pointer pointer) { }
         public void Dispose() { }
         public void Release() { }
         public void TerminalFocusLost() { }
@@ -2388,7 +2294,7 @@ namespace SharpVision.Input
     }
     public readonly struct RouteResult
     {
-        public SharpVision.Controls.Control? Anchor { get; }
+        public SharpVision.Controls.ControlBase? Anchor { get; }
         public SharpVision.Input.PostRouteCommand Command { get; }
         public bool Handled { get; }
     }
@@ -2396,16 +2302,16 @@ namespace SharpVision.Input
     {
         protected RoutedEventArgs() { }
         public bool Handled { get; set; }
-        public SharpVision.Controls.Control? OriginalSource { get; }
+        public SharpVision.Controls.ControlBase? OriginalSource { get; }
         public SharpVision.Input.RoutingPhase Phase { get; }
         public SharpVision.Input.PostRouteCommand PostRouteCommand { get; }
-        public SharpVision.Controls.Control? Source { get; }
+        public SharpVision.Controls.ControlBase? Source { get; }
         public void RequestPostRouteCommand(SharpVision.Input.PostRouteCommand command) { }
-        public void Retarget(SharpVision.Controls.Control source) { }
+        public void Retarget(SharpVision.Controls.ControlBase source) { }
     }
     public static class Router
     {
-        public static SharpVision.Input.RouteResult Route<TArgs>(SharpVision.Controls.Control target, SharpVision.Input.Event<TArgs> routedEvent, TArgs eventArgs)
+        public static SharpVision.Input.RouteResult Route<TArgs>(SharpVision.Controls.ControlBase target, SharpVision.Input.Event<TArgs> routedEvent, TArgs eventArgs)
             where TArgs : SharpVision.Input.RoutedEventArgs { }
     }
     public enum RoutingPhase
@@ -2499,7 +2405,7 @@ namespace SharpVision.Layout
     public sealed class LayoutEngine
     {
         public LayoutEngine() { }
-        public void Layout(SharpVision.Controls.Control root, SharpVision.Terminal.Geometry.Size size) { }
+        public void Layout(SharpVision.Controls.ControlBase root, SharpVision.Terminal.Geometry.Size size) { }
     }
     [System.Diagnostics.DebuggerDisplay("{ToString(),nq}")]
     public readonly struct Length : System.IEquatable<SharpVision.Layout.Length>
@@ -2638,15 +2544,15 @@ namespace SharpVision.Menus
         public static SharpVision.Menus.MenuBuilder Horizontal(int spacing = 1) { }
         public static SharpVision.Menus.MenuBuilder Vertical() { }
     }
-    public sealed class MenuEntryCollection : System.Collections.Generic.IEnumerable<SharpVision.Controls.Control>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.Control>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Control>, System.Collections.IEnumerable
+    public sealed class MenuEntryCollection : System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.ControlBase>, System.Collections.IEnumerable
     {
         public int Count { get; }
-        public SharpVision.Controls.Control this[int index] { get; set; }
+        public SharpVision.Controls.ControlBase this[int index] { get; set; }
         public void Add(SharpVision.Menus.MenuItem item) { }
         public void Add(SharpVision.Menus.MenuSeparator separator) { }
         public void Clear() { }
-        public System.Collections.Generic.IEnumerator<SharpVision.Controls.Control> GetEnumerator() { }
-        public int IndexOf(SharpVision.Controls.Control item) { }
+        public System.Collections.Generic.IEnumerator<SharpVision.Controls.ControlBase> GetEnumerator() { }
+        public int IndexOf(SharpVision.Controls.ControlBase item) { }
         public void Insert(int index, SharpVision.Menus.MenuItem item) { }
         public void Insert(int index, SharpVision.Menus.MenuSeparator separator) { }
         public void Move(int oldIndex, int newIndex) { }
@@ -2654,7 +2560,7 @@ namespace SharpVision.Menus
         public bool Remove(SharpVision.Menus.MenuSeparator separator) { }
         public void RemoveAt(int index) { }
     }
-    public sealed class MenuItem : SharpVision.Controls.Pressable
+    public sealed class MenuItem : SharpVision.Controls.PressableBase
     {
         public MenuItem() { }
         public System.Text.Rune CheckedGlyph { get; set; }
@@ -2689,7 +2595,7 @@ namespace SharpVision.Menus
         Check = 1,
         Radio = 2,
     }
-    public sealed class MenuSeparator : SharpVision.Controls.Control
+    public sealed class MenuSeparator : SharpVision.Controls.ControlBase
     {
         public MenuSeparator() { }
         public System.Text.Rune Glyph { get; set; }
@@ -2700,7 +2606,7 @@ namespace SharpVision.Menus
 }
 namespace SharpVision.Navigation
 {
-    public sealed class NavigationView : SharpVision.Controls.CompositeControl
+    public sealed class NavigationView : SharpVision.Controls.CompositeControlBase
     {
         public NavigationView() { }
         protected override string? AccessKeyText { get; }
@@ -2721,16 +2627,16 @@ namespace SharpVision.Navigation
         public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
         public void SelectItem(SharpVision.Navigation.NavigationViewItem item) { }
     }
-    public sealed class NavigationViewEntryCollection : System.Collections.Generic.IEnumerable<SharpVision.Controls.Control>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.Control>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Control>, System.Collections.IEnumerable
+    public sealed class NavigationViewEntryCollection : System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.ControlBase>, System.Collections.IEnumerable
     {
         public int Count { get; }
-        public SharpVision.Controls.Control this[int index] { get; set; }
+        public SharpVision.Controls.ControlBase this[int index] { get; set; }
         public void Add(SharpVision.Navigation.NavigationViewGroup group) { }
         public void Add(SharpVision.Navigation.NavigationViewItem item) { }
         public void Add(SharpVision.Navigation.NavigationViewSeparator separator) { }
         public void Clear() { }
-        public System.Collections.Generic.IEnumerator<SharpVision.Controls.Control> GetEnumerator() { }
-        public int IndexOf(SharpVision.Controls.Control item) { }
+        public System.Collections.Generic.IEnumerator<SharpVision.Controls.ControlBase> GetEnumerator() { }
+        public int IndexOf(SharpVision.Controls.ControlBase item) { }
         public void Insert(int index, SharpVision.Navigation.NavigationViewGroup group) { }
         public void Insert(int index, SharpVision.Navigation.NavigationViewItem item) { }
         public void Insert(int index, SharpVision.Navigation.NavigationViewSeparator separator) { }
@@ -2740,7 +2646,7 @@ namespace SharpVision.Navigation
         public bool Remove(SharpVision.Navigation.NavigationViewSeparator separator) { }
         public void RemoveAt(int index) { }
     }
-    public sealed class NavigationViewGroup : SharpVision.Controls.Control
+    public sealed class NavigationViewGroup : SharpVision.Controls.ControlBase
     {
         public NavigationViewGroup() { }
         protected override string? AccessKeyText { get; }
@@ -2757,7 +2663,7 @@ namespace SharpVision.Navigation
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
         public void ResetGlyphs() { }
     }
-    public sealed class NavigationViewItem : SharpVision.Controls.Pressable
+    public sealed class NavigationViewItem : SharpVision.Controls.PressableBase
     {
         public NavigationViewItem() { }
         protected override string? AccessKeyText { get; }
@@ -2793,7 +2699,7 @@ namespace SharpVision.Navigation
         public SharpVision.Navigation.NavigationViewItem? CurrentItem { get; }
         public SharpVision.Navigation.NavigationViewItem? PreviousItem { get; }
     }
-    public sealed class NavigationViewSeparator : SharpVision.Controls.Control
+    public sealed class NavigationViewSeparator : SharpVision.Controls.ControlBase
     {
         public NavigationViewSeparator() { }
         public System.Text.Rune Glyph { get; set; }
@@ -2808,12 +2714,12 @@ namespace SharpVision.Popups
     {
         public Flyout() { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
-        public void ShowAt(SharpVision.Controls.Control anchor) { }
+        public void ShowAt(SharpVision.Controls.ControlBase anchor) { }
     }
-    public class Popup : SharpVision.Surfaces.FloatingSurface
+    public class Popup : SharpVision.Surfaces.FloatingSurfaceBase
     {
         public Popup() { }
-        public SharpVision.Controls.Control? Anchor { get; set; }
+        public SharpVision.Controls.ControlBase? Anchor { get; set; }
         public new SharpVision.Styling.Border Border { get; set; }
         protected override bool ClipsChildren { get; }
         public bool CloseOnEscape { get; set; }
@@ -2831,13 +2737,13 @@ namespace SharpVision.Popups
         protected override SharpVision.Styling.ChromeRenderOptions GetChromeRenderOptions() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnAttached() { }
-        protected override void OnContentChanged(SharpVision.Controls.Control? previous, SharpVision.Controls.Control? current) { }
+        protected override void OnContentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
         protected override void OnDetached() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnParentChanged(SharpVision.Controls.Control? previous, SharpVision.Controls.Control? current) { }
+        protected override void OnParentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
-        public SharpVision.Input.ModalScope OpenModal(SharpVision.Input.OutsideInteraction outsideInteraction = 1, SharpVision.Controls.Control? initialFocus = null) { }
+        public SharpVision.Input.ModalScope OpenModal(SharpVision.Input.OutsideInteraction outsideInteraction = 1, SharpVision.Controls.ControlBase? initialFocus = null) { }
         public new void ResetBorder() { }
         public new void ResetShadow() { }
     }
@@ -2859,16 +2765,16 @@ namespace SharpVision.Popups
         public System.TimeSpan HideDelay { get; set; }
         public System.TimeSpan ShowDelay { get; set; }
         public string? Text { get; set; }
-        protected override void OnContentChanged(SharpVision.Controls.Control? previous, SharpVision.Controls.Control? current) { }
+        protected override void OnContentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
         protected override void OnDetached() { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
-        public static void ClearTooltip(SharpVision.Controls.Control anchor) { }
-        public static SharpVision.Popups.Tooltip? GetTooltip(SharpVision.Controls.Control anchor) { }
-        public static void SetContent(SharpVision.Controls.Control anchor, SharpVision.Controls.Control content) { }
-        public static void SetContent(SharpVision.Controls.Control anchor, SharpVision.Controls.Control content, SharpVision.Popups.PopupPlacement placement) { }
-        public static void SetText(SharpVision.Controls.Control anchor, string text) { }
-        public static void SetText(SharpVision.Controls.Control anchor, string text, SharpVision.Popups.PopupPlacement placement) { }
-        public static void SetText(SharpVision.Controls.Control anchor, string text, SharpVision.Popups.PopupPlacement placement, System.TimeSpan showDelay) { }
+        public static void ClearTooltip(SharpVision.Controls.ControlBase anchor) { }
+        public static SharpVision.Popups.Tooltip? GetTooltip(SharpVision.Controls.ControlBase anchor) { }
+        public static void SetContent(SharpVision.Controls.ControlBase anchor, SharpVision.Controls.ControlBase content) { }
+        public static void SetContent(SharpVision.Controls.ControlBase anchor, SharpVision.Controls.ControlBase content, SharpVision.Popups.PopupPlacement placement) { }
+        public static void SetText(SharpVision.Controls.ControlBase anchor, string text) { }
+        public static void SetText(SharpVision.Controls.ControlBase anchor, string text, SharpVision.Popups.PopupPlacement placement) { }
+        public static void SetText(SharpVision.Controls.ControlBase anchor, string text, SharpVision.Popups.PopupPlacement placement, System.TimeSpan showDelay) { }
     }
 }
 namespace SharpVision.Scrolling
@@ -3278,9 +3184,9 @@ namespace SharpVision.Styling
 }
 namespace SharpVision.Surfaces
 {
-    public abstract class FloatingSurface : SharpVision.Controls.ContentControl
+    public abstract class FloatingSurfaceBase : SharpVision.Controls.ContentControl
     {
-        protected FloatingSurface() { }
+        protected FloatingSurfaceBase() { }
         protected bool HasActiveSurfaceModal { get; }
         protected bool IsSurfacePresented { get; }
         public SharpVision.Terminal.Geometry.Rect SurfaceBounds { get; protected set; }
@@ -3290,7 +3196,7 @@ namespace SharpVision.Surfaces
         public event System.EventHandler? Opened;
         protected System.EventHandler? CaptureClosedHandlers() { }
         protected bool CloseSurface(System.Action commitClosingState, System.Action commitUnavailableState) { }
-        protected SharpVision.Input.ModalScope EnterSurfaceModal(SharpVision.Input.OutsideInteraction outsideInteraction, SharpVision.Controls.Control? initialFocus) { }
+        protected SharpVision.Input.ModalScope EnterSurfaceModal(SharpVision.Input.OutsideInteraction outsideInteraction, SharpVision.Controls.ControlBase? initialFocus) { }
         protected void ExitSurfaceModal() { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         protected void OpenSurface(System.Action commitOpenState) { }
@@ -3298,6 +3204,15 @@ namespace SharpVision.Surfaces
         protected void RaiseSurfaceClosed() { }
         protected void RaiseSurfaceClosing() { }
         protected void RaiseSurfaceOpened() { }
+    }
+    public abstract class FloatingSurface<TStyle> : SharpVision.Surfaces.FloatingSurfaceBase
+        where TStyle :  struct, System.IEquatable<TStyle>
+    {
+        protected FloatingSurface(SharpVision.Controls.StyleDefinition<TStyle> definition) { }
+        public virtual TStyle ActualStyle { get; }
+        public TStyle? Style { get; set; }
+        protected SharpVision.Controls.StyleSlot<TStyle> StyleSlot { get; }
+        protected virtual void OnStyleChanged(TStyle previous, TStyle current) { }
     }
     public sealed class SurfaceCloseRequestedEventArgs : System.EventArgs
     {
@@ -3403,7 +3318,7 @@ namespace SharpVision.Threading
 }
 namespace SharpVision.Windows
 {
-    public class Window : SharpVision.Surfaces.FloatingSurface
+    public class Window : SharpVision.Surfaces.FloatingSurfaceBase
     {
         public Window() { }
         protected override string? AccessKeyText { get; }
@@ -3433,7 +3348,7 @@ namespace SharpVision.Windows
         public new void ResetBorder() { }
         public void ResetCloseGlyph() { }
         public new void ResetShadow() { }
-        public SharpVision.Input.ModalScope ShowModal(SharpVision.Input.OutsideInteraction outsideInteraction = 0, SharpVision.Controls.Control? initialFocus = null) { }
+        public SharpVision.Input.ModalScope ShowModal(SharpVision.Input.OutsideInteraction outsideInteraction = 0, SharpVision.Controls.ControlBase? initialFocus = null) { }
     }
     public enum WindowClosePlacement
     {

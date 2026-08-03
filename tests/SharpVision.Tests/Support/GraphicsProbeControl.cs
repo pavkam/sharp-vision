@@ -10,7 +10,7 @@ using TerminalCanvas = Terminal.Rendering.Canvas;
 #pragma warning restore IDE0001
 
 /// <summary>Draws a deterministic cell underlay followed by one semantic image placement.</summary>
-internal sealed class GraphicsProbeControl: Control
+internal sealed class GraphicsProbeControl: ControlBase
 {
     private readonly GraphicsImage _source;
 

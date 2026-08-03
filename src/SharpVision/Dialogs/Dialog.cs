@@ -78,7 +78,7 @@ public abstract class Dialog<TResult>: Window
     /// <summary>Resolves an explicit Overlay, owning Screen, or outermost fallback Overlay.</summary>
     /// <param name="owner">The control whose retained ancestry is searched.</param>
     /// <returns>The resolved presentation host, or null when no supported host exists.</returns>
-    private protected static PresentationHost? FindHost(Control owner) => PresentationHost.Resolve(owner);
+    private protected static PresentationHost? FindHost(ControlBase owner) => PresentationHost.Resolve(owner);
 
     /// <summary>Presents this dialog through the supplied host and enters application modality.</summary>
     /// <param name="host">The host that already directly owns this dialog.</param>
@@ -93,7 +93,7 @@ public abstract class Dialog<TResult>: Window
     /// <exception cref="ObjectDisposedException">The dialog or modality owner is disposed.</exception>
     private protected Task<TResult> PresentAsync(
         PresentationHost host,
-        Control? initialFocus,
+        ControlBase? initialFocus,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(host);
@@ -158,7 +158,7 @@ public abstract class Dialog<TResult>: Window
     /// <remarks>
     /// This is the reachable entry point for a dialog type defined outside this assembly — the
     /// presentation host itself is an internal implementation detail, so this overload takes the
-    /// owning <see cref="Control"/> directly instead. A dialog subclass typically calls this from
+    /// owning <see cref="ControlBase"/> directly instead. A dialog subclass typically calls this from
     /// its own static asynchronous factory, after constructing itself, mirroring how the built-in
     /// dialogs already resolve their host and roll back on failure.
     /// </remarks>
@@ -175,7 +175,7 @@ public abstract class Dialog<TResult>: Window
     /// </exception>
     /// <exception cref="ObjectDisposedException">The owner or this dialog is disposed.</exception>
     /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> is already cancelled.</exception>
-    protected Task<TResult> PresentAsync(Control owner, Control? initialFocus, CancellationToken cancellationToken)
+    protected Task<TResult> PresentAsync(ControlBase owner, ControlBase? initialFocus, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(owner);
         ObjectDisposedException.ThrowIf(owner.IsDisposed, owner);

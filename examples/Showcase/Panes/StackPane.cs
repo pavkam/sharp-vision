@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the Stack control with orientation, spacing, and reverse-order specimens.</summary>
-internal sealed class StackPane: CompositeControl
+internal sealed class StackPane: CompositeControlBase
 {
     internal StackPane() => InitializeContent(CreateContent());
 

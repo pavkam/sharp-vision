@@ -151,7 +151,7 @@ public sealed class ScrollingTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
-    private static Stack Hidden(Control content) => new()
+    private static Stack Hidden(ControlBase content) => new()
     {
         AutoScroll = true,
         ScrollBars = ScrollBars.Both,

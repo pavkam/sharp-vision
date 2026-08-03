@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the ContextMenu control with custom and built-in text input context menus.</summary>
-internal sealed class ContextMenuPane: CompositeControl
+internal sealed class ContextMenuPane: CompositeControlBase
 {
     internal ContextMenuPane() => InitializeContent(CreateContent());
 

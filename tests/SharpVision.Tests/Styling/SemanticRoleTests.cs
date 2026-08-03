@@ -10,7 +10,7 @@ public sealed class SemanticRoleTests
     [Fact]
     public void ActualBorder_WhenBuiltInControlsAreThemed_UsesLibraryOwnedRole()
     {
-        Control[] controls = [new Button(), new TextInput(), new ComboBox(), new GroupBox(), new Window(), new Popup()];
+        ControlBase[] controls = [new Button(), new TextInput(), new ComboBox(), new GroupBox(), new Window(), new Popup()];
         var expected = new[]
         {
             Themes.Dark.Input.Normal.Border.Sides,
@@ -29,7 +29,7 @@ public sealed class SemanticRoleTests
         }
     }
 
-    /// <summary>Verifies an uncustomized third-party control receives the global Control role.</summary>
+    /// <summary>Verifies an uncustomized third-party control receives the global ControlBase role.</summary>
     [Fact]
     public void ActualFace_WhenThirdPartyControlDoesNotOverrideRole_UsesControlProfile()
     {

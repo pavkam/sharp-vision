@@ -32,7 +32,7 @@ public sealed class ThemesControlStyleTests
         focused.Face.Background.ShouldBe(normal.Face.Background);
     }
 
-    /// <summary>Verifies all high-level profiles inherit unspecified normal values from Control.</summary>
+    /// <summary>Verifies all high-level profiles inherit unspecified normal values from ControlBase.</summary>
     [Fact]
     public void Parse_WhenRoleNormalIsPartial_InheritsControlProfile()
     {

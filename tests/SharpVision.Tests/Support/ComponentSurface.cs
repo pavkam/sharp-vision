@@ -15,12 +15,12 @@ internal sealed class ComponentSurface: IAsyncDisposable
 
     private readonly CancellationToken _cancellationToken;
     private readonly ManualTimeProvider? _timeProvider;
-    private readonly Control _mounted;
+    private readonly ControlBase _mounted;
     private readonly ComponentTerminal _terminal;
 
     private ComponentSurface(
         Application application,
-        Control mounted,
+        ControlBase mounted,
         ComponentTerminal terminal,
         ManualTimeProvider? timeProvider,
         CancellationToken cancellationToken)
@@ -53,14 +53,14 @@ internal sealed class ComponentSurface: IAsyncDisposable
     /// <exception cref="ArgumentException"><paramref name="control"/> is attached or already owned.</exception>
     /// <exception cref="ObjectDisposedException"><paramref name="control"/> is disposed.</exception>
     internal static async Task<ComponentSurface> MountAsync(
-        Control control,
+        ControlBase control,
         Size size,
         CancellationToken cancellationToken) =>
         await MountAsync(control, size, timeProvider: null, cancellationToken);
 
     /// <summary>Mounts one detached control with an explicit application theme.</summary>
     internal static async Task<ComponentSurface> MountAsync(
-        Control control,
+        ControlBase control,
         Size size,
         Theme theme,
         CancellationToken cancellationToken) =>
@@ -130,7 +130,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
     /// <exception cref="ArgumentException"><paramref name="control"/> is attached or already owned.</exception>
     /// <exception cref="ObjectDisposedException"><paramref name="control"/> is disposed.</exception>
     internal static async Task<ComponentSurface> MountAsync(
-        Control control,
+        ControlBase control,
         Size size,
         ManualTimeProvider? timeProvider,
         CancellationToken cancellationToken) =>
@@ -138,7 +138,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
 
     /// <summary>Mounts one detached control with an explicit terminal profile and mode policy.</summary>
     internal static async Task<ComponentSurface> MountAsync(
-        Control control,
+        ControlBase control,
         Size size,
         TerminalOptions options,
         CancellationToken cancellationToken) =>
@@ -146,7 +146,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
 
     /// <summary>Mounts one detached control with an explicit terminal profile and application theme.</summary>
     internal static async Task<ComponentSurface> MountAsync(
-        Control control,
+        ControlBase control,
         Size size,
         TerminalOptions options,
         Theme theme,
@@ -154,7 +154,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
         await MountAsync(control, size, timeProvider: null, options, theme, cancellationToken);
 
     private static async Task<ComponentSurface> MountAsync(
-        Control control,
+        ControlBase control,
         Size size,
         ManualTimeProvider? timeProvider,
         TerminalOptions options,
@@ -303,7 +303,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="control"/> is not owned by this surface.</exception>
     /// <exception cref="InvalidOperationException"><paramref name="control"/> has empty arranged bounds.</exception>
-    internal async Task<Point> ResolvePointAsync(Control control)
+    internal async Task<Point> ResolvePointAsync(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         return await Application.Dispatcher.InvokeAsync(() =>
@@ -330,7 +330,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
     /// <exception cref="ArgumentException"><paramref name="control"/> is not owned by this surface.</exception>
     /// <exception cref="InvalidOperationException"><paramref name="control"/> has empty arranged bounds.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="relative"/> lies outside the arranged bounds.</exception>
-    internal async Task<Point> ResolvePointAsync(Control control, Point relative)
+    internal async Task<Point> ResolvePointAsync(ControlBase control, Point relative)
     {
         ArgumentNullException.ThrowIfNull(control);
         return await Application.Dispatcher.InvokeAsync(() =>
@@ -507,7 +507,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="control"/> is not mounted by this surface.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="expected"/> contains unsupported flags.</exception>
-    internal void ShouldHaveState(Control control, VisualState expected)
+    internal void ShouldHaveState(ControlBase control, VisualState expected)
     {
         ArgumentNullException.ThrowIfNull(control);
 
@@ -550,7 +550,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
     /// <summary>Asserts the exact public control that owns application keyboard focus.</summary>
     /// <param name="expected">The owned control expected to own focus, or null.</param>
     /// <exception cref="ArgumentException"><paramref name="expected"/> is not owned by this surface.</exception>
-    internal void ShouldHaveFocus(Control? expected)
+    internal void ShouldHaveFocus(ControlBase? expected)
     {
         if (expected is not null && !IsOwned(expected))
         {
@@ -563,7 +563,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
     /// <summary>Asserts the exact public control that owns application pointer capture.</summary>
     /// <param name="expected">The owned control expected to own capture, or null.</param>
     /// <exception cref="ArgumentException"><paramref name="expected"/> is not owned by this surface.</exception>
-    internal void ShouldHaveCapture(Control? expected)
+    internal void ShouldHaveCapture(ControlBase? expected)
     {
         if (expected is not null && !IsOwned(expected))
         {
@@ -621,7 +621,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
     /// <summary>Stops the application and releases its mounted tree and terminal resources.</summary>
     public ValueTask DisposeAsync() => Application.DisposeAsync();
 
-    private bool IsOwned(Control control)
+    private bool IsOwned(ControlBase control)
     {
         for (var current = control; current is not null; current = current.Parent)
         {

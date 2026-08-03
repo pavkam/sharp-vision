@@ -61,9 +61,7 @@ public sealed class ScrollBarStyleTests
     public void Apply_WhenOnlyFillIsSupplied_PreservesOmittedMembers()
     {
         var baseline = ScrollBarStyle.FullBlock;
-        var set = new ScrollBarStyleSet(fill: ScrollBarFill.Line);
-
-        var actual = set.Apply(baseline);
+        var actual = baseline.With(fill: ScrollBarFill.Line);
 
         actual.Fill.ShouldBe(ScrollBarFill.Line);
         actual.Chrome.ShouldBe(baseline.Chrome);
@@ -79,11 +77,9 @@ public sealed class ScrollBarStyleTests
     public void Apply_WhenAppearanceIsSupplied_ComposesProfile()
     {
         var baseline = ScrollBarStyle.Default;
-        var set = new ScrollBarStyleSet(
+        var actual = baseline.With(
             appearance: new AppearanceProfileSet(
                 focused: new AppearanceSet(face: new FaceSet(foreground: ThemeColor.FocusedText))));
-
-        var actual = set.Apply(baseline);
 
         actual.Chrome.ShouldBe(baseline.Chrome);
         actual.Appearance.Normal.ShouldBe(baseline.Appearance.Normal);
@@ -141,9 +137,9 @@ public sealed class ScrollBarStyleTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void StyleSet_WhenEnumIsUndefined_ThrowsAtConstruction(bool invalidChrome)
+    public void With_WhenEnumIsUndefined_Throws(bool invalidChrome)
     {
-        var exception = Should.Throw<ArgumentOutOfRangeException>(() => new ScrollBarStyleSet(
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() => ScrollBarStyle.Default.With(
             chrome: invalidChrome ? (ScrollBarChrome) 99 : null,
             fill: invalidChrome ? null : (ScrollBarFill) 99));
 
@@ -155,11 +151,11 @@ public sealed class ScrollBarStyleTests
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
-    public void StyleSet_WhenPartColorIsTransparent_ThrowsAtConstruction(int part)
+    public void With_WhenPartColorIsTransparent_Throws(int part)
     {
         ColorValue transparent = Color.Transparent;
 
-        var exception = Should.Throw<ArgumentException>(() => new ScrollBarStyleSet(
+        var exception = Should.Throw<ArgumentException>(() => ScrollBarStyle.Default.With(
             trackColor: part == 0 ? transparent : null,
             thumbColor: part == 1 ? transparent : null,
             buttonColor: part == 2 ? transparent : null));

@@ -3,27 +3,27 @@
 ## Overview
 
 `ContentControl` is the abstract base for a control that owns zero or one
-publicly replaceable `Control`. It derives directly from
-[`Control`](control.md#overview). Its non-virtual `Content` property is `null`
-by default; a derived class can observe committed changes through
+publicly replaceable `ControlBase`. It derives directly from
+[`ControlBase`](control.md#overview). Its non-virtual `Content` property is
+`null` by default; a derived class can observe committed changes through
 `OnContentChanged(previous, current)` without replacing the ownership engine.
 
 Use `ContentControl` when arbitrary callers may replace one semantic content
 value. A component whose retained implementation tree is private uses
-[`CompositeControl`](composite-control.md#overview) instead, and a
+[`CompositeControlBase`](composite-control.md#overview) instead, and a
 general-purpose panel whose callers add arbitrary children remains a
 [`Container`](container.md#overview). Focusable single-face controls derive from
-[`Pressable`](pressable.md#overview), which inherits this exact content
+[`PressableBase`](pressable.md#overview), which inherits this exact content
 transaction instead of adding another content property.
 
 ## API
 
-| Member    | Default | Purpose                                                                                                              |
-| --------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
-| `Content` | `null`  | Transfers ownership of zero or one detached `Control`; replacement detaches the previous value without disposing it. |
+| Member    | Default | Purpose                                                                                                                  |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `Content` | `null`  | Transfers ownership of zero or one detached `ControlBase`; replacement detaches the previous value without disposing it. |
 
 All inherited layout, appearance, availability, and focus properties are defined
-by [`Control`](control.md#api).
+by [`ControlBase`](control.md#api).
 
 ## Ownership and mutation
 
@@ -114,13 +114,13 @@ caller-owned and is never disposed by its former owner.
 ```csharp
 public sealed class Card: ContentControl
 {
-    public Card(Control content)
+    public Card(ControlBase content)
     {
         ArgumentNullException.ThrowIfNull(content);
         Content = content;
     }
 
-    protected override void OnContentChanged(Control? previous, Control? current)
+    protected override void OnContentChanged(ControlBase? previous, ControlBase? current)
     {
         // The ownership transaction is already committed here.
     }

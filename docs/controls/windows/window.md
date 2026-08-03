@@ -2,10 +2,11 @@
 
 ## Overview
 
-`Window` is a [`FloatingSurface`](../../concepts/floating-surfaces.md#overview)
-that frames its inherited `Content` as a titled terminal surface. The Window
-object itself is the retained, rendered, hit-tested, and optionally modal
-identity — there is no separate presentation wrapper to manage.
+`Window` is a
+[`FloatingSurfaceBase`](../../concepts/floating-surfaces.md#overview) that
+frames its inherited `Content` as a titled terminal surface. The Window object
+itself is the retained, rendered, hit-tested, and optionally modal identity —
+there is no separate presentation wrapper to manage.
 
 ## API
 

@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the NavigationView with sidebar items, groups, overflow scrolling, and footer.</summary>
-internal sealed class NavigationViewPane: CompositeControl
+internal sealed class NavigationViewPane: CompositeControlBase
 {
     /// <summary>Initializes the retained NavigationView showcase content.</summary>
     internal NavigationViewPane() => InitializeContent(CreateContent());

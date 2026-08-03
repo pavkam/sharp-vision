@@ -189,8 +189,8 @@ wrapped according to the
 
 ## Control rendering
 
-`Control.Render(Canvas)` is dispatcher-affine and rejects reentrancy. It clears
-render invalidation before extension code runs, clips its own drawing to
+`ControlBase.Render(Canvas)` is dispatcher-affine and rejects reentrancy. It
+clears render invalidation before extension code runs, clips its own drawing to
 `VisualBounds`, draws the framework-owned chrome underlay, calls
 `OnRenderContent`, and then renders owned children through either the arranged
 `Bounds` clip or the documented unclipped-child path. An invalidation raised

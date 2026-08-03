@@ -48,7 +48,7 @@ enabled.StateChanged += (_, args) =>
 Properties commit before their change events run. `IsEnabled` participates in
 the inherited effective state, so disabling an ancestor also disables this
 button. See the [`CheckBox` event order](../controls/input/check-box.md#api) and
-the [`Control` inherited-state rules](../controls/control.md#api).
+the [`ControlBase` inherited-state rules](../controls/control.md#api).
 
 ## Handle routed input
 
@@ -85,7 +85,7 @@ coordinated with the same route. The complete ordering is in
 | A button was activated               | `Button.Click`                     |
 | A value or selection changed         | The control's typed changed event  |
 | Synchronize persistent model state   | Strongly typed data binding        |
-| Observe ordinary property assignment | `Control.PropertyChanged`          |
+| Observe ordinary property assignment | `ControlBase.PropertyChanged`      |
 | Intercept a key before a child       | Preview routed handler             |
 | Handle unconsumed input from a child | Bubble routed handler              |
 | Perform periodic UI work             | `DispatcherTimer`                  |

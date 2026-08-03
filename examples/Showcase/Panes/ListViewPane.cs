@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the ListView control with live, themed selection specimens.</summary>
-internal sealed class ListViewPane: CompositeControl
+internal sealed class ListViewPane: CompositeControlBase
 {
     internal ListViewPane() => InitializeContent(CreateContent());
 

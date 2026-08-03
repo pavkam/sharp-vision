@@ -5,7 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Display.Text;
 
-internal sealed class TreeViewPane: CompositeControl
+internal sealed class TreeViewPane: CompositeControlBase
 {
     internal TreeViewPane() => InitializeContent(CreateContent());
     internal const string Title = "TreeView";

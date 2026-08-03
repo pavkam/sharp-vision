@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Controls;
 
 /// <summary>Exposes the optional-glyph mutation helpers for testing.</summary>
-internal sealed class GlyphProbe: Control
+internal sealed class GlyphProbe: ControlBase
 {
     private Rune? _testGlyph;
 

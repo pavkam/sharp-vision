@@ -4,7 +4,7 @@
 namespace SharpVision.Showcase.Panes;
 
 /// <summary>Demonstrates box-drawing topology merging with a deterministic maze pattern.</summary>
-internal sealed class CanvasMazeSample: Control
+internal sealed class CanvasMazeSample: ControlBase
 {
     /// <summary>Initializes the maze specimen.</summary>
     internal CanvasMazeSample()

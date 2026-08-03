@@ -371,7 +371,7 @@ public sealed class ScrollBarSurfaceTests
             glyphs.VerticalLineTrack,
             glyphs.VerticalLineThumb);
 
-        return new ScrollBarStyleSet(glyphs: replacement).Apply(baseline);
+        return baseline.With(glyphs: replacement);
     }
 
     private static ThemeProfile LiteralProfile(Color foreground) => new(

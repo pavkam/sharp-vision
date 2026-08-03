@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the RadioButton control with grouped, mutually exclusive selection specimens.</summary>
-internal sealed class RadioButtonPane: CompositeControl
+internal sealed class RadioButtonPane: CompositeControlBase
 {
     internal RadioButtonPane() => InitializeContent(CreateContent());
 

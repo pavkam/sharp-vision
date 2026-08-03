@@ -27,6 +27,10 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     private readonly Button _upButton;
     private readonly ComboBox _filterPicker;
     private readonly Button _cancelButton;
+    private readonly StyleSlot<ButtonStyle> _cancelButtonStyle;
+    private readonly StyleSlot<CheckBoxStyle> _showHiddenCheckBoxStyle;
+    private readonly StyleSlot<ScrollBarStyle> _fileListScrollBarStyle;
+    private readonly StyleSlot<ScrollBarStyle> _filterScrollBarStyle;
 
     private FilePickerEntry[] _entries = [];
     private CancellationTokenSource? _loadCancellation;
@@ -123,6 +127,19 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
             Overflow = Overflow.Ellipsis,
             VerticalAlignment = VerticalAlignment.Center
         };
+
+        _cancelButtonStyle = InitializePartStyle(
+            ButtonStyle.ForwardingDefinition,
+            nameof(CancelButtonStyle));
+        _showHiddenCheckBoxStyle = InitializePartStyle(
+            CheckBoxStyle.ForwardingDefinition,
+            nameof(ShowHiddenCheckBoxStyle));
+        _fileListScrollBarStyle = InitializePartStyle(
+            ScrollBarStyle.ForwardingDefinition,
+            nameof(FileListScrollBarStyle));
+        _filterScrollBarStyle = InitializePartStyle(
+            ScrollBarStyle.ForwardingDefinition,
+            nameof(FilterScrollBarStyle));
         _cancelButton = new Button
         {
             Content = new Text("&Cancel"),
@@ -172,20 +189,12 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
     public ButtonStyle? CancelButtonStyle
     {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                return;
-            }
-
-            _cancelButton.Style = value;
-        }
+        get => _cancelButtonStyle.Local;
+        set => _cancelButtonStyle.Local = value;
     }
 
     /// <summary>Gets the resolved Cancel Button style.</summary>
-    public ButtonStyle ActualCancelButtonStyle => _cancelButton.ActualStyle;
+    public ButtonStyle ActualCancelButtonStyle => _cancelButtonStyle.Actual;
 
     /// <summary>Gets or sets the complete local presentation applied to the hidden-entry toggle, or
     /// null to let it use its own semantic input profile.</summary>
@@ -193,20 +202,12 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
     public CheckBoxStyle? ShowHiddenCheckBoxStyle
     {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                return;
-            }
-
-            HiddenToggle.Style = value;
-        }
+        get => _showHiddenCheckBoxStyle.Local;
+        set => _showHiddenCheckBoxStyle.Local = value;
     }
 
     /// <summary>Gets the resolved hidden-entry toggle style.</summary>
-    public CheckBoxStyle ActualShowHiddenCheckBoxStyle => HiddenToggle.ActualStyle;
+    public CheckBoxStyle ActualShowHiddenCheckBoxStyle => _showHiddenCheckBoxStyle.Actual;
 
     /// <summary>Gets or sets the complete local style for the file list's generated scrollbars, or
     /// null to let it use its own semantic profile.</summary>
@@ -214,30 +215,12 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
     public ScrollBarStyle? FileListScrollBarStyle
     {
-        get => FileList.ScrollBarStyle;
-        set
-        {
-            VerifyMutable();
-
-            if (FileList.ScrollBarStyle == value)
-            {
-                return;
-            }
-
-            var previous = ActualFileListScrollBarStyle;
-            FileList.ScrollBarStyle = value;
-            var current = ActualFileListScrollBarStyle;
-            NotifyPropertyChanged(nameof(FileListScrollBarStyle), InvalidationImpact.None);
-
-            if (previous != current)
-            {
-                NotifyPropertyChanged(nameof(ActualFileListScrollBarStyle), InvalidationImpact.None);
-            }
-        }
+        get => _fileListScrollBarStyle.Local;
+        set => _fileListScrollBarStyle.Local = value;
     }
 
     /// <summary>Gets the resolved file-list generated-scrollbar style.</summary>
-    public ScrollBarStyle ActualFileListScrollBarStyle => FileList.ActualScrollBarStyle;
+    public ScrollBarStyle ActualFileListScrollBarStyle => _fileListScrollBarStyle.Actual;
 
     /// <summary>Gets or sets the complete local style for the filter picker's generated scrollbar,
     /// or null to let it use its own semantic profile.</summary>
@@ -245,30 +228,12 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
     public ScrollBarStyle? FilterScrollBarStyle
     {
-        get => _filterPicker.ScrollBarStyle;
-        set
-        {
-            VerifyMutable();
-
-            if (_filterPicker.ScrollBarStyle == value)
-            {
-                return;
-            }
-
-            var previous = ActualFilterScrollBarStyle;
-            _filterPicker.ScrollBarStyle = value;
-            var current = ActualFilterScrollBarStyle;
-            NotifyPropertyChanged(nameof(FilterScrollBarStyle), InvalidationImpact.None);
-
-            if (previous != current)
-            {
-                NotifyPropertyChanged(nameof(ActualFilterScrollBarStyle), InvalidationImpact.None);
-            }
-        }
+        get => _filterScrollBarStyle.Local;
+        set => _filterScrollBarStyle.Local = value;
     }
 
     /// <summary>Gets the resolved filter-picker generated-scrollbar style.</summary>
-    public ScrollBarStyle ActualFilterScrollBarStyle => _filterPicker.ActualScrollBarStyle;
+    public ScrollBarStyle ActualFilterScrollBarStyle => _filterScrollBarStyle.Actual;
 
     #endregion
 
@@ -279,6 +244,10 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     protected void Initialize()
     {
         Content = CreateContent();
+        BindStyle(_cancelButtonStyle, _cancelButton);
+        BindStyle(_showHiddenCheckBoxStyle, HiddenToggle);
+        BindStyle(_fileListScrollBarStyle, FileList, nameof(FileList.ScrollBarStyle));
+        BindStyle(_filterScrollBarStyle, _filterPicker, nameof(_filterPicker.ScrollBarStyle));
         WireInteraction();
     }
 
@@ -363,10 +332,10 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     #region Interaction
 
     /// <summary>Returns the control to receive initial focus when the modal scope is created.</summary>
-    protected abstract Control GetModalFocusTarget();
+    protected abstract ControlBase GetModalFocusTarget();
 
     /// <summary>Returns the control to receive focus after the first successful directory load.</summary>
-    protected abstract Control GetInitialLoadFocusTarget();
+    protected abstract ControlBase GetInitialLoadFocusTarget();
 
     /// <summary>Called when the list selection changes.</summary>
     protected abstract void OnListSelectionChanged();

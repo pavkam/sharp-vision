@@ -6,7 +6,7 @@ namespace SharpVision.Styling;
 /// <summary>Provides shared resolved-appearance helpers for chrome renderers.</summary>
 internal static class ControlAppearance
 {
-    extension(Control control)
+    extension(ControlBase control)
     {
         public TerminalStyle ResolveTerminalStyle(VisualState state) =>
             control.GetResolvedAppearance(state).Style;

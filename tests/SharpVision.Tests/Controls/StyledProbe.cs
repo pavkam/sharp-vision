@@ -4,36 +4,32 @@
 namespace SharpVision.Tests.Controls;
 
 /// <summary>Exercises the protected complete-style resolution seam through a Button-shaped test style.</summary>
-public sealed class StyledProbe: Control
+public sealed class StyledProbe: ControlBase
 {
+    private readonly StyleSlot<ButtonStyle> _style;
+
+    /// <summary>Initializes one framework-owned primary style slot.</summary>
+    public StyledProbe()
+    {
+        var definition = new StyleDefinition<ButtonStyle>(
+            ThemeRole.Input,
+            Resolve,
+            SelectAppearance,
+            Compare);
+        _style = InitializeStyle(definition);
+    }
+
     /// <summary>Gets or sets the complete local test style, or null for Theme ownership.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public ButtonStyle? Style
     {
-        get;
-        set => _ = SetControlStyle(
-            ref field,
-            value,
-            ThrowOnStyleResolution
-                ? static (local, theme) => local is not null
-                    ? throw new InvalidOperationException("resolve")
-                    : ResolveStyle(local, theme)
-                : ResolveStyle,
-            ThrowOnCompareStructure
-                ? static (_, _, _, _) => throw new InvalidOperationException("compare")
-                : ReturnInvalidImpact
-                    ? static (_, _, _, _) => (InvalidationImpact) int.MaxValue
-                    : CompareStructure,
-            ThrowOnAppearanceSelection
-                ? static _ => throw new InvalidOperationException("appearance")
-                : static style => style.Appearance,
-            nameof(Style),
-            nameof(ActualStyle));
+        get => _style.Local;
+        set => _style.Local = value;
     }
 
     /// <summary>Gets the complete local, Theme-owned, or fallback style.</summary>
-    public ButtonStyle ActualStyle => ResolveStyle(Style, Theme);
+    public ButtonStyle ActualStyle => _style.Actual;
 
     /// <summary>Gets the protected complete appearance profile selected by the resolved style.</summary>
     public ThemeProfile Profile => AppearanceProfile;
@@ -88,38 +84,6 @@ public sealed class StyledProbe: Control
             : ResolveStyle(Style, theme).Appearance;
 
     /// <inheritdoc/>
-    protected override InvalidationImpact GetThemeChangeImpact(
-        Theme? previous,
-        Theme? current,
-        Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace)
-    {
-        if (ThrowOnThemeImpact)
-        {
-            throw new InvalidOperationException("theme-impact");
-        }
-
-        ThemeObservedDuringImpact = Theme;
-        return GetControlStyleThemeImpact(
-            Style,
-            previous,
-            current,
-            ResolveStyle,
-            CompareStructure,
-            static style => style.Appearance,
-            previousParentAmbientFace,
-            currentParentAmbientFace);
-    }
-
-    /// <inheritdoc/>
-    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        ThrowOnResolvedStyleSelection
-            ? throw new InvalidOperationException("resolved-style")
-            : Style is null && ResolveStyle(Style, previous) != ResolveStyle(Style, current)
-                ? nameof(ActualStyle)
-                : null;
-
-    /// <inheritdoc/>
     protected override void OnAttached()
     {
         base.OnAttached();
@@ -144,10 +108,51 @@ public sealed class StyledProbe: Control
     private static ButtonStyle ResolveStyle(ButtonStyle? localStyle, Theme? theme) =>
         localStyle ?? new ButtonStyle(ButtonStyle.Standard.Padding, (theme ?? Themes.Dark).Input);
 
+    private ButtonStyle Resolve(ButtonStyle? localStyle, Theme? theme)
+    {
+        return ThrowOnStyleResolution && localStyle is not null
+            ? throw new InvalidOperationException("resolve")
+            : AppearanceProfileFailureTheme is not null && ReferenceEquals(theme, AppearanceProfileFailureTheme)
+            ? throw new InvalidOperationException("appearance-profile")
+            : ThrowOnResolvedStyleSelection && !ReferenceEquals(theme, Theme)
+            ? throw new InvalidOperationException("resolved-style")
+            : ResolveStyle(localStyle, theme);
+    }
+
+    private ThemeProfile SelectAppearance(ButtonStyle style) => ThrowOnAppearanceSelection
+        ? throw new InvalidOperationException("appearance")
+        : style.Appearance;
+
+    private InvalidationImpact Compare(
+        ButtonStyle previous,
+        Theme? previousTheme,
+        ButtonStyle current,
+        Theme? currentTheme)
+    {
+        if (!ReferenceEquals(previousTheme, currentTheme))
+        {
+            ThemeObservedDuringImpact = Theme;
+            if (ThrowOnThemeImpact)
+            {
+                throw new InvalidOperationException("theme-impact");
+            }
+        }
+
+        return ThrowOnCompareStructure
+            ? throw new InvalidOperationException("compare")
+            : ReturnInvalidImpact
+            ? (InvalidationImpact) int.MaxValue
+            : CompareStructure(previous, previousTheme, current, currentTheme);
+    }
+
     private static InvalidationImpact CompareStructure(
         ButtonStyle previous,
         Theme? previousTheme,
         ButtonStyle current,
-        Theme? currentTheme) =>
-        previous.Padding == current.Padding ? InvalidationImpact.None : InvalidationImpact.Measure;
+        Theme? currentTheme)
+    {
+        _ = previousTheme;
+        _ = currentTheme;
+        return previous.Padding == current.Padding ? InvalidationImpact.None : InvalidationImpact.Measure;
+    }
 }

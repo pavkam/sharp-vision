@@ -19,7 +19,7 @@ public static class Router
     /// </exception>
     /// <exception cref="ObjectDisposedException"><paramref name="target"/> is disposed.</exception>
     public static RouteResult Route<TArgs>(
-        Control target,
+        ControlBase target,
         Event<TArgs> routedEvent,
         TArgs eventArgs) where TArgs : RoutedEventArgs =>
         RouteCore(target, routedEvent, eventArgs, initialize: null);
@@ -40,7 +40,7 @@ public static class Router
     /// </exception>
     /// <exception cref="ObjectDisposedException"><paramref name="target"/> is disposed.</exception>
     internal static RouteResult RouteInitialized<TArgs>(
-        Control target,
+        ControlBase target,
         Event<TArgs> routedEvent,
         TArgs eventArgs,
         Action<TArgs> initialize) where TArgs : RoutedEventArgs
@@ -50,7 +50,7 @@ public static class Router
     }
 
     private static RouteResult RouteCore<TArgs>(
-        Control target,
+        ControlBase target,
         Event<TArgs> routedEvent,
         TArgs eventArgs,
         Action<TArgs>? initialize) where TArgs : RoutedEventArgs
@@ -80,7 +80,7 @@ public static class Router
             }
         }
 
-        var route = ArrayPool<Control>.Shared.Rent(depth);
+        var route = ArrayPool<ControlBase>.Shared.Rent(depth);
         var index = 0;
 
         for (var current = target; current is not null; current = current.Parent)
@@ -166,7 +166,7 @@ public static class Router
             }
 
             Array.Clear(route, 0, depth);
-            ArrayPool<Control>.Shared.Return(route);
+            ArrayPool<ControlBase>.Shared.Return(route);
         }
 
         return result;

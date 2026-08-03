@@ -8,7 +8,7 @@ namespace SharpVision.Tests.Controls.Input;
 public sealed class CheckBoxTests
 {
     /// <summary>Verifies the reported ThemeRole matches the Input-derived profile ActualStyle
-    /// actually resolves against, instead of the unrelated default ThemeRole.Control the
+    /// actually resolves against, instead of the unrelated default ThemeRole.ControlBase the
     /// unoverridden base property previously reported (see #157).</summary>
     [Fact]
     public void ThemeRole_WhenResolved_MatchesTheInputProfileActualStyleUses()

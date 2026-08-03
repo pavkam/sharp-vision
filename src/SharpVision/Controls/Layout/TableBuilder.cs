@@ -56,7 +56,7 @@ public sealed class TableBuilder
 
         foreach (var cells in _rows)
         {
-            var controls = new Control[cells.Length];
+            var controls = new ControlBase[cells.Length];
 
             for (var index = 0; index < cells.Length; index++)
             {

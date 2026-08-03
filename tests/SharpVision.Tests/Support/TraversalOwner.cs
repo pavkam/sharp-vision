@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Support;
 
 /// <summary>Provides normal, excluded, and popup ownership slots for traversal tests.</summary>
-internal sealed class TraversalOwner: Control
+internal sealed class TraversalOwner: ControlBase
 {
     private readonly OwnedControlSlot _normal;
     private readonly OwnedControlSlot _excluded;
@@ -31,11 +31,11 @@ internal sealed class TraversalOwner: Control
                 InvalidationImpact.Measure), int.MaxValue);
     }
 
-    internal void AddNormal(Control control) => _normal.Add(control);
-    internal bool RemoveNormal(Control control) => _normal.Remove(control);
-    internal void AddExcluded(Control control) => _excluded.Add(control);
-    internal void AddSecondary(Control control) => _secondary.Add(control);
-    internal void AddPopup(Control control) => _popup.Add(control);
+    internal void AddNormal(ControlBase control) => _normal.Add(control);
+    internal bool RemoveNormal(ControlBase control) => _normal.Remove(control);
+    internal void AddExcluded(ControlBase control) => _excluded.Add(control);
+    internal void AddSecondary(ControlBase control) => _secondary.Add(control);
+    internal void AddPopup(ControlBase control) => _popup.Add(control);
 
     protected override Size MeasureOverride(Constraint constraint)
     {

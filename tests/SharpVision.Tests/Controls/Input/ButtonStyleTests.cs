@@ -68,9 +68,7 @@ public sealed class ButtonStyleTests
     public void Apply_WhenOnlyPaddingIsSupplied_PreservesAppearance()
     {
         var baseline = ButtonStyle.Filled;
-        var set = new ButtonStyleSet(padding: new Thickness(horizontal: 3, vertical: 1));
-
-        var actual = set.Apply(baseline);
+        var actual = baseline.With(padding: new Thickness(horizontal: 3, vertical: 1));
 
         actual.Padding.ShouldBe(new Thickness(horizontal: 3, vertical: 1));
         actual.Appearance.ShouldBeSameAs(baseline.Appearance);
@@ -81,12 +79,10 @@ public sealed class ButtonStyleTests
     public void Apply_WhenOnlyAppearanceIsSupplied_ComposesProfile()
     {
         var baseline = ButtonStyle.Standard;
-        var set = new ButtonStyleSet(
+        var actual = baseline.With(
             appearance: new AppearanceProfileSet(
                 pointerOver: new AppearanceSet(
                     face: new FaceSet(background: ThemeColor.ActiveControl))));
-
-        var actual = set.Apply(baseline);
 
         actual.Padding.ShouldBe(baseline.Padding);
         actual.Appearance.Normal.ShouldBe(baseline.Appearance.Normal);

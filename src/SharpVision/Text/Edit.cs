@@ -335,7 +335,7 @@ public static class Edit
     /// <returns>The immutable replacement result, truncated only at a grapheme boundary.</returns>
     /// <exception cref="ArgumentNullException">A string is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxLength"/> is negative.</exception>
-    /// <exception cref="ArgumentException">Control policy rejects input or retained text exceeds maximum.</exception>
+    /// <exception cref="ArgumentException">ControlBase policy rejects input or retained text exceeds maximum.</exception>
     public static EditResult Replace(
         string text,
         Selection selection,

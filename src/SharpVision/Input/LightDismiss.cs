@@ -7,15 +7,15 @@ namespace SharpVision.Input;
 /// <summary>Registers a preview pointer handler that dismisses a popup on outside press.</summary>
 internal sealed class LightDismiss: IDisposable
 {
-    private readonly Control? _anchor;
+    private readonly ControlBase? _anchor;
     private readonly Func<bool> _isOpen;
     private readonly Func<Rect> _surfaceBounds;
     private readonly Action _dismiss;
     private IDisposable? _registration;
 
     public LightDismiss(
-        Control surface,
-        Control? anchor,
+        ControlBase surface,
+        ControlBase? anchor,
         Func<bool> isOpen,
         Func<Rect> surfaceBounds,
         Action dismiss)

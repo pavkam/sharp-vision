@@ -19,8 +19,8 @@ public sealed class Overlay: Container
     /// <summary>Returns shadow ownership to the active Theme.</summary>
     public new void ResetShadow() => base.ResetShadow();
 
-    private static readonly ConditionalWeakTable<Control, OverlayZIndex> _orders = [];
-    private static readonly ConditionalWeakTable<Control, OverlayPosition> _positions = [];
+    private static readonly ConditionalWeakTable<ControlBase, OverlayZIndex> _orders = [];
+    private static readonly ConditionalWeakTable<ControlBase, OverlayPosition> _positions = [];
 
     /// <summary>Initializes an overlay that fills its parent shared box.</summary>
     public Overlay() => HorizontalAlignment = HorizontalAlignment.Stretch;
@@ -47,7 +47,7 @@ public sealed class Overlay: Container
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached offset, or null when unset.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
-    public static Length? GetLeft(Control control)
+    public static Length? GetLeft(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         return _positions.TryGetValue(control, out var position) ? position.Left : null;
@@ -57,7 +57,7 @@ public sealed class Overlay: Container
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached offset, or null when unset.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
-    public static Length? GetTop(Control control)
+    public static Length? GetTop(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         return _positions.TryGetValue(control, out var position) ? position.Top : null;
@@ -67,7 +67,7 @@ public sealed class Overlay: Container
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached offset, or null when unset.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
-    public static Length? GetRight(Control control)
+    public static Length? GetRight(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         return _positions.TryGetValue(control, out var position) ? position.Right : null;
@@ -77,7 +77,7 @@ public sealed class Overlay: Container
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached offset, or null when unset.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
-    public static Length? GetBottom(Control control)
+    public static Length? GetBottom(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         return _positions.TryGetValue(control, out var position) ? position.Bottom : null;
@@ -90,7 +90,7 @@ public sealed class Overlay: Container
     /// <exception cref="ArgumentException"><paramref name="value"/> is automatic or proportional.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public static void SetLeft(Control control, Length? value)
+    public static void SetLeft(ControlBase control, Length? value)
     {
         ArgumentNullException.ThrowIfNull(control);
         ValidatePositionOffset(value);
@@ -113,7 +113,7 @@ public sealed class Overlay: Container
     /// <exception cref="ArgumentException"><paramref name="value"/> is automatic or proportional.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public static void SetTop(Control control, Length? value)
+    public static void SetTop(ControlBase control, Length? value)
     {
         ArgumentNullException.ThrowIfNull(control);
         ValidatePositionOffset(value);
@@ -136,7 +136,7 @@ public sealed class Overlay: Container
     /// <exception cref="ArgumentException"><paramref name="value"/> is automatic or proportional.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public static void SetRight(Control control, Length? value)
+    public static void SetRight(ControlBase control, Length? value)
     {
         ArgumentNullException.ThrowIfNull(control);
         ValidatePositionOffset(value);
@@ -159,7 +159,7 @@ public sealed class Overlay: Container
     /// <exception cref="ArgumentException"><paramref name="value"/> is automatic or proportional.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public static void SetBottom(Control control, Length? value)
+    public static void SetBottom(ControlBase control, Length? value)
     {
         ArgumentNullException.ThrowIfNull(control);
         ValidatePositionOffset(value);
@@ -183,7 +183,7 @@ public sealed class Overlay: Container
         }
     }
 
-    private static void InvalidateParent(Control control)
+    private static void InvalidateParent(ControlBase control)
     {
         if (control.Parent is Overlay parent)
         {
@@ -195,7 +195,7 @@ public sealed class Overlay: Container
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached value, or zero when unset.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
-    public static int GetZIndex(Control control)
+    public static int GetZIndex(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         return _orders.TryGetValue(control, out var order) ? order.Value : 0;
@@ -207,7 +207,7 @@ public sealed class Overlay: Container
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public static void SetZIndex(Control control, int value)
+    public static void SetZIndex(ControlBase control, int value)
     {
         ArgumentNullException.ThrowIfNull(control);
         control.VerifyMutable();
@@ -227,23 +227,23 @@ public sealed class Overlay: Container
     }
 
     /// <inheritdoc/>
-    internal override Control? HitTest(Point point) =>
+    internal override ControlBase? HitTest(Point point) =>
         CanHitTestSelf(point, requireContainment: false)
             ? HitTestPopup(point) ?? (AutoScroll ? HitTestScrollable(point) : HitTestUnscrolled(point))
             : null;
 
-    private Control? HitTestScrollable(Point point) => Bounds.Contains(point)
+    private ControlBase? HitTestScrollable(Point point) => Bounds.Contains(point)
         ? HitTestBars(point) ??
           (ViewportBounds.Contains(point) ? HitTestOrderedContent(point) : null) ??
           (HitTestsOwnBounds ? this : null)
         : null;
 
-    private Control? HitTestUnscrolled(Point point) =>
+    private ControlBase? HitTestUnscrolled(Point point) =>
         !ClipToBounds || Bounds.Contains(point)
             ? HitTestOrderedContent(point) ?? (HitTestsOwnBounds && Bounds.Contains(point) ? this : null)
             : null;
 
-    private Control? HitTestBars(Point point)
+    private ControlBase? HitTestBars(Point point)
     {
         if (Bars is null)
         {
@@ -261,7 +261,7 @@ public sealed class Overlay: Container
         return null;
     }
 
-    private Control? HitTestOrderedContent(Point point)
+    private ControlBase? HitTestOrderedContent(Point point)
     {
         var rented = RentOrdered();
 
@@ -277,14 +277,14 @@ public sealed class Overlay: Container
         }
         finally
         {
-            ArrayPool<Control>.Shared.Return(rented, clearArray: true);
+            ArrayPool<ControlBase>.Shared.Return(rented, clearArray: true);
         }
 
         return null;
     }
 
     /// <inheritdoc/>
-    internal override Control? HitTestPopupCore(Point point)
+    internal override ControlBase? HitTestPopupCore(Point point)
     {
         var rented = RentOrdered();
 
@@ -300,7 +300,7 @@ public sealed class Overlay: Container
         }
         finally
         {
-            ArrayPool<Control>.Shared.Return(rented, clearArray: true);
+            ArrayPool<ControlBase>.Shared.Return(rented, clearArray: true);
         }
 
         return null;
@@ -394,7 +394,7 @@ public sealed class Overlay: Container
         : 0;
 
     private static int Outer(
-        Control child,
+        ControlBase child,
         bool horizontal,
         int axis,
         int leading,
@@ -477,7 +477,7 @@ public sealed class Overlay: Container
         }
         finally
         {
-            ArrayPool<Control>.Shared.Return(rented, clearArray: true);
+            ArrayPool<ControlBase>.Shared.Return(rented, clearArray: true);
         }
     }
 
@@ -495,15 +495,15 @@ public sealed class Overlay: Container
         }
         finally
         {
-            ArrayPool<Control>.Shared.Return(rented, clearArray: true);
+            ArrayPool<ControlBase>.Shared.Return(rented, clearArray: true);
         }
     }
 
-    private Control[] RentOrdered()
+    private ControlBase[] RentOrdered()
     {
         Debug.Assert(Children.Count >= 0, "Overlay child count cannot be negative.");
 
-        var result = ArrayPool<Control>.Shared.Rent(Children.Count);
+        var result = ArrayPool<ControlBase>.Shared.Rent(Children.Count);
 
         for (var index = 0; index < Children.Count; index++)
         {

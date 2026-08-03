@@ -68,11 +68,11 @@ public sealed class Stack: Container
     }
 
     /// <inheritdoc/>
-    internal override Control NavigationAt(int index) =>
+    internal override ControlBase NavigationAt(int index) =>
         Reverse && index < Children.Count ? Children[Children.Count - index - 1] : base.NavigationAt(index);
 
     /// <inheritdoc/>
-    internal override Control? HitTestPopupCore(Point point)
+    internal override ControlBase? HitTestPopupCore(Point point)
     {
         if (!Reverse)
         {
@@ -135,7 +135,7 @@ public sealed class Stack: Container
             return;
         }
 
-        var rentedChildren = ArrayPool<Control>.Shared.Rent(count);
+        var rentedChildren = ArrayPool<ControlBase>.Shared.Rent(count);
         var rentedLengths = ArrayPool<Length>.Shared.Rent(count);
         var rentedAutomatic = ArrayPool<int>.Shared.Rent(count);
         var rentedMinimum = ArrayPool<int>.Shared.Rent(count);
@@ -178,7 +178,7 @@ public sealed class Stack: Container
             minimum.Clear();
             maximum.Clear();
             extents.Clear();
-            ArrayPool<Control>.Shared.Return(rentedChildren, clearArray: true);
+            ArrayPool<ControlBase>.Shared.Return(rentedChildren, clearArray: true);
             ArrayPool<Length>.Shared.Return(rentedLengths);
             ArrayPool<int>.Shared.Return(rentedAutomatic);
             ArrayPool<int>.Shared.Return(rentedMinimum);
@@ -244,7 +244,7 @@ public sealed class Stack: Container
     }
 
     private void Fill(
-        Span<Control> children,
+        Span<ControlBase> children,
         Span<Length> lengths,
         Span<int> automatic,
         Span<int> minimum,
@@ -275,7 +275,7 @@ public sealed class Stack: Container
         Debug.Assert(position == children.Length, "Every participating child must have one track.");
     }
 
-    private int SumMargins(ReadOnlySpan<Control> children)
+    private int SumMargins(ReadOnlySpan<ControlBase> children)
     {
         Debug.Assert(children.Length >= 0, "Stack margin sum requires a valid span.");
 
@@ -292,7 +292,7 @@ public sealed class Stack: Container
     }
 
     private void Arrange(
-        ReadOnlySpan<Control> children,
+        ReadOnlySpan<ControlBase> children,
         ReadOnlySpan<int> extents,
         Rect bounds,
         int spacing)

@@ -3,105 +3,39 @@
 
 namespace SharpVision.Controls;
 
-/// <summary>Defines a reusable component that owns one permanent private implementation root.</summary>
-/// <remarks>
-/// A concrete constructor creates its retained implementation tree and transfers one detached root
-/// through <see cref="InitializeContent"/>. The root is not publicly replaceable and participates
-/// in the shared ownership, layout, rendering, input, context, and disposal infrastructure.
-/// </remarks>
+/// <summary>Defines a retained composite whose primary complete style is owned by the framework.</summary>
+/// <typeparam name="TStyle">The small immutable complete style value.</typeparam>
 [PublicAPI]
-public abstract class CompositeControl: Control
+public abstract class CompositeControl<TStyle>: CompositeControlBase
+    where TStyle : struct, IEquatable<TStyle>
 {
-    private readonly OwnedControlSlot _contentSlot;
-    private bool _initializationConsumed;
+    /// <summary>Initializes one Theme-aware primary or aggregate style slot.</summary>
+    /// <param name="definition">The immutable style policy.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="definition"/> is null.</exception>
+    protected CompositeControl(StyleDefinition<TStyle> definition) =>
+        StyleSlot = InitializeStyle(definition, OnStyleChanged);
 
-    /// <summary>Initializes an empty component awaiting constructor-time content initialization.</summary>
-    protected CompositeControl()
+    /// <summary>Gets or sets the complete local style, or null to use the definition fallback.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public TStyle? Style
     {
-        _contentSlot = RegisterOwnedSlot(
-            new OwnedControlOptions(
-                OwnedControlRole.CompositionRoot,
-                OwnedControlLayer.Normal,
-                participatesInHitTesting: true,
-                participatesInNavigation: true,
-                partKey: null,
-                InvalidationImpact.Measure),
-            capacity: 1);
+        get => StyleSlot.Local;
+        set => StyleSlot.Local = value;
     }
 
-    /// <summary>Gets the committed private implementation root.</summary>
-    /// <exception cref="InvalidOperationException">
-    /// The root has not been initialized or was disposed directly.
-    /// </exception>
-    protected Control Content => GetContent();
+    /// <summary>Gets the cached complete local, Theme-owned, or fallback style.</summary>
+    public virtual TStyle ActualStyle => StyleSlot.Actual;
 
-    /// <summary>Transfers one detached implementation root to this component permanently.</summary>
-    /// <param name="content">The non-null detached root of the retained implementation tree.</param>
-    /// <remarks>
-    /// Candidate validation failures before ownership commit do not consume initialization. Once
-    /// the edge commits, initialization remains consumed even when a lifecycle or ownership
-    /// callback throws. Disposing the committed root does not permit later reinitialization.
-    /// </remarks>
-    /// <exception cref="ArgumentNullException"><paramref name="content"/> is null.</exception>
-    /// <exception cref="ArgumentException">
-    /// <paramref name="content"/> is attached, already owned, or would create an ownership cycle.
-    /// </exception>
-    /// <exception cref="InvalidOperationException">
-    /// The component is attached and accessed off-dispatcher, ownership publication is active, or
-    /// initialization was already committed.
-    /// </exception>
-    /// <exception cref="ObjectDisposedException">The component or content is disposed.</exception>
-    protected void InitializeContent(Control content)
+    /// <summary>Gets the framework-owned primary style slot for specialized resolved projections.</summary>
+    protected StyleSlot<TStyle> StyleSlot { get; }
+
+    /// <summary>Runs genuine post-commit behavior after a changed resolved style is published.</summary>
+    /// <param name="previous">The previous complete resolved style.</param>
+    /// <param name="current">The current complete resolved style.</param>
+    protected virtual void OnStyleChanged(TStyle previous, TStyle current)
     {
-        ArgumentNullException.ThrowIfNull(content);
-        VerifyMutable();
-
-        if (_initializationConsumed || _contentSlot.Count != 0)
-        {
-            throw new InvalidOperationException(
-                "A composite control's composition root can be initialized only once.");
-        }
-
-        try
-        {
-            _contentSlot.Add(content);
-        }
-        finally
-        {
-            // The registry publishes callbacks after structural commit. A callback may throw even
-            // though this edge is now permanent, so the committed slot—not method completion—is
-            // authoritative for whether initialization has been consumed.
-            _initializationConsumed |= _contentSlot.Count != 0;
-        }
+        _ = previous;
+        _ = current;
     }
-
-    /// <inheritdoc/>
-    internal sealed override void ValidateAttachment()
-    {
-        _ = GetContent();
-        base.ValidateAttachment();
-    }
-
-    /// <inheritdoc/>
-    protected override Size MeasureOverride(Constraint constraint)
-    {
-        var content = GetContent();
-        var desired = MeasureChild(content, constraint);
-
-        return content.Visibility == Visibility.Collapsed
-            ? default
-            : new Size(
-                desired.Width.SaturatingAdd(content.Margin.Horizontal),
-                desired.Height.SaturatingAdd(content.Margin.Vertical));
-    }
-
-    /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds) =>
-        ArrangeChild(GetContent(), bounds, ResolvedAxes.Both);
-
-    private Control GetContent() => _contentSlot.Count == 0
-        ? throw new InvalidOperationException(
-            "A composite control requires one committed composition root.")
-        : _contentSlot[0];
-
 }

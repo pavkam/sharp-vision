@@ -7,7 +7,7 @@ using SharpVision.Controls;
 
 /// <summary>Defines one focusable, selectable entry in a <see cref="NavigationView"/>.</summary>
 [PublicAPI]
-public sealed class NavigationViewItem: Pressable
+public sealed class NavigationViewItem: PressableBase
 {
     private bool _isSelected;
     private Rune? _idleMarker;

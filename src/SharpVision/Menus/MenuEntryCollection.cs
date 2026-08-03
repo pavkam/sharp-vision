@@ -5,7 +5,7 @@ namespace SharpVision.Menus;
 
 /// <summary>Exposes one menu's constrained item and separator collection.</summary>
 [PublicAPI]
-public sealed class MenuEntryCollection: IReadOnlyList<Control>
+public sealed class MenuEntryCollection: IReadOnlyList<ControlBase>
 {
     private readonly Menu _owner;
 
@@ -27,7 +27,7 @@ public sealed class MenuEntryCollection: IReadOnlyList<Control>
     /// <see cref="MenuSeparator"/>.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The menu or the assigned entry is disposed.</exception>
-    public Control this[int index]
+    public ControlBase this[int index]
     {
         get => _owner.ItemAt(index);
         set
@@ -132,7 +132,7 @@ public sealed class MenuEntryCollection: IReadOnlyList<Control>
 
     /// <summary>Gets the position of one entry, or -1 when it is not owned by this menu.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
-    public int IndexOf(Control item)
+    public int IndexOf(ControlBase item)
     {
         ArgumentNullException.ThrowIfNull(item);
         return _owner.IndexOfEntry(item);
@@ -144,7 +144,7 @@ public sealed class MenuEntryCollection: IReadOnlyList<Control>
     public void Clear() => _owner.ClearItems();
 
     /// <inheritdoc/>
-    public IEnumerator<Control> GetEnumerator()
+    public IEnumerator<ControlBase> GetEnumerator()
     {
         for (var index = 0; index < Count; index++)
         {

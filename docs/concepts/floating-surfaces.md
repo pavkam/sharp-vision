@@ -9,9 +9,9 @@ controls never hide a second Window or Popup behind a forwarding wrapper.
 
 ```mermaid
 classDiagram
-    ContentControl <|-- FloatingSurface
-    FloatingSurface <|-- Window
-    FloatingSurface <|-- Popup
+    ContentControl <|-- FloatingSurfaceBase
+    FloatingSurfaceBase <|-- Window
+    FloatingSurfaceBase <|-- Popup
     Window <|-- Dialog~TResult~
     Dialog~TResult~ <|-- FileDialogBase~TResult~
     Dialog~MessageBoxResult~ <|-- MessageBox
@@ -19,17 +19,19 @@ classDiagram
     Popup <|-- Tooltip
 ```
 
-`FloatingSurface` lives in `SharpVision.Surfaces`. `Window` and `Popup` derive
-from it in their feature namespaces. `Dialog<TResult>` derives from `Window`,
-and the file dialogs and `MessageBox` are direct dialog surfaces. `Flyout` and
-`Tooltip` derive from `Popup` and render their inherited popup surface directly.
+`FloatingSurfaceBase` lives in `SharpVision.Surfaces`. `Window` and `Popup`
+derive from it in their feature namespaces. `Dialog<TResult>` derives from
+`Window`, and the file dialogs and `MessageBox` are direct dialog surfaces.
+`Flyout` and `Tooltip` derive from `Popup` and render their inherited popup
+surface directly. `FloatingSurface<TStyle>` adds the framework-owned primary
+`Style`/`ActualStyle` slot for externally defined typed surface families.
 
 ## Shared lifecycle
 
-`FloatingSurface` owns the replaceable `Content`, the committed `SurfaceBounds`,
-the ordered `Closing` and `Closed` lifecycle, focus and pointer-capture cleanup,
-and at most one application-owned `ModalScope`. Each concrete family owns its
-public open state and chrome:
+`FloatingSurfaceBase` owns the replaceable `Content`, the committed
+`SurfaceBounds`, the ordered `Closing` and `Closed` lifecycle, focus and
+pointer-capture cleanup, and at most one application-owned `ModalScope`. Each
+concrete family owns its public open state and chrome:
 
 - `Window` uses `Visibility` and titled window chrome.
 - `Popup` uses `IsOpen`, anchor-relative placement, and popup chrome.
@@ -44,7 +46,7 @@ presents - and, under automatic modal behavior, enters modality - when it is
 later attached. A surface cannot present twice or reenter an opening or closing
 transaction.
 
-Before any of that commits, `FloatingSurface` raises `CloseRequested` with a
+Before any of that commits, `FloatingSurfaceBase` raises `CloseRequested` with a
 `SurfaceCloseRequestedEventArgs.Cancel` flag a handler can set to veto the
 request: nothing changes, and neither `Closing` nor `Closed` follows. Popup-
 family closure first makes the family ineligible for rendering and input, then
@@ -59,8 +61,8 @@ from Window's close affordance, `CloseOnEscape`, and modal dismiss, each of
 which still hand-rolls its own sequence rather than routing through the shared
 `CloseSurface` engine (that unification remains tracked in
 [#223](https://github.com/pavkam/sharp-vision/issues/223)), but now raises
-`CloseRequested` first via the same `FloatingSurface.RaiseCloseRequested` helper
-the engine uses, honoring the same veto contract.
+`CloseRequested` first via the same `FloatingSurfaceBase.RaiseCloseRequested`
+helper the engine uses, honoring the same veto contract.
 
 An ordinary Window close affordance, Escape action, or modal dismiss request
 first raises `CloseRequested`; an uncancelled request then publishes `Closing`,
@@ -88,7 +90,7 @@ newly activated Window above its sibling Windows in that shared `ZIndex` space
 on every activation, leaving non-Window overlay children and the popup layer
 untouched.
 
-Modality is an input-plane policy, not a visual wrapper. `FloatingSurface`
+Modality is an input-plane policy, not a visual wrapper. `FloatingSurfaceBase`
 retains the live scope, while the application
 [`ModalityManager`](modality.md#overview) owns confinement, outside interaction,
 nested-scope order, capture cleanup, and focus restoration. `Window.ShowModal`

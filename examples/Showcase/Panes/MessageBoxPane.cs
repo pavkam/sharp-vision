@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents standard asynchronous MessageBox layouts and modal result handling.</summary>
-internal sealed class MessageBoxPane: CompositeControl
+internal sealed class MessageBoxPane: CompositeControlBase
 {
     /// <summary>Initializes the retained MessageBox showcase content.</summary>
     internal MessageBoxPane() => InitializeContent(CreateContent());

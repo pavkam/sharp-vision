@@ -19,7 +19,7 @@ public sealed class FocusManager: IDisposable
     /// </exception>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The root is disposed.</exception>
-    public FocusManager(Control root)
+    public FocusManager(ControlBase root)
     {
         ArgumentNullException.ThrowIfNull(root);
         root.VerifyMutable();
@@ -48,10 +48,10 @@ public sealed class FocusManager: IDisposable
     public event EventHandler<FocusChangedEventArgs>? Gained;
 
     /// <summary>Gets the owned attached tree root.</summary>
-    public Control Root { get; }
+    public ControlBase Root { get; }
 
     /// <summary>Gets the currently focused control, or null.</summary>
-    public Control? Focused { get; private set; }
+    public ControlBase? Focused { get; private set; }
 
     private bool IsChanging { get; set; }
 
@@ -61,10 +61,10 @@ public sealed class FocusManager: IDisposable
 
     private bool DisposalPending { get; set; }
 
-    private List<Control>? EligibilityNotificationsPending { get; set; }
+    private List<ControlBase>? EligibilityNotificationsPending { get; set; }
 
     private Queue<(
-        Control? Control,
+        ControlBase? Control,
         FocusReason Reason,
         bool Cancellable,
         Action<bool, Exception?>? Completion,
@@ -86,7 +86,7 @@ public sealed class FocusManager: IDisposable
     /// <exception cref="ArgumentException">The control is not a member of this tree.</exception>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The manager is disposed.</exception>
-    public bool Focus(Control? control) => Focus(control, FocusReason.Programmatic, cancellable: true);
+    public bool Focus(ControlBase? control) => Focus(control, FocusReason.Programmatic, cancellable: true);
 
     /// <summary>Requests one reasoned focus transition for an owned target or null release.</summary>
     /// <param name="control">The requested member, or null.</param>
@@ -97,7 +97,7 @@ public sealed class FocusManager: IDisposable
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="reason"/> is undefined.</exception>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The manager is disposed.</exception>
-    internal bool Focus(Control? control, FocusReason reason, bool cancellable)
+    internal bool Focus(ControlBase? control, FocusReason reason, bool cancellable)
     {
         ValidateRequest(control, reason);
 
@@ -141,7 +141,7 @@ public sealed class FocusManager: IDisposable
     /// The earliest failure remains authoritative after cleanup and completion publication.
     /// </exception>
     internal void Focus(
-        Control? control,
+        ControlBase? control,
         FocusReason reason,
         bool cancellable,
         Action<bool, Exception?> completion,
@@ -166,7 +166,7 @@ public sealed class FocusManager: IDisposable
     /// <param name="anchor">The member used to determine the traversal position, or null.</param>
     /// <param name="reverse">Whether to traverse backward.</param>
     /// <returns>True when an eligible target exists and accepts focus.</returns>
-    public bool MoveNext(Control? anchor, bool reverse = false)
+    public bool MoveNext(ControlBase? anchor, bool reverse = false)
     {
         VerifyAccess();
         if (anchor is not null && !IsMember(anchor))
@@ -174,7 +174,7 @@ public sealed class FocusManager: IDisposable
             throw new ArgumentException("The traversal anchor does not belong to this tree.", nameof(anchor));
         }
 
-        var candidates = new List<Control>();
+        var candidates = new List<ControlBase>();
         var tracker = anchor is null ? null : new AnchorTracker(anchor);
         var modality = Root.ModalityOwner;
         var boundary = anchor is null ? null : modality?.BoundaryFor(anchor);
@@ -236,7 +236,7 @@ public sealed class FocusManager: IDisposable
     /// <exception cref="ArgumentException"><paramref name="scope"/> is not a member of this tree.</exception>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The manager is disposed.</exception>
-    internal bool FocusFirst(Control scope)
+    internal bool FocusFirst(ControlBase scope)
     {
         ArgumentNullException.ThrowIfNull(scope);
         VerifyAccess();
@@ -246,7 +246,7 @@ public sealed class FocusManager: IDisposable
             throw new ArgumentException("The focus scope does not belong to this tree.", nameof(scope));
         }
 
-        var candidates = new List<Control>();
+        var candidates = new List<ControlBase>();
         CollectScope(scope, candidates, includeOwner: false);
 
         return candidates.Count > 0 &&
@@ -279,7 +279,7 @@ public sealed class FocusManager: IDisposable
     /// <summary>Releases focus when a subtree becomes invalid.</summary>
     /// <param name="subtree">The non-null owned subtree that became unavailable.</param>
     /// <exception cref="ArgumentNullException"><paramref name="subtree"/> is null.</exception>
-    internal void Unavailable(Control subtree)
+    internal void Unavailable(ControlBase subtree)
     {
         ArgumentNullException.ThrowIfNull(subtree);
         Debug.Assert(IsMember(subtree), "Unavailable subtrees belong to the focus root.");
@@ -305,7 +305,7 @@ public sealed class FocusManager: IDisposable
     /// <summary>Releases focus when the focused control loses its own eligibility.</summary>
     /// <param name="control">The non-null owned control whose eligibility changed.</param>
     /// <returns>Whether cleanup completed synchronously and notification may publish.</returns>
-    internal bool Ineligible(Control control)
+    internal bool Ineligible(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         Debug.Assert(IsMember(control), "Ineligible controls belong to the focus root.");
@@ -337,7 +337,7 @@ public sealed class FocusManager: IDisposable
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The manager is disposed.</exception>
     /// <exception cref="Exception">A committed lost, gained, or control-state callback fails.</exception>
-    internal void RestoreCoherently(Control? control, Control? displaced)
+    internal void RestoreCoherently(ControlBase? control, ControlBase? displaced)
     {
         ValidateRequest(control, FocusReason.Restore);
         var target = IsAllowed(control) && IsEligibleTarget(control) ? control : null;
@@ -371,7 +371,7 @@ public sealed class FocusManager: IDisposable
     /// <param name="displaced">A possibly stale former target, or null.</param>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The manager is disposed.</exception>
-    internal void ForceFocusCoherence(Control? control, Control? displaced)
+    internal void ForceFocusCoherence(ControlBase? control, ControlBase? displaced)
     {
         VerifyAccess();
         var target = control is not null && IsMember(control) &&
@@ -498,7 +498,7 @@ public sealed class FocusManager: IDisposable
     #region Focus transaction
 
     private bool Change(
-        Control? control,
+        ControlBase? control,
         FocusReason reason,
         bool cancellable,
         bool publishChanging,
@@ -780,7 +780,7 @@ public sealed class FocusManager: IDisposable
     }
 
     private void Enqueue(
-        Control? control,
+        ControlBase? control,
         FocusReason reason,
         bool cancellable,
         Action<bool, Exception?>? completion,
@@ -828,8 +828,8 @@ public sealed class FocusManager: IDisposable
     #region Target resolution
 
     private void CollectScope(
-        Control owner,
-        List<Control> candidates,
+        ControlBase owner,
+        List<ControlBase> candidates,
         bool includeOwner,
         AnchorTracker? tracker = null)
     {
@@ -842,7 +842,7 @@ public sealed class FocusManager: IDisposable
             return;
         }
 
-        var participants = new List<(Control Control, int Order)>();
+        var participants = new List<(ControlBase Control, int Order)>();
         var count = owner.NavigationCount;
 
         for (var index = 0; index < count; index++)
@@ -862,7 +862,7 @@ public sealed class FocusManager: IDisposable
         }
     }
 
-    private void AppendParticipant(Control control, List<Control> candidates, AnchorTracker? tracker = null)
+    private void AppendParticipant(ControlBase control, List<ControlBase> candidates, AnchorTracker? tracker = null)
     {
         Debug.Assert(control is not null, "Focus traversal visits a concrete control.");
         Debug.Assert(candidates is not null, "Focus traversal accumulates into an owned candidate list.");
@@ -908,7 +908,7 @@ public sealed class FocusManager: IDisposable
         }
         else
         {
-            var descendants = new List<Control>();
+            var descendants = new List<ControlBase>();
             CollectScope(control, descendants, includeOwner: false);
             if (descendants.Count > 0)
             {
@@ -919,14 +919,14 @@ public sealed class FocusManager: IDisposable
         tracker?.MarkIfAnchorOrDescendant(control, candidates.Count);
     }
 
-    /// <summary>Resolves an anchor's tree position for <see cref="MoveNext(Control?, bool)"/> when the
+    /// <summary>Resolves an anchor's tree position for <see cref="MoveNext(ControlBase?, bool)"/> when the
     /// anchor is not itself a tab candidate.</summary>
     private sealed class AnchorTracker
     {
-        private readonly HashSet<Control> _ancestors = [];
-        private readonly Control _anchor;
+        private readonly HashSet<ControlBase> _ancestors = [];
+        private readonly ControlBase _anchor;
 
-        public AnchorTracker(Control anchor)
+        public AnchorTracker(ControlBase anchor)
         {
             _anchor = anchor;
 
@@ -940,7 +940,7 @@ public sealed class FocusManager: IDisposable
         /// position, or -1 while unresolved.</summary>
         public int FollowingIndex { get; private set; } = -1;
 
-        public void MarkIfAnchor(Control control, int candidateCount)
+        public void MarkIfAnchor(ControlBase control, int candidateCount)
         {
             if (FollowingIndex < 0 && ReferenceEquals(control, _anchor))
             {
@@ -948,7 +948,7 @@ public sealed class FocusManager: IDisposable
             }
         }
 
-        public void MarkIfAnchorOrDescendant(Control control, int candidateCount)
+        public void MarkIfAnchorOrDescendant(ControlBase control, int candidateCount)
         {
             if (FollowingIndex < 0 && (ReferenceEquals(control, _anchor) || _ancestors.Contains(control)))
             {
@@ -957,7 +957,7 @@ public sealed class FocusManager: IDisposable
         }
     }
 
-    private Control? FindScope(Control? focused, Control? boundary)
+    private ControlBase? FindScope(ControlBase? focused, ControlBase? boundary)
     {
         for (var current = focused; current is not null; current = current.Parent)
         {
@@ -980,18 +980,18 @@ public sealed class FocusManager: IDisposable
         return boundary is null && Root.ModalityOwner?.Active is null ? Root : null;
     }
 
-    private bool IsEligible(Control control) =>
+    private bool IsEligible(ControlBase control) =>
         IsMember(control) && control is
         {
             IsDisposed: false, Dispatcher: not null, CanFocus: true, EffectiveIsVisible: true, EffectiveIsEnabled: true
         };
 
-    private bool IsEligibleTarget(Control? control) => control is null || IsEligible(control);
+    private bool IsEligibleTarget(ControlBase? control) => control is null || IsEligible(control);
 
-    private bool IsAllowed(Control? control) =>
+    private bool IsAllowed(ControlBase? control) =>
         control is null || Root.ModalityOwner?.Allows(control) is not false;
 
-    private void ValidateMembership(Control? control)
+    private void ValidateMembership(ControlBase? control)
     {
         if (control is not null && !IsMember(control))
         {
@@ -1001,7 +1001,7 @@ public sealed class FocusManager: IDisposable
         }
     }
 
-    private void ValidateRequest(Control? control, FocusReason reason)
+    private void ValidateRequest(ControlBase? control, FocusReason reason)
     {
         VerifyAccess();
 
@@ -1013,9 +1013,9 @@ public sealed class FocusManager: IDisposable
         ValidateMembership(control);
     }
 
-    private static List<Control> GetPath(Control? control)
+    private static List<ControlBase> GetPath(ControlBase? control)
     {
-        var path = new List<Control>();
+        var path = new List<ControlBase>();
 
         for (var current = control; current is not null; current = current.Parent)
         {
@@ -1026,7 +1026,7 @@ public sealed class FocusManager: IDisposable
         return path;
     }
 
-    private static int GetCommonLength(List<Control> previous, List<Control> current)
+    private static int GetCommonLength(List<ControlBase> previous, List<ControlBase> current)
     {
         var length = Math.Min(previous.Count, current.Count);
         var index = 0;
@@ -1039,7 +1039,7 @@ public sealed class FocusManager: IDisposable
         return index;
     }
 
-    private bool IsMember(Control control)
+    private bool IsMember(ControlBase control)
     {
         Debug.Assert(control is not null, "Focus membership requires a control instance.");
 
@@ -1054,7 +1054,7 @@ public sealed class FocusManager: IDisposable
         return false;
     }
 
-    private static bool IsWithin(Control control, Control subtree)
+    private static bool IsWithin(ControlBase control, ControlBase subtree)
     {
         Debug.Assert(control is not null, "Focus containment requires a control instance.");
         Debug.Assert(subtree is not null, "Focus containment requires a subtree root.");

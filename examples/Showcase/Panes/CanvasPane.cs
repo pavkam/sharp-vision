@@ -4,7 +4,7 @@
 namespace SharpVision.Showcase.Panes;
 
 /// <summary>Documents the frame-owned TerminalCanvas drawing API used by custom controls.</summary>
-internal sealed class CanvasPane: CompositeControl
+internal sealed class CanvasPane: CompositeControlBase
 {
     internal CanvasPane() => InitializeContent(CreateContent());
 

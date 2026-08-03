@@ -19,7 +19,7 @@ public sealed class Dock: Container
     /// <summary>Returns shadow ownership to the active Theme.</summary>
     public new void ResetShadow() => base.ResetShadow();
 
-    private static readonly ConditionalWeakTable<Control, DockPlacement> _placements = [];
+    private static readonly ConditionalWeakTable<ControlBase, DockPlacement> _placements = [];
 
     /// <summary>Initializes a dock that fills its parent layout slot.</summary>
     public Dock() => HorizontalAlignment = HorizontalAlignment.Stretch;
@@ -51,7 +51,7 @@ public sealed class Dock: Container
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached side, defaulting to left.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
-    public static DockSide GetSide(Control control)
+    public static DockSide GetSide(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         return _placements.TryGetValue(control, out var placement) ? placement.Side : DockSide.Left;
@@ -64,7 +64,7 @@ public sealed class Dock: Container
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="value"/> is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public static void SetSide(Control control, DockSide value)
+    public static void SetSide(ControlBase control, DockSide value)
     {
         ArgumentNullException.ThrowIfNull(control);
 
@@ -222,7 +222,7 @@ public sealed class Dock: Container
 
     // Resolves a non-Star edge request against the given axis. Called once per participant by
     // ResolveAxisBorders; Star lengths never reach here.
-    private static int Resolve(Control child, int available, bool horizontal)
+    private static int Resolve(ControlBase child, int available, bool horizontal)
     {
         Debug.Assert(available >= 0, "Available dock axis space is non-negative.");
 

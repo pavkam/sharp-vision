@@ -2,7 +2,7 @@
 
 ## Overview
 
-`Image` is declared `public sealed class Image : Control`. It displays one
+`Image` is declared `public sealed class Image : ControlBase`. It displays one
 borrowed immutable
 [`Terminal.Graphics.ImageSource`](../../concepts/images.md#overview) without
 exposing any terminal graphics protocol to control code. The control is passive:

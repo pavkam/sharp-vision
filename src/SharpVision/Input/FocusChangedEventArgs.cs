@@ -10,7 +10,7 @@ public sealed class FocusChangedEventArgs: EventArgs
     /// <summary>Initializes one committed focus transition.</summary>
     /// <param name="previous">The previously focused control.</param>
     /// <param name="current">The newly focused control.</param>
-    public FocusChangedEventArgs(Control? previous, Control? current)
+    public FocusChangedEventArgs(ControlBase? previous, ControlBase? current)
         : this(previous, current, FocusReason.Programmatic)
     {
     }
@@ -20,7 +20,7 @@ public sealed class FocusChangedEventArgs: EventArgs
     /// <param name="current">The newly focused control.</param>
     /// <param name="reason">The defined reason for the committed transition.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="reason"/> is undefined.</exception>
-    public FocusChangedEventArgs(Control? previous, Control? current, FocusReason reason)
+    public FocusChangedEventArgs(ControlBase? previous, ControlBase? current, FocusReason reason)
     {
         if (!Enum.IsDefined(reason))
         {
@@ -33,10 +33,10 @@ public sealed class FocusChangedEventArgs: EventArgs
     }
 
     /// <summary>Gets the control focused before the commit.</summary>
-    public Control? Previous { get; }
+    public ControlBase? Previous { get; }
 
     /// <summary>Gets the control focused after the commit.</summary>
-    public Control? Current { get; }
+    public ControlBase? Current { get; }
 
     /// <summary>Gets the reason for the committed transition.</summary>
     public FocusReason Reason { get; }

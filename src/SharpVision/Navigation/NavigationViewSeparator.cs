@@ -5,7 +5,7 @@ namespace SharpVision.Navigation;
 
 /// <summary>Draws one non-interactive separator entry inside a <see cref="NavigationView"/>.</summary>
 [PublicAPI]
-public sealed class NavigationViewSeparator: Control
+public sealed class NavigationViewSeparator: ControlBase
 {
     private Rune? _glyph;
 

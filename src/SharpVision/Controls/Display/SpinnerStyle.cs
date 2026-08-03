@@ -28,6 +28,15 @@ public readonly struct SpinnerStyle: IEquatable<SpinnerStyle>
     private readonly ImmutableArray<Rune> _frames;
     private readonly ThemeProfile? _appearance;
 
+    /// <summary>Gets the primary spinner-style definition.</summary>
+    internal static StyleDefinition<SpinnerStyle> Definition { get; } = StyleDefinitions.Control(
+        ThemeRole.Control,
+        static profile => new SpinnerStyle(Default.Frames, profile),
+        static style => style.Appearance,
+        static (previous, _, current, _) => previous == current
+            ? InvalidationImpact.None
+            : InvalidationImpact.Render);
+
     /// <summary>Gets the maximum number of frames retained by one spinner presentation.</summary>
     public const int MaximumFrameCount = 256;
 
@@ -62,6 +71,17 @@ public readonly struct SpinnerStyle: IEquatable<SpinnerStyle>
 
     /// <summary>Gets the complete normal and visual-state appearance profile.</summary>
     public ThemeProfile Appearance => ResolveAppearance();
+
+    /// <summary>Creates a validated copy with selected members replaced.</summary>
+    /// <param name="frames">The optional copied replacement frame sequence.</param>
+    /// <param name="appearance">The optional appearance-profile overlay.</param>
+    /// <returns>A complete validated spinner style.</returns>
+    /// <exception cref="ArgumentException"><paramref name="frames"/> is empty, oversized, or contains an invalid glyph.</exception>
+    public SpinnerStyle With(
+        IEnumerable<Rune>? frames = null,
+        AppearanceProfileSet? appearance = null) => new(
+        frames ?? Frames,
+        appearance is null ? Appearance : StyleResolution.Apply(Appearance, appearance.Value));
 
     /// <summary>Determines whether this value and another style resolve to the same presentation.</summary>
     /// <param name="other">The other style to compare.</param>

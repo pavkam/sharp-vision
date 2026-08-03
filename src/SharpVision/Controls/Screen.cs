@@ -11,7 +11,7 @@ using SharpVision.Surfaces;
 
 /// <summary>Defines the detached application root control and screen startup hooks.</summary>
 [PublicAPI]
-public abstract class Screen: CompositeControl
+public abstract class Screen: CompositeControlBase
 {
     private readonly Overlay _presentation;
     private readonly OwnedControlSlot _presentationSlot;
@@ -50,7 +50,7 @@ public abstract class Screen: CompositeControl
 
     /// <summary>Adds one detached temporary surface to the private application presentation plane.</summary>
     /// <param name="surface">The non-null detached floating surface.</param>
-    internal void AddPresentation(FloatingSurface surface)
+    internal void AddPresentation(FloatingSurfaceBase surface)
     {
         ArgumentNullException.ThrowIfNull(surface);
         _presentation.Children.Add(surface);
@@ -59,7 +59,7 @@ public abstract class Screen: CompositeControl
     /// <summary>Removes one temporary surface from the private application presentation plane.</summary>
     /// <param name="surface">The non-null owned surface.</param>
     /// <returns>True when the identical surface was removed.</returns>
-    internal bool RemovePresentation(FloatingSurface surface)
+    internal bool RemovePresentation(FloatingSurfaceBase surface)
     {
         ArgumentNullException.ThrowIfNull(surface);
         return _presentation.Children.Remove(surface);
@@ -68,7 +68,7 @@ public abstract class Screen: CompositeControl
     /// <summary>Returns whether the private presentation Overlay directly owns a control.</summary>
     /// <param name="control">The non-null candidate.</param>
     /// <returns>True when the identical control is directly presented.</returns>
-    internal bool OwnsPresentation(Control control)
+    internal bool OwnsPresentation(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         return ReferenceEquals(control.Parent, _presentation);
@@ -140,7 +140,7 @@ public abstract class Screen: CompositeControl
         }
 
         // Validate the complete retained composition before publishing the application binding.
-        // CompositeControl rejects an uninitialized root here, not during the first frame.
+        // CompositeControlBase rejects an uninitialized root here, not during the first frame.
         ValidateAttachment();
         Application = application;
 

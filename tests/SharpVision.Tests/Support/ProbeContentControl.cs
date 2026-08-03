@@ -23,29 +23,29 @@ internal sealed class ProbeContentControl: ContentControl
     }
 
     /// <summary>Gets committed old/new content pairs observed by the protected callback.</summary>
-    internal List<(Control? Previous, Control? Current)> ContentChanges { get; } = [];
+    internal List<(ControlBase? Previous, ControlBase? Current)> ContentChanges { get; } = [];
 
     /// <summary>Gets or sets an observer invoked from the protected content-change callback.</summary>
-    internal Action<ProbeContentControl, Control?, Control?>? ContentChanging { get; set; }
+    internal Action<ProbeContentControl, ControlBase?, ControlBase?>? ContentChanging { get; set; }
 
     /// <summary>Gets or sets whether the protected content-change callback throws.</summary>
     internal bool ThrowOnContentChanged { get; set; }
 
     /// <summary>Adds one detached control to the private part slot.</summary>
     /// <param name="control">The non-null detached part.</param>
-    internal void AddPart(Control control) => _part.Add(control);
+    internal void AddPart(ControlBase control) => _part.Add(control);
 
     /// <summary>Gets the controls in global slot-registration order.</summary>
     /// <returns>A new identity-preserving snapshot.</returns>
-    internal IReadOnlyList<Control> GetOwnedOrder()
+    internal IReadOnlyList<ControlBase> GetOwnedOrder()
     {
-        List<Control> result = [];
+        List<ControlBase> result = [];
         VisitChildren(result.Add);
         return result;
     }
 
     /// <inheritdoc/>
-    protected override void OnContentChanged(Control? previous, Control? current)
+    protected override void OnContentChanged(ControlBase? previous, ControlBase? current)
     {
         ContentChanges.Add((previous, current));
         ContentChanging?.Invoke(this, previous, current);

@@ -4,10 +4,10 @@
 namespace SharpVision.Tests.Support;
 
 /// <summary>Records structural and lifecycle publication from owned-control transactions.</summary>
-internal sealed class OwnershipObserverControl: Control
+internal sealed class OwnershipObserverControl: ControlBase
 {
     /// <summary>Gets or sets work invoked from the parent-change callback.</summary>
-    internal Action<OwnershipObserverControl, Control?, Control?>? ParentChanging { get; set; }
+    internal Action<OwnershipObserverControl, ControlBase?, ControlBase?>? ParentChanging { get; set; }
 
     /// <summary>Gets or sets work invoked from the attachment callback.</summary>
     internal Action<OwnershipObserverControl>? Attaching { get; set; }
@@ -69,7 +69,7 @@ internal sealed class OwnershipObserverControl: Control
     internal bool CaptureObserverPointer() => CapturePointer();
 
     /// <inheritdoc/>
-    protected override void OnParentChanged(Control? previous, Control? current)
+    protected override void OnParentChanged(ControlBase? previous, ControlBase? current)
     {
         ParentChangedCalls++;
         ParentChanging?.Invoke(this, previous, current);

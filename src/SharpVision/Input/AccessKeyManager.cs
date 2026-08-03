@@ -11,7 +11,7 @@ internal sealed class AccessKeyManager
     private const Modifiers _allowedModifiers =
         Modifiers.Alt | Modifiers.Shift | Modifiers.CapsLock | Modifiers.NumLock;
 
-    private readonly Control _root;
+    private readonly ControlBase _root;
     private readonly FocusManager _focus;
     private readonly ModalityManager _modality;
 
@@ -21,7 +21,7 @@ internal sealed class AccessKeyManager
     /// <param name="modality">The non-null modality manager for the same root.</param>
     /// <exception cref="ArgumentNullException">A dependency is null.</exception>
     /// <exception cref="ArgumentException">The managers do not own <paramref name="root"/>.</exception>
-    public AccessKeyManager(Control root, FocusManager focus, ModalityManager modality)
+    public AccessKeyManager(ControlBase root, FocusManager focus, ModalityManager modality)
     {
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(focus);
@@ -56,7 +56,7 @@ internal sealed class AccessKeyManager
         }
 
         _root.VerifyMutable();
-        var matches = new List<Control>();
+        var matches = new List<ControlBase>();
 
         if (_modality.Active is null)
         {
@@ -91,7 +91,7 @@ internal sealed class AccessKeyManager
         return false;
     }
 
-    private static void Collect(Control control, Rune key, List<Control> matches)
+    private static void Collect(ControlBase control, Rune key, List<ControlBase> matches)
     {
         var matched = control.MatchesAccessKey(key);
 
@@ -110,7 +110,7 @@ internal sealed class AccessKeyManager
         }
     }
 
-    private static bool HasMatchingAncestor(Control? control, Rune key)
+    private static bool HasMatchingAncestor(ControlBase? control, Rune key)
     {
         for (var current = control; current is not null; current = current.Parent)
         {
@@ -123,10 +123,10 @@ internal sealed class AccessKeyManager
         return false;
     }
 
-    private static bool IsPressableCaption(Control caption) =>
-        caption.Parent is Pressable { Content: var content } && ReferenceEquals(content, caption);
+    private static bool IsPressableCaption(ControlBase caption) =>
+        caption.Parent is PressableBase { Content: var content } && ReferenceEquals(content, caption);
 
-    private static int FindAnchor(List<Control> matches, Control? focused)
+    private static int FindAnchor(List<ControlBase> matches, ControlBase? focused)
     {
         if (focused is null)
         {

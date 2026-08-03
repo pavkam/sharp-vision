@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Support;
 
 /// <summary>Provides a control with a fixed measured content size for override-seam tests.</summary>
-internal sealed class FixedContent: Control
+internal sealed class FixedContent: ControlBase
 {
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint) => new(7, 3);

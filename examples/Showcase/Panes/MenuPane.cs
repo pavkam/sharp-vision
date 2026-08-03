@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the Menu control with application-style menu bars, submenus, and context menus.</summary>
-internal sealed class MenuPane: CompositeControl
+internal sealed class MenuPane: CompositeControlBase
 {
     internal MenuPane() => InitializeContent(CreateContent());
 

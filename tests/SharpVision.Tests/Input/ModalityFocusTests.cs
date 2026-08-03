@@ -431,12 +431,12 @@ public sealed class ModalityFocusTests
             var later = new InvalidOperationException("younger exit failed");
             ModalScope? scope = null;
             ModalScope? younger = null;
-            var gained = new List<Control>();
+            var gained = new List<ControlBase>();
             var exitOrder = new List<string>();
             var outerTracker = true;
             var youngerTracker = true;
             ModalScope? activeDuringYoungerExit = null;
-            Control? focusDuringYoungerExit = null;
+            ControlBase? focusDuringYoungerExit = null;
             var outerWasInactiveDuringYoungerExit = false;
             var youngerWasInactiveDuringYoungerExit = false;
             var requestedWasFocusedDuringYoungerExit = false;
@@ -535,7 +535,7 @@ public sealed class ModalityFocusTests
             using var modality = new ModalityManager(root, focus, pointer);
             using var parent = modality.Enter(parentRoot, initialFocus: parentFocus);
             var expected = new InvalidOperationException("child entry failed");
-            var gained = new List<Control>();
+            var gained = new List<ControlBase>();
             ModalScope? child = null;
             var parentRequestQueued = false;
             focus.Changing += (_, eventArgs) =>
@@ -693,7 +693,7 @@ public sealed class ModalityFocusTests
             using var focus = new FocusManager(root);
             using var pointer = new PointerManager(root);
             using var modality = new ModalityManager(root, focus, pointer);
-            var observed = new List<Control>();
+            var observed = new List<ControlBase>();
             focus.Changing += (_, eventArgs) =>
             {
                 if (eventArgs.Next is not { } target)
@@ -1172,7 +1172,7 @@ public sealed class ModalityFocusTests
             childFocus.LostPointerCapture += (_, _) => throw pointerFailure;
             childFocus.PropertyChanged += (_, eventArgs) =>
             {
-                if (eventArgs.PropertyName == nameof(Control.IsFocused) && !childFocus.IsFocused)
+                if (eventArgs.PropertyName == nameof(ControlBase.IsFocused) && !childFocus.IsFocused)
                 {
                     disposalFailures++;
                     throw disposalFailure;
@@ -1331,7 +1331,7 @@ public sealed class ModalityFocusTests
             background.PropertyChanged += (_, eventArgs) =>
             {
                 if (callback == "state" &&
-                    eventArgs.PropertyName == nameof(Control.IsFocused) &&
+                    eventArgs.PropertyName == nameof(ControlBase.IsFocused) &&
                     background.IsFocused)
                 {
                     EnterReentrant();

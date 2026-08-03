@@ -19,10 +19,10 @@ from pointer hit testing.
 | `IsPlaying`                 | `true`           | Enables playback while the control is attached.      |
 
 A `SpinnerStyle` holds a bounded immutable frame sequence and a complete
-appearance profile. `SpinnerStyleSet` exists for partial composition in Theme
-files and is not exposed on Spinner. Assigning `Style` replaces the entire
-Theme-owned presentation, and assigning `null` restores it. A style must provide
-between 1 and 256 printable one-cell frames.
+appearance profile. `SpinnerStyle.With(...)` copies frames and may overlay an
+`AppearanceProfileSet`; theme JSON remains semantic-only. Assigning `Style`
+replaces the entire Theme-owned presentation, and assigning `null` restores it.
+A style must provide between 1 and 256 printable one-cell frames.
 
 Changing the effective frame sequence resets the animation to its first frame.
 Appearance-only changes, local or through the Theme, repaint without losing the

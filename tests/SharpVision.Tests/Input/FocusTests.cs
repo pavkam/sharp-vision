@@ -43,7 +43,7 @@ public sealed class FocusTests
             };
             child.PropertyChanged += (_, eventArgs) =>
             {
-                if (eventArgs.PropertyName == nameof(Control.CanFocus))
+                if (eventArgs.PropertyName == nameof(ControlBase.CanFocus))
                 {
                     manager.Focused.ShouldBeNull();
                     child.IsFocused.ShouldBeFalse();
@@ -96,7 +96,7 @@ public sealed class FocusTests
             };
             child.PropertyChanged += (_, eventArgs) =>
             {
-                if (eventArgs.PropertyName == nameof(Control.CanFocus))
+                if (eventArgs.PropertyName == nameof(ControlBase.CanFocus))
                 {
                     focusReturned.ShouldBeFalse();
                     manager.Focused.ShouldBeNull();
@@ -158,7 +158,7 @@ public sealed class FocusTests
             var nextNotifications = 0;
             previous.PropertyChanged += (_, eventArgs) =>
             {
-                if (eventArgs.PropertyName == nameof(Control.CanFocus))
+                if (eventArgs.PropertyName == nameof(ControlBase.CanFocus))
                 {
                     manager.Focused.ShouldBeNull();
                     previousNotifications++;
@@ -166,7 +166,7 @@ public sealed class FocusTests
             };
             next.PropertyChanged += (_, eventArgs) =>
             {
-                if (eventArgs.PropertyName == nameof(Control.CanFocus))
+                if (eventArgs.PropertyName == nameof(ControlBase.CanFocus))
                 {
                     manager.Focused.ShouldBeNull();
                     nextNotifications++;
@@ -414,7 +414,7 @@ public sealed class FocusTests
             var finalCompleted = false;
             second.PropertyChanged += (_, eventArgs) =>
             {
-                if (eventArgs.PropertyName == nameof(Control.CanFocus))
+                if (eventArgs.PropertyName == nameof(ControlBase.CanFocus))
                 {
                     notificationCalls++;
                     throw notification;
@@ -582,7 +582,7 @@ public sealed class FocusTests
             second.PropertyChanged += (_, eventArgs) =>
             {
                 if (callback == "state" &&
-                    eventArgs.PropertyName == nameof(Control.IsFocused) &&
+                    eventArgs.PropertyName == nameof(ControlBase.IsFocused) &&
                     second.IsFocused)
                 {
                     DisposeFromCallback();
@@ -633,7 +633,7 @@ public sealed class FocusTests
             var expected = new InvalidOperationException("The focus-state callback failed.");
             focused.PropertyChanged += (_, eventArgs) =>
             {
-                if (eventArgs.PropertyName == nameof(Control.IsFocused) && !focused.IsFocused)
+                if (eventArgs.PropertyName == nameof(ControlBase.IsFocused) && !focused.IsFocused)
                 {
                     throw expected;
                 }

@@ -6,7 +6,7 @@ namespace SharpVision.Tests.Support;
 using SharpVision.Surfaces;
 
 /// <summary>Exposes the protected floating-surface lifecycle for focused contract tests.</summary>
-internal sealed class FloatingSurfaceProbe: FloatingSurface
+internal sealed class FloatingSurfaceProbe: FloatingSurfaceBase
 {
     /// <summary>Gets whether the common surface lifecycle is currently presented.</summary>
     internal bool IsPresented => IsSurfacePresented;
@@ -46,7 +46,7 @@ internal sealed class FloatingSurfaceProbe: FloatingSurface
     /// <returns>The modal lifetime owned by this surface.</returns>
     internal ModalScope EnterModalForTest(
         OutsideInteraction outsideInteraction,
-        Control? initialFocus = null) =>
+        ControlBase? initialFocus = null) =>
         EnterSurfaceModal(outsideInteraction, initialFocus);
 
     /// <summary>Ends this surface's application-owned modal presentation.</summary>

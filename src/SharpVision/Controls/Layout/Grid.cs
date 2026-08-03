@@ -19,7 +19,7 @@ public sealed class Grid: Container
     /// <summary>Returns shadow ownership to the active Theme.</summary>
     public new void ResetShadow() => base.ResetShadow();
 
-    private static readonly ConditionalWeakTable<Control, GridPlacement> _placements = [];
+    private static readonly ConditionalWeakTable<ControlBase, GridPlacement> _placements = [];
 
     private Constraint? _lastResolvedContentConstraint;
 
@@ -73,25 +73,25 @@ public sealed class Grid: Container
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached row, defaulting to zero.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
-    public static int GetRow(Control control) => GetPlacement(control)?.Row ?? 0;
+    public static int GetRow(ControlBase control) => GetPlacement(control)?.Row ?? 0;
 
     /// <summary>Gets a control's zero-based attached column.</summary>
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached column, defaulting to zero.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
-    public static int GetColumn(Control control) => GetPlacement(control)?.Column ?? 0;
+    public static int GetColumn(ControlBase control) => GetPlacement(control)?.Column ?? 0;
 
     /// <summary>Gets a control's positive attached row span.</summary>
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached row span, defaulting to one.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
-    public static int GetRowSpan(Control control) => GetPlacement(control)?.RowSpan ?? 1;
+    public static int GetRowSpan(ControlBase control) => GetPlacement(control)?.RowSpan ?? 1;
 
     /// <summary>Gets a control's positive attached column span.</summary>
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached column span, defaulting to one.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
-    public static int GetColumnSpan(Control control) => GetPlacement(control)?.ColumnSpan ?? 1;
+    public static int GetColumnSpan(ControlBase control) => GetPlacement(control)?.ColumnSpan ?? 1;
 
     /// <summary>Sets a control's zero-based attached row.</summary>
     /// <param name="control">The non-null mutable control.</param>
@@ -100,7 +100,7 @@ public sealed class Grid: Container
     /// <exception cref="ArgumentOutOfRangeException">The row is negative or outside committed tracks.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public static void SetRow(Control control, int value)
+    public static void SetRow(ControlBase control, int value)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(value);
         Validate(control, value, GetRowSpan(control), rows: true);
@@ -120,7 +120,7 @@ public sealed class Grid: Container
     /// <exception cref="ArgumentOutOfRangeException">The column is negative or outside committed tracks.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public static void SetColumn(Control control, int value)
+    public static void SetColumn(ControlBase control, int value)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(value);
         Validate(control, value, GetColumnSpan(control), rows: false);
@@ -140,7 +140,7 @@ public sealed class Grid: Container
     /// <exception cref="ArgumentOutOfRangeException">The span is not positive or exceeds committed tracks.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public static void SetRowSpan(Control control, int value)
+    public static void SetRowSpan(ControlBase control, int value)
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value, 0);
         Validate(control, GetRow(control), value, rows: true);
@@ -160,7 +160,7 @@ public sealed class Grid: Container
     /// <exception cref="ArgumentOutOfRangeException">The span is not positive or exceeds committed tracks.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public static void SetColumnSpan(Control control, int value)
+    public static void SetColumnSpan(ControlBase control, int value)
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value, 0);
         Validate(control, GetColumn(control), value, rows: false);
@@ -247,13 +247,13 @@ public sealed class Grid: Container
         ArrangeChildren(bounds, rowExtents, columnExtents);
     }
 
-    private static GridPlacement? GetPlacement(Control control)
+    private static GridPlacement? GetPlacement(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         return _placements.TryGetValue(control, out var placement) ? placement : null;
     }
 
-    private static void InvalidateParent(Control control)
+    private static void InvalidateParent(ControlBase control)
     {
         if (control.Parent is Grid parent)
         {
@@ -261,7 +261,7 @@ public sealed class Grid: Container
         }
     }
 
-    private static void Validate(Control control, int origin, int span, bool rows)
+    private static void Validate(ControlBase control, int origin, int span, bool rows)
     {
         ArgumentNullException.ThrowIfNull(control);
         control.VerifyMutable();
@@ -606,7 +606,7 @@ public sealed class Grid: Container
         }
     }
 
-    private static void ValidatePlacement(Control child, int count, bool rows)
+    private static void ValidatePlacement(ControlBase child, int count, bool rows)
     {
         Debug.Assert(child is not null, "Grid placement validation requires a non-null child.");
         Debug.Assert(count >= 1, "Grid placement validation requires at least one track.");

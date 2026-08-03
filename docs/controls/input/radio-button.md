@@ -2,7 +2,7 @@
 
 ## Overview
 
-`RadioButton` is a sealed [`Pressable`](../pressable.md#overview) selection
+`RadioButton` is a sealed [`PressableBase`](../pressable.md#overview) selection
 control. At most one owned member of an effective group is checked at a time.
 
 ## API
@@ -17,7 +17,7 @@ control. At most one owned member of an effective group is checked at a time.
 | `RadioButtonStyle.Glyph`       | Preset             | Compact one-cell circle presentation.                           |
 | `Content`                      | `null`             | The optional label or richer visual, owned by the radio button. |
 | Group-selection events         | No subscribers     | Report staged old/new members and the activation cause.         |
-| `Command`, `CommandParameter`  | `null`             | Inherited from `Pressable`; runs after the group commits.       |
+| `Command`, `CommandParameter`  | `null`             | Inherited from `PressableBase`; runs after the group commits.   |
 
 The bound command, if any and if `CanExecute` allows it, runs after the group
 selection commits and its events raise. Unlike selection itself - which is a
@@ -25,13 +25,14 @@ no-op when this member is already the sole checked one in its group - the
 command runs on every activation, including re-selecting the current member.
 
 `RadioButtonStyle` bundles a `RadioButtonMarkStyle`, a complete set of
-`RadioButtonGlyphs`, and the full appearance profile. `RadioButtonStyleSet` is
-the partial type used to compose Theme files. Assigning `Style` replaces the
-whole Theme-owned presentation, and assigning `null` restores it. `ActualStyle`
-never returns null. The parentheses style reserves three cells and marks the
-selected interior with a bullet; the glyph style reserves one cell. The standard
-profile uses the Theme accent as its checked foreground, and a
-developer-authored checked appearance replaces that color for the complete mark.
+`RadioButtonGlyphs`, and the full appearance profile. Use
+`RadioButtonStyle.With(...)` for validated member-wise copies and appearance
+overlays; theme JSON remains semantic-only. Assigning `Style` replaces the whole
+Theme-owned presentation, and assigning `null` restores it. `ActualStyle` never
+returns null. The parentheses style reserves three cells and marks the selected
+interior with a bullet; the glyph style reserves one cell. The standard profile
+uses the Theme accent as its checked foreground, and a developer-authored
+checked appearance replaces that color for the complete mark.
 
 RadioButton does not expose raw border, shadow, or state-appearance mutation.
 For third-party composition, inspect `ActualStyle`, `ActualBorder`, and

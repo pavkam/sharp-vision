@@ -24,10 +24,10 @@ internal static class ShowcasePaneHelpers
     };
 
     /// <summary>Wraps a child in a light bordered frame for overlay placement specimens.</summary>
-    internal static Dock Frame(Control child) => Frame(child, BorderGlyphStyle.Light);
+    internal static Dock Frame(ControlBase child) => Frame(child, BorderGlyphStyle.Light);
 
     /// <summary>Wraps a child in a bordered frame for overlay placement specimens.</summary>
-    internal static Dock Frame(Control child, BorderGlyphStyle glyphs) => new()
+    internal static Dock Frame(ControlBase child, BorderGlyphStyle glyphs) => new()
     {
         Border = new Border(
             BorderSide.All,
@@ -47,7 +47,7 @@ internal static class ShowcasePaneHelpers
     };
 
     /// <summary>Assigns cell offsets on an overlay-hosted control.</summary>
-    internal static void Place(Control control, int left, int top)
+    internal static void Place(ControlBase control, int left, int top)
     {
         Overlay.SetLeft(control, Length.Cells(left));
         Overlay.SetTop(control, Length.Cells(top));
@@ -126,7 +126,7 @@ internal static class ShowcasePaneHelpers
         int height,
         string content,
         Popup popup,
-        params Control[] controls)
+        params ControlBase[] controls)
     {
         var interactions = new Overlay { ClipToBounds = false };
         foreach (var control in controls)
@@ -151,7 +151,7 @@ internal static class ShowcasePaneHelpers
         int height,
         string content,
         Flyout flyout,
-        params Control[] controls)
+        params ControlBase[] controls)
     {
         var interactions = new Overlay { ClipToBounds = false };
         foreach (var control in controls)

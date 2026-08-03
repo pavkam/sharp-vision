@@ -16,7 +16,7 @@ using Terminal.Rendering;
 
 /// <summary>Frames one owned content control as a titled terminal window with optional Turbo Vision-style shadowing.</summary>
 [PublicAPI]
-public partial class Window: FloatingSurface, IOverlayPositionConstraint
+public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
 {
     /// <summary>Gets or sets the complete locally authored border.</summary>
     public new Border Border { get => base.Border; set => base.Border = value; }
@@ -105,8 +105,8 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
     /// visual lifetime: disposing it externally leaves <see cref="Visibility"/> unchanged and returns
     /// the Window to modeless interaction. Changing visibility away from <see cref="Visibility.Visible"/>
     /// ordinarily ends a live presentation before the visibility notification. A dismiss request raises
-    /// <see cref="FloatingSurface.Closing"/> and, by default, collapses and closes the Window afterward,
-    /// ending its modal presentation; a <see cref="FloatingSurface.Closing"/> handler that itself changes
+    /// <see cref="FloatingSurfaceBase.Closing"/> and, by default, collapses and closes the Window afterward,
+    /// ending its modal presentation; a <see cref="FloatingSurfaceBase.Closing"/> handler that itself changes
     /// <see cref="Visibility"/> (hiding, restoring, or disposing the Window) takes responsibility for the
     /// outcome instead. This call suppresses only the legacy visibility autofocus transaction,
     /// allowing modal entry to snapshot background focus and select <paramref name="initialFocus"/> once.
@@ -131,7 +131,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
     /// </exception>
     public ModalScope ShowModal(
         OutsideInteraction outsideInteraction = OutsideInteraction.Ignore,
-        Control? initialFocus = null)
+        ControlBase? initialFocus = null)
     {
         VerifyMutable();
 
@@ -179,9 +179,9 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
 
     /// <summary>Gets or sets whether the window can be resized by dragging its bottom-right corner.</summary>
     /// <remarks>
-    /// Resizing keeps the window's top-left corner fixed and adjusts <see cref="Control.Width"/> and
-    /// <see cref="Control.Height"/> within <see cref="Control.MinWidth"/>/<see cref="Control.MaxWidth"/>,
-    /// <see cref="Control.MinHeight"/>/<see cref="Control.MaxHeight"/>, and the parent's committed
+    /// Resizing keeps the window's top-left corner fixed and adjusts <see cref="ControlBase.Width"/> and
+    /// <see cref="ControlBase.Height"/> within <see cref="ControlBase.MinWidth"/>/<see cref="ControlBase.MaxWidth"/>,
+    /// <see cref="ControlBase.MinHeight"/>/<see cref="ControlBase.MaxHeight"/>, and the parent's committed
     /// content area. Off by default.
     /// </remarks>
     /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
@@ -951,7 +951,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
 
     private ModalScope ShowModalCore(
         OutsideInteraction outsideInteraction,
-        Control? initialFocus,
+        ControlBase? initialFocus,
         Visibility previousVisibility)
     {
         ModalScope? scope = null;
@@ -1046,7 +1046,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
         }
     }
 
-    private static Control? FindFirstFocusable(Control root)
+    private static ControlBase? FindFirstFocusable(ControlBase root)
     {
         var count = root.OwnedControlCount;
 
@@ -1068,7 +1068,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
         return null;
     }
 
-    private static Button? FindButton(Control control, Func<Button, bool> predicate)
+    private static Button? FindButton(ControlBase control, Func<Button, bool> predicate)
     {
         ArgumentNullException.ThrowIfNull(control);
         ArgumentNullException.ThrowIfNull(predicate);

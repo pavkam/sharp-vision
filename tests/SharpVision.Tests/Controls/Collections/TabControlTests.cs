@@ -482,7 +482,7 @@ public sealed class TabControlTests
 
         first.PropertyChanged += (_, args) =>
         {
-            if (args.PropertyName == nameof(Control.Visibility) && first.Visibility == Visibility.Visible)
+            if (args.PropertyName == nameof(ControlBase.Visibility) && first.Visibility == Visibility.Visible)
             {
                 first.Visibility = Visibility.Collapsed;
             }
@@ -499,7 +499,7 @@ public sealed class TabControlTests
         var laterVisibilityChanges = 0;
         first.PropertyChanged += (_, args) =>
         {
-            if (args.PropertyName == nameof(Control.Visibility))
+            if (args.PropertyName == nameof(ControlBase.Visibility))
             {
                 laterVisibilityChanges++;
             }

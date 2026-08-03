@@ -36,9 +36,7 @@ public sealed class RadioButtonStyleTests
     {
         var baseline = RadioButtonStyle.Glyph;
         var glyphs = new RadioButtonGlyphs(new Rune('o'), new Rune('x'));
-        var set = new RadioButtonStyleSet(glyphs: glyphs);
-
-        var actual = set.Apply(baseline);
+        var actual = baseline.With(glyphs: glyphs);
 
         actual.Glyphs.ShouldBe(glyphs);
         actual.MarkStyle.ShouldBe(baseline.MarkStyle);
@@ -50,11 +48,9 @@ public sealed class RadioButtonStyleTests
     public void Apply_WhenAppearanceIsSupplied_ComposesProfile()
     {
         var baseline = RadioButtonStyle.Parentheses;
-        var set = new RadioButtonStyleSet(
+        var actual = baseline.With(
             appearance: new AppearanceProfileSet(
                 @checked: new AppearanceSet(face: new FaceSet(foreground: ThemeColor.Accent))));
-
-        var actual = set.Apply(baseline);
 
         actual.UncheckedText.ShouldBe(baseline.UncheckedText);
         actual.Appearance.Checked.Face.ShouldNotBeNull().Foreground.ShouldBe(ThemeColor.Accent);
@@ -85,19 +81,19 @@ public sealed class RadioButtonStyleTests
 
     /// <summary>Verifies partial style construction rejects an undefined mark family immediately.</summary>
     [Fact]
-    public void StyleSet_WhenMarkStyleIsUndefined_ThrowsAtConstruction()
+    public void With_WhenMarkStyleIsUndefined_Throws()
     {
         var exception = Should.Throw<ArgumentOutOfRangeException>(() =>
-            new RadioButtonStyleSet(markStyle: (RadioButtonMarkStyle) 99));
+            RadioButtonStyle.Default.With(markStyle: (RadioButtonMarkStyle) 99));
 
         exception.ParamName.ShouldBe("value");
     }
 
     /// <summary>Verifies supplied default glyphs are normalized through the validated resolved pair.</summary>
     [Fact]
-    public void StyleSet_WhenDefaultGlyphsAreSupplied_RetainsResolvedPair()
+    public void With_WhenDefaultGlyphsAreSupplied_RetainsResolvedPair()
     {
-        var actual = new RadioButtonStyleSet(glyphs: default(RadioButtonGlyphs));
+        var actual = RadioButtonStyle.Default.With(glyphs: default(RadioButtonGlyphs));
 
         actual.Glyphs.ShouldBe(RadioButtonGlyphs.Default);
     }

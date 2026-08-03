@@ -462,7 +462,7 @@ public sealed class DialogTests
         dialog.IsDisposed.ShouldBeTrue();
     }
 
-    /// <summary>Verifies the Control-based PresentAsync overload throws and leaves the dialog
+    /// <summary>Verifies the ControlBase-based PresentAsync overload throws and leaves the dialog
     /// unattached and undisposed when the owner has no presentation host (see #77).</summary>
     [Fact]
     public async Task PresentAsync_WhenOwnerHasNoPresentationHost_ThrowsAndLeavesTheDialogUnattachedAndUndisposedAsync()
@@ -513,7 +513,7 @@ public sealed class DialogTests
         dialog.IsDisposed.ShouldBeFalse();
     }
 
-    /// <summary>Verifies external cancellation of the token passed to the Control-based PresentAsync
+    /// <summary>Verifies external cancellation of the token passed to the ControlBase-based PresentAsync
     /// overload cancels the task and releases modality (see #77).</summary>
     [Fact]
     public async Task PresentAsync_WhenExternalDialogIsCancelledByToken_CancelsTaskAndReleasesModalityAsync()
@@ -543,7 +543,7 @@ public sealed class DialogTests
         dialog.IsDisposed.ShouldBeTrue();
     }
 
-    /// <summary>Verifies a dialog presented through the Control-based overload returns its typed
+    /// <summary>Verifies a dialog presented through the ControlBase-based overload returns its typed
     /// result and disposes after host removal (see #77).</summary>
     [Fact]
     public async Task PresentAsync_WhenExternalDialogCompletes_ReturnsTypedResultAndDisposesAfterHostRemovalAsync()
@@ -571,7 +571,7 @@ public sealed class DialogTests
         dialog.IsDisposed.ShouldBeTrue();
     }
 
-    /// <summary>Verifies a dialog presented through the Control-based overload sets completion state
+    /// <summary>Verifies a dialog presented through the ControlBase-based overload sets completion state
     /// correctly, so Escape completes it with the cancelled result instead of silently bubbling as
     /// modeless input would (see #77).</summary>
     [Fact]
@@ -595,7 +595,7 @@ public sealed class DialogTests
         surface.Application.Modality.Active.ShouldBeNull();
     }
 
-    /// <summary>A minimal Dialog subclass exposing the protected Control-based PresentAsync overload
+    /// <summary>A minimal Dialog subclass exposing the protected ControlBase-based PresentAsync overload
     /// and Complete/Cancel to same-assembly tests, mirroring the shape of an externally-derived
     /// dialog without requiring the packed-package consumer harness for these behavioral checks.</summary>
     private sealed class TestDialog: Dialog<bool>
@@ -603,7 +603,7 @@ public sealed class DialogTests
         public TestDialog() : base(cancelledResult: false) =>
             Content = new ControlText("Test dialog");
 
-        public Task<bool> Present(Control owner, Control? initialFocus, CancellationToken cancellationToken) =>
+        public Task<bool> Present(ControlBase owner, ControlBase? initialFocus, CancellationToken cancellationToken) =>
             PresentAsync(owner, initialFocus, cancellationToken);
 
         public bool Accept(bool result) => Complete(result);

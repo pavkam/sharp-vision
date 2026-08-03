@@ -10,7 +10,7 @@ using SharpVision.Terminal.Input;
 
 /// <summary>Displays one owned content control on an opaque, framed, anchor-relative modal surface.</summary>
 [PublicAPI]
-public class Popup: FloatingSurface
+public class Popup: FloatingSurfaceBase
 {
     /// <summary>Gets or sets the complete locally authored border.</summary>
     public new Border Border { get => base.Border; set => base.Border = value; }
@@ -38,7 +38,7 @@ public class Popup: FloatingSurface
     }
 
     /// <inheritdoc/>
-    protected override void OnContentChanged(Control? previous, Control? current)
+    protected override void OnContentChanged(ControlBase? previous, ControlBase? current)
     {
         base.OnContentChanged(previous, current);
 
@@ -48,7 +48,7 @@ public class Popup: FloatingSurface
     /// <summary>Gets or sets the optional sibling anchor used to place the open surface.</summary>
     /// <exception cref="InvalidOperationException">The attached popup is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The popup is disposed.</exception>
-    public Control? Anchor
+    public ControlBase? Anchor
     {
         get;
         set => _ = SetProperty(ref field, value, InvalidationImpact.Arrange);
@@ -105,7 +105,7 @@ public class Popup: FloatingSurface
     private bool _isOpeningModal;
 
     private bool _isOpenTransitioning;
-    private Control? _availabilityAncestor;
+    private ControlBase? _availabilityAncestor;
     private ModalScope? _modalCallbackScope;
 
     /// <summary>Gets or sets whether this Popup self-manages its modal scope on open.</summary>
@@ -147,12 +147,12 @@ public class Popup: FloatingSurface
     /// <remarks>
     /// A changed value commits and publishes first. Opening then exposes the current content, enters
     /// a default dismissing modal scope, and selects focus inside the plane. Closing therefore raises
-    /// <see cref="FloatingSurface.Closing"/> after this property is false:
-    /// current content retains its pre-close availability and the previous <see cref="FloatingSurface.SurfaceBounds"/>
+    /// <see cref="FloatingSurfaceBase.Closing"/> after this property is false:
+    /// current content retains its pre-close availability and the previous <see cref="FloatingSurfaceBase.SurfaceBounds"/>
     /// remains readable, while the surface is already ineligible for rendering and hit testing. The
-    /// transition raises <see cref="FloatingSurface.Closing"/> while the automatic modal scope is still active, then exits
+    /// transition raises <see cref="FloatingSurfaceBase.Closing"/> while the automatic modal scope is still active, then exits
     /// modality, collapses current content, clears the surface bounds, and raises
-    /// <see cref="FloatingSurface.Closed"/>. Every stage completes when a callback fails, after which the earliest
+    /// <see cref="FloatingSurfaceBase.Closed"/>. Every stage completes when a callback fails, after which the earliest
     /// failure is rethrown. Reentrant open-state transitions are rejected.
     /// </remarks>
     /// <exception cref="InvalidOperationException">
@@ -190,7 +190,7 @@ public class Popup: FloatingSurface
     /// <remarks>
     /// One popup may own only one live modal presentation. The returned scope owns modality, not
     /// visual lifetime: disposing it externally closes the popup so an attached surface never remains
-    /// modeless accidentally. Closing the popup ordinarily raises <see cref="FloatingSurface.Closing"/>,
+    /// modeless accidentally. Closing the popup ordinarily raises <see cref="FloatingSurfaceBase.Closing"/>,
     /// then disposes its live scope before content becomes unavailable. When this call exposes a closed
     /// popup, it defers legacy <see cref="FocusOnOpen"/> behavior so modal entry can snapshot and then
     /// replace background focus transactionally. A failed entry recloses only a popup exposed by this
@@ -214,7 +214,7 @@ public class Popup: FloatingSurface
     /// </exception>
     public ModalScope OpenModal(
         OutsideInteraction outsideInteraction = OutsideInteraction.Dismiss,
-        Control? initialFocus = null)
+        ControlBase? initialFocus = null)
     {
         VerifyMutable();
 
@@ -257,7 +257,7 @@ public class Popup: FloatingSurface
 
     private ModalScope OpenModalCore(
         OutsideInteraction outsideInteraction,
-        Control? initialFocus,
+        ControlBase? initialFocus,
         bool exposed)
     {
         ModalScope? scope = null;
@@ -333,7 +333,7 @@ public class Popup: FloatingSurface
     protected override bool ClipsChildren => false;
 
     /// <inheritdoc/>
-    internal override Control? HitTest(Point point)
+    internal override ControlBase? HitTest(Point point)
     {
         return !IsOpen || IsDisposed || !IsHitTestVisible || !EffectiveIsVisible || !EffectiveIsEnabled
             ? null
@@ -341,7 +341,7 @@ public class Popup: FloatingSurface
     }
 
     /// <inheritdoc/>
-    internal override Control? HitTestPopupCore(Point point) => IsOpen ? HitTest(point) : null;
+    internal override ControlBase? HitTestPopupCore(Point point) => IsOpen ? HitTest(point) : null;
 
     /// <inheritdoc/>
     internal override OwnedControlLayer IntrinsicLayer => OwnedControlLayer.Popup;
@@ -520,7 +520,7 @@ public class Popup: FloatingSurface
     }
 
     /// <inheritdoc/>
-    protected override void OnParentChanged(Control? previous, Control? current)
+    protected override void OnParentChanged(ControlBase? previous, ControlBase? current)
     {
         base.OnParentChanged(previous, current);
 
@@ -550,7 +550,7 @@ public class Popup: FloatingSurface
         // A descendant of a removed subtree root receives OnDetached but never its own OnUnavailable
         // call (OwnedControlRegistry.Commit notifies unavailability only on removed roots), so the base
         // Detached release never runs for it. Release presentation here too so a reattached descendant
-        // surface can reopen instead of permanently failing FloatingSurface's already-open guard.
+        // surface can reopen instead of permanently failing FloatingSurfaceBase's already-open guard.
         ExceptionAggregation.Capture(ReleasePresentation, ref failure);
 
         failure?.Throw();
@@ -637,7 +637,7 @@ public class Popup: FloatingSurface
         ReconcilePresentationAvailability();
     }
 
-    private Control? FindUnavailableAncestor()
+    private ControlBase? FindUnavailableAncestor()
     {
         for (var current = Parent; current is not null; current = current.Parent)
         {
@@ -880,7 +880,7 @@ public class Popup: FloatingSurface
     #region Geometry
 
     private static Size SurfaceSize(
-        Control child,
+        ControlBase child,
         int anchorWidth,
         int? availableWidth,
         int? availableHeight,
@@ -1003,7 +1003,7 @@ public class Popup: FloatingSurface
         }
     }
 
-    private static Control? FindFocusable(Control control)
+    private static ControlBase? FindFocusable(ControlBase control)
     {
         if (control is { CanFocus: true, EffectiveIsEnabled: true, EffectiveIsVisible: true })
         {
@@ -1023,7 +1023,7 @@ public class Popup: FloatingSurface
         return null;
     }
 
-    private static bool ContainsOpenDescendantSurface(Control owner, Point point)
+    private static bool ContainsOpenDescendantSurface(ControlBase owner, Point point)
     {
         var count = owner.OwnedControlCount;
 
@@ -1047,7 +1047,7 @@ public class Popup: FloatingSurface
 
     private static void CloseOtherPopups(Popup opening)
     {
-        Control root = opening;
+        ControlBase root = opening;
 
         while (root.Parent is { } parent)
         {
@@ -1057,7 +1057,7 @@ public class Popup: FloatingSurface
         CloseDescendantPopups(root, opening);
     }
 
-    private static void CloseDescendantPopups(Control control, Popup except)
+    private static void CloseDescendantPopups(ControlBase control, Popup except)
     {
         var count = control.OwnedControlCount;
 
@@ -1075,7 +1075,7 @@ public class Popup: FloatingSurface
         }
     }
 
-    private static bool IsAncestorOf(Control candidate, Control descendant)
+    private static bool IsAncestorOf(ControlBase candidate, ControlBase descendant)
     {
         for (var current = descendant.Parent; current is not null; current = current.Parent)
         {

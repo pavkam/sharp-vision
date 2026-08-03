@@ -237,7 +237,7 @@ public sealed class WindowModalityTests
             window.Closed += (_, _) => closed++;
             window.PropertyChanged += (_, eventArgs) =>
             {
-                if (eventArgs.PropertyName == nameof(Control.Visibility) &&
+                if (eventArgs.PropertyName == nameof(ControlBase.Visibility) &&
                     window.Visibility != Visibility.Visible)
                 {
                     observations++;
@@ -351,7 +351,7 @@ public sealed class WindowModalityTests
             var published = 0;
             window.PropertyChanged += (_, eventArgs) =>
             {
-                if (eventArgs.PropertyName == nameof(Control.Visibility))
+                if (eventArgs.PropertyName == nameof(ControlBase.Visibility))
                 {
                     published++;
                     scope.IsActive.ShouldBeFalse();
@@ -389,7 +389,7 @@ public sealed class WindowModalityTests
             using var pointer = new PointerManager(root);
             using var modality = new ModalityManager(root, focus, pointer);
             focus.Focus(background).ShouldBeTrue();
-            var gained = new List<Control?>();
+            var gained = new List<ControlBase?>();
             focus.Gained += (_, eventArgs) => gained.Add(eventArgs.Current);
 
             using var scope = window.ShowModal(OutsideInteraction.Ignore, second);
@@ -450,7 +450,7 @@ public sealed class WindowModalityTests
             using var modality = new ModalityManager(root, focus, pointer);
             window.PropertyChanged += (_, eventArgs) =>
             {
-                if (eventArgs.PropertyName == nameof(Control.Visibility) &&
+                if (eventArgs.PropertyName == nameof(ControlBase.Visibility) &&
                     window.Visibility == Visibility.Visible)
                 {
                     throw expected;
@@ -493,7 +493,7 @@ public sealed class WindowModalityTests
             };
             window.PropertyChanged += (_, eventArgs) =>
             {
-                if (eventArgs.PropertyName == nameof(Control.Visibility) &&
+                if (eventArgs.PropertyName == nameof(ControlBase.Visibility) &&
                     window.Visibility == Visibility.Hidden)
                 {
                     throw new InvalidOperationException("The rollback callback failed.");
@@ -527,7 +527,7 @@ public sealed class WindowModalityTests
             var visibilityChanges = 0;
             window.PropertyChanged += (_, eventArgs) =>
             {
-                if (eventArgs.PropertyName == nameof(Control.Visibility))
+                if (eventArgs.PropertyName == nameof(ControlBase.Visibility))
                 {
                     visibilityChanges++;
                 }

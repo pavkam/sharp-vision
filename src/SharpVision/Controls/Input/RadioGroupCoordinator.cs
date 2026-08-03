@@ -187,12 +187,12 @@ internal static class RadioGroupCoordinator
         // (directly, or via PresentationHost walking up to it), so climbing all the way to the
         // true root would resolve a named group across every currently open top-level surface
         // instead of scoping it to the one that owns the group — stop at the nearest enclosing
-        // FloatingSurface (Window or Popup) instead, mirroring how Menu.SelectRadio scopes to
+        // FloatingSurfaceBase (Window or Popup) instead, mirroring how Menu.SelectRadio scopes to
         // its own Items (see #113). A control with no enclosing surface (content attached
         // directly to the Screen) keeps the prior root-of-tree behavior.
-        Control root = value;
+        ControlBase root = value;
 
-        while (root is not FloatingSurface && root.Parent is { } parent)
+        while (root is not FloatingSurfaceBase && root.Parent is { } parent)
         {
             root = parent;
         }
@@ -207,7 +207,7 @@ internal static class RadioGroupCoordinator
         return result;
     }
 
-    private static void Collect(Control control, string groupName, List<RadioButton> result)
+    private static void Collect(ControlBase control, string groupName, List<RadioButton> result)
     {
         Debug.Assert(control is not null, "Radio group collection requires a non-null root.");
         Debug.Assert(groupName is not null, "Radio group collection requires a non-null group name.");

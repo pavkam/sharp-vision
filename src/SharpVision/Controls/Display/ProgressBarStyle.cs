@@ -14,6 +14,24 @@ public readonly struct ProgressBarStyle: IEquatable<ProgressBarStyle>
     private readonly ProgressBarGlyphs? _glyphs;
     private readonly ThemeProfile? _appearance;
 
+    /// <summary>Gets the primary progress-bar-style definition.</summary>
+    internal static StyleDefinition<ProgressBarStyle> Definition { get; } = StyleDefinitions.Control(
+        ThemeRole.Control,
+        static profile => new ProgressBarStyle(
+            Default.FillColor,
+            Default.TrackColor,
+            Default.IndeterminateColor,
+            Default.Glyphs,
+            profile),
+        static style => style.Appearance,
+        static (previous, previousTheme, current, currentTheme) =>
+            previous != current ||
+            ControlBase.ResolveColor(previous.FillColor, previousTheme) != ControlBase.ResolveColor(current.FillColor, currentTheme) ||
+            ControlBase.ResolveColor(previous.TrackColor, previousTheme) != ControlBase.ResolveColor(current.TrackColor, currentTheme) ||
+            ControlBase.ResolveColor(previous.IndeterminateColor, previousTheme) != ControlBase.ResolveColor(current.IndeterminateColor, currentTheme)
+                ? InvalidationImpact.Render
+                : InvalidationImpact.None);
+
     /// <summary>Initializes a complete progress-bar presentation.</summary>
     /// <param name="fillColor">The non-transparent completed-progress foreground.</param>
     /// <param name="trackColor">The non-transparent incomplete-track foreground.</param>
@@ -58,6 +76,26 @@ public readonly struct ProgressBarStyle: IEquatable<ProgressBarStyle>
 
     /// <summary>Gets the complete normal and visual-state appearance profile.</summary>
     public ThemeProfile Appearance => ResolveAppearance();
+
+    /// <summary>Creates a validated copy with selected members replaced.</summary>
+    /// <param name="fillColor">The optional fill foreground.</param>
+    /// <param name="trackColor">The optional track foreground.</param>
+    /// <param name="indeterminateColor">The optional indeterminate foreground.</param>
+    /// <param name="glyphs">The optional glyph family.</param>
+    /// <param name="appearance">The optional appearance-profile overlay.</param>
+    /// <returns>A complete validated progress-bar style.</returns>
+    /// <exception cref="ArgumentException">A composed glyph or foreground is invalid.</exception>
+    public ProgressBarStyle With(
+        ColorValue? fillColor = null,
+        ColorValue? trackColor = null,
+        ColorValue? indeterminateColor = null,
+        ProgressBarGlyphs? glyphs = null,
+        AppearanceProfileSet? appearance = null) => new(
+        fillColor ?? FillColor,
+        trackColor ?? TrackColor,
+        indeterminateColor ?? IndeterminateColor,
+        glyphs ?? Glyphs,
+        appearance is null ? Appearance : StyleResolution.Apply(Appearance, appearance.Value));
 
     /// <summary>Determines whether this value and another style resolve to the same presentation.</summary>
     /// <param name="other">The other style to compare.</param>

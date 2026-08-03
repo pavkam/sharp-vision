@@ -110,7 +110,7 @@ public sealed class PropertyTests
         control.Width = Length.Cells(12);
         control.Width = Length.Cells(12);
 
-        observed.ShouldBe([(nameof(Control.Width), Length.Cells(12))]);
+        observed.ShouldBe([(nameof(ControlBase.Width), Length.Cells(12))]);
     }
 
     /// <summary>Verifies effective enabled state inherits and invalidates descendants.</summary>
@@ -151,11 +151,11 @@ public sealed class PropertyTests
 
         parent.IsEnabled = false;
 
-        parentEvents.ShouldBe([nameof(Control.IsEnabled), nameof(Control.EffectiveIsEnabled)]);
+        parentEvents.ShouldBe([nameof(ControlBase.IsEnabled), nameof(ControlBase.EffectiveIsEnabled)]);
         childEvents.ShouldBe([
-            nameof(Control.EffectiveIsEnabled),
-            nameof(Control.CanFocus),
-            nameof(Control.IsTabStop)
+            nameof(ControlBase.EffectiveIsEnabled),
+            nameof(ControlBase.CanFocus),
+            nameof(ControlBase.IsTabStop)
         ]);
         alreadyDisabledEvents.ShouldBeEmpty();
     }
@@ -174,9 +174,9 @@ public sealed class PropertyTests
         parent.Visibility = Visibility.Collapsed;
 
         childEvents.ShouldBe([
-            nameof(Control.EffectiveIsVisible),
-            nameof(Control.CanFocus),
-            nameof(Control.IsTabStop)
+            nameof(ControlBase.EffectiveIsVisible),
+            nameof(ControlBase.CanFocus),
+            nameof(ControlBase.IsTabStop)
         ]);
         child.EffectiveIsEnabled.ShouldBeTrue();
     }
@@ -198,11 +198,11 @@ public sealed class PropertyTests
             focus.Focus(child).ShouldBeTrue();
             child.CaptureProbePointer().ShouldBeTrue();
             var expected = new InvalidOperationException("The visibility subscriber failed.");
-            Control? observedFocus = null;
-            Control? observedCapture = null;
+            ControlBase? observedFocus = null;
+            ControlBase? observedCapture = null;
             child.PropertyChanged += (_, eventArgs) =>
             {
-                if (eventArgs.PropertyName != nameof(Control.Visibility))
+                if (eventArgs.PropertyName != nameof(ControlBase.Visibility))
                 {
                     return;
                 }
@@ -242,7 +242,7 @@ public sealed class PropertyTests
             var propertySubscriberRan = false;
             child.PropertyChanged += (_, eventArgs) =>
             {
-                if (eventArgs.PropertyName != nameof(Control.IsEnabled))
+                if (eventArgs.PropertyName != nameof(ControlBase.IsEnabled))
                 {
                     return;
                 }

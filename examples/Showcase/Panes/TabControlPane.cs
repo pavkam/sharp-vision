@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the TabControl with live page switching, dynamic tabs, and disabled state.</summary>
-internal sealed class TabControlPane: CompositeControl
+internal sealed class TabControlPane: CompositeControlBase
 {
     /// <summary>Initializes the retained TabControl showcase content.</summary>
     internal TabControlPane() => InitializeContent(CreateContent());

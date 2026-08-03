@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents ChaseIndicator movement, glyph families, track length, and playback.</summary>
-internal sealed class ChaseIndicatorPane: CompositeControl
+internal sealed class ChaseIndicatorPane: CompositeControlBase
 {
     /// <summary>The exact catalog and page name.</summary>
     internal const string Title = "ChaseIndicator";

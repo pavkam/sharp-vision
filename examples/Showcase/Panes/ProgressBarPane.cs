@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the ProgressBar control with static, ranged, oriented, and interactive specimens.</summary>
-internal sealed class ProgressBarPane: CompositeControl
+internal sealed class ProgressBarPane: CompositeControlBase
 {
     internal ProgressBarPane() => InitializeContent(CreateContent());
 

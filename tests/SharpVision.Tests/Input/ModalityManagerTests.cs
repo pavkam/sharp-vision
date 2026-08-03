@@ -1216,7 +1216,7 @@ public sealed class ModalityManagerTests
         }
     }
 
-    private static void RestoreAvailabilityForReentry(Control control, string mutation)
+    private static void RestoreAvailabilityForReentry(ControlBase control, string mutation)
     {
         if (mutation == "hidden")
         {

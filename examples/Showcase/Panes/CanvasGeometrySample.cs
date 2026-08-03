@@ -4,7 +4,7 @@
 namespace SharpVision.Showcase.Panes;
 
 /// <summary>Demonstrates clipped public line, circle, and ellipse rasterization.</summary>
-internal sealed class CanvasGeometrySample: Control
+internal sealed class CanvasGeometrySample: ControlBase
 {
     /// <summary>Initializes the fixed-size cell-geometry specimen.</summary>
     internal CanvasGeometrySample()

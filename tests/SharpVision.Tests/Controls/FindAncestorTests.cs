@@ -3,7 +3,7 @@
 
 namespace SharpVision.Tests.Controls;
 
-/// <summary>Verifies the protected <see cref="Control.FindAncestor{T}"/> helper.</summary>
+/// <summary>Verifies the protected <see cref="ControlBase.FindAncestor{T}"/> helper.</summary>
 public sealed class FindAncestorTests
 {
     /// <summary>Verifies a direct parent is returned when it matches the requested type.</summary>

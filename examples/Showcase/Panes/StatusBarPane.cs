@@ -4,7 +4,7 @@
 namespace SharpVision.Showcase.Panes;
 
 /// <summary>Documents StatusBar edge groups, contextual state, and explicitly interactive content.</summary>
-internal sealed class StatusBarPane: CompositeControl
+internal sealed class StatusBarPane: CompositeControlBase
 {
     /// <summary>Initializes the retained status-bar documentation page.</summary>
     internal StatusBarPane() => InitializeContent(CreateContent());

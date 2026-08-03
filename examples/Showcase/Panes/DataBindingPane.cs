@@ -11,7 +11,7 @@ using Text = SharpVision.Controls.Display.Text;
 using UiListView = ListView;
 
 /// <summary>Demonstrates live scalar, nested, collection, and selection bindings.</summary>
-internal sealed class DataBindingPane: CompositeControl
+internal sealed class DataBindingPane: CompositeControlBase
 {
     private readonly Text _status;
 

@@ -16,8 +16,8 @@ programmatic scrolling.
 `Vertical`. Eligible axes are measured unbounded so children can report their
 natural, intrinsic extent — the WinForms `DisplayRectangle` model — rather than
 being clamped to the current viewport. The `ResolveMeasureAxis` step in
-`Control.MeasureOverride` clamps `DesiredSize` to the incoming constraint, so
-any axis not selected by `ScrollBars` stays bounded and cannot overflow
+`ControlBase.MeasureOverride` clamps `DesiredSize` to the incoming constraint,
+so any axis not selected by `ScrollBars` stays bounded and cannot overflow
 silently.
 
 The allocation-free
@@ -53,17 +53,16 @@ stationary thumb.
 their own bars publish the same nullable `ScrollBarStyle` plus an always-present
 `ActualScrollBarStyle`. Null resolves to the library scrollbar mechanics, with
 the generated scrollbar receiving the active semantic control profile; a local
-complete style wins. A container copies its effective value to the horizontal
-and vertical rails it owns, and composite controls such as `TextInput`
-synchronize the same value to their editor rails. Popup lists, page viewports,
-tables, text editors, and standalone ScrollBars therefore share one themed
-presentation by default.
+complete style wins. A container binds its nullable local style slot to the
+horizontal and vertical rails it owns, and composite controls such as
+`TextInput` bind the same slot to their editor rails. Popup lists, page
+viewports, tables, text editors, and standalone ScrollBars therefore share one
+themed presentation by default.
 
 The normal precedence applies: a local complete style wins over the Theme, which
-wins over the code-owned fallback. The partial `ScrollBarStyleSet` type composes
-overlay values onto a complete style; it is the composition input a themed
-section will supply once the registrable style-section mechanism tracked by
-[#155](https://github.com/pavkam/sharp-vision/issues/155) lands.
+wins over the code-owned fallback. `ScrollBarStyle.With(...)` creates validated
+member-wise copies for CLR authoring. Theme JSON stays semantic-only and has no
+control-specific style sections.
 
 ## Thumb geometry
 
@@ -89,11 +88,11 @@ above, and `Always` reserves space even when the range is stationary.
 
 Line, page, home, and end commands, wheel and pixel deltas, buttons, track
 clicks, thumb dragging, and programmatic bring-into-view all go through typed
-scroll commands. Unused delta walks up `Control.Parent` through any owner role
-and lands on the nearest ancestor whose runtime type is `Container` and whose
-`AutoScroll` is true; a non-container composition or presentation owner never
-interrupts that search. Pointer capture owns thumb dragging and is released on
-disable, detach, close, or cancellation.
+scroll commands. Unused delta walks up `ControlBase.Parent` through any owner
+role and lands on the nearest ancestor whose runtime type is `Container` and
+whose `AutoScroll` is true; a non-container composition or presentation owner
+never interrupts that search. Pointer capture owns thumb dragging and is
+released on disable, detach, close, or cancellation.
 
 An armed [`Container`](../controls/container.md#overview) implements the
 automatic algorithm with two privately owned framework-part
@@ -127,11 +126,11 @@ moved an offset. PageUp/PageDown and Home/End prefer the vertical axis; on a
 container armed for horizontal scrolling only, they drive the horizontal offset
 instead, so a horizontal-only container still has a fast-travel key rather than
 swallowing all four for no effect. `BringIntoView(Control)` accepts any
-descendant reached through owned `Control.Parent` edges and makes the smallest
-two-axis offset change that exposes the descendant's arranged bounds. Content
-and resize changes clamp offsets before the typed `ScrollChanged` event is
-raised (carrying the previous and committed offsets, `Extent`, `Viewport`, and
-the typed `ScrollCause`) and before the translated arrangement runs.
+descendant reached through owned `ControlBase.Parent` edges and makes the
+smallest two-axis offset change that exposes the descendant's arranged bounds.
+Content and resize changes clamp offsets before the typed `ScrollChanged` event
+is raised (carrying the previous and committed offsets, `Extent`, `Viewport`,
+and the typed `ScrollCause`) and before the translated arrangement runs.
 
 Horizontal clipping is grapheme-safe. Hit testing uses viewport coordinates
 after the offset is applied and never targets clipped content.

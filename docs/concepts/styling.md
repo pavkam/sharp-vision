@@ -34,11 +34,31 @@ semantic profile, or falls back to the code-owned mechanical defaults. Assigning
 null returns ownership to the semantic Theme; a complete local `Style` still
 wins.
 
+Control authors declare that lifecycle once with an immutable
+`StyleDefinition<TStyle>`. `Control<TStyle>` owns the conventional
+`Style`/`ActualStyle` facade and its `StyleSlot<TStyle>`; `Pressable<TStyle>`,
+`CompositeControl<TStyle>`, and `FloatingSurface<TStyle>` preserve the same
+contract for their specialized hierarchies. The protected `OnStyleChanged` hook
+is reserved for genuine post-commit behavior. Low-level `InitializeStyle`
+remains available for unusual base hierarchies, while `InitializePartStyle` owns
+named pairs such as `ScrollBarStyle`/`ActualScrollBarStyle`. `BindStyle`
+forwards the nullable local value to matching retained-child slots, including
+parts created later. It never copies a resolved value, so null reset and theme
+replacement remain live through nested proxy chains. The framework owns
+dispatcher checks, notification order, theme transition planning, caching, exact
+invalidation, and disposal of binding edges.
+
+Complete control style values provide validated `With(...)` methods for
+member-wise copying and an optional `AppearanceProfileSet` overlay. These CLR
+helpers are for application composition; theme JSON remains semantic-only and
+does not deserialize control-specific style values.
+
 ## Visual states
 
 Each control selects one of the five global `ThemeRole` values, with the base
-`Control` role as the fallback. Built-in controls choose the appropriate role,
-and a third-party control may override the protected `ThemeRole` property.
+`ThemeRole.Control` role as the fallback. Built-in controls choose the
+appropriate role, and a third-party control may override the protected
+`ThemeRole` property.
 
 The resolver applies appearance in this order, with later supplied members
 winning:

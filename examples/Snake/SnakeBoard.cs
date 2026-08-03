@@ -4,7 +4,7 @@
 namespace Snake;
 
 /// <summary>Custom drawing control that renders the snake game board with animations.</summary>
-public sealed class SnakeBoard: Control
+public sealed class SnakeBoard: ControlBase
 {
     private static readonly TerminalStyle _borderStyle = new(
         Color.Rgb(127, 127, 127), Color.Default);

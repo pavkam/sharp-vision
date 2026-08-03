@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Support;
 
 /// <summary>Records completed activations from the shared press behavior.</summary>
-internal sealed class ProbePressable: Pressable
+internal sealed class ProbePressable: PressableBase
 {
     /// <summary>Initializes an empty pressable probe.</summary>
     internal ProbePressable()

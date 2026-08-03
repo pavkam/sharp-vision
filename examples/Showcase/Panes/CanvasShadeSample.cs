@@ -4,7 +4,7 @@
 namespace SharpVision.Showcase.Panes;
 
 /// <summary>Demonstrates shade fills and merged quadrant-block drawing.</summary>
-internal sealed class CanvasShadeSample: Control
+internal sealed class CanvasShadeSample: ControlBase
 {
     /// <summary>Initializes the shade and quadrant sample.</summary>
     internal CanvasShadeSample()

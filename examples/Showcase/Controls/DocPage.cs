@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Controls;
 using TextControl = SharpVision.Controls.Display.Text;
 
 /// <summary>Builds a page root: a heading with an Overview summary, then the given sections.</summary>
-internal sealed class DocPage: CompositeControl
+internal sealed class DocPage: CompositeControlBase
 {
     /// <summary>Initializes one showcase documentation page.</summary>
     /// <param name="name">The exact control/page name shown as the heading.</param>
@@ -14,7 +14,7 @@ internal sealed class DocPage: CompositeControl
     /// <param name="sections">The example/section controls, in display order.</param>
     /// <exception cref="ArgumentException"><paramref name="name"/> or <paramref name="overviewMarkup"/> is blank.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="sections"/> or one of its entries is null.</exception>
-    internal DocPage(string name, string overviewMarkup, params Control[] sections)
+    internal DocPage(string name, string overviewMarkup, params ControlBase[] sections)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(overviewMarkup);

@@ -4,23 +4,23 @@
 
 `ContextMenu` shows a vertical menu at any cell position you choose and closes
 through light dismiss when the user interacts outside of it. Attach one to a
-control through `Control.ContextMenu` so it opens on right-click, or open it
+control through `ControlBase.ContextMenu` so it opens on right-click, or open it
 yourself at an explicit position with `Show`.
 
 ## API
 
-| Member                         | Default        | Description                                                                                                          |
-| ------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `Items`                        | empty          | The typed collection of menu entries the menu manages.                                                               |
-| `IsOpen`                       | `false`        | Reports the committed popup visibility. Read-only.                                                                   |
-| `Opening`, `Closing`, `Closed` | no subscribers | Lifecycle notifications raised in order around visibility changes.                                                   |
-| `Show(int row, int col)`       | —              | Opens the menu at a zero-based root-cell position; a no-op until the menu is assigned to some `Control.ContextMenu`. |
-| `Close()`                      | —              | Closes the menu and clears its fixed origin; safe to call again.                                                     |
+| Member                         | Default        | Description                                                                                                              |
+| ------------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `Items`                        | empty          | The typed collection of menu entries the menu manages.                                                                   |
+| `IsOpen`                       | `false`        | Reports the committed popup visibility. Read-only.                                                                       |
+| `Opening`, `Closing`, `Closed` | no subscribers | Lifecycle notifications raised in order around visibility changes.                                                       |
+| `Show(int row, int col)`       | —              | Opens the menu at a zero-based root-cell position; a no-op until the menu is assigned to some `ControlBase.ContextMenu`. |
+| `Close()`                      | —              | Closes the menu and clears its fixed origin; safe to call again.                                                         |
 
 ## Ownership
 
-Assigning a menu to `Control.ContextMenu` gives that control ownership of the
-menu's retained popup presentation, an internal implementation detail not
+Assigning a menu to `ControlBase.ContextMenu` gives that control ownership of
+the menu's retained popup presentation, an internal implementation detail not
 exposed on the public API. Only one control can own a menu at a time: assigning
 the same `ContextMenu` instance to a second control throws `ArgumentException`,
 and the second control keeps whatever context menu it already had.
