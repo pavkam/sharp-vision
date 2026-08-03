@@ -930,7 +930,7 @@ namespace SharpVision.Terminal.Kitty.Keyboard
         Set = 2,
         Clear = 3,
     }
-    public static class Keyboard
+    public static class KittyKeyboard
     {
         public static void Pop(SharpVision.Terminal.Protocols.Writer writer, int count = 1) { }
         public static void Push(SharpVision.Terminal.Protocols.Writer writer, SharpVision.Terminal.Kitty.Keyboard.Enhancement flags) { }

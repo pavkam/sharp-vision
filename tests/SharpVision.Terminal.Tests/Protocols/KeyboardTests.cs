@@ -23,11 +23,11 @@ public sealed class KeyboardTests
         var destination = new ArrayBufferWriter<byte>();
         var writer = new ProtocolWriter(destination);
 
-        Keyboard.Query(writer);
-        Keyboard.Push(writer, Enhancement.Disambiguate | Enhancement.EventTypes);
-        Keyboard.Pop(writer);
-        Keyboard.Pop(writer, 2);
-        Keyboard.Set(writer, Enhancement.Disambiguate, EnhancementMode.Replace);
+        KittyKeyboard.Query(writer);
+        KittyKeyboard.Push(writer, Enhancement.Disambiguate | Enhancement.EventTypes);
+        KittyKeyboard.Pop(writer);
+        KittyKeyboard.Pop(writer, 2);
+        KittyKeyboard.Set(writer, Enhancement.Disambiguate, EnhancementMode.Replace);
 
         destination.WrittenSpan.ToArray().ShouldBe(
             "[?u[>3u[<u[<2u[=1;1u"u8.ToArray());
@@ -42,10 +42,10 @@ public sealed class KeyboardTests
         var destination = new ArrayBufferWriter<byte>();
         var writer = new ProtocolWriter(destination);
 
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => Keyboard.Push(writer, (Enhancement) 32));
-        _ = Should.Throw<ArgumentException>(() => Keyboard.Push(writer, Enhancement.AssociatedText));
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => Keyboard.Set(writer, Enhancement.Disambiguate, 0));
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => Keyboard.Pop(writer, 0));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => KittyKeyboard.Push(writer, (Enhancement) 32));
+        _ = Should.Throw<ArgumentException>(() => KittyKeyboard.Push(writer, Enhancement.AssociatedText));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => KittyKeyboard.Set(writer, Enhancement.Disambiguate, 0));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => KittyKeyboard.Pop(writer, 0));
 
         destination.WrittenCount.ShouldBe(0);
     }

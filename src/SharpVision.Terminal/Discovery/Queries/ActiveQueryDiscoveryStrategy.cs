@@ -169,7 +169,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
         if (queryKeyboard)
         {
-            Kitty.Keyboard.Keyboard.Query(preludeWriter);
+            Kitty.Keyboard.KittyKeyboard.Query(preludeWriter);
             remaining--;
         }
 
