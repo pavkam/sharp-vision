@@ -80,13 +80,14 @@ a `Capabilities` profile can report: `SynchronizedOutput`, `FocusReporting`,
 one named protocol to its `Feature` evidence, and `Capabilities.Features`
 returns every protocol paired with its `Feature` as an
 `IReadOnlyList<ProtocolSupport>`, replacing an earlier anonymous feature list.
-Both members report each protocol's real `Support` state. Kitty graphics may
-become supported only from its strict correlated APC query or explicit caller
-policy; an environment name remains tentative. Sixel may become supported from
-DA1 parameter 4 or explicit caller policy. iTerm2 multipart output requires
-either an explicit caller override or a correlated `OSC 1337 ; Capabilities`
-query reply carrying the `FILE` code, corroborated by a `TERM_PROGRAM_VERSION`
-of 3.5 or newer; environment and database evidence cannot enable it (see
+Both members report each protocol's real `CapabilitySupport` state. Kitty
+graphics may become supported only from its strict correlated APC query or
+explicit caller policy; an environment name remains tentative. Sixel may become
+supported from DA1 parameter 4 or explicit caller policy. iTerm2 multipart
+output requires either an explicit caller override or a correlated
+`OSC 1337 ; Capabilities` query reply carrying the `FILE` code, corroborated by
+a `TERM_PROGRAM_VERSION` of 3.5 or newer; environment and database evidence
+cannot enable it (see
 [iTerm2 evidence](iterm2.md#non-retained-backend-and-selection) for the
 narrowing corroborator and the `FILE`/`FOCUS_REPORTING` code-collision hazard).
 The [coverage matrix](coverage-matrix.md#coverage) remains the support claim.

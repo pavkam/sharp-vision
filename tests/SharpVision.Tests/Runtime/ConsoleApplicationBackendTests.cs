@@ -5,8 +5,6 @@ namespace SharpVision.Tests.Runtime;
 
 using Terminal.Backends;
 
-using CapabilitySupport = Terminal.Capabilities.Support;
-
 /// <summary>Proves console hosting retains one terminal-context lineage through discovery and cleanup.</summary>
 /// <remarks>
 /// The session owns the only terminal context. The application keeps just the immutable profile,

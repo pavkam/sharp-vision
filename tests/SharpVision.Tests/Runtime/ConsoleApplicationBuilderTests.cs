@@ -75,7 +75,7 @@ public sealed class ConsoleApplicationBuilderTests
     public void UseCapabilities_WhenDatabaseEvidenceExists_PreservesExactCapabilities()
     {
         var database = new Feature(
-            Terminal.Capabilities.Support.Supported,
+            CapabilitySupport.Supported,
             Origin.Database);
         var capabilities = Capabilities.Conservative with { Osc52 = database };
         var builder = new ConsoleApplicationBuilder(new ProbeScreen())

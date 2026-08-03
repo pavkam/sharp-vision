@@ -93,11 +93,11 @@ internal static class QueryEvidenceAdapter
     private static Feature NarrowItermImagesByVersion(
         Feature current,
         IReadOnlyDictionary<string, string?> environment) =>
-        current.State == Support.Supported &&
+        current.State == CapabilitySupport.Supported &&
         environment.TryGetValue(EnvironmentNames.TermProgramVersion, out var raw) &&
         Version.TryParse(raw, out var version) &&
         version < _multipartMinimumVersion
-            ? new Feature(Support.Unsupported, current.Origin)
+            ? new Feature(CapabilitySupport.Unsupported, current.Origin)
             : current;
 
     [SuppressMessage(
@@ -107,7 +107,7 @@ internal static class QueryEvidenceAdapter
     private static Feature Apply(Feature current, bool? supported, Origin origin) =>
         supported.HasValue && (origin == Origin.Override || current.Origin != Origin.Override)
             ? new Feature(
-                supported.Value ? Support.Supported : Support.Unsupported,
+                supported.Value ? CapabilitySupport.Supported : CapabilitySupport.Unsupported,
                 origin)
             : current;
 }

@@ -88,11 +88,12 @@ programs that were actually loaded, validated, and compiled. Query replies pass
 through the existing typed codecs before they may refine a feature. Explicit
 settings apply last, but they cannot inject raw escape strings.
 
-Each optional protocol is represented by a `Feature`, which carries a `Support`
-state and an `Origin`. Consumers call `Capabilities.Support(TerminalProtocol)`
-or inspect `Capabilities.Features`; they do not infer support from terminal
-names. The [coverage matrix](../protocols/coverage-matrix.md#coverage) is the
-sole summary of what the current code and tests prove.
+Each optional protocol is represented by a `Feature`, which carries a
+`CapabilitySupport` state and an `Origin`. Consumers call
+`Capabilities.Support(TerminalProtocol)` or inspect `Capabilities.Features`;
+they do not infer support from terminal names. The
+[coverage matrix](../protocols/coverage-matrix.md#coverage) is the sole summary
+of what the current code and tests prove.
 
 ## Protocol routing
 

@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Capabilities;
 
 /// <summary>Identifies confidence in one optional terminal feature.</summary>
 [PublicAPI]
-public enum Support
+public enum CapabilitySupport
 {
     /// <summary>No reliable evidence is available.</summary>
     Unknown,

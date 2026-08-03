@@ -40,7 +40,7 @@ internal static class EnvironmentEvidenceAdapter
 
             if (kitty)
             {
-                var hint = new Feature(Support.Tentative, Origin.Environment);
+                var hint = new Feature(CapabilitySupport.Tentative, Origin.Environment);
                 capabilities = capabilities with
                 {
                     SynchronizedOutput = ApplyHint(capabilities.SynchronizedOutput, hint),
@@ -59,7 +59,7 @@ internal static class EnvironmentEvidenceAdapter
             }
             else if (xterm)
             {
-                var hint = new Feature(Support.Tentative, Origin.Environment);
+                var hint = new Feature(CapabilitySupport.Tentative, Origin.Environment);
                 capabilities = capabilities with
                 {
                     FocusReporting = ApplyHint(capabilities.FocusReporting, hint),
@@ -75,7 +75,7 @@ internal static class EnvironmentEvidenceAdapter
 
             if (string.Equals(program, "iTerm.app", StringComparison.OrdinalIgnoreCase))
             {
-                var hint = new Feature(Support.Tentative, Origin.Environment);
+                var hint = new Feature(CapabilitySupport.Tentative, Origin.Environment);
                 capabilities = capabilities with { ItermImages = ApplyHint(capabilities.ItermImages, hint) };
             }
 
@@ -85,7 +85,7 @@ internal static class EnvironmentEvidenceAdapter
 
             if (multiplexer)
             {
-                var unavailable = new Feature(Support.Unsupported, Origin.Environment);
+                var unavailable = new Feature(CapabilitySupport.Unsupported, Origin.Environment);
                 capabilities = capabilities with
                 {
                     KittyClipboard = unavailable,
@@ -103,7 +103,7 @@ internal static class EnvironmentEvidenceAdapter
                     // that already outranks it (terminfo, an active query, or an explicit override) —
                     // only narrow it when nothing authoritative established support already (see #124).
                     Osc52 = capabilities.Osc52.IsAuthoritative ? capabilities.Osc52 : Feature.Unknown,
-                    KittyClipboard = new Feature(Support.Unsupported, Origin.Environment)
+                    KittyClipboard = new Feature(CapabilitySupport.Unsupported, Origin.Environment)
                 };
             }
 
@@ -116,7 +116,7 @@ internal static class EnvironmentEvidenceAdapter
         "IDE0051:Remove unused private members",
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static Feature ApplyHint(Feature current, Feature hint) =>
-        current.State == Support.Unknown ? hint : current;
+        current.State == CapabilitySupport.Unknown ? hint : current;
 
     [SuppressMessage(
         "Style",

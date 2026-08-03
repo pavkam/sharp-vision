@@ -15,7 +15,7 @@ public sealed class ConsoleHostingConsumerTests
         terminal.Profile.Description.Name.ShouldBe("ansi");
         terminal.Profile.Description.Suitability.ShouldBe(Suitability.Usable);
         terminal.Profile.Capabilities.CellMouse.ShouldBe(
-            new Feature(Terminal.Capabilities.Support.Supported, Origin.Override));
+            new Feature(CapabilitySupport.Supported, Origin.Override));
         _ = terminal.Negotiation.ShouldNotBeNull();
     }
 

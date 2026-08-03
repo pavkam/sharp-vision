@@ -51,7 +51,7 @@ internal static class OverrideEvidenceAdapter
     private static Feature Apply(Feature current, bool? supported) =>
         supported.HasValue
             ? new Feature(
-                supported.Value ? Support.Supported : Support.Unsupported,
+                supported.Value ? CapabilitySupport.Supported : CapabilitySupport.Unsupported,
                 Origin.Override)
             : current;
 }

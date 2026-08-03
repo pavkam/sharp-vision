@@ -135,10 +135,10 @@ internal static class DescriptionEvidenceAdapter
         Feature current,
         bool hasBackingProgram)
     {
-        return current.State == Support.Supported && current.Origin == Origin.Database
+        return current.State == CapabilitySupport.Supported && current.Origin == Origin.Database
             ? hasBackingProgram ? current : Feature.Unknown
             : hasBackingProgram && current == Feature.Unknown
-                ? new Feature(Support.Supported, Origin.Database)
+                ? new Feature(CapabilitySupport.Supported, Origin.Database)
                 : current;
     }
 }

@@ -108,6 +108,13 @@ namespace SharpVision.Terminal.Capabilities
         public static SharpVision.Terminal.Capabilities.Capabilities Conservative { get; }
         public SharpVision.Terminal.Capabilities.Feature Support(SharpVision.Terminal.Capabilities.TerminalProtocol protocol) { }
     }
+    public enum CapabilitySupport
+    {
+        Unknown = 0,
+        Unsupported = 1,
+        Tentative = 2,
+        Supported = 3,
+    }
     public enum ColorDepth
     {
         Monochrome = 0,
@@ -187,13 +194,13 @@ namespace SharpVision.Terminal.Capabilities
     }
     public readonly struct Feature : System.IEquatable<SharpVision.Terminal.Capabilities.Feature>
     {
-        public Feature(SharpVision.Terminal.Capabilities.Support state, SharpVision.Terminal.Capabilities.Origin origin) { }
+        public Feature(SharpVision.Terminal.Capabilities.CapabilitySupport state, SharpVision.Terminal.Capabilities.Origin origin) { }
         public bool IsAuthoritative { get; }
         public bool IsSupported { get; }
         public SharpVision.Terminal.Capabilities.Origin Origin { get; }
-        public SharpVision.Terminal.Capabilities.Support State { get; }
+        public SharpVision.Terminal.Capabilities.CapabilitySupport State { get; }
         public static SharpVision.Terminal.Capabilities.Feature Unknown { get; }
-        public void Deconstruct(out SharpVision.Terminal.Capabilities.Support state, out SharpVision.Terminal.Capabilities.Origin origin) { }
+        public void Deconstruct(out SharpVision.Terminal.Capabilities.CapabilitySupport state, out SharpVision.Terminal.Capabilities.Origin origin) { }
     }
     public sealed class NegotiationOptions
     {
@@ -349,13 +356,6 @@ namespace SharpVision.Terminal.Capabilities
         Hardcopy = 3,
         Incomplete = 4,
         UnsupportedPadding = 5,
-    }
-    public enum Support
-    {
-        Unknown = 0,
-        Unsupported = 1,
-        Tentative = 2,
-        Supported = 3,
     }
     public sealed class TerminalProfile
     {
