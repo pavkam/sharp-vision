@@ -23,13 +23,6 @@ internal static class CellGlyphResolver
                 return value;
             }
 
-            // A glyph that only fails under the ambient policy passed ValidateSingleCell's
-            // Narrow-only check at set-time, so the fallback below is otherwise silent (see #121).
-            Debug.Assert(
-                ambiguousWidth == Ambiguous.Narrow ||
-                    Width.Measure(valueBuffer[..valueLength], Ambiguous.Narrow) is not { Cells: 1, Controls: 0 },
-                "This glyph passed ValidateSingleCell under Narrow but is falling back under the ambient policy.");
-
             Span<char> fallbackBuffer = stackalloc char[2];
             var fallbackLength = fallback.EncodeToUtf16(fallbackBuffer);
             var fallbackMeasurement = Width.Measure(fallbackBuffer[..fallbackLength], ambiguousWidth);

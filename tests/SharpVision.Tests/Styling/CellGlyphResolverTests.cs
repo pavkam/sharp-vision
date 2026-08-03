@@ -3,8 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
-/// <summary>Verifies <see cref="CellGlyphResolver.ValidateSingleCell(Rune, string)"/> accepts
-/// narrow printable runes and rejects wide or control runes.</summary>
+/// <summary>Verifies fixed-cell glyph validation and ambient-width fallback.</summary>
 public sealed class CellGlyphResolverTests
 {
     /// <summary>Verifies a standard ASCII letter passes validation.</summary>
@@ -39,8 +38,7 @@ public sealed class CellGlyphResolverTests
     }
 
     /// <summary>Verifies the default overload validates against Narrow, accepting a glyph that an
-    /// explicit Wide policy would reject (see #121: this is the gap Resolve's Debug.Assert now
-    /// surfaces when the ambient policy diverges from the Narrow default used here).</summary>
+    /// explicit Wide policy would reject.</summary>
     [Fact]
     public void ValidateSingleCell_WhenAmbiguousWidthRune_AcceptsUnderNarrowDefault()
     {
@@ -50,6 +48,19 @@ public sealed class CellGlyphResolverTests
         var result = ambiguous.ValidateSingleCell("glyph");
 
         result.ShouldBe(ambiguous);
+    }
+
+    /// <summary>Verifies an ambiguous-width glyph uses its portable fallback when the ambient
+    /// policy makes the requested glyph wide.</summary>
+    [Fact]
+    public void Resolve_WhenAmbiguousWidthRuneBecomesWide_ReturnsFallback()
+    {
+        var ambiguous = new Rune(0x00B7);
+        var fallback = new Rune('.');
+
+        var result = ambiguous.Resolve(fallback, Ambiguous.Wide);
+
+        result.ShouldBe(fallback);
     }
 
     /// <summary>Verifies the explicit-policy overload rejects an Ambiguous-width glyph under Wide.</summary>
