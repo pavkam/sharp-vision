@@ -400,42 +400,44 @@ public sealed class DateInput: Control
                 return;
             }
 
-            if (key.Code == Code.Up)
+            var hasEditableSegments = SegmentCount() > 0;
+
+            if (hasEditableSegments && key.Code == Code.Up)
             {
                 IncrementActiveSegment(1);
                 eventArgs.Handled = true;
                 return;
             }
 
-            if (key.Code == Code.Down)
+            if (hasEditableSegments && key.Code == Code.Down)
             {
                 IncrementActiveSegment(-1);
                 eventArgs.Handled = true;
                 return;
             }
 
-            if (key.Code == Code.Left)
+            if (hasEditableSegments && key.Code == Code.Left)
             {
                 NavigateSegment(-1);
                 eventArgs.Handled = true;
                 return;
             }
 
-            if (key.Code == Code.Right)
+            if (hasEditableSegments && key.Code == Code.Right)
             {
                 NavigateSegment(1);
                 eventArgs.Handled = true;
                 return;
             }
 
-            if (key.Code == Code.Home)
+            if (hasEditableSegments && key.Code == Code.Home)
             {
                 MoveToEdge(first: true);
                 eventArgs.Handled = true;
                 return;
             }
 
-            if (key.Code == Code.End)
+            if (hasEditableSegments && key.Code == Code.End)
             {
                 MoveToEdge(first: false);
                 eventArgs.Handled = true;
@@ -449,14 +451,14 @@ public sealed class DateInput: Control
                 return;
             }
 
-            if (key.Code == Code.Backspace)
+            if (hasEditableSegments && key.Code == Code.Backspace)
             {
                 ClearActiveSegment();
                 eventArgs.Handled = true;
                 return;
             }
 
-            if (key.Code == Code.Character && key.Character is { } ch &&
+            if (hasEditableSegments && key.Code == Code.Character && key.Character is { } ch &&
                 ch.Value is >= '0' and <= '9')
             {
                 TypeDigit(ch.Value - '0');

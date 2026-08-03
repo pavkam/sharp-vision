@@ -11,7 +11,8 @@ popup without changing the value.
 
 Custom date formats follow .NET quoting and escaping rules. Date letters inside
 quoted or escaped literals remain display text and never become editable
-segments.
+segments. When a format contains no editable segments, segment-editing keys are
+left unhandled while popup and clearing commands remain available.
 
 ## API
 

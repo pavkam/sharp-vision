@@ -213,6 +213,27 @@ public sealed class DateInputTests
         control.Value.ShouldBe(new DateOnly(2026, 8, 19));
     }
 
+    /// <summary>Verifies segment keys cannot mutate a value when the format exposes no segments.</summary>
+    [Fact]
+    public void Input_WhenFormatContainsOnlyLiteral_UpDoesNotEditHiddenDate()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 7, 19),
+            Culture = CultureInfo.InvariantCulture,
+            Format = "'choose date'"
+        };
+        var key = KeyEvent(Code.Up);
+
+        // Act
+        _ = Router.Route(control, Events.Key, key);
+
+        // Assert
+        control.Value.ShouldBe(new DateOnly(2026, 7, 19));
+        key.Handled.ShouldBeFalse();
+    }
+
     /// <summary>Verifies changing culture produces different rendered output.</summary>
     [Fact]
     public void Properties_WhenCultureChanges_InvalidatesRender()
