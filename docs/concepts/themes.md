@@ -32,7 +32,8 @@ The root object accepts only these fields:
 Unknown and duplicate fields are rejected. Embedded themes must carry complete
 metadata; external documents fill in missing identity metadata with `Custom`,
 `custom`, dark, and order zero. Programmatic `Theme` construction rejects an
-undefined `ColorScheme` value before publishing the theme.
+undefined `ColorScheme` value and null or blank identity and provenance metadata
+before publishing the theme.
 
 ## Global values
 

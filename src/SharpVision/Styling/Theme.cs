@@ -24,7 +24,8 @@ public sealed class Theme
     /// <param name="author">The attribution author.</param>
     /// <param name="license">The palette license identifier.</param>
     /// <param name="source">The palette source URL.</param>
-    /// <exception cref="ArgumentException">A palette value is transparent.</exception>
+    /// <exception cref="ArgumentNullException">Required identity or provenance metadata is null.</exception>
+    /// <exception cref="ArgumentException">Required metadata is blank or a palette value is transparent.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="colorScheme"/> is undefined.</exception>
     public Theme(
         IReadOnlyDictionary<string, Color>? palette = null,
@@ -35,6 +36,12 @@ public sealed class Theme
         string license = "MIT",
         string source = "https://github.com/sharpvision/sharpvision")
     {
+        name = RequireMetadata(name, nameof(name));
+        slug = RequireMetadata(slug, nameof(slug));
+        author = RequireMetadata(author, nameof(author));
+        license = RequireMetadata(license, nameof(license));
+        source = RequireMetadata(source, nameof(source));
+
         if (!Enum.IsDefined(colorScheme))
         {
             throw new ArgumentOutOfRangeException(
@@ -65,6 +72,15 @@ public sealed class Theme
         Container = new ThemeProfile(CreateDefaultAppearance(ThemeRole.Container));
         Window = new ThemeProfile(CreateDefaultAppearance(ThemeRole.Window));
         Popup = new ThemeProfile(CreateDefaultAppearance(ThemeRole.Popup));
+    }
+
+    private static string RequireMetadata(string value, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(value, parameterName);
+
+        return string.IsNullOrWhiteSpace(value)
+            ? throw new ArgumentException("Theme metadata must not be blank.", parameterName)
+            : value;
     }
 
     /// <summary>Gets the human-readable theme name shown in theme pickers and diagnostics (e.g. "Tokyo Night Storm").</summary>
