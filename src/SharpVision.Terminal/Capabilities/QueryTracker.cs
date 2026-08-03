@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Capabilities;
 
+using SharpVision.Terminal.Clipboard;
+
 using Xterm;
 
 /// <summary>
@@ -494,13 +496,6 @@ public sealed class QueryTracker
             0,
             0);
 
-    private static bool IsIdentifier(string value) =>
-        value.Length > 0 && value.All(static item => item is
-            (>= 'a' and <= 'z') or
-            (>= 'A' and <= 'Z') or
-            (>= '0' and <= '9') or
-            '-' or '_' or '+' or '.');
-
     private static bool IsGraphicsIdentifier(string value)
     {
         if (value.Length == 0 || value[0] == '0')
@@ -546,7 +541,7 @@ public sealed class QueryTracker
 
         if (kind == QueryKind.KittyClipboard)
         {
-            if (id is null || !IsIdentifier(id))
+            if (id is null || !id.IsIdentifier())
             {
                 throw new ArgumentException(
                     "A Kitty clipboard query requires a valid correlation ID.",

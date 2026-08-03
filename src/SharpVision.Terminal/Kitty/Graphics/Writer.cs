@@ -3,6 +3,7 @@
 
 namespace SharpVision.Terminal.Kitty.Graphics;
 
+using SharpVision.Terminal.Clipboard;
 using SharpVision.Terminal.Graphics;
 
 /// <summary>Encodes validated direct Kitty graphics APC commands with finite canonical chunking.</summary>
@@ -60,7 +61,7 @@ public static class Writer
 
         if (command.Action is not GraphicsAction.Query and not GraphicsAction.Transmit ||
             encodedPayload.Length > _encodedChunkBytes ||
-            !IsCanonicalBase64(encodedPayload))
+            !encodedPayload.IsCanonicalBase64())
         {
             throw new ArgumentException("The Kitty payload is not bounded canonical Base64.", nameof(encodedPayload));
         }
@@ -77,13 +78,7 @@ public static class Writer
             throw new ArgumentException("The Kitty payload is not bounded canonical Base64.", nameof(encodedPayload));
         }
 
-        Span<byte> canonical = stackalloc byte[_encodedChunkBytes];
-        var canonicalLength = Encode(decoded[..decodedLength], canonical);
-
-        if (!canonical[..canonicalLength].SequenceEqual(encodedPayload))
-        {
-            throw new ArgumentException("The Kitty payload is not bounded canonical Base64.", nameof(encodedPayload));
-        }
+        AssertRoundTripsToTheSameCanonicalForm(decoded[..decodedLength], encodedPayload);
 
         ValidatePayload(command, decoded[..decodedLength]);
         WriteEncodedCore(command, encodedPayload, destination);
@@ -316,42 +311,19 @@ public static class Writer
             : throw new InvalidOperationException("A bounded Kitty chunk failed Base64 encoding.");
     }
 
-    private static bool IsCanonicalBase64(ReadOnlySpan<byte> value)
+    [Conditional("DEBUG")]
+    private static void AssertRoundTripsToTheSameCanonicalForm(
+        ReadOnlySpan<byte> decoded,
+        ReadOnlySpan<byte> canonicalPayload)
     {
-        if ((value.Length & 3) != 0)
-        {
-            return false;
-        }
+        Span<byte> reencoded = stackalloc byte[_encodedChunkBytes];
+        var reencodedLength = Encode(decoded, reencoded);
 
-        var padding = 0;
-
-        for (var index = 0; index < value.Length; index++)
-        {
-            var item = value[index];
-
-            if (item == (byte) '=')
-            {
-                padding++;
-
-                if (padding > 2 || index < value.Length - 2)
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (padding != 0 || item is not (
-                (>= (byte) 'A' and <= (byte) 'Z') or
-                (>= (byte) 'a' and <= (byte) 'z') or
-                (>= (byte) '0' and <= (byte) '9') or
-                (byte) '+' or (byte) '/'))
-            {
-                return false;
-            }
-        }
-
-        return true;
+        Debug.Assert(
+            reencoded[..reencodedLength].SequenceEqual(canonicalPayload),
+            "A payload that decoded via Base64.DecodeFromUtf8 with status Done and full " +
+            "consumption is necessarily canonical, so re-encoding it must reproduce the exact " +
+            "input bytes.");
     }
 
     private static void ValidatePayload(Command command, ReadOnlySpan<byte> payload)

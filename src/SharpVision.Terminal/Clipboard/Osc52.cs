@@ -141,7 +141,7 @@ public static class Osc52
             return new ClipboardReply(ClipboardStatus.Success, selection, ReadOnlyMemory<byte>.Empty);
         }
 
-        if (!IsCanonicalBase64(encoded) ||
+        if (!encoded.IsCanonicalBase64() ||
             encoded.Length > Base64.GetMaxEncodedToUtf8Length(maxBytes))
         {
             return Malformed(selection);
@@ -197,42 +197,6 @@ public static class Osc52
         _ => throw new ArgumentOutOfRangeException(
             nameof(selection), selection, "The OSC 52 selection is unknown.")
     };
-
-    private static bool IsCanonicalBase64(ReadOnlySpan<byte> value)
-    {
-        if (value.Length % 4 != 0)
-        {
-            return false;
-        }
-
-        var padding = 0;
-
-        for (var index = value.Length - 1; index >= 0 && value[index] == (byte) '='; index--)
-        {
-            padding++;
-        }
-
-        if (padding > 2)
-        {
-            return false;
-        }
-
-        for (var index = 0; index < value.Length - padding; index++)
-        {
-            var item = value[index];
-            var valid = item is (>= (byte) 'A' and <= (byte) 'Z') or
-                (>= (byte) 'a' and <= (byte) 'z') or
-                (>= (byte) '0' and <= (byte) '9') or
-                (byte) '+' or (byte) '/';
-
-            if (!valid)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
 
     private static ClipboardReply Malformed(Selection selection = Selection.Clipboard) =>
         new(ClipboardStatus.Malformed, selection, ReadOnlyMemory<byte>.Empty);

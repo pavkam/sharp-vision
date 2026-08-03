@@ -233,26 +233,9 @@ public static class Writer
         return position + value.Length;
     }
 
-    private static bool IsIdentifier(ReadOnlySpan<byte> value)
-    {
-        foreach (var item in value)
-        {
-            if (item is not (
-                (>= (byte) 'a' and <= (byte) 'z') or
-                (>= (byte) 'A' and <= (byte) 'Z') or
-                (>= (byte) '0' and <= (byte) '9') or
-                (byte) '-' or (byte) '_' or (byte) '+' or (byte) '.'))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     private static void ValidateIdentifier(ReadOnlySpan<byte> value, string parameterName)
     {
-        if (!IsIdentifier(value))
+        if (!value.IsIdentifier())
         {
             throw new ArgumentException(
                 "A correlation identifier contains a forbidden byte.",
@@ -368,7 +351,12 @@ public static class Writer
         bool hasPayload)
     {
         ValidateSelection(selection);
-        ValidateIdentifier(id, nameof(id));
+
+        if (!id.IsEmpty)
+        {
+            ValidateIdentifier(id, nameof(id));
+        }
+
         ValidateUtf8(password, nameof(password));
         ValidateUtf8(name, nameof(name));
 

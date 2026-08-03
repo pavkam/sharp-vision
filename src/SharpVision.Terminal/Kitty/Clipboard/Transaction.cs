@@ -44,7 +44,7 @@ public sealed class Transaction: IDisposable
                 nameof(operation), operation, "A transaction must read or write.");
         }
 
-        if (id is not null && !IsIdentifier(id))
+        if (id is not null && !id.IsIdentifier())
         {
             throw new ArgumentException(
                 "A transaction ID contains a forbidden character.",
@@ -352,27 +352,6 @@ public sealed class Transaction: IDisposable
         ReplyStatus.Denied or
         ReplyStatus.Busy;
 
-    private static bool IsIdentifier(string value)
-    {
-        if (value.Length == 0)
-        {
-            return false;
-        }
-
-        foreach (var item in value)
-        {
-            if (item is not (
-                (>= 'a' and <= 'z') or
-                (>= 'A' and <= 'Z') or
-                (>= '0' and <= '9') or
-                '-' or '_' or '+' or '.'))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
 
     private static Diagnostic Unexpected() =>
         new(DiagnosticCode.UnexpectedPacket, SequenceKind.Osc, 0, 0);

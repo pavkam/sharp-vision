@@ -187,7 +187,7 @@ public sealed class Packet
             }
             else if (key.SequenceEqual("id"u8))
             {
-                if (seenId || !IsIdentifier(fieldValue))
+                if (seenId || !fieldValue.IsIdentifier())
                 {
                     return Invalid(DiagnosticCode.InvalidMetadata, value.Length, id);
                 }
@@ -219,7 +219,7 @@ public sealed class Packet
                 if (seenName || !TryDecodeUtf8(fieldValue, effectiveLimits.MaxMetadataBytes, out name))
                 {
                     return Invalid(
-                        IsCanonicalBase64(fieldValue)
+                        fieldValue.IsCanonicalBase64()
                             ? DiagnosticCode.InvalidMetadata
                             : DiagnosticCode.InvalidBase64,
                         value.Length,
@@ -311,64 +311,6 @@ public sealed class Packet
             diagnostic);
     }
 
-    private static bool IsCanonicalBase64(ReadOnlySpan<byte> value)
-    {
-        // The span decoder accepts some non-canonical final quanta. Kitty
-        // packets are correlation-sensitive, so require complete quartets and
-        // terminal-only padding before allocating an owned decoded copy.
-        if (value.Length % 4 != 0)
-        {
-            return false;
-        }
-
-        var padding = 0;
-
-        for (var index = value.Length - 1; index >= 0 && value[index] == (byte) '='; index--)
-        {
-            padding++;
-        }
-
-        if (padding > 2)
-        {
-            return false;
-        }
-
-        for (var index = 0; index < value.Length - padding; index++)
-        {
-            if (value[index] is not (
-                (>= (byte) 'A' and <= (byte) 'Z') or
-                (>= (byte) 'a' and <= (byte) 'z') or
-                (>= (byte) '0' and <= (byte) '9') or
-                (byte) '+' or (byte) '/'))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static bool IsIdentifier(ReadOnlySpan<byte> value)
-    {
-        if (value.IsEmpty)
-        {
-            return false;
-        }
-
-        foreach (var item in value)
-        {
-            if (item is not (
-                (>= (byte) 'a' and <= (byte) 'z') or
-                (>= (byte) 'A' and <= (byte) 'Z') or
-                (>= (byte) '0' and <= (byte) '9') or
-                (byte) '-' or (byte) '_' or (byte) '+' or (byte) '.'))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
 
     private static bool IsMetadataAscii(ReadOnlySpan<byte> value)
     {
@@ -398,7 +340,7 @@ public sealed class Packet
             return true;
         }
 
-        if (!IsCanonicalBase64(encoded) ||
+        if (!encoded.IsCanonicalBase64() ||
             encoded.Length > Base64.GetMaxEncodedToUtf8Length(maximum))
         {
             return false;
