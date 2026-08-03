@@ -15,16 +15,12 @@ public readonly struct ChaseIndicatorStyle: IEquatable<ChaseIndicatorStyle>
     private readonly ColorValue? _trackColor;
     private readonly ThemeProfile? _appearance;
 
-    /// <summary>Gets the primary chase-indicator-style definition.</summary>
-    internal static StyleDefinition<ChaseIndicatorStyle> Definition { get; } = StyleDefinitions.Control(
+    /// <summary>Gets the primary chase-indicator-style definition. Reads the theme's registrable
+    /// "chaseIndicator" style section (see #155) for Active/Inactive when the active theme
+    /// authors one; falls back to the code-owned structural defaults otherwise.</summary>
+    internal static StyleDefinition<ChaseIndicatorStyle> Definition { get; } = new(
         ThemeRole.Control,
-        static profile => new ChaseIndicatorStyle(
-            Default.Active,
-            Default.Inactive,
-            Default.HeadColor,
-            Default.TrailColor,
-            Default.TrackColor,
-            profile),
+        ResolveComplete,
         static style => style.Appearance,
         static (previous, previousTheme, current, currentTheme) =>
             previous != current ||
@@ -33,6 +29,46 @@ public readonly struct ChaseIndicatorStyle: IEquatable<ChaseIndicatorStyle>
             ControlBase.ResolveColor(previous.TrackColor, previousTheme) != ControlBase.ResolveColor(current.TrackColor, currentTheme)
                 ? InvalidationImpact.Render
                 : InvalidationImpact.None);
+
+    private static ChaseIndicatorStyle ResolveComplete(ChaseIndicatorStyle? local, Theme? theme)
+    {
+        if (local.HasValue)
+        {
+            return local.Value;
+        }
+
+        var effectiveTheme = theme ?? Themes.Dark;
+        var section = effectiveTheme.GetStyleSection<ChaseIndicatorStyleSection>("chaseIndicator");
+
+        return new ChaseIndicatorStyle(
+            ParseGlyph(section?.Active, "active", effectiveTheme.Slug) ?? Default.Active,
+            ParseGlyph(section?.Inactive, "inactive", effectiveTheme.Slug) ?? Default.Inactive,
+            Default.HeadColor,
+            Default.TrailColor,
+            Default.TrackColor,
+            effectiveTheme.GetProfile(ThemeRole.Control));
+    }
+
+    private static Rune? ParseGlyph(string? value, string memberName, string themeSlug)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        var enumerator = value.EnumerateRunes();
+        if (!enumerator.MoveNext())
+        {
+            throw new InvalidDataException(
+                $"Theme '{themeSlug}' styles.chaseIndicator.{memberName} must contain one Rune.");
+        }
+
+        var result = enumerator.Current;
+        return enumerator.MoveNext()
+            ? throw new InvalidDataException(
+                $"Theme '{themeSlug}' styles.chaseIndicator.{memberName} must contain one Rune.")
+            : result;
+    }
 
     /// <summary>Initializes a complete chase-indicator presentation.</summary>
     /// <param name="active">The printable one-cell active-position glyph.</param>

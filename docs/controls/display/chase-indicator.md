@@ -23,11 +23,15 @@ the `HeadColor`, `TrailColor`, and `TrackColor` foregrounds for each animated
 part, and a complete appearance profile. Each color accepts either a concrete
 `Color` or a `ThemeColor` role and defaults to `Accent`, `Muted`, and `Muted`
 respectively when not overridden. `ChaseIndicatorStyle.With(...)` creates
-validated member-wise copies and may overlay an `AppearanceProfileSet`; theme
-JSON remains semantic-only. Assigning `Style` replaces the entire Theme-owned
-presentation, and assigning `null` restores it. If the active cell-width policy
-is wide and a configured glyph becomes ambiguous, the control falls back to a
-role-appropriate one-cell ASCII head and a `.` track glyph.
+validated member-wise copies and may overlay an `AppearanceProfileSet`. A theme
+document may additionally author a `styles.chaseIndicator` section with
+`active`/`inactive` one-character string members; an active theme's section
+supplies those glyphs ahead of the code-owned defaults whenever no local `Style`
+is assigned (see [themes.md](../../concepts/themes.md#semantic-profiles)). The
+three colors remain code-owned. Assigning `Style` replaces the entire
+Theme-owned presentation, and assigning `null` restores it. If the active
+cell-width policy is wide and a configured glyph becomes ambiguous, the control
+falls back to a role-appropriate one-cell ASCII head and a `.` track glyph.
 
 Changing the effective glyph pair resets the animation phase. Appearance-only
 Theme changes repaint without losing the phase. Changing `Movement` or `Length`
