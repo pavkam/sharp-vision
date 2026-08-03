@@ -63,6 +63,7 @@ internal sealed class WindowPane: CompositeControlBase
         var windowStatus = new Text("Window: open");
         var activationStatus = new Text("Active Window: none");
         var reopenWindow = new Button { Content = new Text("Reopen &window") };
+        var closeWindow = new Button { Content = new Text("&Close via API") };
         draggable.Closing += (_, _) =>
         {
             draggable.Visibility = Visibility.Collapsed;
@@ -73,6 +74,7 @@ internal sealed class WindowPane: CompositeControlBase
             draggable.Visibility = Visibility.Visible;
             windowStatus.Content = "Window: open";
         };
+        closeWindow.Click += (_, _) => draggable.Close();
 
         void ReportActivation() => activationStatus.Content = draggable.IsActive
             ? "Active Window: Draggable settings"
@@ -103,8 +105,9 @@ internal sealed class WindowPane: CompositeControlBase
         Place(draggable, 22, 3);
         Place(activityWindow, 54, 12);
         Place(reopenWindow, 2, 2);
-        Place(windowStatus, 2, 6);
-        Place(activationStatus, 2, 8);
+        Place(closeWindow, 2, 5);
+        Place(windowStatus, 2, 9);
+        Place(activationStatus, 2, 11);
 
         var dragSurface = new Text(
             "Dashboard  Activity  Settings\n\n\n\n\n\n\n\n\n\n\n" +
@@ -125,7 +128,7 @@ internal sealed class WindowPane: CompositeControlBase
                 Color.Transparent,
                 ThemeDecoration.Border),
             Padding = new Thickness(1, 0),
-            Children = { dragSurface, reopenWindow, windowStatus, activationStatus, draggable, activityWindow }
+            Children = { dragSurface, reopenWindow, closeWindow, windowStatus, activationStatus, draggable, activityWindow }
         };
 
         // Modal dialog with Ignore outside interaction and default/cancel role buttons.
