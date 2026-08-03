@@ -149,9 +149,12 @@ public sealed class Renderer: IDisposable
     /// <remarks>
     /// Empty when the active backend encoded every placement, or when no graphics backend is
     /// configured. Reflects only the most recently prepared frame; it is replaced (not merged)
-    /// on the next successful prepare, unlike <see cref="LastCleanupException"/>.
+    /// on the next successful prepare, unlike <see cref="LastCleanupException"/>. Not reachable
+    /// from a hosted <c>Application</c>/<c>ConsoleApplication</c>, which owns its <see cref="Renderer"/>
+    /// privately - <see cref="Metrics.GraphicsDiagnostics"/>, returned from every successful
+    /// render, is the supported delivery path (see #233).
     /// </remarks>
-    public IReadOnlyList<GraphicsPlacementDiagnostic> LastGraphicsDiagnostics { get; private set; } =
+    internal IReadOnlyList<GraphicsPlacementDiagnostic> LastGraphicsDiagnostics { get; private set; } =
         Array.Empty<GraphicsPlacementDiagnostic>();
 
     /// <summary>Gets the last committed front buffer, or null before the first successful render.</summary>
@@ -406,7 +409,8 @@ public sealed class Renderer: IDisposable
                     0,
                     encoded.Spans,
                     encoded.Full,
-                    Stopwatch.GetElapsedTime(started)));
+                    Stopwatch.GetElapsedTime(started),
+                    LastGraphicsDiagnostics));
             }
 
             if (synchronized)
@@ -609,7 +613,8 @@ public sealed class Renderer: IDisposable
                 1,
                 encoded.Spans,
                 encoded.Full,
-                Stopwatch.GetElapsedTime(started));
+                Stopwatch.GetElapsedTime(started),
+                LastGraphicsDiagnostics);
         }
         catch (Exception exception)
         {

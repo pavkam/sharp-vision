@@ -184,6 +184,13 @@ public sealed class Application: ISink, IAsyncDisposable
     /// <summary>Raised for immutable redacted terminal protocol diagnostics.</summary>
     public event EventHandler<DiagnosticEventArgs>? Diagnostic;
 
+    /// <summary>
+    /// Raised on the dispatcher after one committed frame left graphics placements falling back to
+    /// ordinary cells. Not raised when every placement encoded successfully, or when no graphics
+    /// backend is configured.
+    /// </summary>
+    public event EventHandler<GraphicsDiagnosticEventArgs>? GraphicsDiagnostic;
+
     /// <summary>Raised on the dispatcher after the runtime receives one typed terminal protocol response.</summary>
     public event EventHandler<ProtocolResponseEventArgs>? ResponseReceived;
 
@@ -750,6 +757,12 @@ public sealed class Application: ISink, IAsyncDisposable
             }
 
             FrameRendered?.Invoke(this, new FrameRenderedEventArgs(metrics!.Value));
+
+            if (metrics!.Value.GraphicsDiagnostics.Count != 0)
+            {
+                Enqueue(Record.From(metrics.Value.GraphicsDiagnostics));
+            }
+
             MarkStarted();
 
             if (!_stopping && HasPendingOutOfBand())
@@ -898,6 +911,9 @@ public sealed class Application: ISink, IAsyncDisposable
                 break;
             case RecordKind.KittyClipboardPacket:
                 _terminalServices.ReceiveKittyClipboardPacket(record.KittyClipboardPacket!);
+                break;
+            case RecordKind.GraphicsDiagnostic:
+                GraphicsDiagnostic?.Invoke(this, new GraphicsDiagnosticEventArgs(record.GraphicsDiagnostics));
                 break;
             case RecordKind.Closed:
                 BeginStopping(forced: true, exception: null);

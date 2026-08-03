@@ -18,11 +18,13 @@ decoding. Sixel therefore consumes RGBA only. The Kitty and iTerm2 backends may
 transmit owned PNG directly when their capability and route are proved.
 
 On a terminal whose only graphics protocol is sixel, a PNG placement is skipped
-and the Image control paints its shaded-cell fallback.
-`Renderer.LastGraphicsDiagnostics` reports each placement skipped this way — a
-`GraphicsPlacementDiagnostic` per placement, carrying its `ImageIdentity` and a
+and the Image control paints its shaded-cell fallback. A hosted
+`Application`/`ConsoleApplication` raises `GraphicsDiagnostic` after any frame
+that left placements falling back this way, carrying a
+`GraphicsPlacementDiagnostic` per placement with its `ImageIdentity` and a
 `GraphicsPlacementSkipReason` — so the degradation is observable instead of
-silent.
+silent. A directly owned `Renderer`, outside the hosted path, reads the same
+list from every successful render's `Metrics.GraphicsDiagnostics`.
 
 > [!IMPORTANT]
 >
