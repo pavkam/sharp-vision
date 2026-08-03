@@ -25,6 +25,7 @@ public sealed class Theme
     /// <param name="license">The palette license identifier.</param>
     /// <param name="source">The palette source URL.</param>
     /// <exception cref="ArgumentException">A palette value is transparent.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="colorScheme"/> is undefined.</exception>
     public Theme(
         IReadOnlyDictionary<string, Color>? palette = null,
         string name = "Custom",
@@ -34,6 +35,14 @@ public sealed class Theme
         string license = "MIT",
         string source = "https://github.com/sharpvision/sharpvision")
     {
+        if (!Enum.IsDefined(colorScheme))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(colorScheme),
+                colorScheme,
+                "The theme color scheme is unknown.");
+        }
+
         _palette = palette is null
             ? []
             : new Dictionary<string, Color>(palette, StringComparer.Ordinal);
