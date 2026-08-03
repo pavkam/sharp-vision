@@ -28,6 +28,8 @@ public sealed class UnixConsoleModeTests
     [Fact]
     public void Dispose_WhenRestorationFails_ThrowsAnIOException()
     {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires Unix termios math.");
+
         var setInvocations = 0;
         var mode = UnixConsoleMode.Enter(
             captureControlKeys: false,
@@ -50,6 +52,8 @@ public sealed class UnixConsoleModeTests
     [Fact]
     public void Dispose_WhenCalledAgainAfterFailure_IsQuietAndRetriesNothing()
     {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires Unix termios math.");
+
         var setInvocations = 0;
         var mode = UnixConsoleMode.Enter(
             captureControlKeys: false,
@@ -70,6 +74,8 @@ public sealed class UnixConsoleModeTests
     [Fact]
     public void Dispose_WhenRestorationSucceeds_ReplaysCapturedStateOnce()
     {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires Unix termios math.");
+
         var captured = new byte[RuntimeInterop.TermiosStateLength];
         var replayed = new List<byte[]>();
         var mode = UnixConsoleMode.Enter(
@@ -98,6 +104,8 @@ public sealed class UnixConsoleModeTests
     [Fact]
     public void Enter_WhenRawModeAndUndoBothFail_PreservesTheEntryFailure()
     {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires Unix termios math.");
+
         var setInvocations = 0;
 
         var thrown = Should.Throw<IOException>(() => UnixConsoleMode.Enter(

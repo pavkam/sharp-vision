@@ -26,6 +26,11 @@ runs:
 
     - name: 🧪 Test with coverage
       shell: bash
+      # Windows CI has consistently run slower than Linux/macOS for this same
+      # coverage-instrumented suite (observed directly during issue #35's Windows
+      # lane work), so it gets a longer per-project timeout budget.
+      env:
+        TEST_TIMEOUT: ${{ runner.os == 'Windows' && '600s' || '300s' }}
       run: make test-ci CONFIGURATION=${{ inputs.configuration }}
 
     - name: 🧪 Test controlling-terminal Unix console host
