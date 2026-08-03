@@ -91,7 +91,7 @@ public sealed class ApplicationGraphicsTests
         terminal.QueueResize(new Dimensions(new Size(2, 1), new Size(5, 3)));
         var image = new Image
         {
-            Source = Png(),
+            Source = Rgba(),
             AlternateText = "PN",
             Width = Length.Cells(2),
             Height = Length.Cells(1)
@@ -100,7 +100,7 @@ public sealed class ApplicationGraphicsTests
             image,
             terminal,
             terminal,
-            Options(sixel: true));
+            Options(iterm: true));
         var diagnosed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         GraphicsDiagnosticEventArgs? received = null;
         application.GraphicsDiagnostic += OnGraphicsDiagnostic;
