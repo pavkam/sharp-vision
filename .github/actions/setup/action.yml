@@ -44,10 +44,15 @@ runs:
 
     - name: 📦 Restore repository dependencies
       shell: bash
-      # Git Bash on Windows auto-converts POSIX-looking command-line arguments to Windows
-      # paths, which mangles the plain https:// NuGet source URL into a local path (observed
-      # directly on Windows CI: "D:\...\https:\api.nuget.org\v3\index.json"). MSYS_NO_PATHCONV
-      # disables that conversion; it's a no-op on Linux/macOS.
+      # `make` on Windows (installed via choco above) re-execs each recipe line through its own
+      # MSYS2 shell, distinct from the Git-for-Windows bash running this step, which auto-converts
+      # POSIX-looking command-line arguments to Windows paths and mangles the plain https:// NuGet
+      # source URL into a local path (observed directly on Windows CI:
+      # "D:\...\https:\api.nuget.org\v3\index.json"). MSYS_NO_PATHCONV disables that conversion for
+      # Git's own bash (this step's shell) but not for make's nested MSYS2 shell, which honors the
+      # real MSYS2 variable MSYS2_ARG_CONV_EXCL instead -- set both so the whole chain is covered.
+      # No-op on Linux/macOS.
       env:
         MSYS_NO_PATHCONV: 1
+        MSYS2_ARG_CONV_EXCL: "*"
       run: make restore
