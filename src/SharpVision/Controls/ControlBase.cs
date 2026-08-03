@@ -1098,8 +1098,11 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                 // canvas.HasPreviousFrame already guarantees no layout ran anywhere in the tree
                 // since the frame it copies from (see Application.StartRender), so this control's
                 // own Bounds - and therefore visual - are unchanged. Combined with an unset render
-                // bit and CanReuseCleanRender's leaf/image-free/shadow-free/popup-free requirement,
-                // the previous frame's cells for this exact region are still correct (see #26).
+                // bit and CanReuseCleanRender's leaf/image-free/shadow-free/owns-no-popup-of-its-own
+                // requirement, the previous frame's cells for this exact region are still correct
+                // (see #26). Being overlapped or bordered by a FOREIGN popup - one this control
+                // does not itself own - needs no separate exclusion here: see the correctness note
+                // above CanReuseCleanRender for why (#235).
                 visual.CopyFromPrevious(visual.Bounds);
             }
             else
@@ -1160,8 +1163,34 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     // TrySetOwnerStyle, which never touches the stored character - so a copied Composite shadow
     // cell would carry the OLD frame's grapheme forward even though the style is correct,
     // resurrecting stale content exactly like the transparent-underlay case (#239) the opaque body
-    // fill guard above already exists to prevent. Popup-overlapped and image-bearing subtrees stay
-    // excluded and are tracked separately in #235.
+    // fill guard above already exists to prevent. Image-bearing subtrees stay excluded via
+    // RequiresCompleteRender and remain tracked separately in #235.
+    //
+    // Popup-overlapped subtrees (#235's next slice) need no exclusion here at all - traced the
+    // actual coupling between popup state and the two flags this method depends on, rather than
+    // assuming an exclusion was needed just because a popup's paint is "someone else's" pass:
+    //
+    // - Steady state (an open popup's SurfaceBounds identical to the previous frame): the popup
+    //   layer is repainted unconditionally on every frame - RenderOwnedPopupDescendants runs from
+    //   Root every time, never gated by any clean check - so whatever an overlapped control wrote
+    //   at a contested cell, copied or freshly painted, is always overwritten by the popup's own
+    //   current-frame paint before the frame is committed. Same "paint order, not paint source,
+    //   decides the final byte" invariant already established and tested for shadow overlap above.
+    // - Any frame where a popup's footprint could have changed (opened, closed, moved, or resized)
+    //   is exactly a frame where SOME control's Bounds changed, which - per Popup.ArrangeOverride -
+    //   only happens inside an Arrange pass, and Popup.SetOpen's every _isOpen transition pairs
+    //   with NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.Measure) (Popup.cs). Control's
+    //   own Invalidate(value) propagates that up through Parent to Root, so Root.Pending gains
+    //   Measure/Arrange, PerformLayout runs, and Application.ProcessInvalidation calls StartRender
+    //   with skipCleanSubtrees false for that entire frame - meaning canvas.HasPreviousFrame is
+    //   false for every control app-wide that frame, and CanReuseCleanRender is never even
+    //   consulted anywhere. A popup's footprint can only ever be stale relative to a frame nothing
+    //   was allowed to copy from in the first place.
+    //
+    // Together: whenever CopyFromPrevious for a leaf actually executes, either no popup nearby
+    // changed since the copied frame (safe by the second point), or one did and this branch was
+    // never reached this frame (safe by construction). See RenderCleanSubtreeReuseTests for
+    // adversarial-ordering coverage of both cases.
     private bool CanReuseCleanRender()
     {
         var appearance = GetResolvedAppearance(GetAppearanceState());
@@ -2192,7 +2221,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <param name="left">The first validated impact.</param>
     /// <param name="right">The second validated impact.</param>
     /// <returns>The impact with the greatest ordered value.</returns>
-    internal static InvalidationImpact MaximumImpact(InvalidationImpact left, InvalidationImpact right) =>
+    protected static InvalidationImpact MaximumImpact(InvalidationImpact left, InvalidationImpact right) =>
         (int) left >= (int) right ? left : right;
 
     /// <summary>Maps one validated public change impact to the complete internal dirty-phase closure.</summary>
@@ -3623,7 +3652,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <param name="value">The literal or theme-referenced color value.</param>
     /// <param name="theme">The active theme, or null when no theme resolves the value.</param>
     /// <returns>The literal color, or the theme-resolved color, or <see cref="Color.Default"/>.</returns>
-    internal static Color ResolveColor(ColorValue value, Theme? theme) => value.IsLiteral
+    protected internal static Color ResolveColor(ColorValue value, Theme? theme) => value.IsLiteral
         ? value.Literal
         : theme?.ResolveColor(value.ThemeColor) ?? Color.Default;
 

@@ -515,24 +515,70 @@ public static class Themes
         };
 
     private static BorderGlyphStyle? ResolveOptionalBorderGlyphStyle(
-        string? value,
+        JsonElement? value,
         string source,
-        string context) => value is null
-        ? null
-        : value.ToLowerInvariant() switch
+        string context)
+    {
+        if (!value.HasValue)
         {
-            "light" => BorderGlyphStyle.Light,
-            "heavy" => BorderGlyphStyle.Heavy,
-            "paired" => BorderGlyphStyle.Paired,
-            "rounded" => BorderGlyphStyle.Rounded,
-            "ascii" => BorderGlyphStyle.Ascii,
-            "solid" => BorderGlyphStyle.Solid,
-            "halfblock" => BorderGlyphStyle.HalfBlock,
-            "lightshade" => BorderGlyphStyle.LightShade,
-            "mediumshade" => BorderGlyphStyle.MediumShade,
-            "darkshade" => BorderGlyphStyle.DarkShade,
-            _ => throw new InvalidDataException($"Theme '{source}' {context} has unknown glyph style '{value}'.")
-        };
+            return null;
+        }
+
+        if (value.Value.ValueKind == JsonValueKind.String)
+        {
+            var name = value.Value.GetString()!;
+            return name.ToLowerInvariant() switch
+            {
+                "light" => BorderGlyphStyle.Light,
+                "heavy" => BorderGlyphStyle.Heavy,
+                "paired" => BorderGlyphStyle.Paired,
+                "rounded" => BorderGlyphStyle.Rounded,
+                "ascii" => BorderGlyphStyle.Ascii,
+                "solid" => BorderGlyphStyle.Solid,
+                "halfblock" => BorderGlyphStyle.HalfBlock,
+                "lightshade" => BorderGlyphStyle.LightShade,
+                "mediumshade" => BorderGlyphStyle.MediumShade,
+                "darkshade" => BorderGlyphStyle.DarkShade,
+                _ => throw new InvalidDataException($"Theme '{source}' {context} has unknown glyph style '{name}'.")
+            };
+        }
+
+        if (value.Value.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidDataException($"Theme '{source}' {context} must be a string or an eight-Rune array.");
+        }
+
+        var runes = new Rune[8];
+        var index = 0;
+        foreach (var item in value.Value.EnumerateArray())
+        {
+            if (index >= runes.Length)
+            {
+                throw new InvalidDataException(
+                    $"Theme '{source}' {context} array must contain exactly eight Runes.");
+            }
+
+            if (item.ValueKind != JsonValueKind.String)
+            {
+                throw new InvalidDataException($"Theme '{source}' {context} array must contain strings.");
+            }
+
+            runes[index] = ParseRune(item.GetString()!, source, $"{context}[{index}]");
+            index++;
+        }
+
+        return index != runes.Length
+            ? throw new InvalidDataException($"Theme '{source}' {context} array must contain exactly eight Runes.")
+            : new BorderGlyphStyle(
+                runes[0],
+                runes[1],
+                runes[2],
+                runes[3],
+                runes[4],
+                runes[5],
+                runes[6],
+                runes[7]);
+    }
 
     private static ShadowMode? ResolveOptionalShadowMode(string? value, string source, string context) => value is null
         ? null
@@ -540,13 +586,11 @@ public static class Themes
             ? result
             : throw new InvalidDataException($"Theme '{source}' {context} has unknown shadow mode '{value}'.");
 
-    private static Rune? ResolveOptionalRune(string? value, string source, string context)
-    {
-        if (value is null)
-        {
-            return null;
-        }
+    private static Rune? ResolveOptionalRune(string? value, string source, string context) =>
+        value is null ? null : ParseRune(value, source, context);
 
+    private static Rune ParseRune(string value, string source, string context)
+    {
         var runes = value.EnumerateRunes();
         var enumerator = runes.GetEnumerator();
         if (!enumerator.MoveNext())
