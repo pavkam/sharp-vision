@@ -376,9 +376,9 @@ internal readonly record struct PropertyRange
 }
 `);
 
-  outputs.set("Data.cs", `${header}
+  outputs.set("UnicodeData.cs", `${header}
 /// <summary>Provides allocation-free lookup over pinned Unicode 17 tables.</summary>
-internal static class Data
+internal static class UnicodeData
 {
 ${formatArray("_graphemeBreakRanges", grapheme, "GraphemeBreak")}
 

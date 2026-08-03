@@ -6,7 +6,7 @@ namespace SharpVision.Terminal.Tests.Unicode;
 /// <summary>
 /// Verifies the pinned Unicode source identity and generated property tables.
 /// </summary>
-public sealed class DataTests
+public sealed class UnicodeDataTests
 {
     /// <summary>
     /// Verifies callers can identify the exact Unicode behavior shipped by the
@@ -26,13 +26,13 @@ public sealed class DataTests
     [Fact]
     public void Ranges_WhenGenerated_AreSortedAndNonOverlapping()
     {
-        AssertOrdered(Data.GraphemeBreakRanges);
-        AssertOrdered(Data.IndicConjunctRanges);
-        AssertOrdered(Data.EastAsianWidthRanges);
-        AssertOrdered(Data.EmojiPresentationRanges);
-        AssertOrdered(Data.ExtendedPictographicRanges);
-        AssertOrdered(Data.CanonicalBaseRanges);
-        AssertOrdered(Data.AssignedRanges);
+        AssertOrdered(UnicodeData.GraphemeBreakRanges);
+        AssertOrdered(UnicodeData.IndicConjunctRanges);
+        AssertOrdered(UnicodeData.EastAsianWidthRanges);
+        AssertOrdered(UnicodeData.EmojiPresentationRanges);
+        AssertOrdered(UnicodeData.ExtendedPictographicRanges);
+        AssertOrdered(UnicodeData.CanonicalBaseRanges);
+        AssertOrdered(UnicodeData.AssignedRanges);
     }
 
     /// <summary>

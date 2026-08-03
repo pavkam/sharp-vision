@@ -7,7 +7,7 @@
 namespace SharpVision.Terminal.Unicode;
 
 /// <summary>Provides allocation-free lookup over pinned Unicode 17 tables.</summary>
-internal static class Data
+internal static class UnicodeData
 {
     private static readonly PropertyRange[] _graphemeBreakRanges =
     [
