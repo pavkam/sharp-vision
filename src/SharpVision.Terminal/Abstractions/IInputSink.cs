@@ -27,7 +27,7 @@ public interface IInputSink
 
     /// <summary>Receives one focus transition.</summary>
     /// <param name="value">The immutable focus value.</param>
-    public void Input(in Focus value);
+    public void Input(in TerminalFocus value);
 
     /// <summary>Receives one non-sensitive structured diagnostic.</summary>
     /// <param name="value">The immutable redacted diagnostic.</param>

@@ -29,7 +29,7 @@ internal sealed class RecordingProtocolSink:
     internal List<Paste> Pastes { get; } = [];
 
     /// <summary>Gets terminal focus events in delivery order.</summary>
-    internal List<Focus> Focus { get; } = [];
+    internal List<TerminalFocus> Focus { get; } = [];
 
     /// <summary>Gets redacted diagnostics in delivery order.</summary>
     internal List<Diagnostic> Diagnostics { get; } = [];
@@ -93,7 +93,7 @@ internal sealed class RecordingProtocolSink:
     }
 
     /// <inheritdoc/>
-    public void Input(in Focus value)
+    public void Input(in TerminalFocus value)
     {
         Focus.Add(value);
         Order.Add("focus");

@@ -49,7 +49,7 @@ internal sealed class NegotiationSink:
     public void Input(Paste value) => _destination.Input(value);
 
     /// <inheritdoc/>
-    public void Input(in Focus value) => _destination.Input(in value);
+    public void Input(in TerminalFocus value) => _destination.Input(in value);
 
     /// <inheritdoc/>
     public void Input(in Diagnostic value) => _destination.Input(in value);

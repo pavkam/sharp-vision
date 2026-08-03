@@ -227,7 +227,7 @@ public sealed class ApplicationModalityTests
             nativeCode: 0,
             Modifiers.None,
             KeyAction.Press);
-        var gainedFocus = new Focus(gained: true);
+        var gainedFocus = new TerminalFocus(gained: true);
 
         application.Input(in stroke);
         application.Input(in gainedFocus);
@@ -343,7 +343,7 @@ public sealed class ApplicationModalityTests
             nativeCode: 0,
             Modifiers.None,
             KeyAction.Press);
-        var lostFocus = new Focus(gained: false);
+        var lostFocus = new TerminalFocus(gained: false);
 
         application.Input(in stroke);
         application.Input(in lostFocus);
@@ -357,7 +357,7 @@ public sealed class ApplicationModalityTests
                 application.Focus.Focused.ShouldBeNull();
             },
             TestContext.Current.CancellationToken);
-        var gainedFocus = new Focus(gained: true);
+        var gainedFocus = new TerminalFocus(gained: true);
         application.Input(in stroke);
         application.Input(in gainedFocus);
         await application.Dispatcher.InvokeAsync(
@@ -473,7 +473,7 @@ public sealed class ApplicationModalityTests
             _ = application.Modality.Enter(plane);
             application.Capture.Capture(captured).ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
-        var lostFocus = new Focus(gained: false);
+        var lostFocus = new TerminalFocus(gained: false);
 
         application.Input(in lostFocus);
         await application.Dispatcher.InvokeAsync(

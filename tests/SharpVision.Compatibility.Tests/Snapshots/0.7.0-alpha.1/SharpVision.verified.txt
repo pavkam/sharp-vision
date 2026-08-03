@@ -45,9 +45,9 @@ namespace SharpVision
         public SharpVision.Input.ModalScope EnterModal(SharpVision.Controls.Control root, SharpVision.Input.OutsideInteraction outsideInteraction = 0, SharpVision.Controls.Control? initialFocus = null) { }
         public void Fault(System.Exception exception) { }
         public void Input(SharpVision.Terminal.Input.Paste value) { }
-        public void Input(in SharpVision.Terminal.Input.Focus value) { }
         public void Input(in SharpVision.Terminal.Input.Pointer value) { }
         public void Input(in SharpVision.Terminal.Input.Stroke value) { }
+        public void Input(in SharpVision.Terminal.Input.TerminalFocus value) { }
         public void Input(in SharpVision.Terminal.Input.Text value) { }
         public void Input(in SharpVision.Terminal.Protocols.Diagnostic value) { }
         public void Profile(SharpVision.Terminal.Capabilities.Capabilities value) { }
@@ -2439,8 +2439,8 @@ namespace SharpVision.Input
     }
     public sealed class TerminalFocusEventArgs : SharpVision.Input.RoutedEventArgs
     {
-        public TerminalFocusEventArgs(SharpVision.Terminal.Input.Focus focus) { }
-        public SharpVision.Terminal.Input.Focus Focus { get; }
+        public TerminalFocusEventArgs(SharpVision.Terminal.Input.TerminalFocus focus) { }
+        public SharpVision.Terminal.Input.TerminalFocus Focus { get; }
     }
     public sealed class TextChangedEventArgs : System.EventArgs
     {

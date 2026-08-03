@@ -24,7 +24,7 @@ public sealed class FocusTests
             decoder.Decode(bytes.AsSpan(split));
             decoder.Complete();
 
-            sink.Focus.ShouldBe([new Focus(true), new Focus(false)], $"split {split}");
+            sink.Focus.ShouldBe([new TerminalFocus(true), new TerminalFocus(false)], $"split {split}");
             sink.Text.Single().Value.ShouldBe(new Rune('x'), $"split {split}");
         }
     }

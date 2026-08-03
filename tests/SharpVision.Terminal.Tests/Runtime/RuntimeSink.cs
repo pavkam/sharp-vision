@@ -91,7 +91,7 @@ internal sealed class RuntimeSink: ISink
     public void Input(Paste value) => _ = value;
 
     /// <inheritdoc/>
-    public void Input(in Focus value) => _ = value;
+    public void Input(in TerminalFocus value) => _ = value;
 
     /// <inheritdoc/>
     public void Input(in Diagnostic value) => _ = value;

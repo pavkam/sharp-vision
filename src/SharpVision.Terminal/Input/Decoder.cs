@@ -636,7 +636,7 @@ public sealed class Decoder: IDisposable
             return false;
         }
 
-        var focus = new Focus(final == (byte) 'I');
+        var focus = new TerminalFocus(final == (byte) 'I');
         _sink.Input(in focus);
         return true;
     }
