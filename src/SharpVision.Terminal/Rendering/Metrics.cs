@@ -31,7 +31,8 @@ public readonly record struct Metrics
     /// <param name="full">Whether the operation encoded a full redraw.</param>
     /// <param name="elapsed">The non-negative elapsed time.</param>
     /// <param name="graphicsDiagnostics">
-    /// The non-null graphics placements that fell back to ordinary cells during this frame.
+    /// The non-null graphics placements that fell back to ordinary cells during this frame. The
+    /// constructor copies nonempty values before returning.
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">A count or elapsed time is negative.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="graphicsDiagnostics"/> is null.</exception>
@@ -58,7 +59,9 @@ public readonly record struct Metrics
         Spans = spans;
         Full = full;
         Elapsed = elapsed;
-        GraphicsDiagnostics = graphicsDiagnostics;
+        GraphicsDiagnostics = graphicsDiagnostics.Count == 0
+            ? _noGraphicsDiagnostics
+            : Array.AsReadOnly(graphicsDiagnostics.ToArray());
     }
 
     /// <summary>Gets the number of bytes passed to the transport.</summary>
@@ -77,8 +80,9 @@ public readonly record struct Metrics
     public TimeSpan Elapsed { get; }
 
     /// <summary>
-    /// Gets graphics placements that fell back to ordinary cells during this frame. Empty when the
-    /// active backend encoded every placement, or when no graphics backend is configured.
+    /// Gets the immutable snapshot of graphics placements that fell back to ordinary cells during
+    /// this frame. Empty when the active backend encoded every placement, or when no graphics
+    /// backend is configured.
     /// </summary>
     public IReadOnlyList<GraphicsPlacementDiagnostic> GraphicsDiagnostics { get; } = _noGraphicsDiagnostics;
 
