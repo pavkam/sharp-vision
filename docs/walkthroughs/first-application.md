@@ -40,7 +40,7 @@ internal sealed class HelloScreen : Screen
     public HelloScreen()
     {
         var message = new Text("Ready.");
-        var exit = new Button { Content = new Text("Exit") };
+        var exit = new Button { Text = "Exit" };
         exit.Click += (_, _) => Application?.Shutdown();
 
         InitializeContent(new Stack
@@ -60,7 +60,7 @@ constructor creates the permanent visual tree and calls `InitializeContent`
 exactly once. `Stack.Spacing` inserts one terminal cell between visible
 children, and the two alignment properties center the stack inside the
 application viewport. The [`Button`](../controls/input/button.md#overview) owns
-one `Content` child and publishes `Click` after a completed activation.
+its `Text` caption and publishes `Click` after a completed activation.
 
 ## Run it
 

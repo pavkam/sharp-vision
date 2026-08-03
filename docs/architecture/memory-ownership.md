@@ -153,19 +153,21 @@ Every `SharpVision.Controls.Control` owns one central registry of ordered visual
 slots. `Container.Children` exposes only its public container-child slot.
 `ListView`, `Menu`, and `Table` register private item-presentation hosts, while
 container and editor scrollbar rails use distinct framework-part slots.
-`ContentControl` registers the capacity-one public content role, and
-`PressableBase` inherits that same edge rather than exposing `Children`.
-`ComboBox` registers exactly one private popup-layer framework-part slot, and
-`Popup.Content` owns its private ListView, so no control ever has two parents.
-`CompositeControlBase` owns a permanent composition root, while `ItemsControl`
-owns one private presentation host whose children are the realized item visuals.
-Normal and popup are independent render layers, not ownership roles; a `Popup`
-still promotes an ordinary legacy ownership edge when necessary. Removal
-transfers the now-detached control back to the caller, while owner disposal
-recursively disposes every remaining slot member. Attachment borrows one
-dispatcher reference for the lifetime of the attachment. A control subscribes
-only to its direct `Style`; replacement, detachment where applicable, and
-disposal remove the owned registrations deterministically.
+`ContentControl` registers the capacity-one public content role. `PressableBase`
+does not inherit `ContentControl`: it registers its own capacity-one slot for a
+lazily materialized owned caption child, reachable only through the `Text`
+string property, never as `Children`. `ComboBox` registers exactly one private
+popup-layer framework-part slot, and `Popup.Content` owns its private ListView,
+so no control ever has two parents. `CompositeControlBase` owns a permanent
+composition root, while `ItemsControl` owns one private presentation host whose
+children are the realized item visuals. Normal and popup are independent render
+layers, not ownership roles; a `Popup` still promotes an ordinary legacy
+ownership edge when necessary. Removal transfers the now-detached control back
+to the caller, while owner disposal recursively disposes every remaining slot
+member. Attachment borrows one dispatcher reference for the lifetime of the
+attachment. A control subscribes only to its direct `Style`; replacement,
+detachment where applicable, and disposal remove the owned registrations
+deterministically.
 
 `FloatingSurfaceBase` retains one public content edge and at most one live
 application-owned modal scope. Window and Popup add no proxy ownership edge:

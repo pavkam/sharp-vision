@@ -15,7 +15,7 @@ control. At most one owned member of an effective group is checked at a time.
 | `ActualStyle`                  | Theme radio button | The resolved style; never null.                                 |
 | `RadioButtonStyle.Parentheses` | Theme default      | Fixed-width `( )` and `(•)` presentation.                       |
 | `RadioButtonStyle.Glyph`       | Preset             | Compact one-cell circle presentation.                           |
-| `Content`                      | `null`             | The optional label or richer visual, owned by the radio button. |
+| Inherited `Text`               | `""`               | The radio button's label.                                       |
 | Group-selection events         | No subscribers     | Report staged old/new members and the activation cause.         |
 | `Command`, `CommandParameter`  | `null`             | Inherited from `PressableBase`; runs after the group commits.   |
 
@@ -59,13 +59,13 @@ remains selected.
 var compact = new RadioButton
 {
     GroupName = "density",
-    Content = new Text("Compact")
+    Text = "Compact"
 };
 
 var glyph = new RadioButton
 {
     GroupName = "density",
-    Content = new Text("Comfortable"),
+    Text = "Comfortable",
     Style = RadioButtonStyle.Glyph
 };
 ```
@@ -77,5 +77,5 @@ the documented order. Arrow keys move the selection while skipping disabled
 members, and unnamed and named scopes group exactly as described. Style
 validation and precedence hold, assigning `null` restores the Theme style, and a
 Theme replacement restyles members that have no local style. Both mark layouts
-render correctly, Unicode content stays owned by its member, and rendering
+render correctly, Unicode captions stay owned by its member, and rendering
 produces the exact terminal rows.

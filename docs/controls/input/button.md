@@ -2,9 +2,9 @@
 
 ## Overview
 
-`Button` is a sealed [`PressableBase`](../pressable.md#overview) command control
-with one optional retained `Content` child. Each completed activation raises
-`Click` and invokes the command once.
+`Button` is a sealed [`Pressable<ButtonStyle>`](../pressable.md#overview)
+command control whose caption is its inherited `Text`. Each completed
+activation raises `Click` and invokes the command once.
 
 ## API
 
@@ -14,8 +14,8 @@ with one optional retained `Content` child. Each completed activation raises
 | `ActualStyle`                 | Theme button  | The resolved style, taken from `Style`, the Theme, or the fallback. |
 | `ButtonStyle.Standard`        | Bordered      | One horizontal padding cell with Theme-owned state appearance.      |
 | `ButtonStyle.Filled`          | Shadowed fill | Two horizontal padding cells, no border, and a fractional shadow.   |
-| `Content`                     | `null`        | The optional visual face, owned by the button.                      |
-| `TextAlignment`               | `Center`      | How retained text aligns within the style padding.                  |
+| Inherited `Text`              | `""`          | The button's caption.                                               |
+| `TextAlignment`               | `Center`      | How the caption aligns within the style padding.                    |
 | `Command`, `CommandParameter` | `null`        | Optional command and borrowed parameter.                            |
 | `IsDefault`, `IsCancel`       | `false`       | Whether the button answers the window's Enter/Escape fallback.      |
 
@@ -53,13 +53,13 @@ without activating. `PerformClick()` runs the same programmatic activation path.
 ![The Button control held in its pressed state in the live showcase](../../images/controls/button-pressed.png)
 
 ```csharp
-var save = new Button { Content = new Text("&Save") };
+var save = new Button { Text = "&Save" };
 save.Click += (_, _) => Save();
 
 var add = new Button
 {
     Style = ButtonStyle.Filled,
-    Content = new Text("&Add")
+    Text = "&Add"
 };
 ```
 
@@ -72,5 +72,5 @@ render their exact documented cells. Hovering changes the face background
 without recoloring the border. Space, Enter, and pointer activation behave
 identically, capture cancellation clears a pending press, and the click event
 and command run in their documented order. Disabled buttons never activate,
-content ownership rules hold, Unicode content lays out correctly, and
-`ActualStyle` raises change notifications.
+Unicode captions lay out correctly, and `ActualStyle` raises change
+notifications.

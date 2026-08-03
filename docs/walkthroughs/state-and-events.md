@@ -26,10 +26,10 @@ action is not persistent model state, use a direct event instead.
 ```csharp
 var count = 0;
 var value = new Text("Count: 0");
-var increment = new Button { Content = new Text("Increment") };
+var increment = new Button { Text = "Increment" };
 var enabled = new CheckBox
 {
-    Content = new Text("Enable increment"),
+    Text = "Enable increment",
     IsChecked = true,
 };
 

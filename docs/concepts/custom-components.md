@@ -27,7 +27,7 @@ lifecycle, rendering, hit-testing, focus, capture, and disposal paths.
 | One caller-owned replaceable visual                  | `ContentControl`                                 | `Content`                                      |
 | Reusable component built from existing controls      | `CompositeControlBase`                           | None; its root is private                      |
 | Typed data/semantic collection with realized visuals | `ItemsControl`                                   | The type's semantic collection, never the host |
-| Focusable activating single face                     | `PressableBase`                                  | Inherited `Content`                            |
+| Focusable activating single text caption             | `PressableBase`                                  | `Text` (string)                                |
 
 Concrete shipped controls are sealed, with three documented exceptions: `Popup`,
 `ContextMenu`, and `Window`. Each stays unsealed only because the library itself
@@ -82,7 +82,7 @@ public sealed class LoginPanel : CompositeControlBase
         };
         root.Children.Add(new Text("Sign in"));
         root.Children.Add(new TextInput());
-        root.Children.Add(new Button { Content = new Text("Go") });
+        root.Children.Add(new Button { Text = "Go" });
         InitializeContent(root);
     }
 }

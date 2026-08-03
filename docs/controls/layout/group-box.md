@@ -51,8 +51,8 @@ var group = new GroupBox
     {
         Children =
         {
-            new CheckBox { Content = new Text("Auto save") },
-            new CheckBox { Content = new Text("Line numbers") },
+            new CheckBox { Text = "Auto save" },
+            new CheckBox { Text = "Line numbers" },
         },
     },
 };

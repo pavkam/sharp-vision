@@ -25,7 +25,7 @@ var details = new Stack
     {
         new Text("<accent><b>Dashboard</b></accent>"),
         new ProgressBar { Minimum = 0, Maximum = 100, Value = 68 },
-        new CheckBox { Content = new Text("Run automatically") },
+        new CheckBox { Text = "Run automatically" },
     },
 };
 

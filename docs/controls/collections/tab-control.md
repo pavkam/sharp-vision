@@ -127,7 +127,7 @@ tabs.Items.Add(new TabItem
     Header = "Advanced",
     Content = new Stack
     {
-        Children = { new CheckBox { Content = new Text("Debug mode") } },
+        Children = { new CheckBox { Text = "Debug mode" } },
     },
 });
 ```

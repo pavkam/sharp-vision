@@ -2,20 +2,21 @@
 
 ## Overview
 
-`CheckBox` is a sealed [`PressableBase`](../pressable.md#overview) toggle with
-an optional retained `Content` child and either two- or three-state behavior.
+`CheckBox` is a sealed [`Pressable<CheckBoxStyle>`](../pressable.md#overview)
+toggle whose caption is its inherited `Text`, with either two- or three-state
+behavior.
 
 ## API
 
 | Member                         | Default        | Description                                                    |
-| ------------------------------ | -------------- | -------------------------------------------------------------- |
+| ------------------------------ | -------------- | ---------------------------------------------------------------- |
 | `IsChecked`                    | `false`        | `false`, `true`, or `null` when three-state mode permits it.   |
 | `IsThreeState`                 | `false`        | Selects the two-state or three-state activation cycle.         |
 | `Style`                        | `null`         | Optional complete developer-authored `CheckBoxStyle`.          |
 | `ActualStyle`                  | Theme checkbox | The resolved style; never null.                                |
 | `CheckBoxStyle.Brackets`       | Theme default  | Fixed-width `[ ]`, `[✓]`, and `[─]` presentation.              |
 | `CheckBoxStyle.Tick`, `Square` | Presets        | Complete one-cell presentations.                               |
-| `Content`                      | `null`         | The optional label or richer visual, owned by the checkbox.    |
+| Inherited `Text`               | `""`           | The checkbox's label.                                          |
 | State events                   | No subscribers | Report committed transitions in deterministic order.           |
 | `Command`, `CommandParameter`  | `null`         | Inherited from `PressableBase`; runs after the toggle commits. |
 
@@ -53,7 +54,7 @@ applies to the mark and content together as one semantic item.
 ```csharp
 var option = new CheckBox
 {
-    Content = new Text("Include &hidden files"),
+    Text = "Include &hidden files",
     Style = CheckBoxStyle.Square
 };
 ```

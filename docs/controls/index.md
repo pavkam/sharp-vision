@@ -15,7 +15,7 @@ classDiagram
     Control <|-- ContentControl
     Control <|-- CompositeControl
     Control <|-- ItemsControl
-    ContentControl <|-- Pressable
+    Control <|-- Pressable
     ContentControl <|-- FloatingSurface
     FloatingSurface <|-- Window
     FloatingSurface <|-- Popup
@@ -72,7 +72,7 @@ Complete modal tasks such as `MessageBox` live in
 - [ItemsControl](items-control.md#overview) exposes typed semantic items through
   a private presentation host.
 - [Pressable](pressable.md#overview) adds focus and completed activation to the
-  single-content role.
+  single-text-caption role.
 
 ### Display
 

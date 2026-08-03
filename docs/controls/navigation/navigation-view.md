@@ -62,11 +62,12 @@ action.
 
 ## NavigationViewItem
 
-Extends [`PressableBase`](../pressable.md#overview). `Header` (string) is the
-label text, and `Glyph` (string?) is an optional prefix shown before the header.
-The item renders as `› Header` when selected or hovered and as `· Header`
-otherwise. Pointer or programmatic selection updates the owning
-`NavigationView`; the item itself stays non-focusable and outside the tab order.
+Extends [`PressableBase`](../pressable.md#overview). The inherited `Text`
+(string) is the label text, and `Glyph` (string?) is an optional prefix shown
+before it. The item renders as `› Text` when selected or hovered and as
+`· Text` otherwise. Pointer or programmatic selection updates the owning
+`NavigationView`; the item itself stays non-focusable and outside the tab
+order.
 
 Activation raises `Invoked` (`EventHandler<ActivationEventArgs>`), then invokes
 the inherited `Command` with `CommandParameter` when one is bound and
@@ -103,19 +104,19 @@ item, group, and separator overrides.
 
 ```csharp
 var nav = new NavigationView { Header = "MY APP" };
-nav.Items.Add(new NavigationViewItem { Header = "Dashboard", Glyph = "📊" });
+nav.Items.Add(new NavigationViewItem { Text = "Dashboard", Glyph = "📊" });
 
 var settings = new NavigationViewGroup { Header = "Settings" };
-settings.Items.Add(new NavigationViewItem { Header = "General" });
-settings.Items.Add(new NavigationViewItem { Header = "Advanced" });
+settings.Items.Add(new NavigationViewItem { Text = "General" });
+settings.Items.Add(new NavigationViewItem { Text = "Advanced" });
 nav.Items.Add(settings);
 
 nav.Items.Add(new NavigationViewSeparator());
-nav.FooterItems.Add(new NavigationViewItem { Header = "Quit", Glyph = "🚪" });
+nav.FooterItems.Add(new NavigationViewItem { Text = "Quit", Glyph = "🚪" });
 nav.SelectItem((NavigationViewItem)nav.Items[0]);
 
 nav.SelectionChanged += (_, _) =>
-    Console.WriteLine($"Selected: {nav.SelectedItem?.Header}");
+    Console.WriteLine($"Selected: {nav.SelectedItem?.Text}");
 ```
 
 Ampersands in item and group headers declare
