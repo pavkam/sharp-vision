@@ -8,6 +8,17 @@ using SharpVision.Terminal.Graphics;
 /// <summary>Verifies completed render metrics retain immutable diagnostic snapshots.</summary>
 public sealed class RenderingMetricsTests
 {
+    /// <summary>Verifies the valid default metrics value exposes an empty diagnostic snapshot.</summary>
+    [Fact]
+    public void Default_WhenGraphicsDiagnosticsRead_IsEmpty()
+    {
+        var metrics = default(RenderMetrics);
+
+        var diagnostics = metrics.GraphicsDiagnostics;
+
+        diagnostics.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies later caller-list mutation cannot rewrite completed-frame diagnostics.</summary>
     [Fact]
     public void Constructor_WhenDiagnosticsListMutates_PreservesSnapshot()

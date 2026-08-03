@@ -59,7 +59,7 @@ public readonly record struct Metrics
         Spans = spans;
         Full = full;
         Elapsed = elapsed;
-        GraphicsDiagnostics = graphicsDiagnostics.Count == 0
+        GraphicsDiagnosticsSnapshot = graphicsDiagnostics.Count == 0
             ? _noGraphicsDiagnostics
             : Array.AsReadOnly(graphicsDiagnostics.ToArray());
     }
@@ -84,7 +84,10 @@ public readonly record struct Metrics
     /// this frame. Empty when the active backend encoded every placement, or when no graphics
     /// backend is configured.
     /// </summary>
-    public IReadOnlyList<GraphicsPlacementDiagnostic> GraphicsDiagnostics { get; } = _noGraphicsDiagnostics;
+    public IReadOnlyList<GraphicsPlacementDiagnostic> GraphicsDiagnostics =>
+        GraphicsDiagnosticsSnapshot ?? _noGraphicsDiagnostics;
+
+    private IReadOnlyList<GraphicsPlacementDiagnostic>? GraphicsDiagnosticsSnapshot { get; }
 
     /// <summary>Deconstructs the frame-render metrics.</summary>
     /// <param name="bytes">Receives the transmitted byte count.</param>
