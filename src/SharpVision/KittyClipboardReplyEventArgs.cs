@@ -26,7 +26,7 @@ public sealed class KittyClipboardReplyEventArgs: EventArgs
     /// <param name="diagnostic">The redacted local protocol diagnostic, or null.</param>
     public KittyClipboardReplyEventArgs(
         Selection selection,
-        Result? kittyResult,
+        KittyClipboardResult? kittyResult,
         ReadOnlyMemory<byte>? text,
         ReplyStatus failure,
         Diagnostic? diagnostic)
@@ -45,7 +45,7 @@ public sealed class KittyClipboardReplyEventArgs: EventArgs
     /// Gets the owned successful Kitty OSC 5522 MIME result, or null when the completed operation
     /// used OSC 52 or did not succeed.
     /// </summary>
-    public Result? KittyResult { get; }
+    public KittyClipboardResult? KittyResult { get; }
 
     /// <summary>
     /// Gets the owned successful OSC 52 UTF-8 text reply, or null when the completed operation used

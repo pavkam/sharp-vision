@@ -58,9 +58,9 @@ stable across later decoder calls; no pooled array or transport memory escapes.
 
 `Osc52.Decode` and `Kitty.Clipboard.Packet.Parse` copy successfully decoded
 payloads into owned arrays. A completed `Kitty.Clipboard.Transaction` transfers
-its accumulated MIME buffers into `Kitty.Clipboard.Result`; the result's owner
-must dispose it, and disposal clears every buffer. Temporary Base64 and
-transaction buffers are returned to their pools with clearing.
+its accumulated MIME buffers into `Kitty.Clipboard.KittyClipboardResult`; the
+result's owner must dispose it, and disposal clears every buffer. Temporary
+Base64 and transaction buffers are returned to their pools with clearing.
 
 `DiscoveryContext` owns an immutable baseline plus copied environment, query,
 and override references for one semantic discovery pass. Source adapters retain
