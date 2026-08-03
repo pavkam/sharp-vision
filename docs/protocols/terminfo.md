@@ -71,7 +71,8 @@ these provider limits. Default is the ordinary accepted limit; hard ceiling is
 the largest caller-set value. Values are counts, raw bytes, or UTF-8 bytes as
 stated. A caller value above a hard ceiling is rejected before lookup. A
 provider value above its applicable limit rejects that description before any
-command is compiled or emitted.
+command is compiled or emitted. The configured ncurses native-library search
+order is copied into the immutable limit profile before lookup.
 
 | Limit               | Default | Hard ceiling | Unit                                                                                 |
 | ------------------- | ------: | -----------: | ------------------------------------------------------------------------------------ |

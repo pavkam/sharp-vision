@@ -43,6 +43,18 @@ public sealed class DescriptionLimitsTests
         limits.NcursesLibraryNames.ShouldBe(["/opt/custom/libncursesw.so"]);
     }
 
+    /// <summary>Verifies later caller mutations cannot rewrite an immutable limit profile.</summary>
+    [Fact]
+    public void NcursesLibraryNames_WhenSourceChanges_PreservesOwnedSnapshot()
+    {
+        string[] names = ["original-ncurses.so"];
+        var limits = DescriptionLimits.Default with { NcursesLibraryNames = names };
+
+        names[0] = "rewritten-ncurses.so";
+
+        limits.NcursesLibraryNames.ShouldBe(["original-ncurses.so"]);
+    }
+
     /// <summary>
     /// Verifies that the default profile is bounded and retains a non-empty native search list.
     /// </summary>

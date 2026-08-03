@@ -111,13 +111,13 @@ public sealed record DescriptionLimits
     public IReadOnlyList<string> NcursesLibraryNames
     {
         get;
-        init => field = RequireNonNull(value, nameof(NcursesLibraryNames));
+        init => field = Snapshot(value, nameof(NcursesLibraryNames));
     } = _defaultNcursesLibraryNames;
 
-    private static IReadOnlyList<string> RequireNonNull(IReadOnlyList<string> value, string parameterName)
+    private static ReadOnlyCollection<string> Snapshot(IReadOnlyList<string> value, string parameterName)
     {
         ArgumentNullException.ThrowIfNull(value, parameterName);
-        return value;
+        return Array.AsReadOnly(value.ToArray());
     }
 
     private static int RequireBoundedPositive(int value, int maximum, string parameterName)
