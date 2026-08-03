@@ -33,20 +33,32 @@ public sealed class BackendTests
             "\u001b[1;2H\u001bP0;1;0q\"1;1;1;6#0;2;100;0;0#0~\u001b\\\u001b[1;1H"u8.ToArray());
     }
 
-    /// <summary>Verifies missing exact metrics and encoded PNG stay on the ordinary cell fallback.</summary>
+    /// <summary>Verifies missing exact metrics stay on the ordinary cell fallback.</summary>
     [Fact]
-    public void Prepare_WhenPlacementCannotBeEncoded_DeclinesWithoutRemoteState()
+    public void Prepare_WhenMetricsAreMissing_DeclinesWithoutRemoteState()
+    {
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false);
+        using var rgba = Frame("a", (Red(), new Rect(0, 0, 1, 1)));
+
+        var missingMetrics = backend.Prepare(null, rgba, full: true, Context(metrics: null));
+
+        missingMetrics.Changed.ShouldBeFalse();
+        WritePlacements(backend).ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a PNG this decoder cannot decode emits no sixel bytes, even though its
+    /// format is in principle sixel-encodable and so is not declined at classification.</summary>
+    [Fact]
+    public void Prepare_WhenPngCannotBeDecoded_EmitsNoSixelBytes()
     {
         using var backend = new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false);
         using var rgba = Frame("a", (Red(), new Rect(0, 0, 1, 1)));
         using var png = Frame("a", (Png(), new Rect(0, 0, 1, 1)));
-
-        var missingMetrics = backend.Prepare(null, rgba, full: true, Context(metrics: null));
+        _ = backend.Prepare(null, rgba, full: true, Context(new CellMetrics(1, 6)));
         backend.Commit();
-        var unsupportedFormat = backend.Prepare(rgba, png, full: false, Context(new CellMetrics(1, 6)));
 
-        missingMetrics.Changed.ShouldBeFalse();
-        unsupportedFormat.Changed.ShouldBeFalse();
+        _ = backend.Prepare(rgba, png, full: false, Context(new CellMetrics(1, 6)));
+
         WritePlacements(backend).ShouldBeEmpty();
     }
 
@@ -89,9 +101,10 @@ public sealed class BackendTests
         WritePlacements(backend).ShouldBeEmpty();
     }
 
-    /// <summary>Verifies replacing emitted RGBA with unsupported PNG clears the prior sixel.</summary>
+    /// <summary>Verifies replacing emitted RGBA with a PNG this decoder cannot decode clears the
+    /// prior sixel instead of leaving stale pixels or emitting a partial cursor move.</summary>
     [Fact]
-    public void Prepare_WhenRgbaBecomesPng_RequestsFullCellRedrawWithoutDecoding()
+    public void Prepare_WhenRgbaBecomesUndecodablePng_RequestsFullCellRedrawAndEmitsNothing()
     {
         using var backend = new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false);
         using var first = Frame("a", (Red(), new Rect(0, 0, 1, 1)));

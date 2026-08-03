@@ -73,6 +73,19 @@ public sealed class ImageSource
         return new ImageSource(size, Format.Png, source);
     }
 
+    /// <summary>
+    /// Wraps already-decoded RGBA8888 pixels from a previously validated image without
+    /// re-applying source-byte policy: decoding balloons a compressed PNG's byte count well
+    /// past any policy that legitimately bounded its compressed source, so this trusts the
+    /// caller to have validated <paramref name="size"/> already, typically via the
+    /// <see cref="ImageSource"/> the caller decoded <paramref name="rgba"/> from.
+    /// </summary>
+    /// <param name="size">The already-validated positive dimensions in pixels.</param>
+    /// <param name="rgba">Exactly four bytes per pixel in RGBA order.</param>
+    /// <returns>An independently owned immutable RGBA image.</returns>
+    internal static ImageSource FromDecodedRgba(Size size, ReadOnlySpan<byte> rgba) =>
+        new(size, Format.Rgba, rgba);
+
     /// <summary>Copies the complete owned source into caller-provided memory.</summary>
     /// <param name="destination">The destination with at least <see cref="ByteCount"/> bytes.</param>
     /// <returns>The exact copied byte count.</returns>

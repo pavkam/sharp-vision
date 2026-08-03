@@ -36,7 +36,11 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
     private Geometry.Metrics? _preparedMetrics;
 
     /// <summary>Initializes enabled protocols, finite output, and an optional authorized route.</summary>
-    /// <param name="enableSixel">Whether exact-metric RGBA placements may use sixel.</param>
+    /// <param name="enableSixel">
+    /// Whether exact-metric RGBA or decodable PNG placements may use sixel. A PNG source outside
+    /// this decoder's scope (interlaced, a bit depth other than 8, or indexed without a palette)
+    /// falls back to iTerm when it is also enabled, rather than being dropped.
+    /// </param>
     /// <param name="enableIterm">Whether compatible full-source PNG placements may use iTerm2.</param>
     /// <param name="maxPreparedBytes">The positive complete prepared byte bound.</param>
     /// <param name="route">An optional explicit tmux-only graphics route.</param>
@@ -137,17 +141,23 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
                     continue;
                 }
 
-                if (TryGetSixelPixels(placement, metrics, enableSixel, out var pixels))
+                // A PNG source is sixel-eligible by format before decoding is attempted; a source
+                // this decoder cannot actually decode falls through to iTerm instead of being
+                // dropped, rather than losing a placement iTerm could otherwise have delivered
+                // (see #233).
+                if (TryGetSixelPixels(placement, metrics, enableSixel, out var pixels) &&
+                    TryWriteSixel(placement, pixels, output, remaining))
                 {
-                    if (TryWriteSixel(placement, pixels, output, remaining))
-                    {
-                        placementCount++;
-                    }
-
+                    placementCount++;
                     continue;
                 }
 
-                if (CanEncodeIterm(placement, enableIterm, remaining))
+                // A failed sixel attempt above may have written an orphaned cursor move before
+                // decoding gave out, so the iTerm fallback re-reads the budget instead of reusing
+                // the pre-attempt estimate.
+                remaining = _maxPreparedBytes - output.WrittenCount;
+
+                if (remaining > 0 && CanEncodeIterm(placement, enableIterm, remaining))
                 {
                     WriteIterm(placement, output, remaining);
                     placementCount++;
@@ -286,7 +296,11 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
     // Skips a placement whose encoded size exceeds the shared buffer's remaining budget instead
     // of letting the write throw mid-frame — the caller has already re-checked maxOutputBytes
     // against what's actually left, not the full constant, so this is the deterministic
-    // degrade path the full-budget pre-check couldn't provide on its own (see #117).
+    // degrade path the full-budget pre-check couldn't provide on its own (see #117). A PNG source
+    // this decoder does not support (interlaced, a bit depth other than 8, or indexed without a
+    // palette) degrades the same way, silently, rather than throwing out of a frame prepare, and
+    // so does one whose compressed pixel data does not actually match its declared IHDR
+    // dimensions — structurally valid enough to construct, not valid enough to decode (#233).
     private bool TryWriteSixel(Placement placement, Rect pixels, IBufferWriter<byte> destination, int maxOutputBytes)
     {
         try
@@ -298,17 +312,36 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         {
             return false;
         }
+        catch (NotSupportedException)
+        {
+            return false;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
     }
 
     private void WriteSixel(Placement placement, Rect pixels, IBufferWriter<byte> destination, int maxOutputBytes)
     {
+        var image = placement.Image!;
+        var source = placement.Source;
+
+        // Decoded before the cursor move is written, not after, so a PNG this decoder cannot
+        // decode leaves no orphaned cursor-positioning bytes behind for TryWriteSixel to discard.
+        if (image.Format == Format.Png)
+        {
+            var rgba = image.Source.DecodeRgba();
+            image = ImageSource.FromDecodedRgba(image.Size, rgba);
+        }
+
         WriteCursor(new Point(placement.Destination.X, placement.Destination.Y), destination);
 
         if (_route is null)
         {
             SixelWriter.Write(
-                placement.Image!,
-                placement.Source,
+                image,
+                source,
                 new Size(pixels.Width, pixels.Height),
                 placement.Mode,
                 destination,
@@ -318,8 +351,8 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
 
         var dcs = new ArrayBufferWriter<byte>();
         SixelWriter.Write(
-            placement.Image!,
-            placement.Source,
+            image,
+            source,
             new Size(pixels.Width, pixels.Height),
             placement.Mode,
             dcs,
@@ -440,7 +473,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
     }
 
     private static bool IsFormatEncodable(Format format, bool enableSixel, bool enableIterm) =>
-        (enableSixel && format == Format.Rgba) || (enableIterm && format == Format.Png);
+        (enableSixel && format is Format.Rgba or Format.Png) || (enableIterm && format == Format.Png);
 
     private static int CountRenderable(
         ReadOnlySpan<bool> encodable,
@@ -520,7 +553,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         pixels = default;
         Debug.Assert(!placement.IsEmpty, "Active frame placements cannot be empty.");
         return enableSixel &&
-               placement.Image!.Format == Format.Rgba &&
+               placement.Image!.Format is Format.Rgba or Format.Png &&
                metrics is { } available &&
                available.TryMapCells(placement.Destination, out pixels);
     }
