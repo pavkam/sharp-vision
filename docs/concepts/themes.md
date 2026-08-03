@@ -113,12 +113,21 @@ type. Individual controls may still set complete local styles that take
 precedence.
 
 Control-specific structure — paddings, glyph families, frame sequences, and part
-colors — is code-owned and is not part of the theme document. Each styled
-control completes its typed `Style` value from the library's structural defaults
-plus the appropriate semantic profile above, so a theme influences those
-controls only through its five profiles. A complete local `Style` assignment
-overrides both. The five profile properties are the only members `styles`
-accepts; control-named sections are rejected as unknown fields.
+colors — is code-owned today. Each styled control completes its typed `Style`
+value from the library's structural defaults plus the appropriate semantic
+profile above, so a built-in control's structure is not yet influenced by a
+theme document. A complete local `Style` assignment overrides both.
+
+Alongside the five fixed profiles, `styles` accepts registrable style sections
+under a namespaced `vendor.control` key (for example `"acme.widget"`); an
+unqualified sibling key that is not one of the five profile names is rejected as
+an unknown field, since it is far more likely a typo than an intentional
+section. A registrable section's JSON is retained unparsed and bound lazily -
+not while the theme document loads - through
+`Theme.GetStyleSection<TSection>(sectionName)`, which deserializes and memoizes
+it on first access and returns `null` for a theme that never authored that
+section. No built-in control resolves a registrable section yet; the mechanism
+exists so a control - library or third-party - can adopt one.
 
 When several state flags are active, contributions apply in this order:
 

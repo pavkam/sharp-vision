@@ -661,6 +661,7 @@ namespace SharpVision.Terminal.Input
         public InputOptions() { }
         public SharpVision.Terminal.Geometry.CellMetrics? CellMetrics { get; init; }
         public System.TimeSpan EscapeTimeout { get; init; }
+        public SharpVision.Terminal.Kitty.KittyMetadataLimits KittyMetadataLimits { get; init; }
         public int MaxPasteBytes { get; init; }
         public SharpVision.Terminal.Protocols.ParserLimits ParserLimits { get; init; }
         public bool PixelMouse { get; init; }
@@ -897,7 +898,7 @@ namespace SharpVision.Terminal.Kitty.Graphics
         public string? Message { get; }
         public uint PlacementId { get; }
         public override string ToString() { }
-        public static SharpVision.Terminal.Kitty.Graphics.KittyGraphicsResponse Parse(System.ReadOnlySpan<byte> value, SharpVision.Terminal.Clipboard.TransferLimits? limits = null) { }
+        public static SharpVision.Terminal.Kitty.Graphics.KittyGraphicsResponse Parse(System.ReadOnlySpan<byte> value, SharpVision.Terminal.Kitty.KittyMetadataLimits? limits = null) { }
     }
     public static class KittyGraphicsWriter
     {
@@ -936,6 +937,15 @@ namespace SharpVision.Terminal.Kitty.Keyboard
         public static void Push(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Kitty.Keyboard.Enhancement flags) { }
         public static void Query(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
         public static void Set(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Kitty.Keyboard.Enhancement flags, SharpVision.Terminal.Kitty.Keyboard.EnhancementMode mode) { }
+    }
+}
+namespace SharpVision.Terminal.Kitty
+{
+    public sealed class KittyMetadataLimits : System.IEquatable<SharpVision.Terminal.Kitty.KittyMetadataLimits>
+    {
+        public KittyMetadataLimits() { }
+        public int MaxMetadataBytes { get; init; }
+        public static SharpVision.Terminal.Kitty.KittyMetadataLimits Default { get; }
     }
 }
 namespace SharpVision.Terminal.Multiplexing

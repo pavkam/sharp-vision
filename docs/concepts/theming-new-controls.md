@@ -5,11 +5,18 @@
 A new control selects one of the existing semantic `ThemeRole` values, keeps its
 control-specific glyphs and internal part geometry in code, and exposes complete
 local appearance through the inherited `ControlBase` API. It does not add
-selector syntax, a mutable style registry, or a control-type theme key.
+selector syntax or a mutable style registry.
 
 Custom controls work with retained objects, direct CLR properties, and the
-global semantic theme. They never register selectors, type recipes, or theme
-keys.
+global semantic theme. They never register selectors or type recipes.
+
+A control that genuinely needs theme-authored structural content beyond the role
+profile - a bespoke glyph family or part color a semantic role cannot express -
+may claim one namespaced style section (`"vendor.control"`) and read it through
+`Theme.GetStyleSection<TSection>(sectionName)` (see
+[themes.md](themes.md#semantic-profiles)). This is deliberately narrow: it does
+not add a selector language or a mutable registry, and it is the exception, not
+the default path most controls in this document should follow.
 
 ## Select a semantic role
 

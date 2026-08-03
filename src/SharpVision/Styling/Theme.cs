@@ -3,7 +3,9 @@
 
 namespace SharpVision.Styling;
 
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.Text.Json;
 
 
 /// <summary>Represents immutable global semantic values, appearance profiles, status colors, and provenance after freezing.</summary>
@@ -15,6 +17,8 @@ public sealed class Theme
     private readonly Color[] _colors = new Color[Enum.GetValues<ThemeColor>().Length];
     private readonly TerminalAttributes[] _attributes =
         new TerminalAttributes[Enum.GetValues<ThemeDecoration>().Length];
+    private readonly ConcurrentDictionary<string, object> _boundStyleSections = new(StringComparer.Ordinal);
+    private Dictionary<string, JsonElement> _styleSections = [];
 
     /// <summary>Initializes an unfrozen theme and copies its optional named palette.</summary>
     /// <param name="palette">Optional named concrete colors.</param>
@@ -180,6 +184,41 @@ public sealed class Theme
         Container = container;
         Window = window;
         Popup = popup;
+    }
+
+    internal void SetStyleSections(Dictionary<string, JsonElement> sections)
+    {
+        if (IsFrozen)
+        {
+            throw new InvalidOperationException("A frozen theme cannot be changed.");
+        }
+
+        _styleSections = sections;
+    }
+
+    /// <summary>Resolves one registrable style section, deferred-parsed and memoized on first access.</summary>
+    /// <typeparam name="TSection">The section's JSON definition type.</typeparam>
+    /// <param name="sectionName">The exact styles.* section name this theme document may author (e.g. "vendor.control").</param>
+    /// <returns>The parsed section, or null when this theme did not author it.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="sectionName"/> is null.</exception>
+    /// <exception cref="InvalidDataException">The section's JSON does not match <typeparamref name="TSection"/>.</exception>
+    public TSection? GetStyleSection<TSection>(string sectionName)
+        where TSection : class
+    {
+        ArgumentNullException.ThrowIfNull(sectionName);
+
+        if (_boundStyleSections.TryGetValue(sectionName, out var cached))
+        {
+            return (TSection) cached;
+        }
+
+        if (!_styleSections.TryGetValue(sectionName, out var element))
+        {
+            return null;
+        }
+
+        var parsed = Themes.ParseSection<TSection>(element, sectionName, Slug);
+        return (TSection) _boundStyleSections.GetOrAdd(sectionName, parsed);
     }
 
     /// <summary>Resolves one known semantic role to its concrete appearance profile.</summary>

@@ -3059,6 +3059,8 @@ namespace SharpVision.Styling
         public SharpVision.Styling.ThemeProfile Window { get; }
         public void Freeze() { }
         public SharpVision.Styling.ThemeProfile GetProfile(SharpVision.Styling.ThemeRole role) { }
+        public TSection? GetStyleSection<TSection>(string sectionName)
+            where TSection :  class { }
         public SharpVision.Terminal.Rendering.TerminalAttributes ResolveAttributes(SharpVision.Styling.ThemeDecoration decoration) { }
         public SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.ThemeColor color) { }
         public SharpVision.Terminal.Protocols.Color ResolveStatusColor(SharpVision.Styling.StatusColor status) { }

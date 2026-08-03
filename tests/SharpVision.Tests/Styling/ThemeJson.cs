@@ -14,7 +14,8 @@ internal static class ThemeJson
         string background = "#101010",
         string foreground = "#e0e0e0",
         string accent = "#77aaff",
-        string inputGlyphStyle = "\"heavy\"") => $$"""
+        string inputGlyphStyle = "\"heavy\"",
+        string extraStyles = "") => $$"""
             { "name": "{{name}}", "slug": "t", "colorScheme": "dark", "order": 1,
               "author": "A", "license": "MIT", "source": "s",
               "palette": { {{palette}} },
@@ -46,6 +47,7 @@ internal static class ThemeJson
                 "container": { "normal": { "border": { "sides":"all", "glyphStyle":"light" } } },
                 "window": { "normal": { "border": { "sides":"all", "glyphStyle":"paired" } } },
                 "popup": { "normal": { "border": { "sides":"all", "glyphStyle":"rounded" } } }
+                {{extraStyles}}
               } }
             """;
 }

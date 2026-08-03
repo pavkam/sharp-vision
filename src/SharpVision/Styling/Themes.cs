@@ -337,6 +337,34 @@ public static class Themes
             ReadProfile(definitions.Popup, ThemeRole.Popup, source), control, palette, source, "styles.popup");
 
         theme.SetProfiles(control, input, container, window, popup);
+        theme.SetStyleSections(ReadStyleSections(definitions.Sections, source));
+    }
+
+    // A namespaced key ("vendor.control") is a registrable third-party style section and is
+    // retained raw for later lazy binding via Theme.GetStyleSection. An unqualified key is either
+    // a typo of one of the five fixed profile names above or an as-yet-unregistered library
+    // section name; both are rejected here rather than silently accepted, since silently
+    // retaining an unqualified key would make a real typo (e.g. "buton" instead of a future
+    // "button" section) undetectable until - or unless - something ever binds it (see #155).
+    private static Dictionary<string, JsonElement> ReadStyleSections(
+        Dictionary<string, JsonElement>? sections,
+        string source)
+    {
+        if (sections is null)
+        {
+            return [];
+        }
+
+        foreach (var name in sections.Keys)
+        {
+            if (!name.Contains('.', StringComparison.Ordinal))
+            {
+                throw new InvalidDataException(
+                    $"Theme '{source}' has unknown styles section '{name}'. Third-party sections must be namespaced as 'vendor.control'.");
+            }
+        }
+
+        return sections;
     }
 
 
@@ -674,6 +702,24 @@ public static class Themes
             var trimmedPath = error.Path?.TrimStart('$', '.') ?? string.Empty;
             var path = string.IsNullOrWhiteSpace(trimmedPath) ? string.Empty : $" at '{trimmedPath}'";
             throw new InvalidDataException($"Theme '{source}' is not valid JSON{path}.", error);
+        }
+    }
+
+    // Deserializes one retained styles.* section element on demand, called from
+    // Theme.GetStyleSection - the element was already read within the whole document's
+    // MaxDepth=8 budget during the original Deserialize call above, so no separate depth check is
+    // needed here (see #155).
+    internal static TSection ParseSection<TSection>(JsonElement element, string sectionName, string source)
+        where TSection : class
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<TSection>(element, _jsonOptions)
+                   ?? throw new InvalidDataException($"Theme '{source}' section '{sectionName}' deserialized to null.");
+        }
+        catch (JsonException error)
+        {
+            throw new InvalidDataException($"Theme '{source}' section '{sectionName}' is not valid.", error);
         }
     }
 
