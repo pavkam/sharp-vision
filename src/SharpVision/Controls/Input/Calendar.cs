@@ -505,6 +505,11 @@ public sealed class Calendar: Control
         {
             HandlePointer(pointer);
         }
+
+        if (!eventArgs.Handled)
+        {
+            base.OnEvent(eventArgs);
+        }
     }
 
     /// <inheritdoc/>

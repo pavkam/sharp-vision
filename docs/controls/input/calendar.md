@@ -163,8 +163,10 @@ The Calendar is one focus stop with `TabNavigation.None`.
 
 Key press and repeat are accepted; release is ignored. A movement or wheel
 command that cannot move within the bounds is left unhandled so an ancestor can
-respond. Header and day hit testing uses the committed `ContentBounds`, so
-border, padding, clipping, and tiny allocations never create invisible targets.
+respond. Keys outside the Calendar command set also remain available to
+inherited routed input. Header and day hit testing uses the committed
+`ContentBounds`, so border, padding, clipping, and tiny allocations never create
+invisible targets.
 
 ## Example
 

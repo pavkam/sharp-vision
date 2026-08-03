@@ -30,6 +30,23 @@ public sealed class CalendarTests
         calendar.Selection.ShouldBe(new DateInterval(active, active));
     }
 
+    /// <summary>Verifies keys outside the calendar command set remain available to routed input.</summary>
+    [Fact]
+    public void Dispatch_WhenKeyIsUnhandled_RaisesInheritedKeyDownWithoutConsumingIt()
+    {
+        // Arrange
+        using var calendar = new UiCalendar();
+        var raised = 0;
+        calendar.KeyDown += (_, _) => raised++;
+
+        // Act
+        var eventArgs = Key(calendar, Code.F1);
+
+        // Assert
+        eventArgs.Handled.ShouldBeFalse();
+        raised.ShouldBe(1);
+    }
+
     /// <summary>Verifies paging from a long month clamps to the adjacent month's last day.</summary>
     [Fact]
     public void Dispatch_WhenPagingIntoShortMonth_ClampsActiveDay()
