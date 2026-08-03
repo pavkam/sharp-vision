@@ -34,8 +34,10 @@ public sealed class TableRow
                 throw new ArgumentException("Every table cell must be unique, detached, and available.", nameof(cells));
             }
         }
+
+        Cells = Array.AsReadOnly(_cells);
     }
 
     /// <summary>Gets the ordered immutable cell sequence.</summary>
-    public IReadOnlyList<ControlBase> Cells => _cells;
+    public IReadOnlyList<ControlBase> Cells { get; }
 }

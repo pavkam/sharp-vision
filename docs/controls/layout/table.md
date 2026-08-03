@@ -30,9 +30,9 @@ table without a separate rendering model.
 - `Columns` owns non-empty `TableColumn` definitions. Every column has a
   non-empty header and an automatic, fixed-cell, percentage, or fill width.
 - `Rows` owns `TableRow` values. Each row must be non-null, must contain exactly
-  as many cells as there are columns, and transfers its unique detached cells to
-  the table. Inserting or replacing a null row fails at the public collection
-  boundary.
+  as many cells as there are columns, publishes its cells as an immutable
+  snapshot, and transfers those unique detached cells to the table. Inserting or
+  replacing a null row fails at the public collection boundary.
 - `ShowHeader`, `HeaderForeground`, and `HeaderBackground` control the header
   chrome.
 - `CellPadding`, `RowSpacing`, and `ColumnSpacing` define the physical cell
