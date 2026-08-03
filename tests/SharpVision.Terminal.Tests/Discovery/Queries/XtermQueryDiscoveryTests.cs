@@ -97,7 +97,7 @@ public sealed class XtermQueryDiscoveryTests
             "524742=3234"u8,
             QueryLimits.Default,
             out var capability).ShouldBeTrue();
-        var queries = new Queries
+        var queries = new QueryResults
         {
             XtermKeyboard = true,
             CapabilityString = capability
@@ -146,7 +146,7 @@ public sealed class XtermQueryDiscoveryTests
         var capability = Capability("524742=3234"u8);
         var detected = Detector.Detect(
             environment,
-            new Queries { CapabilityString = capability });
+            new QueryResults { CapabilityString = capability });
 
         heuristic.ColorDepth.ShouldBe(heuristicDepth);
         heuristic.ColorOrigin.ShouldBe(heuristicOrigin);
@@ -161,10 +161,10 @@ public sealed class XtermQueryDiscoveryTests
         var environment = new Dictionary<string, string?> { ["TERM"] = "xterm-256color" };
         var negative = Detector.Detect(
             environment,
-            new Queries { CapabilityString = Capability("524742=30"u8) });
+            new QueryResults { CapabilityString = Capability("524742=30"u8) });
         var unrelated = Detector.Detect(
             environment,
-            new Queries { CapabilityString = Capability("6B63757531=1B5B41"u8) });
+            new QueryResults { CapabilityString = Capability("6B63757531=1B5B41"u8) });
         var database = TerminalCapabilities.Conservative with
         {
             ColorDepth = ColorDepth.Indexed256,
@@ -173,7 +173,7 @@ public sealed class XtermQueryDiscoveryTests
         var authoritative = Detector.Detect(
             database,
             environment,
-            new Queries { CapabilityString = Capability("524742=3234"u8) });
+            new QueryResults { CapabilityString = Capability("524742=3234"u8) });
         var queryBaseline = Detector.Detect(
             TerminalCapabilities.Conservative with
             {
@@ -181,7 +181,7 @@ public sealed class XtermQueryDiscoveryTests
                 ColorOrigin = Origin.Query
             },
             environment,
-            new Queries { CapabilityString = Capability("524742=3234"u8) });
+            new QueryResults { CapabilityString = Capability("524742=3234"u8) });
         var overrideBaseline = Detector.Detect(
             TerminalCapabilities.Conservative with
             {
@@ -189,7 +189,7 @@ public sealed class XtermQueryDiscoveryTests
                 ColorOrigin = Origin.Override
             },
             environment,
-            new Queries { CapabilityString = Capability("524742=3234"u8) });
+            new QueryResults { CapabilityString = Capability("524742=3234"u8) });
 
         negative.ColorDepth.ShouldBe(ColorDepth.Indexed256);
         negative.ColorOrigin.ShouldBe(Origin.Environment);

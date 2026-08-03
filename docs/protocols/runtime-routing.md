@@ -86,7 +86,7 @@ value retains parser storage or the transport read buffer.
 Their all-zero `default` value is an explicit empty sentinel rather than a
 decoded terminal reply. `StatusResponse` likewise has an empty default sentinel;
 `CapabilityResponse` is a non-null owned reference. Their event payloads reject
-empty or null values before changing observable state. `Queries` rejects an
+empty or null values before changing observable state. `QueryResults` rejects an
 empty response and a response assigned to the wrong family.
 
 The application may enqueue immutable numeric responses for dispatcher-affine

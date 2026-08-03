@@ -190,7 +190,7 @@ namespace SharpVision.Terminal.Capabilities
     }
     public static class Detector
     {
-        public static SharpVision.Terminal.Capabilities.Capabilities Detect(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment, SharpVision.Terminal.Capabilities.Queries? queries = null, SharpVision.Terminal.Capabilities.Settings? overrides = null) { }
+        public static SharpVision.Terminal.Capabilities.Capabilities Detect(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment, SharpVision.Terminal.Capabilities.QueryResults? queries = null, SharpVision.Terminal.Capabilities.Settings? overrides = null) { }
     }
     public readonly struct Feature : System.IEquatable<SharpVision.Terminal.Capabilities.Feature>
     {
@@ -219,7 +219,7 @@ namespace SharpVision.Terminal.Capabilities
         public bool IsComplete { get; }
         public bool IsStarted { get; }
         public SharpVision.Terminal.Protocols.Diagnostic? LastDiagnostic { get; }
-        public SharpVision.Terminal.Capabilities.Queries Results { get; }
+        public SharpVision.Terminal.Capabilities.QueryResults Results { get; }
         public SharpVision.Terminal.Capabilities.QueryMatch Accept(SharpVision.Terminal.Kitty.Graphics.Response response) { }
         public SharpVision.Terminal.Capabilities.QueryMatch Accept(SharpVision.Terminal.Xterm.CapabilityResponse response) { }
         public SharpVision.Terminal.Capabilities.QueryMatch Accept(SharpVision.Terminal.Xterm.ItermCapabilitiesResponse response) { }
@@ -243,32 +243,6 @@ namespace SharpVision.Terminal.Capabilities
         public ProtocolSupport(SharpVision.Terminal.Capabilities.TerminalProtocol protocol, SharpVision.Terminal.Capabilities.Feature feature) { }
         public SharpVision.Terminal.Capabilities.Feature Feature { get; }
         public SharpVision.Terminal.Capabilities.TerminalProtocol Protocol { get; }
-    }
-    public sealed class Queries : System.IEquatable<SharpVision.Terminal.Capabilities.Queries>
-    {
-        public Queries() { }
-        public SharpVision.Terminal.Xterm.PaletteResponse? BackgroundColor { get; init; }
-        public bool? BracketedPaste { get; init; }
-        public SharpVision.Terminal.Xterm.CapabilityResponse? CapabilityString { get; init; }
-        public bool? CellMouse { get; init; }
-        public SharpVision.Terminal.Xterm.MetricsResponse? CellPixels { get; init; }
-        public bool? FocusReporting { get; init; }
-        public SharpVision.Terminal.Xterm.PaletteResponse? ForegroundColor { get; init; }
-        public bool? ItermImages { get; init; }
-        public bool? KittyClipboard { get; init; }
-        public bool? KittyGraphics { get; init; }
-        public bool? KittyKeyboard { get; init; }
-        public bool? Osc52 { get; init; }
-        public bool? Overline { get; init; }
-        public SharpVision.Terminal.Xterm.PaletteResponse? PaletteColor { get; init; }
-        public bool? PixelMouse { get; init; }
-        public bool? Sixel { get; init; }
-        public bool? StyledUnderlines { get; init; }
-        public bool? SynchronizedOutput { get; init; }
-        public bool? UnderlineColor { get; init; }
-        public SharpVision.Terminal.Xterm.MetricsResponse? WindowCells { get; init; }
-        public SharpVision.Terminal.Xterm.MetricsResponse? WindowPixels { get; init; }
-        public bool? XtermKeyboard { get; init; }
     }
     public enum QueryKind
     {
@@ -305,6 +279,32 @@ namespace SharpVision.Terminal.Capabilities
         Duplicate = 1,
         Late = 2,
         Unknown = 3,
+    }
+    public sealed class QueryResults : System.IEquatable<SharpVision.Terminal.Capabilities.QueryResults>
+    {
+        public QueryResults() { }
+        public SharpVision.Terminal.Xterm.PaletteResponse? BackgroundColor { get; init; }
+        public bool? BracketedPaste { get; init; }
+        public SharpVision.Terminal.Xterm.CapabilityResponse? CapabilityString { get; init; }
+        public bool? CellMouse { get; init; }
+        public SharpVision.Terminal.Xterm.MetricsResponse? CellPixels { get; init; }
+        public bool? FocusReporting { get; init; }
+        public SharpVision.Terminal.Xterm.PaletteResponse? ForegroundColor { get; init; }
+        public bool? ItermImages { get; init; }
+        public bool? KittyClipboard { get; init; }
+        public bool? KittyGraphics { get; init; }
+        public bool? KittyKeyboard { get; init; }
+        public bool? Osc52 { get; init; }
+        public bool? Overline { get; init; }
+        public SharpVision.Terminal.Xterm.PaletteResponse? PaletteColor { get; init; }
+        public bool? PixelMouse { get; init; }
+        public bool? Sixel { get; init; }
+        public bool? StyledUnderlines { get; init; }
+        public bool? SynchronizedOutput { get; init; }
+        public bool? UnderlineColor { get; init; }
+        public SharpVision.Terminal.Xterm.MetricsResponse? WindowCells { get; init; }
+        public SharpVision.Terminal.Xterm.MetricsResponse? WindowPixels { get; init; }
+        public bool? XtermKeyboard { get; init; }
     }
     public readonly struct QueryToken : System.IEquatable<SharpVision.Terminal.Capabilities.QueryToken>
     {

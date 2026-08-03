@@ -217,17 +217,17 @@ public sealed class TerminalProtocolCompatibilityTests
         new MetricsResponseEventArgs(pixels).Response.ShouldBe(pixels);
         new StatusResponseEventArgs(status).Response.ShouldBe(status);
         new CapabilityResponseEventArgs(capability!).Response.ShouldBeSameAs(capability);
-        new Queries { PaletteColor = palette, ForegroundColor = foreground, WindowPixels = pixels }
+        new QueryResults { PaletteColor = palette, ForegroundColor = foreground, WindowPixels = pixels }
             .WindowPixels.ShouldBe(pixels);
 
         _ = Should.Throw<ArgumentException>(() => new PaletteResponseEventArgs(default));
         _ = Should.Throw<ArgumentException>(() => new MetricsResponseEventArgs(default));
         _ = Should.Throw<ArgumentException>(() => new StatusResponseEventArgs(default));
         _ = Should.Throw<ArgumentNullException>(() => new CapabilityResponseEventArgs(null!));
-        _ = Should.Throw<ArgumentException>(() => new Queries { PaletteColor = default(PaletteResponse) });
-        _ = Should.Throw<ArgumentException>(() => new Queries { PaletteColor = foreground });
-        _ = Should.Throw<ArgumentException>(() => new Queries { WindowPixels = cells });
-        _ = Should.Throw<ArgumentException>(() => new Queries { CellPixels = default(MetricsResponse) });
+        _ = Should.Throw<ArgumentException>(() => new QueryResults { PaletteColor = default(PaletteResponse) });
+        _ = Should.Throw<ArgumentException>(() => new QueryResults { PaletteColor = foreground });
+        _ = Should.Throw<ArgumentException>(() => new QueryResults { WindowPixels = cells });
+        _ = Should.Throw<ArgumentException>(() => new QueryResults { CellPixels = default(MetricsResponse) });
     }
 
     /// <summary>Verifies every public response and query family has a frozen ordinal.</summary>
