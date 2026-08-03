@@ -114,6 +114,24 @@ public sealed class ColorPickerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies keys outside the plane's editing contract remain available to routed input.</summary>
+    [Fact]
+    public void Plane_WhenKeyIsUnhandled_RaisesInheritedKeyDownWithoutConsumingIt()
+    {
+        // Arrange
+        var picker = new ColorPicker();
+        var raised = 0;
+        picker.Plane.KeyDown += (_, _) => raised++;
+        var key = Key(Code.F1);
+
+        // Act
+        _ = Router.Route(picker.Plane, Events.Key, key);
+
+        // Assert
+        key.Handled.ShouldBeFalse();
+        raised.ShouldBe(1);
+    }
+
     /// <summary>Verifies true-color composition stretches and paints a selected preview with its readout surface.</summary>
     [Fact]
     public async Task Render_WhenTrueColorIsActive_UsesContainedLayoutAndPreviewAsync()
@@ -333,6 +351,13 @@ public sealed class ColorPickerTests
 
         notifications.ShouldBe([nameof(ColorPicker.Style)]);
     }
+
+    private static KeyEventArgs Key(Code code) => new(new Stroke(
+        code,
+        default,
+        nativeCode: 0,
+        Modifiers.None,
+        KeyAction.Press));
 
     private static Pointer Pointer(Point cells, PointerAction action) => new(
         cells,

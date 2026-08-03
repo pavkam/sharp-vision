@@ -54,7 +54,8 @@ contrast-aware text drawn over the selected color.
 The plane is one focus stop. Left/Right adjust saturation by one percentage
 point, Up/Down adjust value, and Home/End jump to the saturation endpoints. A
 primary press, and captured movement after it, map the committed cell
-coordinates to both normalized axes. The hue and RGB parts use the complete
+coordinates to both normalized axes. Other keys remain unhandled for inherited
+routing and focus traversal. The hue and RGB parts use the complete
 [`Slider` input contract](slider.md#input-and-visual-states).
 
 Every color is drawn to the semantic canvas. The picker never emits escape

@@ -87,6 +87,11 @@ internal sealed class ColorPlane: Control
         {
             Handle(pointer);
         }
+
+        if (!eventArgs.Handled)
+        {
+            base.OnEvent(eventArgs);
+        }
     }
 
     /// <inheritdoc/>
@@ -154,6 +159,12 @@ internal sealed class ColorPlane: Control
     private void Handle(KeyEventArgs eventArgs)
     {
         if (eventArgs.Stroke.Action is not (KeyAction.Press or KeyAction.Repeat))
+        {
+            return;
+        }
+
+        if (eventArgs.Stroke.Code is not (Code.Left or Code.Right or Code.Up or Code.Down
+            or Code.Home or Code.End))
         {
             return;
         }
