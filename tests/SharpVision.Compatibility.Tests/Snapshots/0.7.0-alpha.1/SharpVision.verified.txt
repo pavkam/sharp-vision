@@ -3340,6 +3340,7 @@ namespace SharpVision.Windows
         protected override SharpVision.Terminal.Geometry.Rect VisualBounds { get; }
         public event System.EventHandler? Shown;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        public void Close() { }
         protected override SharpVision.Styling.ChromeRenderOptions GetChromeRenderOptions() { }
         protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }

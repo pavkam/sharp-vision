@@ -835,6 +835,51 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies the public Close() method runs the same veto, Closing, and default-collapse
+    /// sequence as Escape and the close affordance (see #223).</summary>
+    [Fact]
+    public async Task Close_WhenCalledProgrammatically_PublishesTheFullCloseSequenceAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var window = new Window { CanMove = false, CanClose = true, HeaderPlacement = WindowTitlePlacement.Center };
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+            var order = new List<string>();
+            window.CloseRequested += (_, _) => order.Add("requested");
+            window.Closing += (_, _) => order.Add("closing");
+            window.Closed += (_, _) => order.Add("closed");
+
+            window.Close();
+
+            order.ShouldBe(["requested", "closing", "closed"]);
+            window.Visibility.ShouldBe(Visibility.Collapsed);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Close() closes regardless of CanClose, matching modal outside-dismissal's own
+    /// behavior - CanClose only gates the close affordance and CloseOnEscape (see #223).</summary>
+    [Fact]
+    public async Task Close_WhenCanCloseIsFalse_StillClosesAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var window = new Window { CanMove = false, CanClose = false, HeaderPlacement = WindowTitlePlacement.Center };
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+
+            window.Close();
+
+            window.Visibility.ShouldBe(Visibility.Collapsed);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies Escape actually collapses a closable, presented window by default, instead of only raising Closing.</summary>
     [Fact]
     public async Task Dispatch_WhenDialogEscapeHasNoCancelButton_CollapsesWindowByDefaultAsync()
