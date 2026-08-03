@@ -150,7 +150,7 @@ public sealed class ConsoleRunOptionsTests
     public void ToTerminalOptions_WhenParameterlessAndCapabilitiesExist_WrapsExactCapabilities()
     {
         var database = new Feature(
-            Terminal.Capabilities.Support.Supported,
+            CapabilitySupport.Supported,
             Origin.Database);
         var capabilities = Capabilities.Conservative with
         {

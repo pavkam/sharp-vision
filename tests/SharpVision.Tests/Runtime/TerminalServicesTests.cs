@@ -208,7 +208,7 @@ public sealed class TerminalServicesTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        var claimed = new Feature(Terminal.Capabilities.Support.Supported, Origin.Database);
+        var claimed = new Feature(CapabilitySupport.Supported, Origin.Database);
         var programs = new Dictionary<string, DescriptionProgram>
         {
             ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
@@ -244,7 +244,7 @@ public sealed class TerminalServicesTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        var supported = new Feature(Terminal.Capabilities.Support.Supported, Origin.Override);
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
             Capabilities = Capabilities.Conservative with { KittyClipboard = supported }
@@ -274,7 +274,7 @@ public sealed class TerminalServicesTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        var supported = new Feature(Terminal.Capabilities.Support.Supported, Origin.Override);
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
             Capabilities = Capabilities.Conservative with { KittyClipboard = supported, Osc52 = supported }
@@ -301,7 +301,7 @@ public sealed class TerminalServicesTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        var supported = new Feature(Terminal.Capabilities.Support.Supported, Origin.Override);
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
             Capabilities = Capabilities.Conservative with { KittyClipboard = supported }
@@ -334,7 +334,7 @@ public sealed class TerminalServicesTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        var supported = new Feature(Terminal.Capabilities.Support.Supported, Origin.Override);
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
             Capabilities = Capabilities.Conservative with { KittyClipboard = supported }
@@ -366,7 +366,7 @@ public sealed class TerminalServicesTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        var supported = new Feature(Terminal.Capabilities.Support.Supported, Origin.Override);
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
             Capabilities = Capabilities.Conservative with { KittyClipboard = supported }
@@ -396,7 +396,7 @@ public sealed class TerminalServicesTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        var supported = new Feature(Terminal.Capabilities.Support.Supported, Origin.Override);
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
             Capabilities = Capabilities.Conservative with { KittyClipboard = supported }
@@ -427,7 +427,7 @@ public sealed class TerminalServicesTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        var supported = new Feature(Terminal.Capabilities.Support.Supported, Origin.Override);
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
             Capabilities = Capabilities.Conservative with { KittyClipboard = supported }
@@ -463,7 +463,7 @@ public sealed class TerminalServicesTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        var supported = new Feature(Terminal.Capabilities.Support.Supported, Origin.Override);
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
             Capabilities = Capabilities.Conservative with { Osc52 = supported }
@@ -503,7 +503,7 @@ public sealed class TerminalServicesTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        var supported = new Feature(Terminal.Capabilities.Support.Supported, Origin.Override);
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var unknown = Feature.Unknown;
         var options = TerminalOptions.Minimal with
         {
@@ -530,7 +530,7 @@ public sealed class TerminalServicesTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        var guessed = new Feature(Terminal.Capabilities.Support.Supported, Origin.Environment);
+        var guessed = new Feature(CapabilitySupport.Supported, Origin.Environment);
         var options = TerminalOptions.Minimal with
         {
             Capabilities = Capabilities.Conservative with { Osc52 = guessed }
@@ -556,7 +556,7 @@ public sealed class TerminalServicesTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        var supported = new Feature(Terminal.Capabilities.Support.Supported, Origin.Override);
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
             Capabilities = Capabilities.Conservative with { Osc52 = supported }

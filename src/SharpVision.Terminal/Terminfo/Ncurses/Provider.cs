@@ -445,7 +445,7 @@ internal sealed class Provider: IDescriptionProvider
         int? colors,
         IReadOnlyDictionary<string, DescriptionProgram> programs)
     {
-        var supported = new Feature(Support.Supported, Origin.Database);
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Database);
         var colorDepth = colors switch
         {
             >= 16_777_216 => ColorDepth.TrueColor,

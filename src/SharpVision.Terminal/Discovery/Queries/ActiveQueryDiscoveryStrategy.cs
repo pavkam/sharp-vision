@@ -900,7 +900,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
     }
 
     private static bool ShouldQuery(Feature baseline, bool? overrideValue) =>
-        !overrideValue.HasValue && baseline.State is Support.Unknown or Support.Tentative;
+        !overrideValue.HasValue && baseline.State is CapabilitySupport.Unknown or CapabilitySupport.Tentative;
 
     private bool ShouldQueryXtermKeyboard()
     {

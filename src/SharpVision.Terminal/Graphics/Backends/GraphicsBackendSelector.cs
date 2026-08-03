@@ -52,6 +52,6 @@ internal static class GraphicsBackendSelector
     /// <param name="allowQuery">Whether correlated query evidence may authorize this protocol.</param>
     /// <returns>True only when support and origin authorize output.</returns>
     public static bool IsAuthoritative(Feature feature, bool allowQuery) =>
-        feature.State == Support.Supported &&
+        feature.State == CapabilitySupport.Supported &&
         (feature.Origin == Origin.Override || (allowQuery && feature.Origin == Origin.Query));
 }

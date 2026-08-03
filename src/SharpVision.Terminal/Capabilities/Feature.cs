@@ -17,7 +17,7 @@ public readonly record struct Feature
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="state"/> or <paramref name="origin"/> is unknown.
     /// </exception>
-    public Feature(Support state, Origin origin)
+    public Feature(CapabilitySupport state, Origin origin)
     {
         if (!Enum.IsDefined(state))
         {
@@ -34,16 +34,16 @@ public readonly record struct Feature
     }
 
     /// <summary>Gets a conservative unknown feature.</summary>
-    public static Feature Unknown { get; } = new(Support.Unknown, Origin.Default);
+    public static Feature Unknown { get; } = new(CapabilitySupport.Unknown, Origin.Default);
 
     /// <summary>Gets the support confidence.</summary>
-    public Support State { get; }
+    public CapabilitySupport State { get; }
 
     /// <summary>Gets the evidence origin.</summary>
     public Origin Origin { get; }
 
     /// <summary>Gets whether safe behavior may actively use the feature.</summary>
-    public bool IsSupported => State == Support.Supported;
+    public bool IsSupported => State == CapabilitySupport.Supported;
 
     /// <summary>Gets whether this evidence authorizes emitting optional terminal output.</summary>
     /// <remarks>
@@ -59,7 +59,7 @@ public readonly record struct Feature
     /// <summary>Deconstructs the feature evidence.</summary>
     /// <param name="state">Receives the support confidence.</param>
     /// <param name="origin">Receives the evidence origin.</param>
-    public void Deconstruct(out Support state, out Origin origin)
+    public void Deconstruct(out CapabilitySupport state, out Origin origin)
     {
         state = State;
         origin = Origin;

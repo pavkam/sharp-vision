@@ -110,8 +110,8 @@ otherwise-Supported `ItermImages` value to `Unsupported` when
 `TERM_PROGRAM_VERSION` parses below `3.5`; an absent, unparseable, or `>= 3.5`
 version leaves Query (or a later Override) evidence untouched. This is narrowing
 only — the version can withhold Supported evidence but can never by itself grant
-it, consistent with `Support`'s own contract that `Tentative` "must not enable
-it."
+it, consistent with `CapabilitySupport`'s own contract that `Tentative` "must
+not enable it."
 
 Application host selection creates the backend lazily after profile and resize
 publication and consumes semantic placements from the public Image control.

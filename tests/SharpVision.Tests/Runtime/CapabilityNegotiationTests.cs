@@ -4,7 +4,6 @@
 namespace SharpVision.Tests.Runtime;
 
 using CapabilityOrigin = Origin;
-using CapabilitySupport = Terminal.Capabilities.Support;
 using TerminalCapabilities = Capabilities;
 
 /// <summary>Verifies negotiated profiles become active before layout and rendering.</summary>

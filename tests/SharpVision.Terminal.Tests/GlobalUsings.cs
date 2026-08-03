@@ -30,7 +30,7 @@ global using SharpVision.Terminal.Xterm;
 
 global using Shouldly;
 
-global using CapabilitySupport = SharpVision.Terminal.Capabilities.Support;
+global using CapabilitySupport = SharpVision.Terminal.Capabilities.CapabilitySupport;
 global using CellMetrics = SharpVision.Terminal.Geometry.Metrics;
 global using Encoder = SharpVision.Terminal.Rendering.Encoder;
 global using FrameEncoder = SharpVision.Terminal.Rendering.Encoder;
