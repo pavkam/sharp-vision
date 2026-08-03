@@ -215,6 +215,34 @@ public sealed class DateInputSurfaceTests
         input.Value.ShouldBe(new DateOnly(2027, 3, 15));
     }
 
+    /// <summary>Verifies returning focus starts a new digit entry sequence.</summary>
+    [Fact]
+    public async Task Keyboard_WhenFocusLeavesAndReturns_DoesNotCarryPreviousDigitAsync()
+    {
+        // Arrange
+        var first = new DateInput
+        {
+            Value = new DateOnly(2026, 8, 15),
+            Culture = CultureInfo.InvariantCulture
+        };
+        var second = new DateInput { Culture = CultureInfo.InvariantCulture };
+        var root = new Stack { Children = { first, second } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(40, 3),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.TypeAsync("1");
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Tab, Modifiers.Shift);
+        await surface.Keyboard.TypeAsync("2");
+
+        // Assert
+        first.Value.ShouldBe(new DateOnly(2026, 2, 15));
+    }
+
     /// <summary>Verifies Delete clears the value when AllowNull is set.</summary>
     [Fact]
     public async Task Keyboard_WhenDeleteIsPressed_ClearsValueAsync()

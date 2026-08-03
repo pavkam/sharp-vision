@@ -39,6 +39,24 @@ public sealed class DateInputTests
         _ = control.Value.ShouldNotBeNull();
     }
 
+    /// <summary>Verifies assigning null preserves the committed date when null values are disabled.</summary>
+    [Fact]
+    public void Value_WhenNullIsAssignedAndAllowNullIsFalse_PreservesValue()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 8, 3),
+            AllowNull = false
+        };
+
+        // Act
+        control.Value = null;
+
+        // Assert
+        control.Value.ShouldBe(new DateOnly(2026, 8, 3));
+    }
+
     /// <summary>Verifies the value is clamped to the minimum when set below the allowed range.</summary>
     [Fact]
     public void Properties_WhenMinMaxAreSet_ClampsValue()
@@ -281,6 +299,46 @@ public sealed class DateInputTests
 
         // Assert
         control.Value.ShouldNotBeNull().Year.ShouldBe(2026);
+    }
+
+    /// <summary>Verifies moving to another segment starts a new digit entry sequence.</summary>
+    [Fact]
+    public void TypeDigit_WhenSegmentNavigationOccurs_DoesNotCarryPreviousDigit()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 8, 15),
+            Culture = CultureInfo.InvariantCulture
+        };
+
+        // Act
+        TypeCharacter(control, '1');
+        PressKey(control, Code.Right);
+        TypeCharacter(control, '2');
+
+        // Assert
+        control.Value.ShouldBe(new DateOnly(2026, 1, 2));
+    }
+
+    /// <summary>Verifies moving to an edge segment starts a new digit entry sequence.</summary>
+    [Fact]
+    public void TypeDigit_WhenEdgeNavigationOccurs_DoesNotCarryPreviousDigit()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 8, 15),
+            Culture = CultureInfo.InvariantCulture
+        };
+
+        // Act
+        TypeCharacter(control, '1');
+        PressKey(control, Code.End);
+        TypeCharacter(control, '2');
+
+        // Assert
+        control.Value.ShouldBe(new DateOnly(2, 1, 15));
     }
 
     private static void TypeCharacter(DateInput control, char digit) =>

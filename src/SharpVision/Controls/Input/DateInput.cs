@@ -96,6 +96,11 @@ public sealed class DateInput: Control
         {
             VerifyMutable();
 
+            if (!value.HasValue && !AllowNull)
+            {
+                return;
+            }
+
             if (value.HasValue)
             {
                 value = ClampDate(value.Value);
@@ -467,6 +472,8 @@ public sealed class DateInput: Control
         if (focused)
         {
             _activeSegment = 0;
+            _digitBuffer = null;
+            _yearDigitCount = 0;
         }
     }
 
@@ -722,6 +729,8 @@ public sealed class DateInput: Control
         if (next >= 0 && next < count)
         {
             _activeSegment = next;
+            _digitBuffer = null;
+            _yearDigitCount = 0;
             Invalidate(InvalidationImpact.Render);
         }
     }
@@ -736,6 +745,8 @@ public sealed class DateInput: Control
         }
 
         _activeSegment = target;
+        _digitBuffer = null;
+        _yearDigitCount = 0;
         Invalidate(InvalidationImpact.Render);
     }
 

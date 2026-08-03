@@ -179,6 +179,7 @@ public sealed class TimeInput: Control
 
         if (!EffectiveIsEnabled || !EffectiveIsVisible)
         {
+            base.OnEvent(eventArgs);
             return;
         }
 
@@ -189,6 +190,11 @@ public sealed class TimeInput: Control
         else if (eventArgs is PointerEventArgs pointer)
         {
             HandlePointer(pointer);
+        }
+
+        if (!eventArgs.Handled)
+        {
+            base.OnEvent(eventArgs);
         }
     }
 
