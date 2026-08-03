@@ -4,7 +4,7 @@
 namespace SharpVision.Controls.Input;
 
 /// <summary>Renders one concrete terminal color as an opaque preview.</summary>
-internal sealed class ColorSwatch: Control
+internal sealed class ColorSwatch: ControlBase
 {
     /// <summary>Initializes a six-cell RGB-red preview.</summary>
     public ColorSwatch()

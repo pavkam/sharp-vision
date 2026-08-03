@@ -12,6 +12,21 @@ public readonly struct RadioButtonStyle: IEquatable<RadioButtonStyle>
     private readonly RadioButtonGlyphs? _glyphs;
     private readonly ThemeProfile? _appearance;
 
+    /// <summary>Gets the primary radio-button-style definition.</summary>
+    internal static StyleDefinition<RadioButtonStyle> Definition { get; } = StyleDefinitions.Control(
+        ThemeRole.Input,
+        static profile => new RadioButtonStyle(
+            Default.MarkStyle,
+            Default.Glyphs,
+            WithCheckedAccent(profile.WithoutChrome())),
+        static style => style.Appearance,
+        static (previous, _, current, _) =>
+            previous.MarkWidth != current.MarkWidth
+                ? InvalidationImpact.Measure
+                : previous.MarkStyle != current.MarkStyle || previous.Glyphs != current.Glyphs
+                    ? InvalidationImpact.Render
+                    : InvalidationImpact.None);
+
     /// <summary>Initializes a complete radio-button presentation.</summary>
     /// <param name="markStyle">The validated mark-layout family.</param>
     /// <param name="glyphs">The complete unchecked and checked glyph pair.</param>
@@ -60,6 +75,21 @@ public readonly struct RadioButtonStyle: IEquatable<RadioButtonStyle>
 
     /// <summary>Gets the complete normal and visual-state appearance profile.</summary>
     public ThemeProfile Appearance => ResolveAppearance();
+
+    /// <summary>Creates a validated copy with selected members replaced.</summary>
+    /// <param name="markStyle">The optional replacement mark-layout family.</param>
+    /// <param name="glyphs">The optional replacement glyph pair.</param>
+    /// <param name="appearance">The optional appearance-profile overlay.</param>
+    /// <returns>A complete validated radio-button style.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="markStyle"/> is undefined.</exception>
+    /// <exception cref="ArgumentException">A composed glyph is invalid.</exception>
+    public RadioButtonStyle With(
+        RadioButtonMarkStyle? markStyle = null,
+        RadioButtonGlyphs? glyphs = null,
+        AppearanceProfileSet? appearance = null) => new(
+        markStyle ?? MarkStyle,
+        glyphs ?? Glyphs,
+        appearance is null ? Appearance : StyleResolution.Apply(Appearance, appearance.Value));
 
     /// <summary>Determines whether this value and another style resolve to the same presentation.</summary>
     /// <param name="other">The other style to compare.</param>

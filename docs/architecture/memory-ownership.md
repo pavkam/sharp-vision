@@ -22,7 +22,7 @@ after return, frame completion, or disposal.
 | Image placements        | Rendering frame              | Frame clear, copy, or disposal   |
 | Graphics backend state  | Renderer                     | Renderer disposal                |
 | Encoded write batch     | Renderer                     | Until write and flush complete   |
-| Child control           | Parent `Control` slot        | Until removal/owner disposal     |
+| Child control           | Parent `ControlBase` slot    | Until removal/owner disposal     |
 | Routed event snapshot   | Router                       | Until synchronous dispatch ends  |
 | UI input record         | `Application`                | Until dispatcher delivery        |
 | UI back frame           | `Application`                | Until render completion/disposal |
@@ -152,21 +152,21 @@ Every `SharpVision.Controls.Control` owns one central registry of ordered visual
 slots. `Container.Children` exposes only its public container-child slot.
 `ListView`, `Menu`, and `Table` register private item-presentation hosts, while
 container and editor scrollbar rails use distinct framework-part slots.
-`ContentControl` registers the capacity-one public content role, and `Pressable`
-inherits that same edge rather than exposing `Children`. `ComboBox` registers
-exactly one private popup-layer framework-part slot, and `Popup.Content` owns
-its private ListView, so no control ever has two parents. `CompositeControl`
-owns a permanent composition root, while `ItemsControl` owns one private
-presentation host whose children are the realized item visuals. Normal and popup
-are independent render layers, not ownership roles; a `Popup` still promotes an
-ordinary legacy ownership edge when necessary. Removal transfers the
-now-detached control back to the caller, while owner disposal recursively
-disposes every remaining slot member. Attachment borrows one dispatcher
-reference for the lifetime of the attachment. A control subscribes only to its
-direct `Style`; replacement, detachment where applicable, and disposal remove
-the owned registrations deterministically.
+`ContentControl` registers the capacity-one public content role, and
+`PressableBase` inherits that same edge rather than exposing `Children`.
+`ComboBox` registers exactly one private popup-layer framework-part slot, and
+`Popup.Content` owns its private ListView, so no control ever has two parents.
+`CompositeControlBase` owns a permanent composition root, while `ItemsControl`
+owns one private presentation host whose children are the realized item visuals.
+Normal and popup are independent render layers, not ownership roles; a `Popup`
+still promotes an ordinary legacy ownership edge when necessary. Removal
+transfers the now-detached control back to the caller, while owner disposal
+recursively disposes every remaining slot member. Attachment borrows one
+dispatcher reference for the lifetime of the attachment. A control subscribes
+only to its direct `Style`; replacement, detachment where applicable, and
+disposal remove the owned registrations deterministically.
 
-`FloatingSurface` retains one public content edge and at most one live
+`FloatingSurfaceBase` retains one public content edge and at most one live
 application-owned modal scope. Window and Popup add no proxy ownership edge:
 dialogs are direct Window identities, and Flyout and Tooltip are direct Popup
 identities. Screen presentation owns the concrete Window or dialog in its
@@ -174,10 +174,10 @@ private Overlay; completion exits modality, removes that same object, and then
 disposes it. Tooltip attachment owns the Tooltip itself in one keyed popup-layer
 framework slot, which remains reusable after the association is cleared.
 
-Intrinsic border and shadow chrome are style state on the decorated `Control`.
-They allocate no child, add no registry edge, and do not change parentage,
-routed ancestry, style scope, or disposal ownership. Shadow overflow is drawn
-only into the borrowed frame canvas for the current render, under the
+Intrinsic border and shadow chrome are style state on the decorated
+`ControlBase`. They allocate no child, add no registry edge, and do not change
+parentage, routed ancestry, style scope, or disposal ownership. Shadow overflow
+is drawn only into the borrowed frame canvas for the current render, under the
 [intrinsic chrome clipping contract](../controls/control.md#intrinsic-appearance).
 When chrome requires distinct bounds, margin, style, ancestry, or lifetime, an
 ordinary container such as `Dock` owns the decorated content through its normal

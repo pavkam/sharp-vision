@@ -3,168 +3,39 @@
 
 namespace SharpVision.Controls;
 
-using System.Windows.Input;
-
-/// <summary>Defines a focusable single-content control with reusable press interaction.</summary>
+/// <summary>Defines a pressable control whose primary complete style is owned by the framework.</summary>
+/// <typeparam name="TStyle">The small immutable complete style value.</typeparam>
 [PublicAPI]
-public abstract class Pressable: ContentControl
+public abstract class Pressable<TStyle>: PressableBase
+    where TStyle : struct, IEquatable<TStyle>
 {
-    private readonly PressBehavior _interaction;
-    private ICommand? _command;
+    /// <summary>Initializes one Theme-aware primary style slot.</summary>
+    /// <param name="definition">The immutable primary style policy.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="definition"/> is null.</exception>
+    protected Pressable(StyleDefinition<TStyle> definition) =>
+        StyleSlot = InitializeStyle(definition, OnStyleChanged);
 
-    /// <summary>Initializes an empty focusable single-content control.</summary>
-    protected Pressable()
-    {
-        _interaction = new PressBehavior(
-            () => Bounds,
-            () => EffectiveIsEnabled && EffectiveIsVisible,
-            () => FocusOwner is null || IsFocused,
-            RequestFocus,
-            CapturePointer,
-            () => HasPointerCapture,
-            ReleasePointerCapture,
-            SetPressed,
-            Activate);
-        Focusable = true;
-        TabStop = true;
-    }
-
-    /// <summary>Gets or sets the optional command a concrete control invokes on activation.</summary>
+    /// <summary>Gets or sets the complete local style, or null to use the definition fallback.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public ICommand? Command
+    public TStyle? Style
     {
-        get => _command;
-        set
-        {
-            VerifyMutable();
-
-            if (EqualityComparer<ICommand?>.Default.Equals(_command, value))
-            {
-                return;
-            }
-
-            _command?.CanExecuteChanged -= OnCanExecuteChanged;
-            _ = SetProperty(ref _command, value, InvalidationImpact.Render);
-            _command?.CanExecuteChanged += OnCanExecuteChanged;
-        }
+        get => StyleSlot.Local;
+        set => StyleSlot.Local = value;
     }
 
-    /// <summary>Gets or sets the borrowed parameter passed to command queries and execution.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public object? CommandParameter
+    /// <summary>Gets the cached complete local, Theme-owned, or fallback style.</summary>
+    public virtual TStyle ActualStyle => StyleSlot.Actual;
+
+    /// <summary>Gets the framework-owned primary style slot for specialized resolved projections.</summary>
+    protected StyleSlot<TStyle> StyleSlot { get; }
+
+    /// <summary>Runs genuine post-commit behavior after a changed resolved style is published.</summary>
+    /// <param name="previous">The previous complete resolved style.</param>
+    /// <param name="current">The current complete resolved style.</param>
+    protected virtual void OnStyleChanged(TStyle previous, TStyle current)
     {
-        get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
-    }
-
-    /// <summary>Completes one validated activation in a concrete control.</summary>
-    /// <param name="cause">The input path that completed activation.</param>
-    protected abstract void Activate(ActivationCause cause);
-
-    /// <summary>
-    /// Invokes <see cref="Command"/> with <see cref="CommandParameter"/> when a command is bound
-    /// and allows execution.
-    /// </summary>
-    /// <remarks>
-    /// A concrete control's <see cref="Activate"/> override calls this after committing its own
-    /// state and raising its own events, so a command that cannot execute never suppresses the
-    /// control's own activation semantics (a toggle still toggles; a menu item still invokes).
-    /// </remarks>
-    protected void ExecuteCommandIfAny()
-    {
-        var command = Command;
-        var parameter = CommandParameter;
-
-        if (command is not null && command.CanExecute(parameter))
-        {
-            command.Execute(parameter);
-        }
-    }
-
-    /// <inheritdoc/>
-    protected override string? AccessKeyText => Content is IAccessKeyCaption caption ? caption.Text : null;
-
-    /// <inheritdoc/>
-    protected override bool OnAccessKey(Rune key)
-    {
-        _ = key;
-
-        if (!EffectiveIsEnabled || !EffectiveIsVisible)
-        {
-            return false;
-        }
-
-        _ = FocusAccessKeyTarget();
-        Activate(ActivationCause.Keyboard);
-        return true;
-    }
-
-    /// <inheritdoc/>
-    internal override VisualState AmbientAppearanceState => GetAppearanceState();
-
-    /// <inheritdoc/>
-    internal override bool StateAffectsAmbientAppearance => true;
-
-    /// <inheritdoc/>
-    protected override void OnEvent(RoutedEventArgs eventArgs)
-    {
-        base.OnEvent(eventArgs);
-        _interaction.Handle(eventArgs);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-        _interaction.FocusChanged(focused);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
-        base.OnLostPointerCapture(reason);
-        _interaction.CaptureLost();
-    }
-
-    /// <inheritdoc/>
-    protected override void OnUnavailable(ReleaseReason reason)
-    {
-        base.OnUnavailable(reason);
-        _interaction.Unavailable();
-
-        if (reason == ReleaseReason.Disposed && _command is not null)
-        {
-            _command.CanExecuteChanged -= OnCanExecuteChanged;
-            _command = null;
-        }
-    }
-
-    private void OnCanExecuteChanged(object? sender, EventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-
-        if (IsDisposed)
-        {
-            return;
-        }
-
-        var dispatcher = Dispatcher;
-
-        if (dispatcher is not null && !dispatcher.CheckAccess())
-        {
-            dispatcher.Post(() =>
-            {
-                if (!IsDisposed)
-                {
-                    Invalidate(Invalidation.Render);
-                }
-            });
-            return;
-        }
-
-        Invalidate(Invalidation.Render);
+        _ = previous;
+        _ = current;
     }
 }

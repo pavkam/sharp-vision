@@ -22,7 +22,7 @@ public sealed class CuratedThemesTests
             .ShouldBe(_expected.OrderBy(static s => s, StringComparer.Ordinal));
     }
 
-    /// <summary>Verifies every catalog theme loads frozen with Control normal state defined.</summary>
+    /// <summary>Verifies every catalog theme loads frozen with ControlBase normal state defined.</summary>
     [Fact]
     public void EveryTheme_LoadsFrozenWithControlNormalState()
     {

@@ -14,7 +14,7 @@ using SharpVision.Terminal.Input;
 /// </remarks>
 internal sealed class ShortcutManager
 {
-    private readonly Control _root;
+    private readonly ControlBase _root;
     private readonly FocusManager _focus;
     private readonly ModalityManager _modality;
 
@@ -24,7 +24,7 @@ internal sealed class ShortcutManager
     /// <param name="modality">The non-null modality manager for the same root.</param>
     /// <exception cref="ArgumentNullException">A dependency is null.</exception>
     /// <exception cref="ArgumentException">The managers do not own <paramref name="root"/>.</exception>
-    public ShortcutManager(Control root, FocusManager focus, ModalityManager modality)
+    public ShortcutManager(ControlBase root, FocusManager focus, ModalityManager modality)
     {
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(focus);
@@ -77,7 +77,7 @@ internal sealed class ShortcutManager
         return true;
     }
 
-    private static void Collect(Control control, Stroke stroke, List<MenuItem> matches)
+    private static void Collect(ControlBase control, Stroke stroke, List<MenuItem> matches)
     {
         if (control is MenuItem item && item.MatchesShortcut(stroke))
         {
@@ -90,7 +90,7 @@ internal sealed class ShortcutManager
         }
     }
 
-    private static int FindAnchor(List<MenuItem> matches, Control? focused)
+    private static int FindAnchor(List<MenuItem> matches, ControlBase? focused)
     {
         if (focused is null)
         {

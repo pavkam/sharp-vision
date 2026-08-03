@@ -17,7 +17,7 @@ internal sealed class ComponentBehaviorEvidenceAttribute: Attribute
     {
         ArgumentNullException.ThrowIfNull(controlType);
 
-        if (controlType.IsAbstract || !typeof(Control).IsAssignableFrom(controlType))
+        if (controlType.IsAbstract || !typeof(ControlBase).IsAssignableFrom(controlType))
         {
             throw new ArgumentException("Behavior evidence requires a concrete Control type.", nameof(controlType));
         }

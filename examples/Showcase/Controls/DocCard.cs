@@ -4,12 +4,12 @@
 namespace SharpVision.Showcase.Controls;
 
 /// <summary>Wraps a specimen in a rounded bordered card.</summary>
-internal sealed class DocCard: CompositeControl
+internal sealed class DocCard: CompositeControlBase
 {
     /// <summary>Initializes a rounded card around one specimen.</summary>
     /// <param name="child">The specimen to frame.</param>
     /// <exception cref="ArgumentNullException"><paramref name="child"/> is null.</exception>
-    internal DocCard(Control child)
+    internal DocCard(ControlBase child)
     {
         ArgumentNullException.ThrowIfNull(child);
         InitializeContent(new Dock

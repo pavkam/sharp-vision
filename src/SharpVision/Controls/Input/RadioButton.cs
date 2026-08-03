@@ -11,29 +11,13 @@ using DisplayText = Display.Text;
 
 /// <summary>Defines a focusable mutually exclusive selection control.</summary>
 [PublicAPI]
-public sealed class RadioButton: Pressable
+public sealed class RadioButton: Pressable<RadioButtonStyle>
 {
-    private static readonly StyleContract<RadioButtonStyle> _styleContract = new(
-        ThemeRole.Input,
-        static profile => new RadioButtonStyle(
-            RadioButtonStyle.Default.MarkStyle,
-            RadioButtonStyle.Default.Glyphs,
-            RadioButtonStyle.WithCheckedAccent(profile.WithoutChrome())),
-        static (previous, _, current, _) =>
-            previous.MarkWidth != current.MarkWidth
-                ? InvalidationImpact.Measure
-                : previous.MarkStyle != current.MarkStyle || previous.Glyphs != current.Glyphs
-                    ? InvalidationImpact.Render
-                    : InvalidationImpact.None,
-        static style => style.Appearance);
     private bool _isChecked;
     private int _checkedVersion;
-    private RadioButtonStyle? _actualStyleCache;
-    private RadioButtonStyle? _actualStyleCacheKey;
-    private Theme? _actualStyleCacheTheme;
 
     /// <summary>Initializes an unselected RadioButton.</summary>
-    public RadioButton()
+    public RadioButton() : base(RadioButtonStyle.Definition)
     {
     }
 
@@ -110,65 +94,6 @@ public sealed class RadioButton: Pressable
             failure?.Throw();
         }
     }
-
-    /// <summary>Gets or sets the complete local presentation, or null to use the semantic input profile.</summary>
-    /// <exception cref="InvalidOperationException">The attached member is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The member is disposed.</exception>
-    public RadioButtonStyle? Style
-    {
-        get;
-        set => _ = SetControlStyle(
-            ref field,
-            value,
-            _styleContract.Resolve,
-            _styleContract.CompareStructure,
-            _styleContract.Appearance,
-            nameof(Style),
-            nameof(ActualStyle));
-    }
-
-    /// <summary>Gets the complete local presentation or library mark mechanics completed with the semantic input profile.</summary>
-    /// <remarks>
-    /// Memoized against the exact (<see cref="Style"/>, <see cref="Theme"/>) pair that produced it:
-    /// resolving the default style rebuilds two themed <see cref="ThemeProfile"/> instances from
-    /// scratch (see #179), and this property is read from multiple per-frame paths.
-    /// </remarks>
-    public RadioButtonStyle ActualStyle =>
-        ResolveContractStyle(
-            _styleContract,
-            ref _actualStyleCache,
-            ref _actualStyleCacheKey,
-            ref _actualStyleCacheTheme,
-            Style,
-            Theme);
-
-    /// <inheritdoc/>
-    protected override ThemeRole ThemeRole => _styleContract.Role;
-
-    /// <inheritdoc/>
-    protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
-
-    /// <inheritdoc/>
-    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
-        GetContractAppearanceProfile(_styleContract, Style, theme);
-
-    /// <inheritdoc/>
-    protected override InvalidationImpact GetThemeChangeImpact(
-        Theme? previous,
-        Theme? current,
-        Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace) =>
-        GetContractThemeChangeImpact(
-            _styleContract,
-            Style,
-            previous,
-            current,
-            previousParentAmbientFace,
-            currentParentAmbientFace);
-
-    /// <inheritdoc/>
-    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        GetContractResolvedStylePropertyName(_styleContract, Style, previous, current, nameof(ActualStyle));
 
     /// <summary>Activates an available RadioButton through its public API.</summary>
     /// <exception cref="InvalidOperationException">The attached member is accessed off-dispatcher.</exception>
@@ -273,7 +198,7 @@ public sealed class RadioButton: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void OnParentChanged(Control? previous, Control? current)
+    protected override void OnParentChanged(ControlBase? previous, ControlBase? current)
     {
         base.OnParentChanged(previous, current);
 

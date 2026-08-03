@@ -1,33 +1,33 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Tests.Controls.Input;
+namespace SharpVision.Tests.Controls.Display;
 
-/// <summary>Verifies complete slider presentations and partial style composition.</summary>
-public sealed class SliderStyleSetTests
+/// <summary>Verifies complete progress-bar presentations and partial style composition.</summary>
+public sealed class ProgressBarStyleWithTests
 {
     /// <summary>Verifies the zero-initialized style resolves to the standard preset.</summary>
     [Fact]
     public void Default_WhenStyleIsZeroInitialized_ResolvesStandard()
     {
-        var actual = default(SliderStyle);
+        var actual = default(ProgressBarStyle);
 
-        actual.ShouldBe(SliderStyle.Default);
+        actual.ShouldBe(ProgressBarStyle.Default);
         actual.FillColor.ShouldBe((ColorValue) ThemeColor.Accent);
         actual.TrackColor.ShouldBe((ColorValue) ThemeColor.Muted);
-        actual.ThumbColor.ShouldBe((ColorValue) ThemeColor.Accent);
-        actual.Glyphs.ShouldBe(SliderGlyphs.Default);
+        actual.IndeterminateColor.ShouldBe((ColorValue) ThemeColor.Accent);
+        actual.Glyphs.ShouldBe(ProgressBarGlyphs.Default);
     }
 
     /// <summary>Verifies equality compares resolved profiles rather than profile identity.</summary>
     [Fact]
     public void Equality_WhenCompleteValuesAreEquivalent_IsSemantic()
     {
-        var baseline = SliderStyle.Default;
-        var equivalent = new SliderStyle(
+        var baseline = ProgressBarStyle.Default;
+        var equivalent = new ProgressBarStyle(
             baseline.FillColor,
             baseline.TrackColor,
-            baseline.ThumbColor,
+            baseline.IndeterminateColor,
             baseline.Glyphs,
             baseline.Appearance);
 
@@ -39,14 +39,12 @@ public sealed class SliderStyleSetTests
     [Fact]
     public void Apply_WhenOnlyFillColorIsSupplied_PreservesOmittedMembers()
     {
-        var baseline = SliderStyle.Default;
-        var set = new SliderStyleSet(fillColor: Color.Rgb(255, 0, 0));
-
-        var actual = set.Apply(baseline);
+        var baseline = ProgressBarStyle.Default;
+        var actual = baseline.With(fillColor: Color.Rgb(255, 0, 0));
 
         actual.FillColor.ShouldBe((ColorValue) Color.Rgb(255, 0, 0));
         actual.TrackColor.ShouldBe(baseline.TrackColor);
-        actual.ThumbColor.ShouldBe(baseline.ThumbColor);
+        actual.IndeterminateColor.ShouldBe(baseline.IndeterminateColor);
         actual.Glyphs.ShouldBe(baseline.Glyphs);
         actual.Appearance.ShouldBe(baseline.Appearance);
     }
@@ -55,32 +53,30 @@ public sealed class SliderStyleSetTests
     [Fact]
     public void Apply_WhenAppearanceIsSupplied_ComposesProfile()
     {
-        var baseline = SliderStyle.Default;
-        var set = new SliderStyleSet(
+        var baseline = ProgressBarStyle.Default;
+        var actual = baseline.With(
             appearance: new AppearanceProfileSet(
                 focused: new AppearanceSet(face: new FaceSet(foreground: ThemeColor.FocusedText))));
-
-        var actual = set.Apply(baseline);
 
         actual.FillColor.ShouldBe(baseline.FillColor);
         actual.Appearance.Normal.ShouldBe(baseline.Appearance.Normal);
         actual.Appearance.Focused.Face.ShouldNotBeNull().Foreground.ShouldBe(ThemeColor.FocusedText);
     }
 
-    /// <summary>Verifies every slider part foreground rejects transparent paint.</summary>
+    /// <summary>Verifies every progress-bar part foreground rejects transparent paint.</summary>
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
     public void Constructor_WhenPartColorIsTransparent_Throws(int part)
     {
-        var baseline = SliderStyle.Default;
+        var baseline = ProgressBarStyle.Default;
         ColorValue transparent = Color.Transparent;
 
-        var exception = Should.Throw<ArgumentException>(() => new SliderStyle(
+        var exception = Should.Throw<ArgumentException>(() => new ProgressBarStyle(
             part == 0 ? transparent : baseline.FillColor,
             part == 1 ? transparent : baseline.TrackColor,
-            part == 2 ? transparent : baseline.ThumbColor,
+            part == 2 ? transparent : baseline.IndeterminateColor,
             baseline.Glyphs,
             baseline.Appearance));
 
@@ -88,7 +84,7 @@ public sealed class SliderStyleSetTests
         {
             0 => "fillColor",
             1 => "trackColor",
-            _ => "thumbColor"
+            _ => "indeterminateColor"
         });
     }
 
@@ -97,30 +93,30 @@ public sealed class SliderStyleSetTests
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
-    public void StyleSet_WhenPartColorIsTransparent_ThrowsAtConstruction(int part)
+    public void With_WhenPartColorIsTransparent_Throws(int part)
     {
         ColorValue transparent = Color.Transparent;
 
-        var exception = Should.Throw<ArgumentException>(() => new SliderStyleSet(
+        var exception = Should.Throw<ArgumentException>(() => ProgressBarStyle.Default.With(
             fillColor: part == 0 ? transparent : null,
             trackColor: part == 1 ? transparent : null,
-            thumbColor: part == 2 ? transparent : null));
+            indeterminateColor: part == 2 ? transparent : null));
 
         exception.ParamName.ShouldBe(part switch
         {
             0 => "fillColor",
             1 => "trackColor",
-            _ => "thumbColor"
+            _ => "indeterminateColor"
         });
     }
 
-    /// <summary>Verifies slider glyph families reject non-one-cell values.</summary>
+    /// <summary>Verifies progress-bar glyph families reject non-one-cell values.</summary>
     [Fact]
     public void Glyphs_WhenGlyphIsWideOrControl_Throws()
     {
-        var exception = Should.Throw<ArgumentException>(() => new SliderGlyphs(
-            new Rune('世'), new Rune('='), new Rune('.'), new Rune('='), new Rune('#')));
+        var exception = Should.Throw<ArgumentException>(() => new ProgressBarGlyphs(
+            new Rune('世'), new Rune('.'), new Rune('?')));
 
-        exception.ParamName.ShouldBe("horizontalTrack");
+        exception.ParamName.ShouldBe("fill");
     }
 }

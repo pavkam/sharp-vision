@@ -11,9 +11,9 @@ public sealed class SealedControlsContractTests
     // Unsealed only because the library itself subclasses them internally: Flyout/Tooltip : Popup;
     // Dialog<TResult> : Window (and every concrete dialog type derives from Dialog<TResult> in
     // turn) — the extensibility seam WindowTests.cs already asserts explicitly
-    // (type.IsSealed.ShouldBeFalse()). ContextMenu is not a Control (see #79) and TextInputContextMenu
+    // (type.IsSealed.ShouldBeFalse()). ContextMenu is not a ControlBase (see #79) and TextInputContextMenu
     // : ContextMenu is unsealed for the same internal-subclassing reason, but neither is scanned here
-    // since the predicate below is scoped to Control-assignable types.
+    // since the predicate below is scoped to ControlBase-assignable types.
     private static readonly HashSet<Type> _documentedExceptions =
         [typeof(Popup), typeof(Window)];
 
@@ -33,7 +33,7 @@ public sealed class SealedControlsContractTests
     [Fact]
     public void ConcreteControls_WhenInspected_AreSealedExceptDocumentedExceptions()
     {
-        var assembly = typeof(Control).Assembly;
+        var assembly = typeof(ControlBase).Assembly;
 
         var violations = assembly.GetTypes()
             .Where(type =>
@@ -41,7 +41,7 @@ public sealed class SealedControlsContractTests
                 type.IsPublic &&
                 !type.IsAbstract &&
                 !type.IsSealed &&
-                typeof(Control).IsAssignableFrom(type) &&
+                typeof(ControlBase).IsAssignableFrom(type) &&
                 !_documentedExceptions.Contains(type) &&
                 _controlNamespaces.Any(value =>
                     type.Namespace == value ||

@@ -64,8 +64,8 @@ control is focused. Pointer input targets the capture owner when capture is
 active, and otherwise the result of hit testing over committed layout and
 clipping. The dispatcher snapshots the ancestry, previews from root to target,
 then bubbles from target to root. `OriginalSource` never changes; controlled
-retargeting may change `Source`. Ancestry follows `Control.Parent` across every
-ownership role - route construction never requires the parent to be a
+retargeting may change `Source`. Ancestry follows `ControlBase.Parent` across
+every ownership role - route construction never requires the parent to be a
 `Container` or the edge to appear in the public `Children` collection.
 
 Setting `Handled` suppresses the remaining ordinary handlers and the default
@@ -92,8 +92,8 @@ target, boundary, and rejection rules.
 provides key, text, pointer, paste, and terminal-focus identifiers, each paired
 with a sealed argument class over the immutable terminal input values.
 
-`Control.AddHandler` rejects null or duplicate event/delegate pairs and returns
-an idempotent registration. Attaching and removing registrations is
+`ControlBase.AddHandler` rejects null or duplicate event/delegate pairs and
+returns an idempotent registration. Attaching and removing registrations is
 dispatcher-affine. Setting `Handled` skips later ordinary handlers and the
 remaining default behaviors; passing `handledEventsToo: true` opts a handler
 into observing handled routes.
@@ -257,7 +257,7 @@ identically at every byte split, malformed input recovers and completes cleanly,
 and warmed ASCII and non-ASCII Rune decoding allocates zero managed bytes per
 event. The fixed-seed hostile-byte suite caps paste and parser retention,
 injects an explicit recovery boundary, and requires a known trailing Rune to
-survive every case. [`Pressable`](../controls/pressable.md#overview) is the
+survive every case. [`PressableBase`](../controls/pressable.md#overview) is the
 public single-content activation role. Space holds pressed state until a
 matching release; Enter activates directly. A primary pointer press focuses and
 captures, movement updates the inside/outside pressed state, and a release
@@ -265,5 +265,5 @@ inside the control activates once. Focus loss, capture cancellation, disable,
 hide, detach, and disposal clear all held state without activating. Completed
 activations carry a validated `ActivationCause` of Keyboard, Pointer, or
 Programmatic. The transient state machine is one internal composed behavior that
-the direct-`Control` `ComboBox` also uses; sharing the interaction does not
+the direct-`ControlBase` `ComboBox` also uses; sharing the interaction does not
 dictate public inheritance.

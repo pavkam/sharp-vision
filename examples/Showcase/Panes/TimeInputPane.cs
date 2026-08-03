@@ -8,7 +8,7 @@ using System.Globalization;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the TimeInput control with live time-editing specimens.</summary>
-internal sealed class TimeInputPane: CompositeControl
+internal sealed class TimeInputPane: CompositeControlBase
 {
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "TimeInput";

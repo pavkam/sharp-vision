@@ -87,9 +87,7 @@ public sealed class SpinnerStyleTests
     public void Apply_WhenOnlyFramesAreSupplied_PreservesAppearance()
     {
         var baseline = SpinnerStyle.Braille;
-        var set = new SpinnerStyleSet(frames: [new Rune('|'), new Rune('-')]);
-
-        var actual = set.Apply(baseline);
+        var actual = baseline.With(frames: [new Rune('|'), new Rune('-')]);
 
         actual.Frames.ShouldBe([new Rune('|'), new Rune('-')]);
         actual.Appearance.ShouldBeSameAs(baseline.Appearance);
@@ -97,38 +95,38 @@ public sealed class SpinnerStyleTests
 
     /// <summary>Verifies partial style construction copies caller-owned mutable frame storage.</summary>
     [Fact]
-    public void StyleSet_WhenCallerMutatesFrames_RetainsImmutableCopy()
+    public void With_WhenCallerMutatesFrames_RetainsImmutableCopy()
     {
         var frames = new[] { new Rune('|'), new Rune('/') };
-        var set = new SpinnerStyleSet(frames: frames);
+        var style = SpinnerStyle.Braille.With(frames: frames);
 
         frames[0] = new Rune('x');
 
-        set.Frames.ShouldNotBeNull()[0].ShouldBe(new Rune('|'));
+        style.Frames[0].ShouldBe(new Rune('|'));
     }
 
     /// <summary>Verifies partial style construction rejects empty frames immediately.</summary>
     [Fact]
-    public void StyleSet_WhenFramesAreEmpty_ThrowsAtConstruction()
+    public void With_WhenFramesAreEmpty_Throws()
     {
-        var exception = Should.Throw<ArgumentException>(() => new SpinnerStyleSet(frames: []));
+        var exception = Should.Throw<ArgumentException>(() => SpinnerStyle.Braille.With(frames: []));
 
         exception.ParamName.ShouldBe("frames");
     }
 
     /// <summary>Verifies partial style construction rejects invalid frames immediately.</summary>
     [Fact]
-    public void StyleSet_WhenFrameIsInvalid_ThrowsAtConstruction()
+    public void With_WhenFrameIsInvalid_Throws()
     {
         var exception = Should.Throw<ArgumentException>(() =>
-            new SpinnerStyleSet(frames: [new Rune(0x4E16)]));
+            SpinnerStyle.Braille.With(frames: [new Rune(0x4E16)]));
 
         exception.ParamName.ShouldBe("frames");
     }
 
     /// <summary>Verifies partial frame enumeration is bounded at the same documented maximum.</summary>
     [Fact]
-    public void StyleSet_WhenFrameCountExceedsMaximum_ThrowsAtBound()
+    public void With_WhenFrameCountExceedsMaximum_ThrowsAtBound()
     {
         var enumerated = 0;
         var frames = Enumerable.Repeat(new Rune('|'), SpinnerStyle.MaximumFrameCount + 1000)
@@ -138,7 +136,7 @@ public sealed class SpinnerStyleTests
                 return frame;
             });
 
-        var exception = Should.Throw<ArgumentException>(() => new SpinnerStyleSet(frames: frames));
+        var exception = Should.Throw<ArgumentException>(() => SpinnerStyle.Braille.With(frames: frames));
 
         exception.ParamName.ShouldBe("frames");
         enumerated.ShouldBe(SpinnerStyle.MaximumFrameCount + 1);
@@ -146,37 +144,13 @@ public sealed class SpinnerStyleTests
 
     /// <summary>Verifies partial style construction accepts the documented maximum frame count.</summary>
     [Fact]
-    public void StyleSet_WhenFrameCountIsMaximum_Succeeds()
+    public void With_WhenFrameCountIsMaximum_Succeeds()
     {
         var frames = Enumerable.Repeat(new Rune('|'), SpinnerStyle.MaximumFrameCount);
 
-        var actual = new SpinnerStyleSet(frames: frames);
+        var actual = SpinnerStyle.Braille.With(frames: frames);
 
-        actual.Frames.ShouldNotBeNull().Length.ShouldBe(SpinnerStyle.MaximumFrameCount);
-    }
-
-    /// <summary>Verifies separately allocated equivalent frame sequences compare and hash equally.</summary>
-    [Fact]
-    public void StyleSetEquality_WhenFramesAreEquivalent_IsSemantic()
-    {
-        var left = new SpinnerStyleSet(frames: new[] { new Rune('|'), new Rune('/') });
-        var right = new SpinnerStyleSet(frames: new[] { new Rune('|'), new Rune('/') });
-
-        left.Equals(right).ShouldBeTrue();
-        (left == right).ShouldBeTrue();
-        (left != right).ShouldBeFalse();
-        left.GetHashCode().ShouldBe(right.GetHashCode());
-    }
-
-    /// <summary>Verifies an absent frame contribution differs from a present sequence.</summary>
-    [Fact]
-    public void StyleSetEquality_WhenFramesAreAbsentAndPresent_IsDifferent()
-    {
-        var absent = default(SpinnerStyleSet);
-        var present = new SpinnerStyleSet(frames: [new Rune('|')]);
-
-        absent.Equals(present).ShouldBeFalse();
-        (absent != present).ShouldBeTrue();
+        actual.Frames.Length.ShouldBe(SpinnerStyle.MaximumFrameCount);
     }
 
     /// <summary>Verifies appearance contributions compose while preserving frames.</summary>
@@ -184,11 +158,9 @@ public sealed class SpinnerStyleTests
     public void Apply_WhenAppearanceIsSupplied_ComposesProfile()
     {
         var baseline = SpinnerStyle.Ascii;
-        var set = new SpinnerStyleSet(
+        var actual = baseline.With(
             appearance: new AppearanceProfileSet(
                 normal: new AppearanceSet(face: new FaceSet(foreground: ThemeColor.Accent))));
-
-        var actual = set.Apply(baseline);
 
         actual.Frames.ShouldBe(baseline.Frames);
         actual.Appearance.Normal.Face.Foreground.ShouldBe(ThemeColor.Accent);

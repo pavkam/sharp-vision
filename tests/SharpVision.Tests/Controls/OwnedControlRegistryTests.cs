@@ -224,7 +224,7 @@ public sealed class OwnedControlRegistryTests
         removed.ShouldBeTrue();
         child.ActualFace.ShouldBe(expectedDetachedFace);
         child.Pending.ShouldBe(Invalidation.Render);
-        notifications.ShouldBe([nameof(Control.Theme), nameof(Control.ActualFace)]);
+        notifications.ShouldBe([nameof(ControlBase.Theme), nameof(ControlBase.ActualFace)]);
         notifications.ShouldNotContain(nameof(StyledProbe.ActualStyle));
     }
 
@@ -246,7 +246,7 @@ public sealed class OwnedControlRegistryTests
         var actualFaces = new List<Color>();
         child.PropertyChanged += (_, eventArgs) =>
         {
-            if (eventArgs.PropertyName == nameof(Control.ActualFace))
+            if (eventArgs.PropertyName == nameof(ControlBase.ActualFace))
             {
                 actualFaces.Add(child.ActualFace.Foreground.Literal);
             }

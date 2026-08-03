@@ -5,25 +5,25 @@ function components, reconciliation, or hook-style state.
 
 ## Choose the right base type
 
-| Requirement                            | Base type          | Ownership model                                   |
-| -------------------------------------- | ------------------ | ------------------------------------------------- |
-| Draw one custom cell surface           | `Control`          | No public child                                   |
-| Expose replaceable single content      | `ContentControl`   | Caller owns zero or one content value             |
-| Reuse press/capture activation         | `Pressable`        | Replaceable content plus activation state machine |
-| Retain private implementation controls | `CompositeControl` | Constructor creates one permanent private root    |
-| Expose typed semantic items            | `ItemsControl`     | Public items, private presentation controls       |
-| Expose arbitrary public children       | `Container`        | Ordered caller-managed child collection           |
+| Requirement                            | Base type              | Ownership model                                   |
+| -------------------------------------- | ---------------------- | ------------------------------------------------- |
+| Draw one custom cell surface           | `ControlBase`          | No public child                                   |
+| Expose replaceable single content      | `ContentControl`       | Caller owns zero or one content value             |
+| Reuse press/capture activation         | `PressableBase`        | Replaceable content plus activation state machine |
+| Retain private implementation controls | `CompositeControlBase` | Constructor creates one permanent private root    |
+| Expose typed semantic items            | `ItemsControl`         | Public items, private presentation controls       |
+| Expose arbitrary public children       | `Container`            | Ordered caller-managed child collection           |
 
 The contracts for [`Container`](../controls/container.md#overview),
 [`ContentControl`](../controls/content-control.md#overview),
-[`CompositeControl`](../controls/composite-control.md#overview), and
+[`CompositeControlBase`](../controls/composite-control.md#overview), and
 [`ItemsControl`](../controls/items-control.md#overview) define the ownership
 differences.
 
 ## Build a retained composite
 
 ```csharp
-internal sealed class StatusCard : CompositeControl
+internal sealed class StatusCard : CompositeControlBase
 {
     private readonly Text _message;
 
@@ -69,7 +69,7 @@ The constructor creates the complete retained subtree and calls
 mutating and must stay dispatcher-affine while attached; a production property
 should also publish the component's documented property-change contract.
 
-Derive directly from `Control` and override `MeasureOverride`,
+Derive directly from `ControlBase` and override `MeasureOverride`,
 `ArrangeOverride`, or `OnRenderContent` only when the public component genuinely
 owns new layout or cell-rendering behavior. Custom content rendering draws
 through the frame-owned `SharpVision.Terminal.Rendering.Canvas` and never writes

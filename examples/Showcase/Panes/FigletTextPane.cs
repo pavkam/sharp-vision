@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the FigletText control with a live editable FIGfont preview.</summary>
-internal sealed class FigletTextPane: CompositeControl
+internal sealed class FigletTextPane: CompositeControlBase
 {
     internal FigletTextPane() => InitializeContent(CreateContent());
 

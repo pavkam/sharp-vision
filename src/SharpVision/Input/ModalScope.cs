@@ -12,7 +12,7 @@ public sealed class ModalScope: IDisposable
     #region Construction and state
 
     private readonly ModalityManager _manager;
-    private readonly List<Control> _roots;
+    private readonly List<ControlBase> _roots;
 
     /// <summary>Initializes one inactive scope before its manager commits it to the stack.</summary>
     /// <param name="manager">The non-null manager that owns the lifetime.</param>
@@ -22,10 +22,10 @@ public sealed class ModalScope: IDisposable
     /// <param name="previousCapture">The capture target observed before entry, or null.</param>
     internal ModalScope(
         ModalityManager manager,
-        Control root,
+        ControlBase root,
         OutsideInteraction outsideInteraction,
-        Control? previousFocus,
-        Control? previousCapture)
+        ControlBase? previousFocus,
+        ControlBase? previousCapture)
     {
         Debug.Assert(manager is not null, "A modal scope requires an owning manager.");
         Debug.Assert(root is not null, "A modal scope requires a primary root.");
@@ -45,7 +45,7 @@ public sealed class ModalScope: IDisposable
     public event EventHandler? Exited;
 
     /// <summary>Gets the primary root whose loss ends this scope and every younger scope.</summary>
-    public Control Root { get; }
+    public ControlBase Root { get; }
 
     /// <summary>Gets the policy applied to qualifying interaction outside every plane root.</summary>
     public OutsideInteraction OutsideInteraction { get; }
@@ -54,10 +54,10 @@ public sealed class ModalScope: IDisposable
     public bool IsActive { get; internal set; }
 
     /// <summary>Gets the focus target observed immediately before this scope entered, or null.</summary>
-    internal Control? PreviousFocus { get; }
+    internal ControlBase? PreviousFocus { get; }
 
     /// <summary>Gets the capture target observed immediately before this scope entered, or null.</summary>
-    internal Control? PreviousCapture { get; }
+    internal ControlBase? PreviousCapture { get; }
 
     /// <summary>Gets the number of roots in deterministic inclusion order.</summary>
     internal int RootCount => _roots.Count;
@@ -74,7 +74,7 @@ public sealed class ModalScope: IDisposable
     /// </exception>
     /// <exception cref="InvalidOperationException">The scope is inactive or the caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The root or owning manager is disposed.</exception>
-    public void Include(Control root) => _manager.Include(this, root);
+    public void Include(ControlBase root) => _manager.Include(this, root);
 
     /// <summary>Ends this scope and every younger scope; repeated calls are harmless.</summary>
     /// <remarks>
@@ -93,11 +93,11 @@ public sealed class ModalScope: IDisposable
     /// <summary>Gets one included root by its valid zero-based insertion position.</summary>
     /// <param name="index">The valid zero-based position.</param>
     /// <returns>The retained plane root.</returns>
-    internal Control RootAt(int index) => _roots[index];
+    internal ControlBase RootAt(int index) => _roots[index];
 
     /// <summary>Appends one already validated root without publishing callbacks.</summary>
     /// <param name="root">The validated root.</param>
-    internal void AddRoot(Control root)
+    internal void AddRoot(ControlBase root)
     {
         Debug.Assert(root is not null, "A modal plane includes concrete roots.");
         _roots.Add(root);
@@ -106,7 +106,7 @@ public sealed class ModalScope: IDisposable
     /// <summary>Returns the plane root containing one target, or null when the target is outside.</summary>
     /// <param name="control">The non-null target.</param>
     /// <returns>The first insertion-ordered containing root, or null.</returns>
-    internal Control? BoundaryFor(Control control)
+    internal ControlBase? BoundaryFor(ControlBase control)
     {
         Debug.Assert(control is not null, "Modal membership requires a concrete control.");
 
@@ -123,7 +123,7 @@ public sealed class ModalScope: IDisposable
 
     /// <summary>Removes secondary roots contained by one unavailable subtree.</summary>
     /// <param name="subtree">The non-null unavailable subtree.</param>
-    internal void RemoveSecondaryRootsWithin(Control subtree)
+    internal void RemoveSecondaryRootsWithin(ControlBase subtree)
     {
         Debug.Assert(subtree is not null, "Unavailable cleanup requires a concrete subtree.");
 

@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the HyperlinkButton control with live, themed specimens.</summary>
-internal sealed class HyperlinkButtonPane: CompositeControl
+internal sealed class HyperlinkButtonPane: CompositeControlBase
 {
     internal HyperlinkButtonPane() => InitializeContent(CreateContent());
 

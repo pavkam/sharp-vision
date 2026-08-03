@@ -31,7 +31,7 @@ public sealed class ThemesParsingTests
         focused.Border.Background.ShouldBe(normal.Border.Background);
     }
 
-    /// <summary>Verifies role profiles inherit Control appearance before applying role chrome.</summary>
+    /// <summary>Verifies role profiles inherit ControlBase appearance before applying role chrome.</summary>
     [Fact]
     public void Parse_WhenRoleNormalIsPartial_InheritsControlAppearance()
     {

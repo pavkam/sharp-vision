@@ -17,7 +17,7 @@ using SharpVision.Terminal.Input;
 /// Alt+Down opens the calendar popup from any segment.
 /// </remarks>
 [PublicAPI]
-public sealed class DateTimeInput: Control
+public sealed class DateTimeInput: ControlBase
 {
     /// <inheritdoc/>
     protected override ThemeRole ThemeRole => ThemeRole.Input;

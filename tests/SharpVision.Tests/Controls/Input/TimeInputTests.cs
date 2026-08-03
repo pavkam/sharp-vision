@@ -154,7 +154,7 @@ public sealed class TimeInputTests
         control.Value.ShouldBe(bound);
     }
 
-    /// <summary>Verifies unhandled keys still reach the inherited Control event surface.</summary>
+    /// <summary>Verifies unhandled keys still reach the inherited ControlBase event surface.</summary>
     [Fact]
     public void Input_WhenKeyIsUnhandled_RaisesKeyDown()
     {

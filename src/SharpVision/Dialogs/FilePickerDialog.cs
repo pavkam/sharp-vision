@@ -21,6 +21,7 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>
     private const int _nonListWindowRows = 21;
 
     private readonly Button _openButton;
+    private readonly StyleSlot<ButtonStyle> _openButtonStyle;
 
     #region Construction and state
 
@@ -63,6 +64,10 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>
             IsEnabled = false
         };
         Initialize();
+        _openButtonStyle = InitializePartStyle(
+            ButtonStyle.ForwardingDefinition,
+            nameof(OpenButtonStyle));
+        BindStyle(_openButtonStyle, _openButton);
         CancelButtonStyle = options.CancelButtonStyle;
         ShowHiddenCheckBoxStyle = options.ShowHiddenCheckBoxStyle;
         FileListScrollBarStyle = options.FileListScrollBarStyle;
@@ -79,20 +84,12 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>
     /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
     public ButtonStyle? OpenButtonStyle
     {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                return;
-            }
-
-            _openButton.Style = value;
-        }
+        get => _openButtonStyle.Local;
+        set => _openButtonStyle.Local = value;
     }
 
     /// <summary>Gets the resolved Open Button style.</summary>
-    public ButtonStyle ActualOpenButtonStyle => _openButton.ActualStyle;
+    public ButtonStyle ActualOpenButtonStyle => _openButtonStyle.Actual;
 
     #endregion
 
@@ -109,7 +106,7 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>
     /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
     /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> is already cancelled.</exception>
     public static Task<FilePickerResult> ShowAsync(
-        Control owner,
+        ControlBase owner,
         FilePickerOptions? options = null,
         CancellationToken cancellationToken = default)
     {
@@ -189,10 +186,10 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>
     #region Interaction
 
     /// <inheritdoc/>
-    protected override Control GetModalFocusTarget() => PathInput;
+    protected override ControlBase GetModalFocusTarget() => PathInput;
 
     /// <inheritdoc/>
-    protected override Control GetInitialLoadFocusTarget() => FileList;
+    protected override ControlBase GetInitialLoadFocusTarget() => FileList;
 
     /// <inheritdoc/>
     protected override void OnListSelectionChanged() => PublishSelection();

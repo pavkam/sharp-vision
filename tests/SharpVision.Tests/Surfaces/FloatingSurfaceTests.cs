@@ -14,7 +14,7 @@ public sealed class FloatingSurfaceTests
     [Fact]
     public void Type_WhenInspected_IsContentSurfaceWithoutPublicChildren()
     {
-        var type = typeof(FloatingSurface);
+        var type = typeof(FloatingSurfaceBase);
 
         type.BaseType.ShouldBe(typeof(ContentControl));
         typeof(Container).IsAssignableFrom(type).ShouldBeFalse();
@@ -26,7 +26,7 @@ public sealed class FloatingSurfaceTests
     [Fact]
     public void CloseSurfaceAfterClosingRequest_WhenInspected_IsPrivateProtected()
     {
-        var method = typeof(FloatingSurface).GetMethod(
+        var method = typeof(FloatingSurfaceBase).GetMethod(
             "CloseSurfaceAfterClosingRequest",
             BindingFlags.Instance | BindingFlags.NonPublic);
 

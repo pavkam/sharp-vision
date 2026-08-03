@@ -32,11 +32,11 @@ than one unescaped marker, every marker is removed from the visible text, but
 only the first marked scalar is the access key and only its grapheme is
 underlined.
 
-`Control.UseMnemonic` defaults to `true` for captioned controls. Setting it to
-`false` removes the control from access-key discovery and renders its caption
+`ControlBase.UseMnemonic` defaults to `true` for captioned controls. Setting it
+to `false` removes the control from access-key discovery and renders its caption
 ampersands literally. `Text` is a rich, body-text control and therefore defaults
 `UseMnemonic` to `false`; set it to `true` explicitly when a standalone `Text`
-acts as a label. A `Text` used as a `Pressable` caption inherits the owner's
+acts as a label. A `Text` used as a `PressableBase` caption inherits the owner's
 effective setting, so the visible syntax and the dispatch behavior can never
 disagree.
 
@@ -84,7 +84,7 @@ declines its action does not prevent a later match from accepting it.
 
 ## Focus and semantic actions
 
-The common `Control.OnAccessKey(Rune)` default focuses an eligible captioned
+The common `ControlBase.OnAccessKey(Rune)` default focuses an eligible captioned
 control. A non-focusable captioned scope focuses its first eligible descendant
 in hierarchical tab order. A label-like leaf advances through the same focus
 traversal from its stable tree anchor.

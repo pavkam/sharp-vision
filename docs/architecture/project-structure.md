@@ -98,8 +98,8 @@ The UI project ships the complete
 editing, selection and item controls, menus, context menus, popups, tooltips,
 flyouts, windows, intrinsic container scrolling, styling, focus, and routed
 input all follow these feature and shared-service boundaries. Border and shadow
-properties live on `Control`, and `Border` always participates in its base box
-model. The sealed control render pipeline always paints configured intrinsic
+properties live on `ControlBase`, and `Border` always participates in its base
+box model. The sealed control render pipeline always paints configured intrinsic
 chrome around `OnRenderContent`; specialized controls select narrow chrome
 options rather than bypassing the pipeline. Neither feature requires a dedicated
 wrapper type or moves terminal protocol or renderer behavior into the UI layer.
@@ -145,7 +145,7 @@ defined by the
 ## Namespace and file boundaries
 
 Namespaces provide context, so public names avoid repeating `Terminal`,
-`SharpVision`, and `Control` as affixes. Each file has one primary
+`SharpVision`, and `ControlBase` as affixes. Each file has one primary
 responsibility, and internal helpers stay inside the lowest layer that owns
 their invariant.
 

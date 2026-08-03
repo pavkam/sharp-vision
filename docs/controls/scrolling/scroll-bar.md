@@ -21,8 +21,8 @@ on its own, or let an overflowing `Container`, `TextInput`, `ListView`, or
 A `ScrollBarStyle` bundles `Chrome`, `Fill`, a complete `ScrollBarGlyphs` set,
 `ColorValue`s for the track, thumb, and buttons, and the full appearance
 profile. The presets are `FullBlock`, `FullLine`, `ThinBlock`, and `ThinLine`.
-`ScrollBarStyleSet` is a partial composition value for Theme files, not a
-control property.
+`ScrollBarStyle.With(...)` creates validated member-wise copies and may overlay
+an `AppearanceProfileSet`; theme JSON remains semantic-only.
 
 Hosts that generate their own bars expose a nullable `ScrollBarStyle` property
 and a read-only `ActualScrollBarStyle`. A host forwards a local complete style

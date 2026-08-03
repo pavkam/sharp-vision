@@ -162,7 +162,7 @@ public sealed class ComponentCompositionSurfaceTests
         surface.ShouldHaveFocus(null);
         return;
 
-        void Record(Control control, string name) =>
+        void Record(ControlBase control, string name) =>
             _ = control.AddHandler(
                 Events.Pointer,
                 (_, eventArgs) =>

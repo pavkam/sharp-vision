@@ -4,7 +4,7 @@
 namespace SharpVision.Controls.Collections;
 
 /// <summary>Provides one retained pressable header for a semantic tab page.</summary>
-internal sealed class TabHeader: Pressable
+internal sealed class TabHeader: PressableBase
 {
     private const int _headerRowHeight = 1;
     private const int _headerHorizontalPadding = 1;

@@ -375,7 +375,7 @@ public sealed class MessageBoxTests
         messageBox.ButtonStyle = style;
         messageBox.ButtonStyle = style;
 
-        notifications.ShouldBe([nameof(MessageBox.ButtonStyle)]);
+        notifications.ShouldBe([nameof(MessageBox.ButtonStyle), nameof(MessageBox.ActualButtonStyle)]);
     }
 
     /// <summary>Verifies a padding change through the Button style changes the measured button

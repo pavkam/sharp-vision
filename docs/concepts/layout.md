@@ -73,15 +73,15 @@ It validates dispatcher affinity, caches results for unchanged constraints and
 slots, and rejects nested transactions. A changed viewport triggers a remeasure
 even when no property is dirty.
 
-`Control.MeasureOverride(Constraint)` receives the content-box constraint — what
-remains after the margin, the resolved border-box request, the border thickness,
-and the padding are removed — and returns an intrinsic content size. The
-framework then adds border and padding back, with saturated arithmetic, to
-produce the desired border-box size. `Control.ArrangeOverride(Rect)` receives
-the final content rectangle, computed by aligning the border box and then
-deflating it by border and padding. Both extension points run only for hidden or
-visible controls; a collapsed control desires zero, commits empty bounds, and
-skips both callbacks.
+`ControlBase.MeasureOverride(Constraint)` receives the content-box constraint —
+what remains after the margin, the resolved border-box request, the border
+thickness, and the padding are removed — and returns an intrinsic content size.
+The framework then adds border and padding back, with saturated arithmetic, to
+produce the desired border-box size. `ControlBase.ArrangeOverride(Rect)`
+receives the final content rectangle, computed by aligning the border box and
+then deflating it by border and padding. Both extension points run only for
+hidden or visible controls; a collapsed control desires zero, commits empty
+bounds, and skips both callbacks.
 
 An externally derived owner drives child layout only through
 `MeasureChild(Control, Constraint)` and

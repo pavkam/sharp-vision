@@ -5,7 +5,7 @@ namespace SharpVision.Menus;
 
 /// <summary>Draws one non-interactive separator entry inside a <see cref="Menu"/>.</summary>
 [PublicAPI]
-public sealed class MenuSeparator: Control
+public sealed class MenuSeparator: ControlBase
 {
     private Rune? _glyph;
 

@@ -72,13 +72,13 @@ properties remain convenience accessors.
 `styles` is strongly typed. Its five properties are the semantic appearance
 profiles:
 
-| JSON property | `ThemeRole` | Intended use                              |
-| ------------- | ----------- | ----------------------------------------- |
-| `control`     | `Control`   | Passive controls and the common fallback. |
-| `input`       | `Input`     | Editable or selectable input chrome.      |
-| `container`   | `Container` | Framed grouping surfaces.                 |
-| `window`      | `Window`    | Top-level window surfaces.                |
-| `popup`       | `Popup`     | Transient popup surfaces.                 |
+| JSON property | `ThemeRole`         | Intended use                              |
+| ------------- | ------------------- | ----------------------------------------- |
+| `control`     | `ThemeRole.Control` | Passive controls and the common fallback. |
+| `input`       | `Input`             | Editable or selectable input chrome.      |
+| `container`   | `Container`         | Framed grouping surfaces.                 |
+| `window`      | `Window`            | Top-level window surfaces.                |
+| `popup`       | `Popup`             | Transient popup surfaces.                 |
 
 After loading, every profile has a complete `normal` appearance, and it may
 supply partial contributions for `pointerOver`, `focusWithin`, `focused`,

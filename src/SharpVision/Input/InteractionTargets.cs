@@ -21,12 +21,12 @@ internal readonly struct InteractionTargets
     /// <param name="modality">The modality manager captured for this record, or null.</param>
     /// <param name="modalScope">The active scope captured for this record, or null.</param>
     public InteractionTargets(
-        Control? physicalLeaf,
-        Control? hoverTarget,
-        Control? hoverBoundary,
-        Control? deliveryTarget,
-        Control? focusTarget,
-        Control? captureOwner,
+        ControlBase? physicalLeaf,
+        ControlBase? hoverTarget,
+        ControlBase? hoverBoundary,
+        ControlBase? deliveryTarget,
+        ControlBase? focusTarget,
+        ControlBase? captureOwner,
         ModalityManager? modality,
         ModalScope? modalScope)
     {
@@ -41,22 +41,22 @@ internal readonly struct InteractionTargets
     }
 
     /// <summary>Gets the exact geometric hit-test result before modal filtering.</summary>
-    public Control? PhysicalLeaf { get; }
+    public ControlBase? PhysicalLeaf { get; }
 
     /// <summary>Gets the physical leaf permitted to own hover state.</summary>
-    public Control? HoverTarget { get; }
+    public ControlBase? HoverTarget { get; }
 
     /// <summary>Gets the inclusive root of the permitted hover path.</summary>
-    public Control? HoverBoundary { get; }
+    public ControlBase? HoverBoundary { get; }
 
     /// <summary>Gets the control that receives routed pointer input.</summary>
-    public Control? DeliveryTarget { get; }
+    public ControlBase? DeliveryTarget { get; }
 
     /// <summary>Gets the nearest eligible semantic focus target.</summary>
-    public Control? FocusTarget { get; }
+    public ControlBase? FocusTarget { get; }
 
     /// <summary>Gets the capture owner used for delivery selection.</summary>
-    public Control? CaptureOwner { get; }
+    public ControlBase? CaptureOwner { get; }
 
     /// <summary>Gets the modality manager captured before observable pointer mutation.</summary>
     public ModalityManager? Modality { get; }

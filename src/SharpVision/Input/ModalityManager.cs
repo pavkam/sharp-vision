@@ -14,15 +14,15 @@ public sealed class ModalityManager: IDisposable
     // Retain committed exits in lifetime order until focus restoration and Exited publication finish.
     // Active interaction ignores those tombstones while unwind ordering still observes them.
     private readonly List<ModalScope> _stack = [];
-    private readonly Queue<(ModalScope Scope, bool RestoreFocus, Control? ExcludedSubtree)> _pendingUnwinds = new();
-    private readonly List<Control> _unwindExclusions = [];
-    private readonly List<Control> _unavailableSubtrees = [];
+    private readonly Queue<(ModalScope Scope, bool RestoreFocus, ControlBase? ExcludedSubtree)> _pendingUnwinds = new();
+    private readonly List<ControlBase> _unwindExclusions = [];
+    private readonly List<ControlBase> _unavailableSubtrees = [];
     private readonly FocusManager _focus;
     private readonly PointerManager _pointer;
     private ExceptionDispatchInfo? _unwindFailure;
     private ModalScope? _unwindRequested;
     private ModalScope? _pendingExit;
-    private Control? _pendingExitFocus;
+    private ControlBase? _pendingExitFocus;
     private bool _releaseOwnershipWhenUnwound;
     private bool _isCommittingInactive;
     private bool _isDisposed;
@@ -38,7 +38,7 @@ public sealed class ModalityManager: IDisposable
     /// <exception cref="ArgumentException">A dependency does not own the same attached tree.</exception>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The root is disposed.</exception>
-    internal ModalityManager(Control root, FocusManager focus, PointerManager pointer)
+    internal ModalityManager(ControlBase root, FocusManager focus, PointerManager pointer)
     {
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(focus);
@@ -89,7 +89,7 @@ public sealed class ModalityManager: IDisposable
     }
 
     /// <summary>Gets the attached application root owned by this manager.</summary>
-    internal Control Root { get; }
+    internal ControlBase Root { get; }
 
     /// <summary>Gets the active plane's root count, or zero when no scope is active.</summary>
     internal int ActiveRootCount => Active?.RootCount ?? 0;
@@ -114,9 +114,9 @@ public sealed class ModalityManager: IDisposable
     /// Pointer cleanup, focus publication, or transactional rollback notification fails after committed cleanup.
     /// </exception>
     public ModalScope Enter(
-        Control root,
+        ControlBase root,
         OutsideInteraction outsideInteraction = OutsideInteraction.Ignore,
-        Control? initialFocus = null)
+        ControlBase? initialFocus = null)
     {
         ArgumentNullException.ThrowIfNull(root);
 
@@ -202,7 +202,7 @@ public sealed class ModalityManager: IDisposable
     /// <param name="index">The valid zero-based position.</param>
     /// <returns>The active plane root.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The position is outside the active plane roots.</exception>
-    internal Control ActiveRootAt(int index)
+    internal ControlBase ActiveRootAt(int index)
     {
         var active = Active ?? throw new ArgumentOutOfRangeException(
             nameof(index),
@@ -214,7 +214,7 @@ public sealed class ModalityManager: IDisposable
     /// <summary>Returns whether one target may interact under the current active plane.</summary>
     /// <param name="control">The target, or null.</param>
     /// <returns>True when unrestricted or contained by an active plane root.</returns>
-    internal bool Allows(Control? control)
+    internal bool Allows(ControlBase? control)
     {
         var active = Active;
         return active is null
@@ -228,7 +228,7 @@ public sealed class ModalityManager: IDisposable
     /// The eligible focused control, the active primary plane root, or the application root
     /// when no scope and no focus are active.
     /// </returns>
-    internal Control KeyTarget(Control? focused)
+    internal ControlBase KeyTarget(ControlBase? focused)
     {
         var active = Active;
         return active is null
@@ -241,7 +241,7 @@ public sealed class ModalityManager: IDisposable
     /// <summary>Resolves a text or paste target without falling back through an active plane.</summary>
     /// <param name="focused">The currently focused control, or null.</param>
     /// <returns>The eligible focused control, or null when an active plane excludes it.</returns>
-    internal Control? FocusedTarget(Control? focused)
+    internal ControlBase? FocusedTarget(ControlBase? focused)
     {
         var active = Active;
         return active is null
@@ -255,7 +255,7 @@ public sealed class ModalityManager: IDisposable
     /// <param name="control">The non-null target.</param>
     /// <returns>The matching route boundary, or null.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
-    internal Control? BoundaryFor(Control control)
+    internal ControlBase? BoundaryFor(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         return Active?.BoundaryFor(control);
@@ -264,7 +264,7 @@ public sealed class ModalityManager: IDisposable
     /// <summary>Adds one disjoint root to an active scope after complete validation.</summary>
     /// <param name="scope">The non-null active owned scope.</param>
     /// <param name="root">The non-null proposed plane root.</param>
-    internal void Include(ModalScope scope, Control root)
+    internal void Include(ModalScope scope, ControlBase root)
     {
         ArgumentNullException.ThrowIfNull(scope);
         ArgumentNullException.ThrowIfNull(root);
@@ -299,13 +299,13 @@ public sealed class ModalityManager: IDisposable
 
     /// <summary>Removes unavailable included roots or unwinds from the oldest affected primary root.</summary>
     /// <param name="subtree">The non-null unavailable subtree in the owned tree.</param>
-    internal void Unavailable(Control subtree)
+    internal void Unavailable(ControlBase subtree)
         => Unavailable(subtree, restoreFocus: true);
 
     /// <summary>Removes or unwinds roots within one unavailable subtree using the requested focus policy.</summary>
     /// <param name="subtree">The non-null unavailable subtree in the owned tree.</param>
     /// <param name="restoreFocus">Whether each exited scope may restore focus.</param>
-    internal void Unavailable(Control subtree, bool restoreFocus)
+    internal void Unavailable(ControlBase subtree, bool restoreFocus)
     {
         ArgumentNullException.ThrowIfNull(subtree);
 
@@ -349,7 +349,7 @@ public sealed class ModalityManager: IDisposable
     /// <summary>Guards one retained subtree for the complete unavailable callback transaction.</summary>
     /// <param name="subtree">The non-null subtree whose current ownership must not be reused.</param>
     /// <exception cref="ArgumentNullException"><paramref name="subtree"/> is null.</exception>
-    internal void BeginUnavailable(Control subtree)
+    internal void BeginUnavailable(ControlBase subtree)
     {
         ArgumentNullException.ThrowIfNull(subtree);
         Debug.Assert(IsMember(subtree), "Unavailable guards begin while old ownership remains coherent.");
@@ -359,7 +359,7 @@ public sealed class ModalityManager: IDisposable
     /// <summary>Ends the most recent matching unavailable-subtree guard.</summary>
     /// <param name="subtree">The non-null subtree whose callback transaction completed.</param>
     /// <exception cref="ArgumentNullException"><paramref name="subtree"/> is null.</exception>
-    internal void EndUnavailable(Control subtree)
+    internal void EndUnavailable(ControlBase subtree)
     {
         ArgumentNullException.ThrowIfNull(subtree);
         var index = _unavailableSubtrees.FindLastIndex(item => ReferenceEquals(item, subtree));
@@ -373,7 +373,7 @@ public sealed class ModalityManager: IDisposable
 
     /// <summary>Handles a disposed subtree and severs ownership when it is the manager root.</summary>
     /// <param name="root">The disposed subtree root.</param>
-    internal void RootDisposed(Control root)
+    internal void RootDisposed(ControlBase root)
     {
         ArgumentNullException.ThrowIfNull(root);
 
@@ -419,7 +419,7 @@ public sealed class ModalityManager: IDisposable
     /// <param name="control">The target, or null.</param>
     /// <param name="subtree">The non-null subtree root.</param>
     /// <returns>True when ancestry reaches the subtree root.</returns>
-    internal static bool IsWithin(Control? control, Control subtree)
+    internal static bool IsWithin(ControlBase? control, ControlBase subtree)
     {
         Debug.Assert(subtree is not null, "Subtree membership requires a concrete root.");
 
@@ -485,7 +485,7 @@ public sealed class ModalityManager: IDisposable
     private void UnwindFrom(
         int index,
         bool restoreFocus,
-        Control? excludedSubtree,
+        ControlBase? excludedSubtree,
         ExceptionDispatchInfo? priorFailure = null)
     {
         Debug.Assert(index >= 0 && index < _stack.Count, "Modal unwind begins at one active scope.");
@@ -742,7 +742,7 @@ public sealed class ModalityManager: IDisposable
 
     private void StrengthenUnwindPolicy(
         bool restoreFocus,
-        Control? excludedSubtree)
+        ControlBase? excludedSubtree)
     {
         _unwindRestoresFocus &= restoreFocus;
 
@@ -753,10 +753,10 @@ public sealed class ModalityManager: IDisposable
         }
     }
 
-    private void RestoreFocus(Control? previous, Action<Exception?> completion)
+    private void RestoreFocus(ControlBase? previous, Action<Exception?> completion)
     {
         Debug.Assert(completion is not null, "Restore completion resumes one pending modal exit.");
-        var attempted = new HashSet<Control?>();
+        var attempted = new HashSet<ControlBase?>();
         RestoreFocusCore(
             ResolveRestoreTarget(previous, attempted),
             attempted,
@@ -764,8 +764,8 @@ public sealed class ModalityManager: IDisposable
     }
 
     private void RestoreFocusCore(
-        Control? preferred,
-        HashSet<Control?> attempted,
+        ControlBase? preferred,
+        HashSet<ControlBase?> attempted,
         Action<Exception?> completion)
     {
         if (_focus.IsDisposed)
@@ -817,9 +817,9 @@ public sealed class ModalityManager: IDisposable
             _unwindFailure);
     }
 
-    private Control? ResolveRestoreTarget(
-        Control? previous,
-        HashSet<Control?>? attempted = null)
+    private ControlBase? ResolveRestoreTarget(
+        ControlBase? previous,
+        HashSet<ControlBase?>? attempted = null)
         => previous is not null &&
             attempted?.Contains(previous) is not true &&
             IsRestoreTargetValid(previous)
@@ -828,11 +828,11 @@ public sealed class ModalityManager: IDisposable
                     ? FindInitialFocus(active, _unwindExclusions, attempted)
                     : null;
 
-    private bool IsRestoreTargetValid(Control? target) =>
+    private bool IsRestoreTargetValid(ControlBase? target) =>
         target is null ||
         (IsEligibleFocusTarget(target, _unwindExclusions) && Allows(target));
 
-    private void EnsureRestoredFocus(Control? previous, Control? displaced)
+    private void EnsureRestoredFocus(ControlBase? previous, ControlBase? displaced)
     {
         if (_focus.IsDisposed)
         {
@@ -857,14 +857,14 @@ public sealed class ModalityManager: IDisposable
             ref _unwindFailure);
     }
 
-    private bool IsFocusCoherent(Control? target, Control? displaced) =>
+    private bool IsFocusCoherent(ControlBase? target, ControlBase? displaced) =>
         ReferenceEquals(_focus.Focused, target) &&
         (target is null || target.IsFocused) &&
         (displaced is null || ReferenceEquals(displaced, target) || !displaced.IsFocused);
 
     private void RollbackEntry(
         ModalScope scope,
-        Control? previousFocus,
+        ControlBase? previousFocus,
         ExceptionDispatchInfo? priorFailure = null)
     {
         var index = _stack.IndexOf(scope);
@@ -903,14 +903,14 @@ public sealed class ModalityManager: IDisposable
     }
 
     private void CommitFocus(
-        Control? preferred,
+        ControlBase? preferred,
         FocusReason reason,
-        IReadOnlyList<Control>? excludedSubtrees,
+        IReadOnlyList<ControlBase>? excludedSubtrees,
         ModalScope? entryScope = null,
-        Control? entryPreviousFocus = null)
+        ControlBase? entryPreviousFocus = null)
     {
         var retainedExclusions = excludedSubtrees?.ToArray();
-        var attempted = new HashSet<Control?>();
+        var attempted = new HashSet<ControlBase?>();
         CommitFocusCore(
             preferred,
             reason,
@@ -921,12 +921,12 @@ public sealed class ModalityManager: IDisposable
     }
 
     private void CommitFocusCore(
-        Control? preferred,
+        ControlBase? preferred,
         FocusReason reason,
-        IReadOnlyList<Control>? excludedSubtrees,
-        HashSet<Control?> attempted,
+        IReadOnlyList<ControlBase>? excludedSubtrees,
+        HashSet<ControlBase?> attempted,
         ModalScope? entryScope,
-        Control? entryPreviousFocus)
+        ControlBase? entryPreviousFocus)
     {
         if (!attempted.Add(preferred))
         {
@@ -987,10 +987,10 @@ public sealed class ModalityManager: IDisposable
 
     private void CommitFallback(
         FocusReason reason,
-        IReadOnlyList<Control>? excludedSubtrees,
-        HashSet<Control?> attempted,
+        IReadOnlyList<ControlBase>? excludedSubtrees,
+        HashSet<ControlBase?> attempted,
         ModalScope? entryScope,
-        Control? entryPreviousFocus)
+        ControlBase? entryPreviousFocus)
     {
         var fallback = Active is { } active
             ? FindInitialFocus(active, excludedSubtrees, attempted)
@@ -1010,10 +1010,10 @@ public sealed class ModalityManager: IDisposable
             entryPreviousFocus);
     }
 
-    private Control? FindInitialFocus(
+    private ControlBase? FindInitialFocus(
         ModalScope scope,
-        IReadOnlyList<Control>? excludedSubtrees = null,
-        HashSet<Control?>? attempted = null)
+        IReadOnlyList<ControlBase>? excludedSubtrees = null,
+        HashSet<ControlBase?>? attempted = null)
     {
         for (var index = 0; index < scope.RootCount; index++)
         {
@@ -1026,10 +1026,10 @@ public sealed class ModalityManager: IDisposable
         return null;
     }
 
-    private Control? FindInitialFocus(
-        Control root,
-        IReadOnlyList<Control>? excludedSubtrees = null,
-        HashSet<Control?>? attempted = null) =>
+    private ControlBase? FindInitialFocus(
+        ControlBase root,
+        IReadOnlyList<ControlBase>? excludedSubtrees = null,
+        HashSet<ControlBase?>? attempted = null) =>
         IsExcluded(root, excludedSubtrees)
             ? null
             : FindEligibleDescendant(root, excludedSubtrees, attempted) ??
@@ -1038,10 +1038,10 @@ public sealed class ModalityManager: IDisposable
                         ? root
                         : null);
 
-    private Control? FindEligibleDescendant(
-        Control owner,
-        IReadOnlyList<Control>? excludedSubtrees,
-        HashSet<Control?>? attempted)
+    private ControlBase? FindEligibleDescendant(
+        ControlBase owner,
+        IReadOnlyList<ControlBase>? excludedSubtrees,
+        HashSet<ControlBase?>? attempted)
     {
         for (var index = 0; index < owner.OwnedControlCount; index++)
         {
@@ -1067,15 +1067,15 @@ public sealed class ModalityManager: IDisposable
     }
 
     private bool IsEligibleFocusTarget(
-        Control control,
-        IReadOnlyList<Control>? excludedSubtrees = null) =>
+        ControlBase control,
+        IReadOnlyList<ControlBase>? excludedSubtrees = null) =>
         !IsExcluded(control, excludedSubtrees) &&
         IsMember(control) && !control.IsDisposed && control.Dispatcher is not null &&
         control.CanFocus && control.EffectiveIsVisible && control.EffectiveIsEnabled;
 
     private bool IsExcluded(
-        Control control,
-        IReadOnlyList<Control>? excludedSubtrees)
+        ControlBase control,
+        IReadOnlyList<ControlBase>? excludedSubtrees)
     {
         if (IsUnavailable(control))
         {
@@ -1098,7 +1098,7 @@ public sealed class ModalityManager: IDisposable
         return false;
     }
 
-    private void ValidateInitialFocus(Control control, Control planeRoot, string parameterName)
+    private void ValidateInitialFocus(ControlBase control, ControlBase planeRoot, string parameterName)
     {
         ObjectDisposedException.ThrowIf(control.IsDisposed, control);
 
@@ -1110,7 +1110,7 @@ public sealed class ModalityManager: IDisposable
         }
     }
 
-    private void ValidatePlaneRoot(Control control, string parameterName)
+    private void ValidatePlaneRoot(ControlBase control, string parameterName)
     {
         ObjectDisposedException.ThrowIf(control.IsDisposed, control);
 
@@ -1130,7 +1130,7 @@ public sealed class ModalityManager: IDisposable
         }
     }
 
-    private void ValidateDisjoint(Control candidate, string parameterName)
+    private void ValidateDisjoint(ControlBase candidate, string parameterName)
     {
         foreach (var scope in _stack)
         {
@@ -1152,7 +1152,7 @@ public sealed class ModalityManager: IDisposable
         }
     }
 
-    private void ValidateEntryRoot(Control candidate, string parameterName)
+    private void ValidateEntryRoot(ControlBase candidate, string parameterName)
     {
         foreach (var scope in _stack)
         {
@@ -1173,12 +1173,12 @@ public sealed class ModalityManager: IDisposable
         }
     }
 
-    private bool IsMember(Control control) => IsWithin(control, Root);
+    private bool IsMember(ControlBase control) => IsWithin(control, Root);
 
     /// <summary>Gets whether a control is inside a subtree currently publishing framework unavailability.</summary>
     /// <param name="control">The non-null control to inspect.</param>
     /// <returns>True while an enclosing unavailable transaction is active; otherwise false.</returns>
-    internal bool IsUnavailable(Control control)
+    internal bool IsUnavailable(ControlBase control)
     {
         foreach (var subtree in _unavailableSubtrees)
         {

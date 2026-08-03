@@ -5,7 +5,7 @@ namespace SharpVision.Navigation;
 
 /// <summary>Exposes one navigation view's constrained item collection.</summary>
 [PublicAPI]
-public sealed class NavigationViewEntryCollection: IReadOnlyList<Control>
+public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
 {
     private readonly NavigationView _owner;
     private readonly bool _isFooter;
@@ -21,7 +21,7 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<Control>
     /// <summary>Gets or replaces one owned entry, preserving its position.</summary>
     /// <exception cref="ArgumentNullException">The assigned value is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current entries.</exception>
-    public Control this[int index]
+    public ControlBase this[int index]
     {
         get => _owner.GetItem(index, _isFooter);
         set
@@ -112,7 +112,7 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<Control>
 
     /// <summary>Gets the position of one entry, or -1 when it is not owned by this section.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
-    public int IndexOf(Control item)
+    public int IndexOf(ControlBase item)
     {
         ArgumentNullException.ThrowIfNull(item);
         return _owner.IndexOfEntry(item, _isFooter);
@@ -122,7 +122,7 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<Control>
     public void Clear() => _owner.ClearEntries(_isFooter);
 
     /// <inheritdoc/>
-    public IEnumerator<Control> GetEnumerator()
+    public IEnumerator<ControlBase> GetEnumerator()
     {
         for (var index = 0; index < Count; index++)
         {

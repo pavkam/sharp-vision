@@ -18,11 +18,11 @@ internal static class Doc
     /// <returns>A vertically stacked section.</returns>
     /// <exception cref="ArgumentException"><paramref name="icon"/>, <paramref name="heading"/>, or <paramref name="descriptionMarkup"/> is blank.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="examples"/> or one of its entries is null.</exception>
-    internal static Control Section(
+    internal static ControlBase Section(
         string icon,
         string heading,
         string descriptionMarkup,
-        params Control[] examples)
+        params ControlBase[] examples)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(icon);
         ArgumentException.ThrowIfNullOrWhiteSpace(heading);
@@ -56,7 +56,7 @@ internal static class Doc
     /// <returns>A page with a fixed identity header and an independently scrolling example body.</returns>
     /// <exception cref="ArgumentException"><paramref name="name"/> or <paramref name="overviewMarkup"/> is blank.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="sections"/> is null.</exception>
-    internal static Dock Page(string name, string overviewMarkup, params Control[] sections)
+    internal static Dock Page(string name, string overviewMarkup, params ControlBase[] sections)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(overviewMarkup);
@@ -111,10 +111,10 @@ internal static class Doc
     /// <returns>A vertically stacked example block.</returns>
     /// <exception cref="ArgumentException"><paramref name="heading"/>, <paramref name="descriptionMarkup"/>, or a supplied <paramref name="source"/> is blank.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="specimen"/> is null.</exception>
-    internal static Control Example(
+    internal static ControlBase Example(
         string heading,
         string descriptionMarkup,
-        Control specimen,
+        ControlBase specimen,
         string? source = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(heading);
@@ -177,7 +177,7 @@ internal static class Doc
     /// <param name="child">The specimen to frame.</param>
     /// <returns>A bordered card.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="child"/> is null.</exception>
-    internal static Dock Card(Control child)
+    internal static Dock Card(ControlBase child)
     {
         ArgumentNullException.ThrowIfNull(child);
         return new Dock
@@ -197,7 +197,7 @@ internal static class Doc
     /// <param name="children">The children in order.</param>
     /// <returns>A horizontal stack.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="children"/> is null.</exception>
-    internal static Stack Row(params Control[] children)
+    internal static Stack Row(params ControlBase[] children)
     {
         ArgumentNullException.ThrowIfNull(children);
         var row = new Stack { Orientation = Orientation.Horizontal, Spacing = 2 };
@@ -213,7 +213,7 @@ internal static class Doc
     /// <param name="children">The children in order.</param>
     /// <returns>A vertical stack.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="children"/> is null.</exception>
-    internal static Stack Column(params Control[] children)
+    internal static Stack Column(params ControlBase[] children)
     {
         ArgumentNullException.ThrowIfNull(children);
         var column = new Stack { Spacing = 1 };

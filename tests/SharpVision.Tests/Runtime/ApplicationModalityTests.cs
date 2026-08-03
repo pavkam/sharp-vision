@@ -143,7 +143,7 @@ public sealed class ApplicationModalityTests
             FocusManager Focus,
             PointerManager Capture,
             ModalScope? Active,
-            Control? Focused,
+            ControlBase? Focused,
             Size Size,
             Rect Bounds)>(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -244,7 +244,7 @@ public sealed class ApplicationModalityTests
         await application.StopAsync(TestContext.Current.CancellationToken);
         return;
 
-        void Record(Control control, string name)
+        void Record(ControlBase control, string name)
         {
             _ = control.AddHandler(Events.Key, (_, eventArgs) =>
             {
@@ -304,7 +304,7 @@ public sealed class ApplicationModalityTests
         await application.StopAsync(TestContext.Current.CancellationToken);
         return;
 
-        void Record(Control control, string name)
+        void Record(ControlBase control, string name)
         {
             _ = control.AddHandler(
                 Events.Text,
@@ -373,7 +373,7 @@ public sealed class ApplicationModalityTests
         await application.StopAsync(TestContext.Current.CancellationToken);
         return;
 
-        void Record(Control control, string name)
+        void Record(ControlBase control, string name)
         {
             _ = control.AddHandler(Events.Key, (_, eventArgs) =>
             {
@@ -439,7 +439,7 @@ public sealed class ApplicationModalityTests
         await application.StopAsync(TestContext.Current.CancellationToken);
         return;
 
-        void Record(Control control)
+        void Record(ControlBase control)
         {
             _ = control.AddHandler(Events.Text, (_, _) => routes++);
             _ = control.AddHandler(Events.Paste, (_, _) => routes++);
@@ -611,7 +611,7 @@ public sealed class ApplicationModalityTests
         root.Children.Add(plane);
         var ordinaryRoutes = 0;
         var outsideRoutes = 0;
-        var observed = new List<(Control Sender, RoutingPhase Phase, KeyEventArgs EventArgs)>();
+        var observed = new List<(ControlBase Sender, RoutingPhase Phase, KeyEventArgs EventArgs)>();
         _ = plane.AddHandler(Events.Key, (_, _) => ordinaryRoutes++);
         _ = input.AddHandler(Events.Key, (_, _) => ordinaryRoutes++);
         RecordHandled(plane);
@@ -670,7 +670,7 @@ public sealed class ApplicationModalityTests
         input.Dispose();
         return;
 
-        void RecordHandled(Control control) =>
+        void RecordHandled(ControlBase control) =>
             _ = control.AddHandler(
                 Events.Key,
                 (sender, eventArgs) =>

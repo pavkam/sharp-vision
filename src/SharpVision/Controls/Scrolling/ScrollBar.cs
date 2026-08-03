@@ -7,28 +7,8 @@ using SharpVision.Terminal.Input;
 
 /// <summary>Defines a focusable integer range with buttons, track, and draggable thumb.</summary>
 [PublicAPI]
-public sealed class ScrollBar: Control
+public sealed class ScrollBar: Control<ScrollBarStyle>
 {
-    private static readonly StyleContract<ScrollBarStyle> _styleContract = new(
-        ThemeRole.Control,
-        static profile => new ScrollBarStyle(
-            ScrollBarStyle.Default.Chrome,
-            ScrollBarStyle.Default.Fill,
-            ScrollBarStyle.Default.Glyphs,
-            ScrollBarStyle.Default.TrackColor,
-            ScrollBarStyle.Default.ThumbColor,
-            ScrollBarStyle.Default.ButtonColor,
-            profile),
-        static (previous, previousTheme, current, currentTheme) =>
-            previous.Chrome != current.Chrome
-                ? InvalidationImpact.Measure
-                : previous != current ||
-                  ResolveColor(previous.TrackColor, previousTheme) != ResolveColor(current.TrackColor, currentTheme) ||
-                  ResolveColor(previous.ThumbColor, previousTheme) != ResolveColor(current.ThumbColor, currentTheme) ||
-                  ResolveColor(previous.ButtonColor, previousTheme) != ResolveColor(current.ButtonColor, currentTheme)
-                    ? InvalidationImpact.Render
-                    : InvalidationImpact.None,
-        static style => style.Appearance);
     private int _value;
     private readonly DragBehavior _drag;
     private int _dragPointerStart;
@@ -36,12 +16,9 @@ public sealed class ScrollBar: Control
     private int _dragThumbStart;
     private int _dragTrackLength;
     private ScrollRange _dragRange;
-    private ScrollBarStyle? _actualStyleCache;
-    private ScrollBarStyle? _actualStyleCacheKey;
-    private Theme? _actualStyleCacheTheme;
 
     /// <summary>Initializes a vertical focusable range from zero through one hundred.</summary>
-    public ScrollBar()
+    public ScrollBar() : base(ScrollBarStyle.Definition)
     {
         _drag = new DragBehavior(
             () => Bounds,
@@ -186,60 +163,6 @@ public sealed class ScrollBar: Control
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     }
-
-    /// <summary>Gets or sets the complete local presentation, or null to use the semantic control profile.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public ScrollBarStyle? Style
-    {
-        get;
-        set => _ = SetControlStyle(
-            ref field,
-            value,
-            _styleContract.Resolve,
-            _styleContract.CompareStructure,
-            _styleContract.Appearance,
-            nameof(Style),
-            nameof(ActualStyle));
-    }
-
-    /// <summary>Gets the complete local presentation or library scrollbar mechanics completed with the semantic control profile.</summary>
-    public ScrollBarStyle ActualStyle =>
-        ResolveContractStyle(
-            _styleContract,
-            ref _actualStyleCache,
-            ref _actualStyleCacheKey,
-            ref _actualStyleCacheTheme,
-            Style,
-            Theme);
-
-    /// <inheritdoc/>
-    protected override ThemeRole ThemeRole => _styleContract.Role;
-
-    /// <inheritdoc/>
-    protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
-
-    /// <inheritdoc/>
-    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
-        GetContractAppearanceProfile(_styleContract, Style, theme);
-
-    /// <inheritdoc/>
-    protected override InvalidationImpact GetThemeChangeImpact(
-        Theme? previous,
-        Theme? current,
-        Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace) =>
-        GetContractThemeChangeImpact(
-            _styleContract,
-            Style,
-            previous,
-            current,
-            previousParentAmbientFace,
-            currentParentAmbientFace);
-
-    /// <inheritdoc/>
-    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        GetContractResolvedStylePropertyName(_styleContract, Style, previous, current, nameof(ActualStyle));
 
     /// <summary>Adds a signed command delta with saturation and endpoint clamping.</summary>
     /// <param name="delta">The signed requested change.</param>
@@ -628,7 +551,7 @@ public sealed class ScrollBar: Control
 
     private Color ResolveColor(ColorValue value) => ResolveColor(value, Theme);
 
-    /// <summary>Merges a nullable local style with the active theme's Control profile, exactly as
+    /// <summary>Merges a nullable local style with the active theme's ControlBase profile, exactly as
     /// <see cref="ScrollBar"/> itself resolves its own style — shared so every composite host
     /// reports an ActualScrollBarStyle that matches what its generated bar actually renders
     /// instead of falling back to the code-owned static default (see #159).</summary>
@@ -636,7 +559,7 @@ public sealed class ScrollBar: Control
     /// <param name="theme">The active theme, or null to fall back to the library default theme.</param>
     /// <returns>The complete style the generated bar would resolve and render.</returns>
     internal static ScrollBarStyle ResolveStyle(ScrollBarStyle? localStyle, Theme? theme) =>
-        _styleContract.Resolve(localStyle, theme);
+        ScrollBarStyle.Definition.Resolve(localStyle, theme);
 
     private static void Draw(TerminalCanvas canvas, Point point, Rune glyph, TerminalStyle style) =>
         canvas.DrawRune(glyph, point, style, BackgroundMode.Transparent);

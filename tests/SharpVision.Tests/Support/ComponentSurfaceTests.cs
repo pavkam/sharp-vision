@@ -49,7 +49,7 @@ public sealed class ComponentSurfaceTests
         surface.ShouldHaveState(checkBox, VisualState.Focused);
     }
 
-    /// <summary>Verifies a complete Kitty character action drives Pressable press and release behavior.</summary>
+    /// <summary>Verifies a complete Kitty character action drives PressableBase press and release behavior.</summary>
     [Fact]
     public async Task Keyboard_WhenSpaceCompletes_EmitsPressAndReleaseAsync()
     {

@@ -8,7 +8,7 @@ namespace SharpVision.Input;
 public readonly struct RouteResult
 {
     /// <summary>Initializes a route result.</summary>
-    internal RouteResult(bool handled, PostRouteCommand command, Control? anchor)
+    internal RouteResult(bool handled, PostRouteCommand command, ControlBase? anchor)
     {
         Handled = handled;
         Command = command;
@@ -22,5 +22,5 @@ public readonly struct RouteResult
     public PostRouteCommand Command { get; }
 
     /// <summary>Gets the stable route anchor for a deferred command.</summary>
-    public Control? Anchor { get; }
+    public ControlBase? Anchor { get; }
 }

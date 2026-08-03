@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the GroupBox control with titled-border framing specimens.</summary>
-internal sealed class GroupBoxPane: CompositeControl
+internal sealed class GroupBoxPane: CompositeControlBase
 {
     internal GroupBoxPane() => InitializeContent(CreateContent());
 

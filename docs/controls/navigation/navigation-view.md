@@ -4,9 +4,9 @@
 
 `NavigationView` is a sidebar navigation control with typed items, groups,
 separators, an optional header, and a pinned footer section. It extends
-[`CompositeControl`](../composite-control.md#overview) with an internal `Dock`
-layout: the header docks to the top, the footer docks to the bottom, and a
-scrollable items stack fills the remainder.
+[`CompositeControlBase`](../composite-control.md#overview) with an internal
+`Dock` layout: the header docks to the top, the footer docks to the bottom, and
+a scrollable items stack fills the remainder.
 
 The view defaults to no border and the active theme's `NavigationView.normal`
 fill. That single continuous plane forms the sidebar boundary, rather than a
@@ -62,11 +62,11 @@ action.
 
 ## NavigationViewItem
 
-Extends [`Pressable`](../pressable.md#overview). `Header` (string) is the label
-text, and `Glyph` (string?) is an optional prefix shown before the header. The
-item renders as `› Header` when selected or hovered and as `· Header` otherwise.
-Pointer or programmatic selection updates the owning `NavigationView`; the item
-itself stays non-focusable and outside the tab order.
+Extends [`PressableBase`](../pressable.md#overview). `Header` (string) is the
+label text, and `Glyph` (string?) is an optional prefix shown before the header.
+The item renders as `› Header` when selected or hovered and as `· Header`
+otherwise. Pointer or programmatic selection updates the owning
+`NavigationView`; the item itself stays non-focusable and outside the tab order.
 
 Activation raises `Invoked` (`EventHandler<ActivationEventArgs>`), then invokes
 the inherited `Command` with `CommandParameter` when one is bound and

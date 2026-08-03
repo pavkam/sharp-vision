@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the ScrollBar control with full-rail, vertical, and thin-chrome specimens.</summary>
-internal sealed class ScrollBarPane: CompositeControl
+internal sealed class ScrollBarPane: CompositeControlBase
 {
     internal ScrollBarPane() => InitializeContent(CreateContent());
 
@@ -79,17 +79,11 @@ internal sealed class ScrollBarPane: CompositeControl
             Orientation = Orientation.Horizontal,
             Maximum = 50,
             ViewportSize = 10,
-            Style = new ScrollBarStyle(
-                ScrollBarStyle.Default.Chrome,
-                ScrollBarStyle.Default.Fill,
-                new ScrollBarGlyphs(
+            Style = ScrollBarStyle.Default.With(
+                glyphs: new ScrollBarGlyphs(
                     new Rune('^'), new Rune('v'), new Rune('<'), new Rune('>'),
                     new Rune('.'), new Rune('#'), new Rune('-'), new Rune('='),
-                    new Rune('|'), new Rune('#')),
-                ScrollBarStyle.Default.TrackColor,
-                ScrollBarStyle.Default.ThumbColor,
-                ScrollBarStyle.Default.ButtonColor,
-                ScrollBarStyle.Default.Appearance)
+                    new Rune('|'), new Rune('#')))
         };
 
         var one = new ScrollBar { Width = Length.Cells(1), Orientation = Orientation.Horizontal, Maximum = 10 };

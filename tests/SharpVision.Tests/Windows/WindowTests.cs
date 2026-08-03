@@ -118,7 +118,7 @@ public sealed class WindowTests
     {
         var type = typeof(Window);
 
-        type.BaseType.ShouldBe(typeof(FloatingSurface));
+        type.BaseType.ShouldBe(typeof(FloatingSurfaceBase));
         type.IsSealed.ShouldBeFalse();
         typeof(Container).IsAssignableFrom(type).ShouldBeFalse();
         type.GetProperty(nameof(Container.Children)).ShouldBeNull();
@@ -185,7 +185,7 @@ public sealed class WindowTests
         var window = new Window();
         ContentControl owner = window;
         var content = new ProbeControl();
-        var observations = new List<(Control? Content, Control? Parent)>();
+        var observations = new List<(ControlBase? Content, ControlBase? Parent)>();
         owner.PropertyChanged += (_, eventArgs) =>
         {
             if (eventArgs.PropertyName == nameof(ContentControl.Content))
@@ -211,7 +211,7 @@ public sealed class WindowTests
         var current = new OwnershipObserverControl();
         window.Content = replaced;
         window.Content = current;
-        var observations = new List<(Control? Content, Control? Parent, bool Disposed, int DisposingCalls)>();
+        var observations = new List<(ControlBase? Content, ControlBase? Parent, bool Disposed, int DisposingCalls)>();
         window.PropertyChanged += (_, eventArgs) =>
         {
             if (eventArgs.PropertyName == nameof(ContentControl.Content))

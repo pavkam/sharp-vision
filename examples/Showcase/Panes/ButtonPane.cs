@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the Button control with live, themed activation specimens.</summary>
-internal sealed class ButtonPane: CompositeControl
+internal sealed class ButtonPane: CompositeControlBase
 {
     internal ButtonPane() => InitializeContent(CreateContent());
 

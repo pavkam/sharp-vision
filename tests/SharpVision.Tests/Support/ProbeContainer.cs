@@ -86,13 +86,13 @@ internal sealed class ProbeContainer: Container
     /// <param name="child">The candidate child.</param>
     /// <param name="constraint">The child constraint.</param>
     /// <returns>The committed child desired size.</returns>
-    internal Size MeasureOwned(Control child, Constraint constraint) =>
+    internal Size MeasureOwned(ControlBase child, Constraint constraint) =>
         MeasureChild(child, constraint);
 
     /// <summary>Arranges one candidate through the protected direct-child seam.</summary>
     /// <param name="child">The candidate child.</param>
     /// <param name="slot">The assigned outer slot.</param>
     /// <param name="resolvedAxes">Axes already resolved by this parent.</param>
-    internal void ArrangeOwned(Control child, Rect slot, ResolvedAxes resolvedAxes) =>
+    internal void ArrangeOwned(ControlBase child, Rect slot, ResolvedAxes resolvedAxes) =>
         ArrangeChild(child, slot, resolvedAxes);
 }

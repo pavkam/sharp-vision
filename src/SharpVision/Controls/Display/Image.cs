@@ -17,7 +17,7 @@ using UnicodeWidth = Width;
 /// allowing later controls, popups, and windows to occlude the image through ordinary cell paint.
 /// </remarks>
 [PublicAPI]
-public sealed class Image: Control
+public sealed class Image: ControlBase
 {
     /// <summary>Gets or sets the borrowed immutable image, or null for fallback-only rendering.</summary>
     /// <remarks>Replacement, null assignment, and control disposal never mutate or dispose the image.</remarks>

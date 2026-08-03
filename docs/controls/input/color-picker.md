@@ -3,9 +3,9 @@
 ## Overview
 
 `ColorPicker` is a retained
-[`CompositeControl`](../composite-control.md#overview) that edits one stable RGB
-color independently of the terminal's output depth. Its constructor builds one
-permanent layout tree from `Grid`, `Stack`, `Dock`, `Overlay`, `Slider`, and
+[`CompositeControlBase`](../composite-control.md#overview) that edits one stable
+RGB color independently of the terminal's output depth. Its constructor builds
+one permanent layout tree from `Grid`, `Stack`, `Dock`, `Overlay`, `Slider`, and
 focused color surfaces; measure and render never rebuild it.
 
 ## API

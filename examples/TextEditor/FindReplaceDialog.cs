@@ -12,7 +12,7 @@ internal sealed class FindReplaceDialog: IDisposable
     private readonly TextInput _findBox;
     private readonly TextInput _replaceBox;
     private readonly Text _statusText;
-    private readonly Control[] _replaceControls;
+    private readonly ControlBase[] _replaceControls;
     private int _lastMatchIndex;
 
     /// <summary>Initializes the find/replace dialog for a target editor.</summary>
@@ -173,7 +173,7 @@ internal sealed class FindReplaceDialog: IDisposable
         }
     };
 
-    private static void Add(Grid grid, Control control, int row, int column)
+    private static void Add(Grid grid, ControlBase control, int row, int column)
     {
         Grid.SetRow(control, row);
         Grid.SetColumn(control, column);

@@ -473,13 +473,13 @@ public sealed class FilePickerDialogSurfaceTests
             .ShouldBeTrue("the file-picker operation should settle within 500ms");
     }
 
-    private static List<T> FindAll<T>(Control root) where T : Control
+    private static List<T> FindAll<T>(ControlBase root) where T : ControlBase
     {
         var matches = new List<T>();
         Visit(root);
         return matches;
 
-        void Visit(Control control)
+        void Visit(ControlBase control)
         {
             if (control is T match)
             {

@@ -4,12 +4,12 @@
 namespace SharpVision.Showcase.Controls;
 
 /// <summary>Stacks children vertically with standard showcase spacing.</summary>
-internal sealed class DocColumn: CompositeControl
+internal sealed class DocColumn: CompositeControlBase
 {
     /// <summary>Initializes a vertical column of showcase specimens.</summary>
     /// <param name="children">The children in order.</param>
     /// <exception cref="ArgumentNullException"><paramref name="children"/> or one of its entries is null.</exception>
-    internal DocColumn(params Control[] children)
+    internal DocColumn(params ControlBase[] children)
     {
         ArgumentNullException.ThrowIfNull(children);
 

@@ -130,12 +130,15 @@ A `CalendarStyle` holds five `ColorValue` day-grid foregrounds —
 preview), `OutOfMonthDayColor`, `WeekdayHeaderColor`, and `DisabledDayColor` —
 plus the `ContentInset` `Thickness` and a complete appearance profile. Each
 color accepts either a concrete `Color` or a `ThemeColor` role and defaults to
-`SelectedText`, `ActiveText`, `Muted`, `Muted`, and `DisabledText` respectively;
-`ContentInset` defaults to one horizontal cell, matching the prior fixed
-padding. `CalendarStyleSet` exists for partial composition in Theme files; it is
-not a control property. Assigning `Style` replaces the entire Theme-owned
-day-grid foreground and inset presentation, and assigning `null` restores it;
-restyling `ContentInset` remeasures the control.
+`SelectedText`, `ActiveText`, `Muted`, `Muted`, and `DisabledText` respectively.
+`NavigationColor`, `ActiveDayBackground`, `SelectedDayBackground`, and
+`DisabledDayBackground` own the remaining semantic paint channels.
+`ContentInset` defaults to one horizontal cell and is consumed directly by the
+calendar; it does not overwrite the caller's independent `Padding` value. Use
+`CalendarStyle.With(...)` for validated member-wise copies and appearance
+overlays. Theme JSON remains semantic-only. Assigning `Style` replaces the
+entire Theme-owned day-grid foreground and inset presentation, and assigning
+`null` restores it; restyling `ContentInset` remeasures the control.
 
 The selected, hovered/preview, and disabled day-cell backgrounds, and the header
 arrow foreground, still resolve directly against the active Theme's

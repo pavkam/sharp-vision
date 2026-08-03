@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents Slider range, orientation, signed values, and direct interaction.</summary>
-internal sealed class SliderPane: CompositeControl
+internal sealed class SliderPane: CompositeControlBase
 {
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Slider";

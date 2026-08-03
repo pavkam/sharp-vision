@@ -4,7 +4,7 @@
 namespace SharpVision.Controls.Input;
 
 /// <summary>Renders a pointer-transparent horizontal hue ramp.</summary>
-internal sealed class ColorRamp: Control
+internal sealed class ColorRamp: ControlBase
 {
     /// <summary>Initializes a stretching one-cell hue ramp.</summary>
     public ColorRamp()

@@ -8,7 +8,7 @@ namespace SharpVision.Popups;
 public sealed class Flyout: Popup
 {
     private LightDismiss? _lightDismiss;
-    private Control? _subscribedAnchor;
+    private ControlBase? _subscribedAnchor;
 
     /// <summary>Initializes a closed flyout with direct popup presentation and light-dismiss behavior.</summary>
     public Flyout()
@@ -25,7 +25,7 @@ public sealed class Flyout: Popup
     /// <exception cref="ArgumentNullException"><paramref name="anchor"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The attached flyout is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The flyout is disposed.</exception>
-    public void ShowAt(Control anchor)
+    public void ShowAt(ControlBase anchor)
     {
         ArgumentNullException.ThrowIfNull(anchor);
         Anchor = anchor;
@@ -102,7 +102,7 @@ public sealed class Flyout: Popup
 
     private void CloseOtherFlyouts()
     {
-        Control root = this;
+        ControlBase root = this;
 
         while (root.Parent is { } parent)
         {
@@ -112,7 +112,7 @@ public sealed class Flyout: Popup
         CloseDescendantFlyouts(root, this);
     }
 
-    private static void CloseDescendantFlyouts(Control control, Flyout except)
+    private static void CloseDescendantFlyouts(ControlBase control, Flyout except)
     {
         var count = control.OwnedControlCount;
 

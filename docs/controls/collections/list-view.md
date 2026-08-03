@@ -122,7 +122,7 @@ and None mode still permits navigation and invocation.
 Pointer hit testing targets the pressable item wrapper rather than letting its
 display child swallow the activation. Capture, focus loss, disable, detach, and
 disposal therefore reuse the same cancellation guarantees as `Button` and the
-other `Pressable` controls.
+other `PressableBase` controls.
 
 Disabled realized item content stays visible, but its row is not eligible for
 pointer activation, keyboard navigation, or selection. An empty `Items` snapshot

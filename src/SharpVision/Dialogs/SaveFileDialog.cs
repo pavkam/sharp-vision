@@ -25,6 +25,7 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>
     private readonly bool _confirmOverwrite;
     private readonly TextInput _fileNameInput;
     private readonly Button _saveButton;
+    private readonly StyleSlot<ButtonStyle> _saveButtonStyle;
 
     #region Construction and state
 
@@ -75,6 +76,10 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>
             IsEnabled = !string.IsNullOrEmpty(options.InitialFileName)
         };
         Initialize();
+        _saveButtonStyle = InitializePartStyle(
+            ButtonStyle.ForwardingDefinition,
+            nameof(SaveButtonStyle));
+        BindStyle(_saveButtonStyle, _saveButton);
         CancelButtonStyle = options.CancelButtonStyle;
         ShowHiddenCheckBoxStyle = options.ShowHiddenCheckBoxStyle;
         FileListScrollBarStyle = options.FileListScrollBarStyle;
@@ -92,20 +97,12 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>
     /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
     public ButtonStyle? SaveButtonStyle
     {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                return;
-            }
-
-            _saveButton.Style = value;
-        }
+        get => _saveButtonStyle.Local;
+        set => _saveButtonStyle.Local = value;
     }
 
     /// <summary>Gets the resolved Save Button style.</summary>
-    public ButtonStyle ActualSaveButtonStyle => _saveButton.ActualStyle;
+    public ButtonStyle ActualSaveButtonStyle => _saveButtonStyle.Actual;
 
     #endregion
 
@@ -122,7 +119,7 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>
     /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
     /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> is already cancelled.</exception>
     public static Task<SaveFileResult> ShowAsync(
-        Control owner,
+        ControlBase owner,
         SaveFileOptions? options = null,
         CancellationToken cancellationToken = default)
     {
@@ -224,10 +221,10 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>
     #region Interaction
 
     /// <inheritdoc/>
-    protected override Control GetModalFocusTarget() => _fileNameInput;
+    protected override ControlBase GetModalFocusTarget() => _fileNameInput;
 
     /// <inheritdoc/>
-    protected override Control GetInitialLoadFocusTarget() => _fileNameInput;
+    protected override ControlBase GetInitialLoadFocusTarget() => _fileNameInput;
 
     /// <inheritdoc/>
     protected override void OnListSelectionChanged() => PopulateFileNameFromSelection();

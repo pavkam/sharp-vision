@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Styling;
 
 /// <summary>Models a third-party control selecting one standard semantic theme role.</summary>
-internal sealed class ThirdPartyThemeControl: Control
+internal sealed class ThirdPartyThemeControl: ControlBase
 {
     /// <inheritdoc/>
     protected override ThemeRole ThemeRole => ThemeRole.Input;

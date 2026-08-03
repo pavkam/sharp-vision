@@ -21,7 +21,8 @@ internal static class Program
                     TerminalAttributes.None),
                 default)
         };
-        var root = new Overlay { Children = { surface } };
+        var styledControl = new ConsumerControl { Style = surface.Style };
+        var root = new Overlay { Children = { surface, styledControl } };
         var terminal = new ConsumerTerminal();
         await using var application = new Application(
             root,
@@ -42,6 +43,11 @@ internal static class Program
             if (surface.ActualBorder.Sides != BorderSide.All || surface.ActualShadow.IsVisible)
             {
                 throw new InvalidOperationException("The external surface did not apply its validated style.");
+            }
+
+            if (styledControl.ActualStyle != surface.ActualStyle || styledControl.ActualBorder.Sides != BorderSide.All)
+            {
+                throw new InvalidOperationException("The generic external control did not expose or apply its typed style.");
             }
 
             if (!surface.Dismiss() || surface.IsPresented)

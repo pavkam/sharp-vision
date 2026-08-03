@@ -298,7 +298,7 @@ public sealed class InteractiveControlTests
         return root;
     }
 
-    private static Point Center(Control control) => new(
+    private static Point Center(ControlBase control) => new(
         control.Bounds.X + Math.Max(0, control.Bounds.Width / 2),
         control.Bounds.Y + Math.Max(0, control.Bounds.Height / 2));
 

@@ -10,9 +10,9 @@ using SharpVision.Surfaces;
 /// <summary>Adapts one explicit Overlay or application Screen as a temporary presentation owner.</summary>
 internal sealed class PresentationHost
 {
-    private readonly Control _owner;
+    private readonly ControlBase _owner;
 
-    private PresentationHost(Control owner)
+    private PresentationHost(ControlBase owner)
     {
         Debug.Assert(owner is Overlay or Screen, "A presentation host is an Overlay or Screen.");
         _owner = owner;
@@ -21,7 +21,7 @@ internal sealed class PresentationHost
     /// <summary>Resolves the supplied explicit Overlay, owning Screen, or outermost fallback Overlay.</summary>
     /// <param name="owner">The non-null control whose retained ancestry is searched.</param>
     /// <returns>The resolved host, or null when no supported owner exists.</returns>
-    public static PresentationHost? Resolve(Control owner)
+    public static PresentationHost? Resolve(ControlBase owner)
     {
         ArgumentNullException.ThrowIfNull(owner);
 
@@ -50,7 +50,7 @@ internal sealed class PresentationHost
 
     /// <summary>Adds one detached temporary surface to this host.</summary>
     /// <param name="surface">The non-null detached surface.</param>
-    internal void Add(FloatingSurface surface)
+    internal void Add(FloatingSurfaceBase surface)
     {
         ArgumentNullException.ThrowIfNull(surface);
 
@@ -70,7 +70,7 @@ internal sealed class PresentationHost
     /// <summary>Returns whether this host directly owns the supplied control.</summary>
     /// <param name="control">The non-null candidate.</param>
     /// <returns>True when the candidate's committed parent is this host.</returns>
-    public bool Owns(Control control)
+    public bool Owns(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         return _owner switch
@@ -84,7 +84,7 @@ internal sealed class PresentationHost
     /// <summary>Removes one identical temporary surface without disposing it.</summary>
     /// <param name="control">The non-null owned surface.</param>
     /// <returns>True when the surface was removed.</returns>
-    internal bool Remove(FloatingSurface control) => _owner switch
+    internal bool Remove(FloatingSurfaceBase control) => _owner switch
     {
         Screen screen => screen.RemovePresentation(control),
         Overlay overlay => overlay.Children.Remove(control),

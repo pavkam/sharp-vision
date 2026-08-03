@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Demonstrates intrinsic border edges, glyph families, and appearance options.</summary>
-internal sealed class BorderPane: CompositeControl
+internal sealed class BorderPane: CompositeControlBase
 {
     /// <summary>Initializes the retained Border concept page.</summary>
     internal BorderPane() => InitializeContent(CreateContent());

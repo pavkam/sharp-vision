@@ -14,7 +14,7 @@ using LayoutStack = Controls.Layout.Stack;
 public sealed class Menu: ItemsControl
 {
     private int _selectedIndex = -1;
-    private readonly Dictionary<Control, MenuEntryPresentation> _requestedPresentations = [];
+    private readonly Dictionary<ControlBase, MenuEntryPresentation> _requestedPresentations = [];
     private readonly LayoutStack _stack;
     private bool _closeChainAfterInvocation;
     private bool _closeChainPending;
@@ -283,7 +283,7 @@ public sealed class Menu: ItemsControl
     /// <summary>Gets one checked typed child by index.</summary>
     /// <param name="index">The valid zero-based child index.</param>
     /// <returns>The exact owned item.</returns>
-    internal Control ItemAt(int index) => RequireEntry(GetItemControl(index));
+    internal ControlBase ItemAt(int index) => RequireEntry(GetItemControl(index));
 
     /// <summary>Gets the current semantic item count.</summary>
     internal int ItemCount => ItemControlCount;
@@ -291,7 +291,7 @@ public sealed class Menu: ItemsControl
     /// <summary>Gets the position of one owned entry, or -1 when it is not owned by this menu.</summary>
     /// <param name="item">The non-null candidate.</param>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
-    internal int IndexOfEntry(Control item)
+    internal int IndexOfEntry(ControlBase item)
     {
         ArgumentNullException.ThrowIfNull(item);
         return IndexOfItemControl(item);
@@ -336,7 +336,7 @@ public sealed class Menu: ItemsControl
         InsertEntry(index, separator);
     }
 
-    private void InsertEntry(int index, Control item)
+    private void InsertEntry(int index, ControlBase item)
     {
         Debug.Assert(item is MenuItem or MenuSeparator, "Menu entries are constrained by typed collection overloads.");
 
@@ -427,7 +427,7 @@ public sealed class Menu: ItemsControl
         _ = RemoveEntry(ItemAt(index));
     }
 
-    private bool RemoveEntry(Control item)
+    private bool RemoveEntry(ControlBase item)
     {
         var index = IndexOfItemControl(item);
 
@@ -474,7 +474,7 @@ public sealed class Menu: ItemsControl
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current entries.</exception>
     /// <exception cref="InvalidOperationException"><paramref name="item"/> is not a <see cref="MenuItem"/> or <see cref="MenuSeparator"/>.</exception>
-    internal void ReplaceEntry(int index, Control item)
+    internal void ReplaceEntry(int index, ControlBase item)
     {
         ArgumentNullException.ThrowIfNull(item);
         _ = RequireEntry(item);
@@ -616,7 +616,7 @@ public sealed class Menu: ItemsControl
 
     // Runs before the item is detached so callers observe restored values
     // immediately, not private policy defaults still in effect.
-    private void RestorePresentation(Control item)
+    private void RestorePresentation(ControlBase item)
     {
         if (!_requestedPresentations.Remove(item, out var presentation))
         {
@@ -1491,9 +1491,9 @@ public sealed class Menu: ItemsControl
         }
     }
 
-    private static void ApplyItemSizing(Control item) => item.Height = Length.Cells(1);
+    private static void ApplyItemSizing(ControlBase item) => item.Height = Length.Cells(1);
 
-    private static Control RequireEntry(Control child)
+    private static ControlBase RequireEntry(ControlBase child)
     {
         return child is MenuItem or MenuSeparator
             ? child

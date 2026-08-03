@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Support;
 
 /// <summary>Republishes protected intrinsic chrome solely for infrastructure tests.</summary>
-internal class ChromeProbe: Control
+internal class ChromeProbe: ControlBase
 {
     /// <summary>Gets the resolved inner content rectangle.</summary>
     internal Rect ExposedContentBounds => ContentBounds;

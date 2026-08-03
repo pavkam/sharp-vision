@@ -25,7 +25,7 @@ public sealed class PublicApiCompatibilityTests
     [Fact]
     public Task SharpVision_WhenComparedWithVersionedBaseline_MatchesApprovedPublicApi()
     {
-        var assembly = typeof(Controls.Control).Assembly;
+        var assembly = typeof(Controls.ControlBase).Assembly;
 
         return VerifyPublicApiAsync(assembly, "SharpVision");
     }

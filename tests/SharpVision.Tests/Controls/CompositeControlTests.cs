@@ -12,21 +12,21 @@ public sealed class CompositeControlTests
     [Fact]
     public void Type_WhenInspected_ExposesPrivateRetainedComposition()
     {
-        var content = typeof(CompositeControl).GetProperty(
+        var content = typeof(CompositeControlBase).GetProperty(
             "Content",
             BindingFlags.Instance | BindingFlags.NonPublic);
-        var initialize = typeof(CompositeControl).GetMethod(
+        var initialize = typeof(CompositeControlBase).GetMethod(
             "InitializeContent",
             BindingFlags.Instance | BindingFlags.NonPublic);
 
-        typeof(CompositeControl).IsPublic.ShouldBeTrue();
-        typeof(CompositeControl).IsAbstract.ShouldBeTrue();
-        typeof(CompositeControl).BaseType.ShouldBe(typeof(Control));
-        typeof(Container).IsAssignableFrom(typeof(CompositeControl)).ShouldBeFalse();
-        typeof(CompositeControl).GetProperty("Children").ShouldBeNull();
-        typeof(CompositeControl).GetProperty("Content").ShouldBeNull();
+        typeof(CompositeControlBase).IsPublic.ShouldBeTrue();
+        typeof(CompositeControlBase).IsAbstract.ShouldBeTrue();
+        typeof(CompositeControlBase).BaseType.ShouldBe(typeof(ControlBase));
+        typeof(Container).IsAssignableFrom(typeof(CompositeControlBase)).ShouldBeFalse();
+        typeof(CompositeControlBase).GetProperty("Children").ShouldBeNull();
+        typeof(CompositeControlBase).GetProperty("Content").ShouldBeNull();
         _ = content.ShouldNotBeNull();
-        content.PropertyType.ShouldBe(typeof(Control));
+        content.PropertyType.ShouldBe(typeof(ControlBase));
         content.GetMethod!.IsFamily.ShouldBeTrue();
         content.GetMethod.IsVirtual.ShouldBeFalse();
         content.SetMethod.ShouldBeNull();
@@ -34,7 +34,7 @@ public sealed class CompositeControlTests
         initialize.IsFamily.ShouldBeTrue();
         initialize.IsVirtual.ShouldBeFalse();
         initialize.ReturnType.ShouldBe(typeof(void));
-        initialize.GetParameters().Select(parameter => parameter.ParameterType).ShouldBe([typeof(Control)]);
+        initialize.GetParameters().Select(parameter => parameter.ParameterType).ShouldBe([typeof(ControlBase)]);
     }
 
     /// <summary>Verifies one successful initialization commits the private composition-root edge permanently.</summary>

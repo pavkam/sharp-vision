@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Support;
 
 /// <summary>Provides a non-container owner with multiple independently ordered visual slots.</summary>
-internal sealed class ProbeOwnedControl: Control
+internal sealed class ProbeOwnedControl: ControlBase
 {
     private readonly OwnedControlSlot _primary;
     private readonly OwnedControlSlot _secondary;
@@ -49,16 +49,16 @@ internal sealed class ProbeOwnedControl: Control
     internal Action<ProbeOwnedControl>? PrimaryChanging { get; set; }
 
     /// <summary>Gets or sets work invoked after this owner's parent commits.</summary>
-    internal Action<ProbeOwnedControl, Control?, Control?>? ParentChanging { get; set; }
+    internal Action<ProbeOwnedControl, ControlBase?, ControlBase?>? ParentChanging { get; set; }
 
     /// <summary>Gets one primary control by index.</summary>
     /// <param name="index">The zero-based index.</param>
     /// <returns>The control at the requested index.</returns>
-    internal Control PrimaryAt(int index) => _primary[index];
+    internal ControlBase PrimaryAt(int index) => _primary[index];
 
     /// <summary>Adds one detached control to the primary slot.</summary>
     /// <param name="control">The non-null detached control.</param>
-    internal void AddPrimary(Control control)
+    internal void AddPrimary(ControlBase control)
     {
         EnsurePrimaryChangeSubscription();
         _primary.Add(control);
@@ -67,7 +67,7 @@ internal sealed class ProbeOwnedControl: Control
     /// <summary>Inserts one detached control into the primary slot.</summary>
     /// <param name="index">The insertion index.</param>
     /// <param name="control">The non-null detached control.</param>
-    internal void InsertPrimary(int index, Control control)
+    internal void InsertPrimary(int index, ControlBase control)
     {
         EnsurePrimaryChangeSubscription();
         _primary.Insert(index, control);
@@ -76,7 +76,7 @@ internal sealed class ProbeOwnedControl: Control
     /// <summary>Replaces one primary child atomically.</summary>
     /// <param name="index">The replacement index.</param>
     /// <param name="control">The non-null detached replacement.</param>
-    internal void ReplacePrimary(int index, Control control)
+    internal void ReplacePrimary(int index, ControlBase control)
     {
         EnsurePrimaryChangeSubscription();
         _primary[index] = control;
@@ -84,7 +84,7 @@ internal sealed class ProbeOwnedControl: Control
 
     /// <summary>Atomically replaces the complete primary slot.</summary>
     /// <param name="controls">The non-null candidate snapshot.</param>
-    internal void ReplaceAllPrimary(IEnumerable<Control> controls)
+    internal void ReplaceAllPrimary(IEnumerable<ControlBase> controls)
     {
         EnsurePrimaryChangeSubscription();
         _primary.ReplaceAll(controls);
@@ -93,7 +93,7 @@ internal sealed class ProbeOwnedControl: Control
     /// <summary>Removes one primary control.</summary>
     /// <param name="control">The non-null candidate.</param>
     /// <returns>Whether the control was present.</returns>
-    internal bool RemovePrimary(Control control)
+    internal bool RemovePrimary(ControlBase control)
     {
         EnsurePrimaryChangeSubscription();
         return _primary.Remove(control);
@@ -108,13 +108,13 @@ internal sealed class ProbeOwnedControl: Control
 
     /// <summary>Adds one detached control to the secondary slot.</summary>
     /// <param name="control">The non-null detached control.</param>
-    internal void AddSecondary(Control control) => _secondary.Add(control);
+    internal void AddSecondary(ControlBase control) => _secondary.Add(control);
 
     /// <summary>Gets all owned controls in deterministic slot registration order.</summary>
     /// <returns>A new identity-preserving snapshot.</returns>
-    internal IReadOnlyList<Control> GetOwnedOrder()
+    internal IReadOnlyList<ControlBase> GetOwnedOrder()
     {
-        List<Control> result = [];
+        List<ControlBase> result = [];
         VisitChildren(result.Add);
         return result;
     }
@@ -139,6 +139,6 @@ internal sealed class ProbeOwnedControl: Control
     }
 
     /// <inheritdoc/>
-    protected override void OnParentChanged(Control? previous, Control? current) =>
+    protected override void OnParentChanged(ControlBase? previous, ControlBase? current) =>
         ParentChanging?.Invoke(this, previous, current);
 }

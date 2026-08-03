@@ -127,7 +127,7 @@ public sealed class AccessKeyManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies non-Alt and Control-modified Alt characters remain available to routed behavior.</summary>
+    /// <summary>Verifies non-Alt and ControlBase-modified Alt characters remain available to routed behavior.</summary>
     [Fact]
     public async Task Process_WhenModifiersAreNotAccessKeyShape_DeclinesStrokeAsync()
     {

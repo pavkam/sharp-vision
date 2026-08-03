@@ -43,8 +43,8 @@ to the nearest following member, and backward moves to the nearest preceding
 one.
 
 Stable tree order descends the navigation-participating ownership slots on every
-`Control`, visiting slots in registration order and items within each slot in
-item order. Private content and framework parts therefore take part in
+`ControlBase`, visiting slots in registration order and items within each slot
+in item order. Private content and framework parts therefore take part in
 navigation when their slot opts in, without pretending that their owner is a
 public multi-child `Container`. A control with a semantic visual order, such as
 `Stack.Reverse`, may override only that local navigation order; its registry
@@ -88,7 +88,7 @@ as a terminal no-focus state rather than attempting a new fallback request.
 
 ## Hierarchical Tab navigation
 
-`Control.TabNavigation` governs how a control contributes to its owning
+`ControlBase.TabNavigation` governs how a control contributes to its owning
 navigation tree. The modes are:
 
 - Continue: contribute an eligible control, then its descendants in direct

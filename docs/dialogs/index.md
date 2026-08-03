@@ -30,7 +30,7 @@ public sealed class ExampleDialog : Dialog<bool>
     {
     }
 
-    public Task<bool> ShowAsync(Control owner, Control? initialFocus, CancellationToken cancellationToken) =>
+    public Task<bool> ShowAsync(ControlBase owner, ControlBase? initialFocus, CancellationToken cancellationToken) =>
         PresentAsync(owner, initialFocus, cancellationToken);
 }
 ```

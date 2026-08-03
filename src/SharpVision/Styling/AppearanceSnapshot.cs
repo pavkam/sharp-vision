@@ -33,10 +33,10 @@ internal readonly struct AppearanceSnapshot
     /// <param name="root">The non-null subtree root.</param>
     /// <returns>Snapshots keyed by every control in the subtree.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="root"/> is null.</exception>
-    internal static Dictionary<Control, AppearanceSnapshot> CaptureSubtree(Control root)
+    internal static Dictionary<ControlBase, AppearanceSnapshot> CaptureSubtree(ControlBase root)
     {
         ArgumentNullException.ThrowIfNull(root);
-        var snapshots = new Dictionary<Control, AppearanceSnapshot>();
+        var snapshots = new Dictionary<ControlBase, AppearanceSnapshot>();
         CaptureSubtree(root, snapshots);
         return snapshots;
     }
@@ -47,12 +47,12 @@ internal readonly struct AppearanceSnapshot
     /// <exception cref="ArgumentNullException">A required argument is null.</exception>
     /// <exception cref="ArgumentException">A control is already present in <paramref name="snapshots"/>.</exception>
     internal static void CaptureSubtree(
-        Control root,
-        Dictionary<Control, AppearanceSnapshot> snapshots)
+        ControlBase root,
+        Dictionary<ControlBase, AppearanceSnapshot> snapshots)
     {
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(snapshots);
-        var stack = new Stack<(Control Control, Face? ParentAmbient)>();
+        var stack = new Stack<(ControlBase Control, Face? ParentAmbient)>();
         stack.Push((root, ResolveParentAmbient(root.Parent)));
 
         while (stack.TryPop(out var entry))
@@ -76,14 +76,14 @@ internal readonly struct AppearanceSnapshot
     /// <summary>Resolves one external parent chain top-down without reading or populating caches.</summary>
     /// <param name="parent">The nearest parent, or null for no ambient source.</param>
     /// <returns>The parent's concrete ambient face, or null.</returns>
-    internal static Face? ResolveParentAmbient(Control? parent)
+    internal static Face? ResolveParentAmbient(ControlBase? parent)
     {
         if (parent is null)
         {
             return null;
         }
 
-        var ancestors = new List<Control>();
+        var ancestors = new List<ControlBase>();
         for (var current = parent; current is not null; current = current.Parent)
         {
             ancestors.Add(current);

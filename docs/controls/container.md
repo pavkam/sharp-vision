@@ -2,14 +2,14 @@
 
 ## Overview
 
-`Container : Control` is the abstract base for layout controls whose ordered
+`Container : ControlBase` is the abstract base for layout controls whose ordered
 children are part of their public API. It exposes one caller-managed
 [`Children`](#children-and-ownership) collection and supplies the shared
 auto-size, scrolling, rendering, clipping, and pointer-target traversal
 behavior. It is not the base for every control that owns descendants: use
 [`ContentControl`](content-control.md#overview) when there is one replaceable
-content value, and [`CompositeControl`](composite-control.md#overview) when the
-control keeps a private retained implementation tree.
+content value, and [`CompositeControlBase`](composite-control.md#overview) when
+the control keeps a private retained implementation tree.
 
 `Container` does not choose a layout algorithm. Every concrete subclass must
 override `MeasureOverride` and `ArrangeOverride`; because both declarations are

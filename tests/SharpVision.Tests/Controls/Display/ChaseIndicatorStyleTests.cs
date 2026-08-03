@@ -37,9 +37,7 @@ public sealed class ChaseIndicatorStyleTests
     public void Apply_WhenOnlyActiveIsSupplied_PreservesOmittedMembers()
     {
         var baseline = ChaseIndicatorStyle.Circle;
-        var set = new ChaseIndicatorStyleSet(active: new Rune('*'));
-
-        var actual = set.Apply(baseline);
+        var actual = baseline.With(active: new Rune('*'));
 
         actual.Active.ShouldBe(new Rune('*'));
         actual.Inactive.ShouldBe(baseline.Inactive);
@@ -55,9 +53,7 @@ public sealed class ChaseIndicatorStyleTests
     public void Apply_WhenOnlyHeadColorIsSupplied_PreservesOmittedMembers()
     {
         var baseline = ChaseIndicatorStyle.Circle;
-        var set = new ChaseIndicatorStyleSet(headColor: ThemeColor.Warning);
-
-        var actual = set.Apply(baseline);
+        var actual = baseline.With(headColor: ThemeColor.Warning);
 
         actual.HeadColor.ShouldBe((ColorValue) ThemeColor.Warning);
         actual.TrailColor.ShouldBe(baseline.TrailColor);
@@ -69,10 +65,10 @@ public sealed class ChaseIndicatorStyleTests
     /// <summary>Verifies partial style construction rejects a transparent color contribution immediately.</summary>
     /// <remarks>See #160.</remarks>
     [Fact]
-    public void StyleSet_WhenColorIsTransparent_ThrowsAtConstruction()
+    public void With_WhenColorIsTransparent_Throws()
     {
         var exception = Should.Throw<ArgumentException>(() =>
-            new ChaseIndicatorStyleSet(headColor: Color.Transparent));
+            ChaseIndicatorStyle.Default.With(headColor: Color.Transparent));
 
         exception.ParamName.ShouldBe("headColor");
     }
@@ -82,11 +78,9 @@ public sealed class ChaseIndicatorStyleTests
     public void Apply_WhenAppearanceIsSupplied_ComposesProfile()
     {
         var baseline = ChaseIndicatorStyle.Circle;
-        var set = new ChaseIndicatorStyleSet(
+        var actual = baseline.With(
             appearance: new AppearanceProfileSet(
                 normal: new AppearanceSet(face: new FaceSet(foreground: ThemeColor.Accent))));
-
-        var actual = set.Apply(baseline);
 
         actual.Active.ShouldBe(baseline.Active);
         actual.Inactive.ShouldBe(baseline.Inactive);
@@ -158,9 +152,9 @@ public sealed class ChaseIndicatorStyleTests
     [Theory]
     [InlineData(true, 0)]
     [InlineData(false, 0x4E16)]
-    public void StyleSet_WhenGlyphIsInvalid_ThrowsAtConstruction(bool active, int scalar)
+    public void With_WhenGlyphIsInvalid_Throws(bool active, int scalar)
     {
-        var exception = Should.Throw<ArgumentException>(() => new ChaseIndicatorStyleSet(
+        var exception = Should.Throw<ArgumentException>(() => ChaseIndicatorStyle.Default.With(
             active: active ? new Rune(scalar) : null,
             inactive: active ? null : new Rune(scalar)));
 

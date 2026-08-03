@@ -107,8 +107,9 @@ input.
 
 Binding compares the converted destination value before invoking its setter, so
 equal values are not assigned. Direction guards suppress only the binding's own
-echo. Because target properties commit before `Control.PropertyChanged`, two-way
-model updates happen before later typed events such as `TextInput.TextChanged`.
+echo. Because target properties commit before `ControlBase.PropertyChanged`,
+two-way model updates happen before later typed events such as
+`TextInput.TextChanged`.
 
 Invalid declarations fail before registration, and a failed initialization
 removes any subscriptions it created. Runtime getter, converter, setter,

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Border and shadow are intrinsic `Control` appearance, not wrapper controls.
+Border and shadow are intrinsic `ControlBase` appearance, not wrapper controls.
 Every control has one semantic `Border` and one semantic `Shadow`. Ordinary
 chrome is owned by themes and control styles; the raw authoring properties are
 protected so an unrelated descendant cannot silently change layout. The sealed

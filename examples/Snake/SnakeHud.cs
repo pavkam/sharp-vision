@@ -8,7 +8,7 @@ using System.Globalization;
 using SharpVision.Text;
 
 /// <summary>Displays the retained two-row game metrics, status, and keyboard guidance.</summary>
-internal sealed class SnakeHud: CompositeControl
+internal sealed class SnakeHud: CompositeControlBase
 {
     private readonly ProgressBar _boostMeter;
     private readonly Text _guidance;

@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the Flyout control with light-dismiss, placement, and lifecycle specimens.</summary>
-internal sealed class FlyoutPane: CompositeControl
+internal sealed class FlyoutPane: CompositeControlBase
 {
     internal FlyoutPane() => InitializeContent(CreateContent());
 

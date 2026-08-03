@@ -7,34 +7,15 @@ using SharpVision.Terminal.Input;
 
 /// <summary>Edits one signed integer value along a focusable horizontal or vertical rail.</summary>
 [PublicAPI]
-public sealed class Slider: Control
+public sealed class Slider: Control<SliderStyle>
 {
-    private static readonly StyleContract<SliderStyle> _styleContract = new(
-        ThemeRole.Control,
-        static profile => new SliderStyle(
-            SliderStyle.Default.FillColor,
-            SliderStyle.Default.TrackColor,
-            SliderStyle.Default.ThumbColor,
-            SliderStyle.Default.Glyphs,
-            profile),
-        static (previous, previousTheme, current, currentTheme) =>
-            previous != current ||
-            ResolveColor(previous.FillColor, previousTheme) != ResolveColor(current.FillColor, currentTheme) ||
-            ResolveColor(previous.TrackColor, previousTheme) != ResolveColor(current.TrackColor, currentTheme) ||
-            ResolveColor(previous.ThumbColor, previousTheme) != ResolveColor(current.ThumbColor, currentTheme)
-                ? InvalidationImpact.Render
-                : InvalidationImpact.None,
-        static style => style.Appearance);
     private int _value;
     private readonly DragBehavior _drag;
     private Rect _dragBounds;
     private int _dragLength;
-    private SliderStyle? _actualStyleCache;
-    private SliderStyle? _actualStyleCacheKey;
-    private Theme? _actualStyleCacheTheme;
 
     /// <summary>Initializes a horizontal focusable range from zero through one hundred.</summary>
-    public Slider()
+    public Slider() : base(SliderStyle.Definition)
     {
         _drag = new DragBehavior(
             () => ContentBounds,
@@ -170,60 +151,6 @@ public sealed class Slider: Control
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     } = Orientation.Horizontal;
-
-    /// <summary>Gets or sets the complete local presentation, or null to use the semantic control profile.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public SliderStyle? Style
-    {
-        get;
-        set => _ = SetControlStyle(
-            ref field,
-            value,
-            _styleContract.Resolve,
-            _styleContract.CompareStructure,
-            _styleContract.Appearance,
-            nameof(Style),
-            nameof(ActualStyle));
-    }
-
-    /// <summary>Gets the complete local presentation or the library rail-and-thumb mechanics completed with the semantic control profile.</summary>
-    public SliderStyle ActualStyle =>
-        ResolveContractStyle(
-            _styleContract,
-            ref _actualStyleCache,
-            ref _actualStyleCacheKey,
-            ref _actualStyleCacheTheme,
-            Style,
-            Theme);
-
-    /// <inheritdoc/>
-    protected override ThemeRole ThemeRole => _styleContract.Role;
-
-    /// <inheritdoc/>
-    protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
-
-    /// <inheritdoc/>
-    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
-        GetContractAppearanceProfile(_styleContract, Style, theme);
-
-    /// <inheritdoc/>
-    protected override InvalidationImpact GetThemeChangeImpact(
-        Theme? previous,
-        Theme? current,
-        Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace) =>
-        GetContractThemeChangeImpact(
-            _styleContract,
-            Style,
-            previous,
-            current,
-            previousParentAmbientFace,
-            currentParentAmbientFace);
-
-    /// <inheritdoc/>
-    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        GetContractResolvedStylePropertyName(_styleContract, Style, previous, current, nameof(ActualStyle));
 
     /// <summary>Adds one signed command delta with saturation and endpoint clamping.</summary>
     /// <param name="delta">The signed requested change.</param>

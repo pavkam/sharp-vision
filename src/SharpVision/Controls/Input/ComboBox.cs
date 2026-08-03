@@ -15,7 +15,7 @@ using SharpVision.Terminal.Input;
 
 /// <summary>Displays one selected value and composes a private popup list for choosing another.</summary>
 [PublicAPI]
-public sealed class ComboBox: Control
+public sealed class ComboBox: ControlBase
 {
     // A field has one content row, two border columns, and one indicator cell.
     private const int _fieldContentHeight = 1;
@@ -28,6 +28,7 @@ public sealed class ComboBox: Control
     private readonly OwnedControlSlot _popupSlot;
     private readonly PressBehavior _interaction;
     private readonly PopupModalTracker _modalTracker;
+    private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private Rune? _dropDownGlyph;
     private string _typeAhead = string.Empty;
     private int _selectedIndex = -1;
@@ -69,6 +70,10 @@ public sealed class ComboBox: Control
                 InvalidationImpact.Measure),
             capacity: 1);
         _popupSlot.Add(_popup);
+        _scrollBarStyle = InitializePartStyle(
+            Scrolling.ScrollBarStyle.ForwardingDefinition,
+            nameof(ScrollBarStyle));
+        BindStyle(_scrollBarStyle, _list, nameof(ScrollBarStyle));
         _interaction = new PressBehavior(
             () => Bounds,
             () => EffectiveIsEnabled && EffectiveIsVisible,
@@ -315,30 +320,12 @@ public sealed class ComboBox: Control
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
     public ScrollBarStyle? ScrollBarStyle
     {
-        get => _list.ScrollBarStyle;
-        set
-        {
-            VerifyMutable();
-
-            if (_list.ScrollBarStyle == value)
-            {
-                return;
-            }
-
-            var previous = ActualScrollBarStyle;
-            _list.ScrollBarStyle = value;
-            var current = ActualScrollBarStyle;
-            NotifyPropertyChanged(nameof(ScrollBarStyle), InvalidationImpact.None);
-
-            if (previous != current)
-            {
-                NotifyPropertyChanged(nameof(ActualScrollBarStyle), InvalidationImpact.None);
-            }
-        }
+        get => _scrollBarStyle.Local;
+        set => _scrollBarStyle.Local = value;
     }
 
     /// <summary>Gets the resolved drop-down scrollbar style.</summary>
-    public ScrollBarStyle ActualScrollBarStyle => ScrollBar.ResolveStyle(ScrollBarStyle, Theme);
+    public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
 
     /// <summary>Gets or sets whether the private drop-down owns a dismissing modal plane rooted at this field.</summary>
     /// <exception cref="ArgumentException">The attached ComboBox is not an eligible modal root.</exception>

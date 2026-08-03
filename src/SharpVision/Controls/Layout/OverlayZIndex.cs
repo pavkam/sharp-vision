@@ -7,7 +7,7 @@ namespace SharpVision.Controls.Layout;
 /// <remarks>
 /// This is intentionally a mutable reference type rather than a readonly value
 /// type. <see cref="ConditionalWeakTable{TKey, TValue}"/> requires reference-type
-/// values, and <see cref="Overlay.SetZIndex(Control, int)"/> must update the
+/// values, and <see cref="Overlay.SetZIndex(ControlBase, int)"/> must update the
 /// associated value in place while retaining the weak association with its
 /// control. The type therefore stays beside <see cref="Overlay"/> itself, which
 /// owns the only table that stores it.

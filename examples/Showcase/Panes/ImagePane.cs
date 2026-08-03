@@ -10,7 +10,7 @@ using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents backend-neutral image fitting and deterministic terminal-cell fallback.</summary>
-internal sealed class ImagePane: CompositeControl
+internal sealed class ImagePane: CompositeControlBase
 {
     /// <summary>Initializes the retained responsive image reference page.</summary>
     internal ImagePane()
@@ -123,7 +123,7 @@ internal sealed class ImagePane: CompositeControl
 
     private static string Evidence(Feature feature) => $"{feature.State} ({feature.Origin})";
 
-    private static void AddCard(Grid grid, string label, Control sample, int row, int column)
+    private static void AddCard(Grid grid, string label, ControlBase sample, int row, int column)
     {
         var card = new DocCard(new DocColumn(new Text(label), sample));
         Grid.SetRow(card, row);

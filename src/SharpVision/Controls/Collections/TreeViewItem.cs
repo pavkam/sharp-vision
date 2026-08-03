@@ -8,7 +8,7 @@ using SharpVision.Terminal.Input;
 
 /// <summary>Defines one selectable, optionally expandable entry in a <see cref="TreeView"/>.</summary>
 [PublicAPI]
-public sealed class TreeViewItem: Control
+public sealed class TreeViewItem: ControlBase
 {
     // These dimensions are terminal-cell invariants for the compact tree row chrome.
     private const int _rowHeightCells = 1;

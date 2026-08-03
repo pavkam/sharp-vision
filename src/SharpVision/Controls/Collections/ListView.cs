@@ -22,6 +22,7 @@ using LayoutStack = Layout.Stack;
 public sealed class ListView: ItemsControl
 {
     private readonly LayoutStack _stack;
+    private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly GenericList _items = [];
     private readonly ReadOnlyCollection<object?> _itemsView;
     private readonly HashSet<int> _selection = [];
@@ -42,6 +43,10 @@ public sealed class ListView: ItemsControl
             ShowScrollBars = ShowScrollBars.WhenNeeded
         };
         InitializeItemsHost(_stack);
+        _scrollBarStyle = InitializePartStyle(
+            Scrolling.ScrollBarStyle.ForwardingDefinition,
+            nameof(ScrollBarStyle));
+        BindStyle(_scrollBarStyle, _stack, nameof(ScrollBarStyle));
         _ = AddHandler(Events.Key, OnKeyRouted);
         Focusable = true;
         TabStop = true;
@@ -342,30 +347,12 @@ public sealed class ListView: ItemsControl
     /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
     public ScrollBarStyle? ScrollBarStyle
     {
-        get => _stack.ScrollBarStyle;
-        set
-        {
-            VerifyMutable();
-
-            if (_stack.ScrollBarStyle == value)
-            {
-                return;
-            }
-
-            var previous = ActualScrollBarStyle;
-            _stack.ScrollBarStyle = value;
-            var current = ActualScrollBarStyle;
-            NotifyPropertyChanged(nameof(ScrollBarStyle), InvalidationImpact.None);
-
-            if (previous != current)
-            {
-                NotifyPropertyChanged(nameof(ActualScrollBarStyle), InvalidationImpact.None);
-            }
-        }
+        get => _scrollBarStyle.Local;
+        set => _scrollBarStyle.Local = value;
     }
 
     /// <summary>Gets the resolved generated-scrollbar style.</summary>
-    public ScrollBarStyle ActualScrollBarStyle => ScrollBar.ResolveStyle(ScrollBarStyle, Theme);
+    public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
 
     /// <summary>Changes one programmatic index without replacing other Multiple selections.</summary>
     /// <param name="index">The contained item index.</param>
@@ -448,7 +435,7 @@ public sealed class ListView: ItemsControl
         }
     }
 
-    private static Control DefaultTemplate(object? item) =>
+    private static ControlBase DefaultTemplate(object? item) =>
         new Label(Convert.ToString(item, CultureInfo.InvariantCulture) ?? string.Empty);
 
     private static object?[] Copy(IReadOnlyList<object?> values)
@@ -470,8 +457,8 @@ public sealed class ListView: ItemsControl
         Debug.Assert(items is not null, "ListView build requires a non-null item source.");
         Debug.Assert(template is not null, "ListView build requires a non-null template.");
 
-        var controls = new Control[items.Count];
-        var unique = new HashSet<Control>(ReferenceEqualityComparer.Instance);
+        var controls = new ControlBase[items.Count];
+        var unique = new HashSet<ControlBase>(ReferenceEqualityComparer.Instance);
 
         try
         {
@@ -1264,7 +1251,7 @@ public sealed class ListView: ItemsControl
     private ListItem? ItemAt(int index) =>
         index < 0 || index >= ItemControlCount ? null : (ListItem) GetItemControl(index);
 
-    private static ListItem? FindItem(Control? source)
+    private static ListItem? FindItem(ControlBase? source)
     {
         for (var current = source; current is not null; current = current.Parent)
         {

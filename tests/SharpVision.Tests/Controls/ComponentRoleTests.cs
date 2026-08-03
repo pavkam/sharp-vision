@@ -12,11 +12,11 @@ public sealed class ComponentRoleTests
     [Fact]
     public void Control_WhenInspected_DoesNotExposeHitTestTargetResolution()
     {
-        var publicHitTest = typeof(Control).GetMethod(
-            nameof(Control.HitTest),
+        var publicHitTest = typeof(ControlBase).GetMethod(
+            nameof(ControlBase.HitTest),
             BindingFlags.Public | BindingFlags.Instance);
-        var internalHitTest = typeof(Control).GetMethod(
-            nameof(Control.HitTest),
+        var internalHitTest = typeof(ControlBase).GetMethod(
+            nameof(ControlBase.HitTest),
             BindingFlags.NonPublic | BindingFlags.Instance);
 
         publicHitTest.ShouldBeNull();
@@ -48,7 +48,7 @@ public sealed class ComponentRoleTests
     [Fact]
     public void Type_WhenInspected_UsesSingleContentPressableRole()
     {
-        var pressable = typeof(Pressable);
+        var pressable = typeof(PressableBase);
         Type[] concrete =
         [
             typeof(Button),
@@ -86,7 +86,7 @@ public sealed class ComponentRoleTests
     {
         var type = typeof(ComboBox);
 
-        type.BaseType.ShouldBe(typeof(Control));
+        type.BaseType.ShouldBe(typeof(ControlBase));
         type.GetProperty(nameof(ContentControl.Content), BindingFlags.Public | BindingFlags.Instance).ShouldBeNull();
         type.GetProperty("Children", BindingFlags.Public | BindingFlags.Instance).ShouldBeNull();
         type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
@@ -114,8 +114,8 @@ public sealed class ComponentRoleTests
     {
         var separator = typeof(Menu).Assembly.GetType("SharpVision.Menus.MenuSeparator").ShouldNotBeNull();
 
-        typeof(Control).IsAssignableFrom(separator).ShouldBeTrue();
-        typeof(Pressable).IsAssignableFrom(separator).ShouldBeFalse();
+        typeof(ControlBase).IsAssignableFrom(separator).ShouldBeTrue();
+        typeof(PressableBase).IsAssignableFrom(separator).ShouldBeFalse();
         Enum.GetNames<MenuItemKind>().ShouldNotContain("Separator");
     }
 }

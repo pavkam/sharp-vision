@@ -2,7 +2,7 @@
 
 ## Overview
 
-`ComboBox` derives directly from `Control`. It shows the selected value in a
+`ComboBox` derives directly from `ControlBase`. It shows the selected value in a
 compact field and owns a private [Popup](../popups/popup.md#overview) containing
 a [ListView](../collections/list-view.md#overview) that opens immediately below
 the field. The Popup clears its surface before the list renders, so choices
@@ -21,8 +21,8 @@ interior row, including trailing blank cells, following the
 The selected value is the field's face, so `ComboBox` exposes neither `Content`
 nor `Children`. It owns exactly one popup-layer framework part, and that
 `Popup.Content` owns the private ListView. Keyboard and pointer press mechanics
-are composed from the same internal behavior `Pressable` uses, without taking on
-its single-content inheritance role.
+are composed from the same internal behavior `PressableBase` uses, without
+taking on its single-content inheritance role.
 
 ## API
 

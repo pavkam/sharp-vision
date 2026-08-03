@@ -4,8 +4,8 @@
 
 A new control selects one of the existing semantic `ThemeRole` values, keeps its
 control-specific glyphs and internal part geometry in code, and exposes complete
-local appearance through the inherited `Control` API. It does not add selector
-syntax, a mutable style registry, or a control-type theme key.
+local appearance through the inherited `ControlBase` API. It does not add
+selector syntax, a mutable style registry, or a control-type theme key.
 
 Custom controls work with retained objects, direct CLR properties, and the
 global semantic theme. They never register selectors, type recipes, or theme
@@ -17,7 +17,7 @@ Every control defaults to `ThemeRole.Control`. Override the protected property
 when the control matches one of the library-defined high-level meanings:
 
 ```csharp
-public sealed class CommandTile : Control
+public sealed class PrimitiveCommandTile : ControlBase
 {
     protected override ThemeRole ThemeRole => ThemeRole.Input;
 
@@ -71,8 +71,40 @@ Complete values set by the derived control override the Theme, and derived state
 sets override both. `ActualFace`, `ActualBorder`, and `ActualShadow` stay public
 so callers can inspect the fully resolved values. Republish the raw chrome
 properties only when the custom control intentionally supports arbitrary
-caller-authored chrome; otherwise publish one complete Style value and keep
-partial StyleSet values for Theme composition.
+caller-authored chrome; otherwise publish one complete Style value and keep one
+immutable Style value with a validated `With(...)` method.
+
+For a standard typed style, derive from the generic control seam and pass one
+immutable definition to its constructor. The framework publishes `Style`,
+`ActualStyle`, caching, notifications, and the optional post-commit callback:
+
+```csharp
+public sealed class CommandTile : Control<ButtonStyle>
+{
+    private static readonly StyleDefinition<ButtonStyle> _styleDefinition =
+        StyleDefinitions.Control(
+            ThemeRole.Input,
+            static profile => new ButtonStyle(ButtonStyle.Standard.Padding, profile),
+            static style => style.Appearance,
+            static (previous, _, current, _) => previous == current
+                ? InvalidationImpact.None
+                : InvalidationImpact.Render);
+
+    public CommandTile() : base(_styleDefinition)
+    {
+    }
+}
+```
+
+`Pressable<TStyle>`, `CompositeControl<TStyle>`, and `FloatingSurface<TStyle>`
+provide the same facade without surrendering their specialized behavior.
+Override `OnStyleChanged` only for genuine post-commit work such as normalizing
+an animation phase or projecting an aggregate style onto heterogeneous retained
+parts.
+
+Use `StyleDefinitions.Part`, `InitializePartStyle`, and `BindStyle` for a named
+style forwarded to retained implementation controls. Bind the nullable local
+slot, not `Actual`, so a reset never pins a theme-derived value.
 
 Implement `IsCheckedState`, `IsSelectedState`, or `IsIndeterminateState` only
 when the control genuinely owns that semantic fact. `Focused` means direct

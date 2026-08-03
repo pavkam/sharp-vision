@@ -4,7 +4,7 @@
 namespace SharpVision.Showcase.Panes;
 
 /// <summary>Demonstrates a deterministic responsive chart drawn directly into semantic cells.</summary>
-internal sealed class CanvasChartSample: Control
+internal sealed class CanvasChartSample: ControlBase
 {
     private static readonly int[] _values = [2, 4, 3, 6, 5, 7];
 

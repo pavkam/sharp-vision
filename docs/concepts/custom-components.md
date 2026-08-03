@@ -5,11 +5,11 @@
 SharpVision keeps inheritance honest. Use
 [`Container`](../controls/container.md#overview) only when callers may add
 arbitrary controls and the new type's public purpose is laying them out. Use
-`ContentControl` for zero-or-one caller-replaceable content, `CompositeControl`
-for a retained private composition, `ItemsControl` for a typed semantic
-collection with a private presentation host, and direct `Control` inheritance
-for a new primitive leaf. `Pressable` is the focusable, single-content
-interaction role.
+`ContentControl` for zero-or-one caller-replaceable content,
+`CompositeControlBase` for a retained private composition, `ItemsControl` for a
+typed semantic collection with a private presentation host, and direct
+`ControlBase` inheritance for a new primitive leaf. `PressableBase` is the
+focusable, single-content interaction role.
 
 There is no `View` type and no measure-time `Build()` composition. Construction
 is never deferred to measure, arrange, or rendering: a component creates its
@@ -22,12 +22,12 @@ lifecycle, rendering, hit-testing, focus, capture, and disposal paths.
 
 | Need                                                 | Base role                                        | Public ownership surface                       |
 | ---------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------- |
-| New leaf behavior or custom drawing                  | `Control`                                        | None unless the type explicitly provides one   |
+| New leaf behavior or custom drawing                  | `ControlBase`                                    | None unless the type explicitly provides one   |
 | General-purpose multi-child layout                   | [`Container`](../controls/container.md#overview) | `Children`                                     |
 | One caller-owned replaceable visual                  | `ContentControl`                                 | `Content`                                      |
-| Reusable component built from existing controls      | `CompositeControl`                               | None; its root is private                      |
+| Reusable component built from existing controls      | `CompositeControlBase`                           | None; its root is private                      |
 | Typed data/semantic collection with realized visuals | `ItemsControl`                                   | The type's semantic collection, never the host |
-| Focusable activating single face                     | `Pressable`                                      | Inherited `Content`                            |
+| Focusable activating single face                     | `PressableBase`                                  | Inherited `Content`                            |
 
 Concrete shipped controls are sealed, with three documented exceptions: `Popup`,
 `ContextMenu`, and `Window`. Each stays unsealed only because the library itself
@@ -45,11 +45,11 @@ expose.
 
 ## Retained private composition
 
-Call `InitializeContent` once, from the concrete `CompositeControl` constructor.
-The supplied root must be non-null, detached, available, and outside the
-component's own ancestry. A rejected candidate leaves initialization still
-available; once ownership commits, neither direct disposal of the root nor a
-callback failure ever makes the component reinitializable. Layout is a
+Call `InitializeContent` once, from the concrete `CompositeControlBase`
+constructor. The supplied root must be non-null, detached, available, and
+outside the component's own ancestry. A rejected candidate leaves initialization
+still available; once ownership commits, neither direct disposal of the root nor
+a callback failure ever makes the component reinitializable. Layout is a
 pass-through over the root and never constructs or mutates the tree.
 
 Use a real layout container as the root when the composition needs more than one
@@ -57,7 +57,7 @@ visual child. Application-dependent work belongs in lifecycle hooks such as
 `OnAttached` and `OnStarted`, not in composition construction.
 
 ```csharp
-public sealed class LoginPanel : CompositeControl
+public sealed class LoginPanel : CompositeControlBase
 {
     public LoginPanel()
     {
@@ -100,7 +100,7 @@ state.
 
 ## Chrome and custom rendering
 
-Border and shadow are intrinsic protected `Control` properties, not wrapper
+Border and shadow are intrinsic protected `ControlBase` properties, not wrapper
 controls. A derived component may set the complete composites when its contract
 owns that chrome, or leave them Theme-owned. Republish them only when arbitrary
 caller-authored chrome is a supported layout feature; otherwise expose one

@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the Grid control with fixed, star, auto, and spanning track specimens.</summary>
-internal sealed class GridPane: CompositeControl
+internal sealed class GridPane: CompositeControlBase
 {
     internal GridPane() => InitializeContent(CreateContent());
 
@@ -170,7 +170,7 @@ internal sealed class GridPane: CompositeControl
         grid.Children.Add(cell);
     }
 
-    private static void AddFormCell(Grid grid, Control control, int row, int column)
+    private static void AddFormCell(Grid grid, ControlBase control, int row, int column)
     {
         Grid.SetRow(control, row);
         Grid.SetColumn(control, column);

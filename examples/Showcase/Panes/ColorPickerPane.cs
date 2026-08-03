@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents RGB ColorPicker interaction and terminal-safe degradation.</summary>
-internal sealed class ColorPickerPane: CompositeControl
+internal sealed class ColorPickerPane: CompositeControlBase
 {
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "ColorPicker";

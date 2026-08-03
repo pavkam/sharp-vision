@@ -9,8 +9,10 @@ using SharpVision.Terminal.Input;
 
 /// <summary>Defines a mutable control that owns an ordered child collection.</summary>
 [PublicAPI]
-public abstract class Container: Control
+public abstract class Container: ControlBase
 {
+    private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
+
     /// <summary>Initializes an empty ordered child collection.</summary>
     protected Container() : this(int.MaxValue)
     {
@@ -23,6 +25,9 @@ public abstract class Container: Control
     {
         Children = new ControlCollection(this, capacity);
         Children.Changed += OnChildrenChangedCore;
+        _scrollBarStyle = InitializePartStyle(
+            Scrolling.ScrollBarStyle.PartDefinition,
+            nameof(ScrollBarStyle));
     }
 
     /// <summary>Gets the owned ordered children.</summary>
@@ -54,7 +59,7 @@ public abstract class Container: Control
     internal override bool ClipsDescendantVisualOverflow => AutoScroll;
 
     /// <inheritdoc/>
-    internal override Control? HitTest(Point point)
+    internal override ControlBase? HitTest(Point point)
     {
         if (!CanHitTestSelf(point, requireContainment: false))
         {
@@ -85,7 +90,7 @@ public abstract class Container: Control
         return HitTestChildren(point) ?? (contains ? this : null);
     }
 
-    private Control? HitTestChildren(Point point)
+    private ControlBase? HitTestChildren(Point point)
     {
         for (var index = Children.Count - 1; index >= 0; index--)
         {
@@ -129,7 +134,7 @@ public abstract class Container: Control
     #region Grow and shrink
 
     /// <summary>Gets or sets whether this container sizes its border box to its content, overriding stretch and star sizing.</summary>
-    /// <remarks>Honors <see cref="Control.MinWidth"/>/<see cref="Control.MaxWidth"/> and the height equivalents. See <see cref="AutoSizeMode"/>.</remarks>
+    /// <remarks>Honors <see cref="ControlBase.MinWidth"/>/<see cref="ControlBase.MaxWidth"/> and the height equivalents. See <see cref="AutoSizeMode"/>.</remarks>
     /// <exception cref="InvalidOperationException">The attached container is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
     public bool AutoSize
@@ -388,64 +393,12 @@ public abstract class Container: Control
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
     public ScrollBarStyle? ScrollBarStyle
     {
-        get;
-        set
-        {
-            VerifyMutable();
-            if (field == value)
-            {
-                return;
-            }
-
-            var previous = ActualScrollBarStyle;
-            field = value;
-            var current = ActualScrollBarStyle;
-            var impact = previous.Chrome != current.Chrome
-                ? InvalidationImpact.Measure
-                : previous == current
-                    ? InvalidationImpact.None
-                    : InvalidationImpact.Render;
-            SynchronizeBarAppearance();
-            NotifyPropertyChanged(nameof(ScrollBarStyle), impact);
-            if (previous != current)
-            {
-                NotifyPropertyChanged(nameof(ActualScrollBarStyle), InvalidationImpact.None);
-            }
-        }
+        get => _scrollBarStyle.Local;
+        set => _scrollBarStyle.Local = value;
     }
 
     /// <summary>Gets the complete local or theme-resolved generated-bar style.</summary>
-    public ScrollBarStyle ActualScrollBarStyle => ScrollBar.ResolveStyle(ScrollBarStyle, Theme);
-
-    /// <inheritdoc/>
-    protected override InvalidationImpact GetThemeChangeImpact(
-        Theme? previous,
-        Theme? current,
-        Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace)
-    {
-        var appearanceImpact = base.GetThemeChangeImpact(
-            previous,
-            current,
-            previousParentAmbientFace,
-            currentParentAmbientFace);
-        var previousStyle = ScrollBar.ResolveStyle(ScrollBarStyle, previous);
-        var currentStyle = ScrollBar.ResolveStyle(ScrollBarStyle, current);
-        var styleImpact = previousStyle.Chrome != currentStyle.Chrome
-            ? InvalidationImpact.Measure
-            : previousStyle == currentStyle
-                ? InvalidationImpact.None
-                : InvalidationImpact.Render;
-
-        return MaximumImpact(appearanceImpact, styleImpact);
-    }
-
-    /// <inheritdoc/>
-    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        ScrollBarStyle is null &&
-        ScrollBar.ResolveStyle(ScrollBarStyle, previous) != ScrollBar.ResolveStyle(ScrollBarStyle, current)
-            ? nameof(ActualScrollBarStyle)
-            : null;
+    public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
 
     /// <summary>Gets or sets the non-negative arrow and wheel change in cells.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
@@ -531,7 +484,7 @@ public abstract class Container: Control
     /// <exception cref="ArgumentException">The control is not a descendant of this container.</exception>
     /// <exception cref="InvalidOperationException">The attached container is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
-    public bool BringIntoView(Control descendant)
+    public bool BringIntoView(ControlBase descendant)
     {
         ArgumentNullException.ThrowIfNull(descendant);
         VerifyMutable();
@@ -693,7 +646,7 @@ public abstract class Container: Control
         return remainingX != x || remainingY != y;
     }
 
-    private static Container? Ancestor(Control control)
+    private static Container? Ancestor(ControlBase control)
     {
         Debug.Assert(control is not null, "Scrollable ancestor lookup requires a control.");
 
@@ -766,7 +719,6 @@ public abstract class Container: Control
         Debug.Assert(_scroll.Horizontal is not null && _scroll.Vertical is not null,
             "Created scrollbar chrome owns both axes.");
 
-        SynchronizeBarAppearance();
         SetVisibility(_scroll.Horizontal, _scroll.ReserveHorizontal);
         SetVisibility(_scroll.Vertical, _scroll.ReserveVertical);
         _scroll.Horizontal.Arrange(
@@ -792,14 +744,12 @@ public abstract class Container: Control
         _scroll.Horizontal = new ScrollBar
         {
             Orientation = Orientation.Horizontal,
-            Style = ScrollBarStyle,
             Focusable = false,
             TabStop = false
         };
         _scroll.Vertical = new ScrollBar
         {
             Orientation = Orientation.Vertical,
-            Style = ScrollBarStyle,
             Focusable = false,
             TabStop = false
         };
@@ -814,27 +764,12 @@ public abstract class Container: Control
                 participatesInHitTesting: true,
                 participatesInNavigation: false,
                 partKey: "scroll-bars",
-                InvalidationImpact.Measure)) { _scroll.Horizontal, _scroll.Vertical };
+            InvalidationImpact.Measure)) { _scroll.Horizontal, _scroll.Vertical };
+
+        BindStyle(_scrollBarStyle, _scroll.Horizontal);
+        BindStyle(_scrollBarStyle, _scroll.Vertical);
 
         Debug.Assert(_scroll.Bars.Count == 2, "Scrollbar chrome owns exactly one control per axis.");
-    }
-
-    private void SynchronizeBarAppearance()
-    {
-        if (_scroll.Horizontal is null || _scroll.Vertical is null)
-        {
-            return;
-        }
-
-        if (_scroll.Horizontal.Style != ScrollBarStyle)
-        {
-            _scroll.Horizontal.Style = ScrollBarStyle;
-        }
-
-        if (_scroll.Vertical.Style != ScrollBarStyle)
-        {
-            _scroll.Vertical.Style = ScrollBarStyle;
-        }
     }
 
     private void Synchronize()
@@ -897,7 +832,7 @@ public abstract class Container: Control
         }
     }
 
-    private static void SetVisibility(Control control, bool visible) =>
+    private static void SetVisibility(ControlBase control, bool visible) =>
         control.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
 
     private bool Apply(int x, int y, ScrollCause cause)
@@ -920,7 +855,7 @@ public abstract class Container: Control
         return true;
     }
 
-    private bool IsContentDescendant(Control value)
+    private bool IsContentDescendant(ControlBase value)
     {
         Debug.Assert(value is not null, "Descendant checks require a control.");
 

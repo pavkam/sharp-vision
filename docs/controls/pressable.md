@@ -2,18 +2,20 @@
 
 ## Overview
 
-`Pressable : ContentControl` is the public base for a focusable, single-face
+`PressableBase : ContentControl` is the public base for a focusable, single-face
 control that completes a semantic activation through keyboard or pointer input.
-It inherits the atomic, publicly replaceable `Content` edge from
+`Pressable<TStyle>` adds the standard primary `Style`/`ActualStyle` slot for a
+pressable with an immutable complete typed style. It inherits the atomic,
+publicly replaceable `Content` edge from
 [`ContentControl`](content-control.md#overview); it is not a multi-child panel
 and exposes no `Children` collection or capacity constructor.
 
 Concrete controls implement `Activate(ActivationCause)`. `Button`, `CheckBox`,
-`RadioButton`, `HyperlinkButton`, `MenuItem`, `NavigationViewItem`, and each
-internal `ListItem` and `TabHeader` use this role. A control whose face is
-derived from data rather than replaceable content, such as
-[`ComboBox`](input/combo-box.md#overview), derives from `Control` instead of
-pretending to be a `Pressable`.
+and `RadioButton` use `Pressable<TStyle>`; `HyperlinkButton`, `MenuItem`,
+`NavigationViewItem`, and each internal `ListItem` and `TabHeader` use this
+role. A control whose face is derived from data rather than replaceable content,
+such as [`ComboBox`](input/combo-box.md#overview), derives from `ControlBase`
+instead of pretending to be a `PressableBase`.
 
 ## API
 
@@ -24,7 +26,7 @@ pretending to be a `Pressable`.
 | `Activate(ActivationCause)`                     | Commits the concrete semantic action after keyboard, pointer, or programmatic activation succeeds. |
 | `IsCheckedState` and related visual-state seams | Let a derived toggle add semantic state without replacing the shared press or capture behavior.    |
 
-`Pressable` makes the control focusable, supplies the shared input state
+`PressableBase` makes the control focusable, supplies the shared input state
 machine, and owns `Command`/`CommandParameter` lifetime — including
 `CanExecuteChanged` subscription and dispatcher-marshaled invalidation. Concrete
 classes still publish their own events and their own programmatic activation
@@ -37,8 +39,9 @@ simply leave the inherited property unused.
 
 ## Interaction
 
-When its `Content` is a `Text`, a `Pressable` treats that text as its caption.
-The owner's `UseMnemonic` value controls both marker rendering and automatic
+When its `Content` is a `Text`, a `PressableBase` treats that text as its
+caption. The owner's `UseMnemonic` value controls both marker rendering and
+automatic
 [access-key activation](../concepts/access-keys.md#focus-and-semantic-actions).
 An accepted access key focuses the semantic owner and calls `Activate` with
 `ActivationCause.Keyboard`.
@@ -47,7 +50,7 @@ Space commits the pressed state on its first key press and ignores key repeats.
 The matching release activates the control when it is still focused, or when it
 is detached and therefore has no focus owner at all. Enter activates immediately
 on press. A primary pointer press inside the arranged box requests focus and
-capture for the `Pressable` itself, even when `Content` was the original hit
+capture for the `PressableBase` itself, even when `Content` was the original hit
 target. Pointer motion updates the pressed state by containment: releasing
 inside the bounds activates once, and releasing outside cancels.
 
@@ -66,9 +69,9 @@ content, rather than using inheritance merely to reuse event handling.
 
 ## Visual state and extension
 
-`Pressable` enables `Focusable` and `TabStop` by default, so `CanFocus` is
+`PressableBase` enables `Focusable` and `TabStop` by default, so `CanFocus` is
 effectively true, and supplies the normal, hovered, focused, pressed, and
-disabled states from `Control`. A derived semantic toggle adds checked,
+disabled states from `ControlBase`. A derived semantic toggle adds checked,
 indeterminate, or selected flags through its visual-state override. Its CLR
 setter uses `SetVisualStateProperty`, which validates dispatcher and lifetime
 access before checking equivalence, commits the field, clears resolved style
@@ -76,7 +79,7 @@ caches, requests the strongest phase declared by the active state styles, and
 then publishes one property notification.
 
 ```csharp
-public sealed class ToggleChip : Pressable
+public sealed class ToggleChip : PressableBase
 {
     private bool _isChecked;
 
@@ -92,7 +95,7 @@ public sealed class ToggleChip : Pressable
 ## Example
 
 ```csharp
-public sealed class ActionChip : Pressable
+public sealed class ActionChip : PressableBase
 {
     public event EventHandler<ActivationEventArgs>? Activated;
 
@@ -103,7 +106,7 @@ public sealed class ActionChip : Pressable
 
 ## Expected behavior
 
-A `Pressable` inherits from `ContentControl` and exposes no `Children`; its
+A `PressableBase` inherits from `ContentControl` and exposes no `Children`; its
 content edge stays replaceable and follows the documented ownership rules. Space
 and Enter follow the transitions above, pointer presses that originate on the
 content still route focus and capture to the owner, and an inside release

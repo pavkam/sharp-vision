@@ -6,7 +6,7 @@ namespace SharpVision.Styling;
 /// <summary>Resolves semantic, local, state, and ambient appearance into concrete terminal values.</summary>
 internal static class AppearanceResolver
 {
-    extension(Control control)
+    extension(ControlBase control)
     {
         internal ResolvedAppearance Resolve(VisualState visualState)
         {
@@ -105,7 +105,7 @@ internal static class AppearanceResolver
         "IDE0051:Remove unused private members",
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static ResolvedAppearance Resolve(
-        Control control,
+        ControlBase control,
         VisualState visualState,
         Theme? theme,
         ThemeProfile profile,
@@ -149,7 +149,7 @@ internal static class AppearanceResolver
     }
 
     private static ThemeAppearance FoldAuthoredAppearance(
-        Control control,
+        ControlBase control,
         ThemeProfile profile,
         VisualState visualState,
         ThemeAppearance baseAppearance)
@@ -245,7 +245,7 @@ internal static class AppearanceResolver
         : theme?.ResolveAttributes(value.ThemeDecoration) ?? TerminalAttributes.None;
 
     private static Face? ResolveAmbientParentFace(
-        Control control,
+        ControlBase control,
         Face? parentAmbientFace,
         bool useExplicitAmbient)
     {

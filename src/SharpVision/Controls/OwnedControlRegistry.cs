@@ -13,14 +13,14 @@ internal sealed class OwnedControlRegistry
 
     /// <summary>Initializes an empty registry for one non-null owner.</summary>
     /// <param name="owner">The owning control.</param>
-    public OwnedControlRegistry(Control owner)
+    public OwnedControlRegistry(ControlBase owner)
     {
         Debug.Assert(owner is not null, "A registry requires one concrete owner.");
         Owner = owner;
     }
 
     /// <summary>Gets the control whose visual edges are registered here.</summary>
-    public Control Owner { get; }
+    public ControlBase Owner { get; }
 
     /// <summary>Gets the total number of direct controls across every registered slot.</summary>
     public int Count
@@ -42,7 +42,7 @@ internal sealed class OwnedControlRegistry
     /// <param name="index">The valid zero-based global position.</param>
     /// <returns>The control at the requested position.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the owned controls.</exception>
-    public Control At(int index)
+    public ControlBase At(int index)
     {
         var requested = index;
         ArgumentOutOfRangeException.ThrowIfNegative(index);
@@ -68,8 +68,8 @@ internal sealed class OwnedControlRegistry
     /// <param name="candidates">Detached candidate subtree roots, or null.</param>
     /// <returns>The distinct registries that must be released after publication.</returns>
     public static List<OwnedControlRegistry> EnterPublication(
-        Control owner,
-        IEnumerable<Control>? candidates = null)
+        ControlBase owner,
+        IEnumerable<ControlBase>? candidates = null)
     {
         ArgumentNullException.ThrowIfNull(owner);
         var root = owner;
@@ -110,7 +110,7 @@ internal sealed class OwnedControlRegistry
     /// <summary>Rejects structural mutation while this control or an ancestor is publishing a tree transaction.</summary>
     /// <param name="control">The non-null control about to mutate structure or lifetime.</param>
     /// <exception cref="InvalidOperationException">A containing transaction is active.</exception>
-    public static void VerifyMutationAllowed(Control control)
+    public static void VerifyMutationAllowed(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
 
@@ -167,7 +167,7 @@ internal sealed class OwnedControlRegistry
 
     /// <summary>Visits every direct owned control in slot registration and item order.</summary>
     /// <param name="visitor">The non-null synchronous visitor.</param>
-    public void Visit(Action<Control> visitor)
+    public void Visit(Action<ControlBase> visitor)
     {
         ArgumentNullException.ThrowIfNull(visitor);
 
@@ -185,7 +185,7 @@ internal sealed class OwnedControlRegistry
     /// <param name="index">The valid zero-based navigation position.</param>
     /// <returns>The control at the requested position.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the eligible controls.</exception>
-    public Control NavigationAt(int index)
+    public ControlBase NavigationAt(int index)
     {
         var requested = index;
         ArgumentOutOfRangeException.ThrowIfNegative(index);
@@ -214,7 +214,7 @@ internal sealed class OwnedControlRegistry
     /// <summary>Finds the topmost ordinary-layer target in reverse global ownership order.</summary>
     /// <param name="point">The absolute terminal-cell point.</param>
     /// <returns>The deepest eligible target, or null.</returns>
-    public Control? HitTestNormal(Point point)
+    public ControlBase? HitTestNormal(Point point)
     {
         for (var slotIndex = _slots.Count - 1; slotIndex >= 0; slotIndex--)
         {
@@ -244,7 +244,7 @@ internal sealed class OwnedControlRegistry
     /// <summary>Finds the topmost elevated target before every ordinary-layer target.</summary>
     /// <param name="point">The absolute terminal-cell point.</param>
     /// <returns>The deepest eligible elevated target, or null.</returns>
-    public Control? HitTestPopup(Point point)
+    public ControlBase? HitTestPopup(Point point)
     {
         for (var slotIndex = _slots.Count - 1; slotIndex >= 0; slotIndex--)
         {
@@ -346,7 +346,7 @@ internal sealed class OwnedControlRegistry
     }
 
     /// <summary>Inserts one candidate after validating the complete resulting slot.</summary>
-    public void Insert(OwnedControlSlot slot, int index, Control control)
+    public void Insert(OwnedControlSlot slot, int index, ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
 
@@ -356,7 +356,7 @@ internal sealed class OwnedControlRegistry
 
         ArgumentOutOfRangeException.ThrowIfGreaterThan((uint) index, (uint) slot.Count);
 
-        var next = new List<Control>(slot.Items);
+        var next = new List<ControlBase>(slot.Items);
         next.Insert(index, control);
 
         ValidateSnapshot(slot, next);
@@ -364,7 +364,7 @@ internal sealed class OwnedControlRegistry
     }
 
     /// <summary>Replaces one candidate after validating the complete resulting slot.</summary>
-    public void Replace(OwnedControlSlot slot, int index, Control control)
+    public void Replace(OwnedControlSlot slot, int index, ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
 
@@ -379,20 +379,20 @@ internal sealed class OwnedControlRegistry
             return;
         }
 
-        var next = new List<Control>(slot.Items) { [index] = control };
+        var next = new List<ControlBase>(slot.Items) { [index] = control };
         ValidateSnapshot(slot, next);
 
         Commit(slot, next, ReleaseReason.Detached, notifyUnavailable: true);
     }
 
     /// <summary>Replaces a complete slot after batch-wide validation.</summary>
-    public void ReplaceAll(OwnedControlSlot slot, IEnumerable<Control> controls)
+    public void ReplaceAll(OwnedControlSlot slot, IEnumerable<ControlBase> controls)
     {
         ArgumentNullException.ThrowIfNull(controls);
         VerifySlot(slot);
         Owner.VerifyMutable();
         VerifyNotTransacting();
-        var next = new List<Control>();
+        var next = new List<ControlBase>();
 
         foreach (var control in controls)
         {
@@ -415,7 +415,7 @@ internal sealed class OwnedControlRegistry
     }
 
     /// <summary>Removes one identical child when present.</summary>
-    public bool Remove(OwnedControlSlot slot, Control control)
+    public bool Remove(OwnedControlSlot slot, ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
 
@@ -462,7 +462,7 @@ internal sealed class OwnedControlRegistry
     }
 
     /// <summary>Removes one disposing child while an enclosing disposal publication is active.</summary>
-    public void RemoveForDisposalWithinPublication(OwnedControlSlot slot, Control control)
+    public void RemoveForDisposalWithinPublication(OwnedControlSlot slot, ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
 
@@ -495,14 +495,14 @@ internal sealed class OwnedControlRegistry
         bool notifyUnavailable,
         bool publicationAlreadyActive = false)
     {
-        var next = new List<Control>(slot.Items);
+        var next = new List<ControlBase>(slot.Items);
 
         next.RemoveAt(index);
 
         Commit(slot, next, reason, notifyUnavailable, publicationAlreadyActive);
     }
 
-    private void ValidateSnapshot(OwnedControlSlot slot, List<Control> next)
+    private void ValidateSnapshot(OwnedControlSlot slot, List<ControlBase> next)
     {
         Debug.Assert(slot is not null, "Snapshot validation requires a registered slot.");
         Debug.Assert(next is not null, "Snapshot validation requires an owned candidate list.");
@@ -512,7 +512,7 @@ internal sealed class OwnedControlRegistry
             throw new InvalidOperationException("The owned-control slot is at capacity.");
         }
 
-        var unique = new HashSet<Control>(ReferenceEqualityComparer.Instance);
+        var unique = new HashSet<ControlBase>(ReferenceEqualityComparer.Instance);
 
         foreach (var control in next)
         {
@@ -532,7 +532,7 @@ internal sealed class OwnedControlRegistry
         }
     }
 
-    private void ValidateCandidate(Control control)
+    private void ValidateCandidate(ControlBase control)
     {
         Debug.Assert(control is not null, "Candidate validation requires a concrete control.");
         VerifyMutationAllowed(control);
@@ -556,12 +556,12 @@ internal sealed class OwnedControlRegistry
 
     private void Commit(
         OwnedControlSlot slot,
-        List<Control> next,
+        List<ControlBase> next,
         ReleaseReason reason,
         bool notifyUnavailable,
         bool publicationAlreadyActive = false)
     {
-        var previous = new List<Control>(slot.Items);
+        var previous = new List<ControlBase>(slot.Items);
         var removed = previous.FindAll(control => !ContainsIdentity(next, control));
         var added = next.FindAll(control => !ContainsIdentity(previous, control));
         ExceptionDispatchInfo? failure = null;
@@ -571,7 +571,7 @@ internal sealed class OwnedControlRegistry
 
         if (!publicationAlreadyActive)
         {
-            var changingRoots = new List<Control>(removed.Count + added.Count);
+            var changingRoots = new List<ControlBase>(removed.Count + added.Count);
             changingRoots.AddRange(removed);
             changingRoots.AddRange(added);
             entered = EnterPublication(Owner, changingRoots);
@@ -587,7 +587,7 @@ internal sealed class OwnedControlRegistry
                 }
             }
 
-            var previousAppearance = new Dictionary<Control, AppearanceSnapshot>();
+            var previousAppearance = new Dictionary<ControlBase, AppearanceSnapshot>();
             foreach (var control in removed)
             {
                 AppearanceSnapshot.CaptureSubtree(control, previousAppearance);
@@ -600,9 +600,9 @@ internal sealed class OwnedControlRegistry
 
             var plans = new List<ContextTransitionPlan>(removed.Count + added.Count);
             var themeTransitions = new List<ThemeTransition>();
-            var currentAppearance = new Dictionary<Control, AppearanceSnapshot>(previousAppearance.Count);
-            var attached = new List<Control>();
-            var detached = new List<Control>();
+            var currentAppearance = new Dictionary<ControlBase, AppearanceSnapshot>(previousAppearance.Count);
+            var attached = new List<ControlBase>();
+            var detached = new List<ControlBase>();
 
             foreach (var control in removed)
             {
@@ -732,7 +732,7 @@ internal sealed class OwnedControlRegistry
             }
 
             invalidated = true;
-            Owner.Invalidate(Control.InvalidationFor(slot.Options.Impact));
+            Owner.Invalidate(ControlBase.InvalidationFor(slot.Options.Impact));
         }
     }
 
@@ -762,9 +762,9 @@ internal sealed class OwnedControlRegistry
         entered.Add(registry);
     }
 
-    private static bool SameOrder(List<Control> left, List<Control> right) =>
+    private static bool SameOrder(List<ControlBase> left, List<ControlBase> right) =>
         left.Count == right.Count && !left.Where((t, index) => !ReferenceEquals(t, right[index])).Any();
 
-    private static bool ContainsIdentity(List<Control> controls, Control candidate) =>
+    private static bool ContainsIdentity(List<ControlBase> controls, ControlBase candidate) =>
         controls.Any(control => ReferenceEquals(control, candidate));
 }

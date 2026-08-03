@@ -4,7 +4,7 @@
 namespace SharpVision.Showcase.Panes;
 
 /// <summary>Demonstrates a mini dashboard combining boxes, bars, labels, and shade fills.</summary>
-internal sealed class CanvasDashboardSample: Control
+internal sealed class CanvasDashboardSample: ControlBase
 {
     /// <summary>Initializes the dashboard specimen.</summary>
     internal CanvasDashboardSample()

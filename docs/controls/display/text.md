@@ -4,7 +4,7 @@
 
 `Text` is a non-focusable display control that formats Unicode text and applies
 semantic terminal styling through compact inline markup. It derives from
-`Control`, draws only to the semantic cell canvas, and never emits terminal
+`ControlBase`, draws only to the semantic cell canvas, and never emits terminal
 protocol bytes. Markup is the only way to author styled text; there is no
 mutable run or inline object model.
 

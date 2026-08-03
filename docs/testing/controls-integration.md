@@ -66,7 +66,7 @@ ownership, resolved state styles, default cursor preservation, render-time
 invalidation, and exception recovery. Private draw-call recordings supplement
 these semantic oracles; they never replace them.
 
-Intrinsic chrome proof lives on the common `Control` surface rather than on
+Intrinsic chrome proof lives on the common `ControlBase` surface rather than on
 wrapper-control suites. `ControlBorderReservationTests`,
 `ContainerAutoSizeTests`, and `ContainerScrollGeometryTests` cover base
 border-before-padding reservation, saturated combined insets, shrink wrapping,
@@ -289,8 +289,8 @@ avoidance, and dialog Escape fallback through mounted controls.
 
 Floating-surface architecture proof treats public identity as observable
 behavior. Reflection and consumer-contract tests require `Window` and `Popup` to
-derive from `FloatingSurface`, `Dialog<TResult>` from Window, file dialogs and
-MessageBox from Dialog, and Flyout and Tooltip from Popup. Mounted ownership
+derive from `FloatingSurfaceBase`, `Dialog<TResult>` from Window, file dialogs
+and MessageBox from Dialog, and Flyout and Tooltip from Popup. Mounted ownership
 tests require the same concrete object to be presented, rendered, modal,
 removed, and disposed; a nested Window or Popup cannot satisfy that evidence.
 Overlay tests own all absolute-offset and z-order behavior, while architecture

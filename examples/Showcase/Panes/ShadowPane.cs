@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Demonstrates intrinsic shadow modes, signed offsets, glyphs, and appearance options.</summary>
-internal sealed class ShadowPane: CompositeControl
+internal sealed class ShadowPane: CompositeControlBase
 {
     /// <summary>Initializes the retained Shadow concept page.</summary>
     internal ShadowPane() => InitializeContent(CreateContent());

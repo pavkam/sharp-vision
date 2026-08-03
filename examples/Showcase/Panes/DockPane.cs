@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the Dock control with side-attached and fill layout specimens.</summary>
-internal sealed class DockPane: CompositeControl
+internal sealed class DockPane: CompositeControlBase
 {
     internal DockPane() => InitializeContent(CreateContent());
 

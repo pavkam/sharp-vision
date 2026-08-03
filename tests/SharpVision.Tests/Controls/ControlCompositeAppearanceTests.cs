@@ -76,7 +76,7 @@ public sealed class ControlCompositeAppearanceTests
         child.ActualFace.ShouldBe(expectedFace);
         child.Pending.ShouldBe(Invalidation.None);
         notifications.ShouldBe([nameof(StyledProbe.Style), nameof(StyledProbe.ActualStyle)]);
-        notifications.ShouldNotContain(nameof(Control.ActualFace));
+        notifications.ShouldNotContain(nameof(ControlBase.ActualFace));
     }
 
     /// <summary>Verifies direct root Theme changes publish exact ambient descendant appearance only.</summary>
@@ -114,12 +114,12 @@ public sealed class ControlCompositeAppearanceTests
         root.Pending.ShouldBe(Invalidation.Render);
         child.Pending.ShouldBe(Invalidation.Render);
         rootNotifications.ShouldBe([
-            nameof(Control.Theme),
+            nameof(ControlBase.Theme),
             nameof(Container.ActualScrollBarStyle),
-            nameof(Control.ActualFace)
+            nameof(ControlBase.ActualFace)
         ]);
-        childNotifications.ShouldBe([nameof(Control.ActualFace)]);
-        childNotifications.ShouldNotContain(nameof(Control.Theme));
+        childNotifications.ShouldBe([nameof(ControlBase.ActualFace)]);
+        childNotifications.ShouldNotContain(nameof(ControlBase.Theme));
         childNotifications.ShouldNotContain(nameof(StyledProbe.ActualStyle));
     }
 
@@ -142,7 +142,7 @@ public sealed class ControlCompositeAppearanceTests
 
         parent.PropagateTheme(currentTheme);
 
-        notifications.ShouldContain(nameof(Control.ActualFace));
+        notifications.ShouldContain(nameof(ControlBase.ActualFace));
     }
 
     /// <summary>Verifies cache-neutral Theme staging never consumes cold parent or child appearance caches.</summary>
@@ -175,7 +175,7 @@ public sealed class ControlCompositeAppearanceTests
         var currentTheme = ThemeWithControl(Color.Rgb(4, 5, 6));
         var propagatedTheme = ThemeWithControl(Color.Rgb(7, 8, 9));
         var root = new ProbeContainer();
-        var controls = new List<Control> { root };
+        var controls = new List<ControlBase> { root };
         var parent = root;
 
         for (var index = 1; index < depth; index++)
@@ -268,7 +268,7 @@ public sealed class ControlCompositeAppearanceTests
         control.SetTheme(currentTheme);
 
         control.Pending.ShouldBe(Invalidation.None);
-        notifications.ShouldBe([nameof(Control.Theme)]);
+        notifications.ShouldBe([nameof(ControlBase.Theme)]);
         notifications.ShouldNotContain(string.Empty);
     }
 
@@ -301,9 +301,9 @@ public sealed class ControlCompositeAppearanceTests
 
         notifications.ShouldBe(
         [
-            nameof(Control.Theme),
+            nameof(ControlBase.Theme),
             nameof(StyledProbe.ActualStyle),
-            nameof(Control.ActualFace)
+            nameof(ControlBase.ActualFace)
         ]);
         notifications.ShouldNotContain(string.Empty);
     }
@@ -330,7 +330,7 @@ public sealed class ControlCompositeAppearanceTests
 
         control.SetTheme(currentTheme);
 
-        notifications.ShouldBe([nameof(Control.Theme), nameof(Control.ActualFace)]);
+        notifications.ShouldBe([nameof(ControlBase.Theme), nameof(ControlBase.ActualFace)]);
         notifications.ShouldNotContain(string.Empty);
     }
 
@@ -351,7 +351,7 @@ public sealed class ControlCompositeAppearanceTests
         child.PropertyChanged += (_, eventArgs) => childNotifications.Add(eventArgs.PropertyName);
         root.PropertyChanged += (_, eventArgs) =>
         {
-            if (eventArgs.PropertyName == nameof(Control.Theme))
+            if (eventArgs.PropertyName == nameof(ControlBase.Theme))
             {
                 child.Style = currentStyle;
             }
@@ -573,9 +573,9 @@ public sealed class ControlCompositeAppearanceTests
         [
             nameof(StyledProbe.Style),
             nameof(StyledProbe.ActualStyle),
-            nameof(Control.ActualFace),
-            nameof(Control.ActualBorder),
-            nameof(Control.ActualShadow)
+            nameof(ControlBase.ActualFace),
+            nameof(ControlBase.ActualBorder),
+            nameof(ControlBase.ActualShadow)
         ]);
     }
 

@@ -32,7 +32,7 @@ public sealed class Binding: IDisposable
 
     /// <summary>Initializes one validated binding ready for atomic startup.</summary>
     internal Binding(
-        Control target,
+        ControlBase target,
         PropertyPath targetPath,
         object source,
         PropertyPath sourcePath,
@@ -69,7 +69,7 @@ public sealed class Binding: IDisposable
     }
 
     /// <summary>Gets the control whose property is synchronized by this binding.</summary>
-    public Control Target { get; }
+    public ControlBase Target { get; }
 
     /// <summary>Gets the direction of synchronization (source-to-target, target-to-source, or both).</summary>
     public BindingMode Mode { get; }

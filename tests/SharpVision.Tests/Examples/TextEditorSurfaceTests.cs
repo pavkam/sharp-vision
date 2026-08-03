@@ -326,27 +326,27 @@ public sealed class TextEditorSurfaceTests
         surface.ShouldHaveFocus(editor);
     }
 
-    private static TextInput Editor(Control root) =>
+    private static TextInput Editor(ControlBase root) =>
         FindAll<TextInput>(root).Single(input => input.AcceptsReturn);
 
-    private static MenuItem FindItem(Control root, string label) =>
+    private static MenuItem FindItem(ControlBase root, string label) =>
         FindAll<MenuItem>(root).Single(item =>
             item.Content is ControlText text &&
             text.Content.Replace("&", "", StringComparison.Ordinal) == label);
 
-    private static Button FindButton(Control root, string label) =>
+    private static Button FindButton(ControlBase root, string label) =>
         FindAll<Button>(root).Single(button => button.Content is ControlText text && text.Content == label);
 
-    private static ControlText FindText(Control root, string content) =>
+    private static ControlText FindText(ControlBase root, string content) =>
         FindAll<ControlText>(root).Single(text => text.Content == content);
 
-    private static List<T> FindAll<T>(Control root) where T : Control
+    private static List<T> FindAll<T>(ControlBase root) where T : ControlBase
     {
         var matches = new List<T>();
         Visit(root);
         return matches;
 
-        void Visit(Control control)
+        void Visit(ControlBase control)
         {
             if (control is T match)
             {

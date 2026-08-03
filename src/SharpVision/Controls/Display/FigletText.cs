@@ -7,7 +7,7 @@ using Fonts;
 
 /// <summary>Displays cached FIGlet output through grapheme-safe semantic cells.</summary>
 [PublicAPI]
-public sealed class FigletText: Control
+public sealed class FigletText: ControlBase
 {
     private string? _cachedContent;
     private FigletFont? _cachedFont;

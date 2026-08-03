@@ -7,111 +7,8 @@ using SharpVision.Terminal.Input;
 
 /// <summary>Displays one Gregorian month for single-date or inclusive-interval selection.</summary>
 [PublicAPI]
-public sealed class Calendar: Control
+public sealed class Calendar: Control<CalendarStyle>
 {
-    /// <summary>
-    /// The day-grid background halves for the hovered/preview, selected, and disabled states
-    /// (<see cref="ThemeColor.ActiveControl"/>, <see cref="ThemeColor.SelectedControl"/>,
-    /// <see cref="ThemeColor.DisabledControl"/>) and the header's <see cref="ThemeColor.Accent"/>
-    /// arrows still resolve directly against the Theme rather than through
-    /// <see cref="CalendarStyle"/> (see #244) — only the five day-grid foregrounds and the content
-    /// inset are exposed on the style surface in this pass. The style contract's structural
-    /// comparison still compares all of them so a theme swap confined to any one role continues to
-    /// repaint, exactly as the pre-#244 manual diff block did (see #161).
-    /// </summary>
-    private static readonly StyleContract<CalendarStyle> _styleContract = new(
-        ThemeRole.Input,
-        static profile => new CalendarStyle(
-            CalendarStyle.Default.SelectedDayColor,
-            CalendarStyle.Default.TodayMarkerColor,
-            CalendarStyle.Default.OutOfMonthDayColor,
-            CalendarStyle.Default.WeekdayHeaderColor,
-            CalendarStyle.Default.DisabledDayColor,
-            CalendarStyle.Default.ContentInset,
-            profile),
-        static (previous, previousTheme, current, currentTheme) =>
-            previous.ContentInset != current.ContentInset
-                ? InvalidationImpact.Measure
-                : previous != current ||
-                  ResolveColor(previous.SelectedDayColor, previousTheme) != ResolveColor(current.SelectedDayColor, currentTheme) ||
-                  ResolveColor(previous.TodayMarkerColor, previousTheme) != ResolveColor(current.TodayMarkerColor, currentTheme) ||
-                  ResolveColor(previous.OutOfMonthDayColor, previousTheme) != ResolveColor(current.OutOfMonthDayColor, currentTheme) ||
-                  ResolveColor(previous.WeekdayHeaderColor, previousTheme) != ResolveColor(current.WeekdayHeaderColor, currentTheme) ||
-                  ResolveColor(previous.DisabledDayColor, previousTheme) != ResolveColor(current.DisabledDayColor, currentTheme) ||
-                  ResolveDirectColor(previousTheme, ThemeColor.Accent) != ResolveDirectColor(currentTheme, ThemeColor.Accent) ||
-                  ResolveDirectColor(previousTheme, ThemeColor.ActiveControl) != ResolveDirectColor(currentTheme, ThemeColor.ActiveControl) ||
-                  ResolveDirectColor(previousTheme, ThemeColor.SelectedControl) != ResolveDirectColor(currentTheme, ThemeColor.SelectedControl) ||
-                  ResolveDirectColor(previousTheme, ThemeColor.DisabledControl) != ResolveDirectColor(currentTheme, ThemeColor.DisabledControl)
-                    ? InvalidationImpact.Render
-                    : InvalidationImpact.None,
-        static style => style.Appearance);
-    private CalendarStyle? _actualStyleCache;
-    private CalendarStyle? _actualStyleCacheKey;
-    private Theme? _actualStyleCacheTheme;
-
-    /// <summary>Gets or sets the complete local presentation, or null to use the semantic input profile.</summary>
-    /// <exception cref="InvalidOperationException">The attached Calendar is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Calendar is disposed.</exception>
-    public CalendarStyle? Style
-    {
-        get;
-        set
-        {
-            if (SetControlStyle(
-                ref field,
-                value,
-                _styleContract.Resolve,
-                _styleContract.CompareStructure,
-                _styleContract.Appearance,
-                nameof(Style),
-                nameof(ActualStyle)))
-            {
-                Padding = ActualStyle.ContentInset;
-            }
-        }
-    }
-
-    /// <summary>Gets the complete local presentation or the library day-grid mechanics completed with the semantic input profile.</summary>
-    public CalendarStyle ActualStyle =>
-        ResolveContractStyle(
-            _styleContract,
-            ref _actualStyleCache,
-            ref _actualStyleCacheKey,
-            ref _actualStyleCacheTheme,
-            Style,
-            Theme);
-
-    /// <inheritdoc/>
-    protected override ThemeRole ThemeRole => _styleContract.Role;
-
-    /// <inheritdoc/>
-    protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
-
-    /// <inheritdoc/>
-    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
-        GetContractAppearanceProfile(_styleContract, Style, theme);
-
-    /// <inheritdoc/>
-    protected override InvalidationImpact GetThemeChangeImpact(
-        Theme? previous,
-        Theme? current,
-        Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace) =>
-        GetContractThemeChangeImpact(
-            _styleContract,
-            Style,
-            previous,
-            current,
-            previousParentAmbientFace,
-            currentParentAmbientFace);
-
-    /// <inheritdoc/>
-    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        GetContractResolvedStylePropertyName(_styleContract, Style, previous, current, nameof(ActualStyle));
-
-    private static Color ResolveDirectColor(Theme? theme, ThemeColor color) =>
-        theme?.ResolveColor(color) ?? Color.Default;
-
     private Color ResolveColor(ColorValue value) => ResolveColor(value, Theme);
     private const TerminalAttributes _blinkAttributes =
         TerminalAttributes.Blink | TerminalAttributes.RapidBlink;
@@ -138,7 +35,7 @@ public sealed class Calendar: Control
     #region Construction and public state
 
     /// <summary>Initializes a focusable calendar at the current local date.</summary>
-    public Calendar()
+    public Calendar() : base(CalendarStyle.Definition)
     {
         var today = DateOnly.FromDateTime(TimeProvider.System.GetLocalNow().DateTime);
         _activeDate = today;
@@ -151,7 +48,6 @@ public sealed class Calendar: Control
         Focusable = true;
         TabStop = true;
         TabNavigation = TabNavigation.None;
-        Padding = ActualStyle.ContentInset;
     }
 
     /// <summary>Gets the normalized collection of dates unavailable for selection.</summary>
@@ -484,7 +380,10 @@ public sealed class Calendar: Control
     protected override Size MeasureOverride(Constraint constraint)
     {
         _ = constraint;
-        return new Size(_contentWidth, _contentHeight);
+        var inset = ActualStyle.ContentInset;
+        return new Size(
+            _contentWidth.SaturatingAdd(inset.Horizontal),
+            _contentHeight.SaturatingAdd(inset.Vertical));
     }
 
     /// <inheritdoc/>
@@ -585,20 +484,21 @@ public sealed class Calendar: Control
 
         if (pointer.Action != PointerAction.Press ||
             (pointer.Buttons & Buttons.Primary) == 0 ||
-            !ContentBounds.Contains(cells))
+            !CalendarBounds.Contains(cells))
         {
             return;
         }
 
         _ = RequestFocus();
 
-        if (cells.Y == ContentBounds.Y && cells.X == ContentBounds.X)
+        var bounds = CalendarBounds;
+        if (cells.Y == bounds.Y && cells.X == bounds.X)
         {
             eventArgs.Handled = MoveDisplayMonth(-1);
             return;
         }
 
-        if (cells.Y == ContentBounds.Y && cells.X == ContentBounds.Right - 1)
+        if (cells.Y == bounds.Y && cells.X == bounds.Right - 1)
         {
             eventArgs.Handled = MoveDisplayMonth(1);
             return;
@@ -704,7 +604,7 @@ public sealed class Calendar: Control
 
     private DateOnly? DateAt(Point point)
     {
-        var bounds = ContentBounds;
+        var bounds = CalendarBounds;
 
         if (!bounds.Contains(point))
         {
@@ -726,6 +626,8 @@ public sealed class Calendar: Control
             : DateOnly.FromDayNumber(dayNumber);
     }
 
+    private Rect CalendarBounds => ActualStyle.ContentInset.Deflate(ContentBounds);
+
     private int GridStartDayNumber()
     {
         var firstDay = (int) FirstDayOfWeek;
@@ -746,7 +648,7 @@ public sealed class Calendar: Control
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        var bounds = ContentBounds;
+        var bounds = CalendarBounds;
 
         if (bounds.Width == 0 || bounds.Height == 0)
         {
@@ -761,7 +663,7 @@ public sealed class Calendar: Control
     private void DrawHeader(TerminalCanvas canvas, Rect bounds)
     {
         var row = canvas.Clip(new Rect(bounds.X, bounds.Y, bounds.Width, Math.Min(_headerHeight, bounds.Height)));
-        var style = ResolvedStyle.WithForeground(Theme?.ResolveColor(ThemeColor.Accent) ?? Color.Default);
+        var style = ResolvedStyle.WithForeground(ResolveColor(ActualStyle.NavigationColor));
         row.DrawRune(new Rune('<'), new Point(bounds.X, bounds.Y), style);
 
         if (bounds.Width > _headerHeight)
@@ -900,7 +802,7 @@ public sealed class Calendar: Control
             style = WithColors(
                 style,
                 ResolveColor(actualStyle.TodayMarkerColor),
-                Theme?.ResolveColor(ThemeColor.ActiveControl) ?? Color.Default);
+                ResolveColor(actualStyle.ActiveDayBackground));
         }
 
         if (_intervalAnchor is { } anchor)
@@ -915,7 +817,7 @@ public sealed class Calendar: Control
                 style = WithColors(
                     style,
                     ResolveColor(actualStyle.TodayMarkerColor),
-                    Theme?.ResolveColor(ThemeColor.ActiveControl) ?? Color.Default);
+                    ResolveColor(actualStyle.ActiveDayBackground));
             }
         }
 
@@ -924,7 +826,7 @@ public sealed class Calendar: Control
             style = WithColors(
                 style,
                 ResolveColor(actualStyle.SelectedDayColor),
-                Theme?.ResolveColor(ThemeColor.SelectedControl) ?? Color.Default);
+                ResolveColor(actualStyle.SelectedDayBackground));
         }
 
         if (!EffectiveIsEnabled || BlockedDates.Contains(date) || date < MinimumDate || date > MaximumDate)
@@ -932,7 +834,7 @@ public sealed class Calendar: Control
             style = WithColors(
                 style,
                 ResolveColor(actualStyle.DisabledDayColor),
-                Theme?.ResolveColor(ThemeColor.DisabledControl) ?? Color.Default);
+                ResolveColor(actualStyle.DisabledDayBackground));
         }
 
         if (IsFocused && date == ActiveDate)

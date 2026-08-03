@@ -41,7 +41,7 @@ public sealed class ModalityRoutingTests
             ]);
             return;
 
-            void Record(Control control, string name) =>
+            void Record(ControlBase control, string name) =>
                 _ = control.AddHandler(
                     Events.Key,
                     (_, eventArgs) => order.Add($"{name}-{eventArgs.Phase}"));
@@ -120,7 +120,7 @@ public sealed class ModalityRoutingTests
             ]);
             return;
 
-            void Record(Control control, string name) =>
+            void Record(ControlBase control, string name) =>
                 _ = control.AddHandler(
                     Events.Key,
                     (_, eventArgs) => order.Add($"{name}-{eventArgs.Phase}"));
@@ -186,7 +186,7 @@ public sealed class ModalityRoutingTests
             return;
 
             void Record(
-                Control control,
+                ControlBase control,
                 string name,
                 Action<KeyEventArgs>? callback = null) =>
                 _ = control.AddHandler(Events.Key, (_, eventArgs) =>
@@ -258,7 +258,7 @@ public sealed class ModalityRoutingTests
             return;
 
             void Record(
-                Control control,
+                ControlBase control,
                 string name,
                 Action<KeyEventArgs>? callback = null) =>
                 _ = control.AddHandler(Events.Key, (_, eventArgs) =>
@@ -328,7 +328,7 @@ public sealed class ModalityRoutingTests
             return;
 
             void Record(
-                Control control,
+                ControlBase control,
                 string name,
                 Action<KeyEventArgs>? callback = null) =>
                 _ = control.AddHandler(Events.Key, (_, eventArgs) =>
@@ -398,7 +398,7 @@ public sealed class ModalityRoutingTests
             return;
 
             void Record(
-                Control control,
+                ControlBase control,
                 string name,
                 Action<KeyEventArgs>? callback = null) =>
                 _ = control.AddHandler(Events.Key, (_, eventArgs) =>
@@ -445,7 +445,7 @@ public sealed class ModalityRoutingTests
             blockedArgs.OriginalSource.ShouldBeNull();
             return;
 
-            void Record(Control control, string name) =>
+            void Record(ControlBase control, string name) =>
                 _ = control.AddHandler(
                     direct,
                     (_, eventArgs) => order.Add($"{name}-{eventArgs.Phase}"));
@@ -489,7 +489,7 @@ public sealed class ModalityRoutingTests
             ]);
             return;
 
-            void Record(Control control, string name) =>
+            void Record(ControlBase control, string name) =>
                 _ = control.AddHandler(
                     Events.Key,
                     (_, eventArgs) => order.Add($"{name}-{eventArgs.Phase}"));

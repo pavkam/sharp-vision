@@ -62,7 +62,7 @@ public sealed class Application:
     private AccessKeyManager? _accessKeys;
     private ShortcutManager? _shortcuts;
     private KeyEventArgs? _routedKeyArgs;
-    private Control? _routedKeyTarget;
+    private ControlBase? _routedKeyTarget;
     private Rune? _suppressedAccessKeyText;
     private string _clipboardText = string.Empty;
     private readonly TerminalServices _terminalServices;
@@ -113,7 +113,7 @@ public sealed class Application:
     /// The terminal profile is not suitable for full-screen use.
     /// </exception>
     public Application(
-        Control root,
+        ControlBase root,
         ITransport transport,
         IResizeSource resize,
         TerminalOptions? options = null,
@@ -221,7 +221,7 @@ public sealed class Application:
     public Dispatcher Dispatcher { get; }
 
     /// <summary>Gets the application-owned root control.</summary>
-    public Control Root { get; }
+    public ControlBase Root { get; }
 
     /// <summary>Gets or sets the application-wide theme published to attached controls.</summary>
     /// <exception cref="ArgumentNullException">The assigned theme is null.</exception>
@@ -287,9 +287,9 @@ public sealed class Application:
     /// <param name="initialFocus">An optional eligible focus target inside the root.</param>
     /// <returns>The disposable scope; disposing exits the modal plane.</returns>
     public ModalScope EnterModal(
-        Control root,
+        ControlBase root,
         OutsideInteraction outsideInteraction = OutsideInteraction.Ignore,
-        Control? initialFocus = null) =>
+        ControlBase? initialFocus = null) =>
         Modality.Enter(root, outsideInteraction, initialFocus);
 
     /// <summary>Gets the latest committed terminal size.</summary>
@@ -968,7 +968,7 @@ public sealed class Application:
         }
     }
 
-    private bool TryProcessClipboardShortcut(Control keyTarget, Stroke stroke)
+    private bool TryProcessClipboardShortcut(ControlBase keyTarget, Stroke stroke)
     {
         if (stroke.Action != KeyAction.Press ||
             stroke.Code != Code.Character ||

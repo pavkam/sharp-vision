@@ -10,7 +10,7 @@ internal static class OwnedTree
     /// <typeparam name="T">The control type to locate.</typeparam>
     /// <param name="root">The non-null root whose complete owned tree is searched.</param>
     /// <returns>The first matching control, or null when no match exists.</returns>
-    internal static T? Find<T>(Control root) where T : Control
+    internal static T? Find<T>(ControlBase root) where T : ControlBase
     {
         ArgumentNullException.ThrowIfNull(root);
 
@@ -34,7 +34,7 @@ internal static class OwnedTree
     /// <typeparam name="T">The control type to locate.</typeparam>
     /// <param name="root">The non-null root whose complete owned tree is searched.</param>
     /// <returns>A list of all matching controls in stable ownership order.</returns>
-    internal static List<T> FindAll<T>(Control root) where T : Control
+    internal static List<T> FindAll<T>(ControlBase root) where T : ControlBase
     {
         ArgumentNullException.ThrowIfNull(root);
         var results = new List<T>();
@@ -42,7 +42,7 @@ internal static class OwnedTree
         return results;
     }
 
-    private static void FindAllCore<T>(Control root, List<T> results) where T : Control
+    private static void FindAllCore<T>(ControlBase root, List<T> results) where T : ControlBase
     {
         if (root is T match)
         {

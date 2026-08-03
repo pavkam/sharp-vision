@@ -33,7 +33,7 @@ internal sealed class OwnedControlSlot
     /// <exception cref="ArgumentException">The assigned control cannot belong to this owner.</exception>
     /// <exception cref="InvalidOperationException">The owner is off-dispatcher or an ownership transaction is active.</exception>
     /// <exception cref="ObjectDisposedException">The owner or assigned control is disposed.</exception>
-    public Control this[int index]
+    public ControlBase this[int index]
     {
         get => Items[index];
         set => Registry.Replace(this, index, value);
@@ -53,7 +53,7 @@ internal sealed class OwnedControlSlot
 
     /// <summary>Adds one detached control at the end of this slot.</summary>
     /// <param name="control">The non-null detached control.</param>
-    public void Add(Control control) => Insert(Count, control);
+    public void Add(ControlBase control) => Insert(Count, control);
 
     /// <summary>Atomically clears this slot without disposing removed controls.</summary>
     public void Clear() => Registry.Clear(this);
@@ -61,7 +61,7 @@ internal sealed class OwnedControlSlot
     /// <summary>Determines whether this exact control belongs to the slot.</summary>
     /// <param name="control">The non-null candidate.</param>
     /// <returns>True when the identical control is present.</returns>
-    public bool Contains(Control control)
+    public bool Contains(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         return IndexOfIdentity(control) >= 0;
@@ -70,7 +70,7 @@ internal sealed class OwnedControlSlot
     /// <summary>Copies committed controls to an existing array.</summary>
     /// <param name="array">The non-null destination.</param>
     /// <param name="arrayIndex">The valid destination start index.</param>
-    public void CopyTo(Control[] array, int arrayIndex)
+    public void CopyTo(ControlBase[] array, int arrayIndex)
     {
         ArgumentNullException.ThrowIfNull(array);
         Items.CopyTo(array, arrayIndex);
@@ -78,12 +78,12 @@ internal sealed class OwnedControlSlot
 
     /// <summary>Gets an allocation-free enumerator over the current committed order.</summary>
     /// <returns>The underlying list value enumerator.</returns>
-    public List<Control>.Enumerator GetEnumerator() => Items.GetEnumerator();
+    public List<ControlBase>.Enumerator GetEnumerator() => Items.GetEnumerator();
 
     /// <summary>Gets the identity position of one control.</summary>
     /// <param name="control">The non-null candidate.</param>
     /// <returns>The zero-based position, or -1.</returns>
-    public int IndexOf(Control control)
+    public int IndexOf(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         return IndexOfIdentity(control);
@@ -92,12 +92,12 @@ internal sealed class OwnedControlSlot
     /// <summary>Inserts one detached control at a validated position.</summary>
     /// <param name="index">The insertion position from zero through <see cref="Count"/>.</param>
     /// <param name="control">The non-null detached control.</param>
-    public void Insert(int index, Control control) => Registry.Insert(this, index, control);
+    public void Insert(int index, ControlBase control) => Registry.Insert(this, index, control);
 
     /// <summary>Removes one identical control without disposing it.</summary>
     /// <param name="control">The non-null candidate.</param>
     /// <returns>True when the control was removed.</returns>
-    public bool Remove(Control control) => Registry.Remove(this, control);
+    public bool Remove(ControlBase control) => Registry.Remove(this, control);
 
     /// <summary>Removes the control at one valid position without disposing it.</summary>
     /// <param name="index">The valid zero-based position.</param>
@@ -105,20 +105,20 @@ internal sealed class OwnedControlSlot
 
     /// <summary>Atomically replaces the complete slot with a validated borrowed sequence.</summary>
     /// <param name="controls">The non-null candidate sequence.</param>
-    public void ReplaceAll(IEnumerable<Control> controls) => Registry.ReplaceAll(this, controls);
+    public void ReplaceAll(IEnumerable<ControlBase> controls) => Registry.ReplaceAll(this, controls);
 
     /// <summary>Gets the mutable storage reserved for registry commit operations.</summary>
-    public List<Control> Items { get; } = [];
+    public List<ControlBase> Items { get; } = [];
 
     /// <summary>Publishes one committed slot change outside structural state mutation.</summary>
     public void PublishChanged() => Changed?.Invoke();
 
     /// <summary>Removes a disposing child through its exact slot while disposal holds publication.</summary>
     /// <param name="control">The identical disposing child.</param>
-    public void RemoveForDisposalWithinPublication(Control control) =>
+    public void RemoveForDisposalWithinPublication(ControlBase control) =>
         Registry.RemoveForDisposalWithinPublication(this, control);
 
-    private int IndexOfIdentity(Control control)
+    private int IndexOfIdentity(ControlBase control)
     {
         for (var index = 0; index < Items.Count; index++)
         {

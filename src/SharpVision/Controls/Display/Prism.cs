@@ -17,7 +17,7 @@ public sealed class Prism: ContentControl
 {
     // A complete constructor Face outranks every theme state contribution and disables ambient
     // inheritance, permanently opting Prism out of visual-state feedback. Only the transparent
-    // background is Prism-specific; the rest matches the Control role's own normal defaults, so a
+    // background is Prism-specific; the rest matches the ControlBase role's own normal defaults, so a
     // partial FaceSet contribution keeps state behavior alive (see #162).
     private static readonly AppearanceProfileSet _prismAppearance = new(
         normal: new AppearanceSet(
@@ -128,7 +128,7 @@ public sealed class Prism: ContentControl
     /// <remarks>
     /// The cached draw callback and selector are borrowed synchronously by the canvas. Mutation
     /// provenance restricts the effect to owners written by the retained child inside its arranged
-    /// bounds and <see cref="Control.ContentBounds"/>, so empty content, underlay, this control's own
+    /// bounds and <see cref="ControlBase.ContentBounds"/>, so empty content, underlay, this control's own
     /// border and shadow, and cells outside the child are not recolored.
     /// </remarks>
     internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip)

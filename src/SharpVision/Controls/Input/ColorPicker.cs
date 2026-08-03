@@ -13,17 +13,10 @@ using DisplayText = Display.Text;
 using LayoutStack = Layout.Stack;
 /// <summary>Selects one terminal color through capability-adaptive retained controls.</summary>
 [PublicAPI]
-public sealed class ColorPicker: CompositeControl
+public sealed class ColorPicker: CompositeControl<ColorPickerStyle>
 {
-    private static Face DefaultStatusFace { get; } = new(
-        ThemeColor.ControlText,
-        Color.Transparent,
-        ThemeDecoration.NormalText,
-        Underline.None,
-        Color.Default);
-
     private readonly LayoutStack _monochromeRoot;
-    private readonly Control _rgbRoot;
+    private readonly ControlBase _rgbRoot;
     private readonly DisplayText _status;
     private bool _synchronizing;
     private Color _value = Color.Rgb(255, 0, 0);
@@ -31,7 +24,7 @@ public sealed class ColorPicker: CompositeControl
     #region Construction and public state
 
     /// <summary>Initializes a retained adaptive picker with an RGB-red detached value.</summary>
-    public ColorPicker()
+    public ColorPicker() : base(ColorPickerStyle.Definition)
     {
         TabNavigation = TabNavigation.Continue;
         Plane = new ColorPlane();
@@ -40,7 +33,7 @@ public sealed class ColorPicker: CompositeControl
         GreenSlider = CreateSlider(byte.MaxValue);
         BlueSlider = CreateSlider(byte.MaxValue);
         Preview = new ColorSwatch { Width = Length.Cells(10) };
-        _status = new DisplayText { Face = DefaultStatusFace };
+        _status = new DisplayText { Face = ColorPickerStyle.DefaultStatusFace };
         _rgbRoot = CreateRgbRoot();
         _monochromeRoot = CreateMonochromeRoot();
         var root = new Overlay { Children = { _rgbRoot, _monochromeRoot } };
@@ -69,27 +62,9 @@ public sealed class ColorPicker: CompositeControl
     /// <summary>Gets the active terminal color depth inherited from the application.</summary>
     public ColorDepth EffectiveColorDepth => Capabilities.ColorDepth;
 
-    /// <summary>Gets or sets the complete local presentation applied to the owned Sliders and
-    /// status readout, or null to let each use its own semantic profile.</summary>
-    /// <exception cref="InvalidOperationException">The attached ColorPicker is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The ColorPicker is disposed.</exception>
-    public ColorPickerStyle? Style
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                return;
-            }
-
-            ApplyStyle(value);
-        }
-    }
-
     /// <summary>Gets the resolved presentation currently applied to the owned Sliders and status
     /// readout.</summary>
-    public ColorPickerStyle ActualStyle => new(RedSlider.ActualStyle, _status.Face);
+    public override ColorPickerStyle ActualStyle => new(StyleSlot.Actual.SliderStyle, _status.Face);
 
     /// <summary>Gets the uppercase RGB readout, or DEFAULT for the terminal default color.</summary>
     internal string HexText => _status.Content;
@@ -243,14 +218,18 @@ public sealed class ColorPicker: CompositeControl
         BlueSlider.ValueChanged += OnRgbChanged;
     }
 
-    private void ApplyStyle(ColorPickerStyle? style)
+    /// <inheritdoc/>
+    protected override void OnStyleChanged(ColorPickerStyle previous, ColorPickerStyle current)
     {
+        _ = previous;
+        _ = current;
+        var style = Style;
         var sliderStyle = style?.SliderStyle;
         HueSlider.Style = sliderStyle;
         RedSlider.Style = sliderStyle;
         GreenSlider.Style = sliderStyle;
         BlueSlider.Style = sliderStyle;
-        var face = style?.StatusFace ?? DefaultStatusFace;
+        var face = style?.StatusFace ?? ColorPickerStyle.DefaultStatusFace;
         _status.Face = new Face(_status.Face.Foreground, face.Background, face.Attributes, face.Underline, face.UnderlineColor);
     }
 

@@ -6,9 +6,9 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Demonstrates the layout, participation, input, and box-model options shared by every control.</summary>
-internal sealed class ControlPane: CompositeControl
+internal sealed class ControlPane: CompositeControlBase
 {
-    /// <summary>Initializes the retained Control concept page.</summary>
+    /// <summary>Initializes the retained ControlBase concept page.</summary>
     internal ControlPane() => InitializeContent(CreateContent());
 
     /// <summary>The exact catalog/page name.</summary>

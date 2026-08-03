@@ -715,7 +715,7 @@ public sealed class PopupModalityTests
 
     /// <summary>Verifies removing an ancestor of an open popup — not the popup itself — still releases
     /// presentation, so the popup can reopen after the ancestor is reattached instead of permanently
-    /// failing FloatingSurface's already-open guard.</summary>
+    /// failing FloatingSurfaceBase's already-open guard.</summary>
     [Fact]
     public async Task Detach_WhenAncestorOfOpenPopupIsRemoved_ReleasesPresentationAndPermitsReopenAsync()
     {

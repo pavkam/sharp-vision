@@ -6,7 +6,7 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies the public single-content authoring role.</summary>
 public sealed class ContentControlTests
 {
-    /// <summary>Verifies the role is abstract, derives directly from Control, and exposes a non-virtual property.</summary>
+    /// <summary>Verifies the role is abstract, derives directly from ControlBase, and exposes a non-virtual property.</summary>
     [Fact]
     public void Type_WhenInspected_ExposesOneHonestSingleContentRole()
     {
@@ -17,9 +17,9 @@ public sealed class ContentControlTests
 
         typeof(ContentControl).IsPublic.ShouldBeTrue();
         typeof(ContentControl).IsAbstract.ShouldBeTrue();
-        typeof(ContentControl).BaseType.ShouldBe(typeof(Control));
+        typeof(ContentControl).BaseType.ShouldBe(typeof(ControlBase));
         _ = property.ShouldNotBeNull();
-        property.PropertyType.ShouldBe(typeof(Control));
+        property.PropertyType.ShouldBe(typeof(ControlBase));
         property.GetMethod!.IsVirtual.ShouldBeFalse();
         property.SetMethod!.IsVirtual.ShouldBeFalse();
         _ = callback.ShouldNotBeNull();
@@ -28,8 +28,8 @@ public sealed class ContentControlTests
         callback.IsFinal.ShouldBeFalse();
         callback.ReturnType.ShouldBe(typeof(void));
         callback.GetParameters().Select(parameter => parameter.ParameterType).ShouldBe([
-            typeof(Control),
-            typeof(Control)
+            typeof(ControlBase),
+            typeof(ControlBase)
         ]);
     }
 
@@ -533,7 +533,7 @@ public sealed class ContentControlTests
         };
         var engine = new LayoutEngine();
         var viewport = new Size(8, 2);
-        var observed = new List<Control>();
+        var observed = new List<ControlBase>();
         engine.Layout(owner, viewport);
         owner.PropertyChanged += (_, eventArgs) =>
         {

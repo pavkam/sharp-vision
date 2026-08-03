@@ -14,15 +14,16 @@ using LayoutStack = Layout.Stack;
 
 /// <summary>Displays hierarchical data as an expandable and collapsible tree of items.</summary>
 [PublicAPI]
-public sealed class TreeView: CompositeControl
+public sealed class TreeView: CompositeControlBase
 {
     /// <inheritdoc/>
     protected override ThemeRole ThemeRole => ThemeRole.Container;
     private readonly LayoutStack _itemsStack;
+    private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly CurrentItemNavigator _navigator;
     private readonly HashSet<TreeViewItem> _selectedItems = [];
     private TreeViewItem? _selectionAnchor;
-    private readonly List<Control> _flatBuffer = [];
+    private readonly List<ControlBase> _flatBuffer = [];
     private readonly List<TreeViewItemCollection> _walkItems = [];
     private readonly List<int> _walkIndex = [];
     private HashSet<TreeViewItem> _hooked = [];
@@ -41,40 +42,8 @@ public sealed class TreeView: CompositeControl
     /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
     public ScrollBarStyle? ScrollBarStyle
     {
-        get;
-        set
-        {
-            VerifyMutable();
-
-            if (field == value)
-            {
-                return;
-            }
-
-            var previous = ActualScrollBarStyle;
-            field = value;
-
-            // Forward the nullable value, never a substitute. Assigning a concrete style here
-            // would consume the bar's theming slot permanently, and the stack is private so no
-            // caller could reset it. The resolved value must be read back afterwards, because the
-            // bar is what resolves null.
-            _itemsStack.ScrollBarStyle = field;
-            var current = ActualScrollBarStyle;
-
-            // Chrome changes the reserved extent, so it needs a measure pass; everything else is
-            // appearance only.
-            var impact = previous.Chrome != current.Chrome
-                ? InvalidationImpact.Measure
-                : previous == current
-                    ? InvalidationImpact.None
-                    : InvalidationImpact.Render;
-            NotifyPropertyChanged(nameof(ScrollBarStyle), impact);
-
-            if (previous != current)
-            {
-                NotifyPropertyChanged(nameof(ActualScrollBarStyle), InvalidationImpact.None);
-            }
-        }
+        get => _scrollBarStyle.Local;
+        set => _scrollBarStyle.Local = value;
     }
 
     /// <summary>Gets the resolved style applied to the generated scrollbar.</summary>
@@ -82,7 +51,7 @@ public sealed class TreeView: CompositeControl
     /// Resolved by the bar itself, so a null local value reports whatever the active Theme or the
     /// library default supplies rather than an opinion this control baked in.
     /// </remarks>
-    public ScrollBarStyle ActualScrollBarStyle => _itemsStack.ActualScrollBarStyle;
+    public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
 
     /// <summary>Raised after the generated scroll container's offset commits.</summary>
     /// <remarks>
@@ -163,6 +132,10 @@ public sealed class TreeView: CompositeControl
         root.Children.Add(_itemsStack);
 
         InitializeContent(root);
+        _scrollBarStyle = InitializePartStyle(
+            Scrolling.ScrollBarStyle.ForwardingDefinition,
+            nameof(ScrollBarStyle));
+        BindStyle(_scrollBarStyle, _itemsStack, nameof(ScrollBarStyle));
         Items = new TreeViewItemCollection { Owner = this };
         Focusable = true;
         TabStop = true;
@@ -708,7 +681,7 @@ public sealed class TreeView: CompositeControl
         return false;
     }
 
-    private void CommitCurrent(Control current, Modifiers modifiers)
+    private void CommitCurrent(ControlBase current, Modifiers modifiers)
     {
         if (current is TreeViewItem item)
         {
@@ -953,7 +926,7 @@ public sealed class TreeView: CompositeControl
         _ = CommitSelection(retained);
     }
 
-    private void FlattenVisible(List<Control> destination)
+    private void FlattenVisible(List<ControlBase> destination)
     {
         // An explicit stack, because the hierarchy depth is caller-controlled and recursion here
         // would turn a valid deep tree into an unrecoverable StackOverflowException.
@@ -1004,7 +977,7 @@ public sealed class TreeView: CompositeControl
     // committed viewport height, rather than treating the viewport's cell height as an item
     // count (the defect #212 fixed for ListView's identical shape). At least one step always
     // happens because the loop advances before its first accumulated check.
-    private Control StepPage(List<Control> visible, int direction)
+    private ControlBase StepPage(List<ControlBase> visible, int direction)
     {
         var index = _navigator.Current is { } current ? visible.IndexOf(current) : -1;
 
@@ -1035,9 +1008,9 @@ public sealed class TreeView: CompositeControl
         }
     }
 
-    private List<Control> CollectVisibleItems()
+    private List<ControlBase> CollectVisibleItems()
     {
-        List<Control> result = [];
+        List<ControlBase> result = [];
 
         foreach (var child in _itemsStack.Children)
         {
@@ -1077,7 +1050,7 @@ public sealed class TreeView: CompositeControl
         }
     }
 
-    private static int IndexOf(List<Control> items, Control value)
+    private static int IndexOf(List<ControlBase> items, ControlBase value)
     {
         for (var index = 0; index < items.Count; index++)
         {

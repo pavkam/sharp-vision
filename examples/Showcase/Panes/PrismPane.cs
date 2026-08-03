@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents Prism directions, caller-driven animation, style preservation, and FIGlet composition.</summary>
-internal sealed class PrismPane: CompositeControl
+internal sealed class PrismPane: CompositeControlBase
 {
     /// <summary>The exact catalog and page name.</summary>
     internal const string Title = "Prism";

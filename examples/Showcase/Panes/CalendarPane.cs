@@ -9,7 +9,7 @@ using Text = SharpVision.Controls.Display.Text;
 using UiCalendar = Calendar;
 
 /// <summary>Documents single-date, interval, blocked-date, and rich-face Calendar behavior.</summary>
-internal sealed class CalendarPane: CompositeControl
+internal sealed class CalendarPane: CompositeControlBase
 {
     private static readonly DateOnly _month = new(2026, 7, 1);
 
