@@ -146,15 +146,15 @@ public sealed class BackendRendererTests
         diagnostic.Reason.ShouldBe(GraphicsPlacementSkipReason.FormatNotEncodable);
     }
 
-    /// <summary>Verifies a PNG this decoder cannot decode drops its placement silently on a
-    /// sixel-only backend rather than throwing out of the render, since its format is in
-    /// principle sixel-encodable and so does not reach the format diagnostic.</summary>
+    /// <summary>Verifies a PNG this decoder cannot decode reports its sixel fallback instead of
+    /// leaving the degradation silent merely because PNG is nominally sixel-encodable.</summary>
     [Fact]
-    public async Task RenderAsync_WhenPngCannotBeDecoded_DropsPlacementWithoutDiagnosticAsync()
+    public async Task RenderAsync_WhenPngCannotBeDecoded_ReportsFormatDiagnosticAsync()
     {
         using var renderer = new Renderer(new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false));
         await using var transport = new FakeTransport();
-        using var frame = Frame(Png(), new Rect(0, 0, 1, 1));
+        var image = Png();
+        using var frame = Frame(image, new Rect(0, 0, 1, 1));
         var profile = Profile();
 
         _ = await renderer.RenderAsync(
@@ -164,7 +164,9 @@ public sealed class BackendRendererTests
             new CellMetrics(1, 6),
             TestContext.Current.CancellationToken);
 
-        renderer.LastGraphicsDiagnostics.ShouldBeEmpty();
+        var diagnostic = renderer.LastGraphicsDiagnostics.ShouldHaveSingleItem();
+        diagnostic.ImageIdentity.ShouldBe(image.Identity);
+        diagnostic.Reason.ShouldBe(GraphicsPlacementSkipReason.FormatNotEncodable);
         var bytes = transport.Writes.ShouldHaveSingleItem();
         bytes.AsSpan().IndexOf("P0;1;0q"u8).ShouldBe(-1);
     }

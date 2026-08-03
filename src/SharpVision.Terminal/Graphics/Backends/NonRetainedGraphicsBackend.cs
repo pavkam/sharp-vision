@@ -97,13 +97,15 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             allowQuery: true));
         var encodable = new bool[back.PlacementCount];
         var metricDependent = new bool[back.PlacementCount];
+        var sixelImages = new ImageSource?[back.PlacementCount];
         var skippedPlacements = ClassifyPlacements(
             back,
             metrics,
             enableSixel,
             enableIterm,
             encodable,
-            metricDependent);
+            metricDependent,
+            sixelImages);
         var blocked = back.FindFallbackBlockedPlacements(encodable);
         var currentCount = CountRenderable(
             encodable,
@@ -141,12 +143,11 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
                     continue;
                 }
 
-                // A PNG source is sixel-eligible by format before decoding is attempted; a source
-                // this decoder cannot actually decode falls through to iTerm instead of being
-                // dropped, rather than losing a placement iTerm could otherwise have delivered
-                // (see #233).
-                if (TryGetSixelPixels(placement, metrics, enableSixel, out var pixels) &&
-                    TryWriteSixel(placement, pixels, output, remaining))
+                // Classification decodes PNG once so an unsupported source is observable and a
+                // supported source does not pay for the same decode twice in one frame.
+                if (sixelImages[index] is { } sixelImage &&
+                    TryGetSixelPixels(placement, metrics, enableSixel, out var pixels) &&
+                    TryWriteSixel(placement, sixelImage, pixels, output, remaining))
                 {
                     placementCount++;
                     continue;
@@ -296,16 +297,18 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
     // Skips a placement whose encoded size exceeds the shared buffer's remaining budget instead
     // of letting the write throw mid-frame — the caller has already re-checked maxOutputBytes
     // against what's actually left, not the full constant, so this is the deterministic
-    // degrade path the full-budget pre-check couldn't provide on its own (see #117). A PNG source
-    // this decoder does not support (interlaced, a bit depth other than 8, or indexed without a
-    // palette) degrades the same way, silently, rather than throwing out of a frame prepare, and
-    // so does one whose compressed pixel data does not actually match its declared IHDR
-    // dimensions — structurally valid enough to construct, not valid enough to decode (#233).
-    private bool TryWriteSixel(Placement placement, Rect pixels, IBufferWriter<byte> destination, int maxOutputBytes)
+    // degrade path the full-budget pre-check couldn't provide on its own (see #117). PNG decode
+    // failures are excluded during classification, before any cursor bytes can be written.
+    private bool TryWriteSixel(
+        Placement placement,
+        ImageSource image,
+        Rect pixels,
+        IBufferWriter<byte> destination,
+        int maxOutputBytes)
     {
         try
         {
-            WriteSixel(placement, pixels, destination, maxOutputBytes);
+            WriteSixel(placement, image, pixels, destination, maxOutputBytes);
             return true;
         }
         catch (ArgumentOutOfRangeException)
@@ -322,18 +325,14 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         }
     }
 
-    private void WriteSixel(Placement placement, Rect pixels, IBufferWriter<byte> destination, int maxOutputBytes)
+    private void WriteSixel(
+        Placement placement,
+        ImageSource image,
+        Rect pixels,
+        IBufferWriter<byte> destination,
+        int maxOutputBytes)
     {
-        var image = placement.Image!;
         var source = placement.Source;
-
-        // Decoded before the cursor move is written, not after, so a PNG this decoder cannot
-        // decode leaves no orphaned cursor-positioning bytes behind for TryWriteSixel to discard.
-        if (image.Format == Format.Png)
-        {
-            var rgba = image.Source.DecodeRgba();
-            image = ImageSource.FromDecodedRgba(image.Size, rgba);
-        }
 
         WriteCursor(new Point(placement.Destination.X, placement.Destination.Y), destination);
 
@@ -432,7 +431,8 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         bool enableSixel,
         bool enableIterm,
         Span<bool> encodable,
-        Span<bool> metricDependent)
+        Span<bool> metricDependent,
+        Span<ImageSource?> sixelImages)
     {
         List<GraphicsPlacementDiagnostic>? skipped = null;
 
@@ -445,16 +445,20 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
 
             var placement = frame.GetPlacement(index);
 
-            if (TryGetSixelPixels(placement, metrics, enableSixel, out _))
+            var sixelEligible = TryGetSixelPixels(placement, metrics, enableSixel, out _);
+
+            if (sixelEligible && TryGetSixelImage(placement, out var sixelImage))
             {
                 encodable[index] = true;
                 metricDependent[index] = true;
+                sixelImages[index] = sixelImage;
             }
             else if (CanEncodeIterm(placement, enableIterm))
             {
                 encodable[index] = true;
             }
-            else if (!IsFormatEncodable(placement.Image!.Format, enableSixel, enableIterm))
+            else if (!IsFormatEncodable(placement.Image!.Format, enableSixel, enableIterm) ||
+                     (sixelEligible && placement.Image.Format == Format.Png))
             {
                 // Isolated from the mode/rect/metrics checks above: this placement's format has
                 // no encodable path on any enabled protocol, distinct from an otherwise-encodable
@@ -470,6 +474,33 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         }
 
         return skipped;
+    }
+
+    private static bool TryGetSixelImage(Placement placement, [NotNullWhen(true)] out ImageSource? image)
+    {
+        image = placement.Image!;
+
+        if (image.Format == Format.Rgba)
+        {
+            return true;
+        }
+
+        try
+        {
+            var rgba = image.Source.DecodeRgba();
+            image = ImageSource.FromDecodedRgba(image.Size, rgba);
+            return true;
+        }
+        catch (NotSupportedException)
+        {
+            image = null;
+            return false;
+        }
+        catch (ArgumentException)
+        {
+            image = null;
+            return false;
+        }
     }
 
     private static bool IsFormatEncodable(Format format, bool enableSixel, bool enableIterm) =>
