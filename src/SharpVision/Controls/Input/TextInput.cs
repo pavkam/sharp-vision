@@ -803,6 +803,36 @@ public sealed class TextInput: ControlBase
         return position > 0 ? offsets[position - 1] : 0;
     }
 
+    /// <summary>Moves or extends the caret to the previous Unicode word start in O(word length)
+    /// instead of Edit.MovePreviousWord's O(n) per boundary step, by walking the cached boundary
+    /// offset array with an integer index instead of repeatedly calling Edit's O(n) PreviousBoundary
+    /// scan. Mirrors Edit.MovePreviousWord's exact two-loop algorithm, classifying each cached
+    /// offset with Edit.Kind (O(1): decodes only the rune at that offset). Holding Ctrl+Left through
+    /// a large document previously cost O(n) per boundary step crossed (see #42).</summary>
+    private EditResult MoveCaretPreviousWord(bool extend)
+    {
+        var (offsets, _, _) = BoundaryCache();
+        var startPosition = !extend && !_selection.IsEmpty ? _selection.Start : _selection.Caret;
+        var index = Array.BinarySearch(offsets, startPosition);
+        Debug.Assert(index >= 0, "The queried index is always a valid cached boundary.");
+
+        while (index > 0 && Edit.Kind(Text, offsets[index - 1]) != 2)
+        {
+            index--;
+        }
+
+        while (index > 0 && Edit.Kind(Text, offsets[index - 1]) == 2)
+        {
+            index--;
+        }
+
+        var caret = offsets[index];
+        var selection = extend ? new Selection(_selection.Anchor, caret) : new Selection(caret, caret);
+        return selection == _selection
+            ? new EditResult(Text, _selection, changed: false)
+            : new EditResult(Text, selection, changed: true);
+    }
+
     /// <summary>Looks up the non-word-wrap caret cell position for <paramref name="index"/> in
     /// O(log n) via the cached boundary/row/column arrays, replacing <see cref="Position"/>'s O(n)
     /// full-prefix rescan on every keystroke (see #42).</summary>
@@ -944,7 +974,7 @@ public sealed class TextInput: ControlBase
         if (eventArgs.Stroke.Code == Code.Left)
         {
             result = word
-                ? Edit.MovePreviousWord(Text, _selection, extend)
+                ? MoveCaretPreviousWord(extend)
                 : MoveCaretPrevious(extend);
         }
         else if (eventArgs.Stroke.Code == Code.Right)
