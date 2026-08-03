@@ -7,7 +7,7 @@ namespace SharpVision.Terminal.Terminfo;
 /// Owns one immutable terminal program as its original raw source bytes plus
 /// validated compiler operations, or identifies a built-in ANSI intrinsic.
 /// </summary>
-internal readonly struct Program
+internal readonly struct DescriptionProgram
 {
     private readonly byte[]? _representation;
     private readonly Operation[]? _operations;
@@ -22,7 +22,7 @@ internal readonly struct Program
     /// <exception cref="ArgumentException">The program exceeds a configured compilation bound.</exception>
     /// <exception cref="FormatException">The non-empty program is malformed or unsupported.</exception>
     /// <exception cref="NotSupportedException">The program requests hardware padding.</exception>
-    public Program(ReadOnlySpan<byte> representation, ProgramLimits? limits = null)
+    public DescriptionProgram(ReadOnlySpan<byte> representation, ProgramLimits? limits = null)
     {
         if (representation.IsEmpty)
         {
@@ -37,7 +37,7 @@ internal readonly struct Program
         this = representation.Compile(limits ?? ProgramLimits.Default);
     }
 
-    private Program(bool isIntrinsic)
+    private DescriptionProgram(bool isIntrinsic)
     {
         Debug.Assert(isIntrinsic, "The private constructor creates only intrinsic programs.");
         _representation = null;
@@ -52,7 +52,7 @@ internal readonly struct Program
     /// <param name="operations">The validated immutable instructions.</param>
     /// <param name="literals">The owned raw literal-byte pool.</param>
     /// <param name="maximumStackDepth">The maximum evaluation depth established by the compiler.</param>
-    public Program(
+    public DescriptionProgram(
         ReadOnlySpan<byte> representation,
         ReadOnlySpan<Operation> operations,
         ReadOnlySpan<byte> literals,
@@ -73,7 +73,7 @@ internal readonly struct Program
     /// Gets the marker for an operation already implemented by the built-in ANSI
     /// encoder without inventing placeholder compiler bytecode.
     /// </summary>
-    public static Program Intrinsic { get; } = new(isIntrinsic: true);
+    public static DescriptionProgram Intrinsic { get; } = new(isIntrinsic: true);
 
     /// <summary>Gets whether this value identifies a built-in ANSI encoder operation.</summary>
     public bool IsIntrinsic { get; }

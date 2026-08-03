@@ -212,11 +212,11 @@ public sealed class DescriptionLoaderTests
     private static TerminalProfile Profile(Suitability suitability) => new(
         new Description("fixture", DescriptionOrigin.Database, suitability),
         TerminalCapabilities.Conservative,
-        new Programs(new Dictionary<string, Program>
+        new Programs(new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-            ["sgr0"] = new Program("\u001b[0m"u8),
-            ["clear"] = new Program("\u001b[H\u001b[2J"u8)
+            ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+            ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+            ["clear"] = new DescriptionProgram("\u001b[H\u001b[2J"u8)
         }),
         KeyMap.Empty);
 

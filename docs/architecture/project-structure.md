@@ -59,7 +59,7 @@ Two such seams provide this boundary:
 
 | UI need                          | Public seam                             | Stays internal                                                    |
 | -------------------------------- | --------------------------------------- | ----------------------------------------------------------------- |
-| Expand named terminfo programs   | `TerminalProfile.CreateProgramExpander` | `Programs`, `Program`, `Interpreter`, `ProgramLimits`             |
+| Expand named terminfo programs   | `TerminalProfile.CreateProgramExpander` | `Programs`, `DescriptionProgram`, `Interpreter`, `ProgramLimits`  |
 | Obtain graphics-capable renderer | `Renderer(Capabilities, Route?, …)`     | `IGraphicsBackend`, `GraphicsBackendSelector`, backend identities |
 
 `TerminalContext` and the whole `Backends` namespace also stay internal. The

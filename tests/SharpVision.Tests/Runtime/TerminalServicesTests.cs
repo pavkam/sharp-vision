@@ -5,8 +5,6 @@ namespace SharpVision.Tests.Runtime;
 
 using Terminal.Kitty.Clipboard;
 
-using DescriptionProgram = Terminal.Terminfo.Program;
-
 /// <summary>Verifies the terminal output services facade exposes a working bell and clipboard.</summary>
 public sealed class TerminalServicesTests
 {

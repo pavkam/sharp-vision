@@ -77,7 +77,7 @@ internal sealed class Interpreter
     /// The program is empty, opaque, intrinsic, exceeds this interpreter's limits, or execution is concurrent.
     /// </exception>
     public void Write(
-        Program program,
+        DescriptionProgram program,
         ReadOnlySpan<object?> parameters,
         IBufferWriter<byte> destination)
     {
@@ -114,7 +114,7 @@ internal sealed class Interpreter
     /// <exception cref="DivideByZeroException">A selected division or modulo has a zero divisor.</exception>
     /// <exception cref="InvalidOperationException">The program cannot be interpreted or execution overlaps.</exception>
     public void WriteNumbers(
-        Program program,
+        DescriptionProgram program,
         ReadOnlySpan<int> parameters,
         IBufferWriter<byte> destination)
     {
@@ -152,7 +152,7 @@ internal sealed class Interpreter
     /// <exception cref="ArgumentNullException"><paramref name="destination"/> is null.</exception>
     /// <exception cref="InvalidOperationException">Execution overlaps another interpreter call.</exception>
     public bool TryWriteNumbersNonEmpty(
-        Program program,
+        DescriptionProgram program,
         ReadOnlySpan<int> parameters,
         IBufferWriter<byte> destination)
     {
@@ -219,8 +219,8 @@ internal sealed class Interpreter
     /// A program is empty, opaque, intrinsic, outside interpreter limits, or execution is concurrent.
     /// </exception>
     public void WritePair(
-        Program first,
-        Program second,
+        DescriptionProgram first,
+        DescriptionProgram second,
         IBufferWriter<byte> firstDestination,
         IBufferWriter<byte> secondDestination)
     {
@@ -403,7 +403,7 @@ internal sealed class Interpreter
         Array.Copy(_staticKinds, _stagedStaticKinds, _staticKinds.Length);
     }
 
-    private void ValidateProgram(Program program)
+    private void ValidateProgram(DescriptionProgram program)
     {
         if (!program.IsCompiled || program.IsIntrinsic || program.IsEmpty)
         {
@@ -429,7 +429,7 @@ internal sealed class Interpreter
         _parameterStrings[index] = value;
     }
 
-    private int Execute(Program program)
+    private int Execute(DescriptionProgram program)
     {
         var operations = program.Operations.Span;
         var literals = program.Literals.Span;

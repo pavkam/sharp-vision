@@ -24,16 +24,16 @@ public sealed class RendererTests
         var profile = new TerminalProfile(
             new Description("optional-failure", DescriptionOrigin.Database, Suitability.Usable),
             TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.Indexed256 },
-            new Programs(new Dictionary<string, Program>
+            new Programs(new Dictionary<string, DescriptionProgram>
             {
-                ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-                ["sgr0"] = new Program("\u001b[0m"u8),
-                ["clear"] = new Program("\u001b[2J"u8),
-                ["civis"] = new Program("\u001b[?25l"u8),
-                ["cnorm"] = new Program("\u001b[?25h"u8),
-                ["setaf"] = new Program(
+                ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+                ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+                ["clear"] = new DescriptionProgram("\u001b[2J"u8),
+                ["civis"] = new DescriptionProgram("\u001b[?25l"u8),
+                ["cnorm"] = new DescriptionProgram("\u001b[?25h"u8),
+                ["setaf"] = new DescriptionProgram(
                     "%?%p1%{1}%=%t\u001b[38;5;1m%eBROKEN%p1%PA%{1}%{0}%/%d%;"u8),
-                ["setab"] = new Program("\u001b[48;5;%p1%dm"u8)
+                ["setab"] = new DescriptionProgram("\u001b[48;5;%p1%dm"u8)
             }),
             KeyMap.Empty);
 
@@ -156,15 +156,15 @@ public sealed class RendererTests
         var profile = new TerminalProfile(
             new Description("required-actual-failure", DescriptionOrigin.Database, Suitability.Usable),
             TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.Indexed256 },
-            new Programs(new Dictionary<string, Program>
+            new Programs(new Dictionary<string, DescriptionProgram>
             {
-                ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-                ["sgr0"] = new Program("\u001b[0m"u8),
-                ["clear"] = new Program("%?%gA%{5}%=%t%{1}%{0}%/%d%e\u001b[2J%;"u8),
-                ["setaf"] = new Program("%p1%PA\u001b[38;5;%p1%dm"u8),
-                ["setab"] = new Program("\u001b[48;5;%p1%dm"u8),
-                ["civis"] = new Program("\u001b[?25l"u8),
-                ["cnorm"] = new Program("\u001b[?25h"u8)
+                ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+                ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+                ["clear"] = new DescriptionProgram("%?%gA%{5}%=%t%{1}%{0}%/%d%e\u001b[2J%;"u8),
+                ["setaf"] = new DescriptionProgram("%p1%PA\u001b[38;5;%p1%dm"u8),
+                ["setab"] = new DescriptionProgram("\u001b[48;5;%p1%dm"u8),
+                ["civis"] = new DescriptionProgram("\u001b[?25l"u8),
+                ["cnorm"] = new DescriptionProgram("\u001b[?25h"u8)
             }),
             KeyMap.Empty);
         _ = await renderer.RenderAsync(
@@ -197,15 +197,15 @@ public sealed class RendererTests
         var profile = new TerminalProfile(
             new Description("cursor-live-failure", DescriptionOrigin.Database, Suitability.Usable),
             TerminalCapabilities.Conservative,
-            new Programs(new Dictionary<string, Program>
+            new Programs(new Dictionary<string, DescriptionProgram>
             {
-                ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-                ["sgr0"] = new Program("\u001b[0m"u8),
-                ["clear"] = new Program("\u001b[2J"u8),
-                ["civis"] = new Program("\u001b[?25l"u8),
-                ["cnorm"] = new Program("\u001b[?25h"u8),
-                ["Ss"] = new Program(shapeSource),
-                ["Se"] = new Program("\u001b[0 q"u8)
+                ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+                ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+                ["clear"] = new DescriptionProgram("\u001b[2J"u8),
+                ["civis"] = new DescriptionProgram("\u001b[?25l"u8),
+                ["cnorm"] = new DescriptionProgram("\u001b[?25h"u8),
+                ["Ss"] = new DescriptionProgram(shapeSource),
+                ["Se"] = new DescriptionProgram("\u001b[0 q"u8)
             }),
             KeyMap.Empty);
 
@@ -725,16 +725,16 @@ public sealed class RendererTests
     private static TerminalProfile CreateStatefulProfile(string name, bool failingNormalCursor) => new(
         new Description(name, DescriptionOrigin.Database, Suitability.Usable),
         TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.Indexed256 },
-        new Programs(new Dictionary<string, Program>
+        new Programs(new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-            ["sgr0"] = new Program("\u001b[0m"u8),
-            ["clear"] = new Program("\u001b[2J"u8),
-            ["setaf"] = new Program("%p1%PA\u001b[38;5;%p1%dm"u8),
-            ["setab"] = new Program("\u001b[48;5;%p1%dm"u8),
-            ["bold"] = new Program("\u001b[%gA%dm"u8),
-            ["civis"] = new Program("\u001b[?25l"u8),
-            ["cnorm"] = new Program(
+            ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+            ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+            ["clear"] = new DescriptionProgram("\u001b[2J"u8),
+            ["setaf"] = new DescriptionProgram("%p1%PA\u001b[38;5;%p1%dm"u8),
+            ["setab"] = new DescriptionProgram("\u001b[48;5;%p1%dm"u8),
+            ["bold"] = new DescriptionProgram("\u001b[%gA%dm"u8),
+            ["civis"] = new DescriptionProgram("\u001b[?25l"u8),
+            ["cnorm"] = new DescriptionProgram(
                 failingNormalCursor
                     ? "%?%gA%{9}%=%t%{1}%{0}%/%d%e\u001b[?25h%;"u8
                     : "\u001b[?25h"u8)
@@ -743,25 +743,25 @@ public sealed class RendererTests
 
     private static TerminalProfile CreateFailingRequiredProfile(string failingProgram)
     {
-        var programs = new Dictionary<string, Program>
+        var programs = new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-            ["sgr0"] = new Program("\u001b[0m"u8),
-            ["clear"] = new Program("\u001b[2J"u8),
-            ["setaf"] = new Program("\u001b[38;5;%p1%dm"u8),
-            ["setab"] = new Program("\u001b[48;5;%p1%dm"u8),
-            ["civis"] = new Program("\u001b[?25l"u8),
-            ["cnorm"] = new Program("\u001b[?25h"u8)
+            ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+            ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+            ["clear"] = new DescriptionProgram("\u001b[2J"u8),
+            ["setaf"] = new DescriptionProgram("\u001b[38;5;%p1%dm"u8),
+            ["setab"] = new DescriptionProgram("\u001b[48;5;%p1%dm"u8),
+            ["civis"] = new DescriptionProgram("\u001b[?25l"u8),
+            ["cnorm"] = new DescriptionProgram("\u001b[?25h"u8)
         };
 
         if (string.Equals(failingProgram, "ed", StringComparison.Ordinal))
         {
             _ = programs.Remove("clear");
-            programs["el"] = new Program("\u001b[K"u8);
-            programs["ed"] = new Program("%p1%d"u8);
+            programs["el"] = new DescriptionProgram("\u001b[K"u8);
+            programs["ed"] = new DescriptionProgram("%p1%d"u8);
         }
 
-        programs[failingProgram] = new Program("%p1%d"u8);
+        programs[failingProgram] = new DescriptionProgram("%p1%d"u8);
 
         return new TerminalProfile(
             new Description("failing-required", DescriptionOrigin.Database, Suitability.Usable),
@@ -773,13 +773,13 @@ public sealed class RendererTests
     private static TerminalProfile CreateProfile(ReadOnlySpan<byte> cup) => new(
         new Description("renderer-test", DescriptionOrigin.Database, Suitability.Usable),
         TerminalCapabilities.Conservative,
-        new Programs(new Dictionary<string, Program>
+        new Programs(new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program(cup),
-            ["sgr0"] = new Program("\u001b[0m"u8),
-            ["clear"] = new Program("\u001b[2J"u8),
-            ["civis"] = new Program("\u001b[?25l"u8),
-            ["cnorm"] = new Program("\u001b[?25h"u8)
+            ["cup"] = new DescriptionProgram(cup),
+            ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+            ["clear"] = new DescriptionProgram("\u001b[2J"u8),
+            ["civis"] = new DescriptionProgram("\u001b[?25l"u8),
+            ["cnorm"] = new DescriptionProgram("\u001b[?25h"u8)
         }),
         KeyMap.Empty);
 }

@@ -11,12 +11,12 @@ public sealed class ProgramsTests
     [Fact]
     public void IsFullScreenReady_WhenRequiredProgramsUseSharedConstants_IsSatisfiedByExactNames()
     {
-        var programs = new Programs(new Dictionary<string, Program>
+        var programs = new Programs(new Dictionary<string, DescriptionProgram>
         {
-            [CapabilityNames.Cup] = new Program("[%i%p1%d;%p2%dH"u8),
-            [CapabilityNames.Sgr0] = new Program("[0m"u8),
-            [CapabilityNames.El] = new Program("[K"u8),
-            [CapabilityNames.Ed] = new Program("[J"u8)
+            [CapabilityNames.Cup] = new DescriptionProgram("[%i%p1%d;%p2%dH"u8),
+            [CapabilityNames.Sgr0] = new DescriptionProgram("[0m"u8),
+            [CapabilityNames.El] = new DescriptionProgram("[K"u8),
+            [CapabilityNames.Ed] = new DescriptionProgram("[J"u8)
         });
 
         programs.IsFullScreenReady.ShouldBeTrue();
@@ -34,7 +34,7 @@ public sealed class ProgramsTests
     public void IsFullScreenReady_WhenRequiredContractCannotExecute_IsFalse(string name, string source)
     {
         var values = CorePrograms();
-        values[name] = new Program(Encoding.ASCII.GetBytes(source));
+        values[name] = new DescriptionProgram(Encoding.ASCII.GetBytes(source));
         var programs = new Programs(values);
 
         programs.IsFullScreenReady.ShouldBeFalse();
@@ -54,9 +54,9 @@ public sealed class ProgramsTests
     [InlineData("Setulc", "%{1}%PA")]
     public void Has_WhenRendererContractCannotExecute_IsFalse(string name, string source)
     {
-        var programs = new Programs(new Dictionary<string, Program>
+        var programs = new Programs(new Dictionary<string, DescriptionProgram>
         {
-            [name] = new Program(Encoding.ASCII.GetBytes(source))
+            [name] = new DescriptionProgram(Encoding.ASCII.GetBytes(source))
         });
 
         programs.Has(name).ShouldBeFalse();
@@ -69,10 +69,10 @@ public sealed class ProgramsTests
     [InlineData("%?%p1%{1}%=%tGOOD%ePARTIAL%p1%PA%{1}%{0}%/%d%;")]
     public void TryWrite_WhenActualParametersDoNotProduceOutput_ReturnsFalseAndRollsBack(string source)
     {
-        var programs = new Programs(new Dictionary<string, Program>
+        var programs = new Programs(new Dictionary<string, DescriptionProgram>
         {
-            ["setaf"] = new Program(Encoding.ASCII.GetBytes(source)),
-            ["read-static"] = new Program("%gA%d"u8)
+            ["setaf"] = new DescriptionProgram(Encoding.ASCII.GetBytes(source)),
+            ["read-static"] = new DescriptionProgram("%gA%d"u8)
         });
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
@@ -104,10 +104,10 @@ public sealed class ProgramsTests
         CapabilityNames.Rmkx.ShouldBe("rmkx");
     }
 
-    private static Dictionary<string, Program> CorePrograms() => new()
+    private static Dictionary<string, DescriptionProgram> CorePrograms() => new()
     {
-        ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-        ["sgr0"] = new Program("\u001b[0m"u8),
-        ["clear"] = new Program("\u001b[2J"u8)
+        ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+        ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+        ["clear"] = new DescriptionProgram("\u001b[2J"u8)
     };
 }

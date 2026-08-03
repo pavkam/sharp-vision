@@ -21,12 +21,12 @@ public sealed class TerminalProfileTests
             "xterm-direct",
             DescriptionOrigin.Database,
             Suitability.Usable);
-        var programs = new Programs(new Dictionary<string, Program>
+        var programs = new Programs(new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program([1]),
-            ["sgr0"] = new Program([2]),
-            ["clear"] = new Program([3]),
-            ["Ms"] = new Program("\u001b]52;%p1%s;%p2%s\a"u8)
+            ["cup"] = new DescriptionProgram([1]),
+            ["sgr0"] = new DescriptionProgram([2]),
+            ["clear"] = new DescriptionProgram([3]),
+            ["Ms"] = new DescriptionProgram("\u001b]52;%p1%s;%p2%s\a"u8)
         });
 
         // Act
@@ -49,16 +49,16 @@ public sealed class TerminalProfileTests
             BracketedPaste = claimed,
             CellMouse = claimed
         };
-        var programs = new Programs(new Dictionary<string, Program>
+        var programs = new Programs(new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program([1]),
-            ["sgr0"] = new Program([2]),
-            ["clear"] = new Program([3]),
-            ["fe"] = new Program([4]),
-            ["fd"] = new Program([5]),
-            ["BE"] = new Program([6]),
-            ["BD"] = new Program([7]),
-            ["kmous"] = new Program([8])
+            ["cup"] = new DescriptionProgram([1]),
+            ["sgr0"] = new DescriptionProgram([2]),
+            ["clear"] = new DescriptionProgram([3]),
+            ["fe"] = new DescriptionProgram([4]),
+            ["fd"] = new DescriptionProgram([5]),
+            ["BE"] = new DescriptionProgram([6]),
+            ["BD"] = new DescriptionProgram([7]),
+            ["kmous"] = new DescriptionProgram([8])
         });
 
         var profile = new TerminalProfile(DatabaseDescription(), capabilities, programs, KeyMap.Empty);
@@ -86,11 +86,11 @@ public sealed class TerminalProfileTests
         };
         var values = names.ToDictionary(
             name => name,
-            _ => new Program([1]),
+            _ => new DescriptionProgram([1]),
             StringComparer.Ordinal);
-        values["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8);
-        values["sgr0"] = new Program("\u001b[0m"u8);
-        values["clear"] = new Program("\u001b[2J"u8);
+        values["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8);
+        values["sgr0"] = new DescriptionProgram("\u001b[0m"u8);
+        values["clear"] = new DescriptionProgram("\u001b[2J"u8);
         var programs = new Programs(values);
 
         var profile = new TerminalProfile(DatabaseDescription(), capabilities, programs, KeyMap.Empty);
@@ -295,11 +295,11 @@ public sealed class TerminalProfileTests
     [Fact]
     public void WithCapabilities_WhenCapabilitiesChange_RetainsDescriptionProgramsAndKeys()
     {
-        var programs = new Programs(new Dictionary<string, Program>
+        var programs = new Programs(new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program([1]),
-            ["sgr0"] = new Program([2]),
-            ["clear"] = new Program([3])
+            ["cup"] = new DescriptionProgram([1]),
+            ["sgr0"] = new DescriptionProgram([2]),
+            ["clear"] = new DescriptionProgram([3])
         });
         var keyMap = new KeyMap([new KeyBinding([0x1b, (byte) '[', (byte) 'A'], Code.Up)]);
         var profile = new TerminalProfile(
@@ -330,10 +330,10 @@ public sealed class TerminalProfileTests
             "database",
             DescriptionOrigin.Database,
             Suitability.Usable);
-        var programs = new Programs(new Dictionary<string, Program>
+        var programs = new Programs(new Dictionary<string, DescriptionProgram>
         {
-            ["sgr0"] = new Program([1]),
-            ["clear"] = new Program([2])
+            ["sgr0"] = new DescriptionProgram([1]),
+            ["clear"] = new DescriptionProgram([2])
         });
 
         // Act
@@ -360,11 +360,11 @@ public sealed class TerminalProfileTests
             "database",
             DescriptionOrigin.Database,
             Suitability.Usable);
-        var programs = new Programs(new Dictionary<string, Program>
+        var programs = new Programs(new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program([]),
-            ["sgr0"] = new Program([1]),
-            ["clear"] = new Program([2])
+            ["cup"] = new DescriptionProgram([]),
+            ["sgr0"] = new DescriptionProgram([1]),
+            ["clear"] = new DescriptionProgram([2])
         });
 
         // Act
@@ -384,11 +384,11 @@ public sealed class TerminalProfileTests
     {
         // Arrange
         var cursorInstructions = "\u001b[%i%p1%d;%p2%dH"u8.ToArray();
-        var programSource = new Dictionary<string, Program>
+        var programSource = new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program(cursorInstructions),
-            ["sgr0"] = new Program("\u001b[0m"u8),
-            ["clear"] = new Program("\u001b[2J"u8)
+            ["cup"] = new DescriptionProgram(cursorInstructions),
+            ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+            ["clear"] = new DescriptionProgram("\u001b[2J"u8)
         };
         byte[] keySequence = [0x1b, (byte) '[', (byte) 'A'];
         var bindingSource = new List<KeyBinding>
@@ -489,12 +489,12 @@ public sealed class TerminalProfileTests
             "xterm-direct",
             DescriptionOrigin.Database,
             Suitability.Usable);
-        var programs = new Programs(new Dictionary<string, Program>
+        var programs = new Programs(new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program([1]),
-            ["sgr0"] = new Program([2]),
-            ["clear"] = new Program([3]),
-            ["Ms"] = new Program([])
+            ["cup"] = new DescriptionProgram([1]),
+            ["sgr0"] = new DescriptionProgram([2]),
+            ["clear"] = new DescriptionProgram([3]),
+            ["Ms"] = new DescriptionProgram([])
         });
 
         // Act
@@ -541,16 +541,16 @@ public sealed class TerminalProfileTests
 
     private static Programs DatabasePrograms(bool includeOsc52)
     {
-        var values = new Dictionary<string, Program>
+        var values = new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-            ["sgr0"] = new Program("\u001b[0m"u8),
-            ["clear"] = new Program("\u001b[2J"u8)
+            ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+            ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+            ["clear"] = new DescriptionProgram("\u001b[2J"u8)
         };
 
         if (includeOsc52)
         {
-            values.Add("Ms", new Program("\u001b]52;%p1%s;%p2%s\a"u8));
+            values.Add("Ms", new DescriptionProgram("\u001b]52;%p1%s;%p2%s\a"u8));
         }
 
         return new Programs(values);

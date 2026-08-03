@@ -11,7 +11,7 @@ using Capabilities;
 /// </summary>
 internal sealed class Programs
 {
-    private readonly Dictionary<string, Program> _values;
+    private readonly Dictionary<string, DescriptionProgram> _values;
     private long _validatedContracts;
     private long _executableContracts;
     private int _validatedPairs;
@@ -21,11 +21,11 @@ internal sealed class Programs
     /// <param name="programs">The non-null named programs to copy.</param>
     /// <exception cref="ArgumentNullException"><paramref name="programs"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">A program name is empty or contains only white space.</exception>
-    public Programs(IReadOnlyDictionary<string, Program> programs)
+    public Programs(IReadOnlyDictionary<string, DescriptionProgram> programs)
     {
         ArgumentNullException.ThrowIfNull(programs);
 
-        _values = new Dictionary<string, Program>(programs.Count, StringComparer.Ordinal);
+        _values = new Dictionary<string, DescriptionProgram>(programs.Count, StringComparer.Ordinal);
 
         foreach (var pair in programs)
         {
@@ -36,7 +36,7 @@ internal sealed class Programs
     }
 
     /// <summary>Gets the stable empty compiled-program aggregate.</summary>
-    public static Programs Empty { get; } = new(new Dictionary<string, Program>());
+    public static Programs Empty { get; } = new(new Dictionary<string, DescriptionProgram>());
 
     /// <summary>Gets the number of retained named programs.</summary>
     public int Count => _values.Count;
@@ -98,7 +98,7 @@ internal sealed class Programs
     /// <returns><see langword="true"/> when the name is retained, including an empty program.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="name"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="name"/> is empty or contains only white space.</exception>
-    public bool TryGet(string name, out Program program)
+    public bool TryGet(string name, out DescriptionProgram program)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
@@ -264,7 +264,7 @@ internal sealed class Programs
         return true;
     }
 
-    private bool IsExecutableContract(string name, Program program, int contract)
+    private bool IsExecutableContract(string name, DescriptionProgram program, int contract)
     {
         var bit = 1L << contract;
         var validated = Volatile.Read(ref _validatedContracts);
@@ -295,7 +295,7 @@ internal sealed class Programs
         }
     }
 
-    private static bool ClassifyExecutableContract(string name, Program program)
+    private static bool ClassifyExecutableContract(string name, DescriptionProgram program)
     {
         var expected = ExpectedParameterCount(name);
 
@@ -403,7 +403,7 @@ internal sealed class Programs
         }
     }
 
-    private static bool ProbeProgram(string name, Program program, int expected)
+    private static bool ProbeProgram(string name, DescriptionProgram program, int expected)
     {
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
@@ -429,7 +429,7 @@ internal sealed class Programs
         }
     }
 
-    private static bool ProbeStringProgram(Program program)
+    private static bool ProbeStringProgram(DescriptionProgram program)
     {
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();

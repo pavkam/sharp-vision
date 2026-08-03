@@ -22,7 +22,7 @@ public sealed class DescriptionEncoderTests
         var programs = CorePrograms();
         _ = programs.Remove("civis");
         _ = programs.Remove("cnorm");
-        programs[program] = new Program(program == "civis" ? "HIDE"u8 : "SHOW"u8);
+        programs[program] = new DescriptionProgram(program == "civis" ? "HIDE"u8 : "SHOW"u8);
         var profile = CreateProfile(ColorDepth.Monochrome, programs);
         var destination = new ArrayBufferWriter<byte>();
 
@@ -49,14 +49,14 @@ public sealed class DescriptionEncoderTests
         _ = expected.Canvas.Draw("x", default);
         expected.SetCursor(default, visible: true, CursorShape.Block);
         var programs = CorePrograms();
-        programs["bold"] = new Program("%{1}%PA"u8);
-        programs["setaf"] = new Program("WRONG-COLOR"u8);
-        programs["setab"] = new Program("\u001b[48;5;%p1%dm"u8);
-        programs["op"] = new Program("%p1%d"u8);
-        programs["el"] = new Program("%{1}%PA"u8);
-        programs["Ss"] = new Program("WRONG-SHAPE"u8);
-        programs["Se"] = new Program("\u001b[0 q"u8);
-        programs["Setulc"] = new Program("%{1}%PA"u8);
+        programs["bold"] = new DescriptionProgram("%{1}%PA"u8);
+        programs["setaf"] = new DescriptionProgram("WRONG-COLOR"u8);
+        programs["setab"] = new DescriptionProgram("\u001b[48;5;%p1%dm"u8);
+        programs["op"] = new DescriptionProgram("%p1%d"u8);
+        programs["el"] = new DescriptionProgram("%{1}%PA"u8);
+        programs["Ss"] = new DescriptionProgram("WRONG-SHAPE"u8);
+        programs["Se"] = new DescriptionProgram("\u001b[0 q"u8);
+        programs["Setulc"] = new DescriptionProgram("%{1}%PA"u8);
         var supported = new Feature(CapabilitySupport.Supported, Origin.Database);
         var profile = new TerminalProfile(
             new Description(
@@ -93,8 +93,8 @@ public sealed class DescriptionEncoderTests
         using Frame expected = new(new Size(2, 1));
         _ = expected.Canvas.Draw("xy", default);
         var programs = CorePrograms();
-        programs["setaf"] = new Program("%?%p1%{1}%=%t\u001b[38;5;1m%;"u8);
-        programs["setab"] = new Program("\u001b[48;5;%p1%dm"u8);
+        programs["setaf"] = new DescriptionProgram("%?%p1%{1}%=%t\u001b[38;5;1m%;"u8);
+        programs["setab"] = new DescriptionProgram("\u001b[48;5;%p1%dm"u8);
         var profile = CreateProfile(ColorDepth.Indexed256, programs);
         var destination = new ArrayBufferWriter<byte>();
 
@@ -114,13 +114,13 @@ public sealed class DescriptionEncoderTests
     {
         using Frame frame = new(new Size(2, 1));
         _ = frame.Canvas.Draw("ok", default);
-        var profile = CreateProfile(ColorDepth.Monochrome, new Dictionary<string, Program>
+        var profile = CreateProfile(ColorDepth.Monochrome, new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program("\u001b[%i%p1%d;%p2%df"u8),
-            ["sgr0"] = new Program("\u001b[m"u8),
-            ["clear"] = new Program("\u001b[2J\u001b[H"u8),
-            ["civis"] = new Program("\u001b[?25l"u8),
-            ["cnorm"] = new Program("\u001b[?25h"u8)
+            ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%df"u8),
+            ["sgr0"] = new DescriptionProgram("\u001b[m"u8),
+            ["clear"] = new DescriptionProgram("\u001b[2J\u001b[H"u8),
+            ["civis"] = new DescriptionProgram("\u001b[?25l"u8),
+            ["cnorm"] = new DescriptionProgram("\u001b[?25h"u8)
         });
         var destination = new ArrayBufferWriter<byte>();
         var screen = new VirtualScreen(frame.Size);
@@ -139,14 +139,14 @@ public sealed class DescriptionEncoderTests
     {
         using Frame frame = new(new Size(2, 1));
         _ = frame.Canvas.Draw("ok", default);
-        var profile = CreateProfile(ColorDepth.Monochrome, new Dictionary<string, Program>
+        var profile = CreateProfile(ColorDepth.Monochrome, new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program("\u001b[%i%p1%d;%p2%df"u8),
-            ["sgr0"] = new Program("\u001b[m"u8),
-            ["el"] = new Program("\u001b[K"u8),
-            ["ed"] = new Program("\u001b[2J"u8),
-            ["civis"] = new Program("\u001b[?25l"u8),
-            ["cnorm"] = new Program("\u001b[?25h"u8)
+            ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%df"u8),
+            ["sgr0"] = new DescriptionProgram("\u001b[m"u8),
+            ["el"] = new DescriptionProgram("\u001b[K"u8),
+            ["ed"] = new DescriptionProgram("\u001b[2J"u8),
+            ["civis"] = new DescriptionProgram("\u001b[?25l"u8),
+            ["cnorm"] = new DescriptionProgram("\u001b[?25h"u8)
         });
         var destination = new ArrayBufferWriter<byte>();
         var screen = new VirtualScreen(frame.Size);
@@ -170,14 +170,14 @@ public sealed class DescriptionEncoderTests
             new CellStyle(Color.Rgb(1, 2, 3), Color.Rgb(4, 5, 6)));
         using Frame expected = new(new Size(1, 1));
         _ = expected.Canvas.Draw("x", default);
-        var profile = CreateProfile(ColorDepth.TrueColor, new Dictionary<string, Program>
+        var profile = CreateProfile(ColorDepth.TrueColor, new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-            ["sgr0"] = new Program("\u001b[0m"u8),
-            ["clear"] = new Program("\u001b[2J"u8),
-            ["setrgbf"] = new Program("\u001b[38;2;%p1%d;%p2%d;%p3%dm"u8),
-            ["civis"] = new Program("\u001b[?25l"u8),
-            ["cnorm"] = new Program("\u001b[?25h"u8)
+            ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+            ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+            ["clear"] = new DescriptionProgram("\u001b[2J"u8),
+            ["setrgbf"] = new DescriptionProgram("\u001b[38;2;%p1%d;%p2%d;%p3%dm"u8),
+            ["civis"] = new DescriptionProgram("\u001b[?25l"u8),
+            ["cnorm"] = new DescriptionProgram("\u001b[?25h"u8)
         });
         var destination = new ArrayBufferWriter<byte>();
 
@@ -220,18 +220,18 @@ public sealed class DescriptionEncoderTests
         frame.SetCursor(new Point(1, 0), visible: true, CursorShape.Underline);
         var profile = CreateProfile(
             ColorDepth.Indexed256,
-            new Dictionary<string, Program>
+            new Dictionary<string, DescriptionProgram>
             {
-                ["cup"] = new Program("\u001b[%i%p1%d;%p2%df"u8),
-                ["sgr0"] = new Program("\u001b[0m"u8),
-                ["clear"] = new Program("\u001b[2J"u8),
-                ["bold"] = new Program("\u001b[1m"u8),
-                ["setaf"] = new Program("\u001b[38;5;%p1%dm"u8),
-                ["setab"] = new Program("\u001b[48;5;%p1%dm"u8),
-                ["civis"] = new Program("\u001b[?25l"u8),
-                ["cnorm"] = new Program("\u001b[?25h"u8),
-                ["Ss"] = new Program("\u001b[%p1%d q"u8),
-                ["Se"] = new Program("\u001b[0 q"u8)
+                ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%df"u8),
+                ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+                ["clear"] = new DescriptionProgram("\u001b[2J"u8),
+                ["bold"] = new DescriptionProgram("\u001b[1m"u8),
+                ["setaf"] = new DescriptionProgram("\u001b[38;5;%p1%dm"u8),
+                ["setab"] = new DescriptionProgram("\u001b[48;5;%p1%dm"u8),
+                ["civis"] = new DescriptionProgram("\u001b[?25l"u8),
+                ["cnorm"] = new DescriptionProgram("\u001b[?25h"u8),
+                ["Ss"] = new DescriptionProgram("\u001b[%p1%d q"u8),
+                ["Se"] = new DescriptionProgram("\u001b[0 q"u8)
             });
         var destination = new ArrayBufferWriter<byte>();
 
@@ -253,14 +253,14 @@ public sealed class DescriptionEncoderTests
         _ = frame.Canvas.Draw("x", default, new CellStyle(Color.Rgb(255, 0, 0)));
         var profile = CreateProfile(
             ColorDepth.Basic16,
-            new Dictionary<string, Program>
+            new Dictionary<string, DescriptionProgram>
             {
-                ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-                ["sgr0"] = new Program("\u001b[0m"u8),
-                ["clear"] = new Program("\u001b[2J"u8),
-                ["setaf"] = new Program("\u001b[38;5;%p1%dm"u8),
-                ["setab"] = new Program("\u001b[48;5;%p1%dm"u8),
-                ["setrgbf"] = new Program("RGB(%p1%d,%p2%d,%p3%d)"u8)
+                ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+                ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+                ["clear"] = new DescriptionProgram("\u001b[2J"u8),
+                ["setaf"] = new DescriptionProgram("\u001b[38;5;%p1%dm"u8),
+                ["setab"] = new DescriptionProgram("\u001b[48;5;%p1%dm"u8),
+                ["setrgbf"] = new DescriptionProgram("RGB(%p1%d,%p2%d,%p3%d)"u8)
             });
         var destination = new ArrayBufferWriter<byte>();
 
@@ -276,11 +276,11 @@ public sealed class DescriptionEncoderTests
     {
         using Frame frame = new(new Size(1, 1));
         _ = frame.Canvas.Draw("x", default, new CellStyle(attributes: Attributes.Italic));
-        var profile = CreateProfile(ColorDepth.Monochrome, new Dictionary<string, Program>
+        var profile = CreateProfile(ColorDepth.Monochrome, new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-            ["sgr0"] = new Program("\u001b[0m"u8),
-            ["clear"] = new Program("\u001b[2J"u8)
+            ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+            ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+            ["clear"] = new DescriptionProgram("\u001b[2J"u8)
         });
         var destination = new ArrayBufferWriter<byte>();
 
@@ -299,16 +299,16 @@ public sealed class DescriptionEncoderTests
         frame.Clear(new CellStyle(background: ReferenceColors.Get(4)));
         var profile = CreateProfile(
             ColorDepth.Indexed256,
-            new Dictionary<string, Program>
+            new Dictionary<string, DescriptionProgram>
             {
-                ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-                ["sgr0"] = new Program("\u001b[0m"u8),
-                ["clear"] = new Program("\u001b[2J"u8),
-                ["setab"] = new Program("\u001b[48;5;%p1%dm"u8),
-                ["setaf"] = new Program("\u001b[38;5;%p1%dm"u8),
-                ["el"] = new Program("\u001b[0K"u8),
-                ["civis"] = new Program("\u001b[?25l"u8),
-                ["cnorm"] = new Program("\u001b[?25h"u8)
+                ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+                ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+                ["clear"] = new DescriptionProgram("\u001b[2J"u8),
+                ["setab"] = new DescriptionProgram("\u001b[48;5;%p1%dm"u8),
+                ["setaf"] = new DescriptionProgram("\u001b[38;5;%p1%dm"u8),
+                ["el"] = new DescriptionProgram("\u001b[0K"u8),
+                ["civis"] = new DescriptionProgram("\u001b[?25l"u8),
+                ["cnorm"] = new DescriptionProgram("\u001b[?25h"u8)
             },
             backColorErase: backColorErase);
         var destination = new ArrayBufferWriter<byte>();
@@ -335,13 +335,13 @@ public sealed class DescriptionEncoderTests
         _ = frame.Canvas.Draw("a界", default);
         var profile = CreateProfile(
             ColorDepth.Monochrome,
-            new Dictionary<string, Program>
+            new Dictionary<string, DescriptionProgram>
             {
-                ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-                ["sgr0"] = new Program("\u001b[0m"u8),
-                ["clear"] = new Program("\u001b[2J"u8),
-                ["civis"] = new Program("\u001b[?25l"u8),
-                ["cnorm"] = new Program("\u001b[?25h"u8)
+                ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+                ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+                ["clear"] = new DescriptionProgram("\u001b[2J"u8),
+                ["civis"] = new DescriptionProgram("\u001b[?25l"u8),
+                ["cnorm"] = new DescriptionProgram("\u001b[?25h"u8)
             },
             automaticMargins: automaticMargins,
             eatNewlineGlitch: eatNewlineGlitch);
@@ -364,7 +364,7 @@ public sealed class DescriptionEncoderTests
         using Frame expected = new(new Size(1, 1));
         _ = expected.Canvas.Draw("x", default, new CellStyle(attributes: Attributes.Blink));
         var programs = CorePrograms();
-        programs["blink"] = new Program("\u001b[5m"u8);
+        programs["blink"] = new DescriptionProgram("\u001b[5m"u8);
         var profile = CreateProfile(ColorDepth.Monochrome, programs);
         var destination = new ArrayBufferWriter<byte>();
 
@@ -412,8 +412,8 @@ public sealed class DescriptionEncoderTests
         _ = frame.Canvas.Draw("x", default);
         frame.SetCursor(default, visible: true, shape);
         var programs = CorePrograms();
-        programs["Ss"] = new Program("\u001b[%p1%d q"u8);
-        programs["Se"] = new Program("\u001b[0 q"u8);
+        programs["Ss"] = new DescriptionProgram("\u001b[%p1%d q"u8);
+        programs["Se"] = new DescriptionProgram("\u001b[0 q"u8);
         var profile = CreateProfile(ColorDepth.Monochrome, programs);
         var destination = new ArrayBufferWriter<byte>();
 
@@ -441,14 +441,14 @@ public sealed class DescriptionEncoderTests
             visible: true,
             failingProgram == "Ss" ? CursorShape.Bar : CursorShape.Block);
         var programs = CorePrograms();
-        programs["setaf"] = new Program("%p1%PA\u001b[38;5;%p1%dm"u8);
-        programs["setab"] = new Program("\u001b[48;5;%p1%dm"u8);
+        programs["setaf"] = new DescriptionProgram("%p1%PA\u001b[38;5;%p1%dm"u8);
+        programs["setab"] = new DescriptionProgram("\u001b[48;5;%p1%dm"u8);
         programs["Ss"] = failingProgram == "Ss"
-            ? new Program("%?%p1%{4}%=%t\u001b[4 q%;"u8)
-            : new Program("\u001b[%p1%d q"u8);
+            ? new DescriptionProgram("%?%p1%{4}%=%t\u001b[4 q%;"u8)
+            : new DescriptionProgram("\u001b[%p1%d q"u8);
         programs["Se"] = failingProgram == "Se"
-            ? new Program("%?%gA%{0}%=%t\u001b[0 q%;"u8)
-            : new Program("\u001b[0 q"u8);
+            ? new DescriptionProgram("%?%gA%{0}%=%t\u001b[0 q%;"u8)
+            : new DescriptionProgram("\u001b[0 q"u8);
         var profile = CreateProfile(ColorDepth.Indexed256, programs);
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
@@ -480,8 +480,8 @@ public sealed class DescriptionEncoderTests
                 attributes: Attributes.Underline,
                 underlineColor: ReferenceColors.Get(index)));
         var programs = ColorPrograms();
-        programs["smul"] = new Program("\u001b[4m"u8);
-        programs["Setulc"] = new Program("P%p1%d"u8);
+        programs["smul"] = new DescriptionProgram("\u001b[4m"u8);
+        programs["Setulc"] = new DescriptionProgram("P%p1%d"u8);
         var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var profile = new TerminalProfile(
             new Description("underline", DescriptionOrigin.Database, Suitability.Usable, colors: 256),
@@ -515,23 +515,23 @@ public sealed class DescriptionEncoderTests
                 underline: Underline.Curly,
                 underlineColor: Color.Rgb(1, 2, 3)));
         var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
-        var programs = new Dictionary<string, Program>
+        var programs = new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-            ["sgr0"] = new Program("\u001b[0m"u8),
-            ["clear"] = new Program("\u001b[2J"u8),
-            ["Smulx"] = new Program("\u001b[4:%p1%dm"u8),
-            ["Setulc"] = new Program(
+            ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+            ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+            ["clear"] = new DescriptionProgram("\u001b[2J"u8),
+            ["Smulx"] = new DescriptionProgram("\u001b[4:%p1%dm"u8),
+            ["Setulc"] = new DescriptionProgram(
                 "\u001b[58;2;%p1%{65536}%/%d;%p1%{256}%/%{255}%&%d;%p1%{255}%&%dm"u8),
-            ["setdf"] = new Program("\u001b[39m"u8),
-            ["setdb"] = new Program("\u001b[49m"u8),
-            ["setaf"] = new Program("\u001b[38;5;%p1%dm"u8),
-            ["setab"] = new Program("\u001b[48;5;%p1%dm"u8),
-            ["setrgbf"] = new Program("\u001b[38;2;%p1%d;%p2%d;%p3%dm"u8),
-            ["setrgbb"] = new Program("\u001b[48;2;%p1%d;%p2%d;%p3%dm"u8),
-            ["op"] = new Program("\u001b[39;49m"u8),
-            ["civis"] = new Program("\u001b[?25l"u8),
-            ["cnorm"] = new Program("\u001b[?25h"u8)
+            ["setdf"] = new DescriptionProgram("\u001b[39m"u8),
+            ["setdb"] = new DescriptionProgram("\u001b[49m"u8),
+            ["setaf"] = new DescriptionProgram("\u001b[38;5;%p1%dm"u8),
+            ["setab"] = new DescriptionProgram("\u001b[48;5;%p1%dm"u8),
+            ["setrgbf"] = new DescriptionProgram("\u001b[38;2;%p1%d;%p2%d;%p3%dm"u8),
+            ["setrgbb"] = new DescriptionProgram("\u001b[48;2;%p1%d;%p2%d;%p3%dm"u8),
+            ["op"] = new DescriptionProgram("\u001b[39;49m"u8),
+            ["civis"] = new DescriptionProgram("\u001b[?25l"u8),
+            ["cnorm"] = new DescriptionProgram("\u001b[?25h"u8)
         };
         var profile = new TerminalProfile(
             new Description("decorations", DescriptionOrigin.Database, Suitability.Usable, colors: 256),
@@ -559,15 +559,15 @@ public sealed class DescriptionEncoderTests
     {
         using Frame frame = new(new Size(1, 1));
         _ = frame.Canvas.Draw("x", default, new CellStyle(attributes: Attributes.Bold));
-        var profile = CreateProfile(ColorDepth.Indexed256, new Dictionary<string, Program>
+        var profile = CreateProfile(ColorDepth.Indexed256, new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-            ["sgr0"] = new Program("\u001b[0m"u8),
-            ["clear"] = new Program("\u001b[2J"u8),
-            ["bold"] = new Program("\u001b[1m"u8),
-            ["op"] = new Program("\u001b[39;49m"u8),
-            ["civis"] = new Program("\u001b[?25l"u8),
-            ["cnorm"] = new Program("\u001b[?25h"u8)
+            ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+            ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+            ["clear"] = new DescriptionProgram("\u001b[2J"u8),
+            ["bold"] = new DescriptionProgram("\u001b[1m"u8),
+            ["op"] = new DescriptionProgram("\u001b[39;49m"u8),
+            ["civis"] = new DescriptionProgram("\u001b[?25l"u8),
+            ["cnorm"] = new DescriptionProgram("\u001b[?25h"u8)
         });
         var destination = new ArrayBufferWriter<byte>();
 
@@ -578,7 +578,7 @@ public sealed class DescriptionEncoderTests
 
     private static TerminalProfile CreateProfile(
         ColorDepth colorDepth,
-        IReadOnlyDictionary<string, Program> programs,
+        IReadOnlyDictionary<string, DescriptionProgram> programs,
         bool automaticMargins = false,
         bool backColorErase = false,
         bool eatNewlineGlitch = false) => new(
@@ -594,22 +594,22 @@ public sealed class DescriptionEncoderTests
         new Programs(programs),
         KeyMap.Empty);
 
-    private static Dictionary<string, Program> CorePrograms() => new()
+    private static Dictionary<string, DescriptionProgram> CorePrograms() => new()
     {
-        ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-        ["sgr0"] = new Program("\u001b[0m"u8),
-        ["clear"] = new Program("\u001b[2J"u8),
-        ["civis"] = new Program("\u001b[?25l"u8),
-        ["cnorm"] = new Program("\u001b[?25h"u8)
+        ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+        ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+        ["clear"] = new DescriptionProgram("\u001b[2J"u8),
+        ["civis"] = new DescriptionProgram("\u001b[?25l"u8),
+        ["cnorm"] = new DescriptionProgram("\u001b[?25h"u8)
     };
 
-    private static Dictionary<string, Program> ColorPrograms()
+    private static Dictionary<string, DescriptionProgram> ColorPrograms()
     {
         var programs = CorePrograms();
-        programs["setaf"] = new Program("\u001b[38;5;%p1%dm"u8);
-        programs["setab"] = new Program("\u001b[48;5;%p1%dm"u8);
-        programs["setrgbf"] = new Program("\u001b[38;2;%p1%d;%p2%d;%p3%dm"u8);
-        programs["setrgbb"] = new Program("\u001b[48;2;%p1%d;%p2%d;%p3%dm"u8);
+        programs["setaf"] = new DescriptionProgram("\u001b[38;5;%p1%dm"u8);
+        programs["setab"] = new DescriptionProgram("\u001b[48;5;%p1%dm"u8);
+        programs["setrgbf"] = new DescriptionProgram("\u001b[38;2;%p1%d;%p2%d;%p3%dm"u8);
+        programs["setrgbb"] = new DescriptionProgram("\u001b[48;2;%p1%d;%p2%d;%p3%dm"u8);
         return programs;
     }
 }
