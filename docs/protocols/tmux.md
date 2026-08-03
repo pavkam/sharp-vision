@@ -17,7 +17,7 @@ requesting pane.
 
 ## Routing policy
 
-[`Multiplexing.MultiplexingPolicy`](../../src/SharpVision.Terminal/Multiplexing/Policy.cs)
+[`Multiplexing.MultiplexingPolicy`](../../src/SharpVision.Terminal/Multiplexing/MultiplexingPolicy.cs)
 owns the nearest-to-farthest layer list, an explicit outer `TerminalProfile`,
 the disabled/visible/all gate, pane visibility, approved typed operation
 families, maximum depth, and maximum envelope bytes. Detection records one

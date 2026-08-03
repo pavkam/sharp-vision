@@ -105,10 +105,10 @@ const harnessUsings = [
 
 // Every real consumer project in this repo (examples/Showcase, TextEditor,
 // Snake) declares this exact alias, since SharpVision.Controls.Display.Canvas
-// (a control) and SharpVision.Terminal.Rendering.Canvas (the render surface
+// (a control) and SharpVision.Terminal.Rendering.TerminalCanvas (the render surface
 // OnRenderContent receives) share a bare name once both namespaces are in
 // scope. The harness needs the same alias for the same reason.
-const harnessAliases = ["TerminalCanvas = SharpVision.Terminal.Rendering.Canvas"];
+const harnessAliases = ["TerminalCanvas = SharpVision.Terminal.Rendering.TerminalCanvas"];
 
 /**
  * Extracts every fenced ```csharp block from Markdown content.

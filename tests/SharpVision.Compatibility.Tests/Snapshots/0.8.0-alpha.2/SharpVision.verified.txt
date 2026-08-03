@@ -6,11 +6,11 @@ namespace SharpVision
     [System.Diagnostics.DebuggerDisplay("Application {_screen?.GetType().Name,nq}")]
     public sealed class Application : SharpVision.Terminal.Abstractions.ICapabilityResponseSink, SharpVision.Terminal.Abstractions.IClipboardReplySink, SharpVision.Terminal.Abstractions.IInputSink, SharpVision.Terminal.Abstractions.IKittyClipboardPacketSink, SharpVision.Terminal.Abstractions.IMetricsResponseSink, SharpVision.Terminal.Abstractions.IPaletteResponseSink, SharpVision.Terminal.Abstractions.IProtocolSink, SharpVision.Terminal.Abstractions.ISink, SharpVision.Terminal.Abstractions.IStatusResponseSink, System.IAsyncDisposable
     {
-        public Application(SharpVision.Controls.ControlBase root, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Abstractions.IResizeSource resize, SharpVision.Terminal.Runtime.Options? options = null, System.IAsyncDisposable? hostLease = null, System.TimeProvider? timeProvider = null) { }
+        public Application(SharpVision.Controls.ControlBase root, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Abstractions.IResizeSource resize, SharpVision.Terminal.Runtime.TerminalOptions? options = null, System.IAsyncDisposable? hostLease = null, System.TimeProvider? timeProvider = null) { }
         public SharpVision.Windows.Window? ActiveWindow { get; }
-        public SharpVision.Terminal.Capabilities.Capabilities Capabilities { get; }
+        public SharpVision.Terminal.Capabilities.TerminalCapabilities Capabilities { get; }
         public SharpVision.Input.PointerManager Capture { get; }
-        public SharpVision.Terminal.Unicode.Policy CellPolicy { get; }
+        public SharpVision.Terminal.Unicode.UnicodePolicy CellPolicy { get; }
         public System.Threading.Tasks.Task Completion { get; }
         public SharpVision.Threading.Dispatcher Dispatcher { get; }
         public System.Exception? Failure { get; }
@@ -48,17 +48,17 @@ namespace SharpVision
         public void Input(in SharpVision.Terminal.Input.Pointer value) { }
         public void Input(in SharpVision.Terminal.Input.Stroke value) { }
         public void Input(in SharpVision.Terminal.Input.TerminalFocus value) { }
-        public void Input(in SharpVision.Terminal.Input.Text value) { }
+        public void Input(in SharpVision.Terminal.Input.TerminalText value) { }
         public void Input(in SharpVision.Terminal.Protocols.Diagnostic value) { }
-        public void Profile(SharpVision.Terminal.Capabilities.Capabilities value) { }
+        public void Profile(SharpVision.Terminal.Capabilities.TerminalCapabilities value) { }
         public void RefreshScreen() { }
         public void Response(SharpVision.Terminal.Kitty.Clipboard.Packet value) { }
         public void Response(SharpVision.Terminal.Xterm.CapabilityResponse value) { }
         public void Response(in SharpVision.Terminal.Clipboard.ClipboardReply value) { }
         public void Response(in SharpVision.Terminal.Xterm.MetricsResponse value) { }
         public void Response(in SharpVision.Terminal.Xterm.PaletteResponse value) { }
-        public void Response(in SharpVision.Terminal.Xterm.Response value) { }
         public void Response(in SharpVision.Terminal.Xterm.StatusResponse value) { }
+        public void Response(in SharpVision.Terminal.Xterm.XtermCapabilitiesResponse value) { }
         public System.Threading.Tasks.Task RunAsync(System.Threading.CancellationToken cancellationToken = default) { }
         public void Sequence(SharpVision.Terminal.Protocols.ProtocolSequence value) { }
         public void Shutdown() { }
@@ -67,9 +67,9 @@ namespace SharpVision
     }
     public sealed class CapabilitiesChangedEventArgs : System.EventArgs
     {
-        public CapabilitiesChangedEventArgs(SharpVision.Terminal.Capabilities.Capabilities previous, SharpVision.Terminal.Capabilities.Capabilities current) { }
-        public SharpVision.Terminal.Capabilities.Capabilities Current { get; }
-        public SharpVision.Terminal.Capabilities.Capabilities Previous { get; }
+        public CapabilitiesChangedEventArgs(SharpVision.Terminal.Capabilities.TerminalCapabilities previous, SharpVision.Terminal.Capabilities.TerminalCapabilities current) { }
+        public SharpVision.Terminal.Capabilities.TerminalCapabilities Current { get; }
+        public SharpVision.Terminal.Capabilities.TerminalCapabilities Previous { get; }
     }
     public sealed class CapabilityResponseEventArgs : System.EventArgs
     {
@@ -93,7 +93,7 @@ namespace SharpVision
         public SharpVision.ConsoleApplicationBuilder TreatControlCAsInput(bool enabled = true) { }
         public SharpVision.ConsoleApplicationBuilder UseAlternateScreen(bool enabled = true) { }
         public SharpVision.ConsoleApplicationBuilder UseBracketedPaste(bool enabled = true) { }
-        public SharpVision.ConsoleApplicationBuilder UseCapabilities(SharpVision.Terminal.Capabilities.Capabilities capabilities) { }
+        public SharpVision.ConsoleApplicationBuilder UseCapabilities(SharpVision.Terminal.Capabilities.TerminalCapabilities capabilities) { }
         public SharpVision.ConsoleApplicationBuilder UseColorDepth(SharpVision.Terminal.Capabilities.ColorDepth depth) { }
         public SharpVision.ConsoleApplicationBuilder UseEnvironmentSizeOverrides(bool enabled = true) { }
         public SharpVision.ConsoleApplicationBuilder UseFocusReporting(bool enabled = true) { }
@@ -116,7 +116,7 @@ namespace SharpVision
         public ConsoleRunOptions() { }
         public bool AlternateScreen { get; init; }
         public bool BracketedPaste { get; init; }
-        public SharpVision.Terminal.Capabilities.Capabilities? Capabilities { get; init; }
+        public SharpVision.Terminal.Capabilities.TerminalCapabilities? Capabilities { get; init; }
         public System.TimeSpan CleanupTimeout { get; init; }
         public SharpVision.Terminal.Capabilities.ColorDepth? ColorDepth { get; init; }
         public bool FocusReporting { get; init; }
@@ -135,8 +135,8 @@ namespace SharpVision
         public bool UseEnvironmentSizeOverrides { get; init; }
         public SharpVision.Styling.Theme ResolveTheme() { }
         public SharpVision.Terminal.Runtime.ConsoleHostOptions ToHostOptions() { }
-        public SharpVision.Terminal.Runtime.Options ToTerminalOptions() { }
-        public SharpVision.Terminal.Runtime.Options ToTerminalOptions(SharpVision.Terminal.Capabilities.TerminalProfile profile) { }
+        public SharpVision.Terminal.Runtime.TerminalOptions ToTerminalOptions() { }
+        public SharpVision.Terminal.Runtime.TerminalOptions ToTerminalOptions(SharpVision.Terminal.Capabilities.TerminalProfile profile) { }
     }
     public enum ConsoleRunStatus
     {
@@ -153,8 +153,8 @@ namespace SharpVision
     }
     public sealed class FrameRenderedEventArgs : System.EventArgs
     {
-        public FrameRenderedEventArgs(SharpVision.Terminal.Rendering.Metrics metrics) { }
-        public SharpVision.Terminal.Rendering.Metrics Metrics { get; }
+        public FrameRenderedEventArgs(SharpVision.Terminal.Rendering.RenderMetrics metrics) { }
+        public SharpVision.Terminal.Rendering.RenderMetrics RenderMetrics { get; }
     }
     public sealed class GraphicsDiagnosticEventArgs : System.EventArgs
     {
@@ -214,8 +214,8 @@ namespace SharpVision
     }
     public sealed class ProtocolResponseEventArgs : System.EventArgs
     {
-        public ProtocolResponseEventArgs(SharpVision.Terminal.Xterm.Response response) { }
-        public SharpVision.Terminal.Xterm.Response Response { get; }
+        public ProtocolResponseEventArgs(SharpVision.Terminal.Xterm.XtermCapabilitiesResponse response) { }
+        public SharpVision.Terminal.Xterm.XtermCapabilitiesResponse Response { get; }
     }
     public sealed class ResizeEventArgs : System.EventArgs
     {
@@ -274,7 +274,7 @@ namespace SharpVision.Controls.Collections
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public bool BringIntoView(int index) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
         public bool SetSelected(int index, bool selected) { }
@@ -400,7 +400,7 @@ namespace SharpVision.Controls.Collections
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
     public sealed class TreeViewItemCollection : System.Collections.Generic.IEnumerable<SharpVision.Controls.Collections.TreeViewItem>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.Collections.TreeViewItem>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Collections.TreeViewItem>, System.Collections.IEnumerable
@@ -507,9 +507,9 @@ namespace SharpVision.Controls
         protected virtual SharpVision.Styling.Border Border { get; set; }
         public SharpVision.Terminal.Geometry.Rect Bounds { get; }
         public bool CanFocus { get; }
-        protected SharpVision.Terminal.Capabilities.Capabilities Capabilities { get; }
-        protected SharpVision.Terminal.Geometry.Metrics? CellMetrics { get; }
-        protected SharpVision.Terminal.Unicode.Policy CellPolicy { get; }
+        protected SharpVision.Terminal.Capabilities.TerminalCapabilities Capabilities { get; }
+        protected SharpVision.Terminal.Geometry.CellMetrics? CellMetrics { get; }
+        protected SharpVision.Terminal.Unicode.UnicodePolicy CellPolicy { get; }
         protected virtual bool ClipsChildren { get; }
         public bool ContainsFocus { get; }
         public SharpVision.Terminal.Geometry.Rect ContentBounds { get; }
@@ -604,8 +604,8 @@ namespace SharpVision.Controls
         protected void NotifyPropertyChanged(string propertyName, SharpVision.Controls.InvalidationImpact impact) { }
         protected virtual bool OnAccessKey(System.Text.Rune key) { }
         protected virtual void OnAttached() { }
-        protected virtual void OnCapabilitiesChanged(SharpVision.Terminal.Capabilities.Capabilities previous, SharpVision.Terminal.Capabilities.Capabilities current) { }
-        protected virtual void OnCellMetricsChanged(SharpVision.Terminal.Geometry.Metrics? previous, SharpVision.Terminal.Geometry.Metrics? current) { }
+        protected virtual void OnCapabilitiesChanged(SharpVision.Terminal.Capabilities.TerminalCapabilities previous, SharpVision.Terminal.Capabilities.TerminalCapabilities current) { }
+        protected virtual void OnCellMetricsChanged(SharpVision.Terminal.Geometry.CellMetrics? previous, SharpVision.Terminal.Geometry.CellMetrics? current) { }
         protected virtual void OnDetached() { }
         protected virtual void OnDisposed() { }
         protected virtual void OnDisposing() { }
@@ -614,8 +614,8 @@ namespace SharpVision.Controls
         protected virtual void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected virtual void OnParentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
         protected virtual void OnPressedChanged(bool pressed) { }
-        protected virtual void OnRenderAdornment(SharpVision.Terminal.Rendering.Canvas canvas) { }
-        protected virtual void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected virtual void OnRenderAdornment(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected virtual void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected virtual void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         protected void ReleasePointerCapture() { }
         protected bool RequestFocus() { }
@@ -759,7 +759,7 @@ namespace SharpVision.Controls.Display
         protected override void OnAttached() { }
         protected override void OnDetached() { }
         protected override void OnDisposing() { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnStyleChanged(SharpVision.Controls.Display.ChaseIndicatorStyle previous, SharpVision.Controls.Display.ChaseIndicatorStyle current) { }
     }
     public readonly struct ChaseIndicatorStyle : System.IEquatable<SharpVision.Controls.Display.ChaseIndicatorStyle>
@@ -799,7 +799,7 @@ namespace SharpVision.Controls.Display
         public SharpVision.Fonts.FigletFont Font { get; set; }
         public SharpVision.Fonts.FigletOptions Options { get; set; }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
     }
     public sealed class Image : SharpVision.Controls.ControlBase
     {
@@ -808,8 +808,8 @@ namespace SharpVision.Controls.Display
         public SharpVision.Terminal.Graphics.ImageSource? Source { get; set; }
         public SharpVision.Controls.Display.ImageStretch Stretch { get; set; }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnCellMetricsChanged(SharpVision.Terminal.Geometry.Metrics? previous, SharpVision.Terminal.Geometry.Metrics? current) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnCellMetricsChanged(SharpVision.Terminal.Geometry.CellMetrics? previous, SharpVision.Terminal.Geometry.CellMetrics? current) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
     }
     public enum ImageStretch
     {
@@ -843,7 +843,7 @@ namespace SharpVision.Controls.Display
         public double Value { get; set; }
         public event System.EventHandler<SharpVision.Controls.Display.ProgressValueChangedEventArgs>? ValueChanged;
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
     public readonly struct ProgressBarGlyphs : System.IEquatable<SharpVision.Controls.Display.ProgressBarGlyphs>
@@ -888,7 +888,7 @@ namespace SharpVision.Controls.Display
         public SharpVision.Layout.Orientation Orientation { get; set; }
         public System.Text.Rune VerticalGlyph { get; set; }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         public void ResetGlyphs() { }
     }
     public sealed class Spinner : SharpVision.Controls.Control<SharpVision.Controls.Display.SpinnerStyle>
@@ -900,7 +900,7 @@ namespace SharpVision.Controls.Display
         protected override void OnAttached() { }
         protected override void OnDetached() { }
         protected override void OnDisposing() { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnStyleChanged(SharpVision.Controls.Display.SpinnerStyle previous, SharpVision.Controls.Display.SpinnerStyle current) { }
     }
     public readonly struct SpinnerStyle : System.IEquatable<SharpVision.Controls.Display.SpinnerStyle>
@@ -934,7 +934,7 @@ namespace SharpVision.Controls.Display
         public System.Text.Rune? RightSeparator { get; set; }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
     }
     public enum StatusBarItemAlignment
     {
@@ -977,7 +977,7 @@ namespace SharpVision.Controls.Display
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetEllipsisGlyph() { }
         public static string Escape(string value) { }
@@ -1034,7 +1034,7 @@ namespace SharpVision.Controls.Input
         public bool GoToToday() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool RemoveMarkup(System.DateOnly date) { }
         public bool Select(System.DateOnly date) { }
@@ -1100,7 +1100,7 @@ namespace SharpVision.Controls.Input
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void PerformClick() { }
     }
@@ -1161,7 +1161,7 @@ namespace SharpVision.Controls.Input
         public SharpVision.Terminal.Protocols.Color Value { get; set; }
         public event System.EventHandler<SharpVision.Input.ColorChangedEventArgs>? ValueChanged;
         protected override void OnAttached() { }
-        protected override void OnCapabilitiesChanged(SharpVision.Terminal.Capabilities.Capabilities previous, SharpVision.Terminal.Capabilities.Capabilities current) { }
+        protected override void OnCapabilitiesChanged(SharpVision.Terminal.Capabilities.TerminalCapabilities previous, SharpVision.Terminal.Capabilities.TerminalCapabilities current) { }
         protected override void OnDisposing() { }
         protected override void OnStyleChanged(SharpVision.Controls.Input.ColorPickerStyle previous, SharpVision.Controls.Input.ColorPickerStyle current) { }
     }
@@ -1203,7 +1203,7 @@ namespace SharpVision.Controls.Input
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetDropDownGlyph() { }
     }
@@ -1212,6 +1212,7 @@ namespace SharpVision.Controls.Input
         public DateInput() { }
         public bool AllowNull { get; set; }
         public System.Globalization.CultureInfo Culture { get; set; }
+        public System.Text.Rune DropDownGlyph { get; set; }
         public int DropDownHeight { get; set; }
         public string Format { get; set; }
         public bool IsOpen { get; set; }
@@ -1219,6 +1220,8 @@ namespace SharpVision.Controls.Input
         public System.DateOnly MinimumDate { get; set; }
         protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public System.DateOnly? Value { get; set; }
+        public event System.EventHandler? DropDownClosed;
+        public event System.EventHandler? DropDownOpened;
         public event System.EventHandler<SharpVision.Input.DateInputValueChangedEventArgs>? ValueChanged;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
@@ -1226,8 +1229,9 @@ namespace SharpVision.Controls.Input
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        public void ResetDropDownGlyph() { }
     }
     public readonly struct DateInterval : System.IEquatable<SharpVision.Controls.Input.DateInterval>
     {
@@ -1244,6 +1248,7 @@ namespace SharpVision.Controls.Input
         public bool AllowNull { get; set; }
         public System.Globalization.CultureInfo Culture { get; set; }
         public System.Text.Rune DropDownGlyph { get; set; }
+        public int DropDownHeight { get; set; }
         public bool IsOpen { get; set; }
         public System.DateTime MaximumValue { get; set; }
         public System.DateTime MinimumValue { get; set; }
@@ -1252,6 +1257,8 @@ namespace SharpVision.Controls.Input
         public System.TimeSpan TimeStep { get; set; }
         public bool Use24HourFormat { get; set; }
         public System.DateTime? Value { get; set; }
+        public event System.EventHandler? DropDownClosed;
+        public event System.EventHandler? DropDownOpened;
         public event System.EventHandler<SharpVision.Input.DateTimeInputValueChangedEventArgs>? ValueChanged;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
@@ -1259,7 +1266,7 @@ namespace SharpVision.Controls.Input
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetDropDownGlyph() { }
     }
@@ -1291,7 +1298,7 @@ namespace SharpVision.Controls.Input
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnParentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void PerformClick() { }
     }
@@ -1353,7 +1360,7 @@ namespace SharpVision.Controls.Input
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
     public readonly struct SliderGlyphs : System.IEquatable<SharpVision.Controls.Input.SliderGlyphs>
@@ -1424,7 +1431,7 @@ namespace SharpVision.Controls.Input
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool Redo() { }
         public bool ReplaceSelection(string value) { }
@@ -1450,7 +1457,7 @@ namespace SharpVision.Controls.Input
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
 }
@@ -1491,7 +1498,7 @@ namespace SharpVision.Controls.Layout
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetGlyphs() { }
     }
@@ -1524,7 +1531,7 @@ namespace SharpVision.Controls.Layout
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Styling.ChromeRenderOptions GetChromeRenderOptions() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
     }
     public sealed class Overlay : SharpVision.Controls.Container
     {
@@ -1608,7 +1615,7 @@ namespace SharpVision.Controls.Layout
         public bool CommitEdit() { }
         public string CopySelection() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         public void ResetGridGlyphs() { }
         public void ResetSort() { }
         public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
@@ -1732,7 +1739,7 @@ namespace SharpVision.Controls.Scrolling
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool ScrollBy(int delta, SharpVision.Scrolling.ScrollCause cause = 0) { }
     }
@@ -2350,8 +2357,8 @@ namespace SharpVision.Input
     }
     public sealed class TextEventArgs : SharpVision.Input.RoutedEventArgs
     {
-        public TextEventArgs(SharpVision.Terminal.Input.Text text) { }
-        public SharpVision.Terminal.Input.Text Text { get; }
+        public TextEventArgs(SharpVision.Terminal.Input.TerminalText text) { }
+        public SharpVision.Terminal.Input.TerminalText Text { get; }
     }
     public sealed class TimeInputValueChangedEventArgs : System.EventArgs
     {
@@ -2567,7 +2574,7 @@ namespace SharpVision.Menus
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
         protected override void OnFocusChanged(bool focused) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void PerformInvoke() { }
         public void ResetGlyphs() { }
@@ -2589,7 +2596,7 @@ namespace SharpVision.Menus
         public MenuSeparator() { }
         public System.Text.Rune Glyph { get; set; }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         public void ResetGlyph() { }
     }
 }
@@ -2649,7 +2656,7 @@ namespace SharpVision.Navigation
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         public void ResetGlyphs() { }
     }
     public sealed class NavigationViewItem : SharpVision.Controls.PressableBase
@@ -2668,7 +2675,7 @@ namespace SharpVision.Navigation
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
         protected override void OnFocusChanged(bool focused) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void PerformInvoke() { }
         public void ResetMarkers() { }
@@ -2693,7 +2700,7 @@ namespace SharpVision.Navigation
         public NavigationViewSeparator() { }
         public System.Text.Rune Glyph { get; set; }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         public void ResetGlyph() { }
     }
 }
@@ -2730,7 +2737,7 @@ namespace SharpVision.Popups
         protected override void OnDetached() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnParentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public SharpVision.Input.ModalScope OpenModal(SharpVision.Input.OutsideInteraction outsideInteraction = 1, SharpVision.Controls.ControlBase? initialFocus = null) { }
         public new void ResetBorder() { }
@@ -2873,14 +2880,14 @@ namespace SharpVision.Styling
     public readonly struct AttributeValue : System.IEquatable<SharpVision.Styling.AttributeValue>
     {
         public AttributeValue(SharpVision.Styling.ThemeDecoration themeAttribute) { }
-        public AttributeValue(SharpVision.Terminal.Rendering.Attributes literal) { }
+        public AttributeValue(SharpVision.Terminal.Rendering.TerminalAttributes literal) { }
         public bool IsLiteral { get; }
         public bool IsThemeValue { get; }
-        public SharpVision.Terminal.Rendering.Attributes Literal { get; }
+        public SharpVision.Terminal.Rendering.TerminalAttributes Literal { get; }
         public SharpVision.Styling.ThemeDecoration ThemeDecoration { get; }
         public override string ToString() { }
         public static SharpVision.Styling.AttributeValue op_Implicit(SharpVision.Styling.ThemeDecoration value) { }
-        public static SharpVision.Styling.AttributeValue op_Implicit(SharpVision.Terminal.Rendering.Attributes value) { }
+        public static SharpVision.Styling.AttributeValue op_Implicit(SharpVision.Terminal.Rendering.TerminalAttributes value) { }
     }
     public readonly struct Border : System.IEquatable<SharpVision.Styling.Border>
     {
@@ -3052,7 +3059,7 @@ namespace SharpVision.Styling
         public SharpVision.Styling.ThemeProfile Window { get; }
         public void Freeze() { }
         public SharpVision.Styling.ThemeProfile GetProfile(SharpVision.Styling.ThemeRole role) { }
-        public SharpVision.Terminal.Rendering.Attributes ResolveAttributes(SharpVision.Styling.ThemeDecoration decoration) { }
+        public SharpVision.Terminal.Rendering.TerminalAttributes ResolveAttributes(SharpVision.Styling.ThemeDecoration decoration) { }
         public SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.ThemeColor color) { }
         public SharpVision.Terminal.Protocols.Color ResolveStatusColor(SharpVision.Styling.StatusColor status) { }
     }
@@ -3334,7 +3341,7 @@ namespace SharpVision.Windows
         protected override void OnAttached() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public new void ResetBorder() { }
         public void ResetCloseGlyph() { }
