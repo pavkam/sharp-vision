@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -36,6 +37,40 @@ test("validateDocSamples_WhenDotnetRootIsUnset_DiscoversPathSdk", async () => {
       delete process.env.HOME;
     } else {
       process.env.HOME = previousHome;
+    }
+
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("validateDocSamples_WhenReferencePacksHaveMultiDigitPatch_SelectsLatestVersion", async () => {
+  const root = await mkdtemp(join(tmpdir(), "sharpvision-doc-samples-test-"));
+  const installation = join(root, "dotnet");
+  const activeSdk = execFileSync("dotnet", ["--version"], { encoding: "utf8" }).trim();
+  const previousDotnetRoot = process.env.DOTNET_ROOT;
+
+  try {
+    await mkdir(
+      join(installation, "packs", "Microsoft.NETCore.App.Ref", "10.0.9"),
+      { recursive: true },
+    );
+    await mkdir(
+      join(installation, "packs", "Microsoft.NETCore.App.Ref", "10.0.10", "ref", "net10.0"),
+      { recursive: true },
+    );
+    const cscDirectory = join(installation, "sdk", activeSdk, "Roslyn", "bincore");
+    await mkdir(cscDirectory, { recursive: true });
+    await writeFile(join(cscDirectory, "csc.dll"), "", "utf8");
+    process.env.DOTNET_ROOT = installation;
+
+    const result = await validateDocSamples(root, []);
+
+    assert.deepEqual(result, { errors: [], totalBlocks: 0 });
+  } finally {
+    if (previousDotnetRoot === undefined) {
+      delete process.env.DOTNET_ROOT;
+    } else {
+      process.env.DOTNET_ROOT = previousDotnetRoot;
     }
 
     await rm(root, { recursive: true, force: true });

@@ -495,7 +495,8 @@ async function findReferenceAssemblies(dotnetRoot) {
     throw new Error(`No net10.0 reference pack found under ${refPacksRoot}.`);
   }
 
-  const refDirectory = join(refPacksRoot, versions.sort().at(-1), "ref", "net10.0");
+  const latest = versions.sort((left, right) => left.localeCompare(right, "en", { numeric: true })).at(-1);
+  const refDirectory = join(refPacksRoot, latest, "ref", "net10.0");
   const files = await readdir(refDirectory);
   return files.filter((name) => name.endsWith(".dll")).map((name) => join(refDirectory, name));
 }
