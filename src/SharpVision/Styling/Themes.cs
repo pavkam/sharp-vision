@@ -16,7 +16,8 @@ public static class Themes
     // The closed set of library-owned registrable style sections (see #155), analogous to the
     // five fixed profile names - grows as a built-in control registers a section, unlike the open
     // "vendor.control" namespace any third-party control can use without a registry entry here.
-    private static readonly HashSet<string> _registeredStyleSections = new(StringComparer.Ordinal) { "scrollBar" };
+    private static readonly HashSet<string> _registeredStyleSections =
+        new(StringComparer.Ordinal) { "scrollBar", "checkBox" };
     private static readonly Lock _gate = new();
     private static readonly Dictionary<string, Theme> _cache = new(StringComparer.Ordinal);
 

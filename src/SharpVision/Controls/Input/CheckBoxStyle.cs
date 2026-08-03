@@ -12,17 +12,48 @@ public readonly struct CheckBoxStyle: IEquatable<CheckBoxStyle>
     private readonly CheckBoxGlyphs? _glyphs;
     private readonly ThemeProfile? _appearance;
 
-    /// <summary>Gets the primary checkbox-style definition.</summary>
-    internal static StyleDefinition<CheckBoxStyle> Definition { get; } = StyleDefinitions.Control(
+    /// <summary>Gets the primary checkbox-style definition. Reads the theme's registrable
+    /// "checkBox" style section (see #155) for MarkStyle when the active theme authors one;
+    /// falls back to the code-owned structural default otherwise.</summary>
+    internal static StyleDefinition<CheckBoxStyle> Definition { get; } = new(
         ThemeRole.Input,
-        static profile => new CheckBoxStyle(Default.MarkStyle, Default.Glyphs, profile.WithoutChrome()),
+        ResolveComplete,
         static style => style.Appearance,
-        static (previous, _, current, _) =>
-            previous.MarkWidth != current.MarkWidth
-                ? InvalidationImpact.Measure
-                : previous.MarkStyle != current.MarkStyle || previous.Glyphs != current.Glyphs
-                    ? InvalidationImpact.Render
-                    : InvalidationImpact.None);
+        Compare);
+
+    private static CheckBoxStyle ResolveComplete(CheckBoxStyle? local, Theme? theme)
+    {
+        if (local.HasValue)
+        {
+            return local.Value;
+        }
+
+        var effectiveTheme = theme ?? Themes.Dark;
+        var section = effectiveTheme.GetStyleSection<CheckBoxStyleSection>("checkBox");
+
+        return new CheckBoxStyle(
+            ParseMarkStyle(section?.MarkStyle, effectiveTheme.Slug) ?? Default.MarkStyle,
+            Default.Glyphs,
+            effectiveTheme.GetProfile(ThemeRole.Input).WithoutChrome());
+    }
+
+    private static CheckBoxMarkStyle? ParseMarkStyle(string? value, string themeSlug) => value is null
+        ? null
+        : Enum.TryParse<CheckBoxMarkStyle>(value, ignoreCase: true, out var markStyle) && Enum.IsDefined(markStyle)
+            ? markStyle
+            : throw new InvalidDataException(
+                $"Theme '{themeSlug}' styles.checkBox.markStyle has unknown value '{value}'.");
+
+    private static InvalidationImpact Compare(
+        CheckBoxStyle previous,
+        Theme? previousTheme,
+        CheckBoxStyle current,
+        Theme? currentTheme) =>
+        previous.MarkWidth != current.MarkWidth
+            ? InvalidationImpact.Measure
+            : previous.MarkStyle != current.MarkStyle || previous.Glyphs != current.Glyphs
+                ? InvalidationImpact.Render
+                : InvalidationImpact.None;
 
     /// <summary>Gets the non-invalidating definition used by pure forwarding hosts.</summary>
     internal static StyleDefinition<CheckBoxStyle> ForwardingDefinition { get; } = StyleDefinitions.Part(

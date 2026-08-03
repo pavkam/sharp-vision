@@ -26,11 +26,15 @@ command that cannot execute never suppresses the toggle itself.
 
 `CheckBoxStyle` bundles a `CheckBoxMarkStyle`, a complete set of
 `CheckBoxGlyphs`, and the full appearance profile. `CheckBoxStyle.With(...)`
-copies selected members and may overlay an `AppearanceProfileSet`; theme JSON
-remains semantic-only. Assigning `Style` replaces the complete Theme-owned
-presentation, and assigning `null` restores it. Every glyph is printable and one
-cell wide under the normal width policy. The brackets style reserves three
-cells; the other styles reserve one.
+copies selected members and may overlay an `AppearanceProfileSet`. A theme
+document may additionally author a `styles.checkBox` section with a `markStyle`
+string member (`"square"`, `"brackets"`, or `"tick"`); an active theme's section
+supplies `MarkStyle` ahead of the code-owned default whenever no local `Style`
+is assigned (see [themes.md](../../concepts/themes.md#semantic-profiles)). The
+glyph family remains code-owned. Assigning `Style` replaces the complete
+Theme-owned presentation, and assigning `null` restores it. Every glyph is
+printable and one cell wide under the normal width policy. The brackets style
+reserves three cells; the other styles reserve one.
 
 Raw border, shadow, and state-appearance authoring stays protected. When
 composing a third-party control around a CheckBox, inspect `ActualStyle`,
