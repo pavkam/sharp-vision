@@ -41,4 +41,24 @@ public sealed class DiagnosticTests
         _ = Should.Throw<ArgumentOutOfRangeException>(static () =>
             new Diagnostic(DiagnosticCode.Malformed, SequenceKind.Csi, 0, -1));
     }
+
+    /// <summary>Verifies an unknown recovery category cannot enter a structured diagnostic.</summary>
+    [Fact]
+    public void Constructor_WhenCodeIsUndefined_ThrowsArgumentOutOfRangeException()
+    {
+        var exception = Should.Throw<ArgumentOutOfRangeException>(static () =>
+            new Diagnostic((DiagnosticCode) 999, SequenceKind.Csi, 0, 0));
+
+        exception.ParamName.ShouldBe("code");
+    }
+
+    /// <summary>Verifies an unknown sequence family cannot enter a structured diagnostic.</summary>
+    [Fact]
+    public void Constructor_WhenKindIsUndefined_ThrowsArgumentOutOfRangeException()
+    {
+        var exception = Should.Throw<ArgumentOutOfRangeException>(static () =>
+            new Diagnostic(DiagnosticCode.Malformed, (SequenceKind) 999, 0, 0));
+
+        exception.ParamName.ShouldBe("kind");
+    }
 }

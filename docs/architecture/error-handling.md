@@ -27,15 +27,15 @@ library has attempted terminal restoration.
 
 ## Diagnostic model
 
-A protocol `Diagnostic` carries only a stable `DiagnosticCode`, the sequence
-kind, the stream offset, and the count of discarded bytes. Its invariant-culture
-text repeats those structural fields and contains no input payload. Kitty packet
-values, clipboard bytes, passwords, names, and other terminal-provided secrets
-never appear in a diagnostic. Transaction state and sanitized correlation
-identifiers stay in their typed objects rather than being copied into
-diagnostics. Severity, the runtime operation, and captured exceptions belong to
-the host-level diagnostic envelopes added later; the protocol value does not
-claim them.
+A protocol `Diagnostic` carries only a defined stable `DiagnosticCode`, the
+defined sequence kind, the stream offset, and the count of discarded bytes. Its
+invariant-culture text repeats those structural fields and contains no input
+payload. Kitty packet values, clipboard bytes, passwords, names, and other
+terminal-provided secrets never appear in a diagnostic. Transaction state and
+sanitized correlation identifiers stay in their typed objects rather than being
+copied into diagnostics. Severity, the runtime operation, and captured
+exceptions belong to the host-level diagnostic envelopes added later; the
+protocol value does not claim them.
 
 ## Exception preservation
 

@@ -14,8 +14,8 @@ public readonly record struct Diagnostic
     /// Initializes a non-sensitive structured diagnostic.
     /// </summary>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="offset"/> or <paramref name="discardedBytes"/> is
-    /// negative.
+    /// An enum is undefined, or <paramref name="offset"/> or
+    /// <paramref name="discardedBytes"/> is negative.
     /// </exception>
     public Diagnostic(
         DiagnosticCode code,
@@ -23,6 +23,16 @@ public readonly record struct Diagnostic
         long offset,
         long discardedBytes)
     {
+        if (!Enum.IsDefined(code))
+        {
+            throw new ArgumentOutOfRangeException(nameof(code), code, "The diagnostic code is unknown.");
+        }
+
+        if (!Enum.IsDefined(kind))
+        {
+            throw new ArgumentOutOfRangeException(nameof(kind), kind, "The sequence kind is unknown.");
+        }
+
         if (offset < 0)
         {
             throw new ArgumentOutOfRangeException(
