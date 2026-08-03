@@ -55,10 +55,10 @@ unchanged, and selecting in `None` mode is rejected.
 
 Selection follows the same transaction contract as
 [`ListView`](list-view.md#behavior). `SelectionChanging` receives owned
-`AddedItems` and `RemovedItems` snapshots in stable tree order and may cancel
-before the commit. `SelectionChanged` reports the same committed delta after
-every selected view and visual state has updated, because `PreviousItem` and
-`CurrentItem` describe only the first selected identity and cannot express a
+immutable `AddedItems` and `RemovedItems` snapshots in stable tree order and may
+cancel before the commit. `SelectionChanged` reports the same committed delta
+after every selected view and visual state has updated, because `PreviousItem`
+and `CurrentItem` describe only the first selected identity and cannot express a
 range, a `SelectAll`, a removal repair, or a mode change. Reentrant changes
 advance a transaction version so a stale outer proposal cannot overwrite them.
 Mode narrowing and structural rebuilds invalidate pending proposals, and a

@@ -15,7 +15,7 @@ using System.ComponentModel;
 [PublicAPI]
 public sealed class TreeViewSelectionChangingEventArgs: CancelEventArgs
 {
-    private static readonly TreeViewItem[] _none = [];
+    private static readonly IReadOnlyList<TreeViewItem> _none = Array.AsReadOnly<TreeViewItem>([]);
 
     /// <summary>Initializes owned proposed addition and removal snapshots.</summary>
     /// <param name="addedItems">The items proposed for selection, in stable tree order.</param>
@@ -35,7 +35,7 @@ public sealed class TreeViewSelectionChangingEventArgs: CancelEventArgs
     /// <summary>Gets the owned items proposed for deselection, in stable tree order.</summary>
     public IReadOnlyList<TreeViewItem> RemovedItems { get; }
 
-    private static TreeViewItem[] Copy(IReadOnlyList<TreeViewItem> items, string name)
+    private static IReadOnlyList<TreeViewItem> Copy(IReadOnlyList<TreeViewItem> items, string name)
     {
         ArgumentNullException.ThrowIfNull(items, name);
 
@@ -53,6 +53,6 @@ public sealed class TreeViewSelectionChangingEventArgs: CancelEventArgs
                 "A selection delta cannot contain null.");
         }
 
-        return copy;
+        return Array.AsReadOnly(copy);
     }
 }
