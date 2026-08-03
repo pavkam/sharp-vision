@@ -76,7 +76,8 @@ the library default.
 
 Each `TreeViewItem` preserves its inherited routed key and pointer events before
 applying row activation. A handler that consumes the event suppresses the
-built-in row action.
+built-in row action. Every `ItemInvoked` event reports one defined keyboard,
+pointer, or programmatic activation cause.
 
 Set `TreeViewItem.IsCheckable` to display a check mark. Setting `IsChecked` on a
 checkable parent propagates to its checkable descendants, and a parent becomes

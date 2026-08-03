@@ -11,9 +11,16 @@ public sealed class TreeViewItemInvokedEventArgs: EventArgs
     /// <param name="item">The invoked tree view item.</param>
     /// <param name="cause">The completed activation path.</param>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is undefined.</exception>
     public TreeViewItemInvokedEventArgs(TreeViewItem item, ActivationCause cause)
     {
         ArgumentNullException.ThrowIfNull(item);
+
+        if (!Enum.IsDefined(cause))
+        {
+            throw new ArgumentOutOfRangeException(nameof(cause), cause, "The activation cause is unknown.");
+        }
+
         Item = item;
         Cause = cause;
     }
