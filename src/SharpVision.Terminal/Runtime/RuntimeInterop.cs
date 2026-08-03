@@ -242,4 +242,15 @@ internal static partial class RuntimeInterop
     [LibraryImport("kernel32", EntryPoint = "SetConsoleMode", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool SetConsoleMode(nint handle, uint mode);
+
+    /// <summary>Aborts every pending synchronous read or write issued against a handle, by any
+    /// thread, so a blocking native call on that handle returns instead of waiting indefinitely.</summary>
+    /// <param name="handle">The console handle with a pending operation to abort.</param>
+    /// <returns>True when the abort request was accepted.</returns>
+    [SupportedOSPlatform("windows")]
+    public static bool TryCancelPendingIo(nint handle) => CancelIoEx(handle, nint.Zero);
+
+    [LibraryImport("kernel32", EntryPoint = "CancelIoEx", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool CancelIoEx(nint handle, nint overlapped);
 }
