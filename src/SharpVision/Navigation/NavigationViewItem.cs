@@ -94,12 +94,28 @@ public sealed class NavigationViewItem: Pressable
     /// <param name="cause">The validated semantic activation source.</param>
     internal void ActivateFromOwner(ActivationCause cause) => Activate(cause);
 
+    /// <summary>Activates this item through the programmatic path when it is available.</summary>
+    /// <exception cref="InvalidOperationException">The attached item is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
+    public void PerformInvoke()
+    {
+        VerifyMutable();
+
+        if (EffectiveIsEnabled && EffectiveIsVisible)
+        {
+            Activate(ActivationCause.Programmatic);
+        }
+    }
+
     /// <inheritdoc/>
     protected override bool IsSelectedState => _isSelected;
 
     /// <inheritdoc/>
-    protected override void Activate(ActivationCause cause) =>
+    protected override void Activate(ActivationCause cause)
+    {
         Invoked?.Invoke(this, new ActivationEventArgs(cause));
+        ExecuteCommandIfAny();
+    }
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)

@@ -20,6 +20,7 @@ face; there is no competing text-only `Header` property.
 | `UncheckedGlyph`, `CheckedGlyph` | Code-owned      | Override state marks; `ResetGlyphs()` restores code-owned defaults. |
 | `Invoked`                        | No subscribers  | Raised after activation commits, once any check state has updated.  |
 | `PerformInvoke()`                | —               | Invokes the item programmatically.                                  |
+| `Command`, `CommandParameter`    | `null`          | Inherited from `Pressable`; runs after `Invoked`.                   |
 
 ## Behavior
 
@@ -28,7 +29,10 @@ face; there is no competing text-only `Header` property.
 - `IsChecked` applies only to the check and radio kinds. `GroupName` scopes
   radio selection within the containing menu.
 - `Invoked` reports the committed activation after any check or radio state
-  update.
+  update. The bound `Command`, if any and if `CanExecute` allows it, runs after
+  `Invoked` and after the menu's own `ItemInvoked` notification. An item with an
+  open submenu never reaches this: activating it toggles the submenu instead,
+  and no `Invoked` or `Command` fires.
 
 A check or radio entry reserves one cell for its code-owned selection glyph plus
 one separator cell in front of the content. Content is measured against the

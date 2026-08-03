@@ -63,6 +63,26 @@ public abstract class Pressable: ContentControl
     /// <param name="cause">The input path that completed activation.</param>
     protected abstract void Activate(ActivationCause cause);
 
+    /// <summary>
+    /// Invokes <see cref="Command"/> with <see cref="CommandParameter"/> when a command is bound
+    /// and allows execution.
+    /// </summary>
+    /// <remarks>
+    /// A concrete control's <see cref="Activate"/> override calls this after committing its own
+    /// state and raising its own events, so a command that cannot execute never suppresses the
+    /// control's own activation semantics (a toggle still toggles; a menu item still invokes).
+    /// </remarks>
+    protected void ExecuteCommandIfAny()
+    {
+        var command = Command;
+        var parameter = CommandParameter;
+
+        if (command is not null && command.CanExecute(parameter))
+        {
+            command.Execute(parameter);
+        }
+    }
+
     /// <inheritdoc/>
     protected override string? AccessKeyText => Content is IAccessKeyCaption caption ? caption.Text : null;
 

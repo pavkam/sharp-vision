@@ -17,6 +17,12 @@ control. At most one owned member of an effective group is checked at a time.
 | `RadioButtonStyle.Glyph`       | Preset             | Compact one-cell circle presentation.                           |
 | `Content`                      | `null`             | The optional label or richer visual, owned by the radio button. |
 | Group-selection events         | No subscribers     | Report staged old/new members and the activation cause.         |
+| `Command`, `CommandParameter`  | `null`             | Inherited from `Pressable`; runs after the group commits.       |
+
+The bound command, if any and if `CanExecute` allows it, runs after the group
+selection commits and its events raise. Unlike selection itself - which is a
+no-op when this member is already the sole checked one in its group - the
+command runs on every activation, including re-selecting the current member.
 
 `RadioButtonStyle` bundles a `RadioButtonMarkStyle`, a complete set of
 `RadioButtonGlyphs`, and the full appearance profile. `RadioButtonStyleSet` is

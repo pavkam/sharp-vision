@@ -31,6 +31,44 @@ public sealed class NavigationViewTests
         nav.Items.Count.ShouldBe(2);
     }
 
+    /// <summary>Verifies PerformInvoke activates a standalone item through the same path as
+    /// owner-driven activation, raising Invoked and then executing the bound command (#62).</summary>
+    [Fact]
+    public void PerformInvoke_WhenCommandCanExecute_RaisesInvokedThenExecutesExactlyOnce()
+    {
+        List<string> order = [];
+        var parameter = new object();
+        var command = new ProbeCommand { Executing = _ => order.Add("command") };
+        var item = new NavigationViewItem
+        {
+            Header = "Page",
+            Command = command,
+            CommandParameter = parameter
+        };
+        item.Invoked += (_, _) => order.Add("invoked");
+
+        item.PerformInvoke();
+
+        order.ShouldBe(["invoked", "command"]);
+        command.Queries.ShouldBe([parameter]);
+        command.Executions.ShouldBe([parameter]);
+    }
+
+    /// <summary>Verifies a false CanExecute suppresses execution but never the Invoked event.</summary>
+    [Fact]
+    public void PerformInvoke_WhenCommandCannotExecute_StillRaisesInvoked()
+    {
+        var command = new ProbeCommand { CanExecuteValue = false };
+        var item = new NavigationViewItem { Header = "Page", Command = command };
+        var invoked = 0;
+        item.Invoked += (_, _) => invoked++;
+
+        item.PerformInvoke();
+
+        invoked.ShouldBe(1);
+        command.Executions.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies callers select an owned semantic entry without moving focus to its private face.</summary>
     [Fact]
     public void SelectItem_WhenOwned_UpdatesSelectionWithoutChangingFocusOwnership()

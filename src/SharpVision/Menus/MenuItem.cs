@@ -374,6 +374,8 @@ public sealed class MenuItem: Pressable
             ExceptionAggregation.Capture(() => owner.NotifyItemInvoked(eventArgs), ref failure);
         }
 
+        ExceptionAggregation.Capture(ExecuteCommandIfAny, ref failure);
+
         failure?.Throw();
     }
 
