@@ -167,42 +167,6 @@ public sealed class ShortcutManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies a duplicate gesture cycles past a match that contains current focus,
-    /// exactly like AccessKeyManager.FindAnchor - reachable when a match's own content hosts a
-    /// separately focusable control.</summary>
-    [Fact]
-    public async Task Process_WhenFocusIsWithinAMatch_CyclesToTheNextMatchAsync()
-    {
-        await using var dispatcher = Dispatcher.Start();
-
-        await dispatcher.InvokeAsync(() =>
-        {
-            using var root = new Stack();
-            var menu = new Menu();
-            var anchorContent = new Button();
-            var first = new MenuItem { Text = anchorContent, Shortcut = CtrlS };
-            var second = new MenuItem { Text = "Second", Shortcut = CtrlS };
-            menu.Items.Add(first);
-            menu.Items.Add(second);
-            root.Children.Add(menu);
-            root.Attach(dispatcher);
-            using var focus = new FocusManager(root);
-            using var pointer = new PointerManager(root);
-            using var modality = new ModalityManager(root, focus, pointer);
-            var manager = new ShortcutManager(root, focus, modality);
-            var firstInvocations = 0;
-            var secondInvocations = 0;
-            first.Invoked += (_, _) => firstInvocations++;
-            second.Invoked += (_, _) => secondInvocations++;
-            focus.Focus(anchorContent).ShouldBeTrue();
-
-            manager.Process(Ctrl('s')).ShouldBeTrue();
-
-            firstInvocations.ShouldBe(0);
-            secondInvocations.ShouldBe(1);
-        }, TestContext.Current.CancellationToken);
-    }
-
     /// <summary>Verifies an active modal plane excludes matching background item shortcuts.</summary>
     [Fact]
     public async Task Process_WhenModalPlaneIsActive_UsesOnlyPlaneMatchesAsync()

@@ -224,5 +224,5 @@ public sealed class ContextMenuTests
     }
 
     private static string ItemLabel(ContextMenu menu, int index) =>
-        ((ControlText) ((MenuItem) menu.Items[index]).Text!).Content;
+        ((MenuItem) menu.Items[index]).Text;
 }

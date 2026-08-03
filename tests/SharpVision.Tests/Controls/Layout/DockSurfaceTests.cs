@@ -118,12 +118,13 @@ public sealed class DockSurfaceTests
         };
         var fill = new Button
         {
-            Text = new ControlText("FFFFFF\nFFFFFF\nFFFFFF\nFFFFFF") { Overflow = Overflow.Clip },
+            Text = "FFFFFF\nFFFFFF\nFFFFFF\nFFFFFF",
             Style = TestButtonStyles.FlatWithPadding(default),
             Padding = default,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
+        fill.TextControl!.Overflow = Overflow.Clip;
         fill.Click += (_, _) => clicked = true;
         Dock.SetSide(left, DockSide.Left);
         Dock.SetSide(top, DockSide.Top);

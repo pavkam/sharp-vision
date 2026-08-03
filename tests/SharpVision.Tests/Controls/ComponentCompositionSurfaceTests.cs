@@ -76,8 +76,8 @@ public sealed class ComponentCompositionSurfaceTests
     public async Task Input_WhenInteractiveLeafIsDeeplyNested_ComposesAncestryAndCleanupAsync()
     {
         // Arrange
-        var label = new ControlText("Deep");
-        var leaf = new CheckBox { Text = label };
+        var leaf = new CheckBox { Text = "Deep" };
+        var label = leaf.TextControl!;
         var inner = new Stack { Children = { leaf } };
         var expander = new Expander
         {

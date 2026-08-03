@@ -291,13 +291,13 @@ public sealed class ModalityIntegrationTests
             Width = Length.Cells(12),
             Height = Length.Cells(3),
         };
-        modalButtonLabel = new ControlText("OK");
         modalButton = new Button
         {
-            Text = modalButtonLabel,
+            Text = "OK",
             Width = Length.Cells(12),
             Height = Length.Cells(3),
         };
+        modalButtonLabel = modalButton.TextControl!;
         modal = new Stack
         {
             Spacing = 1,

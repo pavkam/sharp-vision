@@ -226,8 +226,7 @@ public sealed class AccessKeyManagerTests
                 Text = "&Save",
                 IsEnabled = false
             };
-            var caption = new ControlText("&Open");
-            var current = new Button { Text = caption };
+            var current = new Button { Text = "&Open" };
             root.Children.Add(unavailable);
             root.Children.Add(current);
             root.Attach(dispatcher);
@@ -240,7 +239,7 @@ public sealed class AccessKeyManagerTests
 
             manager.Process(Alt('s')).ShouldBeFalse();
             manager.Process(Alt('o')).ShouldBeTrue();
-            caption.Content = "&Save";
+            current.Text = "&Save";
             manager.Process(Alt('o')).ShouldBeFalse();
             manager.Process(Alt('s')).ShouldBeTrue();
 

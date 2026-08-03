@@ -369,13 +369,13 @@ public sealed class RadioButtonTests
         string expectedMark,
         int contentOffset)
     {
-        var content = new ProbeControl(new Size(1, 1));
         var radio = new RadioButton
         {
-            Text = content,
+            Text = "X",
             IsChecked = isChecked,
             Style = RadioButtonStyle.Parentheses
         };
+        var content = radio.TextControl!;
         new LayoutEngine().Layout(radio, new Size(5, 1));
         using Frame frame = new(new Size(5, 1));
 

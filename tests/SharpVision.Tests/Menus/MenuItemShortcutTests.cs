@@ -10,13 +10,13 @@ public sealed class MenuItemShortcutTests
     [Fact]
     public void Render_WhenShortcutTextIsSet_DrawsDimTextAtRightEdge()
     {
-        var content = new ControlText("Save");
         var item = new MenuItem
         {
-            Text = content,
+            Text = "Save",
             ShortcutText = "Ctrl+S",
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
+        var content = item.TextControl!;
         var size = new Size(20, 1);
         new LayoutEngine().Layout(item, size);
         using Frame frame = new(size);

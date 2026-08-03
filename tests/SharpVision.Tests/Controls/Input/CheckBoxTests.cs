@@ -213,8 +213,7 @@ public sealed class CheckBoxTests
     [Fact]
     public void Render_WhenCheckedWithContent_WritesExactMarkAndUnicodeCells()
     {
-        var content = new ControlText("界");
-        var checkBox = new CheckBox { Text = content, IsChecked = true, Style = CheckBoxStyle.Square };
+        var checkBox = new CheckBox { Text = "界", IsChecked = true, Style = CheckBoxStyle.Square };
         new LayoutEngine().Layout(checkBox, new Size(4, 1));
         using Frame frame = new(new Size(4, 1));
 
@@ -235,11 +234,10 @@ public sealed class CheckBoxTests
         string mark,
         int width)
     {
-        var content = new ControlText("Go");
         var checkBoxStyle = style == CheckBoxMarkStyle.Brackets
             ? CheckBoxStyle.Brackets
             : CheckBoxStyle.Tick;
-        var checkBox = new CheckBox { Text = content, IsChecked = true, Style = checkBoxStyle };
+        var checkBox = new CheckBox { Text = "Go", IsChecked = true, Style = checkBoxStyle };
         var size = new Size(width, 1);
         new LayoutEngine().Layout(checkBox, size);
         using Frame frame = new(size);
@@ -375,22 +373,22 @@ public sealed class CheckBoxTests
         checkBox.Style.ShouldBeNull();
     }
 
-    /// <summary>Verifies content replacement while checked preserves check state.</summary>
+    /// <summary>Verifies text replacement while checked preserves check state and updates the
+    /// owned caption child in place rather than replacing it.</summary>
     [Fact]
     public void Content_WhenReplacedWhileChecked_PreservesCheckState()
     {
         // Arrange
-        var first = new ControlText("First");
-        var second = new ControlText("Second");
-        var checkBox = new CheckBox { Text = first, IsChecked = true };
+        var checkBox = new CheckBox { Text = "First", IsChecked = true };
+        var textControl = checkBox.TextControl;
 
         // Act
-        checkBox.Text = second;
+        checkBox.Text = "Second";
 
         // Assert
         checkBox.IsChecked.ShouldBe(true);
-        first.Parent.ShouldBeNull();
-        second.Parent.ShouldBeSameAs(checkBox);
+        checkBox.Text.ShouldBe("Second");
+        checkBox.TextControl.ShouldBeSameAs(textControl);
     }
 
     private static void Key(CheckBox checkBox, KeyAction action) => Router.Route(
