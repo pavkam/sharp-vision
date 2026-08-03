@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Runtime;
 
+using SharpVision.Tests.Input;
+
 using Terminal.Kitty.Clipboard;
 
 /// <summary>Verifies the terminal output services facade exposes a working bell and clipboard.</summary>
@@ -403,15 +405,29 @@ public sealed class TerminalServicesTests
         };
         var reply = new TaskCompletionSource<KittyClipboardReplyEventArgs>(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        var requestWritten = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += bytes =>
+        {
+            if (bytes.Span.IndexOf("\u001b]5522;type=read"u8) >= 0)
+            {
+                _ = requestWritten.TrySetResult();
+            }
+        };
+        var clock = new ManualTimeProvider();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            options,
+            timeProvider: clock);
         application.Terminal.Clipboard.KittyClipboardReplyReceived += (_, args) => reply.TrySetResult(args);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
         application.Terminal.Clipboard.Request();
+        await requestWritten.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        clock.Advance(QueryLimits.Default.QueryTimeout);
 
-        // The deadline itself is short (QueryLimits.Default.QueryTimeout, 750ms); the generous
-        // outer wait only absorbs scheduling jitter under a heavily parallel test run.
-        var args = await reply.Task.WaitAsync(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken);
+        var args = await reply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         args.IsSuccess.ShouldBeFalse();
         args.Failure.ShouldBe(ReplyStatus.None);
         args.Diagnostic.ShouldBeNull();
