@@ -183,11 +183,11 @@ namespace SharpVision
     }
     public sealed class KittyClipboardReplyEventArgs : System.EventArgs
     {
-        public KittyClipboardReplyEventArgs(SharpVision.Terminal.Clipboard.Selection selection, SharpVision.Terminal.Kitty.Clipboard.Result? kittyResult, System.ReadOnlyMemory<byte>? text, SharpVision.Terminal.Kitty.Clipboard.ReplyStatus failure, SharpVision.Terminal.Protocols.Diagnostic? diagnostic) { }
+        public KittyClipboardReplyEventArgs(SharpVision.Terminal.Clipboard.Selection selection, SharpVision.Terminal.Kitty.Clipboard.KittyClipboardResult? kittyResult, System.ReadOnlyMemory<byte>? text, SharpVision.Terminal.Kitty.Clipboard.ReplyStatus failure, SharpVision.Terminal.Protocols.Diagnostic? diagnostic) { }
         public SharpVision.Terminal.Protocols.Diagnostic? Diagnostic { get; }
         public SharpVision.Terminal.Kitty.Clipboard.ReplyStatus Failure { get; }
         public bool IsSuccess { get; }
-        public SharpVision.Terminal.Kitty.Clipboard.Result? KittyResult { get; }
+        public SharpVision.Terminal.Kitty.Clipboard.KittyClipboardResult? KittyResult { get; }
         public SharpVision.Terminal.Clipboard.Selection Selection { get; }
         public System.ReadOnlyMemory<byte>? Text { get; }
     }

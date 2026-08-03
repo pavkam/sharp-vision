@@ -69,7 +69,7 @@ public sealed class Transaction: IDisposable
     public DateTimeOffset Deadline { get; }
 
     /// <summary>Gets the transferred result after successful completion.</summary>
-    public Result? Result { get; private set; }
+    public KittyClipboardResult? Result { get; private set; }
 
     /// <summary>Gets a terminal error status after failure.</summary>
     public ReplyStatus Failure { get; private set; }
@@ -330,7 +330,7 @@ public sealed class Transaction: IDisposable
         }
 
         ClearBuilders();
-        Result = new Result(items);
+        Result = new KittyClipboardResult(items);
         State = TransactionState.Completed;
 
         return AcceptResult.Completed;

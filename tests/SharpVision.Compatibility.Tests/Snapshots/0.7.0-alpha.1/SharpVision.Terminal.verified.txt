@@ -752,6 +752,11 @@ namespace SharpVision.Terminal.Kitty.Clipboard
         Failed = 2,
         Ignored = 3,
     }
+    public sealed class KittyClipboardResult : System.IDisposable
+    {
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Kitty.Clipboard.MimeData> Items { get; }
+        public void Dispose() { }
+    }
     public sealed class MimeData
     {
         public System.ReadOnlyMemory<byte> Data { get; }
@@ -794,17 +799,12 @@ namespace SharpVision.Terminal.Kitty.Clipboard
         Denied = 7,
         Busy = 8,
     }
-    public sealed class Result : System.IDisposable
-    {
-        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Kitty.Clipboard.MimeData> Items { get; }
-        public void Dispose() { }
-    }
     public sealed class Transaction : System.IDisposable
     {
         public System.DateTimeOffset Deadline { get; }
         public SharpVision.Terminal.Protocols.Diagnostic? Diagnostic { get; }
         public SharpVision.Terminal.Kitty.Clipboard.ReplyStatus Failure { get; }
-        public SharpVision.Terminal.Kitty.Clipboard.Result? Result { get; }
+        public SharpVision.Terminal.Kitty.Clipboard.KittyClipboardResult? Result { get; }
         public SharpVision.Terminal.Kitty.Clipboard.TransactionState State { get; }
         public SharpVision.Terminal.Kitty.Clipboard.AcceptResult Accept(SharpVision.Terminal.Kitty.Clipboard.Packet packet) { }
         public void Cancel() { }

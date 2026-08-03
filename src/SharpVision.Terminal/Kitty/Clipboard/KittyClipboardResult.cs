@@ -5,13 +5,13 @@ namespace SharpVision.Terminal.Kitty.Clipboard;
 
 /// <summary>Owns completed Kitty clipboard MIME data until disposal.</summary>
 [PublicAPI]
-public sealed class Result: IDisposable
+public sealed class KittyClipboardResult: IDisposable
 {
     private bool _disposed;
 
     /// <summary>Initializes a result from transferred MIME data.</summary>
     /// <param name="items">The owned result items.</param>
-    internal Result(MimeData[] items) => Items = items;
+    internal KittyClipboardResult(MimeData[] items) => Items = items;
 
     /// <summary>Gets MIME values in terminal delivery order.</summary>
     public IReadOnlyList<MimeData> Items { get; }

@@ -31,8 +31,8 @@ correlation IDs. Unknown metadata remains observable by key name only.
 and paste-mode controls. `Kitty.Clipboard.Transaction` enforces
 `OK -> DATA* -> DONE` reads, write `DONE`, one MIME type at a time, 4096-byte
 chunks, total-size limits, cancellation, and fake-clock deadlines. Successful
-data transfers into an owned `Kitty.Clipboard.Result` whose disposal clears
-every data buffer.
+data transfers into an owned `Kitty.Clipboard.KittyClipboardResult` whose
+disposal clears every data buffer.
 
 Correlation is checked before validity. A transaction bound to an `id` ignores
 any packet whose `id` does not match its own — malformed or well-formed,
