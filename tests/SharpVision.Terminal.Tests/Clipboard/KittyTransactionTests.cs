@@ -310,6 +310,31 @@ public sealed class KittyTransactionTests
         data.ToArray().ShouldBe(new byte[6]);
     }
 
+    /// <summary>
+    /// Verifies a caller cannot replace an owned item through the public read-only view and make
+    /// disposal skip the transferred clipboard buffer.
+    /// </summary>
+    [Fact]
+    public void Dispose_WhenItemsViewIsMutated_ClearsTransferredData()
+    {
+        using var transaction = Transaction.Read();
+        _ = transaction.Accept(Packet("5522;type=read:status=OK"));
+        _ = transaction.Accept(
+            Packet("5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==;c2VjcmV0"));
+        _ = transaction.Accept(Packet("5522;type=read:status=DONE"));
+        var result = transaction.Result.ShouldNotBeNull();
+        var item = result.Items.ShouldHaveSingleItem();
+
+        if (result.Items is MimeData[] mutableItems)
+        {
+            mutableItems[0] = new MimeData("application/decoy", [1]);
+        }
+
+        result.Dispose();
+
+        item.Data.ToArray().ShouldBe(new byte[6]);
+    }
+
     private static ClipboardPacket Packet(string wire) =>
         ClipboardPacket.Parse(Encoding.ASCII.GetBytes(wire));
 }

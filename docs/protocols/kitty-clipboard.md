@@ -32,7 +32,8 @@ and paste-mode controls. `Kitty.Clipboard.Transaction` enforces
 `OK -> DATA* -> DONE` reads, write `DONE`, one MIME type at a time, 4096-byte
 chunks, total-size limits, cancellation, and fake-clock deadlines. Successful
 data transfers into an owned `Kitty.Clipboard.KittyClipboardResult` whose
-disposal clears every data buffer.
+immutable item collection cannot be rewritten by consumers and whose disposal
+clears every transferred data buffer.
 
 Correlation is checked before validity. A transaction bound to an `id` ignores
 any packet whose `id` does not match its own — malformed or well-formed,

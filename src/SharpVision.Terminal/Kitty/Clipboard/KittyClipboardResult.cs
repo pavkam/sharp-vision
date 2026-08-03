@@ -11,9 +11,9 @@ public sealed class KittyClipboardResult: IDisposable
 
     /// <summary>Initializes a result from transferred MIME data.</summary>
     /// <param name="items">The owned result items.</param>
-    internal KittyClipboardResult(MimeData[] items) => Items = items;
+    internal KittyClipboardResult(MimeData[] items) => Items = Array.AsReadOnly(items);
 
-    /// <summary>Gets MIME values in terminal delivery order.</summary>
+    /// <summary>Gets the immutable item collection in terminal delivery order.</summary>
     public IReadOnlyList<MimeData> Items { get; }
 
     /// <summary>Clears every owned data buffer. Disposal is idempotent.</summary>
