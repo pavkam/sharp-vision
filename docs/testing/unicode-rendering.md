@@ -3,9 +3,10 @@
 ## Overview
 
 Geometry fixtures pin the Unicode 17 grapheme, East Asian Width, and emoji
-source versions. Generated tables carry sorted/non-overlap and first/last
-boundary tests, and a conformance failure prints the exact code points and rule
-context.
+source versions. Generation rejects out-of-range, reversed, overlapping, or
+unordered scalar ranges. A source-level regression test keeps the tables in
+static metadata-backed primitive spans without a generated type initializer, and
+a conformance failure prints the exact code points and rule context.
 
 The checked-in Unicode 17 `GraphemeBreakTest.txt` is executed line by line.
 Expected boundaries are decoded independently from its division and

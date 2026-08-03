@@ -12,7 +12,10 @@ const outputDirectory = path.join(
   "SharpVision.Terminal",
   "Unicode",
 );
-const legacyOutputPath = path.join(outputDirectory, "Data.g.cs");
+const obsoleteOutputPaths = [
+  path.join(outputDirectory, "Data.g.cs"),
+  path.join(outputDirectory, "PropertyRange.cs"),
+];
 const baseUrl = "https://www.unicode.org/Public/17.0.0/ucd";
 const sources = [
   {
@@ -86,6 +89,24 @@ const widthNames = new Map([
   ["Na", "Narrow"],
   ["W", "Wide"],
 ]);
+const graphemeValues = [
+  "Other",
+  "Prepend",
+  "Cr",
+  "Lf",
+  "Control",
+  "Extend",
+  "RegionalIndicator",
+  "SpacingMark",
+  "L",
+  "V",
+  "T",
+  "Lv",
+  "Lvt",
+  "Zwj",
+];
+const indicValues = ["None", "Linker", "Consonant", "Extend"];
+const widthValues = ["Neutral", "Ambiguous", "Fullwidth", "Halfwidth", "Narrow", "Wide"];
 
 function digest(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -216,38 +237,44 @@ function parseAssigned(content) {
   return merged;
 }
 
-function formatRange(range, enumName) {
-  const property = enumName === undefined
-    ? "1"
-    : `(int) ${enumName}.${range.property}`;
-  return `        new(0x${range.start.toString(16).toUpperCase()}, 0x${range.end.toString(16).toUpperCase()}, ${property}),`;
+function validateRanges(name, ranges) {
+  if (ranges.length === 0) {
+    throw new Error(`${name} must contain at least one generated range.`);
+  }
+
+  for (let index = 0; index < ranges.length; index += 1) {
+    const range = ranges[index];
+
+    if (range.start < 0 || range.end < range.start || range.end > 0x10ffff) {
+      throw new Error(`${name} contains an invalid Unicode scalar range.`);
+    }
+
+    if (index > 0 && ranges[index - 1].end >= range.start) {
+      throw new Error(`${name} ranges must be strictly ordered and non-overlapping.`);
+    }
+  }
 }
 
-function formatArray(fieldName, ranges, enumName) {
-  const entries = ranges.map((range) => formatRange(range, enumName));
-  entries[entries.length - 1] = entries.at(-1).slice(0, -1);
+function formatSpan(name, values) {
+  const encoded = values
+    .flatMap((value) => {
+      return [value & 0xffff, value >>> 16];
+    })
+    .map((value) => `\\u${value.toString(16).toUpperCase().padStart(4, "0")}`)
+    .join("");
 
   return [
-    `    private static readonly PropertyRange[] ${fieldName} =`,
-    "    [",
-    ...entries,
-    "    ];",
+    `    private const string ${name}Data = "${encoded}";`,
+    `    private static ReadOnlySpan<int> ${name} => MemoryMarshal.Cast<char, int>(${name}Data);`,
   ].join("\n");
 }
 
-function formatValueArray(fieldName, ranges) {
-  const entries = ranges.map(
-    (range) =>
-      `        new(0x${range.start.toString(16).toUpperCase()}, 0x${range.end.toString(16).toUpperCase()}, 0x${range.property.toString(16).toUpperCase()}),`,
-  );
-  entries[entries.length - 1] = entries.at(-1).slice(0, -1);
-
+function formatTable(name, ranges, valueOf) {
   return [
-    `    private static readonly PropertyRange[] ${fieldName} =`,
-    "    [",
-    ...entries,
-    "    ];",
-  ].join("\n");
+    formatSpan(`${name}Starts`, ranges.map((range) => range.start)),
+    formatSpan(`${name}Ends`, ranges.map((range) => range.end)),
+    formatSpan(`${name}Values`, ranges.map((range) => valueOf(range.property))),
+  ].join("\n\n");
 }
 
 function generate(files) {
@@ -273,6 +300,18 @@ function generate(files) {
   );
   const canonicalBases = parseCanonicalBases(files.get("UnicodeData.txt"));
   const assigned = parseAssigned(files.get("UnicodeData.txt"));
+
+  for (const [name, ranges] of [
+    ["GraphemeBreak", grapheme],
+    ["IndicConjunct", indic],
+    ["EastAsianWidth", width],
+    ["EmojiPresentation", emoji],
+    ["ExtendedPictographic", pictographic],
+    ["CanonicalBase", canonicalBases],
+    ["Assigned", assigned],
+  ]) {
+    validateRanges(name, ranges);
+  }
 
   const header = `// Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -374,130 +413,84 @@ internal enum EastAsianWidth
 }
 `);
 
-  outputs.set("PropertyRange.cs", `${header}
-/// <summary>Stores one inclusive scalar range and its generated property value.</summary>
-internal readonly record struct PropertyRange
-{
-    /// <summary>Initializes one generated inclusive scalar range.</summary>
-    /// <param name="start">The first Unicode scalar.</param>
-    /// <param name="end">The last Unicode scalar.</param>
-    /// <param name="value">The generated enum or Boolean value.</param>
-    public PropertyRange(int start, int end, int value)
-    {
-        Debug.Assert(start >= 0, "A generated scalar range cannot start below zero.");
-        Debug.Assert(end >= start, "A generated scalar range cannot end before it starts.");
-        Debug.Assert(end <= 0x10FFFF, "A generated scalar range must end within Unicode.");
-
-        Start = start;
-        End = end;
-        Value = value;
-    }
-
-    /// <summary>Gets the first Unicode scalar.</summary>
-    public int Start { get; }
-
-    /// <summary>Gets the last Unicode scalar.</summary>
-    public int End { get; }
-
-    /// <summary>Gets the generated enum or Boolean value.</summary>
-    public int Value { get; }
-}
-`);
-
   outputs.set("UnicodeData.cs", `${header}
 /// <summary>Provides allocation-free lookup over pinned Unicode 17 tables.</summary>
 internal static class UnicodeData
 {
-${formatArray("_graphemeBreakRanges", grapheme, "GraphemeBreak")}
+    // Generated integers are packed into UTF-16 metadata and viewed as little-endian int spans.
+    // This representation is intentionally limited to the little-endian .NET targets SharpVision supports.
+${formatTable("GraphemeBreak", grapheme, (value) => graphemeValues.indexOf(value))}
 
-${formatArray("_indicConjunctRanges", indic, "IndicConjunct")}
+${formatTable("IndicConjunct", indic, (value) => indicValues.indexOf(value))}
 
-${formatArray("_eastAsianWidthRanges", width, "EastAsianWidth")}
+${formatTable("EastAsianWidth", width, (value) => widthValues.indexOf(value))}
 
-${formatArray("_emojiPresentationRanges", emoji)}
+${formatTable("EmojiPresentation", emoji, () => 1)}
 
-${formatArray("_extendedPictographicRanges", pictographic)}
+${formatTable("ExtendedPictographic", pictographic, () => 1)}
 
-${formatValueArray("_canonicalBaseRanges", canonicalBases)}
+${formatTable("CanonicalBase", canonicalBases, (value) => value)}
 
-${formatArray("_assignedRanges", assigned)}
-
-    /// <summary>Gets generated grapheme-break ranges for invariant validation.</summary>
-    public static ReadOnlySpan<PropertyRange> GraphemeBreakRanges => _graphemeBreakRanges;
-
-    /// <summary>Gets generated Indic conjunct ranges for invariant validation.</summary>
-    public static ReadOnlySpan<PropertyRange> IndicConjunctRanges => _indicConjunctRanges;
-
-    /// <summary>Gets generated East Asian Width ranges for invariant validation.</summary>
-    public static ReadOnlySpan<PropertyRange> EastAsianWidthRanges => _eastAsianWidthRanges;
-
-    /// <summary>Gets generated emoji-presentation ranges for invariant validation.</summary>
-    public static ReadOnlySpan<PropertyRange> EmojiPresentationRanges => _emojiPresentationRanges;
-
-    /// <summary>Gets generated extended-pictographic ranges for invariant validation.</summary>
-    public static ReadOnlySpan<PropertyRange> ExtendedPictographicRanges => _extendedPictographicRanges;
-
-    /// <summary>Gets generated canonical-decomposition bases for invariant validation.</summary>
-    public static ReadOnlySpan<PropertyRange> CanonicalBaseRanges => _canonicalBaseRanges;
-
-    /// <summary>Gets generated assigned-scalar ranges for invariant validation.</summary>
-    public static ReadOnlySpan<PropertyRange> AssignedRanges => _assignedRanges;
+${formatTable("Assigned", assigned, () => 1)}
 
     extension(int scalar)
     {
         /// <summary>Gets the grapheme-break property for one valid scalar value.</summary>
         public GraphemeBreak GetGraphemeBreak() =>
-            (GraphemeBreak) Find(_graphemeBreakRanges, scalar, (int) GraphemeBreak.Other);
+            (GraphemeBreak) Find(GraphemeBreakStarts, GraphemeBreakEnds, GraphemeBreakValues, scalar, (int) GraphemeBreak.Other);
 
         /// <summary>Gets the Indic conjunct property for one valid scalar value.</summary>
         public IndicConjunct GetIndicConjunct() =>
-            (IndicConjunct) Find(_indicConjunctRanges, scalar, (int) IndicConjunct.None);
+            (IndicConjunct) Find(IndicConjunctStarts, IndicConjunctEnds, IndicConjunctValues, scalar, (int) IndicConjunct.None);
 
         /// <summary>Gets the East Asian Width property for one valid scalar value.</summary>
         public EastAsianWidth GetEastAsianWidth() =>
-            (EastAsianWidth) Find(_eastAsianWidthRanges, scalar, (int) EastAsianWidth.Neutral);
+            (EastAsianWidth) Find(EastAsianWidthStarts, EastAsianWidthEnds, EastAsianWidthValues, scalar, (int) EastAsianWidth.Neutral);
 
         /// <summary>Gets whether one valid scalar has default emoji presentation.</summary>
         public bool IsEmojiPresentation() =>
-            Find(_emojiPresentationRanges, scalar, 0) != 0;
+            Find(EmojiPresentationStarts, EmojiPresentationEnds, EmojiPresentationValues, scalar, 0) != 0;
 
         /// <summary>Gets whether one valid scalar has the extended-pictographic property.</summary>
         public bool IsExtendedPictographic() =>
-            Find(_extendedPictographicRanges, scalar, 0) != 0;
+            Find(ExtendedPictographicStarts, ExtendedPictographicEnds, ExtendedPictographicValues, scalar, 0) != 0;
 
         /// <summary>Gets the recursively decomposed first scalar without allocating normalization storage.</summary>
         public int GetCanonicalBase() =>
-            Find(_canonicalBaseRanges, scalar, scalar);
+            Find(CanonicalBaseStarts, CanonicalBaseEnds, CanonicalBaseValues, scalar, scalar);
 
         /// <summary>Gets whether a scalar is assigned in the pinned Unicode version.</summary>
-        public bool IsAssigned() => Find(_assignedRanges, scalar, 0) != 0;
+        public bool IsAssigned() => Find(AssignedStarts, AssignedEnds, AssignedValues, scalar, 0) != 0;
     }
 
     [SuppressMessage(
         "Style",
         "IDE0051:Remove unused private members",
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
-    private static int Find(PropertyRange[] ranges, int scalar, int fallback)
+    private static int Find(
+        ReadOnlySpan<int> starts,
+        ReadOnlySpan<int> ends,
+        ReadOnlySpan<int> values,
+        int scalar,
+        int fallback)
     {
         var low = 0;
-        var high = ranges.Length - 1;
+        var high = starts.Length - 1;
 
         while (low <= high)
         {
             var middle = low + (high - low) / 2;
-            var range = ranges[middle];
-
-            if (scalar < range.Start)
+            if (scalar < starts[middle])
             {
                 high = middle - 1;
             }
-            else if (scalar > range.End)
+            else if (scalar > ends[middle])
             {
                 low = middle + 1;
             }
             else
             {
-                return range.Value;
+                return values[middle];
             }
         }
 
@@ -560,10 +553,12 @@ async function main() {
   const outputs = generate(await loadSources());
 
   if (check) {
-    const legacy = await readFile(legacyOutputPath, "utf8").catch(() => "");
+    for (const obsoleteOutputPath of obsoleteOutputPaths) {
+      const obsolete = await readFile(obsoleteOutputPath, "utf8").catch(() => "");
 
-    if (legacy.length !== 0) {
-      throw new Error("Unicode generated output is stale; run npm run generate:unicode.");
+      if (obsolete.length !== 0) {
+        throw new Error("Unicode generated output is stale; run npm run generate:unicode.");
+      }
     }
 
     for (const [name, output] of outputs) {
@@ -578,7 +573,10 @@ async function main() {
     process.stdout.write("Unicode generated output is current.\n");
   } else {
     await mkdir(outputDirectory, { recursive: true });
-    await rm(legacyOutputPath, { force: true });
+
+    for (const obsoleteOutputPath of obsoleteOutputPaths) {
+      await rm(obsoleteOutputPath, { force: true });
+    }
 
     for (const [name, output] of outputs) {
       const outputPath = path.join(outputDirectory, name);

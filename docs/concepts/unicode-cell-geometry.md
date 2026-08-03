@@ -16,6 +16,12 @@ needs no network access. Maintainers run the explicit `npm run refresh:unicode`
 command to redownload the pinned official files and verify their recorded
 SHA-256 values.
 
+The generated lookup tables are packed into compile-time string metadata and
+viewed as little-endian integer spans. This avoids a generated type initializer
+and per-lookup allocation on supported .NET targets. Multi-byte static metadata
+views require a little-endian runtime; the generator records that constraint
+beside the emitted representation.
+
 Text is decoded as Rune values and segmented into extended grapheme clusters.
 Width is assigned to the whole cluster; it is never calculated by summing the
 scalar East Asian Width values. The default ambiguous-width policy is narrow,

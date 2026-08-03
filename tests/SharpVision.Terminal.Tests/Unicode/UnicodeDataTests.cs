@@ -21,21 +21,6 @@ public sealed class UnicodeDataTests
     }
 
     /// <summary>
-    /// Verifies generated ranges are safe for binary search.
-    /// </summary>
-    [Fact]
-    public void Ranges_WhenGenerated_AreSortedAndNonOverlapping()
-    {
-        AssertOrdered(UnicodeData.GraphemeBreakRanges);
-        AssertOrdered(UnicodeData.IndicConjunctRanges);
-        AssertOrdered(UnicodeData.EastAsianWidthRanges);
-        AssertOrdered(UnicodeData.EmojiPresentationRanges);
-        AssertOrdered(UnicodeData.ExtendedPictographicRanges);
-        AssertOrdered(UnicodeData.CanonicalBaseRanges);
-        AssertOrdered(UnicodeData.AssignedRanges);
-    }
-
-    /// <summary>
     /// Verifies representative official boundaries survive generation.
     /// </summary>
     [Fact]
@@ -51,22 +36,5 @@ public sealed class UnicodeDataTests
         0x00e9.GetCanonicalBase().ShouldBe(0x0065);
         0x0061.IsAssigned().ShouldBeTrue();
         0x0378.IsAssigned().ShouldBeFalse();
-    }
-
-    private static void AssertOrdered(ReadOnlySpan<PropertyRange> ranges)
-    {
-        ranges.IsEmpty.ShouldBeFalse();
-
-        for (var index = 0; index < ranges.Length; index++)
-        {
-            var current = ranges[index];
-
-            current.Start.ShouldBeLessThanOrEqualTo(current.End);
-
-            if (index > 0)
-            {
-                ranges[index - 1].End.ShouldBeLessThan(current.Start);
-            }
-        }
     }
 }
