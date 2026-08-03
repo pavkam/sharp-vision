@@ -36,7 +36,7 @@ public sealed class DetectorFacadeTests
             ["COLORTERM"] = "truecolor"
         };
         var queries = new QueryResults { FocusReporting = false, KittyClipboard = true };
-        var overrides = new Settings { KittyClipboard = false, AmbiguousWidth = Ambiguous.Wide };
+        var overrides = new CapabilityOverrides { KittyClipboard = false, AmbiguousWidth = Ambiguous.Wide };
 
         // Act
         var facade = CapabilityDetector.Detect(baseline, environment, queries, overrides);
@@ -85,7 +85,7 @@ public sealed class DetectorFacadeTests
             ["TERM"] = "xterm-kitty"
         };
         var queries = new QueryResults { KittyClipboard = true };
-        var overrides = new Settings { KittyClipboard = false };
+        var overrides = new CapabilityOverrides { KittyClipboard = false };
 
         // Act
         var facade = CapabilityDetector.Detect(environment, queries, overrides);

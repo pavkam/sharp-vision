@@ -130,7 +130,7 @@ public sealed class DiscoveryPipelineTests
             UnderlineColor = false,
             Overline = false
         };
-        var overrides = new Settings()
+        var overrides = new CapabilityOverrides()
         {
             KittyClipboard = false,
             SynchronizedOutput = false,
@@ -197,7 +197,7 @@ public sealed class DiscoveryPipelineTests
         };
         var environment = new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" };
         var queries = new QueryResults { FocusReporting = false, KittyClipboard = true };
-        var overrides = new Settings { KittyClipboard = false };
+        var overrides = new CapabilityOverrides { KittyClipboard = false };
 
         // Act
         var pipeline = new DiscoveryPipeline(

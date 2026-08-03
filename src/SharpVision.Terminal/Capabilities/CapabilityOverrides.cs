@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Capabilities;
 
 /// <summary>Defines explicit nullable caller overrides applied after all other evidence.</summary>
 [PublicAPI]
-public sealed record Settings
+public sealed record CapabilityOverrides
 {
     /// <summary>Gets an optional color-depth override.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The assigned color depth is unknown.</exception>

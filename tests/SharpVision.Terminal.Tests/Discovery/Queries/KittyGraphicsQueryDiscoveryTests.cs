@@ -143,7 +143,7 @@ public sealed class KittyGraphicsQueryDiscoveryTests
     {
         var options = new NegotiationOptions(
             new Dictionary<string, string?>(),
-            new Settings { KittyGraphics = false });
+            new CapabilityOverrides { KittyGraphics = false });
         var negotiator = new ActiveQueryDiscoveryStrategy(options);
         var output = new ArrayBufferWriter<byte>();
 

@@ -16,7 +16,7 @@ public sealed class NegotiationOptions
     /// <exception cref="ArgumentNullException"><paramref name="environment"/> is null.</exception>
     public NegotiationOptions(
         IReadOnlyDictionary<string, string?> environment,
-        Settings? overrides = null,
+        CapabilityOverrides? overrides = null,
         QueryLimits? limits = null) : this(
         environment,
         overrides,
@@ -33,7 +33,7 @@ public sealed class NegotiationOptions
     /// <exception cref="ArgumentNullException"><paramref name="environment"/> is null.</exception>
     public NegotiationOptions(
         IReadOnlyDictionary<string, string?> environment,
-        Settings? overrides,
+        CapabilityOverrides? overrides,
         QueryLimits? limits,
         MultiplexingPolicy? multiplexing)
     {
@@ -53,7 +53,7 @@ public sealed class NegotiationOptions
     public IReadOnlyDictionary<string, string?> Environment { get; }
 
     /// <summary>Gets optional explicit final overrides.</summary>
-    public Settings? Overrides { get; }
+    public CapabilityOverrides? Overrides { get; }
 
     /// <summary>Gets finite query limits.</summary>
     public QueryLimits Limits { get; }

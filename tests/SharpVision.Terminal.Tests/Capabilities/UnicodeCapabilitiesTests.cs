@@ -30,7 +30,7 @@ public sealed class UnicodeCapabilitiesTests
     {
         var capabilities = CapabilityDetector.Detect(
             new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
-            overrides: new Settings { AmbiguousWidth = Ambiguous.Wide });
+            overrides: new CapabilityOverrides { AmbiguousWidth = Ambiguous.Wide });
 
         capabilities.AmbiguousWidth.ShouldBe(Ambiguous.Wide);
     }

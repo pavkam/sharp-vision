@@ -29,7 +29,7 @@ it cannot silently enable a feature. `ColorDepth` separately records monochrome,
 The profile reports `UnicodeVersion` as the library's pinned Unicode 17.0.0 data
 and carries an explicit `AmbiguousWidth` policy. The policy defaults to narrow,
 never changes because of locale or terminal-name hints, and may be set to wide
-only by caller `Settings` applied at the final precedence step.
+only by caller `CapabilityOverrides` applied at the final precedence step.
 
 ```mermaid
 flowchart LR
@@ -143,10 +143,10 @@ database evidence, environment narrowing and hints, bounded query results, and
 then explicit semantic settings or an explicit replacement `TerminalProfile`.
 The [terminfo lookup contract](../protocols/terminfo.md#lookup-and-fallback) and
 the loaded ncurses build own database selection and compatibility fallback.
-Environment names never replace database command programs. `Settings` may
-override semantic features only; it cannot carry raw command strings. A complete
-explicit `TerminalProfile` replacement is the only explicit way to override
-command programs.
+Environment names never replace database command programs. `CapabilityOverrides`
+may override semantic features only; it cannot carry raw command strings. A
+complete explicit `TerminalProfile` replacement is the only explicit way to
+override command programs.
 
 An unsuitable database description is rejected before output rather than
 weakened by an environment hint. A bounded query may refine a semantic feature
@@ -163,8 +163,8 @@ strategies specified by the
 [discovery pipeline](discovery-pipeline.md#immutable-input-and-adapters). Kitty,
 xterm, and iTerm names contribute tentative hints. tmux, GNU screen, and SSH
 presence may only narrow risky features. A nullable `QueryResults` value
-replaces hints with query evidence, and a nullable `Settings` value is applied
-last as explicit caller policy.
+replaces hints with query evidence, and a nullable `CapabilityOverrides` value
+is applied last as explicit caller policy.
 
 ### Multiplexer boundary
 
@@ -312,13 +312,13 @@ equality suppresses redundant transitions.
 
 Styled underlines, independent underline color, and overline are separate
 optional features. Terminal-name hints may mark them tentative for diagnostics,
-but only query evidence or an explicit nullable `Settings` override marks them
-supported. A supported styled-underline feature permits `4:1` through `4:5`;
-otherwise every typed variant degrades to legacy SGR 4. Unsupported underline
-color and overline are omitted. For database profiles, every decoration requires
-its exact retained program; an absent program omits the decoration. The encoder
-compares these projected decoration fields alongside the projected colors before
-deciding whether a transition is redundant.
+but only query evidence or an explicit nullable `CapabilityOverrides` override
+marks them supported. A supported styled-underline feature permits `4:1` through
+`4:5`; otherwise every typed variant degrades to legacy SGR 4. Unsupported
+underline color and overline are omitted. For database profiles, every
+decoration requires its exact retained program; an absent program omits the
+decoration. The encoder compares these projected decoration fields alongside the
+projected colors before deciding whether a transition is redundant.
 
 ## Safe degradation
 
