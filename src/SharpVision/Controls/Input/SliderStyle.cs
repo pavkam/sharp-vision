@@ -14,15 +14,12 @@ public readonly struct SliderStyle: IEquatable<SliderStyle>
     private readonly SliderGlyphs? _glyphs;
     private readonly ThemeProfile? _appearance;
 
-    /// <summary>Gets the primary slider-style definition.</summary>
-    internal static StyleDefinition<SliderStyle> Definition { get; } = StyleDefinitions.Control(
+    /// <summary>Gets the primary slider-style definition. Reads the theme's registrable "slider"
+    /// style section (see #155) for the three colors when the active theme authors one; falls
+    /// back to the code-owned structural defaults otherwise.</summary>
+    internal static StyleDefinition<SliderStyle> Definition { get; } = new(
         ThemeRole.Control,
-        static profile => new SliderStyle(
-            Default.FillColor,
-            Default.TrackColor,
-            Default.ThumbColor,
-            Default.Glyphs,
-            profile),
+        ResolveComplete,
         static style => style.Appearance,
         static (previous, previousTheme, current, currentTheme) =>
             previous != current ||
@@ -31,6 +28,28 @@ public readonly struct SliderStyle: IEquatable<SliderStyle>
             ControlBase.ResolveColor(previous.ThumbColor, previousTheme) != ControlBase.ResolveColor(current.ThumbColor, currentTheme)
                 ? InvalidationImpact.Render
                 : InvalidationImpact.None);
+
+    private static SliderStyle ResolveComplete(SliderStyle? local, Theme? theme)
+    {
+        if (local.HasValue)
+        {
+            return local.Value;
+        }
+
+        var effectiveTheme = theme ?? Themes.Dark;
+        var section = effectiveTheme.GetStyleSection<SliderStyleSection>("slider");
+
+        return new SliderStyle(
+            ResolveColor(effectiveTheme, section?.FillColor, "fillColor") ?? Default.FillColor,
+            ResolveColor(effectiveTheme, section?.TrackColor, "trackColor") ?? Default.TrackColor,
+            ResolveColor(effectiveTheme, section?.ThumbColor, "thumbColor") ?? Default.ThumbColor,
+            Default.Glyphs,
+            effectiveTheme.GetProfile(ThemeRole.Control));
+    }
+
+    private static ColorValue? ResolveColor(Theme theme, string? value, string memberName) => value is null
+        ? null
+        : theme.ResolveSectionColorValue(value, $"styles.slider.{memberName}");
 
     /// <summary>Initializes a complete slider presentation.</summary>
     /// <param name="fillColor">The non-transparent filled-rail foreground.</param>

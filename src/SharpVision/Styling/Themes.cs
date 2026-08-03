@@ -17,7 +17,10 @@ public static class Themes
     // five fixed profile names - grows as a built-in control registers a section, unlike the open
     // "vendor.control" namespace any third-party control can use without a registry entry here.
     private static readonly HashSet<string> _registeredStyleSections =
-        new(StringComparer.Ordinal) { "scrollBar", "checkBox", "radioButton", "button", "chaseIndicator" };
+        new(StringComparer.Ordinal)
+        {
+            "scrollBar", "checkBox", "radioButton", "button", "chaseIndicator", "slider"
+        };
     private static readonly Lock _gate = new();
     private static readonly Dictionary<string, Theme> _cache = new(StringComparer.Ordinal);
 

@@ -59,11 +59,17 @@ the slider command set remain available to inherited routed input.
 
 The rail renders its filled, thumb, and unfilled cells with the `Accent`,
 `Accent`, and `Muted` foregrounds respectively. `FillColor`, `ThumbColor`, and
-`TrackColor` are authoritative local overrides. Background, attributes, and the
-normal, pointer-over, focused, pressed, and disabled appearances follow the
-shared [styling contract](../../concepts/styling.md#visual-states). Zero and
-tiny bounds stay contained, and ambiguous-width glyphs fall back to one-cell
-ASCII.
+`TrackColor` are authoritative local overrides. A theme document may
+additionally author a `styles.slider` section with `fillColor`/`trackColor`/
+`thumbColor` string members (accepting a `ThemeColor` name, a `#RGB`/`#RRGGBB`
+literal, a palette key, or `"transparent"`/`"default"`); an active theme's
+section supplies those colors ahead of the code-owned defaults whenever no local
+`Style` is assigned (see
+[themes.md](../../concepts/themes.md#semantic-profiles)). The glyph family
+remains code-owned. Background, attributes, and the normal, pointer-over,
+focused, pressed, and disabled appearances follow the shared
+[styling contract](../../concepts/styling.md#visual-states). Zero and tiny
+bounds stay contained, and ambiguous-width glyphs fall back to one-cell ASCII.
 
 ## Example
 

@@ -221,6 +221,30 @@ public sealed class Theme
         return (TSection) _boundStyleSections.GetOrAdd(sectionName, parsed);
     }
 
+    // Mirrors Themes.ResolveColorValue/ResolveColor exactly, but reads this Theme's own public
+    // Palette instead of the private dictionary the eager document parse builds - a registrable
+    // section's color members are resolved lazily, long after that parse-time dictionary is gone
+    // (see #155).
+    internal ColorValue ResolveSectionColorValue(string value, string context)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        return string.Equals(value, "transparent", StringComparison.OrdinalIgnoreCase)
+            ? Color.Transparent
+            : string.Equals(value, "default", StringComparison.OrdinalIgnoreCase)
+                ? Color.Default
+                : Enum.TryParse<ThemeColor>(value, ignoreCase: true, out var role) && Enum.IsDefined(role)
+                    ? role
+                    : value.StartsWith('#')
+                        ? Color.TryFromHex(value, out var literal)
+                            ? literal
+                            : throw new InvalidDataException($"Theme '{Slug}' {context} has invalid color '{value}'.")
+                        : Palette.TryGetValue(value, out var paletteColor)
+                            ? paletteColor
+                            : throw new InvalidDataException(
+                                $"Theme '{Slug}' {context} references unknown palette key '{value}'.");
+    }
+
     /// <summary>Resolves one known semantic role to its concrete appearance profile.</summary>
     /// <param name="role">The known semantic role.</param>
     /// <returns>The configured appearance profile.</returns>
