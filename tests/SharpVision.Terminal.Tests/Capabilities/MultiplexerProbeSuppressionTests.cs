@@ -7,8 +7,6 @@ using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Discovery.Queries;
 using SharpVision.Terminal.Multiplexing;
 
-using MultiplexingOperation = Terminal.Multiplexing.Operation;
-
 /// <summary>
 /// Verifies startup probes that a multiplexer would consume are not emitted when that multiplexer
 /// cannot carry them.
@@ -133,7 +131,7 @@ public sealed class MultiplexerProbeSuppressionTests
             TerminalCapabilities.Conservative,
             TimeProvider.System);
         var destination = new ArrayBufferWriter<byte>();
-        var policy = new Policy(
+        var policy = new MultiplexingPolicy(
             [MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
