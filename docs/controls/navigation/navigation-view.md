@@ -68,6 +68,11 @@ item renders as `› Header` when selected or hovered and as `· Header` otherwi
 Pointer or programmatic selection updates the owning `NavigationView`; the item
 itself stays non-focusable and outside the tab order.
 
+Activation raises `Invoked` (`EventHandler<ActivationEventArgs>`), then invokes
+the inherited `Command` with `CommandParameter` when one is bound and
+`CanExecute` allows it. `PerformInvoke()` activates the item programmatically
+through the same path when it is enabled and visible.
+
 ## NavigationViewGroup
 
 A collapsible labeled section. `Header` (string) is the group label, rendered

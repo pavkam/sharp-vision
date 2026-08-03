@@ -187,6 +187,7 @@ public sealed class CheckBox: Pressable
             _ => false
         };
         SetChecked(next, cause);
+        ExecuteCommandIfAny();
     }
 
     /// <inheritdoc/>

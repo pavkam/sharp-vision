@@ -41,4 +41,34 @@ public sealed class EditPerformanceTests
         watch.Stop();
         return watch.Elapsed;
     }
+
+    /// <summary>Verifies an unlimited Replace call (maxLength = 0, the common case) skips the two
+    /// full-document grapheme counts a bounded call still pays for. Both calls perform the same
+    /// O(document) string.Concat copy, so comparing them in isolation (rather than against wall
+    /// clock across document sizes, per #42's own guidance to avoid a size-scaling timing gate)
+    /// isolates exactly the "retained length" scan Replace used to run unconditionally even though
+    /// it is only ever consulted when maxLength is positive.</summary>
+    [Fact]
+    public void Replace_WhenMaxLengthIsUnbounded_SkipsTheRetainedLengthScanABoundedCallStillPays()
+    {
+        var unbounded = ElapsedReplacing(documentLength: 1_600_000, maxLength: 0);
+        var bounded = ElapsedReplacing(documentLength: 1_600_000, maxLength: int.MaxValue);
+
+        unbounded.TotalMilliseconds.ShouldBeLessThan(bounded.TotalMilliseconds * 0.8);
+    }
+
+    private static TimeSpan ElapsedReplacing(int documentLength, int maxLength)
+    {
+        var text = new string('a', documentLength);
+        var caret = new Selection(documentLength, documentLength);
+        var watch = Stopwatch.StartNew();
+
+        for (var iteration = 0; iteration < 200; iteration++)
+        {
+            _ = Edit.Replace(text, caret, "x", maxLength);
+        }
+
+        watch.Stop();
+        return watch.Elapsed;
+    }
 }

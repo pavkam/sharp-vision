@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Iterm;
 
+using Buffers;
+
 using Graphics;
 
 /// <summary>Writes canonical bounded iTerm2 3.5 multipart inline PNG images.</summary>
@@ -83,7 +85,7 @@ public static class Writer
                 "The iTerm2 multipart transaction exceeds the finite output policy.");
         }
 
-        using var transaction = new PreparedBuffer(maxOutputBytes);
+        using var transaction = new BoundedBufferWriter(maxOutputBytes, initialRentBytes: 256);
 
         try
         {
@@ -223,7 +225,7 @@ public static class Writer
         ImageSource image,
         Size destinationCells,
         PlacementMode mode,
-        PreparedBuffer output,
+        BoundedBufferWriter output,
         int maxSequenceBytes)
     {
         var start = output.WrittenCount;
@@ -315,21 +317,21 @@ public static class Writer
         return digits;
     }
 
-    private static void WriteByte(PreparedBuffer output, byte value)
+    private static void WriteByte(BoundedBufferWriter output, byte value)
     {
         var span = output.GetSpan(1);
         span[0] = value;
         output.Advance(1);
     }
 
-    private static void WriteBytes(PreparedBuffer output, ReadOnlySpan<byte> value)
+    private static void WriteBytes(BoundedBufferWriter output, ReadOnlySpan<byte> value)
     {
         var span = output.GetSpan(value.Length);
         value.CopyTo(span);
         output.Advance(value.Length);
     }
 
-    private static void WriteInteger(PreparedBuffer output, int value)
+    private static void WriteInteger(BoundedBufferWriter output, int value)
     {
         Span<byte> buffer = stackalloc byte[16];
 

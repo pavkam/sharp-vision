@@ -188,7 +188,15 @@ public sealed class RadioButton: Pressable
     /// <exception cref="ObjectDisposedException">The member is disposed.</exception>
 
     /// <inheritdoc/>
-    protected override void Activate(ActivationCause cause) => this.SelectInGroup(cause);
+    protected override void Activate(ActivationCause cause)
+    {
+        this.SelectInGroup(cause);
+
+        // Unlike SelectInGroup, which is a hard no-op when this member is already the sole
+        // checked one in its group, the command executes on every activation - re-selecting
+        // the current member still counts as an activation.
+        ExecuteCommandIfAny();
+    }
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)

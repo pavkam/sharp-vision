@@ -3,9 +3,10 @@
 
 namespace SharpVision.Terminal.Graphics.Backends;
 
+using Buffers;
+
 using Graphics;
 
-using Kitty;
 using Kitty.Graphics;
 
 using Rendering;
@@ -20,7 +21,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     private readonly IdentifierAllocator _imageIds;
     private readonly IdentifierAllocator _placementIds;
     private readonly int _maxPreparedBytes;
-    private readonly BoundedWriter _output;
+    private readonly BoundedBufferWriter _output;
     private readonly MultiplexerRoute? _route;
     private Dictionary<ulong, ImageState> _images = [];
     private List<PlacementState> _placements = [];
@@ -66,7 +67,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         _uncertainImageIds = new List<uint>(maxImages);
         _uncertainPlacements = new List<UncertainPlacementState>(maxPlacements);
         _maxPreparedBytes = maxPreparedBytes;
-        _output = new BoundedWriter(maxPreparedBytes);
+        _output = new BoundedBufferWriter(maxPreparedBytes, initialRentBytes: 256);
         _route = route;
 
         if (route is not null && !route.CanRouteGraphics)
@@ -590,7 +591,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         destination.Write(bytes);
     }
 
-    private byte[] FinishApcPhase(BoundedWriter output, ref int remaining)
+    private byte[] FinishApcPhase(BoundedBufferWriter output, ref int remaining)
     {
         var raw = output.WrittenSpan.ToArray();
         output.Reset(remaining);

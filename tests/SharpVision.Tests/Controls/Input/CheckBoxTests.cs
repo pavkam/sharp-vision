@@ -65,6 +65,41 @@ public sealed class CheckBoxTests
         checkBox.IsChecked.ShouldBe(false);
     }
 
+    /// <summary>Verifies the command runs after the toggle commits and its events raise (#62).</summary>
+    [Fact]
+    public void PerformClick_WhenCommandCanExecute_TogglesThenExecutesExactlyOnce()
+    {
+        List<string> order = [];
+        var parameter = new object();
+        var command = new ProbeCommand { Executing = _ => order.Add("command") };
+        var checkBox = new CheckBox { Command = command, CommandParameter = parameter };
+        checkBox.StateChanged += (_, _) =>
+        {
+            checkBox.IsChecked.ShouldBe(true);
+            order.Add("state");
+        };
+
+        checkBox.PerformClick();
+
+        order.ShouldBe(["state", "command"]);
+        command.Queries.ShouldBe([parameter]);
+        command.Executions.ShouldBe([parameter]);
+    }
+
+    /// <summary>Verifies a false CanExecute suppresses the command but never the toggle itself,
+    /// unlike Button, where the same query gates the click.</summary>
+    [Fact]
+    public void PerformClick_WhenCommandCannotExecute_StillToggles()
+    {
+        var command = new ProbeCommand { CanExecuteValue = false };
+        var checkBox = new CheckBox { Command = command };
+
+        checkBox.PerformClick();
+
+        checkBox.IsChecked.ShouldBe(true);
+        command.Executions.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies the default arrangement hugs the mark, separator, and label instead of stretching.</summary>
     [Fact]
     public void Arrange_WhenDefaultAlignmentIsUsed_HugsMeasuredContentWidth()

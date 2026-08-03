@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Rendering;
 
+using Buffers;
+
 using Capabilities;
 
 using Graphics;
@@ -21,7 +23,7 @@ public sealed class Renderer: IDisposable
     private static readonly byte[] _synchronizedBegin = EncodeSynchronizedOutput(enabled: true);
     private static readonly byte[] _synchronizedEnd = EncodeSynchronizedOutput(enabled: false);
 
-    private readonly Buffer _buffer;
+    private readonly BoundedBufferWriter _buffer;
     private readonly IGraphicsBackend? _backend;
     private Interpreter _interpreter;
     private readonly TimeSpan _cleanupTimeout;
@@ -128,7 +130,7 @@ public sealed class Renderer: IDisposable
                 "The cleanup timeout must be positive and finite.");
         }
 
-        _buffer = new Buffer(maxOutputBytes);
+        _buffer = new BoundedBufferWriter(maxOutputBytes, initialRentBytes: 4 * 1024);
         _backend = backend;
         _limits = limits ?? ProgramLimits.Default;
         _interpreter = new Interpreter(_limits);

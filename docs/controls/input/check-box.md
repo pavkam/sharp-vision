@@ -17,6 +17,11 @@ optional retained `Content` child and either two- or three-state behavior.
 | `CheckBoxStyle.Tick`, `Square` | Presets        | Complete one-cell presentations.                             |
 | `Content`                      | `null`         | The optional label or richer visual, owned by the checkbox.  |
 | State events                   | No subscribers | Report committed transitions in deterministic order.         |
+| `Command`, `CommandParameter`  | `null`         | Inherited from `Pressable`; runs after the toggle commits.   |
+
+Completing an activation always commits the toggle and raises the state events
+first; the bound command, if any and if `CanExecute` allows it, runs last. A
+command that cannot execute never suppresses the toggle itself.
 
 `CheckBoxStyle` bundles a `CheckBoxMarkStyle`, a complete set of
 `CheckBoxGlyphs`, and the full appearance profile. `CheckBoxStyleSet` is the

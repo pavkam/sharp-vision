@@ -5,11 +5,11 @@ namespace SharpVision.Input;
 
 using SharpVision.Terminal.Input;
 
-/// <summary>Identifies one immutable keyboard chord independent of any routing or invocation.</summary>
+/// <summary>Identifies one immutable keyboard chord that can be compared against a keyboard transition.</summary>
 /// <remarks>
-/// This is a declarative value: a typed alternative to a hand-typed display string, not a bound
-/// accelerator. Nothing routes input to it; a consumer that wants Enter/Escape/character keys to
-/// invoke a command still owns that wiring itself, the same as before this type existed.
+/// A gesture is a value type independent of any single binding. <see cref="Matches"/> lets a
+/// consumer test a decoded <see cref="Stroke"/> against it directly; <c>MenuItem.Shortcut</c> uses
+/// this to route matching strokes to the item regardless of focus.
 /// </remarks>
 [PublicAPI]
 public readonly record struct KeyGesture
@@ -76,6 +76,20 @@ public readonly record struct KeyGesture
 
     /// <summary>Gets the character for <see cref="Code.Character"/>.</summary>
     public Rune? Character { get; }
+
+    /// <summary>Reports whether a completed keyboard transition activates this gesture.</summary>
+    /// <param name="stroke">The decoded keyboard transition.</param>
+    /// <returns>
+    /// True when <paramref name="stroke"/> is a <see cref="KeyAction.Press"/> whose code,
+    /// character (for <see cref="Code.Character"/>), and modifiers - lock keys excluded - match
+    /// this gesture exactly.
+    /// </returns>
+    public bool Matches(in Stroke stroke) =>
+        stroke.Action == KeyAction.Press &&
+        stroke.Code == Code &&
+        (stroke.Modifiers & ~(Modifiers.CapsLock | Modifiers.NumLock)) == Modifiers &&
+        (Code != Code.Character ||
+         (stroke.Character is { } character && Rune.ToUpperInvariant(character) == Character));
 
     /// <summary>Formats this gesture as conventional display text, for example "Ctrl+Shift+S".</summary>
     /// <returns>The non-null, non-empty display text.</returns>

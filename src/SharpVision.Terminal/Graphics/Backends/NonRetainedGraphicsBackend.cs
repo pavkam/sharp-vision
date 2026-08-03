@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Graphics.Backends;
 
+using Buffers;
+
 using Graphics;
 
 using Rendering;
@@ -110,7 +112,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         var fullCellRedraw = stateChanged && (_hadPlacements || currentCount != 0);
         var reconstruct = full || _invalidated || stateChanged;
         var repaint = SelectRepaints(front, back, encodable, blocked, reconstruct);
-        using var output = new PreparedBuffer(_maxPreparedBytes);
+        using var output = new BoundedBufferWriter(_maxPreparedBytes, initialRentBytes: 256);
         var placementCount = 0;
 
         try

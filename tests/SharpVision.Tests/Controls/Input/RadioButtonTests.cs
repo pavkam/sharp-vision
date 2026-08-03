@@ -63,6 +63,37 @@ public sealed class RadioButtonTests
         checkedEvents.ShouldBe(1);
     }
 
+    /// <summary>Verifies the command runs after group selection commits (#62).</summary>
+    [Fact]
+    public void PerformClick_WhenCommandCanExecute_SelectsThenExecutesExactlyOnce()
+    {
+        List<string> order = [];
+        var parameter = new object();
+        var command = new ProbeCommand { Executing = _ => order.Add("command") };
+        var radio = new RadioButton { Command = command, CommandParameter = parameter };
+        radio.Checked += (_, _) => order.Add("checked");
+
+        radio.PerformClick();
+
+        order.ShouldBe(["checked", "command"]);
+        command.Executions.ShouldBe([parameter]);
+    }
+
+    /// <summary>Verifies the command still executes when re-activating the already-checked
+    /// member, unlike group selection itself, which is a hard no-op in that case (#62).</summary>
+    [Fact]
+    public void PerformClick_WhenAlreadyCheckedMemberReactivates_StillExecutesCommand()
+    {
+        var command = new ProbeCommand();
+        var radio = new RadioButton { Command = command };
+        radio.PerformClick();
+
+        radio.PerformClick();
+
+        radio.IsChecked.ShouldBeTrue();
+        command.Executions.Count.ShouldBe(2);
+    }
+
     /// <summary>Verifies null-name siblings remain mutually exclusive.</summary>
     [Fact]
     public void IsChecked_WhenSiblingSelectionChanges_CommitsExclusiveStateBeforeEvents()

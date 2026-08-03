@@ -3,9 +3,9 @@
 
 namespace SharpVision.Terminal.Multiplexing;
 
-using Input;
+using Buffers;
 
-using Kitty;
+using Input;
 
 using Protocols;
 
@@ -105,8 +105,8 @@ public sealed class Route
         // below before it is ever written), so two pooled buffers sized to that one bound —
         // ping-ponged as the read side and the write side of each layer — replace what used to be
         // one fresh heap array per layer plus a starting and ending copy (see #41).
-        using var bufferA = new BoundedWriter(Policy.MaxEnvelopeBytes);
-        using var bufferB = new BoundedWriter(Policy.MaxEnvelopeBytes);
+        using var bufferA = new BoundedBufferWriter(Policy.MaxEnvelopeBytes, initialRentBytes: 256);
+        using var bufferB = new BoundedBufferWriter(Policy.MaxEnvelopeBytes, initialRentBytes: 256);
         var current = value;
         var useA = true;
 

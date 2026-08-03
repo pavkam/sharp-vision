@@ -213,6 +213,43 @@ public sealed class MenuTests
         order.ShouldBe(["item", "menu"]);
     }
 
+    /// <summary>Verifies the bound command runs after Invoked and after the menu's own
+    /// notification (#62).</summary>
+    [Fact]
+    public void PerformInvoke_WhenCommandCanExecute_RunsAfterMenuNotification()
+    {
+        var menu = new Menu();
+        var item = new MenuItem();
+        List<string> order = [];
+        var command = new ProbeCommand { Executing = _ => order.Add("command") };
+        item.Command = command;
+        menu.Items.Add(item);
+        item.Invoked += (_, _) => order.Add("item");
+        menu.ItemInvoked += (_, _) => order.Add("menu");
+
+        item.PerformInvoke();
+
+        order.ShouldBe(["item", "menu", "command"]);
+    }
+
+    /// <summary>Verifies an item with an open submenu toggles it instead of invoking, so neither
+    /// Invoked nor the bound command ever fires (#62).</summary>
+    [Fact]
+    public void PerformInvoke_WhenItemHasSubmenu_TogglesSubmenuWithoutInvokingOrExecutingCommand()
+    {
+        var submenu = new Menu();
+        submenu.Items.Add(new MenuItem());
+        var command = new ProbeCommand();
+        var item = new MenuItem { Submenu = submenu, Command = command };
+        var invoked = 0;
+        item.Invoked += (_, _) => invoked++;
+
+        item.PerformInvoke();
+
+        invoked.ShouldBe(0);
+        command.Executions.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies a separator is never focusable, hit-testable, selectable, or invokable.</summary>
     [Fact]
     public async Task MenuSeparator_WhenUsed_RemainsNonInteractiveAsync()
