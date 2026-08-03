@@ -122,7 +122,8 @@ items through the ListView's own keyboard handler.
 
 Printable Unicode scalars provide basic case-insensitive type-to-select. The
 search starts after the current item, wraps around once, and falls back to the
-latest character when a longer prefix has no match.
+latest character when a longer prefix has no match. Closing the popup clears the
+prefix so a later popup session starts fresh.
 
 ## Example
 

@@ -588,6 +588,7 @@ public sealed class ComboBox: Control
     {
         _ = sender;
         _ = eventArgs;
+        _typeAhead = string.Empty;
 
         if (ContainsFocused(_list))
         {

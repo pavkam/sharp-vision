@@ -551,6 +551,29 @@ public sealed class ComboBoxTests
         combo.SelectedIndex.ShouldBe(1);
     }
 
+    /// <summary>Verifies each popup session starts a fresh type-ahead prefix.</summary>
+    [Fact]
+    public void Input_WhenPopupIsReopened_DiscardsPreviousTypeAheadPrefix()
+    {
+        // Arrange
+        var combo = new ComboBox
+        {
+            Items = ["Alpha", "Lima"],
+            SelectedIndex = 0,
+            IsOpen = true
+        };
+        _ = Router.Route(combo, Events.Key, CharacterKey('a'));
+        combo.IsOpen = false;
+        combo.IsOpen = true;
+
+        // Act
+        var typed = Router.Route(combo, Events.Key, CharacterKey('l'));
+
+        // Assert
+        typed.Handled.ShouldBeTrue();
+        combo.SelectedIndex.ShouldBe(1);
+    }
+
     /// <summary>Verifies ItemTemplate forwards directly to the private drop-down ListView.</summary>
     [Fact]
     public void ItemTemplate_WhenAssigned_ForwardsToDropDownListAndRealizesRows()
