@@ -164,8 +164,8 @@ public sealed class TreeView: CompositeControlBase
     /// <summary>Gets the currently selected item, or null.</summary>
     public TreeViewItem? SelectedItem { get; private set; }
 
-    /// <summary>Gets the current selection in stable tree order.</summary>
-    public IReadOnlyList<TreeViewItem> SelectedItems => CollectSelectedItems();
+    /// <summary>Gets an immutable snapshot of the current selection in stable tree order.</summary>
+    public IReadOnlyList<TreeViewItem> SelectedItems => CollectSelectedItems().AsReadOnly();
 
     /// <summary>Gets or sets whether the tree permits no, one, or many selected items.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not a defined <see cref="TreeSelectionMode"/>.</exception>

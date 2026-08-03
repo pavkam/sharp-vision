@@ -6,6 +6,21 @@ namespace SharpVision.Tests.Controls.Collections;
 /// <summary>Verifies hierarchical tree view ownership, selection, expand/collapse, and keyboard navigation.</summary>
 public sealed class TreeViewTests
 {
+    /// <summary>Verifies the published selection snapshot cannot be rewritten by a consumer.</summary>
+    [Fact]
+    public void SelectedItems_WhenConsumerAttemptsMutation_RejectsTheChange()
+    {
+        var item = new TreeViewItem("selected");
+        var tree = new TreeView { Items = { item } };
+        tree.SelectItem(item);
+
+        var snapshot = (IList<TreeViewItem>) tree.SelectedItems;
+
+        _ = Should.Throw<NotSupportedException>(snapshot.Clear);
+        snapshot.ShouldBe([item]);
+        tree.SelectedItems.ShouldBe([item]);
+    }
+
     /// <summary>Verifies a tree view starts as a framed surface with a visible border and semantic background.</summary>
     [ComponentUnitEvidence(typeof(TreeView))]
     [Fact]
