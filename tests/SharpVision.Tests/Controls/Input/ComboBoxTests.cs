@@ -530,6 +530,27 @@ public sealed class ComboBoxTests
         ((Fruit) combo.SelectedItem!).Name.ShouldBe("Mango");
     }
 
+    /// <summary>Verifies type-ahead accepts printable Unicode scalars outside the basic multilingual plane.</summary>
+    [Fact]
+    public void Input_WhenPrintableSupplementaryRuneIsTyped_SelectsByPrefix()
+    {
+        // Arrange
+        var character = new Rune(0x10000);
+        var combo = new ComboBox
+        {
+            Items = ["Alpha", $"{character} Linear B"],
+            SelectedIndex = 0,
+            IsOpen = true
+        };
+
+        // Act
+        var typed = Router.Route(combo, Events.Key, CharacterKey(character));
+
+        // Assert
+        typed.Handled.ShouldBeTrue();
+        combo.SelectedIndex.ShouldBe(1);
+    }
+
     /// <summary>Verifies ItemTemplate forwards directly to the private drop-down ListView.</summary>
     [Fact]
     public void ItemTemplate_WhenAssigned_ForwardsToDropDownListAndRealizesRows()
@@ -780,9 +801,11 @@ public sealed class ComboBoxTests
         Modifiers.None,
         KeyAction.Press));
 
-    private static KeyEventArgs CharacterKey(char character) => new(new Stroke(
+    private static KeyEventArgs CharacterKey(char character) => CharacterKey(new Rune(character));
+
+    private static KeyEventArgs CharacterKey(Rune character) => new(new Stroke(
         Code.Character,
-        new Rune(character),
+        character,
         nativeCode: 0,
         Modifiers.None,
         KeyAction.Press));

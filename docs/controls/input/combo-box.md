@@ -120,9 +120,9 @@ commits the popup and then continues once through application traversal. The
 arrow keys (Up/Down/Left/Right), Home, End, Page Up, and Page Down move between
 items through the ListView's own keyboard handler.
 
-Printable characters provide basic case-insensitive type-to-select. The search
-starts after the current item, wraps around once, and falls back to the latest
-character when a longer prefix has no match.
+Printable Unicode scalars provide basic case-insensitive type-to-select. The
+search starts after the current item, wraps around once, and falls back to the
+latest character when a longer prefix has no match.
 
 ## Example
 

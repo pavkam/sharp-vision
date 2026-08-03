@@ -703,7 +703,7 @@ public sealed class ComboBox: Control
 
     private bool SelectTypeAhead(Rune character)
     {
-        if (char.IsControl((char) character.Value) || Items.Count == 0)
+        if (Rune.GetUnicodeCategory(character) == UnicodeCategory.Control || Items.Count == 0)
         {
             return false;
         }
