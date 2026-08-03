@@ -9,7 +9,6 @@ using Capabilities;
 
 using Xterm;
 
-using MultiplexerRoute = Multiplexing.MultiplexerRoute;
 
 /// <summary>
 /// Owns one bounded active terminal capability query batch and publishes its immutable evidence.

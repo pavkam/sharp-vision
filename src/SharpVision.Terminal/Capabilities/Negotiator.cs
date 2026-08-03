@@ -7,7 +7,6 @@ using Discovery.Queries;
 
 using Xterm;
 
-using MultiplexerRoute = Multiplexing.MultiplexerRoute;
 
 /// <summary>Coordinates one bounded terminal capability query batch.</summary>
 [PublicAPI]

@@ -9,7 +9,6 @@ using Capabilities;
 
 using Xterm;
 
-using MultiplexerRoute = Multiplexing.MultiplexerRoute;
 
 /// <summary>
 /// Owns terminal mode leases and serializes input, resize, closure, and cleanup.
@@ -543,7 +542,7 @@ public sealed class Session: IAsyncDisposable
             _context.Profile.KeyMap,
             _context.Profile.UsesAnsiKeyGrammar);
         var candidateRoute = _options.Negotiation?.Multiplexing.Allows(
-            Multiplexing.MultiplexingOperation.CapabilityQueries) == true
+            MultiplexingOperation.CapabilityQueries) == true
             ? new MultiplexerRoute(_options.Negotiation.Multiplexing)
             : null;
         var multiplexerRoute = candidateRoute?.CanRouteCapabilityQueries == true

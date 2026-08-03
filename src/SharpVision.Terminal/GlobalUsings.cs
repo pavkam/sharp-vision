@@ -18,6 +18,8 @@ global using System.Text;
 global using SharpVision.Terminal.Abstractions;
 global using SharpVision.Terminal.Capabilities;
 global using SharpVision.Terminal.Geometry;
+global using SharpVision.Terminal.Input;
+global using SharpVision.Terminal.Multiplexing;
 global using SharpVision.Terminal.Protocols;
 global using SharpVision.Terminal.Terminfo;
 global using SharpVision.Terminal.Unicode;

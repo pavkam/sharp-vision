@@ -5,10 +5,10 @@ namespace SharpVision.Tests.Runtime;
 
 using Terminal.Capabilities;
 using Terminal.Graphics;
+using Terminal.Multiplexing;
 
 using GraphicsImage = Terminal.Graphics.ImageSource;
 using MultiplexerKind = Terminal.Multiplexing.MultiplexerKind;
-using MultiplexingPolicy = Terminal.Multiplexing.MultiplexingPolicy;
 
 /// <summary>Proves application-owned graphics selection, geometry, routing, and cleanup ordering.</summary>
 public sealed class ApplicationGraphicsTests

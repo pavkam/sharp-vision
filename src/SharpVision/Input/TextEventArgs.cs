@@ -3,16 +3,14 @@
 
 namespace SharpVision.Input;
 
-using TerminalText = Terminal.Input.TerminalText;
-
 /// <summary>Provides one immutable Unicode text scalar.</summary>
 [PublicAPI]
 public sealed class TextEventArgs: RoutedEventArgs
 {
     /// <summary>Initializes routed Unicode text input.</summary>
     /// <param name="text">The decoded text scalar.</param>
-    public TextEventArgs(TerminalText text) => Text = text;
+    public TextEventArgs(Terminal.Input.TerminalText text) => Text = text;
 
     /// <summary>Gets the decoded text scalar.</summary>
-    public TerminalText Text { get; }
+    public Terminal.Input.TerminalText Text { get; }
 }

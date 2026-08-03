@@ -7,7 +7,6 @@ using Backends;
 
 using Capabilities;
 
-using InputOptions = Input.InputOptions;
 using TerminalNegotiationOptions = NegotiationOptions;
 
 /// <summary>Defines validated terminal session modes, bounds, and cleanup policy.</summary>
@@ -80,7 +79,7 @@ public sealed record TerminalOptions
     /// <see cref="Negotiation"/> being non-null also drives whether startup negotiation actually probes the
     /// terminal, that policy cannot be carried on <see cref="Negotiation"/> alone once probing is suppressed.
     /// </remarks>
-    public Multiplexing.MultiplexingPolicy? Multiplexing { get; init; }
+    public MultiplexingPolicy? Multiplexing { get; init; }
 
     /// <summary>Gets whether to enter the alternate screen.</summary>
     public bool AlternateScreen { get; init; } = true;

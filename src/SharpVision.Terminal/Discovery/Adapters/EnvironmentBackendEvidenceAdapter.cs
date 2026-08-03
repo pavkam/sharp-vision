@@ -7,8 +7,7 @@ using Backends;
 
 using Capabilities;
 
-using MultiplexingKind = Multiplexing.MultiplexerKind;
-using MultiplexingPolicy = Multiplexing.MultiplexingPolicy;
+using MultiplexingKind = MultiplexerKind;
 
 /// <summary>Recognizes terminal identity from a caller-supplied environment snapshot.</summary>
 internal sealed class EnvironmentBackendEvidenceAdapter: IBackendEvidenceAdapter

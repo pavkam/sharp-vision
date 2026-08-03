@@ -11,7 +11,6 @@ using Kitty.Graphics;
 
 using Rendering;
 
-using MultiplexerRoute = Multiplexing.MultiplexerRoute;
 
 /// <summary>Implements finite transactional direct Kitty image upload and placement.</summary>
 internal sealed class KittyGraphicsBackend: IGraphicsBackend

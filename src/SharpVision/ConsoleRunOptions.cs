@@ -5,8 +5,7 @@ namespace SharpVision;
 
 using Terminal.Capabilities;
 using Terminal.Kitty.Keyboard;
-
-using TerminalOptions = Terminal.Runtime.TerminalOptions;
+using Terminal.Runtime;
 
 /// <summary>Configures one interactive console screen run and the terminal policy it produces.</summary>
 [PublicAPI]
@@ -184,9 +183,9 @@ public sealed record ConsoleRunOptions
     /// <returns>The theme to publish.</returns>
     public Theme ResolveTheme() => Theme ?? Themes.Dark;
 
-    /// <summary>Builds the host policy for <see cref="Terminal.Runtime.ConsoleHost.Open"/>.</summary>
+    /// <summary>Builds the host policy for <see cref="ConsoleHost.Open"/>.</summary>
     /// <returns>The validated host options.</returns>
-    public Terminal.Runtime.ConsoleHostOptions ToHostOptions() => new()
+    public ConsoleHostOptions ToHostOptions() => new()
     {
         ResizeInterval = ResizeInterval,
         CaptureControlKeys = TreatControlCAsInput

@@ -10,7 +10,6 @@ using Graphics;
 using Rendering;
 
 using ItermWriter = Iterm.ItermWriter;
-using MultiplexerRoute = Multiplexing.MultiplexerRoute;
 using SixelWriter = Sixel.SixelWriter;
 
 /// <summary>

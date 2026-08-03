@@ -3,8 +3,6 @@
 
 namespace SharpVision.Terminal.Capabilities;
 
-using MultiplexingPolicy = Multiplexing.MultiplexingPolicy;
-
 /// <summary>Owns finite policy and evidence inputs for one startup negotiation.</summary>
 [PublicAPI]
 public sealed class NegotiationOptions

@@ -5,8 +5,7 @@ namespace SharpVision.Terminal.Discovery.Adapters;
 
 using Capabilities;
 
-using MultiplexingKind = Multiplexing.MultiplexerKind;
-using MultiplexingPolicy = Multiplexing.MultiplexingPolicy;
+using MultiplexingKind = MultiplexerKind;
 
 /// <summary>Translates caller-supplied environment hints into conservative semantic evidence.</summary>
 internal static class EnvironmentEvidenceAdapter

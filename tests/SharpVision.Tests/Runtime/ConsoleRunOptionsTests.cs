@@ -5,8 +5,9 @@ namespace SharpVision.Tests.Runtime;
 
 using SharpVision.Terminal.Kitty.Keyboard;
 
+using Terminal.Multiplexing;
+
 using MultiplexerKind = Terminal.Multiplexing.MultiplexerKind;
-using MultiplexingPolicy = Terminal.Multiplexing.MultiplexingPolicy;
 
 /// <summary>Verifies <see cref="ConsoleRunOptions"/> defaults and terminal/host mapping.</summary>
 public sealed class ConsoleRunOptionsTests

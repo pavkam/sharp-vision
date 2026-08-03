@@ -9,7 +9,7 @@ using Input;
 
 using Xterm;
 
-using InputText = Input.TerminalText;
+using InputText = TerminalText;
 
 /// <summary>Updates capability negotiation before forwarding ordered protocol events.</summary>
 internal sealed class NegotiationSink:
