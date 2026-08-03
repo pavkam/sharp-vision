@@ -9,6 +9,38 @@ using Terminal.Kitty.Clipboard;
 /// <summary>Proves clipboard reply events own the completed payload they publish.</summary>
 public sealed class KittyClipboardReplyEventArgsTests
 {
+    /// <summary>Verifies an event cannot publish an undefined clipboard selection.</summary>
+    [Fact]
+    public void Constructor_WhenSelectionIsUndefined_Throws()
+    {
+        var selection = (Selection) int.MaxValue;
+
+        var action = () => new KittyClipboardReplyEventArgs(
+            selection,
+            null,
+            null,
+            ReplyStatus.None,
+            null);
+
+        action.ShouldThrow<ArgumentOutOfRangeException>().ParamName.ShouldBe("selection");
+    }
+
+    /// <summary>Verifies an event cannot publish an undefined Kitty failure status.</summary>
+    [Fact]
+    public void Constructor_WhenFailureIsUndefined_Throws()
+    {
+        var failure = (ReplyStatus) int.MaxValue;
+
+        var action = () => new KittyClipboardReplyEventArgs(
+            Selection.Clipboard,
+            null,
+            null,
+            failure,
+            null);
+
+        action.ShouldThrow<ArgumentOutOfRangeException>().ParamName.ShouldBe("failure");
+    }
+
     /// <summary>Verifies later caller mutation cannot rewrite a previously constructed OSC 52 reply.</summary>
     [Fact]
     public void Constructor_WhenTextBufferMutates_PreservesSnapshot()
