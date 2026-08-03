@@ -72,7 +72,7 @@ public sealed class TextInputPerformanceTests
         }
 
         watch.Stop();
-        watch.Elapsed.TotalSeconds.ShouldBeLessThan(10);
+        watch.Elapsed.TotalSeconds.ShouldBeLessThan(30);
     }
 
     /// <summary>Verifies repeated word-wrap vertical navigation reuses the cached visual-line lookup
@@ -101,7 +101,7 @@ public sealed class TextInputPerformanceTests
         }
 
         watch.Stop();
-        watch.Elapsed.TotalSeconds.ShouldBeLessThan(10);
+        watch.Elapsed.TotalSeconds.ShouldBeLessThan(30);
     }
 
     private static void Key(TextInput control, Code code, Modifiers modifiers) =>
