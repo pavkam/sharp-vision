@@ -6,15 +6,23 @@ namespace SharpVision.Tests.Controls;
 using GraphicsImage = Terminal.Graphics.ImageSource;
 
 /// <summary>
-/// Verifies the narrow, maintainer-approved render-clean subtree reuse cut (see #26) and its first
-/// #235 extension: a leaf control that is render-clean, image-free, and popup-free copies its
-/// previous frame's cells instead of re-executing its paint sequence, but only when no layout ran
-/// since the copied frame (<see cref="Canvas.HasPreviousFrame"/>). A visible shadow now
+/// Verifies the narrow, maintainer-approved render-clean subtree reuse cut (see #26) and its
+/// #235 extensions: a leaf control that is render-clean, image-free, and owns no popup of its own
+/// copies its previous frame's cells instead of re-executing its paint sequence, but only when no
+/// layout ran since the copied frame (<see cref="Canvas.HasPreviousFrame"/>). A visible shadow now
 /// participates too, but only when its own paint is a full destination overwrite that cannot
 /// depend on stale prior content - BlockGlyph mode with an opaque resolved background. Composite
 /// (which never replaces the underlying grapheme, regardless of background opacity) and
-/// FractionalBlock (which always blends) stay excluded. Popup-overlapped and image-bearing
-/// subtrees also stay excluded and remain tracked in #235.
+/// FractionalBlock (which always blends) stay excluded. Image-bearing subtrees also stay excluded
+/// (<c>RequiresCompleteRender</c>) and remain tracked in #235.
+///
+/// Being overlapped or bordered by a popup that belongs to a DIFFERENT control needs no exclusion
+/// at all: the popup layer always repaints unconditionally after ordinary content on every frame
+/// (steady state), and any frame where a popup's footprint could have changed is, by construction,
+/// a frame where <see cref="Canvas.HasPreviousFrame"/> is false for every control application-wide
+/// (open/close/move all route through <c>InvalidationImpact.Measure</c>, which forces a full
+/// non-reuse render - see the correctness note above <c>Control.CanReuseCleanRender</c>). The
+/// adversarial popup cases below lock that invariant in.
 /// </summary>
 public sealed class RenderCleanSubtreeReuseTests
 {
@@ -438,6 +446,242 @@ public sealed class RenderCleanSubtreeReuseTests
 
             _ = await renderer.RenderAsync(reused, transport, profile, TestContext.Current.CancellationToken);
         }
+    }
+
+    /// <summary>Verifies three render-clean rows sitting underneath a stationary, unchanged open
+    /// popup still match a fully fresh render cell-for-cell after taking the copy path - the
+    /// popup layer repaints unconditionally on every frame (<c>RenderOwnedPopupDescendants</c>
+    /// runs from Root every call, never gated by any clean check), so whichever byte a contested
+    /// cell ends up with is always the popup's current-frame paint, regardless of whether the row
+    /// underneath copied or freshly painted its own now-overwritten contribution (see #235).</summary>
+    [Fact]
+    public async Task Render_WhenStationaryOpenPopupOverlapsCleanRows_MatchesFullRenderEveryFrameAsync()
+    {
+        var (overlay, rowA, rowB, rowC, _) = BuildOverlappedFixture(popupOpen: true);
+        var size = new Size(10, 3);
+        new LayoutEngine().Layout(overlay, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        using var warm = new Frame(size);
+        overlay.Render(warm.Canvas);
+        _ = await renderer.RenderAsync(warm, transport, profile, TestContext.Current.CancellationToken);
+        rowA.RenderCalls.ShouldBe(1);
+        rowB.RenderCalls.ShouldBe(1);
+        rowC.RenderCalls.ShouldBe(1);
+
+        // Nothing changed - the popup stays open at the same origin and every row is still clean -
+        // so the copy path is available underneath the popup's frame and body.
+        using var reused = new Frame(size);
+        _ = renderer.AttachCommittedFrame(reused);
+        overlay.Render(reused.Canvas);
+
+        rowA.RenderCalls.ShouldBe(1);
+        rowB.RenderCalls.ShouldBe(1);
+        rowC.RenderCalls.ShouldBe(1);
+
+        // No previous frame is attached, so this independent render of the exact same current
+        // state always takes the complete paint path for every leaf - the ground truth the
+        // optimized render above must match cell-for-cell, including every cell the popup's frame
+        // and body contest against the rows underneath.
+        using var reference = new Frame(size);
+        overlay.Render(reference.Canvas);
+
+        for (var row = 0; row < size.Height; row++)
+        {
+            Row(reused, row).ShouldBe(Row(reference, row));
+        }
+    }
+
+    /// <summary>Verifies a popup with a transparent resolved background still produces a
+    /// cell-for-cell match with a fully fresh render while overlapping stationary, reused clean
+    /// rows - the popup's own opacity only changes what pixels the blend produces, never whether
+    /// the row underneath's reused output was safe to reuse in the first place, because that row's
+    /// own paint is unaffected by the popup's existence either way (see #235).</summary>
+    [Fact]
+    public async Task Render_WhenTransparentPopupOverlapsCleanRows_MatchesFullRenderEveryFrameAsync()
+    {
+        var (overlay, rowA, rowB, rowC, popup) = BuildOverlappedFixture(popupOpen: true);
+        var defaultFace = popup.Face;
+        popup.Face = new Face(
+            defaultFace.Foreground,
+            Color.Transparent,
+            defaultFace.Attributes,
+            defaultFace.Underline,
+            defaultFace.UnderlineColor);
+        var size = new Size(10, 3);
+        new LayoutEngine().Layout(overlay, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        using var warm = new Frame(size);
+        overlay.Render(warm.Canvas);
+        _ = await renderer.RenderAsync(warm, transport, profile, TestContext.Current.CancellationToken);
+        rowA.RenderCalls.ShouldBe(1);
+        rowB.RenderCalls.ShouldBe(1);
+        rowC.RenderCalls.ShouldBe(1);
+
+        using var reused = new Frame(size);
+        _ = renderer.AttachCommittedFrame(reused);
+        overlay.Render(reused.Canvas);
+
+        rowA.RenderCalls.ShouldBe(1);
+        rowB.RenderCalls.ShouldBe(1);
+        rowC.RenderCalls.ShouldBe(1);
+
+        using var reference = new Frame(size);
+        overlay.Render(reference.Canvas);
+
+        for (var row = 0; row < size.Height; row++)
+        {
+            Row(reused, row).ShouldBe(Row(reference, row));
+        }
+    }
+
+    /// <summary>Verifies closing a popup that previously overlapped three render-clean rows leaves
+    /// no stale popup pixels behind - closing always routes through
+    /// <c>InvalidationImpact.Measure</c> (<c>Popup.SetOpen</c>'s every <c>_isOpen</c> transition
+    /// pairs with a Measure notification), so production never attaches a previous frame for this
+    /// render; this test matches that same no-previous-frame condition rather than the shortcut of
+    /// asserting against <c>CanReuseCleanRender</c> directly (see #235).</summary>
+    [Fact]
+    public async Task Render_WhenPopupClosesBetweenFrames_LeavesNoStalePopupPixelsAsync()
+    {
+        var (overlay, rowA, rowB, rowC, popup) = BuildOverlappedFixture(popupOpen: true);
+        var size = new Size(10, 3);
+        new LayoutEngine().Layout(overlay, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        using var warm = new Frame(size);
+        overlay.Render(warm.Canvas);
+        _ = await renderer.RenderAsync(warm, transport, profile, TestContext.Current.CancellationToken);
+        rowA.RenderCalls.ShouldBe(1);
+        rowB.RenderCalls.ShouldBe(1);
+        rowC.RenderCalls.ShouldBe(1);
+
+        popup.IsOpen = false;
+        new LayoutEngine().Layout(overlay, size);
+
+        // Matches production: closing invalidated Measure, so Application never attaches a
+        // previous frame for this render - no copy path is even considered anywhere this frame.
+        using var afterClose = new Frame(size);
+        overlay.Render(afterClose.Canvas);
+
+        Row(afterClose, 0).ShouldBe("AAAAAAAAAA");
+        Row(afterClose, 1).ShouldBe("BBBBBBBBBB");
+        Row(afterClose, 2).ShouldBe("CCCCCCCCCC");
+
+        using var reference = new Frame(size);
+        overlay.Render(reference.Canvas);
+
+        for (var row = 0; row < size.Height; row++)
+        {
+            Row(afterClose, row).ShouldBe(Row(reference, row));
+        }
+    }
+
+    /// <summary>Verifies opening a popup over three previously popup-free, render-clean rows
+    /// produces the identical result a fully fresh render would - the mirror of the closing case,
+    /// covering the other direction of the same footprint-change invariant (see #235).</summary>
+    [Fact]
+    public async Task Render_WhenPopupOpensBetweenFrames_MatchesFullRenderImmediatelyAsync()
+    {
+        var (overlay, rowA, rowB, rowC, popup) = BuildOverlappedFixture(popupOpen: false);
+        var size = new Size(10, 3);
+        new LayoutEngine().Layout(overlay, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        using var warm = new Frame(size);
+        overlay.Render(warm.Canvas);
+        _ = await renderer.RenderAsync(warm, transport, profile, TestContext.Current.CancellationToken);
+        rowA.RenderCalls.ShouldBe(1);
+        rowB.RenderCalls.ShouldBe(1);
+        rowC.RenderCalls.ShouldBe(1);
+        Row(warm, 0).ShouldBe("AAAAAAAAAA");
+
+        popup.IsOpen = true;
+        new LayoutEngine().Layout(overlay, size);
+
+        // Matches production: opening invalidated Measure, so no previous frame is attached here
+        // either.
+        using var afterOpen = new Frame(size);
+        overlay.Render(afterOpen.Canvas);
+
+        using var reference = new Frame(size);
+        overlay.Render(reference.Canvas);
+
+        for (var row = 0; row < size.Height; row++)
+        {
+            Row(afterOpen, row).ShouldBe(Row(reference, row));
+        }
+
+        // The popup's frame now visibly contests the rows it overlaps - sanity-checks the fixture
+        // actually exercises overlap rather than two coincidentally identical blank renders.
+        Row(afterOpen, 0).ShouldNotBe("AAAAAAAAAA");
+    }
+
+    /// <summary>Verifies moving an open popup between frames - without closing it - leaves no
+    /// pixels from its old footprint behind and matches a fully fresh render at its new one,
+    /// covering the third footprint-change case (open/close/move) alongside the two above
+    /// (see #235).</summary>
+    [Fact]
+    public async Task Render_WhenOpenPopupMovesBetweenFrames_MatchesFullRenderAtNewPositionAsync()
+    {
+        var (overlay, rowA, rowB, rowC, popup) = BuildOverlappedFixture(popupOpen: true);
+        var size = new Size(10, 3);
+        new LayoutEngine().Layout(overlay, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        using var warm = new Frame(size);
+        overlay.Render(warm.Canvas);
+        _ = await renderer.RenderAsync(warm, transport, profile, TestContext.Current.CancellationToken);
+        rowA.RenderCalls.ShouldBe(1);
+        rowB.RenderCalls.ShouldBe(1);
+        rowC.RenderCalls.ShouldBe(1);
+
+        popup.FixedOrigin = new Point(0, 0);
+
+        // FixedOrigin itself carries no change notification (Popup.cs), so force the Arrange
+        // invalidation a real reposition API (Anchor, Placement) would trigger on its own -
+        // FixedOrigin's branch in ArrangeOverride ignores Anchor's bounds regardless, so this only
+        // supplies the invalidation, not the new position.
+        popup.Anchor = new ProbeControl();
+        new LayoutEngine().Layout(overlay, size);
+
+        // Matches production: repositioning a popup only ever happens inside an Arrange pass, so
+        // no previous frame is attached here either.
+        using var afterMove = new Frame(size);
+        overlay.Render(afterMove.Canvas);
+
+        using var reference = new Frame(size);
+        overlay.Render(reference.Canvas);
+
+        for (var row = 0; row < size.Height; row++)
+        {
+            Row(afterMove, row).ShouldBe(Row(reference, row));
+        }
+
+        // Column 6 sat under the popup's old right border (origin (3, 0), width 4) and is outside
+        // its new footprint (origin (0, 0), width 4) - it must show the row's own content again,
+        // not a leftover border glyph from the previous origin.
+        Row(afterMove, 0)[6].ShouldBe('A');
+    }
+
+    private static (Overlay Overlay, ProbeControl RowA, ProbeControl RowB, ProbeControl RowC, Popup Popup)
+        BuildOverlappedFixture(bool popupOpen)
+    {
+        var rowA = new ProbeControl(new Size(10, 1)) { Content = "AAAAAAAAAA".AsMemory() };
+        var rowB = new ProbeControl(new Size(10, 1)) { Content = "BBBBBBBBBB".AsMemory() };
+        var rowC = new ProbeControl(new Size(10, 1)) { Content = "CCCCCCCCCC".AsMemory() };
+        Overlay.SetTop(rowB, Length.Cells(1));
+        Overlay.SetTop(rowC, Length.Cells(2));
+        var popupChild = new ProbeControl(new Size(2, 1)) { Content = "PP".AsMemory() };
+        var popup = new Popup { Content = popupChild, IsOpen = popupOpen, FixedOrigin = new Point(3, 0) };
+        var overlay = new Overlay { Children = { rowA, rowB, rowC, popup } };
+        return (overlay, rowA, rowB, rowC, popup);
     }
 
     private static string Row(Frame frame, int row)
