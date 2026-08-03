@@ -11,9 +11,14 @@ public sealed class GraphicsDiagnosticEventArgs: EventArgs
 {
     /// <summary>Initializes one graphics diagnostic event.</summary>
     /// <param name="placements">The non-null, non-empty skipped placements.</param>
-    public GraphicsDiagnosticEventArgs(IReadOnlyList<GraphicsPlacementDiagnostic> placements) =>
-        Placements = placements;
+    /// <exception cref="ArgumentNullException"><paramref name="placements"/> is null.</exception>
+    public GraphicsDiagnosticEventArgs(IReadOnlyList<GraphicsPlacementDiagnostic> placements)
+    {
+        ArgumentNullException.ThrowIfNull(placements);
 
-    /// <summary>Gets the graphics placements that fell back to ordinary cells.</summary>
+        Placements = Array.AsReadOnly(placements.ToArray());
+    }
+
+    /// <summary>Gets the immutable snapshot of graphics placements that fell back to ordinary cells.</summary>
     public IReadOnlyList<GraphicsPlacementDiagnostic> Placements { get; }
 }

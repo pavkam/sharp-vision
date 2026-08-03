@@ -25,14 +25,14 @@ On a terminal whose only graphics protocol is sixel, a supported PNG placement
 is decoded and rendered through sixel after the Image control paints its
 ordinary-cell fallback. A hosted `Application`/`ConsoleApplication` raises
 `GraphicsDiagnostic` after any frame that leaves a placement falling back,
-carrying a `GraphicsPlacementDiagnostic` per placement with its `ImageIdentity`
-and a `GraphicsPlacementSkipReason` — so the degradation is observable instead
-of silent. A directly owned `Renderer`, outside the hosted path, reads the same
-immutable snapshot from every successful render's `Metrics.GraphicsDiagnostics`.
-Reasons distinguish an unsupported image representation, a deauthorized
-protocol, and otherwise-supported image data whose crop, geometry, or placement
-mode cannot be encoded. A placement that only fails the remaining bounded frame
-output budget reports that limit separately.
+carrying an immutable snapshot with one `GraphicsPlacementDiagnostic` per
+placement and its `ImageIdentity` and `GraphicsPlacementSkipReason` — so the
+degradation is observable instead of silent. A directly owned `Renderer`,
+outside the hosted path, reads the same immutable snapshot from every successful
+render's `Metrics.GraphicsDiagnostics`. Reasons distinguish an unsupported image
+representation, a deauthorized protocol, and otherwise-supported image data
+whose crop, geometry, or placement mode cannot be encoded. A placement that only
+fails the remaining bounded frame output budget reports that limit separately.
 
 ## Bounds and validation
 
