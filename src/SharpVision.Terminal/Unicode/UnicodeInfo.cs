@@ -7,7 +7,7 @@ namespace SharpVision.Terminal.Unicode;
 /// Reports the pinned Unicode specification used by terminal cell geometry.
 /// </summary>
 [PublicAPI]
-public static class Info
+public static class UnicodeInfo
 {
     /// <summary>Gets the Unicode Character Database version.</summary>
     public const string Version = "17.0.0";

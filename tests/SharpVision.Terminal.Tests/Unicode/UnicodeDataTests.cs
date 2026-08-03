@@ -15,9 +15,9 @@ public sealed class UnicodeDataTests
     [Fact]
     public void Version_WhenRead_ReportsPinnedUnicodeSources()
     {
-        Info.Version.ShouldBe("17.0.0");
-        Info.GraphemeRevision.ShouldBe(47);
-        Info.WidthRevision.ShouldBe(44);
+        UnicodeInfo.Version.ShouldBe("17.0.0");
+        UnicodeInfo.GraphemeRevision.ShouldBe(47);
+        UnicodeInfo.WidthRevision.ShouldBe(44);
     }
 
     /// <summary>
