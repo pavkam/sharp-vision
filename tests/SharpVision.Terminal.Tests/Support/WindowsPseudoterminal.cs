@@ -27,12 +27,15 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
     private const int _procThreadAttributePseudoconsole = 0x00020016;
     private const uint _extendedStartupInfoPresent = 0x00080000;
     private const int _useStdHandles = 0x00000100;
+    private const uint _waitObject0 = 0x00000000;
+    private const uint _waitTimeout = 0x00000102;
+    private const uint _waitPollMilliseconds = 50;
 
     private readonly SafeFileHandle _pseudoConsoleInputWrite;
     private readonly SafeFileHandle _pseudoConsoleOutputRead;
     private readonly nint _pseudoConsole;
     private readonly nint _attributeList;
-    private readonly Process _process;
+    private readonly SafeProcessHandle _processHandle;
     private FileStream? _input;
     private FileStream? _output;
 
@@ -41,13 +44,15 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
         SafeFileHandle pseudoConsoleOutputRead,
         nint pseudoConsole,
         nint attributeList,
-        Process process)
+        SafeProcessHandle processHandle,
+        int processId)
     {
         _pseudoConsoleInputWrite = pseudoConsoleInputWrite;
         _pseudoConsoleOutputRead = pseudoConsoleOutputRead;
         _pseudoConsole = pseudoConsole;
         _attributeList = attributeList;
-        _process = process;
+        _processHandle = processHandle;
+        ProcessId = processId;
         _input = new FileStream(pseudoConsoleInputWrite, FileAccess.Write, bufferSize: 1, isAsync: false);
         _output = new FileStream(pseudoConsoleOutputRead, FileAccess.Read, bufferSize: 1, isAsync: false);
     }
@@ -59,7 +64,7 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
     internal Stream Output => _output ?? throw new ObjectDisposedException(nameof(Output));
 
     /// <summary>Gets the process id of the attached probe process.</summary>
-    internal int ProcessId => _process.Id;
+    internal int ProcessId { get; }
 
     /// <summary>Opens a real pseudo console and attaches a freshly spawned probe process to it.</summary>
     /// <param name="scenarioArguments">
@@ -107,14 +112,15 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
 
                 try
                 {
-                    var process = SpawnProbe(pseudoConsole, scenarioArguments, out var attributeList);
+                    var (processHandle, processId) = SpawnProbe(pseudoConsole, scenarioArguments, out var attributeList);
 
                     // The pseudo console duplicated these; the near-side handles the fixture
                     // keeps are inputWrite/outputRead below.
                     inputRead.Dispose();
                     outputWrite.Dispose();
 
-                    return new WindowsPseudoterminal(inputWrite, outputRead, pseudoConsole, attributeList, process);
+                    return new WindowsPseudoterminal(
+                        inputWrite, outputRead, pseudoConsole, attributeList, processHandle, processId);
                 }
                 catch
                 {
@@ -184,26 +190,36 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
 
     /// <summary>Waits for the attached probe process to exit.</summary>
     /// <remarks>
-    /// Deliberately polls the synchronous, timeout-based <see cref="Process.WaitForExit(int)"/>
-    /// overload rather than <c>Process.WaitForExitAsync</c>: the async API sets
-    /// <see cref="Process.EnableRaisingEvents"/> internally, which throws
-    /// <see cref="InvalidOperationException"/> ("Process was not started by this object...") for
-    /// a <see cref="Process"/> obtained via <see cref="Process.GetProcessById(int)"/> rather than
-    /// <see cref="Process.Start()"/> — exactly how <see cref="SpawnProbe"/> gets its handle,
-    /// since the process was actually started via the raw <c>CreateProcessW</c> call above.
-    /// <see cref="Process.ExitCode"/> has the exact same "not started by this object" limitation
-    /// once the wait succeeds, so the exit code is read via a direct
-    /// <c>GetExitCodeProcess</c> call against <see cref="Process.SafeHandle"/> instead, which
-    /// carries no such requirement.
+    /// Deliberately waits and reads the exit code against the raw <c>hProcess</c> handle
+    /// <see cref="SpawnProbe"/> retains from its own <c>CreateProcessW</c> call, instead of going
+    /// through <see cref="Process"/>. A <c>Process</c> obtained via
+    /// <c>Process.GetProcessById</c> (necessary since the process here is actually started via
+    /// the raw <c>CreateProcessW</c> call, not <c>Process.Start()</c>) throws
+    /// <see cref="InvalidOperationException"/> ("Process was not started by this object...") from
+    /// <c>WaitForExitAsync</c>/<c>ExitCode</c>, and its lazily-opened <c>SafeHandle</c> throws a
+    /// *different* "process has exited" exception once the process has actually already exited by
+    /// the time it's first accessed — there is no working combination of `Process` members here.
     /// </remarks>
     internal async Task<int> WaitForExitAsync(CancellationToken cancellationToken)
     {
-        while (!_process.WaitForExit(50))
+        while (true)
         {
+            var result = WaitForSingleObject(_processHandle, _waitPollMilliseconds);
+
+            if (result == _waitObject0)
+            {
+                break;
+            }
+
+            if (result != _waitTimeout)
+            {
+                throw NativeFailure("WaitForSingleObject failed.");
+            }
+
             cancellationToken.ThrowIfCancellationRequested();
         }
 
-        return !GetExitCodeProcess(_process.SafeHandle, out var exitCode)
+        return !GetExitCodeProcess(_processHandle, out var exitCode)
             ? throw NativeFailure("GetExitCodeProcess failed.")
             : exitCode;
     }
@@ -228,22 +244,16 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
         DeleteProcThreadAttributeList(_attributeList);
         Marshal.FreeHGlobal(_attributeList);
 
-        try
+        if (WaitForSingleObject(_processHandle, 0) == _waitTimeout)
         {
-            if (!_process.HasExited)
-            {
-                _process.Kill();
-            }
-        }
-        catch (InvalidOperationException)
-        {
-            // The process already exited between the check and the kill attempt.
+            _ = TerminateProcess(_processHandle, unchecked((uint) -1));
         }
 
-        _process.Dispose();
+        _processHandle.Dispose();
     }
 
-    private static unsafe Process SpawnProbe(nint pseudoConsole, string[] scenarioArguments, out nint attributeList)
+    private static unsafe (SafeProcessHandle Handle, int ProcessId) SpawnProbe(
+        nint pseudoConsole, string[] scenarioArguments, out nint attributeList)
     {
         var probePath = ResolveProbePath();
         var commandLine = BuildCommandLine(probePath, scenarioArguments);
@@ -308,10 +318,8 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
                 throw NativeFailure("CreateProcess for the attached probe failed.");
             }
 
-            var process = Process.GetProcessById(processInformation.dwProcessId);
             _ = CloseHandleQuiet(processInformation.hThread);
-            _ = CloseHandleQuiet(processInformation.hProcess);
-            return process;
+            return (new SafeProcessHandle(processInformation.hProcess, ownsHandle: true), processInformation.dwProcessId);
         }
     }
 
@@ -470,4 +478,11 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
     [LibraryImport("kernel32", EntryPoint = "GetExitCodeProcess", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool GetExitCodeProcess(SafeHandle process, out int exitCode);
+
+    [LibraryImport("kernel32", EntryPoint = "WaitForSingleObject", SetLastError = true)]
+    private static partial uint WaitForSingleObject(SafeHandle handle, uint milliseconds);
+
+    [LibraryImport("kernel32", EntryPoint = "TerminateProcess", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool TerminateProcess(SafeHandle process, uint exitCode);
 }
