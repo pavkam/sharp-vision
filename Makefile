@@ -67,6 +67,7 @@ lint: restore docs-samples
 	@echo "🔍 Checking source and documentation..."
 	@dotnet format $(SOLUTION) --verify-no-changes --no-restore --verbosity diagnostic
 	@npm run format:check
+	@npm run check:unicode
 	@npm run lint:markdown
 	@npm run lint:links
 	@echo "✅ All lint checks passed."
