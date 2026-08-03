@@ -348,16 +348,21 @@ public static class Edit
         ArgumentOutOfRangeException.ThrowIfNegative(maxLength);
         Validate(text, selection);
         ValidateControls(replacement, acceptsReturn, acceptsTab);
-        var retained = Count(text.AsSpan()) - Count(text.AsSpan(selection.Start, selection.Length));
+        var allowed = int.MaxValue;
 
-        if (maxLength > 0 && retained > maxLength)
+        if (maxLength > 0)
         {
-            throw new ArgumentException(
-                "Text retained outside the selection already exceeds maximum length.",
-                nameof(maxLength));
-        }
+            var retained = Count(text.AsSpan()) - Count(text.AsSpan(selection.Start, selection.Length));
 
-        var allowed = maxLength == 0 ? int.MaxValue : maxLength - retained;
+            if (retained > maxLength)
+            {
+                throw new ArgumentException(
+                    "Text retained outside the selection already exceeds maximum length.",
+                    nameof(maxLength));
+            }
+
+            allowed = maxLength - retained;
+        }
         var replacementLength = Prefix(replacement, allowed);
         var next = string.Concat(
             text.AsSpan(0, selection.Start),
