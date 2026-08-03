@@ -3,6 +3,7 @@
 
 namespace SharpVision.Runtime;
 
+using SharpVision.Terminal.Graphics;
 using SharpVision.Terminal.Input;
 
 using TerminalClipboardReply = ClipboardReply;
@@ -58,6 +59,10 @@ internal readonly record struct Record
     /// <summary>Gets a decoded Kitty OSC 5522 clipboard packet.</summary>
     public TerminalKittyClipboardPacket? KittyClipboardPacket { get; private init; }
 
+    /// <summary>Gets graphics placements that fell back to ordinary cells during one committed frame.</summary>
+    public IReadOnlyList<GraphicsPlacementDiagnostic> GraphicsDiagnostics { get; private init; } =
+        Array.Empty<GraphicsPlacementDiagnostic>();
+
     /// <summary>Gets a stored input fault.</summary>
     public Exception? Exception { get; private init; }
 
@@ -107,6 +112,10 @@ internal readonly record struct Record
     /// <summary>Creates a decoded Kitty OSC 5522 clipboard packet record.</summary>
     public static Record From(TerminalKittyClipboardPacket value) =>
         new(RecordKind.KittyClipboardPacket) { KittyClipboardPacket = value };
+
+    /// <summary>Creates a graphics diagnostic record.</summary>
+    public static Record From(IReadOnlyList<GraphicsPlacementDiagnostic> value) =>
+        new(RecordKind.GraphicsDiagnostic) { GraphicsDiagnostics = value };
 
     /// <summary>Creates an orderly closure record.</summary>
     public static Record Closed() => new(RecordKind.Closed);

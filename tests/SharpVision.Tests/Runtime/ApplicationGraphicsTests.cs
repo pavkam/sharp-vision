@@ -4,6 +4,7 @@
 namespace SharpVision.Tests.Runtime;
 
 using Terminal.Capabilities;
+using Terminal.Graphics;
 
 using CapabilitySupport = Terminal.Capabilities.Support;
 using GraphicsImage = Terminal.Graphics.ImageSource;
@@ -77,6 +78,50 @@ public sealed class ApplicationGraphicsTests
         bytes.AsSpan().IndexOf("\u001b]1337;FileEnd"u8).ShouldBeGreaterThan(multipart);
         await application.StopAsync(TestContext.Current.CancellationToken);
         terminal.Disposals.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies a placement whose format has no encodable path on any enabled protocol pushes a
+    /// GraphicsDiagnostic event instead of leaving the degradation observable only through a
+    /// renderer the hosted Application never exposes (see #233).
+    /// </summary>
+    [Fact]
+    public async Task StartAsync_WhenImageFormatHasNoEncodablePath_RaisesGraphicsDiagnosticAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(2, 1), new Size(5, 3)));
+        var image = new Image
+        {
+            Source = Png(),
+            AlternateText = "PN",
+            Width = Length.Cells(2),
+            Height = Length.Cells(1)
+        };
+        await using Application application = new(
+            image,
+            terminal,
+            terminal,
+            Options(sixel: true));
+        var diagnosed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        GraphicsDiagnosticEventArgs? received = null;
+        application.GraphicsDiagnostic += OnGraphicsDiagnostic;
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await diagnosed.Task.WaitAsync(TestContext.Current.CancellationToken);
+        application.GraphicsDiagnostic -= OnGraphicsDiagnostic;
+
+        _ = received.ShouldNotBeNull();
+        var placement = received.Placements.ShouldHaveSingleItem();
+        placement.Reason.ShouldBe(GraphicsPlacementSkipReason.FormatNotEncodable);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        return;
+
+        void OnGraphicsDiagnostic(object? sender, GraphicsDiagnosticEventArgs eventArgs)
+        {
+            _ = sender;
+            received = eventArgs;
+            _ = diagnosed.TrySetResult();
+        }
     }
 
     /// <summary>Verifies a resolved Kitty identity cannot promote tentative graphics capability evidence.</summary>

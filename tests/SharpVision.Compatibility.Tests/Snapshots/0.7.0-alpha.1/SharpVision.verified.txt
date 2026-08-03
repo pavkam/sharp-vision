@@ -28,6 +28,7 @@ namespace SharpVision
         public event System.EventHandler<SharpVision.CapabilityResponseEventArgs>? CapabilityResponseReceived;
         public event System.EventHandler<SharpVision.DiagnosticEventArgs>? Diagnostic;
         public event System.EventHandler<SharpVision.FrameRenderedEventArgs>? FrameRendered;
+        public event System.EventHandler<SharpVision.GraphicsDiagnosticEventArgs>? GraphicsDiagnostic;
         public event System.EventHandler? Idle;
         public event System.EventHandler<SharpVision.MetricsResponseEventArgs>? MetricsResponseReceived;
         public event System.EventHandler<SharpVision.PaletteResponseEventArgs>? PaletteResponseReceived;
@@ -154,6 +155,11 @@ namespace SharpVision
     {
         public FrameRenderedEventArgs(SharpVision.Terminal.Rendering.Metrics metrics) { }
         public SharpVision.Terminal.Rendering.Metrics Metrics { get; }
+    }
+    public sealed class GraphicsDiagnosticEventArgs : System.EventArgs
+    {
+        public GraphicsDiagnosticEventArgs(System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic> placements) { }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic> Placements { get; }
     }
     public interface IBell
     {

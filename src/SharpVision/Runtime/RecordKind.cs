@@ -45,6 +45,9 @@ internal enum RecordKind
     /// <summary>A decoded Kitty OSC 5522 clipboard packet.</summary>
     KittyClipboardPacket,
 
+    /// <summary>Graphics placements that fell back to ordinary cells during one committed frame.</summary>
+    GraphicsDiagnostic,
+
     /// <summary>An orderly input closure.</summary>
     Closed,
 

@@ -1431,12 +1431,15 @@ namespace SharpVision.Terminal.Rendering
     public readonly struct Metrics : System.IEquatable<SharpVision.Terminal.Rendering.Metrics>
     {
         public Metrics(int bytes, int writes, int spans, bool full, System.TimeSpan elapsed) { }
+        public Metrics(int bytes, int writes, int spans, bool full, System.TimeSpan elapsed, System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic> graphicsDiagnostics) { }
         public int Bytes { get; }
         public System.TimeSpan Elapsed { get; }
         public bool Full { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic> GraphicsDiagnostics { get; }
         public int Spans { get; }
         public int Writes { get; }
         public void Deconstruct(out int bytes, out int writes, out int spans, out bool full, out System.TimeSpan elapsed) { }
+        public void Deconstruct(out int bytes, out int writes, out int spans, out bool full, out System.TimeSpan elapsed, out System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic> graphicsDiagnostics) { }
     }
     public static class Palette
     {
@@ -1459,7 +1462,6 @@ namespace SharpVision.Terminal.Rendering
         public Renderer(int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
         public Renderer(SharpVision.Terminal.Capabilities.Capabilities capabilities, SharpVision.Terminal.Multiplexing.Route? route = null, int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
         public System.Exception? LastCleanupException { get; }
-        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic> LastGraphicsDiagnostics { get; }
         public bool AttachCommittedFrame(SharpVision.Terminal.Rendering.Frame back) { }
         public void Dispose() { }
         public void Invalidate() { }
