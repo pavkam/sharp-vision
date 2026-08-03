@@ -13,7 +13,7 @@ public sealed class GroupBoxSurfaceTests
         // Arrange
         var group = new GroupBox
         {
-            Header = "&甌 Tools",
+            HeaderText = "&甌 Tools",
             Content = new ControlText("Body"),
             Width = Length.Cells(12),
             Height = Length.Cells(3)
@@ -45,7 +45,7 @@ public sealed class GroupBoxSurfaceTests
         // Arrange
         var group = new GroupBox
         {
-            Header = "&Options",
+            HeaderText = "&Options",
             Content = new ControlText("Body"),
             IsEnabled = false,
             Width = Length.Cells(12),
@@ -73,7 +73,7 @@ public sealed class GroupBoxSurfaceTests
         // Arrange
         var group = new GroupBox
         {
-            Header = "Profile",
+            HeaderText = "Profile",
             Content = new ControlText("Body"),
             Width = Length.Cells(10),
             Height = Length.Cells(3)
@@ -111,7 +111,7 @@ public sealed class GroupBoxSurfaceTests
         var content = new ControlText("Body");
         var group = new GroupBox
         {
-            Header = "Details",
+            HeaderText = "Details",
             Content = content,
             Width = Length.Cells(12),
             Height = Length.Cells(3)
@@ -143,7 +143,7 @@ public sealed class GroupBoxSurfaceTests
         var content = new ControlText("Body");
         var group = new GroupBox
         {
-            Header = "Details",
+            HeaderText = "Details",
             Content = content,
             Width = Length.Cells(12),
             Height = Length.Cells(3)
@@ -172,7 +172,7 @@ public sealed class GroupBoxSurfaceTests
         var input = new TextInput { Text = "Value" };
         var group = new GroupBox
         {
-            Header = "Details",
+            HeaderText = "Details",
             Content = input,
             Width = Length.Cells(12),
             Height = Length.Cells(3)
@@ -222,7 +222,7 @@ public sealed class GroupBoxSurfaceTests
         // Arrange wide header
         var wide = new GroupBox
         {
-            Header = "甌 Tools",
+            HeaderText = "甌 Tools",
             Content = new ControlText("Body"),
             Width = Length.Cells(12),
             Height = Length.Cells(3)
@@ -249,7 +249,7 @@ public sealed class GroupBoxSurfaceTests
         // Arrange
         var group = new GroupBox
         {
-            Header = "Long title",
+            HeaderText = "Long title",
             Content = new ControlText("Body"),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
@@ -282,7 +282,7 @@ public sealed class GroupBoxSurfaceTests
         // Arrange
         var group = new GroupBox
         {
-            Header = "Old",
+            HeaderText = "Old",
             Content = new ControlText("Body"),
             Width = Length.Cells(12),
             Height = Length.Cells(3)
@@ -298,7 +298,7 @@ public sealed class GroupBoxSurfaceTests
                              """);
 
         // Act
-        await surface.UpdateAsync(() => group.Header = "New title", "change GroupBox header");
+        await surface.UpdateAsync(() => group.HeaderText = "New title", "change GroupBox header");
 
         // Assert
         surface.ShouldRender("""
@@ -316,7 +316,7 @@ public sealed class GroupBoxSurfaceTests
         var content = new ControlText("Styled");
         var group = new GroupBox
         {
-            Header = "Theme",
+            HeaderText = "Theme",
             Content = content,
             Face = AppearanceTestValues.Face(foreground: ReferenceColors.Get(2)),
             Width = Length.Cells(10),
@@ -333,5 +333,34 @@ public sealed class GroupBoxSurfaceTests
         surface.Cell(new Point(2, 0)).Style.Foreground.ShouldBe(surface.Cell(default).Style.Foreground);
         // Content text resolves its own foreground through the theme pipeline independently.
         surface.Cell(new Point(1, 1)).Style.Foreground.ShouldBe(ReferenceColors.Get(15));
+    }
+
+    /// <summary>Verifies a non-text header renders through the ordinary owned-control pipeline, proving the
+    /// header ownership role hosts arbitrary rich content rather than only a text caption (see #70).</summary>
+    [Fact]
+    public async Task Render_WhenHeaderIsARichControl_RendersThroughTheOwnedControlPipelineAsync()
+    {
+        // Arrange
+        var group = new GroupBox
+        {
+            Header = new ProbeControl(new Size(1, 1)) { Content = "R".AsMemory() },
+            Content = new ControlText("Body"),
+            Width = Length.Cells(12),
+            Height = Length.Cells(3)
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            group,
+            new Size(12, 3),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("""
+                             ┌ R ───────┐
+                             │Body      │
+                             └──────────┘
+                             """);
+        group.Header.ShouldBeOfType<ProbeControl>().Bounds.ShouldBe(new Rect(2, 0, 1, 1));
     }
 }

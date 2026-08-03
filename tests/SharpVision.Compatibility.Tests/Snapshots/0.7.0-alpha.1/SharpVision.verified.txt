@@ -311,10 +311,9 @@ namespace SharpVision.Controls.Collections
         Clip = 0,
         Scroll = 1,
     }
-    public sealed class TabItem : SharpVision.Controls.ContentControl
+    public sealed class TabItem : SharpVision.Controls.HeaderedContentControl
     {
         public TabItem() { }
-        public string Header { get; set; }
         public bool IsClosable { get; set; }
     }
     public sealed class TabItemCollection : System.Collections.Generic.IEnumerable<SharpVision.Controls.Collections.TabItem>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.Collections.TabItem>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Collections.TabItem>, System.Collections.IEnumerable
@@ -655,6 +654,14 @@ namespace SharpVision.Controls
         public TStyle? Style { get; set; }
         protected SharpVision.Controls.StyleSlot<TStyle> StyleSlot { get; }
         protected virtual void OnStyleChanged(TStyle previous, TStyle current) { }
+    }
+    public abstract class HeaderedContentControl : SharpVision.Controls.ContentControl
+    {
+        protected HeaderedContentControl() { }
+        protected override string? AccessKeyText { get; }
+        public SharpVision.Controls.ControlBase? Header { get; set; }
+        public string HeaderText { get; set; }
+        protected virtual void OnHeaderChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
     }
     public enum InvalidationImpact
     {
@@ -1468,14 +1475,12 @@ namespace SharpVision.Controls.Layout
         public ExpandedChangedEventArgs(bool isExpanded) { }
         public bool IsExpanded { get; }
     }
-    public sealed class Expander : SharpVision.Controls.ContentControl
+    public sealed class Expander : SharpVision.Controls.HeaderedContentControl
     {
         public Expander() { }
-        protected override string? AccessKeyText { get; }
         public System.Text.Rune CollapsedGlyph { get; set; }
         public int ContentIndent { get; set; }
         public System.Text.Rune ExpandedGlyph { get; set; }
-        public string Header { get; set; }
         public bool IsExpanded { get; set; }
         public event System.EventHandler<SharpVision.Controls.Layout.ExpandedChangedEventArgs>? ExpandedChanged;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
@@ -1512,11 +1517,9 @@ namespace SharpVision.Controls.Layout
         public static void SetRow(SharpVision.Controls.ControlBase control, int value) { }
         public static void SetRowSpan(SharpVision.Controls.ControlBase control, int value) { }
     }
-    public sealed class GroupBox : SharpVision.Controls.ContentControl
+    public sealed class GroupBox : SharpVision.Controls.HeaderedContentControl
     {
         public GroupBox() { }
-        protected override string? AccessKeyText { get; }
-        public string Header { get; set; }
         protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Styling.ChromeRenderOptions GetChromeRenderOptions() { }

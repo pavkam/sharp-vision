@@ -13,7 +13,7 @@ public sealed class ExpanderSurfaceTests
         // Arrange
         var expander = new Expander
         {
-            Header = "Details",
+            HeaderText = "Details",
             Content = new ControlText("Body"),
             Width = Length.Cells(12),
             Height = Length.Cells(4)
@@ -37,6 +37,36 @@ public sealed class ExpanderSurfaceTests
         surface.Cell(default).Style.Background.ShouldBe(ReferenceColors.Get(0));
     }
 
+    /// <summary>Verifies a non-text header renders through the ordinary owned-control pipeline, proving the
+    /// header ownership role hosts arbitrary rich content rather than only a text caption (see #70).</summary>
+    [Fact]
+    public async Task Render_WhenHeaderIsARichControl_RendersThroughTheOwnedControlPipelineAsync()
+    {
+        // Arrange
+        var expander = new Expander
+        {
+            Header = new ProbeControl(new Size(1, 1)) { Content = "R".AsMemory() },
+            Content = new ControlText("Body"),
+            Width = Length.Cells(12),
+            Height = Length.Cells(4)
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            expander,
+            new Size(12, 4),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("""
+                             ▼ R
+                               Body
+
+
+                             """);
+        expander.Header.ShouldBeOfType<ProbeControl>().Bounds.ShouldBe(new Rect(2, 0, 1, 1));
+    }
+
     /// <summary>Verifies expanded and collapsed states draw exact header/content cells and remove stale rows.</summary>
     [Fact]
     public async Task UpdateAsync_WhenExpansionChanges_DrawsExactStateAndClearsContentAsync()
@@ -44,7 +74,7 @@ public sealed class ExpanderSurfaceTests
         // Arrange
         var expander = new Expander
         {
-            Header = "Details",
+            HeaderText = "Details",
             Content = new ControlText("Body\nMore"),
             Width = Length.Cells(12),
             Height = Length.Cells(3)
@@ -87,7 +117,7 @@ public sealed class ExpanderSurfaceTests
         var changes = 0;
         var expander = new Expander
         {
-            Header = "Input",
+            HeaderText = "Input",
             Content = new ControlText("Content"),
             Width = Length.Cells(12),
             Height = Length.Cells(2)
@@ -135,7 +165,7 @@ public sealed class ExpanderSurfaceTests
         // Arrange
         var expander = new Expander
         {
-            Header = "Details",
+            HeaderText = "Details",
             Content = new ControlText("Body"),
             Width = Length.Cells(12),
             Height = Length.Cells(4)
@@ -161,7 +191,7 @@ public sealed class ExpanderSurfaceTests
         var body = new ControlText("Body");
         var expander = new Expander
         {
-            Header = "Details",
+            HeaderText = "Details",
             Content = body,
             Width = Length.Cells(12),
             Height = Length.Cells(4)
@@ -206,7 +236,7 @@ public sealed class ExpanderSurfaceTests
         var second = new ControlText("Second");
         var expander = new Expander
         {
-            Header = "Policy",
+            HeaderText = "Policy",
             IsExpanded = false,
             IsEnabled = false,
             Content = first,
@@ -263,7 +293,7 @@ public sealed class ExpanderSurfaceTests
         // Arrange
         var expander = new Expander
         {
-            Header = "界 Tools",
+            HeaderText = "界 Tools",
             Content = new ControlText("abcdefgh") { Overflow = Overflow.WrapAnywhere },
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
@@ -296,7 +326,7 @@ public sealed class ExpanderSurfaceTests
         // Arrange
         var expander = new Expander
         {
-            Header = "Section",
+            HeaderText = "Section",
             Content = new ControlText("Body"),
             ExpandedGlyph = new Rune('-'),
             CollapsedGlyph = new Rune('+'),
@@ -328,7 +358,7 @@ public sealed class ExpanderSurfaceTests
         // Arrange
         var expander = new Expander
         {
-            Header = "Details",
+            HeaderText = "Details",
             Content = new ControlText("Body"),
             ContentIndent = 4,
             Width = Length.Cells(14),
@@ -362,7 +392,7 @@ public sealed class ExpanderSurfaceTests
         // Arrange
         var expander = new Expander
         {
-            Header = "Details",
+            HeaderText = "Details",
             IsExpanded = false,
             Content = new ControlText("Hidden"),
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -394,7 +424,7 @@ public sealed class ExpanderSurfaceTests
         var themeB = WithColor(ThemeColor.FocusedControl, Color.Rgb(200, 210, 220));
         var expander = new Expander
         {
-            Header = "Details",
+            HeaderText = "Details",
             Content = new ControlText("Body"),
             Width = Length.Cells(12),
             Height = Length.Cells(4)

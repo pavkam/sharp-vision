@@ -6,10 +6,11 @@ SharpVision keeps inheritance honest. Use
 [`Container`](../controls/container.md#overview) only when callers may add
 arbitrary controls and the new type's public purpose is laying them out. Use
 `ContentControl` for zero-or-one caller-replaceable content,
+`HeaderedContentControl` for content plus an independent replaceable header,
 `CompositeControlBase` for a retained private composition, `ItemsControl` for a
 typed semantic collection with a private presentation host, and direct
 `ControlBase` inheritance for a new primitive leaf. `PressableBase` is the
-focusable, single-content interaction role.
+focusable, single-text-caption interaction role.
 
 There is no `View` type and no measure-time `Build()` composition. Construction
 is never deferred to measure, arrange, or rendering: a component creates its
@@ -25,6 +26,7 @@ lifecycle, rendering, hit-testing, focus, capture, and disposal paths.
 | New leaf behavior or custom drawing                  | `ControlBase`                                    | None unless the type explicitly provides one   |
 | General-purpose multi-child layout                   | [`Container`](../controls/container.md#overview) | `Children`                                     |
 | One caller-owned replaceable visual                  | `ContentControl`                                 | `Content`                                      |
+| Content plus an independent replaceable header       | `HeaderedContentControl`                         | `Content`, `Header`, `HeaderText`              |
 | Reusable component built from existing controls      | `CompositeControlBase`                           | None; its root is private                      |
 | Typed data/semantic collection with realized visuals | `ItemsControl`                                   | The type's semantic collection, never the host |
 | Focusable activating single text caption             | `PressableBase`                                  | `Text` (string)                                |

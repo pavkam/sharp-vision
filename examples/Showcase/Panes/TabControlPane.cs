@@ -20,7 +20,7 @@ internal sealed class TabControlPane: CompositeControlBase
         var tabs = new TabControl { Width = Length.Cells(50), Height = Length.Cells(8) };
         tabs.Items.Add(new TabItem
         {
-            Header = "&General",
+            HeaderText = "&General",
             Content = new Stack
             {
                 Padding = new Thickness(1),
@@ -32,7 +32,7 @@ internal sealed class TabControlPane: CompositeControlBase
         });
         tabs.Items.Add(new TabItem
         {
-            Header = "&Advanced",
+            HeaderText = "&Advanced",
             Content = new Stack
             {
                 Padding = new Thickness(1),
@@ -41,7 +41,7 @@ internal sealed class TabControlPane: CompositeControlBase
         });
         tabs.Items.Add(new TabItem
         {
-            Header = "&About",
+            HeaderText = "&About",
             Content = new Text("SharpVision v1.0") { Padding = new Thickness(1) }
         });
         tabs.SelectionChanged += (_, _) =>
@@ -49,8 +49,8 @@ internal sealed class TabControlPane: CompositeControlBase
 
         var dynStatus = new Text("Tabs: 2");
         var dyn = new TabControl { Width = Length.Cells(50), Height = Length.Cells(6) };
-        dyn.Items.Add(new TabItem { Header = "&Tab 1", IsClosable = true, Content = new Text("First") { Padding = new Thickness(1) } });
-        dyn.Items.Add(new TabItem { Header = "&Tab 2", Content = new Text("Second") { Padding = new Thickness(1) } });
+        dyn.Items.Add(new TabItem { HeaderText = "&Tab 1", IsClosable = true, Content = new Text("First") { Padding = new Thickness(1) } });
+        dyn.Items.Add(new TabItem { HeaderText = "&Tab 2", Content = new Text("Second") { Padding = new Thickness(1) } });
         var addBtn = new Button { Text = "&Add tab" };
         var rmBtn = new Button { Text = "&Remove last" };
         var closeBtn = new Button { Text = "Close selected" };
@@ -59,7 +59,7 @@ internal sealed class TabControlPane: CompositeControlBase
         dyn.CloseRequested += (_, args) =>
         {
             closeCancelled = false;
-            if (args.Item.Header.Contains("Tab 1", StringComparison.Ordinal))
+            if (args.Item.HeaderText.Contains("Tab 1", StringComparison.Ordinal))
             {
                 args.Cancel = true;
                 closeCancelled = true;
@@ -71,7 +71,7 @@ internal sealed class TabControlPane: CompositeControlBase
             counter++;
             dyn.Items.Add(new TabItem
             {
-                Header = $"Tab {counter}",
+                HeaderText = $"Tab {counter}",
                 IsClosable = true,
                 Content = new Text($"Content {counter}") { Padding = new Thickness(1) }
             });
@@ -101,7 +101,7 @@ internal sealed class TabControlPane: CompositeControlBase
         var disabledTabs = new TabControl { Width = Length.Cells(50), Height = Length.Cells(6) };
         disabledTabs.Items.Add(new TabItem
         {
-            Header = "Acti&ve",
+            HeaderText = "Acti&ve",
             Content = new Text("This tab is selectable.") { Padding = new Thickness(1) }
         });
 
@@ -116,19 +116,19 @@ internal sealed class TabControlPane: CompositeControlBase
         {
             overflowTabs.Items.Add(new TabItem
             {
-                Header = header,
+                HeaderText = header,
                 Content = new Text($"Selected page: {header}") { Padding = new Thickness(1) },
             });
         }
         disabledTabs.Items.Add(new TabItem
         {
-            Header = "&Unavailable",
+            HeaderText = "&Unavailable",
             IsEnabled = false,
             Content = new Text("This tab cannot be reached.") { Padding = new Thickness(1) }
         });
         disabledTabs.Items.Add(new TabItem
         {
-            Header = "&Other",
+            HeaderText = "&Other",
             Content = new Text("Keyboard navigation skips the disabled tab.") { Padding = new Thickness(1) }
         });
 
@@ -154,12 +154,12 @@ internal sealed class TabControlPane: CompositeControlBase
                         {
                             new TabItem
                             {
-                                Header = "&Profile",
+                                HeaderText = "&Profile",
                                 Content = new Text("Custom styled tab strip.") { Padding = new Thickness(1) }
                             },
                             new TabItem
                             {
-                                Header = "S&ettings",
+                                HeaderText = "S&ettings",
                                 Content = new Text("Second page content.") { Padding = new Thickness(1) }
                             }
                         }

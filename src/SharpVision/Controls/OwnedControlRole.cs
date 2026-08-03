@@ -12,6 +12,9 @@ internal enum OwnedControlRole
     /// <summary>Represents the single logical value displayed by a content-bearing control.</summary>
     Content,
 
+    /// <summary>Represents the single replaceable caption control owned by a headered content control.</summary>
+    Header,
+
     /// <summary>Represents the root of a composite control's private implementation tree.</summary>
     CompositionRoot,
 

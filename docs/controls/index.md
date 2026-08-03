@@ -17,6 +17,7 @@ classDiagram
     Control <|-- ItemsControl
     Control <|-- Pressable
     ContentControl <|-- FloatingSurface
+    ContentControl <|-- HeaderedContentControl
     FloatingSurface <|-- Window
     FloatingSurface <|-- Popup
     Popup <|-- Flyout
@@ -25,6 +26,8 @@ classDiagram
     Pressable <|-- CheckBox
     Pressable <|-- RadioButton
     Pressable <|-- HyperlinkButton
+    HeaderedContentControl <|-- GroupBox
+    HeaderedContentControl <|-- Expander
     CompositeControl <|-- Screen
     Container <|-- Stack
     Container <|-- Grid
@@ -67,6 +70,8 @@ Complete modal tasks such as `MessageBox` live in
   requires a concrete measure and arrange algorithm.
 - [ContentControl](content-control.md#overview) owns zero or one publicly
   replaceable content control.
+- [HeaderedContentControl](headered-content-control.md#overview) adds an
+  independent replaceable header to `ContentControl`.
 - [CompositeControl](composite-control.md#overview) owns one retained private
   implementation root initialized by the concrete constructor.
 - [ItemsControl](items-control.md#overview) exposes typed semantic items through

@@ -307,7 +307,7 @@ public sealed class TabControl: ItemsControl
         }
 
         var requestedPresentation = new TabItemPresentation(item.Visibility, item.Width, item.Height);
-        var header = new TabHeader(item.Header)
+        var header = new TabHeader(item.HeaderText)
         {
             IsEnabled = item.IsEnabled,
             Visibility = requestedPresentation.Visibility,
@@ -434,7 +434,7 @@ public sealed class TabControl: ItemsControl
         var previousSelectedItem = _selectedIndex >= 0 ? ItemAt(_selectedIndex) : null;
         var oldHeader = HeaderAt(index);
         var requestedPresentation = new TabItemPresentation(item.Visibility, item.Width, item.Height);
-        var newHeader = new TabHeader(item.Header)
+        var newHeader = new TabHeader(item.HeaderText)
         {
             IsEnabled = item.IsEnabled,
             Visibility = requestedPresentation.Visibility,
@@ -847,7 +847,7 @@ public sealed class TabControl: ItemsControl
             return;
         }
 
-        if (eventArgs.PropertyName is not nameof(TabItem.Header) and not nameof(Visibility) and not nameof(IsEnabled))
+        if (eventArgs.PropertyName is not nameof(TabItem.HeaderText) and not nameof(Visibility) and not nameof(IsEnabled))
         {
             return;
         }
@@ -861,9 +861,9 @@ public sealed class TabControl: ItemsControl
 
         var header = HeaderAt(index);
 
-        if (eventArgs.PropertyName == nameof(TabItem.Header))
+        if (eventArgs.PropertyName == nameof(TabItem.HeaderText))
         {
-            header.Text = item.Header;
+            header.Text = item.HeaderText;
             return;
         }
 

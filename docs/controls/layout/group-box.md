@@ -4,25 +4,31 @@
 
 `GroupBox` frames a single owned content control with a titled border, giving
 related controls a visual group. It extends
-[`ContentControl`](../content-control.md#overview) and renders a border frame
-with an optional header label in the top edge — like a
+[`HeaderedContentControl`](../headered-content-control.md#overview) and renders
+a border frame with an optional header in the top edge — like a
 [`Window`](../windows/window.md) without the window-specific drag behavior or
 default shadow.
 
 ## API
 
-| Member                               | Default                | Purpose                                                |
-| ------------------------------------ | ---------------------- | ------------------------------------------------------ |
-| `Header`                             | Empty                  | Writes validated single-line text into the top border. |
-| `Content`                            | `null`                 | Owns one child inside the framed content box.          |
-| Inherited `Face`, `Border`, `Shadow` | `Container` theme role | Supply the complete body, titled frame, and depth.     |
+| Member                               | Default                | Purpose                                                   |
+| ------------------------------------ | ---------------------- | --------------------------------------------------------- |
+| `Header`                             | `null`                 | Owns one replaceable control written into the top border. |
+| `HeaderText`                         | Empty                  | Convenience over `Header` for a plain single-line title.  |
+| `Content`                            | `null`                 | Owns one child inside the framed content box.             |
+| Inherited `Face`, `Border`, `Shadow` | `Container` theme role | Supply the complete body, titled frame, and depth.        |
 
 ## Behavior
 
-- `Header` is a non-null single-line string that may not contain terminal
-  control characters, and it defaults to empty. A non-empty header renders with
-  one leading and one trailing space, keeps the top corners intact, and clips
-  only within that interior span.
+- `Header` is any owned control drawn into the top border, with one leading and
+  one trailing space around it, keeping the top corners intact and clipping only
+  within that interior span. `HeaderText` is the plain-text convenience: it
+  materializes or mutates an owned `Text` caption and is the common case for a
+  simple title.
+- A plain `Text` header (the one `HeaderText` materializes) always paints with
+  the frame's own theme-owned border style, so the title reads as part of the
+  frame even when a local `Face` is assigned to the group. Any other header
+  control paints with its own resolved style instead.
 - The global `Container` theme profile supplies the terminal-safe frame family
   and appearance. Assign a complete local composite when a particular group
   needs a different body, border, or shadow; local values stay authoritative
@@ -46,7 +52,7 @@ authoritative.
 ```csharp
 var group = new GroupBox
 {
-    Header = "Settings",
+    HeaderText = "Settings",
     Content = new Stack
     {
         Children =
@@ -58,7 +64,7 @@ var group = new GroupBox
 };
 ```
 
-An ampersand in `Header` declares an
+An ampersand in `HeaderText` declares an
 [access key](../../concepts/access-keys.md#focus-and-semantic-actions). The
 marker occupies no cells, the marked grapheme renders underlined, and pressing
 Alt plus the key focuses the first eligible descendant in hierarchical tab

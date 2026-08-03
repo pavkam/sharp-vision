@@ -26,14 +26,13 @@ public sealed class ExpanderTests
     {
         var expander = new Expander();
 
-        expander.Header.ShouldBeEmpty();
+        expander.Header.ShouldBeNull();
         expander.IsExpanded.ShouldBeTrue();
         expander.Content.ShouldBeNull();
 
-        _ = Should.Throw<ArgumentNullException>(() => expander.Header = null!);
-        _ = Should.Throw<ArgumentException>(() => expander.Header = "bad\nheader");
+        _ = Should.Throw<ArgumentNullException>(() => expander.HeaderText = null!);
 
-        expander.Header.ShouldBeEmpty();
+        expander.Header.ShouldBeNull();
     }
 
     /// <summary>Verifies collapse excludes content geometry without releasing caller ownership.</summary>
@@ -43,7 +42,7 @@ public sealed class ExpanderTests
         var content = new ProbeControl(new Size(4, 2));
         var expander = new Expander
         {
-            Header = "Details",
+            HeaderText = "Details",
             Content = content,
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top
@@ -87,7 +86,7 @@ public sealed class ExpanderTests
     public void IsExpanded_WhenFalse_CollapsesContentVisibilityAndExcludesItFromFocus()
     {
         var content = new ProbeControl(new Size(4, 2)) { Focusable = true };
-        var expander = new Expander { Header = "Details", Content = content };
+        var expander = new Expander { HeaderText = "Details", Content = content };
         content.CanFocus.ShouldBeTrue();
 
         expander.IsExpanded = false;
@@ -112,7 +111,7 @@ public sealed class ExpanderTests
         {
             var before = new ProbeControl(new Size(1, 1)) { Focusable = true };
             var hidden = new ProbeControl(new Size(1, 1)) { Focusable = true };
-            var expander = new Expander { Header = "Details", Content = hidden, IsExpanded = false };
+            var expander = new Expander { HeaderText = "Details", Content = hidden, IsExpanded = false };
             var after = new ProbeControl(new Size(1, 1)) { Focusable = true };
             var panel = new Stack();
             panel.Children.Add(before);
@@ -136,7 +135,7 @@ public sealed class ExpanderTests
     public void IsExpanded_WhenContentWasAuthoredCollapsed_StaysCollapsedAfterReExpanding()
     {
         var content = new ProbeControl(new Size(4, 2)) { Visibility = Visibility.Collapsed };
-        var expander = new Expander { Header = "Details", Content = content, IsExpanded = false };
+        var expander = new Expander { HeaderText = "Details", Content = content, IsExpanded = false };
 
         expander.IsExpanded = true;
 
@@ -179,7 +178,7 @@ public sealed class ExpanderTests
         var content = new ProbeControl(new Size(4, 2));
         var expander = new Expander
         {
-            Header = "Details",
+            HeaderText = "Details",
             Content = content,
             ContentIndent = 4,
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -248,7 +247,7 @@ public sealed class ExpanderTests
 
         // Assert
         _ = Should.Throw<ObjectDisposedException>(() => expander.IsExpanded = false);
-        _ = Should.Throw<ObjectDisposedException>(() => expander.Header = "Test");
+        _ = Should.Throw<ObjectDisposedException>(() => expander.HeaderText = "Test");
     }
 
     /// <summary>Verifies zero ContentIndent places content at the leading edge.</summary>
@@ -259,7 +258,7 @@ public sealed class ExpanderTests
         var content = new ProbeControl(new Size(4, 2));
         var expander = new Expander
         {
-            Header = "Details",
+            HeaderText = "Details",
             Content = content,
             ContentIndent = 0,
             HorizontalAlignment = HorizontalAlignment.Left,

@@ -81,10 +81,12 @@ suppresses the built-in selection change.
 
 ## TabItem
 
-`TabItem` extends [`ContentControl`](../content-control.md#overview). `Header`
-is a non-null string without terminal control characters, rendered in the owning
-tab strip. `Content` is the single caller-replaceable owned child, arranged
-below the rule only while the page is selected.
+`TabItem` extends
+[`HeaderedContentControl`](../headered-content-control.md#overview).
+`HeaderText` is the label rendered in the owning tab strip today — the strip's
+generated `TabHeader` faces are text-only, so a rich `Header` is retained on the
+page but not yet shown there. `Content` is the single caller-replaceable owned
+child, arranged below the rule only while the page is selected.
 
 `IsClosable` defaults to `false` and only enables the semantic close request;
 dirty-state tracking and header adornments remain application concerns.
@@ -116,7 +118,7 @@ pins one exact color.
 var tabs = new TabControl();
 tabs.Items.Add(new TabItem
 {
-    Header = "General",
+    HeaderText = "General",
     Content = new Stack
     {
         Children = { new Text("General settings") },
@@ -124,7 +126,7 @@ tabs.Items.Add(new TabItem
 });
 tabs.Items.Add(new TabItem
 {
-    Header = "Advanced",
+    HeaderText = "Advanced",
     Content = new Stack
     {
         Children = { new CheckBox { Text = "Debug mode" } },
@@ -132,7 +134,7 @@ tabs.Items.Add(new TabItem
 });
 ```
 
-An ampersand in `TabItem.Header` declares an
+An ampersand in `TabItem.HeaderText` declares an
 [access key](../../concepts/access-keys.md#focus-and-semantic-actions). The
 private retained header renders the caption without the marker and with the
 key's grapheme underlined; pressing Alt plus the key focuses the `TabControl`

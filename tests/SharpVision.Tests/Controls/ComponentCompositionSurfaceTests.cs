@@ -81,13 +81,13 @@ public sealed class ComponentCompositionSurfaceTests
         var inner = new Stack { Children = { leaf } };
         var expander = new Expander
         {
-            Header = "Section",
+            HeaderText = "Section",
             Content = inner,
             IsExpanded = true
         };
         var group = new GroupBox
         {
-            Header = "Group",
+            HeaderText = "Group",
             Content = expander
         };
         var window = new Window

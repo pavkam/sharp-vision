@@ -33,7 +33,7 @@ internal sealed class StatusCard : CompositeControlBase
 
         InitializeContent(new GroupBox
         {
-            Header = "Status",
+            HeaderText = "Status",
             Content = new Stack
             {
                 Spacing = 1,
