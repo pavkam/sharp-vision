@@ -703,6 +703,20 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
 
     #region Close and drag interaction
 
+    /// <summary>Requests this Window close, following the same veto and default-collapse sequence as
+    /// its close affordance, Escape, and modal dismissal.</summary>
+    /// <remarks>
+    /// Raises <see cref="FloatingSurfaceBase.CloseRequested"/> first; a handler that cancels leaves the
+    /// Window untouched. Otherwise raises <see cref="FloatingSurfaceBase.Closing"/> and, by default,
+    /// collapses the Window - unless a <see cref="FloatingSurfaceBase.Closing"/> handler already took
+    /// responsibility for <see cref="Visibility"/> itself, in which case
+    /// <see cref="FloatingSurfaceBase.Closed"/> is suppressed. Unlike <see cref="CanClose"/>, which only
+    /// gates the close affordance and <see cref="CloseOnEscape"/>, this method always attempts to
+    /// close regardless of <see cref="CanClose"/>, matching how modal outside-dismissal already
+    /// behaves.
+    /// </remarks>
+    public void Close() => RequestClose();
+
     private void RequestClose()
     {
         if (_isRequestingClose)
