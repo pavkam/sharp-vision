@@ -73,7 +73,7 @@ public sealed class Renderer: IDisposable
     /// <exception cref="ArgumentOutOfRangeException">A size or timeout is invalid.</exception>
     public Renderer(
         TerminalCapabilities capabilities,
-        Multiplexing.Route? route = null,
+        Multiplexing.MultiplexerRoute? route = null,
         int maxOutputBytes = 16 * 1024 * 1024,
         TimeSpan? cleanupTimeout = null,
         TimeProvider? timeProvider = null,

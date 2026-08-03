@@ -11,7 +11,7 @@ using Protocols;
 
 /// <summary>Applies one immutable bounded typed multiplexer route.</summary>
 [PublicAPI]
-public sealed class Route
+public sealed class MultiplexerRoute
 {
     private const int _screenFramingBytes = 4;
     private const int _tmuxFramingBytes = 9;
@@ -19,7 +19,7 @@ public sealed class Route
     /// <summary>Initializes one route from explicit policy.</summary>
     /// <param name="policy">The non-null owned immutable policy.</param>
     /// <exception cref="ArgumentNullException"><paramref name="policy"/> is null.</exception>
-    public Route(Policy policy)
+    public MultiplexerRoute(Policy policy)
     {
         ArgumentNullException.ThrowIfNull(policy);
         Policy = policy;

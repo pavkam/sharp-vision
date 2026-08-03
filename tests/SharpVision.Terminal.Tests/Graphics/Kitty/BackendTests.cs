@@ -243,7 +243,7 @@ public sealed class BackendTests
             PassthroughMode.All,
             paneVisible: true,
             MultiplexingOperation.Graphics);
-        using var backend = new KittyGraphicsBackend(route: new Route(policy));
+        using var backend = new KittyGraphicsBackend(route: new MultiplexerRoute(policy));
         var image = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
         using var frame = Frame(image, new Rect(1, 0, 1, 1));
 
@@ -267,7 +267,7 @@ public sealed class BackendTests
             paneVisible: true,
             MultiplexingOperation.Graphics);
 
-        _ = Should.Throw<NotSupportedException>(() => new KittyGraphicsBackend(route: new Route(policy)));
+        _ = Should.Throw<NotSupportedException>(() => new KittyGraphicsBackend(route: new MultiplexerRoute(policy)));
     }
 
     /// <summary>Verifies each direct-data chunk receives its own bounded tmux envelope.</summary>
@@ -281,7 +281,7 @@ public sealed class BackendTests
             paneVisible: true,
             MultiplexingOperation.Graphics,
             maxEnvelopeBytes: 5_000);
-        using var backend = new KittyGraphicsBackend(route: new Route(policy));
+        using var backend = new KittyGraphicsBackend(route: new MultiplexerRoute(policy));
         var image = GraphicsImage.FromRgba(new Size(1_024, 1), new byte[4_096]);
         using var frame = Frame(image, new Rect(0, 0, 1, 1));
 

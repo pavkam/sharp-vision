@@ -14,7 +14,7 @@ using SharpVision.Windows;
 using Terminal.Capabilities;
 using Terminal.Rendering;
 
-using MultiplexerRoute = Terminal.Multiplexing.Route;
+using MultiplexerRoute = Terminal.Multiplexing.MultiplexerRoute;
 using TerminalCellMetrics = Metrics;
 using TerminalDiagnostic = Diagnostic;
 using TerminalDiagnosticCode = DiagnosticCode;

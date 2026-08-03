@@ -255,7 +255,7 @@ public sealed class BackendTests
     [Fact]
     public void GetMaximumGraphicsFrameBytes_WhenTmuxIsNested_AcceptsBoundAndRejectsBoundPlusOne()
     {
-        var route = new Route(new Policy(
+        var route = new MultiplexerRoute(new Policy(
             [MultiplexerKind.Tmux, MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
@@ -284,7 +284,7 @@ public sealed class BackendTests
     [Fact]
     public void Prepare_WhenAuthorizedRouteIsTooSmall_DeclinesPlacementWithoutThrowing()
     {
-        var route = new Route(new Policy(
+        var route = new MultiplexerRoute(new Policy(
             [MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
@@ -305,7 +305,7 @@ public sealed class BackendTests
     [Fact]
     public void Constructor_WhenRouteContainsScreen_ThrowsNotSupportedException()
     {
-        var route = new Route(new Policy(
+        var route = new MultiplexerRoute(new Policy(
             [MultiplexerKind.Screen],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
@@ -398,7 +398,7 @@ public sealed class BackendTests
         return frame;
     }
 
-    private static Route TmuxRoute() => new(new Policy(
+    private static MultiplexerRoute TmuxRoute() => new(new Policy(
         [MultiplexerKind.Tmux],
         TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
         PassthroughMode.All,
@@ -425,7 +425,7 @@ public sealed class BackendTests
         return count;
     }
 
-    private static List<byte[]> ExtractTmuxEnvelopes(byte[] bytes, Route route)
+    private static List<byte[]> ExtractTmuxEnvelopes(byte[] bytes, MultiplexerRoute route)
     {
         var result = new List<byte[]>();
         var remaining = bytes.AsSpan();

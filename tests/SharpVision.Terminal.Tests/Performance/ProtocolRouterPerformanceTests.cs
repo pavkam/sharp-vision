@@ -34,7 +34,7 @@ public sealed class ProtocolRouterPerformanceTests
             MultiplexingOperation.CapabilityQueries,
             maxDepth: 4,
             maxEnvelopeBytes: 16 * 1024 * 1024);
-        var route = new Route(policy);
+        var route = new MultiplexerRoute(policy);
         var sink = new RecordingProtocolSink();
         using var router = new ProtocolRouter(sink, route: route);
         router.Route(input);
@@ -42,7 +42,7 @@ public sealed class ProtocolRouterPerformanceTests
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // The 16 MiB candidate buffer would dwarf this budget if allocated during either
-        // construction (the reported bug) or this single non-matching Route call.
+        // construction (the reported bug) or this single non-matching MultiplexerRoute call.
         allocated.ShouldBeLessThan(1024L * 1024);
     }
 }

@@ -57,10 +57,10 @@ terminal project publishes a focused facade that owns that machinery instead.
 
 Two such seams provide this boundary:
 
-| UI need                          | Public seam                             | Stays internal                                                    |
-| -------------------------------- | --------------------------------------- | ----------------------------------------------------------------- |
-| Expand named terminfo programs   | `TerminalProfile.CreateProgramExpander` | `Programs`, `DescriptionProgram`, `Interpreter`, `ProgramLimits`  |
-| Obtain graphics-capable renderer | `Renderer(Capabilities, Route?, …)`     | `IGraphicsBackend`, `GraphicsBackendSelector`, backend identities |
+| UI need                          | Public seam                                    | Stays internal                                                    |
+| -------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------- |
+| Expand named terminfo programs   | `TerminalProfile.CreateProgramExpander`        | `Programs`, `DescriptionProgram`, `Interpreter`, `ProgramLimits`  |
+| Obtain graphics-capable renderer | `Renderer(Capabilities, MultiplexerRoute?, …)` | `IGraphicsBackend`, `GraphicsBackendSelector`, backend identities |
 
 `TerminalContext` and the whole `Backends` namespace also stay internal. The
 session owns the only terminal context, and the application retains just the

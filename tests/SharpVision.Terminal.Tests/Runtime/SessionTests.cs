@@ -126,7 +126,7 @@ public sealed class SessionTests
             paneVisible: true,
             MultiplexingOperation.CapabilityQueries);
         var limits = QueryLimits.Default with { MaxConcurrentQueries = 1 };
-        var route = new Route(policy);
+        var route = new MultiplexerRoute(policy);
         var wrapped = new ArrayBufferWriter<byte>();
         route.TryWriteCapabilityQueries(wrapped, "\u001b[?1;2c"u8).ShouldBeTrue();
 

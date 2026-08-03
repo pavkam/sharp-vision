@@ -13,7 +13,7 @@ using Rendering;
 
 using ImageFormat = Format;
 using KittyFormat = Kitty.Graphics.Format;
-using MultiplexerRoute = Multiplexing.Route;
+using MultiplexerRoute = Multiplexing.MultiplexerRoute;
 
 /// <summary>Implements finite transactional direct Kitty image upload and placement.</summary>
 internal sealed class KittyGraphicsBackend: IGraphicsBackend
