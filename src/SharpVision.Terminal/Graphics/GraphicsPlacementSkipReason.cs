@@ -14,5 +14,8 @@ public enum GraphicsPlacementSkipReason
     ProtocolNotAuthorized,
 
     /// <summary>The image format is supported, but its source rectangle, destination geometry, or placement mode is not.</summary>
-    PlacementNotEncodable
+    PlacementNotEncodable,
+
+    /// <summary>The placement could be encoded, but not within the remaining prepared-frame byte limit.</summary>
+    OutputLimitExceeded
 }

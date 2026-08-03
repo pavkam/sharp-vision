@@ -140,6 +140,9 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
 
                 if (remaining <= 0)
                 {
+                    (skippedPlacements ??= []).Add(new GraphicsPlacementDiagnostic(
+                        placement.ImageIdentity,
+                        GraphicsPlacementSkipReason.OutputLimitExceeded));
                     continue;
                 }
 
@@ -162,7 +165,12 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
                 {
                     WriteIterm(placement, output, remaining);
                     placementCount++;
+                    continue;
                 }
+
+                (skippedPlacements ??= []).Add(new GraphicsPlacementDiagnostic(
+                    placement.ImageIdentity,
+                    GraphicsPlacementSkipReason.OutputLimitExceeded));
             }
 
             if (placementCount != 0)

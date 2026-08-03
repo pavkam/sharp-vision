@@ -504,6 +504,7 @@ namespace SharpVision.Terminal.Graphics
         FormatNotEncodable = 0,
         ProtocolNotAuthorized = 1,
         PlacementNotEncodable = 2,
+        OutputLimitExceeded = 3,
     }
     public sealed class ImageSource
     {

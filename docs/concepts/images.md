@@ -31,7 +31,8 @@ of silent. A directly owned `Renderer`, outside the hosted path, reads the same
 list from every successful render's `Metrics.GraphicsDiagnostics`. Reasons
 distinguish an unsupported image representation, a deauthorized protocol, and
 otherwise-supported image data whose crop, geometry, or placement mode cannot be
-encoded.
+encoded. A placement that only fails the remaining bounded frame output budget
+reports that limit separately.
 
 ## Bounds and validation
 

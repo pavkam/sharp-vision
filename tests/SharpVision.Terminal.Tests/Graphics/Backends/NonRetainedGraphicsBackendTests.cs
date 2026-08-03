@@ -36,6 +36,9 @@ public sealed class NonRetainedGraphicsBackendTests
 
         result.Placements.ShouldBeLessThan(4);
         result.Placements.ShouldBeGreaterThan(0);
+        result.SkippedPlacements.Count.ShouldBe(4 - result.Placements);
+        result.SkippedPlacements.ShouldAllBe(
+            diagnostic => diagnostic.Reason == GraphicsPlacementSkipReason.OutputLimitExceeded);
     }
 
     // A gradient (rather than solid) image keeps sixel run-length compression from collapsing
