@@ -28,7 +28,7 @@ public sealed class UnicodeCapabilitiesTests
     [Fact]
     public void Detect_WhenAmbiguousWidthIsOverridden_AppliesOverrideLast()
     {
-        var capabilities = Detector.Detect(
+        var capabilities = CapabilityDetector.Detect(
             new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
             overrides: new Settings { AmbiguousWidth = Ambiguous.Wide });
 

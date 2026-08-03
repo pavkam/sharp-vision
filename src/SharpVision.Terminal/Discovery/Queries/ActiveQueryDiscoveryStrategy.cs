@@ -756,7 +756,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
             XtermKeyboard = _xtermKeyboard,
             CapabilityString = _capabilityString
         };
-        Published = Detector.Detect(
+        Published = CapabilityDetector.Detect(
             _baseline,
             _usesExplicitOuterProfile ? _emptyEnvironment : _options.Environment,
             queries,

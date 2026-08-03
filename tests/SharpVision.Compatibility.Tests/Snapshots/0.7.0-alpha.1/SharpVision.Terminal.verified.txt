@@ -108,6 +108,10 @@ namespace SharpVision.Terminal.Capabilities
         public static SharpVision.Terminal.Capabilities.Capabilities Conservative { get; }
         public SharpVision.Terminal.Capabilities.Feature Support(SharpVision.Terminal.Capabilities.TerminalProtocol protocol) { }
     }
+    public static class CapabilityDetector
+    {
+        public static SharpVision.Terminal.Capabilities.Capabilities Detect(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment, SharpVision.Terminal.Capabilities.QueryResults? queries = null, SharpVision.Terminal.Capabilities.Settings? overrides = null) { }
+    }
     public enum CapabilitySupport
     {
         Unknown = 0,
@@ -187,10 +191,6 @@ namespace SharpVision.Terminal.Capabilities
         public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Capabilities.DescriptionDiagnostic> Diagnostics { get; }
         public SharpVision.Terminal.Capabilities.TerminalProfile? Profile { get; }
         public SharpVision.Terminal.Capabilities.DescriptionLoadStatus Status { get; }
-    }
-    public static class Detector
-    {
-        public static SharpVision.Terminal.Capabilities.Capabilities Detect(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment, SharpVision.Terminal.Capabilities.QueryResults? queries = null, SharpVision.Terminal.Capabilities.Settings? overrides = null) { }
     }
     public readonly struct Feature : System.IEquatable<SharpVision.Terminal.Capabilities.Feature>
     {

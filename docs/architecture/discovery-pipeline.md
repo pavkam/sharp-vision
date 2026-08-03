@@ -42,12 +42,12 @@ strategies own precedence:
 - `DescriptionBackendEvidenceAdapter` and `EnvironmentBackendEvidenceAdapter`
   produce redacted identity evidence for `TerminalBackendResolver`.
 
-`DescriptionLoader`, `Detector`, and `Negotiator` remain as compatibility
-facades. `Detector` constructs an immutable context and delegates semantic
-refinement to `DiscoveryPipeline`. `Negotiator` delegates the active-query
-lifecycle to `ActiveQueryDiscoveryStrategy`. The facades MUST preserve the
-public validation, deadlines, result classification, exact bytes, and
-publication behavior.
+`DescriptionLoader`, `CapabilityDetector`, and `Negotiator` remain as
+compatibility facades. `CapabilityDetector` constructs an immutable context and
+delegates semantic refinement to `DiscoveryPipeline`. `Negotiator` delegates the
+active-query lifecycle to `ActiveQueryDiscoveryStrategy`. The facades MUST
+preserve the public validation, deadlines, result classification, exact bytes,
+and publication behavior.
 
 Description diagnostics contain only typed codes and allowlisted capability
 names. Backend evidence contains only the typed origin and resolved kind.
@@ -166,8 +166,8 @@ Readers can rely on the following, and the test suites keep each point true:
   and redact diagnostics and backend evidence.
 - The resolver applies its specificity order deterministically, and the resolved
   identity stays fixed afterward.
-- `Detector` and `Negotiator` behave identically to the pipeline and strategy
-  they delegate to.
+- `CapabilityDetector` and `Negotiator` behave identically to the pipeline and
+  strategy they delegate to.
 - The active-query batch emits exact bytes at every supported capacity, shares
   one deadline across families, classifies every reply kind (including
   fragmented replies), bounds its history, fails routes atomically, publishes in

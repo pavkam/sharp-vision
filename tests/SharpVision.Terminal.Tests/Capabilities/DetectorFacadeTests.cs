@@ -17,8 +17,8 @@ public sealed class DetectorFacadeTests
         var environment = new Dictionary<string, string?>();
 
         // Act / Assert
-        _ = Should.Throw<ArgumentNullException>(() => Detector.Detect(null!));
-        _ = Should.Throw<ArgumentNullException>(() => Detector.Detect(null!, environment));
+        _ = Should.Throw<ArgumentNullException>(() => CapabilityDetector.Detect(null!));
+        _ = Should.Throw<ArgumentNullException>(() => CapabilityDetector.Detect(null!, environment));
     }
 
     /// <summary>Verifies the facade delegates the exact fixed pipeline evidence result.</summary>
@@ -39,7 +39,7 @@ public sealed class DetectorFacadeTests
         var overrides = new Settings { KittyClipboard = false, AmbiguousWidth = Ambiguous.Wide };
 
         // Act
-        var facade = Detector.Detect(baseline, environment, queries, overrides);
+        var facade = CapabilityDetector.Detect(baseline, environment, queries, overrides);
         var pipeline = DiscoveryPipeline.Default.Detect(
             new DiscoveryContext(baseline, environment, queries, overrides));
 
@@ -63,7 +63,7 @@ public sealed class DetectorFacadeTests
         };
 
         // Act
-        var capabilities = Detector.Detect(environment);
+        var capabilities = CapabilityDetector.Detect(environment);
 
         // Assert
         capabilities.KittyKeyboard.ShouldBe(new Feature(CapabilitySupport.Tentative, Origin.Environment));
@@ -88,7 +88,7 @@ public sealed class DetectorFacadeTests
         var overrides = new Settings { KittyClipboard = false };
 
         // Act
-        var facade = Detector.Detect(environment, queries, overrides);
+        var facade = CapabilityDetector.Detect(environment, queries, overrides);
         var pipeline = DiscoveryPipeline.Default.Detect(
             new DiscoveryContext(TerminalCapabilities.Conservative, environment, queries, overrides));
 
@@ -115,7 +115,7 @@ public sealed class DetectorFacadeTests
         };
         var queries = new QueryResults { ItermImages = true };
 
-        var capabilities = Detector.Detect(environment, queries);
+        var capabilities = CapabilityDetector.Detect(environment, queries);
 
         capabilities.ItermImages.ShouldBe(new Feature(CapabilitySupport.Unsupported, Origin.Query));
     }
@@ -140,7 +140,7 @@ public sealed class DetectorFacadeTests
         };
         var queries = new QueryResults { ItermImages = true };
 
-        var capabilities = Detector.Detect(environment, queries);
+        var capabilities = CapabilityDetector.Detect(environment, queries);
 
         capabilities.ItermImages.ShouldBe(new Feature(CapabilitySupport.Supported, Origin.Query));
     }
@@ -158,7 +158,7 @@ public sealed class DetectorFacadeTests
             ["TERM_PROGRAM_VERSION"] = "3.4.0"
         };
 
-        var capabilities = Detector.Detect(environment);
+        var capabilities = CapabilityDetector.Detect(environment);
 
         capabilities.ItermImages.State.ShouldBe(CapabilitySupport.Unknown);
     }
