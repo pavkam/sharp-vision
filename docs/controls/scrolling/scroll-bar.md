@@ -22,7 +22,12 @@ A `ScrollBarStyle` bundles `Chrome`, `Fill`, a complete `ScrollBarGlyphs` set,
 `ColorValue`s for the track, thumb, and buttons, and the full appearance
 profile. The presets are `FullBlock`, `FullLine`, `ThinBlock`, and `ThinLine`.
 `ScrollBarStyle.With(...)` creates validated member-wise copies and may overlay
-an `AppearanceProfileSet`; theme JSON remains semantic-only.
+an `AppearanceProfileSet`. A theme document may additionally author a
+`styles.scrollBar` section with `chrome` (`"thin"` or `"full"`) and `fill`
+(`"line"` or `"block"`) string members; an active theme's section supplies
+`Chrome`/`Fill` ahead of the code-owned defaults whenever no local `Style` is
+assigned (see [themes.md](../../concepts/themes.md#semantic-profiles)). The
+glyph family and per-part colors remain code-owned.
 
 Hosts that generate their own bars expose a nullable `ScrollBarStyle` property
 and a read-only `ActualScrollBarStyle`. A host forwards a local complete style

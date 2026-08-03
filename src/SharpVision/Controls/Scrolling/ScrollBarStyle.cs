@@ -16,19 +16,48 @@ public readonly struct ScrollBarStyle: IEquatable<ScrollBarStyle>
     private readonly ColorValue? _buttonColor;
     private readonly ThemeProfile? _appearance;
 
-    /// <summary>Gets the primary scrollbar-style definition.</summary>
-    internal static StyleDefinition<ScrollBarStyle> Definition { get; } = StyleDefinitions.Control(
+    /// <summary>Gets the primary scrollbar-style definition. Reads the theme's registrable
+    /// "scrollBar" style section (see #155) for Chrome/Fill when the active theme authors one;
+    /// falls back to the code-owned structural defaults otherwise.</summary>
+    internal static StyleDefinition<ScrollBarStyle> Definition { get; } = new(
         ThemeRole.Control,
-        static profile => new ScrollBarStyle(
-            Default.Chrome,
-            Default.Fill,
+        ResolveComplete,
+        static style => style.Appearance,
+        Compare);
+
+    private static ScrollBarStyle ResolveComplete(ScrollBarStyle? local, Theme? theme)
+    {
+        if (local.HasValue)
+        {
+            return local.Value;
+        }
+
+        var effectiveTheme = theme ?? Themes.Dark;
+        var section = effectiveTheme.GetStyleSection<ScrollBarStyleSection>("scrollBar");
+
+        return new ScrollBarStyle(
+            ParseChrome(section?.Chrome, effectiveTheme.Slug) ?? Default.Chrome,
+            ParseFill(section?.Fill, effectiveTheme.Slug) ?? Default.Fill,
             Default.Glyphs,
             Default.TrackColor,
             Default.ThumbColor,
             Default.ButtonColor,
-            profile),
-        static style => style.Appearance,
-        Compare);
+            effectiveTheme.GetProfile(ThemeRole.Control));
+    }
+
+    private static ScrollBarChrome? ParseChrome(string? value, string themeSlug) => value is null
+        ? null
+        : Enum.TryParse<ScrollBarChrome>(value, ignoreCase: true, out var chrome) && Enum.IsDefined(chrome)
+            ? chrome
+            : throw new InvalidDataException(
+                $"Theme '{themeSlug}' styles.scrollBar.chrome has unknown value '{value}'.");
+
+    private static ScrollBarFill? ParseFill(string? value, string themeSlug) => value is null
+        ? null
+        : Enum.TryParse<ScrollBarFill>(value, ignoreCase: true, out var fill) && Enum.IsDefined(fill)
+            ? fill
+            : throw new InvalidDataException(
+                $"Theme '{themeSlug}' styles.scrollBar.fill has unknown value '{value}'.");
 
     /// <summary>Gets the secondary definition used by generated-scrollbar hosts.</summary>
     internal static StyleDefinition<ScrollBarStyle> PartDefinition { get; } = StyleDefinitions.Part(

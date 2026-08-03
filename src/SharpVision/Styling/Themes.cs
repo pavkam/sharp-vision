@@ -12,6 +12,11 @@ public static class Themes
     private const int _maximumMetadataLength = 2048;
     private const string _resourcePrefix = "SharpVision.Styling.Themes.";
     private const string _resourceSuffix = ".theme.json";
+
+    // The closed set of library-owned registrable style sections (see #155), analogous to the
+    // five fixed profile names - grows as a built-in control registers a section, unlike the open
+    // "vendor.control" namespace any third-party control can use without a registry entry here.
+    private static readonly HashSet<string> _registeredStyleSections = new(StringComparer.Ordinal) { "scrollBar" };
     private static readonly Lock _gate = new();
     private static readonly Dictionary<string, Theme> _cache = new(StringComparer.Ordinal);
 
@@ -341,11 +346,11 @@ public static class Themes
     }
 
     // A namespaced key ("vendor.control") is a registrable third-party style section and is
-    // retained raw for later lazy binding via Theme.GetStyleSection. An unqualified key is either
-    // a typo of one of the five fixed profile names above or an as-yet-unregistered library
-    // section name; both are rejected here rather than silently accepted, since silently
-    // retaining an unqualified key would make a real typo (e.g. "buton" instead of a future
-    // "button" section) undetectable until - or unless - something ever binds it (see #155).
+    // retained raw for later lazy binding via Theme.GetStyleSection, with no registry entry
+    // needed here. An unqualified key must be one of the five fixed profile names or a
+    // library-registered section name (_registeredStyleSections) - anything else is very likely a
+    // typo (e.g. "buton" instead of "button"), so it is rejected rather than silently retained
+    // (see #155).
     private static Dictionary<string, JsonElement> ReadStyleSections(
         Dictionary<string, JsonElement>? sections,
         string source)
@@ -357,7 +362,7 @@ public static class Themes
 
         foreach (var name in sections.Keys)
         {
-            if (!name.Contains('.', StringComparison.Ordinal))
+            if (!name.Contains('.', StringComparison.Ordinal) && !_registeredStyleSections.Contains(name))
             {
                 throw new InvalidDataException(
                     $"Theme '{source}' has unknown styles section '{name}'. Third-party sections must be namespaced as 'vendor.control'.");
