@@ -165,9 +165,15 @@ public sealed partial class WindowsConsoleHostConPtyTests
         while (true)
         {
             var line = await terminal.ReadLineAsync(TestContext.Current.CancellationToken) ?? throw new IOException($"The probe exited before reporting a '{prefix}' line.");
-            if (line.StartsWith(prefix, StringComparison.Ordinal))
+
+            // ConsoleHost.Open's VT-mode-entry escape sequences (hide cursor, clear screen, focus
+            // reporting, etc.) share this same output stream and can land immediately before the
+            // probe's next status line, so the expected prefix isn't necessarily at offset 0.
+            var prefixIndex = line.IndexOf(prefix, StringComparison.Ordinal);
+
+            if (prefixIndex >= 0)
             {
-                return line;
+                return line[prefixIndex..];
             }
         }
     }
