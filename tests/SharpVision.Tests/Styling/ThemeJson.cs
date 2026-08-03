@@ -13,7 +13,8 @@ internal static class ThemeJson
         string name = "T",
         string background = "#101010",
         string foreground = "#e0e0e0",
-        string accent = "#77aaff") => $$"""
+        string accent = "#77aaff",
+        string inputGlyphStyle = "\"heavy\"") => $$"""
             { "name": "{{name}}", "slug": "t", "colorScheme": "dark", "order": 1,
               "author": "A", "license": "MIT", "source": "s",
               "palette": { {{palette}} },
@@ -41,7 +42,7 @@ internal static class ThemeJson
                   "border": { "sides":"none", "glyphStyle":"rounded", "foreground":"controlBorder", "background":"control", "attributes":"border" },
                   "shadow": { "visible":false, "mode":"composite", "offset":{"x":0,"y":0}, "glyph":"▓", "foreground":"controlShadow", "background":"transparent", "attributes":"shadow" }
                 }, "focused": { "face": { "foreground":"focusedText", "attributes":"focusedText" }, "border": { "foreground":"focusedBorder" } } },
-                "input": { "normal": { "border": { "sides":"all", "glyphStyle":"heavy" } } },
+                "input": { "normal": { "border": { "sides":"all", "glyphStyle":{{inputGlyphStyle}} } } },
                 "container": { "normal": { "border": { "sides":"all", "glyphStyle":"light" } } },
                 "window": { "normal": { "border": { "sides":"all", "glyphStyle":"paired" } } },
                 "popup": { "normal": { "border": { "sides":"all", "glyphStyle":"rounded" } } }

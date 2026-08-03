@@ -13,9 +13,9 @@ internal sealed class BorderDefinition
     [JsonPropertyName("sides")]
     public string? Sides { get; set; }
 
-    /// <summary>Gets or sets the standard border glyph-style name.</summary>
+    /// <summary>Gets or sets the standard border glyph-style name, or an explicit eight-Rune array.</summary>
     [JsonPropertyName("glyphStyle")]
-    public string? GlyphStyle { get; set; }
+    public JsonElement? GlyphStyle { get; set; }
 
     /// <summary>Gets or sets the foreground reference.</summary>
     [JsonPropertyName("foreground")]
