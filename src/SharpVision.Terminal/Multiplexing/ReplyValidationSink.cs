@@ -10,7 +10,14 @@ using Protocols;
 using Xterm;
 
 /// <summary>Validates that an unwrapped envelope contains exactly one recognized typed reply.</summary>
-internal sealed class ReplyValidationSink: IProtocolSink
+internal sealed class ReplyValidationSink:
+    IProtocolSink,
+    IPaletteResponseSink,
+    IMetricsResponseSink,
+    IStatusResponseSink,
+    ICapabilityResponseSink,
+    IKittyGraphicsResponseSink,
+    IItermCapabilitiesResponseSink
 {
     private int _responses;
     private bool Invalid { get; set; }

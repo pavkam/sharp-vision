@@ -6,7 +6,7 @@ namespace SharpVision.Terminal.Tests.Transport;
 using SharpVision.Terminal.Input;
 
 /// <summary>Records one expected pseudoterminal resize and runtime faults.</summary>
-internal sealed class RuntimeSink: ISink
+internal sealed class RuntimeSink: ISink, IPaletteResponseSink, IMetricsResponseSink
 {
     private readonly Dimensions _expected;
 

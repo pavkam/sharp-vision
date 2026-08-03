@@ -61,12 +61,13 @@ public sealed class TerminalProtocolCompatibilityTests
         }
     }
 
-    /// <summary>Verifies OSC 10/11 typed callbacks retain the legacy RGB value order.</summary>
+    /// <summary>Verifies OSC 10/11 replies dispatched to a sink without the palette extension
+    /// interface retain the legacy RGB value order.</summary>
     /// <param name="kind">The default-color response family.</param>
     [Theory]
     [InlineData(ResponseKind.ForegroundColor)]
     [InlineData(ResponseKind.BackgroundColor)]
-    public void IProtocolSink_WhenDefaultColorUsesTypedCallback_PreservesLegacyRgbOrder(
+    public void IProtocolSink_WhenDefaultColorIsDispatchedToLegacySink_PreservesLegacyRgbOrder(
         ResponseKind kind)
     {
         // Arrange
@@ -75,7 +76,7 @@ public sealed class TerminalProtocolCompatibilityTests
         var color = new PaletteResponse(kind, index: null, red: 1, green: 2, blue: 3);
 
         // Act
-        sink.Response(in color);
+        sink.Dispatch(in color);
 
         // Assert
         var response = legacy.Responses.ShouldHaveSingleItem();
@@ -83,9 +84,10 @@ public sealed class TerminalProtocolCompatibilityTests
         response.Values.ToArray().ShouldBe([1, 2, 3]);
     }
 
-    /// <summary>Verifies the new indexed-palette callback adapts index then normalized RGB.</summary>
+    /// <summary>Verifies an indexed-palette reply dispatched to a sink without the palette
+    /// extension interface adapts index then normalized RGB.</summary>
     [Fact]
-    public void IProtocolSink_WhenPaletteUsesTypedCallback_AdaptsIndexAndRgbInOrder()
+    public void IProtocolSink_WhenPaletteIsDispatchedToLegacySink_AdaptsIndexAndRgbInOrder()
     {
         // Arrange
         var legacy = new LegacyProtocolSink();
@@ -98,7 +100,7 @@ public sealed class TerminalProtocolCompatibilityTests
             blue: 3);
 
         // Act
-        sink.Response(in palette);
+        sink.Dispatch(in palette);
 
         // Assert
         var response = legacy.Responses.ShouldHaveSingleItem();
@@ -106,13 +108,14 @@ public sealed class TerminalProtocolCompatibilityTests
         response.Values.ToArray().ShouldBe([15, 1, 2, 3]);
     }
 
-    /// <summary>Verifies each new metrics callback adapts width then height.</summary>
+    /// <summary>Verifies a metrics reply dispatched to a sink without the metrics extension
+    /// interface adapts width then height.</summary>
     /// <param name="kind">The metrics response family.</param>
     [Theory]
     [InlineData(ResponseKind.WindowPixels)]
     [InlineData(ResponseKind.CellPixels)]
     [InlineData(ResponseKind.WindowCells)]
-    public void IProtocolSink_WhenMetricsUsesTypedCallback_AdaptsWidthAndHeightInOrder(
+    public void IProtocolSink_WhenMetricsIsDispatchedToLegacySink_AdaptsWidthAndHeightInOrder(
         ResponseKind kind)
     {
         // Arrange
@@ -121,7 +124,7 @@ public sealed class TerminalProtocolCompatibilityTests
         var metrics = new MetricsResponse(kind, new Size(8, 16));
 
         // Act
-        sink.Response(in metrics);
+        sink.Dispatch(in metrics);
 
         // Assert
         var response = legacy.Responses.ShouldHaveSingleItem();

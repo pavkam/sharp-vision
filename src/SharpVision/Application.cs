@@ -29,7 +29,15 @@ using UnicodePolicy = Policy;
 /// <summary>Owns the dispatcher-affine UI tree and asynchronous terminal runtime.</summary>
 [DebuggerDisplay("Application {_screen?.GetType().Name,nq}")]
 [PublicAPI]
-public sealed class Application: ISink, IAsyncDisposable
+public sealed class Application:
+    ISink,
+    IPaletteResponseSink,
+    IMetricsResponseSink,
+    IStatusResponseSink,
+    ICapabilityResponseSink,
+    IClipboardReplySink,
+    IKittyClipboardPacketSink,
+    IAsyncDisposable
 {
     private const int _inputCapacity = 4096;
     private readonly Lock _gate = new();
