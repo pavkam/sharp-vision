@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Kitty.Keyboard;
 
 /// <summary>Encodes Kitty keyboard query and mode-stack commands.</summary>
 [PublicAPI]
-public static class Keyboard
+public static class KittyKeyboard
 {
     private const Enhancement _all =
         Enhancement.Disambiguate |
