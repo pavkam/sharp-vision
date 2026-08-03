@@ -467,6 +467,16 @@ public sealed class DateInput: ControlBase
             }
         }
 
+        if (!IsOpen && eventArgs is PointerEventArgs pointer)
+        {
+            HandlePointer(pointer);
+
+            if (pointer.Handled)
+            {
+                return;
+            }
+        }
+
         if (!eventArgs.Handled)
         {
             _interaction.Handle(eventArgs);
@@ -593,6 +603,74 @@ public sealed class DateInput: ControlBase
     #endregion
 
     #region Segment editing
+
+    private void HandlePointer(PointerEventArgs eventArgs)
+    {
+        var pointer = eventArgs.Pointer;
+
+        if (pointer.Action != PointerAction.Press || (pointer.Buttons & Buttons.Primary) == 0)
+        {
+            return;
+        }
+
+        if (pointer.Cells is not { } cells)
+        {
+            return;
+        }
+
+        var content = ContentBounds;
+
+        if (!content.Contains(cells))
+        {
+            return;
+        }
+
+        var localX = cells.X - content.X;
+        var segment = SegmentAtColumn(localX);
+
+        if (segment < 0)
+        {
+            return;
+        }
+
+        _activeSegment = segment;
+        _digitBuffer = null;
+        _yearDigitCount = 0;
+        Invalidate(InvalidationImpact.Render);
+
+        if (!IsFocused)
+        {
+            _ = RequestFocus();
+        }
+
+        eventArgs.Handled = true;
+    }
+
+    private int SegmentAtColumn(int column)
+    {
+        var segments = BuildSegments();
+        var running = 0;
+        var threshold = 0;
+        var editableIndex = -1;
+
+        foreach (var segment in segments)
+        {
+            running += Terminal.Unicode.Width.Measure(segment.Text).Cells;
+
+            if (segment.EditableIndex >= 0)
+            {
+                threshold = running;
+                editableIndex = segment.EditableIndex;
+            }
+
+            if (column < threshold)
+            {
+                return editableIndex;
+            }
+        }
+
+        return editableIndex;
+    }
 
     private void IncrementActiveSegment(int delta)
     {

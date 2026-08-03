@@ -368,6 +368,66 @@ public sealed class DateInputSurfaceTests
         input.Value.ShouldBe(new DateOnly(2026, 7, 20));
     }
 
+    /// <summary>Verifies clicking a specific segment column activates that segment instead of
+    /// opening the popup: TimeInput and DateTimeInput both map a clicked column to a segment via
+    /// pointer hit-testing, but DateInput fell through to the shared PressBehavior for every
+    /// click, opening the Calendar popup regardless of which column was pressed (see #69).</summary>
+    [Fact]
+    public async Task Pointer_WhenDaySegmentColumnIsClicked_ActivatesSegmentInsteadOfOpeningPopupAsync()
+    {
+        // Arrange — borderless chrome keeps content columns aligned with control-relative
+        // coordinates; InvariantCulture's short date pattern is MM/dd/yyyy, so the Day segment
+        // starts at column 3 (past "MM/").
+        var input = new DateInput
+        {
+            Value = new DateOnly(2026, 3, 15),
+            Culture = CultureInfo.InvariantCulture
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(20, 1),
+            TestThemes.BorderlessInput,
+            TestContext.Current.CancellationToken);
+
+        // Act — click the Day segment, then increment the active segment.
+        await surface.Pointer.ClickAsync(input, new Point(3, 0));
+        await surface.Keyboard.PressAsync(Code.Up);
+
+        // Assert — the popup stayed closed and the day incremented, proving the click activated
+        // the Day segment instead of toggling the drop-down.
+        input.IsOpen.ShouldBeFalse();
+        input.Value.ShouldBe(new DateOnly(2026, 3, 16));
+    }
+
+    /// <summary>Verifies clicking the Month segment column while focus is elsewhere on the Year
+    /// segment moves the active segment back to Month, proving the hit-test resolves each column
+    /// to its own segment rather than always landing on the same one (see #69).</summary>
+    [Fact]
+    public async Task Pointer_WhenMonthSegmentColumnIsClicked_MovesActiveSegmentBackToMonthAsync()
+    {
+        // Arrange
+        var input = new DateInput
+        {
+            Value = new DateOnly(2026, 3, 15),
+            Culture = CultureInfo.InvariantCulture
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(20, 1),
+            TestThemes.BorderlessInput,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.End);
+
+        // Act — click back on the Month segment (column 0) and increment.
+        await surface.Pointer.ClickAsync(input, new Point(0, 0));
+        await surface.Keyboard.PressAsync(Code.Up);
+
+        // Assert — month incremented, proving the click moved the active segment off Year.
+        input.IsOpen.ShouldBeFalse();
+        input.Value.ShouldBe(new DateOnly(2026, 4, 15));
+    }
+
     /// <summary>Verifies Backspace clears the active segment to its minimum.</summary>
     [Fact]
     public async Task Keyboard_WhenBackspaceIsPressed_ClearsActiveSegmentAsync()
