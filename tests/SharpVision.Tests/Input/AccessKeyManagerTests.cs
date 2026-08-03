@@ -15,7 +15,7 @@ public sealed class AccessKeyManagerTests
         await dispatcher.InvokeAsync(() =>
         {
             using var root = new Stack();
-            var button = new Button { Content = new ControlText("&Save") };
+            var button = new Button { Text = "&Save" };
             root.Children.Add(button);
             root.Attach(dispatcher);
             using var focus = new FocusManager(root);
@@ -42,8 +42,8 @@ public sealed class AccessKeyManagerTests
         await dispatcher.InvokeAsync(() =>
         {
             using var root = new Stack();
-            var first = new Button { Content = new ControlText("&Apply") };
-            var second = new Button { Content = new ControlText("&Again") };
+            var first = new Button { Text = "&Apply" };
+            var second = new Button { Text = "&Again" };
             root.Children.Add(first);
             root.Children.Add(second);
             root.Attach(dispatcher);
@@ -103,9 +103,9 @@ public sealed class AccessKeyManagerTests
         await dispatcher.InvokeAsync(() =>
         {
             using var root = new Stack();
-            var background = new Button { Content = new ControlText("&Run") };
+            var background = new Button { Text = "&Run" };
             var plane = new Stack();
-            var inside = new Button { Content = new ControlText("&Run") };
+            var inside = new Button { Text = "&Run" };
             plane.Children.Add(inside);
             root.Children.Add(background);
             root.Children.Add(plane);
@@ -135,7 +135,7 @@ public sealed class AccessKeyManagerTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            using var root = new Stack { Children = { new Button { Content = new ControlText("&Save") } } };
+            using var root = new Stack { Children = { new Button { Text = "&Save" } } };
             root.Attach(dispatcher);
             using var focus = new FocusManager(root);
             using var pointer = new PointerManager(root);
@@ -157,17 +157,17 @@ public sealed class AccessKeyManagerTests
         await dispatcher.InvokeAsync(() =>
         {
             using var root = new Stack();
-            var checkBox = new CheckBox { Content = new ControlText("&Check") };
-            var radioButton = new RadioButton { Content = new ControlText("&Radio") };
+            var checkBox = new CheckBox { Text = "&Check" };
+            var radioButton = new RadioButton { Text = "&Radio" };
             var expander = new Expander { Header = "&Expand", IsExpanded = true };
             var menu = new Menu();
-            var menuItem = new MenuItem { Content = new ControlText("&Menu") };
+            var menuItem = new MenuItem { Text = "&Menu" };
             menu.Items.Add(menuItem);
             var tabs = new TabControl();
             tabs.Items.Add(new TabItem { Header = "&General" });
             tabs.Items.Add(new TabItem { Header = "&Advanced" });
             var navigation = new NavigationView();
-            var navigationItem = new NavigationViewItem { Header = "&Home" };
+            var navigationItem = new NavigationViewItem { Text = "&Home" };
             navigation.Items.Add(navigationItem);
             root.Children.Add(checkBox);
             root.Children.Add(radioButton);
@@ -223,11 +223,11 @@ public sealed class AccessKeyManagerTests
             using var root = new Stack();
             var unavailable = new Button
             {
-                Content = new ControlText("&Save"),
+                Text = "&Save",
                 IsEnabled = false
             };
             var caption = new ControlText("&Open");
-            var current = new Button { Content = caption };
+            var current = new Button { Text = caption };
             root.Children.Add(unavailable);
             root.Children.Add(current);
             root.Attach(dispatcher);

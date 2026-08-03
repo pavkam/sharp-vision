@@ -20,7 +20,7 @@ public sealed class GallerySurfaceTests
             new Size(120, 160),
             TestContext.Current.CancellationToken);
         var composite = OwnedTree.FindAll<Button>(page).Single(static button =>
-            button.Content is ControlText { Content: "Com&posite: parent pattern" });
+            button.Text == "Com&posite: parent pattern");
 
         // Act
         var shadowCells = Enumerable
@@ -45,7 +45,7 @@ public sealed class GallerySurfaceTests
         var gallery = new Gallery();
 
         // Act
-        var messageBox = gallery.Navigation.Single(static item => item.Header == MessageBoxPane.Title);
+        var messageBox = gallery.Navigation.Single(static item => item.Text == MessageBoxPane.Title);
 
         // Assert
         var itemHost = messageBox.Parent.ShouldNotBeNull();
@@ -96,7 +96,7 @@ public sealed class GallerySurfaceTests
         await surface.UpdateAsync(() => gallery.Select(pageIndex), "open MessageBox showcase page");
         var page = gallery.CurrentPage;
         var launcher = OwnedTree.FindAll<Button>(page).Single(static button =>
-            button.Content is ControlText { Content: "&OK" });
+            button.Text == "&OK");
 
         // Assert simplified example composition
         OwnedTree.FindAll<Overlay>(page).ShouldBeEmpty();

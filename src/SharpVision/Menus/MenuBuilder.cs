@@ -3,8 +3,6 @@
 
 namespace SharpVision.Menus;
 
-using DisplayText = Controls.Display.Text;
-
 /// <summary>Fluent builder for composing <see cref="Menu"/> hierarchies declaratively.</summary>
 /// <remarks>
 /// <para>
@@ -60,7 +58,7 @@ public sealed class MenuBuilder
         ArgumentNullException.ThrowIfNull(label);
         _steps.Add(menu =>
         {
-            var item = new MenuItem { Content = new DisplayText(label), ShortcutText = shortcut, IsEnabled = isEnabled };
+            var item = new MenuItem { Text = label, ShortcutText = shortcut, IsEnabled = isEnabled };
 
             if (onInvoke is not null)
             {
@@ -86,7 +84,7 @@ public sealed class MenuBuilder
         ArgumentNullException.ThrowIfNull(label);
         _steps.Add(menu =>
         {
-            var item = new MenuItem { Content = new DisplayText(label), Kind = MenuItemKind.Check, IsChecked = isChecked };
+            var item = new MenuItem { Text = label, Kind = MenuItemKind.Check, IsChecked = isChecked };
 
             if (onInvoke is not null)
             {
@@ -117,7 +115,7 @@ public sealed class MenuBuilder
         {
             var item = new MenuItem
             {
-                Content = new DisplayText(label),
+                Text = label,
                 Kind = MenuItemKind.Radio,
                 GroupName = groupName,
                 IsChecked = isChecked
@@ -154,7 +152,7 @@ public sealed class MenuBuilder
         {
             var sub = Vertical();
             configure(sub);
-            var item = new MenuItem { Content = new DisplayText(label), Submenu = sub.Build() };
+            var item = new MenuItem { Text = label, Submenu = sub.Build() };
             menu.Items.Add(item);
         });
         return this;

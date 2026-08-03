@@ -18,18 +18,18 @@ internal sealed class ButtonPane: CompositeControlBase
     {
         // Primary action with a visible activation log.
         var status = new Text("Activation log: waiting");
-        var primary = new Button { Content = new Text("&Click or press Enter") };
+        var primary = new Button { Text = "&Click or press Enter" };
         primary.Click += (_, eventArgs) => status.Content = $"Activation log: {eventArgs.Cause}";
 
         // Command availability and borrowed parameter execution.
         var commandStatus = new Text("Command log: ready with parameter release");
-        var commandEnabled = new CheckBox { Content = new Text("Command &enabled"), IsChecked = true };
+        var commandEnabled = new CheckBox { Text = "Command &enabled", IsChecked = true };
         var command = new ShowcaseCommand(
             parameter => commandStatus.Content = $"Command log: executed {parameter}",
             _ => commandEnabled.IsChecked == true);
         var commandButton = new Button
         {
-            Content = new Text("&Deploy command"),
+            Text = "&Deploy command",
             Command = command,
             CommandParameter = "release"
         };
@@ -49,9 +49,9 @@ internal sealed class ButtonPane: CompositeControlBase
             Focusable = true,
             Children = { new Text("Focus here, then use Enter or Escape") }
         };
-        var dialogDefault = new Button { Content = new Text("&Apply"), IsDefault = true };
+        var dialogDefault = new Button { Text = "&Apply", IsDefault = true };
         dialogDefault.Click += (_, eventArgs) => roleStatus.Content = $"Window action: Apply ({eventArgs.Cause})";
-        var dialogCancel = new Button { Content = new Text("Ca&ncel"), IsCancel = true };
+        var dialogCancel = new Button { Text = "Ca&ncel", IsCancel = true };
         dialogCancel.Click += (_, eventArgs) => roleStatus.Content = $"Window action: Cancel ({eventArgs.Cause})";
         var dialogActions = new DocRow(dialogDefault, dialogCancel)
         {
@@ -74,18 +74,18 @@ internal sealed class ButtonPane: CompositeControlBase
         var startAligned = new Button
         {
             Width = Length.Cells(28),
-            Content = new Text("Start (&1)"),
+            Text = "Start (&1)",
             TextAlignment = Alignment.Start
         };
         var centerAligned = new Button
         {
             Width = Length.Cells(28),
-            Content = new Text("Center (&2, default)")
+            Text = "Center (&2, default)"
         };
         var endAligned = new Button
         {
             Width = Length.Cells(28),
-            Content = new Text("End (&3)"),
+            Text = "End (&3)",
             TextAlignment = Alignment.End
         };
 
@@ -94,12 +94,12 @@ internal sealed class ButtonPane: CompositeControlBase
         {
             Style = ButtonStyle.Filled,
             Width = Length.Cells(28),
-            Content = new Text("F&illed: fractional depth")
+            Text = "F&illed: fractional depth"
         };
         var composite = new Button
         {
             Width = Length.Cells(28),
-            Content = new Text("Com&posite: parent pattern"),
+            Text = "Com&posite: parent pattern",
             Style = WithShadow(new Shadow(
                 true,
                 ShadowMode.Composite,
@@ -112,7 +112,7 @@ internal sealed class ButtonPane: CompositeControlBase
         var blockShadow = new Button
         {
             Width = Length.Cells(28),
-            Content = new Text("&Block: independent glyph"),
+            Text = "&Block: independent glyph",
             Style = WithShadow(new Shadow(
                 true,
                 ShadowMode.BlockGlyph,
@@ -125,7 +125,7 @@ internal sealed class ButtonPane: CompositeControlBase
         var flat = new Button
         {
             Width = Length.Cells(28),
-            Content = new Text("&Flat: color only"),
+            Text = "&Flat: color only",
             Style = WithShadow(new Shadow(
                 false,
                 ShadowMode.Composite,
@@ -137,7 +137,7 @@ internal sealed class ButtonPane: CompositeControlBase
         };
         var disabled = new Button
         {
-            Content = new Text("&Disabled"),
+            Text = "&Disabled",
             IsEnabled = false
         };
         var shadowBackdrop = new Dock
@@ -191,14 +191,14 @@ internal sealed class ButtonPane: CompositeControlBase
         // PerformClick shares validation, event ordering, and command execution with user activation.
         var autosaveStatus = new Text("Autosave log: waiting");
         var savedDrafts = 0;
-        var saveDraft = new Button { Content = new Text("&Save draft") };
+        var saveDraft = new Button { Text = "&Save draft" };
         saveDraft.Click += (_, eventArgs) =>
         {
             savedDrafts++;
             var noun = savedDrafts == 1 ? "draft" : "drafts";
             autosaveStatus.Content = $"Autosave log: {eventArgs.Cause} · {savedDrafts} {noun} saved";
         };
-        var autosave = new Button { Content = new Text("Si&mulate autosave") };
+        var autosave = new Button { Text = "Si&mulate autosave" };
         autosave.Click += (_, _) => saveDraft.PerformClick();
 
         return new DocPage(

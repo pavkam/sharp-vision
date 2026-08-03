@@ -24,7 +24,7 @@ public sealed class NavigationViewItem: PressableBase
     /// <exception cref="ArgumentException">The value contains a terminal control character.</exception>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
-    public string Header
+    public override string Text
     {
         get;
         set
@@ -32,13 +32,13 @@ public sealed class NavigationViewItem: PressableBase
             ArgumentNullException.ThrowIfNull(value);
             value.ThrowIfContainsControls(
                 nameof(value),
-                "A navigation item header cannot contain terminal controls.");
+                "A navigation item text cannot contain terminal controls.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     } = string.Empty;
 
     /// <inheritdoc/>
-    protected override string? AccessKeyText => Header;
+    protected override string? AccessKeyText => Text;
 
     /// <summary>Gets or sets an optional glyph prefix shown before the header.</summary>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
@@ -125,7 +125,7 @@ public sealed class NavigationViewItem: PressableBase
         return new Size(
             (int) Math.Min(
                 int.MaxValue,
-                3L + prefix + Header.Measure(CellPolicy.AmbiguousWidth, UseMnemonic)),
+                3L + prefix + Text.Measure(CellPolicy.AmbiguousWidth, UseMnemonic)),
             1);
     }
 
@@ -161,7 +161,7 @@ public sealed class NavigationViewItem: PressableBase
             new Point(bounds.X, bounds.Y),
             style,
             background: BackgroundMode.Transparent);
-        _ = Header.Draw(
+        _ = Text.Draw(
             clipped,
             leading.Final,
             style,

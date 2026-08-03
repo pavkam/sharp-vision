@@ -226,7 +226,7 @@ public sealed class TextEditorSurfaceTests
         FindAll<Button>(window).ShouldAllBe(button => !button.ActualShadow.IsVisible);
         foreach (var button in FindAll<Button>(window))
         {
-            button.Content.ShouldBeOfType<ControlText>().TextAlignment.ShouldBe(Alignment.Center);
+            button.Text.ShouldBeOfType<ControlText>().TextAlignment.ShouldBe(Alignment.Center);
         }
 
         var status = FindAll<ControlText>(window).Single(text => text.Content == "<d>Enter a search term</d>");
@@ -331,11 +331,10 @@ public sealed class TextEditorSurfaceTests
 
     private static MenuItem FindItem(ControlBase root, string label) =>
         FindAll<MenuItem>(root).Single(item =>
-            item.Content is ControlText text &&
-            text.Content.Replace("&", "", StringComparison.Ordinal) == label);
+            item.Text.Replace("&", "", StringComparison.Ordinal) == label);
 
     private static Button FindButton(ControlBase root, string label) =>
-        FindAll<Button>(root).Single(button => button.Content is ControlText text && text.Content == label);
+        FindAll<Button>(root).Single(button => button.Text == label);
 
     private static ControlText FindText(ControlBase root, string content) =>
         FindAll<ControlText>(root).Single(text => text.Content == content);

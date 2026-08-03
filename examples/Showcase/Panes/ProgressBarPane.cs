@@ -36,8 +36,8 @@ internal sealed class ProgressBarPane: CompositeControlBase
 
         var interactiveBar = new ProgressBar { Width = Length.Cells(30), Maximum = 10, Value = 3 };
         var interactiveStatus = new Text($"Live progress: {interactiveBar.Value:0} / 10");
-        var increase = new Button { Content = new Text("&Advance progress") };
-        var reset = new Button { Content = new Text("&Reset") };
+        var increase = new Button { Text = "&Advance progress" };
+        var reset = new Button { Text = "&Reset" };
         increase.Click += (_, _) =>
         {
             interactiveBar.Value = Math.Min(10, interactiveBar.Value + 1);

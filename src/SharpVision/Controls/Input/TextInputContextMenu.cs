@@ -5,8 +5,6 @@ namespace SharpVision.Controls.Input;
 
 using Menus;
 
-using DisplayText = Display.Text;
-
 /// <summary>Provides a default context menu with clipboard and editing commands for <see cref="TextInput"/>.</summary>
 [PublicAPI]
 public sealed class TextInputContextMenu: ContextMenu
@@ -26,12 +24,12 @@ public sealed class TextInputContextMenu: ContextMenu
         ArgumentNullException.ThrowIfNull(textInput);
         _textInput = textInput;
 
-        _cutItem = new MenuItem { Content = new DisplayText("Cut"), ShortcutText = "Ctrl+X" };
-        _copyItem = new MenuItem { Content = new DisplayText("Copy"), ShortcutText = "Ctrl+C" };
-        _pasteItem = new MenuItem { Content = new DisplayText("Paste"), ShortcutText = "Ctrl+V" };
-        _selectAllItem = new MenuItem { Content = new DisplayText("Select All"), ShortcutText = "Ctrl+A" };
-        _undoItem = new MenuItem { Content = new DisplayText("Undo"), ShortcutText = "Ctrl+Z" };
-        _redoItem = new MenuItem { Content = new DisplayText("Redo"), ShortcutText = "Ctrl+Y" };
+        _cutItem = new MenuItem { Text = "Cut", ShortcutText = "Ctrl+X" };
+        _copyItem = new MenuItem { Text = "Copy", ShortcutText = "Ctrl+C" };
+        _pasteItem = new MenuItem { Text = "Paste", ShortcutText = "Ctrl+V" };
+        _selectAllItem = new MenuItem { Text = "Select All", ShortcutText = "Ctrl+A" };
+        _undoItem = new MenuItem { Text = "Undo", ShortcutText = "Ctrl+Z" };
+        _redoItem = new MenuItem { Text = "Redo", ShortcutText = "Ctrl+Y" };
 
         _cutItem.Invoked += OnCut;
         _copyItem.Invoked += OnCopy;

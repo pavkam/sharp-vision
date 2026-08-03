@@ -402,7 +402,7 @@ public sealed class MenuItem: PressableBase
             _ = MeasureChild(_submenuPopup, new Constraint(constraint.Width, null));
         }
 
-        var content = Content;
+        var content = TextControl;
         var shortcutExtra = ShortcutText is { Length: > 0 }
             ? ShortcutExtent
             : 0;
@@ -426,7 +426,7 @@ public sealed class MenuItem: PressableBase
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        if (Content is { } content)
+        if (TextControl is { } content)
         {
             var consumed = Math.Min(PrefixWidth, bounds.Width);
             var trailing = Math.Min(ShortcutExtent, bounds.Width - consumed);

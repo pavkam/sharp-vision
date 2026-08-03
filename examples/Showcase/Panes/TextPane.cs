@@ -56,7 +56,7 @@ internal sealed class TextPane: CompositeControlBase
         var activity = new Text("Activity log: waiting for a markup mutation.");
         var append = new Button
         {
-            Content = new Text("&Append markup"),
+            Text = "&Append markup",
             HorizontalAlignment = HorizontalAlignment.Left,
             Margin = new Thickness(0, 0, 1, 1)
         };

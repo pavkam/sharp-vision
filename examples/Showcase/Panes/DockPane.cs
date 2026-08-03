@@ -93,7 +93,7 @@ internal sealed class DockPane: CompositeControlBase
 
         var shellStatus = new Text("Sidebar: visible");
 
-        var toggleSidebar = new Button { Content = new Text("&Toggle sidebar") };
+        var toggleSidebar = new Button { Text = "&Toggle sidebar" };
         toggleSidebar.Click += (_, _) =>
         {
             collapsibleSidebar.Visibility = collapsibleSidebar.Visibility == Visibility.Visible

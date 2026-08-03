@@ -10,7 +10,7 @@ public sealed class PopupSurfaceTests
     [Fact]
     public async Task IsEnabled_WhenParentAndGrandparentRecover_RestoresOneMountedAutomaticScopeAsync()
     {
-        var popup = new Popup { Content = new Button { Content = new ControlText("Action") } };
+        var popup = new Popup { Content = new Button { Text = "Action" } };
         var parent = new Overlay { Children = { popup } };
         var grandparent = new Overlay { Children = { parent } };
         await using var surface = await ComponentSurface.MountAsync(
@@ -49,7 +49,7 @@ public sealed class PopupSurfaceTests
     [Fact]
     public async Task Visibility_WhenParentAndGrandparentRecover_RestoresOneMountedAutomaticScopeAsync()
     {
-        var popup = new Popup { Content = new Button { Content = new ControlText("Action") } };
+        var popup = new Popup { Content = new Button { Text = "Action" } };
         var parent = new Overlay { Children = { popup } };
         var grandparent = new Overlay { Children = { parent } };
         await using var surface = await ComponentSurface.MountAsync(
@@ -93,7 +93,7 @@ public sealed class PopupSurfaceTests
         {
             Content = new Button
             {
-                Content = new ControlText("Action"),
+                Text = "Action",
                 Width = Length.Cells(8),
                 Height = Length.Cells(3)
             },
@@ -129,7 +129,7 @@ public sealed class PopupSurfaceTests
         // Arrange
         var anchor = new Button
         {
-            Content = new ControlText("Anchor"),
+            Text = "Anchor",
             Width = Length.Cells(8),
             Height = Length.Cells(3)
         };
@@ -194,13 +194,13 @@ public sealed class PopupSurfaceTests
         // Arrange
         var anchor = new Button
         {
-            Content = new ControlText("Anchor"),
+            Text = "Anchor",
             Width = Length.Cells(8),
             Height = Length.Cells(3)
         };
         var action = new Button
         {
-            Content = new ControlText("Action"),
+            Text = "Action",
             Width = Length.Cells(8),
             Height = Length.Cells(3)
         };
@@ -242,14 +242,14 @@ public sealed class PopupSurfaceTests
         var activations = 0;
         var background = new Button
         {
-            Content = new ControlText("Background"),
+            Text = "Background",
             Width = Length.Cells(12),
             Height = Length.Cells(3),
         };
         background.Click += (_, _) => activations++;
         var action = new Button
         {
-            Content = new ControlText("Action"),
+            Text = "Action",
             Width = Length.Cells(8),
             Height = Length.Cells(3),
         };
@@ -286,7 +286,7 @@ public sealed class PopupSurfaceTests
         var wheelRoutes = 0;
         var background = new Button
         {
-            Content = new ControlText("Background"),
+            Text = "Background",
             Width = Length.Cells(12),
             Height = Length.Cells(3),
         };
@@ -299,7 +299,7 @@ public sealed class PopupSurfaceTests
         });
         var action = new Button
         {
-            Content = new ControlText("Action"),
+            Text = "Action",
             Width = Length.Cells(8),
             Height = Length.Cells(3),
         };
@@ -333,13 +333,13 @@ public sealed class PopupSurfaceTests
         // Arrange
         var background = new Button
         {
-            Content = new ControlText("Background"),
+            Text = "Background",
             Width = Length.Cells(12),
             Height = Length.Cells(3),
         };
         var action = new Button
         {
-            Content = new ControlText("Action"),
+            Text = "Action",
             Width = Length.Cells(8),
             Height = Length.Cells(3),
         };
@@ -374,7 +374,7 @@ public sealed class PopupSurfaceTests
         // Arrange
         var anchor = new Button
         {
-            Content = new ControlText("Open"),
+            Text = "Open",
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
             Width = Length.Cells(8),
@@ -411,7 +411,7 @@ public sealed class PopupSurfaceTests
         // Arrange — anchor sits near the bottom, leaving no room for content below.
         var anchor = new Button
         {
-            Content = new ControlText("Bottom"),
+            Text = "Bottom",
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
             Width = Length.Cells(10),
@@ -452,13 +452,13 @@ public sealed class PopupSurfaceTests
         var activations = 0;
         var anchor = new Button
         {
-            Content = new ControlText("Anchor"),
+            Text = "Anchor",
             Width = Length.Cells(8),
             Height = Length.Cells(3),
         };
         var background = new Button
         {
-            Content = new ControlText("Outside"),
+            Text = "Outside",
             Width = Length.Cells(8),
             Height = Length.Cells(3),
         };
@@ -469,7 +469,7 @@ public sealed class PopupSurfaceTests
             Anchor = anchor,
             Content = new Button
             {
-                Content = new ControlText("Action"),
+                Text = "Action",
                 Width = Length.Cells(8),
                 Height = Length.Cells(3),
             },
@@ -496,7 +496,7 @@ public sealed class PopupSurfaceTests
     public async Task Pointer_WhenContextMenuIsOpenedModally_EntersScopeAndDismissesOnOutsideClickAsync()
     {
         // Arrange
-        var target = new Button { Content = new ControlText("Target"), Width = Length.Cells(10), Height = Length.Cells(3) };
+        var target = new Button { Text = "Target", Width = Length.Cells(10), Height = Length.Cells(3) };
         var menuContent = new ProbeControl { Focusable = true, Width = Length.Cells(8), Height = Length.Cells(2) };
         var contextPopup = new Popup { Content = menuContent, Anchor = target, FocusOnOpen = true };
         var root = new Overlay { Children = { target, contextPopup } };

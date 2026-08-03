@@ -80,7 +80,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
 
         _upButton = new Button
         {
-            Content = new Text("↑"),
+            Text = "↑",
             Width = Length.Cells(3)
         };
         PathInput = new TextInput
@@ -119,7 +119,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         };
         HiddenToggle = new CheckBox
         {
-            Content = new Text("Show &hidden"),
+            Text = "Show &hidden",
             IsChecked = showHidden
         };
         StatusText = new Text(Status)
@@ -142,7 +142,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
             nameof(FilterScrollBarStyle));
         _cancelButton = new Button
         {
-            Content = new Text("&Cancel"),
+            Text = "&Cancel",
             IsCancel = true
         };
     }

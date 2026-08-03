@@ -138,10 +138,10 @@ internal sealed class StackPane: CompositeControlBase
 
         // Star spacer pushes the primary action to the trailing edge.
         var actionBar = new Stack { Orientation = Orientation.Horizontal, Spacing = 1, Width = Length.Cells(40) };
-        actionBar.Children.Add(new Button { Content = new Text("&Cancel") });
+        actionBar.Children.Add(new Button { Text = "&Cancel" });
         var spacer = new Dock { Width = Length.Star(1) };
         actionBar.Children.Add(spacer);
-        actionBar.Children.Add(new Button { Content = new Text("&Save") });
+        actionBar.Children.Add(new Button { Text = "&Save" });
 
         return new DocPage(
             Title,

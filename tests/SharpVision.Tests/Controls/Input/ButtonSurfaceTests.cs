@@ -87,7 +87,7 @@ public sealed class ButtonSurfaceTests
         {
             Width = Length.Cells(8),
             Height = Length.Cells(3),
-            Content = new ControlText("Run")
+            Text = "Run"
         };
         var comboBox = new ComboBox
         {
@@ -132,7 +132,7 @@ public sealed class ButtonSurfaceTests
             VerticalAlignment = VerticalAlignment.Top,
             Width = Length.Cells(12),
             Height = Length.Cells(3),
-            Content = new ControlText("Save")
+            Text = "Save"
         };
 
         // Act
@@ -162,7 +162,7 @@ public sealed class ButtonSurfaceTests
             VerticalAlignment = VerticalAlignment.Top,
             Width = Length.Cells(8),
             Height = Length.Cells(3),
-            Content = new ControlText("Save")
+            Text = "Save"
         };
 
         // Act
@@ -199,7 +199,7 @@ public sealed class ButtonSurfaceTests
             VerticalAlignment = VerticalAlignment.Top,
             Width = Length.Cells(14),
             Height = Length.Cells(1),
-            Content = new ControlText("Add")
+            Text = "Add"
         };
 
         // Act
@@ -234,8 +234,8 @@ public sealed class ButtonSurfaceTests
     public async Task Render_WhenFilledButtonSharesTallRow_PreservesStretchAlignmentAsync()
     {
         // Arrange
-        var filled = new Button { Style = ButtonStyle.Filled, Content = new ControlText("Add") };
-        var standard = new Button { Content = new ControlText("Ok") };
+        var filled = new Button { Style = ButtonStyle.Filled, Text = "Add" };
+        var standard = new Button { Text = "Ok" };
         var row = new Stack
         {
             Orientation = Orientation.Horizontal,
@@ -252,7 +252,7 @@ public sealed class ButtonSurfaceTests
         // Assert
         filled.Bounds.ShouldBe(new Rect(0, 0, 7, 3));
         standard.Bounds.ShouldBe(new Rect(9, 0, 5, 3));
-        filled.Content.ShouldNotBeNull().Bounds.ShouldBe(new Rect(2, 0, 3, 3));
+        filled.Text.ShouldNotBeNull().Bounds.ShouldBe(new Rect(2, 0, 3, 3));
         surface.Cell(new Point(2, 0)).Text.ShouldBe("A");
         surface.Cell(new Point(7, 0)).Text.ShouldBe("▄");
         surface.Cell(new Point(9, 0)).Text.ShouldBe("┏");
@@ -271,7 +271,7 @@ public sealed class ButtonSurfaceTests
             VerticalAlignment = VerticalAlignment.Top,
             Width = Length.Cells(14),
             Height = Length.Cells(1),
-            Content = new ControlText("Add")
+            Text = "Add"
         };
         button.Click += (_, _) => clicks++;
         await using var surface = await ComponentSurface.MountAsync(
@@ -313,7 +313,7 @@ public sealed class ButtonSurfaceTests
             Height = Length.Cells(3),
             Style = TestButtonStyles.WithShadow(
                 AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1), attributes: Attributes.Dim)),
-            Content = new ControlText("Go")
+            Text = "Go"
         };
         var parent = new Stack
         {
@@ -347,7 +347,7 @@ public sealed class ButtonSurfaceTests
             VerticalAlignment = VerticalAlignment.Top,
             Width = Length.Cells(6),
             Height = Length.Cells(3),
-            Content = new ControlText("Go"),
+            Text = "Go",
             Style = TestButtonStyles.WithShadow(
                 AppearanceTestValues.Shadow(visible: true, mode: ShadowMode.BlockGlyph, offset: new Point(1, 1), glyph: new Rune('░'), attributes: Attributes.Dim)),
         };
@@ -389,7 +389,7 @@ public sealed class ButtonSurfaceTests
             VerticalAlignment = VerticalAlignment.Top,
             Width = Length.Cells(6),
             Height = Length.Cells(3),
-            Content = new ControlText("界")
+            Text = "界"
         };
 
         // Act
@@ -426,7 +426,7 @@ public sealed class ButtonSurfaceTests
             VerticalAlignment = VerticalAlignment.Top,
             Width = Length.Cells(8),
             Height = Length.Cells(3),
-            Content = new ControlText("Save")
+            Text = "Save"
         };
         await using var surface = await ComponentSurface.MountAsync(
             button,
@@ -466,7 +466,7 @@ public sealed class ButtonSurfaceTests
             VerticalAlignment = VerticalAlignment.Top,
             Width = Length.Cells(8),
             Height = Length.Cells(3),
-            Content = new ControlText("Save"),
+            Text = "Save",
             Style = new ButtonStyle(
                 ButtonStyle.Standard.Padding,
                 StyleResolution.Apply(
@@ -504,7 +504,7 @@ public sealed class ButtonSurfaceTests
             VerticalAlignment = VerticalAlignment.Top,
             Width = Length.Cells(8),
             Height = Length.Cells(3),
-            Content = new ControlText("Save")
+            Text = "Save"
         };
         await using var surface = await ComponentSurface.MountAsync(
             button,
@@ -539,7 +539,7 @@ public sealed class ButtonSurfaceTests
             VerticalAlignment = VerticalAlignment.Top,
             Width = Length.Cells(8),
             Height = Length.Cells(3),
-            Content = new ControlText("Save")
+            Text = "Save"
         };
         await using var surface = await ComponentSurface.MountAsync(
             button,
@@ -594,7 +594,7 @@ public sealed class ButtonSurfaceTests
             VerticalAlignment = VerticalAlignment.Top,
             Width = Length.Cells(8),
             Height = Length.Cells(3),
-            Content = new ControlText("Save")
+            Text = "Save"
         };
         var clicks = 0;
         button.Click += (_, _) => clicks++;
@@ -639,7 +639,7 @@ public sealed class ButtonSurfaceTests
             VerticalAlignment = VerticalAlignment.Top,
             Width = Length.Cells(8),
             Height = Length.Cells(3),
-            Content = new ControlText("Save")
+            Text = "Save"
         };
         button.Click += (_, _) => clicks++;
         await using var surface = await ComponentSurface.MountAsync(
@@ -670,7 +670,7 @@ public sealed class ButtonSurfaceTests
     public async Task Keyboard_WhenEnterAndSpaceAreCompleted_ActivatesFocusedButtonAsync()
     {
         // Arrange
-        var button = new Button { Content = new ControlText("Save") };
+        var button = new Button { Text = "Save" };
         var activations = 0;
         button.Click += (_, _) => activations++;
         await using var surface = await ComponentSurface.MountAsync(
@@ -717,7 +717,7 @@ public sealed class ButtonSurfaceTests
                         Color.Transparent,
                         ThemeDecoration.Border))
                     : TestButtonStyles.Flat,
-            Content = new ControlText("Save")
+            Text = "Save"
         };
         await using var surface = await ComponentSurface.MountAsync(
             button,
@@ -773,7 +773,7 @@ public sealed class ButtonSurfaceTests
             Height = Length.Cells(3),
             Style = TestButtonStyles.WithShadow(
                 AppearanceTestValues.Shadow(visible: true, mode: ShadowMode.Composite, offset: new Point(1, 1), attributes: Attributes.Dim)),
-            Content = new ControlText("Go")
+            Text = "Go"
         };
         var root = new Overlay { Children = { backdrop, button } };
 

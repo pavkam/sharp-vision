@@ -270,6 +270,22 @@ public static class BindingExtensions
             BindingMode.OneWay,
             string.Empty);
 
+    /// <summary>Binds optional model text one-way to a pressable control's caption.</summary>
+    public static Binding Bind<TModel>(
+        this PressableBase target,
+        TModel source,
+        Expression<Func<TModel, string?>> sourceProperty)
+        where TModel : class =>
+        BindProperty(
+            target,
+            static control => control.Text,
+            source,
+            sourceProperty,
+            static value => value ?? string.Empty,
+            convertBack: null,
+            BindingMode.OneWay,
+            string.Empty);
+
     /// <summary>Binds optional model text two-way to editable text.</summary>
     public static Binding Bind<TModel>(
         this TextInput target,

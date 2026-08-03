@@ -40,7 +40,7 @@ internal sealed class ShadowPane: CompositeControlBase
         var toggleTarget = CreateShadowSample("Toggle my shadow", ShadowMode.Composite, new Point(2, 1));
         var toggle = new CheckBox
         {
-            Content = new Text("Show shadow"),
+            Text = "Show shadow",
             IsChecked = true,
             UseMnemonic = false
         };

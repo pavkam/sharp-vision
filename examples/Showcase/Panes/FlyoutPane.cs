@@ -18,9 +18,9 @@ internal sealed class FlyoutPane: CompositeControlBase
     {
         // Basic flyout with action content.
         var status = new Text("No action taken.");
-        var trigger = new Button { Content = new Text("&Options") };
-        var confirmButton = new Button { Content = new Text("&Confirm") };
-        var cancelButton = new Button { Content = new Text("C&ancel") };
+        var trigger = new Button { Text = "&Options" };
+        var confirmButton = new Button { Text = "&Confirm" };
+        var cancelButton = new Button { Text = "C&ancel" };
         var actionRow = new Stack
         {
             Orientation = Orientation.Horizontal,
@@ -72,9 +72,9 @@ internal sealed class FlyoutPane: CompositeControlBase
             ShowAnchorIndicator = true,
             Content = new Text("Anchored here") { Padding = new Thickness(1, 0) }
         };
-        var buttonA = new Button { Content = new Text("Button &A") };
-        var buttonB = new Button { Content = new Text("Button &B") };
-        var buttonC = new Button { Content = new Text("Button &C") };
+        var buttonA = new Button { Text = "Button &A" };
+        var buttonB = new Button { Text = "Button &B" };
+        var buttonC = new Button { Text = "Button &C" };
         buttonA.Click += (_, _) =>
         {
             showAtFlyout.ShowAt(buttonA);
@@ -106,7 +106,7 @@ internal sealed class FlyoutPane: CompositeControlBase
 
         // Lifecycle events.
         var lifecycleLog = new Text("Lifecycle: idle");
-        var lifecycleTrigger = new Button { Content = new Text("&Toggle flyout") };
+        var lifecycleTrigger = new Button { Text = "&Toggle flyout" };
         var lifecycleFlyout = new Flyout
         {
             Anchor = lifecycleTrigger,
@@ -129,7 +129,7 @@ internal sealed class FlyoutPane: CompositeControlBase
         // Placement demo.
         var placementAnchor = new Button
         {
-            Content = new Text("A&nchor"),
+            Text = "A&nchor",
             Padding = new Thickness(1, 0)
         };
         var placementFlyout = new Flyout
@@ -209,7 +209,7 @@ internal sealed class FlyoutPane: CompositeControlBase
     {
         var button = new Button
         {
-            Content = new Text(label),
+            Text = label,
             Padding = new Thickness(1, 0)
         };
         button.Click += (_, _) =>

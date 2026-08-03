@@ -259,7 +259,7 @@ public sealed class RadioButtonSurfaceTests
         bool enabled = true,
         bool isChecked = false) => new()
         {
-            Content = new ControlText(content),
+            Text = content,
             GroupName = "surface",
             IsChecked = isChecked,
             IsEnabled = enabled

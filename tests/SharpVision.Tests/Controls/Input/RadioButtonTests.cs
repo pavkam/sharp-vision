@@ -347,7 +347,7 @@ public sealed class RadioButtonTests
     [Fact]
     public void Render_WhenSelectedWithUnicodeContent_WritesExactCells()
     {
-        var radio = new RadioButton { IsChecked = true, Content = new ControlText("界") };
+        var radio = new RadioButton { IsChecked = true, Text = "界" };
         new LayoutEngine().Layout(radio, new Size(6, 1));
         using Frame frame = new(new Size(6, 1));
 
@@ -372,7 +372,7 @@ public sealed class RadioButtonTests
         var content = new ProbeControl(new Size(1, 1));
         var radio = new RadioButton
         {
-            Content = content,
+            Text = content,
             IsChecked = isChecked,
             Style = RadioButtonStyle.Parentheses
         };
@@ -421,7 +421,7 @@ public sealed class RadioButtonTests
     public void Constructor_WithText_SetsTextContent()
     {
         var radio = new RadioButton("Option A");
-        radio.Content.ShouldBeOfType<ControlText>().Content.ShouldBe("Option A");
+        radio.Text.ShouldBeOfType<ControlText>().Content.ShouldBe("Option A");
         radio.IsChecked.ShouldBeFalse();
     }
 
@@ -441,7 +441,7 @@ public sealed class RadioButtonTests
         // Assert
         radio.IsChecked.ShouldBeFalse();
         radio.GroupName.ShouldBeNull();
-        radio.Content.ShouldBeNull();
+        radio.Text.ShouldBeNull();
         radio.CanFocus.ShouldBeTrue();
         radio.IsHitTestVisible.ShouldBeTrue();
         radio.Style.ShouldBeNull();

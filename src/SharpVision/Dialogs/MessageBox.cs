@@ -230,9 +230,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>
                 CreateButton("&Cancel", MessageBoxResult.Cancel, isCancel: true)],
             _ => throw new ArgumentOutOfRangeException(nameof(buttons), buttons, "The message-box buttons are unknown.")
         };
-        var width = result.Max(button => button.Content is DisplayText text
-            ? text.Content.Measure(CellPolicy.AmbiguousWidth, button.UseMnemonic) + 4
-            : 4);
+        var width = result.Max(button => button.Text.Measure(CellPolicy.AmbiguousWidth, button.UseMnemonic) + 4);
         foreach (var button in result)
         {
             button.Width = Length.Cells(width);
@@ -245,7 +243,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>
     {
         var button = new Button
         {
-            Content = new DisplayText(label),
+            Text = label,
             IsDefault = isDefault,
             IsCancel = isCancel
         };

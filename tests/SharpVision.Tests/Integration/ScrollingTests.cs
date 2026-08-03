@@ -17,7 +17,7 @@ public sealed class ScrollingTests
         terminal.QueueResize(new Dimensions(new Size(8, 5), new Size(80, 50)));
         var content = new ControlOverlay { Width = Length.Cells(14), Height = Length.Cells(9) };
         var label = new Label("界Z");
-        var target = new Button { Content = new Label("Go"), Width = Length.Cells(2), Height = Length.Cells(1) };
+        var target = new Button { Text = new Label("Go"), Width = Length.Cells(2), Height = Length.Cells(1) };
         ControlOverlay.SetLeft(target, Length.Cells(12));
         ControlOverlay.SetTop(target, Length.Cells(8));
         content.Children.Add(label);

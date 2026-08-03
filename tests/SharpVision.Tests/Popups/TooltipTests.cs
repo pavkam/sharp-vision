@@ -67,7 +67,7 @@ public sealed class TooltipTests
     {
         var anchor = new Button
         {
-            Content = new ControlText("Anchor"),
+            Text = "Anchor",
             Width = Length.Cells(8),
             Height = Length.Cells(1)
         };
@@ -138,7 +138,7 @@ public sealed class TooltipTests
     {
         var anchor = new Button
         {
-            Content = new ControlText("Anchor"),
+            Text = "Anchor",
             Width = Length.Cells(8),
             Height = Length.Cells(3)
         };
@@ -179,7 +179,7 @@ public sealed class TooltipTests
     {
         var anchor = new Button
         {
-            Content = new ControlText("Anchor"),
+            Text = "Anchor",
             Width = Length.Cells(8),
             Height = Length.Cells(3)
         };
@@ -234,7 +234,7 @@ public sealed class TooltipTests
     {
         var anchor = new Button
         {
-            Content = new ControlText("Anchor"),
+            Text = "Anchor",
             Width = Length.Cells(8),
             Height = Length.Cells(3)
         };

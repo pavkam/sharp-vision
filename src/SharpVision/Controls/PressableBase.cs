@@ -5,16 +5,28 @@ namespace SharpVision.Controls;
 
 using System.Windows.Input;
 
-/// <summary>Defines a focusable single-content control with reusable press interaction.</summary>
+using DisplayText = Display.Text;
+
+/// <summary>Defines a focusable text-captioned control with reusable press interaction.</summary>
 [PublicAPI]
-public abstract class PressableBase: ContentControl
+public abstract class PressableBase: ControlBase
 {
+    private readonly OwnedControlSlot _textSlot;
     private readonly PressBehavior _interaction;
     private ICommand? _command;
 
-    /// <summary>Initializes an empty focusable single-content control.</summary>
+    /// <summary>Initializes an empty focusable text-captioned control.</summary>
     protected PressableBase()
     {
+        _textSlot = RegisterOwnedSlot(
+            new OwnedControlOptions(
+                OwnedControlRole.Content,
+                OwnedControlLayer.Normal,
+                participatesInHitTesting: true,
+                participatesInNavigation: true,
+                partKey: null,
+                InvalidationImpact.Measure),
+            capacity: 1);
         _interaction = new PressBehavior(
             () => Bounds,
             () => EffectiveIsEnabled && EffectiveIsVisible,
@@ -28,6 +40,50 @@ public abstract class PressableBase: ContentControl
         Focusable = true;
         TabStop = true;
     }
+
+    /// <summary>Gets or sets the non-null caption text.</summary>
+    /// <remarks>
+    /// The default implementation is backed by a lazily materialized owned <see cref="DisplayText"/>
+    /// child, created on the first non-default assignment: a control that never sets text never pays
+    /// for one. Notifies exactly once per committed change and is silent on same-value assignment.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public virtual string Text
+    {
+        get => TextControl?.Content ?? string.Empty;
+        set
+        {
+            VerifyMutable();
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (string.Equals(Text, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            if (TextControl is null)
+            {
+                TextControl = new DisplayText(value);
+                _textSlot.ReplaceAll([TextControl]);
+            }
+            else
+            {
+                TextControl.Content = value;
+            }
+
+            NotifyPropertyChanged(nameof(Text), InvalidationImpact.Measure);
+        }
+    }
+
+    /// <summary>Gets the lazily materialized owned caption child, or null before <see cref="Text"/>
+    /// is first assigned.</summary>
+    protected internal DisplayText? TextControl { get; private set; }
+
+    /// <summary>Gets whether <paramref name="candidate"/> is this control's own owned caption child.</summary>
+    /// <param name="candidate">The control to test.</param>
+    internal bool OwnsCaption(ControlBase candidate) => ReferenceEquals(TextControl, candidate);
 
     /// <summary>Gets or sets the optional command a concrete control invokes on activation.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -84,7 +140,7 @@ public abstract class PressableBase: ContentControl
     }
 
     /// <inheritdoc/>
-    protected override string? AccessKeyText => Content is IAccessKeyCaption caption ? caption.Text : null;
+    protected override string? AccessKeyText => TextControl?.Content;
 
     /// <inheritdoc/>
     protected override bool OnAccessKey(Rune key)
@@ -106,6 +162,35 @@ public abstract class PressableBase: ContentControl
 
     /// <inheritdoc/>
     internal override bool StateAffectsAmbientAppearance => true;
+
+    /// <summary>Measures the owned caption child, or an empty size before one is materialized.</summary>
+    /// <param name="constraint">The available layout constraint.</param>
+    /// <returns>The caption child's desired size including its margin, or <see langword="default"/>.</returns>
+    protected override Size MeasureOverride(Constraint constraint)
+    {
+        if (TextControl is not { } content)
+        {
+            return default;
+        }
+
+        var desired = MeasureChild(content, constraint);
+
+        return content.Visibility == Visibility.Collapsed
+            ? default
+            : new Size(
+                desired.Width.SaturatingAdd(content.Margin.Horizontal),
+                desired.Height.SaturatingAdd(content.Margin.Vertical));
+    }
+
+    /// <summary>Arranges the owned caption child to fill the available bounds, if materialized.</summary>
+    /// <param name="bounds">The bounds to arrange within.</param>
+    protected override void ArrangeOverride(Rect bounds)
+    {
+        if (TextControl is { } content)
+        {
+            ArrangeChild(content, bounds, ResolvedAxes.Both);
+        }
+    }
 
     /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)

@@ -55,7 +55,7 @@ public sealed class CheckBoxTests
 
         checkBox.IsChecked.ShouldBe(false);
         checkBox.IsThreeState.ShouldBeFalse();
-        checkBox.Content.ShouldBeNull();
+        checkBox.Text.ShouldBeNull();
         checkBox.HorizontalAlignment.ShouldBe(HorizontalAlignment.Left);
         checkBox.Style.ShouldBeNull();
         checkBox.ActualStyle.ShouldBe(ThemeOwnedStyle(Themes.Dark.Input));
@@ -104,7 +104,7 @@ public sealed class CheckBoxTests
     [Fact]
     public void Arrange_WhenDefaultAlignmentIsUsed_HugsMeasuredContentWidth()
     {
-        var checkBox = new CheckBox { Content = new ControlText("Choice") };
+        var checkBox = new CheckBox { Text = "Choice" };
 
         new LayoutEngine().Layout(checkBox, new Size(20, 1));
 
@@ -214,7 +214,7 @@ public sealed class CheckBoxTests
     public void Render_WhenCheckedWithContent_WritesExactMarkAndUnicodeCells()
     {
         var content = new ControlText("界");
-        var checkBox = new CheckBox { Content = content, IsChecked = true, Style = CheckBoxStyle.Square };
+        var checkBox = new CheckBox { Text = content, IsChecked = true, Style = CheckBoxStyle.Square };
         new LayoutEngine().Layout(checkBox, new Size(4, 1));
         using Frame frame = new(new Size(4, 1));
 
@@ -239,7 +239,7 @@ public sealed class CheckBoxTests
         var checkBoxStyle = style == CheckBoxMarkStyle.Brackets
             ? CheckBoxStyle.Brackets
             : CheckBoxStyle.Tick;
-        var checkBox = new CheckBox { Content = content, IsChecked = true, Style = checkBoxStyle };
+        var checkBox = new CheckBox { Text = content, IsChecked = true, Style = checkBoxStyle };
         var size = new Size(width, 1);
         new LayoutEngine().Layout(checkBox, size);
         using Frame frame = new(size);
@@ -294,7 +294,7 @@ public sealed class CheckBoxTests
     public void Constructor_WithText_SetsTextContent()
     {
         var checkBox = new CheckBox("Accept");
-        checkBox.Content.ShouldBeOfType<ControlText>().Content.ShouldBe("Accept");
+        checkBox.Text.ShouldBeOfType<ControlText>().Content.ShouldBe("Accept");
         checkBox.IsChecked.ShouldBe(false);
     }
 
@@ -382,10 +382,10 @@ public sealed class CheckBoxTests
         // Arrange
         var first = new ControlText("First");
         var second = new ControlText("Second");
-        var checkBox = new CheckBox { Content = first, IsChecked = true };
+        var checkBox = new CheckBox { Text = first, IsChecked = true };
 
         // Act
-        checkBox.Content = second;
+        checkBox.Text = second;
 
         // Assert
         checkBox.IsChecked.ShouldBe(true);

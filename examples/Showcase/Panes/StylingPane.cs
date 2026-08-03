@@ -22,10 +22,10 @@ internal sealed class StylingPane: CompositeControlBase
             CreateColorSample("Transparent composition", Color.Transparent));
 
         var defaultControls = new DocColumn(
-            new Button { Content = new Text("Default button"), UseMnemonic = false },
+            new Button { Text = "Default button", UseMnemonic = false },
             new TextInput { Width = Length.Cells(24), Text = "Default text field" },
             new ComboBox { Width = Length.Cells(24), Items = ["Default choice"], SelectedIndex = 0 },
-            new CheckBox { Content = new Text("Default toggle"), IsChecked = true, UseMnemonic = false });
+            new CheckBox { Text = "Default toggle", IsChecked = true, UseMnemonic = false });
 
         var stateVocabulary = CreateVisualStates();
 
@@ -40,10 +40,10 @@ internal sealed class StylingPane: CompositeControlBase
 
         var panel = new ShowcasePanel();
         var placementPreview = new ShowcasePanel();
-        var left = new Button { Content = new Text("Left"), UseMnemonic = false };
-        var right = new Button { Content = new Text("Right"), UseMnemonic = false };
-        var above = new Button { Content = new Text("Above"), UseMnemonic = false };
-        var below = new Button { Content = new Text("Below"), UseMnemonic = false };
+        var left = new Button { Text = "Left", UseMnemonic = false };
+        var right = new Button { Text = "Right", UseMnemonic = false };
+        var above = new Button { Text = "Above", UseMnemonic = false };
+        var below = new Button { Text = "Below", UseMnemonic = false };
         ShowcasePaneHelpers.WireLabelPlacement(left, right, above, below, panel, placementPreview);
 
         return new DocPage(
@@ -119,7 +119,7 @@ internal sealed class StylingPane: CompositeControlBase
 
     private static DocColumn CreateVisualStates()
     {
-        var pointerButton = new Button { Content = new Text("Pointer, focus, and press"), UseMnemonic = false };
+        var pointerButton = new Button { Text = "Pointer, focus, and press", UseMnemonic = false };
 
         var focusInput = new TextInput { Width = Length.Cells(24), Placeholder = "Focus within" };
         var focusGroup = new GroupBox
@@ -129,27 +129,27 @@ internal sealed class StylingPane: CompositeControlBase
             Content = focusInput
         };
 
-        var item = new MenuItem { Content = new Text("Current and selected item"), UseMnemonic = false };
+        var item = new MenuItem { Text = "Current and selected item", UseMnemonic = false };
         var menu = new Menu { Orientation = Orientation.Vertical };
         menu.Items.Add(item);
         menu.SelectedIndex = 0;
 
         var checkedState = new CheckBox
         {
-            Content = new Text("Checked"),
+            Text = "Checked",
             IsChecked = true,
             UseMnemonic = false
         };
         var indeterminateState = new CheckBox
         {
-            Content = new Text("Indeterminate"),
+            Text = "Indeterminate",
             IsThreeState = true,
             IsChecked = null,
             UseMnemonic = false
         };
         var disabledState = new Button
         {
-            Content = new Text("Disabled"),
+            Text = "Disabled",
             IsEnabled = false,
             UseMnemonic = false
         };

@@ -5,8 +5,6 @@ namespace SharpVision.Controls.Input;
 
 using System.Runtime.ExceptionServices;
 
-using DisplayText = Display.Text;
-
 /// <summary>Defines a focusable two- or three-state toggle with optional content.</summary>
 [PublicAPI]
 public sealed class CheckBox: Pressable<CheckBoxStyle>
@@ -23,7 +21,7 @@ public sealed class CheckBox: Pressable<CheckBoxStyle>
     public CheckBox(string text) : this()
     {
         ArgumentNullException.ThrowIfNull(text);
-        Content = new DisplayText(text);
+        Text = text;
     }
 
     /// <summary>Raised after a true state commits.</summary>
@@ -119,7 +117,7 @@ public sealed class CheckBox: Pressable<CheckBoxStyle>
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        var content = Content;
+        var content = TextControl;
 
         if (content is null)
         {
@@ -140,7 +138,7 @@ public sealed class CheckBox: Pressable<CheckBoxStyle>
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        if (Content is { } content)
+        if (TextControl is { } content)
         {
             var consumed = Math.Min(MarkWidth + 1, bounds.Width);
             ArrangeChild(

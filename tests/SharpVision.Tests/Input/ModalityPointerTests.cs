@@ -1602,13 +1602,13 @@ public sealed class ModalityPointerTests
     {
         var plane = new Button
         {
-            Content = new ControlText("Modal"),
+            Text = "Modal",
             Width = Length.Cells(8),
             Height = Length.Cells(3),
         };
         var background = new Button
         {
-            Content = new ControlText("Background"),
+            Text = "Background",
             Width = Length.Cells(10),
             Height = Length.Cells(3),
         };
@@ -1645,13 +1645,13 @@ public sealed class ModalityPointerTests
     {
         var plane = new Button
         {
-            Content = new ControlText("Modal"),
+            Text = "Modal",
             Width = Length.Cells(8),
             Height = Length.Cells(3),
         };
         var background = new Button
         {
-            Content = new ControlText("Background"),
+            Text = "Background",
             Width = Length.Cells(10),
             Height = Length.Cells(3),
         };

@@ -21,7 +21,7 @@ public sealed class ContextMenuTests
     public void Items_WhenAdded_CanBeRetrieved()
     {
         using var menu = new ContextMenu();
-        var item = new MenuItem { Content = new ControlText("Test") };
+        var item = new MenuItem { Text = "Test" };
         menu.Items.Add(item);
         menu.Items.ShouldHaveSingleItem().ShouldBeSameAs(item);
     }
@@ -31,10 +31,10 @@ public sealed class ContextMenuTests
     public void Items_WhenMultipleAdded_PreservesOrder()
     {
         using var menu = new ContextMenu();
-        menu.Items.Add(new MenuItem { Content = new ControlText("A") });
-        menu.Items.Add(new MenuItem { Content = new ControlText("B") });
+        menu.Items.Add(new MenuItem { Text = "A" });
+        menu.Items.Add(new MenuItem { Text = "B" });
         menu.Items.Add(new MenuSeparator());
-        menu.Items.Add(new MenuItem { Content = new ControlText("C") });
+        menu.Items.Add(new MenuItem { Text = "C" });
         menu.Items.Count.ShouldBe(4);
     }
 
@@ -42,9 +42,9 @@ public sealed class ContextMenuTests
     [Fact]
     public void Show_WhenAttached_RaisesOpeningEvent()
     {
-        using var button = new Button { Content = new ControlText("Host") };
+        using var button = new Button { Text = "Host" };
         var menu = new ContextMenu();
-        menu.Items.Add(new MenuItem { Content = new ControlText("Test") });
+        menu.Items.Add(new MenuItem { Text = "Test" });
         button.ContextMenu = menu;
         var openingRaised = false;
         menu.Opening += (_, _) => openingRaised = true;
@@ -59,7 +59,7 @@ public sealed class ContextMenuTests
     public void Show_WhenNotAttached_DoesNotRaiseOpening()
     {
         using var menu = new ContextMenu();
-        menu.Items.Add(new MenuItem { Content = new ControlText("Test") });
+        menu.Items.Add(new MenuItem { Text = "Test" });
         var openingRaised = false;
         menu.Opening += (_, _) => openingRaised = true;
 
@@ -73,7 +73,7 @@ public sealed class ContextMenuTests
     [Fact]
     public void ContextMenu_WhenSetOnControl_CanBeRetrieved()
     {
-        using var button = new Button { Content = new ControlText("Test") };
+        using var button = new Button { Text = "Test" };
         using var menu = new ContextMenu();
         button.ContextMenu = menu;
         button.ContextMenu.ShouldBeSameAs(menu);
@@ -84,7 +84,7 @@ public sealed class ContextMenuTests
     [Fact]
     public void ContextMenu_WhenReplaced_DetachesPreviousPopup()
     {
-        using var button = new Button { Content = new ControlText("Test") };
+        using var button = new Button { Text = "Test" };
         var first = new ContextMenu();
         var second = new ContextMenu();
         button.ContextMenu = first;
@@ -111,7 +111,7 @@ public sealed class ContextMenuTests
     [Fact]
     public void ContextMenu_WhenCleared_DetachesPopup()
     {
-        using var button = new Button { Content = new ControlText("Test") };
+        using var button = new Button { Text = "Test" };
         var menu = new ContextMenu();
         button.ContextMenu = menu;
         var opened = false;
@@ -131,7 +131,7 @@ public sealed class ContextMenuTests
     [Fact]
     public void Close_WhenPopupAlreadyClosedIndirectly_DoesNotThrow()
     {
-        using var button = new Button { Content = new ControlText("Test") };
+        using var button = new Button { Text = "Test" };
         var menu = new ContextMenu();
         button.ContextMenu = menu;
         button.ContextMenu = null;
@@ -146,7 +146,7 @@ public sealed class ContextMenuTests
     [Fact]
     public void ContextMenu_WhenSetToSameInstance_DoesNothing()
     {
-        using var button = new Button { Content = new ControlText("Test") };
+        using var button = new Button { Text = "Test" };
         var menu = new ContextMenu();
         button.ContextMenu = menu;
         menu.Show(0, 0);
@@ -164,8 +164,8 @@ public sealed class ContextMenuTests
     public void ContextMenu_WhenAlreadyOwnedByAnotherControl_ThrowsAndLeavesSecondControlUnchanged()
     {
         // Arrange
-        using var a = new Button { Content = new ControlText("A") };
-        using var b = new Button { Content = new ControlText("B") };
+        using var a = new Button { Text = "A" };
+        using var b = new Button { Text = "B" };
         var shared = new ContextMenu();
         var existing = new ContextMenu();
         a.ContextMenu = shared;
@@ -224,5 +224,5 @@ public sealed class ContextMenuTests
     }
 
     private static string ItemLabel(ContextMenu menu, int index) =>
-        ((ControlText) ((MenuItem) menu.Items[index]).Content!).Content;
+        ((ControlText) ((MenuItem) menu.Items[index]).Text!).Content;
 }

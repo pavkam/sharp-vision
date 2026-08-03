@@ -11,7 +11,7 @@ public sealed class WindowSurfaceTests
     [Fact]
     public async Task Activation_WhenFocusAndWindowChromeChangeTargets_SwitchesWithoutStealingFocusAsync()
     {
-        var firstAction = new Button { Content = new ControlText("First") };
+        var firstAction = new Button { Text = "First" };
         var first = new Window
         {
             Header = "First",
@@ -70,7 +70,7 @@ public sealed class WindowSurfaceTests
     public async Task Theme_WhenWindowHoveredAndActivated_RespondsOnlyToActivationAsync()
     {
         // Arrange
-        var inside = new Button { Content = new ControlText("Inside") };
+        var inside = new Button { Text = "Inside" };
         var window = new Window
         {
             Content = inside,
@@ -79,7 +79,7 @@ public sealed class WindowSurfaceTests
         };
         var outside = new Button
         {
-            Content = new ControlText("Outside"),
+            Text = "Outside",
             Width = Length.Cells(10),
             Height = Length.Cells(3)
         };
@@ -850,8 +850,8 @@ public sealed class WindowSurfaceTests
         // Arrange
         var accepted = 0;
         var cancelled = 0;
-        var accept = new Button { Content = new ControlText("OK"), IsDefault = true };
-        var cancel = new Button { Content = new ControlText("Cancel"), IsCancel = true };
+        var accept = new Button { Text = "OK", IsDefault = true };
+        var cancel = new Button { Text = "Cancel", IsCancel = true };
         accept.Click += (_, _) => accepted++;
         cancel.Click += (_, _) => cancelled++;
         var content = new Stack { Children = { accept, cancel } };
@@ -908,14 +908,14 @@ public sealed class WindowSurfaceTests
         var activations = 0;
         var background = new Button
         {
-            Content = new ControlText("Background"),
+            Text = "Background",
             Width = Length.Cells(10),
             Height = Length.Cells(3),
         };
         Overlay.SetLeft(background, Length.Cells(20));
         Overlay.SetTop(background, Length.Cells(1));
         background.Click += (_, _) => activations++;
-        var action = new Button { Content = new ControlText("Action") };
+        var action = new Button { Text = "Action" };
         var window = new Window
         {
             Content = action,
@@ -1027,7 +1027,7 @@ public sealed class WindowSurfaceTests
         var closed = 0;
         var background = new Button
         {
-            Content = new ControlText("Background"),
+            Text = "Background",
             Width = Length.Cells(10),
             Height = Length.Cells(3),
         };
@@ -1036,7 +1036,7 @@ public sealed class WindowSurfaceTests
         background.Click += (_, _) => activations++;
         var window = new Window
         {
-            Content = new Button { Content = new ControlText("Action") },
+            Content = new Button { Text = "Action" },
             Width = Length.Cells(14),
             Height = Length.Cells(6),
         };
@@ -1170,7 +1170,7 @@ public sealed class WindowSurfaceTests
         var window = new Window
         {
             CanClose = true,
-            Content = new Button { Content = new ControlText("Action") },
+            Content = new Button { Text = "Action" },
             Width = Length.Cells(14),
             Height = Length.Cells(6),
         };
@@ -1202,7 +1202,7 @@ public sealed class WindowSurfaceTests
         var window = new Window
         {
             CanClose = true,
-            Content = new Button { Content = new ControlText("Action") },
+            Content = new Button { Text = "Action" },
             Width = Length.Cells(14),
             Height = Length.Cells(6),
         };
@@ -1233,7 +1233,7 @@ public sealed class WindowSurfaceTests
     public async Task Drag_WhenModalWindowIsDragged_PreservesModalScopeAsync()
     {
         // Arrange
-        var button = new Button { Content = new ControlText("OK") };
+        var button = new Button { Text = "OK" };
         var window = new Window
         {
             Header = "Drag",

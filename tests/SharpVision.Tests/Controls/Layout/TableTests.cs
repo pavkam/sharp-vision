@@ -736,14 +736,14 @@ public sealed class TableTests
     {
         var option = new CheckBox
         {
-            Content = new ControlText("Include integration tests"),
+            Text = "Include integration tests",
             VerticalAlignment = VerticalAlignment.Top
         };
         var table = new Table { Width = Length.Cells(48), CellPadding = new Thickness(1, 0) };
         table.Columns.Add(TableColumn.Fixed("Action", 16));
         table.Columns.Add(TableColumn.Fill("Configuration"));
         table.Rows.Add(new TableRow([
-            new Button { Content = new ControlText("Run checks") },
+            new Button { Text = "Run checks" },
             option
         ]));
 
@@ -759,7 +759,7 @@ public sealed class TableTests
     {
         var option = new CheckBox
         {
-            Content = new ControlText("Option"),
+            Text = "Option",
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
@@ -767,7 +767,7 @@ public sealed class TableTests
         table.Columns.Add(TableColumn.Fixed("Action", 10));
         table.Columns.Add(TableColumn.Fixed("Choice", 10));
         table.Rows.Add(new TableRow([
-            new Button { Content = new ControlText("Run") },
+            new Button { Text = "Run" },
             option
         ]));
 

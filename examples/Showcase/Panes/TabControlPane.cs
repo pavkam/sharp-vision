@@ -26,7 +26,7 @@ internal sealed class TabControlPane: CompositeControlBase
                 Padding = new Thickness(1),
                 Children =
                 {
-                    new Text("General settings."), new CheckBox { Content = new Text("&Notifications") }
+                    new Text("General settings."), new CheckBox { Text = "&Notifications" }
                 }
             }
         });
@@ -36,7 +36,7 @@ internal sealed class TabControlPane: CompositeControlBase
             Content = new Stack
             {
                 Padding = new Thickness(1),
-                Children = { new CheckBox { Content = new Text("&Debug mode") } }
+                Children = { new CheckBox { Text = "&Debug mode" } }
             }
         });
         tabs.Items.Add(new TabItem
@@ -51,9 +51,9 @@ internal sealed class TabControlPane: CompositeControlBase
         var dyn = new TabControl { Width = Length.Cells(50), Height = Length.Cells(6) };
         dyn.Items.Add(new TabItem { Header = "&Tab 1", IsClosable = true, Content = new Text("First") { Padding = new Thickness(1) } });
         dyn.Items.Add(new TabItem { Header = "&Tab 2", Content = new Text("Second") { Padding = new Thickness(1) } });
-        var addBtn = new Button { Content = new Text("&Add tab") };
-        var rmBtn = new Button { Content = new Text("&Remove last") };
-        var closeBtn = new Button { Content = new Text("Close selected") };
+        var addBtn = new Button { Text = "&Add tab" };
+        var rmBtn = new Button { Text = "&Remove last" };
+        var closeBtn = new Button { Text = "Close selected" };
         var counter = 2;
         var closeCancelled = false;
         dyn.CloseRequested += (_, args) =>

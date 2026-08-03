@@ -166,11 +166,8 @@ internal sealed class FindReplaceDialog: IDisposable
 
     private static Button CreateActionButton(string label) => new()
     {
-        Content = new Text(label)
-        {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            TextAlignment = Alignment.Center
-        }
+        Text = label,
+        TextAlignment = Alignment.Center
     };
 
     private static void Add(Grid grid, ControlBase control, int row, int column)

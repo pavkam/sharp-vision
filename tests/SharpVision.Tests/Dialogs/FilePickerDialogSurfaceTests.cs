@@ -34,11 +34,11 @@ public sealed class FilePickerDialogSurfaceTests
         var hidden = OwnedTree.Find<CheckBox>(dialog).ShouldNotBeNull();
         var status = FindAll<ControlText>(dialog).Single(static text => text.Content == "0 folders · 1 file");
         var up = FindAll<Button>(dialog).Single(static button =>
-            button.Content is ControlText { Content: "↑" });
+            button.Text == "↑");
         var open = FindAll<Button>(dialog).Single(static button =>
-            button.Content is ControlText { Content: "&Open" });
+            button.Text == "&Open");
         var cancel = FindAll<Button>(dialog).Single(static button =>
-            button.Content is ControlText { Content: "&Cancel" });
+            button.Text == "&Cancel");
 
         // Assert
         window.ShouldBeSameAs(dialog);
@@ -230,7 +230,7 @@ public sealed class FilePickerDialogSurfaceTests
         {
             var file = Path.Combine(directory, "Program.cs");
             await File.WriteAllTextAsync(file, "class Program;", TestContext.Current.CancellationToken);
-            var opener = new Button { Content = new ControlText("Open picker") };
+            var opener = new Button { Text = "Open picker" };
             var host = new Overlay { Children = { opener } };
             await using var surface = await ComponentSurface.MountAsync(
                 host,
@@ -283,8 +283,8 @@ public sealed class FilePickerDialogSurfaceTests
 
         try
         {
-            var opener = new Button { Content = new ControlText("Open picker") };
-            var background = new Button { Content = new ControlText("Background") };
+            var opener = new Button { Text = "Open picker" };
+            var background = new Button { Text = "Background" };
             var activations = 0;
             background.Click += (_, _) => activations++;
             var host = new Overlay { Children = { opener, background } };
@@ -332,7 +332,7 @@ public sealed class FilePickerDialogSurfaceTests
         try
         {
             using var cancellation = new CancellationTokenSource();
-            var opener = new Button { Content = new ControlText("Open picker") };
+            var opener = new Button { Text = "Open picker" };
             var host = new Overlay { Children = { opener } };
             await using var surface = await ComponentSurface.MountAsync(
                 host,
@@ -371,7 +371,7 @@ public sealed class FilePickerDialogSurfaceTests
         try
         {
             using var cancellation = new CancellationTokenSource();
-            var opener = new Button { Content = new ControlText("Open picker") };
+            var opener = new Button { Text = "Open picker" };
             var host = new Overlay { Children = { opener } };
             await using var surface = await ComponentSurface.MountAsync(
                 host,
@@ -421,7 +421,7 @@ public sealed class FilePickerDialogSurfaceTests
 
         try
         {
-            var opener = new Button { Content = new ControlText("Nested opener") };
+            var opener = new Button { Text = "Nested opener" };
             var form = new Stack { Children = { opener } };
             var host = new Overlay { Children = { form } };
             await using var surface = await ComponentSurface.MountAsync(

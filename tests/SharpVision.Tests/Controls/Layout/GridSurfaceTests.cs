@@ -90,7 +90,7 @@ public sealed class GridSurfaceTests
         Grid.SetRow(left, 1);
         var right = new Button
         {
-            Content = new ControlText("R"),
+            Text = "R",
             Style = TestButtonStyles.Flat,
             Padding = default,
             HorizontalAlignment = HorizontalAlignment.Stretch,

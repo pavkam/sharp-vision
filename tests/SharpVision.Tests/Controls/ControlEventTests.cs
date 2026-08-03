@@ -16,7 +16,7 @@ public sealed class ControlEventTests
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
-            Content = new ControlText("OK")
+            Text = "OK"
         };
         button.PointerPressed += (_, _) => fired++;
         await using var surface = await ComponentSurface.MountAsync(
@@ -42,7 +42,7 @@ public sealed class ControlEventTests
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
-            Content = new ControlText("OK")
+            Text = "OK"
         };
         button.PointerReleased += (_, _) => fired++;
         await using var surface = await ComponentSurface.MountAsync(
@@ -69,7 +69,7 @@ public sealed class ControlEventTests
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
-            Content = new ControlText("OK")
+            Text = "OK"
         };
         button.PointerMoved += (_, _) => fired++;
         await using var surface = await ComponentSurface.MountAsync(
@@ -95,7 +95,7 @@ public sealed class ControlEventTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
             Focusable = true,
-            Content = new ControlText("OK")
+            Text = "OK"
         };
         button.KeyDown += (_, _) => fired++;
         await using var surface = await ComponentSurface.MountAsync(
@@ -122,7 +122,7 @@ public sealed class ControlEventTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
             Focusable = true,
-            Content = new ControlText("OK")
+            Text = "OK"
         };
         button.KeyUp += (_, _) => fired++;
         await using var surface = await ComponentSurface.MountAsync(
@@ -148,7 +148,7 @@ public sealed class ControlEventTests
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
-            Content = new ControlText("OK")
+            Text = "OK"
         };
         button.BoundsChanged += (_, _) => fired++;
 

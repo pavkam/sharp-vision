@@ -7,8 +7,6 @@ using System.Runtime.ExceptionServices;
 
 using SharpVision.Terminal.Input;
 
-using DisplayText = Display.Text;
-
 /// <summary>Defines a focusable mutually exclusive selection control.</summary>
 [PublicAPI]
 public sealed class RadioButton: Pressable<RadioButtonStyle>
@@ -27,7 +25,7 @@ public sealed class RadioButton: Pressable<RadioButtonStyle>
     public RadioButton(string text) : this()
     {
         ArgumentNullException.ThrowIfNull(text);
-        Content = new DisplayText(text);
+        Text = text;
     }
 
     /// <summary>Raised after this member becomes selected.</summary>
@@ -126,7 +124,7 @@ public sealed class RadioButton: Pressable<RadioButtonStyle>
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        var content = Content;
+        var content = TextControl;
 
         if (content is null)
         {
@@ -147,7 +145,7 @@ public sealed class RadioButton: Pressable<RadioButtonStyle>
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        if (Content is { } content)
+        if (TextControl is { } content)
         {
             var consumed = Math.Min(MarkWidth + 1, bounds.Width);
             ArrangeChild(

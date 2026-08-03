@@ -275,7 +275,7 @@ public sealed class ModalityIntegrationTests
         };
         backgroundButton = new Button
         {
-            Content = new ControlText("BG"),
+            Text = "BG",
             Width = Length.Cells(12),
             Height = Length.Cells(3),
         };
@@ -294,7 +294,7 @@ public sealed class ModalityIntegrationTests
         modalButtonLabel = new ControlText("OK");
         modalButton = new Button
         {
-            Content = modalButtonLabel,
+            Text = modalButtonLabel,
             Width = Length.Cells(12),
             Height = Length.Cells(3),
         };

@@ -71,7 +71,7 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>
         };
         _saveButton = new Button
         {
-            Content = new Text("&Save"),
+            Text = "&Save",
             IsDefault = true,
             IsEnabled = !string.IsNullOrEmpty(options.InitialFileName)
         };

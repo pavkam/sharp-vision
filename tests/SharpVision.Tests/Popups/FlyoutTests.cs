@@ -44,7 +44,7 @@ public sealed class FlyoutTests
     {
         var anchor = new Button
         {
-            Content = new ControlText("Anchor"),
+            Text = "Anchor",
             Width = Length.Cells(8),
             Height = Length.Cells(1)
         };
@@ -115,8 +115,8 @@ public sealed class FlyoutTests
     [Fact]
     public async Task IsOpen_WhenSiblingFlyoutOpens_ClosesPreviousFlyoutAsync()
     {
-        var firstAnchor = new Button { Content = new ControlText("First") };
-        var secondAnchor = new Button { Content = new ControlText("Second") };
+        var firstAnchor = new Button { Text = "First" };
+        var secondAnchor = new Button { Text = "Second" };
         var first = new Flyout { Anchor = firstAnchor, Content = new ControlText("One") };
         var second = new Flyout { Anchor = secondAnchor, Content = new ControlText("Two") };
         var root = new Overlay { Children = { firstAnchor, secondAnchor, first, second } };

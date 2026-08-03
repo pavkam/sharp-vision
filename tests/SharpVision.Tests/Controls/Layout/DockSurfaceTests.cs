@@ -118,7 +118,7 @@ public sealed class DockSurfaceTests
         };
         var fill = new Button
         {
-            Content = new ControlText("FFFFFF\nFFFFFF\nFFFFFF\nFFFFFF") { Overflow = Overflow.Clip },
+            Text = new ControlText("FFFFFF\nFFFFFF\nFFFFFF\nFFFFFF") { Overflow = Overflow.Clip },
             Style = TestButtonStyles.FlatWithPadding(default),
             Padding = default,
             HorizontalAlignment = HorizontalAlignment.Stretch,

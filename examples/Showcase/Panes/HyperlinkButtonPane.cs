@@ -23,7 +23,7 @@ internal sealed class HyperlinkButtonPane: CompositeControlBase
 
         // Command availability and borrowed parameter execution.
         var commandStatus = new Text("Command log: ready with parameter docs");
-        var commandEnabled = new CheckBox { Content = new Text("Command &enabled"), IsChecked = true };
+        var commandEnabled = new CheckBox { Text = "Command &enabled", IsChecked = true };
         var command = new ShowcaseCommand(
             parameter => commandStatus.Content = $"Command log: executed {parameter}",
             _ => commandEnabled.IsChecked == true);

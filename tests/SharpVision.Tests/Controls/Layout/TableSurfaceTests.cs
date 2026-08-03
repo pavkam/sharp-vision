@@ -546,7 +546,7 @@ public sealed class TableSurfaceTests
 
         var filler = new Button
         {
-            Content = new ControlText("Filler"),
+            Text = "Filler",
             Height = Length.Cells(20),
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
@@ -637,7 +637,7 @@ public sealed class TableSurfaceTests
     /// <summary>Creates one stretched borderless clickable table cell.</summary>
     private static Button Row(string value) => new()
     {
-        Content = new ControlText(value),
+        Text = value,
         Style = TestButtonStyles.FlatWithPadding(default),
         Padding = default,
         Height = Length.Cells(1),

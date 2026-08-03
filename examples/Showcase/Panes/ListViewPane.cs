@@ -48,13 +48,13 @@ internal sealed class ListViewPane: CompositeControlBase
             multipleStatus.Content = multiple.SelectedItems.Count == 0
                 ? "Multiple: none"
                 : $"Multiple: {string.Join(", ", multiple.SelectedItems)}";
-        var selectMultiple = new Button { Content = new Text("&Select Alpha and Gamma") };
+        var selectMultiple = new Button { Text = "&Select Alpha and Gamma" };
         selectMultiple.Click += (_, _) =>
         {
             _ = multiple.SetSelected(0, true);
             _ = multiple.SetSelected(2, true);
         };
-        var selectAllMultiple = new Button { Content = new Text("Select &all") };
+        var selectAllMultiple = new Button { Text = "Select &all" };
         selectAllMultiple.Click += (_, _) =>
         {
             for (var index = 0; index < multiple.Items.Count; index++)
@@ -62,7 +62,7 @@ internal sealed class ListViewPane: CompositeControlBase
                 _ = multiple.SetSelected(index, true);
             }
         };
-        var clearMultiple = new Button { Content = new Text("&Clear") };
+        var clearMultiple = new Button { Text = "&Clear" };
         clearMultiple.Click += (_, _) =>
         {
             for (var index = 0; index < multiple.Items.Count; index++)
@@ -89,7 +89,7 @@ internal sealed class ListViewPane: CompositeControlBase
         };
 
         var snapshotStatus = new Text("Snapshot: 8 items");
-        var replace = new Button { Content = new Text("&Replace item snapshot") };
+        var replace = new Button { Text = "&Replace item snapshot" };
         replace.Click += (_, _) =>
         {
             active.Items = new object?[] { "One", "Beta", "Three" };

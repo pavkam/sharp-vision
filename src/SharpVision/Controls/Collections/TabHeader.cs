@@ -14,7 +14,7 @@ internal sealed class TabHeader: PressableBase
     /// <param name="header">The non-null header text without terminal controls.</param>
     public TabHeader(string header)
     {
-        Header = header;
+        Text = header;
         Height = Length.Cells(_headerRowHeight);
         Focusable = false;
         TabStop = false;
@@ -24,7 +24,7 @@ internal sealed class TabHeader: PressableBase
     public event EventHandler<ActivationEventArgs>? Activated;
 
     /// <summary>Gets or sets the validated label rendered with one cell of horizontal padding.</summary>
-    public string Header
+    public override string Text
     {
         get;
         set
@@ -38,7 +38,7 @@ internal sealed class TabHeader: PressableBase
     } = string.Empty;
 
     /// <inheritdoc/>
-    protected override string? AccessKeyText => Header;
+    protected override string? AccessKeyText => Text;
 
     /// <summary>Commits whether this retained header represents the selected page.</summary>
     /// <param name="value">Whether selected appearance is active.</param>
@@ -56,7 +56,7 @@ internal sealed class TabHeader: PressableBase
     protected override Size MeasureOverride(Constraint constraint)
     {
         _ = constraint;
-        var cells = Header.Measure(CellPolicy.AmbiguousWidth, UseMnemonic);
+        var cells = Text.Measure(CellPolicy.AmbiguousWidth, UseMnemonic);
         return new Size(
             (int) Math.Min(int.MaxValue, ((long) _headerHorizontalPadding * 2) + cells),
             _headerRowHeight);
@@ -85,7 +85,7 @@ internal sealed class TabHeader: PressableBase
             new Point(Bounds.X, Bounds.Y),
             appearance.Style,
             background: BackgroundMode.Transparent);
-        var cells = Header.Draw(
+        var cells = Text.Draw(
             canvas,
             leading.Final,
             appearance.Style,

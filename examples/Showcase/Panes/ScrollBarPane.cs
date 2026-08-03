@@ -65,7 +65,7 @@ internal sealed class ScrollBarPane: CompositeControlBase
             Value = 20,
             ViewportSize = 20
         };
-        var increaseViewport = new Button { Content = new Text("&Increase viewport") };
+        var increaseViewport = new Button { Text = "&Increase viewport" };
         increaseViewport.Click += (_, _) =>
         {
             liveRange.ViewportSize = Math.Min(100, liveRange.ViewportSize + 10);

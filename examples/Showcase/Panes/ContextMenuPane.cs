@@ -17,18 +17,18 @@ internal sealed class ContextMenuPane: CompositeControlBase
         var status = new Text("Right-click a control to open its context menu.");
 
         var customMenu = new ContextMenu();
-        customMenu.Items.Add(new MenuItem { Content = new Text("&Inspect") });
-        customMenu.Items.Add(new MenuItem { Content = new Text("&Run"), ShortcutText = "F5" });
-        customMenu.Items.Add(new MenuItem { Content = new Text("&Debug"), ShortcutText = "F9" });
+        customMenu.Items.Add(new MenuItem { Text = "&Inspect" });
+        customMenu.Items.Add(new MenuItem { Text = "&Run", ShortcutText = "F5" });
+        customMenu.Items.Add(new MenuItem { Text = "&Debug", ShortcutText = "F9" });
         customMenu.Items.Add(new MenuSeparator());
-        customMenu.Items.Add(new MenuItem { Content = new Text("De&ploy"), IsEnabled = false });
+        customMenu.Items.Add(new MenuItem { Text = "De&ploy", IsEnabled = false });
         customMenu.Opening += (_, _) =>
             status.Content = "Context menu opened.";
         customMenu.Closed += (_, _) =>
             status.Content = "Context menu closed.";
         var target = new Button
         {
-            Content = new Text("Right-click &me"),
+            Text = "Right-click &me",
             Width = Length.Cells(20),
             Height = Length.Cells(3),
             ContextMenu = customMenu
@@ -41,14 +41,14 @@ internal sealed class ContextMenuPane: CompositeControlBase
         };
 
         var directMenu = new ContextMenu();
-        directMenu.Items.Add(new MenuItem { Content = new Text("Cu&t"), ShortcutText = "Ctrl+X" });
-        directMenu.Items.Add(new MenuItem { Content = new Text("&Copy"), ShortcutText = "Ctrl+C" });
-        directMenu.Items.Add(new MenuItem { Content = new Text("&Paste"), ShortcutText = "Ctrl+V" });
+        directMenu.Items.Add(new MenuItem { Text = "Cu&t", ShortcutText = "Ctrl+X" });
+        directMenu.Items.Add(new MenuItem { Text = "&Copy", ShortcutText = "Ctrl+C" });
+        directMenu.Items.Add(new MenuItem { Text = "&Paste", ShortcutText = "Ctrl+V" });
         directMenu.Items.Add(new MenuSeparator());
-        directMenu.Items.Add(new MenuItem { Content = new Text("Select &All"), ShortcutText = "Ctrl+A" });
+        directMenu.Items.Add(new MenuItem { Text = "Select &All", ShortcutText = "Ctrl+A" });
         var builderTarget = new Button
         {
-            Content = new Text("&Builder menu"),
+            Text = "&Builder menu",
             Width = Length.Cells(20),
             Height = Length.Cells(3),
             ContextMenu = directMenu

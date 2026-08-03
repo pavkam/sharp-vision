@@ -25,8 +25,8 @@ public sealed class NavigationViewTests
     public void Items_WhenAdded_IncreasesCount()
     {
         var nav = new NavigationView { Header = "Test" };
-        nav.Items.Add(new NavigationViewItem { Header = "Page 1" });
-        nav.Items.Add(new NavigationViewItem { Header = "Page 2" });
+        nav.Items.Add(new NavigationViewItem { Text = "Page 1" });
+        nav.Items.Add(new NavigationViewItem { Text = "Page 2" });
 
         nav.Items.Count.ShouldBe(2);
     }
@@ -41,7 +41,7 @@ public sealed class NavigationViewTests
         var command = new ProbeCommand { Executing = _ => order.Add("command") };
         var item = new NavigationViewItem
         {
-            Header = "Page",
+            Text = "Page",
             Command = command,
             CommandParameter = parameter
         };
@@ -59,7 +59,7 @@ public sealed class NavigationViewTests
     public void PerformInvoke_WhenCommandCannotExecute_StillRaisesInvoked()
     {
         var command = new ProbeCommand { CanExecuteValue = false };
-        var item = new NavigationViewItem { Header = "Page", Command = command };
+        var item = new NavigationViewItem { Text = "Page", Command = command };
         var invoked = 0;
         item.Invoked += (_, _) => invoked++;
 
@@ -74,7 +74,7 @@ public sealed class NavigationViewTests
     public void SelectItem_WhenOwned_UpdatesSelectionWithoutChangingFocusOwnership()
     {
         var nav = new NavigationView();
-        var item = new NavigationViewItem { Header = "Page" };
+        var item = new NavigationViewItem { Text = "Page" };
         nav.Items.Add(item);
 
         nav.SelectItem(item);
@@ -90,7 +90,7 @@ public sealed class NavigationViewTests
     {
         var nav = new NavigationView();
         var other = new NavigationView();
-        var item = new NavigationViewItem { Header = "Elsewhere" };
+        var item = new NavigationViewItem { Text = "Elsewhere" };
         other.Items.Add(item);
 
         _ = Should.Throw<ArgumentException>(() => nav.SelectItem(item));
@@ -105,8 +105,8 @@ public sealed class NavigationViewTests
         await dispatcher.InvokeAsync(() =>
         {
             var nav = new NavigationView();
-            var item1 = new NavigationViewItem { Header = "A" };
-            var item2 = new NavigationViewItem { Header = "B" };
+            var item1 = new NavigationViewItem { Text = "A" };
+            var item2 = new NavigationViewItem { Text = "B" };
             nav.Items.Add(item1);
             nav.Items.Add(item2);
             nav.Attach(dispatcher);
@@ -130,9 +130,9 @@ public sealed class NavigationViewTests
         await dispatcher.InvokeAsync(() =>
         {
             var nav = new NavigationView();
-            var a = new NavigationViewItem { Header = "A" };
-            var b = new NavigationViewItem { Header = "B" };
-            var c = new NavigationViewItem { Header = "C" };
+            var a = new NavigationViewItem { Text = "A" };
+            var b = new NavigationViewItem { Text = "B" };
+            var c = new NavigationViewItem { Text = "C" };
             nav.Items.Add(a);
             nav.Items.Add(b);
             nav.Items.Add(c);
@@ -160,7 +160,7 @@ public sealed class NavigationViewTests
         {
             var nav = new NavigationView();
             var group = new NavigationViewGroup { Header = "Settings" };
-            var sub = new NavigationViewItem { Header = "General" };
+            var sub = new NavigationViewItem { Text = "General" };
             group.Items.Add(sub);
             nav.Items.Add(group);
             nav.Attach(dispatcher);
@@ -184,7 +184,7 @@ public sealed class NavigationViewTests
         {
             var nav = new NavigationView();
             var group = new NavigationViewGroup { Header = "Settings" };
-            var sub = new NavigationViewItem { Header = "General" };
+            var sub = new NavigationViewItem { Text = "General" };
             group.Items.Add(sub);
             nav.Items.Add(group);
             nav.Attach(dispatcher);
@@ -200,9 +200,9 @@ public sealed class NavigationViewTests
     public void Group_WhenItemsAreRemovedOrCleared_DetachesOwnerActivation()
     {
         // Arrange
-        var selected = new NavigationViewItem { Header = "Selected" };
-        var removed = new NavigationViewItem { Header = "Removed" };
-        var cleared = new NavigationViewItem { Header = "Cleared" };
+        var selected = new NavigationViewItem { Text = "Selected" };
+        var removed = new NavigationViewItem { Text = "Removed" };
+        var cleared = new NavigationViewItem { Text = "Cleared" };
         var group = new NavigationViewGroup { Header = "Group" };
         group.Items.Add(removed);
         group.Items.Add(cleared);
@@ -229,8 +229,8 @@ public sealed class NavigationViewTests
     [Fact]
     public void Items_WhenSelectedItemDisposedDirectly_RepairsSelectionWithoutThrowing()
     {
-        var selected = new NavigationViewItem { Header = "Selected" };
-        var other = new NavigationViewItem { Header = "Other" };
+        var selected = new NavigationViewItem { Text = "Selected" };
+        var other = new NavigationViewItem { Text = "Other" };
         var navigation = new NavigationView();
         navigation.Items.Add(selected);
         navigation.Items.Add(other);
@@ -247,8 +247,8 @@ public sealed class NavigationViewTests
     [Fact]
     public void Group_WhenSelectedChildIsRemoved_RepairsSelectionAndRaisesEventOnce()
     {
-        var other = new NavigationViewItem { Header = "Other" };
-        var selected = new NavigationViewItem { Header = "Selected" };
+        var other = new NavigationViewItem { Text = "Other" };
+        var selected = new NavigationViewItem { Text = "Selected" };
         var group = new NavigationViewGroup { Header = "Group" };
         group.Items.Add(other);
         group.Items.Add(selected);
@@ -273,8 +273,8 @@ public sealed class NavigationViewTests
     [Fact]
     public void Group_WhenClearedWithSelectedChild_RepairsSelectionToNearestRemainingItem()
     {
-        var before = new NavigationViewItem { Header = "Before" };
-        var selected = new NavigationViewItem { Header = "Selected" };
+        var before = new NavigationViewItem { Text = "Before" };
+        var selected = new NavigationViewItem { Text = "Selected" };
         var group = new NavigationViewGroup { Header = "Group" };
         group.Items.Add(selected);
         var navigation = new NavigationView();
@@ -295,8 +295,8 @@ public sealed class NavigationViewTests
     [Fact]
     public void Items_WhenDisabledSelectedItemIsRemoved_RepairsSelectionToRemainingItem()
     {
-        var remaining = new NavigationViewItem { Header = "Remaining" };
-        var selected = new NavigationViewItem { Header = "Selected" };
+        var remaining = new NavigationViewItem { Text = "Remaining" };
+        var selected = new NavigationViewItem { Text = "Selected" };
         var navigation = new NavigationView();
         navigation.Items.Add(selected);
         navigation.Items.Add(remaining);
@@ -313,8 +313,8 @@ public sealed class NavigationViewTests
     [Fact]
     public void Items_WhenGroupContainingSelectedItemIsRemoved_RepairsSelection()
     {
-        var remaining = new NavigationViewItem { Header = "Remaining" };
-        var selected = new NavigationViewItem { Header = "Selected" };
+        var remaining = new NavigationViewItem { Text = "Remaining" };
+        var selected = new NavigationViewItem { Text = "Selected" };
         var group = new NavigationViewGroup { Header = "Group" };
         group.Items.Add(selected);
         var navigation = new NavigationView();
@@ -333,7 +333,7 @@ public sealed class NavigationViewTests
     [Fact]
     public void Items_WhenGroupContainingSelectedItemIsRemovedAndNoneRemain_ClearsSelection()
     {
-        var selected = new NavigationViewItem { Header = "Selected" };
+        var selected = new NavigationViewItem { Text = "Selected" };
         var group = new NavigationViewGroup { Header = "Group" };
         group.Items.Add(selected);
         var navigation = new NavigationView();
@@ -352,7 +352,7 @@ public sealed class NavigationViewTests
     public void Group_WhenSelectedItemReparentsIntoAnotherView_DoesNotLeakOwnerSelectionState()
     {
         var group = new NavigationViewGroup { Header = "Group" };
-        var item = new NavigationViewItem { Header = "Item" };
+        var item = new NavigationViewItem { Text = "Item" };
         group.Items.Add(item);
         var first = new NavigationView();
         first.Items.Add(group);
@@ -372,9 +372,9 @@ public sealed class NavigationViewTests
     [Fact]
     public void ClearEntries_WhenSectionDoesNotOwnSelection_LeavesOtherSectionSelectionIntact()
     {
-        var mainSelected = new NavigationViewItem { Header = "Main" };
+        var mainSelected = new NavigationViewItem { Text = "Main" };
         var footerGroup = new NavigationViewGroup { Header = "Footer group" };
-        footerGroup.Items.Add(new NavigationViewItem { Header = "Footer item" });
+        footerGroup.Items.Add(new NavigationViewItem { Text = "Footer item" });
         var navigation = new NavigationView();
         navigation.Items.Add(mainSelected);
         navigation.FooterItems.Add(footerGroup);
@@ -392,7 +392,7 @@ public sealed class NavigationViewTests
     {
         var item = new NavigationViewItem
         {
-            Header = "Item",
+            Text = "Item",
             Padding = new Thickness(5, 1, 5, 1),
             Focusable = false,
             TabStop = false
@@ -415,7 +415,7 @@ public sealed class NavigationViewTests
     [Fact]
     public void Items_WhenGroupedItemMovesToTopLevel_DoesNotRetainGroupPadding()
     {
-        var item = new NavigationViewItem { Header = "Item" };
+        var item = new NavigationViewItem { Text = "Item" };
         var authoredPadding = item.Padding;
         var group = new NavigationViewGroup { Header = "Group" };
         group.Items.Add(item);
@@ -432,8 +432,8 @@ public sealed class NavigationViewTests
     [Fact]
     public void Group_WhenItemJoinsOrLeaves_NeverMutatesItemPadding()
     {
-        var before = new NavigationViewItem { Header = "Before", Padding = new Thickness(3, 0, 0, 0) };
-        var after = new NavigationViewItem { Header = "After" };
+        var before = new NavigationViewItem { Text = "Before", Padding = new Thickness(3, 0, 0, 0) };
+        var after = new NavigationViewItem { Text = "After" };
         var group = new NavigationViewGroup { Header = "Group" };
 
         group.Items.Add(before);
@@ -451,8 +451,8 @@ public sealed class NavigationViewTests
     public void Items_WhenSubItemsAreAdded_EnumeratesInInsertionOrderWithCountAndIndexer()
     {
         var group = new NavigationViewGroup { Header = "Group" };
-        var first = new NavigationViewItem { Header = "First" };
-        var second = new NavigationViewItem { Header = "Second" };
+        var first = new NavigationViewItem { Text = "First" };
+        var second = new NavigationViewItem { Text = "Second" };
 
         group.Items.Add(first);
         group.Items.Add(second);
@@ -468,7 +468,7 @@ public sealed class NavigationViewTests
     [Fact]
     public void Items_WhenSubItemIsAddedToASecondGroup_ThrowsAndLeavesFirstGroupCountUnchanged()
     {
-        var item = new NavigationViewItem { Header = "Item" };
+        var item = new NavigationViewItem { Text = "Item" };
         var first = new NavigationViewGroup { Header = "First" };
         var second = new NavigationViewGroup { Header = "Second" };
         first.Items.Add(item);
@@ -530,7 +530,7 @@ public sealed class NavigationViewTests
     public void FooterItems_WhenAdded_IncreasesFooterCount()
     {
         var nav = new NavigationView();
-        nav.FooterItems.Add(new NavigationViewItem { Header = "Quit" });
+        nav.FooterItems.Add(new NavigationViewItem { Text = "Quit" });
 
         nav.FooterItems.Count.ShouldBe(1);
         nav.Items.Count.ShouldBe(0);
@@ -564,7 +564,7 @@ public sealed class NavigationViewTests
         await dispatcher.InvokeAsync(() =>
         {
             var nav = new NavigationView();
-            var item = new NavigationViewItem { Header = "A" };
+            var item = new NavigationViewItem { Text = "A" };
             nav.Items.Add(item);
             nav.Attach(dispatcher);
             using FocusManager focus = new(nav);
@@ -585,9 +585,9 @@ public sealed class NavigationViewTests
         await dispatcher.InvokeAsync(() =>
         {
             var nav = new NavigationView();
-            var a = new NavigationViewItem { Header = "A" };
-            var b = new NavigationViewItem { Header = "B" };
-            var c = new NavigationViewItem { Header = "C" };
+            var a = new NavigationViewItem { Text = "A" };
+            var b = new NavigationViewItem { Text = "B" };
+            var c = new NavigationViewItem { Text = "C" };
             nav.Items.Add(a);
             nav.Items.Add(b);
             nav.Items.Add(c);
@@ -614,7 +614,7 @@ public sealed class NavigationViewTests
 
         for (var index = 0; index < 20; index++)
         {
-            nav.Items.Add(new NavigationViewItem { Header = $"Item {index}" });
+            nav.Items.Add(new NavigationViewItem { Text = $"Item {index}" });
         }
 
         new LayoutEngine().Layout(nav, new Size(10, 4));
@@ -638,7 +638,7 @@ public sealed class NavigationViewTests
 
         for (var index = 0; index < 20; index++)
         {
-            last = new NavigationViewItem { Header = $"Item {index}" };
+            last = new NavigationViewItem { Text = $"Item {index}" };
             nav.Items.Add(last);
         }
 
@@ -669,7 +669,7 @@ public sealed class NavigationViewTests
     {
         var item = new NavigationViewItem();
 
-        _ = Should.Throw<ArgumentException>(() => item.Header = header);
+        _ = Should.Throw<ArgumentException>(() => item.Text = header);
     }
 
     /// <summary>Verifies a group header carrying a terminal control character is rejected the same
@@ -691,9 +691,9 @@ public sealed class NavigationViewTests
     public void Insert_WhenGivenIndex_PlacesItAtRequestedPosition()
     {
         var nav = new NavigationView();
-        var a = new NavigationViewItem { Header = "A" };
-        var b = new NavigationViewItem { Header = "B" };
-        var middle = new NavigationViewItem { Header = "Middle" };
+        var a = new NavigationViewItem { Text = "A" };
+        var b = new NavigationViewItem { Text = "B" };
+        var middle = new NavigationViewItem { Text = "Middle" };
         nav.Items.Add(a);
         nav.Items.Add(b);
 
@@ -710,8 +710,8 @@ public sealed class NavigationViewTests
     public void Insert_WhenGivenSeparatorOrGroup_PlacesItAtRequestedPosition()
     {
         var nav = new NavigationView();
-        var a = new NavigationViewItem { Header = "A" };
-        var b = new NavigationViewItem { Header = "B" };
+        var a = new NavigationViewItem { Text = "A" };
+        var b = new NavigationViewItem { Text = "B" };
         var separator = new NavigationViewSeparator();
         var group = new NavigationViewGroup { Header = "Group" };
         nav.Items.Add(a);
@@ -732,10 +732,10 @@ public sealed class NavigationViewTests
     public void Insert_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
     {
         var nav = new NavigationView();
-        nav.Items.Add(new NavigationViewItem { Header = "A" });
+        nav.Items.Add(new NavigationViewItem { Text = "A" });
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
-            () => nav.Items.Insert(5, new NavigationViewItem { Header = "B" }));
+            () => nav.Items.Insert(5, new NavigationViewItem { Text = "B" }));
 
         nav.Items.Count.ShouldBe(1);
     }
@@ -746,9 +746,9 @@ public sealed class NavigationViewTests
     public void RemoveAt_WhenSelectedEntryIsRemoved_RepairsSelectionToNearestAvailable()
     {
         var nav = new NavigationView();
-        var a = new NavigationViewItem { Header = "A" };
-        var b = new NavigationViewItem { Header = "B" };
-        var c = new NavigationViewItem { Header = "C" };
+        var a = new NavigationViewItem { Text = "A" };
+        var b = new NavigationViewItem { Text = "B" };
+        var c = new NavigationViewItem { Text = "C" };
         nav.Items.Add(a);
         nav.Items.Add(b);
         nav.Items.Add(c);
@@ -766,8 +766,8 @@ public sealed class NavigationViewTests
     public void RemoveAt_WhenEntryOtherThanSelectionIsRemoved_PreservesSelectedItemIdentity()
     {
         var nav = new NavigationView();
-        var a = new NavigationViewItem { Header = "A" };
-        var b = new NavigationViewItem { Header = "B" };
+        var a = new NavigationViewItem { Text = "A" };
+        var b = new NavigationViewItem { Text = "B" };
         nav.Items.Add(a);
         nav.Items.Add(b);
         nav.SelectItem(b);
@@ -783,7 +783,7 @@ public sealed class NavigationViewTests
     public void RemoveAt_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
     {
         var nav = new NavigationView();
-        nav.Items.Add(new NavigationViewItem { Header = "A" });
+        nav.Items.Add(new NavigationViewItem { Text = "A" });
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => nav.Items.RemoveAt(5));
 
@@ -796,8 +796,8 @@ public sealed class NavigationViewTests
     public void Indexer_WhenSelectedEntryIsReplaced_DetachesOldWithoutDisposalAndSelectsReplacement()
     {
         var nav = new NavigationView();
-        var original = new NavigationViewItem { Header = "Original" };
-        var replacement = new NavigationViewItem { Header = "Replacement" };
+        var original = new NavigationViewItem { Text = "Original" };
+        var replacement = new NavigationViewItem { Text = "Replacement" };
         nav.Items.Add(original);
         nav.SelectItem(original);
 
@@ -816,10 +816,10 @@ public sealed class NavigationViewTests
     public void Indexer_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
     {
         var nav = new NavigationView();
-        nav.Items.Add(new NavigationViewItem { Header = "A" });
+        nav.Items.Add(new NavigationViewItem { Text = "A" });
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
-            () => nav.Items[5] = new NavigationViewItem { Header = "B" });
+            () => nav.Items[5] = new NavigationViewItem { Text = "B" });
 
         nav.Items.Count.ShouldBe(1);
     }
@@ -830,9 +830,9 @@ public sealed class NavigationViewTests
     public void Move_WhenEntryMoves_PreservesIdentityAndSelection()
     {
         var nav = new NavigationView();
-        var a = new NavigationViewItem { Header = "A" };
-        var b = new NavigationViewItem { Header = "B" };
-        var c = new NavigationViewItem { Header = "C" };
+        var a = new NavigationViewItem { Text = "A" };
+        var b = new NavigationViewItem { Text = "B" };
+        var c = new NavigationViewItem { Text = "C" };
         nav.Items.Add(a);
         nav.Items.Add(b);
         nav.Items.Add(c);
@@ -852,7 +852,7 @@ public sealed class NavigationViewTests
     public void Move_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
     {
         var nav = new NavigationView();
-        var a = new NavigationViewItem { Header = "A" };
+        var a = new NavigationViewItem { Text = "A" };
         nav.Items.Add(a);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => nav.Items.Move(0, 5));
@@ -867,10 +867,10 @@ public sealed class NavigationViewTests
     public void IndexOf_WhenItemIsOwnedOrForeign_ReportsPositionOrNegativeOne()
     {
         var nav = new NavigationView();
-        var a = new NavigationViewItem { Header = "A" };
-        var b = new NavigationViewItem { Header = "B" };
-        var footer = new NavigationViewItem { Header = "Footer" };
-        var foreign = new NavigationViewItem { Header = "Elsewhere" };
+        var a = new NavigationViewItem { Text = "A" };
+        var b = new NavigationViewItem { Text = "B" };
+        var footer = new NavigationViewItem { Text = "Footer" };
+        var foreign = new NavigationViewItem { Text = "Elsewhere" };
         nav.Items.Add(a);
         nav.Items.Add(b);
         nav.FooterItems.Add(footer);

@@ -14,7 +14,7 @@ public sealed class HyperlinkButtonTests
         var link = new HyperlinkButton();
 
         link.Text.ShouldBeNull();
-        link.Content.ShouldBeNull();
+        link.Text.ShouldBeNull();
         link.Command.ShouldBeNull();
         link.CommandParameter.ShouldBeNull();
         link.CanFocus.ShouldBeTrue();
@@ -30,7 +30,7 @@ public sealed class HyperlinkButtonTests
     {
         var link = new HyperlinkButton("Visit");
         link.Text.ShouldBe("Visit");
-        link.Content.ShouldBeOfType<ControlText>().Content.ShouldBe("Visit");
+        link.Text.ShouldBeOfType<ControlText>().Content.ShouldBe("Visit");
     }
 
     /// <summary>Verifies the string constructor rejects null text.</summary>
@@ -43,12 +43,12 @@ public sealed class HyperlinkButtonTests
     public void Text_WhenSetOnExistingContent_UpdatesInPlace()
     {
         var link = new HyperlinkButton("Before");
-        var content = link.Content;
+        var content = link.Text;
 
         link.Text = "After";
 
         link.Text.ShouldBe("After");
-        link.Content.ShouldBeSameAs(content);
+        link.Text.ShouldBeSameAs(content);
     }
 
     /// <summary>Verifies the Text property setter creates content when none exists.</summary>
@@ -58,7 +58,7 @@ public sealed class HyperlinkButtonTests
         var link = new HyperlinkButton { Text = "New" };
 
         link.Text.ShouldBe("New");
-        link.Content.ShouldBeOfType<ControlText>().Content.ShouldBe("New");
+        link.Text.ShouldBeOfType<ControlText>().Content.ShouldBe("New");
     }
 
     /// <summary>Verifies the Text property setter rejects null.</summary>

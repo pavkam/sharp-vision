@@ -19,10 +19,10 @@ internal sealed class MenuPane: CompositeControlBase
         var barStatus = new Text("Select a menu entry to see the invoked action.");
 
         // File menu with nested Open Recent submenu.
-        var fileNew = new MenuItem { Content = new Text("&New") };
-        var fileOpen = new MenuItem { Content = new Text("&Open") };
-        var fileRecentToday = new MenuItem { Content = new Text("&Today") };
-        var fileRecentArchive = new MenuItem { Content = new Text("Ar&chive") };
+        var fileNew = new MenuItem { Text = "&New" };
+        var fileOpen = new MenuItem { Text = "&Open" };
+        var fileRecentToday = new MenuItem { Text = "&Today" };
+        var fileRecentArchive = new MenuItem { Text = "Ar&chive" };
         var fileRecentSubmenu = new Menu
         {
             Orientation = Orientation.Vertical,
@@ -31,10 +31,10 @@ internal sealed class MenuPane: CompositeControlBase
         };
         fileRecentSubmenu.Items.Add(fileRecentToday);
         fileRecentSubmenu.Items.Add(fileRecentArchive);
-        var fileOpenRecent = new MenuItem { Content = new Text("Open &Recent"), Submenu = fileRecentSubmenu };
-        var fileSave = new MenuItem { Content = new Text("&Save"), ShortcutText = "Ctrl+S" };
-        var fileSaveAs = new MenuItem { Content = new Text("Save &As...") };
-        var fileExit = new MenuItem { Content = new Text("E&xit"), ShortcutText = "Ctrl+Q" };
+        var fileOpenRecent = new MenuItem { Text = "Open &Recent", Submenu = fileRecentSubmenu };
+        var fileSave = new MenuItem { Text = "&Save", ShortcutText = "Ctrl+S" };
+        var fileSaveAs = new MenuItem { Text = "Save &As..." };
+        var fileExit = new MenuItem { Text = "E&xit", ShortcutText = "Ctrl+Q" };
 
         var fileSubmenu = new Menu { Orientation = Orientation.Vertical };
         fileSubmenu.Items.Add(fileNew);
@@ -47,11 +47,11 @@ internal sealed class MenuPane: CompositeControlBase
         fileSubmenu.Items.Add(fileExit);
 
         // Edit menu with shortcut hints.
-        var editUndo = new MenuItem { Content = new Text("&Undo"), ShortcutText = "Ctrl+Z" };
-        var editRedo = new MenuItem { Content = new Text("&Redo"), ShortcutText = "Ctrl+Y" };
-        var editCut = new MenuItem { Content = new Text("Cu&t") };
-        var editCopy = new MenuItem { Content = new Text("&Copy") };
-        var editPaste = new MenuItem { Content = new Text("&Paste") };
+        var editUndo = new MenuItem { Text = "&Undo", ShortcutText = "Ctrl+Z" };
+        var editRedo = new MenuItem { Text = "&Redo", ShortcutText = "Ctrl+Y" };
+        var editCut = new MenuItem { Text = "Cu&t" };
+        var editCopy = new MenuItem { Text = "&Copy" };
+        var editPaste = new MenuItem { Text = "&Paste" };
 
         var editSubmenu = new Menu { Orientation = Orientation.Vertical };
         editSubmenu.Items.Add(editUndo);
@@ -63,23 +63,23 @@ internal sealed class MenuPane: CompositeControlBase
 
         // View menu with check and radio items sharing one density group.
         var viewAutoSave =
-            new MenuItem { Content = new Text("&Auto save"), Kind = MenuItemKind.Check, IsChecked = true };
+            new MenuItem { Text = "&Auto save", Kind = MenuItemKind.Check, IsChecked = true };
         var viewCompact = new MenuItem
         {
-            Content = new Text("&Compact"),
+            Text = "&Compact",
             Kind = MenuItemKind.Radio,
             GroupName = "density",
             IsChecked = true
         };
         var viewComfortable = new MenuItem
         {
-            Content = new Text("C&omfortable"),
+            Text = "C&omfortable",
             Kind = MenuItemKind.Radio,
             GroupName = "density"
         };
         var viewSpacious = new MenuItem
         {
-            Content = new Text("&Spacious"),
+            Text = "&Spacious",
             Kind = MenuItemKind.Radio,
             GroupName = "density"
         };
@@ -92,14 +92,14 @@ internal sealed class MenuPane: CompositeControlBase
         viewSubmenu.Items.Add(viewSpacious);
 
         // Help menu completes the top-level bar.
-        var helpAbout = new MenuItem { Content = new Text("&About") };
+        var helpAbout = new MenuItem { Text = "&About" };
         var helpSubmenu = new Menu { Orientation = Orientation.Vertical };
         helpSubmenu.Items.Add(helpAbout);
 
-        var fileItem = new MenuItem { Content = new Text("&File"), Submenu = fileSubmenu };
-        var editItem = new MenuItem { Content = new Text("&Edit"), Submenu = editSubmenu };
-        var viewItem = new MenuItem { Content = new Text("&View"), Submenu = viewSubmenu };
-        var helpItem = new MenuItem { Content = new Text("&Help"), Submenu = helpSubmenu };
+        var fileItem = new MenuItem { Text = "&File", Submenu = fileSubmenu };
+        var editItem = new MenuItem { Text = "&Edit", Submenu = editSubmenu };
+        var viewItem = new MenuItem { Text = "&View", Submenu = viewSubmenu };
+        var helpItem = new MenuItem { Text = "&Help", Submenu = helpSubmenu };
 
         var menuBar = new Menu { Orientation = Orientation.Horizontal, Spacing = 2 };
         menuBar.Items.Add(fileItem);
@@ -153,11 +153,11 @@ internal sealed class MenuPane: CompositeControlBase
         var contextStatus = new Text("Use arrow keys to navigate. Enter or Space activates.");
 
         var contextMenu = new Menu { Orientation = Orientation.Vertical };
-        contextMenu.Items.Add(new MenuItem { Content = new Text("&Inspect") });
-        contextMenu.Items.Add(new MenuItem { Content = new Text("&Run"), ShortcutText = "F5" });
-        contextMenu.Items.Add(new MenuItem { Content = new Text("&Debug"), ShortcutText = "F9" });
+        contextMenu.Items.Add(new MenuItem { Text = "&Inspect" });
+        contextMenu.Items.Add(new MenuItem { Text = "&Run", ShortcutText = "F5" });
+        contextMenu.Items.Add(new MenuItem { Text = "&Debug", ShortcutText = "F9" });
         contextMenu.Items.Add(new MenuSeparator());
-        contextMenu.Items.Add(new MenuItem { Content = new Text("De&ploy"), IsEnabled = false });
+        contextMenu.Items.Add(new MenuItem { Text = "De&ploy", IsEnabled = false });
         contextMenu.ItemInvoked += (_, e) =>
             contextStatus.Content = $"Context: {Label(e.Item)}";
 
@@ -196,5 +196,5 @@ internal sealed class MenuPane: CompositeControlBase
                     new DocColumn(contextFrame, contextStatus))));
     }
 
-    private static string Label(MenuItem item) => DocCaption.PlainCaption(((Text) item.Content!).Content);
+    private static string Label(MenuItem item) => DocCaption.PlainCaption(item.Text);
 }

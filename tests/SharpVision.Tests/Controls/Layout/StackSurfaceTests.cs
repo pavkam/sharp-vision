@@ -13,7 +13,7 @@ public sealed class StackSurfaceTests
         // Arrange
         var child = new Button
         {
-            Content = new ControlText("Child"),
+            Text = "Child",
             Style = TestButtonStyles.Flat,
             Padding = default,
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -110,17 +110,17 @@ public sealed class StackSurfaceTests
         var activated = string.Empty;
         var first = new Button
         {
-            Content = new ControlText("A"),
+            Text = "A",
             Style = TestButtonStyles.Flat,
             Padding = default,
             Height = Length.Cells(1),
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         first.Click += (_, _) => activated = "A";
-        var collapsed = new Button { Content = new ControlText("X"), Visibility = Visibility.Collapsed };
+        var collapsed = new Button { Text = "X", Visibility = Visibility.Collapsed };
         var second = new Button
         {
-            Content = new ControlText("B"),
+            Text = "B",
             Style = TestButtonStyles.Flat,
             Padding = default,
             Height = Length.Cells(1),

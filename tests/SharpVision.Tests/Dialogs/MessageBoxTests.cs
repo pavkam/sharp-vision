@@ -108,7 +108,7 @@ public sealed class MessageBoxTests
     public async Task ShowAsync_WhenDefaultButtonIsPressed_CompletesAndRestoresHostAsync()
     {
         // Arrange
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -134,7 +134,7 @@ public sealed class MessageBoxTests
     public async Task ShowAsync_WhenOwnerIsInsideBoundedSurface_CentersAgainstApplicationPlaneAsync()
     {
         // Arrange
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var bounded = new Overlay
         {
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -187,7 +187,7 @@ public sealed class MessageBoxTests
     public async Task ShowAsync_WhenEscapeIsPressed_CompletesWithCancelAsync()
     {
         // Arrange
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,
@@ -274,7 +274,7 @@ public sealed class MessageBoxTests
             TestContext.Current.CancellationToken);
         var yes = OwnedTree.FindAll<Button>(messageBox).Single(static candidate => candidate.IsDefault);
         var no = OwnedTree.FindAll<Button>(messageBox).Single(static candidate =>
-            candidate.Content is ControlText { Content: "&No" });
+            candidate.Text == "&No");
         await surface.UpdateAsync(
             () => surface.Application.Focus.Focus(yes).ShouldBeTrue(),
             "focus modeless default result");
@@ -407,7 +407,7 @@ public sealed class MessageBoxTests
     public async Task ShowAsync_WhenButtonStyleIsSupplied_AppliesItToEveryPresentedActionAsync()
     {
         // Arrange
-        var opener = new Button { Content = new ControlText("Open") };
+        var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
         await using var surface = await ComponentSurface.MountAsync(
             host,

@@ -17,9 +17,9 @@ internal sealed class GroupBoxPane: CompositeControlBase
     private static DocPage CreateContent()
     {
         var settingsStatus = new Text("Settings: waiting");
-        var autoSave = new CheckBox { Content = new Text("Aut&o-save"), IsChecked = true };
-        var lineNumbers = new CheckBox { Content = new Text("&Line numbers") };
-        var wordWrap = new CheckBox { Content = new Text("&Word wrap"), IsChecked = true };
+        var autoSave = new CheckBox { Text = "Aut&o-save", IsChecked = true };
+        var lineNumbers = new CheckBox { Text = "&Line numbers" };
+        var wordWrap = new CheckBox { Text = "&Word wrap", IsChecked = true };
         autoSave.StateChanged += (_, eventArgs) =>
             settingsStatus.Content = $"Settings: Auto-save → {eventArgs.Current}";
         lineNumbers.StateChanged += (_, eventArgs) =>
@@ -71,17 +71,17 @@ internal sealed class GroupBoxPane: CompositeControlBase
             Header = "Pre&ferences",
             Width = Length.Cells(28),
             Content = new DocColumn(
-                new RadioButton { Content = new Text("Li&ght theme"), GroupName = "theme" },
-                new RadioButton { Content = new Text("&Dark theme"), GroupName = "theme", IsChecked = true },
-                new RadioButton { Content = new Text("S&ystem default"), GroupName = "theme" })
+                new RadioButton { Text = "Li&ght theme", GroupName = "theme" },
+                new RadioButton { Text = "&Dark theme", GroupName = "theme", IsChecked = true },
+                new RadioButton { Text = "S&ystem default", GroupName = "theme" })
         };
 
         var innerGroup = new GroupBox
         {
             Header = "&Network",
             Content = new DocColumn(
-                new CheckBox { Content = new Text("&Use proxy"), IsChecked = true },
-                new CheckBox { Content = new Text("&Verify certificates") })
+                new CheckBox { Text = "&Use proxy", IsChecked = true },
+                new CheckBox { Text = "&Verify certificates" })
         };
         var outerGroup = new GroupBox
         {
