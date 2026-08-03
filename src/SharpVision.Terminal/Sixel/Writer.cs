@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Sixel;
 
+using Buffers;
+
 using Graphics;
 
 /// <summary>Validates and atomically writes deterministic bounded DEC sixel images.</summary>
@@ -52,7 +54,7 @@ public static class Writer
 
         Limits.Default.Validate(destinationPixels, sourceBytes: 0);
 
-        using var transaction = new PreparedBuffer(maxOutputBytes);
+        using var transaction = new BoundedBufferWriter(maxOutputBytes, initialRentBytes: 256);
 
         try
         {
