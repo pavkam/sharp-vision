@@ -45,14 +45,18 @@ runs:
     - name: 📦 Restore repository dependencies
       shell: bash
       # `make` on Windows (installed via choco above) re-execs each recipe line through its own
-      # MSYS2 shell, distinct from the Git-for-Windows bash running this step, which auto-converts
-      # POSIX-looking command-line arguments to Windows paths and mangles the plain https:// NuGet
-      # source URL into a local path (observed directly on Windows CI:
-      # "D:\...\https:\api.nuget.org\v3\index.json"). MSYS_NO_PATHCONV disables that conversion for
-      # Git's own bash (this step's shell) but not for make's nested MSYS2 shell, which honors the
-      # real MSYS2 variable MSYS2_ARG_CONV_EXCL instead -- set both so the whole chain is covered.
-      # No-op on Linux/macOS.
+      # MSYS2 shell, distinct from the Git-for-Windows bash running this step. That MSYS2 shell
+      # rewrites POSIX-looking values into Windows paths at the point it launches a native (non-
+      # MSYS) child process like dotnet.exe -- and it does this for BOTH command-line arguments
+      # (MSYS2_ARG_CONV_EXCL) AND environment variable values (MSYS2_ENV_CONV_EXCL), which are two
+      # separate conversion passes. The Makefile now passes the NuGet source URL to dotnet via the
+      # NUGET_ORG environment variable specifically to dodge the argument-conversion pass, but that
+      # alone still left the URL's *value* mangled by the environment-conversion pass (observed
+      # directly on Windows CI: "D:\...\https:\api.nuget.org\v3\index.json"). Setting all three
+      # exclusion variables covers Git's own bash (MSYS_NO_PATHCONV) and both of make's nested
+      # MSYS2 conversion passes. No-op on Linux/macOS.
       env:
         MSYS_NO_PATHCONV: 1
         MSYS2_ARG_CONV_EXCL: "*"
+        MSYS2_ENV_CONV_EXCL: "*"
       run: make restore
