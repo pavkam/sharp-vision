@@ -341,6 +341,26 @@ public sealed class DateInputTests
         control.Value.ShouldBe(new DateOnly(2, 1, 15));
     }
 
+    /// <summary>Verifies adjusting a segment starts a new digit entry sequence.</summary>
+    [Fact]
+    public void TypeDigit_WhenSegmentIsAdjusted_DoesNotCarryPreviousDigit()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 8, 15),
+            Culture = CultureInfo.InvariantCulture
+        };
+
+        // Act
+        TypeCharacter(control, '1');
+        PressKey(control, Code.Up);
+        TypeCharacter(control, '2');
+
+        // Assert
+        control.Value.ShouldBe(new DateOnly(2026, 2, 15));
+    }
+
     private static void TypeCharacter(DateInput control, char digit) =>
         Router.Route(
             control,
@@ -430,6 +450,28 @@ public sealed class DateInputTests
 
         // Assert
         Row(frame, 1).ShouldContain("--");
+    }
+
+    /// <summary>Verifies a null placeholder follows the configured date format.</summary>
+    [Fact]
+    public void Render_WhenValueIsNullAndFormatIsCustom_DrawsPlaceholderInConfiguredFormat()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            AllowNull = true,
+            Culture = CultureInfo.InvariantCulture,
+            Format = "yyyy.MM.dd",
+            Value = null
+        };
+        new LayoutEngine().Layout(control, new Size(20, 3));
+        using Frame frame = new(new Size(20, 3));
+
+        // Act
+        control.Render(frame.Canvas);
+
+        // Assert
+        Row(frame, 1).ShouldContain("----.--.--");
     }
 
     #endregion

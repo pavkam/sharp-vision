@@ -311,18 +311,26 @@ public sealed class TimeInput: Control
         var amPmIndex = AmPmSegmentIndex();
         var result = _activeSegment switch
         {
-            _segmentHour => time.AddHours(delta),
-            _segmentMinute => time.Add(TimeSpan.FromTicks(TimeStep.Ticks * delta)),
+            _segmentHour => AddWithoutWrap(time, TimeSpan.TicksPerHour * delta),
+            _segmentMinute => AddWithoutWrap(time, TimeStep.Ticks * delta),
             _ when _activeSegment == amPmIndex && !Use24HourFormat =>
                 time.AddHours(time.Hour < 12 ? 12 : -12),
             _ when ShowSeconds && _activeSegment == _segmentSecond =>
-                time.Add(TimeSpan.FromSeconds(delta)),
+                AddWithoutWrap(time, TimeSpan.TicksPerSecond * delta),
             _ => time
         };
 
         _digitBuffer = null;
         return Commit(result);
     }
+
+    private static TimeOnly AddWithoutWrap(TimeOnly value, long ticks)
+        => ticks switch
+        {
+            > 0 when ticks > TimeOnly.MaxValue.Ticks - value.Ticks => TimeOnly.MaxValue,
+            < 0 when ticks < TimeOnly.MinValue.Ticks - value.Ticks => TimeOnly.MinValue,
+            _ => new TimeOnly(value.Ticks + ticks)
+        };
 
     private bool TypeDigit(int digit)
     {

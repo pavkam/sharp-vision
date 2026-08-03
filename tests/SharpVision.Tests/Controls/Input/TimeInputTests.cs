@@ -114,6 +114,32 @@ public sealed class TimeInputTests
         control.Value.ShouldBe(new TimeOnly(10, 25));
     }
 
+    /// <summary>Verifies minute adjustment clamps instead of wrapping across midnight.</summary>
+    [Theory]
+    [InlineData(Code.Up, 23, 59)]
+    [InlineData(Code.Down, 0, 0)]
+    public void Input_WhenMinuteAdjustmentCrossesMidnight_ClampsAtBound(
+        Code code,
+        int hour,
+        int minute)
+    {
+        // Arrange
+        var bound = new TimeOnly(hour, minute);
+        using var control = new TimeInput
+        {
+            Value = bound,
+            MinimumTime = new TimeOnly(0, 0),
+            MaximumTime = new TimeOnly(23, 59)
+        };
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+
+        // Act
+        _ = Router.Route(control, Events.Key, Key(code));
+
+        // Assert
+        control.Value.ShouldBe(bound);
+    }
+
     /// <summary>Verifies unhandled keys still reach the inherited Control event surface.</summary>
     [Fact]
     public void Input_WhenKeyIsUnhandled_RaisesKeyDown()

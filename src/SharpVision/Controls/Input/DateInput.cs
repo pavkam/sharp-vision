@@ -586,6 +586,8 @@ public sealed class DateInput: Control
             return;
         }
 
+        _digitBuffer = null;
+        _yearDigitCount = 0;
         var segmentKind = ResolveSegmentKind(_activeSegment);
 
         try
@@ -865,19 +867,19 @@ public sealed class DateInput: Control
 
     private DisplaySegment[] BuildPlaceholderSegments()
     {
-        var shortPattern = _culture.DateTimeFormat.ShortDatePattern;
+        var pattern = ResolveDatePattern();
         var segments = new List<DisplaySegment>();
         var index = 0;
 
-        while (index < shortPattern.Length)
+        while (index < pattern.Length)
         {
-            var ch = shortPattern[index];
+            var ch = pattern[index];
 
             if (ch is 'M' or 'd')
             {
                 segments.Add(new DisplaySegment("--", true));
 
-                while (index < shortPattern.Length && shortPattern[index] == ch)
+                while (index < pattern.Length && pattern[index] == ch)
                 {
                     index++;
                 }
@@ -886,7 +888,7 @@ public sealed class DateInput: Control
             {
                 var count = 0;
 
-                while (index < shortPattern.Length && shortPattern[index] == 'y')
+                while (index < pattern.Length && pattern[index] == 'y')
                 {
                     count++;
                     index++;
@@ -898,9 +900,9 @@ public sealed class DateInput: Control
             {
                 var separator = new StringBuilder();
 
-                while (index < shortPattern.Length && shortPattern[index] is not ('M' or 'd' or 'y'))
+                while (index < pattern.Length && pattern[index] is not ('M' or 'd' or 'y'))
                 {
-                    _ = separator.Append(shortPattern[index]);
+                    _ = separator.Append(pattern[index]);
                     index++;
                 }
 
