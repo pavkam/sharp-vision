@@ -6,7 +6,13 @@ SOLUTION := SharpVision.slnx
 SHOWCASE := examples/Showcase/SharpVision.Showcase.csproj
 BOOTSTRAP_PACKAGES := artifacts/bootstrap-packages
 RESTORE_PACKAGES := artifacts/restore-packages
-NUGET_ORG := https://api.nuget.org/v3/index.json
+# Exported (not just make-expanded) so recipes can reference it as a shell variable ($$NUGET_ORG)
+# rather than substituting the literal URL into the recipe line. On Windows CI, GNU Make's own
+# recipe-line handling mangles the "//" in the literal URL into a single, CWD-relative separator
+# before the shell ever sees it (observed directly: "https://api.nuget.org/..." becomes
+# "D:\...\https:\api.nuget.org\..."), regardless of MSYS_NO_PATHCONV/MSYS2_ARG_CONV_EXCL. Passing
+# it through the shell's own environment instead avoids Make ever tokenizing the URL text.
+export NUGET_ORG := https://api.nuget.org/v3/index.json
 
 help:
 	@echo "SharpVision - Available Make Targets"
@@ -28,8 +34,8 @@ bootstrap-packages:
 	@echo "📦 Bootstrapping SharpVision packages..."
 	@rm -rf $(BOOTSTRAP_PACKAGES) $(RESTORE_PACKAGES)
 	@mkdir -p $(BOOTSTRAP_PACKAGES)
-	@dotnet restore src/SharpVision.Terminal/SharpVision.Terminal.csproj --source $(NUGET_ORG)
-	@dotnet restore src/SharpVision/SharpVision.csproj --source $(NUGET_ORG)
+	@dotnet restore src/SharpVision.Terminal/SharpVision.Terminal.csproj --source "$$NUGET_ORG"
+	@dotnet restore src/SharpVision/SharpVision.csproj --source "$$NUGET_ORG"
 	@dotnet build src/SharpVision.Terminal/SharpVision.Terminal.csproj --configuration Release --no-restore --target Rebuild
 	@dotnet build src/SharpVision/SharpVision.csproj --configuration Release --no-restore --target Rebuild
 	@dotnet pack src/SharpVision.Terminal/SharpVision.Terminal.csproj --configuration Release --no-build --no-restore -p:IsPackable=true --output $(BOOTSTRAP_PACKAGES)
@@ -38,7 +44,7 @@ bootstrap-packages:
 
 restore: bootstrap-packages
 	@echo "📦 Restoring dependencies..."
-	@dotnet restore $(SOLUTION) --packages $(RESTORE_PACKAGES) --source $(BOOTSTRAP_PACKAGES) --source $(NUGET_ORG)
+	@dotnet restore $(SOLUTION) --packages $(RESTORE_PACKAGES) --source $(BOOTSTRAP_PACKAGES) --source "$$NUGET_ORG"
 	@npm ci
 	@echo "✅ Dependencies restored."
 
