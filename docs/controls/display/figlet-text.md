@@ -42,6 +42,33 @@ var title = new FigletText(FigletCatalog.Default.Load("Standard"))
 };
 ```
 
+## FigletCatalog
+
+`FigletCatalog` resolves a font name to a parsed `FigletFont`. `Default` is the
+audited embedded 400-font archive; its `fonts.manifest.json` records each
+entry's provenance and license classification, and that classification is
+conservative, not a legal conclusion - confirm redistribution terms before
+depending on `Default` in a distributed package. An application can source its
+own fonts instead, through the same lookup and `Load` surface:
+
+| Member                              | Source                                                          |
+| ----------------------------------- | --------------------------------------------------------------- |
+| `FigletCatalog.Default`             | The audited embedded archive.                                   |
+| `FigletCatalog.FromDirectory(path)` | Every `.flf`/`.tlf` file directly inside a directory.           |
+| `FigletCatalog.FromZip(stream)`     | Every `.flf`/`.tlf` entry in a caller-supplied Zip archive.     |
+| `FigletCatalog.FromFonts(fonts)`    | Already-parsed `FigletFont` instances, keyed by their own name. |
+
+```csharp
+var catalog = FigletCatalog.FromDirectory("/opt/myapp/fonts");
+var title = new FigletText(catalog.Load("Banner")) { Content = "Hello" };
+```
+
+Fonts loaded through `FromDirectory` or `FromZip` are named after their file or
+entry name, without extension. `GetInfo` still reports provenance metadata for
+every entry regardless of source; entries from `FromFonts` report placeholder
+`"unaudited"` metadata, since an already-parsed font carries no source file or
+byte sequence to hash.
+
 ## Expected behavior
 
 Callers can rely on the following: null `Content` or `Font` is rejected; the row
