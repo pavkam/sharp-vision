@@ -7,14 +7,20 @@ using GraphicsImage = Terminal.Graphics.ImageSource;
 
 /// <summary>
 /// Verifies the narrow, maintainer-approved render-clean subtree reuse cut (see #26) and its
-/// #235 extensions: a leaf control that is render-clean, image-free, and owns no popup of its own
-/// copies its previous frame's cells instead of re-executing its paint sequence, but only when no
-/// layout ran since the copied frame (<see cref="TerminalCanvas.HasPreviousFrame"/>). A visible shadow now
+/// #235 extensions: a leaf control that is render-clean and owns no popup of its own copies its
+/// previous frame's cells instead of re-executing its paint sequence, but only when no layout ran
+/// since the copied frame (<see cref="TerminalCanvas.HasPreviousFrame"/>). A visible shadow
 /// participates too, but only when its own paint is a full destination overwrite that cannot
 /// depend on stale prior content - BlockGlyph mode with an opaque resolved background. Composite
 /// (which never replaces the underlying grapheme, regardless of background opacity) and
-/// FractionalBlock (which always blends) stay excluded. Image-bearing subtrees also stay excluded
-/// (<c>RequiresCompleteRender</c>) and remain tracked in #235.
+/// FractionalBlock (which always blends) stay excluded.
+///
+/// Image-bearing subtrees participate too (#235's third slice): a plain cell copy restores the
+/// fallback shade and alternate-text cells correctly, but never replays
+/// <c>TerminalCanvas.DrawImage</c>'s out-of-band semantic placement, so
+/// <c>ControlBase.OnReuseCleanRender</c> re-asserts it by reading <see cref="Image"/>'s own
+/// current <c>Source</c>/<c>Stretch</c>/<c>ContentBounds</c> at the exact traversal position a
+/// fresh paint would have run.
 ///
 /// Being overlapped or bordered by a popup that belongs to a DIFFERENT control needs no exclusion
 /// at all: the popup layer always repaints unconditionally after ordinary content on every frame
@@ -361,11 +367,12 @@ public sealed class RenderCleanSubtreeReuseTests
         control.RenderCalls.ShouldBe(2);
     }
 
-    /// <summary>Verifies a render-clean Image with an assigned source always re-records its
-    /// semantic placement instead of silently dropping it through the copy path - copying cells
-    /// never replays <see cref="TerminalCanvas.DrawImage"/> (see #26).</summary>
+    /// <summary>Verifies a render-clean Image with an assigned source still records its semantic
+    /// placement through the copy path (see #235): copying cells alone cannot replay
+    /// <see cref="TerminalCanvas.DrawImage"/>, so <c>Image.OnReuseCleanRender</c> re-asserts an
+    /// identical placement instead of silently dropping it.</summary>
     [Fact]
-    public async Task Render_WhenImageHasSource_AlwaysRecordsPlacementAsync()
+    public async Task Render_WhenImageIsRenderClean_PreservesPlacementThroughTheCopyPathAsync()
     {
         var image = new Image
         {
@@ -381,14 +388,193 @@ public sealed class RenderCleanSubtreeReuseTests
         using var first = new Frame(size);
         image.Render(first.Canvas);
         first.PlacementCount.ShouldBe(1);
+        var firstPlacement = first.GetPlacement(0);
+        _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
+
+        using var second = new Frame(size);
+        _ = renderer.AttachCommittedFrame(second);
+        second.Canvas.HasPreviousFrame.ShouldBeTrue();
+        image.Render(second.Canvas);
+
+        second.PlacementCount.ShouldBe(1);
+        var secondPlacement = second.GetPlacement(0);
+        secondPlacement.Image.ShouldBeSameAs(image.Source);
+        secondPlacement.Source.ShouldBe(firstPlacement.Source);
+        secondPlacement.Destination.ShouldBe(firstPlacement.Destination);
+        secondPlacement.Mode.ShouldBe(firstPlacement.Mode);
+    }
+
+    /// <summary>
+    /// Verifies a render-clean Image actually takes the copy path rather than merely producing
+    /// output consistent with either path. <see cref="Image"/> is sealed, so it cannot carry a
+    /// <see cref="ProbeControl.RenderCalls"/>-style counter the way every other exclusion
+    /// dimension in this file is proven; instead, this poisons the committed frame's fallback-cell
+    /// content directly (bypassing <see cref="Image"/> entirely) after it paints and before the
+    /// frame commits, then renders again with no further mutation. A full fresh paint would
+    /// overwrite the poison with the recomputed fallback glyph; only <c>CopyFromPrevious</c>
+    /// reproduces it verbatim (see #235).
+    /// </summary>
+    [Fact]
+    public async Task Render_WhenImageIsRenderClean_ReallyTakesTheCopyPathAsync()
+    {
+        var image = new Image
+        {
+            Source = GraphicsImage.FromRgba(new Size(1, 1), new byte[4]),
+            Width = Length.Cells(1),
+            Height = Length.Cells(1)
+        };
+        var size = new Size(1, 1);
+        new LayoutEngine().Layout(image, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
+        using var first = new Frame(size);
+        image.Render(first.Canvas);
+        var freshFallbackGlyph = Row(first, 0);
+        freshFallbackGlyph.ShouldNotBe("Z", "the poison marker must differ from a genuine fresh paint");
+        _ = first.Canvas.Draw("Z", new Point(0, 0));
         _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
 
         using var second = new Frame(size);
         _ = renderer.AttachCommittedFrame(second);
         image.Render(second.Canvas);
 
+        Row(second, 0).ShouldBe("Z");
+    }
+
+    /// <summary>Verifies a Source change invalidates render and produces a fresh, updated
+    /// placement instead of one carried forward through reuse - a regression guard that removing
+    /// Image's unconditional full-render requirement did not weaken ordinary invalidation
+    /// (see #235).</summary>
+    [Fact]
+    public async Task Render_WhenImageSourceChangesBetweenFrames_RecordsTheNewPlacementAsync()
+    {
+        var firstSource = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 4]);
+        var secondSource = GraphicsImage.FromRgba(new Size(1, 1), [5, 6, 7, 8]);
+        var image = new Image
+        {
+            Source = firstSource,
+            Width = Length.Cells(1),
+            Height = Length.Cells(1)
+        };
+        var size = new Size(1, 1);
+        new LayoutEngine().Layout(image, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
+        using var first = new Frame(size);
+        image.Render(first.Canvas);
+        _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
+
+        image.Source = secondSource;
+        using var second = new Frame(size);
+        _ = renderer.AttachCommittedFrame(second);
+        image.Render(second.Canvas);
+
         second.PlacementCount.ShouldBe(1);
-        second.GetPlacement(0).Image.ShouldBeSameAs(image.Source);
+        second.GetPlacement(0).Image.ShouldBeSameAs(secondSource);
+    }
+
+    /// <summary>Verifies a fixed sequence of frames mixing an image-bearing leaf with dirty and
+    /// clean plain siblings always produces cell content AND placement snapshots identical to a
+    /// fully fresh render of the same state, proving the newly enabled image copy path never
+    /// diverges from the full paint path (see #235).</summary>
+    [Fact]
+    public async Task Render_WhenImageLeafIsMixedWithChangingSiblings_MatchesFullRenderEveryFrameAsync()
+    {
+        var image = new Image
+        {
+            Source = GraphicsImage.FromRgba(new Size(1, 1), new byte[4]),
+            Width = Length.Cells(2),
+            Height = Length.Cells(1)
+        };
+        var before = new ProbeControl(new Size(4, 1)) { Content = "before".AsMemory() };
+        var after = new ProbeControl(new Size(4, 1)) { Content = "after-".AsMemory() };
+        var stack = new Stack { Children = { before, image, after } };
+        var size = new Size(4, 3);
+        new LayoutEngine().Layout(stack, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
+        using var warm = new Frame(size);
+        stack.Render(warm.Canvas);
+        _ = await renderer.RenderAsync(warm, transport, profile, TestContext.Current.CancellationToken);
+
+        bool[][] dirtySequence =
+        [
+            [false, false], // neither sibling dirty: image is the only render-clean leaf either way
+            [true, false],
+            [false, true],
+            [true, true]
+        ];
+
+        foreach (var dirty in dirtySequence)
+        {
+            if (dirty[0])
+            {
+                before.Invalidate(Invalidation.Render);
+            }
+
+            if (dirty[1])
+            {
+                after.Invalidate(Invalidation.Render);
+            }
+
+            using var reused = new Frame(size);
+            _ = renderer.AttachCommittedFrame(reused);
+            stack.Render(reused.Canvas);
+
+            using var fresh = new Frame(size);
+            stack.Render(fresh.Canvas);
+
+            reused.PlacementCount.ShouldBe(fresh.PlacementCount);
+
+            for (var index = 0; index < fresh.PlacementCount; index++)
+            {
+                reused.GetPlacement(index).ShouldBe(fresh.GetPlacement(index));
+            }
+
+            for (var row = 0; row < size.Height; row++)
+            {
+                Row(reused, row).ShouldBe(Row(fresh, row));
+            }
+
+            _ = await renderer.RenderAsync(reused, transport, profile, TestContext.Current.CancellationToken);
+        }
+    }
+
+    /// <summary>Verifies the render-clean reuse extension point itself is invoked exactly when the
+    /// copy path is taken and never on an ordinary full render, proving the general wiring added
+    /// for image reuse (see #235) is correct independent of which concrete control exercises it.</summary>
+    [Fact]
+    public async Task Render_WhenLeafIsReused_InvokesReuseHookInsteadOfFullRenderAsync()
+    {
+        var dirty = new ProbeControl(new Size(4, 1)) { Content = "AAAA".AsMemory() };
+        var clean = new ProbeControl(new Size(4, 1)) { Content = "BBBB".AsMemory() };
+        var stack = new Stack { Children = { dirty, clean } };
+        var size = new Size(4, 2);
+        new LayoutEngine().Layout(stack, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
+        using var first = new Frame(size);
+        stack.Render(first.Canvas);
+        dirty.RenderCalls.ShouldBe(1);
+        dirty.ReuseCleanRenderCalls.ShouldBe(0);
+        clean.RenderCalls.ShouldBe(1);
+        clean.ReuseCleanRenderCalls.ShouldBe(0);
+        _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
+
+        dirty.Invalidate(Invalidation.Render);
+        using var second = new Frame(size);
+        _ = renderer.AttachCommittedFrame(second);
+
+        stack.Render(second.Canvas);
+
+        dirty.RenderCalls.ShouldBe(2);
+        dirty.ReuseCleanRenderCalls.ShouldBe(0);
+        clean.RenderCalls.ShouldBe(1);
+        clean.ReuseCleanRenderCalls.ShouldBe(1);
     }
 
     /// <summary>Verifies a fixed sequence of frames mixing clean and dirty leaves - none dirty,

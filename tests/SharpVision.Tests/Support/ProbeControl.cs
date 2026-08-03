@@ -43,6 +43,9 @@ internal sealed class ProbeControl: ChromeProbe
     /// <summary>Gets the number of OnRenderAdornment invocations.</summary>
     internal int AdornmentRenderCalls { get; private set; }
 
+    /// <summary>Gets the number of render-clean reuse invocations (see #235).</summary>
+    internal int ReuseCleanRenderCalls { get; private set; }
+
     /// <summary>Gets or sets work invoked from inside the next OnRenderAdornment pass.</summary>
     internal Action<ProbeControl>? RenderingAdornment { get; set; }
 
@@ -168,6 +171,15 @@ internal sealed class ProbeControl: ChromeProbe
         AdornmentRenderCalls++;
         RenderingAdornment?.Invoke(this);
     }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Proves the render-clean reuse wiring itself (see #235): this fires exactly when the render
+    /// path takes the copy branch instead of a full render, so a test can assert this counter and
+    /// <see cref="RenderCalls"/> are mutually exclusive per frame regardless of which concrete
+    /// control the mechanism is exercised through.
+    /// </remarks>
+    internal override void OnReuseCleanRender(TerminalCanvas canvas) => ReuseCleanRenderCalls++;
 
     /// <inheritdoc/>
     protected override void OnAttached()

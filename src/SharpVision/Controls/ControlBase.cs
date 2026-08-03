@@ -1098,12 +1098,20 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                 // canvas.HasPreviousFrame already guarantees no layout ran anywhere in the tree
                 // since the frame it copies from (see Application.StartRender), so this control's
                 // own Bounds - and therefore visual - are unchanged. Combined with an unset render
-                // bit and CanReuseCleanRender's leaf/image-free/shadow-free/owns-no-popup-of-its-own
+                // bit and CanReuseCleanRender's leaf/shadow-free/owns-no-popup-of-its-own
                 // requirement, the previous frame's cells for this exact region are still correct
                 // (see #26). Being overlapped or bordered by a FOREIGN popup - one this control
                 // does not itself own - needs no separate exclusion here: see the correctness note
                 // above CanReuseCleanRender for why (#235).
                 visual.CopyFromPrevious(visual.Bounds);
+
+                // Cell copying alone cannot reproduce a paint effect that lives outside the frame's
+                // cell arena - currently only Display.Image's semantic placement. OnReuseCleanRender
+                // re-asserts exactly that out-of-band state for this exact traversal position,
+                // reading this control's own CURRENT properties rather than anything cached: an
+                // unset render bit already proves nothing that would change them fired since the
+                // last real paint (see #235).
+                OnReuseCleanRender(visual);
             }
             else
             {
@@ -1144,11 +1152,13 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     // paint is fully reproduced by copying cells - no children (nothing else to composite), no
     // owned popups of its own (OwnedControlCount covers both layers), and no visible shadow
     // (CopyFromPrevious never restores VisualBounds' shadow-expanded overflow region). A control
-    // whose paint has an effect beyond cells (Display.Image's placement) opts out via
-    // RequiresCompleteRender. A transparent underlay never authors its uncovered cells - those
-    // cells hold whatever the parent painted underneath, so copying them resurrects the parent's
-    // OLD content over content that may have since changed with no invalidation of this otherwise
-    // render-clean control (see #239); requiring an opaque fill excludes exactly that case.
+    // whose paint has an effect a cell copy alone cannot reproduce opts out via
+    // RequiresCompleteRender - still available as a general escape hatch, though nothing sets it
+    // today; Display.Image used to (see the placement paragraph below for why it no longer needs
+    // to). A transparent underlay never authors its uncovered cells - those cells hold whatever the
+    // parent painted underneath, so copying them resurrects the parent's OLD content over content
+    // that may have since changed with no invalidation of this otherwise render-clean control (see
+    // #239); requiring an opaque fill excludes exactly that case.
     //
     // A visible shadow is safe to reuse under the identical reasoning, extended one level: a
     // shadow cell is safe to copy exactly when its own paint is a full destination overwrite that
@@ -1163,10 +1173,23 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     // TrySetOwnerStyle, which never touches the stored character - so a copied Composite shadow
     // cell would carry the OLD frame's grapheme forward even though the style is correct,
     // resurrecting stale content exactly like the transparent-underlay case (#239) the opaque body
-    // fill guard above already exists to prevent. Image-bearing subtrees stay excluded via
-    // RequiresCompleteRender and remain tracked separately in #235.
+    // fill guard above already exists to prevent.
     //
-    // Popup-overlapped subtrees (#235's next slice) need no exclusion here at all - traced the
+    // Image-bearing subtrees (#235's third slice) participate too, without any exclusion here:
+    // Canvas.CopyFromPrevious restores cells only and never replays Canvas.DrawImage's semantic
+    // placement, so a naive reuse would silently drop Display.Image's placement from the frame
+    // the moment it went render-clean, even though its cells stayed correct - the renderer would
+    // see the placement vanish from Frame.Placements and treat it as removed. OnReuseCleanRender
+    // closes that gap: called at the exact traversal position OnRenderContent would otherwise run,
+    // it re-asserts the placement by reading this control's own CURRENT Source/Stretch/bounds -
+    // never a cached prior value - so it is provably identical to what a fresh paint would record
+    // (an unset render bit already proves none of those changed since the last real paint). Because
+    // it runs through the ordinary Canvas.DrawImage call at the ordinary traversal position, paint
+    // order against every other placement or cell mutation this frame is exactly what it would have
+    // been had this control painted fresh: no separate ordering reasoning is needed beyond what
+    // already governs a normal render.
+    //
+    // Popup-overlapped subtrees (#235's second slice) need no exclusion here at all - traced the
     // actual coupling between popup state and the two flags this method depends on, rather than
     // assuming an exclusion was needed just because a popup's paint is "someone else's" pass:
     //
@@ -1201,6 +1224,19 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             (!appearance.Shadow.IsVisible ||
                 (appearance.Shadow.Mode == ShadowMode.BlockGlyph &&
                  appearance.ShadowBackgroundMode == BackgroundMode.Opaque));
+    }
+
+    /// <summary>
+    /// Re-asserts any out-of-band paint state a render-clean control's own cell copy cannot
+    /// reproduce, called at the exact traversal position <see cref="OnRenderContent"/> would
+    /// otherwise run. The default does nothing - a plain cell copy is already a complete
+    /// reproduction for the overwhelming majority of controls. <see cref="Display.Image"/>
+    /// overrides this to re-record its semantic <see cref="TerminalCanvas.DrawImage"/> placement,
+    /// which a cell copy alone never replays (see #235).
+    /// </summary>
+    /// <param name="canvas">The same clipped canvas <see cref="OnRenderContent"/> would receive.</param>
+    internal virtual void OnReuseCleanRender(TerminalCanvas canvas)
+    {
     }
 
     /// <summary>Requests a phase and every dependent later phase.</summary>

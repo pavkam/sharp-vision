@@ -147,21 +147,16 @@ next frame. See
 
 ## Clean subtree reuse
 
-For a render-only update with unchanged layout, the intended pipeline reuses the
-last committed cells for render-clean subtrees and executes rendering only for
-dirty branches. Reuse is valid only while cell geometry is unchanged; after a
-measure or arrange, every affected branch renders at its newly committed
-coordinates. Unicode cell ownership rules still repair any copied boundary that
-would split a wide grapheme.
-
-> [!IMPORTANT]
->
-> **Implementation gap:** `Application` attaches the renderer's committed frame
-> to render-only target frames, and `Canvas.CopyFromPrevious` safely copies
-> complete cell regions. The current control traversal does not call that copy
-> operation for clean subtrees, so every visited control redraws its semantic
-> cells. Output remains correct, but render invalidation does not yet provide
-> the intended per-subtree execution saving.
+For a render-only update with unchanged layout, the pipeline reuses the last
+committed cells for render-clean subtrees and executes rendering only for dirty
+branches. Reuse is valid only while cell geometry is unchanged; after a measure
+or arrange, every affected branch renders at its newly committed coordinates.
+Unicode cell ownership rules still repair any copied boundary that would split a
+wide grapheme. See the
+[control rendering](../architecture/rendering-pipeline.md#control-rendering)
+section for the exact eligibility predicate and what a control whose paint has
+an effect outside the cell arena - currently only `Image`'s placement - must do
+to participate.
 
 ## Choosing an impact
 

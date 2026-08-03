@@ -88,9 +88,6 @@ public sealed class Image: ControlBase
     }
 
     /// <inheritdoc/>
-    internal override bool RequiresCompleteRender => Source is not null;
-
-    /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
         var bounds = ContentBounds;
@@ -123,6 +120,31 @@ public sealed class Image: ControlBase
         {
             canvas.DrawImage(source, bounds, ToPlacementMode(Stretch));
         }
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Canvas.CopyFromPrevious already restored this control's fallback shade and alternate-text
+    /// cells; DrawImage's own semantic placement is the one thing a cell copy can never replay, so
+    /// this re-records it alone. An unset render bit already proves Source, Stretch, and
+    /// ContentBounds are unchanged since the last real paint, so reading them fresh here is
+    /// provably identical to what that paint recorded (see #235).
+    /// </remarks>
+    internal override void OnReuseCleanRender(TerminalCanvas canvas)
+    {
+        if (Source is not { } source)
+        {
+            return;
+        }
+
+        var bounds = ContentBounds;
+
+        if (bounds.Width == 0 || bounds.Height == 0)
+        {
+            return;
+        }
+
+        canvas.DrawImage(source, bounds, ToPlacementMode(Stretch));
     }
 
     /// <inheritdoc/>

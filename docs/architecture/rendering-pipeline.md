@@ -200,15 +200,31 @@ exception restores render dirtiness before propagating.
 A control that was already render-clean copies its previous frame's cells
 instead of running that paint sequence, when a previous frame is available
 (`Canvas.HasPreviousFrame`, attached only when no layout ran anywhere in the
-tree since that frame) and the control owns no children of its own
-(`OwnedControlCount == 0`, covering both the normal and popup layers), casts no
-visible shadow (`!ActualShadow.IsVisible`), and does not itself override
-`RequiresCompleteRender` to opt out - the
-[`Image`](../controls/display/image.md#overview) control does when it has an
-assigned source, since `Canvas.CopyFromPrevious` restores cells only and never
-replays the semantic placement `DrawImage` records alongside them. This is a
-narrow, conservative first cut (see #26); shadow-bearing, popup-overlapped, and
-image-bearing subtrees stay excluded and are tracked separately in #235.
+tree since that frame), the control owns no children of its own
+(`OwnedControlCount == 0`, covering both the normal and popup layers), its
+resolved background is opaque (a transparent underlay never authors its
+uncovered cells, so copying them would resurrect stale content painted
+underneath), any visible shadow is BlockGlyph mode with an opaque resolved
+background (the only shadow paint that is a full destination overwrite provably
+independent of whatever was there before - Composite always preserves the
+underlying grapheme, and FractionalBlock always blends), and it does not itself
+override `RequiresCompleteRender` to opt out (a general escape hatch; nothing
+currently sets it). Being overlapped or bordered by a popup that belongs to a
+different control needs no exclusion: the popup layer repaints unconditionally
+on every frame, and any frame where a popup's footprint could have changed is,
+by construction, a frame where no control application-wide has a previous frame
+to copy from.
+
+A control whose own paint has an effect a cell copy alone cannot reproduce -
+currently only [`Image`](../controls/display/image.md#overview)'s semantic
+`DrawImage` placement, recorded outside the frame's cell arena - re-asserts that
+effect through `OnReuseCleanRender`, called at the exact traversal position
+`OnRenderContent` would otherwise run. It reads the control's own current
+properties, never a cached prior value, so the reasserted state is provably
+identical to what a fresh paint would have produced: an unset render bit already
+proves nothing that would change them fired since the last real paint. This
+closes the last excluded case from the narrow, conservative first cut (see #26
+and #235).
 
 Hidden, collapsed, and effectively hidden subtrees draw nothing. Every control
 renders its normal-layer ownership slots in slot-registration then item order,
