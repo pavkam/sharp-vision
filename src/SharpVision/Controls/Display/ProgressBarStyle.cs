@@ -14,15 +14,12 @@ public readonly struct ProgressBarStyle: IEquatable<ProgressBarStyle>
     private readonly ProgressBarGlyphs? _glyphs;
     private readonly ThemeProfile? _appearance;
 
-    /// <summary>Gets the primary progress-bar-style definition.</summary>
-    internal static StyleDefinition<ProgressBarStyle> Definition { get; } = StyleDefinitions.Control(
+    /// <summary>Gets the primary progress-bar-style definition. Reads the theme's registrable
+    /// "progressBar" style section (see #155) for the three colors when the active theme authors
+    /// one; falls back to the code-owned structural defaults otherwise.</summary>
+    internal static StyleDefinition<ProgressBarStyle> Definition { get; } = new(
         ThemeRole.Control,
-        static profile => new ProgressBarStyle(
-            Default.FillColor,
-            Default.TrackColor,
-            Default.IndeterminateColor,
-            Default.Glyphs,
-            profile),
+        ResolveComplete,
         static style => style.Appearance,
         static (previous, previousTheme, current, currentTheme) =>
             previous != current ||
@@ -31,6 +28,28 @@ public readonly struct ProgressBarStyle: IEquatable<ProgressBarStyle>
             ControlBase.ResolveColor(previous.IndeterminateColor, previousTheme) != ControlBase.ResolveColor(current.IndeterminateColor, currentTheme)
                 ? InvalidationImpact.Render
                 : InvalidationImpact.None);
+
+    private static ProgressBarStyle ResolveComplete(ProgressBarStyle? local, Theme? theme)
+    {
+        if (local.HasValue)
+        {
+            return local.Value;
+        }
+
+        var effectiveTheme = theme ?? Themes.Dark;
+        var section = effectiveTheme.GetStyleSection<ProgressBarStyleSection>("progressBar");
+
+        return new ProgressBarStyle(
+            ResolveColor(effectiveTheme, section?.FillColor, "fillColor") ?? Default.FillColor,
+            ResolveColor(effectiveTheme, section?.TrackColor, "trackColor") ?? Default.TrackColor,
+            ResolveColor(effectiveTheme, section?.IndeterminateColor, "indeterminateColor") ?? Default.IndeterminateColor,
+            Default.Glyphs,
+            effectiveTheme.GetProfile(ThemeRole.Control));
+    }
+
+    private static ColorValue? ResolveColor(Theme theme, string? value, string memberName) => value is null
+        ? null
+        : theme.ResolveSectionColorValue(value, $"styles.progressBar.{memberName}");
 
     /// <summary>Initializes a complete progress-bar presentation.</summary>
     /// <param name="fillColor">The non-transparent completed-progress foreground.</param>

@@ -30,6 +30,14 @@ focus, is excluded from hit testing, and owns no children.
   It defaults to `false`.
 - `FillGlyph`, `TrackGlyph`, and `IndeterminateGlyph` are validated one-cell
   local overrides, and `ResetGlyphs()` clears all three at once.
+- A theme document may author a `styles.progressBar` section with
+  `fillColor`/`trackColor`/`indeterminateColor` string members (accepting a
+  `ThemeColor` name, a `#RGB`/`#RRGGBB` literal, a palette key, or
+  `"transparent"`/`"default"`); an active theme's section supplies those colors
+  ahead of the code-owned defaults whenever `FillColor`/`TrackColor`/
+  `IndeterminateColor` are not locally set (see
+  [themes.md](../../concepts/themes.md#semantic-profiles)). The glyph family
+  remains code-owned.
 
 `ValueChanged` fires for every committed `Value` transition, no matter which
 public setter caused it — assigning `Value` directly, or a `Minimum`/`Maximum`
