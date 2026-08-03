@@ -577,15 +577,11 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         _prepared = false;
     }
 
-    private void EnsurePrepared()
-    {
-        ThrowIfDisposed();
+    private void EnsurePrepared() => GraphicsBackendSupport.EnsurePrepared(
+        _disposed,
+        this,
+        _prepared,
+        "No non-retained graphics transaction is prepared.");
 
-        if (!_prepared)
-        {
-            throw new InvalidOperationException("No non-retained graphics transaction is prepared.");
-        }
-    }
-
-    private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
+    private void ThrowIfDisposed() => GraphicsBackendSupport.ThrowIfDisposed(_disposed, this);
 }

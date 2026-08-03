@@ -775,17 +775,13 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         _prepared = false;
     }
 
-    private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
+    private void ThrowIfDisposed() => GraphicsBackendSupport.ThrowIfDisposed(_disposed, this);
 
-    private void EnsurePrepared()
-    {
-        ThrowIfDisposed();
-
-        if (!_prepared)
-        {
-            throw new InvalidOperationException("A Kitty backend transaction has not been prepared.");
-        }
-    }
+    private void EnsurePrepared() => GraphicsBackendSupport.EnsurePrepared(
+        _disposed,
+        this,
+        _prepared,
+        "A Kitty backend transaction has not been prepared.");
 
     #endregion
 }

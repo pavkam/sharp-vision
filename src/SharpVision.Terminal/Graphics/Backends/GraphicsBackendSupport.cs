@@ -55,4 +55,28 @@ internal static class GraphicsBackendSupport
             return intersection.Width != 0 && intersection.Height != 0;
         }
     }
+
+    /// <summary>Throws when a backend field marks the owning instance disposed.</summary>
+    /// <param name="disposed">The owning backend's disposed field.</param>
+    /// <param name="backend">The owning backend, reported as the disposed type on failure.</param>
+    /// <exception cref="ObjectDisposedException"><paramref name="disposed"/> is true.</exception>
+    public static void ThrowIfDisposed(bool disposed, object backend) =>
+        ObjectDisposedException.ThrowIf(disposed, backend);
+
+    /// <summary>Throws when a backend is disposed or has no prepared transaction.</summary>
+    /// <param name="disposed">The owning backend's disposed field.</param>
+    /// <param name="backend">The owning backend, reported as the disposed type on failure.</param>
+    /// <param name="prepared">The owning backend's prepared field.</param>
+    /// <param name="message">The backend-specific message for a missing prepared transaction.</param>
+    /// <exception cref="ObjectDisposedException"><paramref name="disposed"/> is true.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="prepared"/> is false.</exception>
+    public static void EnsurePrepared(bool disposed, object backend, bool prepared, string message)
+    {
+        ThrowIfDisposed(disposed, backend);
+
+        if (!prepared)
+        {
+            throw new InvalidOperationException(message);
+        }
+    }
 }
