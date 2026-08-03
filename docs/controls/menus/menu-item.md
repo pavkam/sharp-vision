@@ -9,18 +9,18 @@ face; there is no competing text-only `Header` property.
 
 ## API
 
-| Member                           | Default         | Purpose                                                             |
-| -------------------------------- | --------------- | ------------------------------------------------------------------- |
-| `Content`                        | `null`          | The item's label or richer face; the item owns it.                  |
-| `Kind`                           | `Command`       | Chooses command, check, or radio activation semantics.              |
-| `IsChecked`, `GroupName`         | `false`, `null` | Hold the check state and scope radio exclusivity.                   |
-| `ShortcutText`                   | `null`          | Shows a dim, right-aligned hint; registers no key binding.          |
-| `Shortcut`                       | `null`          | A typed `KeyGesture` that derives `ShortcutText`; also unbound.     |
-| `Submenu`                        | `null`          | An optional popup-layer child menu the item owns.                   |
-| `UncheckedGlyph`, `CheckedGlyph` | Code-owned      | Override state marks; `ResetGlyphs()` restores code-owned defaults. |
-| `Invoked`                        | No subscribers  | Raised after activation commits, once any check state has updated.  |
-| `PerformInvoke()`                | —               | Invokes the item programmatically.                                  |
-| `Command`, `CommandParameter`    | `null`          | Inherited from `Pressable`; runs after `Invoked`.                   |
+| Member                           | Default         | Purpose                                                                                        |
+| -------------------------------- | --------------- | ---------------------------------------------------------------------------------------------- |
+| `Content`                        | `null`          | The item's label or richer face; the item owns it.                                             |
+| `Kind`                           | `Command`       | Chooses command, check, or radio activation semantics.                                         |
+| `IsChecked`, `GroupName`         | `false`, `null` | Hold the check state and scope radio exclusivity.                                              |
+| `ShortcutText`                   | `null`          | Shows a dim, right-aligned hint; registers no key binding.                                     |
+| `Shortcut`                       | `null`          | A typed `KeyGesture` that both derives `ShortcutText` and activates the item application-wide. |
+| `Submenu`                        | `null`          | An optional popup-layer child menu the item owns.                                              |
+| `UncheckedGlyph`, `CheckedGlyph` | Code-owned      | Override state marks; `ResetGlyphs()` restores code-owned defaults.                            |
+| `Invoked`                        | No subscribers  | Raised after activation commits, once any check state has updated.                             |
+| `PerformInvoke()`                | —               | Invokes the item programmatically.                                                             |
+| `Command`, `CommandParameter`    | `null`          | Inherited from `Pressable`; runs after `Invoked`.                                              |
 
 ## Behavior
 
@@ -89,9 +89,42 @@ set, `Shortcut` supplies its conventional display text; for example,
 `new KeyGesture(Code.Character, Modifiers.Control, new Rune('s'))` displays as
 `"Ctrl+S"`. An explicit `ShortcutText` assignment always wins over the derived
 text, following the same local-wins-over-derived precedence used throughout the
-library. Like `ShortcutText`, `Shortcut` is purely declarative: it routes no
-input by itself, so the application is still responsible for actually invoking
-the item when the chord arrives.
+library.
+
+## Shortcut dispatch
+
+Unlike `ShortcutText`, `Shortcut` is bound: a matching keyboard transition
+invokes the item directly, application-wide, independent of which control
+currently has focus. Dispatch is a stateless tree walk over every attached
+`MenuItem`, modeled on
+[access-key discovery](../../concepts/access-keys.md#overview) rather than a
+registration table, so there is nothing to keep in sync as items are added,
+removed, disposed, reparented, or as a submenu opens and closes.
+
+- **Reachability does not require visibility.** An item inside a currently
+  closed submenu still matches its shortcut and invokes without opening the
+  submenu, because a closed submenu's content stays attached — only an enabled,
+  attached item is required.
+- **Dispatch runs before routed key handling.** A shortcut match short-circuits
+  the key entirely: it is never routed to the focused control, so a chord bound
+  as a shortcut is never also typed or otherwise handled by whatever currently
+  has focus.
+- **Duplicate gestures cycle from the current focus**, exactly like duplicate
+  access keys: repeated presses advance from whichever match currently contains
+  focus to the next one in tree order, wrapping around.
+- **Only `KeyAction.Press` activates a shortcut.** Held-key repeats never
+  re-invoke it.
+- **Modal scopes narrow the search** to items reachable from the active modal
+  plane, the same as access keys.
+
+```csharp
+var save = new MenuItem
+{
+    Content = new Text("Save"),
+    Shortcut = new KeyGesture(Code.Character, Modifiers.Control, new Rune('s')),
+};
+save.Invoked += (_, _) => SaveDocument();
+```
 
 ## Submenus
 
@@ -143,6 +176,9 @@ menu.Items.Add(new MenuItem
 - Submenus open in their documented placement, follow the popup lifecycle,
   restore focus to the owning menu on close, and share one scope through nested
   chains.
+- A `Shortcut` invokes its item application-wide, including inside a closed
+  submenu, before routed key handling ever reaches the focused control, and
+  duplicate gestures cycle from the current focus like access keys.
 - Separators never focus, hit test, or invoke.
 - Styles resolve as documented, and rendering is deterministic down to the exact
   cells.

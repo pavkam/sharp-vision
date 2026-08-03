@@ -52,6 +52,7 @@ public sealed class Application: ISink, IAsyncDisposable
     private readonly ArrayBufferWriter<byte> _outOfBand = new();
     private IDisposable? _clipboardShortcutRegistration;
     private AccessKeyManager? _accessKeys;
+    private ShortcutManager? _shortcuts;
     private KeyEventArgs? _routedKeyArgs;
     private Control? _routedKeyTarget;
     private Rune? _suppressedAccessKeyText;
@@ -779,6 +780,11 @@ public sealed class Application: ISink, IAsyncDisposable
         {
             case RecordKind.Key:
                 {
+                    if (_shortcuts?.Process(record.Stroke) == true)
+                    {
+                        break;
+                    }
+
                     var keyTarget = Modality.KeyTarget(Focus.Focused);
                     var isModal = Modality.Active is not null;
                     var eventArgs = new KeyEventArgs(record.Stroke);
@@ -1121,6 +1127,7 @@ public sealed class Application: ISink, IAsyncDisposable
                     CaptureValue = new PointerManager(Root, _timeProvider, ActivationValue.Activate);
                     ModalityValue = new ModalityManager(Root, FocusValue, CaptureValue);
                     _accessKeys = new AccessKeyManager(Root, FocusValue, ModalityValue);
+                    _shortcuts = new ShortcutManager(Root, FocusValue, ModalityValue);
                     FocusValue.Lost += OnFocusChanged;
                     FocusValue.Gained += OnFocusChanged;
                 });
@@ -1257,6 +1264,7 @@ public sealed class Application: ISink, IAsyncDisposable
             _clipboardShortcutRegistration = null;
             _clipboardText = string.Empty;
             _accessKeys = null;
+            _shortcuts = null;
             _suppressedAccessKeyText = null;
             CaptureCleanup(() => ModalityValue?.Shutdown(), ref cleanupFailure);
             CaptureCleanup(() => CaptureValue?.Dispose(), ref cleanupFailure);

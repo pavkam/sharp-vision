@@ -7,6 +7,8 @@ using System.Runtime.ExceptionServices;
 
 using Popups;
 
+using SharpVision.Terminal.Input;
+
 /// <summary>Defines one focusable command, check, or radio entry in a <see cref="Menu"/>.</summary>
 [PublicAPI]
 public sealed class MenuItem: Pressable
@@ -138,12 +140,11 @@ public sealed class MenuItem: Pressable
         set => _ = SetProperty(ref _shortcutTextValue, value, InvalidationImpact.Measure);
     }
 
-    /// <summary>Gets or sets the optional typed keyboard chord this item advertises.</summary>
+    /// <summary>Gets or sets the optional typed keyboard chord that both displays and activates this item.</summary>
     /// <remarks>
-    /// Purely declarative: it derives <see cref="ShortcutText"/> when that is otherwise unset, but
-    /// routes no input. A consumer that wants the gesture to actually invoke this item still owns
-    /// that wiring, exactly as it did with a hand-typed <see cref="ShortcutText"/> before this member
-    /// existed.
+    /// Derives <see cref="ShortcutText"/> when that is otherwise unset. A matching keyboard
+    /// transition activates the item application-wide, independent of focus, as long as the item
+    /// is attached and enabled and is reachable from the active interaction plane.
     /// </remarks>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
@@ -163,6 +164,20 @@ public sealed class MenuItem: Pressable
             }
         }
     }
+
+    /// <summary>Reports whether a completed keyboard transition should activate this item's shortcut.</summary>
+    /// <param name="stroke">The decoded keyboard transition.</param>
+    /// <returns>
+    /// True when the item is attached, not disposed, enabled (visibility is deliberately not
+    /// required, so shortcuts reach items inside a closed submenu), and <see cref="Shortcut"/> is
+    /// set and matches <paramref name="stroke"/>.
+    /// </returns>
+    internal bool MatchesShortcut(in Stroke stroke) =>
+        !IsDisposed &&
+        Dispatcher is not null &&
+        EffectiveIsEnabled &&
+        Shortcut is { } gesture &&
+        gesture.Matches(stroke);
 
     /// <inheritdoc/>
     protected override bool OnAccessKey(Rune key)

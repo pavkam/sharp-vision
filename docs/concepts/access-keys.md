@@ -58,6 +58,13 @@ immediately adjacent equal text Rune, so the character cannot leak into the
 newly focused editor. If the stroke is declined or was handled during routing,
 its text record is left untouched.
 
+`MenuItem.Shortcut` dispatch is the mirror image: it runs _before_ the ordinary
+route, not after. A matching chord invokes its item and the stroke never reaches
+routing at all, so a shortcut always wins over whatever the focused control
+would otherwise do with the same keys. See
+[MenuItem shortcut dispatch](../controls/menus/menu-item.md#shortcut-dispatch)
+for its discovery rules, which mirror this section's precisely.
+
 ## Discovery eligibility and duplicates
 
 Discovery takes a snapshot of the current ownership tree for each qualifying
