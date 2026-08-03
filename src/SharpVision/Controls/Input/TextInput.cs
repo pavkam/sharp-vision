@@ -709,6 +709,11 @@ public sealed class TextInput: Control
             default:
                 break;
         }
+
+        if (!eventArgs.Handled)
+        {
+            base.OnEvent(eventArgs);
+        }
     }
 
     /// <inheritdoc/>

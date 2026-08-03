@@ -117,6 +117,29 @@ public sealed class TextInputTests
         control.Text.ShouldEndWith("\n");
     }
 
+    /// <summary>Verifies keys outside the editor command set remain available to routed input.</summary>
+    [Fact]
+    public void Dispatch_WhenKeyIsUnhandled_RaisesInheritedKeyDownWithoutConsumingIt()
+    {
+        // Arrange
+        var control = new TextInput();
+        var raised = 0;
+        control.KeyDown += (_, _) => raised++;
+        var eventArgs = new KeyEventArgs(new Stroke(
+            Code.F1,
+            character: null,
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press));
+
+        // Act
+        Route(control, eventArgs, Events.Key);
+
+        // Assert
+        eventArgs.Handled.ShouldBeFalse();
+        raised.ShouldBe(1);
+    }
+
     /// <summary>Verifies navigation, extension, word movement, and deletion use grapheme boundaries.</summary>
     [Fact]
     public void Dispatch_WhenEditingKeysArrive_UsesDirectionalGraphemeSelection()

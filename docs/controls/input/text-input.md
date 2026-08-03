@@ -145,7 +145,8 @@ on grapheme boundaries. An unhandled Tab moves focus through the owning
 manager's tab order, while `AcceptsTab` handles Tab locally and inserts it.
 Shift+Tab moves backward when the editor does not accept tabs. IME composition
 is represented separately from committed text when the terminal protocol
-supplies it.
+supplies it. Keys outside the editor command set remain available to inherited
+routed input.
 
 Space-independent text events insert decoded `Rune` values. Bracketed paste
 decodes its owned UTF-8 payload once and applies one atomic proposal; a policy
