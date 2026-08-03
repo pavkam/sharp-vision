@@ -109,7 +109,7 @@ internal static class Png
 
             var channels = ChannelsFor(colorType);
             byte[]? palette = null;
-            byte[]? paletteAlpha = null;
+            byte[]? transparency = null;
             var idat = new ArrayBufferWriter<byte>();
             var offset = Signature.Length;
 
@@ -126,7 +126,7 @@ internal static class Png
                 }
                 else if (type.SequenceEqual("tRNS"u8))
                 {
-                    paletteAlpha = data.ToArray();
+                    transparency = data.ToArray();
                 }
                 else if (type.SequenceEqual("IDAT"u8))
                 {
@@ -142,6 +142,8 @@ internal static class Png
             {
                 throw new NotSupportedException("An indexed PNG source has no PLTE chunk.");
             }
+
+            ValidateTransparency(colorType, palette, transparency);
 
             var stride = checked(size.Width * channels);
             var rawLength = checked((long) size.Height * (stride + 1));
@@ -185,7 +187,7 @@ internal static class Png
             }
 
             var pixels = Defilter(raw, size.Height, stride, channels);
-            return ToRgba(pixels, size, colorType, channels, palette, paletteAlpha);
+            return ToRgba(pixels, size, colorType, channels, palette, transparency);
         }
     }
 
@@ -306,7 +308,7 @@ internal static class Png
         byte colorType,
         int channels,
         byte[]? palette,
-        byte[]? paletteAlpha)
+        byte[]? transparency)
     {
         var rgba = new byte[checked(size.Width * size.Height * 4)];
 
@@ -319,11 +321,19 @@ internal static class Png
             {
                 case 0:
                     destination[0] = destination[1] = destination[2] = source[0];
-                    destination[3] = 255;
+                    destination[3] = transparency is not null &&
+                                     source[0] == ReadEightBitTransparencySample(transparency)
+                        ? (byte) 0
+                        : (byte) 255;
                     break;
                 case 2:
                     source.CopyTo(destination);
-                    destination[3] = 255;
+                    destination[3] = transparency is not null &&
+                                     source[0] == ReadEightBitTransparencySample(transparency) &&
+                                     source[1] == ReadEightBitTransparencySample(transparency.AsSpan(2)) &&
+                                     source[2] == ReadEightBitTransparencySample(transparency.AsSpan(4))
+                        ? (byte) 0
+                        : (byte) 255;
                     break;
                 case 3:
                     var index = source[0];
@@ -339,8 +349,8 @@ internal static class Png
                     destination[0] = palette[paletteOffset];
                     destination[1] = palette[paletteOffset + 1];
                     destination[2] = palette[paletteOffset + 2];
-                    destination[3] = paletteAlpha is not null && index < paletteAlpha.Length
-                        ? paletteAlpha[index]
+                    destination[3] = transparency is not null && index < transparency.Length
+                        ? transparency[index]
                         : (byte) 255;
                     break;
                 case 4:
@@ -354,6 +364,36 @@ internal static class Png
         }
 
         return rgba;
+    }
+
+    private static byte ReadEightBitTransparencySample(ReadOnlySpan<byte> value) =>
+        (byte) (BinaryPrimitives.ReadUInt16BigEndian(value) & byte.MaxValue);
+
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    private static void ValidateTransparency(byte colorType, byte[]? palette, byte[]? transparency)
+    {
+        if (transparency is null)
+        {
+            return;
+        }
+
+        var valid = colorType switch
+        {
+            0 => transparency.Length == 2,
+            2 => transparency.Length == 6,
+            3 => palette is not null && transparency.Length <= palette.Length / 3,
+            _ => false
+        };
+
+        if (!valid)
+        {
+            throw new ArgumentException(
+                "The PNG tRNS chunk is invalid for its color type.",
+                nameof(transparency));
+        }
     }
 
     [SuppressMessage(

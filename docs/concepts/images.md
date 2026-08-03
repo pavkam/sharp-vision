@@ -15,8 +15,11 @@ The first source representations are:
 
 PNG validation establishes safe ownership and dimensions. The decoder converts
 non-interlaced, 8-bit grayscale, RGB, indexed, grayscale-alpha, and RGBA sources
-to straight RGBA8888 for raster-only backends. The Kitty and iTerm2 backends may
-transmit owned PNG directly when their capability and route are proved.
+to straight RGBA8888 for raster-only backends. It applies indexed alpha tables
+and the exact transparent grayscale or RGB sample from `tRNS` as specified by
+the [PNG Third Edition transparency chunk](https://www.w3.org/TR/png-3/#11tRNS).
+The Kitty and iTerm2 backends may transmit owned PNG directly when their
+capability and route are proved.
 
 On a terminal whose only graphics protocol is sixel, a supported PNG placement
 is decoded and rendered through sixel after the Image control paints its

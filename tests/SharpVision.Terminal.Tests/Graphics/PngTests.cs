@@ -104,6 +104,35 @@ public sealed class PngTests
         decoded.ShouldBe([0, 0, 0, 255, 128, 128, 128, 255, 255, 255, 255, 255]);
     }
 
+    /// <summary>Verifies grayscale and truecolor tRNS samples become transparent while adjacent
+    /// colors remain opaque.</summary>
+    [Fact]
+    public void DecodeRgba_WhenGrayscaleOrTruecolorMatchesTrns_SetsAlphaToTransparent()
+    {
+        var grayscale = CreateDecodablePng(
+            2,
+            1,
+            colorType: 0,
+            bitDepth: 8,
+            [0],
+            [[42, 43]],
+            trns: [0, 42]);
+        var truecolor = CreateDecodablePng(
+            2,
+            1,
+            colorType: 2,
+            bitDepth: 8,
+            [0],
+            [[1, 2, 3, 1, 2, 4]],
+            trns: [0, 1, 0, 2, 0, 3]);
+
+        var grayscaleDecoded = grayscale.AsSpan().DecodeRgba();
+        var truecolorDecoded = truecolor.AsSpan().DecodeRgba();
+
+        grayscaleDecoded.ShouldBe([42, 42, 42, 0, 43, 43, 43, 255]);
+        truecolorDecoded.ShouldBe([1, 2, 3, 0, 1, 2, 4, 255]);
+    }
+
     /// <summary>Verifies grayscale-with-alpha pixels expand to RGB while preserving alpha.</summary>
     [Fact]
     public void DecodeRgba_WhenColorTypeIsGrayscaleAlpha_ExpandsGrayAndPreservesAlpha()
