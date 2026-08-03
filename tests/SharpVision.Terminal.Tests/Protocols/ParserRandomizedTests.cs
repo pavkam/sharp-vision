@@ -50,7 +50,7 @@ public sealed class ParserRandomizedTests
             random.NextBytes(input.AsSpan(0, 64));
             input[64] = 0x18;
             "\u001b[2J"u8.CopyTo(input.AsSpan(65));
-            using Parser parser = new(ParserLimits.Default with
+            using ProtocolParser parser = new(ParserLimits.Default with
             {
                 MaxParameterBytes = 16,
                 MaxIntermediateBytes = 4,

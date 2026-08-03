@@ -44,17 +44,18 @@ Every asynchronous boundary receives owned storage or a copy. A borrowed span
 ends with its synchronous call, and borrowed frame or transport memory stays
 alive until the returned asynchronous operation completes.
 
-`Parser` invokes `ISequenceSink` synchronously. Every span supplied to a sink is
-borrowed only until that callback returns, so a sink that queues or retains a
-value must copy it. Parser disposal clears and returns its pooled
+`ProtocolParser` invokes `ISequenceSink` synchronously. Every span supplied to a
+sink is borrowed only until that callback returns, so a sink that queues or
+retains a value must copy it. Parser disposal clears and returns its pooled
 terminal-string storage.
 
-`Input.Decoder` borrows each transport span only until `Decode` returns. Key,
-text, pointer, and focus callbacks carry values only. During bracketed paste,
-the decoder owns one finite pooled buffer, clears it on overflow, completion,
-truncation, and disposal, and copies normalized UTF-8 into the delivered
-`Paste`. The `Paste` value's `ReadOnlyMemory<byte>` is therefore owned and stays
-stable across later decoder calls; no pooled array or transport memory escapes.
+`Input.InputDecoder` borrows each transport span only until `Decode` returns.
+Key, text, pointer, and focus callbacks carry values only. During bracketed
+paste, the decoder owns one finite pooled buffer, clears it on overflow,
+completion, truncation, and disposal, and copies normalized UTF-8 into the
+delivered `Paste`. The `Paste` value's `ReadOnlyMemory<byte>` is therefore owned
+and stays stable across later decoder calls; no pooled array or transport memory
+escapes.
 
 `Osc52.Decode` and `Kitty.Clipboard.Packet.Parse` copy successfully decoded
 payloads into owned arrays. A completed `Kitty.Clipboard.Transaction` transfers

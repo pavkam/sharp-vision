@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Input;
 
 /// <summary>
 /// Decodes SGR and legacy X10 mouse-report CSI sequences into <see cref="Pointer"/> values,
-/// extracted from <see cref="Decoder"/> as one of its four self-contained protocol decoders
+/// extracted from <see cref="InputDecoder"/> as one of its four self-contained protocol decoders
 /// (see #97).
 /// </summary>
 internal sealed class MouseDecoder

@@ -37,7 +37,7 @@ Unicode cell geometry, screen buffers, damage, and terminal output. It has no
 reference to the UI project.
 
 Its public runtime boundaries are: `Protocols`, which provides exact encoders
-and streaming framing; `Input.Decoder`, which produces typed input values;
+and streaming framing; `Input.InputDecoder`, which produces typed input values;
 `Rendering.Frame`, `Canvas`, and `Renderer`, which handle semantic output;
 `Transport.ITransport`, which performs bounded I/O; and `Runtime.Session`, which
 owns mode leases and ordered input, resize, closure, and fault delivery.

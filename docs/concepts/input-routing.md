@@ -8,10 +8,10 @@ Controls never parse terminal bytes themselves.
 
 ## Terminal input values
 
-`SharpVision.Terminal.Input.Decoder` consumes borrowed byte spans incrementally
-and calls `IInputSink` synchronously. The sink receives immutable `Stroke`,
-`Text`, `Pointer`, and `TerminalFocus` values, an owned `Paste`, or a redacted
-protocol `Diagnostic`. No parser callback span crosses that boundary.
+`SharpVision.Terminal.Input.InputDecoder` consumes borrowed byte spans
+incrementally and calls `IInputSink` synchronously. The sink receives immutable
+`Stroke`, `Text`, `Pointer`, and `TerminalFocus` values, an owned `Paste`, or a
+redacted protocol `Diagnostic`. No parser callback span crosses that boundary.
 
 A `Stroke` carries a logical `Code`, an optional Unicode `Rune` for character
 keys, a non-negative native numeric code, composable `Modifiers`, and a

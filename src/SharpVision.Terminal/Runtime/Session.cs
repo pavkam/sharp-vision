@@ -478,8 +478,8 @@ public sealed class Session: IAsyncDisposable
     {
         var enable = new ArrayBufferWriter<byte>();
         var disable = new ArrayBufferWriter<byte>();
-        Modes.FocusReporting(new Writer(enable), enabled: true);
-        Modes.FocusReporting(new Writer(disable), enabled: false);
+        ProtocolModes.FocusReporting(new Writer(enable), enabled: true);
+        ProtocolModes.FocusReporting(new Writer(disable), enabled: false);
         return new Lease(enable.WrittenSpan, disable.WrittenSpan);
     }
 
@@ -487,8 +487,8 @@ public sealed class Session: IAsyncDisposable
     {
         var enable = new ArrayBufferWriter<byte>();
         var disable = new ArrayBufferWriter<byte>();
-        Modes.BracketedPaste(new Writer(enable), enabled: true);
-        Modes.BracketedPaste(new Writer(disable), enabled: false);
+        ProtocolModes.BracketedPaste(new Writer(enable), enabled: true);
+        ProtocolModes.BracketedPaste(new Writer(disable), enabled: false);
         return new Lease(enable.WrittenSpan, disable.WrittenSpan);
     }
 
@@ -497,12 +497,12 @@ public sealed class Session: IAsyncDisposable
         Debug.Assert(_options.Tracking.HasValue, "A mouse lease requires configured tracking.");
         var enable = new ArrayBufferWriter<byte>();
         var disable = new ArrayBufferWriter<byte>();
-        Modes.Mouse(
+        ProtocolModes.Mouse(
             new Writer(enable),
             _options.Tracking.Value,
             _options.Coordinates,
             enabled: true);
-        Modes.Mouse(
+        ProtocolModes.Mouse(
             new Writer(disable),
             _options.Tracking.Value,
             _options.Coordinates,

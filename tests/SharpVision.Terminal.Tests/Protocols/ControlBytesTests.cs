@@ -27,7 +27,7 @@ public sealed class ControlBytesTests
         ControlBytes.EightBitApc.ShouldBe((byte) 0x9f);
     }
 
-    /// <summary>Verifies Writer's emitted escape byte is the same constant Parser recognizes as
+    /// <summary>Verifies Writer's emitted escape byte is the same constant ProtocolParser recognizes as
     /// the escape introducer, so the encode and parse sides cannot drift apart from each other.</summary>
     [Fact]
     public void Escape_WhenWriterEmitsIt_IsWhatParserRecognizes()
@@ -38,7 +38,7 @@ public sealed class ControlBytesTests
         destination.WrittenSpan[0].ShouldBe(ControlBytes.Escape);
 
         var sink = new CountingSink();
-        using var parser = new Parser();
+        using var parser = new ProtocolParser();
         parser.Parse(destination.WrittenSpan, ref sink);
 
         sink.CsiCount.ShouldBe(1);

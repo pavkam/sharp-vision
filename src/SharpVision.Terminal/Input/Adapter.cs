@@ -6,12 +6,12 @@ namespace SharpVision.Terminal.Input;
 /// <summary>Adapts borrowed parser callbacks to one stateful input decoder.</summary>
 internal readonly struct Adapter: ISequenceSink
 {
-    private readonly Decoder _owner;
+    private readonly InputDecoder _owner;
 
     /// <summary>Initializes an adapter for one non-null decoder.</summary>
     /// <param name="owner">The stateful decoder receiving callbacks.</param>
     /// <exception cref="ArgumentNullException"><paramref name="owner"/> is null.</exception>
-    public Adapter(Decoder owner)
+    public Adapter(InputDecoder owner)
     {
         ArgumentNullException.ThrowIfNull(owner);
         _owner = owner;

@@ -648,9 +648,9 @@ namespace SharpVision.Terminal.Input
         F62 = 84,
         F63 = 85,
     }
-    public sealed class Decoder : System.IDisposable
+    public sealed class InputDecoder : System.IDisposable
     {
-        public Decoder(SharpVision.Terminal.Abstractions.IInputSink sink, SharpVision.Terminal.Input.Options? options = null, System.TimeProvider? timeProvider = null) { }
+        public InputDecoder(SharpVision.Terminal.Abstractions.IInputSink sink, SharpVision.Terminal.Input.Options? options = null, System.TimeProvider? timeProvider = null) { }
         public void Complete() { }
         public void Decode(System.ReadOnlySpan<byte> input) { }
         public void Dispose() { }
@@ -1085,17 +1085,6 @@ namespace SharpVision.Terminal.Protocols
         All = 2,
         Scrollback = 3,
     }
-    public static class Modes
-    {
-        public static void AlternateScreen(SharpVision.Terminal.Protocols.Writer writer, bool enabled) { }
-        public static void BracketedPaste(SharpVision.Terminal.Protocols.Writer writer, bool enabled) { }
-        public static void ClipboardPasteEvents(SharpVision.Terminal.Protocols.Writer writer, bool enabled) { }
-        public static void CursorVisible(SharpVision.Terminal.Protocols.Writer writer, bool visible) { }
-        public static void FocusReporting(SharpVision.Terminal.Protocols.Writer writer, bool enabled) { }
-        public static void Mouse(SharpVision.Terminal.Protocols.Writer writer, SharpVision.Terminal.Protocols.MouseTracking tracking, SharpVision.Terminal.Protocols.MouseCoordinates coordinates, bool enabled) { }
-        public static void SetPrivate(SharpVision.Terminal.Protocols.Writer writer, int mode, bool enabled) { }
-        public static void SynchronizedOutput(SharpVision.Terminal.Protocols.Writer writer, bool enabled) { }
-    }
     public enum MouseCoordinates
     {
         Default = 0,
@@ -1150,18 +1139,6 @@ namespace SharpVision.Terminal.Protocols
         public byte PrivateMarker { get; }
         public SharpVision.Terminal.Protocols.ParameterStatus Read(out int value, out SharpVision.Terminal.Protocols.ParameterSeparator separator) { }
     }
-    public sealed class Parser : System.IDisposable
-    {
-        public Parser(SharpVision.Terminal.Protocols.ParserLimits? limits = null) { }
-        public bool IsGround { get; }
-        public long Offset { get; }
-        public void Complete<TSink>(ref TSink sink)
-            where TSink : SharpVision.Terminal.Abstractions.ISequenceSink { }
-        public void Dispose() { }
-        public void Parse<TSink>(System.ReadOnlySpan<byte> input, ref TSink sink)
-            where TSink : SharpVision.Terminal.Abstractions.ISequenceSink { }
-        public void Reset() { }
-    }
     public sealed class ParserLimits : System.IEquatable<SharpVision.Terminal.Protocols.ParserLimits>
     {
         public ParserLimits() { }
@@ -1171,6 +1148,29 @@ namespace SharpVision.Terminal.Protocols
         public int MaxParameterBytes { get; init; }
         public int MaxStringBytes { get; init; }
         public static SharpVision.Terminal.Protocols.ParserLimits Default { get; }
+    }
+    public static class ProtocolModes
+    {
+        public static void AlternateScreen(SharpVision.Terminal.Protocols.Writer writer, bool enabled) { }
+        public static void BracketedPaste(SharpVision.Terminal.Protocols.Writer writer, bool enabled) { }
+        public static void ClipboardPasteEvents(SharpVision.Terminal.Protocols.Writer writer, bool enabled) { }
+        public static void CursorVisible(SharpVision.Terminal.Protocols.Writer writer, bool visible) { }
+        public static void FocusReporting(SharpVision.Terminal.Protocols.Writer writer, bool enabled) { }
+        public static void Mouse(SharpVision.Terminal.Protocols.Writer writer, SharpVision.Terminal.Protocols.MouseTracking tracking, SharpVision.Terminal.Protocols.MouseCoordinates coordinates, bool enabled) { }
+        public static void SetPrivate(SharpVision.Terminal.Protocols.Writer writer, int mode, bool enabled) { }
+        public static void SynchronizedOutput(SharpVision.Terminal.Protocols.Writer writer, bool enabled) { }
+    }
+    public sealed class ProtocolParser : System.IDisposable
+    {
+        public ProtocolParser(SharpVision.Terminal.Protocols.ParserLimits? limits = null) { }
+        public bool IsGround { get; }
+        public long Offset { get; }
+        public void Complete<TSink>(ref TSink sink)
+            where TSink : SharpVision.Terminal.Abstractions.ISequenceSink { }
+        public void Dispose() { }
+        public void Parse<TSink>(System.ReadOnlySpan<byte> input, ref TSink sink)
+            where TSink : SharpVision.Terminal.Abstractions.ISequenceSink { }
+        public void Reset() { }
     }
     public sealed class ProtocolRouter : System.IDisposable
     {

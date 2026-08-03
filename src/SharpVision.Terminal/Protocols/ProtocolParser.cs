@@ -14,13 +14,13 @@ namespace SharpVision.Terminal.Protocols;
 /// </remarks>
 /// <example>
 /// <code>
-/// using var parser = new Parser();
+/// using var parser = new ProtocolParser();
 /// parser.Parse(input, ref sink);
 /// parser.Complete(ref sink);
 /// </code>
 /// </example>
 [PublicAPI]
-public sealed class Parser: IDisposable
+public sealed class ProtocolParser: IDisposable
 {
     private readonly ParserLimits _limits;
     private byte[]? _parameters;
@@ -44,7 +44,7 @@ public sealed class Parser: IDisposable
     /// The immutable limits, or <see langword="null"/> for
     /// <see cref="ParserLimits.Default"/>.
     /// </param>
-    public Parser(ParserLimits? limits = null)
+    public ProtocolParser(ParserLimits? limits = null)
     {
         _limits = limits ?? ParserLimits.Default;
         _parameters = ArrayPool<byte>.Shared.Rent(_limits.MaxParameterBytes);

@@ -9,7 +9,7 @@ using SharpVision.Terminal.Xterm;
 
 using Metrics = CellMetrics;
 
-/// <summary>Verifies the cell-metrics inference resolver extracted from Decoder (see #97).</summary>
+/// <summary>Verifies the cell-metrics inference resolver extracted from InputDecoder (see #97).</summary>
 public sealed class CellMetricsResolverTests
 {
     /// <summary>Verifies exact local geometry is preferred over a queried uniform cell size.</summary>

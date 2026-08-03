@@ -7,10 +7,10 @@ using Input;
 
 /// <summary>
 /// Decodes Kitty progressive-enhancement keyboard CSI-<c>u</c> reports, extracted from
-/// <see cref="Decoder"/> (see #97 step 5).
+/// <see cref="InputDecoder"/> (see #97 step 5).
 /// </summary>
 /// <remarks>
-/// <see cref="TryDecimal(ReadOnlySpan{byte}, bool, out int)"/> and <see cref="TryReadModifiers"/> also back <c>Decoder</c>'s xterm
+/// <see cref="TryDecimal(ReadOnlySpan{byte}, bool, out int)"/> and <see cref="TryReadModifiers"/> also back <c>InputDecoder</c>'s xterm
 /// modifyOtherKeys CSI parsing, which reuses the same Kitty-originated modifier encoding.
 /// </remarks>
 internal sealed class KeyDecoder

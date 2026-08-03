@@ -39,10 +39,10 @@ AssociatedText without AllKeys is rejected because Kitty defines that
 combination as undefined. `EnhancementMode` exposes replace (1), set (2), and
 clear (3).
 
-`Input.Decoder` recognizes `CSI key:shifted:base;modifiers:event;text…u` without
-allocation or retained parser spans. Modifier values are decoded as the wire
-value minus one across Shift, Alt, Control, Super, Hyper, Meta, Caps Lock, and
-Num Lock. Event 1/2/3 maps to press/repeat/release. The immutable `Stroke`
+`Input.InputDecoder` recognizes `CSI key:shifted:base;modifiers:event;text…u`
+without allocation or retained parser spans. Modifier values are decoded as the
+wire value minus one across Shift, Alt, Control, Super, Hyper, Meta, Caps Lock,
+and Num Lock. Event 1/2/3 maps to press/repeat/release. The immutable `Stroke`
 preserves the main logical code, native number, optional shifted and PC-101
 base-layout Runes, modifiers, and action; up to 32 validated associated text
 scalars follow as ordered `Text` values.

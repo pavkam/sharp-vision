@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Protocols;
 
 /// <summary>
 /// Names the DEC private mode numbers this library queries and encodes, so the discovery query
-/// side and the <see cref="Modes"/> encode side cannot drift apart from each other (see #93).
+/// side and the <see cref="ProtocolModes"/> encode side cannot drift apart from each other (see #93).
 /// </summary>
 internal static class DecPrivateMode
 {

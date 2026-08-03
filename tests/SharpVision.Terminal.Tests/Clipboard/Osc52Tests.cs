@@ -135,7 +135,7 @@ public sealed class Osc52Tests
     [InlineData("\u001b]52;c;aGk=\a")]
     public void Decode_WhenParserDeliversOsc_ReturnsClipboardText(string sequence)
     {
-        using Parser parser = new();
+        using ProtocolParser parser = new();
         var sink = new RecordingSink();
 
         parser.Parse(Encoding.ASCII.GetBytes(sequence), ref sink);

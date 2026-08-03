@@ -104,7 +104,7 @@ public sealed class KittyWriterTests
 
         Writer.WriteData(new ProtocolWriter(destination), "application/octet-stream"u8, data);
 
-        using Parser parser = new();
+        using ProtocolParser parser = new();
         var sink = new RecordingSink();
         parser.Parse(destination.WrittenSpan, ref sink);
         Packet[] packets =

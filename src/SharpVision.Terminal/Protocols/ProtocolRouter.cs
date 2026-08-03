@@ -12,7 +12,7 @@ using MultiplexerRoute = Multiplexing.MultiplexerRoute;
 public sealed class ProtocolRouter: IDisposable
 {
     private readonly IProtocolSink _sink;
-    private readonly Decoder _decoder;
+    private readonly InputDecoder _decoder;
     private readonly MultiplexerRoute? _multiplexerRoute;
     private byte[]? _multiplexerCandidate;
     private int _multiplexerLength;
@@ -68,7 +68,7 @@ public sealed class ProtocolRouter: IDisposable
     {
         ArgumentNullException.ThrowIfNull(sink);
         _sink = sink;
-        _decoder = new Decoder(sink, options, timeProvider);
+        _decoder = new InputDecoder(sink, options, timeProvider);
 
         if (route?.Policy.IsActive == true)
         {

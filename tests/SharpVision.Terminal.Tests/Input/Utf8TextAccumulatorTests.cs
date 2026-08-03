@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Tests.Input;
 
 using SharpVision.Terminal.Input;
 
-/// <summary>Verifies the UTF-8 rune accumulator extracted from Decoder (see #97).</summary>
+/// <summary>Verifies the UTF-8 rune accumulator extracted from InputDecoder (see #97).</summary>
 public sealed class Utf8TextAccumulatorTests
 {
     /// <summary>Verifies a multi-byte sequence split across two calls decodes to one rune.</summary>

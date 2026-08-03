@@ -622,16 +622,16 @@ internal sealed class Programs
                 Sgr.Background(writer, Color.Default);
                 return true;
             case "smcup":
-                Modes.AlternateScreen(writer, enabled: true);
+                ProtocolModes.AlternateScreen(writer, enabled: true);
                 return true;
             case "rmcup":
-                Modes.AlternateScreen(writer, enabled: false);
+                ProtocolModes.AlternateScreen(writer, enabled: false);
                 return true;
             case "civis":
-                Modes.CursorVisible(writer, visible: false);
+                ProtocolModes.CursorVisible(writer, visible: false);
                 return true;
             case "cnorm":
-                Modes.CursorVisible(writer, visible: true);
+                ProtocolModes.CursorVisible(writer, visible: true);
                 return true;
             case "bel" when parameters.IsEmpty:
                 destination.Write("\a"u8);
