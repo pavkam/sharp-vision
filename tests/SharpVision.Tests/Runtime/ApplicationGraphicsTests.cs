@@ -123,6 +123,57 @@ public sealed class ApplicationGraphicsTests
         }
     }
 
+    /// <summary>
+    /// Verifies a clean frame - every placement encodes normally - never raises GraphicsDiagnostic
+    /// at all, matching how the other opportunistic terminal-diagnostic events on Application only
+    /// fire on an actual occurrence rather than every frame (see #233).
+    /// </summary>
+    [Fact]
+    public async Task StartAsync_WhenFrameHasNoSkippedPlacements_NeverRaisesGraphicsDiagnosticAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(2, 1), new Size(5, 3)));
+        var image = new Image
+        {
+            Source = Rgba(),
+            AlternateText = "AL",
+            Width = Length.Cells(2),
+            Height = Length.Cells(1)
+        };
+        await using Application application = new(
+            image,
+            terminal,
+            terminal,
+            Options(sixel: true));
+        var raised = false;
+        application.GraphicsDiagnostic += OnGraphicsDiagnostic;
+        var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.FrameRendered += OnFrameRendered;
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await rendered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        application.FrameRendered -= OnFrameRendered;
+        application.GraphicsDiagnostic -= OnGraphicsDiagnostic;
+
+        raised.ShouldBeFalse();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        return;
+
+        void OnGraphicsDiagnostic(object? sender, GraphicsDiagnosticEventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            raised = true;
+        }
+
+        void OnFrameRendered(object? sender, FrameRenderedEventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            _ = rendered.TrySetResult();
+        }
+    }
+
     /// <summary>Verifies a resolved Kitty identity cannot promote tentative graphics capability evidence.</summary>
     [Fact]
     public async Task StartAsync_WhenKittyIdentityOnlyHasTentativeGraphics_PreservesCellFallbackAsync()

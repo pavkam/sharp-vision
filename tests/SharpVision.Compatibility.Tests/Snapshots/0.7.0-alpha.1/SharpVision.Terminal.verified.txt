@@ -502,6 +502,7 @@ namespace SharpVision.Terminal.Graphics
     public enum GraphicsPlacementSkipReason
     {
         FormatNotEncodable = 0,
+        ProtocolNotAuthorized = 1,
     }
     public sealed class ImageSource
     {

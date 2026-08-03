@@ -301,6 +301,43 @@ public sealed class BackendRendererTests
         Encoding.ASCII.GetString(bytes.Uploads).ShouldContain("i=1,q=2");
     }
 
+    /// <summary>
+    /// Verifies a placement dropped only because Kitty graphics is deauthorized reports
+    /// ProtocolNotAuthorized instead of falling back with no observable signal at all - Kitty's
+    /// eligibility gate previously left skippedPlacements null unconditionally (see #233).
+    /// </summary>
+    [Fact]
+    public async Task RenderAsync_WhenKittyGraphicsIsDeauthorized_ReportsProtocolNotAuthorizedAsync()
+    {
+        using var renderer = new Renderer(new KittyGraphicsBackend());
+        await using var transport = new FakeTransport();
+        var image = Image(1);
+        using var frame = Frame("a", (image, new Rect(0, 0, 1, 1)));
+        var deauthorized = TerminalCapabilities.Conservative with
+        {
+            KittyGraphics = new Feature(CapabilitySupport.Unsupported, Origin.Override)
+        };
+
+        _ = await renderer.RenderAsync(frame, transport, deauthorized, CancellationToken.None);
+
+        var diagnostic = renderer.LastGraphicsDiagnostics.ShouldHaveSingleItem();
+        diagnostic.ImageIdentity.ShouldBe(image.Identity);
+        diagnostic.Reason.ShouldBe(GraphicsPlacementSkipReason.ProtocolNotAuthorized);
+    }
+
+    /// <summary>Verifies an ordinary Kitty placement reports no diagnostics.</summary>
+    [Fact]
+    public async Task RenderAsync_WhenKittyPlacementEncodesNormally_ReportsNoDiagnosticsAsync()
+    {
+        using var renderer = new Renderer(new KittyGraphicsBackend());
+        await using var transport = new FakeTransport();
+        using var frame = Frame("a", (Image(1), new Rect(0, 0, 1, 1)));
+
+        _ = await renderer.RenderAsync(frame, transport, KittyCapabilities, CancellationToken.None);
+
+        renderer.LastGraphicsDiagnostics.ShouldBeEmpty();
+    }
+
     #endregion
 
     #region Helpers

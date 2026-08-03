@@ -161,6 +161,35 @@ public sealed class BackendRendererTests
         renderer.LastGraphicsDiagnostics.ShouldBeEmpty();
     }
 
+    /// <summary>
+    /// Verifies a placement that would otherwise encode fine reports ProtocolNotAuthorized -
+    /// rather than being mislabeled FormatNotEncodable - when the profile deauthorizes every
+    /// protocol the backend was constructed to use (see #233).
+    /// </summary>
+    [Fact]
+    public async Task RenderAsync_WhenProfileDeauthorizesEveryEnabledProtocol_ReportsProtocolNotAuthorizedAsync()
+    {
+        using var renderer = new Renderer(new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false));
+        await using var transport = new FakeTransport();
+        var image = Red();
+        using var frame = Frame(image, new Rect(0, 0, 1, 1));
+        var deauthorized = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
+        {
+            Sixel = new Feature(CapabilitySupport.Unsupported, Origin.Override)
+        });
+
+        _ = await renderer.RenderAsync(
+            frame,
+            transport,
+            deauthorized,
+            new CellMetrics(1, 6),
+            TestContext.Current.CancellationToken);
+
+        var diagnostic = renderer.LastGraphicsDiagnostics.ShouldHaveSingleItem();
+        diagnostic.ImageIdentity.ShouldBe(image.Identity);
+        diagnostic.Reason.ShouldBe(GraphicsPlacementSkipReason.ProtocolNotAuthorized);
+    }
+
     private static GraphicsImage Red() => GraphicsImage.FromRgba(
         new Size(1, 1),
         [255, 0, 0, 255]);
