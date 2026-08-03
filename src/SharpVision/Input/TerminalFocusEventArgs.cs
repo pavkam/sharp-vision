@@ -11,8 +11,8 @@ public sealed class TerminalFocusEventArgs: RoutedEventArgs
 {
     /// <summary>Initializes routed terminal focus input.</summary>
     /// <param name="focus">The decoded terminal focus transition.</param>
-    public TerminalFocusEventArgs(Focus focus) => Focus = focus;
+    public TerminalFocusEventArgs(TerminalFocus focus) => Focus = focus;
 
     /// <summary>Gets the decoded terminal focus transition.</summary>
-    public Focus Focus { get; }
+    public TerminalFocus Focus { get; }
 }

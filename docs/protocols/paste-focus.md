@@ -37,8 +37,8 @@ payloads are normalized to valid UTF-8 with U+FFFD for malformed subsequences,
 copied into an owned `Paste`, and remain stable when decoder storage is reused.
 End-of-stream drops partial payload and reports truncation.
 
-CSI I/O emit immutable gained/lost `Focus` values. They are terminal focus only;
-application routing applies the separate
+CSI I/O emit immutable gained/lost `TerminalFocus` values. They are terminal
+focus only; application routing applies the separate
 [UI focus policy](../concepts/input-routing.md#route-construction).
 
 ## Bounds and lifecycle

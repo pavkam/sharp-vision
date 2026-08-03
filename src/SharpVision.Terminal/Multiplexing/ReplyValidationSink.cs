@@ -38,7 +38,7 @@ internal sealed class ReplyValidationSink:
     public void Input(Paste value) => Invalid = true;
 
     /// <inheritdoc/>
-    public void Input(in Focus value) => Invalid = true;
+    public void Input(in TerminalFocus value) => Invalid = true;
 
     /// <inheritdoc/>
     public void Input(in Diagnostic value) => Invalid = true;

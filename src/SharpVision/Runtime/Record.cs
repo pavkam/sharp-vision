@@ -8,7 +8,7 @@ using SharpVision.Terminal.Input;
 
 using TerminalClipboardReply = ClipboardReply;
 using TerminalDiagnostic = Diagnostic;
-using TerminalFocus = Terminal.Input.Focus;
+using TerminalFocus = Terminal.Input.TerminalFocus;
 using TerminalKittyClipboardPacket = Terminal.Kitty.Clipboard.Packet;
 using TerminalText = Terminal.Input.Text;
 

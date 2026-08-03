@@ -126,7 +126,7 @@ public sealed class TerminalInputTests
         await application.StartAsync(TestContext.Current.CancellationToken);
         Pointer? pointer = null;
         Paste? paste = null;
-        Focus? focus = null;
+        TerminalFocus? focus = null;
         Stroke? stroke = null;
         var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         await application.Dispatcher.InvokeAsync(() =>
@@ -170,7 +170,7 @@ public sealed class TerminalInputTests
         terminal.QueueInput(bytes);
         await completed.Task.WaitAsync(TestContext.Current.CancellationToken);
 
-        focus.ShouldBe(new Focus(gained: true));
+        focus.ShouldBe(new TerminalFocus(gained: true));
         pointer!.Value.Pixels.ShouldBe(new Point(16, 32));
         pointer.Value.Cells.ShouldBe(new Point(2, 2));
         pointer.Value.IsCellPositionInferred.ShouldBeTrue();

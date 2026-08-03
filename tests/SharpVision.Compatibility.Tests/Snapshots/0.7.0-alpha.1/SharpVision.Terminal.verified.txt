@@ -16,9 +16,9 @@ namespace SharpVision.Terminal.Abstractions
     public interface IInputSink
     {
         void Input(SharpVision.Terminal.Input.Paste value);
-        void Input(in SharpVision.Terminal.Input.Focus value);
         void Input(in SharpVision.Terminal.Input.Pointer value);
         void Input(in SharpVision.Terminal.Input.Stroke value);
+        void Input(in SharpVision.Terminal.Input.TerminalFocus value);
         void Input(in SharpVision.Terminal.Input.Text value);
         void Input(in SharpVision.Terminal.Protocols.Diagnostic value);
     }
@@ -654,12 +654,6 @@ namespace SharpVision.Terminal.Input
         public void Dispose() { }
         public bool ExpireEscape() { }
     }
-    public readonly struct Focus : System.IEquatable<SharpVision.Terminal.Input.Focus>
-    {
-        public Focus(bool gained) { }
-        public bool Gained { get; }
-        public void Deconstruct(out bool gained) { }
-    }
     public enum KeyAction
     {
         Press = 0,
@@ -728,6 +722,12 @@ namespace SharpVision.Terminal.Input
         public SharpVision.Terminal.Input.Modifiers Modifiers { get; }
         public int NativeCode { get; }
         public System.Text.Rune? Shifted { get; }
+    }
+    public readonly struct TerminalFocus : System.IEquatable<SharpVision.Terminal.Input.TerminalFocus>
+    {
+        public TerminalFocus(bool gained) { }
+        public bool Gained { get; }
+        public void Deconstruct(out bool gained) { }
     }
     public readonly struct Text : System.IEquatable<SharpVision.Terminal.Input.Text>
     {

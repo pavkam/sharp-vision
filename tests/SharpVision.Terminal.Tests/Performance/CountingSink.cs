@@ -24,7 +24,7 @@ internal sealed class CountingSink: IInputSink
     public void Input(Paste value) => Count++;
 
     /// <inheritdoc/>
-    public void Input(in Focus value) => Count++;
+    public void Input(in TerminalFocus value) => Count++;
 
     /// <inheritdoc/>
     public void Input(in Diagnostic value) => Count++;

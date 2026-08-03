@@ -386,7 +386,7 @@ public sealed class RoutingTests
             isMotion: true,
             isCellPositionInferred: false);
         var paste = new Paste("hello"u8);
-        var focus = new Focus(gained: true);
+        var focus = new TerminalFocus(gained: true);
 
         new TextEventArgs(text).Text.ShouldBe(text);
         new PointerEventArgs(pointer).Pointer.ShouldBe(pointer);

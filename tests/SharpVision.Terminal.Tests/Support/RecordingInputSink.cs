@@ -23,7 +23,7 @@ internal sealed class RecordingInputSink: IInputSink
     internal List<Paste> Pastes { get; } = [];
 
     /// <summary>Gets focus values in delivery order.</summary>
-    internal List<Focus> Focus { get; } = [];
+    internal List<TerminalFocus> Focus { get; } = [];
 
     /// <summary>Gets redacted diagnostics in delivery order.</summary>
     internal List<Diagnostic> Diagnostics { get; } = [];
@@ -41,7 +41,7 @@ internal sealed class RecordingInputSink: IInputSink
     public void Input(Paste value) => Pastes.Add(value);
 
     /// <inheritdoc/>
-    public void Input(in Focus value) => Focus.Add(value);
+    public void Input(in TerminalFocus value) => Focus.Add(value);
 
     /// <inheritdoc/>
     public void Input(in Diagnostic value) => Diagnostics.Add(value);
