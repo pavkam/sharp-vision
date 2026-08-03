@@ -6,11 +6,15 @@ namespace SharpVision.Tests.Controls;
 using GraphicsImage = Terminal.Graphics.ImageSource;
 
 /// <summary>
-/// Verifies the narrow, maintainer-approved render-clean subtree reuse cut (see #26): a leaf
-/// control that is render-clean, image-free, popup-free, and shadow-free copies its previous
-/// frame's cells instead of re-executing its paint sequence, but only when no layout ran since
-/// the copied frame (<see cref="Canvas.HasPreviousFrame"/>). Shadow-bearing,
-/// popup-owning, and image-bearing subtrees stay excluded and are tracked separately in #235.
+/// Verifies the narrow, maintainer-approved render-clean subtree reuse cut (see #26) and its first
+/// #235 extension: a leaf control that is render-clean, image-free, and popup-free copies its
+/// previous frame's cells instead of re-executing its paint sequence, but only when no layout ran
+/// since the copied frame (<see cref="Canvas.HasPreviousFrame"/>). A visible shadow now
+/// participates too, but only when its own paint is a full destination overwrite that cannot
+/// depend on stale prior content - BlockGlyph mode with an opaque resolved background. Composite
+/// (which never replaces the underlying grapheme, regardless of background opacity) and
+/// FractionalBlock (which always blends) stay excluded. Popup-overlapped and image-bearing
+/// subtrees also stay excluded and remain tracked in #235.
 /// </summary>
 public sealed class RenderCleanSubtreeReuseTests
 {
@@ -72,9 +76,13 @@ public sealed class RenderCleanSubtreeReuseTests
         second.RenderCalls.ShouldBe(2);
     }
 
-    /// <summary>Verifies a render-clean leaf that casts a visible shadow never takes the copy
-    /// path, since <see cref="Frame.CopyRegionFrom"/> never restores the
-    /// shadow-expanded overflow region <see cref="Control.VisualBounds"/> reports.</summary>
+    /// <summary>Verifies a render-clean leaf casting the default Composite-mode, transparent-
+    /// background shadow never takes the copy path. Composite mode's own contract is to preserve
+    /// the underlying grapheme and replace only its style (<see cref="Canvas.ApplyStyle"/> calls
+    /// only <c>TrySetOwnerStyle</c>), so a copied Composite shadow cell would always carry forward
+    /// whatever character was underneath in the copied frame rather than this frame's - a copy is
+    /// never provably identical to a fresh paint for this mode, regardless of background opacity
+    /// (see #235).</summary>
     [Fact]
     public async Task Render_WhenLeafHasVisibleShadow_NeverSkipsRenderAsync()
     {
@@ -94,6 +102,199 @@ public sealed class RenderCleanSubtreeReuseTests
         control.Render(second.Canvas);
 
         control.RenderCalls.ShouldBe(2);
+    }
+
+    /// <summary>Verifies a render-clean leaf casting a Composite-mode shadow never takes the copy
+    /// path even when its resolved background is opaque - opacity only changes whether the
+    /// background channel blends, not whether the grapheme does, and Composite never replaces the
+    /// grapheme regardless (see #235).</summary>
+    [Fact]
+    public async Task Render_WhenLeafHasVisibleCompositeShadowWithOpaqueBackground_NeverSkipsRenderAsync()
+    {
+        var control = new ProbeControl(new Size(2, 1))
+        {
+            Shadow = AppearanceTestValues.Shadow(
+                visible: true,
+                mode: ShadowMode.Composite,
+                offset: new Point(1, 0),
+                background: Color.Rgb(20, 20, 20))
+        };
+        var size = new Size(4, 3);
+        new LayoutEngine().Layout(control, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        using var first = new Frame(size);
+        control.Render(first.Canvas);
+        _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
+        control.RenderCalls.ShouldBe(1);
+
+        using var second = new Frame(size);
+        _ = renderer.AttachCommittedFrame(second);
+        control.Render(second.Canvas);
+
+        control.RenderCalls.ShouldBe(2);
+    }
+
+    /// <summary>Verifies a render-clean leaf casting a FractionalBlock shadow never takes the copy
+    /// path regardless of its configured background - <c>DrawFractionalShadow</c> hardcodes
+    /// <see cref="BackgroundMode.Transparent"/> unconditionally, so this mode always blends with
+    /// the destination (see #235).</summary>
+    [Fact]
+    public async Task Render_WhenLeafHasVisibleFractionalBlockShadow_NeverSkipsRenderAsync()
+    {
+        var control = new ProbeControl(new Size(2, 1))
+        {
+            Shadow = AppearanceTestValues.Shadow(
+                visible: true,
+                mode: ShadowMode.FractionalBlock,
+                offset: new Point(0, 1),
+                background: Color.Rgb(20, 20, 20))
+        };
+        var size = new Size(4, 3);
+        new LayoutEngine().Layout(control, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        using var first = new Frame(size);
+        control.Render(first.Canvas);
+        _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
+        control.RenderCalls.ShouldBe(1);
+
+        using var second = new Frame(size);
+        _ = renderer.AttachCommittedFrame(second);
+        control.Render(second.Canvas);
+
+        control.RenderCalls.ShouldBe(2);
+    }
+
+    /// <summary>Verifies a render-clean leaf casting a BlockGlyph shadow with an opaque resolved
+    /// background does take the copy path - <c>DrawRune</c> with an opaque background replaces
+    /// grapheme, style, and background together, so the copied cells are provably identical to a
+    /// fresh paint (see #235).</summary>
+    [Fact]
+    public async Task Render_WhenLeafHasVisibleBlockGlyphShadowWithOpaqueBackground_SkipsRenderAsync()
+    {
+        var control = new ProbeControl(new Size(2, 1))
+        {
+            Shadow = AppearanceTestValues.Shadow(
+                visible: true,
+                mode: ShadowMode.BlockGlyph,
+                offset: new Point(1, 0),
+                background: Color.Rgb(20, 20, 20))
+        };
+        var size = new Size(4, 3);
+        new LayoutEngine().Layout(control, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        using var first = new Frame(size);
+        control.Render(first.Canvas);
+        _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
+        control.RenderCalls.ShouldBe(1);
+
+        using var second = new Frame(size);
+        _ = renderer.AttachCommittedFrame(second);
+        control.Render(second.Canvas);
+
+        control.RenderCalls.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a BlockGlyph, opaque-background shadow whose footprint overlaps a
+    /// changing sibling still produces cell content identical to a fully fresh render - proving
+    /// the reuse extension is safe even when the copied region is not exclusively owned by the
+    /// reused control, because paint order (not paint source) determines the final cell and the
+    /// shadow-casting control's own copied output never changes frame to frame (see #235).</summary>
+    [Fact]
+    public async Task Render_WhenShadowOverlapsChangingSibling_MatchesFullRenderEveryFrameAsync()
+    {
+        var caster = new ProbeControl(new Size(2, 1))
+        {
+            Content = "AA".AsMemory(),
+            Shadow = AppearanceTestValues.Shadow(
+                visible: true,
+                mode: ShadowMode.BlockGlyph,
+                offset: new Point(1, 0),
+                background: Color.Rgb(20, 20, 20))
+        };
+        var sibling = new ProbeControl(new Size(1, 1)) { Content = "X".AsMemory() };
+        var overlay = new Overlay { Children = { caster, sibling } };
+        Overlay.SetLeft(sibling, Length.Cells(2));
+        var size = new Size(3, 1);
+        new LayoutEngine().Layout(overlay, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        using var warm = new Frame(size);
+        overlay.Render(warm.Canvas);
+        _ = await renderer.RenderAsync(warm, transport, profile, TestContext.Current.CancellationToken);
+        caster.RenderCalls.ShouldBe(1);
+
+        sibling.Content = "Y".AsMemory();
+        sibling.Invalidate(Invalidation.Render);
+
+        using var reused = new Frame(size);
+        _ = renderer.AttachCommittedFrame(reused);
+        overlay.Render(reused.Canvas);
+
+        caster.RenderCalls.ShouldBe(1);
+        sibling.RenderCalls.ShouldBe(2);
+
+        // No previous frame is attached, so this independent render of the exact same current
+        // state always takes the complete paint path for every leaf - the ground truth the
+        // optimized render above must match cell-for-cell, including whichever leaf's paint owns
+        // the contested cell where the shadow's footprint and the sibling's bounds overlap.
+        using var reference = new Frame(size);
+        overlay.Render(reference.Canvas);
+
+        Row(reused, 0).ShouldBe(Row(reference, 0));
+    }
+
+    /// <summary>Verifies the harder ordering of the previous test - the shadow-casting control
+    /// paints AFTER the sibling it overlaps, so its (possibly copied) shadow cells are the last
+    /// write at the contested position. Still matches a fully fresh render cell-for-cell, because
+    /// the copied shadow bytes are provably identical to what caster would freshly paint - they
+    /// depend only on caster's own unchanged appearance, never on what the sibling drew
+    /// underneath (see #235).</summary>
+    [Fact]
+    public async Task Render_WhenShadowPaintsOverAChangingSibling_MatchesFullRenderEveryFrameAsync()
+    {
+        var sibling = new ProbeControl(new Size(1, 1)) { Content = "X".AsMemory() };
+        var caster = new ProbeControl(new Size(2, 1))
+        {
+            Content = "AA".AsMemory(),
+            Shadow = AppearanceTestValues.Shadow(
+                visible: true,
+                mode: ShadowMode.BlockGlyph,
+                offset: new Point(1, 0),
+                background: Color.Rgb(20, 20, 20))
+        };
+        var overlay = new Overlay { Children = { sibling, caster } };
+        Overlay.SetLeft(sibling, Length.Cells(2));
+        var size = new Size(3, 1);
+        new LayoutEngine().Layout(overlay, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        using var warm = new Frame(size);
+        overlay.Render(warm.Canvas);
+        _ = await renderer.RenderAsync(warm, transport, profile, TestContext.Current.CancellationToken);
+        caster.RenderCalls.ShouldBe(1);
+
+        sibling.Content = "Y".AsMemory();
+        sibling.Invalidate(Invalidation.Render);
+
+        using var reused = new Frame(size);
+        _ = renderer.AttachCommittedFrame(reused);
+        overlay.Render(reused.Canvas);
+
+        caster.RenderCalls.ShouldBe(1);
+        sibling.RenderCalls.ShouldBe(2);
+
+        using var reference = new Frame(size);
+        overlay.Render(reference.Canvas);
+
+        Row(reused, 0).ShouldBe(Row(reference, 0));
     }
 
     /// <summary>Verifies a render-clean leaf that owns a control of its own (a context menu, even
