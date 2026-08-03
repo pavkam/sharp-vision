@@ -13,9 +13,6 @@ using SharpVision.Terminal.Input;
 [PublicAPI]
 public sealed class DateInput: Control
 {
-    private const char _segmentStartMarker = '\uE000';
-    private const char _segmentEndMarker = '\uE001';
-
     /// <inheritdoc/>
     protected override ThemeRole ThemeRole => ThemeRole.Input;
 
@@ -831,14 +828,17 @@ public sealed class DateInput: Control
         var renderingCulture = Format.Length == 1 && Format[0] is 'r' or 'R'
             ? CultureInfo.InvariantCulture
             : _culture;
-        var formatted = date.ToString(BuildMarkedFormat(), renderingCulture);
+        var unmarked = date.ToString(Format, renderingCulture);
+        var startMarker = FindAvailableMarker(unmarked, excluded: default);
+        var endMarker = FindAvailableMarker(unmarked, startMarker);
+        var formatted = date.ToString(BuildMarkedFormat(startMarker, endMarker), renderingCulture);
         var segments = new List<DisplaySegment>();
         var cursor = 0;
         var editableIndex = 0;
 
         while (cursor < formatted.Length)
         {
-            var start = formatted.IndexOf(_segmentStartMarker, cursor);
+            var start = formatted.IndexOf(startMarker, cursor);
 
             if (start < 0)
             {
@@ -852,7 +852,7 @@ public sealed class DateInput: Control
             }
 
             var contentStart = start + 1;
-            var end = formatted.IndexOf(_segmentEndMarker, contentStart);
+            var end = formatted.IndexOf(endMarker, contentStart);
 
             if (end < 0)
             {
@@ -875,7 +875,7 @@ public sealed class DateInput: Control
         return [.. segments];
     }
 
-    private string BuildMarkedFormat()
+    private string BuildMarkedFormat(char startMarker, char endMarker)
     {
         var pattern = ResolveDatePattern();
         var marked = new StringBuilder(pattern.Length + 16);
@@ -924,7 +924,7 @@ public sealed class DateInput: Control
 
             if (token is 'M' or 'd' or 'y')
             {
-                AppendFormatMarker(marked, _segmentStartMarker);
+                AppendFormatMarker(marked, startMarker);
 
                 if (percentPrefixed)
                 {
@@ -938,7 +938,7 @@ public sealed class DateInput: Control
                 }
                 while (!percentPrefixed && tokenStart < pattern.Length && pattern[tokenStart] == token);
 
-                AppendFormatMarker(marked, _segmentEndMarker);
+                AppendFormatMarker(marked, endMarker);
                 index = tokenStart;
                 continue;
             }
@@ -952,6 +952,24 @@ public sealed class DateInput: Control
 
     private static void AppendFormatMarker(StringBuilder format, char marker) =>
         _ = format.Append('\'').Append(marker).Append('\'');
+
+    private static char FindAvailableMarker(string formatted, char excluded)
+    {
+        for (var value = 1; value < char.MaxValue; value++)
+        {
+            var candidate = (char) value;
+
+            if (candidate != excluded &&
+                candidate is not ('\'' or '"' or '\\') &&
+                !char.IsSurrogate(candidate) &&
+                !formatted.Contains(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        throw new InvalidOperationException("The formatted date exhausts all available segment markers.");
+    }
 
     private DisplaySegment[] BuildPlaceholderSegments()
     {

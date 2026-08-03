@@ -540,6 +540,29 @@ public sealed class DateInputTests
             .ShouldBe(Attributes.Reverse);
     }
 
+    /// <summary>Verifies literal private-use characters cannot collide with internal span markers.</summary>
+    [Fact]
+    public void Render_WhenQuotedLiteralContainsMarkerCharacters_PreservesLiteralText()
+    {
+        // Arrange
+        const char literalStart = '\uE000';
+        const char literalEnd = '\uE001';
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 7, 19),
+            Culture = CultureInfo.InvariantCulture,
+            Format = $"'x{literalStart}y{literalEnd}' MM/dd/yyyy"
+        };
+        new LayoutEngine().Layout(control, new Size(30, 3));
+        using Frame frame = new(new Size(30, 3));
+
+        // Act
+        control.Render(frame.Canvas);
+
+        // Assert
+        Row(frame, 1).ShouldContain($"x{literalStart}y{literalEnd} 07/19/2026");
+    }
+
     #endregion
 
     #region Helpers
