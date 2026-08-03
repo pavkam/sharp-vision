@@ -182,7 +182,8 @@ public sealed class ActiveQueryDiscoveryStrategyTests
             "\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p" +
             "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[?5522$p" +
             "\u001b[14t\u001b[16t\u001b[18t" +
-            "\u001b]4;0;?\u001b\\\u001b]10;?\u001b\\\u001b]11;?\u001b\\");
+            "\u001b]4;0;?\u001b\\\u001b]10;?\u001b\\\u001b]11;?\u001b\\" +
+            "\u001b]1337;Capabilities\u001b\\");
         negotiator.IsComplete.ShouldBeFalse();
     }
 
@@ -384,6 +385,8 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         negotiator.Accept(in secondary).ShouldBe(QueryMatch.Matched);
         var primary = Response("?1;2"u8, [], (byte) 'c');
         negotiator.Accept(in primary).ShouldBe(QueryMatch.Matched);
+        _ = XtermResponses.TryOscItermCapabilities("1337;Capabilities=F"u8, out var capabilities);
+        negotiator.Accept(capabilities).ShouldBe(QueryMatch.Matched);
 
         negotiator.IsComplete.ShouldBeTrue();
     }

@@ -178,6 +178,66 @@ public static class XtermResponses
         return true;
     }
 
+    /// <summary>Attempts to decode one iTerm2 OSC 1337 Capabilities feature-reporting reply.</summary>
+    /// <param name="value">Borrowed raw OSC callback bytes.</param>
+    /// <param name="response">Receives the typed response on success.</param>
+    /// <returns>Whether the callback is a recognized Capabilities reply.</returns>
+    /// <remarks>
+    /// The feature string concatenates codes with no separator: each code is one or more
+    /// uppercase-led letters optionally followed by a decimal value (for example <c>"U9"</c> for
+    /// UNICODE_WIDTHS=9, or bare <c>"M"</c> for boolean MOUSE). This only tokenizes the string to
+    /// test for the bare "F" code; it does not attempt to decode every documented feature.
+    /// </remarks>
+    public static bool TryOscItermCapabilities(ReadOnlySpan<byte> value, out ItermCapabilitiesResponse response)
+    {
+        response = null!;
+
+        if (!value.StartsWith("1337;Capabilities="u8))
+        {
+            return false;
+        }
+
+        var featureString = value["1337;Capabilities="u8.Length..];
+        response = new ItermCapabilitiesResponse(ContainsBareCode(featureString, (byte) 'F'));
+        return true;
+    }
+
+    private static bool ContainsBareCode(ReadOnlySpan<byte> value, byte code)
+    {
+        var index = 0;
+
+        while (index < value.Length)
+        {
+            var current = value[index];
+
+            if (current is < (byte) 'A' or > (byte) 'Z')
+            {
+                break;
+            }
+
+            var nameStart = index++;
+
+            while (index < value.Length && value[index] is >= (byte) 'a' and <= (byte) 'z')
+            {
+                index++;
+            }
+
+            var nameEnd = index;
+
+            while (index < value.Length && value[index] is >= (byte) '0' and <= (byte) '9')
+            {
+                index++;
+            }
+
+            if (nameEnd - nameStart == 1 && value[nameStart] == code)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>Attempts to decode an XTWINOPS pixel or cell-size report.</summary>
     /// <param name="parameters">Borrowed raw parameter bytes.</param>
     /// <param name="intermediates">Borrowed intermediate bytes.</param>

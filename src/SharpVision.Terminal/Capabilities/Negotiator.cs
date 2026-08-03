@@ -135,6 +135,13 @@ public sealed class Negotiator
     /// <exception cref="InvalidOperationException">The negotiator has not started.</exception>
     public QueryMatch Accept(CapabilityResponse response) => _strategy.Accept(response);
 
+    /// <summary>Matches one validated iTerm2 OSC 1337 Capabilities feature-reporting reply.</summary>
+    /// <param name="response">The non-null owned response.</param>
+    /// <returns>The active, duplicate, late, or unknown match classification.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="response"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The negotiator has not started.</exception>
+    public QueryMatch Accept(ItermCapabilitiesResponse response) => _strategy.Accept(response);
+
     /// <summary>Publishes conservative evidence when the shared deadline elapsed.</summary>
     /// <returns>Whether this call transitioned negotiation to complete.</returns>
     /// <exception cref="InvalidOperationException">The negotiator has not started.</exception>

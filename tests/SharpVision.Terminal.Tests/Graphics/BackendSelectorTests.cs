@@ -36,12 +36,11 @@ public sealed class BackendSelectorTests
         _ = backend.ShouldBeOfType<KittyGraphicsBackend>();
     }
 
-    /// <summary>Verifies environment, database, and query evidence cannot authorize iTerm2 3.5 multipart.</summary>
+    /// <summary>Verifies environment and database evidence cannot authorize iTerm2 3.5 multipart.</summary>
     [Theory]
     [InlineData(CapabilitySupport.Tentative, Origin.Environment)]
     [InlineData(CapabilitySupport.Supported, Origin.Database)]
-    [InlineData(CapabilitySupport.Supported, Origin.Query)]
-    public void Create_WhenItermEvidenceIsNotOverride_ReturnsFallback(
+    public void Create_WhenItermEvidenceIsNotOverrideOrQuery_ReturnsFallback(
         CapabilitySupport state,
         Origin origin)
     {
@@ -50,6 +49,18 @@ public sealed class BackendSelectorTests
         var backend = GraphicsBackendSelector.Create(profile.Capabilities);
 
         backend.ShouldBeNull();
+    }
+
+    /// <summary>Verifies authoritative query evidence now authorizes iTerm2 3.5 multipart, the same way it
+    /// already does for Kitty and sixel (see #230).</summary>
+    [Fact]
+    public void Create_WhenItermEvidenceIsQuery_SelectsNonRetainedBackend()
+    {
+        var profile = Profile(iterm: new Feature(CapabilitySupport.Supported, Origin.Query));
+
+        using var backend = GraphicsBackendSelector.Create(profile.Capabilities);
+
+        _ = backend.ShouldBeOfType<NonRetainedGraphicsBackend>();
     }
 
     /// <summary>Verifies environment and database origins cannot authorize Kitty or sixel output.</summary>
@@ -67,13 +78,13 @@ public sealed class BackendSelectorTests
     /// <summary>
     /// Verifies weak evidence never authorizes graphics even for a terminal whose identity
     /// implements the protocol. Selection reads capability evidence only, so identity cannot
-    /// promote tentative environment evidence or non-authoritative iTerm2 query evidence.
+    /// promote tentative environment evidence into authoritative support.
     /// </summary>
     [Fact]
     public void Create_WhenEvidenceIsBelowAuthoritative_ReturnsFallback()
     {
         var kitty = Profile(kitty: new Feature(CapabilitySupport.Tentative, Origin.Environment));
-        var iterm = Profile(iterm: new Feature(CapabilitySupport.Supported, Origin.Query));
+        var iterm = Profile(iterm: new Feature(CapabilitySupport.Tentative, Origin.Query));
 
         GraphicsBackendSelector.Create(kitty.Capabilities).ShouldBeNull();
         GraphicsBackendSelector.Create(iterm.Capabilities).ShouldBeNull();

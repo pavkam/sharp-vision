@@ -95,4 +95,71 @@ public sealed class DetectorFacadeTests
         // Assert
         facade.ShouldBe(pipeline);
     }
+
+    /// <summary>
+    /// Verifies TERM_PROGRAM_VERSION below iTerm2 3.5 withholds query-origin FILE evidence,
+    /// downgrading it to Unsupported instead of leaving it Supported (see #230). This proves the
+    /// corroborator can narrow — the multipart form this library emits did not exist yet, so a
+    /// bare Capabilities FILE=true reply from an older build cannot be trusted alone.
+    /// </summary>
+    [Theory]
+    [InlineData("3.4.0")]
+    [InlineData("3.4.99")]
+    public void Detect_WhenTermProgramVersionPredatesMultipart_NarrowsItermImagesToUnsupported(
+        string version)
+    {
+        var environment = new Dictionary<string, string?>
+        {
+            ["TERM_PROGRAM"] = "iTerm.app",
+            ["TERM_PROGRAM_VERSION"] = version
+        };
+        var queries = new Queries { ItermImages = true };
+
+        var capabilities = Detector.Detect(environment, queries);
+
+        capabilities.ItermImages.ShouldBe(new Feature(CapabilitySupport.Unsupported, Origin.Query));
+    }
+
+    /// <summary>
+    /// Verifies TERM_PROGRAM_VERSION at or above iTerm2 3.5, or absent, or unparseable, never
+    /// itself grants ItermImages support -- it only narrows Supported evidence, so Query evidence
+    /// standing alone still reaches Supported in every one of these cases (see #230).
+    /// </summary>
+    [Theory]
+    [InlineData("3.5.0")]
+    [InlineData("4.0.0")]
+    [InlineData("not-a-version")]
+    [InlineData(null)]
+    public void Detect_WhenTermProgramVersionDoesNotPredateMultipart_LeavesQueryEvidenceSupported(
+        string? version)
+    {
+        var environment = new Dictionary<string, string?>
+        {
+            ["TERM_PROGRAM"] = "iTerm.app",
+            ["TERM_PROGRAM_VERSION"] = version
+        };
+        var queries = new Queries { ItermImages = true };
+
+        var capabilities = Detector.Detect(environment, queries);
+
+        capabilities.ItermImages.ShouldBe(new Feature(CapabilitySupport.Supported, Origin.Query));
+    }
+
+    /// <summary>
+    /// Verifies the version narrowing cannot itself grant support: a below-3.5 version alone,
+    /// without positive query or override evidence, does not promote ItermImages past Unknown
+    /// (see #230).
+    /// </summary>
+    [Fact]
+    public void Detect_WhenTermProgramVersionPredatesMultipartWithoutPositiveEvidence_StaysUnresolved()
+    {
+        var environment = new Dictionary<string, string?>
+        {
+            ["TERM_PROGRAM_VERSION"] = "3.4.0"
+        };
+
+        var capabilities = Detector.Detect(environment);
+
+        capabilities.ItermImages.State.ShouldBe(CapabilitySupport.Unknown);
+    }
 }

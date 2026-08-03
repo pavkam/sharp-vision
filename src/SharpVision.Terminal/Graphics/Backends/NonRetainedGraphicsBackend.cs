@@ -88,7 +88,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             allowQuery: true));
         var enableIterm = _enableIterm && (context.Profile is null || GraphicsBackendSelector.IsAuthoritative(
             context.Profile.Capabilities.ItermImages,
-            allowQuery: false));
+            allowQuery: true));
         var encodable = new bool[back.PlacementCount];
         var metricDependent = new bool[back.PlacementCount];
         var skippedPlacements = ClassifyPlacements(

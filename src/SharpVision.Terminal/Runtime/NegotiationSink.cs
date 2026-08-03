@@ -76,6 +76,13 @@ internal sealed class NegotiationSink: IProtocolSink
     }
 
     /// <inheritdoc/>
+    public void Response(ItermCapabilitiesResponse value)
+    {
+        _ = _negotiator.Accept(value);
+        _destination.Response(value);
+    }
+
+    /// <inheritdoc/>
     public void Response(CapabilityResponse value)
     {
         _ = _negotiator.Accept(value);

@@ -53,5 +53,8 @@ public enum QueryKind
     ModifyOtherKeys = 14,
 
     /// <summary>A numeric Kitty graphics APC response.</summary>
-    KittyGraphics = 15
+    KittyGraphics = 15,
+
+    /// <summary>An iTerm2 OSC 1337 Capabilities feature-reporting response.</summary>
+    ItermCapabilities = 16
 }

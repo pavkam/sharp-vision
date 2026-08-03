@@ -17,7 +17,7 @@ public sealed class XtermQueryDiscoveryTests
     {
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
-            limits: QueryLimits.Default with { MaxConcurrentQueries = 17 });
+            limits: QueryLimits.Default with { MaxConcurrentQueries = 18 });
         var negotiator = new ActiveQueryDiscoveryStrategy(options, new ManualTimeProvider());
         var destination = new ArrayBufferWriter<byte>();
 
@@ -33,7 +33,7 @@ public sealed class XtermQueryDiscoveryTests
     {
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm" },
-            limits: QueryLimits.Default with { MaxConcurrentQueries = 17 });
+            limits: QueryLimits.Default with { MaxConcurrentQueries = 18 });
         var negotiator = new ActiveQueryDiscoveryStrategy(options, new ManualTimeProvider());
         _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
         XtermDecrqss.TryParse("1"u8, "$"u8, (byte) 'r', ">4;2m"u8, out var status)
@@ -58,7 +58,7 @@ public sealed class XtermQueryDiscoveryTests
     {
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm" },
-            limits: QueryLimits.Default with { MaxConcurrentQueries = 17 });
+            limits: QueryLimits.Default with { MaxConcurrentQueries = 18 });
         var negotiator = new ActiveQueryDiscoveryStrategy(options, new ManualTimeProvider());
         _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
         XtermDecrqss.TryParse("1"u8, "$"u8, (byte) 'r', "0m"u8, out var otherStatus)
@@ -207,9 +207,9 @@ public sealed class XtermQueryDiscoveryTests
     /// <param name="capacity">The bounded startup capacity.</param>
     /// <param name="expectsStatus">Whether the next-priority status query fits.</param>
     [Theory]
-    [InlineData(15, false)]
-    [InlineData(16, true)]
+    [InlineData(16, false)]
     [InlineData(17, true)]
+    [InlineData(18, true)]
     public void TryStart_WhenColorDepthIsExplicit_DoesNotRegisterRgbQuery(
         int capacity,
         bool expectsStatus)
@@ -231,8 +231,8 @@ public sealed class XtermQueryDiscoveryTests
 
     /// <summary>Verifies the final slot normally belongs to RGB before the following status query.</summary>
     [Theory]
-    [InlineData(16, true, false)]
-    [InlineData(17, true, true)]
+    [InlineData(17, true, false)]
+    [InlineData(18, true, true)]
     public void TryStart_WhenColorDepthIsNotExplicit_PreservesRgbThenStatusPriority(
         int capacity,
         bool expectsRgb,
@@ -266,7 +266,8 @@ public sealed class XtermQueryDiscoveryTests
             BracketedPaste = database,
             CellMouse = database,
             PixelMouse = database,
-            KittyClipboard = database
+            KittyClipboard = database,
+            ItermImages = database
         };
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm" },

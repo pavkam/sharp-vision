@@ -19,6 +19,7 @@ namespace SharpVision.Terminal.Abstractions
         void Response(SharpVision.Terminal.Kitty.Clipboard.Packet value);
         void Response(SharpVision.Terminal.Kitty.Graphics.Response value);
         void Response(SharpVision.Terminal.Xterm.CapabilityResponse value);
+        void Response(SharpVision.Terminal.Xterm.ItermCapabilitiesResponse value);
         void Response(in SharpVision.Terminal.Clipboard.ClipboardReply value);
         void Response(in SharpVision.Terminal.Xterm.MetricsResponse value);
         void Response(in SharpVision.Terminal.Xterm.PaletteResponse value);
@@ -190,6 +191,7 @@ namespace SharpVision.Terminal.Capabilities
         public SharpVision.Terminal.Capabilities.Queries Results { get; }
         public SharpVision.Terminal.Capabilities.QueryMatch Accept(SharpVision.Terminal.Kitty.Graphics.Response response) { }
         public SharpVision.Terminal.Capabilities.QueryMatch Accept(SharpVision.Terminal.Xterm.CapabilityResponse response) { }
+        public SharpVision.Terminal.Capabilities.QueryMatch Accept(SharpVision.Terminal.Xterm.ItermCapabilitiesResponse response) { }
         public SharpVision.Terminal.Capabilities.QueryMatch Accept(in SharpVision.Terminal.Xterm.MetricsResponse response) { }
         public SharpVision.Terminal.Capabilities.QueryMatch Accept(in SharpVision.Terminal.Xterm.PaletteResponse response) { }
         public SharpVision.Terminal.Capabilities.QueryMatch Accept(in SharpVision.Terminal.Xterm.Response response) { }
@@ -255,6 +257,7 @@ namespace SharpVision.Terminal.Capabilities
         CapabilityString = 13,
         ModifyOtherKeys = 14,
         KittyGraphics = 15,
+        ItermCapabilities = 16,
     }
     public sealed class QueryLimits : System.IEquatable<SharpVision.Terminal.Capabilities.QueryLimits>
     {
@@ -1095,6 +1098,7 @@ namespace SharpVision.Terminal.Protocols
         public static void OpenHyperlink(SharpVision.Terminal.Protocols.Writer writer, System.ReadOnlySpan<byte> uri, System.ReadOnlySpan<byte> id = default) { }
         public static void QueryBackground(SharpVision.Terminal.Protocols.Writer writer) { }
         public static void QueryForeground(SharpVision.Terminal.Protocols.Writer writer) { }
+        public static void QueryItermCapabilities(SharpVision.Terminal.Protocols.Writer writer) { }
         public static void QueryPalette(SharpVision.Terminal.Protocols.Writer writer, int index) { }
         public static void Title(SharpVision.Terminal.Protocols.Writer writer, System.ReadOnlySpan<byte> title) { }
     }
@@ -1670,6 +1674,10 @@ namespace SharpVision.Terminal.Xterm
         public bool IsValid { get; }
         public System.Collections.Generic.IReadOnlyDictionary<SharpVision.Terminal.Xterm.CapabilityName, System.ReadOnlyMemory<byte>> Items { get; }
     }
+    public sealed class ItermCapabilitiesResponse
+    {
+        public bool HasFileCode { get; }
+    }
     public readonly struct MetricsResponse : System.IEquatable<SharpVision.Terminal.Xterm.MetricsResponse>
     {
         public MetricsResponse(SharpVision.Terminal.Xterm.ResponseKind kind, SharpVision.Terminal.Geometry.Size size) { }
@@ -1748,5 +1756,6 @@ namespace SharpVision.Terminal.Xterm
         public static bool TryCsi(System.ReadOnlySpan<byte> parameters, System.ReadOnlySpan<byte> intermediates, byte final, out SharpVision.Terminal.Xterm.Response response) { }
         public static bool TryMetricsCsi(System.ReadOnlySpan<byte> parameters, System.ReadOnlySpan<byte> intermediates, byte final, out SharpVision.Terminal.Xterm.MetricsResponse response) { }
         public static bool TryOsc(System.ReadOnlySpan<byte> value, out SharpVision.Terminal.Xterm.PaletteResponse response) { }
+        public static bool TryOscItermCapabilities(System.ReadOnlySpan<byte> value, out SharpVision.Terminal.Xterm.ItermCapabilitiesResponse response) { }
     }
 }

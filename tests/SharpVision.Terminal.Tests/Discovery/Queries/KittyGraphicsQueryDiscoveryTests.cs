@@ -69,9 +69,9 @@ public sealed class KittyGraphicsQueryDiscoveryTests
     /// <param name="capacity">The bounded concurrent query capacity.</param>
     /// <param name="expected">Whether the graphics query is expected.</param>
     [Theory]
-    [InlineData(14, false)]
     [InlineData(15, false)]
-    [InlineData(16, true)]
+    [InlineData(16, false)]
+    [InlineData(17, true)]
     public void TryStart_WhenQueryCapacityCrossesGraphicsSlot_EmitsExpectedProbe(
         int capacity,
         bool expected)

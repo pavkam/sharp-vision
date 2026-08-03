@@ -20,9 +20,27 @@ public sealed class EnvironmentSnapshotTests
         EnvironmentNames.Term.ShouldBe("TERM");
         EnvironmentNames.ColorTerm.ShouldBe("COLORTERM");
         EnvironmentNames.TermProgram.ShouldBe("TERM_PROGRAM");
+        EnvironmentNames.TermProgramVersion.ShouldBe("TERM_PROGRAM_VERSION");
         EnvironmentNames.Tmux.ShouldBe("TMUX");
         EnvironmentNames.SshConnection.ShouldBe("SSH_CONNECTION");
         EnvironmentNames.SshTty.ShouldBe("SSH_TTY");
+    }
+
+    /// <summary>
+    /// Verifies TERM_PROGRAM_VERSION supplied only under its EnvironmentNames constant is
+    /// recognized and canonicalized, the same way the other recognized keys are (see #230).
+    /// </summary>
+    [Fact]
+    public void Environment_WhenCallerIsCaseInsensitive_CanonicalizesTermProgramVersion()
+    {
+        var environment = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+        {
+            [EnvironmentNames.TermProgramVersion.ToLowerInvariant()] = "3.5.0"
+        };
+
+        var options = new NegotiationOptions(environment);
+
+        options.Environment[EnvironmentNames.TermProgramVersion].ShouldBe("3.5.0");
     }
 
     /// <summary>

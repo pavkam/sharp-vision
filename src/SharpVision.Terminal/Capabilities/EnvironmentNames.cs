@@ -19,6 +19,13 @@ internal static class EnvironmentNames
     /// <summary>The terminal application's own self-identification.</summary>
     public const string TermProgram = "TERM_PROGRAM";
 
+    /// <summary>
+    /// The terminal application's self-reported version, used only to narrow (never grant)
+    /// iTerm2 multipart-image evidence below the iTerm2 3.5 introduction of the multipart
+    /// protocol — see <c>QueryEvidenceAdapter</c>.
+    /// </summary>
+    public const string TermProgramVersion = "TERM_PROGRAM_VERSION";
+
     /// <summary>Presence indicates an active tmux session.</summary>
     public const string Tmux = "TMUX";
 

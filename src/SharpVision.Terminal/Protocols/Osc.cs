@@ -107,6 +107,10 @@ public static class Osc
     /// <param name="writer">The validated protocol writer.</param>
     public static void QueryBackground(Writer writer) => writer.Osc(11, "?"u8);
 
+    /// <summary>Queries iTerm2 feature-reporting capabilities using OSC 1337 ; Capabilities.</summary>
+    /// <param name="writer">The validated protocol writer.</param>
+    public static void QueryItermCapabilities(Writer writer) => writer.Osc(1337, "Capabilities"u8);
+
     private static void ValidateIdentifier(ReadOnlySpan<byte> value)
     {
         foreach (var item in value)

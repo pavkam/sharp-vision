@@ -22,6 +22,7 @@ internal static class EnvironmentSnapshot
         EnvironmentNames.Term,
         EnvironmentNames.ColorTerm,
         EnvironmentNames.TermProgram,
+        EnvironmentNames.TermProgramVersion,
         EnvironmentNames.Tmux,
         EnvironmentNames.SshConnection,
         EnvironmentNames.SshTty

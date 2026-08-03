@@ -76,6 +76,7 @@ public sealed class Decoder: IDisposable
         [
             TryHandleOscSequence,
             TryHandleOsc52Sequence,
+            TryHandleItermCapabilitiesSequence,
             TryHandleKittyClipboardSequence,
             TryHandleKittyGraphicsSequence,
             TryHandleProtocolSequence
@@ -922,6 +923,28 @@ public sealed class Decoder: IDisposable
         if (_protocolSink is { } clipboardSink)
         {
             clipboardSink.Response(Clipboard.Osc52.Decode(value, _options.TransferLimits.MaxClipboardBytes));
+        }
+        else
+        {
+            Report(DiagnosticCode.Unsupported, kind);
+        }
+
+        return true;
+    }
+
+    private bool TryHandleItermCapabilitiesSequence(
+        SequenceKind kind,
+        ReadOnlySpan<byte> value,
+        StringTerminator terminator)
+    {
+        if (kind != SequenceKind.Osc || !XtermResponses.TryOscItermCapabilities(value, out var response))
+        {
+            return false;
+        }
+
+        if (_protocolSink is { } capabilitiesSink)
+        {
+            capabilitiesSink.Response(response);
         }
         else
         {

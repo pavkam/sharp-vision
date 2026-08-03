@@ -12,7 +12,7 @@ Primary sources:
 - [iTerm2 Feature Reporting](https://iterm2.com/feature-reporting/) defines
   `Capabilities`, `TERM_FEATURES`, and the `FILE` feature boundary.
 
-Sources accessed 2026-07-20.
+Sources accessed 2026-07-20; Feature Reporting re-verified 2026-08-02.
 
 iTerm2 accepts BEL or ST for OSC 1337. SharpVision emits canonical 7-bit OSC
 with ST (`ESC \`) only. The generic bounded parser continues to recognize and
@@ -73,23 +73,48 @@ Backend selection is evidence-based. Kitty query or override evidence wins
 globally because its retained backend supports RGBA and PNG. Without Kitty, one
 shared non-retained backend walks placements in original paint order: sixel
 handles RGBA only with supported query/override evidence and exact metrics;
-iTerm2 handles compatible PNG only when `ItermImages` is Supported with Override
-origin. This keeps mixed RGBA/PNG order intact and lets PNG remain viable when
-sixel metrics are absent.
+iTerm2 handles compatible PNG only when `ItermImages` is Supported with Query or
+Override origin. This keeps mixed RGBA/PNG order intact and lets PNG remain
+viable when sixel metrics are absent.
 
 `ItermImages=true` is an explicit assertion that the destination implements the
-iTerm2 3.5-or-newer multipart protocol. Query, database, and tentative
-`TERM_PROGRAM` evidence do not authorize output. Application host selection
-creates the backend lazily after profile and resize publication and consumes
-semantic placements from the public Image control.
+iTerm2 3.5-or-newer multipart protocol. Database and tentative `TERM_PROGRAM`
+evidence do not authorize output — only an explicit override, or a positive
+`OSC 1337 ; Capabilities` reply carrying the `FILE` code (see below), can.
 
-> [!IMPORTANT]
+Capability discovery consumes `OSC 1337 ; Capabilities` as query-origin
+evidence: `ActiveQueryDiscoveryStrategy` emits the query whenever baseline
+`ItermImages` is `Unknown`/`Tentative` with no override, parses the reply's
+concatenated feature codes for a bare `F`, and resolves a silent terminal to
+`false` instead of leaving it `Unknown` (there is no piggyback response to
+expire against the way Kitty graphics reuses primary device attributes).
+`TERM_FEATURES` is not separately consumed: it would only ever set the same
+`Tentative`/`Environment` hint that `TERM_PROGRAM == "iTerm.app"` already sets,
+whose sole function is making the query fire, so a second environment variable
+doing the identical job was judged not worth adding.
+
+> [!WARNING]
 >
-> **Implementation gap:** Capability discovery does not consume iTerm2
-> `Capabilities` or `TERM_FEATURES` `FILE` evidence. Direct iTerm2 image output
-> therefore requires an explicit `ItermImages=true` override even when a local
-> terminal could provide authoritative FILE support evidence. Issue #230 tracks
-> consuming this evidence.
+> **Spec ambiguity:** the published feature table assigns code `F` to both
+> `FILE` and `FOCUS_REPORTING` with no documented disambiguation (see Sources
+> below) — this library cannot tell which meaning a bare `F` in the reply
+> denotes from the code alone. `FocusReporting` is unaffected because it has its
+> own unambiguous DEC private mode query; only `ItermImages` reads the `F` code,
+> and only in combination with the version corroborator described next.
+
+Because of that ambiguity, and because Feature Reporting predates iTerm2 3.5's
+multipart protocol while `FILE` documents only the legacy single-sequence form
+SharpVision never emits, a bare `FILE`/`F` reply is corroborated — never
+disambiguated — by `TERM_PROGRAM_VERSION`. `QueryEvidenceAdapter` downgrades an
+otherwise-Supported `ItermImages` value to `Unsupported` when
+`TERM_PROGRAM_VERSION` parses below `3.5`; an absent, unparseable, or `>= 3.5`
+version leaves Query (or a later Override) evidence untouched. This is narrowing
+only — the version can withhold Supported evidence but can never by itself grant
+it, consistent with `Support`'s own contract that `Tentative` "must not enable
+it."
+
+Application host selection creates the backend lazily after profile and resize
+publication and consumes semantic placements from the public Image control.
 
 Unsupported source, fitting, route, or evidence keeps the control's previously
 painted cell fallback.
@@ -109,8 +134,12 @@ cursor restoration, stale-pixel repair, intersecting and unrelated damage,
 transitive same- and mixed-protocol overlap repaint, unsupported-upper fallback,
 allocation-free synchronous phases, byte-quiet cleanup, independently routed
 tmux frames, transport failure, and full retry. Selector tests freeze
-Kitty-over-fallback priority, origin requirements, route authorization, mixed
-paint order, and missing-metric PNG viability. Application/public-control
+Kitty-over-fallback priority, origin requirements (including that Query now
+authorizes iTerm2 output the same way it already does Kitty and sixel), route
+authorization, mixed paint order, and missing-metric PNG viability.
+`ActiveQueryDiscoveryStrategy` tests cover the Capabilities query gate, `FILE`
+code parsing, and silent-terminal negative inference; `Detector` tests cover the
+`TERM_PROGRAM_VERSION` narrowing corroborator. Application/public-control
 coverage shares the final-byte, conservative-route, and failure-safe shutdown
 tests with the other graphics backends.
 
@@ -120,12 +149,12 @@ tests with the other graphics backends.
 - [iTerm2 Proprietary Escape Codes](https://iterm2.com/documentation-escape-codes.html)
 - [iTerm2 Feature Reporting](https://iterm2.com/feature-reporting/)
 
-Sources accessed 2026-07-28.
+Sources accessed 2026-07-28; Feature Reporting re-verified 2026-08-02.
 
 ## Expected behavior
 
-| Layer     | Required evidence                                                             |
-| --------- | ----------------------------------------------------------------------------- |
-| Writer    | Exact multipart metadata, Base64 chunks, limits, terminators, and validation. |
-| Selection | Explicit 3.5+ evidence, metrics/stretch constraints, and authorized routes.   |
-| Rendering | Upload/paint order, damage repair, failure retry, cleanup, and final bytes.   |
+| Layer     | Required evidence                                                                            |
+| --------- | -------------------------------------------------------------------------------------------- |
+| Writer    | Exact multipart metadata, Base64 chunks, limits, terminators, and validation.                |
+| Selection | Query- or Override-origin 3.5+ evidence, metrics/stretch constraints, and authorized routes. |
+| Rendering | Upload/paint order, damage repair, failure retry, cleanup, and final bytes.                  |

@@ -35,8 +35,10 @@ internal sealed class ActiveQueryDiscoveryStrategy
     private bool? _sixel;
     private bool? _synchronizedOutput;
     private bool? _kittyClipboard;
+    private bool? _itermImages;
     private bool _keyboardQueried;
     private bool _graphicsQueried;
+    private bool _itermCapabilitiesQueried;
     private bool _usesExplicitOuterProfile;
     private PaletteResponse? _paletteColor;
     private PaletteResponse? _foregroundColor;
@@ -245,6 +247,14 @@ internal sealed class ActiveQueryDiscoveryStrategy
         if (supportsStringQueries && TryRegister(QueryKind.BackgroundColor, ref remaining))
         {
             Osc.QueryBackground(writer);
+        }
+
+        if (supportsStringQueries &&
+            ShouldQuery(_baseline.ItermImages, _options.Overrides?.ItermImages) &&
+            TryRegister(QueryKind.ItermCapabilities, ref remaining))
+        {
+            Osc.QueryItermCapabilities(writer);
+            _itermCapabilitiesQueried = true;
         }
 
         if (supportsStringQueries &&
@@ -571,6 +581,38 @@ internal sealed class ActiveQueryDiscoveryStrategy
         return match;
     }
 
+    /// <summary>Matches one validated iTerm2 OSC 1337 Capabilities feature-reporting reply.</summary>
+    /// <param name="response">The non-null owned response.</param>
+    /// <returns>The active, duplicate, late, or unknown match classification.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="response"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The negotiator has not started.</exception>
+    public QueryMatch Accept(ItermCapabilitiesResponse response)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+
+        if (!IsStarted)
+        {
+            throw new InvalidOperationException("The capability negotiator has not started.");
+        }
+
+        var now = _timeProvider.GetUtcNow();
+        _ = ExpireIfDeadlineReached(now);
+        var match = _tracker.Match(QueryKind.ItermCapabilities, now);
+        LastDiagnostic = _tracker.LastDiagnostic;
+
+        if (match == QueryMatch.Matched)
+        {
+            // The published feature-reporting table assigns code "F" to both FILE and
+            // FOCUS_REPORTING (see docs/protocols/iterm2.md), so this positive reply is
+            // corroborated — not disambiguated — by QueryEvidenceAdapter's TERM_PROGRAM_VERSION
+            // narrowing before it can ever authorize multipart output.
+            _itermImages = response.HasFileCode;
+            TryPublish();
+        }
+
+        return match;
+    }
+
     /// <summary>Publishes conservative evidence when the shared deadline elapsed.</summary>
     /// <returns>Whether this call transitioned negotiation to complete.</returns>
     /// <exception cref="InvalidOperationException">The negotiator has not started.</exception>
@@ -685,6 +727,14 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
     private void Publish()
     {
+        // OSC 1337 Capabilities has no natural piggyback response the way Kitty graphics reuses
+        // PrimaryAttributes, so a silent terminal only ever times out — resolve that silence to
+        // an explicit false here rather than leaving ItermImages sitting at Unknown.
+        if (_itermCapabilitiesQueried && !_itermImages.HasValue)
+        {
+            _itermImages = false;
+        }
+
         var queries = new Queries()
         {
             PaletteColor = _paletteColor,
@@ -702,6 +752,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
             KittyGraphics = _kittyGraphics,
             KittyClipboard = _kittyClipboard,
             Sixel = _sixel,
+            ItermImages = _itermImages,
             XtermKeyboard = _xtermKeyboard,
             CapabilityString = _capabilityString
         };

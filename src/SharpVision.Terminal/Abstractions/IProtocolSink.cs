@@ -93,6 +93,22 @@ public interface IProtocolSink: IInputSink
     }
 
     /// <summary>
+    /// Receives one validated iTerm2 OSC 1337 Capabilities feature-reporting reply. The default
+    /// implementation reports a synthetic unsupported OSC diagnostic through
+    /// <see cref="IInputSink.Input(in Diagnostic)"/>.
+    /// </summary>
+    /// <param name="value">The non-null immutable feature-reporting reply.</param>
+    public void Response(ItermCapabilitiesResponse value)
+    {
+        var diagnostic = new Diagnostic(
+            DiagnosticCode.Unsupported,
+            SequenceKind.Osc,
+            offset: 0,
+            discardedBytes: 0);
+        Input(in diagnostic);
+    }
+
+    /// <summary>
     /// Receives one decoded OSC 52 clipboard reply. The default implementation reports a synthetic
     /// unsupported OSC diagnostic through <see cref="IInputSink.Input(in Diagnostic)"/>.
     /// </summary>

@@ -83,10 +83,13 @@ returns every protocol paired with its `Feature` as an
 Both members report each protocol's real `Support` state. Kitty graphics may
 become supported only from its strict correlated APC query or explicit caller
 policy; an environment name remains tentative. Sixel may become supported from
-DA1 parameter 4 or explicit caller policy. iTerm2 multipart output requires an
-explicit caller override asserting the 3.5+ behavior; environment, database, and
-unimplemented feature-query evidence cannot enable it. The
-[coverage matrix](coverage-matrix.md#coverage) remains the support claim.
+DA1 parameter 4 or explicit caller policy. iTerm2 multipart output requires
+either an explicit caller override or a correlated `OSC 1337 ; Capabilities`
+query reply carrying the `FILE` code, corroborated by a `TERM_PROGRAM_VERSION`
+of 3.5 or newer; environment and database evidence cannot enable it (see
+[iTerm2 evidence](iterm2.md#non-retained-backend-and-selection) for the
+narrowing corroborator and the `FILE`/`FOCUS_REPORTING` code-collision hazard).
+The [coverage matrix](coverage-matrix.md#coverage) remains the support claim.
 
 `SharpVision.ITerminalServices` (`Application.Terminal`) exposes the implemented
 **output** protocols behind small interfaces. `Description` exposes the active
