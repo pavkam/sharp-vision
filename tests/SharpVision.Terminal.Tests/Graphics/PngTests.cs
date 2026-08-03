@@ -186,6 +186,16 @@ public sealed class PngTests
         _ = Should.Throw<ArgumentException>(() => source.AsSpan().DecodeRgba());
     }
 
+    /// <summary>Verifies malformed zlib data is normalized to the documented PNG exception.</summary>
+    [Fact]
+    public void DecodeRgba_WhenCompressedDataIsInvalid_ThrowsArgumentException()
+    {
+        var source = CreateDecodablePng(1, 1, colorType: 0, bitDepth: 8, [0], [[42]]);
+        source[41] = 0;
+
+        _ = Should.Throw<ArgumentException>(() => source.AsSpan().DecodeRgba());
+    }
+
     #endregion
 
     private static byte[] CreateDecodablePng(

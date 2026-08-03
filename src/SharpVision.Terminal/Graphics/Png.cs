@@ -159,6 +159,13 @@ internal static class Png
                 try
                 {
                     zlib.ReadExactly(raw);
+
+                    if (zlib.ReadByte() != -1)
+                    {
+                        throw new ArgumentException(
+                            "The PNG compressed scanline data exceeds its declared dimensions.",
+                            "source");
+                    }
                 }
                 catch (EndOfStreamException exception)
                 {
@@ -167,13 +174,14 @@ internal static class Png
                         "source",
                         exception);
                 }
-
-                if (zlib.ReadByte() != -1)
+                catch (InvalidDataException exception)
                 {
                     throw new ArgumentException(
-                        "The PNG compressed scanline data exceeds its declared dimensions.",
-                        "source");
+                        "The PNG compressed scanline data is invalid.",
+                        "source",
+                        exception);
                 }
+
             }
 
             var pixels = Defilter(raw, size.Height, stride, channels);
