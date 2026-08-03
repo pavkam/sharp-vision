@@ -948,6 +948,12 @@ namespace SharpVision.Terminal.Multiplexing
         Tmux = 1,
         Screen = 2,
     }
+    public sealed class MultiplexerRoute
+    {
+        public MultiplexerRoute(SharpVision.Terminal.Multiplexing.Policy policy) { }
+        public SharpVision.Terminal.Multiplexing.Policy Policy { get; }
+        public bool TryUnwrapReply(System.ReadOnlySpan<byte> envelope, out System.ReadOnlyMemory<byte> reply) { }
+    }
     [System.Flags]
     public enum Operation
     {
@@ -976,12 +982,6 @@ namespace SharpVision.Terminal.Multiplexing
         public SharpVision.Terminal.Multiplexing.PassthroughMode Passthrough { get; }
         public bool Allows(SharpVision.Terminal.Multiplexing.Operation operation) { }
         public static SharpVision.Terminal.Multiplexing.Policy Detect(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment) { }
-    }
-    public sealed class Route
-    {
-        public Route(SharpVision.Terminal.Multiplexing.Policy policy) { }
-        public SharpVision.Terminal.Multiplexing.Policy Policy { get; }
-        public bool TryUnwrapReply(System.ReadOnlySpan<byte> envelope, out System.ReadOnlyMemory<byte> reply) { }
     }
     public static class TmuxWriter
     {
@@ -1484,7 +1484,7 @@ namespace SharpVision.Terminal.Rendering
     public sealed class Renderer : System.IDisposable
     {
         public Renderer(int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
-        public Renderer(SharpVision.Terminal.Capabilities.Capabilities capabilities, SharpVision.Terminal.Multiplexing.Route? route = null, int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
+        public Renderer(SharpVision.Terminal.Capabilities.Capabilities capabilities, SharpVision.Terminal.Multiplexing.MultiplexerRoute? route = null, int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
         public System.Exception? LastCleanupException { get; }
         public bool AttachCommittedFrame(SharpVision.Terminal.Rendering.Frame back) { }
         public void Dispose() { }

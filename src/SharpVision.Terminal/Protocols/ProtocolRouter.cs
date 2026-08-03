@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Protocols;
 
 using Input;
 
-using MultiplexerRoute = Multiplexing.Route;
+using MultiplexerRoute = Multiplexing.MultiplexerRoute;
 
 /// <summary>Routes one terminal byte stream into typed input and protocol events.</summary>
 [PublicAPI]

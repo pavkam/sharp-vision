@@ -95,7 +95,7 @@ public sealed class BackendSelectorTests
     public void Create_WhenRouteContainsScreen_ReturnsFallback()
     {
         var profile = Profile(iterm: new Feature(CapabilitySupport.Supported, Origin.Override));
-        var route = new Route(new Policy(
+        var route = new MultiplexerRoute(new Policy(
             [MultiplexerKind.Screen],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
@@ -112,7 +112,7 @@ public sealed class BackendSelectorTests
     public void Create_WhenKittyIsSupportedButRouteContainsScreen_ReturnsFallback()
     {
         var profile = Profile(kitty: new Feature(CapabilitySupport.Supported, Origin.Query));
-        var route = new Route(new Policy(
+        var route = new MultiplexerRoute(new Policy(
             [MultiplexerKind.Screen],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
@@ -128,13 +128,13 @@ public sealed class BackendSelectorTests
     {
         var profile = Profile(iterm: new Feature(CapabilitySupport.Supported, Origin.Override));
         var outer = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
-        var unauthorized = new Route(new Policy(
+        var unauthorized = new MultiplexerRoute(new Policy(
             [MultiplexerKind.Tmux],
             outer,
             PassthroughMode.All,
             paneVisible: true,
             MultiplexingOperation.CapabilityQueries));
-        var hidden = new Route(new Policy(
+        var hidden = new MultiplexerRoute(new Policy(
             [MultiplexerKind.Tmux],
             outer,
             PassthroughMode.Visible,

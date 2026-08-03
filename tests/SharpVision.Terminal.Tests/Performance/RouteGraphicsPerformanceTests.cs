@@ -30,7 +30,7 @@ public sealed class RouteGraphicsPerformanceTests
             MultiplexingOperation.Graphics,
             maxDepth: 4,
             maxEnvelopeBytes: 1024 * 1024);
-        var route = new Route(policy);
+        var route = new MultiplexerRoute(policy);
 
         var commands = new byte[2 + 4096 + 2];
         commands[0] = ControlBytes.Escape;

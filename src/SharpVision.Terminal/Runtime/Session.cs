@@ -9,7 +9,7 @@ using Capabilities;
 
 using Xterm;
 
-using MultiplexerRoute = Multiplexing.Route;
+using MultiplexerRoute = Multiplexing.MultiplexerRoute;
 
 /// <summary>
 /// Owns terminal mode leases and serializes input, resize, closure, and cleanup.

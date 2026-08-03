@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Graphics.Backends;
 
 using Capabilities;
 
-using MultiplexerRoute = Multiplexing.Route;
+using MultiplexerRoute = Multiplexing.MultiplexerRoute;
 
 /// <summary>Selects one renderer backend from authoritative evidence and route policy.</summary>
 internal static class GraphicsBackendSelector
