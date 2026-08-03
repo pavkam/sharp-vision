@@ -10,7 +10,7 @@ public sealed class FocusChangingEventArgs: EventArgs
     /// <summary>Initializes one pending focus transition.</summary>
     /// <param name="previous">The previously focused control.</param>
     /// <param name="next">The requested next control, or null for release.</param>
-    public FocusChangingEventArgs(Control? previous, Control? next)
+    public FocusChangingEventArgs(ControlBase? previous, ControlBase? next)
         : this(previous, next, FocusReason.Programmatic)
     {
     }
@@ -20,7 +20,7 @@ public sealed class FocusChangingEventArgs: EventArgs
     /// <param name="next">The requested next control, or null for release.</param>
     /// <param name="reason">The defined reason for the requested transition.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="reason"/> is undefined.</exception>
-    public FocusChangingEventArgs(Control? previous, Control? next, FocusReason reason)
+    public FocusChangingEventArgs(ControlBase? previous, ControlBase? next, FocusReason reason)
     {
         if (!Enum.IsDefined(reason))
         {
@@ -33,10 +33,10 @@ public sealed class FocusChangingEventArgs: EventArgs
     }
 
     /// <summary>Gets the control focused before the request.</summary>
-    public Control? Previous { get; }
+    public ControlBase? Previous { get; }
 
     /// <summary>Gets the requested next control, or null for release.</summary>
-    public Control? Next { get; }
+    public ControlBase? Next { get; }
 
     /// <summary>Gets the reason for the requested transition.</summary>
     public FocusReason Reason { get; }

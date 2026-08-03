@@ -38,13 +38,13 @@ public sealed class PointerDevice
     public PointerAction LastAction { get; private set; }
 
     /// <summary>Gets the current interactive hover target, or null when the pointer is over non-interactive content.</summary>
-    public Control? Hovered => _capture()?.Hovered;
+    public ControlBase? Hovered => _capture()?.Hovered;
 
     /// <summary>Gets the control where the raw active pointer press began, or null.</summary>
-    public Control? PressOrigin => _capture()?.PressOrigin;
+    public ControlBase? PressOrigin => _capture()?.PressOrigin;
 
     /// <summary>Gets the exclusive capture target, or null.</summary>
-    public Control? Captured => _capture()?.Captured;
+    public ControlBase? Captured => _capture()?.Captured;
 
     internal void Observe(in Pointer pointer)
     {

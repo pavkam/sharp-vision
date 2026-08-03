@@ -15,6 +15,25 @@ public readonly struct ChaseIndicatorStyle: IEquatable<ChaseIndicatorStyle>
     private readonly ColorValue? _trackColor;
     private readonly ThemeProfile? _appearance;
 
+    /// <summary>Gets the primary chase-indicator-style definition.</summary>
+    internal static StyleDefinition<ChaseIndicatorStyle> Definition { get; } = StyleDefinitions.Control(
+        ThemeRole.Control,
+        static profile => new ChaseIndicatorStyle(
+            Default.Active,
+            Default.Inactive,
+            Default.HeadColor,
+            Default.TrailColor,
+            Default.TrackColor,
+            profile),
+        static style => style.Appearance,
+        static (previous, previousTheme, current, currentTheme) =>
+            previous != current ||
+            ControlBase.ResolveColor(previous.HeadColor, previousTheme) != ControlBase.ResolveColor(current.HeadColor, currentTheme) ||
+            ControlBase.ResolveColor(previous.TrailColor, previousTheme) != ControlBase.ResolveColor(current.TrailColor, currentTheme) ||
+            ControlBase.ResolveColor(previous.TrackColor, previousTheme) != ControlBase.ResolveColor(current.TrackColor, currentTheme)
+                ? InvalidationImpact.Render
+                : InvalidationImpact.None);
+
     /// <summary>Initializes a complete chase-indicator presentation.</summary>
     /// <param name="active">The printable one-cell active-position glyph.</param>
     /// <param name="inactive">The printable one-cell inactive-position glyph.</param>
@@ -88,6 +107,29 @@ public readonly struct ChaseIndicatorStyle: IEquatable<ChaseIndicatorStyle>
 
     /// <summary>Gets the complete normal and visual-state appearance profile.</summary>
     public ThemeProfile Appearance => ResolveAppearance();
+
+    /// <summary>Creates a validated copy with selected members replaced.</summary>
+    /// <param name="active">The optional active glyph.</param>
+    /// <param name="inactive">The optional inactive glyph.</param>
+    /// <param name="headColor">The optional head foreground.</param>
+    /// <param name="trailColor">The optional trail foreground.</param>
+    /// <param name="trackColor">The optional track foreground.</param>
+    /// <param name="appearance">The optional appearance-profile overlay.</param>
+    /// <returns>A complete validated chase-indicator style.</returns>
+    /// <exception cref="ArgumentException">A composed glyph or foreground is invalid.</exception>
+    public ChaseIndicatorStyle With(
+        Rune? active = null,
+        Rune? inactive = null,
+        ColorValue? headColor = null,
+        ColorValue? trailColor = null,
+        ColorValue? trackColor = null,
+        AppearanceProfileSet? appearance = null) => new(
+        active ?? Active,
+        inactive ?? Inactive,
+        headColor ?? HeadColor,
+        trailColor ?? TrailColor,
+        trackColor ?? TrackColor,
+        appearance is null ? Appearance : StyleResolution.Apply(Appearance, appearance.Value));
 
     /// <summary>Determines whether this value and another style resolve to the same presentation.</summary>
     /// <param name="other">The other style to compare.</param>

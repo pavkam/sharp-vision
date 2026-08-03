@@ -71,8 +71,8 @@ public sealed class ComponentGeometrySurfaceTests
     [Fact]
     public void Catalog_WhenPublicConcreteControlsChange_RequiresMountedGeometryCase()
     {
-        var exported = typeof(Control).Assembly.GetExportedTypes()
-            .Where(type => !type.IsAbstract && typeof(Control).IsAssignableFrom(type))
+        var exported = typeof(ControlBase).Assembly.GetExportedTypes()
+            .Where(type => !type.IsAbstract && typeof(ControlBase).IsAssignableFrom(type))
             .OrderBy(type => type.Name)
             .ToArray();
         var catalogued = _controlTypes.OrderBy(type => type.Name).ToArray();

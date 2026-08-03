@@ -8,10 +8,10 @@ namespace SharpVision.Input;
 public abstract class RoutedEventArgs: EventArgs
 {
     /// <summary>Gets the control that started the current or most recent route.</summary>
-    public Control? OriginalSource { get; private set; }
+    public ControlBase? OriginalSource { get; private set; }
 
     /// <summary>Gets the current logical source, which may be explicitly retargeted.</summary>
-    public Control? Source { get; private set; }
+    public ControlBase? Source { get; private set; }
 
     /// <summary>Gets the active or most recent route phase.</summary>
     public RoutingPhase Phase { get; internal set; }
@@ -28,7 +28,7 @@ public abstract class RoutedEventArgs: EventArgs
     /// <param name="source">The non-null replacement logical source.</param>
     /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
     /// <exception cref="InvalidOperationException">No route is currently active.</exception>
-    public void Retarget(Control source)
+    public void Retarget(ControlBase source)
     {
         ArgumentNullException.ThrowIfNull(source);
 
@@ -64,7 +64,7 @@ public abstract class RoutedEventArgs: EventArgs
     }
 
     /// <summary>Begins one route and resets per-route mutable state.</summary>
-    internal void Begin(Control source)
+    internal void Begin(ControlBase source)
     {
         ArgumentNullException.ThrowIfNull(source);
 

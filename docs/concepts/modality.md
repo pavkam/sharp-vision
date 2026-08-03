@@ -5,8 +5,9 @@
 Modality limits every interactive route to one logical plane while leaving the
 retained control tree and visual layers unchanged. A modal plane consists of one
 primary root, any explicitly included roots, and all descendants reached through
-owned `Control.Parent` ancestry. While a scope is active, background key, text,
-paste, focus, pointer, hover, pressed-state, and capture interaction is blocked.
+owned `ControlBase.Parent` ancestry. While a scope is active, background key,
+text, paste, focus, pointer, hover, pressed-state, and capture interaction is
+blocked.
 
 A modal scope is one entry on the application-owned stack. The youngest scope is
 the active one; older scopes stay suspended until the younger scopes exit. Input

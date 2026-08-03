@@ -2,10 +2,10 @@
 
 ## Overview
 
-`MenuItem` is a sealed [`Pressable`](../pressable.md#overview) that represents a
-command, check, or radio entry inside a [Menu](menu.md#overview). Its label
-comes from the inherited `Content` property, which is the item's only visible
-face; there is no competing text-only `Header` property.
+`MenuItem` is a sealed [`PressableBase`](../pressable.md#overview) that
+represents a command, check, or radio entry inside a [Menu](menu.md#overview).
+Its label comes from the inherited `Content` property, which is the item's only
+visible face; there is no competing text-only `Header` property.
 
 ## API
 
@@ -20,7 +20,7 @@ face; there is no competing text-only `Header` property.
 | `UncheckedGlyph`, `CheckedGlyph` | Code-owned      | Override state marks; `ResetGlyphs()` restores code-owned defaults.                            |
 | `Invoked`                        | No subscribers  | Raised after activation commits, once any check state has updated.                             |
 | `PerformInvoke()`                | —               | Invokes the item programmatically.                                                             |
-| `Command`, `CommandParameter`    | `null`          | Inherited from `Pressable`; runs after `Invoked`.                                              |
+| `Command`, `CommandParameter`    | `null`          | Inherited from `PressableBase`; runs after `Invoked`.                                          |
 
 ## Behavior
 
@@ -141,9 +141,9 @@ opening a nested item never creates one modal scope per submenu.
 
 ## MenuSeparator
 
-`MenuSeparator : Control` is a distinct non-interactive entry role. It is never
-a `Pressable` and never a `MenuItemKind`: it cannot be focused, hit-tested,
-selected, or invoked. It measures three cells by one cell, stretches
+`MenuSeparator : ControlBase` is a distinct non-interactive entry role. It is
+never a `PressableBase` and never a `MenuItemKind`: it cannot be focused,
+hit-tested, selected, or invoked. It measures three cells by one cell, stretches
 horizontally by default, and draws a clipped horizontal rule across the complete
 arranged menu width.
 

@@ -8,7 +8,7 @@ using Text;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the Table control with mixed column sizing and headerless specimens.</summary>
-internal sealed class TablePane: CompositeControl
+internal sealed class TablePane: CompositeControlBase
 {
     internal TablePane() => InitializeContent(CreateContent());
 

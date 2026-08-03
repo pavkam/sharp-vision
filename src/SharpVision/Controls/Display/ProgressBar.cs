@@ -5,31 +5,12 @@ namespace SharpVision.Controls.Display;
 
 /// <summary>Displays a visual progress indicator using block characters with optional sub-cell resolution.</summary>
 [PublicAPI]
-public sealed class ProgressBar: Control
+public sealed class ProgressBar: Control<ProgressBarStyle>
 {
-    private static readonly StyleContract<ProgressBarStyle> _styleContract = new(
-        ThemeRole.Control,
-        static profile => new ProgressBarStyle(
-            ProgressBarStyle.Default.FillColor,
-            ProgressBarStyle.Default.TrackColor,
-            ProgressBarStyle.Default.IndeterminateColor,
-            ProgressBarStyle.Default.Glyphs,
-            profile),
-        static (previous, previousTheme, current, currentTheme) =>
-            previous != current ||
-            ResolveColor(previous.FillColor, previousTheme) != ResolveColor(current.FillColor, currentTheme) ||
-            ResolveColor(previous.TrackColor, previousTheme) != ResolveColor(current.TrackColor, currentTheme) ||
-            ResolveColor(previous.IndeterminateColor, previousTheme) != ResolveColor(current.IndeterminateColor, currentTheme)
-                ? InvalidationImpact.Render
-                : InvalidationImpact.None,
-        static style => style.Appearance);
     private double _value;
-    private ProgressBarStyle? _actualStyleCache;
-    private ProgressBarStyle? _actualStyleCacheKey;
-    private Theme? _actualStyleCacheTheme;
 
     /// <summary>Initializes a non-focusable horizontal progress bar at zero progress.</summary>
-    public ProgressBar()
+    public ProgressBar() : base(ProgressBarStyle.Definition)
     {
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment = VerticalAlignment.Stretch;
@@ -161,60 +142,6 @@ public sealed class ProgressBar: Control
         get;
         set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
     }
-
-    /// <summary>Gets or sets the complete local presentation, or null to use the semantic control profile.</summary>
-    /// <exception cref="InvalidOperationException">The attached progress bar is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The progress bar is disposed.</exception>
-    public ProgressBarStyle? Style
-    {
-        get;
-        set => _ = SetControlStyle(
-            ref field,
-            value,
-            _styleContract.Resolve,
-            _styleContract.CompareStructure,
-            _styleContract.Appearance,
-            nameof(Style),
-            nameof(ActualStyle));
-    }
-
-    /// <summary>Gets the complete local presentation or the library fill-and-track mechanics completed with the semantic control profile.</summary>
-    public ProgressBarStyle ActualStyle =>
-        ResolveContractStyle(
-            _styleContract,
-            ref _actualStyleCache,
-            ref _actualStyleCacheKey,
-            ref _actualStyleCacheTheme,
-            Style,
-            Theme);
-
-    /// <inheritdoc/>
-    protected override ThemeRole ThemeRole => _styleContract.Role;
-
-    /// <inheritdoc/>
-    protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
-
-    /// <inheritdoc/>
-    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
-        GetContractAppearanceProfile(_styleContract, Style, theme);
-
-    /// <inheritdoc/>
-    protected override InvalidationImpact GetThemeChangeImpact(
-        Theme? previous,
-        Theme? current,
-        Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace) =>
-        GetContractThemeChangeImpact(
-            _styleContract,
-            Style,
-            previous,
-            current,
-            previousParentAmbientFace,
-            currentParentAmbientFace);
-
-    /// <inheritdoc/>
-    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        GetContractResolvedStylePropertyName(_styleContract, Style, previous, current, nameof(ActualStyle));
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)

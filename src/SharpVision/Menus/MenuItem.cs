@@ -11,7 +11,7 @@ using SharpVision.Terminal.Input;
 
 /// <summary>Defines one focusable command, check, or radio entry in a <see cref="Menu"/>.</summary>
 [PublicAPI]
-public sealed class MenuItem: Pressable
+public sealed class MenuItem: PressableBase
 {
     private const int _shortcutGap = 2;
     private readonly OwnedControlSlot _submenuSlot;

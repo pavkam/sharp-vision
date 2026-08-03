@@ -55,12 +55,12 @@ internal sealed class HelloScreen : Screen
 ```
 
 `Screen` is a retained
-[`CompositeControl`](../controls/composite-control.md#overview): its constructor
-creates the permanent visual tree and calls `InitializeContent` exactly once.
-`Stack.Spacing` inserts one terminal cell between visible children, and the two
-alignment properties center the stack inside the application viewport. The
-[`Button`](../controls/input/button.md#overview) owns one `Content` child and
-publishes `Click` after a completed activation.
+[`CompositeControlBase`](../controls/composite-control.md#overview): its
+constructor creates the permanent visual tree and calls `InitializeContent`
+exactly once. `Stack.Spacing` inserts one terminal cell between visible
+children, and the two alignment properties center the stack inside the
+application viewport. The [`Button`](../controls/input/button.md#overview) owns
+one `Content` child and publishes `Click` after a completed activation.
 
 ## Run it
 

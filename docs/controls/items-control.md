@@ -2,10 +2,10 @@
 
 ## Overview
 
-`ItemsControl : Control` is the base role for semantic controls that realize an
-ordered set of controls inside one private presentation container. It behaves as
-an ordinary semantic owner: its direct appearance does not create a style scope
-and does not cascade through its private host to the realized items.
+`ItemsControl : ControlBase` is the base role for semantic controls that realize
+an ordered set of controls inside one private presentation container. It behaves
+as an ordinary semantic owner: its direct appearance does not create a style
+scope and does not cascade through its private host to the realized items.
 
 A concrete constructor calls `InitializeItemsHost(Container)` exactly once. A
 rejected candidate does not consume the initialization, so the constructor can

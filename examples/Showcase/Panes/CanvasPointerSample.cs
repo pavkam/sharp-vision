@@ -4,7 +4,7 @@
 namespace SharpVision.Showcase.Panes;
 
 /// <summary>Combines routed pointer input with a semantic custom-drawn marker.</summary>
-internal sealed class CanvasPointerSample: Control
+internal sealed class CanvasPointerSample: ControlBase
 {
     private Point? _marker;
     private string _status = "Cells: unavailable · Pixels: unavailable";

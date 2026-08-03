@@ -133,7 +133,7 @@ internal sealed class StatusBarHost: Container
         return count;
     }
 
-    private static int OuterWidth(Control item) => item.DesiredSize.Width.Add(item.Margin.Horizontal);
+    private static int OuterWidth(ControlBase item) => item.DesiredSize.Width.Add(item.Margin.Horizontal);
 
     private int SpacingExtent(int count, int limit)
     {

@@ -19,7 +19,7 @@ internal sealed class TablePresenter: Container
 
     // A complete constructor Face outranks every theme state contribution and disables ambient
     // inheritance, permanently opting this presenter out of visual-state feedback. Only the
-    // transparent background is presenter-specific; the rest matches the Control role's own
+    // transparent background is presenter-specific; the rest matches the ControlBase role's own
     // normal defaults, so a partial FaceSet contribution keeps state behavior alive (see #162).
     private static readonly AppearanceProfileSet _presenterAppearance = new(
         normal: new AppearanceSet(

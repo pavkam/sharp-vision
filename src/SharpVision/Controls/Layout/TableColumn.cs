@@ -17,7 +17,7 @@ public readonly record struct TableColumn
         string header,
         Length width,
         bool isReadOnly = false,
-        Func<Control, IComparable?>? sortKey = null)
+        Func<ControlBase, IComparable?>? sortKey = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(header);
         Header = header;
@@ -36,14 +36,14 @@ public readonly record struct TableColumn
     public bool IsReadOnly { get; }
 
     /// <summary>Gets the optional comparable key selector used by Table sorting.</summary>
-    public Func<Control, IComparable?>? SortKey { get; }
+    public Func<ControlBase, IComparable?>? SortKey { get; }
 
     /// <summary>Creates an automatic-width column.</summary>
     /// <param name="header">The non-empty header.</param>
     /// <param name="isReadOnly">Whether cells in this column reject Table editing.</param>
     /// <param name="sortKey">An optional stable comparable key selector for a cell control.</param>
     /// <returns>An automatic column.</returns>
-    public static TableColumn Auto(string header, bool isReadOnly = false, Func<Control, IComparable?>? sortKey = null) =>
+    public static TableColumn Auto(string header, bool isReadOnly = false, Func<ControlBase, IComparable?>? sortKey = null) =>
         new(header, Length.Auto, isReadOnly, sortKey);
 
     /// <summary>Creates a fixed terminal-cell-width column.</summary>
@@ -52,7 +52,7 @@ public readonly record struct TableColumn
     /// <param name="isReadOnly">Whether cells in this column reject Table editing.</param>
     /// <param name="sortKey">An optional stable comparable key selector for a cell control.</param>
     /// <returns>A fixed-width column.</returns>
-    public static TableColumn Fixed(string header, int width, bool isReadOnly = false, Func<Control, IComparable?>? sortKey = null) =>
+    public static TableColumn Fixed(string header, int width, bool isReadOnly = false, Func<ControlBase, IComparable?>? sortKey = null) =>
         new(header, Length.Cells(width), isReadOnly, sortKey);
 
     /// <summary>Creates a percentage-width column.</summary>
@@ -61,7 +61,7 @@ public readonly record struct TableColumn
     /// <param name="isReadOnly">Whether cells in this column reject Table editing.</param>
     /// <param name="sortKey">An optional stable comparable key selector for a cell control.</param>
     /// <returns>A percentage-width column.</returns>
-    public static TableColumn Percent(string header, double percent, bool isReadOnly = false, Func<Control, IComparable?>? sortKey = null) =>
+    public static TableColumn Percent(string header, double percent, bool isReadOnly = false, Func<ControlBase, IComparable?>? sortKey = null) =>
         new(header, Length.Percent(percent), isReadOnly, sortKey);
 
     /// <summary>Creates a proportional fill column.</summary>
@@ -70,6 +70,6 @@ public readonly record struct TableColumn
     /// <param name="isReadOnly">Whether cells in this column reject Table editing.</param>
     /// <param name="sortKey">An optional stable comparable key selector for a cell control.</param>
     /// <returns>A fill column.</returns>
-    public static TableColumn Fill(string header, double weight = 1, bool isReadOnly = false, Func<Control, IComparable?>? sortKey = null) =>
+    public static TableColumn Fill(string header, double weight = 1, bool isReadOnly = false, Func<ControlBase, IComparable?>? sortKey = null) =>
         new(header, Length.Star(weight), isReadOnly, sortKey);
 }

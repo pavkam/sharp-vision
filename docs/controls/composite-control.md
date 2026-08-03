@@ -2,28 +2,32 @@
 
 ## Overview
 
-`CompositeControl` is the abstract base for a reusable component built from a
-retained private tree of existing controls. It derives directly from
-[`Control`](control.md#overview); it is not a `Container`, exposes no public
+`CompositeControlBase` is the abstract base for a reusable component built from
+a retained private tree of existing controls. It derives directly from
+[`ControlBase`](control.md#overview); it is not a `Container`, exposes no public
 `Children` collection, and does not expose its implementation root as publicly
 replaceable content.
 
-Use `CompositeControl` when the component owns the identity and lifetime of its
-implementation tree. Use [`ContentControl`](content-control.md#overview) when
-callers own a replaceable semantic content value, and use
+`CompositeControl<TStyle>` adds the framework-owned primary
+`Style`/`ActualStyle` slot for a retained composite with an immutable complete
+typed style.
+
+Use `CompositeControlBase` when the component owns the identity and lifetime of
+its implementation tree. Use [`ContentControl`](content-control.md#overview)
+when callers own a replaceable semantic content value, and use
 [`Container`](container.md#overview) only for a genuine layout control whose
 arbitrary children are part of its public API.
 
 ## API
 
-| Member                       | Availability         | Purpose                                                                                     |
-| ---------------------------- | -------------------- | ------------------------------------------------------------------------------------------- |
-| `InitializeContent(Control)` | Protected, once      | Transfers one detached root into the permanent private composition slot.                    |
-| `Content`                    | Protected, read-only | Lets derived behavior coordinate the committed private root without exposing it to callers. |
+| Member                           | Availability         | Purpose                                                                                     |
+| -------------------------------- | -------------------- | ------------------------------------------------------------------------------------------- |
+| `InitializeContent(ControlBase)` | Protected, once      | Transfers one detached root into the permanent private composition slot.                    |
+| `Content`                        | Protected, read-only | Lets derived behavior coordinate the committed private root without exposing it to callers. |
 
 Callers configure the composite's public semantic properties plus the inherited
-[`Control` properties](control.md#api); they cannot replace its implementation
-tree.
+[`ControlBase` properties](control.md#api); they cannot replace its
+implementation tree.
 
 ## Construction and ownership
 
@@ -94,7 +98,7 @@ second `InitializeContent` call is invalid.
 ## Example
 
 ```csharp
-public sealed class StatusCard: CompositeControl
+public sealed class StatusCard: CompositeControlBase
 {
     private readonly Text _status;
 

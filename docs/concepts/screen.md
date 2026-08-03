@@ -2,29 +2,30 @@
 
 ## Overview
 
-`Screen : CompositeControl` is the abstract application root. A concrete screen
-builds its retained control tree in its constructor and installs exactly one
-private authored root with `InitializeContent`. That root is parented directly
-to the Screen. A separate private presentation `Overlay` hosts temporary Windows
-and dialogs above the root without entering the authored layout algorithm; what
-gets presented is the concrete floating surface itself, not a full-screen proxy.
-While the presentation plane is empty it is pointer-transparent — only a
-presented child claims its cells — so the authored content stays interactive
-everywhere else. Neither slot is exposed as a public child collection. A Screen
-is not a [`Container`](../controls/container.md#overview) and has no `Children`
-property; when a screen needs multiple visuals, use a real layout container such
-as `Dock`, `Grid`, or `Stack` as the authored root.
+`Screen : CompositeControlBase` is the abstract application root. A concrete
+screen builds its retained control tree in its constructor and installs exactly
+one private authored root with `InitializeContent`. That root is parented
+directly to the Screen. A separate private presentation `Overlay` hosts
+temporary Windows and dialogs above the root without entering the authored
+layout algorithm; what gets presented is the concrete floating surface itself,
+not a full-screen proxy. While the presentation plane is empty it is
+pointer-transparent — only a presented child claims its cells — so the authored
+content stays interactive everywhere else. Neither slot is exposed as a public
+child collection. A Screen is not a
+[`Container`](../controls/container.md#overview) and has no `Children` property;
+when a screen needs multiple visuals, use a real layout container such as
+`Dock`, `Grid`, or `Stack` as the authored root.
 
-A Screen uses the global `Control` semantic role unless its implementation
-selects another one. With no complete local `Face`, `Border`, or `Shadow`, its
-`ActualFace`, `ActualBorder`, and `ActualShadow` come from the active theme.
-Assigning a complete local value keeps that developer value authoritative across
-later theme changes.
+A Screen uses the global `ThemeRole.Control` semantic role unless its
+implementation selects another one. With no complete local `Face`, `Border`, or
+`Shadow`, its `ActualFace`, `ActualBorder`, and `ActualShadow` come from the
+active theme. Assigning a complete local value keeps that developer value
+authoritative across later theme changes.
 
 ```mermaid
 flowchart LR
     Host["ConsoleApplication host"] --> Application["Application"]
-    Application --> Screen["Screen : CompositeControl"]
+    Application --> Screen["Screen : CompositeControlBase"]
     Screen --> Root["private authored composition root"]
     Screen --> Presentation["private presentation Overlay"]
     Presentation --> Window["temporary Window or Dialog"]

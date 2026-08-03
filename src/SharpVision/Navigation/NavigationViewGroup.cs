@@ -10,7 +10,7 @@ using LayoutStack = Controls.Layout.Stack;
 
 /// <summary>Defines a collapsible labeled group of navigation items.</summary>
 [PublicAPI]
-public sealed class NavigationViewGroup: Control
+public sealed class NavigationViewGroup: ControlBase
 {
     private readonly LayoutStack _stack;
     private readonly OwnedControlSlot _childrenSlot;

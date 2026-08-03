@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Support;
 
 /// <summary>Records inherited terminal color-depth transitions for context tests.</summary>
-internal sealed class CapabilityProbe: Control
+internal sealed class CapabilityProbe: ControlBase
 {
     /// <summary>Gets the currently inherited terminal color depth.</summary>
     internal ColorDepth ColorDepth => Capabilities.ColorDepth;

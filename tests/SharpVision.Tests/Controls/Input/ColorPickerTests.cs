@@ -349,7 +349,7 @@ public sealed class ColorPickerTests
         picker.Style = style;
         picker.Style = style;
 
-        notifications.ShouldBe([nameof(ColorPicker.Style)]);
+        notifications.ShouldBe([nameof(ColorPicker.Style), nameof(ColorPicker.ActualStyle)]);
     }
 
     private static KeyEventArgs Key(Code code) => new(new Stroke(

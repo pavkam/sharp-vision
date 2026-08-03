@@ -14,6 +14,24 @@ public readonly struct SliderStyle: IEquatable<SliderStyle>
     private readonly SliderGlyphs? _glyphs;
     private readonly ThemeProfile? _appearance;
 
+    /// <summary>Gets the primary slider-style definition.</summary>
+    internal static StyleDefinition<SliderStyle> Definition { get; } = StyleDefinitions.Control(
+        ThemeRole.Control,
+        static profile => new SliderStyle(
+            Default.FillColor,
+            Default.TrackColor,
+            Default.ThumbColor,
+            Default.Glyphs,
+            profile),
+        static style => style.Appearance,
+        static (previous, previousTheme, current, currentTheme) =>
+            previous != current ||
+            ControlBase.ResolveColor(previous.FillColor, previousTheme) != ControlBase.ResolveColor(current.FillColor, currentTheme) ||
+            ControlBase.ResolveColor(previous.TrackColor, previousTheme) != ControlBase.ResolveColor(current.TrackColor, currentTheme) ||
+            ControlBase.ResolveColor(previous.ThumbColor, previousTheme) != ControlBase.ResolveColor(current.ThumbColor, currentTheme)
+                ? InvalidationImpact.Render
+                : InvalidationImpact.None);
+
     /// <summary>Initializes a complete slider presentation.</summary>
     /// <param name="fillColor">The non-transparent filled-rail foreground.</param>
     /// <param name="trackColor">The non-transparent unfilled-rail foreground.</param>
@@ -58,6 +76,26 @@ public readonly struct SliderStyle: IEquatable<SliderStyle>
 
     /// <summary>Gets the complete normal and visual-state appearance profile.</summary>
     public ThemeProfile Appearance => ResolveAppearance();
+
+    /// <summary>Creates a validated copy with selected members replaced.</summary>
+    /// <param name="fillColor">The optional replacement fill foreground.</param>
+    /// <param name="trackColor">The optional replacement track foreground.</param>
+    /// <param name="thumbColor">The optional replacement thumb foreground.</param>
+    /// <param name="glyphs">The optional replacement glyph family.</param>
+    /// <param name="appearance">The optional appearance-profile overlay.</param>
+    /// <returns>A complete validated slider style.</returns>
+    /// <exception cref="ArgumentException">A composed glyph or foreground is invalid.</exception>
+    public SliderStyle With(
+        ColorValue? fillColor = null,
+        ColorValue? trackColor = null,
+        ColorValue? thumbColor = null,
+        SliderGlyphs? glyphs = null,
+        AppearanceProfileSet? appearance = null) => new(
+        fillColor ?? FillColor,
+        trackColor ?? TrackColor,
+        thumbColor ?? ThumbColor,
+        glyphs ?? Glyphs,
+        appearance is null ? Appearance : StyleResolution.Apply(Appearance, appearance.Value));
 
     /// <summary>Determines whether this value and another style resolve to the same presentation.</summary>
     /// <param name="other">The other style to compare.</param>

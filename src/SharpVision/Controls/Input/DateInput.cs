@@ -11,7 +11,7 @@ using SharpVision.Terminal.Input;
 
 /// <summary>Displays a formatted date with inline segment editing and a Calendar popup for selection.</summary>
 [PublicAPI]
-public sealed class DateInput: Control
+public sealed class DateInput: ControlBase
 {
     /// <inheritdoc/>
     protected override ThemeRole ThemeRole => ThemeRole.Input;

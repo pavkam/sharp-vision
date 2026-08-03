@@ -9,7 +9,7 @@ internal sealed class HostedControlScreen: Screen
     /// <summary>Initializes a screen that owns the supplied detached content.</summary>
     /// <param name="content">The non-null detached control to host.</param>
     /// <exception cref="ArgumentNullException"><paramref name="content"/> is null.</exception>
-    internal HostedControlScreen(Control content)
+    internal HostedControlScreen(ControlBase content)
     {
         ArgumentNullException.ThrowIfNull(content);
         InitializeContent(new Overlay { Children = { content } });

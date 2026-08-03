@@ -33,7 +33,7 @@ flowchart LR
 ```
 
 Each control or concept page lives in `examples/Showcase/Panes/` as a
-`*Pane : CompositeControl`. Its constructor creates a retained page root and
+`*Pane : CompositeControlBase`. Its constructor creates a retained page root and
 installs it once through `InitializeContent` before any layout. There is no
 measure-time construction, no shared showcase base class, and no mandatory
 metadata: a pane composes the public `Stack`, marked `Text`, `Dock`, and layout
@@ -65,7 +65,7 @@ blink remain isolated demonstrations rather than general documentation styling.
 (`(string Group, string Name, Func<CompositeControl> Create)[]`). The sidebar
 organizes its 47 entries by primary use:
 
-- Concepts: Control, Border, Shadow, Data Binding, and Styling.
+- Concepts: ControlBase, Border, Shadow, Data Binding, and Styling.
 - Input: Button, HyperlinkButton, Calendar, DateInput, DateTimeInput, CheckBox,
   ColorPicker, ComboBox, RadioButton, Slider, TextInput, and TimeInput.
 - Collections: ListView, TabControl, Table, and TreeView.
@@ -187,7 +187,7 @@ background, contains only a `TextInput` page filter and the grouped
 `NavigationView`, and uses a single intrinsic separator at its right edge.
 Filtering compares the committed query to the authored page names without regard
 to case, collapses nonmatching items, and collapses any group with no remaining
-item. Each page entry is a single-content `Pressable` whose inherited Text
+item. Each page entry is a single-content `PressableBase` whose inherited Text
 content is measured and arranged beside its marker; the selected, focused,
 hovered, and pressed states follow the active application theme. The Styling
 concept page shows every Color representation, the complete visual-state overlay

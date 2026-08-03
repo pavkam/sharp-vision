@@ -13,7 +13,7 @@ using SharpVision.Text;
 /// All three phase views and their descendants are created once. Phase changes update retained text and
 /// visibility only, preserving control identity, layout ownership, and the animated Prism instances.
 /// </remarks>
-internal sealed class SnakeTitlePanel: CompositeControl
+internal sealed class SnakeTitlePanel: CompositeControlBase
 {
     private static readonly FigletFont _smallFont = FigletCatalog.Default.Load("Small");
     private static readonly FigletFont _standardFont = FigletCatalog.Default.Load("Standard");
@@ -276,7 +276,7 @@ internal sealed class SnakeTitlePanel: CompositeControl
         ShowOnly(_gameOverView);
     }
 
-    private static Dock CreateCard(params Control[] children)
+    private static Dock CreateCard(params ControlBase[] children)
     {
         var content = new Stack { HorizontalAlignment = HorizontalAlignment.Stretch, Spacing = 0 };
 

@@ -8,7 +8,7 @@ using Text;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents Text geometry, markup, overflow, links, and live content mutation.</summary>
-internal sealed class TextPane: CompositeControl
+internal sealed class TextPane: CompositeControlBase
 {
     internal TextPane() => InitializeContent(CreateContent());
 

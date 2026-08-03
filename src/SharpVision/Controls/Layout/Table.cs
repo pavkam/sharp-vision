@@ -14,6 +14,7 @@ using TerminalInput = Terminal.Input;
 public sealed class Table: ItemsControl
 {
     private readonly TablePresenter _presenter;
+    private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly List<TableRow> _sourceRows = [];
     private readonly HashSet<TableRow> _selectedRows = [];
     private readonly HashSet<TableCellReference> _selectedCells = [];
@@ -38,6 +39,10 @@ public sealed class Table: ItemsControl
         Rows = new TableRowCollection(this);
         _presenter = new TablePresenter(this);
         InitializeItemsHost(_presenter);
+        _scrollBarStyle = InitializePartStyle(
+            Scrolling.ScrollBarStyle.ForwardingDefinition,
+            nameof(ScrollBarStyle));
+        BindStyle(_scrollBarStyle, _presenter, nameof(ScrollBarStyle));
         _ = AddHandler(Events.Key, OnKeyRouted, handledEventsToo: true);
         _ = AddHandler(Events.Pointer, OnPointerRouted, handledEventsToo: true);
     }
@@ -294,30 +299,12 @@ public sealed class Table: ItemsControl
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
     public ScrollBarStyle? ScrollBarStyle
     {
-        get => _presenter.ScrollBarStyle;
-        set
-        {
-            VerifyMutable();
-
-            if (_presenter.ScrollBarStyle == value)
-            {
-                return;
-            }
-
-            var previous = ActualScrollBarStyle;
-            _presenter.ScrollBarStyle = value;
-            var current = ActualScrollBarStyle;
-            NotifyPropertyChanged(nameof(ScrollBarStyle), InvalidationImpact.None);
-
-            if (previous != current)
-            {
-                NotifyPropertyChanged(nameof(ActualScrollBarStyle), InvalidationImpact.None);
-            }
-        }
+        get => _scrollBarStyle.Local;
+        set => _scrollBarStyle.Local = value;
     }
 
     /// <summary>Gets the resolved private-scrollbar style.</summary>
-    public ScrollBarStyle ActualScrollBarStyle => ScrollBar.ResolveStyle(ScrollBarStyle, Theme);
+    public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
 
     /// <summary>Gets or sets the non-negative keyboard and wheel scrolling increment in cells.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
@@ -395,7 +382,7 @@ public sealed class Table: ItemsControl
     /// <exception cref="ArgumentException">The control is not a realized table descendant.</exception>
     /// <exception cref="InvalidOperationException">The attached table is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    public bool BringIntoView(Control descendant) => _presenter.BringIntoView(descendant);
+    public bool BringIntoView(ControlBase descendant) => _presenter.BringIntoView(descendant);
 
     /// <summary>Selects one owned row and makes its first cell active.</summary>
     /// <param name="row">The non-null row owned by this table.</param>
@@ -1220,7 +1207,7 @@ public sealed class Table: ItemsControl
         VerifyMutable();
     }
 
-    private bool TryGetCell(Control? source, out TableRow row, out int columnIndex)
+    private bool TryGetCell(ControlBase? source, out TableRow row, out int columnIndex)
     {
         if (source is null)
         {
@@ -1281,7 +1268,7 @@ public sealed class Table: ItemsControl
         }
     }
 
-    private static string CellText(Control cell) => cell switch
+    private static string CellText(ControlBase cell) => cell switch
     {
         Text text => text.Content,
         TextInput input => input.Text,

@@ -101,7 +101,7 @@ public sealed class PackedPackageConsumerTests
     }
 
     /// <summary>Verifies an external package consumer can present and complete a derived Dialog
-    /// through the protected PresentAsync(Control, Control?, CancellationToken) overload (see #77).</summary>
+    /// through the protected PresentAsync(ControlBase, ControlBase?, CancellationToken) overload (see #77).</summary>
     [Fact]
     public async Task Dialog_WhenDerivedFromPackedPackage_CanPresentAndCompleteAsync()
     {

@@ -7,7 +7,7 @@ using DisplayText = Display.Text;
 
 /// <summary>Defines a focusable clickable text control styled as a classic hyperlink.</summary>
 [PublicAPI]
-public sealed class HyperlinkButton: Pressable
+public sealed class HyperlinkButton: PressableBase
 {
     private static readonly AppearanceProfileSet _linkAppearance = new(
         normal: new AppearanceSet(

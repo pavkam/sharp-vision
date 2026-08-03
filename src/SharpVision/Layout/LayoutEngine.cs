@@ -21,7 +21,7 @@ public sealed class LayoutEngine
     /// Layout is reentered or the attached root is accessed off-dispatcher.
     /// </exception>
     /// <exception cref="ObjectDisposedException"><paramref name="root"/> is disposed.</exception>
-    public void Layout(Control root, Size size)
+    public void Layout(ControlBase root, Size size)
     {
         ArgumentNullException.ThrowIfNull(root);
 

@@ -10,11 +10,11 @@ using DisplayText = Controls.Display.Text;
 public sealed class Tooltip: Popup
 {
     private const string _tooltipPartKey = "tooltip";
-    private static readonly ConditionalWeakTable<Control, Tooltip> _attachedTooltips = [];
+    private static readonly ConditionalWeakTable<ControlBase, Tooltip> _attachedTooltips = [];
 
     private DispatcherTimer? _showTimer;
     private DispatcherTimer? _hideTimer;
-    private Control? _attachedAnchor;
+    private ControlBase? _attachedAnchor;
     private DisplayText? _textContent;
 
     /// <summary>Initializes a closed passive tooltip with default delays.</summary>
@@ -34,7 +34,7 @@ public sealed class Tooltip: Popup
     /// <param name="anchor">The non-null control to annotate.</param>
     /// <param name="text">The non-null tooltip text.</param>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
-    public static void SetText(Control anchor, string text)
+    public static void SetText(ControlBase anchor, string text)
     {
         ArgumentNullException.ThrowIfNull(anchor);
         ArgumentNullException.ThrowIfNull(text);
@@ -48,7 +48,7 @@ public sealed class Tooltip: Popup
     /// <param name="placement">The preferred placement relative to the anchor.</param>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="placement"/> is unknown.</exception>
-    public static void SetText(Control anchor, string text, PopupPlacement placement)
+    public static void SetText(ControlBase anchor, string text, PopupPlacement placement)
     {
         SetText(anchor, text);
         GetTooltip(anchor)!.Placement = placement;
@@ -61,7 +61,7 @@ public sealed class Tooltip: Popup
     /// <param name="showDelay">The delay before showing on hover or focus.</param>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException">The placement is unknown or the delay is invalid.</exception>
-    public static void SetText(Control anchor, string text, PopupPlacement placement, TimeSpan showDelay)
+    public static void SetText(ControlBase anchor, string text, PopupPlacement placement, TimeSpan showDelay)
     {
         SetText(anchor, text, placement);
         GetTooltip(anchor)!.ShowDelay = showDelay;
@@ -71,7 +71,7 @@ public sealed class Tooltip: Popup
     /// <param name="anchor">The non-null control to annotate.</param>
     /// <param name="content">The non-null content control to display.</param>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
-    public static void SetContent(Control anchor, Control content)
+    public static void SetContent(ControlBase anchor, ControlBase content)
     {
         ArgumentNullException.ThrowIfNull(anchor);
         ArgumentNullException.ThrowIfNull(content);
@@ -85,7 +85,7 @@ public sealed class Tooltip: Popup
     /// <param name="placement">The preferred placement relative to the anchor.</param>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="placement"/> is unknown.</exception>
-    public static void SetContent(Control anchor, Control content, PopupPlacement placement)
+    public static void SetContent(ControlBase anchor, ControlBase content, PopupPlacement placement)
     {
         SetContent(anchor, content);
         GetTooltip(anchor)!.Placement = placement;
@@ -95,7 +95,7 @@ public sealed class Tooltip: Popup
     /// <param name="anchor">The non-null control to inspect.</param>
     /// <returns>The associated tooltip, or null.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="anchor"/> is null.</exception>
-    public static Tooltip? GetTooltip(Control anchor)
+    public static Tooltip? GetTooltip(ControlBase anchor)
     {
         ArgumentNullException.ThrowIfNull(anchor);
         return _attachedTooltips.TryGetValue(anchor, out var tooltip) ? tooltip : null;
@@ -104,7 +104,7 @@ public sealed class Tooltip: Popup
     /// <summary>Removes any tooltip associated with the specified control.</summary>
     /// <param name="anchor">The non-null control to clear.</param>
     /// <exception cref="ArgumentNullException"><paramref name="anchor"/> is null.</exception>
-    public static void ClearTooltip(Control anchor)
+    public static void ClearTooltip(ControlBase anchor)
     {
         ArgumentNullException.ThrowIfNull(anchor);
 
@@ -115,7 +115,7 @@ public sealed class Tooltip: Popup
         }
     }
 
-    private static Tooltip GetOrCreateTooltip(Control anchor)
+    private static Tooltip GetOrCreateTooltip(ControlBase anchor)
     {
         if (_attachedTooltips.TryGetValue(anchor, out var existing))
         {
@@ -183,7 +183,7 @@ public sealed class Tooltip: Popup
     } = TimeSpan.FromMilliseconds(100);
 
     /// <inheritdoc/>
-    protected override void OnContentChanged(Control? previous, Control? current)
+    protected override void OnContentChanged(ControlBase? previous, ControlBase? current)
     {
         base.OnContentChanged(previous, current);
 
@@ -206,7 +206,7 @@ public sealed class Tooltip: Popup
 
     #region Anchor wiring
 
-    private void Attach(Control anchor)
+    private void Attach(ControlBase anchor)
     {
         _attachedAnchor = anchor;
         Anchor = anchor;
@@ -229,7 +229,7 @@ public sealed class Tooltip: Popup
         anchor.PointerPressed += OnAnchorPointerPressed;
     }
 
-    private void Detach(Control anchor, bool clearOwnership)
+    private void Detach(ControlBase anchor, bool clearOwnership)
     {
         CancelShowTimer();
         CancelHideTimer();
@@ -318,7 +318,7 @@ public sealed class Tooltip: Popup
         }
     }
 
-    private void LayoutPopup(Control anchor)
+    private void LayoutPopup(ControlBase anchor)
     {
         var root = anchor;
 

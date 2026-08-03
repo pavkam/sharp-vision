@@ -11,7 +11,7 @@ namespace SharpVision.Input;
 [PublicAPI]
 public enum FocusReason
 {
-    /// <summary>Focus was requested through <see cref="Control.Focus"/>.</summary>
+    /// <summary>Focus was requested through <see cref="ControlBase.Focus"/>.</summary>
     Programmatic,
 
     /// <summary>Focus was moved by keyboard traversal or widget navigation.</summary>

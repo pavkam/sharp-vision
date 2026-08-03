@@ -12,7 +12,7 @@ internal sealed class WindowActivationManager: IDisposable
 {
     private const int _maxHistory = 8;
 
-    private readonly Control _root;
+    private readonly ControlBase _root;
     private readonly List<Window> _history = [];
     private bool _isDisposed;
 
@@ -21,7 +21,7 @@ internal sealed class WindowActivationManager: IDisposable
     /// <exception cref="ArgumentNullException"><paramref name="root"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException"><paramref name="root"/> is disposed.</exception>
-    internal WindowActivationManager(Control root)
+    internal WindowActivationManager(ControlBase root)
     {
         ArgumentNullException.ThrowIfNull(root);
         root.VerifyMutable();
@@ -34,7 +34,7 @@ internal sealed class WindowActivationManager: IDisposable
     /// <summary>Activates the nearest available Window ancestor of one target, or clears activation.</summary>
     /// <param name="target">The target control, or null.</param>
     /// <returns>The active Window, which also bounds pointer focus, or null.</returns>
-    internal Window? Activate(Control? target)
+    internal Window? Activate(ControlBase? target)
     {
         VerifyAccess();
         SetActive(FindWindow(target));
@@ -55,7 +55,7 @@ internal sealed class WindowActivationManager: IDisposable
         _isDisposed = true;
     }
 
-    private Window? FindWindow(Control? target)
+    private Window? FindWindow(ControlBase? target)
     {
         Window? nearest = null;
 
@@ -111,7 +111,7 @@ internal sealed class WindowActivationManager: IDisposable
     }
 
     // Popups, flyouts, and submenus render through a structurally separate,
-    // always-on-top pass (see Control.RenderOwnedPopupDescendants) and never
+    // always-on-top pass (see ControlBase.RenderOwnedPopupDescendants) and never
     // share this z-index space, so raising a Window here can never bury one -
     // this only ever reorders the activated Window among its sibling Windows
     // (see #224's maintainer decision on window/popup z-index coexistence).
@@ -172,7 +172,7 @@ internal sealed class WindowActivationManager: IDisposable
 
     private bool IsReachableFromRoot(Window window)
     {
-        for (Control? current = window; current is not null; current = current.Parent)
+        for (ControlBase? current = window; current is not null; current = current.Parent)
         {
             if (ReferenceEquals(current, _root))
             {

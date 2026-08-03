@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the Separator control with horizontal, vertical, and contextual layout specimens.</summary>
-internal sealed class SeparatorPane: CompositeControl
+internal sealed class SeparatorPane: CompositeControlBase
 {
     internal SeparatorPane() => InitializeContent(CreateContent());
 

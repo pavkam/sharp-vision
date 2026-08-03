@@ -16,6 +16,6 @@ public enum TreeSelectionMode
     /// <summary>Permits one selected item.</summary>
     Single,
 
-    /// <summary>Permits multiple selected items with Control and Shift modifiers.</summary>
+    /// <summary>Permits multiple selected items with ControlBase and Shift modifiers.</summary>
     Multiple
 }

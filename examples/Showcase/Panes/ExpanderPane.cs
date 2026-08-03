@@ -5,7 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Display.Text;
 
-internal sealed class ExpanderPane: CompositeControl
+internal sealed class ExpanderPane: CompositeControlBase
 {
     internal ExpanderPane() => InitializeContent(CreateContent());
     internal const string Title = "Expander";

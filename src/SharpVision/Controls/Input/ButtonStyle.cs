@@ -11,6 +11,23 @@ public readonly struct ButtonStyle: IEquatable<ButtonStyle>
     private readonly ThemeProfile? _appearance;
     private readonly Thickness? _padding;
 
+    /// <summary>Gets the primary Button-style definition.</summary>
+    internal static StyleDefinition<ButtonStyle> Definition { get; } = StyleDefinitions.Control(
+        ThemeRole.Input,
+        static profile => new ButtonStyle(Standard.Padding, profile),
+        static style => style.Appearance,
+        static (previous, _, current, _) =>
+            previous.Padding != current.Padding
+                ? InvalidationImpact.Measure
+                : PressedTranslationChanged(previous.Appearance, current.Appearance)
+                    ? InvalidationImpact.Arrange
+                    : InvalidationImpact.None);
+
+    /// <summary>Gets the non-invalidating definition used by pure forwarding hosts.</summary>
+    internal static StyleDefinition<ButtonStyle> ForwardingDefinition { get; } = StyleDefinitions.Part(
+        static theme => Definition.Resolve(null, theme),
+        static (_, _, _, _) => InvalidationImpact.None);
+
     /// <summary>Initializes a complete Button presentation.</summary>
     /// <param name="padding">The non-negative internal content padding in cells.</param>
     /// <param name="appearance">The complete normal and visual-state appearance profile.</param>
@@ -42,6 +59,15 @@ public readonly struct ButtonStyle: IEquatable<ButtonStyle>
 
     /// <summary>Gets the complete normal and visual-state appearance profile.</summary>
     public ThemeProfile Appearance => ResolveAppearance();
+
+    /// <summary>Creates a validated copy with selected members replaced.</summary>
+    /// <param name="padding">The optional replacement content padding.</param>
+    /// <param name="appearance">The optional appearance-profile overlay.</param>
+    /// <returns>A complete validated Button style.</returns>
+    /// <exception cref="ArgumentException">The composed appearance violates Button chrome invariants.</exception>
+    public ButtonStyle With(Thickness? padding = null, AppearanceProfileSet? appearance = null) => new(
+        padding ?? Padding,
+        appearance is null ? Appearance : StyleResolution.Apply(Appearance, appearance.Value));
 
     /// <summary>Determines whether this value and another Button style resolve to the same presentation.</summary>
     /// <param name="other">The other style to compare.</param>
@@ -132,4 +158,35 @@ public readonly struct ButtonStyle: IEquatable<ButtonStyle>
 
         return null;
     }
+
+    private static bool PressedTranslationChanged(ThemeProfile previous, ThemeProfile current)
+    {
+        var combinations = 1 << VisualStateOrder.OrderedOverlays.Length;
+        for (var flags = 0; flags < combinations; flags++)
+        {
+            var state = VisualState.Normal;
+            for (var index = 0; index < VisualStateOrder.OrderedOverlays.Length; index++)
+            {
+                if ((flags & (1 << index)) != 0)
+                {
+                    state |= VisualStateOrder.OrderedOverlays[index];
+                }
+            }
+
+            var previousShadow = previous.Resolve(state).Shadow;
+            var currentShadow = current.Resolve(state).Shadow;
+            if (ResolvePressedTranslation(previousShadow) != ResolvePressedTranslation(currentShadow))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static Point ResolvePressedTranslation(Shadow shadow) => !shadow.IsVisible
+        ? default
+        : shadow.Mode == ShadowMode.FractionalBlock
+            ? new Point(shadow.Offset.X, 0)
+            : shadow.Offset;
 }

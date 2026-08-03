@@ -7,23 +7,15 @@ using System.Collections.Immutable;
 
 /// <summary>Displays one automatically advancing glyph from a built-in frame sequence.</summary>
 [PublicAPI]
-public sealed class Spinner: Control
+public sealed class Spinner: Control<SpinnerStyle>
 {
-    private static readonly StyleContract<SpinnerStyle> _styleContract = new(
-        ThemeRole.Control,
-        static profile => new SpinnerStyle(SpinnerStyle.Default.Frames, profile),
-        static (previous, _, current, _) => previous == current ? InvalidationImpact.None : InvalidationImpact.Render,
-        static style => style.Appearance);
     private int _frameIndex;
     private ImmutableArray<Rune> _phaseFrames;
     private bool _hasPhaseFrames;
     private readonly AnimationTimer _animation;
-    private SpinnerStyle? _actualStyleCache;
-    private SpinnerStyle? _actualStyleCacheKey;
-    private Theme? _actualStyleCacheTheme;
 
     /// <summary>Initializes a playing one-cell Braille spinner.</summary>
-    public Spinner()
+    public Spinner() : base(SpinnerStyle.Definition)
     {
         _animation = new AnimationTimer(TimeSpan.FromMilliseconds(200), OnTick, () => EffectiveIsVisible) { IsPlaying = true };
         HorizontalAlignment = HorizontalAlignment.Left;
@@ -32,68 +24,6 @@ public sealed class Spinner: Control
     }
 
     #region Playback properties
-
-    /// <summary>Gets or sets the complete local presentation, or null to use the semantic control profile.</summary>
-    /// <exception cref="InvalidOperationException">The attached spinner is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The spinner is disposed.</exception>
-    public SpinnerStyle? Style
-    {
-        get;
-        set
-        {
-            if (!SetControlStyle(
-                    ref field,
-                    value,
-                    _styleContract.Resolve,
-                    _styleContract.CompareStructure,
-                    _styleContract.Appearance,
-                    nameof(Style),
-                    nameof(ActualStyle)))
-            {
-                return;
-            }
-
-            _ = Frames();
-        }
-    }
-
-    /// <summary>Gets the complete local presentation or library frames completed with the semantic control profile.</summary>
-    public SpinnerStyle ActualStyle =>
-        ResolveContractStyle(
-            _styleContract,
-            ref _actualStyleCache,
-            ref _actualStyleCacheKey,
-            ref _actualStyleCacheTheme,
-            Style,
-            Theme);
-
-    /// <inheritdoc/>
-    protected override ThemeRole ThemeRole => _styleContract.Role;
-
-    /// <inheritdoc/>
-    protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
-
-    /// <inheritdoc/>
-    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
-        GetContractAppearanceProfile(_styleContract, Style, theme);
-
-    /// <inheritdoc/>
-    protected override InvalidationImpact GetThemeChangeImpact(
-        Theme? previous,
-        Theme? current,
-        Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace) =>
-        GetContractThemeChangeImpact(
-            _styleContract,
-            Style,
-            previous,
-            current,
-            previousParentAmbientFace,
-            currentParentAmbientFace);
-
-    /// <inheritdoc/>
-    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        GetContractResolvedStylePropertyName(_styleContract, Style, previous, current, nameof(ActualStyle));
 
     /// <summary>Gets or sets the duration between frame advances.</summary>
     /// <remarks>The default is 200 milliseconds. Changing a running spinner restarts one complete interval.</remarks>
@@ -194,6 +124,14 @@ public sealed class Spinner: Control
     {
         _animation.Dispose();
         base.OnDisposing();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnStyleChanged(SpinnerStyle previous, SpinnerStyle current)
+    {
+        _ = previous;
+        _ = current;
+        _ = Frames();
     }
 
     private ImmutableArray<Rune> Frames()

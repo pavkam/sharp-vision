@@ -4,7 +4,7 @@
 namespace SharpVision.Showcase.Panes;
 
 /// <summary>Demonstrates semantic line, box, fill, clear, and style primitives.</summary>
-internal sealed class CanvasSample: Control
+internal sealed class CanvasSample: ControlBase
 {
     /// <summary>Initializes the fixed-size drawing-fundamentals sample.</summary>
     internal CanvasSample()

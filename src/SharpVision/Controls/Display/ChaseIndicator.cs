@@ -7,30 +7,10 @@ using Terminal.Rendering;
 
 /// <summary>Displays one or two moving glyphs with a fading trail on a horizontal or vertical track.</summary>
 [PublicAPI]
-public sealed class ChaseIndicator: Control
+public sealed class ChaseIndicator: Control<ChaseIndicatorStyle>
 {
     private static readonly TimeSpan _maximumFadeRefresh = TimeSpan.FromMilliseconds(50);
     private static readonly long _minimumTimerTicks = TimeSpan.TicksPerMillisecond;
-    private static readonly StyleContract<ChaseIndicatorStyle> _styleContract = new(
-        ThemeRole.Control,
-        static profile => new ChaseIndicatorStyle(
-            ChaseIndicatorStyle.Default.Active,
-            ChaseIndicatorStyle.Default.Inactive,
-            ChaseIndicatorStyle.Default.HeadColor,
-            ChaseIndicatorStyle.Default.TrailColor,
-            ChaseIndicatorStyle.Default.TrackColor,
-            profile),
-        static (previous, previousTheme, current, currentTheme) =>
-            previous != current ||
-            ResolveColor(previous.HeadColor, previousTheme) != ResolveColor(current.HeadColor, currentTheme) ||
-            ResolveColor(previous.TrailColor, previousTheme) != ResolveColor(current.TrailColor, currentTheme) ||
-            ResolveColor(previous.TrackColor, previousTheme) != ResolveColor(current.TrackColor, currentTheme)
-                ? InvalidationImpact.Render
-                : InvalidationImpact.None,
-        static style => style.Appearance);
-    private ChaseIndicatorStyle? _actualStyleCache;
-    private ChaseIndicatorStyle? _actualStyleCacheKey;
-    private Theme? _actualStyleCacheTheme;
 
     private int[] _trailFirstPositions = [];
     private int[] _trailSecondPositions = [];
@@ -47,7 +27,7 @@ public sealed class ChaseIndicator: Control
     private readonly AnimationTimer _animation;
 
     /// <summary>Initializes a playing five-cell circle chase indicator.</summary>
-    public ChaseIndicator()
+    public ChaseIndicator() : base(ChaseIndicatorStyle.Definition)
     {
         _animation = new AnimationTimer(TimeSpan.FromMilliseconds(200), OnTick, () => EffectiveIsVisible) { IsPlaying = true };
         HorizontalAlignment = HorizontalAlignment.Left;
@@ -88,68 +68,6 @@ public sealed class ChaseIndicator: Control
             NotifyPropertyChanged(nameof(Movement), InvalidationImpact.Render);
         }
     } = ChaseMovement.Bounce;
-
-    /// <summary>Gets or sets the complete local presentation, or null to use the semantic control profile.</summary>
-    /// <exception cref="InvalidOperationException">The attached indicator is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The indicator is disposed of.</exception>
-    public ChaseIndicatorStyle? Style
-    {
-        get;
-        set
-        {
-            if (!SetControlStyle(
-                    ref field,
-                    value,
-                    _styleContract.Resolve,
-                    _styleContract.CompareStructure,
-                    _styleContract.Appearance,
-                    nameof(Style),
-                    nameof(ActualStyle)))
-            {
-                return;
-            }
-
-            _ = SynchronizeStylePhase();
-        }
-    }
-
-    /// <summary>Gets the complete local presentation or library glyph mechanics completed with the semantic control profile.</summary>
-    public ChaseIndicatorStyle ActualStyle =>
-        ResolveContractStyle(
-            _styleContract,
-            ref _actualStyleCache,
-            ref _actualStyleCacheKey,
-            ref _actualStyleCacheTheme,
-            Style,
-            Theme);
-
-    /// <inheritdoc/>
-    protected override ThemeRole ThemeRole => _styleContract.Role;
-
-    /// <inheritdoc/>
-    protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
-
-    /// <inheritdoc/>
-    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
-        GetContractAppearanceProfile(_styleContract, Style, theme);
-
-    /// <inheritdoc/>
-    protected override InvalidationImpact GetThemeChangeImpact(
-        Theme? previous,
-        Theme? current,
-        Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace) =>
-        GetContractThemeChangeImpact(
-            _styleContract,
-            Style,
-            previous,
-            current,
-            previousParentAmbientFace,
-            currentParentAmbientFace);
-
-    /// <inheritdoc/>
-    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        GetContractResolvedStylePropertyName(_styleContract, Style, previous, current, nameof(ActualStyle));
 
     /// <summary>Gets or sets the number of glyph positions in the track.</summary>
     /// <remarks>Changing the length resets playback to the first position.</remarks>
@@ -387,6 +305,14 @@ public sealed class ChaseIndicator: Control
                 active,
                 inherited.WithForeground(headColor));
         }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnStyleChanged(ChaseIndicatorStyle previous, ChaseIndicatorStyle current)
+    {
+        _ = previous;
+        _ = current;
+        _ = SynchronizeStylePhase();
     }
 
     private ChaseIndicatorStyle SynchronizeStylePhase()

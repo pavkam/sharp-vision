@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the Popup control with an anchored, keyboard- and pointer-driven action menu.</summary>
-internal sealed class PopupPane: CompositeControl
+internal sealed class PopupPane: CompositeControlBase
 {
     internal PopupPane() => InitializeContent(CreateContent());
 

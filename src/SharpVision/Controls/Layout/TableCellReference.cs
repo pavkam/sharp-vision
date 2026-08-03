@@ -27,5 +27,5 @@ public readonly record struct TableCellReference
 
     /// <summary>Gets the retained cell control at this reference.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The row no longer contains the column index.</exception>
-    public Control Cell => Row.Cells[ColumnIndex];
+    public ControlBase Cell => Row.Cells[ColumnIndex];
 }

@@ -11,7 +11,7 @@ public sealed class ConsumerDialog: Dialog<bool>
         Content = new DisplayText("Consumer dialog");
 
     /// <summary>Presents this dialog over the given owner's presentation host.</summary>
-    public Task<bool> ShowAsync(Control owner, CancellationToken cancellationToken) =>
+    public Task<bool> ShowAsync(ControlBase owner, CancellationToken cancellationToken) =>
         PresentAsync(owner, initialFocus: null, cancellationToken);
 
     /// <summary>Completes this dialog with a true result through the protected Complete method.</summary>

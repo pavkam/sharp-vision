@@ -53,7 +53,7 @@ backward regardless of orientation. Navigation wraps, skips separators and
 unavailable items, updates `SelectedIndex`, and keeps focus on the menu. Enter,
 or a Space press completed on the menu, activates the selected private item with
 a keyboard cause. A primary pointer click invokes through the shared
-[`Pressable`](../pressable.md#overview) contract.
+[`PressableBase`](../pressable.md#overview) contract.
 
 An ampersand
 [access key](../../concepts/access-keys.md#focus-and-semantic-actions) on an

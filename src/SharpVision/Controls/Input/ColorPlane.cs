@@ -6,7 +6,7 @@ namespace SharpVision.Controls.Input;
 using SharpVision.Terminal.Input;
 
 /// <summary>Edits saturation and value for one hue across a semantic color plane.</summary>
-internal sealed class ColorPlane: Control
+internal sealed class ColorPlane: ControlBase
 {
     private readonly DragBehavior _drag;
 

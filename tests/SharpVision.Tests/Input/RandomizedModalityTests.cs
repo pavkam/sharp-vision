@@ -135,7 +135,7 @@ public sealed class RandomizedModalityTests
         root.Children.Add(third);
         root.Children.Add(fourth);
         root.Attach(dispatcher);
-        var controls = new List<Control>
+        var controls = new List<ControlBase>
         {
             first,
             firstNested,
@@ -144,7 +144,7 @@ public sealed class RandomizedModalityTests
             third,
             fourth,
         };
-        var points = new Dictionary<Control, Point>(ReferenceEqualityComparer.Instance)
+        var points = new Dictionary<ControlBase, Point>(ReferenceEqualityComparer.Instance)
         {
             [first] = new Point(1, 1),
             [firstNested] = new Point(3, 3),
@@ -159,11 +159,11 @@ public sealed class RandomizedModalityTests
         using var modality = new ModalityManager(root, focus, pointer);
         var handles = new List<ModalScope>();
         var expectedStack = new List<ModalScope>();
-        var roots = new Dictionary<ModalScope, List<Control>>(ReferenceEqualityComparer.Instance);
+        var roots = new Dictionary<ModalScope, List<ControlBase>>(ReferenceEqualityComparer.Instance);
         var policies = new Dictionary<ModalScope, OutsideInteraction>(ReferenceEqualityComparer.Instance);
         var inactive = new HashSet<ModalScope>(ReferenceEqualityComparer.Instance);
         var dismissedScopes = new List<ModalScope>();
-        var routedTargets = new List<Control>();
+        var routedTargets = new List<ControlBase>();
         var recent = new Queue<string>();
         var dismissalCallbacks = 0;
         var qualifyingDismissInputs = 0;
@@ -432,7 +432,7 @@ public sealed class RandomizedModalityTests
             }
         }
 
-        void Enter(Control control, OutsideInteraction outsideInteraction, string operation)
+        void Enter(ControlBase control, OutsideInteraction outsideInteraction, string operation)
         {
             Record(operation);
             var followsInactiveHandle = handles.Exists(static handle => !handle.IsActive);
@@ -469,7 +469,7 @@ public sealed class RandomizedModalityTests
 
         }
 
-        void Include(Control control, string operation)
+        void Include(ControlBase control, string operation)
         {
             Record(operation);
             var active = expectedStack[^1];
@@ -477,19 +477,19 @@ public sealed class RandomizedModalityTests
             roots[active].Add(control);
         }
 
-        void Focus(Control control, string operation)
+        void Focus(ControlBase control, string operation)
         {
             Record(operation);
             focus.Focus(control).ShouldBeTrue(Context(-1));
         }
 
-        void Capture(Control control, string operation)
+        void Capture(ControlBase control, string operation)
         {
             Record(operation);
             pointer.Capture(control).ShouldBeTrue(Context(-1));
         }
 
-        void Hide(Control control, string operation)
+        void Hide(ControlBase control, string operation)
         {
             Record(operation);
             var unwind = -1;
@@ -568,7 +568,7 @@ public sealed class RandomizedModalityTests
             Dispatch(target, action, $"{operation}:{Name(target)}");
         }
 
-        void Dispatch(Control pointOwner, PointerAction action, string operation)
+        void Dispatch(ControlBase pointOwner, PointerAction action, string operation)
         {
             Record(operation);
             var point = points[pointOwner];
@@ -659,7 +659,7 @@ public sealed class RandomizedModalityTests
             }
         }
 
-        Control[] AllowedControls()
+        ControlBase[] AllowedControls()
         {
             var planeRoots = expectedStack.Count == 0 ? null : roots[expectedStack[^1]];
             return [.. controls.Where(control =>
@@ -762,7 +762,7 @@ public sealed class RandomizedModalityTests
             $"reentries={entriesAfterInactiveHandles}/{entriesAfterHistoricalLimit}, " +
             $"recent=[{string.Join(" | ", recent)}]";
 
-        string Name(Control control) => ReferenceEquals(control, root)
+        string Name(ControlBase control) => ReferenceEquals(control, root)
             ? "root"
             : $"control-{controls.IndexOf(control)}";
     }
@@ -772,9 +772,9 @@ public sealed class RandomizedModalityTests
     #region Independent plane oracle
 
     private static void AssertState(
-        Control? control,
+        ControlBase? control,
         string name,
-        IReadOnlyList<Control> planeRoots,
+        IReadOnlyList<ControlBase> planeRoots,
         string context)
     {
         if (control is not null)
@@ -783,7 +783,7 @@ public sealed class RandomizedModalityTests
         }
     }
 
-    private static bool IsAllowed(Control? control, IReadOnlyList<Control> planeRoots)
+    private static bool IsAllowed(ControlBase? control, IReadOnlyList<ControlBase> planeRoots)
     {
         if (control is null)
         {
@@ -801,7 +801,7 @@ public sealed class RandomizedModalityTests
         return false;
     }
 
-    private static bool IsWithin(Control? control, Control root)
+    private static bool IsWithin(ControlBase? control, ControlBase root)
     {
         for (var current = control; current is not null; current = current.Parent)
         {

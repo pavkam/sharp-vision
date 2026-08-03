@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Controls;
 using TextControl = SharpVision.Controls.Display.Text;
 
 /// <summary>Builds one progressive documentation section with ordered examples.</summary>
-internal sealed class DocSection: CompositeControl
+internal sealed class DocSection: CompositeControlBase
 {
     /// <summary>Initializes one documentation section with an introduction and ordered examples.</summary>
     /// <param name="icon">The intentional emoji prefix that identifies the section.</param>
@@ -19,7 +19,7 @@ internal sealed class DocSection: CompositeControl
         string icon,
         string heading,
         string descriptionMarkup,
-        params Control[] examples)
+        params ControlBase[] examples)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(icon);
         ArgumentException.ThrowIfNullOrWhiteSpace(heading);

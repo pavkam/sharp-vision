@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Demonstrates direct appearance values, visual states, themes, and custom controls.</summary>
-internal sealed class StylingPane: CompositeControl
+internal sealed class StylingPane: CompositeControlBase
 {
     /// <summary>Initializes the retained Styling concept page.</summary>
     internal StylingPane() => InitializeContent(CreateContent());

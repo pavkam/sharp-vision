@@ -31,12 +31,13 @@ default shadow.
   inset. To hold several children, use a [`Stack`](stack.md), [`Grid`](grid.md),
   or another layout container as the content.
 
-The frame is drawn with the intrinsic `Control` border properties rather than a
-wrapper control. The header's cell width participates in measurement, including
-combining and wide graphemes. The frame overlays retained content, so a child's
-shadow cannot replace final frame cells. The inherited `Shadow` property remains
-available when the group itself needs visual depth. Descendants receive normal
-ambient face inheritance, and an explicit `Face` on a child stays authoritative.
+The frame is drawn with the intrinsic `ControlBase` border properties rather
+than a wrapper control. The header's cell width participates in measurement,
+including combining and wide graphemes. The frame overlays retained content, so
+a child's shadow cannot replace final frame cells. The inherited `Shadow`
+property remains available when the group itself needs visual depth. Descendants
+receive normal ambient face inheritance, and an explicit `Face` on a child stays
+authoritative.
 
 ## Example
 

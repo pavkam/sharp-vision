@@ -9,26 +9,12 @@ using DisplayText = Display.Text;
 
 /// <summary>Defines a focusable command control with one optional owned content child.</summary>
 [PublicAPI]
-public sealed partial class Button: Pressable
+public sealed partial class Button: Pressable<ButtonStyle>
 {
-    private static readonly StyleContract<ButtonStyle> _styleContract = new(
-        ThemeRole.Input,
-        static profile => new ButtonStyle(ButtonStyle.Standard.Padding, profile),
-        static (previous, _, current, _) =>
-            previous.Padding != current.Padding
-                ? InvalidationImpact.Measure
-                : PressedTranslationChanged(previous.Appearance, current.Appearance)
-                    ? InvalidationImpact.Arrange
-                    : InvalidationImpact.None,
-        static style => style.Appearance);
-    private ButtonStyle? _actualStyleCache;
-    private ButtonStyle? _actualStyleCacheKey;
-    private Theme? _actualStyleCacheTheme;
-
     #region Construction and command properties
 
     /// <summary>Initializes an empty focusable Button that inherits its presentation from the active Theme.</summary>
-    public Button()
+    public Button() : base(ButtonStyle.Definition)
     {
     }
 
@@ -40,66 +26,6 @@ public sealed partial class Button: Pressable
         ArgumentNullException.ThrowIfNull(text);
         Content = new DisplayText(text);
     }
-
-    /// <summary>Gets or sets the complete local presentation, or null to use the semantic input profile.</summary>
-    /// <exception cref="InvalidOperationException">The attached Button is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Button is disposed.</exception>
-    public ButtonStyle? Style
-    {
-        get;
-        set => _ = SetControlStyle(
-            ref field,
-            value,
-            _styleContract.Resolve,
-            _styleContract.CompareStructure,
-            _styleContract.Appearance,
-            nameof(Style),
-            nameof(ActualStyle));
-    }
-
-    /// <summary>Gets the complete local presentation or the library structure completed with the semantic input profile.</summary>
-    /// <remarks>
-    /// Memoized against the exact (<see cref="Style"/>, <see cref="Theme"/>) pair that produced it:
-    /// resolving the default style re-validates all 512 <see cref="VisualState"/> combinations
-    /// against the shadow/border invariant (see #179), and this property is read from multiple
-    /// per-frame paths.
-    /// </remarks>
-    public ButtonStyle ActualStyle =>
-        ResolveContractStyle(
-            _styleContract,
-            ref _actualStyleCache,
-            ref _actualStyleCacheKey,
-            ref _actualStyleCacheTheme,
-            Style,
-            Theme);
-
-    /// <inheritdoc/>
-    protected override ThemeRole ThemeRole => _styleContract.Role;
-
-    /// <inheritdoc/>
-    protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
-
-    /// <inheritdoc/>
-    protected override ThemeProfile GetAppearanceProfile(Theme? theme) =>
-        GetContractAppearanceProfile(_styleContract, Style, theme);
-
-    /// <inheritdoc/>
-    protected override InvalidationImpact GetThemeChangeImpact(
-        Theme? previous,
-        Theme? current,
-        Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace) =>
-        GetContractThemeChangeImpact(
-            _styleContract,
-            Style,
-            previous,
-            current,
-            previousParentAmbientFace,
-            currentParentAmbientFace);
-
-    /// <inheritdoc/>
-    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        GetContractResolvedStylePropertyName(_styleContract, Style, previous, current, nameof(ActualStyle));
 
     /// <inheritdoc/>
     internal override InvalidationImpact GetAppearanceChangeImpact(
@@ -277,7 +203,7 @@ public sealed partial class Button: Pressable
 
     private bool UsesWholeCellPressedTranslation => ActualShadow.IsVisible;
 
-    private void ArrangeContent(Control content, Rect bounds)
+    private void ArrangeContent(ControlBase content, Rect bounds)
     {
         var face = ActualStyle.Padding.Deflate(FaceContentBounds(bounds));
 
@@ -321,31 +247,6 @@ public sealed partial class Button: Pressable
         IsPressed && UsesWholeCellPressedTranslation
             ? bounds.Shift(PressedTranslation)
             : bounds;
-
-    private static bool PressedTranslationChanged(ThemeProfile previous, ThemeProfile current)
-    {
-        var combinations = 1 << VisualStateOrder.OrderedOverlays.Length;
-        for (var flags = 0; flags < combinations; flags++)
-        {
-            var state = VisualState.Normal;
-            for (var index = 0; index < VisualStateOrder.OrderedOverlays.Length; index++)
-            {
-                if ((flags & (1 << index)) != 0)
-                {
-                    state |= VisualStateOrder.OrderedOverlays[index];
-                }
-            }
-
-            var previousShadow = previous.Resolve(state).Shadow;
-            var currentShadow = current.Resolve(state).Shadow;
-            if (ResolvePressedTranslation(previousShadow) != ResolvePressedTranslation(currentShadow))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
 
     private static Point ResolvePressedTranslation(Shadow shadow) => !shadow.IsVisible
         ? default

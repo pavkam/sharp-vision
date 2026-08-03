@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 /// <summary>
 /// Demonstrates third-party control styling with a custom style property outside the core theme catalog.
 /// </summary>
-public sealed class ShowcasePanel: Control
+public sealed class ShowcasePanel: ControlBase
 {
     /// <summary>Initializes a compact themed panel specimen.</summary>
     public ShowcasePanel()

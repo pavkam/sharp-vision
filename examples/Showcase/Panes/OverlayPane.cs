@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents Overlay layering, absolute positioning, clipping, and input order.</summary>
-internal sealed class OverlayPane: CompositeControl
+internal sealed class OverlayPane: CompositeControlBase
 {
     internal OverlayPane() => InitializeContent(CreateContent());
 
@@ -335,7 +335,7 @@ internal sealed class OverlayPane: CompositeControl
 
     private static Overlay Stage() => ShowcasePaneHelpers.OverlayStage(36, 7);
 
-    private static Dock Frame(Control child) => ShowcasePaneHelpers.Frame(child);
+    private static Dock Frame(ControlBase child) => ShowcasePaneHelpers.Frame(child);
 
     private static Dock Card(string content, BorderGlyphStyle glyphs) =>
         ShowcasePaneHelpers.Card(content, glyphs, new Thickness(1, 0));

@@ -2,7 +2,7 @@
 
 ## Overview
 
-`Button` is a sealed [`Pressable`](../pressable.md#overview) command control
+`Button` is a sealed [`PressableBase`](../pressable.md#overview) command control
 with one optional retained `Content` child. Each completed activation raises
 `Click` and invokes the command once.
 
@@ -20,11 +20,11 @@ with one optional retained `Content` child. Each completed activation raises
 | `IsDefault`, `IsCancel`       | `false`       | Whether the button answers the window's Enter/Escape fallback.      |
 
 A `ButtonStyle` is complete: it carries `Padding` and the full normal and
-per-state `Appearance`. `ButtonStyleSet` is the partial counterpart used to
-compose Theme files; it is not a Button property. Assigning `Style` makes the
-whole style local and authoritative, and assigning `null` hands ownership back
-to the Theme. `ActualStyle` never returns null, and it changes when an inherited
-Theme changes while `Style` is null.
+per-state `Appearance`. Use `ButtonStyle.With(...)` to copy selected members or
+overlay an `AppearanceProfileSet`; theme JSON does not load Button-specific
+structure. Assigning `Style` makes the whole style local and authoritative, and
+assigning `null` hands ownership back to the Theme. `ActualStyle` never returns
+null, and it changes when an inherited Theme changes while `Style` is null.
 
 Button does not expose the raw `Border` and `Shadow` properties, their reset
 methods, or `SetAppearance`. Those remain protected seams for control authors,

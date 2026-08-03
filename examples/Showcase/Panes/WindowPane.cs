@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents Window roles, bracketed frame chrome, interaction, and modal presentation.</summary>
-internal sealed class WindowPane: CompositeControl
+internal sealed class WindowPane: CompositeControlBase
 {
     internal WindowPane() => InitializeContent(CreateContent());
 
@@ -308,7 +308,7 @@ internal sealed class WindowPane: CompositeControl
                     shadowRow)));
     }
 
-    private static void Place(Control control, int left, int top) =>
+    private static void Place(ControlBase control, int left, int top) =>
         ShowcasePaneHelpers.Place(control, left, top);
 
     private static DocColumn RoleDescription(string primary, string secondary)

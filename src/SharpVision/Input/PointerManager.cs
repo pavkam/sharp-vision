@@ -12,18 +12,18 @@ using SharpVision.Terminal.Input;
 public sealed class PointerManager: IDisposable
 {
     private static readonly TimeSpan _multiClickInterval = TimeSpan.FromMilliseconds(500);
-    private readonly HashSet<Control> _appliedHoverPath = new(ReferenceEqualityComparer.Instance);
-    private readonly List<Control> _pathBuffer = [];
-    private readonly List<Control> _exitBuffer = [];
+    private readonly HashSet<ControlBase> _appliedHoverPath = new(ReferenceEqualityComparer.Instance);
+    private readonly List<ControlBase> _pathBuffer = [];
+    private readonly List<ControlBase> _exitBuffer = [];
     private readonly TimeProvider _timeProvider;
-    private readonly Func<Control?, Control?>? _activationTarget;
+    private readonly Func<ControlBase?, ControlBase?>? _activationTarget;
     private long _hoverRevision;
     private long _lastClickTimestamp;
     private Point? _lastClickCells;
     private Buttons _lastClickButtons;
-    private Control? _lastClickTarget;
+    private ControlBase? _lastClickTarget;
     private int _clickCount;
-    private Control? _hoverBoundary;
+    private ControlBase? _hoverBoundary;
     private Point? _lastPointerCells;
 
     #region Construction and state
@@ -37,7 +37,7 @@ public sealed class PointerManager: IDisposable
     /// </exception>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The root is disposed.</exception>
-    public PointerManager(Control root, TimeProvider? timeProvider = null)
+    public PointerManager(ControlBase root, TimeProvider? timeProvider = null)
         : this(root, timeProvider, activationTarget: null)
     {
     }
@@ -49,9 +49,9 @@ public sealed class PointerManager: IDisposable
     /// The optional callback for modal-eligible primary-press targets. Its result bounds pointer focus.
     /// </param>
     internal PointerManager(
-        Control root,
+        ControlBase root,
         TimeProvider? timeProvider,
-        Func<Control?, Control?>? activationTarget)
+        Func<ControlBase?, ControlBase?>? activationTarget)
     {
         ArgumentNullException.ThrowIfNull(root);
         root.VerifyMutable();
@@ -73,17 +73,17 @@ public sealed class PointerManager: IDisposable
     }
 
     /// <summary>Gets the owned attached tree root.</summary>
-    public Control Root { get; }
+    public ControlBase Root { get; }
 
     /// <summary>Gets the exclusive capture target, or null.</summary>
-    public Control? Captured { get; private set; }
+    public ControlBase? Captured { get; private set; }
 
     /// <summary>Gets the current hover target, or null.</summary>
-    public Control? Hovered { get; private set; }
+    public ControlBase? Hovered { get; private set; }
 
     /// <summary>Gets the raw pointer-down origin, or null.</summary>
     /// <remarks>This is gesture bookkeeping only; semantic pressed state belongs to <see cref="PressBehavior"/>.</remarks>
-    public Control? PressOrigin { get; private set; }
+    public ControlBase? PressOrigin { get; private set; }
 
     private bool IsDisposed { get; set; }
 
@@ -100,7 +100,7 @@ public sealed class PointerManager: IDisposable
     /// <exception cref="ArgumentException">The control is outside this tree.</exception>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The manager is disposed.</exception>
-    public bool Capture(Control control)
+    public bool Capture(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         VerifyAccess();
@@ -173,7 +173,7 @@ public sealed class PointerManager: IDisposable
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The manager is disposed.</exception>
-    internal void Release(Control control)
+    internal void Release(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         VerifyAccess();
@@ -199,7 +199,7 @@ public sealed class PointerManager: IDisposable
         "Naming",
         "CA1720:Identifier contains type name",
         Justification = "Pointer is the conventional terminal input domain term.")]
-    public Control? Dispatch(Pointer pointer)
+    public ControlBase? Dispatch(Pointer pointer)
     {
         VerifyAccess();
         var targets = ResolveTargets(pointer);
@@ -255,7 +255,7 @@ public sealed class PointerManager: IDisposable
 
             if ((pointer.Buttons & Buttons.Primary) != 0)
             {
-                Control? activationBoundary = null;
+                ControlBase? activationBoundary = null;
                 CaptureFailure(
                     () => activationBoundary = _activationTarget?.Invoke(target),
                     ref failure);
@@ -348,7 +348,7 @@ public sealed class PointerManager: IDisposable
         _lastClickTarget = null;
     }
 
-    private int ResolveClickCount(Pointer pointer, Control target)
+    private int ResolveClickCount(Pointer pointer, ControlBase target)
     {
         Debug.Assert(target is not null, "Gesture metadata requires a routed target.");
 
@@ -404,7 +404,7 @@ public sealed class PointerManager: IDisposable
     }
 
     /// <summary>Cancels state owned within one unavailable subtree.</summary>
-    internal void Unavailable(Control subtree, ReleaseReason reason)
+    internal void Unavailable(ControlBase subtree, ReleaseReason reason)
     {
         ArgumentNullException.ThrowIfNull(subtree);
         Debug.Assert(IsMember(subtree), "Unavailable subtrees belong to the capture root.");
@@ -504,7 +504,7 @@ public sealed class PointerManager: IDisposable
 
     /// <summary>Resolves the hover target and its inclusive boundary for a physical hit-test
     /// result, honoring the active modal scope exactly as <see cref="ResolveTargets"/> does.</summary>
-    private (Control? Target, Control? Boundary) ResolveHoverTarget(Control? physical, ModalScope? scope)
+    private (ControlBase? Target, ControlBase? Boundary) ResolveHoverTarget(ControlBase? physical, ModalScope? scope)
     {
         var hoverBoundary = scope is null
             ? physical is null ? null : Root
@@ -522,7 +522,7 @@ public sealed class PointerManager: IDisposable
         IsDisposed = true;
     }
 
-    private void Cancel(ReleaseReason reason, Control subtree)
+    private void Cancel(ReleaseReason reason, ControlBase subtree)
     {
         Debug.Assert(Enum.IsDefined(reason), "Capture cancellation requires a defined release reason.");
         Debug.Assert(IsMember(subtree), "Capture cancellation is scoped to the owned tree.");
@@ -541,9 +541,9 @@ public sealed class PointerManager: IDisposable
 
     private void Cancel(
         ReleaseReason reason,
-        Control? captured,
-        Control? hoverTarget,
-        Control? hoverBoundary,
+        ControlBase? captured,
+        ControlBase? hoverTarget,
+        ControlBase? hoverBoundary,
         bool clearPressed)
     {
         Debug.Assert(Enum.IsDefined(reason), "Capture cancellation requires a defined release reason.");
@@ -601,7 +601,7 @@ public sealed class PointerManager: IDisposable
         }
     }
 
-    private void PublishCaptureLoss(Control captured, PointerCaptureLossReason reason)
+    private void PublishCaptureLoss(ControlBase captured, PointerCaptureLossReason reason)
     {
         ExceptionDispatchInfo? failure = null;
         CancellationDepth++;
@@ -634,11 +634,11 @@ public sealed class PointerManager: IDisposable
 
     #region Target resolution
 
-    private bool IsEligible(Control? control) =>
+    private bool IsEligible(ControlBase? control) =>
         control is not null && IsMember(control) && control is
         { IsDisposed: false, Dispatcher: not null, EffectiveIsVisible: true, EffectiveIsEnabled: true };
 
-    private bool IsEligibleInteraction(Control? control) =>
+    private bool IsEligibleInteraction(ControlBase? control) =>
         IsEligible(control) && Root.ModalityOwner?.Allows(control) is not false;
 
     private bool IsInteractionSnapshotValid(in InteractionTargets targets)
@@ -656,7 +656,7 @@ public sealed class PointerManager: IDisposable
             (IsEligible(target) && modality?.Allows(target) is not false);
     }
 
-    private bool IsMember(Control control)
+    private bool IsMember(ControlBase control)
     {
         Debug.Assert(control is not null, "Capture membership requires a control instance.");
 
@@ -671,7 +671,7 @@ public sealed class PointerManager: IDisposable
         return false;
     }
 
-    private static bool IsWithin(Control? control, Control subtree)
+    private static bool IsWithin(ControlBase? control, ControlBase subtree)
     {
         Debug.Assert(subtree is not null, "Subtree containment requires a non-null root.");
 
@@ -686,7 +686,7 @@ public sealed class PointerManager: IDisposable
         return false;
     }
 
-    private void SetPointerPath(Control? control, Control? boundary)
+    private void SetPointerPath(ControlBase? control, ControlBase? boundary)
     {
         Debug.Assert(control is null || IsMember(control), "Hover state remains inside the capture tree.");
         Debug.Assert((control is null) == (boundary is null), "Hover state has an inclusive boundary exactly when it has a target.");
@@ -770,7 +770,7 @@ public sealed class PointerManager: IDisposable
     }
 
     private void ApplyPointerOver(
-        Control control,
+        ControlBase control,
         bool value,
         bool directlyOver,
         ref ExceptionDispatchInfo? failure)
@@ -787,7 +787,7 @@ public sealed class PointerManager: IDisposable
             : _appliedHoverPath.Remove(control);
     }
 
-    private void FillPath(Control? control, Control? boundary)
+    private void FillPath(ControlBase? control, ControlBase? boundary)
     {
         _pathBuffer.Clear();
 
@@ -808,8 +808,8 @@ public sealed class PointerManager: IDisposable
     }
 
     private static bool ContainsReference(
-        List<Control> controls,
-        Control candidate)
+        List<ControlBase> controls,
+        ControlBase candidate)
     {
         foreach (var control in controls)
         {
@@ -822,7 +822,7 @@ public sealed class PointerManager: IDisposable
         return false;
     }
 
-    private static int Depth(Control control)
+    private static int Depth(ControlBase control)
     {
         var depth = 0;
 
@@ -861,7 +861,7 @@ public sealed class PointerManager: IDisposable
             scope);
     }
 
-    private static Control? FindFocusTarget(Control? target, Control? boundary)
+    private static ControlBase? FindFocusTarget(ControlBase? target, ControlBase? boundary)
     {
         for (var current = target; current is not null; current = current.Parent)
         {
@@ -879,7 +879,7 @@ public sealed class PointerManager: IDisposable
         return null;
     }
 
-    private static void FocusTarget(Control? target)
+    private static void FocusTarget(ControlBase? target)
     {
         if (target is not null)
         {

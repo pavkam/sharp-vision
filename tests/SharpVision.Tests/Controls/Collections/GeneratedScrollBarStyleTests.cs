@@ -96,7 +96,7 @@ public sealed class GeneratedScrollBarStyleTests
         GeneratedStyle(tree).ShouldBeNull();
     }
 
-    private static ScrollBarStyle? GeneratedStyle(Control composite)
+    private static ScrollBarStyle? GeneratedStyle(ControlBase composite)
     {
         // The scrolling stack is a private retained part on purpose, so the only way to prove the
         // proxy reaches it is to read it back directly.

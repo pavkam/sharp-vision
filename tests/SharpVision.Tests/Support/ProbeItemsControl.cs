@@ -20,7 +20,7 @@ internal sealed class ProbeItemsControl: ItemsControl
     internal Container? Host { get; private set; }
 
     /// <summary>Gets committed item snapshots observed by the protected callback.</summary>
-    internal List<IReadOnlyList<Control>> Changes { get; } = [];
+    internal List<IReadOnlyList<ControlBase>> Changes { get; } = [];
 
     /// <summary>Gets or sets whether the next change callback fails.</summary>
     internal bool ThrowOnItemsChanged { get; set; }
@@ -39,22 +39,22 @@ internal sealed class ProbeItemsControl: ItemsControl
     /// <summary>Gets one realized control.</summary>
     /// <param name="index">The item position.</param>
     /// <returns>The realized control.</returns>
-    internal Control At(int index) => GetItemControl(index);
+    internal ControlBase At(int index) => GetItemControl(index);
 
     /// <summary>Gets the identity position of one realized control.</summary>
     /// <param name="control">The candidate.</param>
     /// <returns>The item position, or -1.</returns>
-    internal int IndexOf(Control control) => IndexOfItemControl(control);
+    internal int IndexOf(ControlBase control) => IndexOfItemControl(control);
 
     /// <summary>Inserts one realized control.</summary>
     /// <param name="index">The insertion position.</param>
     /// <param name="control">The detached control.</param>
-    internal void Insert(int index, Control control) => InsertItemControl(index, control);
+    internal void Insert(int index, ControlBase control) => InsertItemControl(index, control);
 
     /// <summary>Removes one realized control by identity.</summary>
     /// <param name="control">The candidate.</param>
     /// <returns>Whether it was removed.</returns>
-    internal bool Remove(Control control) => RemoveItemControl(control);
+    internal bool Remove(ControlBase control) => RemoveItemControl(control);
 
     /// <summary>Removes one realized control by position.</summary>
     /// <param name="index">The item position.</param>
@@ -63,20 +63,20 @@ internal sealed class ProbeItemsControl: ItemsControl
     /// <summary>Replaces one realized control by position.</summary>
     /// <param name="index">The item position.</param>
     /// <param name="control">The detached replacement.</param>
-    internal void Replace(int index, Control control) => ReplaceItemControl(index, control);
+    internal void Replace(int index, ControlBase control) => ReplaceItemControl(index, control);
 
     /// <summary>Clears every realized control.</summary>
     internal void Clear() => ClearItemControls();
 
     /// <summary>Atomically replaces every realized control.</summary>
     /// <param name="controls">The complete borrowed candidate sequence.</param>
-    internal void ReplaceAll(IEnumerable<Control> controls) => ReplaceItemControls(controls);
+    internal void ReplaceAll(IEnumerable<ControlBase> controls) => ReplaceItemControls(controls);
 
     /// <summary>Gets controls directly owned by the semantic owner.</summary>
     /// <returns>A new identity-preserving snapshot.</returns>
-    internal IReadOnlyList<Control> GetOwnedOrder()
+    internal IReadOnlyList<ControlBase> GetOwnedOrder()
     {
-        List<Control> result = [];
+        List<ControlBase> result = [];
         VisitChildren(result.Add);
         return result;
     }
@@ -84,7 +84,7 @@ internal sealed class ProbeItemsControl: ItemsControl
     /// <inheritdoc/>
     protected override void OnItemControlsChanged()
     {
-        var snapshot = new Control[ItemControlCount];
+        var snapshot = new ControlBase[ItemControlCount];
 
         for (var index = 0; index < snapshot.Length; index++)
         {

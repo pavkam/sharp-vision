@@ -8,15 +8,15 @@ namespace SharpVision.Input;
 /// state, which keeps keyboard navigation and selection policy independently composable.</remarks>
 internal sealed class CurrentItemNavigator
 {
-    private readonly Func<IReadOnlyList<Control>> _items;
+    private readonly Func<IReadOnlyList<ControlBase>> _items;
 
-    public CurrentItemNavigator(Func<IReadOnlyList<Control>> items)
+    public CurrentItemNavigator(Func<IReadOnlyList<ControlBase>> items)
     {
         ArgumentNullException.ThrowIfNull(items);
         _items = items;
     }
 
-    public Control? Current { get; private set; }
+    public ControlBase? Current { get; private set; }
 
     public bool Move(int delta, bool wrap)
     {
@@ -46,7 +46,7 @@ internal sealed class CurrentItemNavigator
         return SetCurrent(items[candidate]);
     }
 
-    public bool SetCurrent(Control? value)
+    public bool SetCurrent(ControlBase? value)
     {
         if (ReferenceEquals(Current, value))
         {
@@ -59,7 +59,7 @@ internal sealed class CurrentItemNavigator
         return true;
     }
 
-    private static int IndexOf(IReadOnlyList<Control> items, Control value)
+    private static int IndexOf(IReadOnlyList<ControlBase> items, ControlBase value)
     {
         for (var index = 0; index < items.Count; index++)
         {

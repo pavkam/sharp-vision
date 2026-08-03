@@ -8,7 +8,7 @@ using Text;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Composes a professional editor workspace around a live application status bar.</summary>
-internal sealed class StatusBarWorkspace: CompositeControl
+internal sealed class StatusBarWorkspace: CompositeControlBase
 {
     /// <summary>Initializes a bordered editor with pointer, activity, document, and environment status.</summary>
     internal StatusBarWorkspace()

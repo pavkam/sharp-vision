@@ -8,7 +8,7 @@ internal readonly struct ControlContextTransition
 {
     /// <summary>Initializes one cache-neutral prospective context entry.</summary>
     internal ControlContextTransition(
-        Control control,
+        ControlBase control,
         Dispatcher? dispatcher,
         Policy cellPolicy,
         FocusManager? focusOwner,
@@ -33,7 +33,7 @@ internal readonly struct ControlContextTransition
     }
 
     /// <summary>Gets the control receiving this prospective context.</summary>
-    internal Control Control { get; }
+    internal ControlBase Control { get; }
 
     /// <summary>Gets the prospective dispatcher, or null.</summary>
     internal Dispatcher? Dispatcher { get; }

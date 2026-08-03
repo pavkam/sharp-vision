@@ -16,6 +16,38 @@ public readonly struct ScrollBarStyle: IEquatable<ScrollBarStyle>
     private readonly ColorValue? _buttonColor;
     private readonly ThemeProfile? _appearance;
 
+    /// <summary>Gets the primary scrollbar-style definition.</summary>
+    internal static StyleDefinition<ScrollBarStyle> Definition { get; } = StyleDefinitions.Control(
+        ThemeRole.Control,
+        static profile => new ScrollBarStyle(
+            Default.Chrome,
+            Default.Fill,
+            Default.Glyphs,
+            Default.TrackColor,
+            Default.ThumbColor,
+            Default.ButtonColor,
+            profile),
+        static style => style.Appearance,
+        Compare);
+
+    /// <summary>Gets the secondary definition used by generated-scrollbar hosts.</summary>
+    internal static StyleDefinition<ScrollBarStyle> PartDefinition { get; } = StyleDefinitions.Part(
+        static theme => Definition.Resolve(null, theme),
+        Compare);
+
+    /// <summary>Gets the non-invalidating definition used by pure forwarding hosts.</summary>
+    internal static StyleDefinition<ScrollBarStyle> ForwardingDefinition { get; } = StyleDefinitions.Part(
+        static theme => Definition.Resolve(null, theme),
+        static (_, _, _, _) => InvalidationImpact.None);
+
+    /// <summary>Gets the definition used by an editor whose rail chrome changes arrangement.</summary>
+    internal static StyleDefinition<ScrollBarStyle> ArrangePartDefinition { get; } = StyleDefinitions.Part(
+        static theme => Definition.Resolve(null, theme),
+        static (previous, previousTheme, current, currentTheme) =>
+            previous.Chrome != current.Chrome
+                ? InvalidationImpact.Arrange
+                : Compare(previous, previousTheme, current, currentTheme));
+
     /// <summary>Initializes a complete scrollbar presentation.</summary>
     /// <param name="chrome">The compact or full scrollbar chrome.</param>
     /// <param name="fill">The line or block glyph treatment.</param>
@@ -88,6 +120,33 @@ public readonly struct ScrollBarStyle: IEquatable<ScrollBarStyle>
     /// <summary>Gets the complete normal and visual-state appearance profile.</summary>
     public ThemeProfile Appearance => ResolveAppearance();
 
+    /// <summary>Creates a validated copy with selected members replaced.</summary>
+    /// <param name="chrome">The optional replacement chrome.</param>
+    /// <param name="fill">The optional replacement fill treatment.</param>
+    /// <param name="glyphs">The optional replacement glyph family.</param>
+    /// <param name="trackColor">The optional replacement track foreground.</param>
+    /// <param name="thumbColor">The optional replacement thumb foreground.</param>
+    /// <param name="buttonColor">The optional replacement button foreground.</param>
+    /// <param name="appearance">The optional appearance-profile overlay.</param>
+    /// <returns>A complete validated scrollbar style.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">A composed enum value is undefined.</exception>
+    /// <exception cref="ArgumentException">A composed glyph or foreground is invalid.</exception>
+    public ScrollBarStyle With(
+        ScrollBarChrome? chrome = null,
+        ScrollBarFill? fill = null,
+        ScrollBarGlyphs? glyphs = null,
+        ColorValue? trackColor = null,
+        ColorValue? thumbColor = null,
+        ColorValue? buttonColor = null,
+        AppearanceProfileSet? appearance = null) => new(
+        chrome ?? Chrome,
+        fill ?? Fill,
+        glyphs ?? Glyphs,
+        trackColor ?? TrackColor,
+        thumbColor ?? ThumbColor,
+        buttonColor ?? ButtonColor,
+        appearance is null ? Appearance : StyleResolution.Apply(Appearance, appearance.Value));
+
     /// <summary>Determines whether this value and another style resolve to the same presentation.</summary>
     /// <param name="other">The other style to compare.</param>
     /// <returns><see langword="true"/> when all resolved presentation members are equal.</returns>
@@ -139,5 +198,22 @@ public readonly struct ScrollBarStyle: IEquatable<ScrollBarStyle>
         _standardAppearance);
 
     private ThemeProfile ResolveAppearance() => _appearance ?? _standardAppearance;
+
+    private static InvalidationImpact Compare(
+        ScrollBarStyle previous,
+        Theme? previousTheme,
+        ScrollBarStyle current,
+        Theme? currentTheme) =>
+        previous.Chrome != current.Chrome
+            ? InvalidationImpact.Measure
+            : previous != current ||
+              ControlBase.ResolveColor(previous.TrackColor, previousTheme) !=
+              ControlBase.ResolveColor(current.TrackColor, currentTheme) ||
+              ControlBase.ResolveColor(previous.ThumbColor, previousTheme) !=
+              ControlBase.ResolveColor(current.ThumbColor, currentTheme) ||
+              ControlBase.ResolveColor(previous.ButtonColor, previousTheme) !=
+              ControlBase.ResolveColor(current.ButtonColor, currentTheme)
+                ? InvalidationImpact.Render
+                : InvalidationImpact.None;
 
 }

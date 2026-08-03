@@ -18,7 +18,7 @@ public sealed class DialogButtonAppearanceTests
         using var expected = new Button();
 
         // Act and assert
-        foreach (var dialog in new Control[] { filePicker, saveFile, messageBox })
+        foreach (var dialog in new ControlBase[] { filePicker, saveFile, messageBox })
         {
             var buttons = OwnedTree.FindAll<Button>(dialog);
             buttons.ShouldNotBeEmpty();

@@ -11,9 +11,9 @@ internal sealed class ContextTransitionPlan
     private ContextTransitionPlan(
         List<ControlContextTransition> entries,
         List<ThemeTransition> themeTransitions,
-        Dictionary<Control, AppearanceSnapshot> currentAppearance,
-        List<Control> attached,
-        List<Control> detached)
+        Dictionary<ControlBase, AppearanceSnapshot> currentAppearance,
+        List<ControlBase> attached,
+        List<ControlBase> detached)
     {
         _entries = entries;
         ThemeTransitions = themeTransitions;
@@ -26,24 +26,24 @@ internal sealed class ContextTransitionPlan
     internal List<ThemeTransition> ThemeTransitions { get; }
 
     /// <summary>Gets the prospective cache-neutral appearance snapshots.</summary>
-    internal Dictionary<Control, AppearanceSnapshot> CurrentAppearance { get; }
+    internal Dictionary<ControlBase, AppearanceSnapshot> CurrentAppearance { get; }
 
     /// <summary>Gets controls that will become attached in parent-first order.</summary>
-    internal List<Control> Attached { get; }
+    internal List<ControlBase> Attached { get; }
 
     /// <summary>Gets controls that will become detached in parent-first order.</summary>
-    internal List<Control> Detached { get; }
+    internal List<ControlBase> Detached { get; }
 
     /// <summary>Resolves every virtual hook and prospective snapshot before observable mutation.</summary>
     internal static ContextTransitionPlan Create(
-        Control root,
+        ControlBase root,
         Dispatcher? dispatcher,
         Policy cellPolicy,
         FocusManager? focusOwner,
         PointerManager? captureOwner,
         ModalityManager? modalityOwner,
         Theme? theme,
-        Dictionary<Control, AppearanceSnapshot> previousAppearance,
+        Dictionary<ControlBase, AppearanceSnapshot> previousAppearance,
         Face? currentParentAmbientFace,
         bool propagateContext)
     {
@@ -56,10 +56,10 @@ internal sealed class ContextTransitionPlan
         // allocate and zero an O(n)-capacity list and dictionary, turning the batch O(n^2).
         var entries = new List<ControlContextTransition>();
         var themeTransitions = new List<ThemeTransition>();
-        var currentAppearance = new Dictionary<Control, AppearanceSnapshot>();
-        var attached = new List<Control>();
-        var detached = new List<Control>();
-        var stack = new Stack<(Control Control, Face? ParentAmbient, bool IsRoot)>();
+        var currentAppearance = new Dictionary<ControlBase, AppearanceSnapshot>();
+        var attached = new List<ControlBase>();
+        var detached = new List<ControlBase>();
+        var stack = new Stack<(ControlBase Control, Face? ParentAmbient, bool IsRoot)>();
         stack.Push((root, currentParentAmbientFace, true));
 
         while (stack.TryPop(out var entry))

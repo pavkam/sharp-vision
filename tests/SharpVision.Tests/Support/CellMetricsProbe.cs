@@ -6,7 +6,7 @@ namespace SharpVision.Tests.Support;
 using CellMetrics = Terminal.Geometry.Metrics;
 
 /// <summary>Records inherited exact cell-metric context and measure observations.</summary>
-internal sealed class CellMetricsProbe: Control
+internal sealed class CellMetricsProbe: ControlBase
 {
     /// <summary>Gets the current inherited exact metrics.</summary>
     internal CellMetrics? InheritedMetrics => CellMetrics;

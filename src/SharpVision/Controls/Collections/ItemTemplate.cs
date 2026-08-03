@@ -7,4 +7,4 @@ namespace SharpVision.Controls.Collections;
 /// <param name="item">The borrowed item value, which may be null.</param>
 /// <returns>A non-null detached undisposed control transferred to the ListView on success.</returns>
 [PublicAPI]
-public delegate Control ItemTemplate(object? item);
+public delegate ControlBase ItemTemplate(object? item);

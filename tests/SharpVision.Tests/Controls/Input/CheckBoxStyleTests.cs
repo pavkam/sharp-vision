@@ -41,9 +41,7 @@ public sealed class CheckBoxStyleTests
     {
         var baseline = CheckBoxStyle.Brackets;
         var glyphs = new CheckBoxGlyphs(new Rune('o'), new Rune('x'), new Rune('-'));
-        var set = new CheckBoxStyleSet(glyphs: glyphs);
-
-        var actual = set.Apply(baseline);
+        var actual = baseline.With(glyphs: glyphs);
 
         actual.Glyphs.ShouldBe(glyphs);
         actual.MarkStyle.ShouldBe(baseline.MarkStyle);
@@ -55,11 +53,9 @@ public sealed class CheckBoxStyleTests
     public void Apply_WhenAppearanceIsSupplied_ComposesProfile()
     {
         var baseline = CheckBoxStyle.Default;
-        var set = new CheckBoxStyleSet(
+        var actual = baseline.With(
             appearance: new AppearanceProfileSet(
                 @checked: new AppearanceSet(face: new FaceSet(foreground: ThemeColor.Accent))));
-
-        var actual = set.Apply(baseline);
 
         actual.Glyphs.ShouldBe(baseline.Glyphs);
         actual.Appearance.Checked.Face.ShouldNotBeNull().Foreground.ShouldBe(ThemeColor.Accent);
@@ -90,20 +86,20 @@ public sealed class CheckBoxStyleTests
 
     /// <summary>Verifies partial style construction rejects an undefined mark family immediately.</summary>
     [Fact]
-    public void StyleSet_WhenMarkStyleIsUndefined_ThrowsAtConstruction()
+    public void With_WhenMarkStyleIsUndefined_Throws()
     {
         var exception = Should.Throw<ArgumentOutOfRangeException>(() =>
-            new CheckBoxStyleSet(markStyle: (CheckBoxMarkStyle) 99));
+            CheckBoxStyle.Default.With(markStyle: (CheckBoxMarkStyle) 99));
 
         exception.ParamName.ShouldBe("value");
     }
 
     /// <summary>Verifies partial style construction rejects the invalid zero-initialized glyph family immediately.</summary>
     [Fact]
-    public void StyleSet_WhenGlyphsAreInvalid_ThrowsAtConstruction()
+    public void With_WhenGlyphsAreInvalid_Throws()
     {
         var exception = Should.Throw<ArgumentException>(() =>
-            new CheckBoxStyleSet(glyphs: default(CheckBoxGlyphs)));
+            CheckBoxStyle.Default.With(glyphs: default(CheckBoxGlyphs)));
 
         exception.ParamName.ShouldBe("uncheckedMark");
     }

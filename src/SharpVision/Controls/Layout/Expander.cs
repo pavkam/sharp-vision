@@ -104,7 +104,7 @@ public sealed class Expander: ContentControl
     }
 
     /// <inheritdoc/>
-    protected override void OnContentChanged(Control? previous, Control? current)
+    protected override void OnContentChanged(ControlBase? previous, ControlBase? current)
     {
         if (previous is not null && _requestedContentVisibility is { } requested)
         {

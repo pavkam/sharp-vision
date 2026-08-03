@@ -4,13 +4,13 @@
 namespace SharpVision.Tests.Support;
 
 /// <summary>Counts elevated hit-test discovery and returns itself as the discovered target.</summary>
-internal sealed class PopupHitProbe: Control
+internal sealed class PopupHitProbe: ControlBase
 {
     /// <summary>Gets the number of elevated discovery calls.</summary>
     internal int PopupHitTestCalls { get; private set; }
 
     /// <inheritdoc/>
-    internal override Control? HitTestPopupCore(Point point)
+    internal override ControlBase? HitTestPopupCore(Point point)
     {
         _ = point;
         PopupHitTestCalls++;

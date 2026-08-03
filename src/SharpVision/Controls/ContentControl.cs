@@ -12,10 +12,10 @@ using System.Runtime.ExceptionServices;
 /// control without disposing it; disposing this owner disposes content that remains assigned.
 /// </remarks>
 [PublicAPI]
-public abstract class ContentControl: Control
+public abstract class ContentControl: ControlBase
 {
     private readonly OwnedControlSlot _contentSlot;
-    private Control? _publishedContent;
+    private ControlBase? _publishedContent;
 
     /// <summary>Initializes an empty single-content control.</summary>
     protected ContentControl()
@@ -36,7 +36,7 @@ public abstract class ContentControl: Control
     /// <remarks>
     /// Null clears the slot. A successful change commits structure, publishes lifecycle callbacks,
     /// requests measure invalidation, invokes <see cref="OnContentChanged"/>, and then raises
-    /// <see cref="Control.PropertyChanged"/> while guarded publication remains active. Assigning the
+    /// <see cref="ControlBase.PropertyChanged"/> while guarded publication remains active. Assigning the
     /// identical control is a no-op after dispatcher and lifetime validation. If the content hook
     /// throws, the property notification is still attempted against the committed structure. The
     /// hook failure remains authoritative over a later property-subscriber failure, while an earlier
@@ -50,7 +50,7 @@ public abstract class ContentControl: Control
     /// The attached owner is accessed off-dispatcher or an ownership transaction is active.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The owner or assigned control is disposed.</exception>
-    public Control? Content
+    public ControlBase? Content
     {
         get => _contentSlot.Count == 0 ? null : _contentSlot[0];
         set => _contentSlot.ReplaceAll(value is null ? [] : [value]);
@@ -66,7 +66,7 @@ public abstract class ContentControl: Control
     /// active, so changing owned slots or disposing the owner or either affected content control is
     /// rejected as reentrant. The committed ownership change is never rolled back.
     /// </remarks>
-    protected virtual void OnContentChanged(Control? previous, Control? current)
+    protected virtual void OnContentChanged(ControlBase? previous, ControlBase? current)
     {
     }
 

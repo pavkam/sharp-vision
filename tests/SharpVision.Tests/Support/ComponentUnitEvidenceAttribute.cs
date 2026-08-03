@@ -15,7 +15,7 @@ internal sealed class ComponentUnitEvidenceAttribute: Attribute
     {
         ArgumentNullException.ThrowIfNull(controlType);
 
-        if (controlType.IsAbstract || !typeof(Control).IsAssignableFrom(controlType))
+        if (controlType.IsAbstract || !typeof(ControlBase).IsAssignableFrom(controlType))
         {
             throw new ArgumentException("Unit evidence requires a concrete Control type.", nameof(controlType));
         }

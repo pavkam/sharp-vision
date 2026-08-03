@@ -2,9 +2,10 @@
 
 ## Overview
 
-`Popup` is a [`FloatingSurface`](../../concepts/floating-surfaces.md#overview)
-that displays its inherited `Content` on an opaque, one-cell, theme-resolved
-frame, positioned relative to an optional anchor. The Popup object renders and
+`Popup` is a
+[`FloatingSurfaceBase`](../../concepts/floating-surfaces.md#overview) that
+displays its inherited `Content` on an opaque, one-cell, theme-resolved frame,
+positioned relative to an optional anchor. The Popup object renders and
 hit-tests that surface directly; it does not own a second presentation Popup.
 Setting `IsOpen` to true while the popup is attached to an application tree
 automatically enters a dismissing

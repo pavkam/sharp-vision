@@ -8,7 +8,7 @@ using System.Runtime.ExceptionServices;
 using CellMetrics = Metrics;
 
 /// <summary>Provides inherited protocol-neutral terminal cell geometry.</summary>
-public abstract partial class Control
+public abstract partial class ControlBase
 {
     /// <summary>Gets exact terminal cell-pixel geometry inherited from the application, when available.</summary>
     protected CellMetrics? CellMetrics { get; private set; }
@@ -23,7 +23,7 @@ public abstract partial class Control
     internal void SetCellMetrics(CellMetrics? value)
     {
         VerifyMutable();
-        var changed = new List<(Control Control, CellMetrics? Previous)>();
+        var changed = new List<(ControlBase Control, CellMetrics? Previous)>();
         CommitCellMetrics(value, changed);
         ExceptionDispatchInfo? failure = null;
 
@@ -48,7 +48,7 @@ public abstract partial class Control
 
     private void CommitCellMetrics(
         CellMetrics? value,
-        List<(Control Control, CellMetrics? Previous)> changed)
+        List<(ControlBase Control, CellMetrics? Previous)> changed)
     {
         ThrowIfDisposed();
         var previous = CellMetrics;

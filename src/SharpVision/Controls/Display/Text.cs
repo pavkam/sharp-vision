@@ -12,7 +12,7 @@ using TextLayout = SharpVision.Text.Layout;
 
 /// <summary>Displays grapheme-safe inline-markup text through semantic terminal cells.</summary>
 [PublicAPI]
-public sealed class Text: Control, IAccessKeyCaption
+public sealed class Text: ControlBase, IAccessKeyCaption
 {
     private const TerminalAttributes _blinkAttributes =
         TerminalAttributes.Blink | TerminalAttributes.RapidBlink;
@@ -215,7 +215,7 @@ public sealed class Text: Control, IAccessKeyCaption
 
     private void EnsureParsed()
     {
-        var captionOwner = Parent is Pressable { Content: var content } owner && ReferenceEquals(content, this)
+        var captionOwner = Parent is PressableBase { Content: var content } owner && ReferenceEquals(content, this)
             ? owner
             : null;
         var useMnemonic = captionOwner?.UseMnemonic ?? UseMnemonic;
@@ -241,14 +241,14 @@ public sealed class Text: Control, IAccessKeyCaption
 
     /// <summary>Gets or sets the control this label's access key focuses directly.</summary>
     /// <remarks>
-    /// When unset, a standalone label-like <see cref="Text"/> (not owned as a <see cref="Pressable"/>
+    /// When unset, a standalone label-like <see cref="Text"/> (not owned as a <see cref="PressableBase"/>
     /// caption) falls back to moving focus to the next tab stop, per the documented default. When
     /// set, the access key focuses this target instead — independent of tree position, ownership,
     /// or intervening tab stops. The target is validated at dispatch time: it must belong to the
     /// same focus tree and be an eligible focus target in the active modal plane, or the access key
     /// is declined rather than falling back to tab-stop traversal.
     /// </remarks>
-    public Control? AccessKeyTarget { get; set; }
+    public ControlBase? AccessKeyTarget { get; set; }
 
     /// <inheritdoc/>
     protected override bool OnAccessKey(Rune key)

@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the ComboBox control with live popup-selection specimens.</summary>
-internal sealed class ComboBoxPane: CompositeControl
+internal sealed class ComboBoxPane: CompositeControlBase
 {
     internal ComboBoxPane() => InitializeContent(CreateContent());
 

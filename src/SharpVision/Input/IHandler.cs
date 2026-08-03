@@ -11,7 +11,7 @@ internal interface IHandler
 
     /// <summary>Invokes this registration for one stable route snapshot.</summary>
     public void Invoke(
-        Control sender,
+        ControlBase sender,
         IEvent routedEvent,
         RoutedEventArgs eventArgs,
         long sequence);

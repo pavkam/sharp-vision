@@ -68,7 +68,7 @@ public sealed class RoutingTests
         ]);
         return;
 
-        void Record(Control control, string name) =>
+        void Record(ControlBase control, string name) =>
             _ = control.AddHandler(Events.Key, (_, eventArgs) => order.Add($"{name}-{eventArgs.Phase}"));
     }
 

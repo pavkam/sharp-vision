@@ -1276,7 +1276,7 @@ public sealed class MenuModalityTests
         var reparented = false;
         file.PropertyChanged += (_, eventArgs) =>
         {
-            if (!reparented && eventArgs.PropertyName == nameof(Control.IsPressed) && !file.IsPressed)
+            if (!reparented && eventArgs.PropertyName == nameof(ControlBase.IsPressed) && !file.IsPressed)
             {
                 reparented = true;
                 menu.Items.Remove(file).ShouldBeTrue();
@@ -1331,7 +1331,7 @@ public sealed class MenuModalityTests
         };
         recent.PropertyChanged += (_, eventArgs) =>
         {
-            if (eventArgs.PropertyName == nameof(Control.IsEnabled))
+            if (eventArgs.PropertyName == nameof(ControlBase.IsEnabled))
             {
                 propertyCallbacks++;
                 throw propertyFailure;

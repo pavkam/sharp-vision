@@ -4,7 +4,7 @@
 namespace SharpVision.Showcase.Controls;
 
 /// <summary>Displays live pixel and optional mapped-cell coordinates for pointer input.</summary>
-internal sealed class PointerProbe: Control
+internal sealed class PointerProbe: ControlBase
 {
     private string _pixelText = "Pixels: unavailable";
     private string _cellText = "Cells: unavailable";

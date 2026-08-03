@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents Spinner patterns, compatibility, cadence, and pause behavior.</summary>
-internal sealed class SpinnerPane: CompositeControl
+internal sealed class SpinnerPane: CompositeControlBase
 {
     /// <summary>The exact catalog and page name.</summary>
     internal const string Title = "Spinner";

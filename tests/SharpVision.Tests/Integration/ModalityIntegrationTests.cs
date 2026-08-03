@@ -412,7 +412,7 @@ public sealed class ModalityIntegrationTests
         }
     }
 
-    private static Point Center(Control control) => new(
+    private static Point Center(ControlBase control) => new(
         control.Bounds.X + (control.Bounds.Width / 2),
         control.Bounds.Y + (control.Bounds.Height / 2));
 

@@ -44,7 +44,7 @@ public class ContextMenu: IDisposable
     /// <summary>Gets whether the context menu is currently open.</summary>
     public bool IsOpen => _popup.IsOpen;
 
-    internal Control Presentation => _popup;
+    internal ControlBase Presentation => _popup;
 
     internal Menu Menu { get; }
 
@@ -52,7 +52,7 @@ public class ContextMenu: IDisposable
     /// <param name="row">The zero-based row in root coordinates.</param>
     /// <param name="col">The zero-based column in root coordinates.</param>
     /// <remarks>
-    /// A no-op until this menu is assigned to some <see cref="Control.ContextMenu"/> — only that
+    /// A no-op until this menu is assigned to some <see cref="ControlBase.ContextMenu"/> — only that
     /// assignment attaches the retained popup this method opens.
     /// </remarks>
     public void Show(int row, int col)
@@ -112,7 +112,7 @@ public class ContextMenu: IDisposable
 
     // IsOpen changes on every closure path, including indirect ones the popup
     // reaches on its own — detachment (a caller replaces or clears
-    // Control.ContextMenu while open) and disposal never raise Closing/Closed,
+    // ControlBase.ContextMenu while open) and disposal never raise Closing/Closed,
     // but they do flip IsOpen through CommitClosedState. Reacting here instead
     // of only inside Close() is what stops the root light-dismiss handler from
     // outliving a popup that closed itself.

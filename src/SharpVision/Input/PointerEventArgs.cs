@@ -53,7 +53,7 @@ public sealed class PointerEventArgs: RoutedEventArgs
     public Point? LocalCells { get; private set; }
 
     /// <summary>Updates local coordinates for one route element.</summary>
-    internal void SetLocal(Control control)
+    internal void SetLocal(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         LocalCells = Pointer.Cells is { } cells

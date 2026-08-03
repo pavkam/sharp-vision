@@ -3,7 +3,7 @@
 
 namespace SharpVision.Tests.Controls;
 
-/// <summary>Verifies convenience CLR events on the base Control class.</summary>
+/// <summary>Verifies convenience CLR events on the base ControlBase class.</summary>
 public sealed class ControlEventTests
 {
     /// <summary>Verifies PointerPressed fires when a primary press arrives.</summary>

@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the TextInput control with single-line, constrained, and multiline editor specimens.</summary>
-internal sealed class TextInputPane: CompositeControl
+internal sealed class TextInputPane: CompositeControlBase
 {
     internal TextInputPane() => InitializeContent(CreateContent());
 

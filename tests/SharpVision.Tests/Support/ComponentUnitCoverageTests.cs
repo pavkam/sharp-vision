@@ -88,8 +88,8 @@ public sealed class ComponentUnitCoverageTests
     [Fact]
     public void Catalog_WhenPublicConcreteControlsChange_RequiresFocusedUnitFixture()
     {
-        var controls = typeof(Control).Assembly.GetExportedTypes()
-            .Where(type => !type.IsAbstract && typeof(Control).IsAssignableFrom(type))
+        var controls = typeof(ControlBase).Assembly.GetExportedTypes()
+            .Where(type => !type.IsAbstract && typeof(ControlBase).IsAssignableFrom(type))
             .ToHashSet();
 
         _fixtures.Keys.ShouldBe(controls, ignoreOrder: true);

@@ -227,7 +227,7 @@ public static class BindingExtensions
 
     /// <summary>Binds a command property one-way to a pressable control.</summary>
     public static Binding BindCommand<TModel>(
-        this Pressable target,
+        this PressableBase target,
         TModel source,
         Expression<Func<TModel, ICommand?>> sourceProperty)
         where TModel : class =>
@@ -240,7 +240,7 @@ public static class BindingExtensions
 
     /// <summary>Binds a borrowed parameter property one-way to a pressable control.</summary>
     public static Binding BindCommandParameter<TModel, TValue>(
-        this Pressable target,
+        this PressableBase target,
         TModel source,
         Expression<Func<TModel, TValue>> sourceProperty)
         where TModel : class =>
@@ -403,7 +403,7 @@ public static class BindingExtensions
         TModel source,
         Expression<Func<TModel, TValue>> sourceProperty,
         BindingMode mode)
-        where TControl : Control
+        where TControl : ControlBase
         where TModel : class =>
         BindProperty(
             target,
@@ -425,7 +425,7 @@ public static class BindingExtensions
         Func<TTarget, TSource>? convertBack,
         BindingMode mode,
         TTarget fallbackValue)
-        where TControl : Control
+        where TControl : ControlBase
         where TModel : class =>
         CreateBinding(
             target,
@@ -453,7 +453,7 @@ public static class BindingExtensions
         bool coordinatesItems,
         bool refreshAfterItems,
         Func<NotifyCollectionChangedEventArgs, bool>? applyIncrementalChange = null)
-        where TControl : Control
+        where TControl : ControlBase
         where TModel : class
     {
         ArgumentNullException.ThrowIfNull(target);

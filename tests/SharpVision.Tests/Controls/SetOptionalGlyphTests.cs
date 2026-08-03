@@ -3,7 +3,7 @@
 
 namespace SharpVision.Tests.Controls;
 
-/// <summary>Verifies the protected <see cref="Control.SetOptionalGlyph"/> and <see cref="Control.ResetOptionalGlyph"/> helpers.</summary>
+/// <summary>Verifies the protected <see cref="ControlBase.SetOptionalGlyph"/> and <see cref="ControlBase.ResetOptionalGlyph"/> helpers.</summary>
 public sealed class SetOptionalGlyphTests
 {
     /// <summary>Verifies that setting a glyph fires PropertyChanged.</summary>

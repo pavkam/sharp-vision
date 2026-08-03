@@ -6,7 +6,7 @@ namespace SharpVision.Tests.Support;
 /// <summary>Provides a leaf whose desired size depends on its measure width, mimicking a
 /// wrapping control for tests that must distinguish content measured at one width from
 /// content measured at another.</summary>
-internal sealed class WrappingProbeControl: Control
+internal sealed class WrappingProbeControl: ControlBase
 {
     private readonly int _wideWidth;
     private readonly int _narrowWidth;

@@ -10,12 +10,12 @@ The `Application` events are `Starting`, `Started`, `Stopping`, `Stopped`,
 enter the control tree through typed routed events. Session closure and faults
 drive shutdown instead of leaking terminal callbacks through the UI API.
 
-Every `FloatingSurface` first raises `CloseRequested`, a pre-commit veto hook
-(`SurfaceCloseRequestedEventArgs.Cancel`) that leaves the surface untouched and
-skips `Closing`/`Closed` entirely when set — both the shared `CloseSurface`
+Every `FloatingSurfaceBase` first raises `CloseRequested`, a pre-commit veto
+hook (`SurfaceCloseRequestedEventArgs.Cancel`) that leaves the surface untouched
+and skips `Closing`/`Closed` entirely when set — both the shared `CloseSurface`
 engine (the whole `Popup` family, and `Dialog<TResult>`'s typed completion) and
 Window's own close affordance, `CloseOnEscape`, and modal dismiss raise it
-through the same `FloatingSurface.RaiseCloseRequested` helper. `Popup` then
+through the same `FloatingSurfaceBase.RaiseCloseRequested` helper. `Popup` then
 publishes `Closing` and `Closed`. `Window` publishes a `Closing` request and, by
 default, collapses itself afterward: the visibility transaction completes the
 common cleanup and the close request then publishes `Closed`. A `Closing`

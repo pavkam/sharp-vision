@@ -70,7 +70,7 @@ public sealed class PopupTests
     {
         var type = typeof(Popup);
 
-        type.BaseType.ShouldBe(typeof(FloatingSurface));
+        type.BaseType.ShouldBe(typeof(FloatingSurfaceBase));
         type.IsSealed.ShouldBeFalse();
         typeof(Container).IsAssignableFrom(type).ShouldBeFalse();
         type.GetProperty(nameof(Container.Children)).ShouldBeNull();
@@ -79,17 +79,17 @@ public sealed class PopupTests
         type.GetProperty("Child").ShouldBeNull();
         _ = type.GetProperty(nameof(ContentControl.Content)).ShouldNotBeNull();
         type.GetProperty(
-            nameof(FloatingSurface.SurfaceBounds),
+            nameof(FloatingSurfaceBase.SurfaceBounds),
             System.Reflection.BindingFlags.Instance |
             System.Reflection.BindingFlags.Public |
             System.Reflection.BindingFlags.DeclaredOnly).ShouldBeNull();
         type.GetEvent(
-            nameof(FloatingSurface.Closing),
+            nameof(FloatingSurfaceBase.Closing),
             System.Reflection.BindingFlags.Instance |
             System.Reflection.BindingFlags.Public |
             System.Reflection.BindingFlags.DeclaredOnly).ShouldBeNull();
         type.GetEvent(
-            nameof(FloatingSurface.Closed),
+            nameof(FloatingSurfaceBase.Closed),
             System.Reflection.BindingFlags.Instance |
             System.Reflection.BindingFlags.Public |
             System.Reflection.BindingFlags.DeclaredOnly).ShouldBeNull();
@@ -213,7 +213,7 @@ public sealed class PopupTests
         var parentSubscriberRan = false;
         content.PropertyChanged += (_, eventArgs) =>
         {
-            if (eventArgs.PropertyName == nameof(Control.Visibility))
+            if (eventArgs.PropertyName == nameof(ControlBase.Visibility))
             {
                 throw new InvalidOperationException("The visibility subscriber failed.");
             }
@@ -267,7 +267,7 @@ public sealed class PopupTests
             var expected = new InvalidOperationException("The visibility subscriber failed.");
             content.PropertyChanged += (_, eventArgs) =>
             {
-                if (eventArgs.PropertyName == nameof(Control.Visibility))
+                if (eventArgs.PropertyName == nameof(ControlBase.Visibility))
                 {
                     throw expected;
                 }
@@ -328,7 +328,7 @@ public sealed class PopupTests
             };
             content.PropertyChanged += (_, eventArgs) =>
             {
-                if (eventArgs.PropertyName != nameof(Control.Visibility))
+                if (eventArgs.PropertyName != nameof(ControlBase.Visibility))
                 {
                     return;
                 }
@@ -406,7 +406,7 @@ public sealed class PopupTests
         };
         content.PropertyChanged += (_, eventArgs) =>
         {
-            if (eventArgs.PropertyName != nameof(Control.Visibility))
+            if (eventArgs.PropertyName != nameof(ControlBase.Visibility))
             {
                 return;
             }
@@ -483,7 +483,7 @@ public sealed class PopupTests
             };
             content.PropertyChanged += (_, eventArgs) =>
             {
-                if (eventArgs.PropertyName != nameof(Control.Visibility))
+                if (eventArgs.PropertyName != nameof(ControlBase.Visibility))
                 {
                     return;
                 }

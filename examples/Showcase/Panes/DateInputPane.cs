@@ -8,7 +8,7 @@ using System.Globalization;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents the DateInput control with live date-selection specimens.</summary>
-internal sealed class DateInputPane: CompositeControl
+internal sealed class DateInputPane: CompositeControlBase
 {
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "DateInput";

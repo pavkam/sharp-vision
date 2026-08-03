@@ -113,9 +113,9 @@ runtime's single-writer guarantee without dropping mutations that happened
 during asynchronous output.
 
 Composition-based code that does not own a control subclass can request a
-repaint through the public, render-level `Control.Invalidate()` — measure and
-arrange invalidation stay reserved for a control's own derived state through the
-protected `Invalidate(InvalidationImpact)` overload. When something outside
+repaint through the public, render-level `ControlBase.Invalidate()` — measure
+and arrange invalidation stay reserved for a control's own derived state through
+the protected `Invalidate(InvalidationImpact)` overload. When something outside
 SharpVision wrote to the terminal (the conventional Ctrl+L recovery),
 `Application.RefreshScreen()` forces the renderer to redraw the entire screen
 from a clean baseline instead of a differential update.

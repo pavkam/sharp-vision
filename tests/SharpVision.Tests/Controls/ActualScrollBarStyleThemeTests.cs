@@ -10,7 +10,7 @@ namespace SharpVision.Tests.Controls;
 /// </summary>
 public sealed class ActualScrollBarStyleThemeTests
 {
-    /// <summary>Verifies each host resolves the active theme's Control profile when no local
+    /// <summary>Verifies each host resolves the active theme's ControlBase profile when no local
     /// style is assigned, rather than the library's code-default appearance.</summary>
     [Fact]
     public void ActualScrollBarStyle_WhenThemedAndUnassigned_ResolvesTheActiveThemeNotTheCodeDefault()

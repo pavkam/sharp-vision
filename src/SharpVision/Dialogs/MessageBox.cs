@@ -26,6 +26,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>
     private const int _minimumHeight = 8;
 
     private readonly Button[] _buttons;
+    private readonly StyleSlot<ButtonStyle> _buttonStyle;
 
     #region Construction and contract
 
@@ -60,6 +61,13 @@ public sealed class MessageBox: Dialog<MessageBoxResult>
         HorizontalAlignment = HorizontalAlignment.Center;
         VerticalAlignment = VerticalAlignment.Center;
         Content = CreateContent(message, _buttons);
+        _buttonStyle = InitializePartStyle(
+            Controls.Input.ButtonStyle.ForwardingDefinition,
+            nameof(ButtonStyle));
+        foreach (var button in _buttons)
+        {
+            BindStyle(_buttonStyle, button);
+        }
         _ = AddHandler(Events.Key, OnMessageBoxKey);
     }
 
@@ -78,23 +86,12 @@ public sealed class MessageBox: Dialog<MessageBoxResult>
     /// <exception cref="ObjectDisposedException">The MessageBox is disposed.</exception>
     public ButtonStyle? ButtonStyle
     {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                return;
-            }
-
-            foreach (var button in _buttons)
-            {
-                button.Style = value;
-            }
-        }
+        get => _buttonStyle.Local;
+        set => _buttonStyle.Local = value;
     }
 
     /// <summary>Gets the resolved Button style applied to every generated action.</summary>
-    public ButtonStyle ActualButtonStyle => _buttons[0].ActualStyle;
+    public ButtonStyle ActualButtonStyle => _buttonStyle.Actual;
 
     #endregion
 
@@ -107,7 +104,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
     /// <exception cref="ArgumentException">The owner has no attached presentation host.</exception>
     /// <exception cref="InvalidOperationException">The call is made off the owner's dispatcher.</exception>
-    public static Task<MessageBoxResult> ShowAsync(Control owner, string message) =>
+    public static Task<MessageBoxResult> ShowAsync(ControlBase owner, string message) =>
         ShowAsync(owner, message, "Message", MessageBoxButtons.Ok);
 
     /// <summary>Shows an OK message box with a custom title.</summary>
@@ -118,7 +115,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
     /// <exception cref="ArgumentException">The owner has no attached presentation host.</exception>
     /// <exception cref="InvalidOperationException">The call is made off the owner's dispatcher.</exception>
-    public static Task<MessageBoxResult> ShowAsync(Control owner, string message, string title) =>
+    public static Task<MessageBoxResult> ShowAsync(ControlBase owner, string message, string title) =>
         ShowAsync(owner, message, title, MessageBoxButtons.Ok);
 
     /// <summary>Shows a message box with a custom button layout and the default title.</summary>
@@ -130,7 +127,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="buttons"/> is undefined.</exception>
     /// <exception cref="ArgumentException">The owner has no attached presentation host.</exception>
     /// <exception cref="InvalidOperationException">The call is made off the owner's dispatcher.</exception>
-    public static Task<MessageBoxResult> ShowAsync(Control owner, string message, MessageBoxButtons buttons) =>
+    public static Task<MessageBoxResult> ShowAsync(ControlBase owner, string message, MessageBoxButtons buttons) =>
         ShowAsync(owner, message, "Message", buttons);
 
     /// <summary>Shows a titled message box with the requested standard button layout.</summary>
@@ -146,7 +143,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>
     /// <exception cref="ArgumentException">The owner has no attached presentation host.</exception>
     /// <exception cref="InvalidOperationException">The call is made off the owner's dispatcher.</exception>
     public static Task<MessageBoxResult> ShowAsync(
-        Control owner,
+        ControlBase owner,
         string message,
         string title,
         MessageBoxButtons buttons,

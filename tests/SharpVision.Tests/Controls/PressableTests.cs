@@ -139,7 +139,7 @@ public sealed class PressableTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies a content-originated route focuses and captures the semantic Pressable owner itself.</summary>
+    /// <summary>Verifies a content-originated route focuses and captures the semantic PressableBase owner itself.</summary>
     [Fact]
     public async Task Route_WhenContentIsOriginalPointerTarget_PressableOwnsFocusCaptureAndActivationAsync()
     {
@@ -191,7 +191,7 @@ public sealed class PressableTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies a consumer-derived Pressable's activation is recorded before command execution.</summary>
+    /// <summary>Verifies a consumer-derived PressableBase's activation is recorded before command execution.</summary>
     [Fact]
     public void Dispatch_WhenConsumerDerivedPressableHasCommand_ActivatesBeforeExecute()
     {
@@ -238,7 +238,7 @@ public sealed class PressableTests
         next.HasCanExecuteChangedSubscribers.ShouldBeTrue();
     }
 
-    /// <summary>Verifies disposing a Pressable with an assigned Command unsubscribes
+    /// <summary>Verifies disposing a PressableBase with an assigned Command unsubscribes
     /// CanExecuteChanged exactly once, leaving no dangling subscription.</summary>
     [Fact]
     public async Task Dispose_WhenCommandIsAssigned_UnsubscribesCanExecuteChangedAsync()

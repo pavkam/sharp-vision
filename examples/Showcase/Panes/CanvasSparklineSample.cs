@@ -4,7 +4,7 @@
 namespace SharpVision.Showcase.Panes;
 
 /// <summary>Demonstrates sub-cell sparkline rendering using Unicode block elements.</summary>
-internal sealed class CanvasSparklineSample: Control
+internal sealed class CanvasSparklineSample: ControlBase
 {
     private static readonly double[] _values =
         [3, 5, 2, 7, 4, 8, 6, 3, 5, 9, 7, 4, 6, 8, 5, 3, 7, 6, 4, 8, 9, 7, 5, 3, 6, 8, 7, 5];

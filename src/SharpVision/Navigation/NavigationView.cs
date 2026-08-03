@@ -12,13 +12,14 @@ using LayoutStack = Controls.Layout.Stack;
 
 /// <summary>Provides a sidebar navigation control with typed items, groups, header, and footer.</summary>
 [PublicAPI]
-public sealed class NavigationView: CompositeControl
+public sealed class NavigationView: CompositeControlBase
 {
     private readonly LayoutStack _itemsStack;
     private readonly LayoutStack _footerStack;
     private readonly DisplayText _headerText;
     private readonly CurrentItemNavigator _navigator;
-    private readonly Dictionary<Control, NavigationEntryPresentation> _requestedPresentations = [];
+    private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
+    private readonly Dictionary<ControlBase, NavigationEntryPresentation> _requestedPresentations = [];
     private bool _isHandlingKnownRemoval;
 
     /// <summary>Gets or sets the complete local style for this control's generated scrollbar.</summary>
@@ -31,40 +32,8 @@ public sealed class NavigationView: CompositeControl
     /// <exception cref="ObjectDisposedException">The navigation view is disposed.</exception>
     public ScrollBarStyle? ScrollBarStyle
     {
-        get;
-        set
-        {
-            VerifyMutable();
-
-            if (field == value)
-            {
-                return;
-            }
-
-            var previous = ActualScrollBarStyle;
-            field = value;
-
-            // Forward the nullable value, never a substitute. Assigning a concrete style here
-            // would consume the bar's theming slot permanently, and the stack is private so no
-            // caller could reset it. The resolved value must be read back afterwards, because the
-            // bar is what resolves null.
-            _itemsStack.ScrollBarStyle = field;
-            var current = ActualScrollBarStyle;
-
-            // Chrome changes the reserved extent, so it needs a measure pass; everything else is
-            // appearance only.
-            var impact = previous.Chrome != current.Chrome
-                ? InvalidationImpact.Measure
-                : previous == current
-                    ? InvalidationImpact.None
-                    : InvalidationImpact.Render;
-            NotifyPropertyChanged(nameof(ScrollBarStyle), impact);
-
-            if (previous != current)
-            {
-                NotifyPropertyChanged(nameof(ActualScrollBarStyle), InvalidationImpact.None);
-            }
-        }
+        get => _scrollBarStyle.Local;
+        set => _scrollBarStyle.Local = value;
     }
 
     /// <summary>Gets the resolved style applied to the generated scrollbar.</summary>
@@ -72,7 +41,7 @@ public sealed class NavigationView: CompositeControl
     /// Resolved by the bar itself, so a null local value reports whatever the active Theme or the
     /// library default supplies rather than an opinion this control baked in.
     /// </remarks>
-    public ScrollBarStyle ActualScrollBarStyle => _itemsStack.ActualScrollBarStyle;
+    public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
 
     /// <summary>Raised after the generated scroll container's offset commits.</summary>
     /// <remarks>
@@ -167,6 +136,10 @@ public sealed class NavigationView: CompositeControl
         _footerStack.Children.Changed += OnEntryHostChanged;
 
         InitializeContent(root);
+        _scrollBarStyle = InitializePartStyle(
+            Controls.Scrolling.ScrollBarStyle.ForwardingDefinition,
+            nameof(ScrollBarStyle));
+        BindStyle(_scrollBarStyle, _itemsStack, nameof(ScrollBarStyle));
         Items = new NavigationViewEntryCollection(this, isFooter: false);
         FooterItems = new NavigationViewEntryCollection(this, isFooter: true);
         Focusable = true;
@@ -228,15 +201,15 @@ public sealed class NavigationView: CompositeControl
         (isFooter ? _footerStack : _itemsStack).Children.Count;
 
     /// <summary>Gets one item by index in a section.</summary>
-    internal Control GetItem(int index, bool isFooter) =>
+    internal ControlBase GetItem(int index, bool isFooter) =>
         (isFooter ? _footerStack : _itemsStack).Children[index];
 
     /// <summary>Adds one typed entry to a section.</summary>
-    internal void AddEntry(Control entry, bool isFooter) => InsertEntry(GetItemCount(isFooter), entry, isFooter);
+    internal void AddEntry(ControlBase entry, bool isFooter) => InsertEntry(GetItemCount(isFooter), entry, isFooter);
 
     /// <summary>Inserts one typed entry at a position in a section.</summary>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
-    internal void InsertEntry(int index, Control entry, bool isFooter)
+    internal void InsertEntry(int index, ControlBase entry, bool isFooter)
     {
         Debug.Assert(
             entry is NavigationViewItem or NavigationViewGroup or NavigationViewSeparator,
@@ -260,7 +233,7 @@ public sealed class NavigationView: CompositeControl
     }
 
     /// <summary>Removes one typed entry from a section.</summary>
-    internal bool RemoveEntry(Control entry, bool isFooter)
+    internal bool RemoveEntry(ControlBase entry, bool isFooter)
     {
         var stack = isFooter ? _footerStack : _itemsStack;
         var repair = PrepareRemoval(entry);
@@ -339,12 +312,12 @@ public sealed class NavigationView: CompositeControl
     }
 
     /// <summary>Gets the position of one entry within a section, or -1 when not owned there.</summary>
-    internal int IndexOfEntry(Control entry, bool isFooter) =>
+    internal int IndexOfEntry(ControlBase entry, bool isFooter) =>
         (isFooter ? _footerStack : _itemsStack).Children.IndexOf(entry);
 
     /// <summary>Replaces the owned entry at a position in a section, preserving position.</summary>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current entries.</exception>
-    internal void ReplaceEntryAt(int index, Control entry, bool isFooter)
+    internal void ReplaceEntryAt(int index, ControlBase entry, bool isFooter)
     {
         Debug.Assert(
             entry is NavigationViewItem or NavigationViewGroup or NavigationViewSeparator,
@@ -399,7 +372,7 @@ public sealed class NavigationView: CompositeControl
 
     // Repairs selection/current-item state for a top-level entry that left the tree without
     // going through RemoveEntry/ClearEntries — most notably a direct Dispose() call, which
-    // Control.DisposeCore removes from its owning slot as ordinary disposal, publishing this
+    // ControlBase.DisposeCore removes from its owning slot as ordinary disposal, publishing this
     // same notification. RemoveEntry/ClearEntries already run the precise, position-aware
     // repair themselves and suppress this handler for their own mutation via
     // _isHandlingKnownRemoval, so this only ever reconciles the otherwise-unhandled path.
@@ -432,7 +405,7 @@ public sealed class NavigationView: CompositeControl
     // same way removing that descendant directly would — this is also the
     // seam NavigationViewGroup uses to repair selection for removals that
     // never pass through RemoveEntry/ClearEntries at all.
-    internal NavigationViewRemovalRepair PrepareRemoval(Control root)
+    internal NavigationViewRemovalRepair PrepareRemoval(ControlBase root)
     {
         var currentRemoved = _navigator.Current is { } current &&
                              (ReferenceEquals(current, root) || IsDescendantOf(current, root));
@@ -468,7 +441,7 @@ public sealed class NavigationView: CompositeControl
 
     // Runs before the entry is detached so callers observe restored values
     // immediately, not this view's private presentation policy.
-    private void RestorePresentation(Control entry)
+    private void RestorePresentation(ControlBase entry)
     {
         if (!_requestedPresentations.Remove(entry, out var presentation))
         {
@@ -720,7 +693,7 @@ public sealed class NavigationView: CompositeControl
         return false;
     }
 
-    private void CommitCurrent(Control current)
+    private void CommitCurrent(ControlBase current)
     {
         if (current is NavigationViewItem item)
         {
@@ -762,7 +735,7 @@ public sealed class NavigationView: CompositeControl
     // committed viewport height, rather than treating the viewport's cell height as an entry
     // count (the defect #212 fixed for ListView's identical shape). At least one step always
     // happens because the loop advances before its first accumulated check.
-    private Control StepPage(List<Control> entries, int direction)
+    private ControlBase StepPage(List<ControlBase> entries, int direction)
     {
         var index = _navigator.Current is { } current ? entries.IndexOf(current) : -1;
 
@@ -793,15 +766,15 @@ public sealed class NavigationView: CompositeControl
         }
     }
 
-    private List<Control> CollectNavigableEntries()
+    private List<ControlBase> CollectNavigableEntries()
     {
-        List<Control> result = [];
+        List<ControlBase> result = [];
         CollectNavigableFrom(_itemsStack, result);
         CollectNavigableFrom(_footerStack, result);
         return result;
     }
 
-    private static void CollectNavigableFrom(LayoutStack stack, List<Control> result)
+    private static void CollectNavigableFrom(LayoutStack stack, List<ControlBase> result)
     {
         foreach (var child in stack.Children)
         {
@@ -854,7 +827,7 @@ public sealed class NavigationView: CompositeControl
         }
     }
 
-    private static bool IsDescendantOf(Control control, Control ancestor)
+    private static bool IsDescendantOf(ControlBase control, ControlBase ancestor)
     {
         for (var current = control.Parent; current is not null; current = current.Parent)
         {
