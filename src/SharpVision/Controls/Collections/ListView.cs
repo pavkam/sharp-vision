@@ -11,7 +11,6 @@ using SharpVision.Terminal.Input;
 
 using GenericList = List<object?>;
 using Label = Display.Text;
-using LayoutStack = Layout.Stack;
 
 /// <summary>Defines a focusable fully realized item selection control with scrolling.</summary>
 [SuppressMessage(
@@ -21,13 +20,19 @@ using LayoutStack = Layout.Stack;
 [PublicAPI]
 public sealed class ListView: ItemsControl
 {
-    private readonly LayoutStack _stack;
+    private readonly ListViewHost _stack;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly GenericList _items = [];
     private readonly ReadOnlyCollection<object?> _itemsView;
     private readonly HashSet<int> _selection = [];
     private readonly GenericList _selectedItems = [];
     private readonly ReadOnlyCollection<object?> _selectedView;
+
+    // Parallel to _items, consulted only while RowHeight is set. Populated opportunistically at
+    // realize/derealize time; an index never realized stays null and IsIndexAvailable treats that
+    // as optimistically eligible, since FindEligible already tolerates skipping into unavailable
+    // rows without crashing (see #231).
+    private readonly List<bool?> _availability = [];
     private int _selectionVersion;
     private int _selectionAnchor = -1;
 
@@ -36,12 +41,13 @@ public sealed class ListView: ItemsControl
     {
         _itemsView = _items.AsReadOnly();
         _selectedView = _selectedItems.AsReadOnly();
-        _stack = new LayoutStack
+        _stack = new ListViewHost
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded
         };
+        _stack.ScrollChanged += OnHostScrollChanged;
         InitializeItemsHost(_stack);
         _scrollBarStyle = InitializePartStyle(
             Scrolling.ScrollBarStyle.ForwardingDefinition,
@@ -75,8 +81,16 @@ public sealed class ListView: ItemsControl
             ArgumentNullException.ThrowIfNull(value);
             VerifyMutable();
             var copied = Copy(value);
-            var realized = Build(copied, ItemTemplate);
-            Replace(copied, realized, replaceItems: true);
+
+            if (RowHeight is int height)
+            {
+                ReplaceVirtualized(copied, replaceItems: true);
+            }
+            else
+            {
+                var realized = Build(copied, ItemTemplate);
+                Replace(copied, realized, replaceItems: true);
+            }
         }
     }
 
@@ -98,6 +112,13 @@ public sealed class ListView: ItemsControl
                 return;
             }
 
+            if (RowHeight is int height)
+            {
+                _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+                ReplaceVirtualized(_items, replaceItems: false);
+                return;
+            }
+
             var realized = Build(_items, value);
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
             Replace(_items, realized, replaceItems: false);
@@ -107,14 +128,16 @@ public sealed class ListView: ItemsControl
     /// <summary>Gets or sets the fixed per-row cell height that opts into virtualized viewport-window
     /// realization; <see langword="null"/> retains today's eager realization.</summary>
     /// <remarks>
-    /// This is scaffolding tracked by #231. A <see langword="null"/> value (the default) is
-    /// guaranteed to keep today's eager, byte-for-byte realization unchanged - ComboBox,
-    /// the file-picker dialogs, and every existing showcase and test embed a <see cref="ListView"/>
-    /// on that guarantee. Assigning a non-null value currently only records the requested row height;
-    /// the windowing realization engine that consumes it (extent synthesis, overscan, and the four
-    /// selection/navigation sites that must ignore unrealized rows) has not shipped yet, so setting
-    /// this property has no observable effect on realization, layout, or navigation until that engine
-    /// lands.
+    /// A <see langword="null"/> value (the default) keeps eager, byte-for-byte realization -
+    /// ComboBox, the file-picker dialogs, and every existing showcase and test embed a
+    /// <see cref="ListView"/> on that guarantee. Assigning a positive value opts into windowed
+    /// realization: only items inside the current viewport plus a bounded overscan margin are ever
+    /// realized, and every arranged row is clipped to exactly this height. A template whose natural
+    /// height differs from <see cref="RowHeight"/> is not supported in windowed mode - use
+    /// <see langword="null"/> for variable-height templates. Toggling this property on an already
+    /// populated ListView reconciles realization immediately: turning windowing on derealizes every
+    /// row outside the freshly computed window, and turning it back off fully re-realizes the
+    /// collection through <see cref="ItemTemplate"/> again, the same as reassigning <see cref="Items"/>.
     /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is zero or negative.</exception>
     /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
@@ -136,7 +159,18 @@ public sealed class ListView: ItemsControl
                 return;
             }
 
-            _ = SetProperty(ref field, value, InvalidationImpact.None);
+            var wasVirtualized = field is not null;
+            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+            _stack.RowHeight = value;
+
+            if (value is int height)
+            {
+                Rewindow();
+            }
+            else if (wasVirtualized)
+            {
+                Replace(_items, Build(_items, ItemTemplate), replaceItems: false);
+            }
         }
     }
 
@@ -202,7 +236,7 @@ public sealed class ListView: ItemsControl
 
             VerifyMutable();
 
-            if (value >= 0 && ItemAt(value)?.IsAvailable != true)
+            if (value >= 0 && !IsIndexAvailable(value))
             {
                 return;
             }
@@ -295,10 +329,24 @@ public sealed class ListView: ItemsControl
     /// know about the private realized visual tree.</summary>
     /// <param name="index">The valid zero-based item position.</param>
     /// <returns>True when at least one offset changed.</returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the realized items.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside Items.</exception>
     /// <exception cref="InvalidOperationException">The attached ListView is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
-    public bool BringIntoView(int index) => _stack.BringIntoView(GetItemControl(index));
+    public bool BringIntoView(int index)
+    {
+        ValidateIndex(index);
+        VerifyMutable();
+
+        if (RowHeight is int height)
+        {
+            var before = VerticalOffset;
+            ScrollIndexIntoView(index, height);
+            Rewindow();
+            return VerticalOffset != before;
+        }
+
+        return _stack.BringIntoView(GetItemControl(index));
+    }
 
     /// <summary>Gets or sets the axes available to the composed overflow host.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
@@ -372,7 +420,7 @@ public sealed class ListView: ItemsControl
 
         VerifyMutable();
 
-        if (selected && ItemAt(index)?.IsAvailable != true)
+        if (selected && !IsIndexAvailable(index))
         {
             return false;
         }
@@ -419,8 +467,16 @@ public sealed class ListView: ItemsControl
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds) =>
+    protected override void ArrangeOverride(Rect bounds)
+    {
         ArrangeChild(_stack, bounds, ResolvedAxes.Both);
+
+        // _stack's own arrange transaction has already closed by this point - reconciling here
+        // catches every case that changed viewport, offset, or extent without a genuine
+        // interactive scroll (first layout, resize, RowHeight/Items churn while off-window),
+        // without ever mutating _stack.Children while _stack.IsArranging is still true (see #231).
+        Rewindow();
+    }
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
@@ -545,6 +601,9 @@ public sealed class ListView: ItemsControl
             }
         }
 
+        ResetAvailability();
+        _stack.ItemCount = _items.Count;
+
         var indexMap = BuildIndexMap(previousItems, _items);
         var normalized = MapIndexes(previousSelection, indexMap);
 
@@ -557,7 +616,7 @@ public sealed class ListView: ItemsControl
 
         var nextActiveIndex = MapIndex(previousActiveIndex, indexMap);
 
-        if (nextActiveIndex < 0 || ItemAt(nextActiveIndex)?.IsAvailable != true)
+        if (nextActiveIndex < 0 || !IsIndexAvailable(nextActiveIndex))
         {
             nextActiveIndex = FindAvailableActiveIndex(previousActiveIndex);
         }
@@ -582,6 +641,213 @@ public sealed class ListView: ItemsControl
         NotifyPropertyChanged(nameof(Items), InvalidationImpact.Measure);
     }
 
+    /// <summary>Replaces the complete item snapshot without eagerly realizing every row - the
+    /// virtualized counterpart to <see cref="Replace"/>, taken whenever <see cref="RowHeight"/> is
+    /// set. Only the bounded currently-realized window is disposed and rebuilt; the rest of the
+    /// collection is never handed to <see cref="ItemTemplate"/> until it scrolls into view (see
+    /// #231).</summary>
+    private void ReplaceVirtualized(IReadOnlyList<object?> items, bool replaceItems)
+    {
+        var previousItems = _items.ToArray();
+        var previousSelection = _selection.Order().ToArray();
+        var previousActiveIndex = ActiveIndex;
+        var previousAnchor = _selectionAnchor;
+
+        _selectionVersion++;
+
+        for (var position = ItemControlCount - 1; position >= 0; position--)
+        {
+            var item = (ListItem) GetItemControl(position);
+            item.Activated -= OnActivated;
+            RemoveItemControlAt(position);
+            item.Dispose();
+        }
+
+        if (replaceItems)
+        {
+            _items.Clear();
+
+            for (var index = 0; index < items.Count; index++)
+            {
+                _items.Add(items[index]);
+            }
+        }
+
+        ResetAvailability();
+        _stack.ItemCount = _items.Count;
+
+        var indexMap = BuildIndexMap(previousItems, _items);
+        var normalized = MapIndexes(previousSelection, indexMap);
+
+        if (SelectionMode == ListSelectionMode.Single && normalized.Count > 1)
+        {
+            var retained = normalized.Min();
+            normalized.Clear();
+            _ = normalized.Add(retained);
+        }
+
+        var nextActiveIndex = MapIndex(previousActiveIndex, indexMap);
+
+        if (nextActiveIndex < 0 || !IsIndexAvailable(nextActiveIndex))
+        {
+            nextActiveIndex = FindAvailableActiveIndex(previousActiveIndex);
+        }
+
+        var nextAnchor = MapIndex(previousAnchor, indexMap);
+
+        if (nextAnchor < 0 && previousAnchor >= 0)
+        {
+            nextAnchor = nextActiveIndex;
+        }
+
+        _selection.Clear();
+        _selection.UnionWith(normalized);
+        ActiveIndex = nextActiveIndex;
+        _selectionAnchor = nextAnchor;
+        RefreshSelectedItems();
+        Rewindow();
+        NotifyPropertyChanged(nameof(ActiveIndex), InvalidationImpact.Render);
+        NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Render);
+        NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
+        NotifyPropertyChanged(nameof(SelectedItems), InvalidationImpact.Render);
+        NotifyPropertyChanged(nameof(Items), InvalidationImpact.Measure);
+    }
+
+    private void ResetAvailability()
+    {
+        _availability.Clear();
+
+        for (var index = 0; index < _items.Count; index++)
+        {
+            _availability.Add(null);
+        }
+    }
+
+    private void OnHostScrollChanged(object? sender, ScrollChangedEventArgs eventArgs)
+    {
+        if (eventArgs.Cause is ScrollCause.Content or ScrollCause.Resize)
+        {
+            // Both causes originate from this container's own ResolveContentSlot, called while
+            // this container's arrange transaction is still open - realizing or derealizing
+            // children there risks the exact non-convergence hazard Container.cs documents for
+            // lazy child creation during layout. A generous overscan margin absorbs ordinary
+            // resize deltas instead; the window catches up fully on the next genuine scroll (see
+            // #231).
+            return;
+        }
+
+        Rewindow();
+    }
+
+    /// <summary>Reconciles realized rows against the current viewport, offset, and overscan
+    /// margin. A no-op in eager mode. Must only ever be called outside an active measure or
+    /// arrange transaction - see <see cref="OnHostScrollChanged"/>.</summary>
+    private void Rewindow()
+    {
+        if (RowHeight is not int height)
+        {
+            return;
+        }
+
+        var viewportRows = Math.Max(1, Viewport.Height / height);
+        var first = _items.Count == 0 ? 0 : Math.Max(0, (VerticalOffset / height) - viewportRows);
+        var last = _items.Count == 0
+            ? -1
+            : Math.Min(
+                _items.Count - 1,
+                ((VerticalOffset + Math.Max(0, Viewport.Height - 1)) / height) + viewportRows);
+
+        for (var position = ItemControlCount - 1; position >= 0; position--)
+        {
+            var realizedItem = (ListItem) GetItemControl(position);
+
+            if (realizedItem.Index >= first && realizedItem.Index <= last)
+            {
+                continue;
+            }
+
+            _availability[realizedItem.Index] = realizedItem.IsAvailable;
+            realizedItem.Activated -= OnActivated;
+            RemoveItemControlAt(position);
+            realizedItem.Dispose();
+        }
+
+        var origin = _stack.RowOrigin;
+        var offset = VerticalOffset;
+
+        for (var index = first; index <= last; index++)
+        {
+            var listItem = ItemAt(index);
+
+            if (listItem is null)
+            {
+                listItem = BuildSingle(index, _items[index], ItemTemplate);
+                InsertItemControl(FindRealizedInsertPosition(index), listItem);
+                listItem.Activated += OnActivated;
+                listItem.CommitSelection(_selection.Contains(index));
+
+                if (index == ActiveIndex)
+                {
+                    listItem.SetCurrentState(true);
+                }
+            }
+
+            // _stack's own arrange transaction may already have closed for this pass (a
+            // structural mutation triggered from an interactive ScrollChanged, or one raised by
+            // Insert/Remove/ReplaceVirtualized outside layout entirely), so every row still in the
+            // window - not only a newly realized one - is measured and arranged directly rather
+            // than waiting for a future container-level pass to reach it. A row that was already
+            // realized before this offset changed still has its prior position otherwise: only
+            // ScrollChanged fired, not a full container arrange, so nothing else would ever move
+            // it. RowOrigin is the pre-offset viewport rect from the last genuine layout pass, so
+            // subtracting the CURRENT offset here (not whatever offset was in effect when RowOrigin
+            // was last committed) keeps this correct across a scroll with no accompanying layout
+            // call. The next real layout pass re-arranges every realized row unconditionally
+            // regardless, so any staleness here is only ever a transient bridge state (see #231).
+            listItem.Measure(new Constraint(origin.Width, height));
+            listItem.Arrange(
+                new Rect(origin.X, origin.Y.Add(index.Multiply(height)).Add(-offset), origin.Width, height),
+                widthResolved: false,
+                heightResolved: true);
+        }
+    }
+
+    private int FindRealizedInsertPosition(int index)
+    {
+        var position = 0;
+
+        while (position < ItemControlCount && ((ListItem) GetItemControl(position)).Index < index)
+        {
+            position++;
+        }
+
+        return position;
+    }
+
+    /// <summary>Scrolls minimally so a logical index's arithmetic row slot is fully inside the
+    /// viewport, without requiring a realized descendant the way <see cref="Container.BringIntoView"/>
+    /// does.</summary>
+    private void ScrollIndexIntoView(int index, int height)
+    {
+        var start = index.Multiply(height);
+        var viewport = Viewport.Height;
+        var current = VerticalOffset;
+
+        var target = start < current
+            ? start
+            : start.Add(height) > current.Add(viewport)
+                ? Math.Max(0, start.Add(height) - viewport)
+                : current;
+
+        var maximum = Math.Max(0, Extent.Height - viewport);
+        target = Math.Clamp(target, 0, maximum);
+
+        if (target != current)
+        {
+            VerticalOffset = target;
+        }
+    }
+
     /// <summary>Inserts one item at a validated position without rebuilding the entire list.</summary>
     /// <param name="index">The insertion position from zero through <see cref="Items"/>.<see cref="IReadOnlyCollection{T}.Count"/>.</param>
     /// <param name="item">The borrowed item value.</param>
@@ -595,18 +861,37 @@ public sealed class ListView: ItemsControl
         ArgumentOutOfRangeException.ThrowIfGreaterThan(index, _items.Count);
         VerifyMutable();
 
-        var listItem = BuildSingle(index, item, ItemTemplate);
+        var height = RowHeight;
+        var listItem = height is null ? BuildSingle(index, item, ItemTemplate) : null;
         _selectionVersion++;
         _items.Insert(index, item);
-        InsertItemControl(index, listItem);
+        _availability.Insert(index, null);
+        _stack.ItemCount = _items.Count;
 
-        for (var position = index + 1; position < ItemControlCount; position++)
+        if (listItem is not null)
         {
-            ((ListItem) GetItemControl(position)).Index = position;
+            InsertItemControl(index, listItem);
         }
 
-        listItem.Activated += OnActivated;
-        listItem.CommitSelection(false);
+        // Every realized row at or after the insertion point shifts by one logical index.
+        // Matching by value (not by host position) is a strict generalization of the eager-only
+        // "position equals index" shortcut this loop replaced - the two agree whenever every index
+        // is realized, and only the by-value form stays correct once some are not (see #231).
+        for (var position = 0; position < ItemControlCount; position++)
+        {
+            var realizedItem = (ListItem) GetItemControl(position);
+
+            if (!ReferenceEquals(realizedItem, listItem) && realizedItem.Index >= index)
+            {
+                realizedItem.Index++;
+            }
+        }
+
+        if (listItem is not null)
+        {
+            listItem.Activated += OnActivated;
+            listItem.CommitSelection(false);
+        }
 
         var selectionShifted = false;
         HashSet<int> shifted = [];
@@ -621,13 +906,18 @@ public sealed class ListView: ItemsControl
         _selection.UnionWith(shifted);
 
         var nextActiveIndex = ActiveIndex >= index ? ActiveIndex + 1 : ActiveIndex;
-        SetActiveIndex(nextActiveIndex);
 
         if (_selectionAnchor >= index)
         {
             _selectionAnchor++;
         }
 
+        if (height is int rowHeight)
+        {
+            Rewindow();
+        }
+
+        SetActiveIndex(nextActiveIndex);
         RefreshSelectedItems();
 
         if (selectionShifted)
@@ -652,15 +942,27 @@ public sealed class ListView: ItemsControl
         VerifyMutable();
 
         var previousSelection = _selection.Order().ToArray();
-        var listItem = (ListItem) GetItemControl(index);
-        listItem.Activated -= OnActivated;
-        RemoveItemControlAt(index);
-        listItem.Dispose();
-        _items.RemoveAt(index);
+        var listItem = ItemAt(index);
 
-        for (var position = index; position < ItemControlCount; position++)
+        if (listItem is not null)
         {
-            ((ListItem) GetItemControl(position)).Index = position;
+            listItem.Activated -= OnActivated;
+            _ = RemoveItemControl(listItem);
+            listItem.Dispose();
+        }
+
+        _items.RemoveAt(index);
+        _availability.RemoveAt(index);
+        _stack.ItemCount = _items.Count;
+
+        for (var position = 0; position < ItemControlCount; position++)
+        {
+            var realizedItem = (ListItem) GetItemControl(position);
+
+            if (realizedItem.Index > index)
+            {
+                realizedItem.Index--;
+            }
         }
 
         _selectionVersion++;
@@ -705,9 +1007,14 @@ public sealed class ListView: ItemsControl
                 ? _items.Count - 1
                 : ActiveIndex;
 
-        if (ItemAt(nextActiveIndex)?.IsAvailable != true)
+        if (!IsIndexAvailable(nextActiveIndex))
         {
             nextActiveIndex = FindAvailableActiveIndex(nextActiveIndex);
+        }
+
+        if (RowHeight is int height)
+        {
+            Rewindow();
         }
 
         SetActiveIndex(nextActiveIndex);
@@ -739,14 +1046,21 @@ public sealed class ListView: ItemsControl
         VerifyMutable();
 
         var previousValue = _items[index];
-        var replacement = BuildSingle(index, item, ItemTemplate);
-        var previous = (ListItem) GetItemControl(index);
-        previous.Activated -= OnActivated;
-        ReplaceItemControl(index, replacement);
-        previous.Dispose();
+        var previous = ItemAt(index);
+
+        if (previous is not null)
+        {
+            var replacement = BuildSingle(index, item, ItemTemplate);
+            var position = IndexOfItemControl(previous);
+            previous.Activated -= OnActivated;
+            ReplaceItemControl(position, replacement);
+            previous.Dispose();
+            replacement.Activated += OnActivated;
+            replacement.CommitSelection(_selection.Contains(index) && Equals(previousValue, item));
+        }
+
         _items[index] = item;
-        replacement.Activated += OnActivated;
-        replacement.CommitSelection(_selection.Contains(index) && Equals(previousValue, item));
+        _availability[index] = null;
 
         HashSet<int> normalized = [.. _selection];
 
@@ -762,7 +1076,7 @@ public sealed class ListView: ItemsControl
             _selectionAnchor = _selection.Contains(ActiveIndex) ? ActiveIndex : -1;
         }
 
-        var nextActiveIndex = ItemAt(ActiveIndex)?.IsAvailable == true
+        var nextActiveIndex = IsIndexAvailable(ActiveIndex)
             ? ActiveIndex
             : FindAvailableActiveIndex(ActiveIndex);
         SetActiveIndex(nextActiveIndex);
@@ -868,7 +1182,7 @@ public sealed class ListView: ItemsControl
         {
             var lower = clamped - distance;
 
-            if (lower >= 0 && ItemAt(lower)?.IsAvailable == true)
+            if (lower >= 0 && IsIndexAvailable(lower))
             {
                 return lower;
             }
@@ -877,7 +1191,7 @@ public sealed class ListView: ItemsControl
             {
                 var higher = clamped + distance;
 
-                if (distance > 0 && ItemAt(higher)?.IsAvailable == true)
+                if (distance > 0 && IsIndexAvailable(higher))
                 {
                     return higher;
                 }
@@ -898,20 +1212,16 @@ public sealed class ListView: ItemsControl
 
         foreach (var index in next)
         {
-            var item = ItemAt(index);
-
-            if (item is null)
-            {
-                continue;
-            }
-
-            // IsAvailable factors in EffectiveIsVisible, which is false for every row while an
-            // ancestor (a closed Popup, a collapsed tab) hides the whole list — that is not a
-            // genuine veto on a value the list is only retaining across a structural remap
-            // (Items/ItemTemplate reassignment, insert, remove, replace), so those call sites
-            // skip this check entirely (see #171). A fresh interactive or programmatic selection
-            // request still requires the target to be genuinely available.
-            if (!requireAvailability || item.IsAvailable)
+            // IsIndexAvailable factors in EffectiveIsVisible for a realized row, which is false
+            // for every row while an ancestor (a closed Popup, a collapsed tab) hides the whole
+            // list — that is not a genuine veto on a value the list is only retaining across a
+            // structural remap (Items/ItemTemplate reassignment, insert, remove, replace), so
+            // those call sites skip this check entirely (see #171). A fresh interactive or
+            // programmatic selection request still requires the target to be genuinely available.
+            // An unrealized index in virtualized mode has no live row to ask, so this
+            // optimistically assumes eligible rather than silently dropping it from selection
+            // just because it is currently off-window (see #231).
+            if (!requireAvailability || IsIndexAvailable(index))
             {
                 _ = selectable.Add(index);
             }
@@ -946,9 +1256,10 @@ public sealed class ListView: ItemsControl
         _selection.UnionWith(selectable);
         _selectionVersion++;
 
-        for (var index = 0; index < ItemControlCount; index++)
+        for (var position = 0; position < ItemControlCount; position++)
         {
-            ((ListItem) GetItemControl(index)).CommitSelection(_selection.Contains(index));
+            var realizedItem = (ListItem) GetItemControl(position);
+            realizedItem.CommitSelection(_selection.Contains(realizedItem.Index));
         }
 
         RefreshSelectedItems();
@@ -981,10 +1292,9 @@ public sealed class ListView: ItemsControl
     internal void NotifyItemFocused(ListItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        var index = IndexOfItemControl(item);
-        Debug.Assert(index >= 0, "A focused ListItem is a realized child of this ListView.");
+        Debug.Assert(IndexOfItemControl(item) >= 0, "A focused ListItem is a realized child of this ListView.");
 
-        SetActiveIndex(index);
+        SetActiveIndex(item.Index);
         _ = _stack.BringIntoView(item);
     }
 
@@ -1011,14 +1321,16 @@ public sealed class ListView: ItemsControl
     /// <returns><see langword="true"/> when an available current item was activated; otherwise, <see langword="false"/>.</returns>
     internal bool ActivateCurrent(ActivationCause cause, Code? key, Modifiers modifiers)
     {
-        var current = ItemAt(ActiveIndex) ?? FindEligible(0, 1);
+        var index = ActiveIndex >= 0 && ActiveIndex < _items.Count && IsIndexAvailable(ActiveIndex)
+            ? ActiveIndex
+            : FindEligible(0, 1);
 
-        if (current is not { IsAvailable: true })
+        if (index < 0)
         {
             return false;
         }
 
-        current.ActivateFromOwner(cause, key, modifiers);
+        Realize(index).ActivateFromOwner(cause, key, modifiers);
         return true;
     }
 
@@ -1066,7 +1378,7 @@ public sealed class ListView: ItemsControl
 
             for (var item = Math.Min(index, _selectionAnchor); item <= Math.Max(index, _selectionAnchor); item++)
             {
-                if (ItemAt(item)?.IsAvailable == true)
+                if (IsIndexAvailable(item))
                 {
                     _ = next.Add(item);
                 }
@@ -1150,8 +1462,11 @@ public sealed class ListView: ItemsControl
 
     private ListItem? ResolveMove(Code code)
     {
-        var current = ItemAt(ActiveIndex) ?? FindEligible(0, 1);
-        return current is null ? null : ResolveNavigation(current, code);
+        var current = ActiveIndex >= 0 && ActiveIndex < _items.Count && IsIndexAvailable(ActiveIndex)
+            ? ActiveIndex
+            : FindEligible(0, 1);
+
+        return current < 0 ? null : ResolveNavigation(current, code);
     }
 
     private bool TryCommitCurrent(ListItem target)
@@ -1172,29 +1487,39 @@ public sealed class ListView: ItemsControl
         _ = _stack.BringIntoView(target);
     }
 
-    private ListItem? ResolveNavigation(ListItem current, Code code)
+    private ListItem? ResolveNavigation(int currentIndex, Code code)
     {
-        return code is Code.Up or Code.Left
-            ? FindEligible(current.Index - 1, -1)
+        var target = code is Code.Up or Code.Left
+            ? FindEligible(currentIndex - 1, -1)
             : code is Code.Down or Code.Right
-            ? FindEligible(current.Index + 1, 1)
+            ? FindEligible(currentIndex + 1, 1)
             : code == Code.Home
             ? FindEligible(0, 1)
             : code == Code.End
             ? FindEligible(Items.Count - 1, -1)
             : code == Code.PageUp
-            ? FindEligible(StepPage(current.Index, -1), -1)
-            : code == Code.PageDown ? FindEligible(StepPage(current.Index, 1), 1) : null;
+            ? FindEligible(StepPage(currentIndex, -1), -1)
+            : code == Code.PageDown ? FindEligible(StepPage(currentIndex, 1), 1) : -1;
+
+        return target < 0 ? null : Realize(target);
     }
 
-    // ListView is not virtualized - every realized row's arranged Bounds.Height is already
-    // available - so a page step accumulates realized row heights from the current index until
-    // the sum reaches the committed viewport height (minus the retained overlap), rather than
-    // applying a cell-space distance directly as an item-index delta (see #212). At least one
-    // step always happens because the loop advances before its first accumulated check.
+    // In eager mode every realized row's arranged Bounds.Height is already available, so a page
+    // step accumulates realized row heights from the current index until the sum reaches the
+    // committed viewport height (minus the retained overlap), rather than applying a cell-space
+    // distance directly as an item-index delta (see #212). At least one step always happens
+    // because the loop advances before its first accumulated check. Once RowHeight is set every
+    // row is the same fixed height, so the same distance becomes pure arithmetic requiring no
+    // realized row at all (see #231).
     private int StepPage(int start, int direction)
     {
         var target = Math.Max(1, Viewport.Height - Math.Min(PageOverlap, Viewport.Height));
+
+        if (RowHeight is int height)
+        {
+            return start + (direction * Math.Max(1, target / height));
+        }
+
         var index = start;
         var accumulated = 0;
 
@@ -1217,21 +1542,23 @@ public sealed class ListView: ItemsControl
         }
     }
 
-    private ListItem? FindEligible(int start, int direction)
+    /// <summary>Scans for the nearest eligible logical index without requiring it to be realized.</summary>
+    /// <param name="start">The starting index; clamped into range before scanning.</param>
+    /// <param name="direction">Plus or minus one.</param>
+    /// <returns>The found index, or -1 when no eligible index exists in that direction.</returns>
+    private int FindEligible(int start, int direction)
     {
         for (var index = Math.Clamp(start, 0, Math.Max(0, Items.Count - 1));
              index >= 0 && index < Items.Count;
              index += direction)
         {
-            var item = ItemAt(index);
-
-            if (item?.IsAvailable == true)
+            if (IsIndexAvailable(index))
             {
-                return item;
+                return index;
             }
         }
 
-        return null;
+        return -1;
     }
 
     private void SetActiveIndex(int value)
@@ -1248,8 +1575,72 @@ public sealed class ListView: ItemsControl
         NotifyPropertyChanged(nameof(ActiveIndex), InvalidationImpact.Render);
     }
 
-    private ListItem? ItemAt(int index) =>
-        index < 0 || index >= ItemControlCount ? null : (ListItem) GetItemControl(index);
+    /// <summary>Gets the realized row for a logical index, or null when the index is unrealized -
+    /// always the case in eager mode only when the index is out of range, but a routine and
+    /// expected outcome in virtualized mode for any index outside the current window (see #231).</summary>
+    private ListItem? ItemAt(int index)
+    {
+        if (index < 0 || index >= _items.Count)
+        {
+            return null;
+        }
+
+        if (RowHeight is null)
+        {
+            return index >= ItemControlCount ? null : (ListItem) GetItemControl(index);
+        }
+
+        for (var position = 0; position < ItemControlCount; position++)
+        {
+            var candidate = (ListItem) GetItemControl(position);
+
+            if (candidate.Index == index)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Answers whether a logical index is eligible for navigation or selection without
+    /// requiring it to be realized.</summary>
+    /// <remarks>
+    /// A realized row answers with its live <see cref="ListItem.IsAvailable"/>. An unrealized row
+    /// in virtualized mode has no live template output to ask, so this optimistically assumes
+    /// eligible until a future realization proves otherwise - the same default
+    /// <see cref="FindEligible"/> already tolerates when skipping past unavailable rows without
+    /// crashing (see #231).
+    /// </remarks>
+    private bool IsIndexAvailable(int index)
+    {
+        if (index < 0 || index >= _items.Count)
+        {
+            return false;
+        }
+
+        var item = ItemAt(index);
+        return item?.IsAvailable ?? (RowHeight is not null && _availability[index] != false);
+    }
+
+    /// <summary>Ensures a logical index is realized, scrolling it into view first if necessary.</summary>
+    private ListItem Realize(int index)
+    {
+        Debug.Assert(index >= 0 && index < _items.Count, "Realize requires a valid item index.");
+        var existing = ItemAt(index);
+
+        if (existing is not null)
+        {
+            return existing;
+        }
+
+        Debug.Assert(RowHeight is not null, "Every valid index is already realized in eager mode.");
+        ScrollIndexIntoView(index, RowHeight.Value);
+        Rewindow();
+        var realized = ItemAt(index);
+        Debug.Assert(realized is not null, "Rewindow realizes any index the viewport now reveals.");
+        return realized;
+    }
 
     private static ListItem? FindItem(ControlBase? source)
     {

@@ -17,6 +17,9 @@ internal static class LayoutMath
             (int) Math.Clamp((long) left + right, int.MinValue, int.MaxValue);
 
         public int Negate() => left == int.MinValue ? int.MaxValue : -left;
+
+        public int Multiply(int right) =>
+            (int) Math.Clamp((long) left * right, int.MinValue, int.MaxValue);
     }
 
     extension(int? value)

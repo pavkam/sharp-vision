@@ -3,14 +3,13 @@
 ## Overview
 
 `ListView` is a focusable selection control over an owned snapshot of items and
-a caller-configurable template. It realizes every item into a private vertical
-`Stack` armed with the intrinsic [`AutoScroll`](../../concepts/scrolling.md)
-contract, and it makes no virtualization or recycling claim.
-
-> [!NOTE]
->
-> Realization cost and memory scale with the item count, not the viewport.
-> Viewport-window realization for large collections is tracked by issue #231.
+a caller-configurable template. By default it realizes every item eagerly into a
+private vertical arrangement armed with the intrinsic
+[`AutoScroll`](../../concepts/scrolling.md) contract, so realization cost and
+memory scale with the item count, not the viewport. Setting `RowHeight` opts
+into windowed realization instead: only items inside the current viewport plus a
+bounded overscan margin are ever realized, so cost and memory scale with the
+viewport instead — see [Virtualization](#virtualization) below.
 
 Each template result is wrapped in one ordinary pressable `ListItem`. The
 ListView owns focus and current-item navigation; the wrapper owns activation,
@@ -36,6 +35,7 @@ label cells.
 | ------------------------------------------------------ | ------------------------ | ---------------------------------------------------------------- |
 | `Items`                                                | Empty snapshot           | Copies data items before realizing presentation controls.        |
 | `ItemTemplate`                                         | Invariant-culture `Text` | Creates one unique detached control per item.                    |
+| `RowHeight`                                            | `null`                   | Fixed per-row cell height that opts into windowed realization.   |
 | `SelectionMode`                                        | `Single`                 | Allows no selection, one selection, or multiple selections.      |
 | `SelectedIndex`, `SelectedItem`, `SelectedItems`       | `-1`, `null`, empty      | Read or change committed selection.                              |
 | `ActiveIndex`                                          | `-1`                     | Identify the keyboard-navigation row.                            |
@@ -107,9 +107,12 @@ with the active row; when a `SelectionChanging` transaction is cancelled, both
 values stay unchanged. None mode moves only the active index. Home and End
 choose the first or last eligible item. PageUp and PageDown advance by at least
 one item, and otherwise by as many items as fill the committed viewport height
-minus `PageOverlap`. They accumulate each realized row's own height rather than
-treating the viewport's cell height as an item count, so rows taller than one
-cell are never skipped. Every successful move uses the composed `BringIntoView`
+minus `PageOverlap`. In eager mode they accumulate each realized row's own
+height rather than treating the viewport's cell height as an item count, so rows
+taller than one cell are never skipped; in windowed mode the identical distance
+becomes pure arithmetic against the fixed `RowHeight`, requiring no realized
+row. A navigation target outside the current window is realized (and scrolled
+into view) on demand. Every successful move uses the composed `BringIntoView`
 path.
 
 Space follows press-and-release activation and changes the selection; Enter
@@ -133,6 +136,46 @@ The physical `PointerOver` state remains observable on the list ancestry, while
 the directly targeted internal item wrapper changes only its foreground and
 border semantics over the unchanged owner background. Selection may paint the
 paired selection background.
+
+## Virtualization
+
+Setting `RowHeight` to a positive cell count opts a ListView into windowed
+realization: only rows inside the current viewport plus a bounded overscan
+margin are ever realized, and every arranged row is clipped to exactly the
+configured height. `RowHeight = null` (the default) keeps eager realization
+byte-for-byte unchanged - `ComboBox`, the file-picker dialogs, and every
+existing showcase page embed a ListView on that guarantee, so eager stays the
+default rather than a deprecated fallback.
+
+```csharp
+var results = new ListView
+{
+    RowHeight = 1,
+    ItemTemplate = item => new Text(item?.ToString() ?? string.Empty),
+    Items = matches, // tens of thousands of rows
+};
+```
+
+Windowed realization is opt-in because it trades away a real capability:
+**variable-height templates only work in eager mode.** Row height here is
+width-dependent (wrapped text reflows as the viewport narrows, and reserving a
+scrollbar column can itself change how a row wraps), so there is no
+estimate-then-correct fallback - a template whose natural height differs from
+`RowHeight` is clipped, not silently misaligned, and only eager mode supports
+it. Choose `RowHeight` for large, uniform-height collections (logs, search
+results, file listings); leave it `null` for everything else.
+
+Selection, the active row, and `SelectedItems` are pure index and value state
+independent of which rows happen to be realized, so they behave identically in
+both modes - including for an index currently outside the window, which is
+optimistically treated as eligible until a realized row proves otherwise. A
+ListView that relies on auto-width sizing (no explicit `Width` and no
+`HorizontalAlignment.Stretch` parent slot) while windowed can see its own
+measured width jitter across a scroll, the same accepted tradeoff virtualizing
+panels make elsewhere: `Extent.Width` reports only the widest _currently
+realized_ row rather than the widest row overall. `Extent.Height`, the scrollbar
+`Maximum`, `BringIntoView(int)`, and offset-to-index conversion are all pure
+arithmetic against `RowHeight` and never depend on a realized row.
 
 ## Example
 
@@ -160,5 +203,11 @@ Tests retain the actual template controls to prove unique parents and
 deterministic disposal, compare final Unicode cells and wide-cell ownership,
 assert stable selected-view identity, drive routed keyboard and pointer input
 through the focus and capture managers, and verify active-item scrolling across
-resize-sized viewports. Later performance tests cover 1,000 fully realized items
-and retained memory; they must not relabel realization as virtualization.
+resize-sized viewports. Performance tests cover 1,000 fully realized items and
+retained memory for eager mode; they must not relabel realization as
+virtualization. A randomized equivalence fixture drives an eager and a windowed
+ListView through the same seeded sequence of scroll, resize, selection, and
+mutation operations and asserts they stay observably identical, following
+[randomized testing](../../testing/randomized.md)'s conventions - the eager
+instance is the independent oracle, since its always-fully-realized behavior
+predates and is unaffected by windowed realization.

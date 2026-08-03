@@ -131,6 +131,22 @@ internal sealed class ListViewPane: CompositeControlBase
             Items = Array.Empty<object?>()
         };
 
+        var virtualizedStatus = new Text("Active: Row 0");
+        var virtualized = new ListView
+        {
+            Width = Length.Cells(20),
+            Height = Length.Cells(6),
+            RowHeight = 1,
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Always,
+            ScrollBarStyle = ScrollBarStyle.ThinLine,
+            Items = Enumerable.Range(0, 20_000).Select(value => (object?) $"Row {value:D5}").ToArray()
+        };
+        virtualized.SelectionChanged += (_, _) =>
+            virtualizedStatus.Content = virtualized.SelectedIndex >= 0
+                ? $"Active: {virtualized.Items[virtualized.SelectedIndex]}"
+                : "Active: none";
+
         return new DocPage(
             Title,
             "<info>ListView</info> realizes selectable items with keyboard, pointer, activation, and automatic vertical scrolling behavior.",
@@ -183,6 +199,15 @@ internal sealed class ListViewPane: CompositeControlBase
                 new DocExample(
                     "Disabled item and empty list",
                     "Beta is disabled inside an otherwise enabled list. The second specimen renders an empty Items snapshot.",
-                    new DocColumn(disabled, empty))));
+                    new DocColumn(disabled, empty))),
+            new DocSection(
+                "🪟",
+                "Virtualization",
+                "Setting RowHeight opts into windowed realization: only rows inside the viewport plus a bounded overscan margin are ever realized.",
+                new DocExample(
+                    "20,000 rows, viewport-bounded realization",
+                    "Scroll, page, or use <reverse>Home</reverse>/<reverse>End</reverse> across 20,000 rows without realizing them all up front.",
+                    new DocColumn(virtualized, virtualizedStatus),
+                    "list.RowHeight = 1;\nlist.Items = hugeCollection;")));
     }
 }

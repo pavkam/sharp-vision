@@ -163,11 +163,14 @@ the same collection replaces the bound source from within its own
 `CollectionChanged` callback, the runtime has already captured the event
 invocation list before any handler in it runs.
 
-Snapshot construction is `O(n)` because `ListView` currently realizes every
-item. The collection must remain stable while `Count` and its indexer are read
-on the target dispatcher. Worker-thread mutation of a thread-unsafe
-`ObservableCollection<T>` still requires marshaling through the application
-dispatcher.
+Snapshot construction is `O(n)` in `ListView`'s default eager mode, which
+realizes every item. Setting
+[`ListView.RowHeight`](../controls/collections/list-view.md#virtualization) opts
+into windowed realization instead, so a bound snapshot never pays more than
+viewport-bounded realization cost regardless of collection size. The collection
+must remain stable while `Count` and its indexer are read on the target
+dispatcher. Worker-thread mutation of a thread-unsafe `ObservableCollection<T>`
+still requires marshaling through the application dispatcher.
 
 `BindSelection` supports reference-type values on a single-selection `ListView`
 or `ComboBox`. Matching uses `EqualityComparer<T>.Default` and picks the first

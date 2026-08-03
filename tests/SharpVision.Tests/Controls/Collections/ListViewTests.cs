@@ -608,17 +608,18 @@ public sealed class ListViewTests
         }
     }
 
-    /// <summary>Verifies RowHeight can be assigned and read back without altering eager realization,
-    /// since the windowing engine that would consume it has not shipped yet (#231 scaffolding).</summary>
+    /// <summary>Verifies RowHeight can be assigned and read back, and that assigning it engages
+    /// windowed realization - only the viewport-bounded window plus overscan is ever realized,
+    /// not the full collection (see #231).</summary>
     [Fact]
-    public void RowHeight_WhenAssigned_RoundTripsWithoutAlteringEagerRealization()
+    public void RowHeight_WhenAssigned_RealizesOnlyTheViewportWindow()
     {
         List<Label> realized = [];
         var control = new UiListView
         {
             RowHeight = 1,
             ItemTemplate = item => Add(realized, new Label(item?.ToString() ?? "null")),
-            Items = Enumerable.Range(0, 5).Select(value => (object?) $"Item {value}").ToArray()
+            Items = Enumerable.Range(0, 500).Select(value => (object?) $"Item {value}").ToArray()
         };
 
         control.RowHeight.ShouldBe(1);
@@ -626,7 +627,7 @@ public sealed class ListViewTests
         using Frame frame = new(new Size(10, 3));
         control.Render(frame.Canvas);
 
-        realized.Count.ShouldBe(5);
+        realized.Count.ShouldBeLessThan(500);
         realized.All(item => item.Parent is not null).ShouldBeTrue();
 
         control.RowHeight = 4;
