@@ -263,6 +263,11 @@ public sealed class Slider: Control
         {
             Handle(pointer);
         }
+
+        if (!eventArgs.Handled)
+        {
+            base.OnEvent(eventArgs);
+        }
     }
 
     /// <inheritdoc/>

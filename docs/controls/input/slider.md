@@ -54,7 +54,8 @@ decreasing key subtracts `SmallChange` and the increasing key adds it. Page Down
 subtracts `LargeChange`, Page Up adds it, and Home/End select the minimum and
 maximum. Key press and repeat are accepted; release is ignored. A wheel gesture
 applies `SmallChange` and is handled only when the value actually changes, which
-leaves endpoint gestures available to an enclosing scroll surface.
+leaves endpoint gestures available to an enclosing scroll surface. Keys outside
+the slider command set remain available to inherited routed input.
 
 The rail renders its filled, thumb, and unfilled cells with the `Accent`,
 `Accent`, and `Muted` foregrounds respectively. `FillColor`, `ThumbColor`, and

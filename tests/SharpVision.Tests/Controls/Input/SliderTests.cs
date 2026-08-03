@@ -194,6 +194,29 @@ public sealed class SliderTests
         slider.Value.ShouldBe(10);
     }
 
+    /// <summary>Verifies keys outside the slider command set remain available to routed input.</summary>
+    [Fact]
+    public void Dispatch_WhenKeyIsUnhandled_RaisesInheritedKeyDownWithoutConsumingIt()
+    {
+        // Arrange
+        var slider = new Slider();
+        var raised = 0;
+        slider.KeyDown += (_, _) => raised++;
+        var key = new KeyEventArgs(new Stroke(
+            Code.F1,
+            character: null,
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press));
+
+        // Act
+        _ = Router.Route(slider, Events.Key, key);
+
+        // Assert
+        key.Handled.ShouldBeFalse();
+        raised.ShouldBe(1);
+    }
+
     /// <summary>Verifies pointer press selects directly and captured movement reaches endpoints.</summary>
     [Fact]
     public async Task Dispatch_WhenPointerSelectsAndDrags_UsesCaptureAndDirectMappingAsync()
