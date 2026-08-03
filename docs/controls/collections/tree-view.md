@@ -74,6 +74,10 @@ inspected through the resolved `ActualScrollBarStyle`. The control pins nothing
 on the bar it owns, so a null style leaves the choice to the active Theme and
 the library default.
 
+Each `TreeViewItem` preserves its inherited routed key and pointer events before
+applying row activation. A handler that consumes the event suppresses the
+built-in row action.
+
 Set `TreeViewItem.IsCheckable` to display a check mark. Setting `IsChecked` on a
 checkable parent propagates to its checkable descendants, and a parent becomes
 indeterminate when its checkable children do not agree. Space toggles the

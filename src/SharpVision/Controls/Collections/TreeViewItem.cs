@@ -356,6 +356,8 @@ public sealed class TreeViewItem: Control
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
 
+        base.OnEvent(eventArgs);
+
         if (eventArgs.Handled)
         {
             return;

@@ -85,6 +85,29 @@ public sealed class TreeViewTests
         tree.Items.Count.ShouldBe(3);
     }
 
+    /// <summary>Verifies non-pointer input remains available through the inherited routed events.</summary>
+    [Fact]
+    public void Dispatch_WhenTreeViewItemReceivesKey_RaisesInheritedKeyDownWithoutConsumingIt()
+    {
+        // Arrange
+        var item = new TreeViewItem();
+        var raised = 0;
+        item.KeyDown += (_, _) => raised++;
+        var eventArgs = new KeyEventArgs(new Stroke(
+            Code.F1,
+            character: null,
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press));
+
+        // Act
+        _ = Router.Route(item, Events.Key, eventArgs);
+
+        // Assert
+        eventArgs.Handled.ShouldBeFalse();
+        raised.ShouldBe(1);
+    }
+
     /// <summary>Verifies nesting depth is assigned internally when items are added to the tree.</summary>
     [Fact]
     public void Items_WhenNested_TracksDepth()
