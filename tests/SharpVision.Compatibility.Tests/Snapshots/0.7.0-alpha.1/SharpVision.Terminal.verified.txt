@@ -1651,12 +1651,6 @@ namespace SharpVision.Terminal.Unicode
     {
         public static SharpVision.Terminal.Unicode.GraphemeEnumerable Enumerate(System.ReadOnlySpan<char> value) { }
     }
-    public static class Info
-    {
-        public const int GraphemeRevision = 47;
-        public const string Version = "17.0.0";
-        public const int WidthRevision = 44;
-    }
     public readonly struct Measurement : System.IEquatable<SharpVision.Terminal.Unicode.Measurement>
     {
         public Measurement(int cells, int graphemes, int controls) { }
@@ -1676,6 +1670,12 @@ namespace SharpVision.Terminal.Unicode
     public enum Presentation
     {
         Replacement = 0,
+    }
+    public static class UnicodeInfo
+    {
+        public const int GraphemeRevision = 47;
+        public const string Version = "17.0.0";
+        public const int WidthRevision = 44;
     }
     public static class Width
     {

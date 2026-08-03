@@ -39,7 +39,7 @@ public sealed record Policy
     public static Policy Default { get; } = new();
 
     /// <summary>Gets the pinned Unicode Character Database version.</summary>
-    public string UnicodeVersion { get; } = Info.Version;
+    public string UnicodeVersion { get; } = UnicodeInfo.Version;
 
     /// <summary>Gets the East Asian Ambiguous width policy.</summary>
     public Ambiguous AmbiguousWidth { get; }

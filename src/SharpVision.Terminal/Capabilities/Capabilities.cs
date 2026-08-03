@@ -35,7 +35,7 @@ public sealed record Capabilities
     public Origin ColorOrigin { get; init; } = Origin.Default;
 
     /// <summary>Gets the pinned Unicode Character Database version.</summary>
-    public string UnicodeVersion { get; } = Info.Version;
+    public string UnicodeVersion { get; } = UnicodeInfo.Version;
 
     /// <summary>Gets the East Asian Ambiguous cell-width policy.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The assigned policy is unknown.</exception>

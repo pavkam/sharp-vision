@@ -77,7 +77,7 @@ public sealed class ClusterTests
     [Fact]
     public void Default_WhenRead_UsesPinnedNarrowReplacementPolicy()
     {
-        Policy.Default.UnicodeVersion.ShouldBe(Info.Version);
+        Policy.Default.UnicodeVersion.ShouldBe(UnicodeInfo.Version);
         Policy.Default.AmbiguousWidth.ShouldBe(Ambiguous.Narrow);
         Policy.Default.OrphanPresentation.ShouldBe(Presentation.Replacement);
     }

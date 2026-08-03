@@ -18,7 +18,7 @@ public sealed class UnicodeCapabilitiesTests
     {
         var capabilities = TerminalCapabilities.Conservative;
 
-        capabilities.UnicodeVersion.ShouldBe(Info.Version);
+        capabilities.UnicodeVersion.ShouldBe(UnicodeInfo.Version);
         capabilities.AmbiguousWidth.ShouldBe(Ambiguous.Narrow);
     }
 
