@@ -129,7 +129,10 @@ public sealed class BackendRendererTests
         await using var transport = new FakeTransport();
         var image = Red();
         using var frame = Frame(image, new Rect(0, 0, 1, 1));
-        var profile = Profile();
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
+        {
+            ItermImages = new Feature(CapabilitySupport.Supported, Origin.Override)
+        });
 
         _ = await renderer.RenderAsync(
             frame,
