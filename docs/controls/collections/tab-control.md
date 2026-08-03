@@ -75,7 +75,9 @@ Navigation skips pages that are effectively hidden or disabled. Pointer focus
 resolves to the `TabControl`, while hover and pressed state stay local to the
 hit header. A selected header combines `VisualState.Selected` with its own
 hover, pressed, or disabled state; hovering the page or the owner does not
-recolor the strip.
+recolor the strip. Keys outside the tab-navigation command set remain available
+to inherited routed input, and a handler that consumes a navigation key
+suppresses the built-in selection change.
 
 ## TabItem
 

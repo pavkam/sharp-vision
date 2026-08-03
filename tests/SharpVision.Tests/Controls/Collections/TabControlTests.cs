@@ -263,6 +263,44 @@ public sealed class TabControlTests
         _ = Should.Throw<ObjectDisposedException>(tabs.Items.Clear);
     }
 
+    /// <summary>Verifies keys outside tab navigation remain available to inherited routed input.</summary>
+    [Fact]
+    public void Dispatch_WhenKeyIsUnhandled_RaisesInheritedKeyDownWithoutConsumingIt()
+    {
+        // Arrange
+        var tabs = new TabControl();
+        var raised = 0;
+        tabs.KeyDown += (_, _) => raised++;
+        var eventArgs = new KeyEventArgs(new Stroke(
+            Code.F1,
+            character: null,
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press));
+
+        // Act
+        _ = Router.Route(tabs, Events.Key, eventArgs);
+
+        // Assert
+        eventArgs.Handled.ShouldBeFalse();
+        raised.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a routed handler can suppress the built-in tab-navigation default.</summary>
+    [Fact]
+    public void Dispatch_WhenKeyDownHandlesNavigation_PreservesSelection()
+    {
+        // Arrange
+        var tabs = Create(Create("First", "One"), Create("Second", "Two"));
+        tabs.KeyDown += (_, eventArgs) => eventArgs.Handled = true;
+
+        // Act
+        Key(tabs, Code.Right);
+
+        // Assert
+        tabs.SelectedIndex.ShouldBe(0);
+    }
+
     /// <summary>Verifies keyboard Left/Right/Home/End navigate between eligible tabs.</summary>
     [Fact]
     public void Keyboard_WhenArrowsArePressed_NavigatesEligibleTabs()

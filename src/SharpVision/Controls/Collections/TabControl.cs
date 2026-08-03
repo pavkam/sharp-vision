@@ -272,6 +272,8 @@ public sealed class TabControl: ItemsControl
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
 
+        base.OnEvent(eventArgs);
+
         if (eventArgs.Handled)
         {
             return;
