@@ -35,8 +35,14 @@ ordinary border box first, and the transparent FIGlet cells draw on top.
 
 ![The FigletText control rendered in the live showcase](../../images/controls/figlet-text.png)
 
+Install the optional audited catalog when the application wants bundled fonts:
+
+```bash
+dotnet add package SharpVision.FigletFonts
+```
+
 ```csharp
-var title = new FigletText(FigletCatalog.Default.Load("Standard"))
+var title = new FigletText(FigletCatalog.Default.Load("standard"))
 {
     Content = "SharpVision",
 };
@@ -44,23 +50,28 @@ var title = new FigletText(FigletCatalog.Default.Load("Standard"))
 
 ## FigletCatalog
 
-`FigletCatalog` resolves a font name to a parsed `FigletFont`. `Default` is the
-audited embedded 400-font archive; its `fonts.manifest.json` records each
-entry's provenance and license classification, and that classification is
-conservative, not a legal conclusion - confirm redistribution terms before
-depending on `Default` in a distributed package. An application can source its
-own fonts instead, through the same lookup and `Load` surface:
+`FigletCatalog` and `FigletFontInfo` belong to the optional
+`SharpVision.FigletFonts` package, not the core rendering library. The catalog
+resolves a font name to a parsed `FigletFont`; `Default` contains 19 audited
+fonts: the 18 official FIGlet fonts under BSD-3-Clause and `Classy` under MIT.
+The package preserves both license texts, source commits, embedded notices, byte
+lengths, and SHA-256 values.
+
+Each font is a separate assembly resource. Constructing the catalog or reading
+`Names` opens only the manifest; `Load` opens, validates, and parses only the
+selected font. There is no catalog-wide ZIP. Applications can also source their
+own fonts through the same lookup and `Load` surface:
 
 | Member                              | Source                                                          |
 | ----------------------------------- | --------------------------------------------------------------- |
-| `FigletCatalog.Default`             | The audited embedded archive.                                   |
+| `FigletCatalog.Default`             | The audited optional BSD/MIT resource collection.               |
 | `FigletCatalog.FromDirectory(path)` | Every `.flf`/`.tlf` file directly inside a directory.           |
 | `FigletCatalog.FromZip(stream)`     | Every `.flf`/`.tlf` entry in a caller-supplied Zip archive.     |
 | `FigletCatalog.FromFonts(fonts)`    | Already-parsed `FigletFont` instances, keyed by their own name. |
 
 ```csharp
 var catalog = FigletCatalog.FromDirectory("/opt/myapp/fonts");
-var title = new FigletText(catalog.Load("Banner")) { Content = "Hello" };
+var title = new FigletText(catalog.Load("banner")) { Content = "Hello" };
 ```
 
 Fonts loaded through `FromDirectory` or `FromZip` are named after their file or
@@ -70,15 +81,19 @@ every entry regardless of source; entries from `FromFonts` report placeholder
 byte sequence to hash. `Names` is an immutable ordinally sorted inventory
 snapshot for every catalog source.
 
+Installing only `SharpVision` still provides `FigletText`, `FigletFont`, the
+parser, renderer, layout values, and caller-supplied font loading. It embeds no
+font collection and does not depend on `SharpVision.FigletFonts`.
+
 ## Expected behavior
 
 Callers can rely on the following: null `Content` or `Font` is rejected; the row
 cache is invalidated exactly when `Content`, `Font`, or `Options` changes; every
-catalog font renders, including scalar fallback, hardblank handling, both
-directions, and the fitting and smushing layout modes; oversized art clips and
-responds to resize as documented; style inheritance applies to generated cells;
-wide output Runes occupy their correct cells; and the rendered result matches
-exact cells. `FigletTextSurfaceTests` mounts the audited `Small` font beneath a
-real application and demonstrates the exact terminal-visible art, style
-projection, clipping, resize exposure, content mutation, and clearing of stale
-cells.
+curated catalog font renders, including scalar fallback, hardblank handling,
+both directions, and the fitting and smushing layout modes; oversized art clips
+and responds to resize as documented; style inheritance applies to generated
+cells; wide output Runes occupy their correct cells; and the rendered result
+matches exact cells. `FigletTextSurfaceTests` mounts the audited `small` font
+beneath a real application and demonstrates the exact terminal-visible art,
+style projection, clipping, resize exposure, content mutation, and clearing of
+stale cells.

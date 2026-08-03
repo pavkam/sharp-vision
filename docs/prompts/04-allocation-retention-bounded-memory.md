@@ -80,7 +80,7 @@ and retention evidence; ordinary wall-clock timing is informational.
 2. Build ownership/lifetime maps for each relevant resource from
    acquisition/allocation to final release, including every success, failure,
    cancellation, resize, detach, and disposal path.
-3. Inventory hot paths and long-lived graphs across both assemblies and the
+3. Inventory hot paths and long-lived graphs across all three assemblies and the
    showcase. Search constructors, subscriptions, registrations, pools, caches,
    collections, closures, and async continuations, then trace consumers.
 4. Run only existing read-only deterministic allocation, retention,

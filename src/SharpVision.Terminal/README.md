@@ -5,10 +5,10 @@ It provides incremental protocol handling, Unicode cell geometry, input
 decoding, frame buffers, damage tracking, and deterministic terminal output for
 .NET 10.
 
-This project is currently non-packable and has no published NuGet package. Use a
-repository project reference when building terminal infrastructure directly. The
-`SharpVision` UI package is intended to bring this layer transitively once a
-matching terminal package is published.
+This package is published before `SharpVision`, which depends on its public
+terminal runtime and protocol surface. Applications normally receive it
+transitively through `SharpVision`; reference it directly only when building
+lower-level terminal infrastructure.
 
 See the
 [terminal protocol specifications](https://github.com/pavkam/sharp-vision/blob/main/docs/protocols/index.md)

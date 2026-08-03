@@ -34,6 +34,8 @@ FIGlet text, theme-aware styling, scrolling, and the control catalog:
   Unicode cell geometry, input, buffers, and rendering.
 - `SharpVision` supplies dispatcher-affine mutable controls, layout, focus,
   routed input, styling, scrolling, menus, popups, and windows.
+- `SharpVision.FigletFonts` optionally supplies 19 audited BSD/MIT FIGlet fonts
+  as individually loaded resources.
 - `examples/Showcase` contains the `SharpVision.Showcase` runnable gallery for
   shipped controls and interaction states.
 - `tests/` contains the terminal and UI verification suites.
@@ -44,19 +46,19 @@ defines the one-way dependency graph and ownership boundaries.
 
 ## Package status
 
-SharpVision `0.7.0-alpha.1` is a prerelease and may change before the stable
+SharpVision `0.8.0-alpha.2` is a prerelease and may change before the stable
 API.
 
-> [!IMPORTANT]
->
-> The published UI package currently has an unresolved exact dependency because
-> the matching `SharpVision.Terminal` package is not published. It is not
-> currently installable. Build this repository or use project references until
-> the terminal package is available.
-
-Once published, `SharpVision.Terminal` is installed transitively. Reference that
+`SharpVision` installs `SharpVision.Terminal` transitively. Reference the
 lower-level package directly only when building terminal infrastructure without
-the UI control layer. The
+the UI control layer. Install the optional audited FIGlet catalog separately:
+
+```bash
+dotnet add package SharpVision.FigletFonts
+```
+
+The font package accepts `SharpVision` version `0.8.0-alpha.2` or later and does
+not make the core UI package carry font assets. The
 [first-application walkthrough](docs/walkthroughs/first-application.md#build-your-first-application)
 contains a complete hosted example.
 

@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 const ignoredDirectories = new Set([
   ".git",
   ".worktrees",
+  "artifacts",
   "bin",
   "node_modules",
   "obj",

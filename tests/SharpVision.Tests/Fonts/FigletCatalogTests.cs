@@ -5,39 +5,69 @@ namespace SharpVision.Tests.Fonts;
 
 using System.IO.Compression;
 
-/// <summary>Verifies the embedded audited 400-font catalog and the caller-supplied constructors.</summary>
+/// <summary>Verifies the optional audited font catalog and caller-supplied constructors.</summary>
 public sealed class FigletCatalogTests
 {
     #region Inventory
 
-    /// <summary>Verifies the full audited collection is present and ordinally sorted.</summary>
+    /// <summary>Verifies the curated collection is present and ordinally sorted.</summary>
     [Fact]
-    public void Names_WhenCatalogLoads_ContainsFourHundredSortedFonts()
+    public void Names_WhenCatalogLoads_ContainsNineteenSortedFonts()
     {
         var names = FigletCatalog.Default.Names;
 
-        names.Count.ShouldBe(400);
+        names.Count.ShouldBe(19);
         names.ShouldBe(names.Order(StringComparer.Ordinal).ToArray());
-        names.ShouldContain("Standard");
+        names.ShouldContain("standard");
+        names.ShouldContain("Classy");
     }
 
     /// <summary>Verifies manifest provenance and hashes are exposed unchanged.</summary>
     [Fact]
     public void GetInfo_WhenFontExists_ReturnsAuditedMetadata()
     {
-        var info = FigletCatalog.Default.GetInfo("Standard");
+        var info = FigletCatalog.Default.GetInfo("standard");
 
-        info.File.ShouldBe("Standard.flf");
+        info.File.ShouldBe("standard.flf");
         info.Sha256.Length.ShouldBe(64);
         info.Bytes.ShouldBeGreaterThan(0);
         info.Notice.ShouldContain("Glenn Chappell");
+        info.License.ShouldBe("BSD-3-Clause");
+        info.SourceRepository.ShouldBe("https://github.com/cmatsuoka/figlet");
+        info.SourceCommit.ShouldBe("202a0a8110650a943f1125f536b3bb455cf72ee1");
+    }
+
+    /// <summary>Verifies the separately sourced font retains its explicit MIT provenance.</summary>
+    [Fact]
+    public void GetInfo_WhenClassyExists_ReturnsMitMetadata()
+    {
+        var info = FigletCatalog.Default.GetInfo("Classy");
+
+        info.File.ShouldBe("Classy.flf");
+        info.License.ShouldBe("MIT");
+        info.SourceRepository.ShouldBe("https://github.com/patorjk/figlet.js");
+        info.SourceCommit.ShouldBe("b95c2f03ccbc7e2a23e9fd030e8378c2d3b9dd0e");
+    }
+
+    /// <summary>Verifies inventory access does not open any font resource and loading opens only the selection.</summary>
+    [Fact]
+    public void Load_WhenOneEmbeddedFontIsSelected_OpensOnlyThatResource()
+    {
+        var catalog = FigletCatalog.CreateEmbedded();
+
+        _ = catalog.Names;
+        catalog.EmbeddedResourceReadCount.ShouldBe(0);
+
+        _ = catalog.Load("standard");
+
+        catalog.EmbeddedResourceReadCount.ShouldBe(1);
     }
 
     /// <summary>Verifies lookup is exact and path-like input cannot address archive entries.</summary>
     [Theory]
-    [InlineData("standard")]
-    [InlineData("../Standard")]
-    [InlineData("Standard.flf")]
+    [InlineData("Standard")]
+    [InlineData("../standard")]
+    [InlineData("standard.flf")]
     public void Load_WhenNameIsNotExact_ThrowsKeyNotFoundException(string name) =>
         _ = Should.Throw<KeyNotFoundException>(() => FigletCatalog.Default.Load(name));
 
@@ -49,7 +79,7 @@ public sealed class FigletCatalogTests
     [Fact]
     public void Load_WhenStandardIsSelected_RendersText()
     {
-        var font = FigletCatalog.Default.Load("Standard");
+        var font = FigletCatalog.Default.Load("standard");
 
         var output = font.Render("Hi");
 
@@ -69,7 +99,7 @@ public sealed class FigletCatalogTests
     {
         var limits = new FigletLimits(maxOutputChars: 4);
 
-        var font = FigletCatalog.Default.Load("Standard", limits);
+        var font = FigletCatalog.Default.Load("standard", limits);
 
         font.Limits.ShouldBe(limits);
         _ = Should.Throw<InvalidOperationException>(() => font.Render("Hi"));

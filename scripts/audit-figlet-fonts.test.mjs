@@ -1,58 +1,62 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
 import {
+  classySource,
   createManifest,
+  officialFontFiles,
+  officialSource,
   validateManifest,
 } from "./audit-figlet-fonts.mjs";
-import { createArchive } from "./package-figlet-fonts.mjs";
 
-const font = (notice = "Example font by Tester") =>
-  `flf2a$ 1 1 8 0 1 0\n${notice}\n`;
+const font = (notice) => `flf2a$ 1 1 8 0 1 0\n${notice}\n`;
 
-test("createManifest_WhenFontsExist_RecordsSortedHashesAndClassifications", async () => {
+const createCuratedFolder = async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "sharpvision-font-audit-"));
-  await writeFile(path.join(root, "z.tlf"), font("Public domain"));
-  await writeFile(path.join(root, "a.flf"), font("Copyright Example"));
+  await mkdir(root, { recursive: true });
 
-  const manifest = await createManifest(root, {
-    repository: "https://example.invalid/fonts",
-    commit: "abc123",
-  });
+  for (const file of officialFontFiles) {
+    await writeFile(path.join(root, file), font(`BSD font ${file}`));
+  }
 
-  assert.deepEqual(
-    manifest.fonts.map((entry) => entry.file),
-    ["a.flf", "z.tlf"],
+  await writeFile(path.join(root, "Classy.flf"), font("This font is free to use / MIT License"));
+  return root;
+};
+
+test("createManifest_WhenCuratedFontsExist_RecordsResourcesHashesAndLicenses", async () => {
+  const root = await createCuratedFolder();
+
+  const manifest = await createManifest(root);
+  const classy = manifest.fonts.find(({ name }) => name === "Classy");
+  const standard = manifest.fonts.find(({ name }) => name === "standard");
+
+  assert.equal(manifest.schema, 2);
+  assert.equal(manifest.count, 19);
+  assert.equal(classy.license, "MIT");
+  assert.equal(classy.sourceRepository, classySource.repository);
+  assert.equal(standard.license, "BSD-3-Clause");
+  assert.equal(standard.sourceCommit, officialSource.commit);
+  assert.equal(
+    standard.resource,
+    "SharpVision.FigletFonts.Resources.Fonts.standard.flf",
   );
-  assert.equal(manifest.fonts[0].license, "attribution-only");
-  assert.equal(manifest.fonts[1].license, "public-domain");
-  assert.match(manifest.fonts[0].sha256, /^[0-9a-f]{64}$/);
+  assert.match(standard.sha256, /^[0-9a-f]{64}$/u);
+});
+
+test("createManifest_WhenUnapprovedFontExists_RejectsCollection", async () => {
+  const root = await createCuratedFolder();
+  await writeFile(path.join(root, "unapproved.flf"), font("Unknown license"));
+
+  await assert.rejects(createManifest(root), /allowlist/iu);
 });
 
 test("validateManifest_WhenHashDrifts_RejectsAudit", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "sharpvision-font-audit-"));
-  await writeFile(path.join(root, "a.flf"), font());
-  const manifest = await createManifest(root, {
-    repository: "https://example.invalid/fonts",
-    commit: "abc123",
-  });
+  const root = await createCuratedFolder();
+  const manifest = await createManifest(root);
   manifest.fonts[0].sha256 = "0".repeat(64);
 
-  await assert.rejects(validateManifest(root, manifest), /hash/i);
-});
-
-test("createArchive_WhenRepeated_ProducesIdenticalCompressedBytes", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "sharpvision-font-package-"));
-  const first = path.join(root, "first.zip");
-  const second = path.join(root, "second.zip");
-  await writeFile(path.join(root, "a.flf"), font("Public domain"));
-  await writeFile(path.join(root, "b.tlf"), font("Permission is hereby granted"));
-
-  await createArchive(root, first);
-  await createArchive(root, second);
-
-  assert.deepEqual(await readFile(first), await readFile(second));
+  await assert.rejects(validateManifest(root, manifest), /does not match/iu);
 });

@@ -1,46 +1,47 @@
 # FIGlet font catalog provenance
 
-## Source snapshot
+## Curated sources
 
-The catalog contains the 400 `.flf` and `.tlf` files at the root of
-[`xero/figlet-fonts`](https://github.com/xero/figlet-fonts) commit
-`417429ef36ab039cbf192a4424c60aa23fc32de8`.
+`SharpVision.FigletFonts` contains only these pinned, redistributable sources:
 
-`fonts.manifest.json` records the original filename, format, byte length,
-SHA-256, embedded comment notice, and conservative license classification for
-every entry. `figlet-fonts.zip` is generated from those exact bytes with sorted
-UTF-8 entry names, fixed DOS timestamps, and deterministic Deflate compression.
+- the 18 `.flf` files in the official
+  [`cmatsuoka/figlet`](https://github.com/cmatsuoka/figlet) `fonts/` directory
+  at commit `202a0a8110650a943f1125f536b3bb455cf72ee1`, distributed under
+  BSD-3-Clause; and
+- `Classy.flf` from [`patorjk/figlet.js`](https://github.com/patorjk/figlet.js)
+  commit `b95c2f03ccbc7e2a23e9fd030e8378c2d3b9dd0e`, whose embedded notice
+  grants use and distribution under MIT.
 
-## Audit result
-
-The snapshot contains:
-
-- 357 fonts with an author or copyright attribution but no explicit
-  redistribution grant in the FIGfont comment;
-- 42 fonts without a usable outer notice, including 12 nested ZIP-compressed
-  TOIlet fonts; and
-- one font declaring freeware terms.
-
-These classifications describe evidence, not legal conclusions. The upstream
-collection has no repository-wide license. Consequently, the full archive is
-retained as an audited source artifact but is a release blocker until the
-project owner establishes redistribution permission or approves an appropriate
-distribution policy. Do not silently change classifications or strip notices.
+Every font remains a separate embedded resource. The adjacent schema-2 manifest
+records its exact logical resource name, source filename, byte length, SHA-256,
+embedded comment notice, SPDX license expression, repository, and commit. The
+previous unaudited 400-font archive is not distributed by any project.
 
 ## Reproduction
 
-With the exact source checkout available:
+Check out both repositories at the commits above, then run:
 
 ```bash
-node scripts/audit-figlet-fonts.mjs \
-  --source /path/to/figlet-fonts \
-  --commit 417429ef36ab039cbf192a4424c60aa23fc32de8 \
-  --output src/SharpVision/Fonts/Resources/fonts.manifest.json
-
 node scripts/package-figlet-fonts.mjs \
-  --source /path/to/figlet-fonts \
-  --output src/SharpVision/Fonts/Resources/fonts.zip
+  --official-source /path/to/cmatsuoka-figlet \
+  --classy-source /path/to/figlet-js \
+  --output src/SharpVision.FigletFonts/Resources/Fonts
+
+node scripts/audit-figlet-fonts.mjs \
+  --source src/SharpVision.FigletFonts/Resources/Fonts \
+  --output src/SharpVision.FigletFonts/Resources/fonts.manifest.json
 ```
 
-The expected archive SHA-256 is
-`7ac92bdafd4937c8a921875272da9b33a22f34118f54a68a1cbe0e77fdba163a`.
+The packaging script rejects source checkouts whose `HEAD` is not the pinned
+commit. The audit rejects extra or missing fonts and any manifest drift.
+
+## Verification
+
+```bash
+node --test scripts/audit-figlet-fonts.test.mjs
+
+node scripts/audit-figlet-fonts.mjs \
+  --source src/SharpVision.FigletFonts/Resources/Fonts \
+  --output src/SharpVision.FigletFonts/Resources/fonts.manifest.json \
+  --check
+```

@@ -30,6 +30,17 @@ public sealed class PublicApiCompatibilityTests
         return VerifyPublicApiAsync(assembly, "SharpVision");
     }
 
+    /// <summary>
+    /// Verifies the optional FIGlet font library against the baseline for the current package version.
+    /// </summary>
+    [Fact]
+    public Task SharpVisionFigletFonts_WhenComparedWithVersionedBaseline_MatchesApprovedPublicApi()
+    {
+        var assembly = typeof(Fonts.FigletCatalog).Assembly;
+
+        return VerifyPublicApiAsync(assembly, "SharpVision.FigletFonts");
+    }
+
     private static Task VerifyPublicApiAsync(Assembly assembly, string assemblyName)
     {
         var publicApi = assembly.GeneratePublicApi();

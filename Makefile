@@ -1,9 +1,12 @@
-.PHONY: build clean docs-samples format format-check help lint restore run test test-ci test-tty watch
+.PHONY: bootstrap-packages build clean docs-samples format format-check help lint restore run test test-ci test-tty watch
 
 .DEFAULT_GOAL := help
 
 SOLUTION := SharpVision.slnx
 SHOWCASE := examples/Showcase/SharpVision.Showcase.csproj
+BOOTSTRAP_PACKAGES := artifacts/bootstrap-packages
+RESTORE_PACKAGES := artifacts/restore-packages
+NUGET_ORG := https://api.nuget.org/v3/index.json
 
 help:
 	@echo "SharpVision - Available Make Targets"
@@ -21,9 +24,21 @@ help:
 	@echo "  make format-check  Check formatting without changing files"
 	@echo "  make clean         Clean .NET and test output"
 
-restore:
+bootstrap-packages:
+	@echo "📦 Bootstrapping SharpVision packages..."
+	@rm -rf $(BOOTSTRAP_PACKAGES) $(RESTORE_PACKAGES)
+	@mkdir -p $(BOOTSTRAP_PACKAGES)
+	@dotnet restore src/SharpVision.Terminal/SharpVision.Terminal.csproj --source $(NUGET_ORG)
+	@dotnet restore src/SharpVision/SharpVision.csproj --source $(NUGET_ORG)
+	@dotnet build src/SharpVision.Terminal/SharpVision.Terminal.csproj --configuration Release --no-restore --target Rebuild
+	@dotnet build src/SharpVision/SharpVision.csproj --configuration Release --no-restore --target Rebuild
+	@dotnet pack src/SharpVision.Terminal/SharpVision.Terminal.csproj --configuration Release --no-build --no-restore -p:IsPackable=true --output $(BOOTSTRAP_PACKAGES)
+	@dotnet pack src/SharpVision/SharpVision.csproj --configuration Release --no-build --no-restore --output $(BOOTSTRAP_PACKAGES)
+	@echo "✅ Bootstrap packages ready."
+
+restore: bootstrap-packages
 	@echo "📦 Restoring dependencies..."
-	@dotnet restore $(SOLUTION)
+	@dotnet restore $(SOLUTION) --packages $(RESTORE_PACKAGES) --source $(BOOTSTRAP_PACKAGES) --source $(NUGET_ORG)
 	@npm ci
 	@echo "✅ Dependencies restored."
 
@@ -44,7 +59,7 @@ test: build
 test-ci: build
 	@dotnet test --project tests/SharpVision.Terminal.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 1700 --timeout $${TEST_TIMEOUT:-300s} --coverage --coverage-output-format cobertura --report-xunit-trx
 	@dotnet test --project tests/SharpVision.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 2600 --timeout $${TEST_TIMEOUT:-300s} --coverage --coverage-settings tests/SharpVision.Tests/coverage.config --coverage-output-format cobertura --report-xunit-trx --parallel none
-	@dotnet test --project tests/SharpVision.Compatibility.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 2 --timeout 300s --report-xunit-trx
+	@dotnet test --project tests/SharpVision.Compatibility.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 3 --timeout 300s --report-xunit-trx
 	@node scripts/validate-control-coverage.mjs --results tests/SharpVision.Tests/bin/$${CONFIGURATION:-Release}/net10.0/TestResults --minimum 0.85
 	@npm run test:docs
 
@@ -59,7 +74,8 @@ test-tty: build
 
 docs-samples:
 	@echo "📖 Compiling documentation C# samples..."
-	@dotnet build src/SharpVision/SharpVision.csproj --configuration Release
+	@dotnet build src/SharpVision/SharpVision.csproj --configuration Release --no-restore
+	@dotnet build src/SharpVision.FigletFonts/SharpVision.FigletFonts.csproj --configuration Release --no-restore
 	@npm run lint:docs-samples
 	@echo "✅ Documentation samples compile."
 

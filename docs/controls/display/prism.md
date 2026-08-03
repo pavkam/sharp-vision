@@ -159,7 +159,7 @@ var title = new Prism
 {
     Direction = PrismDirection.Diagonal,
     CycleLength = 18,
-    Content = new FigletText(FigletCatalog.Default.Load("Small"))
+    Content = new FigletText(FigletCatalog.Default.Load("small"))
     {
         Content = "SNAKE",
     },

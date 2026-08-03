@@ -156,5 +156,5 @@ private maintainer handling.
 Process every candidate. Report SHA, inventory coverage,
 compatibility/consumer/test/showcase checks, issues created/updated,
 rejected/inconclusive candidates, and blocked evidence. Zero findings require
-bidirectional coverage of both assemblies, every declared control/protocol
+bidirectional coverage of all three assemblies, every declared control/protocol
 family, snapshots, consumers, and showcase—not a spot check.

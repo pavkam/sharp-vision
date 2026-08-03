@@ -85,7 +85,7 @@ public sealed class BindingExtensionTests
     public void FigletTextBind_WhenSourceChanges_SyncsContent()
     {
         var model = new BindingModel { Name = "Hello" };
-        var font = FigletCatalog.Default.Load("Small");
+        var font = FigletCatalog.Default.Load("small");
         var target = new FigletText(font);
         using var binding = target.Bind(model, source => source.Name);
 
@@ -98,7 +98,7 @@ public sealed class BindingExtensionTests
     public void FigletTextBind_WhenSourceIsNull_AppliesEmpty()
     {
         var model = new BindingModel();
-        var font = FigletCatalog.Default.Load("Small");
+        var font = FigletCatalog.Default.Load("small");
         var target = new FigletText(font);
         using var binding = target.Bind(model, source => source.Name);
 
@@ -110,7 +110,7 @@ public sealed class BindingExtensionTests
     public void FigletTextBind_WhenSourceUpdates_ReflectsChange()
     {
         var model = new BindingModel { Name = "Before" };
-        var font = FigletCatalog.Default.Load("Small");
+        var font = FigletCatalog.Default.Load("small");
         var target = new FigletText(font);
         using var binding = target.Bind(model, source => source.Name);
 

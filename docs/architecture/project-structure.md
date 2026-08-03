@@ -2,7 +2,7 @@
 
 ## Overview
 
-The solution contains two production libraries, three executable examples, and
+The solution contains three production libraries, three executable examples, and
 four top-level validation projects. The UI test project also exercises all three
 examples, so examples do not need duplicate test projects of their own.
 
@@ -10,6 +10,7 @@ examples, so examples do not need duplicate test projects of their own.
 flowchart LR
     Terminal["SharpVision.Terminal"]
     UI["SharpVision"]
+    FigletFonts["SharpVision.FigletFonts"]
     Showcase["SharpVision.Showcase"]
     Snake["Snake"]
     TextEditor["TextEditor"]
@@ -18,18 +19,23 @@ flowchart LR
     UITests["SharpVision.Tests"]
     CompatibilityTests["SharpVision.Compatibility.Tests"]
     UI --> Terminal
+    FigletFonts -. "NuGet >= 0.8.0-alpha.2" .-> UI
     Showcase --> UI
+    Showcase --> FigletFonts
     Snake --> UI
+    Snake --> FigletFonts
     TextEditor --> UI
     TerminalTests -. tests .-> Terminal
     TerminalTests -. launches .-> Probe
     Probe --> Terminal
     UITests -. tests .-> UI
+    UITests -. tests .-> FigletFonts
     UITests -. tests .-> Showcase
     UITests -. tests .-> Snake
     UITests -. tests .-> TextEditor
     CompatibilityTests -. public API snapshot .-> Terminal
     CompatibilityTests -. public API snapshot .-> UI
+    CompatibilityTests -. public API snapshot .-> FigletFonts
 ```
 
 `SharpVision.Terminal` owns protocols, transport, capabilities, input events,
@@ -93,6 +99,14 @@ these infrastructure namespaces:
 | `SharpVision.Input`                | Shared routed input, focus, hit testing, and pointer capture.                  |
 | `SharpVision.Styling`              | Shared style resources, chrome contracts, and visual-state resolution.         |
 
+`SharpVision.FigletFonts` is an optional package over the public FIGlet engine
+in `SharpVision`. It owns `FigletCatalog`, `FigletFontInfo`, the curated
+manifest, third-party notices, and 19 independent embedded FIGfont resources. It
+references `SharpVision` only through the NuGet dependency
+`SharpVision >= 0.8.0-alpha.2`; it has no project reference to the UI project.
+The reverse dependency is forbidden, so installing `SharpVision` never brings
+the catalog or its assets into an application.
+
 The UI project ships the complete
 [control catalog](../controls/index.md#control-catalog): layout panels, text and
 editing, selection and item controls, menus, context menus, popups, tooltips,
@@ -137,9 +151,9 @@ terminal checks. `SharpVision.Terminal.Tests` owns its lifecycle and assertions;
 production code does not use it.
 
 `SharpVision.Compatibility.Tests` owns the versioned public API baselines for
-both libraries. It references production projects only from the test layer and
-participates in the solution-wide gate. The normative reconciliation workflow is
-defined by the
+all three libraries. It references production projects only from the test layer
+and participates in the solution-wide gate. The normative reconciliation
+workflow is defined by the
 [public API compatibility contract](../testing/correctness-model.md#public-api-compatibility).
 
 ## Namespace and file boundaries
@@ -161,8 +175,8 @@ remains one-way.
 
 The boundaries above are backed by evidence at three layers:
 
-| Layer        | Required evidence                                                                                   |
-| ------------ | --------------------------------------------------------------------------------------------------- |
-| Build        | Production libraries compile without example/test references and preserve terminal-to-UI direction. |
-| Architecture | Namespace, one-type-per-file, public API, and forbidden-type tests cover declared boundaries.       |
-| Consumer     | Public examples compile without friend access or production dependency inversion.                   |
+| Layer        | Required evidence                                                                                                          |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| Build        | Production libraries compile without example/test references and preserve the Terminal-to-UI-to-optional-assets direction. |
+| Architecture | Namespace, one-type-per-file, public API, and forbidden-type tests cover declared boundaries.                              |
+| Consumer     | Public examples compile without friend access or production dependency inversion.                                          |

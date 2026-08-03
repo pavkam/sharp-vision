@@ -15,8 +15,8 @@ using SharpVision.Text;
 /// </remarks>
 internal sealed class SnakeTitlePanel: CompositeControlBase
 {
-    private static readonly FigletFont _smallFont = FigletCatalog.Default.Load("Small");
-    private static readonly FigletFont _standardFont = FigletCatalog.Default.Load("Standard");
+    private static readonly FigletFont _smallFont = FigletCatalog.Default.Load("small");
+    private static readonly FigletFont _standardFont = FigletCatalog.Default.Load("standard");
 
     private readonly Text _difficulty;
     private readonly Text _finalScore;

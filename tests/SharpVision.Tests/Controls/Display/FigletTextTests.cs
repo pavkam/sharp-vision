@@ -11,7 +11,7 @@ public sealed class FigletTextTests
     [Fact]
     public void Constructor_WhenFontIsProvided_UsesDocumentedDefaults()
     {
-        var font = FigletCatalog.Default.Load("Standard");
+        var font = FigletCatalog.Default.Load("standard");
         var control = new FigletText(font);
 
         control.Font.ShouldBeSameAs(font);
@@ -23,7 +23,7 @@ public sealed class FigletTextTests
     [Fact]
     public void Layout_WhenContentIsSet_MeasuresRenderedFontOutput()
     {
-        var control = new FigletText(FigletCatalog.Default.Load("Standard")) { Content = "H" };
+        var control = new FigletText(FigletCatalog.Default.Load("standard")) { Content = "H" };
 
         new LayoutEngine().Layout(control, new Size(20, 10));
 
@@ -34,7 +34,7 @@ public sealed class FigletTextTests
     [Fact]
     public void Render_WhenContentIsSet_WritesExactFigletCells()
     {
-        var control = new FigletText(FigletCatalog.Default.Load("Standard")) { Content = "H" };
+        var control = new FigletText(FigletCatalog.Default.Load("standard")) { Content = "H" };
         new LayoutEngine().Layout(control, new Size(7, 6));
         using Frame frame = new(new Size(7, 6));
 
@@ -49,7 +49,7 @@ public sealed class FigletTextTests
     [Fact]
     public void Render_WhenBackgroundIsUnset_PreservesDestinationSurface()
     {
-        var control = new FigletText(FigletCatalog.Default.Load("Standard"))
+        var control = new FigletText(FigletCatalog.Default.Load("standard"))
         {
             Content = "H",
             Face = AppearanceTestValues.Face(foreground: ReferenceColors.Get(45)),
@@ -73,7 +73,7 @@ public sealed class FigletTextTests
     [Fact]
     public void Font_WhenValueIsNull_ThrowsBeforeMutation()
     {
-        var font = FigletCatalog.Default.Load("Standard");
+        var font = FigletCatalog.Default.Load("standard");
         var control = new FigletText(font);
 
         _ = Should.Throw<ArgumentNullException>(() => control.Font = null!);

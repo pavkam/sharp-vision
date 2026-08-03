@@ -23,13 +23,13 @@ internal sealed class FigletTextPane: CompositeControlBase
         {
             Width = Length.Cells(30),
             Items = fontNames,
-            SelectedIndex = Array.IndexOf(fontNames, "Standard"),
+            SelectedIndex = Array.IndexOf(fontNames, "standard"),
             DropDownHeight = 8,
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
             ScrollBarStyle = ScrollBarStyle.ThinLine
         };
-        var preview = new FigletText(catalog.Load("Standard")) { Content = text.Text };
+        var preview = new FigletText(catalog.Load("standard")) { Content = text.Text };
         var status = new Text("Type text, then choose a font from the dropdown.");
         text.TextChanged += (_, eventArgs) => preview.Content = eventArgs.Text;
         picker.SelectionChanged += (_, _) =>
@@ -39,35 +39,35 @@ internal sealed class FigletTextPane: CompositeControlBase
                 return;
             }
 
-            // Load only the selected audited font; the archive is never expanded wholesale.
+            // Load only the selected audited embedded resource.
             preview.Font = catalog.Load(name);
             status.Content = $"Previewing {name}. Choose another font to compare it.";
         };
 
-        var standard = new FigletText(catalog.Load("Standard")) { Content = "SV" };
-        var slant = new FigletText(catalog.Load("Slant")) { Content = "SV" };
-        var small = new FigletText(catalog.Load("Small")) { Content = "SV" };
+        var standard = new FigletText(catalog.Load("standard")) { Content = "SV" };
+        var slant = new FigletText(catalog.Load("slant")) { Content = "SV" };
+        var small = new FigletText(catalog.Load("small")) { Content = "SV" };
 
-        var fullWidth = new FigletText(catalog.Load("Standard"))
+        var fullWidth = new FigletText(catalog.Load("standard"))
         {
             Content = "AB",
             Options = new FigletOptions(layout: FigletLayout.None)
         };
-        var fitted = new FigletText(catalog.Load("Standard"))
+        var fitted = new FigletText(catalog.Load("standard"))
         {
             Content = "AB",
             Options = new FigletOptions(layout: FigletLayout.HorizontalFitting)
         };
-        var smushed = new FigletText(catalog.Load("Standard"))
+        var smushed = new FigletText(catalog.Load("standard"))
         {
             Content = "AB",
             Options = new FigletOptions(
                 layout: FigletLayout.HorizontalSmushing | FigletLayout.Equal | FigletLayout.Hierarchy)
         };
 
-        var themed = new FigletText(catalog.Load("Small")) { Content = "Theme" };
+        var themed = new FigletText(catalog.Load("small")) { Content = "Theme" };
 
-        var large = new FigletText(catalog.Load("Banner")) { Content = "VISION" };
+        var large = new FigletText(catalog.Load("banner")) { Content = "VISION" };
         var viewport = new Stack
         {
             Width = Length.Cells(40),
@@ -79,9 +79,9 @@ internal sealed class FigletTextPane: CompositeControlBase
             Children = { large }
         };
 
-        var fallback = new FigletText(catalog.Load("Standard")) { Content = "café 你好" };
+        var fallback = new FigletText(catalog.Load("standard")) { Content = "café 你好" };
 
-        var multiLine = new FigletText(catalog.Load("Standard")) { Content = "Multi\nLine" };
+        var multiLine = new FigletText(catalog.Load("standard")) { Content = "Multi\nLine" };
 
         return new DocPage(
             Title,
@@ -94,14 +94,14 @@ internal sealed class FigletTextPane: CompositeControlBase
                     "Editable FIGfont preview",
                     "Type source text and choose a font. Only the selected font is loaded and the preview remeasures from its generated rows.",
                     new DocColumn(text, picker, status, preview),
-                    "var title = new FigletText(FigletCatalog.Default.Load(\"Standard\"))\n{\n    Content = \"SharpVision\",\n};")),
+                    "var title = new FigletText(FigletCatalog.Default.Load(\"standard\"))\n{\n    Content = \"SharpVision\",\n};")),
             new DocSection(
                 "🔤",
                 "Font comparison",
                 "Compare a few intentional shapes before browsing the complete audited catalog.",
                 new DocExample(
                     "Standard, Slant, and Small",
-                    "The same short source reveals height, weight, and spacing differences without loading all 400 fonts.",
+                    "The same short source reveals height, weight, and spacing differences while each selection loads only its own resource.",
                     new DocColumn(
                         new DocColumn(new Text("Standard"), standard),
                         new DocColumn(new Text("Slant"), slant),

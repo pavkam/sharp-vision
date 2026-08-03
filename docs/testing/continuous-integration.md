@@ -61,29 +61,38 @@ vacuously.
 
 The public API project participates in the solution-wide build and test gates.
 Its [versioned approval workflow](correctness-model.md#public-api-compatibility)
-requires an intentional package-version change, plus review of both library
+requires an intentional package-version change, plus review of all three library
 surfaces, before a compatibility change can go green.
+
+`make restore` first packs the current `SharpVision.Terminal` and `SharpVision`
+projects into an ignored local bootstrap feed. It then restores the full
+solution into an isolated repository cache using that feed and nuget.org. This
+lets `SharpVision.FigletFonts` exercise its real `SharpVision >= 0.8.0-alpha.2`
+PackageReference before the current version is published and prevents a stale
+global NuGet cache from masking package changes.
 
 ## Package publication
 
 The `sharpvision-publish.yml` workflow runs the same build-and-test action and
-then reads `OverallVersion` from `SharpVision`. Publication accepts a three-part
-semantic version with an optional prerelease suffix.
+then reads `OverallVersion` from all three production projects. Publication
+accepts a three-part semantic version with an optional prerelease suffix and
+fails if the projects disagree.
 
-The workflow checks whether that `SharpVision` package version already exists.
-If it does not, the workflow packs exactly one main package and one symbol
-package and pushes both with duplicate skipping. If the main package already
-exists, the workflow skips packing and both pushes — which means it cannot
-repair a missing symbol package on its own.
+The workflow independently checks whether `SharpVision.Terminal`, `SharpVision`,
+and `SharpVision.FigletFonts` already exist at that version. It always packs and
+validates exactly three main packages and three symbol packages, then publishes
+each missing package with its symbols in dependency order: Terminal, UI, then
+the optional font catalog. An existing UI package cannot suppress a missing
+Terminal or FigletFonts package. A main package that already exists is not
+rebuilt or republished under the immutable version.
 
-> [!IMPORTANT]
->
-> `SharpVision.Terminal` is currently non-packable, while `SharpVision` declares
-> an exact package dependency on it. NuGet contains `SharpVision`
-> `0.5.0-alpha.1` but no matching `SharpVision.Terminal` package, so package
-> installation cannot resolve the dependency. Repository builds and project
-> references remain usable. Publication must ship the terminal dependency before
-> the UI package can be considered installable.
+`SharpVision.FigletFonts` emits a minimum dependency of
+`SharpVision >= 0.8.0-alpha.2`. NuGet serializes that open-ended range as the
+bare minimum version `0.8.0-alpha.2` in the `.nuspec`. The packed-consumer test
+restores all three artifacts from an isolated local feed, verifies that core has
+no FIGfont resources, verifies the optional assembly has 19 individual font
+resources and no ZIP, and renders `Classy` through the transitive dependency
+graph.
 
 `Directory.Build.targets` refuses to generate a NuGet manifest for a packable
 project when any required public metadata is empty: identity, version, title,
@@ -106,4 +115,4 @@ terminal, Unicode, rendering, and control behavior.
 | Format and lint | No C# formatting/analyzer, Markdown formatting/lint, or local-link violations; failure here does not skip build or test. |
 | Build           | Zero warnings/errors across production, examples, showcase, tests, and XML documentation.                                |
 | Test            | Minimum discovery is met and every discovered test passes without retries.                                               |
-| Package         | The UI package and symbols use the approved version and validated metadata; its terminal dependency is published first.  |
+| Package         | All three packages and symbols use the approved version and validated metadata; dependencies publish before dependents.  |

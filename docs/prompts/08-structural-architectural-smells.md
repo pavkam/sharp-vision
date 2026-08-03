@@ -34,7 +34,7 @@ Use the real layer and ownership model:
   rendering belong in `src/SharpVision.Terminal/`.
 - dispatcher, retained mutable controls, layout, routed input, focus, styling,
   scrolling, menus, popups, and windows belong in `src/SharpVision/`.
-- showcase composes both libraries; tests prove contracts but do not own
+- showcase composes all three libraries; tests prove contracts but do not own
   production abstractions.
 - public hosting flows through `ConsoleApplication`; controls use typed terminal
   services; scrolling/chrome are intrinsic; composite controls own one retained

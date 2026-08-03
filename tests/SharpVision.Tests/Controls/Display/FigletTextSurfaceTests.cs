@@ -19,7 +19,7 @@ public sealed class FigletTextSurfaceTests
     public async Task Pointer_WhenFigletTextIsMounted_TracksHoverWithoutFocusOrPressAsync()
     {
         // Arrange
-        var title = new FigletText(FigletCatalog.Default.Load("Small"))
+        var title = new FigletText(FigletCatalog.Default.Load("small"))
         {
             Content = "I",
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -46,7 +46,7 @@ public sealed class FigletTextSurfaceTests
     public async Task UpdateAsync_WhenFigletContentChanges_ReplacesExactAuditedArtAsync()
     {
         // Arrange
-        var title = new FigletText(FigletCatalog.Default.Load("Small"))
+        var title = new FigletText(FigletCatalog.Default.Load("small"))
         {
             Content = "A",
             Face = AppearanceTestValues.Face(foreground: ReferenceColors.Get(14)),
@@ -85,7 +85,7 @@ public sealed class FigletTextSurfaceTests
     public async Task Render_WhenFigletArtExceedsSurface_ClipsToMountedBoundsAsync()
     {
         // Arrange
-        var title = new FigletText(FigletCatalog.Default.Load("Small"))
+        var title = new FigletText(FigletCatalog.Default.Load("small"))
         {
             Content = "A",
             HorizontalAlignment = HorizontalAlignment.Left,

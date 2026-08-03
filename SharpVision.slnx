@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/SharpVision.FigletFonts/SharpVision.FigletFonts.csproj"/>
     <Project Path="src/SharpVision.Terminal/SharpVision.Terminal.csproj"/>
     <Project Path="src/SharpVision/SharpVision.csproj"/>
   </Folder>

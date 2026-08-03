@@ -39,7 +39,7 @@ internal sealed class PrismPane: CompositeControlBase
         {
             Direction = PrismDirection.Diagonal,
             CycleLength = 18,
-            Content = new FigletText(FigletCatalog.Default.Load("Small")) { Content = "PRISM" }
+            Content = new FigletText(FigletCatalog.Default.Load("small")) { Content = "PRISM" }
         };
         var status = new Text("Phase 0 / 60");
         var advance = new Button { Text = "&Advance phase" };
@@ -65,7 +65,7 @@ internal sealed class PrismPane: CompositeControlBase
         {
             Direction = PrismDirection.Diagonal,
             CycleLength = 18,
-            Content = new FigletText(FigletCatalog.Default.Load("Small")) { Content = "SPECTRUM" }
+            Content = new FigletText(FigletCatalog.Default.Load("small")) { Content = "SPECTRUM" }
         };
 
         return new DocPage(
@@ -109,6 +109,6 @@ internal sealed class PrismPane: CompositeControlBase
                     "Large diagonal spectrum",
                     "FigletText remains responsible for glyph generation; Prism contributes only the foreground pass.",
                     title,
-                    "var title = new Prism\n{\n    Direction = PrismDirection.Diagonal,\n    CycleLength = 18,\n    Content = new FigletText(FigletCatalog.Default.Load(\"Small\"))\n    {\n        Content = \"SPECTRUM\",\n    },\n};")));
+                    "var title = new Prism\n{\n    Direction = PrismDirection.Diagonal,\n    CycleLength = 18,\n    Content = new FigletText(FigletCatalog.Default.Load(\"small\"))\n    {\n        Content = \"SPECTRUM\",\n    },\n};")));
     }
 }

@@ -50,7 +50,7 @@ public sealed class DataBindingConsumerTests
     [Fact]
     public void FigletTextBind_Compiles()
     {
-        var font = FigletCatalog.Default.Load("Small");
+        var font = FigletCatalog.Default.Load("small");
         var figlet = new FigletText(font);
         var model = new ConsumerModel { DisplayText = "hello" };
         using var binding = figlet.Bind(model, m => m.DisplayText);

@@ -15,8 +15,9 @@ release notes, tags, NuGet publication, workflow permissions, or release gates.
 ## Code map
 
 - Version and package defaults: `Directory.Build.props`
-- Library metadata: `src/SharpVision/SharpVision.csproj` and
-  `src/SharpVision.Terminal/SharpVision.Terminal.csproj`
+- Library metadata: `src/SharpVision/SharpVision.csproj`,
+  `src/SharpVision.Terminal/SharpVision.Terminal.csproj`, and
+  `src/SharpVision.FigletFonts/SharpVision.FigletFonts.csproj`
 - Packed consumer proof:
   `tests/SharpVision.Tests/Compatibility/PackedPackageConsumerTests.cs`
 - External specimen: `tests/SharpVision.Tests/Compatibility/PackageConsumers/`
@@ -26,7 +27,7 @@ release notes, tags, NuGet publication, workflow permissions, or release gates.
 
 1. Define version, package IDs, dependency version, symbols, readme, icon,
    license, and release-note expectations.
-2. Pack both libraries as the workflow does and inspect archive contents.
+2. Pack all three libraries as the workflow does and inspect archive contents.
 3. Build and run an unfriended specimen against the produced packages.
 4. Run API compatibility independently.
 5. Prove duplicate-version, authentication, partial publish, symbols, summary,
@@ -34,8 +35,11 @@ release notes, tags, NuGet publication, workflow permissions, or release gates.
 
 ## Project-specific traps
 
-- `SharpVision.Terminal` is normally non-packable and is enabled deliberately by
-  the package workflow/consumer proof.
+- Publish `SharpVision.Terminal`, then `SharpVision`, then
+  `SharpVision.FigletFonts`; an existing package must not suppress either
+  missing sibling.
+- `SharpVision.FigletFonts` restores `SharpVision` from the ignored bootstrap
+  feed so its production project never needs a project reference.
 - Project references can see repository internals and do not prove package
   usability.
 - Never allow one package or symbol failure to produce a successful release.

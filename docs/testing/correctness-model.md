@@ -61,19 +61,20 @@ diagnosed and fixed, or the gate stays red.
 ## Public API compatibility
 
 `SharpVision.Compatibility.Tests` generates the complete public surfaces of
-`SharpVision.Terminal` and `SharpVision` with PublicApiGenerator and compares
-them against Verify snapshots. Each assembly has one approved baseline stored in
-a directory named after the shared `OverallVersion`. A changed public signature
-therefore fails against the current version's baseline, while a version change
-produces a new missing baseline instead of overwriting the historical surface.
+`SharpVision.Terminal`, `SharpVision`, and `SharpVision.FigletFonts` with
+PublicApiGenerator and compares them against Verify snapshots. Each assembly has
+one approved baseline stored in a directory named after the shared
+`OverallVersion`. A changed public signature therefore fails against the current
+version's baseline, while a version change produces a new missing baseline
+instead of overwriting the historical surface.
 
 An intentional public API change requires both actions:
 
 1. Update `OverallVersion` in `Directory.Build.props`.
-2. Run the compatibility tests, inspect both `.received.txt` files, and approve
-   them as `.verified.txt` files in the new version directory.
+2. Run the compatibility tests, inspect all three `.received.txt` files, and
+   approve them as `.verified.txt` files in the new version directory.
 
-Commit the version bump and both approved snapshots together, and keep the older
+Commit the version bump and all approved snapshots together, and keep the older
 version directories as API history. Never accept a received file without
 reviewing its signature changes: generated snapshots are approval artifacts, not
 disposable test output.

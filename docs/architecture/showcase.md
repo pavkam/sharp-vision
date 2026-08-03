@@ -216,13 +216,13 @@ primary pointer release.
 
 The FigletText page is an editor, not a static ornament: a `TextInput` updates
 the preview as text changes, while a Button-disclosed, scrollable ListView
-exposes the 400 audited catalog names and loads only the font the user selects.
-The ScrollBar page includes an explicit live value label beside the draggable
-horizontal thumb, so capture, drag geometry, and commit are directly observable.
-Every showcase `TextInput` inherits the active theme: its light semantic border
-defines the editable box while the body composes transparently with the
-surrounding application, so the showcase exercises the same restrained default
-as an ordinary app.
+exposes the 19 audited optional-package names and opens only the independent
+resource for the font the user selects. The ScrollBar page includes an explicit
+live value label beside the draggable horizontal thumb, so capture, drag
+geometry, and commit are directly observable. Every showcase `TextInput`
+inherits the active theme: its light semantic border defines the editable box
+while the body composes transparently with the surrounding application, so the
+showcase exercises the same restrained default as an ordinary app.
 
 The Prism page compares horizontal, vertical, and diagonal hue coordinates, then
 advances a diagonal FIGlet specimen one explicit phase step at a time. Its

@@ -3,7 +3,8 @@
 ## Load this reference when
 
 Changing FIGfont parsing, fitting, smushing, FigletFont, FigletCatalog,
-FigletText, `.flf` or `.tlf` resources, the audited archive, or font provenance.
+FigletText, `.flf` or `.tlf` resources, the optional font package, or font
+provenance.
 
 ## Normative documentation
 
@@ -14,8 +15,9 @@ FigletText, `.flf` or `.tlf` resources, the audited archive, or font provenance.
 
 ## Code map
 
-- Parser, renderer, limits, catalog: `src/SharpVision/Fonts/`
-- Embedded resources: `src/SharpVision/Fonts/Resources/`
+- Parser, renderer, and limits: `src/SharpVision/Fonts/`
+- Catalog and provenance types: `src/SharpVision.FigletFonts/Fonts/`
+- Embedded resources: `src/SharpVision.FigletFonts/Resources/`
 - Audit and package scripts: `scripts/audit-figlet-fonts.mjs` and
   `scripts/package-figlet-fonts.mjs`
 - Tests: `tests/SharpVision.Tests/Fonts/` and `Controls/Display/FigletText*`
@@ -28,14 +30,16 @@ FigletText, `.flf` or `.tlf` resources, the audited archive, or font provenance.
 3. Compare composition with the official `figlet` executable using exact bytes
    and whitespace.
 4. Run every catalog entry; a representative font is insufficient.
-5. Rebuild only from the pinned commit and require deterministic archive bytes.
+5. Rebuild only from both pinned commits, preserve one resource per font, and
+   require deterministic manifest bytes.
 
 ## Project-specific traps
 
-- The upstream collection has no collection-wide license; unverified entries are
-  release blockers, not permission grants.
+- Only the 18 official BSD-3-Clause fonts and MIT `Classy` font are allowed in
+  the optional package; every other entry is a release blocker.
 - Preserve hardblanks until composition completes.
 - Normalize CRLF and CR explicitly; legacy bytes may map to Unicode NEL.
+- Keep `SharpVision` free of catalogs, manifests, and embedded font resources.
 
 ## Focused verification
 

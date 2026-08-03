@@ -11,6 +11,7 @@ const execFileAsync = promisify(execFile);
 const ignoredDirectories = new Set([
   ".git",
   ".worktrees",
+  "artifacts",
   "bin",
   "node_modules",
   "obj",
@@ -631,15 +632,24 @@ export async function validateDocSamples(root, sharpVisionAssemblies) {
 
 async function main() {
   const sharpVisionRoot = resolve(process.cwd(), "src", "SharpVision", "bin", "Release", "net10.0");
+  const figletFontsRoot = resolve(
+    process.cwd(),
+    "src",
+    "SharpVision.FigletFonts",
+    "bin",
+    "Release",
+    "net10.0",
+  );
   const sharpVisionAssemblies = [
     join(sharpVisionRoot, "SharpVision.dll"),
     join(sharpVisionRoot, "SharpVision.Terminal.dll"),
+    join(figletFontsRoot, "SharpVision.FigletFonts.dll"),
   ];
 
   for (const assembly of sharpVisionAssemblies) {
     if (!existsSync(assembly)) {
       console.error(
-        `${assembly} is missing. Build src/SharpVision/SharpVision.csproj in Release before running this check.`,
+        `${assembly} is missing. Build SharpVision and SharpVision.FigletFonts in Release before running this check.`,
       );
       process.exitCode = 1;
       return;
