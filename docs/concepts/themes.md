@@ -116,18 +116,20 @@ Control-specific structure — paddings, glyph families, frame sequences, and pa
 colors — is mostly still code-owned. Each styled control completes its typed
 `Style` value from the library's structural defaults plus the appropriate
 semantic profile above; a complete local `Style` assignment overrides both.
-`ScrollBar` and `CheckBox` are the first exceptions: `ScrollBar`'s `Chrome` and
-`Fill`, and `CheckBox`'s `MarkStyle`, resolve from the theme's `scrollBar` and
-`checkBox` sections (below) when authored, ahead of the code-owned defaults.
+`ScrollBar`, `CheckBox`, and `RadioButton` are the first exceptions:
+`ScrollBar`'s `Chrome` and `Fill`, and `CheckBox`'s and `RadioButton`'s
+`MarkStyle`, resolve from the theme's `scrollBar`, `checkBox`, and `radioButton`
+sections (below) when authored, ahead of the code-owned defaults.
 
 Alongside the five fixed profiles, `styles` accepts registrable style sections
 under either a library-registered unqualified name (currently `scrollBar`, with
-`chrome` and `fill` string members, and `checkBox`, with a `markStyle` string
-member) or a namespaced `vendor.control` key (for example `"acme.widget"`); an
-unqualified sibling key that is neither one of the five profile names nor a
-registered section is rejected as an unknown field, since it is far more likely
-a typo than an intentional section. A registrable section's JSON is retained
-unparsed and bound lazily - not while the theme document loads - through
+`chrome` and `fill` string members; `checkBox`, with a `markStyle` string
+member; and `radioButton`, with a `markStyle` string member) or a namespaced
+`vendor.control` key (for example `"acme.widget"`); an unqualified sibling key
+that is neither one of the five profile names nor a registered section is
+rejected as an unknown field, since it is far more likely a typo than an
+intentional section. A registrable section's JSON is retained unparsed and bound
+lazily - not while the theme document loads - through
 `Theme.GetStyleSection<TSection>(sectionName)`, which deserializes and memoizes
 it on first access and returns `null` for a theme that never authored that
 section. The mechanism exists so any control - library or third-party - can

@@ -12,20 +12,48 @@ public readonly struct RadioButtonStyle: IEquatable<RadioButtonStyle>
     private readonly RadioButtonGlyphs? _glyphs;
     private readonly ThemeProfile? _appearance;
 
-    /// <summary>Gets the primary radio-button-style definition.</summary>
-    internal static StyleDefinition<RadioButtonStyle> Definition { get; } = StyleDefinitions.Control(
+    /// <summary>Gets the primary radio-button-style definition. Reads the theme's registrable
+    /// "radioButton" style section (see #155) for MarkStyle when the active theme authors one;
+    /// falls back to the code-owned structural default otherwise.</summary>
+    internal static StyleDefinition<RadioButtonStyle> Definition { get; } = new(
         ThemeRole.Input,
-        static profile => new RadioButtonStyle(
-            Default.MarkStyle,
-            Default.Glyphs,
-            WithCheckedAccent(profile.WithoutChrome())),
+        ResolveComplete,
         static style => style.Appearance,
-        static (previous, _, current, _) =>
-            previous.MarkWidth != current.MarkWidth
-                ? InvalidationImpact.Measure
-                : previous.MarkStyle != current.MarkStyle || previous.Glyphs != current.Glyphs
-                    ? InvalidationImpact.Render
-                    : InvalidationImpact.None);
+        Compare);
+
+    private static RadioButtonStyle ResolveComplete(RadioButtonStyle? local, Theme? theme)
+    {
+        if (local.HasValue)
+        {
+            return local.Value;
+        }
+
+        var effectiveTheme = theme ?? Themes.Dark;
+        var section = effectiveTheme.GetStyleSection<RadioButtonStyleSection>("radioButton");
+
+        return new RadioButtonStyle(
+            ParseMarkStyle(section?.MarkStyle, effectiveTheme.Slug) ?? Default.MarkStyle,
+            Default.Glyphs,
+            WithCheckedAccent(effectiveTheme.GetProfile(ThemeRole.Input).WithoutChrome()));
+    }
+
+    private static RadioButtonMarkStyle? ParseMarkStyle(string? value, string themeSlug) => value is null
+        ? null
+        : Enum.TryParse<RadioButtonMarkStyle>(value, ignoreCase: true, out var markStyle) && Enum.IsDefined(markStyle)
+            ? markStyle
+            : throw new InvalidDataException(
+                $"Theme '{themeSlug}' styles.radioButton.markStyle has unknown value '{value}'.");
+
+    private static InvalidationImpact Compare(
+        RadioButtonStyle previous,
+        Theme? previousTheme,
+        RadioButtonStyle current,
+        Theme? currentTheme) =>
+        previous.MarkWidth != current.MarkWidth
+            ? InvalidationImpact.Measure
+            : previous.MarkStyle != current.MarkStyle || previous.Glyphs != current.Glyphs
+                ? InvalidationImpact.Render
+                : InvalidationImpact.None;
 
     /// <summary>Initializes a complete radio-button presentation.</summary>
     /// <param name="markStyle">The validated mark-layout family.</param>
