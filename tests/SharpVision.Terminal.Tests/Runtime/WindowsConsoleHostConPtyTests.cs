@@ -100,13 +100,17 @@ public sealed partial class WindowsConsoleHostConPtyTests
             TestContext.Current.CancellationToken);
         await terminal.Input.FlushAsync(TestContext.Current.CancellationToken);
 
-        var output = new byte[6];
+        // ConsoleHost.Open's VT-mode-entry sequences and the console's own automatic
+        // window-title OSC sequence share this same output stream and precede the echoed
+        // payload, so read a generous buffer and locate the exact payload within it rather
+        // than assuming it starts at offset 0.
+        var buffer = new byte[256];
         var read = 0;
 
-        while (read < output.Length)
+        while (read < buffer.Length)
         {
             var chunk = await terminal.Output.ReadAsync(
-                output.AsMemory(read),
+                buffer.AsMemory(read),
                 TestContext.Current.CancellationToken);
 
             if (chunk == 0)
@@ -115,12 +119,16 @@ public sealed partial class WindowsConsoleHostConPtyTests
             }
 
             read += chunk;
+
+            if (buffer.AsSpan(0, read).IndexOf("output"u8) >= 0)
+            {
+                break;
+            }
         }
 
         _ = await terminal.WaitForExitAsync(TestContext.Current.CancellationToken);
 
-        read.ShouldBe(output.Length);
-        output.ShouldBe("output"u8.ToArray());
+        buffer.AsSpan(0, read).IndexOf("output"u8).ShouldBeGreaterThanOrEqualTo(0);
     }
 
     /// <summary>Verifies a ConPTY resize reports only cells, never pixels.</summary>
@@ -146,7 +154,7 @@ public sealed partial class WindowsConsoleHostConPtyTests
         SkipWithoutConPty();
         await using var terminal = WindowsPseudoterminal.Open(["cancelled"]);
         var saved = await ReadModesLineAsync(terminal, "saved");
-        var ready = await terminal.ReadLineAsync(TestContext.Current.CancellationToken);
+        var ready = await ReadLineAsync(terminal, "ready");
         ready.ShouldBe("ready");
         var cancelled = await terminal.ReadLineAsync(TestContext.Current.CancellationToken);
         var restored = await ReadModesLineAsync(terminal, "restored");

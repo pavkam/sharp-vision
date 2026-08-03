@@ -183,9 +183,22 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
     }
 
     /// <summary>Waits for the attached probe process to exit.</summary>
+    /// <remarks>
+    /// Deliberately polls the synchronous, timeout-based <see cref="Process.WaitForExit(int)"/>
+    /// overload rather than <c>Process.WaitForExitAsync</c>: the async API sets
+    /// <see cref="Process.EnableRaisingEvents"/> internally, which throws
+    /// <see cref="InvalidOperationException"/> ("Process was not started by this object...") for
+    /// a <see cref="Process"/> obtained via <see cref="Process.GetProcessById(int)"/> rather than
+    /// <see cref="Process.Start()"/> — exactly how <see cref="SpawnProbe"/> gets its handle,
+    /// since the process was actually started via the raw <c>CreateProcessW</c> call above.
+    /// </remarks>
     internal async Task<int> WaitForExitAsync(CancellationToken cancellationToken)
     {
-        await _process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+        while (!_process.WaitForExit(50))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
         return _process.ExitCode;
     }
 
