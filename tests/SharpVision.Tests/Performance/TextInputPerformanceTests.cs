@@ -53,6 +53,57 @@ public sealed class TextInputPerformanceTests
         watch.Elapsed.TotalSeconds.ShouldBeLessThan(18);
     }
 
+    /// <summary>Verifies walking a large non-word-wrap multi-row document upward one row at a time
+    /// completes under a generous absolute budget. Each Up press previously scanned every row from
+    /// the document start to find the target row's column - the same O(document)-per-navigation-event
+    /// cost the boundary cache eliminated for horizontal navigation, summed over every row crossed
+    /// while holding the key (see #42).</summary>
+    [Fact]
+    public void Up_WhenWalkingUpwardThroughALargeMultiRowDocument_CompletesWellUnderTheOldMeasuredCost()
+    {
+        var text = string.Concat(Enumerable.Repeat("x\n", 8_000)) + "x";
+        var control = new TextInput { AcceptsReturn = true, Text = text };
+        Key(control, Code.End, Modifiers.None);
+        var watch = Stopwatch.StartNew();
+
+        for (var index = 0; index < 8_000; index++)
+        {
+            Key(control, Code.Up, Modifiers.None);
+        }
+
+        watch.Stop();
+        watch.Elapsed.TotalSeconds.ShouldBeLessThan(30);
+    }
+
+    /// <summary>Verifies repeated word-wrap vertical navigation reuses the cached visual-line lookup
+    /// instead of rescanning every wrapped line. Position's word-wrap branch previously walked every
+    /// visual line in reverse from the last one to find which line contains the caret, on every
+    /// EnsureCaretVisible call (see #42).</summary>
+    [Fact]
+    public void Up_WhenWordWrapIsEnabledOnALargeDocument_CompletesWellUnderTheOldMeasuredCost()
+    {
+        var text = string.Join(' ', Enumerable.Repeat("word", 8_000));
+        var control = new TextInput
+        {
+            AcceptsReturn = true,
+            WordWrap = true,
+            Width = Length.Cells(20),
+            Height = Length.Cells(10),
+            Text = text
+        };
+        new LayoutEngine().Layout(control, new Size(20, 10));
+        Key(control, Code.End, Modifiers.None);
+        var watch = Stopwatch.StartNew();
+
+        for (var index = 0; index < 2_000; index++)
+        {
+            Key(control, Code.Up, Modifiers.None);
+        }
+
+        watch.Stop();
+        watch.Elapsed.TotalSeconds.ShouldBeLessThan(30);
+    }
+
     private static void Key(TextInput control, Code code, Modifiers modifiers) =>
         Router.Route(
             control,

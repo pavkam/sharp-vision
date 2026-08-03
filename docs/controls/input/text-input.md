@@ -70,6 +70,31 @@ direction.
   and a `Changed` flag. Callers own undo/redo history by retaining these
   snapshots; the pure model keeps no hidden mutable history.
 
+## Performance
+
+`Edit`'s public API is intentionally stateless: `MovePrevious`, `MoveNext`,
+`MovePreviousWord`, and `MoveNextWord` each validate and scan `text` from
+scratch, so a call costs time proportional to the caret's distance from the
+source start. That is the correct default for a pure, cacheable-by-nothing
+segmentation model with one authoritative implementation, but it means a caller
+navigating a large document one boundary at a time by calling these methods
+directly pays for the whole prefix on every call.
+
+`TextInput` avoids that cost for its own Left, Right, Up, Down, and
+Ctrl+Left/Right handling — the caret movements a caller can hold to repeat
+across a large span. It maintains a lazily built, per-`Text`-version cache of
+every grapheme boundary paired with its non-word-wrap cell row and column, so
+caret navigation resolves in O(log n) via binary search instead of rescanning
+the document per keystroke. The cache is rebuilt once, lazily, the next time
+navigation runs after `Text` changes — the same order of work an edit already
+pays for its own `string` copy, not an additional scaling tier. Word-wrapped
+vertical navigation and the wrapped position lookup use the same technique
+against the retained visual-line array. Holding one of these keys through a
+large document therefore stays near-linear in the number of keystrokes rather
+than growing with the document length on every one of them. Home and End are
+discrete, not held-repeat gestures, and still go through the public,
+unconditionally validated `Edit.MoveHome`/`Edit.MoveEnd`.
+
 ## Behavior
 
 - `Text` is never null. Direct assignment validates the control-character
