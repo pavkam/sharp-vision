@@ -56,7 +56,7 @@ public sealed class Negotiator
 
     /// <summary>Gets the owned standard-query evidence after publication.</summary>
     /// <exception cref="InvalidOperationException">Negotiation is incomplete.</exception>
-    public Queries Results => _strategy.Results;
+    public QueryResults Results => _strategy.Results;
 
     /// <summary>Writes the complete bounded startup query batch.</summary>
     /// <param name="destination">The non-null synchronous byte destination.</param>

@@ -25,7 +25,7 @@ public static class Detector
     /// </exception>
     public static TerminalCapabilities Detect(
         IReadOnlyDictionary<string, string?> environment,
-        Queries? queries = null,
+        QueryResults? queries = null,
         Settings? overrides = null) => Detect(
         TerminalCapabilities.Conservative,
         environment,
@@ -42,7 +42,7 @@ public static class Detector
     internal static TerminalCapabilities Detect(
         TerminalCapabilities baseline,
         IReadOnlyDictionary<string, string?> environment,
-        Queries? queries = null,
+        QueryResults? queries = null,
         Settings? overrides = null)
     {
         var context = new DiscoveryContext(baseline, environment, queries, overrides);

@@ -162,9 +162,9 @@ the owned evidence snapshot through the ordered environment, query, and override
 strategies specified by the
 [discovery pipeline](discovery-pipeline.md#immutable-input-and-adapters). Kitty,
 xterm, and iTerm names contribute tentative hints. tmux, GNU screen, and SSH
-presence may only narrow risky features. A nullable `Queries` value replaces
-hints with query evidence, and a nullable `Settings` value is applied last as
-explicit caller policy.
+presence may only narrow risky features. A nullable `QueryResults` value
+replaces hints with query evidence, and a nullable `Settings` value is applied
+last as explicit caller policy.
 
 ### Multiplexer boundary
 

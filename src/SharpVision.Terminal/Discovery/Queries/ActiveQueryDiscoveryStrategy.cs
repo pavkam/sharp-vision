@@ -50,7 +50,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
     private TerminalCapabilities? Published { get; set; }
 
-    private Queries? PublishedResults { get; set; }
+    private QueryResults? PublishedResults { get; set; }
 
     /// <summary>Initializes one bounded strategy over the conservative capability baseline.</summary>
     /// <param name="options">The non-null owned negotiation policy.</param>
@@ -106,7 +106,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
     /// <summary>Gets the owned standard-query evidence after publication.</summary>
     /// <exception cref="InvalidOperationException">Negotiation is incomplete.</exception>
-    public Queries Results => PublishedResults ??
+    public QueryResults Results => PublishedResults ??
                               throw new InvalidOperationException(
                                   "Negotiation has not published query evidence.");
 
@@ -735,7 +735,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
             _itermImages = false;
         }
 
-        var queries = new Queries()
+        var queries = new QueryResults()
         {
             PaletteColor = _paletteColor,
             ForegroundColor = _foregroundColor,

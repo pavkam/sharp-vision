@@ -7,7 +7,7 @@ using Xterm;
 
 /// <summary>Contains nullable results from bounded capability queries.</summary>
 [PublicAPI]
-public sealed record Queries
+public sealed record QueryResults
 {
     /// <summary>Gets one optional queried palette color.</summary>
     /// <exception cref="ArgumentException">The assigned response is empty or belongs to another family.</exception>

@@ -35,7 +35,7 @@ public sealed class DetectorFacadeTests
             ["TERM"] = "xterm-kitty",
             ["COLORTERM"] = "truecolor"
         };
-        var queries = new Queries { FocusReporting = false, KittyClipboard = true };
+        var queries = new QueryResults { FocusReporting = false, KittyClipboard = true };
         var overrides = new Settings { KittyClipboard = false, AmbiguousWidth = Ambiguous.Wide };
 
         // Act
@@ -84,7 +84,7 @@ public sealed class DetectorFacadeTests
         {
             ["TERM"] = "xterm-kitty"
         };
-        var queries = new Queries { KittyClipboard = true };
+        var queries = new QueryResults { KittyClipboard = true };
         var overrides = new Settings { KittyClipboard = false };
 
         // Act
@@ -113,7 +113,7 @@ public sealed class DetectorFacadeTests
             ["TERM_PROGRAM"] = "iTerm.app",
             ["TERM_PROGRAM_VERSION"] = version
         };
-        var queries = new Queries { ItermImages = true };
+        var queries = new QueryResults { ItermImages = true };
 
         var capabilities = Detector.Detect(environment, queries);
 
@@ -138,7 +138,7 @@ public sealed class DetectorFacadeTests
             ["TERM_PROGRAM"] = "iTerm.app",
             ["TERM_PROGRAM_VERSION"] = version
         };
-        var queries = new Queries { ItermImages = true };
+        var queries = new QueryResults { ItermImages = true };
 
         var capabilities = Detector.Detect(environment, queries);
 

@@ -6,7 +6,7 @@ namespace SharpVision.Terminal.Tests.Discovery;
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Discovery;
 
-using QueryResults = Terminal.Capabilities.Queries;
+using QueryResults = Terminal.Capabilities.QueryResults;
 
 /// <summary>
 /// Verifies capability evidence precedence and safe narrowing.
