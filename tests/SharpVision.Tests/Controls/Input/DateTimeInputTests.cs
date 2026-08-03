@@ -61,6 +61,30 @@ public sealed class DateTimeInputTests
         control.Value.ShouldBe(new DateTime(2026, 7, 19, 10, 25, 0));
     }
 
+    /// <summary>Verifies clock adjustment at the DateTime range edge stays bounded.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Input_WhenHourAdjustmentCrossesDateTimeRange_PreservesBound(bool maximum)
+    {
+        // Arrange
+        var bound = maximum ? DateTime.MaxValue : DateTime.MinValue;
+        var code = maximum ? Code.Up : Code.Down;
+        using var control = new DateTimeInput { Value = bound };
+
+        for (var index = 0; index < 3; index++)
+        {
+            _ = Router.Route(control, Events.Key, Key(Code.Right));
+        }
+
+        // Act and assert
+        Should.NotThrow(() =>
+        {
+            _ = Router.Route(control, Events.Key, Key(code));
+        });
+        control.Value.ShouldBe(bound);
+    }
+
     /// <summary>Verifies IsOpen publishes PropertyChanged on open as well as on close, instead of
     /// only republishing the private Popup's Closed notification (see #191).</summary>
     [Fact]

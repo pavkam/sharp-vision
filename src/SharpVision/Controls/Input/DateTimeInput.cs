@@ -649,9 +649,9 @@ public sealed class DateTimeInput: Control
             _segmentMonth => SafeAddMonths(dt, delta),
             _segmentDay => SafeAddDays(dt, delta),
             _segmentYear => SafeAddYears(dt, delta),
-            _segmentHour => dt.AddHours(delta),
-            _segmentMinute => dt.AddTicks(TimeStep.Ticks * delta),
-            _segmentSecond when ShowSeconds => dt.AddSeconds(delta),
+            _segmentHour => SafeAddTicks(dt, TimeSpan.TicksPerHour * delta),
+            _segmentMinute => SafeAddTicks(dt, TimeStep.Ticks * delta),
+            _segmentSecond when ShowSeconds => SafeAddTicks(dt, TimeSpan.TicksPerSecond * delta),
             _ when _activeSegment == AmPmSegmentIndex() && !Use24HourFormat =>
                 dt.AddHours(dt.Hour < 12 ? 12 : -12),
             _ => dt
@@ -1163,6 +1163,18 @@ public sealed class DateTimeInput: Control
     {
         var year = dt.Year + delta;
         return year is < 1 or > 9999 ? dt : ReplaceYear(dt, year);
+    }
+
+    private static DateTime SafeAddTicks(DateTime dateTime, long ticks)
+    {
+        try
+        {
+            return dateTime.AddTicks(ticks);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return dateTime;
+        }
     }
 
     private static int To24Hour(int hour12, bool isPm) =>
