@@ -1066,6 +1066,43 @@ public sealed class WindowSurfaceTests
         window.Visibility.ShouldBe(Visibility.Collapsed);
     }
 
+    /// <summary>Verifies a CloseRequested handler can veto an outside-press Dismiss the same way it
+    /// vetoes the close affordance, Escape, and programmatic Close() (#223).</summary>
+    [Fact]
+    public async Task ShowModal_WhenDismissIsCancelledByCloseRequested_LeavesWindowPresentedAsync()
+    {
+        // Arrange
+        var closing = 0;
+        var window = new Window
+        {
+            Content = new Button { Text = "Action" },
+            Width = Length.Cells(14),
+            Height = Length.Cells(6),
+        };
+        Overlay.SetLeft(window, Length.Cells(1));
+        Overlay.SetTop(window, Length.Cells(1));
+        window.CloseRequested += (_, args) => args.Cancel = true;
+        window.Closing += (_, _) => closing++;
+        var root = new Overlay { Children = { window } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(32, 10),
+            TestContext.Current.CancellationToken);
+        ModalScope? scope = null;
+
+        // Act
+        await surface.UpdateAsync(
+            () => scope = window.ShowModal(OutsideInteraction.Dismiss),
+            "show dismissing modal Window");
+        await surface.Pointer.ClickAsync(root, new Point(30, 8));
+
+        // Assert
+        closing.ShouldBe(0);
+        scope.ShouldNotBeNull().IsActive.ShouldBeTrue();
+        _ = surface.Application.Modality.Active.ShouldNotBeNull();
+        window.Visibility.ShouldBe(Visibility.Visible);
+    }
+
     /// <summary>Verifies a closable Window renders its complete paired frame, left-placed close chrome, and title.</summary>
     [Fact]
     public async Task Render_WhenClosableWindowIsMounted_DrawsCompleteFrameWithHeaderAndCloseAsync()

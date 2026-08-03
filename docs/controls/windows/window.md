@@ -10,20 +10,21 @@ there is no separate presentation wrapper to manage.
 
 ## API
 
-| Member                                                 | Default                   | Purpose                                                               |
-| ------------------------------------------------------ | ------------------------- | --------------------------------------------------------------------- |
-| `Content`                                              | `null`                    | Owns one child inside the titled frame.                               |
-| `Header`, `HeaderPlacement`                            | Empty, `Left`             | Supply and align non-null header text within the top edge.            |
-| `CanMove`, `CanClose`, `CloseOnEscape`                 | `true`, `true`, `false`   | Configure Overlay drag movement and explicit close requests.          |
-| `CanResize`                                            | `false`                   | Enable pointer-driven resizing from the bottom-right corner.          |
-| `ClosePlacement`                                       | `Left`                    | Places close chrome after the left corner or before the right corner. |
-| Inherited `Border`, `CloseGlyph`                       | Window profile, `■`       | Configure the complete frame and the close-button glyph.              |
-| Inherited `Face`                                       | Window profile            | Paints the theme-defined opaque window body.                          |
-| Inherited `Shadow`                                     | Window profile            | Configures visual overflow outside the border box.                    |
-| Inherited `ActualFace`, `ActualBorder`, `ActualShadow` | Read-only resolved values | Expose the current theme-, state-, and caller-composed appearance.    |
-| `SurfaceBounds`                                        | Empty, read-only          | Reports the committed window rectangle while presented.               |
-| `IsActive`                                             | `false`, read-only        | Reports whether this is the owning Application's active Window.       |
-| `Shown`, `Closing`, `Closed`                           | No subscribers            | Observe presentation and the ordered close lifecycle.                 |
+| Member                                                 | Default                   | Purpose                                                                 |
+| ------------------------------------------------------ | ------------------------- | ----------------------------------------------------------------------- |
+| `Content`                                              | `null`                    | Owns one child inside the titled frame.                                 |
+| `Header`, `HeaderPlacement`                            | Empty, `Left`             | Supply and align non-null header text within the top edge.              |
+| `CanMove`, `CanClose`, `CloseOnEscape`                 | `true`, `true`, `false`   | Configure Overlay drag movement and explicit close requests.            |
+| `CanResize`                                            | `false`                   | Enable pointer-driven resizing from the bottom-right corner.            |
+| `ClosePlacement`                                       | `Left`                    | Places close chrome after the left corner or before the right corner.   |
+| Inherited `Border`, `CloseGlyph`                       | Window profile, `■`       | Configure the complete frame and the close-button glyph.                |
+| Inherited `Face`                                       | Window profile            | Paints the theme-defined opaque window body.                            |
+| Inherited `Shadow`                                     | Window profile            | Configures visual overflow outside the border box.                      |
+| Inherited `ActualFace`, `ActualBorder`, `ActualShadow` | Read-only resolved values | Expose the current theme-, state-, and caller-composed appearance.      |
+| `SurfaceBounds`                                        | Empty, read-only          | Reports the committed window rectangle while presented.                 |
+| `IsActive`                                             | `false`, read-only        | Reports whether this is the owning Application's active Window.         |
+| `Shown`, `CloseRequested`, `Closing`, `Closed`         | No subscribers            | Observe presentation and the ordered, vetoable close lifecycle.         |
+| `Close()`                                              | —                         | Requests closure programmatically, the same sequence as the affordance. |
 
 ## Layout and positioning
 
@@ -73,18 +74,15 @@ edge. At full width the chrome is `[■]` with two frame glyphs on each side;
 narrow widths degrade to a single close glyph, or omit it entirely when no
 interior cell can be represented. The pointer target supports hover, capture,
 press, leave, reentry, release, and unavailable cleanup. Activating it requests
-closure: the Window raises `Closing` and, by default, collapses itself before
-raising `Closed`. A `Closing` handler that itself changes `Visibility` — hiding
-it to a different state, restoring it, or disposing the Window — takes
-responsibility for the outcome instead of the default collapse; there is no
-separate cancel flag.
-
-> [!IMPORTANT]
->
-> **Implementation gap:** `Closing` remains a plain, non-cancellable event.
-> Applications that need to veto a close outright (rather than deciding
-> `Visibility` themselves inside the handler) have no dedicated hook yet. Issue
-> #223 tracks a genuinely cancellable `Closing`/`CloseRequested` contract.
+closure through the shared
+[`CloseRequested`/`Closing`/`Closed` sequence](../../concepts/floating-surfaces.md#overview):
+a `CloseRequested` handler can veto the request outright by setting
+`SurfaceCloseRequestedEventArgs.Cancel`, otherwise the Window raises `Closing`
+and, by default, collapses itself before raising `Closed`. A `Closing` handler
+that itself changes `Visibility` — hiding it to a different state, restoring it,
+or disposing the Window — takes responsibility for the outcome instead of the
+default collapse. `Close()` runs the identical sequence programmatically,
+regardless of `CanClose`, matching Escape and modal outside-dismissal.
 
 Pointer ancestry does not restyle the Window face, frame, or shadow. The close
 mark can still react independently while its target is hovered or pressed.
@@ -115,8 +113,9 @@ independent keyboard-focus meanings.
 
 Unhandled Enter and Escape search the owned descendants in deterministic
 ownership order for the first enabled, visible `Button` marked `IsDefault` or
-`IsCancel`. When no cancel button exists, Escape raises `Closing` only when both
-`CloseOnEscape` and `CanClose` are true.
+`IsCancel`. When no cancel button exists, Escape requests closure — raising
+`CloseRequested` and then `Closing` — only when both `CloseOnEscape` and
+`CanClose` are true.
 
 ## Presentation and modality
 
@@ -129,10 +128,11 @@ capture, bounds, and lifecycle cleanup.
 `ShowModal(outsideInteraction, initialFocus)` makes the Window visible and
 returns its application-owned `ModalScope`. The default
 `OutsideInteraction.Ignore` consumes outside input without requesting closure.
-`Dismiss` raises `Closing` and, by default, collapses and closes the Window
-afterward, ending its modal presentation. One Window cannot own two live modal
-presentations. Disposing the returned scope from outside ends modality without
-changing visibility, so the same surface can continue modelessly. The shared
+`Dismiss` requests closure the same way — `CloseRequested` then `Closing` — and,
+unless vetoed, by default collapses and closes the Window afterward, ending its
+modal presentation. One Window cannot own two live modal presentations.
+Disposing the returned scope from outside ends modality without changing
+visibility, so the same surface can continue modelessly. The shared
 [modality contract](../../concepts/modality.md#popup-and-window-presentations)
 owns validation, confinement, nesting, and focus restoration.
 
