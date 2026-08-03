@@ -9,7 +9,7 @@ behavior.
 ## API
 
 | Member                         | Default        | Description                                                    |
-| ------------------------------ | -------------- | ---------------------------------------------------------------- |
+| ------------------------------ | -------------- | -------------------------------------------------------------- |
 | `IsChecked`                    | `false`        | `false`, `true`, or `null` when three-state mode permits it.   |
 | `IsThreeState`                 | `false`        | Selects the two-state or three-state activation cycle.         |
 | `Style`                        | `null`         | Optional complete developer-authored `CheckBoxStyle`.          |

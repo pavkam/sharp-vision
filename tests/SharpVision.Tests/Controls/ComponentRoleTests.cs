@@ -46,7 +46,7 @@ public sealed class ComponentRoleTests
 
     /// <summary>Verifies every pressable uses the single-text-caption authoring role: Content is
     /// structurally absent (not merely hidden), and the only caption surface is the string
-    /// <see cref="Pressable.Text"/> property.</summary>
+    /// <see cref="PressableBase.Text"/> property.</summary>
     [Fact]
     public void Type_WhenInspected_UsesSingleTextCaptionPressableRole()
     {
@@ -60,12 +60,12 @@ public sealed class ComponentRoleTests
             typeof(ProbePressable)
         ];
 
-        pressable.BaseType.ShouldBe(typeof(Control));
+        pressable.BaseType.ShouldBe(typeof(ControlBase));
         pressable.GetProperty(nameof(ContentControl.Content),
                 BindingFlags.Public | BindingFlags.Instance)
             .ShouldBeNull();
         pressable.GetProperty("Children", BindingFlags.Public | BindingFlags.Instance).ShouldBeNull();
-        pressable.GetProperty(nameof(Pressable.Text), BindingFlags.Public | BindingFlags.Instance)
+        pressable.GetProperty(nameof(PressableBase.Text), BindingFlags.Public | BindingFlags.Instance)
             .ShouldNotBeNull()
             .PropertyType.ShouldBe(typeof(string));
         pressable.GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance)
@@ -75,7 +75,7 @@ public sealed class ComponentRoleTests
 
         foreach (var type in concrete)
         {
-            typeof(Pressable).IsAssignableFrom(type).ShouldBeTrue(type.FullName);
+            typeof(PressableBase).IsAssignableFrom(type).ShouldBeTrue(type.FullName);
             typeof(ContentControl).IsAssignableFrom(type).ShouldBeFalse(type.FullName);
             typeof(Container).IsAssignableFrom(type).ShouldBeFalse(type.FullName);
             type.GetProperty(nameof(ContentControl.Content),
@@ -93,7 +93,7 @@ public sealed class ComponentRoleTests
     {
         var type = typeof(ListItem);
 
-        typeof(Pressable).IsAssignableFrom(type).ShouldBeFalse();
+        typeof(PressableBase).IsAssignableFrom(type).ShouldBeFalse();
         typeof(ContentControl).IsAssignableFrom(type).ShouldBeTrue();
     }
 

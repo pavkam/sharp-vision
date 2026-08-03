@@ -64,10 +64,9 @@ action.
 
 Extends [`PressableBase`](../pressable.md#overview). The inherited `Text`
 (string) is the label text, and `Glyph` (string?) is an optional prefix shown
-before it. The item renders as `› Text` when selected or hovered and as
-`· Text` otherwise. Pointer or programmatic selection updates the owning
-`NavigationView`; the item itself stays non-focusable and outside the tab
-order.
+before it. The item renders as `› Text` when selected or hovered and as `· Text`
+otherwise. Pointer or programmatic selection updates the owning
+`NavigationView`; the item itself stays non-focusable and outside the tab order.
 
 Activation raises `Invoked` (`EventHandler<ActivationEventArgs>`), then invokes
 the inherited `Command` with `CommandParameter` when one is bound and

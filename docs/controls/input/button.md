@@ -3,8 +3,8 @@
 ## Overview
 
 `Button` is a sealed [`Pressable<ButtonStyle>`](../pressable.md#overview)
-command control whose caption is its inherited `Text`. Each completed
-activation raises `Click` and invokes the command once.
+command control whose caption is its inherited `Text`. Each completed activation
+raises `Click` and invokes the command once.
 
 ## API
 

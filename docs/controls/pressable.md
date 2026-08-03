@@ -8,20 +8,20 @@ keyboard or pointer input. `Pressable<TStyle>` adds the standard primary
 `Style`/`ActualStyle` slot on top of `PressableBase` for a pressable with an
 immutable complete typed style. `PressableBase` has no `Content` and no
 `Children` collection: the only caption surface is the string `Text` property,
-backed by a lazily materialized owned caption child that never allocates until
-a control's text is first assigned. A control that needs arbitrary owned
-content instead of a plain caption does not derive from `PressableBase` —
-`ListItem` composes the same shared press behavior directly while keeping
-[`ContentControl`](content-control.md#overview)'s replaceable `Content` edge
-for realized template output.
+backed by a lazily materialized owned caption child that never allocates until a
+control's text is first assigned. A control that needs arbitrary owned content
+instead of a plain caption does not derive from `PressableBase` — `ListItem`
+composes the same shared press behavior directly while keeping
+[`ContentControl`](content-control.md#overview)'s replaceable `Content` edge for
+realized template output.
 
 Concrete controls implement `Activate(ActivationCause)`. `Button`, `CheckBox`,
 and `RadioButton` use `Pressable<TStyle>`; `HyperlinkButton`, `MenuItem`, and
 `NavigationViewItem` use `PressableBase` directly; each internal `TabHeader`
 also does, with its own field-backed `Text` override that never materializes a
-caption child. A control whose face is derived from data rather than a
-caption, such as [`ComboBox`](input/combo-box.md#overview), derives from
-`ControlBase` instead of pretending to be a `PressableBase`.
+caption child. A control whose face is derived from data rather than a caption,
+such as [`ComboBox`](input/combo-box.md#overview), derives from `ControlBase`
+instead of pretending to be a `PressableBase`.
 
 ## API
 
@@ -112,11 +112,10 @@ public sealed class ActionChip : PressableBase
 ## Expected behavior
 
 A `PressableBase` derives from `ControlBase`, not `ContentControl`, and exposes
-no `Content` or `Children`; `Text` is the sole caption surface, and assigning
-it notifies exactly once and is silent on same-value assignment. Space and
-Enter follow the transitions above, pointer presses that originate on the
-owned caption child still route focus and capture to the owner, and an inside
-release
+no `Content` or `Children`; `Text` is the sole caption surface, and assigning it
+notifies exactly once and is silent on same-value assignment. Space and Enter
+follow the transitions above, pointer presses that originate on the owned
+caption child still route focus and capture to the owner, and an inside release
 activates exactly once while an outside release cancels. Every availability
 change cancels a held press without activating, visual-state changes request
 their combined impact, callbacks arrive in the documented order, and Unicode
