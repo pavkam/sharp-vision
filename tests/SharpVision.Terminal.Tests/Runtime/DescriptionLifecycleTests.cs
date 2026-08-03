@@ -53,9 +53,9 @@ public sealed class DescriptionLifecycleTests
     public void TryExpandPair_WhenPairIsUnavailable_ReturnsEmptyOutputs()
     {
         // Arrange
-        var programs = new Programs(new Dictionary<string, Program>
+        var programs = new Programs(new Dictionary<string, DescriptionProgram>
         {
-            ["smkx"] = new Program("one-sided"u8)
+            ["smkx"] = new DescriptionProgram("one-sided"u8)
         });
         var interpreter = new Interpreter(ProgramLimits.Default);
 
@@ -103,10 +103,10 @@ public sealed class DescriptionLifecycleTests
     public void TryExpandPair_WhenProgramKindsAreMixed_ReturnsEmptyAndPreservesStaticState()
     {
         // Arrange
-        var programs = new Programs(new Dictionary<string, Program>
+        var programs = new Programs(new Dictionary<string, DescriptionProgram>
         {
-            ["smcup"] = new Program("%{42}%PAenter"u8),
-            ["rmcup"] = Program.Intrinsic
+            ["smcup"] = new DescriptionProgram("%{42}%PAenter"u8),
+            ["rmcup"] = DescriptionProgram.Intrinsic
         });
         var interpreter = new Interpreter(ProgramLimits.Default);
         var readStatic = new ArrayBufferWriter<byte>();
@@ -118,7 +118,7 @@ public sealed class DescriptionLifecycleTests
             interpreter,
             out var enable,
             out var disable);
-        interpreter.Write(new Program("%gA%d"u8), [], readStatic);
+        interpreter.Write(new DescriptionProgram("%gA%d"u8), [], readStatic);
 
         // Assert
         expanded.ShouldBeFalse();
@@ -139,7 +139,7 @@ public sealed class DescriptionLifecycleTests
         await using SessionTransport transport = new();
         await using FakeResizeSource resize = new();
         var profile = Profile(
-            new Dictionary<string, Program>
+            new Dictionary<string, DescriptionProgram>
             {
                 ["smcup"] = new("screen-in"u8),
                 ["rmcup"] = new("screen-out"u8),
@@ -177,9 +177,9 @@ public sealed class DescriptionLifecycleTests
         // Arrange
         await using SessionTransport transport = new();
         await using FakeResizeSource resize = new();
-        var profile = Profile(new Dictionary<string, Program>
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
         {
-            [retainedName] = new Program("one-sided"u8)
+            [retainedName] = new DescriptionProgram("one-sided"u8)
         });
         transport.Close();
         await using Session session = new(
@@ -207,10 +207,10 @@ public sealed class DescriptionLifecycleTests
         // Arrange
         await using SessionTransport transport = new();
         await using FakeResizeSource resize = new();
-        var profile = Profile(new Dictionary<string, Program>
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
         {
-            ["smcup"] = new Program("prefix%p1%dsuffix"u8),
-            ["rmcup"] = new Program("restore"u8)
+            ["smcup"] = new DescriptionProgram("prefix%p1%dsuffix"u8),
+            ["rmcup"] = new DescriptionProgram("restore"u8)
         });
         transport.Close();
         await using Session session = new(
@@ -253,7 +253,7 @@ public sealed class DescriptionLifecycleTests
         await using FakeResizeSource resize = new();
         var sequence = new[] { (byte) 0x1b, (byte) 'O', checked((byte) final) };
         var profile = Profile(
-            new Dictionary<string, Program>
+            new Dictionary<string, DescriptionProgram>
             {
                 ["smkx"] = new("keys-in"u8),
                 ["rmkx"] = new("keys-out"u8)
@@ -281,7 +281,7 @@ public sealed class DescriptionLifecycleTests
         await using SessionTransport transport = new();
         await using FakeResizeSource resize = new();
         var profile = Profile(
-            new Dictionary<string, Program>
+            new Dictionary<string, DescriptionProgram>
             {
                 ["smkx"] = new("keys-in"u8),
                 ["rmkx"] = new("keys-out"u8)
@@ -337,9 +337,9 @@ public sealed class DescriptionLifecycleTests
         await using SessionTransport transport = new();
         await using FakeResizeSource resize = new();
         var profile = Profile(
-            new Dictionary<string, Program>
+            new Dictionary<string, DescriptionProgram>
             {
-                [retainedName] = new Program("one-sided"u8)
+                [retainedName] = new DescriptionProgram("one-sided"u8)
             },
             new KeyMap([new KeyBinding("\u001bOA"u8, Code.Up)]));
         transport.Close();
@@ -475,10 +475,10 @@ public sealed class DescriptionLifecycleTests
             PartialWriteBytes = 4
         };
         await using FakeResizeSource resize = new();
-        var profile = Profile(new Dictionary<string, Program>
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
         {
-            ["smcup"] = new Program("screen-in"u8),
-            ["rmcup"] = new Program("screen-out"u8)
+            ["smcup"] = new DescriptionProgram("screen-in"u8),
+            ["rmcup"] = new DescriptionProgram("screen-out"u8)
         });
         await using Session session = new(
             transport,
@@ -510,10 +510,10 @@ public sealed class DescriptionLifecycleTests
             PartialWriteBytes = 3
         };
         await using FakeResizeSource resize = new();
-        var profile = Profile(new Dictionary<string, Program>
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
         {
-            ["smcup"] = new Program("screen-in"u8),
-            ["rmcup"] = new Program("screen-out"u8)
+            ["smcup"] = new DescriptionProgram("screen-in"u8),
+            ["rmcup"] = new DescriptionProgram("screen-out"u8)
         });
         await using Session session = new(
             transport,
@@ -540,10 +540,10 @@ public sealed class DescriptionLifecycleTests
         // Arrange
         await using SessionTransport transport = new() { FailFlushAt = 1 };
         await using FakeResizeSource resize = new();
-        var profile = Profile(new Dictionary<string, Program>
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
         {
-            ["smcup"] = new Program("screen-in"u8),
-            ["rmcup"] = new Program("screen-out"u8)
+            ["smcup"] = new DescriptionProgram("screen-in"u8),
+            ["rmcup"] = new DescriptionProgram("screen-out"u8)
         });
         await using Session session = new(
             transport,
@@ -576,7 +576,7 @@ public sealed class DescriptionLifecycleTests
         };
         await using FakeResizeSource resize = new();
         var profile = Profile(
-            new Dictionary<string, Program>
+            new Dictionary<string, DescriptionProgram>
             {
                 ["smcup"] = new("screen-in"u8),
                 ["rmcup"] = new("screen-out"u8),
@@ -633,7 +633,7 @@ public sealed class DescriptionLifecycleTests
         };
         var profile = explicitProfile
             ? Profile(
-                new Dictionary<string, Program>(),
+                new Dictionary<string, DescriptionProgram>(),
                 capabilities: capabilities,
                 descriptionOrigin: DescriptionOrigin.Explicit)
             : TerminalProfile.CreateAnsi(capabilities);
@@ -695,10 +695,10 @@ public sealed class DescriptionLifecycleTests
         // Arrange
         await using SessionTransport transport = new();
         await using FakeResizeSource resize = new();
-        var profile = Profile(new Dictionary<string, Program>
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
         {
-            ["smcup"] = new Program("1234"u8),
-            ["rmcup"] = new Program("4321"u8)
+            ["smcup"] = new DescriptionProgram("1234"u8),
+            ["rmcup"] = new DescriptionProgram("4321"u8)
         });
         transport.Close();
         await using Session session = new(
@@ -731,7 +731,7 @@ public sealed class DescriptionLifecycleTests
         await using FakeResizeSource resize = new();
         var supported = new Feature(CapabilitySupport.Supported, Origin.Database);
         var profile = Profile(
-            new Dictionary<string, Program>
+            new Dictionary<string, DescriptionProgram>
             {
                 ["fe"] = new("focus-in"u8),
                 ["fd"] = new("focus-out"u8),
@@ -767,10 +767,10 @@ public sealed class DescriptionLifecycleTests
         // Arrange
         await using SessionTransport transport = new();
         await using FakeResizeSource resize = new();
-        var profile = Profile(new Dictionary<string, Program>
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
         {
-            ["smcup"] = new Program("%{42}%PAenter"u8),
-            ["rmcup"] = new Program("%gA%dexit"u8)
+            ["smcup"] = new DescriptionProgram("%{42}%PAenter"u8),
+            ["rmcup"] = new DescriptionProgram("%gA%dexit"u8)
         });
         transport.Close();
         await using Session session = new(
@@ -797,12 +797,12 @@ public sealed class DescriptionLifecycleTests
         // Arrange
         await using SessionTransport transport = new();
         await using FakeResizeSource resize = new();
-        var profile = Profile(new Dictionary<string, Program>
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
         {
-            ["smcup"] = new Program("%{42}%PAenter"u8),
-            ["rmcup"] = new Program("%p1%d"u8),
-            ["civis"] = new Program("%gA%dhide"u8),
-            ["cnorm"] = new Program("show"u8)
+            ["smcup"] = new DescriptionProgram("%{42}%PAenter"u8),
+            ["rmcup"] = new DescriptionProgram("%p1%d"u8),
+            ["civis"] = new DescriptionProgram("%gA%dhide"u8),
+            ["cnorm"] = new DescriptionProgram("show"u8)
         });
         transport.Close();
         await using Session session = new(
@@ -830,12 +830,12 @@ public sealed class DescriptionLifecycleTests
         // Arrange
         await using SessionTransport transport = new();
         await using FakeResizeSource resize = new();
-        var profile = Profile(new Dictionary<string, Program>
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
         {
-            ["smcup"] = new Program("%{42}%PA%?%{0}%tenter%;"u8),
-            ["rmcup"] = new Program("restore"u8),
-            ["civis"] = new Program("%gA%dhide"u8),
-            ["cnorm"] = new Program("show"u8)
+            ["smcup"] = new DescriptionProgram("%{42}%PA%?%{0}%tenter%;"u8),
+            ["rmcup"] = new DescriptionProgram("restore"u8),
+            ["civis"] = new DescriptionProgram("%gA%dhide"u8),
+            ["cnorm"] = new DescriptionProgram("show"u8)
         });
         transport.Close();
         await using Session session = new(
@@ -860,23 +860,23 @@ public sealed class DescriptionLifecycleTests
 
     #region Helpers
 
-    private static Dictionary<string, Program> KeypadPrograms() => new(StringComparer.Ordinal)
+    private static Dictionary<string, DescriptionProgram> KeypadPrograms() => new(StringComparer.Ordinal)
     {
-        ["smkx"] = new Program("keys-in"u8),
-        ["rmkx"] = new Program("keys-out"u8)
+        ["smkx"] = new DescriptionProgram("keys-in"u8),
+        ["rmkx"] = new DescriptionProgram("keys-out"u8)
     };
 
     private static TerminalProfile Profile(
-        IReadOnlyDictionary<string, Program> lifecyclePrograms,
+        IReadOnlyDictionary<string, DescriptionProgram> lifecyclePrograms,
         KeyMap? keyMap = null,
         TerminalCapabilities? capabilities = null,
         DescriptionOrigin descriptionOrigin = DescriptionOrigin.Database)
     {
-        var programs = new Dictionary<string, Program>(StringComparer.Ordinal)
+        var programs = new Dictionary<string, DescriptionProgram>(StringComparer.Ordinal)
         {
-            ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-            ["sgr0"] = new Program("reset"u8),
-            ["clear"] = new Program("clear"u8)
+            ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+            ["sgr0"] = new DescriptionProgram("reset"u8),
+            ["clear"] = new DescriptionProgram("clear"u8)
         };
 
         foreach (var pair in lifecyclePrograms)

@@ -119,7 +119,7 @@ public sealed class ProgramExpanderTests
     {
         var values = programs.ToDictionary(
             static program => program.Name,
-            static program => new Program(Encoding.ASCII.GetBytes(program.Source)));
+            static program => new DescriptionProgram(Encoding.ASCII.GetBytes(program.Source)));
         var description = new Description(
             "expander-test",
             DescriptionOrigin.Database,

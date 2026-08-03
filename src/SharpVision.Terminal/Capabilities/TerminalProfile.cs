@@ -19,33 +19,33 @@ public sealed class TerminalProfile
         automaticMargins: true);
 
     private static readonly Programs _ansiPrograms = new(
-        new Dictionary<string, Program>
+        new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = Program.Intrinsic,
-            ["sgr0"] = Program.Intrinsic,
-            ["clear"] = Program.Intrinsic,
-            ["smcup"] = Program.Intrinsic,
-            ["rmcup"] = Program.Intrinsic,
-            ["civis"] = Program.Intrinsic,
-            ["cnorm"] = Program.Intrinsic,
-            ["el"] = Program.Intrinsic,
-            ["bold"] = Program.Intrinsic,
-            ["dim"] = Program.Intrinsic,
-            ["sitm"] = Program.Intrinsic,
-            ["smul"] = Program.Intrinsic,
-            ["blink"] = Program.Intrinsic,
-            ["rev"] = Program.Intrinsic,
-            ["invis"] = Program.Intrinsic,
-            ["smxx"] = Program.Intrinsic,
-            ["Smol"] = Program.Intrinsic,
-            ["setaf"] = Program.Intrinsic,
-            ["setab"] = Program.Intrinsic,
-            ["setrgbf"] = Program.Intrinsic,
-            ["setrgbb"] = Program.Intrinsic,
-            ["setdf"] = Program.Intrinsic,
-            ["setdb"] = Program.Intrinsic,
-            ["op"] = Program.Intrinsic,
-            ["bel"] = Program.Intrinsic
+            ["cup"] = DescriptionProgram.Intrinsic,
+            ["sgr0"] = DescriptionProgram.Intrinsic,
+            ["clear"] = DescriptionProgram.Intrinsic,
+            ["smcup"] = DescriptionProgram.Intrinsic,
+            ["rmcup"] = DescriptionProgram.Intrinsic,
+            ["civis"] = DescriptionProgram.Intrinsic,
+            ["cnorm"] = DescriptionProgram.Intrinsic,
+            ["el"] = DescriptionProgram.Intrinsic,
+            ["bold"] = DescriptionProgram.Intrinsic,
+            ["dim"] = DescriptionProgram.Intrinsic,
+            ["sitm"] = DescriptionProgram.Intrinsic,
+            ["smul"] = DescriptionProgram.Intrinsic,
+            ["blink"] = DescriptionProgram.Intrinsic,
+            ["rev"] = DescriptionProgram.Intrinsic,
+            ["invis"] = DescriptionProgram.Intrinsic,
+            ["smxx"] = DescriptionProgram.Intrinsic,
+            ["Smol"] = DescriptionProgram.Intrinsic,
+            ["setaf"] = DescriptionProgram.Intrinsic,
+            ["setab"] = DescriptionProgram.Intrinsic,
+            ["setrgbf"] = DescriptionProgram.Intrinsic,
+            ["setrgbb"] = DescriptionProgram.Intrinsic,
+            ["setdf"] = DescriptionProgram.Intrinsic,
+            ["setdb"] = DescriptionProgram.Intrinsic,
+            ["op"] = DescriptionProgram.Intrinsic,
+            ["bel"] = DescriptionProgram.Intrinsic
         });
 
     /// <summary>

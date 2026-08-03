@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
-using DescriptionProgram = Terminal.Terminfo.Program;
-
 /// <summary>Verifies TextInput editing, policy, cursor, and cells through a mounted surface.</summary>
 public sealed class TextInputSurfaceTests
 {

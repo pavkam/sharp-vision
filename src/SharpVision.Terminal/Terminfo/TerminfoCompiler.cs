@@ -27,7 +27,7 @@ internal static class TerminfoCompiler
             "Design",
             "CA2208:Instantiate argument exceptions correctly",
             Justification = "'source' is the extension receiver, which the analyzer doesn't recognize as a valid ArgumentException paramName yet.")]
-        public Program Compile(ProgramLimits limits)
+        public DescriptionProgram Compile(ProgramLimits limits)
         {
             ArgumentNullException.ThrowIfNull(limits);
 
@@ -307,7 +307,7 @@ internal static class TerminfoCompiler
 
             return conditionalDepth != 0
                 ? throw Malformed("A conditional is missing its end marker.")
-                : new Program(
+                : new DescriptionProgram(
                 source,
                 CollectionsMarshal.AsSpan(operations),
                 CollectionsMarshal.AsSpan(literals),

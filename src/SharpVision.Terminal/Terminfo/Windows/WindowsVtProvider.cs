@@ -163,7 +163,7 @@ internal sealed class WindowsVtProvider: IDescriptionProvider
 
     private static Programs CreatePrograms(ProgramLimits limits)
     {
-        var compiled = new Dictionary<string, Program>(ProgramSpecifications.Length, StringComparer.Ordinal);
+        var compiled = new Dictionary<string, DescriptionProgram>(ProgramSpecifications.Length, StringComparer.Ordinal);
 
         foreach (var specification in ProgramSpecifications)
         {

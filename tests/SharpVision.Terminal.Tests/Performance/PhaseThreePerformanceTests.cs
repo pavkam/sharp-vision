@@ -91,18 +91,18 @@ public sealed class PhaseThreePerformanceTests
         var profile = new TerminalProfile(
             new Description("performance", DescriptionOrigin.Database, Suitability.Usable),
             TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.Indexed256 },
-            new Programs(new Dictionary<string, Program>
+            new Programs(new Dictionary<string, DescriptionProgram>
             {
-                ["cup"] = new Program("\u001b[%i%p1%d;%p2%df"u8),
-                ["sgr0"] = new Program("\u001b[0m"u8),
-                ["clear"] = new Program("\u001b[2J"u8),
-                ["bold"] = new Program("\u001b[1m"u8),
-                ["setaf"] = new Program("\u001b[38;5;%p1%dm"u8),
-                ["setab"] = new Program("\u001b[48;5;%p1%dm"u8),
-                ["civis"] = new Program("\u001b[?25l"u8),
-                ["cnorm"] = new Program("\u001b[?25h"u8),
-                ["Ss"] = new Program("\u001b[%p1%d q"u8),
-                ["Se"] = new Program("\u001b[0 q"u8)
+                ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%df"u8),
+                ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+                ["clear"] = new DescriptionProgram("\u001b[2J"u8),
+                ["bold"] = new DescriptionProgram("\u001b[1m"u8),
+                ["setaf"] = new DescriptionProgram("\u001b[38;5;%p1%dm"u8),
+                ["setab"] = new DescriptionProgram("\u001b[48;5;%p1%dm"u8),
+                ["civis"] = new DescriptionProgram("\u001b[?25l"u8),
+                ["cnorm"] = new DescriptionProgram("\u001b[?25h"u8),
+                ["Ss"] = new DescriptionProgram("\u001b[%p1%d q"u8),
+                ["Se"] = new DescriptionProgram("\u001b[0 q"u8)
             }),
             KeyMap.Empty);
         var interpreter = new Interpreter(ProgramLimits.Default);
@@ -282,17 +282,17 @@ public sealed class PhaseThreePerformanceTests
     [Fact]
     public void Constructor_WhenManyProgramSetsAreCreated_RemainsWithinOpaqueBaseline()
     {
-        var executable = new Dictionary<string, Program>
+        var executable = new Dictionary<string, DescriptionProgram>
         {
-            ["cup"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-            ["sgr0"] = new Program("\u001b[0m"u8),
-            ["clear"] = new Program("\u001b[2J"u8)
+            ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+            ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+            ["clear"] = new DescriptionProgram("\u001b[2J"u8)
         };
-        var opaque = new Dictionary<string, Program>
+        var opaque = new Dictionary<string, DescriptionProgram>
         {
-            ["first"] = new Program("\u001b[%i%p1%d;%p2%dH"u8),
-            ["second"] = new Program("\u001b[0m"u8),
-            ["third"] = new Program("\u001b[2J"u8)
+            ["first"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+            ["second"] = new DescriptionProgram("\u001b[0m"u8),
+            ["third"] = new DescriptionProgram("\u001b[2J"u8)
         };
         _ = ConstructPrograms(executable, 100);
         _ = ConstructPrograms(opaque, 100);
@@ -338,7 +338,7 @@ public sealed class PhaseThreePerformanceTests
         return (minimum, watch.Elapsed);
     }
 
-    private static int ConstructPrograms(IReadOnlyDictionary<string, Program> values, int iterations)
+    private static int ConstructPrograms(IReadOnlyDictionary<string, DescriptionProgram> values, int iterations)
     {
         var count = 0;
 
@@ -404,8 +404,8 @@ public sealed class PhaseThreePerformanceTests
 
     private static void ExpandPrograms(
         Interpreter interpreter,
-        Program cursor,
-        Program color,
+        DescriptionProgram cursor,
+        DescriptionProgram color,
         object?[] cursorParameters,
         object?[] colorParameters,
         ArrayBufferWriter<byte> destination)

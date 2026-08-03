@@ -326,12 +326,12 @@ internal sealed class Provider: IDescriptionProvider
         return values;
     }
 
-    private static Dictionary<string, Program> CompilePrograms(
+    private static Dictionary<string, DescriptionProgram> CompilePrograms(
         IReadOnlyDictionary<string, byte[]> strings,
         List<DescriptionDiagnostic> diagnostics,
         out bool paddedRequired)
     {
-        var programs = new Dictionary<string, Program>(StringComparer.Ordinal);
+        var programs = new Dictionary<string, DescriptionProgram>(StringComparer.Ordinal);
         paddedRequired = false;
 
         foreach (var pair in strings)
@@ -443,7 +443,7 @@ internal sealed class Provider: IDescriptionProvider
 
     private static TerminalCapabilities CreateCapabilities(
         int? colors,
-        IReadOnlyDictionary<string, Program> programs)
+        IReadOnlyDictionary<string, DescriptionProgram> programs)
     {
         var supported = new Feature(Support.Supported, Origin.Database);
         var colorDepth = colors switch
@@ -470,10 +470,10 @@ internal sealed class Provider: IDescriptionProvider
         };
     }
 
-    private static bool HasAll(IReadOnlyDictionary<string, Program> programs, params string[] names) =>
+    private static bool HasAll(IReadOnlyDictionary<string, DescriptionProgram> programs, params string[] names) =>
         names.All(name => programs.TryGetValue(name, out var program) && program.IsCompiled);
 
-    private static bool HasAny(IReadOnlyDictionary<string, Program> programs, params string[] names) =>
+    private static bool HasAny(IReadOnlyDictionary<string, DescriptionProgram> programs, params string[] names) =>
         names.Any(name => programs.TryGetValue(name, out var program) && program.IsCompiled);
 
     private static bool IsRequiredCandidate(string name) =>

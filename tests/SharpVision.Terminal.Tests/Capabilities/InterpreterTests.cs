@@ -517,11 +517,11 @@ public sealed class InterpreterTests
 
         // Act / Assert
         _ = Should.Throw<InvalidOperationException>(() =>
-            interpreter.Write(Program.Intrinsic, [], destination));
+            interpreter.Write(DescriptionProgram.Intrinsic, [], destination));
         _ = Should.Throw<InvalidOperationException>(() =>
             interpreter.Write(default, [], destination));
         _ = Should.Throw<InvalidOperationException>(() =>
-            interpreter.Write(new Program([]), [], destination));
+            interpreter.Write(new DescriptionProgram([]), [], destination));
         destination.WrittenCount.ShouldBe(0);
     }
 
