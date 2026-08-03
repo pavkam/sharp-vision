@@ -6,7 +6,8 @@ SOLUTION := SharpVision.slnx
 SHOWCASE := examples/Showcase/SharpVision.Showcase.csproj
 BOOTSTRAP_PACKAGES := artifacts/bootstrap-packages
 RESTORE_PACKAGES := artifacts/restore-packages
-NUGET_ORG := https://api.nuget.org/v3/index.json
+# Package sources (nuget.org, the bootstrap-packages folder) live in NuGet.Config, not on any
+# `dotnet restore --source` command line -- see that file's comment for why.
 
 help:
 	@echo "SharpVision - Available Make Targets"
@@ -28,8 +29,8 @@ bootstrap-packages:
 	@echo "📦 Bootstrapping SharpVision packages..."
 	@rm -rf $(BOOTSTRAP_PACKAGES) $(RESTORE_PACKAGES)
 	@mkdir -p $(BOOTSTRAP_PACKAGES)
-	@dotnet restore src/SharpVision.Terminal/SharpVision.Terminal.csproj --source $(NUGET_ORG)
-	@dotnet restore src/SharpVision/SharpVision.csproj --source $(NUGET_ORG)
+	@dotnet restore src/SharpVision.Terminal/SharpVision.Terminal.csproj
+	@dotnet restore src/SharpVision/SharpVision.csproj
 	@dotnet build src/SharpVision.Terminal/SharpVision.Terminal.csproj --configuration Release --no-restore --target Rebuild
 	@dotnet build src/SharpVision/SharpVision.csproj --configuration Release --no-restore --target Rebuild
 	@dotnet pack src/SharpVision.Terminal/SharpVision.Terminal.csproj --configuration Release --no-build --no-restore -p:IsPackable=true --output $(BOOTSTRAP_PACKAGES)
@@ -38,7 +39,7 @@ bootstrap-packages:
 
 restore: bootstrap-packages
 	@echo "📦 Restoring dependencies..."
-	@dotnet restore $(SOLUTION) --packages $(RESTORE_PACKAGES) --source $(BOOTSTRAP_PACKAGES) --source $(NUGET_ORG)
+	@dotnet restore $(SOLUTION) --packages $(RESTORE_PACKAGES)
 	@npm ci
 	@echo "✅ Dependencies restored."
 
@@ -52,12 +53,12 @@ run:
 
 test: build
 	@echo "🧪 Running tests..."
-	@dotnet test --solution $(SOLUTION) --configuration Release --no-build --minimum-expected-tests 4300 --timeout 300s
+	@dotnet test --solution $(SOLUTION) --configuration Release --no-build --minimum-expected-tests 4307 --timeout 300s
 	@npm run test:docs
 	@echo "✅ Tests complete."
 
 test-ci: build
-	@dotnet test --project tests/SharpVision.Terminal.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 1700 --timeout $${TEST_TIMEOUT:-300s} --coverage --coverage-output-format cobertura --report-xunit-trx
+	@dotnet test --project tests/SharpVision.Terminal.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 1707 --timeout $${TEST_TIMEOUT:-300s} --coverage --coverage-output-format cobertura --report-xunit-trx
 	@dotnet test --project tests/SharpVision.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 2600 --timeout $${TEST_TIMEOUT:-300s} --coverage --coverage-settings tests/SharpVision.Tests/coverage.config --coverage-output-format cobertura --report-xunit-trx --parallel none
 	@dotnet test --project tests/SharpVision.Compatibility.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 3 --timeout 300s --report-xunit-trx
 	@node scripts/validate-control-coverage.mjs --results tests/SharpVision.Tests/bin/$${CONFIGURATION:-Release}/net10.0/TestResults --minimum 0.85

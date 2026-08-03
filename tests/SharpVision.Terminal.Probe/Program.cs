@@ -4,6 +4,7 @@
 namespace SharpVision.Terminal.Probe;
 
 using System.Globalization;
+using System.Runtime.Versioning;
 
 using Capabilities;
 
@@ -12,12 +13,27 @@ using Terminfo.Ncurses;
 /// <summary>Runs one process-isolated terminal-description lookup for integration tests.</summary>
 internal static class Program
 {
-    /// <summary>Loads the requested description and writes only bounded semantic facts.</summary>
+    /// <summary>
+    /// Dispatches to the terminal-description probe, or, when the first argument is
+    /// <c>conpty</c>, to <see cref="ConPtyProbe"/> for the Windows pseudo-console fixture
+    /// (see <see cref="ConPtyProbe"/> and issue #35).
+    /// </summary>
     /// <param name="arguments">An optional exact terminal name; otherwise <c>TERM</c> is used.</param>
     /// <returns>Zero after a typed result is written, including unavailable and failed results.</returns>
     internal static int Main(string[] arguments)
     {
         ArgumentNullException.ThrowIfNull(arguments);
+
+        if (arguments.Length > 0 && string.Equals(arguments[0], "conpty", StringComparison.Ordinal))
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                Console.Error.WriteLine("The conpty probe scenario requires Windows.");
+                return 1;
+            }
+
+            return RunConPtyProbe(arguments[1..]);
+        }
 
         var terminalName = arguments.Length > 0
             ? arguments[0]
@@ -51,4 +67,8 @@ internal static class Program
 
         return 0;
     }
+
+    [SupportedOSPlatform("windows")]
+    private static int RunConPtyProbe(string[] arguments) =>
+        ConPtyProbe.RunAsync(arguments).GetAwaiter().GetResult();
 }
