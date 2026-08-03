@@ -6,7 +6,15 @@ namespace SharpVision.Terminal.Tests.Support;
 using SharpVision.Terminal.Input;
 
 /// <summary>Records typed input and complete protocol events in delivery order.</summary>
-internal sealed class RecordingProtocolSink: IProtocolSink
+internal sealed class RecordingProtocolSink:
+    IProtocolSink,
+    IPaletteResponseSink,
+    IMetricsResponseSink,
+    IStatusResponseSink,
+    ICapabilityResponseSink,
+    IKittyGraphicsResponseSink,
+    IClipboardReplySink,
+    IKittyClipboardPacketSink
 {
     /// <summary>Gets key events in delivery order.</summary>
     internal List<Stroke> Strokes { get; } = [];

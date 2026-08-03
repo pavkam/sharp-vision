@@ -26,24 +26,27 @@ policy remains independently authoritative for other C1 bytes. Escape signatures
 retain their intermediate bytes; an exact described signature is checked before
 an otherwise unsupported Escape intermediate sequence becomes a diagnostic.
 
-`IProtocolSink.Response` overloads receive recognized numeric DA/DSR/DECRPM and
-Kitty keyboard replies, immutable `PaletteResponse` values for OSC 4/10/11, and
-immutable `MetricsResponse` values for window/cell geometry. Validated DECRQSS
-and XTGETTCAP replies use owned `StatusResponse` and `CapabilityResponse`
-overloads. The palette and metrics overloads adapt through the original
-numeric-response callback when a sink does not override them. A legacy protocol
-sink which does not override either DCS overload receives one synthetic
-`DiagnosticCode.Unsupported` DCS diagnostic through its inherited input
-callback. That diagnostic has zero offset and discarded bytes because the typed
-compatibility callback has no raw payload. OSC 10/11 preserve normalized red,
-green, blue; OSC 4 supplies index, red, green, blue; and metrics supply width,
-height. Kitty graphics APC payloads beginning with `G` use the strict owned
-`Kitty.Graphics.Response` callback; its default compatibility path reports a
-redacted unsupported APC diagnostic. Built-in sinks override every typed
-overload they consume, so discovery still receives the typed value rather than
-the compatibility diagnostic. `IProtocolSink.Sequence` receives completed OSC,
-DCS, APC, PM, and SOS values without a registered typed consumer. A recognized
-response is never emitted again as input or a raw sequence.
+`IProtocolSink` declares only the numeric `Response` and `Sequence` members;
+every vendor reply family is an optional extension interface a sink implements
+separately, for example `IPaletteResponseSink` for OSC 4/10/11 or
+`IMetricsResponseSink` for window/cell geometry. `Decoder` dispatches each
+decoded reply to the matching extension interface when the sink implements it,
+and otherwise adapts it through the base numeric `Response` callback or a
+synthetic diagnostic, so a sink is never required to implement more than
+`IProtocolSink` to observe every reply in some form. Palette and metrics replies
+adapt through the numeric-response callback when their extension interface is
+absent. A sink without `IStatusResponseSink` or `ICapabilityResponseSink`
+receives one synthetic `DiagnosticCode.Unsupported` DCS diagnostic through its
+inherited input callback instead; that diagnostic has zero offset and discarded
+bytes because the adapted compatibility path has no raw payload. OSC 10/11
+preserve normalized red, green, blue; OSC 4 supplies index, red, green, blue;
+and metrics supply width, height. Kitty graphics APC payloads beginning with `G`
+dispatch to `IKittyGraphicsResponseSink`; absent that interface, the fallback
+reports a redacted unsupported APC diagnostic. Built-in sinks implement every
+extension interface they consume, so discovery still receives the typed value
+rather than the compatibility diagnostic. `IProtocolSink.Sequence` receives
+completed OSC, DCS, APC, PM, and SOS values without a registered typed consumer.
+A recognized response is never emitted again as input or a raw sequence.
 
 Validated queried metrics refine pixel-to-cell inference only after their
 ordered response callback. A complete local resize grid has precedence. Earlier
@@ -96,12 +99,12 @@ notification services register typed consumers below that fallback boundary.
 ## Recovery and fallback
 
 Malformed, interrupted, truncated, and oversized sequences retain the
-[parser recovery contract](ecma-48.md#streaming-grammar). A legacy `Decoder`
-sink that does not implement `IProtocolSink` receives
-`DiagnosticCode.Unsupported` for a valid reply or string instead of silently
-losing it. A legacy `IProtocolSink` implementation which predates the typed DCS
-overloads receives the synthetic no-payload unsupported diagnostic described
-above instead of silently dropping DECRQSS or XTGETTCAP.
+[parser recovery contract](ecma-48.md#streaming-grammar). A `Decoder` sink that
+does not implement `IProtocolSink` receives `DiagnosticCode.Unsupported` for a
+valid reply or string instead of silently losing it. An `IProtocolSink`
+implementation that does not additionally implement `IStatusResponseSink` or
+`ICapabilityResponseSink` receives the synthetic no-payload unsupported
+diagnostic described above instead of silently dropping DECRQSS or XTGETTCAP.
 
 Unknown valid strings are observable through `IProtocolSink.Sequence`; their
 presence does not enable a capability. Strict mode may promote the redacted

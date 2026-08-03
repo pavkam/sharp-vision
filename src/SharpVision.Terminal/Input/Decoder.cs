@@ -588,7 +588,7 @@ public sealed class Decoder: IDisposable
 
         if (_protocolSink is { } protocolSink)
         {
-            protocolSink.Response(in metrics);
+            protocolSink.Dispatch(in metrics);
             _cellMetricsResolver.Apply(in metrics);
         }
         else
@@ -903,7 +903,7 @@ public sealed class Decoder: IDisposable
 
         if (_protocolSink is { } protocolSink)
         {
-            protocolSink.Response(in response);
+            protocolSink.Dispatch(in response);
         }
         else
         {
@@ -922,7 +922,7 @@ public sealed class Decoder: IDisposable
 
         if (_protocolSink is { } clipboardSink)
         {
-            clipboardSink.Response(Clipboard.Osc52.Decode(value, _options.TransferLimits.MaxClipboardBytes));
+            clipboardSink.Dispatch(Clipboard.Osc52.Decode(value, _options.TransferLimits.MaxClipboardBytes));
         }
         else
         {
@@ -944,7 +944,7 @@ public sealed class Decoder: IDisposable
 
         if (_protocolSink is { } capabilitiesSink)
         {
-            capabilitiesSink.Response(response);
+            capabilitiesSink.Dispatch(response);
         }
         else
         {
@@ -966,7 +966,7 @@ public sealed class Decoder: IDisposable
 
         if (_protocolSink is { } kittyClipboardSink)
         {
-            kittyClipboardSink.Response(Kitty.Clipboard.Packet.Parse(value, _options.TransferLimits));
+            kittyClipboardSink.Dispatch(Kitty.Clipboard.Packet.Parse(value, _options.TransferLimits));
         }
         else
         {
@@ -988,7 +988,7 @@ public sealed class Decoder: IDisposable
 
         if (_protocolSink is { } graphicsSink)
         {
-            graphicsSink.Response(Kitty.Graphics.Response.Parse(value, _options.TransferLimits));
+            graphicsSink.Dispatch(Kitty.Graphics.Response.Parse(value, _options.TransferLimits));
         }
         else
         {
@@ -1388,7 +1388,7 @@ public sealed class Decoder: IDisposable
 
         if (_protocolSink is { } statusSink)
         {
-            statusSink.Response(in status);
+            statusSink.Dispatch(in status);
 
             if (status.Name == StatusName.Unknown && status.IsValid)
             {
@@ -1418,7 +1418,7 @@ public sealed class Decoder: IDisposable
         if (_protocolSink is { } capabilitySink)
         {
             Debug.Assert(capability is not null, "A successful XTGETTCAP parse owns a response.");
-            capabilitySink.Response(capability);
+            capabilitySink.Dispatch(capability);
         }
         else
         {

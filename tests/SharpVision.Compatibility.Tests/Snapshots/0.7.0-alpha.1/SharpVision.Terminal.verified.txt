@@ -5,6 +5,14 @@
 [assembly: System.Runtime.Versioning.TargetFramework(".NETCoreApp,Version=v10.0", FrameworkDisplayName=".NET 10.0")]
 namespace SharpVision.Terminal.Abstractions
 {
+    public interface ICapabilityResponseSink
+    {
+        void Response(SharpVision.Terminal.Xterm.CapabilityResponse value);
+    }
+    public interface IClipboardReplySink
+    {
+        void Response(in SharpVision.Terminal.Clipboard.ClipboardReply value);
+    }
     public interface IInputSink
     {
         void Input(SharpVision.Terminal.Input.Paste value);
@@ -14,17 +22,29 @@ namespace SharpVision.Terminal.Abstractions
         void Input(in SharpVision.Terminal.Input.Text value);
         void Input(in SharpVision.Terminal.Protocols.Diagnostic value);
     }
-    public interface IProtocolSink : SharpVision.Terminal.Abstractions.IInputSink
+    public interface IItermCapabilitiesResponseSink
+    {
+        void Response(SharpVision.Terminal.Xterm.ItermCapabilitiesResponse value);
+    }
+    public interface IKittyClipboardPacketSink
     {
         void Response(SharpVision.Terminal.Kitty.Clipboard.Packet value);
+    }
+    public interface IKittyGraphicsResponseSink
+    {
         void Response(SharpVision.Terminal.Kitty.Graphics.Response value);
-        void Response(SharpVision.Terminal.Xterm.CapabilityResponse value);
-        void Response(SharpVision.Terminal.Xterm.ItermCapabilitiesResponse value);
-        void Response(in SharpVision.Terminal.Clipboard.ClipboardReply value);
+    }
+    public interface IMetricsResponseSink
+    {
         void Response(in SharpVision.Terminal.Xterm.MetricsResponse value);
+    }
+    public interface IPaletteResponseSink
+    {
         void Response(in SharpVision.Terminal.Xterm.PaletteResponse value);
+    }
+    public interface IProtocolSink : SharpVision.Terminal.Abstractions.IInputSink
+    {
         void Response(in SharpVision.Terminal.Xterm.Response value);
-        void Response(in SharpVision.Terminal.Xterm.StatusResponse value);
         void Sequence(SharpVision.Terminal.Protocols.ProtocolSequence value);
     }
     public interface IResizeSource : System.IAsyncDisposable
@@ -48,6 +68,10 @@ namespace SharpVision.Terminal.Abstractions
         void Fault(System.Exception exception);
         void Profile(SharpVision.Terminal.Capabilities.Capabilities value);
         void Resize(in SharpVision.Terminal.Geometry.Dimensions value);
+    }
+    public interface IStatusResponseSink
+    {
+        void Response(in SharpVision.Terminal.Xterm.StatusResponse value);
     }
     public interface ITransport : System.IAsyncDisposable
     {

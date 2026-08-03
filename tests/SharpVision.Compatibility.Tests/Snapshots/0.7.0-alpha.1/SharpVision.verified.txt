@@ -4,7 +4,7 @@
 namespace SharpVision
 {
     [System.Diagnostics.DebuggerDisplay("Application {_screen?.GetType().Name,nq}")]
-    public sealed class Application : SharpVision.Terminal.Abstractions.IInputSink, SharpVision.Terminal.Abstractions.IProtocolSink, SharpVision.Terminal.Abstractions.ISink, System.IAsyncDisposable
+    public sealed class Application : SharpVision.Terminal.Abstractions.ICapabilityResponseSink, SharpVision.Terminal.Abstractions.IClipboardReplySink, SharpVision.Terminal.Abstractions.IInputSink, SharpVision.Terminal.Abstractions.IKittyClipboardPacketSink, SharpVision.Terminal.Abstractions.IMetricsResponseSink, SharpVision.Terminal.Abstractions.IPaletteResponseSink, SharpVision.Terminal.Abstractions.IProtocolSink, SharpVision.Terminal.Abstractions.ISink, SharpVision.Terminal.Abstractions.IStatusResponseSink, System.IAsyncDisposable
     {
         public Application(SharpVision.Controls.Control root, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Abstractions.IResizeSource resize, SharpVision.Terminal.Runtime.Options? options = null, System.IAsyncDisposable? hostLease = null, System.TimeProvider? timeProvider = null) { }
         public SharpVision.Windows.Window? ActiveWindow { get; }
