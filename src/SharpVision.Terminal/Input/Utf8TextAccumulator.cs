@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Input;
 
 /// <summary>
 /// Incrementally decodes borrowed UTF-8 text bytes into Unicode scalar values, extracted from
-/// <see cref="Decoder"/> as one of its four self-contained protocol decoders (see #97).
+/// <see cref="InputDecoder"/> as one of its four self-contained protocol decoders (see #97).
 /// </summary>
 /// <remarks>
 /// A multi-byte UTF-8 sequence that spans two <see cref="Process"/> calls is buffered until the

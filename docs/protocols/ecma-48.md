@@ -25,12 +25,12 @@ Default limits bound parameter count, parameter magnitude, intermediate bytes,
 and string payload length. Options may lower or raise limits but cannot disable
 boundedness.
 
-The typed API is `SharpVision.Terminal.Protocols.Parser`. It reports borrowed
-spans synchronously through `ISequenceSink`; a sink must copy any value retained
-after its callback. `Complete` reports one truncated sequence and returns to
-ground, `Reset` discards partial state, and disposal returns cleared pooled
-storage. The warmed CSI path has a regression test requiring zero managed bytes
-per event.
+The typed API is `SharpVision.Terminal.Protocols.ProtocolParser`. It reports
+borrowed spans synchronously through `ISequenceSink`; a sink must copy any value
+retained after its callback. `Complete` reports one truncated sequence and
+returns to ground, `Reset` discards partial state, and disposal returns cleared
+pooled storage. The warmed CSI path has a regression test requiring zero managed
+bytes per event.
 
 `ParserLimits.Default` currently allows 256 parameter bytes, 16 intermediate
 bytes, and 1 MiB per terminal string. `TransferLimits.Default` allows 16 MiB per

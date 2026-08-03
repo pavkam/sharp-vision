@@ -55,7 +55,7 @@ internal sealed class VirtualScreen: ISequenceSink
     /// <param name="value">The encoded bytes.</param>
     internal void Apply(ReadOnlySpan<byte> value)
     {
-        using Parser parser = new();
+        using ProtocolParser parser = new();
         var sink = this;
         parser.Parse(value, ref sink);
         parser.Complete(ref sink);

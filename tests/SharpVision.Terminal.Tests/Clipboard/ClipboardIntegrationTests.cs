@@ -40,7 +40,7 @@ public sealed class ClipboardIntegrationTests
         for (var split = 0; split <= response.Length; split++)
         {
             using var transaction = Transaction.Read(id: "req-1");
-            using Parser parser = new();
+            using ProtocolParser parser = new();
             var sink = new TransactionSink(transaction);
 
             parser.Parse(response.AsSpan(0, split), ref sink);
@@ -99,7 +99,7 @@ public sealed class ClipboardIntegrationTests
 
     private static Packet[] ParsePackets(ReadOnlySpan<byte> input)
     {
-        using Parser parser = new();
+        using ProtocolParser parser = new();
         var sink = new RecordingSink();
         parser.Parse(input, ref sink);
 

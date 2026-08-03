@@ -38,7 +38,7 @@ public sealed class ParserFragmentationTests
     public void Parse_WhenParameterLimitIsExceeded_ReportsOnceAndRecovers()
     {
         var limits = ParserLimits.Default with { MaxParameterBytes = 2 };
-        using Parser parser = new(limits);
+        using ProtocolParser parser = new(limits);
         var sink = new RecordingSink();
 
         parser.Parse("\u001b[123mX"u8, ref sink);
@@ -56,7 +56,7 @@ public sealed class ParserFragmentationTests
     public void Parse_WhenIntermediateLimitIsExceeded_ReportsOnceAndRecovers()
     {
         var limits = ParserLimits.Default with { MaxIntermediateBytes = 1 };
-        using Parser parser = new(limits);
+        using ProtocolParser parser = new(limits);
         var sink = new RecordingSink();
 
         parser.Parse("\u001b($BX"u8, ref sink);
@@ -72,7 +72,7 @@ public sealed class ParserFragmentationTests
     [Fact]
     public void Parse_WhenParameterFollowsIntermediate_ReportsAndRecovers()
     {
-        using Parser parser = new();
+        using ProtocolParser parser = new();
         var sink = new RecordingSink();
 
         parser.Parse("\u001b[$1pX"u8, ref sink);
@@ -88,7 +88,7 @@ public sealed class ParserFragmentationTests
     [Fact]
     public void Complete_WhenSequenceIsTruncated_ReportsOnceAndReturnsToGround()
     {
-        using Parser parser = new();
+        using ProtocolParser parser = new();
         var sink = new RecordingSink();
 
         parser.Parse("\u001b[12"u8, ref sink);
@@ -108,7 +108,7 @@ public sealed class ParserFragmentationTests
     [Fact]
     public void Reset_WhenSequenceIsPartial_DiscardsWithoutDiagnostic()
     {
-        using Parser parser = new();
+        using ProtocolParser parser = new();
         var sink = new RecordingSink();
 
         parser.Parse("\u001b[12"u8, ref sink);
@@ -125,7 +125,7 @@ public sealed class ParserFragmentationTests
     [Fact]
     public void Parse_WhenMalformedCsiPrecedesKnownCsi_RecoversKnownSequence()
     {
-        using Parser parser = new();
+        using ProtocolParser parser = new();
         var sink = new RecordingSink();
         byte[] input =
         [
@@ -153,7 +153,7 @@ public sealed class ParserFragmentationTests
     [Fact]
     public void Dispose_WhenCalled_PreventsFurtherUseAndRemainsIdempotent()
     {
-        var parser = new Parser();
+        var parser = new ProtocolParser();
         var sink = new RecordingSink();
 
         parser.Dispose();

@@ -216,7 +216,7 @@ public static class Writer
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="enabled">Whether paste events are enabled.</param>
     public static void PasteEvents(ProtocolWriter writer, bool enabled) =>
-        Modes.ClipboardPasteEvents(writer, enabled);
+        ProtocolModes.ClipboardPasteEvents(writer, enabled);
 
     private static int AppendBase64(ReadOnlySpan<byte> value, Span<byte> destination)
     {

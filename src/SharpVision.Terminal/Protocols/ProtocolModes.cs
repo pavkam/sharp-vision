@@ -8,12 +8,12 @@ namespace SharpVision.Terminal.Protocols;
 /// </summary>
 /// <example>
 /// <code>
-/// Modes.AlternateScreen(writer, enabled: true);
-/// Modes.BracketedPaste(writer, enabled: true);
+/// ProtocolModes.AlternateScreen(writer, enabled: true);
+/// ProtocolModes.BracketedPaste(writer, enabled: true);
 /// </code>
 /// </example>
 [PublicAPI]
-public static class Modes
+public static class ProtocolModes
 {
     /// <summary>Sets or resets a positive DEC private mode.</summary>
     /// <param name="writer">The validated protocol writer.</param>

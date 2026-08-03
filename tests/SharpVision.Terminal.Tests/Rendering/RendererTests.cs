@@ -420,12 +420,12 @@ public sealed class RendererTests
         transport.Writes[0].AsSpan().StartsWith("\u001b[?2026h"u8).ShouldBeTrue();
         transport.Writes[0].AsSpan().EndsWith("\u001b[?2026l"u8).ShouldBeTrue();
 
-        // The framing must be byte-identical to Modes.SynchronizedOutput's own encoding rather
+        // The framing must be byte-identical to ProtocolModes.SynchronizedOutput's own encoding rather
         // than a hand-typed literal that happens to agree with it today (see #93 item 2).
         var expectedBegin = new ArrayBufferWriter<byte>();
-        Modes.SynchronizedOutput(new Writer(expectedBegin), enabled: true);
+        ProtocolModes.SynchronizedOutput(new Writer(expectedBegin), enabled: true);
         var expectedEnd = new ArrayBufferWriter<byte>();
-        Modes.SynchronizedOutput(new Writer(expectedEnd), enabled: false);
+        ProtocolModes.SynchronizedOutput(new Writer(expectedEnd), enabled: false);
         transport.Writes[0].AsSpan()[..expectedBegin.WrittenCount].ToArray().ShouldBe(expectedBegin.WrittenSpan.ToArray());
         transport.Writes[0].AsSpan()[^expectedEnd.WrittenCount..].ToArray().ShouldBe(expectedEnd.WrittenSpan.ToArray());
     }

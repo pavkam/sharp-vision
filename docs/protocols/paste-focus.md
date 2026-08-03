@@ -23,12 +23,12 @@ Both modes are managed through lifecycle leases: fragmented begin/end markers
 are decoded, immutable paste/focus events are emitted on the dispatcher, and the
 modes are restored at exit.
 
-`Input.Decoder` recognizes CSI 200~/201~ and switches to raw paste mode after
-the begin marker. A six-byte exact matcher holds only a possible end-marker
-prefix; mismatches return the held bytes to payload, so embedded ESC and every
-proper marker prefix remain data. Parser callbacks are bypassed until the exact
-terminator, meaning paste content can never trigger keys, focus, mouse, OSC, or
-CSI handling.
+`Input.InputDecoder` recognizes CSI 200~/201~ and switches to raw paste mode
+after the begin marker. A six-byte exact matcher holds only a possible
+end-marker prefix; mismatches return the held bytes to payload, so embedded ESC
+and every proper marker prefix remain data. Parser callbacks are bypassed until
+the exact terminator, meaning paste content can never trigger keys, focus,
+mouse, OSC, or CSI handling.
 
 Payload retention is capped by `Input.Options.MaxPasteBytes`. Overflow clears
 retained bytes, discards through the terminator, reports one structural

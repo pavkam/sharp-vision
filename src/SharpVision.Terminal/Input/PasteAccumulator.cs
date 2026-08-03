@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Input;
 
 /// <summary>
 /// Owns buffered bytes and end-marker matching for one in-progress bracketed paste, extracted
-/// from <see cref="Decoder"/> as one of its four self-contained protocol decoders (see #97).
+/// from <see cref="InputDecoder"/> as one of its four self-contained protocol decoders (see #97).
 /// </summary>
 /// <remarks>
 /// Rents its buffer from <see cref="ArrayPool{T}.Shared"/> and returns it only on

@@ -64,7 +64,7 @@ public static class Fragmentation
 
     private static string[] Parse(IEnumerable<byte[]> reads, ParserLimits? limits)
     {
-        using Parser parser = new(limits);
+        using ProtocolParser parser = new(limits);
         var sink = new RecordingSink();
 
         foreach (var read in reads)

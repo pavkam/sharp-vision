@@ -24,11 +24,11 @@ SharpVision decodes X10 and VT200 compatibility, SGR cell/pixel, wheel, motion,
 extra buttons, modifiers, and Kitty's pixel-mode leave notification. It encodes
 safe mode leases and restores previous tracking on shutdown.
 
-`Input.Decoder` accepts three compatibility families: the three UTF-8 scalar
-fields following X10 `CSI M`, urxvt decimal reports, and SGR reports with `<`.
-All fragmented fields remain bounded. Button codes preserve primary, middle,
-secondary, back, and forward buttons; modifier bits, motion, release, four wheel
-directions, and the zero-coordinate leave sentinel remain distinct.
+`Input.InputDecoder` accepts three compatibility families: the three UTF-8
+scalar fields following X10 `CSI M`, urxvt decimal reports, and SGR reports with
+`<`. All fragmented fields remain bounded. Button codes preserve primary,
+middle, secondary, back, and forward buttons; modifier bits, motion, release,
+four wheel directions, and the zero-coordinate leave sentinel remain distinct.
 
 Cell reports subtract the wire's one-based origin exactly once. With
 `Input.Options.PixelMouse`, SGR coordinates are retained as zero-based pixels;

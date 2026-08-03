@@ -13,12 +13,12 @@ using Xterm;
 /// borrowed only for each synchronous call; emitted values retain none of them.
 /// </remarks>
 [PublicAPI]
-public sealed class Decoder: IDisposable
+public sealed class InputDecoder: IDisposable
 {
     private readonly IInputSink _sink;
     private readonly IProtocolSink? _protocolSink;
     private readonly Options _options;
-    private readonly Parser _parser;
+    private readonly ProtocolParser _parser;
     private readonly PasteAccumulator _pasteAccumulator;
     private KeySequenceMatcher? _keyMatcher;
     private byte[]? _keyReplay;
@@ -40,7 +40,7 @@ public sealed class Decoder: IDisposable
     /// <param name="options">Finite policy, or null for conservative defaults.</param>
     /// <param name="timeProvider">The Escape-deadline clock, or null for system time.</param>
     /// <exception cref="ArgumentNullException"><paramref name="sink"/> is null.</exception>
-    public Decoder(
+    public InputDecoder(
         IInputSink sink,
         Options? options = null,
         TimeProvider? timeProvider = null)
@@ -50,7 +50,7 @@ public sealed class Decoder: IDisposable
         _protocolSink = sink as IProtocolSink;
         _options = options ?? Options.Default;
         _timeProvider = timeProvider ?? TimeProvider.System;
-        _parser = new Parser(_options.ParserLimits);
+        _parser = new ProtocolParser(_options.ParserLimits);
         _pasteAccumulator = new PasteAccumulator(_options.MaxPasteBytes);
         _keyMatcher = _options.KeyMap.FallbackBindings.Count == 0
             ? null

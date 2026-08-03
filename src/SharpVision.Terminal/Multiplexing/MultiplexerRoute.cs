@@ -262,7 +262,7 @@ public sealed class MultiplexerRoute
     private static bool IsCompleteQueryReply(ReadOnlySpan<byte> reply)
     {
         var sink = new ReplyValidationSink();
-        using var decoder = new Decoder(sink);
+        using var decoder = new InputDecoder(sink);
         decoder.Decode(reply);
         decoder.Complete();
         return sink.IsValid;

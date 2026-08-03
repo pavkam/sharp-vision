@@ -79,7 +79,7 @@ internal sealed class ComponentScreen: ISequenceSink
     {
         lock (_gate)
         {
-            using Parser parser = new();
+            using ProtocolParser parser = new();
             var sink = this;
             parser.Parse(value, ref sink);
             parser.Complete(ref sink);

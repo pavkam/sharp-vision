@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Tests.Input;
 
 using SharpVision.Terminal.Input;
 
-/// <summary>Verifies the bracketed-paste byte accumulator extracted from Decoder (see #97).</summary>
+/// <summary>Verifies the bracketed-paste byte accumulator extracted from InputDecoder (see #97).</summary>
 public sealed class PasteAccumulatorTests
 {
     /// <summary>Verifies plain bytes accumulate until the end marker completes the paste.</summary>

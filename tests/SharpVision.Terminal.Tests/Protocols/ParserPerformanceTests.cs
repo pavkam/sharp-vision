@@ -18,7 +18,7 @@ public sealed class ParserPerformanceTests
     {
         const int maxPayload = 1_024;
         var limits = ParserLimits.Default with { MaxStringBytes = maxPayload };
-        using Parser parser = new(limits);
+        using ProtocolParser parser = new(limits);
         var sink = new RecordingSink();
         var input = new byte[2 * 1_024 * 1_024];
         input[0] = 0x1b;
@@ -46,7 +46,7 @@ public sealed class ParserPerformanceTests
     [Fact]
     public void Parse_WhenCsiLoopIsWarm_AllocatesNoManagedBytes()
     {
-        using Parser parser = new();
+        using ProtocolParser parser = new();
         var sink = new CountingSink();
         var input = "\u001b[2J"u8;
 

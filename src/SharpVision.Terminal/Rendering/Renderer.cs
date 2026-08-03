@@ -687,7 +687,7 @@ public sealed class Renderer: IDisposable
     private static byte[] EncodeSynchronizedOutput(bool enabled)
     {
         var scratch = new ArrayBufferWriter<byte>();
-        Modes.SynchronizedOutput(new Writer(scratch), enabled);
+        ProtocolModes.SynchronizedOutput(new Writer(scratch), enabled);
         return scratch.WrittenSpan.ToArray();
     }
 }

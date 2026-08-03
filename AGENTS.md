@@ -78,9 +78,15 @@ in the protocol document.
 - Prefer `Rune`, `Span<T>`, `ReadOnlySpan<T>`, `Memory<T>`, `ReadOnlyMemory<T>`,
   and `IBufferWriter<T>` in text, protocol, and rendering paths. Do not reduce
   Unicode input to `char` or allocate strings in hot loops.
-- Prefer contextual identifiers. Use `Capabilities`, `Cell`, and `Button`, not
-  `TerminalCapabilities`, `TerminalCell`, or `ButtonControl` when the namespace
-  already provides context.
+- A type name must identify the type's purpose on its own, without leaning on
+  its namespace for context. Use `XtermCapabilitiesResponse`, not `Response`;
+  `MultiplexerRoute`, not `Route`. A bare generic noun (`Parser`, `Decoder`,
+  `State`, `Result`, `Data`, `Info`, `Support`) forces every reader to resolve
+  it through a `using` directive and collides across sibling namespaces. Short
+  names stay acceptable only where the bare noun genuinely is the whole concept
+  and nothing else in the assembly could plausibly share it — `Cell`, `Rect`,
+  `Color`, `Button` — not merely where the immediate namespace happens to
+  disambiguate it today.
 - Avoid repeated prefixes and suffixes across related members.
 - Validate every argument received by a public method, constructor, indexer, or
   property setter before changing observable state.

@@ -494,7 +494,7 @@ public sealed class DescriptionKeyTests
             ]),
             useAnsiKeyGrammar: false);
         var ownership = DecoderOwnershipProbe.CreateAfterRematch(options);
-        var decoder = ownership.Decoder;
+        var decoder = ownership.InputDecoder;
 
         DecoderOwnershipProbe.Dispose(decoder);
         decoder.Dispose();

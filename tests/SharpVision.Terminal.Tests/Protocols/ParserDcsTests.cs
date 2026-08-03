@@ -12,7 +12,7 @@ public sealed class ParserDcsTests
     [Fact]
     public void Parse_WhenDcsIsComplete_DeliversHeaderAndPayload()
     {
-        using Parser parser = new();
+        using ProtocolParser parser = new();
         var sink = new RecordingSink();
 
         parser.Parse("\u001bP1;2$qdata\u001b\\"u8, ref sink);
@@ -28,7 +28,7 @@ public sealed class ParserDcsTests
     [Fact]
     public void Parse_WhenDcsContainsBell_PreservesBellUntilSt()
     {
-        using Parser parser = new();
+        using ProtocolParser parser = new();
         var sink = new RecordingSink();
 
         parser.Parse("\u001bPqa\ab\u001b\\"u8, ref sink);
@@ -46,7 +46,7 @@ public sealed class ParserDcsTests
     public void Parse_WhenDcsHeaderExceedsLimit_ReportsAtStAndRecovers()
     {
         var limits = ParserLimits.Default with { MaxParameterBytes = 2 };
-        using Parser parser = new(limits);
+        using ProtocolParser parser = new(limits);
         var sink = new RecordingSink();
 
         parser.Parse("\u001bP123qsecret\u001b\\X"u8, ref sink);
@@ -62,7 +62,7 @@ public sealed class ParserDcsTests
     public void Parse_WhenStringPayloadExceedsLimit_ReportsAtStAndRecovers()
     {
         var limits = ParserLimits.Default with { MaxStringBytes = 4 };
-        using Parser parser = new(limits);
+        using ProtocolParser parser = new(limits);
         var sink = new RecordingSink();
 
         parser.Parse("\u001b]12345\u001b\\X"u8, ref sink);
@@ -82,7 +82,7 @@ public sealed class ParserDcsTests
     public void Parse_WhenIgnoredStringHasFalseEscCandidate_CountsItAsDiscarded()
     {
         var limits = ParserLimits.Default with { MaxStringBytes = 4 };
-        using Parser parser = new(limits);
+        using ProtocolParser parser = new(limits);
         var sink = new RecordingSink();
 
         parser.Parse("\u001b]12345X\u001b\\Y"u8, ref sink);
@@ -111,7 +111,7 @@ public sealed class ParserDcsTests
     public void Complete_WhenIgnoredStringEndsOnOpenEscCandidate_CountsItAsDiscarded()
     {
         var limits = ParserLimits.Default with { MaxStringBytes = 4 };
-        using Parser parser = new(limits);
+        using ProtocolParser parser = new(limits);
         var sink = new RecordingSink();
 
         parser.Parse("\u001b]12345\u001b"u8, ref sink);
@@ -130,7 +130,7 @@ public sealed class ParserDcsTests
     public void Parse_WhenBellFollowsFalseEscCandidateInIgnoredOsc_TerminatesRecovery()
     {
         var limits = ParserLimits.Default with { MaxStringBytes = 4 };
-        using Parser parser = new(limits);
+        using ProtocolParser parser = new(limits);
         var sink = new RecordingSink();
 
         parser.Parse("\u001b]12345X\u001b\aY"u8, ref sink);
@@ -149,7 +149,7 @@ public sealed class ParserDcsTests
     public void Parse_WhenEightBitStFollowsFalseEscCandidateInIgnoredString_TerminatesRecovery()
     {
         var limits = ParserLimits.Default with { MaxStringBytes = 4, AcceptEightBitControls = true };
-        using Parser parser = new(limits);
+        using ProtocolParser parser = new(limits);
         var sink = new RecordingSink();
         // 0x9c is the raw C1 ST byte; a string literal would UTF-8 encode
         // it as two bytes instead of the single byte the parser expects.
@@ -168,7 +168,7 @@ public sealed class ParserDcsTests
     public void Parse_WhenIgnoredStringHasRepeatedFalseEscCandidates_CountsEachOnce()
     {
         var limits = ParserLimits.Default with { MaxStringBytes = 4 };
-        using Parser parser = new(limits);
+        using ProtocolParser parser = new(limits);
         var sink = new RecordingSink();
 
         parser.Parse("\u001b]12345X\u001bY\u001b\\Z"u8, ref sink);

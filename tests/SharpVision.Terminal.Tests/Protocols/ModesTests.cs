@@ -17,14 +17,14 @@ public sealed class ModesTests
         var destination = new ArrayBufferWriter<byte>();
         var writer = new Writer(destination);
 
-        Modes.CursorVisible(writer, true);
-        Modes.CursorVisible(writer, false);
-        Modes.AlternateScreen(writer, true);
-        Modes.BracketedPaste(writer, true);
-        Modes.FocusReporting(writer, true);
-        Modes.SynchronizedOutput(writer, true);
-        Modes.ClipboardPasteEvents(writer, true);
-        Modes.ClipboardPasteEvents(writer, false);
+        ProtocolModes.CursorVisible(writer, true);
+        ProtocolModes.CursorVisible(writer, false);
+        ProtocolModes.AlternateScreen(writer, true);
+        ProtocolModes.BracketedPaste(writer, true);
+        ProtocolModes.FocusReporting(writer, true);
+        ProtocolModes.SynchronizedOutput(writer, true);
+        ProtocolModes.ClipboardPasteEvents(writer, true);
+        ProtocolModes.ClipboardPasteEvents(writer, false);
 
         destination.WrittenSpan.ToArray().ShouldBe(
             Encoding.ASCII.GetBytes(
@@ -38,12 +38,12 @@ public sealed class ModesTests
     [Fact]
     public void Mode_WhenToggled_EncodesTheNamedDecPrivateModeConstant()
     {
-        AssertEncodesMode(DecPrivateMode.CursorVisible, static (writer, enabled) => Modes.CursorVisible(writer, enabled));
-        AssertEncodesMode(DecPrivateMode.AlternateScreen, static (writer, enabled) => Modes.AlternateScreen(writer, enabled));
-        AssertEncodesMode(DecPrivateMode.BracketedPaste, static (writer, enabled) => Modes.BracketedPaste(writer, enabled));
-        AssertEncodesMode(DecPrivateMode.FocusReporting, static (writer, enabled) => Modes.FocusReporting(writer, enabled));
-        AssertEncodesMode(DecPrivateMode.SynchronizedOutput, static (writer, enabled) => Modes.SynchronizedOutput(writer, enabled));
-        AssertEncodesMode(DecPrivateMode.ClipboardPasteEvents, static (writer, enabled) => Modes.ClipboardPasteEvents(writer, enabled));
+        AssertEncodesMode(DecPrivateMode.CursorVisible, static (writer, enabled) => ProtocolModes.CursorVisible(writer, enabled));
+        AssertEncodesMode(DecPrivateMode.AlternateScreen, static (writer, enabled) => ProtocolModes.AlternateScreen(writer, enabled));
+        AssertEncodesMode(DecPrivateMode.BracketedPaste, static (writer, enabled) => ProtocolModes.BracketedPaste(writer, enabled));
+        AssertEncodesMode(DecPrivateMode.FocusReporting, static (writer, enabled) => ProtocolModes.FocusReporting(writer, enabled));
+        AssertEncodesMode(DecPrivateMode.SynchronizedOutput, static (writer, enabled) => ProtocolModes.SynchronizedOutput(writer, enabled));
+        AssertEncodesMode(DecPrivateMode.ClipboardPasteEvents, static (writer, enabled) => ProtocolModes.ClipboardPasteEvents(writer, enabled));
 
         static void AssertEncodesMode(int mode, Action<Writer, bool> encode)
         {
@@ -51,7 +51,7 @@ public sealed class ModesTests
             encode(new Writer(destination), true);
 
             var expected = new ArrayBufferWriter<byte>();
-            Modes.SetPrivate(new Writer(expected), mode, true);
+            ProtocolModes.SetPrivate(new Writer(expected), mode, true);
 
             destination.WrittenSpan.ToArray().ShouldBe(expected.WrittenSpan.ToArray());
         }
@@ -81,7 +81,7 @@ public sealed class ModesTests
         var destination = new ArrayBufferWriter<byte>();
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
-            Modes.SetPrivate(new Writer(destination), 0, enabled: true));
+            ProtocolModes.SetPrivate(new Writer(destination), 0, enabled: true));
 
         destination.WrittenCount.ShouldBe(0);
     }
@@ -99,8 +99,8 @@ public sealed class ModesTests
         var destination = new ArrayBufferWriter<byte>();
         var writer = new Writer(destination);
 
-        Modes.Mouse(writer, tracking, MouseCoordinates.Sgr, enabled: true);
-        Modes.Mouse(writer, tracking, MouseCoordinates.Sgr, enabled: false);
+        ProtocolModes.Mouse(writer, tracking, MouseCoordinates.Sgr, enabled: true);
+        ProtocolModes.Mouse(writer, tracking, MouseCoordinates.Sgr, enabled: false);
 
         destination.WrittenSpan.ToArray().ShouldBe(
             Encoding.ASCII.GetBytes(
@@ -122,7 +122,7 @@ public sealed class ModesTests
     {
         var destination = new ArrayBufferWriter<byte>();
 
-        Modes.Mouse(new Writer(destination), MouseTracking.Press, coordinates, enabled: true);
+        ProtocolModes.Mouse(new Writer(destination), MouseTracking.Press, coordinates, enabled: true);
 
         var suffix = mode == 0 ? string.Empty : $"\u001b[?{mode}h";
         destination.WrittenSpan.ToArray().ShouldBe(
@@ -139,9 +139,9 @@ public sealed class ModesTests
         var writer = new Writer(destination);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
-            Modes.Mouse(writer, 0, MouseCoordinates.Sgr, enabled: true));
+            ProtocolModes.Mouse(writer, 0, MouseCoordinates.Sgr, enabled: true));
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
-            Modes.Mouse(writer, MouseTracking.Press, (MouseCoordinates) int.MaxValue, enabled: true));
+            ProtocolModes.Mouse(writer, MouseTracking.Press, (MouseCoordinates) int.MaxValue, enabled: true));
 
         destination.WrittenCount.ShouldBe(0);
     }
