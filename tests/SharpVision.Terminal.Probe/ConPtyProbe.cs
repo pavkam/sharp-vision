@@ -70,7 +70,7 @@ internal static class ConPtyProbe
         var (savedInput, savedOutput) = ReadModes();
         await WriteLineAsync(FormatModes("saved", savedInput, savedOutput)).ConfigureAwait(false);
 
-        await using var connection = OpenWithRetry(
+        await using var connection = ConsoleHost.Open(
             new ConsoleHostOptions { CaptureControlKeys = captureControlKeys });
         var (appliedInput, appliedOutput) = ReadModes();
         await WriteLineAsync(FormatModes("applied", appliedInput, appliedOutput)).ConfigureAwait(false);
@@ -82,7 +82,7 @@ internal static class ConPtyProbe
 
     private static async Task RunDisposeTwiceAsync()
     {
-        var connection = OpenWithRetry(new ConsoleHostOptions());
+        var connection = ConsoleHost.Open(new ConsoleHostOptions());
 
         await connection.DisposeAsync().ConfigureAwait(false);
         var (firstInput, firstOutput) = ReadModes();
@@ -98,7 +98,7 @@ internal static class ConPtyProbe
 
     private static async Task RunEchoAsync()
     {
-        await using var connection = OpenWithRetry(new ConsoleHostOptions());
+        await using var connection = ConsoleHost.Open(new ConsoleHostOptions());
         var buffer = new byte[5];
         var read = 0;
 
@@ -123,7 +123,7 @@ internal static class ConPtyProbe
 
     private static async Task RunResizeAsync()
     {
-        await using var connection = OpenWithRetry(
+        await using var connection = ConsoleHost.Open(
             new ConsoleHostOptions { ResizeInterval = TimeSpan.FromMilliseconds(20) });
 
         var first = await connection.Resize.ReadAsync(CancellationToken.None).ConfigureAwait(false);
@@ -138,7 +138,7 @@ internal static class ConPtyProbe
         var (savedInput, savedOutput) = ReadModes();
         await WriteLineAsync(FormatModes("saved", savedInput, savedOutput)).ConfigureAwait(false);
 
-        var connection = OpenWithRetry(new ConsoleHostOptions());
+        var connection = ConsoleHost.Open(new ConsoleHostOptions());
         using var cancellation = new CancellationTokenSource();
         var pending = connection.Transport.ReadAsync(new byte[1], cancellation.Token).AsTask();
         await WriteLineAsync("ready").ConfigureAwait(false);
@@ -163,39 +163,6 @@ internal static class ConPtyProbe
         await connection.DisposeAsync().ConfigureAwait(false);
         var (restoredInput, restoredOutput) = ReadModes();
         await WriteLineAsync(FormatModes("restored", restoredInput, restoredOutput)).ConfigureAwait(false);
-    }
-
-    /// <summary>Opens the console host, retrying a bounded number of times on the specific
-    /// "console mode could not be configured" failure.</summary>
-    /// <remarks>
-    /// Speculative mitigation for a suspected CI/VM-only startup race: on real Windows CI this
-    /// probe's very first native call after being attached to a fresh <c>ConPTY</c> occasionally
-    /// observes <c>GetStdHandle</c>/<c>GetConsoleMode</c> rejecting the handle as invalid
-    /// (Win32 error 6), even though <c>CreateProcessW</c> already returned successfully with the
-    /// pseudo-console attribute applied. If the pseudo-console session takes slightly longer to
-    /// finish wiring up under CI virtualization than <c>CreateProcessW</c>'s return implies, a
-    /// short retry should let it succeed; if this hypothesis is wrong, every attempt will fail
-    /// identically and the final exception still propagates unchanged (see issue #35).
-    /// </remarks>
-    /// <param name="options">The host options to open with.</param>
-    /// <returns>The opened connection.</returns>
-    private static ConsoleConnection OpenWithRetry(ConsoleHostOptions options)
-    {
-        const int maxAttempts = 5;
-        var delay = TimeSpan.FromMilliseconds(50);
-
-        for (var attempt = 1; ; attempt++)
-        {
-            try
-            {
-                return ConsoleHost.Open(options);
-            }
-            catch (IOException) when (attempt < maxAttempts)
-            {
-                Thread.Sleep(delay);
-                delay += delay;
-            }
-        }
     }
 
     private static (uint Input, uint Output) ReadModes()

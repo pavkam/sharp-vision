@@ -26,9 +26,7 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
 {
     private const int _procThreadAttributePseudoconsole = 0x00020016;
     private const uint _extendedStartupInfoPresent = 0x00080000;
-    private const int _stdInputHandle = -10;
-    private const int _stdOutputHandle = -11;
-    private const int _stdErrorHandle = -12;
+    private const int _useStdHandles = 0x00000100;
 
     private readonly SafeFileHandle _pseudoConsoleInputWrite;
     private readonly SafeFileHandle _pseudoConsoleOutputRead;
@@ -255,9 +253,19 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
             throw NativeFailure("UpdateProcThreadAttribute failed.");
         }
 
+        // dwFlags = STARTF_USESTDHANDLES, hStdInput/Output/Error left null (the struct's default):
+        // without this, CreateProcessW's legacy "magically inherit the caller's console" fallback
+        // duplicates the *calling* process's standard handles into the pseudo-console-attached
+        // child whenever that caller's own handles are redirected (as they are here - the CI test
+        // runner's stdout/stderr are piped for log capture) instead of wiring the child to the
+        // pseudo console at all. See https://github.com/microsoft/terminal/issues/11276 (issue #35).
         var startupInfo = new StartupInfoEx
         {
-            StartupInfo = new StartupInfo { cb = Marshal.SizeOf<StartupInfoEx>() },
+            StartupInfo = new StartupInfo
+            {
+                cb = Marshal.SizeOf<StartupInfoEx>(),
+                dwFlags = _useStdHandles
+            },
             lpAttributeList = attributeList
         };
 
