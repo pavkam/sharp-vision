@@ -32,7 +32,23 @@ public sealed record Capabilities
     } = ColorDepth.Basic16;
 
     /// <summary>Gets the color-depth evidence origin.</summary>
-    public Origin ColorOrigin { get; init; } = Origin.Default;
+    /// <exception cref="ArgumentOutOfRangeException">The assigned origin is unknown.</exception>
+    public Origin ColorOrigin
+    {
+        get;
+        init
+        {
+            if (!Enum.IsDefined(value))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    value,
+                    "The color-depth evidence origin is unknown.");
+            }
+
+            field = value;
+        }
+    } = Origin.Default;
 
     /// <summary>Gets the pinned Unicode Character Database version.</summary>
     public string UnicodeVersion { get; } = UnicodeInfo.Version;

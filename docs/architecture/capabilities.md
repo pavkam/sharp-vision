@@ -141,6 +141,7 @@ therefore publishes an otherwise usable description as `Suitability.Incomplete`;
 Final profile construction applies, in order: built-in safety defaults, accepted
 database evidence, environment narrowing and hints, bounded query results, and
 then explicit semantic settings or an explicit replacement `TerminalProfile`.
+Published profiles reject undefined color-depth and evidence-origin enum values.
 The [terminfo lookup contract](../protocols/terminfo.md#lookup-and-fallback) and
 the loaded ncurses build own database selection and compatibility fallback.
 Environment names never replace database command programs. `CapabilityOverrides`

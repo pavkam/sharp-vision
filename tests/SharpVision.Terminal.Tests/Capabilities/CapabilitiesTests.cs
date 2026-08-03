@@ -21,6 +21,14 @@ public sealed class CapabilitiesTests
         _ = Should.Throw<ArgumentOutOfRangeException>(() => new QueryToken(0));
     }
 
+    /// <summary>Verifies a profile rejects an undefined color-evidence origin.</summary>
+    [Fact]
+    public void ColorOrigin_WhenUndefined_ThrowsArgumentOutOfRangeException()
+    {
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new TerminalCapabilities { ColorOrigin = (Origin) int.MaxValue });
+    }
+
     /// <summary>
     /// Verifies optional protocols are never enabled by built-in defaults.
     /// </summary>
