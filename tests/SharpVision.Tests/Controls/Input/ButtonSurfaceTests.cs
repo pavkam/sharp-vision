@@ -252,7 +252,7 @@ public sealed class ButtonSurfaceTests
         // Assert
         filled.Bounds.ShouldBe(new Rect(0, 0, 7, 3));
         standard.Bounds.ShouldBe(new Rect(9, 0, 5, 3));
-        filled.Text.ShouldNotBeNull().Bounds.ShouldBe(new Rect(2, 0, 3, 3));
+        filled.TextControl.ShouldNotBeNull().Bounds.ShouldBe(new Rect(2, 0, 3, 3));
         surface.Cell(new Point(2, 0)).Text.ShouldBe("A");
         surface.Cell(new Point(7, 0)).Text.ShouldBe("▄");
         surface.Cell(new Point(9, 0)).Text.ShouldBe("┏");

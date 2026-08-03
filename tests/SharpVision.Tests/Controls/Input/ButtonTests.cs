@@ -145,7 +145,8 @@ public sealed class ButtonTests
         var button = new Button { Style = style };
         if (collapsed)
         {
-            button.Text = new ProbeControl(new Size(9, 4)) { Visibility = Visibility.Collapsed };
+            button.Text = "content";
+            button.TextControl!.Visibility = Visibility.Collapsed;
         }
 
         new LayoutEngine().Layout(button, new Size(20, 10));
@@ -168,7 +169,7 @@ public sealed class ButtonTests
         var button = new Button
         {
             Style = composite,
-            Text = new ProbeControl(new Size(2, 1))
+            Text = "Hi"
         };
         new LayoutEngine().Layout(button, new Size(10, 5));
         _ = Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
@@ -284,12 +285,10 @@ public sealed class ButtonTests
     [Fact]
     public void Arrange_WhenDefaultChromeIsUsed_PreservesOneCellContentInset()
     {
-        var content = new ProbeControl
-        {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch
-        };
-        var button = new Button { Width = Length.Cells(10), Height = Length.Cells(3), Text = content };
+        var button = new Button { Width = Length.Cells(10), Height = Length.Cells(3), Text = "X" };
+        var content = button.TextControl!;
+        content.HorizontalAlignment = HorizontalAlignment.Stretch;
+        content.VerticalAlignment = VerticalAlignment.Stretch;
 
         new LayoutEngine().Layout(button, new Size(10, 3));
 
@@ -301,11 +300,6 @@ public sealed class ButtonTests
     [Fact]
     public void Arrange_WhenPressedWithShadow_TranslatesContentByShadowOffset()
     {
-        var content = new ProbeControl
-        {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch
-        };
         var button = new Button
         {
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -314,8 +308,11 @@ public sealed class ButtonTests
             Height = Length.Cells(3),
             Style = TestButtonStyles.WithShadow(
                 AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1), attributes: Attributes.Dim)),
-            Text = content
+            Text = "X"
         };
+        var content = button.TextControl!;
+        content.HorizontalAlignment = HorizontalAlignment.Stretch;
+        content.VerticalAlignment = VerticalAlignment.Stretch;
         new LayoutEngine().Layout(button, new Size(10, 6));
         var released = content.Bounds;
 
@@ -339,18 +336,16 @@ public sealed class ButtonTests
     public void Arrange_WhenFilledButtonIsPressed_PreservesContentBounds()
     {
         // Arrange
-        var content = new ProbeControl
-        {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch
-        };
         using var button = new Button
         {
             Style = ButtonStyle.Filled,
             Width = Length.Cells(8),
             Height = Length.Cells(1),
-            Text = content
+            Text = "X"
         };
+        var content = button.TextControl!;
+        content.HorizontalAlignment = HorizontalAlignment.Stretch;
+        content.VerticalAlignment = VerticalAlignment.Stretch;
         new LayoutEngine().Layout(button, new Size(9, 2));
         var released = content.Bounds;
 
@@ -469,7 +464,7 @@ public sealed class ButtonTests
         button.Render(frame.Canvas);
 
         button.IsPressed.ShouldBeTrue();
-        button.Text.Bounds.ShouldBe(new Rect(2, 0, 2, 3));
+        button.TextControl!.Bounds.ShouldBe(new Rect(2, 0, 2, 3));
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBeEmpty();
         FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("G");
         FrameOracle.Get(frame, new Point(3, 0)).ShouldBe("o");
@@ -532,7 +527,7 @@ public sealed class ButtonTests
         button.Render(frame.Canvas);
 
         button.IsPressed.ShouldBeTrue();
-        button.Text.Bounds.ShouldBe(new Rect(2, 0, 2, 3));
+        button.TextControl!.Bounds.ShouldBe(new Rect(2, 0, 2, 3));
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBeEmpty();
         frame.GetCell(new Point(0, 0)).Style.Background.ShouldBe(ReferenceColors.Get(24));
         FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("G");
@@ -560,24 +555,6 @@ public sealed class ButtonTests
 
         frame.GetCell(new Point(0, 0)).Style.Attributes.ShouldNotBe(Attributes.Dim);
         frame.GetCell(new Point(6, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
-    }
-
-    /// <summary>Verifies invalid replacement preserves the previous child and its parent.</summary>
-    [Fact]
-    public void Content_WhenReplacementIsOwned_ThrowsBeforeMutation()
-    {
-        var button = new Button();
-        var previous = new ProbeControl();
-        var owner = new Overlay();
-        var invalid = new ProbeControl();
-        button.Text = previous;
-        owner.Children.Add(invalid);
-
-        _ = Should.Throw<ArgumentException>(() => button.Text = invalid);
-
-        button.Text.ShouldBeSameAs(previous);
-        previous.Parent.ShouldBeSameAs(button);
-        invalid.Parent.ShouldBeSameAs(owner);
     }
 
     /// <summary>Verifies Click observes released state and precedes command execution.</summary>
