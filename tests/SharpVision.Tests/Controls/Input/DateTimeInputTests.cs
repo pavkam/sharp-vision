@@ -154,6 +154,27 @@ public sealed class DateTimeInputTests
         observed.Value.ShouldBe(new DateTime(2026, 7, 19, 14, 30, 0));
     }
 
+    /// <summary>Verifies selecting a date from the popup preserves the value's time-zone interpretation.</summary>
+    [Fact]
+    public void Popup_WhenDateIsSelected_PreservesDateTimeKind()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Value = new DateTime(2026, 7, 19, 14, 30, 0, DateTimeKind.Utc),
+            IsOpen = true
+        };
+
+        // Act
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Enter));
+
+        // Assert
+        _ = control.Value.ShouldNotBeNull();
+        control.Value.Value.Date.ShouldBe(new DateTime(2026, 7, 20));
+        control.Value.Value.Kind.ShouldBe(DateTimeKind.Utc);
+    }
+
     #endregion
 
     #region Rendering

@@ -7,7 +7,8 @@ popup.
 
 The time portion supports `TimeStep`, a positive whole-minute increment that
 Up/Down applies while the minute segment is active. The embedded calendar
-exposes the same basic date navigation options as `Calendar`.
+exposes the same basic date navigation options as `Calendar`. Selecting a date
+preserves the current time and `DateTimeKind`.
 
 ## API
 

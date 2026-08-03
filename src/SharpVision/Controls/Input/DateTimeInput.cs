@@ -923,7 +923,8 @@ public sealed class DateTimeInput: Control
 
         var selectedDate = interval.Start;
         var timePart = _value?.TimeOfDay ?? TimeSpan.Zero;
-        var combined = selectedDate.ToDateTime(TimeOnly.FromTimeSpan(timePart));
+        var kind = _value?.Kind ?? DateTimeKind.Unspecified;
+        var combined = selectedDate.ToDateTime(TimeOnly.FromTimeSpan(timePart), kind);
         _ = Commit(combined);
         IsOpen = false;
     }
