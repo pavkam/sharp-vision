@@ -50,6 +50,11 @@ public sealed class ThemesCatalogTests
     public void Load_WhenUnknownSlug_Throws() =>
         Should.Throw<KeyNotFoundException>(() => Themes.Load("nope"));
 
+    /// <summary>Verifies no two embedded themes share a slug (see #250).</summary>
+    [Fact]
+    public void Slugs_AreUnique() =>
+        Themes.Slugs.Distinct(StringComparer.Ordinal).Count().ShouldBe(Themes.Slugs.Count);
+
     /// <summary>Verifies theme loading has one public entry point backed by a JSON definition model.</summary>
     [Fact]
     public void PublicSurface_WhenInspected_ExposesOnlyThemesLoader()

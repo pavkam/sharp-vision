@@ -3,8 +3,6 @@
 
 namespace SharpVision.Styling;
 
-using System.Text.Json.Serialization;
-
 /// <summary>Discovers, loads, validates, and caches immutable SharpVision themes.</summary>
 [PublicAPI]
 public static class Themes
@@ -15,18 +13,27 @@ public static class Themes
     private const string _resourcePrefix = "SharpVision.Styling.Themes.";
     private const string _resourceSuffix = ".theme.json";
     private static readonly Lock _gate = new();
-    private static readonly Dictionary<string, byte[]> _documents = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, Theme> _cache = new(StringComparer.Ordinal);
-    private static readonly Dictionary<string, int> _orders = new(StringComparer.Ordinal);
 
+    // The full resource scan is deferred behind this Lazy so that touching one theme (including
+    // the White/Dark defaults every ControlBase falls back to) never forces every embedded theme
+    // to be read and parsed - see #250. ExecutionAndPublication is required, not just a nicety:
+    // two threads racing to materialize this would otherwise both run BuildCatalog and could
+    // observe two different (equally valid) winning instances handed out to concurrent callers.
+    private static readonly Lazy<(IReadOnlyList<ThemeCatalogEntry> Entries, IReadOnlyList<string> Slugs, Dictionary<string, byte[]> Documents)> _catalog =
+        new(BuildCatalog, LazyThreadSafetyMode.ExecutionAndPublication);
+
+    // No DTO property across ThemeDefinition and its nested types is enum-typed - every enum-like
+    // field is parsed by hand via Enum.TryParse in the resolve methods below, so a
+    // JsonStringEnumConverter here has never converted anything (see #250). It was also the one
+    // [RequiresDynamicCode] member in this options instance.
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         AllowDuplicateProperties = false,
         AllowTrailingCommas = false,
         ReadCommentHandling = JsonCommentHandling.Disallow,
         MaxDepth = 8,
-        RespectNullableAnnotations = true,
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false) }
+        RespectNullableAnnotations = true
     };
 
     private static readonly Dictionary<string, TerminalAttributes> _attributeNames =
@@ -57,37 +64,6 @@ public static class Themes
 
     static Themes()
     {
-        var assembly = typeof(Themes).Assembly;
-        var entries = new List<ThemeCatalogEntry>();
-
-        foreach (var resource in assembly.GetManifestResourceNames())
-        {
-            if (!resource.StartsWith(_resourcePrefix, StringComparison.Ordinal) ||
-                !resource.EndsWith(_resourceSuffix, StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            var document = ReadResource(assembly, resource);
-            var entry = ReadCatalogEntry(document, resource, out var order);
-
-            if (!_documents.TryAdd(entry.Slug, document))
-            {
-                throw new InvalidDataException($"Duplicate theme slug '{entry.Slug}'.");
-            }
-
-            _orders[entry.Slug] = order;
-            entries.Add(entry);
-        }
-
-        entries.Sort((left, right) =>
-        {
-            var byOrder = _orders[left.Slug].CompareTo(_orders[right.Slug]);
-            return byOrder != 0 ? byOrder : string.CompareOrdinal(left.Slug, right.Slug);
-        });
-
-        Entries = entries.AsReadOnly();
-        Slugs = entries.ConvertAll(static entry => entry.Slug).AsReadOnly();
         White = Load("default-light");
         Dark = Load("default-dark");
     }
@@ -95,10 +71,10 @@ public static class Themes
     #region Catalog
 
     /// <summary>Gets embedded theme metadata ordered by authored order and then slug.</summary>
-    public static IReadOnlyList<ThemeCatalogEntry> Entries { get; }
+    public static IReadOnlyList<ThemeCatalogEntry> Entries => _catalog.Value.Entries;
 
     /// <summary>Gets embedded theme slugs in catalog order.</summary>
-    public static IReadOnlyList<string> Slugs { get; }
+    public static IReadOnlyList<string> Slugs => _catalog.Value.Slugs;
 
     /// <summary>Gets the frozen light standard theme.</summary>
     public static Theme White { get; }
@@ -122,15 +98,72 @@ public static class Themes
                 return cached;
             }
 
-            if (!_documents.TryGetValue(slug, out var document))
-            {
-                throw new KeyNotFoundException($"The theme catalog does not contain '{slug}'.");
-            }
-
-            var theme = ParseUtf8(document, slug);
+            var theme = TryLoadDirect(slug) ?? LoadFromCatalog(slug);
             _cache[slug] = theme;
             return theme;
         }
+    }
+
+    // Reads and parses the one requested embedded resource directly, without scanning or
+    // materializing the other 14 - this is what lets White/Dark (forced by every ControlBase
+    // fallback) stay cheap. Falls back to null (never throws) so Load can still resolve slugs
+    // whose filename doesn't match their internal slug via the full catalog scan.
+    private static Theme? TryLoadDirect(string slug)
+    {
+        var assembly = typeof(Themes).Assembly;
+        var resourceName = _resourcePrefix + slug + _resourceSuffix;
+        using var stream = assembly.GetManifestResourceStream(resourceName);
+        if (stream is null)
+        {
+            return null;
+        }
+
+        var theme = ParseUtf8(ReadBounded(stream, slug), slug);
+        return string.Equals(theme.Slug, slug, StringComparison.Ordinal) ? theme : null;
+    }
+
+    private static Theme LoadFromCatalog(string slug) =>
+        _catalog.Value.Documents.TryGetValue(slug, out var document)
+            ? ParseUtf8(document, slug)
+            : throw new KeyNotFoundException($"The theme catalog does not contain '{slug}'.");
+
+    // Extracted from the former static constructor: only runs when something actually needs the
+    // full catalog (Entries/Slugs, or a Load(slug) whose filename doesn't match its own internal
+    // slug) rather than unconditionally on every process start - see #250.
+    private static (IReadOnlyList<ThemeCatalogEntry> Entries, IReadOnlyList<string> Slugs, Dictionary<string, byte[]> Documents) BuildCatalog()
+    {
+        var assembly = typeof(Themes).Assembly;
+        var entries = new List<ThemeCatalogEntry>();
+        var documents = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+        var orders = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        foreach (var resource in assembly.GetManifestResourceNames())
+        {
+            if (!resource.StartsWith(_resourcePrefix, StringComparison.Ordinal) ||
+                !resource.EndsWith(_resourceSuffix, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var document = ReadResource(assembly, resource);
+            var entry = ReadCatalogEntry(document, resource, out var order);
+
+            if (!documents.TryAdd(entry.Slug, document))
+            {
+                throw new InvalidDataException($"Duplicate theme slug '{entry.Slug}'.");
+            }
+
+            orders[entry.Slug] = order;
+            entries.Add(entry);
+        }
+
+        entries.Sort((left, right) =>
+        {
+            var byOrder = orders[left.Slug].CompareTo(orders[right.Slug]);
+            return byOrder != 0 ? byOrder : string.CompareOrdinal(left.Slug, right.Slug);
+        });
+
+        return (entries.AsReadOnly(), entries.ConvertAll(static entry => entry.Slug).AsReadOnly(), documents);
     }
 
     #endregion
@@ -828,6 +861,38 @@ public static class Themes
 
     private static byte[] ReadBounded(Stream stream, string source)
     {
+        // Seekable streams (files, embedded resources) know their remaining length up front, so
+        // the bound can be checked and the buffer sized exactly - avoiding the 64KB+1 scratch
+        // allocation the non-seekable path below needs to grow into. This is the common case:
+        // every embedded theme resource and every Load(slug)/LoadFile call goes through here
+        // (see #250). Non-seekable streams (arbitrary caller-supplied Stream implementations)
+        // fall back to the original grow-and-check loop, since their length isn't known ahead of
+        // the read.
+        if (stream.CanSeek)
+        {
+            var remaining = stream.Length - stream.Position;
+            if (remaining > MaximumDocumentBytes)
+            {
+                throw DocumentTooLarge(source);
+            }
+
+            var sized = new byte[remaining];
+            var offset = 0;
+
+            while (offset < sized.Length)
+            {
+                var read = stream.Read(sized.AsSpan(offset));
+                if (read == 0)
+                {
+                    break;
+                }
+
+                offset += read;
+            }
+
+            return offset == sized.Length ? sized : sized[..offset];
+        }
+
         var bytes = new byte[MaximumDocumentBytes + 1];
         var length = 0;
 

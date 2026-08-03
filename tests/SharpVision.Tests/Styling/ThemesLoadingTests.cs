@@ -56,6 +56,31 @@ public sealed class ThemesLoadingTests
         stream.CanRead.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a seekable stream is read into a buffer sized from the document itself
+    /// instead of the historical fixed 64KB+1 scratch buffer that every document paid regardless
+    /// of its real size (see #250). Compares two documents differing only by padding: with a
+    /// right-sized buffer the extra allocation tracks the extra padding bytes; with the old fixed
+    /// scratch buffer it would stay flat regardless of size. Deserialization and Theme-graph
+    /// construction cost is identical between the two calls (the padding is whitespace, not
+    /// additional semantic content), so the delta isolates the read buffer.</summary>
+    [Fact]
+    public void Load_WhenStreamIsSeekable_AllocatesProportionallyToDocumentSize()
+    {
+        var padded = _json + new string(' ', Themes.MaximumDocumentBytes - Encoding.UTF8.GetByteCount(_json) - 100);
+
+        using var small = new MemoryStream(Encoding.UTF8.GetBytes(_json));
+        var beforeSmall = GC.GetAllocatedBytesForCurrentThread();
+        _ = Themes.Load(small);
+        var allocatedSmall = GC.GetAllocatedBytesForCurrentThread() - beforeSmall;
+
+        using var large = new MemoryStream(Encoding.UTF8.GetBytes(padded));
+        var beforeLarge = GC.GetAllocatedBytesForCurrentThread();
+        _ = Themes.Load(large);
+        var allocatedLarge = GC.GetAllocatedBytesForCurrentThread() - beforeLarge;
+
+        (allocatedLarge - allocatedSmall).ShouldBeGreaterThan(Themes.MaximumDocumentBytes / 2);
+    }
+
     /// <summary>Verifies loading from a null stream throws <see cref="ArgumentNullException"/>.</summary>
     [Fact]
     public void Load_WhenNull_Throws() =>
