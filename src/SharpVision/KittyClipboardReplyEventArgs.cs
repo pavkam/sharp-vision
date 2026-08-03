@@ -24,6 +24,9 @@ public sealed class KittyClipboardReplyEventArgs: EventArgs
     /// <param name="text">The owned successful OSC 52 UTF-8 text reply, or null.</param>
     /// <param name="failure">The terminal-reported Kitty failure status, or <see cref="ReplyStatus.None"/>.</param>
     /// <param name="diagnostic">The redacted local protocol diagnostic, or null.</param>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="kittyResult"/> and <paramref name="text"/> are both present.
+    /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="selection"/> or <paramref name="failure"/> is undefined.
     /// </exception>
@@ -42,6 +45,11 @@ public sealed class KittyClipboardReplyEventArgs: EventArgs
         if (!Enum.IsDefined(failure))
         {
             throw new ArgumentOutOfRangeException(nameof(failure), failure, "The Kitty reply status is unknown.");
+        }
+
+        if (kittyResult is not null && text.HasValue)
+        {
+            throw new ArgumentException("A clipboard reply cannot contain both Kitty and OSC 52 payloads.", nameof(text));
         }
 
         Selection = selection;

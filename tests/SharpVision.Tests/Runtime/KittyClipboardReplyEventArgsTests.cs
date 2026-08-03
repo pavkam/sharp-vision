@@ -9,6 +9,22 @@ using Terminal.Kitty.Clipboard;
 /// <summary>Proves clipboard reply events own the completed payload they publish.</summary>
 public sealed class KittyClipboardReplyEventArgsTests
 {
+    /// <summary>Verifies one reply cannot claim success through both clipboard protocols.</summary>
+    [Fact]
+    public void Constructor_WhenBothSuccessPayloadsArePresent_Throws()
+    {
+        using var kittyResult = new KittyClipboardResult([]);
+
+        var action = () => new KittyClipboardReplyEventArgs(
+            Selection.Clipboard,
+            kittyResult,
+            new byte[] { 1 },
+            ReplyStatus.None,
+            null);
+
+        action.ShouldThrow<ArgumentException>().ParamName.ShouldBe("text");
+    }
+
     /// <summary>Verifies an event cannot publish an undefined clipboard selection.</summary>
     [Fact]
     public void Constructor_WhenSelectionIsUndefined_Throws()
