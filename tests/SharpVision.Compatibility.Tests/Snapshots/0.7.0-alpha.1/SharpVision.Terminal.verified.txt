@@ -496,8 +496,8 @@ namespace SharpVision.Terminal.Graphics
     public readonly struct GraphicsPlacementDiagnostic : System.IEquatable<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic>
     {
         public GraphicsPlacementDiagnostic(ulong ImageIdentity, SharpVision.Terminal.Graphics.GraphicsPlacementSkipReason Reason) { }
-        public ulong ImageIdentity { get; init; }
-        public SharpVision.Terminal.Graphics.GraphicsPlacementSkipReason Reason { get; init; }
+        public ulong ImageIdentity { get; }
+        public SharpVision.Terminal.Graphics.GraphicsPlacementSkipReason Reason { get; }
     }
     public enum GraphicsPlacementSkipReason
     {
