@@ -15,10 +15,8 @@ public sealed class ListSelectionChangedEventArgs: EventArgs
         ReadOnlySpan<int> addedIndexes,
         ReadOnlySpan<int> removedIndexes)
     {
-        Validate(addedIndexes, nameof(addedIndexes));
-        Validate(removedIndexes, nameof(removedIndexes));
-        AddedIndexes = addedIndexes.ToArray();
-        RemovedIndexes = removedIndexes.ToArray();
+        AddedIndexes = Snapshot(addedIndexes, nameof(addedIndexes));
+        RemovedIndexes = Snapshot(removedIndexes, nameof(removedIndexes));
     }
 
     /// <summary>Gets the owned sorted committed additions.</summary>
@@ -36,5 +34,13 @@ public sealed class ListSelectionChangedEventArgs: EventArgs
                 throw new ArgumentOutOfRangeException(name, value, "Selection indexes cannot be negative.");
             }
         }
+    }
+
+    private static int[] Snapshot(ReadOnlySpan<int> values, string name)
+    {
+        Validate(values, name);
+        var snapshot = values.ToArray();
+        Array.Sort(snapshot);
+        return snapshot;
     }
 }
