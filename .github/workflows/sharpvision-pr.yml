@@ -23,8 +23,6 @@ env:
 jobs:
   verify-linux:
     name: 🧪 Verify on Linux
-    # TEMPORARY: disabled to iterate faster on the Windows ConPTY hang (issue #35). Revert before merge.
-    if: false
     runs-on: ubuntu-latest
 
     steps:
@@ -53,8 +51,6 @@ jobs:
 
   verify-macos:
     name: 🧪 Verify on macOS
-    # TEMPORARY: disabled to iterate faster on the Windows ConPTY hang (issue #35). Revert before merge.
-    if: false
     runs-on: macos-latest
 
     steps:
