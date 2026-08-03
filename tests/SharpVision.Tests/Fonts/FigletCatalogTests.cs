@@ -105,6 +105,23 @@ public sealed class FigletCatalogTests
         catalog.Load("Two").ShouldBeSameAs(two);
     }
 
+    /// <summary>Verifies the public names view cannot rewrite the catalog's published inventory.</summary>
+    [Fact]
+    public void Names_WhenReadOnlyViewIsMutated_PreservesCatalogSnapshot()
+    {
+        var one = FigletFont.Load(Stream(CreateFontText()), "One");
+        var two = FigletFont.Load(Stream(CreateFontText()), "Two");
+        var catalog = FigletCatalog.FromFonts([one, two]);
+
+        if (catalog.Names is string[] mutableNames)
+        {
+            mutableNames[0] = "Corrupted";
+        }
+
+        catalog.Names.ShouldBe(["One", "Two"]);
+        catalog.Load("One").ShouldBeSameAs(one);
+    }
+
     /// <summary>Verifies placeholder metadata is reported for an already-parsed font with no source file.</summary>
     [Fact]
     public void FromFonts_WhenInfoIsRequested_ReportsUnauditedPlaceholderMetadata()

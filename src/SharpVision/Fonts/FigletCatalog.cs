@@ -29,13 +29,13 @@ public sealed class FigletCatalog
     {
         _entries = entries;
         _loaders = loaders;
-        Names = entries.Keys.Order(StringComparer.Ordinal).ToArray();
+        Names = Array.AsReadOnly(entries.Keys.Order(StringComparer.Ordinal).ToArray());
     }
 
     /// <summary>Gets the process-wide immutable audited embedded catalog.</summary>
     public static FigletCatalog Default { get; } = CreateDefault();
 
-    /// <summary>Gets exact case-sensitive names in ordinal order.</summary>
+    /// <summary>Gets the immutable snapshot of exact case-sensitive names in ordinal order.</summary>
     public IReadOnlyList<string> Names { get; }
 
     /// <summary>Builds a catalog from every <c>.flf</c>/<c>.tlf</c> file directly inside one directory.</summary>

@@ -67,7 +67,8 @@ Fonts loaded through `FromDirectory` or `FromZip` are named after their file or
 entry name, without extension. `GetInfo` still reports provenance metadata for
 every entry regardless of source; entries from `FromFonts` report placeholder
 `"unaudited"` metadata, since an already-parsed font carries no source file or
-byte sequence to hash.
+byte sequence to hash. `Names` is an immutable ordinally sorted inventory
+snapshot for every catalog source.
 
 ## Expected behavior
 
