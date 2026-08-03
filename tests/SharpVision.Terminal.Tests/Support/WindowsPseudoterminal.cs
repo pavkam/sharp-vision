@@ -191,6 +191,10 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
     /// a <see cref="Process"/> obtained via <see cref="Process.GetProcessById(int)"/> rather than
     /// <see cref="Process.Start()"/> — exactly how <see cref="SpawnProbe"/> gets its handle,
     /// since the process was actually started via the raw <c>CreateProcessW</c> call above.
+    /// <see cref="Process.ExitCode"/> has the exact same "not started by this object" limitation
+    /// once the wait succeeds, so the exit code is read via a direct
+    /// <c>GetExitCodeProcess</c> call against <see cref="Process.SafeHandle"/> instead, which
+    /// carries no such requirement.
     /// </remarks>
     internal async Task<int> WaitForExitAsync(CancellationToken cancellationToken)
     {
@@ -199,7 +203,9 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
             cancellationToken.ThrowIfCancellationRequested();
         }
 
-        return _process.ExitCode;
+        return !GetExitCodeProcess(_process.SafeHandle, out var exitCode)
+            ? throw NativeFailure("GetExitCodeProcess failed.")
+            : exitCode;
     }
 
     /// <summary>Closes every owned handle and the pseudo console.</summary>
@@ -460,4 +466,8 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
     [LibraryImport("kernel32", EntryPoint = "CloseHandle", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool CloseHandle(nint handle);
+
+    [LibraryImport("kernel32", EntryPoint = "GetExitCodeProcess", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetExitCodeProcess(SafeHandle process, out int exitCode);
 }
