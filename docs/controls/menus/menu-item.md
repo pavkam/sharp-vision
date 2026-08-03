@@ -31,7 +31,8 @@ caption surface.
   update. The bound `Command`, if any and if `CanExecute` allows it, runs after
   `Invoked` and after the menu's own `ItemInvoked` notification. An item with an
   open submenu never reaches this: activating it toggles the submenu instead,
-  and no `Invoked` or `Command` fires.
+  and no `Invoked` or `Command` fires. Every invocation event reports one
+  defined keyboard, pointer, or programmatic activation cause.
 
 A check or radio entry reserves one cell for its code-owned selection glyph plus
 one separator cell in front of the caption. The caption is measured against the
