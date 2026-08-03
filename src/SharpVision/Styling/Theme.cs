@@ -157,7 +157,11 @@ public sealed class Theme
         Popup = popup;
     }
 
-    internal ThemeProfile GetProfile(ThemeRole role) => role switch
+    /// <summary>Resolves one known semantic role to its concrete appearance profile.</summary>
+    /// <param name="role">The known semantic role.</param>
+    /// <returns>The configured appearance profile.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="role"/> is unknown.</exception>
+    public ThemeProfile GetProfile(ThemeRole role) => role switch
     {
         ThemeRole.Control => Control,
         ThemeRole.Input => Input,

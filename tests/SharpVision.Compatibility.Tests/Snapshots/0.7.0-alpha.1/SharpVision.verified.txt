@@ -629,6 +629,8 @@ namespace SharpVision.Controls
         protected void SetOptionalGlyph(ref System.Text.Rune? storage, System.Text.Rune value, string propertyName) { }
         protected bool SetProperty<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
         protected bool SetVisualStateProperty<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
+        protected static SharpVision.Controls.InvalidationImpact MaximumImpact(SharpVision.Controls.InvalidationImpact left, SharpVision.Controls.InvalidationImpact right) { }
+        protected static SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.ColorValue value, SharpVision.Styling.Theme? theme) { }
     }
     public sealed class ControlCollection : System.Collections.Generic.ICollection<SharpVision.Controls.ControlBase>, System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase>, System.Collections.Generic.IList<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.ControlBase>, System.Collections.IEnumerable
     {
@@ -3062,6 +3064,7 @@ namespace SharpVision.Styling
         public SharpVision.Terminal.Protocols.Color Warning { get; }
         public SharpVision.Styling.ThemeProfile Window { get; }
         public void Freeze() { }
+        public SharpVision.Styling.ThemeProfile GetProfile(SharpVision.Styling.ThemeRole role) { }
         public SharpVision.Terminal.Rendering.Attributes ResolveAttributes(SharpVision.Styling.ThemeDecoration decoration) { }
         public SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.ThemeColor color) { }
         public SharpVision.Terminal.Protocols.Color ResolveStatusColor(SharpVision.Styling.StatusColor status) { }

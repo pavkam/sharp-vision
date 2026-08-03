@@ -2221,7 +2221,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <param name="left">The first validated impact.</param>
     /// <param name="right">The second validated impact.</param>
     /// <returns>The impact with the greatest ordered value.</returns>
-    internal static InvalidationImpact MaximumImpact(InvalidationImpact left, InvalidationImpact right) =>
+    protected static InvalidationImpact MaximumImpact(InvalidationImpact left, InvalidationImpact right) =>
         (int) left >= (int) right ? left : right;
 
     /// <summary>Maps one validated public change impact to the complete internal dirty-phase closure.</summary>
@@ -3652,7 +3652,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <param name="value">The literal or theme-referenced color value.</param>
     /// <param name="theme">The active theme, or null when no theme resolves the value.</param>
     /// <returns>The literal color, or the theme-resolved color, or <see cref="Color.Default"/>.</returns>
-    internal static Color ResolveColor(ColorValue value, Theme? theme) => value.IsLiteral
+    protected internal static Color ResolveColor(ColorValue value, Theme? theme) => value.IsLiteral
         ? value.Literal
         : theme?.ResolveColor(value.ThemeColor) ?? Color.Default;
 
