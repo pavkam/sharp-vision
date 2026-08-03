@@ -88,6 +88,21 @@ public sealed class KittyPacketTests
         packet.ToString().ShouldNotContain("secret");
     }
 
+    /// <summary>Verifies a consumer cannot rewrite the packet's unknown-key snapshot.</summary>
+    [Fact]
+    public void Parse_WhenConsumerAttemptsUnknownKeyArrayMutation_PreservesPacketSnapshot()
+    {
+        var packet = Packet.Parse("5522;type=read:future=secret;Lg=="u8);
+
+        if (packet.UnknownKeys is string[] mutableKeys)
+        {
+            mutableKeys[0] = "rewritten";
+        }
+
+        packet.UnknownKeys.ShouldBe(["future"]);
+        packet.ToString().ShouldContain("future");
+    }
+
     /// <summary>
     /// Verifies callers may validate payload grammar without decoding its data.
     /// </summary>

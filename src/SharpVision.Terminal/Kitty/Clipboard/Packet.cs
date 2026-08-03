@@ -40,7 +40,7 @@ public sealed class Packet
         Name = name;
         Data = data;
         HasPayload = hasPayload;
-        UnknownKeys = unknownKeys;
+        UnknownKeys = Array.AsReadOnly(unknownKeys);
         Diagnostic = diagnostic;
     }
 
@@ -76,7 +76,7 @@ public sealed class Packet
     /// <summary>Gets whether the wire packet included a payload separator.</summary>
     public bool HasPayload { get; }
 
-    /// <summary>Gets unknown metadata key names without their untrusted values.</summary>
+    /// <summary>Gets immutable unknown metadata key names without their untrusted values.</summary>
     public IReadOnlyList<string> UnknownKeys { get; }
 
     /// <summary>Gets the non-sensitive diagnostic for an invalid packet.</summary>
