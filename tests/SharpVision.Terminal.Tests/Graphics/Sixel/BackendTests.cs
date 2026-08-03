@@ -17,7 +17,7 @@ public sealed class BackendTests
     [Fact]
     public void Prepare_WhenInitialRgbaPlacementExists_EncodesExactPixelsAndCursor()
     {
-        using var backend = new SixelGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false);
         using var frame = Frame("ab", (Red(), new Rect(1, 0, 1, 1)));
 
         var result = backend.Prepare(null, frame, full: true, Context(new CellMetrics(1, 6)));
@@ -37,7 +37,7 @@ public sealed class BackendTests
     [Fact]
     public void Prepare_WhenPlacementCannotBeEncoded_DeclinesWithoutRemoteState()
     {
-        using var backend = new SixelGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false);
         using var rgba = Frame("a", (Red(), new Rect(0, 0, 1, 1)));
         using var png = Frame("a", (Png(), new Rect(0, 0, 1, 1)));
 
@@ -54,7 +54,7 @@ public sealed class BackendTests
     [Fact]
     public void Prepare_WhenPlacementMoves_RequestsFullCellRedrawAndReconstructsTarget()
     {
-        using var backend = new SixelGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false);
         var image = Red();
         using var first = Frame("ab", (image, new Rect(0, 0, 1, 1)));
         using var moved = Frame("ab", (image, new Rect(1, 0, 1, 1)));
@@ -74,7 +74,7 @@ public sealed class BackendTests
     [Fact]
     public void Prepare_WhenRgbaPlacementIsRemoved_RequestsFullCellRedrawWithoutImageBytes()
     {
-        using var backend = new SixelGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false);
         using var first = Frame("a", (Red(), new Rect(0, 0, 1, 1)));
         using var removed = Frame("a");
         var context = Context(new CellMetrics(1, 6));
@@ -93,7 +93,7 @@ public sealed class BackendTests
     [Fact]
     public void Prepare_WhenRgbaBecomesPng_RequestsFullCellRedrawWithoutDecoding()
     {
-        using var backend = new SixelGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false);
         using var first = Frame("a", (Red(), new Rect(0, 0, 1, 1)));
         using var png = Frame("a", (Png(), new Rect(0, 0, 1, 1)));
         var context = Context(new CellMetrics(1, 6));
@@ -112,7 +112,7 @@ public sealed class BackendTests
     [Fact]
     public void Prepare_WhenMetricsChangeOrDisappear_ReconstructsThenClears()
     {
-        using var backend = new SixelGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false);
         using var frame = Frame("a", (Red(), new Rect(0, 0, 1, 1)));
         _ = backend.Prepare(null, frame, full: true, Context(new CellMetrics(1, 6)));
         backend.Commit();
@@ -137,7 +137,7 @@ public sealed class BackendTests
     [Fact]
     public void Prepare_WhenCellDamageIntersectsPlacement_RepaintsWithoutFullCellRedraw()
     {
-        using var backend = new SixelGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false);
         var image = Red();
         using var first = Frame("ab", (image, new Rect(0, 0, 1, 1)));
         using var changedUnder = Frame("xb", (image, new Rect(0, 0, 1, 1)));
@@ -165,7 +165,7 @@ public sealed class BackendTests
             PassthroughMode.All,
             paneVisible: true,
             MultiplexingOperation.Graphics));
-        using var backend = new SixelGraphicsBackend(route: route);
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false, route: route);
         using var frame = Frame("a", (Red(), new Rect(0, 0, 1, 1)));
 
         _ = backend.Prepare(null, frame, full: true, Context(new CellMetrics(1, 6)));
@@ -190,14 +190,14 @@ public sealed class BackendTests
             paneVisible: true,
             MultiplexingOperation.Graphics));
 
-        _ = Should.Throw<NotSupportedException>(() => new SixelGraphicsBackend(route: route));
+        _ = Should.Throw<NotSupportedException>(() => new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false, route: route));
     }
 
     /// <summary>Verifies non-retained commit, invalidation, and shutdown own no remote identities.</summary>
     [Fact]
     public void Lifetime_WhenTransactionCompletes_IsAllocationFreeAndByteQuiet()
     {
-        using var backend = new SixelGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false);
         using var frame = Frame("a", (Red(), new Rect(0, 0, 1, 1)));
         _ = backend.Prepare(null, frame, full: true, Context(new CellMetrics(1, 6)));
 
@@ -221,7 +221,7 @@ public sealed class BackendTests
     [Fact]
     public void WritePlacements_WhenPrepared_AllocatesNoManagedBytes()
     {
-        using var backend = new SixelGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false);
         using var frame = Frame("a", (Red(), new Rect(0, 0, 1, 1)));
         _ = backend.Prepare(null, frame, full: true, Context(new CellMetrics(1, 6)));
         var output = new ArrayBufferWriter<byte>(256);
@@ -274,7 +274,7 @@ public sealed class BackendTests
         return frame;
     }
 
-    private static byte[] WritePlacements(SixelGraphicsBackend backend)
+    private static byte[] WritePlacements(NonRetainedGraphicsBackend backend)
     {
         var output = new ArrayBufferWriter<byte>();
         backend.WritePlacements(output);

@@ -17,7 +17,7 @@ public sealed class NonRetainedGraphicsBackendTests
     public void Prepare_WhenCombinedPlacementsExceedRemainingBudget_SkipsOverflowingPlacementsInstead()
     {
         var image = GradientImage();
-        using var backend = new SixelGraphicsBackend(maxPreparedBytes: 600);
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false, maxPreparedBytes: 600);
         using var frame = new Frame(new Size(16, 1));
 
         for (var index = 0; index < 4; index++)

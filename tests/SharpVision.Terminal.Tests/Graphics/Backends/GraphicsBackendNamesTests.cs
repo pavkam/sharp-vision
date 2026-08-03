@@ -18,8 +18,6 @@ public sealed class GraphicsBackendNamesTests
             "SharpVision.Terminal.Graphics.Backends.GraphicsBackendSelector",
             "SharpVision.Terminal.Graphics.Backends.NonRetainedGraphicsBackend",
             "SharpVision.Terminal.Graphics.Backends.KittyGraphicsBackend",
-            "SharpVision.Terminal.Graphics.Backends.ItermGraphicsBackend",
-            "SharpVision.Terminal.Graphics.Backends.SixelGraphicsBackend",
         };
         var types = names
             .Select(assembly.GetType)
@@ -61,6 +59,8 @@ public sealed class GraphicsBackendNamesTests
             "SharpVision.Terminal.Kitty.Backend",
             "SharpVision.Terminal.Iterm.Backend",
             "SharpVision.Terminal.Sixel.Backend",
+            "SharpVision.Terminal.Graphics.Backends.ItermGraphicsBackend",
+            "SharpVision.Terminal.Graphics.Backends.SixelGraphicsBackend",
         };
 
         foreach (var name in names)

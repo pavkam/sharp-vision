@@ -15,8 +15,8 @@ using MultiplexingOperation = Terminal.Multiplexing.Operation;
 public sealed class BackendSelectorTests
 {
     /// <summary>Verifies the shared default prepared-byte budget matches its documented value.
-    /// KittyGraphicsBackend, NonRetainedGraphicsBackend, SixelGraphicsBackend, and
-    /// ItermGraphicsBackend all default their own maxPreparedBytes parameter to this same
+    /// KittyGraphicsBackend and NonRetainedGraphicsBackend (which configures sixel and iTerm2
+    /// output directly) both default their own maxPreparedBytes parameter to this same
     /// constant instead of independently repeating the literal (see #93).</summary>
     [Fact]
     public void DefaultMaxPreparedBytes_WhenRead_Is16Mebibytes() =>

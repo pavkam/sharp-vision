@@ -19,7 +19,7 @@ public sealed class BackendTests
     [Fact]
     public void Prepare_WhenInitialPngPlacementExists_EncodesCellsAndCursor()
     {
-        using var backend = new ItermGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true);
         using var frame = Frame("ab", (Png(), new Rect(1, 0, 1, 1), PlacementMode.Contain));
 
         var result = backend.Prepare(null, frame, full: true, Context());
@@ -41,7 +41,7 @@ public sealed class BackendTests
     [Fact]
     public void Prepare_WhenPlacementCannotBeExpressed_DeclinesWithoutOutput()
     {
-        using var backend = new ItermGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true);
         using var frame = new Frame(new Size(3, 1));
         frame.AddPlacement(new Placement(
             GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]),
@@ -71,7 +71,7 @@ public sealed class BackendTests
     [Fact]
     public void Prepare_WhenPlacementMovesThenIsRemoved_RepairsStalePixels()
     {
-        using var backend = new ItermGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true);
         var image = Png();
         using var first = Frame("ab", (image, new Rect(0, 0, 1, 1), PlacementMode.Stretch));
         using var moved = Frame("ab", (image, new Rect(1, 0, 1, 1), PlacementMode.Stretch));
@@ -95,7 +95,7 @@ public sealed class BackendTests
     [Fact]
     public void Prepare_WhenPngBecomesRgba_RequestsFullCellRedrawWithoutImageBytes()
     {
-        using var backend = new ItermGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true);
         using var first = Frame("a", (Png(), new Rect(0, 0, 1, 1), PlacementMode.Contain));
         using var rgba = Frame(
             "a",
@@ -117,7 +117,7 @@ public sealed class BackendTests
     [Fact]
     public void Prepare_WhenCellsChange_RepaintsOnlyIntersectingPlacement()
     {
-        using var backend = new ItermGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true);
         var image = Png();
         using var first = Frame("ab", (image, new Rect(0, 0, 1, 1), PlacementMode.Contain));
         using var changedUnder = Frame("xb", (image, new Rect(0, 0, 1, 1), PlacementMode.Contain));
@@ -138,7 +138,7 @@ public sealed class BackendTests
     [Fact]
     public void Prepare_WhenDamageRepaintsLowerOverlappingPng_RepaintsEveryLaterOverlap()
     {
-        using var backend = new ItermGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true);
         var firstImage = Png();
         var secondImage = Png();
         var thirdImage = Png();
@@ -165,7 +165,7 @@ public sealed class BackendTests
     [Fact]
     public void Prepare_WhenLaterOverlapIsUnsupported_SuppressesAffectedLowerPlacements()
     {
-        using var backend = new ItermGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true);
         using var frame = Frame(
             "abcd",
             (Png(), new Rect(0, 0, 2, 1), PlacementMode.Contain),
@@ -183,7 +183,7 @@ public sealed class BackendTests
     [Fact]
     public void Prepare_WhenCellPaintOccludesThenRevealsPlacement_ReconstructsEffectiveSet()
     {
-        using var backend = new ItermGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true);
         var image = Png();
         using var visible = PaintedFrame(image, imageLast: true);
         using var occluded = PaintedFrame(image, imageLast: false);
@@ -206,7 +206,7 @@ public sealed class BackendTests
     public void Prepare_WhenTmuxRouteIsAuthorized_RoutesEveryOscIndependently()
     {
         var route = TmuxRoute();
-        using var backend = new ItermGraphicsBackend(route: route);
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true, route: route);
         using var frame = Frame("a", (Png(), new Rect(0, 0, 1, 1), PlacementMode.Contain));
 
         _ = backend.Prepare(null, frame, full: true, Context());
@@ -222,7 +222,7 @@ public sealed class BackendTests
     public void Prepare_WhenPngCrossesDefaultRoutedBoundary_ReconstructsWithinEveryEnvelopeLimit()
     {
         var route = TmuxRoute();
-        using var backend = new ItermGraphicsBackend(route: route);
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true, route: route);
         var image = Png(dataBytes: 786_410);
         using var frame = Frame("a", (image, new Rect(0, 0, 1, 1), PlacementMode.Contain));
 
@@ -291,7 +291,7 @@ public sealed class BackendTests
             paneVisible: true,
             MultiplexingOperation.Graphics,
             maxEnvelopeBytes: 64));
-        using var backend = new ItermGraphicsBackend(route: route);
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true, route: route);
         using var frame = Frame("a", (Png(), new Rect(0, 0, 1, 1), PlacementMode.Contain));
 
         var result = backend.Prepare(null, frame, full: true, Context());
@@ -312,14 +312,14 @@ public sealed class BackendTests
             paneVisible: true,
             MultiplexingOperation.Graphics));
 
-        _ = Should.Throw<NotSupportedException>(() => new ItermGraphicsBackend(route: route));
+        _ = Should.Throw<NotSupportedException>(() => new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true, route: route));
     }
 
     /// <summary>Verifies prepared writes and local lifecycle own no managed or remote cleanup state.</summary>
     [Fact]
     public void Lifetime_WhenPrepared_WritersAndStateTransitionsAreAllocationFree()
     {
-        using var backend = new ItermGraphicsBackend();
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true);
         using var frame = Frame("a", (Png(), new Rect(0, 0, 1, 1), PlacementMode.Contain));
         _ = backend.Prepare(null, frame, full: true, Context());
         var output = new ArrayBufferWriter<byte>(512);
@@ -405,7 +405,7 @@ public sealed class BackendTests
         paneVisible: true,
         MultiplexingOperation.Graphics));
 
-    private static byte[] WritePlacements(ItermGraphicsBackend backend)
+    private static byte[] WritePlacements(NonRetainedGraphicsBackend backend)
     {
         var output = new ArrayBufferWriter<byte>();
         backend.WritePlacements(output);

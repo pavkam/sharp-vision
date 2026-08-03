@@ -15,7 +15,7 @@ public sealed class BackendRendererTests
     [Fact]
     public async Task RenderAsync_WhenTransportFails_RetryReconstructsCellsAndMultipartImageAsync()
     {
-        using var renderer = new Renderer(new ItermGraphicsBackend());
+        using var renderer = new Renderer(new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true));
         await using var transport = new FakeTransport();
         var image = Png();
         using var first = Frame(image, new Rect(0, 0, 1, 1));

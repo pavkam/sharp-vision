@@ -13,7 +13,7 @@ public sealed class BackendRendererTests
     [Fact]
     public async Task RenderAsync_WhenPlacementMoves_ClearsCellsBeforeTargetSixelAsync()
     {
-        using var renderer = new Renderer(new SixelGraphicsBackend());
+        using var renderer = new Renderer(new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false));
         await using var transport = new FakeTransport();
         var image = Red();
         using var first = Frame(image, new Rect(0, 0, 1, 1));
@@ -46,7 +46,7 @@ public sealed class BackendRendererTests
     [Fact]
     public async Task RenderAsync_WhenMetricsChangeOrDisappear_ForcesFullCellRepairAsync()
     {
-        using var renderer = new Renderer(new SixelGraphicsBackend());
+        using var renderer = new Renderer(new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false));
         await using var transport = new FakeTransport();
         using var frame = Frame(Red(), new Rect(0, 0, 1, 1));
         var profile = Profile();
@@ -85,7 +85,7 @@ public sealed class BackendRendererTests
     [Fact]
     public async Task RenderAsync_WhenTransportFails_RetryReconstructsCellsAndSixelAsync()
     {
-        using var renderer = new Renderer(new SixelGraphicsBackend());
+        using var renderer = new Renderer(new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false));
         await using var transport = new FakeTransport();
         var image = Red();
         using var first = Frame(image, new Rect(0, 0, 1, 1));
@@ -124,7 +124,7 @@ public sealed class BackendRendererTests
     [Fact]
     public async Task RenderAsync_WhenPngPlacementHasNoSixelPath_ReportsFormatDiagnosticAsync()
     {
-        using var renderer = new Renderer(new SixelGraphicsBackend());
+        using var renderer = new Renderer(new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false));
         await using var transport = new FakeTransport();
         var image = Png();
         using var frame = Frame(image, new Rect(0, 0, 1, 1));
@@ -146,7 +146,7 @@ public sealed class BackendRendererTests
     [Fact]
     public async Task RenderAsync_WhenPlacementEncodesNormally_ReportsNoDiagnosticsAsync()
     {
-        using var renderer = new Renderer(new SixelGraphicsBackend());
+        using var renderer = new Renderer(new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false));
         await using var transport = new FakeTransport();
         using var frame = Frame(Red(), new Rect(0, 0, 1, 1));
         var profile = Profile();
