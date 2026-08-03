@@ -455,7 +455,12 @@ public static class Edit
         return position;
     }
 
-    private static int Kind(string text, int position)
+    /// <summary>Classifies the grapheme starting at <paramref name="position"/> as word (2),
+    /// whitespace (1), or other (0). O(1): decodes only the rune at <paramref name="position"/>.
+    /// Exposed internally so <c>TextInput</c> can replicate <see cref="MovePreviousWord"/>'s
+    /// classification against its own cached boundary offsets instead of this type's O(n)
+    /// <see cref="PreviousBoundary"/> scan (see #42).</summary>
+    internal static int Kind(string text, int position)
     {
         var status = Rune.DecodeFromUtf16(text.AsSpan(position), out var rune, out _);
 

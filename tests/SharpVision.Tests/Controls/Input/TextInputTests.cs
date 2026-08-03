@@ -183,6 +183,25 @@ public sealed class TextInputTests
         steps.ShouldBe(Edit.GraphemeCount(text));
     }
 
+    /// <summary>Verifies Ctrl+Left's cached fast path (MoveCaretPreviousWord) lands on exactly the
+    /// same caret index as Edit.MovePreviousWord's own ground truth at every step across mixed
+    /// word/whitespace/punctuation/emoji graphemes (see #42).</summary>
+    [Fact]
+    public void Dispatch_WhenHoldingControlLeftAcrossMixedGraphemeKinds_MatchesEditMovePreviousWordAtEveryStep()
+    {
+        var text = "one  two_3 👩‍💻! four";
+        var control = new TextInput { Text = text };
+        Key(control, Code.End, Modifiers.None);
+        var expected = new Selection(text.Length, text.Length);
+
+        while (expected.Caret > 0)
+        {
+            expected = Edit.MovePreviousWord(text, expected, extend: false).Selection;
+            Key(control, Code.Left, Modifiers.Control);
+            control.CaretIndex.ShouldBe(expected.Caret);
+        }
+    }
+
     /// <summary>Verifies the boundary cache backing Left rebuilds for a completely replaced Text
     /// value instead of serving offsets computed for the previous string instance - a stale cache
     /// from a combining-mark grapheme would skip a boundary once the text becomes plain ASCII of
