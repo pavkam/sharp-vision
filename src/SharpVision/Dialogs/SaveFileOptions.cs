@@ -48,8 +48,17 @@ public sealed class SaveFileOptions
         }
     } = Environment.CurrentDirectory;
 
-    /// <summary>Gets or sets the initial filename populated in the name input.</summary>
-    public string InitialFileName { get; set; } = "";
+    /// <summary>Gets or sets the non-null initial filename populated in the name input.</summary>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    public string InitialFileName
+    {
+        get;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            field = value;
+        }
+    } = "";
 
     /// <summary>Gets or sets whether an overwrite confirmation is shown when saving to an existing file.</summary>
     public bool ConfirmOverwrite { get; set; } = true;

@@ -17,7 +17,7 @@ result, the actual save belongs to the caller.
 | ------------------ | ------------------------------------------------ | --------------------------------------------------------------------- |
 | `Title`            | `Save As`                                        | Rejects null or blank values.                                         |
 | `InitialDirectory` | Construction-time `Environment.CurrentDirectory` | Rejects null or blank values; dialog construction canonicalizes it.   |
-| `InitialFileName`  | Empty string                                     | Supplies the initial filename and Save-button state.                  |
+| `InitialFileName`  | Empty string                                     | Rejects null; supplies the initial filename and Save-button state.    |
 | `ConfirmOverwrite` | `true`                                           | Requires confirmation before returning an existing path.              |
 | `ShowHidden`       | `false`                                          | Includes dot-prefixed and hidden-attribute entries initially.         |
 | `MaxVisibleRows`   | `12`                                             | Rejects non-positive values; caps visible ListView content rows.      |
@@ -39,14 +39,6 @@ showing.
 
 `null` for a style property lets the corresponding owned part use its own
 semantic input profile.
-
-> [!IMPORTANT]
->
-> **Implementation gap:** `InitialFileName` is a non-null string by contract,
-> but its option setter currently accepts a runtime null. Constructing
-> `SaveFileDialog` then rejects that value through `TextInput.Text`, after the
-> invalid options object has already been mutated, instead of rejecting it at
-> the public setter boundary.
 
 ### SaveFileResult
 
@@ -145,11 +137,10 @@ separator, file rows use `·`, and names are markup-escaped and ellipsized.
 
 ## Errors and threading
 
-Invalid public arguments throw before the dialog changes observably, except for
-the documented `InitialFileName` setter gap. Invalid filename or path
-composition, missing directories, access denial, and enumeration I/O failures
-are recoverable while the dialog is open: `Status` shows concise text while the
-last successful directory and rows stay committed.
+Invalid public arguments throw before the dialog changes observably. Invalid
+filename or path composition, missing directories, access denial, and
+enumeration I/O failures are recoverable while the dialog is open: `Status`
+shows concise text while the last successful directory and rows stay committed.
 
 A confirmed path does not prove that the caller can later create or replace the
 file. Filesystem races, permissions, sharing, and the final write remain the
