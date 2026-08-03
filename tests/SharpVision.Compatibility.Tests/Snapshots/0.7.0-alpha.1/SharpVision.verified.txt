@@ -663,6 +663,7 @@ namespace SharpVision.Controls
         public System.Windows.Input.ICommand? Command { get; set; }
         public object? CommandParameter { get; set; }
         protected abstract void Activate(SharpVision.Input.ActivationCause cause);
+        protected void ExecuteCommandIfAny() { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
@@ -2286,6 +2287,7 @@ namespace SharpVision.Input
         public System.Text.Rune? Character { get; }
         public SharpVision.Terminal.Input.Code Code { get; }
         public SharpVision.Terminal.Input.Modifiers Modifiers { get; }
+        public bool Matches(in SharpVision.Terminal.Input.Stroke stroke) { }
         public override string ToString() { }
     }
     public sealed class ListSelectionChangedEventArgs : System.EventArgs
@@ -2764,6 +2766,7 @@ namespace SharpVision.Navigation
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        public void PerformInvoke() { }
         public void ResetMarkers() { }
     }
     public sealed class NavigationViewItemCollection : System.Collections.Generic.IEnumerable<SharpVision.Navigation.NavigationViewItem>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Navigation.NavigationViewItem>, System.Collections.Generic.IReadOnlyList<SharpVision.Navigation.NavigationViewItem>, System.Collections.IEnumerable
