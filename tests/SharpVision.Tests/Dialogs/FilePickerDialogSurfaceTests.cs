@@ -390,9 +390,21 @@ public sealed class FilePickerDialogSurfaceTests
             await surface.UpdateAsync(
                 () =>
                 {
-                    for (var index = 0; index < 4096; index++)
+                    // Model an asynchronous directory-load commit that reached the dispatcher
+                    // before this callback. Queue-pressure setup must not assume it owns all
+                    // capacity slots.
+                    surface.Application.Dispatcher.Post(static () => { });
+
+                    while (true)
                     {
-                        surface.Application.Dispatcher.Post(static () => { });
+                        try
+                        {
+                            surface.Application.Dispatcher.Post(static () => { });
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            break;
+                        }
                     }
 
                     cancellation.Cancel();
