@@ -8,5 +8,8 @@ namespace SharpVision.Terminal.Graphics;
 public enum GraphicsPlacementSkipReason
 {
     /// <summary>The image's pixel format has no encodable path on any protocol the active backend enabled.</summary>
-    FormatNotEncodable
+    FormatNotEncodable,
+
+    /// <summary>Every non-retained protocol the backend could otherwise use is deauthorized by the current profile.</summary>
+    ProtocolNotAuthorized
 }

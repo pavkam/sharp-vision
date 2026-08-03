@@ -425,10 +425,14 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             {
                 // Isolated from the mode/rect/metrics checks above: this placement's format has
                 // no encodable path on any enabled protocol, distinct from an otherwise-encodable
-                // format that failed on some other eligibility condition (see #233).
-                (skipped ??= []).Add(new GraphicsPlacementDiagnostic(
-                    placement.ImageIdentity,
-                    GraphicsPlacementSkipReason.FormatNotEncodable));
+                // format that failed on some other eligibility condition (see #233). When neither
+                // protocol is authorized at all, every format necessarily fails IsFormatEncodable -
+                // that is a deauthorized-profile condition, not a format mismatch, so it gets its
+                // own reason instead of being mislabeled as FormatNotEncodable.
+                var reason = !enableSixel && !enableIterm
+                    ? GraphicsPlacementSkipReason.ProtocolNotAuthorized
+                    : GraphicsPlacementSkipReason.FormatNotEncodable;
+                (skipped ??= []).Add(new GraphicsPlacementDiagnostic(placement.ImageIdentity, reason));
             }
         }
 

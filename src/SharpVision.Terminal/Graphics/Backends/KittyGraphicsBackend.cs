@@ -111,10 +111,23 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             context.Profile.Capabilities.KittyGraphics,
             allowQuery: true);
         var encodable = new bool[back.PlacementCount];
+        List<GraphicsPlacementDiagnostic>? skippedPlacements = null;
 
         for (var index = 0; index < encodable.Length; index++)
         {
             encodable[index] = enabled && back.IsPlacementEffective(index);
+
+            // Mirrors NonRetainedGraphicsBackend's diagnostic reporting (see #233): an otherwise-
+            // effective placement dropped only because Kitty graphics is deauthorized on the
+            // current profile is reported, rather than falling back silently with no observable
+            // signal at all - Kitty accepts both RGBA and PNG, so protocol authorization is its
+            // only eligibility gate.
+            if (!enabled && back.IsPlacementEffective(index))
+            {
+                (skippedPlacements ??= []).Add(new GraphicsPlacementDiagnostic(
+                    back.GetPlacement(index).ImageIdentity,
+                    GraphicsPlacementSkipReason.ProtocolNotAuthorized));
+            }
         }
 
         var blocked = back.FindFallbackBlockedPlacements(encodable);
@@ -382,7 +395,9 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                 uploadCount + placementCount + removalCount != 0,
                 uploadCount,
                 placementCount,
-                removalCount);
+                removalCount,
+                fullCellRedraw: false,
+                skippedPlacements);
         }
         catch
         {
