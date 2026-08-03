@@ -11,10 +11,12 @@ public readonly struct ButtonStyle: IEquatable<ButtonStyle>
     private readonly ThemeProfile? _appearance;
     private readonly Thickness? _padding;
 
-    /// <summary>Gets the primary Button-style definition.</summary>
-    internal static StyleDefinition<ButtonStyle> Definition { get; } = StyleDefinitions.Control(
+    /// <summary>Gets the primary Button-style definition. Reads the theme's registrable "button"
+    /// style section (see #155) for Padding when the active theme authors one; falls back to the
+    /// code-owned structural default otherwise.</summary>
+    internal static StyleDefinition<ButtonStyle> Definition { get; } = new(
         ThemeRole.Input,
-        static profile => new ButtonStyle(Standard.Padding, profile),
+        ResolveComplete,
         static style => style.Appearance,
         static (previous, _, current, _) =>
             previous.Padding != current.Padding
@@ -22,6 +24,22 @@ public readonly struct ButtonStyle: IEquatable<ButtonStyle>
                 : PressedTranslationChanged(previous.Appearance, current.Appearance)
                     ? InvalidationImpact.Arrange
                     : InvalidationImpact.None);
+
+    private static ButtonStyle ResolveComplete(ButtonStyle? local, Theme? theme)
+    {
+        if (local.HasValue)
+        {
+            return local.Value;
+        }
+
+        var effectiveTheme = theme ?? Themes.Dark;
+        var section = effectiveTheme.GetStyleSection<ButtonStyleSection>("button");
+        var padding = new Thickness(
+            section?.HorizontalPadding ?? Standard.Padding.Left,
+            section?.VerticalPadding ?? Standard.Padding.Top);
+
+        return new ButtonStyle(padding, effectiveTheme.GetProfile(ThemeRole.Input));
+    }
 
     /// <summary>Gets the non-invalidating definition used by pure forwarding hosts.</summary>
     internal static StyleDefinition<ButtonStyle> ForwardingDefinition { get; } = StyleDefinitions.Part(

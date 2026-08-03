@@ -21,10 +21,14 @@ raises `Click` and invokes the command once.
 
 A `ButtonStyle` is complete: it carries `Padding` and the full normal and
 per-state `Appearance`. Use `ButtonStyle.With(...)` to copy selected members or
-overlay an `AppearanceProfileSet`; theme JSON does not load Button-specific
-structure. Assigning `Style` makes the whole style local and authoritative, and
-assigning `null` hands ownership back to the Theme. `ActualStyle` never returns
-null, and it changes when an inherited Theme changes while `Style` is null.
+overlay an `AppearanceProfileSet`. A theme document may additionally author a
+`styles.button` section with `horizontalPadding`/`verticalPadding` integer
+members; an active theme's section supplies `Padding` ahead of the code-owned
+default whenever no local `Style` is assigned (see
+[themes.md](../../concepts/themes.md#semantic-profiles)). Assigning `Style`
+makes the whole style local and authoritative, and assigning `null` hands
+ownership back to the Theme. `ActualStyle` never returns null, and it changes
+when an inherited Theme changes while `Style` is null.
 
 Button does not expose the raw `Border` and `Shadow` properties, their reset
 methods, or `SetAppearance`. Those remain protected seams for control authors,
