@@ -1143,12 +1143,33 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     // cells hold whatever the parent painted underneath, so copying them resurrects the parent's
     // OLD content over content that may have since changed with no invalidation of this otherwise
     // render-clean control (see #239); requiring an opaque fill excludes exactly that case.
-    // Popup-overlapped and image-bearing subtrees stay excluded and are tracked separately in #235.
-    private bool CanReuseCleanRender() =>
-        OwnedControlCount == 0 &&
-        !ActualShadow.IsVisible &&
-        !RequiresCompleteRender &&
-        GetResolvedAppearance(GetAppearanceState()).BackgroundMode == BackgroundMode.Opaque;
+    //
+    // A visible shadow is safe to reuse under the identical reasoning, extended one level: a
+    // shadow cell is safe to copy exactly when its own paint is a full destination overwrite that
+    // never depends on whatever was already there, so the copied bytes are provably identical to
+    // what a fresh paint would produce regardless of what changed underneath since the copied
+    // frame. Only BlockGlyph with an opaque resolved background qualifies - DrawRune with an
+    // opaque background replaces grapheme, style, and background together (ControlChrome.cs).
+    // FractionalBlock always reads the destination: DrawFractionalShadow hardcodes
+    // BackgroundMode.Transparent regardless of the shadow's own configured background. Composite
+    // never qualifies either, even opaque: ShadowMode.Composite's own contract is to "preserve
+    // underlying graphemes and replace their semantic style" - Canvas.ApplyStyle only ever calls
+    // TrySetOwnerStyle, which never touches the stored character - so a copied Composite shadow
+    // cell would carry the OLD frame's grapheme forward even though the style is correct,
+    // resurrecting stale content exactly like the transparent-underlay case (#239) the opaque body
+    // fill guard above already exists to prevent. Popup-overlapped and image-bearing subtrees stay
+    // excluded and are tracked separately in #235.
+    private bool CanReuseCleanRender()
+    {
+        var appearance = GetResolvedAppearance(GetAppearanceState());
+
+        return OwnedControlCount == 0 &&
+            !RequiresCompleteRender &&
+            appearance.BackgroundMode == BackgroundMode.Opaque &&
+            (!appearance.Shadow.IsVisible ||
+                (appearance.Shadow.Mode == ShadowMode.BlockGlyph &&
+                 appearance.ShadowBackgroundMode == BackgroundMode.Opaque));
+    }
 
     /// <summary>Requests a phase and every dependent later phase.</summary>
     /// <param name="value">The earliest dirty phase.</param>
