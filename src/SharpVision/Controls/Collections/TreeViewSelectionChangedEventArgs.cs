@@ -7,7 +7,7 @@ namespace SharpVision.Controls.Collections;
 [PublicAPI]
 public sealed class TreeViewSelectionChangedEventArgs: EventArgs
 {
-    private static readonly TreeViewItem[] _none = [];
+    private static readonly IReadOnlyList<TreeViewItem> _none = Array.AsReadOnly<TreeViewItem>([]);
 
     /// <summary>Initializes one immutable selection transition with owned delta snapshots.</summary>
     /// <param name="previousItem">The first selected item before the transition, or null.</param>
@@ -57,7 +57,7 @@ public sealed class TreeViewSelectionChangedEventArgs: EventArgs
     /// <summary>Gets the owned items this transition deselected, in stable tree order.</summary>
     public IReadOnlyList<TreeViewItem> RemovedItems { get; }
 
-    private static TreeViewItem[] Copy(IReadOnlyList<TreeViewItem> items, string name)
+    private static IReadOnlyList<TreeViewItem> Copy(IReadOnlyList<TreeViewItem> items, string name)
     {
         ArgumentNullException.ThrowIfNull(items, name);
 
@@ -75,6 +75,6 @@ public sealed class TreeViewSelectionChangedEventArgs: EventArgs
                 "A selection delta cannot contain null.");
         }
 
-        return copy;
+        return Array.AsReadOnly(copy);
     }
 }
