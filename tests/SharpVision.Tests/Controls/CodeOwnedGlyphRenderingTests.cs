@@ -16,7 +16,7 @@ public sealed class CodeOwnedGlyphRenderingTests
             new ComboBox { Items = ["A"], Width = Length.Cells(4) },
             new Size(4, 1), TestThemes.WithoutInputChrome(Themes.White)).ShouldBe("A  ▼");
         Render(
-            new Expander { Header = "X", IsExpanded = false },
+            new Expander { HeaderText = "X", IsExpanded = false },
             new Size(4, 1), Themes.White).ShouldBe("▶ X ");
         Render(
             new RadioButton { IsChecked = true, Style = RadioButtonStyle.Glyph },

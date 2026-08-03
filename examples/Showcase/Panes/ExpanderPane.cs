@@ -15,7 +15,7 @@ internal sealed class ExpanderPane: CompositeControlBase
         var status = new Text("Expanded: True");
         var basic = new Expander
         {
-            Header = "&Advanced settings",
+            HeaderText = "&Advanced settings",
             Content = new Stack
             {
                 Spacing = 1,
@@ -29,32 +29,32 @@ internal sealed class ExpanderPane: CompositeControlBase
         basic.ExpandedChanged += (_, _) => status.Content = $"Expanded: {basic.IsExpanded}";
         var collapsed = new Expander
         {
-            Header = "&Collapsed by default",
+            HeaderText = "&Collapsed by default",
             IsExpanded = false,
             Content = new Text("Hidden until you expand.")
         };
         var nested = new Expander
         {
-            Header = "&Outer section",
+            HeaderText = "&Outer section",
             Content = new Stack
             {
                 Spacing = 1,
                 Children =
                 {
                     new Text("Outer content."),
-                    new Expander { Header = "&Inner section", Content = new Text("Nested content.") }
+                    new Expander { HeaderText = "&Inner section", Content = new Text("Nested content.") }
                 }
             }
         };
         var faq1 = new Expander
         {
-            Header = "&What is SharpVision?",
+            HeaderText = "&What is SharpVision?",
             IsExpanded = false,
             Content = new Text("A .NET terminal UI framework.")
         };
         var faq2 = new Expander
         {
-            Header = "&How to create controls?",
+            HeaderText = "&How to create controls?",
             IsExpanded = false,
             Content = new Text("Derive from Control or CompositeControl.")
         };
@@ -72,9 +72,9 @@ internal sealed class ExpanderPane: CompositeControlBase
                     "Custom indentation",
                     "Compare zero, default, and deep indentation side by side.",
                     new DocColumn(
-                        new Expander { Header = "Indent &0", ContentIndent = 0, Content = new Text("Flush left.") },
-                        new Expander { Header = "Indent &2", ContentIndent = 2, Content = new Text("Default.") },
-                        new Expander { Header = "Indent &6", ContentIndent = 6, Content = new Text("Deep.") }),
+                        new Expander { HeaderText = "Indent &0", ContentIndent = 0, Content = new Text("Flush left.") },
+                        new Expander { HeaderText = "Indent &2", ContentIndent = 2, Content = new Text("Default.") },
+                        new Expander { HeaderText = "Indent &6", ContentIndent = 6, Content = new Text("Deep.") }),
                     "expander.ContentIndent = 4;")),
             new DocSection("📂", "FAQ pattern", "Collapsed expanders create an accordion.",
                 new DocExample("Stacked questions", "Click any header.", new DocColumn(faq1, faq2))),
@@ -86,14 +86,14 @@ internal sealed class ExpanderPane: CompositeControlBase
                     new DocColumn(
                         new Expander
                         {
-                            Header = "&Expanded section",
+                            HeaderText = "&Expanded section",
                             ExpandedGlyph = new Rune('-'),
                             CollapsedGlyph = new Rune('+'),
                             Content = new Text("Visible content.")
                         },
                         new Expander
                         {
-                            Header = "Fo&lded section",
+                            HeaderText = "Fo&lded section",
                             IsExpanded = false,
                             ExpandedGlyph = new Rune('-'),
                             CollapsedGlyph = new Rune('+'),
@@ -107,7 +107,7 @@ internal sealed class ExpanderPane: CompositeControlBase
                     "This specimen uses the complete themed frame while customizing only content padding.",
                     new Expander
                     {
-                        Header = "Con&nection settings",
+                        HeaderText = "Con&nection settings",
                         Padding = new Thickness(1, 0),
                         Content = new Stack
                         {

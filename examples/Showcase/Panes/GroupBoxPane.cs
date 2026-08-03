@@ -28,13 +28,13 @@ internal sealed class GroupBoxPane: CompositeControlBase
             settingsStatus.Content = $"Settings: Word wrap → {eventArgs.Current}";
         var settingsGroup = new GroupBox
         {
-            Header = "&Settings",
+            HeaderText = "&Settings",
             Content = new DocColumn(autoSave, lineNumbers, wordWrap, settingsStatus)
         };
 
         var personalGroup = new GroupBox
         {
-            Header = "&Personal",
+            HeaderText = "&Personal",
             Width = Length.Cells(28),
             Content = new DocColumn(
                 new Stack
@@ -68,7 +68,7 @@ internal sealed class GroupBoxPane: CompositeControlBase
         };
         var preferencesGroup = new GroupBox
         {
-            Header = "Pre&ferences",
+            HeaderText = "Pre&ferences",
             Width = Length.Cells(28),
             Content = new DocColumn(
                 new RadioButton { Text = "Li&ght theme", GroupName = "theme" },
@@ -78,14 +78,14 @@ internal sealed class GroupBoxPane: CompositeControlBase
 
         var innerGroup = new GroupBox
         {
-            Header = "&Network",
+            HeaderText = "&Network",
             Content = new DocColumn(
                 new CheckBox { Text = "&Use proxy", IsChecked = true },
                 new CheckBox { Text = "&Verify certificates" })
         };
         var outerGroup = new GroupBox
         {
-            Header = "&Connection",
+            HeaderText = "&Connection",
             Content = new DocColumn(
                 new Text("Timeout: 30s"),
                 innerGroup)
@@ -93,7 +93,7 @@ internal sealed class GroupBoxPane: CompositeControlBase
 
         var roundedGroup = new GroupBox
         {
-            Header = "&Rounded",
+            HeaderText = "&Rounded",
             Content = new Stack
             {
                 Padding = new Thickness(1, 0),
@@ -111,7 +111,7 @@ internal sealed class GroupBoxPane: CompositeControlBase
         };
         var lightGroup = new GroupBox
         {
-            Header = "L&ight",
+            HeaderText = "L&ight",
             Content = new Stack
             {
                 Padding = new Thickness(1, 0),
@@ -129,7 +129,7 @@ internal sealed class GroupBoxPane: CompositeControlBase
         };
         var heavyGroup = new GroupBox
         {
-            Header = "&Heavy",
+            HeaderText = "&Heavy",
             Content = new Stack
             {
                 Padding = new Thickness(1, 0),
@@ -146,15 +146,15 @@ internal sealed class GroupBoxPane: CompositeControlBase
             }
         };
         var untitledGroup = new GroupBox { Content = new Text("Untitled content") };
-        var unicodeGroup = new GroupBox { Header = "&界 Tools", Content = new Text("Wide header geometry") };
+        var unicodeGroup = new GroupBox { HeaderText = "&界 Tools", Content = new Text("Wide header geometry") };
         var asciiGroup = new GroupBox
         {
-            Header = "&ASCII",
+            HeaderText = "&ASCII",
             Content = new Text("Fallback frame")
         };
         var tinyGroup = new GroupBox
         {
-            Header = "&T",
+            HeaderText = "&T",
             Width = Length.Cells(7),
             Height = Length.Cells(3),
             Content = new Text("x")

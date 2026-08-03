@@ -3,9 +3,20 @@
 
 namespace SharpVision.Controls.Layout;
 
+using DisplayText = Display.Text;
+
 /// <summary>Frames one owned content control with a titled border.</summary>
+/// <remarks>
+/// The header is arranged into the top border edge but, because it shares that row with the frame
+/// glyphs, is painted from <see cref="RenderOverlay"/> after the border rather than through the
+/// ordinary descendant render pass; <see cref="RenderChildren"/> excludes it accordingly. A plain
+/// <see cref="DisplayText"/> header (the common case, materialized by
+/// <see cref="HeaderedContentControl.HeaderText"/>) paints with the frame's own theme-owned style,
+/// so the title always reads as part of the border regardless of a locally assigned
+/// <see cref="ControlBase.Face"/>; any other header control paints with its own resolved style.
+/// </remarks>
 [PublicAPI]
-public sealed class GroupBox: ContentControl
+public sealed class GroupBox: HeaderedContentControl
 {
     /// <summary>Initializes an empty group box.</summary>
     public GroupBox()
@@ -15,34 +26,23 @@ public sealed class GroupBox: ContentControl
     /// <inheritdoc/>
     protected override ThemeRole ThemeRole => ThemeRole.Container;
 
-    /// <summary>Gets or sets the non-null title written into the top edge.</summary>
-    /// <exception cref="ArgumentNullException">The value is null.</exception>
-    /// <exception cref="ArgumentException">The value contains a terminal control character.</exception>
-    public string Header
-    {
-        get;
-        set
-        {
-            ArgumentNullException.ThrowIfNull(value);
-            value.ThrowIfContainsControls(
-                nameof(value),
-                "A group header cannot contain terminal controls.");
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
-        }
-    } = string.Empty;
-
-    /// <inheritdoc/>
-    protected override string? AccessKeyText => Header;
-
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
         var child = Content;
-        var hw = Header.Length == 0
+        var headerContentWidth = 0;
+
+        if (Header is { } header)
+        {
+            var hd = MeasureChild(header, new Constraint(null, 1));
+            headerContentWidth = header.Visibility == Visibility.Collapsed
+                ? 0
+                : (int) Math.Min(int.MaxValue, (long) hd.Width + header.Margin.Horizontal);
+        }
+
+        var hw = Header is null
             ? 0
-            : (int) Math.Min(
-                int.MaxValue,
-                2L + Header.Measure(CellPolicy.AmbiguousWidth, UseMnemonic));
+            : (int) Math.Min(int.MaxValue, 2L + headerContentWidth);
         if (child is null)
         {
             return new Size(hw, 0);
@@ -65,6 +65,14 @@ public sealed class GroupBox: ContentControl
         {
             ArrangeChild(c, bounds, ResolvedAxes.Both);
         }
+
+        if (Header is { } header)
+        {
+            var titleRect = Bounds.Width > 3
+                ? new Rect(Bounds.X + 2, Bounds.Y, Bounds.Width - 3, 1)
+                : default;
+            ArrangeChild(header, titleRect, ResolvedAxes.Height);
+        }
     }
 
     /// <inheritdoc/>
@@ -79,6 +87,11 @@ public sealed class GroupBox: ContentControl
             canvas.Clear(Bounds, ResolvedStyle);
         }
     }
+
+    /// <summary>Renders only <see cref="ContentControl.Content"/> through the ordinary descendant
+    /// pass; the header renders from <see cref="RenderOverlay"/> instead, after the border.</summary>
+    internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip) =>
+        Content?.Render(canvas, contentClip);
 
     /// <inheritdoc/>
     internal override void RenderOverlay(TerminalCanvas canvas)
@@ -98,7 +111,7 @@ public sealed class GroupBox: ContentControl
             ResolveBorderGlyphs(actualBorder.GlyphStyle),
             border,
             bg);
-        if (!string.IsNullOrEmpty(Header) && Bounds.Width > 3)
+        if (Header is { } header && Bounds.Width > 3)
         {
             var title = canvas.Clip(new Rect(Bounds.X + 1, Bounds.Y, Bounds.Width - 2, 1));
             var start = title.Draw(
@@ -106,19 +119,32 @@ public sealed class GroupBox: ContentControl
                 new Point(Bounds.X + 1, Bounds.Y),
                 border,
                 background: bg);
-            var cells = Header.Draw(
-                title,
-                start.Final,
-                border,
-                bg,
-                CellPolicy.AmbiguousWidth,
-                UseMnemonic,
-                EffectiveIsEnabled ? Theme?.Hotkey ?? Color.Default : null);
-            _ = title.Draw(
-                " ".AsSpan(),
-                new Point(start.Final.X + cells, start.Final.Y),
-                border,
-                background: bg);
+
+            if (header is DisplayText text)
+            {
+                var cells = text.Content.Draw(
+                    title,
+                    start.Final,
+                    border,
+                    bg,
+                    CellPolicy.AmbiguousWidth,
+                    UseMnemonic,
+                    EffectiveIsEnabled ? Theme?.Hotkey ?? Color.Default : null);
+                _ = title.Draw(
+                    " ".AsSpan(),
+                    new Point(start.Final.X + cells, start.Final.Y),
+                    border,
+                    background: bg);
+            }
+            else
+            {
+                header.Render(canvas);
+                _ = title.Draw(
+                    " ".AsSpan(),
+                    new Point(start.Final.X + header.Bounds.Width, start.Final.Y),
+                    border,
+                    background: bg);
+            }
         }
     }
 }

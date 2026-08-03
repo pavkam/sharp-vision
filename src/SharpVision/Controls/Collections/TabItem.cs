@@ -4,31 +4,19 @@
 namespace SharpVision.Controls.Collections;
 
 /// <summary>Defines one content page with a header label inside a <see cref="TabControl"/>.</summary>
+/// <remarks>
+/// The owning <see cref="TabControl"/> renders a page's header through a private, text-only
+/// <see cref="TabHeader"/> strip control, so only <see cref="HeaderedContentControl.HeaderText"/>
+/// reaches the tab strip today; a caller-assigned rich <see cref="HeaderedContentControl.Header"/>
+/// is retained on the page but is not yet shown in the strip.
+/// </remarks>
 [PublicAPI]
-public sealed class TabItem: ContentControl
+public sealed class TabItem: HeaderedContentControl
 {
     /// <summary>Initializes an empty tab page with no header.</summary>
     public TabItem()
     {
     }
-
-    /// <summary>Gets or sets the non-null header label shown in the tab bar.</summary>
-    /// <exception cref="ArgumentNullException">The value is null.</exception>
-    /// <exception cref="ArgumentException">The value contains terminal control characters.</exception>
-    /// <exception cref="InvalidOperationException">The attached tab is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The tab is disposed.</exception>
-    public string Header
-    {
-        get;
-        set
-        {
-            ArgumentNullException.ThrowIfNull(value);
-            value.ThrowIfContainsControls(
-                nameof(value),
-                "A tab header cannot contain terminal controls.");
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
-        }
-    } = string.Empty;
 
     /// <summary>Gets or sets whether this page may be closed by its owner.</summary>
     /// <exception cref="InvalidOperationException">The attached tab is mutated off-dispatcher.</exception>

@@ -16,9 +16,9 @@ public sealed class TabBehaviorSurfaceTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
-        tabs.Items.Add(new TabItem { Header = "General", Content = new ControlText("General content") });
-        tabs.Items.Add(new TabItem { Header = "Advanced", Content = new ControlText("Advanced content") });
-        tabs.Items.Add(new TabItem { Header = "Options", Content = new ControlText("Options content") });
+        tabs.Items.Add(new TabItem { HeaderText = "General", Content = new ControlText("General content") });
+        tabs.Items.Add(new TabItem { HeaderText = "Advanced", Content = new ControlText("Advanced content") });
+        tabs.Items.Add(new TabItem { HeaderText = "Options", Content = new ControlText("Options content") });
 
         // Act
         await using var surface = await ComponentSurface.MountAsync(
@@ -52,8 +52,8 @@ public sealed class TabBehaviorSurfaceTests
             DividerColor = ThemeColor.Warning,
             SelectionIndicatorColor = ThemeColor.Warning
         };
-        tabs.Items.Add(new TabItem { Header = "General", Content = new ControlText("General content") });
-        tabs.Items.Add(new TabItem { Header = "Advanced", Content = new ControlText("Advanced content") });
+        tabs.Items.Add(new TabItem { HeaderText = "General", Content = new ControlText("General content") });
+        tabs.Items.Add(new TabItem { HeaderText = "Advanced", Content = new ControlText("Advanced content") });
 
         // Act
         await using var surface = await ComponentSurface.MountAsync(
@@ -78,8 +78,8 @@ public sealed class TabBehaviorSurfaceTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
-        tabs.Items.Add(new TabItem { Header = "First", Content = new ControlText("Alpha") });
-        tabs.Items.Add(new TabItem { Header = "Second", Content = new ControlText("Beta") });
+        tabs.Items.Add(new TabItem { HeaderText = "First", Content = new ControlText("Alpha") });
+        tabs.Items.Add(new TabItem { HeaderText = "Second", Content = new ControlText("Beta") });
         await using var surface = await ComponentSurface.MountAsync(
             tabs,
             new Size(20, 4),
@@ -105,9 +105,9 @@ public sealed class TabBehaviorSurfaceTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
-        tabs.Items.Add(new TabItem { Header = "A", Content = new ControlText("First") });
-        tabs.Items.Add(new TabItem { Header = "B", Content = new ControlText("Second") });
-        tabs.Items.Add(new TabItem { Header = "C", Content = new ControlText("Third") });
+        tabs.Items.Add(new TabItem { HeaderText = "A", Content = new ControlText("First") });
+        tabs.Items.Add(new TabItem { HeaderText = "B", Content = new ControlText("Second") });
+        tabs.Items.Add(new TabItem { HeaderText = "C", Content = new ControlText("Third") });
         await using var surface = await ComponentSurface.MountAsync(
             tabs,
             new Size(12, 4),
@@ -158,8 +158,8 @@ public sealed class TabBehaviorSurfaceTests
     public async Task Input_WhenHeadersNavigateAndPress_CommitsReleasedSelectionAndCleanupAsync()
     {
         // Arrange
-        var first = new TabItem { Header = "General", Content = new ControlText("General body") };
-        var second = new TabItem { Header = "Advanced", Content = new ControlText("Advanced body") };
+        var first = new TabItem { HeaderText = "General", Content = new ControlText("General body") };
+        var second = new TabItem { HeaderText = "Advanced", Content = new ControlText("Advanced body") };
         var tabs = new TabControl
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -228,9 +228,9 @@ public sealed class TabBehaviorSurfaceTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
         };
-        tabs.Items.Add(new TabItem { Header = "First", Content = new ControlText("One") });
-        tabs.Items.Add(new TabItem { Header = "Disabled", Content = new ControlText("Two"), IsEnabled = false });
-        tabs.Items.Add(new TabItem { Header = "Last", Content = new ControlText("Three") });
+        tabs.Items.Add(new TabItem { HeaderText = "First", Content = new ControlText("One") });
+        tabs.Items.Add(new TabItem { HeaderText = "Disabled", Content = new ControlText("Two"), IsEnabled = false });
+        tabs.Items.Add(new TabItem { HeaderText = "Last", Content = new ControlText("Three") });
         await using var surface = await ComponentSurface.MountAsync(
             tabs,
             new Size(30, 4),
@@ -256,8 +256,8 @@ public sealed class TabBehaviorSurfaceTests
     [Fact]
     public async Task Keyboard_WhenSelectedTabIsCloseable_RaisesCloseRequestAsync()
     {
-        var first = new TabItem { Header = "First", IsClosable = true, Content = new ControlText("One") };
-        var second = new TabItem { Header = "Second", Content = new ControlText("Two") };
+        var first = new TabItem { HeaderText = "First", IsClosable = true, Content = new ControlText("One") };
+        var second = new TabItem { HeaderText = "Second", Content = new ControlText("Two") };
         var tabs = new TabControl
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -289,9 +289,9 @@ public sealed class TabBehaviorSurfaceTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
         };
-        tabs.Items.Add(new TabItem { Header = "One", Content = new ControlText("One") });
-        tabs.Items.Add(new TabItem { Header = "Two", Content = new ControlText("Two") });
-        tabs.Items.Add(new TabItem { Header = "Three", Content = new ControlText("Three") });
+        tabs.Items.Add(new TabItem { HeaderText = "One", Content = new ControlText("One") });
+        tabs.Items.Add(new TabItem { HeaderText = "Two", Content = new ControlText("Two") });
+        tabs.Items.Add(new TabItem { HeaderText = "Three", Content = new ControlText("Three") });
         await using var surface = await ComponentSurface.MountAsync(
             tabs,
             new Size(10, 4),

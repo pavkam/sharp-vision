@@ -78,7 +78,7 @@ public sealed class AccessKeyManagerTests
             var first = new TextInput { TabIndex = 1 };
             var group = new GroupBox
             {
-                Header = "&Profile",
+                HeaderText = "&Profile",
                 Content = new Stack { Children = { later, first } }
             };
             root.Children.Add(group);
@@ -159,13 +159,13 @@ public sealed class AccessKeyManagerTests
             using var root = new Stack();
             var checkBox = new CheckBox { Text = "&Check" };
             var radioButton = new RadioButton { Text = "&Radio" };
-            var expander = new Expander { Header = "&Expand", IsExpanded = true };
+            var expander = new Expander { HeaderText = "&Expand", IsExpanded = true };
             var menu = new Menu();
             var menuItem = new MenuItem { Text = "&Menu" };
             menu.Items.Add(menuItem);
             var tabs = new TabControl();
-            tabs.Items.Add(new TabItem { Header = "&General" });
-            tabs.Items.Add(new TabItem { Header = "&Advanced" });
+            tabs.Items.Add(new TabItem { HeaderText = "&General" });
+            tabs.Items.Add(new TabItem { HeaderText = "&Advanced" });
             var navigation = new NavigationView();
             var navigationItem = new NavigationViewItem { Text = "&Home" };
             navigation.Items.Add(navigationItem);

@@ -215,9 +215,13 @@ public sealed class Text: ControlBase, IAccessKeyCaption
 
     private void EnsureParsed()
     {
-        var captionOwner = Parent is PressableBase owner && owner.OwnsCaption(this)
-            ? owner
-            : null;
+        var isCaption = Parent switch
+        {
+            PressableBase pressable => pressable.OwnsCaption(this),
+            HeaderedContentControl headered => headered.OwnsCaption(this),
+            _ => false
+        };
+        var captionOwner = isCaption ? Parent : null;
         var useMnemonic = captionOwner?.UseMnemonic ?? UseMnemonic;
         var highlightMnemonic = captionOwner?.EffectiveIsEnabled ?? EffectiveIsEnabled;
 

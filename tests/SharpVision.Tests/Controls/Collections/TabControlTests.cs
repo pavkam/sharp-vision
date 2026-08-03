@@ -339,7 +339,7 @@ public sealed class TabControlTests
         tabs.HeaderAt(0).Text.ShouldBe("Original");
 
         // Act
-        item.Header = "Updated";
+        item.HeaderText = "Updated";
 
         // Assert
         tabs.HeaderAt(0).Text.ShouldBe("Updated");
@@ -881,7 +881,7 @@ public sealed class TabControlTests
 
     private static TabItem Create(string header, string content) => new()
     {
-        Header = header,
+        HeaderText = header,
         Content = new ControlText(content)
     };
 

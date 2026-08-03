@@ -134,7 +134,7 @@ internal static class Doc
 
         var specimenSurface = new GroupBox
         {
-            Header = "Example",
+            HeaderText = "Example",
             UseMnemonic = false,
             Padding = new Thickness(1),
             Content = new Stack { Children = { specimen } }
@@ -163,7 +163,7 @@ internal static class Doc
             };
             block.Children.Add(new Expander
             {
-                Header = "C# recipe",
+                HeaderText = "C# recipe",
                 Content = recipe,
                 IsExpanded = false,
                 UseMnemonic = false

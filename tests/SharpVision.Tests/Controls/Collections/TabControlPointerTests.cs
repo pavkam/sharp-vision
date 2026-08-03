@@ -11,8 +11,8 @@ public sealed class TabControlPointerTests
     public async Task Render_WhenMounted_StylesOnlySelectedHeaderAsync()
     {
         // Arrange
-        var first = new TabItem { Header = "General", Content = new ControlText("General body") };
-        var second = new TabItem { Header = "Advanced", Content = new ControlText("Advanced body") };
+        var first = new TabItem { HeaderText = "General", Content = new ControlText("General body") };
+        var second = new TabItem { HeaderText = "Advanced", Content = new ControlText("Advanced body") };
         var tabs = new TabControl
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -46,8 +46,8 @@ public sealed class TabControlPointerTests
     public async Task Pointer_WhenNestedHeaderIsHoveredAndClicked_UsesHeaderStateAndSelectsAsync()
     {
         // Arrange
-        var first = new TabItem { Header = "General", Content = new ControlText("General body") };
-        var second = new TabItem { Header = "Advanced", Content = new ControlText("Advanced body") };
+        var first = new TabItem { HeaderText = "General", Content = new ControlText("General body") };
+        var second = new TabItem { HeaderText = "Advanced", Content = new ControlText("Advanced body") };
         var tabs = new TabControl
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -100,8 +100,8 @@ public sealed class TabControlPointerTests
     public async Task Pointer_WhenHeaderIsClicked_SelectsReleasedPageAsync()
     {
         // Arrange
-        var first = new TabItem { Header = "General", Content = new ControlText("General body") };
-        var second = new TabItem { Header = "Advanced", Content = new ControlText("Advanced body") };
+        var first = new TabItem { HeaderText = "General", Content = new ControlText("General body") };
+        var second = new TabItem { HeaderText = "Advanced", Content = new ControlText("Advanced body") };
         var tabs = new TabControl
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,

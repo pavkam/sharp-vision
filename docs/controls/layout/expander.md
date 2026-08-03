@@ -3,16 +3,19 @@
 ## Overview
 
 `Expander` displays a collapsible section with a focusable header toggle and
-optional content. It extends [`ContentControl`](../content-control.md#overview).
-Pressing Enter or Space, or clicking the header with the primary pointer button,
-toggles the visibility of the content region below. The header always renders
-the theme's expanded or collapsed disclosure glyph followed by the header text.
+optional content. It extends
+[`HeaderedContentControl`](../headered-content-control.md#overview). Pressing
+Enter or Space, or clicking the header with the primary pointer button, toggles
+the visibility of the content region below. The header row always renders the
+theme's expanded or collapsed disclosure glyph, followed by `Header` arranged
+into the remaining width.
 
-The Expander itself owns focus, hover, and press for the header row. The header
-is rendered directly by the control rather than exposed as a public presentation
-child. Its pointer rectangle is the first non-empty row of `ContentBounds`,
-after any caller-supplied border and padding are deflated. The caller's content
-remains the one ordinary owned child.
+The Expander itself owns focus, hover, and press for the header row, and keeps
+the disclosure glyph and the focus-highlighted row background as its own chrome;
+`Header` is an ordinary owned control arranged beside the glyph, so it paints
+with its own resolved style. Its pointer rectangle is the first non-empty row of
+`ContentBounds`, after any caller-supplied border and padding are deflated. The
+caller's content remains the one ordinary owned child.
 
 The physical `IsPointerOver` state stays true while the pointer targets retained
 content, because the Expander is in that child's routed ancestry. The
@@ -33,7 +36,8 @@ which case layout follows the shared
 
 | Member                            | Default        | Purpose                                                                           |
 | --------------------------------- | -------------- | --------------------------------------------------------------------------------- |
-| `Header`                          | Empty          | Supplies validated single-line text beside the disclosure glyph.                  |
+| `Header`                          | `null`         | Owns one replaceable control arranged beside the disclosure glyph.                |
+| `HeaderText`                      | Empty          | Convenience over `Header` for a plain single-line title.                          |
 | `IsExpanded`                      | `true`         | Includes or excludes owned content from layout, rendering, input, and navigation. |
 | `Content`                         | `null`         | Owns the optional collapsible body.                                               |
 | `ContentIndent`                   | `2` cells      | Insets expanded content from the leading edge.                                    |
@@ -42,9 +46,9 @@ which case layout follows the shared
 
 ## Behavior
 
-- `Header` is a non-null string rendered beside the toggle glyph and defaults to
-  empty. Text containing terminal control characters is rejected before any
-  state changes.
+- `Header` is any owned control arranged beside the toggle glyph. `HeaderText`
+  is the plain-text convenience: it materializes or mutates an owned `Text`
+  caption and is the common case for a simple title.
 - `IsExpanded` defaults to `true` and controls content visibility. When it is
   `false`, only the header row renders; the content is excluded from measure,
   arrangement, rendering, hit testing, and navigation, but it remains owned and
@@ -74,7 +78,7 @@ code-owned disclosure glyph defaults at render time.
 ```csharp
 var details = new Expander
 {
-    Header = "Advanced settings",
+    HeaderText = "Advanced settings",
     IsExpanded = false,
     Content = new Stack
     {
@@ -87,7 +91,7 @@ var details = new Expander
 };
 ```
 
-An ampersand in `Header` declares an
+An ampersand in `HeaderText` declares an
 [access key](../../concepts/access-keys.md#focus-and-semantic-actions). The
 marker does not count toward visible width, and pressing Alt plus the key
 focuses the Expander and toggles expansion.

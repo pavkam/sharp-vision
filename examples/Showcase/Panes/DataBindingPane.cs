@@ -88,13 +88,13 @@ internal sealed class DataBindingPane: CompositeControlBase
         var tabs = new TabControl { Width = Length.Cells(36), Height = Length.Cells(6) };
         tabs.Items.Add(new TabItem
         {
-            Header = "First",
+            HeaderText = "First",
             UseMnemonic = false,
             Content = new Text("Bound tab index 0")
         });
         tabs.Items.Add(new TabItem
         {
-            Header = "Second",
+            HeaderText = "Second",
             UseMnemonic = false,
             Content = new Text("Bound tab index 1")
         });

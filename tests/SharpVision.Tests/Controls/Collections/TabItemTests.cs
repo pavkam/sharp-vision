@@ -13,13 +13,12 @@ public sealed class TabItemTests
     {
         var item = new TabItem();
 
-        item.Header.ShouldBeEmpty();
+        item.Header.ShouldBeNull();
         item.Content.ShouldBeNull();
 
-        _ = Should.Throw<ArgumentNullException>(() => item.Header = null!);
-        _ = Should.Throw<ArgumentException>(() => item.Header = "bad\nheader");
+        _ = Should.Throw<ArgumentNullException>(() => item.HeaderText = null!);
 
-        item.Header.ShouldBeEmpty();
+        item.Header.ShouldBeNull();
     }
 
     /// <summary>Verifies caller content replacement transfers ownership.</summary>
@@ -28,7 +27,7 @@ public sealed class TabItemTests
     {
         var first = new ControlText("First");
         var second = new ControlText("Second");
-        var item = new TabItem { Header = "Page", Content = first };
+        var item = new TabItem { HeaderText = "Page", Content = first };
 
         item.Content = second;
 

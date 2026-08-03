@@ -149,8 +149,8 @@ public sealed class BindingAdapterTests
     {
         var model = new BindingModel { Number = 1 };
         var target = new TabControl();
-        target.Items.Add(new TabItem { Header = "A" });
-        target.Items.Add(new TabItem { Header = "B" });
+        target.Items.Add(new TabItem { HeaderText = "A" });
+        target.Items.Add(new TabItem { HeaderText = "B" });
         using var binding = target.Bind(model, source => source.Number);
 
         target.SelectedIndex.ShouldBe(1);

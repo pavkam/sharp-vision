@@ -124,7 +124,7 @@ internal sealed class StylingPane: CompositeControlBase
         var focusInput = new TextInput { Width = Length.Cells(24), Placeholder = "Focus within" };
         var focusGroup = new GroupBox
         {
-            Header = "FocusWithin",
+            HeaderText = "FocusWithin",
             UseMnemonic = false,
             Content = focusInput
         };

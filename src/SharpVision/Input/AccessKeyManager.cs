@@ -123,8 +123,12 @@ internal sealed class AccessKeyManager
         return false;
     }
 
-    private static bool IsPressableCaption(ControlBase caption) =>
-        caption.Parent is PressableBase owner && owner.OwnsCaption(caption);
+    private static bool IsPressableCaption(ControlBase caption) => caption.Parent switch
+    {
+        PressableBase pressable => pressable.OwnsCaption(caption),
+        HeaderedContentControl headered => headered.OwnsCaption(caption),
+        _ => false
+    };
 
     private static int FindAnchor(List<ControlBase> matches, ControlBase? focused)
     {

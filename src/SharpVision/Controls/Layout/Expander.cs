@@ -5,7 +5,7 @@ namespace SharpVision.Controls.Layout;
 
 /// <summary>Displays a collapsible section with a focusable header toggle and optional content.</summary>
 [PublicAPI]
-public sealed class Expander: ContentControl
+public sealed class Expander: HeaderedContentControl
 {
     // The header occupies one terminal row and reserves one cell for the
     // disclosure glyph plus one cell before the label.
@@ -48,22 +48,6 @@ public sealed class Expander: ContentControl
         }
     } = 2;
 
-    /// <summary>Gets or sets the non-null header label.</summary>
-    /// <exception cref="ArgumentNullException">The value is null.</exception>
-    /// <exception cref="ArgumentException">The value contains a terminal control character.</exception>
-    public string Header
-    {
-        get;
-        set
-        {
-            ArgumentNullException.ThrowIfNull(value);
-            value.ThrowIfContainsControls(
-                nameof(value),
-                "An expander header cannot contain terminal controls.");
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
-        }
-    } = string.Empty;
-
     /// <summary>Gets or sets whether the content is visible.</summary>
     public bool IsExpanded
     {
@@ -77,9 +61,6 @@ public sealed class Expander: ContentControl
             }
         }
     } = true;
-
-    /// <inheritdoc/>
-    protected override string? AccessKeyText => Header;
 
     /// <summary>Gets or sets the local collapsed-state indicator.</summary>
     public Rune CollapsedGlyph
@@ -136,10 +117,17 @@ public sealed class Expander: ContentControl
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        var hw = (int) Math.Min(
-            int.MaxValue,
-            (long) _headerChromeWidthCells +
-            Header.Measure(CellPolicy.AmbiguousWidth, UseMnemonic));
+        var headerContentWidth = 0;
+
+        if (Header is { } header)
+        {
+            var hd = MeasureChild(header, new Constraint(null, _headerHeightCells));
+            headerContentWidth = header.Visibility == Visibility.Collapsed
+                ? 0
+                : (int) Math.Min(int.MaxValue, (long) hd.Width + header.Margin.Horizontal);
+        }
+
+        var hw = (int) Math.Min(int.MaxValue, (long) _headerChromeWidthCells + headerContentWidth);
         if (!IsExpanded || Content is not { } child)
         {
             return new Size(hw, _headerHeightCells);
@@ -164,6 +152,18 @@ public sealed class Expander: ContentControl
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
+        if (Header is { } header)
+        {
+            var headerSlot = bounds.Width > _headerChromeWidthCells
+                ? new Rect(
+                    bounds.X + _headerChromeWidthCells,
+                    bounds.Y,
+                    bounds.Width - _headerChromeWidthCells,
+                    Math.Min(_headerHeightCells, bounds.Height))
+                : default;
+            ArrangeChild(header, headerSlot, ResolvedAxes.Height);
+        }
+
         if (Content is not { } content)
         {
             return;
@@ -199,6 +199,11 @@ public sealed class Expander: ContentControl
             background = BackgroundMode.Opaque;
         }
 
+        if (IsFocused && content.Width > 0)
+        {
+            canvas.Clear(new Rect(content.X, content.Y, content.Width, _headerHeightCells), s);
+        }
+
         var themed = IsExpanded ? ControlGlyphs.Disclosure.Expanded : ControlGlyphs.Disclosure.Collapsed;
         var selected = IsExpanded ? ExpandedGlyph : CollapsedGlyph;
         canvas.DrawRune(
@@ -206,21 +211,6 @@ public sealed class Expander: ContentControl
             new Point(content.X, content.Y),
             s,
             background);
-        if (Header.Length > 0 && content.Width > _headerChromeWidthCells)
-        {
-            _ = Header.Draw(
-                canvas.Clip(new Rect(
-                    content.X + _headerChromeWidthCells,
-                    content.Y,
-                    content.Width - _headerChromeWidthCells,
-                    _headerHeightCells)),
-                new Point(content.X + _headerChromeWidthCells, content.Y),
-                s,
-                background,
-                CellPolicy.AmbiguousWidth,
-                UseMnemonic,
-                EffectiveIsEnabled ? Theme?.Hotkey ?? Color.Default : null);
-        }
     }
 
     /// <inheritdoc/>
