@@ -86,4 +86,73 @@ public sealed class ConsoleApplicationBuilderTests
         terminal.Profile.Capabilities.ShouldBeSameAs(capabilities);
         terminal.Profile.Capabilities.Osc52.ShouldBe(database);
     }
+
+    /// <summary>Verifies Build() leaves a theme the screen published from OnAttach alone when the caller never called UseTheme.</summary>
+    [Fact]
+    public async Task Build_WhenScreenPublishesThemeInOnAttachAndUseThemeNotCalled_KeepsScreenThemeAsync()
+    {
+        var screen = new ThemePublishingScreen(Themes.White);
+        var builder = new ConsoleApplicationBuilder(
+            screen,
+            static () => true,
+            _ => new ConsoleConnection(
+                new ConsoleApplicationTransport(),
+                new ConsoleApplicationResizeSource(),
+                new ConsoleApplicationRestoreLease()),
+            _ => { })
+            .UseTerminalProfile(TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative));
+
+        var application = builder.Build();
+
+        try
+        {
+            application.Theme.ShouldBeSameAs(Themes.White);
+        }
+        finally
+        {
+            await application.DisposeAsync();
+        }
+    }
+
+    /// <summary>Verifies an explicit UseTheme still wins over whatever the screen published from OnAttach.</summary>
+    [Fact]
+    public async Task Build_WhenUseThemeCalled_OverridesScreenPublishedThemeAsync()
+    {
+        var screen = new ThemePublishingScreen(Themes.White);
+        var builder = new ConsoleApplicationBuilder(
+            screen,
+            static () => true,
+            _ => new ConsoleConnection(
+                new ConsoleApplicationTransport(),
+                new ConsoleApplicationResizeSource(),
+                new ConsoleApplicationRestoreLease()),
+            _ => { })
+            .UseTerminalProfile(TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative))
+            .UseTheme(Themes.Dark);
+
+        var application = builder.Build();
+
+        try
+        {
+            application.Theme.ShouldBeSameAs(Themes.Dark);
+        }
+        finally
+        {
+            await application.DisposeAsync();
+        }
+    }
+
+    /// <summary>Publishes a fixed theme from OnAttach, mirroring the documented screen theming pattern.</summary>
+    private sealed class ThemePublishingScreen: Screen
+    {
+        private readonly Theme _theme;
+
+        internal ThemePublishingScreen(Theme theme)
+        {
+            _theme = theme;
+            InitializeContent(new ProbeControl());
+        }
+
+        protected override void OnAttach(Application application) => application.Theme = _theme;
+    }
 }

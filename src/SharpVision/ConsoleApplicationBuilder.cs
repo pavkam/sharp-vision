@@ -315,11 +315,16 @@ public sealed class ConsoleApplicationBuilder
             // publication, docs/concepts/screen.md) and the builder's own configured Theme both
             // now require the owning dispatcher thread (see #204). Build() itself always runs on
             // the caller's own thread, never the dispatcher thread the constructor just started.
-            var theme = Options.ResolveTheme();
+            // Only reassign application.Theme when the caller explicitly configured one via
+            // UseTheme(...) - otherwise leave whatever OnAttach published alone (see #255).
+            var explicitTheme = Options.Theme;
             application.Dispatcher.InvokeAsync(() =>
                 {
                     _screen.Attach(application);
-                    application.Theme = theme;
+                    if (explicitTheme is not null)
+                    {
+                        application.Theme = explicitTheme;
+                    }
                 })
                 .AsTask()
                 .GetAwaiter()
