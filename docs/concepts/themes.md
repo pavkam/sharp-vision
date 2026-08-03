@@ -33,7 +33,8 @@ Unknown and duplicate fields are rejected. Embedded themes must carry complete
 metadata; external documents fill in missing identity metadata with `Custom`,
 `custom`, dark, and order zero. Programmatic `Theme` construction rejects an
 undefined `ColorScheme` value and null or blank identity and provenance metadata
-before publishing the theme.
+before publishing the theme. `ThemeCatalogEntry` rejects the same undefined
+color-scheme state before publishing catalog metadata.
 
 ## Global values
 

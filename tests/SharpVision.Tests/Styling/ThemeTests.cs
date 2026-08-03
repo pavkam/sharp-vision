@@ -30,4 +30,17 @@ public sealed class ThemeTests
         _ = Should.Throw<ArgumentException>(() => new Theme(license: " \t"));
         _ = Should.Throw<ArgumentException>(() => new Theme(source: " \t"));
     }
+
+    /// <summary>Verifies catalog metadata cannot publish an undefined color scheme.</summary>
+    [Fact]
+    public void ThemeCatalogEntry_WhenColorSchemeIsUndefined_ThrowsArgumentOutOfRangeException()
+    {
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new ThemeCatalogEntry(
+            "Theme",
+            "theme",
+            (ColorScheme) int.MaxValue,
+            "Author",
+            "MIT",
+            "https://example.invalid/theme"));
+    }
 }

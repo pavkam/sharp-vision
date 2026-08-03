@@ -15,6 +15,7 @@ public sealed class ThemeCatalogEntry
     /// <param name="license">The license identifier.</param>
     /// <param name="source">The source URL.</param>
     /// <exception cref="ArgumentException">A required string is null, empty, or whitespace.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="colorScheme"/> is undefined.</exception>
     public ThemeCatalogEntry(string name, string slug, ColorScheme colorScheme, string author, string license,
         string source)
     {
@@ -23,6 +24,14 @@ public sealed class ThemeCatalogEntry
         ArgumentException.ThrowIfNullOrWhiteSpace(author);
         ArgumentException.ThrowIfNullOrWhiteSpace(license);
         ArgumentException.ThrowIfNullOrWhiteSpace(source);
+
+        if (!Enum.IsDefined(colorScheme))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(colorScheme),
+                colorScheme,
+                "The theme catalog color scheme is unknown.");
+        }
 
         Name = name;
         Slug = slug;
