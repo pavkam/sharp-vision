@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Discovery.Queries;
 
+using Adapters;
+
 using Capabilities;
 
 using Xterm;
@@ -38,7 +40,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
     private bool? _itermImages;
     private bool _keyboardQueried;
     private bool _graphicsQueried;
-    private bool _itermCapabilitiesQueried;
+    private bool _fenceQueried;
     private bool _usesExplicitOuterProfile;
     private PaletteResponse? _paletteColor;
     private PaletteResponse? _foregroundColor;
@@ -139,6 +141,19 @@ internal sealed class ActiveQueryDiscoveryStrategy
         _usesExplicitOuterProfile = route?.CanRouteCapabilityQueries == true;
         var supportsStringQueries = route?.SupportsStringTerminatedQueries != false;
         var remaining = _options.Limits.MaxConcurrentQueries;
+
+        // Planning-only environment projection: probes a multiplexer or SSH hop can never carry
+        // an answer for should not be written at all, rather than written and then narrowed to
+        // Unsupported moments after the round trip is already spent (see #249). This never
+        // touches _baseline and is never passed to CapabilityDetector.Detect — Publish still
+        // folds _options.Environment through the normal discovery pipeline once, in phase order,
+        // so a suppressed probe still ends up Unsupported/Origin.Environment there, not
+        // Origin.Query. Skipped when the route can carry capability queries: Publish deliberately
+        // uses an empty environment in that case so an inner multiplexer's variables cannot
+        // narrow or augment explicit outer evidence, and this projection must respect the same
+        // carve-out.
+        var planning = _usesExplicitOuterProfile ? _baseline : _baseline.Apply(_options.Environment);
+
         var queryKeyboard = remaining >= 2 &&
                             ShouldQuery(
                                 _baseline.KittyKeyboard,
@@ -214,7 +229,11 @@ internal sealed class ActiveQueryDiscoveryStrategy
         AddModeQuery(
             writer,
             DecPrivateMode.ClipboardPasteEvents,
-            _baseline.KittyClipboard,
+            // The planning projection, not _baseline: under a multiplexer or SSH,
+            // EnvironmentEvidenceAdapter already narrows this to Unsupported, so writing the
+            // probe would only spend a round trip a multiplexer cannot carry and SSH answers the
+            // same way regardless (see #249).
+            planning.KittyClipboard,
             _options.Overrides?.KittyClipboard,
             ref remaining);
 
@@ -250,11 +269,13 @@ internal sealed class ActiveQueryDiscoveryStrategy
         }
 
         if (supportsStringQueries &&
-            ShouldQuery(_baseline.ItermImages, _options.Overrides?.ItermImages) &&
+            // The planning projection: under a multiplexer, EnvironmentEvidenceAdapter already
+            // narrows ItermImages to Unsupported, and OSC 1337 is iTerm2-proprietary with no
+            // negative-reply form, so a silenced probe there could only ever time out (see #249).
+            ShouldQuery(planning.ItermImages, _options.Overrides?.ItermImages) &&
             TryRegister(QueryKind.ItermCapabilities, ref remaining))
         {
             Osc.QueryItermCapabilities(writer);
-            _itermCapabilitiesQueried = true;
         }
 
         if (supportsStringQueries &&
@@ -297,6 +318,22 @@ internal sealed class ActiveQueryDiscoveryStrategy
             }
 
             _graphicsQueried = true;
+        }
+
+        // A terminating fence, written last so an in-order terminal answers it only after every
+        // other standard query. Only 2 of the other families ever retire early on their own
+        // (Keyboard and KittyGraphics, both piggybacked on PrimaryAttributes); every other silent
+        // family would otherwise hold the first frame for the full shared deadline. CSI 6n (DSR
+        // cursor position) is answered by effectively every terminal that speaks any of the other
+        // protocols in this batch, so its reply retiring every still-outstanding family turns the
+        // deadline into a genuine backstop instead of the normal path (see #247). A fence-resolved
+        // family supplies no evidence and must not be recorded as Origin.Query - see the same rule
+        // RetireOutstandingFamilies already follows for ordinary deadline expiration (#248).
+        _fenceQueried = TryRegister(QueryKind.CursorPosition, ref remaining);
+
+        if (_fenceQueried)
+        {
+            Csi.ReportCursorPosition(writer);
         }
 
         var queryBatch = new ArrayBufferWriter<byte>();
@@ -376,6 +413,14 @@ internal sealed class ActiveQueryDiscoveryStrategy
                 _graphicsQueried && !_kittyGraphics.HasValue)
             {
                 _kittyGraphics = false;
+            }
+
+            // The fence reply retires every family still outstanding at this instant. It is
+            // written last in the batch, so an in-order terminal answers it only after every
+            // other reply it is going to send at all (see #247).
+            if (response.Kind == ResponseKind.CursorPosition && _fenceQueried)
+            {
+                RetireOutstandingFamilies(now);
             }
 
             TryPublish();
@@ -727,14 +772,10 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
     private void Publish()
     {
-        // OSC 1337 Capabilities has no natural piggyback response the way Kitty graphics reuses
-        // PrimaryAttributes, so a silent terminal only ever times out — resolve that silence to
-        // an explicit false here rather than leaving ItermImages sitting at Unknown.
-        if (_itermCapabilitiesQueried && !_itermImages.HasValue)
-        {
-            _itermImages = false;
-        }
-
+        // An unanswered OSC 1337 Capabilities probe (deadline expiry, fence retirement, or
+        // transport EOF) leaves _itermImages null here deliberately. Coercing it to an explicit
+        // false would publish Unsupported/Origin.Query for a query that supplied no evidence at
+        // all, erasing a TERM_PROGRAM=iTerm.app environment hint underneath it — see #248.
         var queries = new QueryResults()
         {
             PaletteColor = _paletteColor,
@@ -767,6 +808,19 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
     private void CompletePendingWork(DateTimeOffset now)
     {
+        RetireOutstandingFamilies(now);
+        Publish();
+    }
+
+    /// <summary>
+    /// Retires every still-outstanding query family and DEC private mode without recording any
+    /// evidence for them - the shared step behind deadline expiration, transport completion, and
+    /// the terminating fence reply (#247). None of these callers observed an actual reply for the
+    /// families retired here, so their fields stay unset and <see cref="Publish"/> leaves them
+    /// absent rather than inventing <see cref="Origin.Query"/> support or non-support (#248).
+    /// </summary>
+    private void RetireOutstandingFamilies(DateTimeOffset now)
+    {
         _ = _tracker.ExpireAll(now);
 
         foreach (var mode in _pendingModes)
@@ -775,7 +829,6 @@ internal sealed class ActiveQueryDiscoveryStrategy
         }
 
         _pendingModes.Clear();
-        Publish();
     }
 
     #endregion
@@ -940,14 +993,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
             return false;
         }
 
-        _ = _tracker.ExpireAll(now);
-
-        foreach (var mode in _pendingModes)
-        {
-            _ = _expiredModes.Add(mode);
-        }
-
-        _pendingModes.Clear();
+        RetireOutstandingFamilies(now);
         TryPublish();
         Debug.Assert(IsComplete, "Atomic batch expiration must publish absent evidence once.");
         return true;

@@ -524,7 +524,11 @@ public sealed class RouteTests
                 "\u001b[?u\u001b[c\u001b[>c" +
                 "\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p" +
                 "\u001b[?1006$p\u001b[?1016$p\u001b[?5522$p" +
-                "\u001b[14t\u001b[16t\u001b[18t"));
+                "\u001b[14t\u001b[16t\u001b[18t" +
+                // The terminating fence (see #247): CSI 6n is not string-terminated, so
+                // Screen still carries it even though the OSC/DCS families above are
+                // omitted here.
+                "\u001b[6n"));
 
         var keyboard = Csi("?3"u8, [], (byte) 'u');
         negotiator.Accept(in keyboard).ShouldBe(QueryMatch.Matched);
@@ -553,6 +557,8 @@ public sealed class RouteTests
         negotiator.Accept(in secondary).ShouldBe(QueryMatch.Matched);
         var primary = Csi("?1;2"u8, [], (byte) 'c');
         negotiator.Accept(in primary).ShouldBe(QueryMatch.Matched);
+        var cursorPosition = Csi("24;80"u8, [], (byte) 'R');
+        negotiator.Accept(in cursorPosition).ShouldBe(QueryMatch.Matched);
 
         negotiator.IsComplete.ShouldBeTrue();
         negotiator.Results.PaletteColor.ShouldBeNull();

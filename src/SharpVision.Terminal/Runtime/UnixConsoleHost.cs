@@ -58,7 +58,16 @@ internal static class UnixConsoleHost
                     Share = FileShare.ReadWrite,
                     BufferSize = 1
                 });
-            var output = Console.OpenStandardOutput();
+            // Never touch System.Console here. Writing through Console.OpenStandardOutput()
+            // (rather than merely opening it) initializes the BCL's Unix console, which reads
+            // terminfo and emits smkx (application keypad mode) on the first write - and once
+            // initialized, the runtime re-emits smkx every time any child process exits, so a
+            // later stty-style child spawned during teardown re-arms it after this host has
+            // already restored every mode. A raw FileStream over the borrowed descriptor never
+            // initializes that BCL state (see #254).
+            var output = new FileStream(
+                new SafeFileHandle(RuntimeInterop.StandardOutputFileDescriptor, ownsHandle: false),
+                FileAccess.Write);
 
             // Ownership differs per stream. This host opened /dev/tty itself, so the transport
             // must close that descriptor during ordinary shutdown, while standard output belongs

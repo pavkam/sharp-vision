@@ -8,6 +8,7 @@ using Capabilities;
 using SharpVision.Terminal.Capabilities;
 
 using SharpVision.Terminal.Discovery.Queries;
+using SharpVision.Terminal.Graphics.Backends;
 
 /// <summary>Proves bounded iTerm2 OSC 1337 Capabilities feature-reporting negotiation.</summary>
 public sealed class ItermCapabilitiesQueryDiscoveryTests
@@ -82,10 +83,15 @@ public sealed class ItermCapabilitiesQueryDiscoveryTests
             new Feature(CapabilitySupport.Unsupported, Origin.Query));
     }
 
-    /// <summary>Verifies a silent terminal resolves to false instead of sitting at Unknown, since the
-    /// Capabilities reply has no natural piggyback response to expire against.</summary>
+    /// <summary>
+    /// Verifies a silent terminal leaves the OSC 1337 probe as absent query evidence rather than
+    /// fabricating Unsupported/Query, which would erase the TERM_PROGRAM=iTerm.app environment
+    /// hint underneath it and record a bounded query as having supplied evidence it never sent
+    /// (see #248). The reply has no natural piggyback response to expire against, so this exercises
+    /// the ordinary shared-deadline expiry path, not the #247 fence.
+    /// </summary>
     [Fact]
-    public void Expire_WhenTerminalNeverReplies_ResolvesItermImagesToFalse()
+    public void Expire_WhenTerminalNeverReplies_LeavesItermImagesAsTheEnvironmentHint()
     {
         var clock = new ManualTimeProvider();
         var limits = QueryLimits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
@@ -95,9 +101,13 @@ public sealed class ItermCapabilitiesQueryDiscoveryTests
         clock.Advance(TimeSpan.FromSeconds(1));
         negotiator.Expire().ShouldBeTrue();
 
-        negotiator.Results.ItermImages.ShouldBe(false);
+        negotiator.Results.ItermImages.ShouldBeNull();
         negotiator.Capabilities.ItermImages.ShouldBe(
-            new Feature(CapabilitySupport.Unsupported, Origin.Query));
+            new Feature(CapabilitySupport.Tentative, Origin.Environment));
+
+        // Authorization neutrality: absence must not enable or disable the backend, matching the
+        // outcome the fabricated Unsupported/Query used to produce (see #248).
+        GraphicsBackendSelector.Create(negotiator.Capabilities).ShouldBeNull();
     }
 
     /// <summary>Verifies a late reply after expiration cannot mutate the already-published profile.</summary>

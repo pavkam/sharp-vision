@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Runtime;
 
+using System.Buffers.Binary;
+
 /// <summary>Provides the Unix terminal-size native boundary.</summary>
 internal static partial class RuntimeInterop
 {
@@ -49,6 +51,117 @@ internal static partial class RuntimeInterop
     /// <summary>The POSIX standard-output file descriptor, used when no more specific terminal
     /// descriptor (such as an opened /dev/tty) is available for description resolution.</summary>
     public const int StandardOutputFileDescriptor = 1;
+
+    /// <summary>The POSIX standard-error file descriptor.</summary>
+    public const int StandardErrorFileDescriptor = 2;
+
+    /// <summary>The POSIX standard-input file descriptor, the raw-mode target the caller's shell
+    /// wired to this process's controlling terminal.</summary>
+    public const int StandardInputFileDescriptor = 0;
+
+    // TCSANOW: apply attribute changes immediately (identical value on Linux and Darwin).
+    private const int _setAttributesNow = 0;
+
+    // Layout constants for struct termios. Only the ISIG bit inside c_lflag is ever inspected or
+    // mutated; every other byte is captured and replayed as an opaque blob, so the full per-field
+    // layout never needs modeling (see #251). Sourced from Apple's <sys/termios.h> (Darwin is
+    // LP64, so tcflag_t is an 8-byte unsigned long; c_iflag, c_oflag, c_cflag, c_lflag precede
+    // c_cc/c_ispeed/c_ospeed, giving c_lflag a 24-byte offset and a measured sizeof of 72) and
+    // glibc's <bits/termios.h> (tcflag_t is a 4-byte unsigned int, giving c_lflag a 12-byte offset
+    // and a struct size of 60 on both x86-64 and arm64). ISIG is bit 0x80 on Darwin (POSIX-set,
+    // BSD-numbered) and bit 0x1 on Linux (POSIX-numbered first).
+    /// <summary>
+    /// Gets the exact byte length of a captured termios state on this platform. Internal so tests
+    /// can build a correctly sized synthetic state without ever calling <c>tcgetattr</c>; passing
+    /// an undersized buffer into the native boundary would corrupt memory rather than merely fail.
+    /// </summary>
+    internal static int TermiosStateLength { get; } = OperatingSystem.IsMacOS() ? 72 : 60;
+
+    private static readonly int _localFlagsOffset = OperatingSystem.IsMacOS() ? 24 : 12;
+    private static readonly int _localFlagsWidth = OperatingSystem.IsMacOS() ? 8 : 4;
+    private static readonly ulong _signalsEnabledFlag = OperatingSystem.IsMacOS() ? 0x0000_0080ul : 0x0000_0001ul;
+
+    /// <summary>Captures the current termios state of a Unix file descriptor as an opaque, platform-sized blob.</summary>
+    /// <param name="fileDescriptor">The non-negative terminal descriptor.</param>
+    /// <param name="state">Receives the captured state on success; undefined content on failure.</param>
+    /// <returns>True when the state was captured.</returns>
+    public static unsafe bool TryGetTerminalAttributes(int fileDescriptor, out byte[] state)
+    {
+        var buffer = new byte[TermiosStateLength];
+
+        int result;
+
+        fixed (byte* pointer = buffer)
+        {
+            result = TcGetAttr(fileDescriptor, pointer);
+        }
+
+        state = buffer;
+        return result == 0;
+    }
+
+    /// <summary>Replays a previously captured termios state onto a Unix file descriptor.</summary>
+    /// <param name="fileDescriptor">The non-negative terminal descriptor.</param>
+    /// <param name="state">The platform-sized captured state, unmodified since capture or derivation.</param>
+    /// <returns>True when the state was applied.</returns>
+    public static unsafe bool TrySetTerminalAttributes(int fileDescriptor, byte[] state)
+    {
+        fixed (byte* pointer = state)
+        {
+            return TcSetAttr(fileDescriptor, _setAttributesNow, pointer) == 0;
+        }
+    }
+
+    /// <summary>Derives the raw, no-echo termios state from a captured state without mutating it.</summary>
+    /// <param name="captured">The previously captured termios state.</param>
+    /// <param name="captureControlKeys">
+    /// Whether Ctrl-key combinations should be delivered as input bytes instead of raising signals.
+    /// </param>
+    /// <returns>A new raw-mode termios buffer of the same platform size.</returns>
+    public static unsafe byte[] ComputeRawTerminalAttributes(byte[] captured, bool captureControlKeys)
+    {
+        var raw = new byte[captured.Length];
+        captured.CopyTo(raw.AsSpan());
+
+        fixed (byte* pointer = raw)
+        {
+            CfMakeRaw(pointer);
+        }
+
+        // cfmakeraw() always clears ISIG. Restore it unless the caller wants Ctrl-key
+        // combinations delivered as ordinary input bytes instead of raising signals.
+        var flags = ReadLocalFlags(raw);
+        flags = captureControlKeys ? flags & ~_signalsEnabledFlag : flags | _signalsEnabledFlag;
+        WriteLocalFlags(raw, flags);
+
+        return raw;
+    }
+
+    private static ulong ReadLocalFlags(byte[] termios) =>
+        _localFlagsWidth == 8
+            ? BinaryPrimitives.ReadUInt64LittleEndian(termios.AsSpan(_localFlagsOffset))
+            : BinaryPrimitives.ReadUInt32LittleEndian(termios.AsSpan(_localFlagsOffset));
+
+    private static void WriteLocalFlags(byte[] termios, ulong value)
+    {
+        if (_localFlagsWidth == 8)
+        {
+            BinaryPrimitives.WriteUInt64LittleEndian(termios.AsSpan(_localFlagsOffset), value);
+        }
+        else
+        {
+            BinaryPrimitives.WriteUInt32LittleEndian(termios.AsSpan(_localFlagsOffset), (uint) value);
+        }
+    }
+
+    [LibraryImport("libc", EntryPoint = "tcgetattr", SetLastError = true)]
+    private static unsafe partial int TcGetAttr(int fileDescriptor, byte* termios);
+
+    [LibraryImport("libc", EntryPoint = "tcsetattr", SetLastError = true)]
+    private static unsafe partial int TcSetAttr(int fileDescriptor, int optionalActions, byte* termios);
+
+    [LibraryImport("libc", EntryPoint = "cfmakeraw")]
+    private static unsafe partial void CfMakeRaw(byte* termios);
 
     // Windows console-mode boundary. Bit-math is factored out so it is unit
     // testable without a real console handle.

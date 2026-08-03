@@ -104,6 +104,29 @@ encoding fails, the batch is retired and absent evidence is published atomically
 — no partial bytes, no flush, no active optional modes, and no scheduled
 deadline work. A route never changes backend identity.
 
+Only two families retire early on their own: `Keyboard` and `KittyGraphics` both
+piggyback on `PrimaryAttributes`, so a terminal that answers DA1 but stays
+silent on either resolves it immediately instead of waiting out the deadline.
+Every other family has no such piggyback, so the batch writes a terminating
+fence as its last standard query — `CSI 6n` (DSR cursor position), a family
+answered by effectively every terminal that speaks any protocol in this batch.
+When its reply arrives, every family still outstanding at that instant retires
+without recording any evidence for it: the fence proves nothing about _those_
+families, so they stay absent rather than becoming `Unsupported`/`Origin.Query`
+— the same rule ordinary deadline expiration already follows. The one shared
+exclusive deadline remains the backstop when no reply reaches the fence at all.
+
+Query planning also consults a projection of the baseline with environment
+evidence already applied — computed once from `_options.Environment`, never
+assigned back onto the baseline field, and never passed to
+`CapabilityDetector.Detect`. Only two probes are ever affected:
+`OSC 1337 ; Capabilities` under a detected multiplexer, and the Kitty clipboard
+mode probe under a detected multiplexer or SSH, both cases where environment
+evidence already narrows the family to `Unsupported` before any byte is written.
+The projection is skipped when an approved route can carry capability queries,
+matching the empty-environment rule publication itself follows so an inner
+multiplexer's variables cannot narrow or augment explicit outer evidence.
+
 ## Initialization sequence
 
 ```mermaid

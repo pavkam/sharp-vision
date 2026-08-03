@@ -3,6 +3,7 @@
 
 namespace SharpVision;
 
+using SharpVision.Runtime;
 using SharpVision.Terminal.Runtime;
 
 using Terminal.Capabilities;
@@ -24,7 +25,7 @@ public sealed class ConsoleApplicationBuilder
         screen,
         static () => ConsoleHost.Default.IsInteractive,
         static options => ConsoleHost.Default.Open(options),
-        static message => Console.WriteLine(message))
+        static message => ConsoleTextChannel.WriteLine(message))
     {
     }
 

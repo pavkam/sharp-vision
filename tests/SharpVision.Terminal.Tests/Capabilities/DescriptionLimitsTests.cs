@@ -82,4 +82,86 @@ public sealed class DescriptionLimitsTests
         limits.MaxTermcapVariableBytes.ShouldBeInRange(1, 4_096);
         limits.NcursesLibraryNames.ShouldNotBeEmpty();
     }
+
+    /// <summary>
+    /// Verifies the default candidate order tries the current platform's own library naming
+    /// convention first, so the loop in <c>NcursesLibrary.Open</c> does not exhaust every
+    /// candidate for the other platform before reaching a name that can ever resolve (see #246).
+    /// </summary>
+    [Fact]
+    public void Default_WhenPlatformIsMacOS_TriesDylibNamesBeforeSonamesAndHomebrewLast()
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return;
+        }
+
+        var names = DescriptionLimits.Default.NcursesLibraryNames;
+        var lastDylibIndex = -1;
+        var firstSoIndex = int.MaxValue;
+
+        for (var index = 0; index < names.Count; index++)
+        {
+            if (names[index].Contains(".dylib", StringComparison.Ordinal))
+            {
+                lastDylibIndex = index;
+            }
+            else if (firstSoIndex == int.MaxValue && names[index].Contains(".so", StringComparison.Ordinal))
+            {
+                firstSoIndex = index;
+            }
+        }
+
+        lastDylibIndex.ShouldBeLessThan(firstSoIndex);
+
+        var pinnedIndex = names.ToList().IndexOf("libncurses.dylib");
+        var homebrewIndex = names.ToList()
+            .IndexOf("/opt/homebrew/opt/ncurses/lib/libncursesw.6.dylib");
+
+        pinnedIndex.ShouldBeLessThan(homebrewIndex);
+    }
+
+    /// <summary>
+    /// Verifies the default candidate order tries Linux sonames before macOS dylib names, the
+    /// mirror of the macOS assertion above (see #246).
+    /// </summary>
+    [Fact]
+    public void Default_WhenPlatformIsLinux_TriesSonamesBeforeDylibNames()
+    {
+        if (!OperatingSystem.IsLinux())
+        {
+            return;
+        }
+
+        var names = DescriptionLimits.Default.NcursesLibraryNames;
+        var lastSoIndex = -1;
+        var firstDylibIndex = int.MaxValue;
+
+        for (var index = 0; index < names.Count; index++)
+        {
+            if (names[index].Contains(".dylib", StringComparison.Ordinal))
+            {
+                firstDylibIndex = Math.Min(firstDylibIndex, index);
+            }
+            else if (names[index].Contains(".so", StringComparison.Ordinal))
+            {
+                lastSoIndex = index;
+            }
+        }
+
+        lastSoIndex.ShouldBeLessThan(firstDylibIndex);
+    }
+
+    /// <summary>
+    /// Verifies an explicit override is used verbatim in the caller's order with no
+    /// platform-based reordering applied, preserving the #98 override contract (see #246).
+    /// </summary>
+    [Fact]
+    public void NcursesLibraryNames_WhenOverridden_IsUsedUnfilteredOnEveryPlatform()
+    {
+        string[] names = ["libncurses.dylib", "libncursesw.so.6", "libtinfo.so"];
+        var limits = DescriptionLimits.Default with { NcursesLibraryNames = names };
+
+        limits.NcursesLibraryNames.ShouldBe(names);
+    }
 }

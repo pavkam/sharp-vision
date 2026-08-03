@@ -223,8 +223,8 @@ only the platform terminal-mode restore lease. It represents a physical TTY
 connection, not an xterm, Kitty, or iTerm2 identity. Ownership is split
 deliberately: the connection _constructs_ the transport and resize source, but
 the running `Session` disposes them as part of ordinary shutdown, while the
-connection's own `DisposeAsync` restores the platform terminal mode (`stty` on
-Unix, `SetConsoleMode` on Windows) exactly once, idempotently. `Application`
+connection's own `DisposeAsync` restores the platform terminal mode (`tcsetattr`
+on Unix, `SetConsoleMode` on Windows) exactly once, idempotently. `Application`
 disposes the host lease _last_, after the session's reverse DEC-mode cleanup, so
 VT modes are undone only after cooked and echoed input has already been restored
 underneath them.
@@ -236,7 +236,7 @@ that disposes concurrently with an active run is covered by the normative
 rules, which that document owns.
 
 Platform restoration failure is reported, never discarded. Both mode leases
-always attempt every restore - Unix replays the captured `stty -g` state, and
+always attempt every restore - Unix replays the captured `tcgetattr` state, and
 Windows restores the input handle and then the output handle even when the input
 restore failed - and then throw the first failure.
 `ConsoleConnection.DisposeAsync` lets that failure propagate, and `Application`
@@ -249,14 +249,26 @@ twice.
 ### Unix
 
 `UnixConsoleHost.Open` enters raw mode through `UnixConsoleMode.Enter`, which
-shells out to the PATH-resolved `stty`: it captures the current terminal state
-(`stty -g`) for restoration, then applies `stty raw -echo` and, unless
-`CaptureControlKeys` is `true`, also `isig` (so Ctrl+C keeps raising the host's
-signal instead of arriving as a decoded key). It opens `/dev/tty` as a
-one-byte-buffered asynchronous input stream and wraps it with
-`Console.OpenStandardOutput()` in a `StreamTransport`. Because the input
-descriptor is the real tty file descriptor, `UnixResizeSource` drives resize
-from `SIGWINCH` and reads both cell _and pixel_ dimensions through
+calls `tcgetattr`/`tcsetattr` directly: it captures the current terminal state
+(`tcgetattr`) for restoration, then derives a raw-mode state with `cfmakeraw`
+and, unless `CaptureControlKeys` is `true`, re-enables `ISIG` in `c_lflag` after
+`cfmakeraw` clears it (so Ctrl+C keeps raising the host's signal instead of
+arriving as a decoded key). No subprocess is spawned for entry or restoration
+(see #251). It opens `/dev/tty` as a one-byte-buffered asynchronous input stream
+and wraps it with a raw `FileStream` over the borrowed standard-output
+descriptor in a `StreamTransport`. This host never calls
+`Console.OpenStandardOutput()`, `Console.Error`, `Console.Out`, or
+`Console.CancelKeyPress`: on Unix, the _first write_ through any of those
+initializes the BCL's Unix console, which emits `smkx` (application keypad mode)
+and leaves the runtime re-emitting it on every later child-process exit -
+including this host's own restore-lease teardown, which previously re-armed the
+leak on every clean shutdown (see #254). `ConsoleApplication` and
+`ConsoleApplicationBuilder` write host text through `ConsoleTextChannel`
+instead, and observe Ctrl+C through `PosixSignalRegistration` (`SIGINT` and
+`SIGQUIT`) rather than `Console.CancelKeyPress`, for the same reason; Windows
+keeps using `Console` directly, since it has no equivalent side effect. Because
+the input descriptor is the real tty file descriptor, `UnixResizeSource` drives
+resize from `SIGWINCH` and reads both cell _and pixel_ dimensions through
 `TIOCGWINSZ` - this is what makes pixel-accurate mouse reporting work in a
 console run, unlike the cell-only polling fallback.
 

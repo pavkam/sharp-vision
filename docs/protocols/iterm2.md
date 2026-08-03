@@ -83,11 +83,24 @@ evidence do not authorize output — only an explicit override, or a positive
 `OSC 1337 ; Capabilities` reply carrying the `FILE` code (see below), can.
 
 Capability discovery consumes `OSC 1337 ; Capabilities` as query-origin
-evidence: `ActiveQueryDiscoveryStrategy` emits the query whenever baseline
-`ItermImages` is `Unknown`/`Tentative` with no override, parses the reply's
-concatenated feature codes for a bare `F`, and resolves a silent terminal to
-`false` instead of leaving it `Unknown` (there is no piggyback response to
-expire against the way Kitty graphics reuses primary device attributes).
+evidence: `ActiveQueryDiscoveryStrategy` emits the query whenever the planning
+projection of `ItermImages` (baseline capabilities with environment evidence
+already applied, but never assigned back to the baseline itself) is
+`Unknown`/`Tentative` with no override, and parses the reply's concatenated
+feature codes for a bare `F`. Under a multiplexer, environment evidence already
+narrows `ItermImages` to `Unsupported`, so the probe is not written at all — a
+multiplexer cannot carry it and would only ever time out. A terminal that is
+asked and stays silent leaves `ItermImages` as absent query evidence rather than
+resolving it to an explicit `false`: `Origin.Query` means a bounded terminal
+query supplied the evidence, and a timeout supplied none. Coercing silence to
+`Unsupported`/`Query` used to overwrite a genuine `TERM_PROGRAM=iTerm.app`
+`Tentative`/`Environment` hint with the (identical, in this case)
+`Unsupported`/`Query` conclusion — strictly worse information, since it asserted
+"confirmed unsupported" where the truth was "unconfirmed". The batch also
+carries a terminating fence (a trailing `CSI 6n`) that retires every
+still-unanswered family, including this one, without granting it query-origin
+evidence — see
+[Discovery pipeline](../architecture/discovery-pipeline.md#overview).
 `TERM_FEATURES` is not separately consumed: it would only ever set the same
 `Tentative`/`Environment` hint that `TERM_PROGRAM == "iTerm.app"` already sets,
 whose sole function is making the query fire, so a second environment variable

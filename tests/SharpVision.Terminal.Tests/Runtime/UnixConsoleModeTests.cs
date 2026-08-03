@@ -3,69 +3,11 @@
 
 namespace SharpVision.Terminal.Tests.Runtime;
 
+using SharpVision.Terminal.Tests.Support;
 
 /// <summary>Verifies the Unix raw-input lease and its restoration reporting.</summary>
 public sealed class UnixConsoleModeTests
 {
-    /// <summary>Verifies a hung terminal-utility process fails with a bounded timeout rather than
-    /// blocking indefinitely, and that the timed-out process is not left running (see #98).</summary>
-    [Fact]
-    [SupportedOSPlatform("linux")]
-    [SupportedOSPlatform("macos")]
-    public void Run_WhenTheProcessHangs_TimesOutAndKillsIt()
-    {
-        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires a POSIX shell.");
-        var script = Path.Combine(Path.GetTempPath(), $"sharpvision-hang-{Guid.NewGuid():N}.sh");
-
-        try
-        {
-            File.WriteAllText(script, "#!/bin/sh\nsleep 30\n");
-            File.SetUnixFileMode(
-                script,
-                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-            var watch = Stopwatch.StartNew();
-
-            var thrown = Should.Throw<IOException>(
-                () => UnixConsoleMode.Run(["-g"], script, TimeSpan.FromMilliseconds(200)));
-
-            watch.Stop();
-            thrown.Message.ShouldContain("timed out");
-            watch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(10));
-        }
-        finally
-        {
-            File.Delete(script);
-        }
-    }
-
-    /// <summary>Verifies a fast-failing terminal-utility process still surfaces its own diagnostic
-    /// rather than the timeout path.</summary>
-    [Fact]
-    [SupportedOSPlatform("linux")]
-    [SupportedOSPlatform("macos")]
-    public void Run_WhenTheProcessExitsNonZero_ThrowsWithStandardErrorContent()
-    {
-        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires a POSIX shell.");
-        var script = Path.Combine(Path.GetTempPath(), $"sharpvision-fail-{Guid.NewGuid():N}.sh");
-
-        try
-        {
-            File.WriteAllText(script, "#!/bin/sh\necho 'synthetic failure' >&2\nexit 1\n");
-            File.SetUnixFileMode(
-                script,
-                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-
-            var thrown = Should.Throw<IOException>(
-                () => UnixConsoleMode.Run(["-g"], script, TimeSpan.FromSeconds(5)));
-
-            thrown.Message.ShouldContain("synthetic failure");
-        }
-        finally
-        {
-            File.Delete(script);
-        }
-    }
-
     /// <summary>Verifies unsupported hosts receive a no-op raw-input lease.</summary>
     [Fact]
     public void Enter_WhenHostIsUnsupported_DisposesWithoutThrowing()
@@ -84,21 +26,21 @@ public sealed class UnixConsoleModeTests
     /// longer claim success while the terminal stays raw and echo-less.
     /// </summary>
     [Fact]
-    public void Dispose_WhenRestorationFails_ThrowsTheRestorationFailure()
+    public void Dispose_WhenRestorationFails_ThrowsAnIOException()
     {
-        var failure = new IOException("stty restore failed");
-        var invocations = new List<string>();
-        var mode = UnixConsoleMode.Enter(captureControlKeys: false, arguments =>
-        {
-            invocations.Add(string.Join(' ', arguments));
+        var setInvocations = 0;
+        var mode = UnixConsoleMode.Enter(
+            captureControlKeys: false,
+            getAttributes: static _ => new byte[RuntimeInterop.TermiosStateLength],
+            setAttributes: (_, _) =>
+            {
+                setInvocations++;
+                return setInvocations <= 1;
+            });
 
-            return invocations.Count > 2 ? throw failure : "saved-state";
-        });
+        _ = Should.Throw<IOException>(mode.Dispose);
 
-        var thrown = Should.Throw<IOException>(mode.Dispose);
-
-        thrown.ShouldBeSameAs(failure);
-        invocations.ShouldBe(["-g", "raw -echo isig", "saved-state"]);
+        setInvocations.ShouldBe(2);
     }
 
     /// <summary>
@@ -108,36 +50,45 @@ public sealed class UnixConsoleModeTests
     [Fact]
     public void Dispose_WhenCalledAgainAfterFailure_IsQuietAndRetriesNothing()
     {
-        var invocations = 0;
-        var mode = UnixConsoleMode.Enter(captureControlKeys: false, _ =>
-        {
-            invocations++;
-
-            return invocations > 2 ? throw new IOException("stty restore failed") : "saved-state";
-        });
+        var setInvocations = 0;
+        var mode = UnixConsoleMode.Enter(
+            captureControlKeys: false,
+            getAttributes: static _ => new byte[RuntimeInterop.TermiosStateLength],
+            setAttributes: (_, _) =>
+            {
+                setInvocations++;
+                return setInvocations <= 1;
+            });
         _ = Should.Throw<IOException>(mode.Dispose);
 
         mode.Dispose();
 
-        invocations.ShouldBe(3);
+        setInvocations.ShouldBe(2);
     }
 
     /// <summary>Verifies a successful restoration replays the exact captured state once.</summary>
     [Fact]
     public void Dispose_WhenRestorationSucceeds_ReplaysCapturedStateOnce()
     {
-        var invocations = new List<string>();
-        var mode = UnixConsoleMode.Enter(captureControlKeys: true, arguments =>
-        {
-            invocations.Add(string.Join(' ', arguments));
+        var captured = new byte[RuntimeInterop.TermiosStateLength];
+        var replayed = new List<byte[]>();
+        var mode = UnixConsoleMode.Enter(
+            captureControlKeys: true,
+            getAttributes: _ => captured,
+            setAttributes: (_, state) =>
+            {
+                replayed.Add(state);
+                return true;
+            });
 
-            return "saved-state";
-        });
+        // Enter itself writes the derived raw-mode state once; only the writes from here on are
+        // Dispose's restoration replays.
+        replayed.Clear();
 
         mode.Dispose();
         mode.Dispose();
 
-        invocations.ShouldBe(["-g", "raw -echo", "saved-state"]);
+        replayed.ShouldBe([captured]);
     }
 
     /// <summary>
@@ -147,23 +98,65 @@ public sealed class UnixConsoleModeTests
     [Fact]
     public void Enter_WhenRawModeAndUndoBothFail_PreservesTheEntryFailure()
     {
-        var entryFailure = new IOException("raw mode failed");
-        var invocations = 0;
+        var setInvocations = 0;
 
         var thrown = Should.Throw<IOException>(() => UnixConsoleMode.Enter(
             captureControlKeys: false,
-            _ =>
+            getAttributes: static _ => new byte[RuntimeInterop.TermiosStateLength],
+            setAttributes: (_, _) =>
             {
-                invocations++;
-
-                return invocations == 1
-                    ? "saved-state"
-                    : invocations == 2
-                        ? throw entryFailure
-                        : throw new IOException("undo failed");
+                setInvocations++;
+                return false;
             }));
 
-        thrown.ShouldBeSameAs(entryFailure);
-        invocations.ShouldBe(3);
+        thrown.Message.ShouldContain("raw mode");
+        setInvocations.ShouldBe(2);
+    }
+
+    /// <summary>
+    /// Verifies a failure reading the initial state surfaces as the same failure the old
+    /// stty-based lease reported for an unreadable terminal.
+    /// </summary>
+    [Fact]
+    public void Enter_WhenAttributesCannotBeRead_ThrowsAnIOException()
+    {
+        _ = Should.Throw<IOException>(() => UnixConsoleMode.Enter(
+            captureControlKeys: false,
+            getAttributes: static _ => null,
+            setAttributes: static (_, _) => true));
+    }
+
+    /// <summary>
+    /// Verifies entry against a fresh pseudoterminal actually clears canonical mode and echo, sets
+    /// or clears ISIG per <c>captureControlKeys</c>, and that disposal restores the exact captured
+    /// termios state byte-for-byte - proving the syscall-based lease behaves like the stty
+    /// invocations it replaces, without spawning a subprocess (see #251).
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Enter_OnAFreshPseudoterminal_EntersAndRestoresRawModeByDirectSyscallAsync(
+        bool captureControlKeys)
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires a Unix pseudoterminal.");
+
+        await using var pty = UnixPseudoterminal.Open();
+
+        RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var before).ShouldBeTrue();
+
+        var mode = UnixConsoleMode.Enter(
+            captureControlKeys,
+            getAttributes: _ => RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var state)
+                ? state
+                : null,
+            setAttributes: (_, state) => RuntimeInterop.TrySetTerminalAttributes(pty.SlaveDescriptor, state));
+
+        RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var afterEnter).ShouldBeTrue();
+        afterEnter.ShouldBe(RuntimeInterop.ComputeRawTerminalAttributes(before, captureControlKeys));
+
+        mode.Dispose();
+
+        RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var afterRestore).ShouldBeTrue();
+        afterRestore.ShouldBe(before);
     }
 }

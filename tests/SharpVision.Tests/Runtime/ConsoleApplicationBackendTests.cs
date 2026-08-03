@@ -80,7 +80,9 @@ public sealed class ConsoleApplicationBackendTests
                 "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[?5522$p" +
                 "\u001b[14t\u001b[16t\u001b[18t" +
                 "\u001b]4;0;?\u001b\\\u001b]10;?\u001b\\\u001b]11;?\u001b\\" +
-                "\u001b]1337;Capabilities\u001b\\");
+                "\u001b]1337;Capabilities\u001b\\" +
+                // The terminating fence (see #247): a trailing CSI 6n.
+                "\u001b[6n");
             transport.QueueInput(Encoding.ASCII.GetBytes(
                 "\u001b[?3u\u001b_Gi=31;OK\u001b\\" +
                 "\u001b[?1016;1$y\u001b[?1006;1$y\u001b[?2004;1$y" +

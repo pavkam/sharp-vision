@@ -183,7 +183,10 @@ public sealed class ActiveQueryDiscoveryStrategyTests
             "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[?5522$p" +
             "\u001b[14t\u001b[16t\u001b[18t" +
             "\u001b]4;0;?\u001b\\\u001b]10;?\u001b\\\u001b]11;?\u001b\\" +
-            "\u001b]1337;Capabilities\u001b\\");
+            "\u001b]1337;Capabilities\u001b\\" +
+            // The terminating fence (see #247): a trailing CSI 6n, so an in-order terminal
+            // answers it only after every other reply it is going to send at all.
+            "\u001b[6n");
         negotiator.IsComplete.ShouldBeFalse();
     }
 
@@ -387,6 +390,12 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         negotiator.Accept(in primary).ShouldBe(QueryMatch.Matched);
         _ = XtermResponses.TryOscItermCapabilities("1337;Capabilities=F"u8, out var capabilities);
         negotiator.Accept(capabilities).ShouldBe(QueryMatch.Matched);
+
+        // The terminating fence (see #247): every other family already answered above, so this
+        // reply is redundant here, but the batch still writes and tracks it and it must still be
+        // accepted like any other reply.
+        var cursorPosition = Response("24;80"u8, [], (byte) 'R');
+        negotiator.Accept(in cursorPosition).ShouldBe(QueryMatch.Matched);
 
         negotiator.IsComplete.ShouldBeTrue();
     }

@@ -3,6 +3,10 @@
 
 namespace SharpVision;
 
+using System.Runtime.InteropServices;
+
+using SharpVision.Runtime;
+
 /// <summary>Provides the fluent entry point for interactive console applications.</summary>
 [PublicAPI]
 public static class ConsoleApplication
@@ -86,17 +90,40 @@ public static class ConsoleApplication
         using var cancellation =
             CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        void OnCancel(object? sender, ConsoleCancelEventArgs eventArgs)
-        {
-            eventArgs.Cancel = true;
-            cancellation.Cancel();
-        }
-
         var observeCtrlC = !builder.Options.TreatControlCAsInput;
+        ConsoleCancelEventHandler? onCancel = null;
+        PosixSignalRegistration? interruptRegistration = null;
+        PosixSignalRegistration? quitRegistration = null;
 
         if (observeCtrlC)
         {
-            Console.CancelKeyPress += OnCancel;
+            // Console.CancelKeyPress itself initializes the BCL's Unix console on first
+            // subscription, which is exactly the side effect #254 exists to avoid: once
+            // initialized, the runtime re-emits application-keypad-mode bytes on every later
+            // child-process exit, including this host's own teardown. PosixSignalRegistration
+            // observes Ctrl+C without that initialization. SIGQUIT is registered alongside SIGINT
+            // because Console.CancelKeyPress historically fires for both, and a SIGINT-only
+            // registration would let Ctrl+\ terminate the process without reverse cleanup.
+            if (OperatingSystem.IsWindows())
+            {
+                onCancel = (_, eventArgs) =>
+                {
+                    eventArgs.Cancel = true;
+                    cancellation.Cancel();
+                };
+                Console.CancelKeyPress += onCancel;
+            }
+            else
+            {
+                void OnPosixSignal(PosixSignalContext context)
+                {
+                    context.Cancel = true;
+                    cancellation.Cancel();
+                }
+
+                interruptRegistration = PosixSignalRegistration.Create(PosixSignal.SIGINT, OnPosixSignal);
+                quitRegistration = PosixSignalRegistration.Create(PosixSignal.SIGQUIT, OnPosixSignal);
+            }
         }
 
         try
@@ -133,15 +160,18 @@ public static class ConsoleApplication
                 // Suppress cleanup errors so the original exception propagates.
             }
 
-            Console.Error.WriteLine(exception);
+            ConsoleTextChannel.WriteErrorLine(exception.ToString());
             return ConsoleRunStatus.Failed;
         }
         finally
         {
-            if (observeCtrlC)
+            if (onCancel is not null)
             {
-                Console.CancelKeyPress -= OnCancel;
+                Console.CancelKeyPress -= onCancel;
             }
+
+            interruptRegistration?.Dispose();
+            quitRegistration?.Dispose();
         }
 
         await application.StopAsync(CancellationToken.None).ConfigureAwait(false);

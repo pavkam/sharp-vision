@@ -22,20 +22,42 @@ public sealed record DescriptionLimits
     // Default's own initializer constructs an instance whose NcursesLibraryNames property
     // initializer reads this field. Had this stayed below Default, it would still be null (its
     // own initializer not yet run) at the moment Default's constructor runs.
+    //
+    // The Linux sonames and macOS dylib names are platform-exclusive: a Mach-O binary can never
+    // resolve an ELF soname and vice versa. Putting the current platform's names first lets
+    // NativeLibrary.TryLoad succeed on its first or second attempt instead of exhausting every
+    // candidate for the other platform first (see #246). The relative order within each platform
+    // group is unchanged, so libncurses.dylib still precedes the Homebrew absolute paths.
     private static readonly IReadOnlyList<string> _defaultNcursesLibraryNames =
-    [
-        "libncursesw.so.6",
-        "libncurses.so.6",
-        "libtinfo.so.6",
-        "libncursesw.so",
-        "libncurses.so",
-        "libtinfo.so",
-        "libncursesw.6.dylib",
-        "libncurses.6.dylib",
-        "libncurses.dylib",
-        "/opt/homebrew/opt/ncurses/lib/libncursesw.6.dylib",
-        "/usr/local/opt/ncurses/lib/libncursesw.6.dylib"
-    ];
+        OperatingSystem.IsMacOS()
+            ?
+            [
+                "libncursesw.6.dylib",
+                "libncurses.6.dylib",
+                "libncurses.dylib",
+                "/opt/homebrew/opt/ncurses/lib/libncursesw.6.dylib",
+                "/usr/local/opt/ncurses/lib/libncursesw.6.dylib",
+                "libncursesw.so.6",
+                "libncurses.so.6",
+                "libtinfo.so.6",
+                "libncursesw.so",
+                "libncurses.so",
+                "libtinfo.so"
+            ]
+            :
+            [
+                "libncursesw.so.6",
+                "libncurses.so.6",
+                "libtinfo.so.6",
+                "libncursesw.so",
+                "libncurses.so",
+                "libtinfo.so",
+                "libncursesw.6.dylib",
+                "libncurses.6.dylib",
+                "libncurses.dylib",
+                "/opt/homebrew/opt/ncurses/lib/libncursesw.6.dylib",
+                "/usr/local/opt/ncurses/lib/libncursesw.6.dylib"
+            ];
 
     /// <summary>Gets the conservative limits used when no profile is supplied.</summary>
     public static DescriptionLimits Default { get; } = new();
