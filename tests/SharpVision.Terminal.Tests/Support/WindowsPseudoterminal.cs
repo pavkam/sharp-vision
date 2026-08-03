@@ -14,8 +14,10 @@ namespace SharpVision.Terminal.Tests.Support;
 /// console (the thing <see cref="WindowsConsoleMode"/> and <see cref="WindowsConsoleHost"/>
 /// operate on) to a process that was created attached to the pseudo console via
 /// <c>PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE</c>. This fixture therefore spawns the
-/// <c>SharpVision.Terminal.Probe</c> helper (already built as a sibling test dependency, see
-/// <c>tests/SharpVision.Terminal.Probe/ConPtyProbe.cs</c>) as that attached process, and exposes
+/// <c>SharpVision.Terminal.Probe</c> helper (built as a sibling project, resolved from its own
+/// build output directory rather than copied next to the test binaries, see
+/// <see cref="ResolveProbePath"/> and <c>tests/SharpVision.Terminal.Probe/ConPtyProbe.cs</c>) as
+/// that attached process, and exposes
 /// the host-side pipe ends as <see cref="Output"/>/<see cref="Input"/> so tests can drive it and
 /// observe its plain-text and raw-byte reports.
 /// </remarks>
@@ -290,12 +292,25 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
     {
         var testAssemblyDirectory = Path.GetDirectoryName(typeof(WindowsPseudoterminal).Assembly.Location)
                                      ?? throw new IOException("The test assembly directory could not be resolved.");
-        var probePath = Path.Combine(testAssemblyDirectory, "SharpVision.Terminal.Probe.exe");
+        var configuration = new DirectoryInfo(testAssemblyDirectory).Parent?.Name ?? "Debug";
+        var probePath = Path.GetFullPath(Path.Combine(
+            testAssemblyDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "SharpVision.Terminal.Probe",
+            "bin",
+            configuration,
+            "net10.0",
+            "SharpVision.Terminal.Probe.exe"));
 
         return !File.Exists(probePath)
             ? throw new FileNotFoundException(
-                "The SharpVision.Terminal.Probe executable was not found next to the test binaries. " +
-                "It is referenced with ReferenceOutputAssembly=false so it builds alongside the tests.",
+                "The SharpVision.Terminal.Probe executable was not found in its sibling project's build output. " +
+                "It is referenced with ReferenceOutputAssembly=false, which builds it as a dependency but does " +
+                "not copy it next to the test binaries, so it is located via the sibling project's own output " +
+                "path instead (see ProbeRunner.Run's identical pattern).",
                 probePath)
             : probePath;
     }
