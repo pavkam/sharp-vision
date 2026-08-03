@@ -283,6 +283,30 @@ public sealed class TableTests
         table.CopySelection().ShouldBeEmpty();
     }
 
+    /// <summary>Verifies published row and cell selection snapshots reject consumer mutation.</summary>
+    [Fact]
+    public void SelectionSnapshots_WhenConsumerAttemptsMutation_RejectTheChanges()
+    {
+        var row = new TableRow([new ControlText("value")]);
+        var replacement = new TableRow([new ControlText("replacement")]);
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(row);
+        table.SelectRow(row);
+
+        var selectedRows = (IList<TableRow>) table.SelectedRows;
+
+        _ = Should.Throw<NotSupportedException>(() => selectedRows[0] = replacement);
+        selectedRows.ShouldBe([row]);
+
+        table.SelectionMode = TableSelectionMode.MultipleCells;
+        table.SelectCell(row, 0);
+        var selectedCells = (IList<TableCellReference>) table.SelectedCells;
+
+        _ = Should.Throw<NotSupportedException>(() => selectedCells[0] = new TableCellReference(replacement, 0));
+        selectedCells.ShouldBe([new TableCellReference(row, 0)]);
+    }
+
     /// <summary>Verifies cell selection and select-all preserve row and column order.</summary>
     [Fact]
     public void SelectAll_WhenCellSelectionIsActive_SelectsEveryCellInDeterministicOrder()

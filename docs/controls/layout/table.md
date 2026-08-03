@@ -21,7 +21,7 @@ table without a separate rendering model.
 | `HorizontalOffset`, `VerticalOffset`                    | `0`                                 | Inspect or set committed scroll positions.                             |
 | `Extent`, `Viewport`                                    | Read-only                           | Report complete content and visible terminal-cell dimensions.          |
 | `SelectionMode`                                         | `Row`                               | Select rows or cells with pointer and keyboard input.                  |
-| `SelectedRows`, `SelectedCells`                         | Empty                               | Report the committed selection in display order.                       |
+| `SelectedRows`, `SelectedCells`                         | Empty                               | Report immutable committed-selection snapshots in display order.       |
 | `ActiveRow`, `ActiveColumnIndex`                        | No active cell                      | Report the current keyboard and pointer navigation cell.               |
 | `SortColumnIndex`, `SortDirection`                      | Reset                               | Report the current stable column sort state.                           |
 

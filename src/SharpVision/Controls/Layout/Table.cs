@@ -71,15 +71,17 @@ public sealed class Table: ItemsControl
         }
     } = TableSelectionMode.Row;
 
-    /// <summary>Gets the selected rows in current display order.</summary>
-    public IReadOnlyList<TableRow> SelectedRows => Rows.Where(_selectedRows.Contains).ToArray();
+    /// <summary>Gets an immutable snapshot of the selected rows in current display order.</summary>
+    public IReadOnlyList<TableRow> SelectedRows =>
+        Array.AsReadOnly(Rows.Where(_selectedRows.Contains).ToArray());
 
-    /// <summary>Gets the selected cells in current display row and column order.</summary>
+    /// <summary>Gets an immutable snapshot of selected cells in current display row and column order.</summary>
     public IReadOnlyList<TableCellReference> SelectedCells =>
-        Rows.SelectMany(row => Enumerable.Range(0, row.Cells.Count)
-                .Select(column => new TableCellReference(row, column)))
-            .Where(_selectedCells.Contains)
-            .ToArray();
+        Array.AsReadOnly(
+            Rows.SelectMany(row => Enumerable.Range(0, row.Cells.Count)
+                    .Select(column => new TableCellReference(row, column)))
+                .Where(_selectedCells.Contains)
+                .ToArray());
 
     /// <summary>Gets the active row used by keyboard navigation, or null when no row exists.</summary>
     public TableRow? ActiveRow { get; private set; }
