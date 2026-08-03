@@ -19,7 +19,7 @@ public static class Themes
     private static readonly HashSet<string> _registeredStyleSections =
         new(StringComparer.Ordinal)
         {
-            "scrollBar", "checkBox", "radioButton", "button", "chaseIndicator", "slider", "progressBar"
+            "scrollBar", "checkBox", "radioButton", "button", "chaseIndicator", "slider", "progressBar", "spinner"
         };
     private static readonly Lock _gate = new();
     private static readonly Dictionary<string, Theme> _cache = new(StringComparer.Ordinal);

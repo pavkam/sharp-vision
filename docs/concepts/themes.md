@@ -116,34 +116,38 @@ Control-specific structure — paddings, glyph families, frame sequences, and pa
 colors — is mostly still code-owned. Each styled control completes its typed
 `Style` value from the library's structural defaults plus the appropriate
 semantic profile above; a complete local `Style` assignment overrides both.
-`ScrollBar`, `CheckBox`, `RadioButton`, `Button`, `ChaseIndicator`, `Slider`,
-and `ProgressBar` are the first exceptions: `ScrollBar`'s `Chrome` and `Fill`,
-`CheckBox`'s and `RadioButton`'s `MarkStyle`, `Button`'s `Padding`,
-`ChaseIndicator`'s `Active`/`Inactive` glyphs, `Slider`'s `FillColor`/
-`TrackColor`/`ThumbColor`, and `ProgressBar`'s `FillColor`/`TrackColor`/
-`IndeterminateColor`, resolve from the theme's `scrollBar`, `checkBox`,
-`radioButton`, `button`, `chaseIndicator`, `slider`, and `progressBar` sections
-(below) when authored, ahead of the code-owned defaults.
+Eight controls are the first exceptions, each resolving part of its structural
+`Style` from a library-registered `styles` section ahead of the code-owned
+default, whenever no local `Style` is assigned:
 
-Alongside the five fixed profiles, `styles` accepts registrable style sections
-under either a library-registered unqualified name (currently `scrollBar`, with
-`chrome` and `fill` string members; `checkBox` and `radioButton`, each with a
-`markStyle` string member; `button`, with `horizontalPadding`/`verticalPadding`
-integer members; `chaseIndicator`, with `active`/`inactive` one-character string
-members; `slider`, with `fillColor`/`trackColor`/`thumbColor` color string
-members; and `progressBar`, with `fillColor`/`trackColor`/`indeterminateColor`
-color string members) or a namespaced `vendor.control` key (for example
-`"acme.widget"`); an unqualified sibling key that is neither one of the five
-profile names nor a registered section is rejected as an unknown field, since it
-is far more likely a typo than an intentional section. A section's color members
-accept the same shapes a semantic profile color does: a `ThemeColor` name, a
-`#RGB`/`#RRGGBB` literal, a palette key, or `"transparent"`/ `"default"`,
-resolved through `Theme.Palette` rather than the eager parse-time dictionary. A
+| Section name     | Control          | Members                                                  |
+| ---------------- | ---------------- | -------------------------------------------------------- |
+| `scrollBar`      | `ScrollBar`      | `chrome`, `fill` (strings)                               |
+| `checkBox`       | `CheckBox`       | `markStyle` (string)                                     |
+| `radioButton`    | `RadioButton`    | `markStyle` (string)                                     |
+| `button`         | `Button`         | `horizontalPadding`, `verticalPadding` (integers)        |
+| `chaseIndicator` | `ChaseIndicator` | `active`, `inactive` (one-character strings)             |
+| `slider`         | `Slider`         | `fillColor`, `trackColor`, `thumbColor` (colors)         |
+| `progressBar`    | `ProgressBar`    | `fillColor`, `trackColor`, `indeterminateColor` (colors) |
+| `spinner`        | `Spinner`        | `frames` (array of one-character strings)                |
+
+A color member accepts the same shapes a semantic profile color does: a
+`ThemeColor` name, a `#RGB`/`#RRGGBB` literal, a palette key, or
+`"transparent"`/`"default"`, resolved through `Theme.Palette` rather than the
+eager parse-time dictionary. Every wired control's glyph family (where it has
+one) stays code-owned; none of the eight sections above authors glyphs beyond
+`chaseIndicator`'s two marks and `spinner`'s frame sequence.
+
+Alongside the five fixed profiles and the eight names above, `styles` accepts a
+namespaced `vendor.control` key (for example `"acme.widget"`) as a third-party
+registrable section. An unqualified sibling key that is neither one of the five
+profile names nor one of the eight registered section names is rejected as an
+unknown field, since it is far more likely a typo than an intentional section. A
 registrable section's JSON is retained unparsed and bound lazily - not while the
 theme document loads - through `Theme.GetStyleSection<TSection>(sectionName)`,
 which deserializes and memoizes it on first access and returns `null` for a
 theme that never authored that section. The mechanism exists so any control -
-library or third-party - can adopt one; most built-in controls don't yet.
+library or third-party - can adopt one.
 
 When several state flags are active, contributions apply in this order:
 

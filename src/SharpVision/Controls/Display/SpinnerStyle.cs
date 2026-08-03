@@ -28,14 +28,54 @@ public readonly struct SpinnerStyle: IEquatable<SpinnerStyle>
     private readonly ImmutableArray<Rune> _frames;
     private readonly ThemeProfile? _appearance;
 
-    /// <summary>Gets the primary spinner-style definition.</summary>
-    internal static StyleDefinition<SpinnerStyle> Definition { get; } = StyleDefinitions.Control(
+    /// <summary>Gets the primary spinner-style definition. Reads the theme's registrable
+    /// "spinner" style section (see #155) for Frames when the active theme authors one; falls
+    /// back to the code-owned structural default otherwise.</summary>
+    internal static StyleDefinition<SpinnerStyle> Definition { get; } = new(
         ThemeRole.Control,
-        static profile => new SpinnerStyle(Default.Frames, profile),
+        ResolveComplete,
         static style => style.Appearance,
         static (previous, _, current, _) => previous == current
             ? InvalidationImpact.None
             : InvalidationImpact.Render);
+
+    private static SpinnerStyle ResolveComplete(SpinnerStyle? local, Theme? theme)
+    {
+        if (local.HasValue)
+        {
+            return local.Value;
+        }
+
+        var effectiveTheme = theme ?? Themes.Dark;
+        var section = effectiveTheme.GetStyleSection<SpinnerStyleSection>("spinner");
+        var frames = section?.Frames is { } authored
+            ? ParseFrames(authored, effectiveTheme.Slug)
+            : Default.Frames;
+
+        return new SpinnerStyle(frames, effectiveTheme.GetProfile(ThemeRole.Control));
+    }
+
+    private static IEnumerable<Rune> ParseFrames(List<string> frames, string themeSlug)
+    {
+        foreach (var frame in frames)
+        {
+            yield return ParseGlyph(frame, themeSlug);
+        }
+    }
+
+    private static Rune ParseGlyph(string value, string themeSlug)
+    {
+        var enumerator = value.EnumerateRunes();
+        if (!enumerator.MoveNext())
+        {
+            throw new InvalidDataException($"Theme '{themeSlug}' styles.spinner.frames entries must contain one Rune.");
+        }
+
+        var result = enumerator.Current;
+        return enumerator.MoveNext()
+            ? throw new InvalidDataException($"Theme '{themeSlug}' styles.spinner.frames entries must contain one Rune.")
+            : result;
+    }
 
     /// <summary>Gets the maximum number of frames retained by one spinner presentation.</summary>
     public const int MaximumFrameCount = 256;

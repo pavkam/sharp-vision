@@ -20,7 +20,11 @@ from pointer hit testing.
 
 A `SpinnerStyle` holds a bounded immutable frame sequence and a complete
 appearance profile. `SpinnerStyle.With(...)` copies frames and may overlay an
-`AppearanceProfileSet`; theme JSON remains semantic-only. Assigning `Style`
+`AppearanceProfileSet`. A theme document may additionally author a
+`styles.spinner` section with a `frames` array of one-character strings; an
+active theme's section supplies the frame sequence ahead of the code-owned
+default whenever no local `Style` is assigned (see
+[themes.md](../../concepts/themes.md#semantic-profiles)). Assigning `Style`
 replaces the entire Theme-owned presentation, and assigning `null` restores it.
 A style must provide between 1 and 256 printable one-cell frames.
 
