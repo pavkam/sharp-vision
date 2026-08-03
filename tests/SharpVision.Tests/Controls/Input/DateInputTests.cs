@@ -515,6 +515,31 @@ public sealed class DateInputTests
         Row(frame, 1).ShouldContain("date: --/--/----");
     }
 
+    /// <summary>Verifies a leading literal is not mistaken for the focused month segment.</summary>
+    [Fact]
+    public void Render_WhenFocusedFormatStartsWithQuotedLiteral_HighlightsFirstEditableSegment()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 7, 19),
+            Culture = CultureInfo.InvariantCulture,
+            Format = "'date:' MM/dd/yyyy"
+        };
+        control.SetFocused(true);
+        new LayoutEngine().Layout(control, new Size(30, 3));
+        using Frame frame = new(new Size(30, 3));
+
+        // Act
+        control.Render(frame.Canvas);
+
+        // Assert
+        (frame.GetCell(new Point(1, 1)).Style.Attributes & Attributes.Reverse)
+            .ShouldBe(Attributes.None);
+        (frame.GetCell(new Point(7, 1)).Style.Attributes & Attributes.Reverse)
+            .ShouldBe(Attributes.Reverse);
+    }
+
     #endregion
 
     #region Helpers

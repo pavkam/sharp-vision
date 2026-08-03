@@ -13,6 +13,9 @@ using SharpVision.Terminal.Input;
 [PublicAPI]
 public sealed class DateInput: Control
 {
+    private const char _segmentStartMarker = '\uE000';
+    private const char _segmentEndMarker = '\uE001';
+
     /// <inheritdoc/>
     protected override ThemeRole ThemeRole => ThemeRole.Input;
 
@@ -320,7 +323,7 @@ public sealed class DateInput: Control
         for (var index = 0; index < segments.Length && x < content.X + textAreaWidth; index++)
         {
             var segment = segments[index];
-            var segmentStyle = IsFocused && !IsOpen && index == _activeSegment * 2
+            var segmentStyle = IsFocused && !IsOpen && segment.EditableIndex == _activeSegment
                 ? SegmentHighlightStyle(style)
                 : segment.IsPlaceholder
                     ? PlaceholderStyle(style)
@@ -811,7 +814,8 @@ public sealed class DateInput: Control
     private readonly record struct DisplaySegment(
         string Text,
         bool IsPlaceholder,
-        SegmentKind? Kind = null);
+        SegmentKind? Kind = null,
+        int EditableIndex = -1);
 
     private DisplaySegment[] BuildSegments()
     {
@@ -820,46 +824,141 @@ public sealed class DateInput: Control
             return BuildPlaceholderSegments();
         }
 
-        // Format is validated at the property boundary (see ValidateFormat), so it is always
-        // renderable here regardless of whether it is a single standard specifier or a custom
-        // composite pattern.
-        return ParseSegments(date.ToString(Format, _culture));
-    }
-
-    private static DisplaySegment[] ParseSegments(string formatted)
-    {
+        var kinds = BuildPlaceholderSegments()
+            .Where(static segment => segment.Kind.HasValue)
+            .Select(static segment => segment.Kind!.Value)
+            .ToArray();
+        var renderingCulture = Format.Length == 1 && Format[0] is 'r' or 'R'
+            ? CultureInfo.InvariantCulture
+            : _culture;
+        var formatted = date.ToString(BuildMarkedFormat(), renderingCulture);
         var segments = new List<DisplaySegment>();
-        var current = new StringBuilder();
-        var inNumber = false;
+        var cursor = 0;
+        var editableIndex = 0;
 
-        for (var index = 0; index < formatted.Length; index++)
+        while (cursor < formatted.Length)
         {
-            var ch = formatted[index];
-            var isDigit = char.IsDigit(ch);
+            var start = formatted.IndexOf(_segmentStartMarker, cursor);
 
-            if (isDigit != inNumber && current.Length > 0)
+            if (start < 0)
             {
-                segments.Add(new DisplaySegment(current.ToString(), false));
-                _ = current.Clear();
+                segments.Add(new DisplaySegment(formatted[cursor..], false));
+                break;
             }
 
-            _ = current.Append(ch);
-            inNumber = isDigit;
-        }
+            if (start > cursor)
+            {
+                segments.Add(new DisplaySegment(formatted[cursor..start], false));
+            }
 
-        if (current.Length > 0)
-        {
-            segments.Add(new DisplaySegment(current.ToString(), false));
+            var contentStart = start + 1;
+            var end = formatted.IndexOf(_segmentEndMarker, contentStart);
+
+            if (end < 0)
+            {
+                Debug.Fail("Validated marked date format omitted an editable-segment end marker.");
+                segments.Add(new DisplaySegment(formatted[contentStart..], false));
+                break;
+            }
+
+            Debug.Assert(editableIndex < kinds.Length);
+            var kind = editableIndex < kinds.Length ? kinds[editableIndex] : SegmentKind.Day;
+            segments.Add(new DisplaySegment(
+                formatted[contentStart..end],
+                false,
+                kind,
+                editableIndex));
+            editableIndex++;
+            cursor = end + 1;
         }
 
         return [.. segments];
     }
+
+    private string BuildMarkedFormat()
+    {
+        var pattern = ResolveDatePattern();
+        var marked = new StringBuilder(pattern.Length + 16);
+        var index = 0;
+
+        while (index < pattern.Length)
+        {
+            var ch = pattern[index];
+
+            if (ch is '\'' or '"')
+            {
+                var quote = ch;
+                _ = marked.Append(ch);
+                index++;
+
+                while (index < pattern.Length)
+                {
+                    ch = pattern[index];
+                    _ = marked.Append(ch);
+                    index++;
+
+                    if (ch == '\\' && index < pattern.Length)
+                    {
+                        _ = marked.Append(pattern[index]);
+                        index++;
+                    }
+                    else if (ch == quote)
+                    {
+                        break;
+                    }
+                }
+
+                continue;
+            }
+
+            if (ch == '\\' && index + 1 < pattern.Length)
+            {
+                _ = marked.Append(ch).Append(pattern[index + 1]);
+                index += 2;
+                continue;
+            }
+
+            var percentPrefixed = ch == '%' && index + 1 < pattern.Length;
+            var tokenStart = percentPrefixed ? index + 1 : index;
+            var token = pattern[tokenStart];
+
+            if (token is 'M' or 'd' or 'y')
+            {
+                AppendFormatMarker(marked, _segmentStartMarker);
+
+                if (percentPrefixed)
+                {
+                    _ = marked.Append('%');
+                }
+
+                do
+                {
+                    _ = marked.Append(pattern[tokenStart]);
+                    tokenStart++;
+                }
+                while (!percentPrefixed && tokenStart < pattern.Length && pattern[tokenStart] == token);
+
+                AppendFormatMarker(marked, _segmentEndMarker);
+                index = tokenStart;
+                continue;
+            }
+
+            _ = marked.Append(ch);
+            index++;
+        }
+
+        return marked.ToString();
+    }
+
+    private static void AppendFormatMarker(StringBuilder format, char marker) =>
+        _ = format.Append('\'').Append(marker).Append('\'');
 
     private DisplaySegment[] BuildPlaceholderSegments()
     {
         var pattern = ResolveDatePattern();
         var segments = new List<DisplaySegment>();
         var index = 0;
+        var editableIndex = 0;
 
         while (index < pattern.Length)
         {
@@ -928,7 +1027,8 @@ public sealed class DateInput: Control
                     _ => SegmentKind.Day
                 };
                 var placeholder = kind == SegmentKind.Year && count >= 4 ? "----" : "--";
-                segments.Add(new DisplaySegment(placeholder, true, kind));
+                segments.Add(new DisplaySegment(placeholder, true, kind, editableIndex));
+                editableIndex++;
                 continue;
             }
 
