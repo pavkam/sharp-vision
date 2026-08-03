@@ -132,10 +132,10 @@ public sealed class EnvironmentSnapshotTests
     public void Detector_WhenComparedWithNegotiationSnapshot_AgreesOnEnvironmentEvidence()
     {
         var environment = LowercaseEnvironment();
-        var direct = Detector.Detect(TerminalCapabilities.Conservative, environment);
+        var direct = CapabilityDetector.Detect(TerminalCapabilities.Conservative, environment);
         var snapshot = new NegotiationOptions(environment);
 
-        var throughSnapshot = Detector.Detect(TerminalCapabilities.Conservative, snapshot.Environment);
+        var throughSnapshot = CapabilityDetector.Detect(TerminalCapabilities.Conservative, snapshot.Environment);
 
         throughSnapshot.ColorDepth.ShouldBe(direct.ColorDepth);
         throughSnapshot.Osc52.ShouldBe(direct.Osc52);

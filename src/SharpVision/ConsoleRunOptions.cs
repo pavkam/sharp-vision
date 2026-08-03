@@ -206,7 +206,7 @@ public sealed record ConsoleRunOptions
         var profile = Profile ??
                       (Capabilities is { } compatibility
                           ? TerminalProfile.CreateAnsi(compatibility)
-                          : TerminalProfile.CreateAnsi(Detector.Detect(
+                          : TerminalProfile.CreateAnsi(CapabilityDetector.Detect(
                               new Dictionary<string, string?>(),
                               overrides: new Settings { CellMouse = true })));
 

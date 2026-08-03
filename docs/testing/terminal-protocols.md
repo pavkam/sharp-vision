@@ -38,10 +38,10 @@ before those three strategy phases run.
 `Negotiator` facade parity tests compare against direct
 `ActiveQueryDiscoveryStrategy` behavior for exact query bytes, started/completed
 status, the shared exclusive deadline, reply classification, diagnostics,
-published query results, capabilities, and public validation. `Detector` facade
-tests likewise compare against the direct discovery pipeline. Moving behavior
-behind a facade must not reduce fragmentation, capacity, timeout, multiplexer,
-or allocation coverage.
+published query results, capabilities, and public validation.
+`CapabilityDetector` facade tests likewise compare against the direct discovery
+pipeline. Moving behavior behind a facade must not reduce fragmentation,
+capacity, timeout, multiplexer, or allocation coverage.
 
 One cross-layer initialization test drives a usable terminal description, caller
 environment, correlated query replies, resolved terminal backend, capability

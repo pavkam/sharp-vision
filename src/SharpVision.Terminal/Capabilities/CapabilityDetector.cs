@@ -11,7 +11,7 @@ using Discovery.Adapters;
 /// hints, queries, and explicit overrides.
 /// </summary>
 [PublicAPI]
-public static class Detector
+public static class CapabilityDetector
 {
     /// <summary>
     /// Produces a new immutable profile without reading process-global state.

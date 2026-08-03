@@ -138,10 +138,10 @@ Kitty-over-fallback priority, origin requirements (including that Query now
 authorizes iTerm2 output the same way it already does Kitty and sixel), route
 authorization, mixed paint order, and missing-metric PNG viability.
 `ActiveQueryDiscoveryStrategy` tests cover the Capabilities query gate, `FILE`
-code parsing, and silent-terminal negative inference; `Detector` tests cover the
-`TERM_PROGRAM_VERSION` narrowing corroborator. Application/public-control
-coverage shares the final-byte, conservative-route, and failure-safe shutdown
-tests with the other graphics backends.
+code parsing, and silent-terminal negative inference; `CapabilityDetector` tests
+cover the `TERM_PROGRAM_VERSION` narrowing corroborator.
+Application/public-control coverage shares the final-byte, conservative-route,
+and failure-safe shutdown tests with the other graphics backends.
 
 ## Sources
 

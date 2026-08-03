@@ -18,7 +18,7 @@ public sealed class DiscoveryPipelineTests
     public void DiscoveryPipeline_WhenLoaded_ExposesOrderedDiscoveryTypes()
     {
         // Arrange
-        var assembly = typeof(Detector).Assembly;
+        var assembly = typeof(CapabilityDetector).Assembly;
 
         // Act
         var pipeline = assembly.GetType("SharpVision.Terminal.Discovery.DiscoveryPipeline");
