@@ -211,6 +211,29 @@ public sealed class ScrollBarTests
         control.Value.ShouldBe(100);
     }
 
+    /// <summary>Verifies keys outside the scrollbar command set remain available to routed input.</summary>
+    [Fact]
+    public void Dispatch_WhenKeyIsUnhandled_RaisesInheritedKeyDownWithoutConsumingIt()
+    {
+        // Arrange
+        var control = new ScrollBar();
+        var raised = 0;
+        control.KeyDown += (_, _) => raised++;
+        var key = new KeyEventArgs(new Stroke(
+            Code.F1,
+            character: null,
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press));
+
+        // Act
+        _ = Router.Route(control, Events.Key, key);
+
+        // Assert
+        key.Handled.ShouldBeFalse();
+        raised.ShouldBe(1);
+    }
+
     /// <summary>Verifies pointer buttons and track clicks apply small and large changes.</summary>
     [Fact]
     public async Task Dispatch_WhenPointerPressesButtonsAndTrack_AppliesExpectedChangesAsync()

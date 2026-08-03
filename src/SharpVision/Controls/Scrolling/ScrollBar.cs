@@ -283,6 +283,11 @@ public sealed class ScrollBar: Control
         {
             Handle(pointer);
         }
+
+        if (!eventArgs.Handled)
+        {
+            base.OnEvent(eventArgs);
+        }
     }
 
     /// <inheritdoc/>
