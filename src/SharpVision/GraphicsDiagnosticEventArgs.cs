@@ -12,9 +12,17 @@ public sealed class GraphicsDiagnosticEventArgs: EventArgs
     /// <summary>Initializes one graphics diagnostic event.</summary>
     /// <param name="placements">The non-null, non-empty skipped placements.</param>
     /// <exception cref="ArgumentNullException"><paramref name="placements"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="placements"/> is empty.</exception>
     public GraphicsDiagnosticEventArgs(IReadOnlyList<GraphicsPlacementDiagnostic> placements)
     {
         ArgumentNullException.ThrowIfNull(placements);
+
+        if (placements.Count == 0)
+        {
+            throw new ArgumentException(
+                "A graphics diagnostic event requires at least one skipped placement.",
+                nameof(placements));
+        }
 
         Placements = Array.AsReadOnly(placements.ToArray());
     }

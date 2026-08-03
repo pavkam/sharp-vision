@@ -22,4 +22,15 @@ public sealed class GraphicsDiagnosticEventArgsTests
 
         eventArgs.Placements.ShouldHaveSingleItem().ShouldBe(diagnostic);
     }
+
+    /// <summary>Verifies an event cannot represent a graphics diagnostic without a placement.</summary>
+    [Fact]
+    public void Constructor_WhenPlacementsAreEmpty_Throws()
+    {
+        var placements = Array.Empty<GraphicsPlacementDiagnostic>();
+
+        var action = () => new GraphicsDiagnosticEventArgs(placements);
+
+        action.ShouldThrow<ArgumentException>().ParamName.ShouldBe("placements");
+    }
 }
