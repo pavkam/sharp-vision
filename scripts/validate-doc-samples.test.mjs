@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -7,7 +10,37 @@ import {
   renderCompilationUnit,
   splitProgramBlock,
   stripUsingLines,
+  validateDocSamples,
 } from "./validate-doc-samples.mjs";
+
+test("validateDocSamples_WhenDotnetRootIsUnset_DiscoversPathSdk", async () => {
+  const root = await mkdtemp(join(tmpdir(), "sharpvision-doc-samples-test-"));
+  const previousDotnetRoot = process.env.DOTNET_ROOT;
+  const previousHome = process.env.HOME;
+
+  try {
+    delete process.env.DOTNET_ROOT;
+    process.env.HOME = root;
+
+    const result = await validateDocSamples(root, []);
+
+    assert.deepEqual(result, { errors: [], totalBlocks: 0 });
+  } finally {
+    if (previousDotnetRoot === undefined) {
+      delete process.env.DOTNET_ROOT;
+    } else {
+      process.env.DOTNET_ROOT = previousDotnetRoot;
+    }
+
+    if (previousHome === undefined) {
+      delete process.env.HOME;
+    } else {
+      process.env.HOME = previousHome;
+    }
+
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test("extractCSharpBlocks_WhenFenceIsCSharp_ReturnsBodyAndStartLine", () => {
   const content = [

@@ -450,8 +450,39 @@ function translateDiagnostics(compilerOutput, sourcePath, lineMap, fileLabel) {
   return translated.length > 0 ? translated : [compilerOutput.trim()];
 }
 
-async function findReferenceAssemblies() {
-  const dotnetRoot = process.env.DOTNET_ROOT ?? join(process.env.HOME ?? "", ".dotnet");
+async function resolveDotnetInstallation() {
+  const configuredRoot = process.env.DOTNET_ROOT;
+  const configuredExecutable = configuredRoot === undefined
+    ? undefined
+    : join(configuredRoot, "dotnet");
+  const dotnetPath = configuredExecutable !== undefined && existsSync(configuredExecutable)
+    ? configuredExecutable
+    : "dotnet";
+  const { stdout: versionOutput } = await execFileAsync(dotnetPath, ["--version"], {
+    cwd: process.cwd(),
+  });
+  const version = versionOutput.trim();
+
+  if (configuredRoot !== undefined) {
+    return { dotnetPath, dotnetRoot: configuredRoot, version };
+  }
+
+  const { stdout: sdkOutput } = await execFileAsync(dotnetPath, ["--list-sdks"], {
+    cwd: process.cwd(),
+  });
+  const sdkEntry = sdkOutput
+    .split(/\r?\n/gu)
+    .map((line) => /^(\S+)\s+\[(.+)\]\s*$/u.exec(line))
+    .find((match) => match?.[1] === version);
+
+  if (sdkEntry === undefined) {
+    throw new Error(`The active .NET SDK ${version} was not present in dotnet --list-sdks.`);
+  }
+
+  return { dotnetPath, dotnetRoot: dirname(sdkEntry[2]), version };
+}
+
+async function findReferenceAssemblies(dotnetRoot) {
   const refPacksRoot = join(dotnetRoot, "packs", "Microsoft.NETCore.App.Ref");
 
   if (!existsSync(refPacksRoot)) {
@@ -469,8 +500,7 @@ async function findReferenceAssemblies() {
   return files.filter((name) => name.endsWith(".dll")).map((name) => join(refDirectory, name));
 }
 
-async function findCscPath(dotnetPath) {
-  const dotnetRoot = process.env.DOTNET_ROOT ?? join(process.env.HOME ?? "", ".dotnet");
+async function findCscPath(dotnetRoot, pinnedVersion) {
   const sdkRoot = join(dotnetRoot, "sdk");
 
   if (!existsSync(sdkRoot)) {
@@ -481,8 +511,6 @@ async function findCscPath(dotnetPath) {
   // string sort of directory names does not order version numbers correctly
   // (e.g. "9.0.312" sorts after "10.0.203"), which previously picked an
   // older SDK's csc.dll that predates C# 14 support entirely.
-  const { stdout } = await execFileAsync(dotnetPath, ["--version"], { cwd: process.cwd() });
-  const pinnedVersion = stdout.trim();
   const pinnedCandidate = join(sdkRoot, pinnedVersion, "Roslyn", "bincore", "csc.dll");
 
   if (existsSync(pinnedCandidate)) {
@@ -527,11 +555,9 @@ async function compileUnit(cscPath, dotnetPath, referenceAssemblies, sharpVision
 export async function validateDocSamples(root, sharpVisionAssemblies) {
   const files = await collectMarkdownFiles(root);
   const errors = [];
-  const referenceAssemblies = await findReferenceAssemblies();
-  const dotnetRoot = process.env.DOTNET_ROOT ?? join(process.env.HOME ?? "", ".dotnet");
-  const dotnetInRoot = join(dotnetRoot, "dotnet");
-  const dotnetPath = existsSync(dotnetInRoot) ? dotnetInRoot : "dotnet";
-  const cscPath = await findCscPath(dotnetPath);
+  const { dotnetPath, dotnetRoot, version } = await resolveDotnetInstallation();
+  const referenceAssemblies = await findReferenceAssemblies(dotnetRoot);
+  const cscPath = await findCscPath(dotnetRoot, version);
   const workingDirectory = await mkdtemp(join(tmpdir(), "sharpvision-docs-samples-"));
   let totalBlocks = 0;
 
