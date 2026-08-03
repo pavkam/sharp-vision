@@ -107,7 +107,8 @@ public sealed record DescriptionLimits
     /// nonstandard install path (or a minimal container without a package manager's default
     /// locations) can be supported without recompiling (see #98).
     /// </remarks>
-    /// <exception cref="ArgumentNullException">The value is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentNullException">The value or one of its entries is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">An entry is blank.</exception>
     public IReadOnlyList<string> NcursesLibraryNames
     {
         get;
@@ -117,7 +118,22 @@ public sealed record DescriptionLimits
     private static ReadOnlyCollection<string> Snapshot(IReadOnlyList<string> value, string parameterName)
     {
         ArgumentNullException.ThrowIfNull(value, parameterName);
-        return Array.AsReadOnly(value.ToArray());
+        var copy = new string[value.Count];
+
+        for (var index = 0; index < value.Count; index++)
+        {
+            var candidate = value[index];
+            ArgumentNullException.ThrowIfNull(candidate, parameterName);
+
+            if (string.IsNullOrWhiteSpace(candidate))
+            {
+                throw new ArgumentException("Native-library names must not be blank.", parameterName);
+            }
+
+            copy[index] = candidate;
+        }
+
+        return Array.AsReadOnly(copy);
     }
 
     private static int RequireBoundedPositive(int value, int maximum, string parameterName)

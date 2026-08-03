@@ -55,6 +55,16 @@ public sealed class DescriptionLimitsTests
         limits.NcursesLibraryNames.ShouldBe(["original-ncurses.so"]);
     }
 
+    /// <summary>Verifies invalid native-library candidates are rejected at configuration time.</summary>
+    [Fact]
+    public void NcursesLibraryNames_WhenEntryIsInvalid_ThrowsBeforePublishingProfile()
+    {
+        _ = Should.Throw<ArgumentNullException>(() =>
+            new DescriptionLimits { NcursesLibraryNames = [null!] });
+        _ = Should.Throw<ArgumentException>(() =>
+            new DescriptionLimits { NcursesLibraryNames = [" \t"] });
+    }
+
     /// <summary>
     /// Verifies that the default profile is bounded and retains a non-empty native search list.
     /// </summary>
