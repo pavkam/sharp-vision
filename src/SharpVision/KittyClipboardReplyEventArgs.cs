@@ -33,7 +33,9 @@ public sealed class KittyClipboardReplyEventArgs: EventArgs
     {
         Selection = selection;
         KittyResult = kittyResult;
-        Text = text;
+        Text = text.HasValue
+            ? text.Value.ToArray()
+            : (ReadOnlyMemory<byte>?) null;
         Failure = failure;
         Diagnostic = diagnostic;
     }
