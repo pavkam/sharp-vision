@@ -7,7 +7,7 @@ namespace SharpVision.Terminal.Tests.Rendering;
 [Collection(PerformanceGroup.Name)]
 public sealed class CanvasPrimitiveTests
 {
-    private static readonly Action<Canvas> _allocationDraw = DrawAllocationCell;
+    private static readonly Action<TerminalCanvas> _allocationDraw = DrawAllocationCell;
     private static readonly Func<Point, Color> _allocationSelector = SelectAllocationForeground;
 
     #region Arbitrary geometry
@@ -276,7 +276,7 @@ public sealed class CanvasPrimitiveTests
         var original = new CellStyle(
             ReferenceColors.Get(1),
             ReferenceColors.Get(2),
-            Attributes.Bold,
+            TerminalAttributes.Bold,
             "https://example.test/prism",
             Underline.Curly,
             ReferenceColors.Get(3));
@@ -395,7 +395,7 @@ public sealed class CanvasPrimitiveTests
         var original = new CellStyle(
             ReferenceColors.Get(1),
             ReferenceColors.Get(2),
-            Attributes.Bold,
+            TerminalAttributes.Bold,
             "https://example.test/underlay",
             Underline.Curly,
             ReferenceColors.Get(3));
@@ -561,7 +561,7 @@ public sealed class CanvasPrimitiveTests
         var selectorWrite = new CellStyle(
             ReferenceColors.Get(9),
             ReferenceColors.Get(4),
-            Attributes.Italic,
+            TerminalAttributes.Italic,
             "https://example.test/selector-write",
             Underline.Curly,
             ReferenceColors.Get(5));
@@ -597,7 +597,7 @@ public sealed class CanvasPrimitiveTests
         using Frame frame = new(new Size(1, 1));
         var canvas = frame.Canvas;
         var drawn = new CellStyle(ReferenceColors.Get(1), ReferenceColors.Get(2));
-        var selectorWrite = new CellStyle(ReferenceColors.Get(9), ReferenceColors.Get(4), Attributes.Italic);
+        var selectorWrite = new CellStyle(ReferenceColors.Get(9), ReferenceColors.Get(4), TerminalAttributes.Italic);
         var selectorCalls = 0;
 
         canvas.DrawWithForeground(
@@ -625,7 +625,7 @@ public sealed class CanvasPrimitiveTests
         _ = canvas.Draw("Z", default, original);
         var drawCalls = 0;
 
-        void Draw(Canvas _) => drawCalls++;
+        void Draw(TerminalCanvas _) => drawCalls++;
 
         static Color Select(Point _) => ReferenceColors.Get(7);
 
@@ -740,7 +740,7 @@ public sealed class CanvasPrimitiveTests
 
     #endregion
 
-    private static void DrawAllocationCell(Canvas canvas) =>
+    private static void DrawAllocationCell(TerminalCanvas canvas) =>
         canvas.DrawRune(new Rune('A'), default);
 
     private static Color SelectAllocationForeground(Point _) => ReferenceColors.Get(7);

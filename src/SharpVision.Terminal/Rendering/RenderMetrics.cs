@@ -7,7 +7,7 @@ using Graphics;
 
 /// <summary>Reports work completed by one successfully committed frame render.</summary>
 [PublicAPI]
-public readonly record struct Metrics
+public readonly record struct RenderMetrics
 {
     private static readonly IReadOnlyList<GraphicsPlacementDiagnostic> _noGraphicsDiagnostics =
         Array.Empty<GraphicsPlacementDiagnostic>();
@@ -19,7 +19,7 @@ public readonly record struct Metrics
     /// <param name="full">Whether the operation encoded a full redraw.</param>
     /// <param name="elapsed">The non-negative elapsed time.</param>
     /// <exception cref="ArgumentOutOfRangeException">A count or elapsed time is negative.</exception>
-    public Metrics(int bytes, int writes, int spans, bool full, TimeSpan elapsed)
+    public RenderMetrics(int bytes, int writes, int spans, bool full, TimeSpan elapsed)
         : this(bytes, writes, spans, full, elapsed, _noGraphicsDiagnostics)
     {
     }
@@ -36,7 +36,7 @@ public readonly record struct Metrics
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">A count or elapsed time is negative.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="graphicsDiagnostics"/> is null.</exception>
-    public Metrics(
+    public RenderMetrics(
         int bytes,
         int writes,
         int spans,

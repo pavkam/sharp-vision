@@ -26,7 +26,7 @@ internal sealed class CellMetricsResolver
 
     /// <summary>Initializes the resolver from an optional caller-supplied starting metrics.</summary>
     /// <param name="initial">Exact or uniform starting metrics, or null.</param>
-    public CellMetricsResolver(Metrics? initial)
+    public CellMetricsResolver(CellMetrics? initial)
     {
         if (initial is { Cells: { } cells, Pixels: { } pixels })
         {
@@ -42,7 +42,7 @@ internal sealed class CellMetricsResolver
     }
 
     /// <summary>Gets the current best-known cell metrics, or null when none are available.</summary>
-    public Metrics? Current { get; private set; }
+    public CellMetrics? Current { get; private set; }
 
     /// <summary>Updates locally observed exact geometry, superseding queried window dimensions.</summary>
     /// <param name="cells">The non-negative local text-area cell dimensions.</param>
@@ -72,14 +72,14 @@ internal sealed class CellMetricsResolver
         {
             Debug.Assert(
                 response.Kind == ResponseKind.WindowCells,
-                "Metrics responses validate their family at construction.");
+                "CellMetrics responses validate their family at construction.");
             _queriedWindowCells = response.Size;
         }
 
         Current = Recompute();
     }
 
-    private Metrics? Recompute()
+    private CellMetrics? Recompute()
     {
         var cells = _localCells ?? _queriedWindowCells;
         var pixels = _localPixels ?? _queriedWindowPixels;
@@ -90,9 +90,9 @@ internal sealed class CellMetricsResolver
             pixelSize.Height >= cellSize.Height;
 
         return hasExact
-            ? new Metrics(cells!.Value, pixels!.Value)
+            ? new CellMetrics(cells!.Value, pixels!.Value)
             : _queriedCellPixels is { } cellPixels
-                ? new Metrics(cellPixels.Width, cellPixels.Height)
+                ? new CellMetrics(cellPixels.Width, cellPixels.Height)
                 : null;
     }
 

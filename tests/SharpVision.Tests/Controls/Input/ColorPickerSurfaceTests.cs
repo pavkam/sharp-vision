@@ -117,7 +117,7 @@ public sealed class ColorPickerSurfaceTests
             TestContext.Current.CancellationToken);
         await surface.UpdateAsync(
             () => picker.SetCapabilities(
-                Capabilities.Conservative with { ColorDepth = ColorDepth.TrueColor }),
+                TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor }),
             "enable true-color ColorPicker branch");
         changes = 0;
 

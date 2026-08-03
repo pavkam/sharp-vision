@@ -52,8 +52,8 @@ public sealed class ColorPickerTests
 
             picker.Attach(
                 dispatcher,
-                Policy.Default,
-                Capabilities.Conservative with { ColorDepth = ColorDepth.Indexed256 });
+                UnicodePolicy.Default,
+                TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.Indexed256 });
 
             picker.Value.ShouldBe(Color.Rgb(95, 135, 175));
             picker.EffectiveColorDepth.ShouldBe(ColorDepth.Indexed256);
@@ -72,16 +72,16 @@ public sealed class ColorPickerTests
             var picker = new ColorPicker { Value = Color.Rgb(95, 135, 175) };
             picker.Attach(
                 dispatcher,
-                Policy.Default,
-                Capabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
+                UnicodePolicy.Default,
+                TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
             List<string> changes = [];
             picker.ValueChanged += (_, eventArgs) =>
                 changes.Add($"{eventArgs.PreviousValue}>{eventArgs.Value}:{picker.Value}");
 
             picker.SetCapabilities(
-                Capabilities.Conservative with { ColorDepth = ColorDepth.Basic16 });
+                TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.Basic16 });
             picker.SetCapabilities(
-                Capabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
+                TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
 
             picker.Value.ShouldBe(Color.Rgb(95, 135, 175));
             changes.ShouldBeEmpty();
@@ -99,8 +99,8 @@ public sealed class ColorPickerTests
             var picker = new ColorPicker();
             picker.Attach(
                 dispatcher,
-                Policy.Default,
-                Capabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
+                UnicodePolicy.Default,
+                TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
             var changes = 0;
             picker.ValueChanged += (_, _) => changes++;
 
@@ -148,8 +148,8 @@ public sealed class ColorPickerTests
             };
             picker.Attach(
                 dispatcher,
-                Policy.Default,
-                Capabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
+                UnicodePolicy.Default,
+                TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
             new LayoutEngine().Layout(picker, new Size(40, 18));
             using Frame frame = new(new Size(40, 18));
 
@@ -177,7 +177,7 @@ public sealed class ColorPickerTests
             Dock.SetSide(button, DockSide.Bottom);
             var root = new Dock { Children = { button, picker } };
             root.SetCapabilities(
-                Capabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
+                TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
             root.Attach(dispatcher);
             new LayoutEngine().Layout(root, new Size(40, 20));
             using FocusManager focus = new(root);
@@ -265,8 +265,8 @@ public sealed class ColorPickerTests
             var picker = new ColorPicker();
             picker.Attach(
                 dispatcher,
-                Policy.Default,
-                Capabilities.Conservative with { ColorDepth = ColorDepth.Monochrome });
+                UnicodePolicy.Default,
+                TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.Monochrome });
             picker.RgbEditorVisible.ShouldBeFalse();
             var sliderStyle = new SliderStyle(
                 Color.Rgb(9, 9, 9),
@@ -276,7 +276,7 @@ public sealed class ColorPickerTests
                 SliderStyle.Default.Appearance);
 
             picker.Style = new ColorPickerStyle(sliderStyle, null);
-            picker.SetCapabilities(Capabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
+            picker.SetCapabilities(TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
 
             picker.RgbEditorVisible.ShouldBeTrue();
             picker.RedSlider.ActualStyle.ShouldBe(sliderStyle);
@@ -297,8 +297,8 @@ public sealed class ColorPickerTests
             var picker = new ColorPicker();
             picker.Attach(
                 dispatcher,
-                Policy.Default,
-                Capabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
+                UnicodePolicy.Default,
+                TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
             var changes = 0;
             picker.ValueChanged += (_, _) =>
             {

@@ -57,7 +57,7 @@ public sealed class OwnedControlRegistryTests
             () =>
             {
                 _ = Should.Throw<InvalidOperationException>(
-                    () => control.Attach(dispatcher, Policy.Default, theme, static () => { }));
+                    () => control.Attach(dispatcher, UnicodePolicy.Default, theme, static () => { }));
             },
             TestContext.Current.CancellationToken);
 
@@ -119,7 +119,7 @@ public sealed class OwnedControlRegistryTests
         theme.Freeze();
         var control = new StyledProbe();
         await dispatcher.InvokeAsync(
-            () => control.Attach(dispatcher, Policy.Default, theme, static () => { }),
+            () => control.Attach(dispatcher, UnicodePolicy.Default, theme, static () => { }),
             TestContext.Current.CancellationToken);
         var expectedFace = control.ActualFace;
         var expectedResolutions = control.UncachedAppearanceResolutionCount;
@@ -425,7 +425,7 @@ public sealed class OwnedControlRegistryTests
     public async Task AddAndRemove_WhenSubtreeSpansSlots_PublishesAfterWholeContextCommitsAsync()
     {
         await using var dispatcher = Dispatcher.Start();
-        var policy = new Policy(Ambiguous.Wide);
+        var policy = new UnicodePolicy(Ambiguous.Wide);
         var root = new ProbeOwnedControl();
         var branch = new ProbeOwnedControl();
         var first = new OwnershipObserverControl();
@@ -468,7 +468,7 @@ public sealed class OwnedControlRegistryTests
                 {
                     control.Dispatcher.ShouldBeNull();
                     control.InheritedThemeValue.ShouldBeNull();
-                    control.InheritedCellPolicy.ShouldBeSameAs(Policy.Default);
+                    control.InheritedCellPolicy.ShouldBeSameAs(UnicodePolicy.Default);
                     control.InheritedFocusOwner.ShouldBeNull();
                     control.InheritedCaptureOwner.ShouldBeNull();
                 }

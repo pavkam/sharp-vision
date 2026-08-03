@@ -73,9 +73,9 @@ public sealed class TableSurfaceTests
 
         // Assert
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(theme.ResolveColor(ThemeColor.Accent), ColorDepth.Basic16));
+            TerminalPalette.Project(theme.ResolveColor(ThemeColor.Accent), ColorDepth.Basic16));
         surface.Cell(new Point(4, 1)).Style.Foreground.ShouldBe(
-            Palette.Project(theme.ResolveColor(ThemeColor.ControlBorder), ColorDepth.Basic16));
+            TerminalPalette.Project(theme.ResolveColor(ThemeColor.ControlBorder), ColorDepth.Basic16));
     }
 
     /// <summary>Verifies mounted Table hover, focus, tab, and directional behavior.</summary>

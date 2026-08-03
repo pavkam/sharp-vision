@@ -5,7 +5,6 @@ namespace SharpVision.Terminal.Tests.Rendering;
 
 using SharpVision.Terminal.Capabilities;
 
-using Encoder = FrameEncoder;
 
 /// <summary>
 /// Verifies incremental output reaches the same semantic terminal state as full output.
@@ -51,7 +50,7 @@ public sealed class EquivalenceTests
         _ = back.Canvas.Draw(
             "ab".AsSpan(),
             new Point(0, 0),
-            new CellStyle(attributes: Attributes.Bold, hyperlink: "https://example.test"));
+            new CellStyle(attributes: TerminalAttributes.Bold, hyperlink: "https://example.test"));
         back.SetCursor(new Point(1, 0), visible: true);
         var incremental = new VirtualScreen(back.Size);
         incremental.Apply(Encode(null, front));
@@ -71,7 +70,7 @@ public sealed class EquivalenceTests
     {
         using Frame frame = new(new Size(2, 1));
         var style = new CellStyle(
-            attributes: Attributes.RapidBlink | Attributes.Overline,
+            attributes: TerminalAttributes.RapidBlink | TerminalAttributes.Overline,
             underline: Underline.Curly,
             underlineColor: Color.Rgb(12, 34, 56));
         _ = frame.Canvas.Draw("ab".AsSpan(), new Point(0, 0), style);
@@ -97,7 +96,7 @@ public sealed class EquivalenceTests
         TerminalCapabilities? capabilities = null)
     {
         var destination = new ArrayBufferWriter<byte>();
-        _ = Encoder.Encode(
+        _ = FrameEncoder.Encode(
             front,
             back,
             destination,

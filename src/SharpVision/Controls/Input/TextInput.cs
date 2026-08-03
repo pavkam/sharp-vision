@@ -25,7 +25,7 @@ public sealed class TextInput: ControlBase
     private int[]? _boundaryColumnCache;
     private string? _boundaryCacheSource;
     private Rune? _boundaryCachePasswordCharacter;
-    private Policy? _boundaryCacheCellPolicy;
+    private UnicodePolicy? _boundaryCacheCellPolicy;
     private bool _pointerSelecting;
     private int _pointerAnchor;
     private int _contentWidth;

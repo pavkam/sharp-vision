@@ -21,7 +21,7 @@ public sealed class Session: IAsyncDisposable
     private readonly ITransport _transport;
     private readonly IResizeSource _resize;
     private readonly ISink _sink;
-    private readonly Options _options;
+    private readonly TerminalOptions _options;
     private readonly TimeProvider _timeProvider;
     private readonly Interpreter _programInterpreter;
     private readonly CancellationTokenSource _lifetime = new();
@@ -48,12 +48,12 @@ public sealed class Session: IAsyncDisposable
         ITransport transport,
         IResizeSource resize,
         ISink sink,
-        Options? options = null,
+        TerminalOptions? options = null,
         TimeProvider? timeProvider = null) : this(
         transport,
         resize,
         sink,
-        options ?? new Options(),
+        options ?? new TerminalOptions(),
         timeProvider,
         context: null)
     {
@@ -77,7 +77,7 @@ public sealed class Session: IAsyncDisposable
         ITransport transport,
         IResizeSource resize,
         ISink sink,
-        Options options,
+        TerminalOptions options,
         TerminalContext context,
         TimeProvider? timeProvider = null) : this(
         transport,
@@ -93,7 +93,7 @@ public sealed class Session: IAsyncDisposable
         ITransport transport,
         IResizeSource resize,
         ISink sink,
-        Options resolvedOptions,
+        TerminalOptions resolvedOptions,
         TimeProvider? timeProvider,
         TerminalContext? context)
     {
@@ -478,8 +478,8 @@ public sealed class Session: IAsyncDisposable
     {
         var enable = new ArrayBufferWriter<byte>();
         var disable = new ArrayBufferWriter<byte>();
-        ProtocolModes.FocusReporting(new Writer(enable), enabled: true);
-        ProtocolModes.FocusReporting(new Writer(disable), enabled: false);
+        ProtocolModes.FocusReporting(new ProtocolWriter(enable), enabled: true);
+        ProtocolModes.FocusReporting(new ProtocolWriter(disable), enabled: false);
         return new Lease(enable.WrittenSpan, disable.WrittenSpan);
     }
 
@@ -487,8 +487,8 @@ public sealed class Session: IAsyncDisposable
     {
         var enable = new ArrayBufferWriter<byte>();
         var disable = new ArrayBufferWriter<byte>();
-        ProtocolModes.BracketedPaste(new Writer(enable), enabled: true);
-        ProtocolModes.BracketedPaste(new Writer(disable), enabled: false);
+        ProtocolModes.BracketedPaste(new ProtocolWriter(enable), enabled: true);
+        ProtocolModes.BracketedPaste(new ProtocolWriter(disable), enabled: false);
         return new Lease(enable.WrittenSpan, disable.WrittenSpan);
     }
 
@@ -498,12 +498,12 @@ public sealed class Session: IAsyncDisposable
         var enable = new ArrayBufferWriter<byte>();
         var disable = new ArrayBufferWriter<byte>();
         ProtocolModes.Mouse(
-            new Writer(enable),
+            new ProtocolWriter(enable),
             _options.Tracking.Value,
             _options.Coordinates,
             enabled: true);
         ProtocolModes.Mouse(
-            new Writer(disable),
+            new ProtocolWriter(disable),
             _options.Tracking.Value,
             _options.Coordinates,
             enabled: false);
@@ -515,8 +515,8 @@ public sealed class Session: IAsyncDisposable
         Debug.Assert(_options.Keyboard.HasValue, "A keyboard lease requires configured enhancement flags.");
         var enable = new ArrayBufferWriter<byte>();
         var disable = new ArrayBufferWriter<byte>();
-        Kitty.Keyboard.KittyKeyboard.Push(new Writer(enable), _options.Keyboard.Value);
-        Kitty.Keyboard.KittyKeyboard.Pop(new Writer(disable));
+        Kitty.Keyboard.KittyKeyboard.Push(new ProtocolWriter(enable), _options.Keyboard.Value);
+        Kitty.Keyboard.KittyKeyboard.Pop(new ProtocolWriter(disable));
         return new Lease(enable.WrittenSpan, disable.WrittenSpan);
     }
 
@@ -525,8 +525,8 @@ public sealed class Session: IAsyncDisposable
         Debug.Assert(_options.ModifyOtherKeys.HasValue, "An xterm keyboard lease requires a configured level.");
         var enable = new ArrayBufferWriter<byte>();
         var disable = new ArrayBufferWriter<byte>();
-        XtermModifyOtherKeys.Set(new Writer(enable), _options.ModifyOtherKeys.Value);
-        XtermModifyOtherKeys.Restore(new Writer(disable));
+        XtermModifyOtherKeys.Set(new ProtocolWriter(enable), _options.ModifyOtherKeys.Value);
+        XtermModifyOtherKeys.Restore(new ProtocolWriter(disable));
         return new Lease(enable.WrittenSpan, disable.WrittenSpan);
     }
 
@@ -543,7 +543,7 @@ public sealed class Session: IAsyncDisposable
             _context.Profile.KeyMap,
             _context.Profile.UsesAnsiKeyGrammar);
         var candidateRoute = _options.Negotiation?.Multiplexing.Allows(
-            Multiplexing.Operation.CapabilityQueries) == true
+            Multiplexing.MultiplexingOperation.CapabilityQueries) == true
             ? new MultiplexerRoute(_options.Negotiation.Multiplexing)
             : null;
         var multiplexerRoute = candidateRoute?.CanRouteCapabilityQueries == true
@@ -929,7 +929,7 @@ public sealed class Session: IAsyncDisposable
             : capabilities.CellMouse.IsSupported;
     }
 
-    private static Options RequireOptions(Options options)
+    private static TerminalOptions RequireOptions(TerminalOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
         return options;

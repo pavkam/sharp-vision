@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using CellMetrics = Terminal.Geometry.Metrics;
 
 /// <summary>Verifies immutable terminal capabilities inherited by retained controls.</summary>
 public sealed class ControlCapabilitiesTests
@@ -61,10 +60,10 @@ public sealed class ControlCapabilitiesTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            var profile = Capabilities.Conservative with { ColorDepth = ColorDepth.Indexed256 };
+            var profile = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.Indexed256 };
             var control = new CapabilityProbe();
 
-            control.Attach(dispatcher, Policy.Default, profile);
+            control.Attach(dispatcher, UnicodePolicy.Default, profile);
 
             control.ColorDepth.ShouldBe(ColorDepth.Indexed256);
             control.Transitions.ShouldBe([ColorDepth.Indexed256]);
@@ -83,9 +82,9 @@ public sealed class ControlCapabilitiesTests
             var root = new Stack { Children = { child } };
             root.Attach(
                 dispatcher,
-                Policy.Default,
-                Capabilities.Conservative with { ColorDepth = ColorDepth.Basic16 });
-            var profile = Capabilities.Conservative with { ColorDepth = ColorDepth.TrueColor };
+                UnicodePolicy.Default,
+                TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.Basic16 });
+            var profile = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor };
 
             root.SetCapabilities(profile);
 
@@ -105,8 +104,8 @@ public sealed class ControlCapabilitiesTests
             var root = new Stack();
             root.Attach(
                 dispatcher,
-                Policy.Default,
-                Capabilities.Conservative with { ColorDepth = ColorDepth.Indexed256 });
+                UnicodePolicy.Default,
+                TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.Indexed256 });
             var child = new CapabilityProbe();
 
             root.Children.Add(child);

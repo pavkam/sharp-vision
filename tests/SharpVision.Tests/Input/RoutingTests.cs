@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Input;
 
-using TerminalText = Terminal.Input.Text;
 
 /// <summary>Verifies typed preview/bubble dispatch over stable route snapshots.</summary>
 public sealed class RoutingTests

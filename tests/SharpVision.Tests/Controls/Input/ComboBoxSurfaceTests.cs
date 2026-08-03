@@ -25,7 +25,7 @@ public sealed class ComboBoxSurfaceTests
             Height = Length.Cells(3)
         };
         var controls = new Stack { Children = { combo, input } };
-        var trueColor = Capabilities.Conservative with { ColorDepth = ColorDepth.TrueColor };
+        var trueColor = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor };
         var options = TerminalOptions.Minimal with { Capabilities = trueColor };
         await using var surface = await ComponentSurface.MountAsync(
             controls,

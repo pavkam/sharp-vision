@@ -29,7 +29,7 @@ internal sealed class ReplyValidationSink:
     public void Input(in Stroke value) => Invalid = true;
 
     /// <inheritdoc/>
-    public void Input(in Text value) => Invalid = true;
+    public void Input(in TerminalText value) => Invalid = true;
 
     /// <inheritdoc/>
     public void Input(in Pointer value) => Invalid = true;
@@ -44,7 +44,7 @@ internal sealed class ReplyValidationSink:
     public void Input(in Diagnostic value) => Invalid = true;
 
     /// <inheritdoc/>
-    public void Response(in Response value)
+    public void Response(in XtermCapabilitiesResponse value)
     {
         if (value.Kind is ResponseKind.PrimaryAttributes or
             ResponseKind.SecondaryAttributes or
@@ -75,7 +75,7 @@ internal sealed class ReplyValidationSink:
     public void Response(ItermCapabilitiesResponse value) => _responses++;
 
     /// <inheritdoc/>
-    public void Response(Kitty.Graphics.Response value)
+    public void Response(Kitty.Graphics.KittyGraphicsResponse value)
     {
         ArgumentNullException.ThrowIfNull(value);
 

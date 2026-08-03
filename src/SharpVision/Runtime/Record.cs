@@ -10,7 +10,7 @@ using TerminalClipboardReply = ClipboardReply;
 using TerminalDiagnostic = Diagnostic;
 using TerminalFocus = Terminal.Input.TerminalFocus;
 using TerminalKittyClipboardPacket = Terminal.Kitty.Clipboard.Packet;
-using TerminalText = Terminal.Input.Text;
+using TerminalText = Terminal.Input.TerminalText;
 
 /// <summary>Stores one copied terminal input queue value without borrowed memory.</summary>
 internal readonly record struct Record
@@ -39,7 +39,7 @@ internal readonly record struct Record
     public TerminalDiagnostic Diagnostic { get; private init; }
 
     /// <summary>Gets a typed terminal protocol response.</summary>
-    public Response Response { get; private init; }
+    public XtermCapabilitiesResponse Response { get; private init; }
 
     /// <summary>Gets a typed terminal palette response.</summary>
     public PaletteResponse PaletteResponse { get; private init; }
@@ -87,7 +87,7 @@ internal readonly record struct Record
         new(RecordKind.Diagnostic) { Diagnostic = value };
 
     /// <summary>Creates a typed terminal protocol response record.</summary>
-    public static Record From(Response value) => new(RecordKind.Response) { Response = value };
+    public static Record From(XtermCapabilitiesResponse value) => new(RecordKind.Response) { Response = value };
 
     /// <summary>Creates a typed terminal palette response record.</summary>
     public static Record From(PaletteResponse value) =>

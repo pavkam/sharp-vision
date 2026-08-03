@@ -46,7 +46,7 @@ public sealed class ThemeValueTests
         color.IsLiteral.ShouldBeTrue();
         color.Literal.ShouldBe(Color.Default);
         attributes.IsLiteral.ShouldBeTrue();
-        attributes.Literal.ShouldBe(Attributes.None);
+        attributes.Literal.ShouldBe(TerminalAttributes.None);
     }
 
     /// <summary>Verifies diagnostics format either discriminated branch without accessing the inactive branch.</summary>
@@ -55,7 +55,7 @@ public sealed class ThemeValueTests
     {
         ColorValue literalColor = Color.Rgb(1, 2, 3);
         ColorValue semanticColor = ThemeColor.Accent;
-        AttributeValue literalAttributes = Attributes.Bold;
+        AttributeValue literalAttributes = TerminalAttributes.Bold;
         AttributeValue semanticAttributes = ThemeDecoration.FocusedText;
 
         _ = Should.NotThrow(() => literalColor.ToString());

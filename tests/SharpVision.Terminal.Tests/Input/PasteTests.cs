@@ -82,7 +82,7 @@ public sealed class PasteTests
     public void Decode_WhenPasteExceedsLimit_DiscardsAndRecovers()
     {
         var sink = new RecordingInputSink();
-        using InputDecoder decoder = new(sink, new Options { MaxPasteBytes = 3 });
+        using InputDecoder decoder = new(sink, new InputOptions { MaxPasteBytes = 3 });
 
         decoder.Decode("\u001b[200~abcdef\u001b[201~x"u8);
         decoder.Complete();
@@ -136,7 +136,7 @@ public sealed class PasteTests
     public void Decode_WhenUnterminatedPasteIsLarge_RetainsOnlyConfiguredLimit()
     {
         var sink = new RecordingInputSink();
-        using InputDecoder decoder = new(sink, new Options { MaxPasteBytes = 16 });
+        using InputDecoder decoder = new(sink, new InputOptions { MaxPasteBytes = 16 });
         decoder.Decode("\u001b[200~"u8);
         var chunk = new byte[1024 * 1024];
         chunk.AsSpan().Fill((byte) 'x');

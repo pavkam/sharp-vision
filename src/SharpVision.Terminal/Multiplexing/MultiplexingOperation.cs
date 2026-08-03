@@ -6,7 +6,7 @@ namespace SharpVision.Terminal.Multiplexing;
 /// <summary>Identifies finite typed operation families eligible for passthrough.</summary>
 [Flags]
 [PublicAPI]
-public enum Operation
+public enum MultiplexingOperation
 {
     /// <summary>No operation may bypass the multiplexer.</summary>
     None = 0,

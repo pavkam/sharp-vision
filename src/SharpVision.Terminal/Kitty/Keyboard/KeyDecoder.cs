@@ -187,7 +187,7 @@ internal sealed class KeyDecoder
             Debug.Assert(
                 parsed && scalar,
                 "Associated text is fully validated before emission.");
-            var text = new Text(rune);
+            var text = new TerminalText(rune);
             _sink.Input(in text);
             input = separator < 0 ? [] : input[(separator + 1)..];
         }

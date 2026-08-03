@@ -12,5 +12,5 @@ public interface IKittyGraphicsResponseSink
 {
     /// <summary>Receives one bounded Kitty graphics APC response.</summary>
     /// <param name="value">The non-null owned graphics response.</param>
-    public void Response(Kitty.Graphics.Response value);
+    public void Response(Kitty.Graphics.KittyGraphicsResponse value);
 }

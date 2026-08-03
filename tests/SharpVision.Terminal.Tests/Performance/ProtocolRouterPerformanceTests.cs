@@ -7,7 +7,6 @@ using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Multiplexing;
 using SharpVision.Terminal.Protocols;
 
-using MultiplexingOperation = Terminal.Multiplexing.Operation;
 
 /// <summary>Gates the allocation cost of an active multiplexer route that never receives a
 /// wrapped reply.</summary>
@@ -26,7 +25,7 @@ public sealed class ProtocolRouterPerformanceTests
 
         var before = GC.GetAllocatedBytesForCurrentThread();
 
-        var policy = new Policy(
+        var policy = new MultiplexingPolicy(
             [MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,

@@ -73,7 +73,7 @@ public sealed class ClipboardRoutingTests
 
         var packet = sink.KittyClipboardPackets.ShouldHaveSingleItem();
         packet.IsValid.ShouldBeTrue();
-        packet.Operation.ShouldBe(Operation.Read);
+        packet.Operation.ShouldBe(KittyClipboardOperation.Read);
         packet.ReplyStatus.ShouldBe(ReplyStatus.Ok);
         packet.Id.ShouldBe("req-1");
         sink.ClipboardReplies.ShouldBeEmpty();

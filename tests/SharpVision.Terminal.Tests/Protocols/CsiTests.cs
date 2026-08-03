@@ -21,7 +21,7 @@ public sealed class CsiTests
     public void Move_WhenCountIsValid_WritesExactBytes(Movement operation, string expected)
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         Csi.Move(writer, operation, 3);
 
@@ -36,7 +36,7 @@ public sealed class CsiTests
     {
         var destination = new ArrayBufferWriter<byte>();
 
-        Csi.Position(new Writer(destination), row: 12, column: 4);
+        Csi.Position(new ProtocolWriter(destination), row: 12, column: 4);
 
         destination.WrittenSpan.ToArray().ShouldBe("\u001b[12;4H"u8.ToArray());
     }
@@ -48,7 +48,7 @@ public sealed class CsiTests
     public void Erase_WhenAreasAreValid_WritesExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         Csi.EraseDisplay(writer, EraseArea.Scrollback);
         Csi.EraseLine(writer, EraseArea.All);
@@ -63,7 +63,7 @@ public sealed class CsiTests
     public void Edit_WhenCountsAreValid_WritesExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         Csi.InsertCharacters(writer, 2);
         Csi.DeleteCharacters(writer, 3);
@@ -83,7 +83,7 @@ public sealed class CsiTests
     public void Query_WhenRequested_WritesExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         Csi.SaveCursor(writer);
         Csi.RestoreCursor(writer);
@@ -108,7 +108,7 @@ public sealed class CsiTests
     public void Command_WhenArgumentIsInvalid_ThrowsBeforeWriting()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => Csi.Move(writer, Movement.Up, 0));
         _ = Should.Throw<ArgumentOutOfRangeException>(() => Csi.Position(writer, 0, 1));

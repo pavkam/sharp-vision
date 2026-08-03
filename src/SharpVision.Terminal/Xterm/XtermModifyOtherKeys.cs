@@ -9,13 +9,13 @@ public static class XtermModifyOtherKeys
 {
     /// <summary>Queries the current xterm modifyOtherKeys value.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    public static void Query(Writer writer) => writer.Csi("?4"u8, [], (byte) 'm');
+    public static void Query(ProtocolWriter writer) => writer.Csi("?4"u8, [], (byte) 'm');
 
     /// <summary>Sets xterm modifyOtherKeys to level zero through three.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="level">The level from zero through three.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="level"/> is outside zero through three.</exception>
-    public static void Set(Writer writer, int level)
+    public static void Set(ProtocolWriter writer, int level)
     {
         if (level is < 0 or > 3)
         {
@@ -28,5 +28,5 @@ public static class XtermModifyOtherKeys
 
     /// <summary>Restores xterm's configured initial modifyOtherKeys value.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    public static void Restore(Writer writer) => writer.Csi(">4"u8, [], (byte) 'm');
+    public static void Restore(ProtocolWriter writer) => writer.Csi(">4"u8, [], (byte) 'm');
 }

@@ -16,36 +16,36 @@ Existing aliases are promoted when they already describe the type accurately.
 Names that need more context use subsystem and responsibility rather than only
 the vendor name.
 
-| Current type | Replacement |
-| --- | --- |
-| `Protocols.Writer` | `ProtocolWriter` |
-| `Iterm.Writer` | `ItermWriter` |
-| `Sixel.Writer` | `SixelWriter` |
-| `Kitty.Graphics.Writer` | `KittyGraphicsWriter` |
-| `Kitty.Clipboard.Writer` | `KittyClipboardWriter` |
-| `Rendering.Encoder` | `FrameEncoder` |
-| `Sixel.Encoder` | `SixelEncoder` |
-| `Graphics.Format` | `ImageFormat` |
-| `Kitty.Graphics.Format` | `KittyGraphicsFormat` |
-| `Graphics.Limits` | `ImageLimits` |
-| `Geometry.Metrics` | `CellMetrics` |
-| `Rendering.Metrics` | `RenderMetrics` |
-| `Runtime.Options` | `TerminalOptions` |
-| `Input.Options` | `InputOptions` |
-| `Rendering.Palette` | `TerminalPalette` |
-| `Sixel.Palette` | `SixelPalette` |
-| `Multiplexing.Policy` | `MultiplexingPolicy` |
-| `Unicode.Policy` | `UnicodePolicy` |
-| `Multiplexing.Operation` | `MultiplexingOperation` |
-| `Terminfo.Operation` | `TerminfoOperation` |
-| `Kitty.Clipboard.Operation` | `KittyClipboardOperation` |
-| `Kitty.Graphics.Response` | `KittyGraphicsResponse` |
-| `Xterm.Response` | `XtermCapabilitiesResponse` |
-| `Input.Text` | `TerminalText` |
-| `Capabilities.Capabilities` | `TerminalCapabilities` |
-| `Rendering.Attributes` | `TerminalAttributes` |
-| `Rendering.Canvas` | `TerminalCanvas` |
-| `Kitty.Graphics.Medium` | `KittyGraphicsMedium` |
+| Current type                | Replacement                 |
+| --------------------------- | --------------------------- |
+| `Protocols.Writer`          | `ProtocolWriter`            |
+| `Iterm.Writer`              | `ItermWriter`               |
+| `Sixel.Writer`              | `SixelWriter`               |
+| `Kitty.Graphics.Writer`     | `KittyGraphicsWriter`       |
+| `Kitty.Clipboard.Writer`    | `KittyClipboardWriter`      |
+| `Rendering.Encoder`         | `FrameEncoder`              |
+| `Sixel.Encoder`             | `SixelEncoder`              |
+| `Graphics.Format`           | `ImageFormat`               |
+| `Kitty.Graphics.Format`     | `KittyGraphicsFormat`       |
+| `Graphics.Limits`           | `ImageLimits`               |
+| `Geometry.Metrics`          | `CellMetrics`               |
+| `Rendering.Metrics`         | `RenderMetrics`             |
+| `Runtime.Options`           | `TerminalOptions`           |
+| `Input.Options`             | `InputOptions`              |
+| `Rendering.Palette`         | `TerminalPalette`           |
+| `Sixel.Palette`             | `SixelPalette`              |
+| `Multiplexing.Policy`       | `MultiplexingPolicy`        |
+| `Unicode.Policy`            | `UnicodePolicy`             |
+| `Multiplexing.Operation`    | `MultiplexingOperation`     |
+| `Terminfo.Operation`        | `TerminfoOperation`         |
+| `Kitty.Clipboard.Operation` | `KittyClipboardOperation`   |
+| `Kitty.Graphics.Response`   | `KittyGraphicsResponse`     |
+| `Xterm.Response`            | `XtermCapabilitiesResponse` |
+| `Input.Text`                | `TerminalText`              |
+| `Capabilities.Capabilities` | `TerminalCapabilities`      |
+| `Rendering.Attributes`      | `TerminalAttributes`        |
+| `Rendering.Canvas`          | `TerminalCanvas`            |
+| `Kitty.Graphics.Medium`     | `KittyGraphicsMedium`       |
 
 Every declaration moves to a same-named file. Namespaces stay unchanged because
 the Kitty protocol-family split has already landed and the remaining defect is
@@ -86,4 +86,3 @@ old identifiers. After every reference is migrated, verification covers:
 3. Manual review of both generated `0.8.0-alpha.1` API snapshots.
 4. `make format`, `make lint`, `make build`, and `make test` with zero warnings,
    zero errors, and the configured minimum test discovery.
-

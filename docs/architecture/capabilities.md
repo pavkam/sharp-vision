@@ -66,13 +66,13 @@ Hosting consumes the complete result before constructing an application or
 session and rejects every suitability other than `Usable` before any terminal,
 query, or render bytes. Runtime options and capability negotiation carry that
 complete profile and use its semantic capabilities as the baseline.
-`Runtime.Options.Profile` is always non-null; its compatibility `Capabilities`
-initializer wraps the exact semantic value in a built-in ANSI profile, and when
-low-level code supplies both initializers the last one wins. `Options.Minimal`
-uses that usable profile but enables no mode or negotiation and remains
-byte-quiet. `Runtime.Session` consumes the matched lifecycle programs and routes
-the profile's key map into its input decoder. The renderer consumes the
-description programs. The
+`Runtime.TerminalOptions.Profile` is always non-null; its compatibility
+`Capabilities` initializer wraps the exact semantic value in a built-in ANSI
+profile, and when low-level code supplies both initializers the last one wins.
+`Options.Minimal` uses that usable profile but enables no mode or negotiation
+and remains byte-quiet. `Runtime.Session` consumes the matched lifecycle
+programs and routes the profile's key map into its input decoder. The renderer
+consumes the description programs. The
 [coverage matrix](../protocols/coverage-matrix.md#coverage) owns that boundary.
 
 ## Terminal-description profile
@@ -172,11 +172,11 @@ is applied last as explicit caller policy.
 A detected `TMUX`, `TERM=tmux-*`, or `TERM=screen-*` value identifies only the
 nearest inner multiplexer. It never identifies the outer terminal, never becomes
 the terminal backend identity, and never enables passthrough.
-`Multiplexing.Policy` keeps the active inner profile and an explicit outer
-profile separate, owns a nearest-to-farthest route with finite depth and byte
-budget, and approves only the typed capability-query, clipboard, and graphics
-families. The runtime routes its implemented startup-query batch, OSC 52
-clipboard writes and requests, and graphics transactions through those typed
+`Multiplexing.MultiplexingPolicy` keeps the active inner profile and an explicit
+outer profile separate, owns a nearest-to-farthest route with finite depth and
+byte budget, and approves only the typed capability-query, clipboard, and
+graphics families. The runtime routes its implemented startup-query batch, OSC
+52 clipboard writes and requests, and graphics transactions through those typed
 paths. Kitty OSC 5522 remains a low-level extension, as documented by its
 [implementation gap](../protocols/kitty-clipboard.md#supported-features).
 Graphics selection receives the complete detected route even when passthrough is

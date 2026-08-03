@@ -11,11 +11,11 @@ public sealed class StyleTests
     public void Constructor_WhenDecorationsAreValid_PreservesValues()
     {
         var style = new CellStyle(
-            attributes: Attributes.RapidBlink | Attributes.Overline,
+            attributes: TerminalAttributes.RapidBlink | TerminalAttributes.Overline,
             underline: Underline.Curly,
             underlineColor: Color.Rgb(1, 2, 3));
 
-        style.Attributes.ShouldBe(Attributes.RapidBlink | Attributes.Overline);
+        style.Attributes.ShouldBe(TerminalAttributes.RapidBlink | TerminalAttributes.Overline);
         style.Underline.ShouldBe(Underline.Curly);
         style.UnderlineColor.ShouldBe(Color.Rgb(1, 2, 3));
     }
@@ -25,9 +25,9 @@ public sealed class StyleTests
     public void Constructor_WhenDecorationsConflict_ThrowsDocumentedException()
     {
         _ = Should.Throw<ArgumentException>(() =>
-            new CellStyle(attributes: Attributes.Underline, underline: Underline.Curly));
+            new CellStyle(attributes: TerminalAttributes.Underline, underline: Underline.Curly));
         _ = Should.Throw<ArgumentException>(() =>
-            new CellStyle(attributes: Attributes.Blink | Attributes.RapidBlink));
+            new CellStyle(attributes: TerminalAttributes.Blink | TerminalAttributes.RapidBlink));
         _ = Should.Throw<ArgumentException>(() =>
             new CellStyle(underlineColor: ReferenceColors.Get(1)));
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>

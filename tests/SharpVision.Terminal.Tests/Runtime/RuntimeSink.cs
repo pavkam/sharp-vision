@@ -9,7 +9,7 @@ using SharpVision.Terminal.Input;
 internal sealed class RuntimeSink: ISink
 {
     /// <summary>Gets decoded text callbacks.</summary>
-    internal List<InputText> Text { get; } = [];
+    internal List<TerminalText> Text { get; } = [];
 
     /// <summary>Gets decoded key callbacks.</summary>
     internal List<Stroke> Strokes { get; } = [];
@@ -21,7 +21,7 @@ internal sealed class RuntimeSink: ISink
     internal List<TerminalCapabilities> Profiles { get; } = [];
 
     /// <summary>Gets recognized terminal responses.</summary>
-    internal List<Response> Responses { get; } = [];
+    internal List<XtermCapabilitiesResponse> Responses { get; } = [];
 
     /// <summary>Gets recognized terminal color responses.</summary>
     internal List<PaletteResponse> PaletteResponses { get; } = [];
@@ -73,7 +73,7 @@ internal sealed class RuntimeSink: ISink
     public void Input(in Stroke value) => Strokes.Add(value);
 
     /// <inheritdoc/>
-    public void Input(in InputText value)
+    public void Input(in TerminalText value)
     {
         if (TextFailure is not null)
         {
@@ -97,7 +97,7 @@ internal sealed class RuntimeSink: ISink
     public void Input(in Diagnostic value) => _ = value;
 
     /// <inheritdoc/>
-    public void Response(in Response value)
+    public void Response(in XtermCapabilitiesResponse value)
     {
         Responses.Add(value);
         Order.Add("response");

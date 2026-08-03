@@ -9,7 +9,6 @@ using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Graphics;
 using SharpVision.Terminal.Multiplexing;
 
-using MultiplexingOperation = Terminal.Multiplexing.Operation;
 
 /// <summary>Proves authoritative backend priority and mixed per-placement fallback.</summary>
 public sealed class BackendSelectorTests
@@ -95,7 +94,7 @@ public sealed class BackendSelectorTests
     public void Create_WhenRouteContainsScreen_ReturnsFallback()
     {
         var profile = Profile(iterm: new Feature(CapabilitySupport.Supported, Origin.Override));
-        var route = new MultiplexerRoute(new Policy(
+        var route = new MultiplexerRoute(new MultiplexingPolicy(
             [MultiplexerKind.Screen],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
@@ -112,7 +111,7 @@ public sealed class BackendSelectorTests
     public void Create_WhenKittyIsSupportedButRouteContainsScreen_ReturnsFallback()
     {
         var profile = Profile(kitty: new Feature(CapabilitySupport.Supported, Origin.Query));
-        var route = new MultiplexerRoute(new Policy(
+        var route = new MultiplexerRoute(new MultiplexingPolicy(
             [MultiplexerKind.Screen],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
@@ -128,13 +127,13 @@ public sealed class BackendSelectorTests
     {
         var profile = Profile(iterm: new Feature(CapabilitySupport.Supported, Origin.Override));
         var outer = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
-        var unauthorized = new MultiplexerRoute(new Policy(
+        var unauthorized = new MultiplexerRoute(new MultiplexingPolicy(
             [MultiplexerKind.Tmux],
             outer,
             PassthroughMode.All,
             paneVisible: true,
             MultiplexingOperation.CapabilityQueries));
-        var hidden = new MultiplexerRoute(new Policy(
+        var hidden = new MultiplexerRoute(new MultiplexingPolicy(
             [MultiplexerKind.Tmux],
             outer,
             PassthroughMode.Visible,

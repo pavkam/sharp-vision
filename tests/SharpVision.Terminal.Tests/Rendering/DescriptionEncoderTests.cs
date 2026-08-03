@@ -42,7 +42,7 @@ public sealed class DescriptionEncoderTests
             default,
             new CellStyle(
                 ReferenceColors.Get(4),
-                attributes: Attributes.Bold | Attributes.Underline,
+                attributes: TerminalAttributes.Bold | TerminalAttributes.Underline,
                 underlineColor: ReferenceColors.Get(2)));
         frame.SetCursor(default, visible: true, CursorShape.Bar);
         using Frame expected = new(new Size(1, 1));
@@ -216,7 +216,7 @@ public sealed class DescriptionEncoderTests
         _ = frame.Canvas.Draw(
             "xy",
             default,
-            new CellStyle(ReferenceColors.Get(9), attributes: Attributes.Bold));
+            new CellStyle(ReferenceColors.Get(9), attributes: TerminalAttributes.Bold));
         frame.SetCursor(new Point(1, 0), visible: true, CursorShape.Underline);
         var profile = CreateProfile(
             ColorDepth.Indexed256,
@@ -275,7 +275,7 @@ public sealed class DescriptionEncoderTests
     public void Encode_WhenItalicProgramIsAbsent_OmitsItalicBytes()
     {
         using Frame frame = new(new Size(1, 1));
-        _ = frame.Canvas.Draw("x", default, new CellStyle(attributes: Attributes.Italic));
+        _ = frame.Canvas.Draw("x", default, new CellStyle(attributes: TerminalAttributes.Italic));
         var profile = CreateProfile(ColorDepth.Monochrome, new Dictionary<string, DescriptionProgram>
         {
             ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
@@ -360,9 +360,9 @@ public sealed class DescriptionEncoderTests
     public void Encode_WhenOnlySlowBlinkIsDescribed_DegradesRapidBlinkState()
     {
         using Frame frame = new(new Size(1, 1));
-        _ = frame.Canvas.Draw("x", default, new CellStyle(attributes: Attributes.RapidBlink));
+        _ = frame.Canvas.Draw("x", default, new CellStyle(attributes: TerminalAttributes.RapidBlink));
         using Frame expected = new(new Size(1, 1));
-        _ = expected.Canvas.Draw("x", default, new CellStyle(attributes: Attributes.Blink));
+        _ = expected.Canvas.Draw("x", default, new CellStyle(attributes: TerminalAttributes.Blink));
         var programs = CorePrograms();
         programs["blink"] = new DescriptionProgram("\u001b[5m"u8);
         var profile = CreateProfile(ColorDepth.Monochrome, programs);
@@ -384,11 +384,11 @@ public sealed class DescriptionEncoderTests
             "x",
             default,
             new CellStyle(attributes:
-                Attributes.Italic |
-                Attributes.Blink |
-                Attributes.Hidden |
-                Attributes.Strike |
-                Attributes.Overline));
+                TerminalAttributes.Italic |
+                TerminalAttributes.Blink |
+                TerminalAttributes.Hidden |
+                TerminalAttributes.Strike |
+                TerminalAttributes.Overline));
         using Frame expected = new(new Size(1, 1));
         _ = expected.Canvas.Draw("x", default);
         var profile = CreateProfile(ColorDepth.Monochrome, CorePrograms());
@@ -477,7 +477,7 @@ public sealed class DescriptionEncoderTests
             "x",
             default,
             new CellStyle(
-                attributes: Attributes.Underline,
+                attributes: TerminalAttributes.Underline,
                 underlineColor: ReferenceColors.Get(index)));
         var programs = ColorPrograms();
         programs["smul"] = new DescriptionProgram("\u001b[4m"u8);
@@ -558,7 +558,7 @@ public sealed class DescriptionEncoderTests
     public void Encode_WhenStyledTargetUsesDefaultColors_UsesPairedDefaultProgram()
     {
         using Frame frame = new(new Size(1, 1));
-        _ = frame.Canvas.Draw("x", default, new CellStyle(attributes: Attributes.Bold));
+        _ = frame.Canvas.Draw("x", default, new CellStyle(attributes: TerminalAttributes.Bold));
         var profile = CreateProfile(ColorDepth.Indexed256, new Dictionary<string, DescriptionProgram>
         {
             ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),

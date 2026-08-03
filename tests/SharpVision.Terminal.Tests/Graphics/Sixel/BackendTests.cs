@@ -7,7 +7,6 @@ using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Graphics;
 using SharpVision.Terminal.Multiplexing;
 
-using MultiplexingOperation = Terminal.Multiplexing.Operation;
 
 /// <summary>Proves non-retained sixel frame transactions and route policy.</summary>
 [Collection(PerformanceGroup.Name)]
@@ -172,7 +171,7 @@ public sealed class BackendTests
     [Fact]
     public void Prepare_WhenTmuxRouteIsAuthorized_RoutesDcsOnly()
     {
-        var route = new MultiplexerRoute(new Policy(
+        var route = new MultiplexerRoute(new MultiplexingPolicy(
             [MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
@@ -196,7 +195,7 @@ public sealed class BackendTests
     [Fact]
     public void Constructor_WhenRouteContainsScreen_ThrowsNotSupportedException()
     {
-        var route = new MultiplexerRoute(new Policy(
+        var route = new MultiplexerRoute(new MultiplexingPolicy(
             [MultiplexerKind.Screen],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,

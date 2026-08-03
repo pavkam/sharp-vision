@@ -23,7 +23,7 @@ public static class Csi
     /// <paramref name="direction"/> is unknown or <paramref name="count"/> is
     /// not positive.
     /// </exception>
-    public static void Move(Writer writer, Movement direction, int count = 1)
+    public static void Move(ProtocolWriter writer, Movement direction, int count = 1)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
 
@@ -47,7 +47,7 @@ public static class Csi
     /// <param name="row">The one-based row.</param>
     /// <param name="column">The one-based column.</param>
     /// <exception cref="ArgumentOutOfRangeException">A coordinate is not positive.</exception>
-    public static void Position(Writer writer, int row, int column)
+    public static void Position(ProtocolWriter writer, int row, int column)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(row);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(column);
@@ -63,7 +63,7 @@ public static class Csi
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="area">The display region to erase.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="area"/> is unknown.</exception>
-    public static void EraseDisplay(Writer writer, EraseArea area)
+    public static void EraseDisplay(ProtocolWriter writer, EraseArea area)
     {
         ValidateEraseArea(area, allowScrollback: true);
         WriteNumber(writer, (int) area, (byte) 'J');
@@ -75,7 +75,7 @@ public static class Csi
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="area"/> is unknown or requests scrollback.
     /// </exception>
-    public static void EraseLine(Writer writer, EraseArea area)
+    public static void EraseLine(ProtocolWriter writer, EraseArea area)
     {
         ValidateEraseArea(area, allowScrollback: false);
         WriteNumber(writer, (int) area, (byte) 'K');
@@ -85,81 +85,81 @@ public static class Csi
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="count">The positive number of characters.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is not positive.</exception>
-    public static void InsertCharacters(Writer writer, int count = 1) =>
+    public static void InsertCharacters(ProtocolWriter writer, int count = 1) =>
         WritePositive(writer, count, (byte) '@');
 
     /// <summary>Deletes characters at the cursor.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="count">The positive number of characters.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is not positive.</exception>
-    public static void DeleteCharacters(Writer writer, int count = 1) =>
+    public static void DeleteCharacters(ProtocolWriter writer, int count = 1) =>
         WritePositive(writer, count, (byte) 'P');
 
     /// <summary>Inserts blank lines at the cursor row.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="count">The positive number of lines.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is not positive.</exception>
-    public static void InsertLines(Writer writer, int count = 1) =>
+    public static void InsertLines(ProtocolWriter writer, int count = 1) =>
         WritePositive(writer, count, (byte) 'L');
 
     /// <summary>Deletes lines at the cursor row.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="count">The positive number of lines.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is not positive.</exception>
-    public static void DeleteLines(Writer writer, int count = 1) =>
+    public static void DeleteLines(ProtocolWriter writer, int count = 1) =>
         WritePositive(writer, count, (byte) 'M');
 
     /// <summary>Scrolls display content upward.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="count">The positive number of lines.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is not positive.</exception>
-    public static void ScrollUp(Writer writer, int count = 1) =>
+    public static void ScrollUp(ProtocolWriter writer, int count = 1) =>
         WritePositive(writer, count, (byte) 'S');
 
     /// <summary>Scrolls display content downward.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="count">The positive number of lines.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is not positive.</exception>
-    public static void ScrollDown(Writer writer, int count = 1) =>
+    public static void ScrollDown(ProtocolWriter writer, int count = 1) =>
         WritePositive(writer, count, (byte) 'T');
 
     /// <summary>Saves the current cursor position using ANSI CSI s.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    public static void SaveCursor(Writer writer) => writer.Csi([], [], (byte) 's');
+    public static void SaveCursor(ProtocolWriter writer) => writer.Csi([], [], (byte) 's');
 
     /// <summary>Restores the cursor position using ANSI CSI u.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    public static void RestoreCursor(Writer writer) => writer.Csi([], [], (byte) 'u');
+    public static void RestoreCursor(ProtocolWriter writer) => writer.Csi([], [], (byte) 'u');
 
     /// <summary>Requests primary device attributes.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    public static void PrimaryDeviceAttributes(Writer writer) => writer.Csi([], [], (byte) 'c');
+    public static void PrimaryDeviceAttributes(ProtocolWriter writer) => writer.Csi([], [], (byte) 'c');
 
     /// <summary>Requests secondary device attributes.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    public static void SecondaryDeviceAttributes(Writer writer) => writer.Csi(">"u8, [], (byte) 'c');
+    public static void SecondaryDeviceAttributes(ProtocolWriter writer) => writer.Csi(">"u8, [], (byte) 'c');
 
     /// <summary>Requests a cursor position report using device status report 6.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    public static void ReportCursorPosition(Writer writer) => writer.Csi("6"u8, [], (byte) 'n');
+    public static void ReportCursorPosition(ProtocolWriter writer) => writer.Csi("6"u8, [], (byte) 'n');
 
     /// <summary>Requests the text-area size in pixels using XTWINOPS 14.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    public static void ReportWindowPixels(Writer writer) => writer.Csi("14"u8, [], (byte) 't');
+    public static void ReportWindowPixels(ProtocolWriter writer) => writer.Csi("14"u8, [], (byte) 't');
 
     /// <summary>Requests the character-cell size in pixels using XTWINOPS 16.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    public static void ReportCellPixels(Writer writer) => writer.Csi("16"u8, [], (byte) 't');
+    public static void ReportCellPixels(ProtocolWriter writer) => writer.Csi("16"u8, [], (byte) 't');
 
     /// <summary>Requests the text-area size in cells using XTWINOPS 18.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    public static void ReportWindowCells(Writer writer) => writer.Csi("18"u8, [], (byte) 't');
+    public static void ReportWindowCells(ProtocolWriter writer) => writer.Csi("18"u8, [], (byte) 't');
 
     /// <summary>Queries one DEC private mode using DECRQM.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="mode">The positive private mode number.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="mode"/> is not positive.</exception>
-    public static void QueryPrivateMode(Writer writer, int mode)
+    public static void QueryPrivateMode(ProtocolWriter writer, int mode)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(mode);
 
@@ -186,14 +186,14 @@ public static class Csi
         }
     }
 
-    private static void WriteNumber(Writer writer, int value, byte final)
+    private static void WriteNumber(ProtocolWriter writer, int value, byte final)
     {
         Span<byte> parameters = stackalloc byte[10];
         var length = Format(value, parameters);
         writer.Csi(parameters[..length], [], final);
     }
 
-    private static void WritePositive(Writer writer, int count, byte final)
+    private static void WritePositive(ProtocolWriter writer, int count, byte final)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         WriteNumber(writer, count, final);

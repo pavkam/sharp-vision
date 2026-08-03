@@ -9,7 +9,7 @@ using Graphics;
 
 /// <summary>Validates and atomically writes deterministic bounded DEC sixel images.</summary>
 [PublicAPI]
-public static class Writer
+public static class SixelWriter
 {
     private const int _defaultMaxOutputBytes = 256 * 1024 * 1024;
 
@@ -40,7 +40,7 @@ public static class Writer
         ArgumentNullException.ThrowIfNull(destination);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxOutputBytes);
 
-        if (image.Format != Format.Rgba)
+        if (image.Format != ImageFormat.Rgba)
         {
             throw new NotSupportedException("Sixel encoding accepts owned RGBA pixels only.");
         }
@@ -52,13 +52,13 @@ public static class Writer
             throw new ArgumentOutOfRangeException(nameof(mode), mode, "The placement mode is unknown.");
         }
 
-        Limits.Default.Validate(destinationPixels, sourceBytes: 0);
+        ImageLimits.Default.Validate(destinationPixels, sourceBytes: 0);
 
         using var transaction = new BoundedBufferWriter(maxOutputBytes, initialRentBytes: 256);
 
         try
         {
-            _ = Encoder.Encode(
+            _ = SixelEncoder.Encode(
                 image,
                 source,
                 destinationPixels,

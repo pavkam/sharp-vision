@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Panes;
 using Terminal.Capabilities;
 
 using GraphicsImage = Terminal.Graphics.ImageSource;
-using TerminalCapabilities = Terminal.Capabilities.Capabilities;
+using TerminalCapabilities = Terminal.Capabilities.TerminalCapabilities;
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Documents backend-neutral image fitting and deterministic terminal-cell fallback.</summary>

@@ -16,7 +16,7 @@ internal static class DecoderOwnershipProbe
     /// <returns>The live decoder and weak references to its matcher and replay workspace.</returns>
     [MethodImpl(MethodImplOptions.NoInlining)]
     internal static (InputDecoder InputDecoder, WeakReference Matcher, WeakReference Replay)
-        CreateAfterRematch(Options options)
+        CreateAfterRematch(InputOptions options)
     {
         var decoder = new InputDecoder(new RecordingInputSink(), options);
         decoder.Decode([0xff, 0xfe, (byte) 'x']);

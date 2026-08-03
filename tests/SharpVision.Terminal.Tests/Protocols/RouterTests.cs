@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Tests.Protocols;
 
-using InputOptions = Terminal.Input.Options;
 
 /// <summary>Verifies typed runtime routing, ownership, and recovery.</summary>
 public sealed class RouterTests

@@ -34,7 +34,7 @@ public sealed class AppearanceValueTests
         _ = Should.Throw<ArgumentException>(() => new Face(
             Color.Transparent,
             Color.Default,
-            Attributes.None,
+            TerminalAttributes.None,
             Underline.None,
             Color.Default));
     }

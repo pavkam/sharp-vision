@@ -27,13 +27,13 @@ public sealed class ControlBytesTests
         ControlBytes.EightBitApc.ShouldBe((byte) 0x9f);
     }
 
-    /// <summary>Verifies Writer's emitted escape byte is the same constant ProtocolParser recognizes as
+    /// <summary>Verifies ProtocolWriter's emitted escape byte is the same constant ProtocolParser recognizes as
     /// the escape introducer, so the encode and parse sides cannot drift apart from each other.</summary>
     [Fact]
     public void Escape_WhenWriterEmitsIt_IsWhatParserRecognizes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        new Writer(destination).Csi([], [], (byte) 'A');
+        new ProtocolWriter(destination).Csi([], [], (byte) 'A');
 
         destination.WrittenSpan[0].ShouldBe(ControlBytes.Escape);
 

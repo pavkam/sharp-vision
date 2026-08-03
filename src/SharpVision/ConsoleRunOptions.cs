@@ -6,7 +6,7 @@ namespace SharpVision;
 using Terminal.Capabilities;
 using Terminal.Kitty.Keyboard;
 
-using TerminalOptions = Terminal.Runtime.Options;
+using TerminalOptions = Terminal.Runtime.TerminalOptions;
 
 /// <summary>Configures one interactive console screen run and the terminal policy it produces.</summary>
 [PublicAPI]

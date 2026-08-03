@@ -404,16 +404,16 @@ public sealed class ControlCompositeAppearanceTests
     {
         var expectedFace = AppearanceTestValues.Face(
             foreground: Color.Rgb(21, 22, 23),
-            attributes: Attributes.Bold);
+            attributes: TerminalAttributes.Bold);
         var expectedBorder = AppearanceTestValues.Border(
             BorderSide.All,
             foreground: Color.Rgb(24, 25, 26),
-            attributes: Attributes.None);
+            attributes: TerminalAttributes.None);
         var expectedShadow = AppearanceTestValues.Shadow(
             visible: true,
             offset: new Point(2, 1),
             foreground: Color.Rgb(27, 28, 29),
-            attributes: Attributes.None);
+            attributes: TerminalAttributes.None);
         var profile = new ThemeProfile(
             new ThemeAppearance(expectedFace, expectedBorder, expectedShadow));
         var control = new StyledProbe { AppearanceProfileOverride = profile };
@@ -795,7 +795,7 @@ public sealed class ControlCompositeAppearanceTests
         BorderGlyphStyle.Ascii,
         foreground,
         Color.Transparent,
-        Attributes.None);
+        TerminalAttributes.None);
 
     private static ButtonStyle StyleWith(
         Face? face = null,

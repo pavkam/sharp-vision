@@ -16,10 +16,10 @@ global using System.Runtime.Versioning;
 global using System.Text;
 
 global using SharpVision.Terminal.Abstractions;
+global using SharpVision.Terminal.Capabilities;
 global using SharpVision.Terminal.Geometry;
 global using SharpVision.Terminal.Protocols;
 global using SharpVision.Terminal.Terminfo;
 global using SharpVision.Terminal.Unicode;
 
 global using PublicAPI = JetBrains.Annotations.PublicAPIAttribute;
-global using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;

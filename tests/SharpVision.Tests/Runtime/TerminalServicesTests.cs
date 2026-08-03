@@ -220,7 +220,7 @@ public sealed class TerminalServicesTests
         };
         var profile = new TerminalProfile(
             new Description("invalid-ms", DescriptionOrigin.Database, Suitability.Usable),
-            Capabilities.Conservative with { Osc52 = claimed },
+            TerminalCapabilities.Conservative with { Osc52 = claimed },
             new Programs(programs),
             KeyMap.Empty);
         var options = TerminalOptions.Minimal with { Profile = profile };
@@ -249,7 +249,7 @@ public sealed class TerminalServicesTests
         var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
-            Capabilities = Capabilities.Conservative with { KittyClipboard = supported }
+            Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported }
         };
         List<string> written = [];
         terminal.Written += memory => written.Add(Encoding.ASCII.GetString(memory.Span));
@@ -279,7 +279,7 @@ public sealed class TerminalServicesTests
         var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
-            Capabilities = Capabilities.Conservative with { KittyClipboard = supported, Osc52 = supported }
+            Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported, Osc52 = supported }
         };
         List<string> written = [];
         terminal.Written += memory => written.Add(Encoding.ASCII.GetString(memory.Span));
@@ -306,7 +306,7 @@ public sealed class TerminalServicesTests
         var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
-            Capabilities = Capabilities.Conservative with { KittyClipboard = supported }
+            Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported }
         };
         var reply = new TaskCompletionSource<KittyClipboardReplyEventArgs>(
             TaskCreationOptions.RunContinuationsAsynchronously);
@@ -339,7 +339,7 @@ public sealed class TerminalServicesTests
         var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
-            Capabilities = Capabilities.Conservative with { KittyClipboard = supported }
+            Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported }
         };
         var reply = new TaskCompletionSource<KittyClipboardReplyEventArgs>(
             TaskCreationOptions.RunContinuationsAsynchronously);
@@ -371,7 +371,7 @@ public sealed class TerminalServicesTests
         var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
-            Capabilities = Capabilities.Conservative with { KittyClipboard = supported }
+            Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported }
         };
         var reply = new TaskCompletionSource<KittyClipboardReplyEventArgs>(
             TaskCreationOptions.RunContinuationsAsynchronously);
@@ -401,7 +401,7 @@ public sealed class TerminalServicesTests
         var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
-            Capabilities = Capabilities.Conservative with { KittyClipboard = supported }
+            Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported }
         };
         var reply = new TaskCompletionSource<KittyClipboardReplyEventArgs>(
             TaskCreationOptions.RunContinuationsAsynchronously);
@@ -446,7 +446,7 @@ public sealed class TerminalServicesTests
         var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
-            Capabilities = Capabilities.Conservative with { KittyClipboard = supported }
+            Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported }
         };
         List<KittyClipboardReplyEventArgs> replies = [];
         await using Application application = new(new ProbeControl(), terminal, terminal, options);
@@ -482,7 +482,7 @@ public sealed class TerminalServicesTests
         var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
-            Capabilities = Capabilities.Conservative with { Osc52 = supported }
+            Capabilities = TerminalCapabilities.Conservative with { Osc52 = supported }
         };
         var reply = new TaskCompletionSource<KittyClipboardReplyEventArgs>(
             TaskCreationOptions.RunContinuationsAsynchronously);
@@ -523,7 +523,7 @@ public sealed class TerminalServicesTests
         var unknown = Feature.Unknown;
         var options = TerminalOptions.Minimal with
         {
-            Capabilities = Capabilities.Conservative with
+            Capabilities = TerminalCapabilities.Conservative with
             {
                 KittyClipboard = kittySupported ? supported : unknown,
                 Osc52 = osc52Supported ? supported : unknown
@@ -549,7 +549,7 @@ public sealed class TerminalServicesTests
         var guessed = new Feature(CapabilitySupport.Supported, Origin.Environment);
         var options = TerminalOptions.Minimal with
         {
-            Capabilities = Capabilities.Conservative with { Osc52 = guessed }
+            Capabilities = TerminalCapabilities.Conservative with { Osc52 = guessed }
         };
         await using Application application = new(new ProbeControl(), terminal, terminal, options);
         await application.StartAsync(TestContext.Current.CancellationToken);
@@ -575,7 +575,7 @@ public sealed class TerminalServicesTests
         var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var options = TerminalOptions.Minimal with
         {
-            Capabilities = Capabilities.Conservative with { Osc52 = supported }
+            Capabilities = TerminalCapabilities.Conservative with { Osc52 = supported }
         };
         List<string> written = [];
         terminal.Written += memory => written.Add(Encoding.ASCII.GetString(memory.Span));
@@ -648,7 +648,7 @@ public sealed class TerminalServicesTests
 
         return new TerminalProfile(
             new Description("service-test", DescriptionOrigin.Explicit, Suitability.Usable),
-            Capabilities.Conservative,
+            TerminalCapabilities.Conservative,
             new Programs(programs),
             KeyMap.Empty);
     }

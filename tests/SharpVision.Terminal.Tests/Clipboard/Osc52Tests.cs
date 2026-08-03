@@ -26,7 +26,7 @@ public sealed class Osc52Tests
     {
         var destination = new ArrayBufferWriter<byte>();
 
-        Osc52.Write(new Writer(destination), selection, []);
+        Osc52.Write(new ProtocolWriter(destination), selection, []);
 
         destination.WrittenSpan.ToArray().ShouldBe(
             Encoding.ASCII.GetBytes($"\u001b]52;{identifier};\u001b\\"));
@@ -39,7 +39,7 @@ public sealed class Osc52Tests
     public void Write_WhenTextIsValid_WritesExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         Osc52.Write(writer, Selection.Clipboard, "hello"u8);
         Osc52.Write(writer, Selection.Primary, "🦄"u8);
@@ -58,7 +58,7 @@ public sealed class Osc52Tests
     {
         var destination = new ArrayBufferWriter<byte>();
 
-        Osc52.Query(new Writer(destination), Selection.Clipboard);
+        Osc52.Query(new ProtocolWriter(destination), Selection.Clipboard);
 
         destination.WrittenSpan.ToArray().ShouldBe("\u001b]52;c;?\u001b\\"u8.ToArray());
     }
@@ -70,7 +70,7 @@ public sealed class Osc52Tests
     public void Write_WhenArgumentIsInvalid_ThrowsBeforeWriting()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => Osc52.Write(writer, (Selection) 999, []));
         _ = Should.Throw<ArgumentOutOfRangeException>(() => Osc52.Write(writer, Selection.Clipboard, [], maxBytes: 0));

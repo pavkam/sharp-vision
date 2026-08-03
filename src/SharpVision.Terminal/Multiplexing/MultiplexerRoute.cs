@@ -19,24 +19,24 @@ public sealed class MultiplexerRoute
     /// <summary>Initializes one route from explicit policy.</summary>
     /// <param name="policy">The non-null owned immutable policy.</param>
     /// <exception cref="ArgumentNullException"><paramref name="policy"/> is null.</exception>
-    public MultiplexerRoute(Policy policy)
+    public MultiplexerRoute(MultiplexingPolicy policy)
     {
         ArgumentNullException.ThrowIfNull(policy);
         Policy = policy;
     }
 
     /// <summary>Gets the route's explicit policy.</summary>
-    public Policy Policy { get; }
+    public MultiplexingPolicy Policy { get; }
 
     /// <summary>Gets whether this route can carry a bounded typed capability-query batch.</summary>
     internal bool CanRouteCapabilityQueries =>
-        Policy.Allows(Operation.CapabilityQueries) && Policy.HasSafeScreenTopology;
+        Policy.Allows(MultiplexingOperation.CapabilityQueries) && Policy.HasSafeScreenTopology;
 
     /// <summary>Gets whether OSC and DCS query families retain their terminators on this route.</summary>
     internal bool SupportsStringTerminatedQueries => !Policy.ContainsScreen;
 
     /// <summary>Gets whether bounded graphics strings can reach the explicit outer terminal.</summary>
-    internal bool CanRouteGraphics => Policy.Allows(Operation.Graphics) && !Policy.ContainsScreen;
+    internal bool CanRouteGraphics => Policy.Allows(MultiplexingOperation.Graphics) && !Policy.ContainsScreen;
 
     /// <summary>Gets the exact largest inner graphics frame for a known ESC count.</summary>
     /// <param name="escapeBytes">The non-negative ESC byte count in the complete inner frame.</param>

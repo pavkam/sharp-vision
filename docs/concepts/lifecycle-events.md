@@ -126,9 +126,10 @@ application dispatcher owns those callbacks. This separation keeps transport
 waits from masquerading as application idleness.
 
 Zero-cell dimensions are delivered as a valid suspended `Dimensions` value.
-Positive cell and pixel dimensions derive `Geometry.Metrics` only when both axes
-produce a positive cell size. `Application` coalesces those terminal records
-into committed layout and the public resize event ordering described above.
+Positive cell and pixel dimensions derive `Geometry.CellMetrics` only when both
+axes produce a positive cell size. `Application` coalesces those terminal
+records into committed layout and the public resize event ordering described
+above.
 
 ## Expected behavior
 

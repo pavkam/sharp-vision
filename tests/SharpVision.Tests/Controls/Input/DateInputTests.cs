@@ -555,10 +555,10 @@ public sealed class DateInputTests
         control.Render(frame.Canvas);
 
         // Assert
-        (frame.GetCell(new Point(1, 1)).Style.Attributes & Attributes.Reverse)
-            .ShouldBe(Attributes.None);
-        (frame.GetCell(new Point(7, 1)).Style.Attributes & Attributes.Reverse)
-            .ShouldBe(Attributes.Reverse);
+        (frame.GetCell(new Point(1, 1)).Style.Attributes & TerminalAttributes.Reverse)
+            .ShouldBe(TerminalAttributes.None);
+        (frame.GetCell(new Point(7, 1)).Style.Attributes & TerminalAttributes.Reverse)
+            .ShouldBe(TerminalAttributes.Reverse);
     }
 
     /// <summary>Verifies literal private-use characters cannot collide with internal span markers.</summary>

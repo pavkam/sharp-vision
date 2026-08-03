@@ -109,10 +109,10 @@ public sealed class StatusBarSurfaceTests
             bar,
             new Size(20, 1),
             TestContext.Current.CancellationToken);
-        var hoveredForeground = Palette.Project(ThemeColorHelper.HoveredForeground(Themes.Dark), ColorDepth.Basic16);
-        var focusedForeground = Palette.Project(ThemeColorHelper.FocusedForeground(Themes.Dark), ColorDepth.Basic16);
-        var barForeground = Palette.Project(ThemeColorHelper.Background(Themes.Dark), ColorDepth.Basic16);
-        var barBackground = Palette.Project(ThemeColorHelper.Accent(Themes.Dark), ColorDepth.Basic16);
+        var hoveredForeground = TerminalPalette.Project(ThemeColorHelper.HoveredForeground(Themes.Dark), ColorDepth.Basic16);
+        var focusedForeground = TerminalPalette.Project(ThemeColorHelper.FocusedForeground(Themes.Dark), ColorDepth.Basic16);
+        var barForeground = TerminalPalette.Project(ThemeColorHelper.Background(Themes.Dark), ColorDepth.Basic16);
+        var barBackground = TerminalPalette.Project(ThemeColorHelper.Accent(Themes.Dark), ColorDepth.Basic16);
 
         // Assert normal state needs no child appearance configuration
         checkBox.Face.Foreground.IsLiteral.ShouldBeFalse();

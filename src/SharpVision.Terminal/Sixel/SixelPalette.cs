@@ -4,7 +4,7 @@
 namespace SharpVision.Terminal.Sixel;
 
 /// <summary>Owns sorted dense sixel identifiers for colors present in one indexed raster.</summary>
-internal sealed class Palette
+internal sealed class SixelPalette
 {
     private const int _cubeSize = 216;
     private readonly byte[] _colors;
@@ -12,7 +12,7 @@ internal sealed class Palette
 
     /// <summary>Builds a deterministic palette from one complete borrowed indexed raster.</summary>
     /// <param name="raster">Cube indices or <see cref="SixelQuantizer.Transparent"/>.</param>
-    public Palette(ReadOnlySpan<byte> raster)
+    public SixelPalette(ReadOnlySpan<byte> raster)
     {
         Span<bool> used = stackalloc bool[_cubeSize];
 

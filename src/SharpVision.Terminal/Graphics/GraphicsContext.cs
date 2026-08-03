@@ -5,7 +5,6 @@ namespace SharpVision.Terminal.Graphics;
 
 using Capabilities;
 
-using CellMetrics = Metrics;
 
 /// <summary>Supplies one render transaction's terminal profile and measured cell-pixel geometry.</summary>
 internal readonly struct GraphicsContext

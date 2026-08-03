@@ -435,13 +435,13 @@ public sealed class ExpanderSurfaceTests
             themeA,
             TestContext.Current.CancellationToken);
         await surface.Keyboard.PressAsync(Code.Tab);
-        surface.Cell(default).Style.Background.ShouldBe(Palette.Project(Color.Rgb(10, 20, 30), ColorDepth.Basic16));
+        surface.Cell(default).Style.Background.ShouldBe(TerminalPalette.Project(Color.Rgb(10, 20, 30), ColorDepth.Basic16));
 
         // Act
         await surface.UpdateAsync(() => surface.Application.Theme = themeB, "swap FocusedControl-only theme");
 
         // Assert
-        surface.Cell(default).Style.Background.ShouldBe(Palette.Project(Color.Rgb(200, 210, 220), ColorDepth.Basic16));
+        surface.Cell(default).Style.Background.ShouldBe(TerminalPalette.Project(Color.Rgb(200, 210, 220), ColorDepth.Basic16));
     }
 
     private static Theme WithColor(ThemeColor role, Color value)

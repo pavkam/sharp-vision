@@ -15,4 +15,3 @@ global using SharpVision.Terminal.Rendering;
 global using SharpVision.Terminal.Runtime;
 
 global using DisplayText = SharpVision.Controls.Display.Text;
-global using TerminalOptions = SharpVision.Terminal.Runtime.Options;

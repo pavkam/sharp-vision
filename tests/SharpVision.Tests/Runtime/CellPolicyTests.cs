@@ -17,7 +17,7 @@ public sealed class CellPolicyTests
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(4, 1)));
         var text = new TextControl { Content = "·" };
-        var capabilities = Capabilities.Conservative with { AmbiguousWidth = Ambiguous.Wide };
+        var capabilities = TerminalCapabilities.Conservative with { AmbiguousWidth = Ambiguous.Wide };
         await using Application application = new(
             text,
             terminal,
@@ -44,7 +44,7 @@ public sealed class CellPolicyTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var policy = new Policy(Ambiguous.Wide);
+            var policy = new UnicodePolicy(Ambiguous.Wide);
             root.Attach(dispatcher, policy);
             var child = new ProbeControl();
 
@@ -66,7 +66,7 @@ public sealed class CellPolicyTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            var policy = new Policy(Ambiguous.Wide);
+            var policy = new UnicodePolicy(Ambiguous.Wide);
             var text = new TextControl("<b>·</b>");
             var input = new TextInputControl { Text = "·" };
             input.SetTheme(TestThemes.BorderlessInput);
@@ -102,7 +102,7 @@ public sealed class CellPolicyTests
         var frames = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         application.FrameRendered += (_, _) => _ = frames.TrySetResult();
-        var wide = Capabilities.Conservative with { AmbiguousWidth = Ambiguous.Wide };
+        var wide = TerminalCapabilities.Conservative with { AmbiguousWidth = Ambiguous.Wide };
 
         // Act
         application.Profile(wide);

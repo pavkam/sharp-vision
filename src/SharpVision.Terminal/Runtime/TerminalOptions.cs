@@ -7,12 +7,12 @@ using Backends;
 
 using Capabilities;
 
-using InputOptions = Input.Options;
-using TerminalNegotiationOptions = Capabilities.NegotiationOptions;
+using InputOptions = Input.InputOptions;
+using TerminalNegotiationOptions = NegotiationOptions;
 
 /// <summary>Defines validated terminal session modes, bounds, and cleanup policy.</summary>
 [PublicAPI]
-public sealed record Options
+public sealed record TerminalOptions
 {
     private static readonly IReadOnlyDictionary<string, string?> _emptyEnvironment =
         System.Collections.Immutable.ImmutableDictionary<string, string?>.Empty;
@@ -25,7 +25,7 @@ public sealed record Options
         Kitty.Keyboard.Enhancement.AssociatedText;
 
     /// <summary>Gets a session profile that enables no terminal modes.</summary>
-    public static Options Minimal { get; } = new()
+    public static TerminalOptions Minimal { get; } = new()
     {
         AlternateScreen = false,
         HideCursor = false,
@@ -80,7 +80,7 @@ public sealed record Options
     /// <see cref="Negotiation"/> being non-null also drives whether startup negotiation actually probes the
     /// terminal, that policy cannot be carried on <see cref="Negotiation"/> alone once probing is suppressed.
     /// </remarks>
-    public Multiplexing.Policy? Multiplexing { get; init; }
+    public Multiplexing.MultiplexingPolicy? Multiplexing { get; init; }
 
     /// <summary>Gets whether to enter the alternate screen.</summary>
     public bool AlternateScreen { get; init; } = true;

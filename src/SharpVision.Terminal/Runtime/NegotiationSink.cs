@@ -9,7 +9,7 @@ using Input;
 
 using Xterm;
 
-using InputText = Input.Text;
+using InputText = Input.TerminalText;
 
 /// <summary>Updates capability negotiation before forwarding ordered protocol events.</summary>
 internal sealed class NegotiationSink:
@@ -55,7 +55,7 @@ internal sealed class NegotiationSink:
     public void Input(in Diagnostic value) => _destination.Input(in value);
 
     /// <inheritdoc/>
-    public void Response(in Response value)
+    public void Response(in XtermCapabilitiesResponse value)
     {
         _ = _negotiator.Accept(in value);
         _destination.Response(in value);
@@ -97,7 +97,7 @@ internal sealed class NegotiationSink:
     }
 
     /// <inheritdoc/>
-    public void Response(Kitty.Graphics.Response value)
+    public void Response(Kitty.Graphics.KittyGraphicsResponse value)
     {
         _ = _negotiator.Accept(value);
         _destination.Dispatch(value);

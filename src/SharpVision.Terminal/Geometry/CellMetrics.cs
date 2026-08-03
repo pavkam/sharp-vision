@@ -7,13 +7,13 @@ namespace SharpVision.Terminal.Geometry;
 /// Describes positive pixel dimensions for one terminal cell.
 /// </summary>
 [PublicAPI]
-public readonly record struct Metrics
+public readonly record struct CellMetrics
 {
     /// <summary>Initializes validated cell pixel dimensions.</summary>
     /// <param name="width">The positive cell width in pixels.</param>
     /// <param name="height">The positive cell height in pixels.</param>
     /// <exception cref="ArgumentOutOfRangeException">A dimension is not positive.</exception>
-    public Metrics(int width, int height)
+    public CellMetrics(int width, int height)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
@@ -27,7 +27,7 @@ public readonly record struct Metrics
     /// <param name="pixels">The positive terminal dimensions in pixels.</param>
     /// <exception cref="ArgumentOutOfRangeException">A dimension is not positive.</exception>
     /// <exception cref="ArgumentException">A pixel axis is smaller than its cell axis.</exception>
-    public Metrics(Size cells, Size pixels)
+    public CellMetrics(Size cells, Size pixels)
     {
         if (cells.Width == 0 || cells.Height == 0)
         {

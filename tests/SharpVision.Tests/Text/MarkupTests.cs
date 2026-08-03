@@ -17,7 +17,7 @@ public sealed class MarkupTests
         spans[0].Offset.ShouldBe(0);
         spans[0].Length.ShouldBe(5);
         spans[0].Foreground.ShouldBeNull();
-        spans[0].Attributes.ShouldBe(Attributes.None);
+        spans[0].Attributes.ShouldBe(TerminalAttributes.None);
         spans[0].Link.ShouldBeNull();
     }
 
@@ -84,23 +84,23 @@ public sealed class MarkupTests
 
     /// <summary>Verifies every documented attribute spelling contributes its semantic flag.</summary>
     [Theory]
-    [InlineData("b", Attributes.Bold)]
-    [InlineData("bold", Attributes.Bold)]
-    [InlineData("d", Attributes.Dim)]
-    [InlineData("dim", Attributes.Dim)]
-    [InlineData("i", Attributes.Italic)]
-    [InlineData("italic", Attributes.Italic)]
-    [InlineData("s", Attributes.Strike)]
-    [InlineData("strike", Attributes.Strike)]
-    [InlineData("reverse", Attributes.Reverse)]
-    [InlineData("blink", Attributes.Blink)]
-    [InlineData("rapidblink", Attributes.RapidBlink)]
-    [InlineData("hidden", Attributes.Hidden)]
-    [InlineData("conceal", Attributes.Hidden)]
-    [InlineData("overline", Attributes.Overline)]
+    [InlineData("b", TerminalAttributes.Bold)]
+    [InlineData("bold", TerminalAttributes.Bold)]
+    [InlineData("d", TerminalAttributes.Dim)]
+    [InlineData("dim", TerminalAttributes.Dim)]
+    [InlineData("i", TerminalAttributes.Italic)]
+    [InlineData("italic", TerminalAttributes.Italic)]
+    [InlineData("s", TerminalAttributes.Strike)]
+    [InlineData("strike", TerminalAttributes.Strike)]
+    [InlineData("reverse", TerminalAttributes.Reverse)]
+    [InlineData("blink", TerminalAttributes.Blink)]
+    [InlineData("rapidblink", TerminalAttributes.RapidBlink)]
+    [InlineData("hidden", TerminalAttributes.Hidden)]
+    [InlineData("conceal", TerminalAttributes.Hidden)]
+    [InlineData("overline", TerminalAttributes.Overline)]
     public void Parse_WhenAttributeTagIsMarked_ResolvesSemanticFlag(
         string name,
-        Attributes expected)
+        TerminalAttributes expected)
     {
         var spans = $"<{name}>x</{name}>".Parse(out var display);
 
@@ -128,9 +128,9 @@ public sealed class MarkupTests
         display.ShouldBe("hi there");
         spans.Length.ShouldBe(2);
         spans[0].Underline.ShouldBe(Underline.Straight);
-        spans[0].Attributes.ShouldBe(Attributes.Bold);
+        spans[0].Attributes.ShouldBe(TerminalAttributes.Bold);
         spans[1].Underline.ShouldBe(Underline.None);
-        spans[1].Attributes.ShouldBe(Attributes.Bold);
+        spans[1].Attributes.ShouldBe(TerminalAttributes.Bold);
     }
 
     /// <summary>Verifies the generic close removes the most recently opened tag.</summary>
@@ -162,9 +162,9 @@ public sealed class MarkupTests
     {
         var spans = "<blink>a<rapidblink>b</rapidblink>c</blink>".Parse(out _);
 
-        spans[0].Attributes.ShouldBe(Attributes.Blink);
-        spans[1].Attributes.ShouldBe(Attributes.RapidBlink);
-        spans[2].Attributes.ShouldBe(Attributes.Blink);
+        spans[0].Attributes.ShouldBe(TerminalAttributes.Blink);
+        spans[1].Attributes.ShouldBe(TerminalAttributes.RapidBlink);
+        spans[2].Attributes.ShouldBe(TerminalAttributes.Blink);
     }
 
     /// <summary>Verifies value tags resolve background, underline color, and typed underline.</summary>
@@ -224,7 +224,7 @@ public sealed class MarkupTests
 
         display.ShouldBe("bold");
         _ = spans.ShouldHaveSingleItem();
-        spans[0].Attributes.ShouldBe(Attributes.Bold);
+        spans[0].Attributes.ShouldBe(TerminalAttributes.Bold);
     }
 
     /// <summary>Verifies escaped markup metacharacters render literally.</summary>

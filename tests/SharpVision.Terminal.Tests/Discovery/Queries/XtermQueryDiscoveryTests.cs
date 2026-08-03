@@ -314,7 +314,7 @@ public sealed class XtermQueryDiscoveryTests
         return capability!;
     }
 
-    private static Response Numeric(ReadOnlySpan<byte> parameters, byte final)
+    private static XtermCapabilitiesResponse Numeric(ReadOnlySpan<byte> parameters, byte final)
     {
         XtermResponses.TryCsi(parameters, [], final, out var response).ShouldBeTrue();
         return response;

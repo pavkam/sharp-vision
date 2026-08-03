@@ -39,7 +39,7 @@ null.
 
 ## Bounds and validation
 
-`Graphics.Limits` applies before any allocation or ownership transfer. The
+`Graphics.ImageLimits` applies before any allocation or ownership transfer. The
 defaults permit at most 16,384 pixels on either axis, 67,108,864 total pixels,
 and 256 MiB of source bytes. Applications may supply smaller positive limits. A
 pixel limit cannot exceed the area addressable by its dimension limit.

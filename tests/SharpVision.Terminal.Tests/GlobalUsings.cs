@@ -14,9 +14,12 @@ global using System.Threading.Channels;
 global using Microsoft.Win32.SafeHandles;
 
 global using SharpVision.Terminal.Abstractions;
+global using SharpVision.Terminal.Capabilities;
 global using SharpVision.Terminal.Clipboard;
 global using SharpVision.Terminal.Geometry;
 global using SharpVision.Terminal.Graphics.Backends;
+global using SharpVision.Terminal.Input;
+global using SharpVision.Terminal.Multiplexing;
 global using SharpVision.Terminal.Protocols;
 global using SharpVision.Terminal.Rendering;
 global using SharpVision.Terminal.Runtime;
@@ -31,13 +34,4 @@ global using SharpVision.Terminal.Xterm;
 global using Shouldly;
 
 global using CapabilitySupport = SharpVision.Terminal.Capabilities.CapabilitySupport;
-global using CellMetrics = SharpVision.Terminal.Geometry.Metrics;
-global using Encoder = SharpVision.Terminal.Rendering.Encoder;
-global using FrameEncoder = SharpVision.Terminal.Rendering.Encoder;
 global using GraphicsImage = SharpVision.Terminal.Graphics.ImageSource;
-global using InputDecoder = SharpVision.Terminal.Input.InputDecoder;
-global using InputText = SharpVision.Terminal.Input.Text;
-global using RenderingMetrics = SharpVision.Terminal.Rendering.Metrics;
-global using RenderMetrics = SharpVision.Terminal.Rendering.Metrics;
-global using RuntimeOptions = SharpVision.Terminal.Runtime.Options;
-global using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;

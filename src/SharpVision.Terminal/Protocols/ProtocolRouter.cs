@@ -33,7 +33,7 @@ public sealed class ProtocolRouter: IDisposable
     /// <exception cref="ArgumentNullException"><paramref name="sink"/> is null.</exception>
     public ProtocolRouter(
         IProtocolSink sink,
-        Options? options = null,
+        InputOptions? options = null,
         TimeProvider? timeProvider = null) : this(
         sink,
         options,
@@ -51,7 +51,7 @@ public sealed class ProtocolRouter: IDisposable
     internal ProtocolRouter(
         IProtocolSink sink,
         MultiplexerRoute route,
-        Options? options = null,
+        InputOptions? options = null,
         TimeProvider? timeProvider = null) : this(
         sink,
         options,
@@ -62,7 +62,7 @@ public sealed class ProtocolRouter: IDisposable
 
     private ProtocolRouter(
         IProtocolSink sink,
-        Options? options,
+        InputOptions? options,
         TimeProvider? timeProvider,
         MultiplexerRoute? route)
     {

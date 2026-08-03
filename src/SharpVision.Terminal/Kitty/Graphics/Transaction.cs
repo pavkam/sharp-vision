@@ -25,13 +25,13 @@ public sealed class Transaction
     }
 
     /// <summary>Gets the first matched owned response.</summary>
-    public Response? Response { get; private set; }
+    public KittyGraphicsResponse? Response { get; private set; }
 
     /// <summary>Matches one typed response without consuming another image identity.</summary>
     /// <param name="response">The non-null response.</param>
     /// <returns>Matched, duplicate, or unknown correlation.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="response"/> is null.</exception>
-    public QueryMatch Accept(Response response)
+    public QueryMatch Accept(KittyGraphicsResponse response)
     {
         ArgumentNullException.ThrowIfNull(response);
 

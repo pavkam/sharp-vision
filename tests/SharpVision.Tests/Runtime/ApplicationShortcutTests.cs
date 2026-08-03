@@ -73,7 +73,7 @@ public sealed class ApplicationShortcutTests
             () => application.Focus.Focus(input).ShouldBeTrue(),
             TestContext.Current.CancellationToken);
         var stroke = new Stroke(Code.Character, new Rune('x'), nativeCode: 0, Modifiers.None, KeyAction.Press);
-        var text = new Terminal.Input.Text(new Rune('x'));
+        var text = new TerminalText(new Rune('x'));
 
         // Act
         application.Input(in stroke);

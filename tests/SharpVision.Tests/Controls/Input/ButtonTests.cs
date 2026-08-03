@@ -85,8 +85,8 @@ public sealed class ButtonTests
     {
         var theme = new Theme();
         var input = new ThemeProfile(new ThemeAppearance(
-            new Face(Color.Rgb(12, 34, 56), Color.Transparent, Attributes.None, Underline.None, Color.Default),
-            new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, Attributes.None),
+            new Face(Color.Rgb(12, 34, 56), Color.Transparent, TerminalAttributes.None, Underline.None, Color.Default),
+            new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None),
             Theme.CreateDefaultAppearance().Shadow));
         theme.SetProfiles(theme.Control, input, theme.Container, theme.Window, theme.Popup);
         theme.Freeze();
@@ -307,7 +307,7 @@ public sealed class ButtonTests
             Width = Length.Cells(6),
             Height = Length.Cells(3),
             Style = TestButtonStyles.WithShadow(
-                AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1), attributes: Attributes.Dim)),
+                AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1), attributes: TerminalAttributes.Dim)),
             Text = "X"
         };
         var content = button.TextControl!;
@@ -379,7 +379,7 @@ public sealed class ButtonTests
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("┏");
         FrameOracle.Get(frame, new Point(8, 4)).ShouldBe("┛");
         FrameOracle.Get(frame, new Point(2, 1)).ShouldBe("A");
-        frame.GetCell(new Point(9, 4)).Style.Attributes.ShouldBe(Attributes.None);
+        frame.GetCell(new Point(9, 4)).Style.Attributes.ShouldBe(TerminalAttributes.None);
     }
 
     /// <summary>Verifies a Button can opt into the visible Turbo Vision block shadow mode.</summary>
@@ -390,7 +390,7 @@ public sealed class ButtonTests
         {
             Text = "Apply",
             Style = TestButtonStyles.WithShadow(
-                AppearanceTestValues.Shadow(visible: true, mode: ShadowMode.BlockGlyph, offset: new Point(1, 1), glyph: new Rune('▓'), attributes: Attributes.Dim)),
+                AppearanceTestValues.Shadow(visible: true, mode: ShadowMode.BlockGlyph, offset: new Point(1, 1), glyph: new Rune('▓'), attributes: TerminalAttributes.Dim)),
             Width = Length.Cells(9),
             Height = Length.Cells(5)
         };
@@ -415,7 +415,7 @@ public sealed class ButtonTests
             Width = Length.Cells(6),
             Height = Length.Cells(3),
             Style = TestButtonStyles.WithShadow(
-                AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1), attributes: Attributes.Dim)),
+                AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1), attributes: TerminalAttributes.Dim)),
             Text = "Go"
         };
         var size = new Size(10, 6);
@@ -436,7 +436,7 @@ public sealed class ButtonTests
         FrameOracle.Get(released, new Point(2, 0)).ShouldBe("G");
         FrameOracle.Get(pressed, new Point(0, 0)).ShouldBeEmpty();
         FrameOracle.Get(pressed, new Point(3, 1)).ShouldBe("G");
-        pressed.GetCell(new Point(6, 1)).Style.Attributes.ShouldNotBe(Attributes.Dim);
+        pressed.GetCell(new Point(6, 1)).Style.Attributes.ShouldNotBe(TerminalAttributes.Dim);
     }
 
     /// <summary>Verifies a translated pressed face keeps its content outside the arranged hit box.</summary>
@@ -486,7 +486,7 @@ public sealed class ButtonTests
                 mode: mode,
                 offset: new Point(-1, 1),
                 glyph: new Rune('▓'),
-                attributes: Attributes.Dim))
+                attributes: TerminalAttributes.Dim))
         };
         using Frame frame = new(new Size(7, 3));
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune('x'));
@@ -494,8 +494,8 @@ public sealed class ButtonTests
         button.Render(frame.Canvas);
 
         FrameOracle.Get(frame, new Point(1, 2)).ShouldBe("x");
-        frame.GetCell(new Point(1, 2)).Style.Attributes.ShouldBe(Attributes.None);
-        frame.GetCell(new Point(2, 2)).Style.Attributes.ShouldBe(Attributes.Dim);
+        frame.GetCell(new Point(1, 2)).Style.Attributes.ShouldBe(TerminalAttributes.None);
+        frame.GetCell(new Point(2, 2)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
         FrameOracle.Get(frame, new Point(2, 2)).ShouldBe(
             mode == ShadowMode.BlockGlyph ? "▓" : "x");
     }
@@ -546,15 +546,15 @@ public sealed class ButtonTests
             Width = Length.Cells(6),
             Height = Length.Cells(3),
             Style = TestButtonStyles.WithShadow(
-                AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1), attributes: Attributes.Dim)),
+                AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1), attributes: TerminalAttributes.Dim)),
         };
         new LayoutEngine().Layout(button, new Size(10, 6));
         using Frame frame = new(new Size(10, 6));
 
         button.Render(frame.Canvas);
 
-        frame.GetCell(new Point(0, 0)).Style.Attributes.ShouldNotBe(Attributes.Dim);
-        frame.GetCell(new Point(6, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
+        frame.GetCell(new Point(0, 0)).Style.Attributes.ShouldNotBe(TerminalAttributes.Dim);
+        frame.GetCell(new Point(6, 1)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
     }
 
     /// <summary>Verifies Click observes released state and precedes command execution.</summary>

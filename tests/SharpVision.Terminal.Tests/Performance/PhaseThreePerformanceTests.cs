@@ -86,7 +86,7 @@ public sealed class PhaseThreePerformanceTests
         _ = back.Canvas.Draw(
             "ab",
             default,
-            new CellStyle(ReferenceColors.Get(4), attributes: Attributes.Bold));
+            new CellStyle(ReferenceColors.Get(4), attributes: TerminalAttributes.Bold));
         back.SetCursor(new Point(1, 0), visible: true, CursorShape.Bar);
         var profile = new TerminalProfile(
             new Description("performance", DescriptionOrigin.Database, Suitability.Usable),
@@ -172,7 +172,7 @@ public sealed class PhaseThreePerformanceTests
     public void Decode_WhenDescriptionKeyIsWarm_AllocatesZeroBytes()
     {
         var sink = new CountingSink();
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap([new KeyBinding("\u001b[99~"u8, Code.F63)]),
             useAnsiKeyGrammar: false);
         using InputDecoder decoder = new(sink, options);
@@ -205,7 +205,7 @@ public sealed class PhaseThreePerformanceTests
     public void Decode_WhenFallbackKeysAreWarm_AllocatesZeroBytes()
     {
         var sink = new CountingSink();
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap(
             [
                 new KeyBinding([0xff], Code.F61),

@@ -157,8 +157,8 @@ other deliberate placement — not for general responsive flow. Any panel can ad
 validated border edges through the complete `Border` composite without changing
 its child ownership model.
 
-`SharpVision.Terminal.Rendering.Canvas` is a frame-owned drawing API, not a
-layout panel or a `Container`. Custom controls draw through it in
+`SharpVision.Terminal.Rendering.TerminalCanvas` is a frame-owned drawing API,
+not a layout panel or a `Container`. Custom controls draw through it in
 `OnRenderContent`; it never owns child controls.
 
 ## Grow and shrink

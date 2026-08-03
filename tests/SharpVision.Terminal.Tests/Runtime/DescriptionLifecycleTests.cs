@@ -151,7 +151,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with
+            TerminalOptions.Minimal with
             {
                 Profile = profile,
                 AlternateScreen = true,
@@ -186,7 +186,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with
+            TerminalOptions.Minimal with
             {
                 Profile = profile,
                 AlternateScreen = true,
@@ -217,7 +217,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with
+            TerminalOptions.Minimal with
             {
                 Profile = profile,
                 AlternateScreen = true
@@ -264,7 +264,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with { Profile = profile });
+            TerminalOptions.Minimal with { Profile = profile });
 
         // Act
         await session.RunAsync(TestContext.Current.CancellationToken);
@@ -292,7 +292,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with { Profile = profile });
+            TerminalOptions.Minimal with { Profile = profile });
 
         // Act
         await session.RunAsync(TestContext.Current.CancellationToken);
@@ -316,7 +316,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with { Profile = profile });
+            TerminalOptions.Minimal with { Profile = profile });
 
         // Act
         await session.RunAsync(TestContext.Current.CancellationToken);
@@ -347,7 +347,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with { Profile = profile });
+            TerminalOptions.Minimal with { Profile = profile });
 
         // Act
         await session.RunAsync(TestContext.Current.CancellationToken);
@@ -371,7 +371,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with { Profile = profile });
+            TerminalOptions.Minimal with { Profile = profile });
 
         // Act
         await session.RunAsync(TestContext.Current.CancellationToken);
@@ -401,7 +401,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with { Profile = profile });
+            TerminalOptions.Minimal with { Profile = profile });
 
         // Act
         await session.RunAsync(TestContext.Current.CancellationToken);
@@ -429,7 +429,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with { Profile = profile });
+            TerminalOptions.Minimal with { Profile = profile });
 
         // Act
         await session.RunAsync(TestContext.Current.CancellationToken);
@@ -451,7 +451,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with { Profile = profile });
+            TerminalOptions.Minimal with { Profile = profile });
 
         // Act
         await session.RunAsync(TestContext.Current.CancellationToken);
@@ -484,7 +484,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with
+            TerminalOptions.Minimal with
             {
                 Profile = profile,
                 AlternateScreen = true
@@ -519,7 +519,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with
+            TerminalOptions.Minimal with
             {
                 Profile = profile,
                 AlternateScreen = true
@@ -549,7 +549,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with
+            TerminalOptions.Minimal with
             {
                 Profile = profile,
                 AlternateScreen = true
@@ -590,7 +590,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with
+            TerminalOptions.Minimal with
             {
                 Profile = profile,
                 AlternateScreen = true,
@@ -642,7 +642,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with
+            TerminalOptions.Minimal with
             {
                 Profile = profile,
                 Focus = true
@@ -675,7 +675,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with
+            TerminalOptions.Minimal with
             {
                 Profile = TerminalProfile.CreateAnsi(capabilities),
                 Focus = true
@@ -705,11 +705,11 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with
+            TerminalOptions.Minimal with
             {
                 Profile = profile,
                 AlternateScreen = true,
-                Input = Options.Default with
+                Input = InputOptions.Default with
                 {
                     ProgramLimits = ProgramLimits.Default with { MaxProgramOutputBytes = 3 }
                 }
@@ -747,7 +747,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with
+            TerminalOptions.Minimal with
             {
                 Profile = profile,
                 Focus = true
@@ -777,7 +777,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with
+            TerminalOptions.Minimal with
             {
                 Profile = profile,
                 AlternateScreen = true
@@ -809,7 +809,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with
+            TerminalOptions.Minimal with
             {
                 Profile = profile,
                 AlternateScreen = true,
@@ -842,7 +842,7 @@ public sealed class DescriptionLifecycleTests
             transport,
             resize,
             new RuntimeSink(),
-            RuntimeOptions.Minimal with
+            TerminalOptions.Minimal with
             {
                 Profile = profile,
                 AlternateScreen = true,

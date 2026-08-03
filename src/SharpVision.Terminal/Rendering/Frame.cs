@@ -106,7 +106,7 @@ public sealed class Frame: IDisposable
     /// deliberately not public: the committed frame is renderer-owned, and handing it to callers
     /// would let them mutate or dispose the baseline that damage tracking compares against.
     /// Use <see cref="Renderer.AttachCommittedFrame"/> to establish the link and the
-    /// <see cref="Canvas.HasPreviousFrame"/> and <see cref="Canvas.CopyFromPrevious"/> pair to
+    /// <see cref="TerminalCanvas.HasPreviousFrame"/> and <see cref="TerminalCanvas.CopyFromPrevious"/> pair to
     /// consume it.
     /// </remarks>
     internal Frame? PreviousFrame { get; set; }
@@ -141,12 +141,12 @@ public sealed class Frame: IDisposable
 
     /// <summary>Gets a full-frame canvas after validating ownership.</summary>
     /// <exception cref="ObjectDisposedException">The frame is disposed.</exception>
-    public Canvas Canvas
+    public TerminalCanvas Canvas
     {
         get
         {
             ThrowIfDisposed();
-            return new Canvas(this, Bounds);
+            return new TerminalCanvas(this, Bounds);
         }
     }
 
@@ -401,10 +401,10 @@ public sealed class Frame: IDisposable
     /// The region is a boundary, not a suggestion. A wide cluster that straddles it would leave an
     /// orphan lead or an orphan continuation behind, so any cell whose complete owner does not fit
     /// inside the region is written blank instead of copied. Every destination cell in the region is
-    /// also repaired before the copy overwrites it, the same way <see cref="Canvas.Clear"/> repairs
+    /// also repaired before the copy overwrites it, the same way <see cref="TerminalCanvas.Clear"/> repairs
     /// before blanking, so a destination wide owner straddling the region edge never survives with
     /// only one of its two cells intact. That repair can blank one destination cell just outside the
-    /// region when a boundary continuation's lead sits there — the same reach <see cref="Canvas.Clear"/>
+    /// region when a boundary continuation's lead sits there — the same reach <see cref="TerminalCanvas.Clear"/>
     /// already has, since a partial wide owner is not a valid frame regardless of which side of the
     /// boundary it started on.
     /// </para>

@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Display;
 
-using CellMetrics = Terminal.Geometry.Metrics;
 using GraphicsImage = Terminal.Graphics.ImageSource;
 using PlacementMode = Terminal.Graphics.PlacementMode;
 

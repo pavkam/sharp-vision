@@ -23,7 +23,7 @@ public sealed class SixelEncoderPerformanceTests
 
         var before = GC.GetAllocatedBytesForCurrentThread();
 
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => Writer.Write(
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => SixelWriter.Write(
             image,
             new Rect(0, 0, 1, 1),
             destination,

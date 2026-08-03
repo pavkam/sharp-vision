@@ -5,7 +5,6 @@ namespace SharpVision.Tests.Controls.Input;
 
 using SharpVision.Tests.Input;
 
-using TerminalText = Terminal.Input.Text;
 
 /// <summary>Verifies TextInput validation, editing, events, input, rendering, and history.</summary>
 public sealed class TextInputTests
@@ -309,10 +308,10 @@ public sealed class TextInputTests
 
         control.Render(frame.Canvas);
 
-        (frame.GetCell(new Point(1, 0)).Style.Attributes & Attributes.Reverse)
-            .ShouldBe(Attributes.Reverse);
-        (frame.GetCell(new Point(2, 0)).Style.Attributes & Attributes.Reverse)
-            .ShouldBe(Attributes.Reverse);
+        (frame.GetCell(new Point(1, 0)).Style.Attributes & TerminalAttributes.Reverse)
+            .ShouldBe(TerminalAttributes.Reverse);
+        (frame.GetCell(new Point(2, 0)).Style.Attributes & TerminalAttributes.Reverse)
+            .ShouldBe(TerminalAttributes.Reverse);
         frame.GetCell(new Point(2, 0)).IsContinuation.ShouldBeTrue();
     }
 

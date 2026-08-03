@@ -77,16 +77,16 @@ public sealed class ClusterTests
     [Fact]
     public void Default_WhenRead_UsesPinnedNarrowReplacementPolicy()
     {
-        Policy.Default.UnicodeVersion.ShouldBe(UnicodeInfo.Version);
-        Policy.Default.AmbiguousWidth.ShouldBe(Ambiguous.Narrow);
-        Policy.Default.OrphanPresentation.ShouldBe(Presentation.Replacement);
+        UnicodePolicy.Default.UnicodeVersion.ShouldBe(UnicodeInfo.Version);
+        UnicodePolicy.Default.AmbiguousWidth.ShouldBe(Ambiguous.Narrow);
+        UnicodePolicy.Default.OrphanPresentation.ShouldBe(Presentation.Replacement);
     }
 
     /// <summary>Verifies policy validation rejects unknown values before assignment.</summary>
     [Fact]
     public void Constructor_WhenPolicyValueIsUnknown_Throws()
     {
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => new Policy((Ambiguous) 99));
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => new Policy(Ambiguous.Narrow, (Presentation) 99));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new UnicodePolicy((Ambiguous) 99));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new UnicodePolicy(Ambiguous.Narrow, (Presentation) 99));
     }
 }

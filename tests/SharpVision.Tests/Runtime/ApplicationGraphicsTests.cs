@@ -8,7 +8,7 @@ using Terminal.Graphics;
 
 using GraphicsImage = Terminal.Graphics.ImageSource;
 using MultiplexerKind = Terminal.Multiplexing.MultiplexerKind;
-using MultiplexingPolicy = Terminal.Multiplexing.Policy;
+using MultiplexingPolicy = Terminal.Multiplexing.MultiplexingPolicy;
 
 /// <summary>Proves application-owned graphics selection, geometry, routing, and cleanup ordering.</summary>
 public sealed class ApplicationGraphicsTests
@@ -26,7 +26,7 @@ public sealed class ApplicationGraphicsTests
             Width = Length.Cells(2),
             Height = Length.Cells(1)
         };
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative with
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
         {
             Sixel = new Feature(CapabilitySupport.Supported, Origin.Override)
         });
@@ -290,7 +290,7 @@ public sealed class ApplicationGraphicsTests
         terminal.QueueResize(new Dimensions(new Size(1, 1), new Size(2, 3)));
         var policy = new MultiplexingPolicy(
             [MultiplexerKind.Tmux],
-            TerminalProfile.CreateAnsi(Capabilities.Conservative));
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative));
         var options = TerminalOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(
@@ -335,8 +335,8 @@ public sealed class ApplicationGraphicsTests
         terminal.QueueResize(new Dimensions(new Size(1, 1), new Size(2, 3)));
         var policy = new MultiplexingPolicy(
             [MultiplexerKind.Tmux],
-            TerminalProfile.CreateAnsi(Capabilities.Conservative));
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative with
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative));
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
         {
             Sixel = new Feature(CapabilitySupport.Supported, Origin.Override)
         });
@@ -432,7 +432,7 @@ public sealed class ApplicationGraphicsTests
         var writeCount = terminal.Writes.Count;
         var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.FrameRendered += OnFrameRendered;
-        var revoked = Capabilities.Conservative with
+        var revoked = TerminalCapabilities.Conservative with
         {
             KittyGraphics = new Feature(CapabilitySupport.Unsupported, Origin.Override)
         };
@@ -485,7 +485,7 @@ public sealed class ApplicationGraphicsTests
             },
             TestContext.Current.CancellationToken);
         await uploaded.Task.WaitAsync(TestContext.Current.CancellationToken);
-        var revoked = Capabilities.Conservative with
+        var revoked = TerminalCapabilities.Conservative with
         {
             KittyGraphics = new Feature(CapabilitySupport.Unsupported, Origin.Override)
         };
@@ -545,7 +545,7 @@ public sealed class ApplicationGraphicsTests
         var writeCount = terminal.Writes.Count;
         var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.FrameRendered += OnFrameRendered;
-        var revoked = Capabilities.Conservative with
+        var revoked = TerminalCapabilities.Conservative with
         {
             Sixel = new Feature(CapabilitySupport.Unsupported, Origin.Override)
         };
@@ -575,7 +575,7 @@ public sealed class ApplicationGraphicsTests
         bool sixel = false,
         bool iterm = false) => TerminalOptions.Minimal with
         {
-            Profile = TerminalProfile.CreateAnsi(Capabilities.Conservative with
+            Profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
             {
                 KittyGraphics = new Feature(
                 kitty ? CapabilitySupport.Supported : CapabilitySupport.Unsupported,

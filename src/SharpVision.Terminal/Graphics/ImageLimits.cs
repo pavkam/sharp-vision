@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Graphics;
 
 /// <summary>Defines immutable finite image ownership and geometry limits.</summary>
 [PublicAPI]
-public sealed class Limits
+public sealed class ImageLimits
 {
     /// <summary>Initializes validated image limits.</summary>
     /// <param name="maxDimension">The maximum positive pixels on either axis.</param>
@@ -16,7 +16,7 @@ public sealed class Limits
     /// <paramref name="maxPixels"/> exceeds the area addressable by
     /// <paramref name="maxDimension"/>.
     /// </exception>
-    public Limits(
+    public ImageLimits(
         int maxDimension = 16_384,
         int maxPixels = 67_108_864,
         int maxSourceBytes = 256 * 1024 * 1024)
@@ -38,7 +38,7 @@ public sealed class Limits
     }
 
     /// <summary>Gets the default finite image policy.</summary>
-    public static Limits Default { get; } = new();
+    public static ImageLimits Default { get; } = new();
 
     /// <summary>Gets the maximum pixels on either axis.</summary>
     public int MaxDimension { get; }

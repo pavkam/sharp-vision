@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Styling;
 
-using TerminalAttributes = Attributes;
 
 /// <summary>Verifies global semantic theme-profile composition.</summary>
 public sealed class ThemeProfileTests

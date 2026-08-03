@@ -20,7 +20,7 @@ public sealed class Transaction: IDisposable
     private const int _chunkBytes = 4_096;
 
     private readonly TransferLimits _limits;
-    private readonly Operation _operation;
+    private readonly KittyClipboardOperation _operation;
     private readonly string? _id;
     private readonly bool _listOnly;
     private readonly TimeProvider _timeProvider;
@@ -31,14 +31,14 @@ public sealed class Transaction: IDisposable
     private int _totalBytes;
 
     private Transaction(
-        Operation operation,
+        KittyClipboardOperation operation,
         TransferLimits? limits,
         string? id,
         bool listOnly,
         TimeProvider? timeProvider,
         QueryLimits? queryLimits)
     {
-        if (operation is not (Operation.Read or Operation.Write))
+        if (operation is not (KittyClipboardOperation.Read or KittyClipboardOperation.Write))
         {
             throw new ArgumentOutOfRangeException(
                 nameof(operation), operation, "A transaction must read or write.");
@@ -91,7 +91,7 @@ public sealed class Transaction: IDisposable
         bool listOnly = false,
         TimeProvider? timeProvider = null,
         QueryLimits? queryLimits = null) =>
-        new(Operation.Read, limits, id, listOnly, timeProvider, queryLimits);
+        new(KittyClipboardOperation.Read, limits, id, listOnly, timeProvider, queryLimits);
 
     /// <summary>Creates a bounded clipboard write transaction.</summary>
     /// <param name="limits">Optional immutable transfer limits.</param>
@@ -105,7 +105,7 @@ public sealed class Transaction: IDisposable
         string? id = null,
         TimeProvider? timeProvider = null,
         QueryLimits? queryLimits = null) =>
-        new(Operation.Write, limits, id, listOnly: false, timeProvider, queryLimits);
+        new(KittyClipboardOperation.Write, limits, id, listOnly: false, timeProvider, queryLimits);
 
     /// <summary>Applies one decoded packet to this transaction.</summary>
     /// <param name="packet">The immutable decoded packet.</param>
@@ -153,7 +153,7 @@ public sealed class Transaction: IDisposable
             return Fail(Unexpected());
         }
 
-        return _operation == Operation.Read
+        return _operation == KittyClipboardOperation.Read
             ? AcceptRead(packet)
             : AcceptWrite(packet);
     }

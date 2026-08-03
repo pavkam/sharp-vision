@@ -11,7 +11,7 @@ public static class XtermDecrqss
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="name">The approved status name.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="name"/> is not queryable.</exception>
-    public static void Query(Writer writer, StatusName name) =>
+    public static void Query(ProtocolWriter writer, StatusName name) =>
         writer.Dcs([], "$"u8, (byte) 'q', Selector(name));
 
     /// <summary>Attempts to decode one DCS DECRQSS reply.</summary>

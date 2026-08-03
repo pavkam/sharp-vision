@@ -125,7 +125,7 @@ public sealed class PseudoterminalTests
             transport,
             source,
             sink,
-            RuntimeOptions.Minimal);
+            TerminalOptions.Minimal);
         using var cancellation = new CancellationTokenSource();
         var running = session.RunAsync(cancellation.Token).AsTask();
 

@@ -71,7 +71,7 @@ public sealed class SgrTests
     {
         var destination = new ArrayBufferWriter<byte>();
 
-        Sgr.Apply(new Writer(destination), rendition);
+        Sgr.Apply(new ProtocolWriter(destination), rendition);
 
         destination.WrittenSpan.ToArray().ShouldBe(
             Encoding.ASCII.GetBytes(expected));
@@ -84,7 +84,7 @@ public sealed class SgrTests
     public void Apply_WhenRenditionIsKnown_WritesExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         Sgr.Apply(writer, Rendition.Bold);
         Sgr.Apply(writer, Rendition.Underline);
@@ -102,7 +102,7 @@ public sealed class SgrTests
     public void Foreground_WhenColorIsValid_WritesExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         Sgr.Foreground(writer, Color.Default);
         Sgr.Foreground(writer, Color.Rgb(1, 2, 3));
@@ -118,7 +118,7 @@ public sealed class SgrTests
     public void Background_WhenColorIsValid_WritesExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         Sgr.Background(writer, Color.Default);
         Sgr.Background(writer, Color.Rgb(254, 253, 252));
@@ -139,7 +139,7 @@ public sealed class SgrTests
         string background)
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         Sgr.Foreground(writer, color);
         Sgr.Background(writer, color);
@@ -159,7 +159,7 @@ public sealed class SgrTests
     {
         var destination = new ArrayBufferWriter<byte>();
 
-        Sgr.Apply(new Writer(destination), underline);
+        Sgr.Apply(new ProtocolWriter(destination), underline);
 
         destination.WrittenSpan.ToArray().ShouldBe(
             Encoding.ASCII.GetBytes(expected));
@@ -170,7 +170,7 @@ public sealed class SgrTests
     public void UnderlineColor_WhenColorIsValid_WritesExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         Sgr.UnderlineColor(writer, Color.Default);
         Sgr.UnderlineColor(writer, Color.Rgb(1, 2, 3));
@@ -184,7 +184,7 @@ public sealed class SgrTests
     public void PaletteColor_WhenPositionIsValid_WritesExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         Sgr.ForegroundPalette(writer, 123);
         Sgr.BackgroundPalette(writer, 255);
@@ -201,7 +201,7 @@ public sealed class SgrTests
     public void Command_WhenValueIsInvalid_ThrowsBeforeWriting()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(static () => Color.Rgb(-1, 0, 0));
         _ = Should.Throw<ArgumentOutOfRangeException>(() => Sgr.Apply(writer, (Rendition) 999));
@@ -219,7 +219,7 @@ public sealed class SgrTests
     public void ColorCommand_WhenColorIsNotConcrete_ThrowsBeforeWriting()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         _ = Should.Throw<ArgumentException>(() => Sgr.Foreground(writer, Color.Transparent));
         _ = Should.Throw<ArgumentException>(() => Sgr.Background(writer, Color.Transparent));

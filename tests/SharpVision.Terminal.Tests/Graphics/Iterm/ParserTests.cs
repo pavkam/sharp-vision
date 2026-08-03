@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Tests.Graphics.Iterm;
 
-using InputOptions = Terminal.Input.Options;
 
 /// <summary>Proves generic bounded OSC 1337 ST/BEL recognition and recovery.</summary>
 public sealed class ParserTests

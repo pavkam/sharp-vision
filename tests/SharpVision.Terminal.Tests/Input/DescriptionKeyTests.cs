@@ -13,7 +13,7 @@ public sealed class DescriptionKeyTests
     public void Decode_WhenDescriptionChangesCsiMeaning_UsesDescriptionAtEverySplit()
     {
         var sequence = "\u001b[99~"u8.ToArray();
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap([new KeyBinding(sequence, Code.F63)]),
             useAnsiKeyGrammar: false);
 
@@ -44,7 +44,7 @@ public sealed class DescriptionKeyTests
     public void Decode_WhenDescriptionConflictsWithRegisteredGrammar_RegisteredGrammarWins(string sequence)
     {
         var bytes = Encoding.ASCII.GetBytes(sequence);
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap([new KeyBinding(bytes, Code.F63)]),
             useAnsiKeyGrammar: false);
         var sink = new RecordingProtocolSink();
@@ -64,7 +64,7 @@ public sealed class DescriptionKeyTests
     [Fact]
     public void Decode_WhenPasteTerminatorIsAlsoDescribed_PasteTerminatorWins()
     {
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap([new KeyBinding("\u001b[201~"u8, Code.F63)]),
             useAnsiKeyGrammar: false);
         var sink = new RecordingInputSink();
@@ -83,7 +83,7 @@ public sealed class DescriptionKeyTests
     [Fact]
     public void Decode_WhenDescriptionPrefixesOverlap_UsesLongestMatchAndReplaysMismatchOnce()
     {
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap(
             [
                 new KeyBinding([0xff], Code.F62),
@@ -119,7 +119,7 @@ public sealed class DescriptionKeyTests
     [Fact]
     public void Decode_WhenProfileDoesNotDescribeLegacySequence_DoesNotApplyAnsiGrammar()
     {
-        var options = Options.Default.WithKeyMap(KeyMap.Empty, useAnsiKeyGrammar: false);
+        var options = InputOptions.Default.WithKeyMap(KeyMap.Empty, useAnsiKeyGrammar: false);
         var sink = new RecordingInputSink();
 
         using (InputDecoder decoder = new(sink, options))
@@ -136,7 +136,7 @@ public sealed class DescriptionKeyTests
     public void ExpireEscape_WhenDescriptionIsActive_StillUsesFiniteDeadline()
     {
         var time = new ManualTimeProvider();
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap([new KeyBinding("\u001b[A"u8, Code.Up)]),
             useAnsiKeyGrammar: false);
         var sink = new RecordingInputSink();
@@ -155,7 +155,7 @@ public sealed class DescriptionKeyTests
     public void Decode_WhenDescriptionUsesEscapeIntermediates_MapsAtEverySplit()
     {
         var sequence = "\u001b(B"u8.ToArray();
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap([new KeyBinding(sequence, Code.F63)]),
             useAnsiKeyGrammar: false);
 
@@ -166,7 +166,7 @@ public sealed class DescriptionKeyTests
     [Fact]
     public void Decode_WhenEscapeIntermediateIsUndescribed_ReportsAndRecovers()
     {
-        var options = Options.Default.WithKeyMap(KeyMap.Empty, useAnsiKeyGrammar: false);
+        var options = InputOptions.Default.WithKeyMap(KeyMap.Empty, useAnsiKeyGrammar: false);
         var sink = new RecordingInputSink();
 
         using (InputDecoder decoder = new(sink, options))
@@ -197,7 +197,7 @@ public sealed class DescriptionKeyTests
     public void Decode_WhenDescriptionUsesEightBitSs3_MapsAtEverySplit()
     {
         var sequence = new byte[] { 0x8f, (byte) 'A' };
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap([new KeyBinding(sequence, Code.Up)]),
             useAnsiKeyGrammar: false);
 
@@ -209,7 +209,7 @@ public sealed class DescriptionKeyTests
     [Fact]
     public void Decode_WhenEightBitSs3FinalIsUndescribed_ReportsAndRecovers()
     {
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap([new KeyBinding([0x8f, (byte) 'A'], Code.Up)]),
             useAnsiKeyGrammar: false);
         var sink = new RecordingInputSink();
@@ -240,7 +240,7 @@ public sealed class DescriptionKeyTests
 
         foreach (var item in cases)
         {
-            var options = Options.Default.WithKeyMap(
+            var options = InputOptions.Default.WithKeyMap(
                 new KeyMap([new KeyBinding(item.Sequence, item.Code)]),
                 useAnsiKeyGrammar: false);
 
@@ -253,7 +253,7 @@ public sealed class DescriptionKeyTests
     public void Decode_WhenUtf8ContainsC1ContinuationBytes_PreservesUnicodeAtEverySplit()
     {
         var input = new byte[] { 0xc2, 0x8f, 0xc2, 0x9b };
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap(
             [
                 new KeyBinding([0x8f, (byte) 'A'], Code.Up),
@@ -282,7 +282,7 @@ public sealed class DescriptionKeyTests
     [Fact]
     public void Decode_WhenEightBitCsiSignatureIsUndescribed_ReportsAndRecovers()
     {
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap([new KeyBinding([0x9b, (byte) '9', (byte) '2', (byte) '~'], Code.F63)]),
             useAnsiKeyGrammar: false);
         var sink = new RecordingInputSink();
@@ -301,7 +301,7 @@ public sealed class DescriptionKeyTests
     [Fact]
     public void Decode_WhenCallerExplicitlyEnablesC1WithoutMap_PreservesParserControlSemantics()
     {
-        var configured = Options.Default with
+        var configured = InputOptions.Default with
         {
             ParserLimits = ParserLimits.Default with { AcceptEightBitControls = true }
         };
@@ -326,7 +326,7 @@ public sealed class DescriptionKeyTests
     public void Decode_WhenFallbackStartsWithUtf8Continuation_PendingUnicodeWinsAtEverySplit()
     {
         var input = "\u00a0"u8.ToArray();
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap([new KeyBinding([0xa0], Code.F63)]),
             useAnsiKeyGrammar: false);
 
@@ -350,7 +350,7 @@ public sealed class DescriptionKeyTests
     public void Decode_WhenMatcherPrefixPrecedesUtf8Continuation_ExistingMatchWins()
     {
         var sequence = "\u00a0"u8.ToArray();
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap([new KeyBinding(sequence, Code.F63)]),
             useAnsiKeyGrammar: false);
         var sink = new RecordingInputSink();
@@ -372,7 +372,7 @@ public sealed class DescriptionKeyTests
     public void Decode_WhenShorterMatchLeavesDescribedSuffix_RematchesSuffixAtEverySplit()
     {
         var input = new byte[] { 0xff, 0xfe, 0x78 };
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap(
             [
                 new KeyBinding([0xff], Code.F61),
@@ -401,7 +401,7 @@ public sealed class DescriptionKeyTests
     [Fact]
     public void Decode_WhenFallbackKeysPrecedeMalformedProtocol_PreservesAbsoluteOffset()
     {
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap(
             [
                 new KeyBinding([0xff], Code.F62),
@@ -485,7 +485,7 @@ public sealed class DescriptionKeyTests
     [Fact]
     public void Dispose_WhenDecoderUsedRematchWorkspace_ReleasesKeyStorageAndRejectsUse()
     {
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap(
             [
                 new KeyBinding([0xff], Code.F61),
@@ -516,7 +516,7 @@ public sealed class DescriptionKeyTests
         return sequence;
     }
 
-    private static void AssertDescribedAtEverySplit(byte[] sequence, Code code, Options options)
+    private static void AssertDescribedAtEverySplit(byte[] sequence, Code code, InputOptions options)
     {
         for (var split = 0; split <= sequence.Length; split++)
         {

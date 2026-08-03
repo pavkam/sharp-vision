@@ -10,7 +10,7 @@ public sealed class ImageSource
     private static long _nextIdentity;
     private readonly byte[] _source;
 
-    private ImageSource(Size size, Format format, ReadOnlySpan<byte> source)
+    private ImageSource(Size size, ImageFormat format, ReadOnlySpan<byte> source)
     {
         Size = size;
         Format = format;
@@ -25,7 +25,7 @@ public sealed class ImageSource
     public Size Size { get; }
 
     /// <summary>Gets the owned source representation.</summary>
-    public Format Format { get; }
+    public ImageFormat Format { get; }
 
     /// <summary>Gets the exact owned source byte count.</summary>
     public int ByteCount => _source.Length;
@@ -37,9 +37,9 @@ public sealed class ImageSource
     /// <returns>An independently owned immutable image.</returns>
     /// <exception cref="ArgumentOutOfRangeException">Dimensions, pixels, or bytes exceed policy.</exception>
     /// <exception cref="ArgumentException"><paramref name="source"/> is not exactly four bytes per pixel.</exception>
-    public static ImageSource FromRgba(Size size, ReadOnlySpan<byte> source, Limits? limits = null)
+    public static ImageSource FromRgba(Size size, ReadOnlySpan<byte> source, ImageLimits? limits = null)
     {
-        var policy = limits ?? Limits.Default;
+        var policy = limits ?? ImageLimits.Default;
         policy.Validate(size, source.Length);
         var expected = checked((long) size.Width * size.Height * 4);
 
@@ -47,7 +47,7 @@ public sealed class ImageSource
             ? throw new ArgumentException(
                 "RGBA source length must equal width times height times four.",
                 nameof(source))
-            : new ImageSource(size, Format.Rgba, source);
+            : new ImageSource(size, ImageFormat.Rgba, source);
     }
 
     /// <summary>Creates an image by copying a structurally validated PNG container.</summary>
@@ -56,9 +56,9 @@ public sealed class ImageSource
     /// <returns>An independently owned immutable image.</returns>
     /// <exception cref="ArgumentException">The PNG container or IHDR fields are invalid.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Dimensions, pixels, or bytes exceed policy.</exception>
-    public static ImageSource FromPng(ReadOnlySpan<byte> source, Limits? limits = null)
+    public static ImageSource FromPng(ReadOnlySpan<byte> source, ImageLimits? limits = null)
     {
-        var policy = limits ?? Limits.Default;
+        var policy = limits ?? ImageLimits.Default;
 
         if (source.Length > policy.MaxSourceBytes)
         {
@@ -70,7 +70,7 @@ public sealed class ImageSource
 
         var size = source.ReadSize();
         policy.Validate(size, source.Length);
-        return new ImageSource(size, Format.Png, source);
+        return new ImageSource(size, ImageFormat.Png, source);
     }
 
     /// <summary>
@@ -84,7 +84,7 @@ public sealed class ImageSource
     /// <param name="rgba">Exactly four bytes per pixel in RGBA order.</param>
     /// <returns>An independently owned immutable RGBA image.</returns>
     internal static ImageSource FromDecodedRgba(Size size, ReadOnlySpan<byte> rgba) =>
-        new(size, Format.Rgba, rgba);
+        new(size, ImageFormat.Rgba, rgba);
 
     /// <summary>Copies the complete owned source into caller-provided memory.</summary>
     /// <param name="destination">The destination with at least <see cref="ByteCount"/> bytes.</param>

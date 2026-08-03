@@ -20,7 +20,7 @@ internal sealed class RecordingProtocolSink:
     internal List<Stroke> Strokes { get; } = [];
 
     /// <summary>Gets text events in delivery order.</summary>
-    internal List<InputText> Text { get; } = [];
+    internal List<TerminalText> Text { get; } = [];
 
     /// <summary>Gets pointer events in delivery order.</summary>
     internal List<Pointer> Pointers { get; } = [];
@@ -35,7 +35,7 @@ internal sealed class RecordingProtocolSink:
     internal List<Diagnostic> Diagnostics { get; } = [];
 
     /// <summary>Gets recognized responses in delivery order.</summary>
-    internal List<Response> Responses { get; } = [];
+    internal List<XtermCapabilitiesResponse> Responses { get; } = [];
 
     /// <summary>Gets recognized color responses in delivery order.</summary>
     internal List<PaletteResponse> PaletteResponses { get; } = [];
@@ -50,7 +50,7 @@ internal sealed class RecordingProtocolSink:
     internal List<CapabilityResponse> CapabilityResponses { get; } = [];
 
     /// <summary>Gets recognized Kitty graphics responses in delivery order.</summary>
-    internal List<Kitty.Graphics.Response> KittyGraphicsResponses { get; } = [];
+    internal List<Kitty.Graphics.KittyGraphicsResponse> KittyGraphicsResponses { get; } = [];
 
     /// <summary>Gets recognized OSC 52 clipboard replies in delivery order.</summary>
     internal List<ClipboardReply> ClipboardReplies { get; } = [];
@@ -72,7 +72,7 @@ internal sealed class RecordingProtocolSink:
     }
 
     /// <inheritdoc/>
-    public void Input(in InputText value)
+    public void Input(in TerminalText value)
     {
         Text.Add(value);
         Order.Add("text");
@@ -107,7 +107,7 @@ internal sealed class RecordingProtocolSink:
     }
 
     /// <inheritdoc/>
-    public void Response(in Response value)
+    public void Response(in XtermCapabilitiesResponse value)
     {
         Responses.Add(value);
         Order.Add("response");
@@ -142,7 +142,7 @@ internal sealed class RecordingProtocolSink:
     }
 
     /// <inheritdoc/>
-    public void Response(Kitty.Graphics.Response value)
+    public void Response(Kitty.Graphics.KittyGraphicsResponse value)
     {
         KittyGraphicsResponses.Add(value);
         Order.Add("kitty-graphics-response");

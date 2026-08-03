@@ -20,7 +20,7 @@ public sealed class DecrqssTests
     {
         var destination = new ArrayBufferWriter<byte>();
 
-        XtermDecrqss.Query(new Writer(destination), name);
+        XtermDecrqss.Query(new ProtocolWriter(destination), name);
 
         Encoding.ASCII.GetString(destination.WrittenSpan).ShouldBe(expected);
     }

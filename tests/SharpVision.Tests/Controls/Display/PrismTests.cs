@@ -172,7 +172,7 @@ public sealed class PrismTests
         var original = new TerminalStyle(
             ReferenceColors.Get(9),
             ReferenceColors.Get(4),
-            Attributes.Bold | Attributes.Italic,
+            TerminalAttributes.Bold | TerminalAttributes.Italic,
             "https://example.test/underlay",
             Underline.Curly,
             ReferenceColors.Get(5));
@@ -197,7 +197,7 @@ public sealed class PrismTests
         var original = new TerminalStyle(
             ReferenceColors.Get(9),
             ReferenceColors.Get(4),
-            Attributes.Bold | Attributes.Italic,
+            TerminalAttributes.Bold | TerminalAttributes.Italic,
             "https://example.test/underlay",
             Underline.Curly,
             ReferenceColors.Get(5));
@@ -336,7 +336,7 @@ public sealed class PrismTests
     {
         style.Foreground.ShouldBe(foreground);
         style.Background.ShouldBe(ReferenceColors.Get(4));
-        style.Attributes.ShouldBe(Attributes.Bold);
+        style.Attributes.ShouldBe(TerminalAttributes.Bold);
         style.Hyperlink.ShouldBe("https://example.test");
         style.Underline.ShouldBe(Underline.Curly);
         style.UnderlineColor.ShouldBe(ReferenceColors.Get(5));

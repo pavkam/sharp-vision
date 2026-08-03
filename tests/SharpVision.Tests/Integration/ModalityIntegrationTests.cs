@@ -395,8 +395,8 @@ public sealed class ModalityIntegrationTests
                     expectedText.Length == 0 ? " " : expectedText,
                     $"terminal cell text at {point}");
                 var projectedStyle = new TerminalStyle(
-                    Palette.Project(expectedCell.Style.Foreground, ColorDepth.Basic16),
-                    Palette.Project(expectedCell.Style.Background, ColorDepth.Basic16),
+                    TerminalPalette.Project(expectedCell.Style.Foreground, ColorDepth.Basic16),
+                    TerminalPalette.Project(expectedCell.Style.Background, ColorDepth.Basic16),
                     expectedCell.Style.Attributes);
                 actualCell.Style.ShouldBe(projectedStyle, $"terminal cell style at {point}");
                 actualCell.Width.ShouldBe(expectedCell.Width, $"terminal cell width at {point}");

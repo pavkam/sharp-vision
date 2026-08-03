@@ -5,9 +5,7 @@ namespace SharpVision.Controls.Display;
 
 using Terminal.Graphics;
 
-using CellMetrics = Metrics;
 using PlacementMode = Terminal.Graphics.PlacementMode;
-using Shade = Terminal.Rendering.Shade;
 using UnicodeWidth = Width;
 
 /// <summary>Displays a borrowed immutable image with deterministic semantic cell fallback.</summary>

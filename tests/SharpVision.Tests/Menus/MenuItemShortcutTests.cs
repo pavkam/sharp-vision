@@ -30,7 +30,7 @@ public sealed class MenuItemShortcutTests
         content.Bounds.Right.ShouldBe(12);
         FrameOracle.Get(frame, new Point(12, 0)).ShouldBeEmpty();
         FrameOracle.Get(frame, new Point(13, 0)).ShouldBeEmpty();
-        (frame.GetCell(new Point(14, 0)).Style.Attributes & Attributes.Dim).ShouldBe(Attributes.Dim);
+        (frame.GetCell(new Point(14, 0)).Style.Attributes & TerminalAttributes.Dim).ShouldBe(TerminalAttributes.Dim);
     }
 
     /// <summary>Verifies desired size includes shortcut text width plus spacing.</summary>

@@ -46,7 +46,7 @@ internal static class TerminfoCompiler
                 throw new NotSupportedException("SharpVision does not execute terminfo padding requests.");
             }
 
-            var operations = new List<Operation>(Math.Min(source.Length, limits.MaxProgramOperations));
+            var operations = new List<TerminfoOperation>(Math.Min(source.Length, limits.MaxProgramOperations));
             var literals = new List<byte>(source.Length);
             var conditionalBase = new int[limits.MaxProgramStackDepth];
             var conditionalFalseJump = new int[limits.MaxProgramStackDepth];
@@ -79,7 +79,7 @@ internal static class TerminfoCompiler
 
                     AddOperation(
                         operations,
-                        new Operation(Operation.Literal, literalOffset, index - start),
+                        new TerminfoOperation(TerminfoOperation.Literal, literalOffset, index - start),
                         limits);
                     continue;
                 }
@@ -99,7 +99,7 @@ internal static class TerminfoCompiler
                         {
                             var literalOffset = literals.Count;
                             literals.Add((byte) '%');
-                            AddOperation(operations, new Operation(Operation.Literal, literalOffset, 1), limits);
+                            AddOperation(operations, new TerminfoOperation(TerminfoOperation.Literal, literalOffset, 1), limits);
                             break;
                         }
                     case (byte) 'p':
@@ -110,17 +110,17 @@ internal static class TerminfoCompiler
 
                         AddOperation(
                             operations,
-                            new Operation(Operation.PushParameter, source[index++] - (byte) '1'),
+                            new TerminfoOperation(TerminfoOperation.PushParameter, source[index++] - (byte) '1'),
                             limits);
                         Push(ref stackDepth, ref maximumStackDepth, limits);
                         break;
                     case (byte) 'i':
-                        AddOperation(operations, new Operation(Operation.IncrementParameters), limits);
+                        AddOperation(operations, new TerminfoOperation(TerminfoOperation.IncrementParameters), limits);
                         break;
                     case (byte) '{':
                         {
                             var value = ParseInteger(source, ref index, (byte) '}');
-                            AddOperation(operations, new Operation(Operation.PushConstant, value), limits);
+                            AddOperation(operations, new TerminfoOperation(TerminfoOperation.PushConstant, value), limits);
                             Push(ref stackDepth, ref maximumStackDepth, limits);
                             break;
                         }
@@ -132,7 +132,7 @@ internal static class TerminfoCompiler
 
                         AddOperation(
                             operations,
-                            new Operation(Operation.PushConstant, source[index]),
+                            new TerminfoOperation(TerminfoOperation.PushConstant, source[index]),
                             limits);
                         index += 2;
                         Push(ref stackDepth, ref maximumStackDepth, limits);
@@ -140,64 +140,64 @@ internal static class TerminfoCompiler
                     case (byte) 'P':
                         AddOperation(
                             operations,
-                            new Operation(Operation.StoreVariable, ParseVariable(source, ref index)),
+                            new TerminfoOperation(TerminfoOperation.StoreVariable, ParseVariable(source, ref index)),
                             limits);
                         Pop(ref stackDepth);
                         break;
                     case (byte) 'g':
                         AddOperation(
                             operations,
-                            new Operation(Operation.LoadVariable, ParseVariable(source, ref index)),
+                            new TerminfoOperation(TerminfoOperation.LoadVariable, ParseVariable(source, ref index)),
                             limits);
                         Push(ref stackDepth, ref maximumStackDepth, limits);
                         break;
                     case (byte) 'l':
-                        Unary(operations, Operation.StringLength, limits, stackDepth);
+                        Unary(operations, TerminfoOperation.StringLength, limits, stackDepth);
                         break;
                     case (byte) '+':
-                        Binary(operations, Operation.Add, limits, ref stackDepth);
+                        Binary(operations, TerminfoOperation.Add, limits, ref stackDepth);
                         break;
                     case (byte) '-':
-                        Binary(operations, Operation.Subtract, limits, ref stackDepth);
+                        Binary(operations, TerminfoOperation.Subtract, limits, ref stackDepth);
                         break;
                     case (byte) '*':
-                        Binary(operations, Operation.Multiply, limits, ref stackDepth);
+                        Binary(operations, TerminfoOperation.Multiply, limits, ref stackDepth);
                         break;
                     case (byte) '/':
-                        Binary(operations, Operation.Divide, limits, ref stackDepth);
+                        Binary(operations, TerminfoOperation.Divide, limits, ref stackDepth);
                         break;
                     case (byte) 'm':
-                        Binary(operations, Operation.Modulo, limits, ref stackDepth);
+                        Binary(operations, TerminfoOperation.Modulo, limits, ref stackDepth);
                         break;
                     case (byte) '&':
-                        Binary(operations, Operation.BitAnd, limits, ref stackDepth);
+                        Binary(operations, TerminfoOperation.BitAnd, limits, ref stackDepth);
                         break;
                     case (byte) '|':
-                        Binary(operations, Operation.BitOr, limits, ref stackDepth);
+                        Binary(operations, TerminfoOperation.BitOr, limits, ref stackDepth);
                         break;
                     case (byte) '^':
-                        Binary(operations, Operation.BitXor, limits, ref stackDepth);
+                        Binary(operations, TerminfoOperation.BitXor, limits, ref stackDepth);
                         break;
                     case (byte) '=':
-                        Binary(operations, Operation.Equal, limits, ref stackDepth);
+                        Binary(operations, TerminfoOperation.Equal, limits, ref stackDepth);
                         break;
                     case (byte) '<':
-                        Binary(operations, Operation.LessThan, limits, ref stackDepth);
+                        Binary(operations, TerminfoOperation.LessThan, limits, ref stackDepth);
                         break;
                     case (byte) '>':
-                        Binary(operations, Operation.GreaterThan, limits, ref stackDepth);
+                        Binary(operations, TerminfoOperation.GreaterThan, limits, ref stackDepth);
                         break;
                     case (byte) 'A':
-                        Binary(operations, Operation.LogicalAnd, limits, ref stackDepth);
+                        Binary(operations, TerminfoOperation.LogicalAnd, limits, ref stackDepth);
                         break;
                     case (byte) 'O':
-                        Binary(operations, Operation.LogicalOr, limits, ref stackDepth);
+                        Binary(operations, TerminfoOperation.LogicalOr, limits, ref stackDepth);
                         break;
                     case (byte) '!':
-                        Unary(operations, Operation.LogicalNot, limits, stackDepth);
+                        Unary(operations, TerminfoOperation.LogicalNot, limits, stackDepth);
                         break;
                     case (byte) '~':
-                        Unary(operations, Operation.BitNot, limits, stackDepth);
+                        Unary(operations, TerminfoOperation.BitNot, limits, stackDepth);
                         break;
                     case (byte) '?':
                         if (conditionalDepth >= conditionalBase.Length)
@@ -228,7 +228,7 @@ internal static class TerminfoCompiler
                         }
 
                         conditionalFalseJump[conditionalDepth - 1] = operations.Count;
-                        AddOperation(operations, new Operation(Operation.JumpIfFalse, -1), limits);
+                        AddOperation(operations, new TerminfoOperation(TerminfoOperation.JumpIfFalse, -1), limits);
                         conditionalState[conditionalDepth - 1] = 1;
                         break;
                     case (byte) 'e':
@@ -248,7 +248,7 @@ internal static class TerminfoCompiler
                         conditionalThenDepth[elseIndex] = stackDepth;
                         conditionalHasThenDepth[elseIndex] = true;
                         conditionalEndJumps[elseIndex]!.Add(operations.Count);
-                        AddOperation(operations, new Operation(Operation.Jump, -1), limits);
+                        AddOperation(operations, new TerminfoOperation(TerminfoOperation.Jump, -1), limits);
                         PatchJump(operations, conditionalFalseJump[elseIndex], operations.Count);
                         stackDepth = conditionalBase[elseIndex];
                         conditionalState[elseIndex] = 2;
@@ -327,7 +327,7 @@ internal static class TerminfoCompiler
         byte first,
         ReadOnlySpan<byte> source,
         ref int index,
-        List<Operation> operations,
+        List<TerminfoOperation> operations,
         ProgramLimits limits,
         ref int stackDepth)
     {
@@ -423,11 +423,11 @@ internal static class TerminfoCompiler
         Pop(ref stackDepth);
         var code = directive switch
         {
-            (byte) 'c' => Operation.FormatCharacter,
-            (byte) 's' => Operation.FormatString,
-            _ => Operation.FormatNumber
+            (byte) 'c' => TerminfoOperation.FormatCharacter,
+            (byte) 's' => TerminfoOperation.FormatString,
+            _ => TerminfoOperation.FormatNumber
         };
-        AddOperation(operations, new Operation(code, directive, width, PackFormat(flags, precision)), limits);
+        AddOperation(operations, new TerminfoOperation(code, directive, width, PackFormat(flags, precision)), limits);
     }
 
     [SuppressMessage(
@@ -435,7 +435,7 @@ internal static class TerminfoCompiler
         "IDE0051:Remove unused private members",
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static void Binary(
-        List<Operation> operations,
+        List<TerminfoOperation> operations,
         byte code,
         ProgramLimits limits,
         ref int stackDepth)
@@ -443,7 +443,7 @@ internal static class TerminfoCompiler
         Pop(ref stackDepth);
         Pop(ref stackDepth);
         stackDepth++;
-        AddOperation(operations, new Operation(code), limits);
+        AddOperation(operations, new TerminfoOperation(code), limits);
     }
 
     [SuppressMessage(
@@ -451,7 +451,7 @@ internal static class TerminfoCompiler
         "IDE0051:Remove unused private members",
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static void Unary(
-        List<Operation> operations,
+        List<TerminfoOperation> operations,
         byte code,
         ProgramLimits limits,
         int stackDepth)
@@ -461,7 +461,7 @@ internal static class TerminfoCompiler
             throw Malformed("A unary operation underflows the evaluation stack.");
         }
 
-        AddOperation(operations, new Operation(code), limits);
+        AddOperation(operations, new TerminfoOperation(code), limits);
     }
 
     #endregion
@@ -586,7 +586,7 @@ internal static class TerminfoCompiler
     private static int PackFormat(int flags, int precision) =>
         flags | ((precision + 1) << 8);
 
-    private static void AddOperation(List<Operation> operations, Operation operation, ProgramLimits limits)
+    private static void AddOperation(List<TerminfoOperation> operations, TerminfoOperation operation, ProgramLimits limits)
     {
         if (operations.Count >= limits.MaxProgramOperations)
         {
@@ -600,10 +600,10 @@ internal static class TerminfoCompiler
         "Style",
         "IDE0051:Remove unused private members",
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
-    private static void PatchJump(List<Operation> operations, int index, int target)
+    private static void PatchJump(List<TerminfoOperation> operations, int index, int target)
     {
         var operation = operations[index];
-        operations[index] = new Operation(
+        operations[index] = new TerminfoOperation(
             operation.Code,
             target,
             operation.Secondary,

@@ -34,8 +34,8 @@ public sealed class CalendarSurfaceTests
         // Assert focused paging
         calendar.ActiveDate.ShouldBe(active);
         calendar.DisplayMonth.ShouldBe(new DateOnly(2026, 7, 1));
-        (surface.Cell(new Point(22, 7)).Style.Attributes & Attributes.Underline)
-            .ShouldBe(Attributes.Underline);
+        (surface.Cell(new Point(22, 7)).Style.Attributes & TerminalAttributes.Underline)
+            .ShouldBe(TerminalAttributes.Underline);
 
         // Act and assert Space activation
         await surface.Keyboard.CompleteCharacterAsync(new Rune(' '));
@@ -267,7 +267,7 @@ public sealed class CalendarSurfaceTests
         surface.Cell(new Point(26, 3)).Text.ShouldBe("V");
         surface.Cell(new Point(26, 3)).Style.Foreground.ShouldBe(
             Project(ThemeColorHelper.Accent(Themes.Dark)));
-        (surface.Cell(new Point(26, 3)).Style.Attributes & Attributes.Bold).ShouldBe(Attributes.Bold);
+        (surface.Cell(new Point(26, 3)).Style.Attributes & TerminalAttributes.Bold).ShouldBe(TerminalAttributes.Bold);
         surface.Cell(new Point(22, 4)).Style.Foreground.ShouldBe(
             Project(ThemeColorHelper.SelectionForeground(Themes.Dark)));
         surface.Cell(new Point(2, 5)).Style.Foreground.ShouldBe(
@@ -315,5 +315,5 @@ public sealed class CalendarSurfaceTests
     }
 
     private static Color Project(Color color) =>
-        Palette.Project(color, ColorDepth.Basic16);
+        TerminalPalette.Project(color, ColorDepth.Basic16);
 }

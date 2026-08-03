@@ -28,7 +28,7 @@ public sealed class CellStyleWithForegroundTests
         var original = new CellStyle(
             foreground: Color.Rgb(10, 20, 30),
             background: Color.Rgb(40, 50, 60),
-            attributes: Attributes.Bold | Attributes.Italic,
+            attributes: TerminalAttributes.Bold | TerminalAttributes.Italic,
             hyperlink: "https://example.com",
             underline: Underline.Curly,
             underlineColor: Color.Rgb(70, 80, 90));
@@ -37,7 +37,7 @@ public sealed class CellStyleWithForegroundTests
 
         result.Foreground.ShouldBe(Color.Rgb(100, 110, 120));
         result.Background.ShouldBe(Color.Rgb(40, 50, 60));
-        result.Attributes.ShouldBe(Attributes.Bold | Attributes.Italic);
+        result.Attributes.ShouldBe(TerminalAttributes.Bold | TerminalAttributes.Italic);
         result.Hyperlink.ShouldBe("https://example.com");
         result.Underline.ShouldBe(Underline.Curly);
         result.UnderlineColor.ShouldBe(Color.Rgb(70, 80, 90));

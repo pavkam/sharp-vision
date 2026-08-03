@@ -279,7 +279,7 @@ public sealed class CompositeControlTests
     public async Task Attach_WhenContentIsInitialized_PropagatesCompleteInheritedContextAsync()
     {
         await using var dispatcher = Dispatcher.Start();
-        var policy = new Policy(Ambiguous.Wide);
+        var policy = new UnicodePolicy(Ambiguous.Wide);
         var context = new Theme();
         var root = new OwnershipObserverControl();
         var owner = new ProbeCompositeControl(root);

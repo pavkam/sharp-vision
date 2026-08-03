@@ -16,7 +16,7 @@ public sealed class AmbiguousWidthControlTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
-        border.SetCellPolicy(new Policy(Ambiguous.Wide));
+        border.SetCellPolicy(new UnicodePolicy(Ambiguous.Wide));
         new LayoutEngine().Layout(border, new Size(3, 2));
         using Frame frame = new(new Size(3, 2), ambiguousWidth: Ambiguous.Wide);
 
@@ -33,10 +33,10 @@ public sealed class AmbiguousWidthControlTests
     {
         var shadow = new LayoutProbe
         {
-            Shadow = AppearanceTestValues.Shadow(visible: true, mode: ShadowMode.BlockGlyph, offset: new Point(1, 1), glyph: new Rune('▓'), attributes: Attributes.Dim),
+            Shadow = AppearanceTestValues.Shadow(visible: true, mode: ShadowMode.BlockGlyph, offset: new Point(1, 1), glyph: new Rune('▓'), attributes: TerminalAttributes.Dim),
         };
         shadow.Children.Add(new ProbeControl(new Size(2, 1)));
-        shadow.SetCellPolicy(new Policy(Ambiguous.Wide));
+        shadow.SetCellPolicy(new UnicodePolicy(Ambiguous.Wide));
         new LayoutEngine().Layout(shadow, new Size(2, 1));
         using Frame frame = new(new Size(3, 2), ambiguousWidth: Ambiguous.Wide);
 
@@ -54,7 +54,7 @@ public sealed class AmbiguousWidthControlTests
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        scrollBar.SetCellPolicy(new Policy(Ambiguous.Wide));
+        scrollBar.SetCellPolicy(new UnicodePolicy(Ambiguous.Wide));
         new LayoutEngine().Layout(scrollBar, new Size(5, 1));
         using Frame frame = new(new Size(5, 1), ambiguousWidth: Ambiguous.Wide);
 
@@ -76,7 +76,7 @@ public sealed class AmbiguousWidthControlTests
                 new CheckBoxGlyphs(new Rune('o'), new Rune('·'), new Rune('-')),
                 CheckBoxStyle.Default.Appearance)
         };
-        checkBox.SetCellPolicy(new Policy(Ambiguous.Wide));
+        checkBox.SetCellPolicy(new UnicodePolicy(Ambiguous.Wide));
         new LayoutEngine().Layout(checkBox, new Size(1, 1));
         using Frame frame = new(new Size(1, 1), ambiguousWidth: Ambiguous.Wide);
 
@@ -95,7 +95,7 @@ public sealed class AmbiguousWidthControlTests
             PasswordCharacter = new Rune('·'),
             Width = Length.Cells(4)
         };
-        input.SetCellPolicy(new Policy(Ambiguous.Wide));
+        input.SetCellPolicy(new UnicodePolicy(Ambiguous.Wide));
         input.SetTheme(TestThemes.BorderlessInput);
         input.SetFocused(true);
         new LayoutEngine().Layout(input, new Size(4, 1));

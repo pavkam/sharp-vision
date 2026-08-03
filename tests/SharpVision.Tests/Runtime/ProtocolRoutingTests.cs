@@ -139,7 +139,7 @@ public sealed class ProtocolRoutingTests
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        var received = new TaskCompletionSource<Response>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var received = new TaskCompletionSource<XtermCapabilitiesResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
         application.ResponseReceived += (_, eventArgs) =>
         {
             application.Dispatcher.CheckAccess().ShouldBeTrue();

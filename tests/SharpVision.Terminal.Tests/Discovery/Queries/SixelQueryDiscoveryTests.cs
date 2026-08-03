@@ -91,7 +91,7 @@ public sealed class SixelQueryDiscoveryTests
     private static ActiveQueryDiscoveryStrategy Create() => new(
         new NegotiationOptions(new Dictionary<string, string?>()));
 
-    private static Response Response(ReadOnlySpan<byte> parameters)
+    private static XtermCapabilitiesResponse Response(ReadOnlySpan<byte> parameters)
     {
         XtermResponses.TryCsi(parameters, [], (byte) 'c', out var response).ShouldBeTrue();
         return response;

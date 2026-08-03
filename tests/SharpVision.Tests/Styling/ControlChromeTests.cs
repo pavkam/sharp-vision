@@ -33,7 +33,7 @@ public sealed class ControlChromeTests
         {
             Bounds = new Rect(0, 0, 2, 2),
             Face = AppearanceTestValues.Face(background: Color.Transparent),
-            Shadow = AppearanceTestValues.Shadow(visible: true, mode: ShadowMode.Composite, offset: new Point(1, 1), glyph: new Rune('▓'), attributes: Attributes.Dim),
+            Shadow = AppearanceTestValues.Shadow(visible: true, mode: ShadowMode.Composite, offset: new Point(1, 1), glyph: new Rune('▓'), attributes: TerminalAttributes.Dim),
         };
         using Frame frame = new(new Size(4, 4));
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune('x'));
@@ -41,8 +41,8 @@ public sealed class ControlChromeTests
         shadow.Render(frame.Canvas);
 
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("x");
-        frame.GetCell(new Point(0, 0)).Style.Attributes.ShouldNotBe(Attributes.Dim);
-        frame.GetCell(new Point(2, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
+        frame.GetCell(new Point(0, 0)).Style.Attributes.ShouldNotBe(TerminalAttributes.Dim);
+        frame.GetCell(new Point(2, 1)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
     }
 
     /// <summary>Verifies border thickness reduces the arranged content box.</summary>

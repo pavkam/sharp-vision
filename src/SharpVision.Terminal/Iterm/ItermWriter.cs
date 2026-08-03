@@ -9,7 +9,7 @@ using Graphics;
 
 /// <summary>Writes canonical bounded iTerm2 3.5 multipart inline PNG images.</summary>
 [PublicAPI]
-public static class Writer
+public static class ItermWriter
 {
     private const int _defaultMaxOutputBytes = 256 * 1024 * 1024;
     private const int _fileEndFrameBytes = 16;
@@ -47,7 +47,7 @@ public static class Writer
             throw new ArgumentOutOfRangeException(nameof(mode), mode, "The placement mode is unknown.");
         }
 
-        if (image.Format != Format.Png)
+        if (image.Format != ImageFormat.Png)
         {
             throw new NotSupportedException("iTerm2 inline images accept owned PNG bytes only.");
         }
@@ -133,7 +133,7 @@ public static class Writer
         int maxSequenceBytes,
         int maxOutputBytes)
     {
-        if (image.Format != Format.Png ||
+        if (image.Format != ImageFormat.Png ||
             destinationCells.Width <= 0 ||
             destinationCells.Height <= 0 ||
             mode is not PlacementMode.Contain and not PlacementMode.Stretch ||

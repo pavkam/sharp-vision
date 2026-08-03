@@ -48,7 +48,7 @@ public sealed class FrameTests
             new DrawResult(default, graphemes: -1, cells: 0, clipped: 0, replaced: 0));
         _ = Should.Throw<ArgumentOutOfRangeException>(() => new EncodeResult(-1, full: false));
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
-            new RenderingMetrics(0, 0, 0, full: false, elapsed: TimeSpan.FromTicks(-1)));
+            new RenderMetrics(0, 0, 0, full: false, elapsed: TimeSpan.FromTicks(-1)));
     }
 
     /// <summary>
@@ -110,7 +110,7 @@ public sealed class FrameTests
     public void Clear_WhenFrameContainsText_ResetsEveryCell()
     {
         using Frame frame = new(new Size(2, 1));
-        var style = new CellStyle(attributes: Attributes.Bold);
+        var style = new CellStyle(attributes: TerminalAttributes.Bold);
         _ = frame.Canvas.Draw("ab".AsSpan(), new Point(0, 0), style);
 
         frame.Clear();

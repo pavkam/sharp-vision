@@ -18,7 +18,7 @@ public sealed class WriterTests
         var image = GraphicsImage.FromPng(CreatePngPayload(dataBytes: 0));
         var output = new ArrayBufferWriter<byte>();
 
-        Writer.Write(image, new Size(2, 3), PlacementMode.Contain, output);
+        ItermWriter.Write(image, new Size(2, 3), PlacementMode.Contain, output);
 
         output.WrittenSpan.ToArray().ShouldBe(Encoding.ASCII.GetBytes(
             "\u001b]1337;MultipartFile=size=57;width=2;height=3;preserveAspectRatio=1;inline=1\u001b\\" +
@@ -36,7 +36,7 @@ public sealed class WriterTests
         var image = GraphicsImage.FromPng(CreatePngPayload(dataBytes: 0));
         var output = new ArrayBufferWriter<byte>();
 
-        Writer.Write(image, new Size(1, 1), PlacementMode.Stretch, output);
+        ItermWriter.Write(image, new Size(1, 1), PlacementMode.Stretch, output);
 
         output.WrittenSpan.IndexOf(";preserveAspectRatio=0;inline=1\u001b\\"u8)
             .ShouldBeGreaterThanOrEqualTo(0);
@@ -50,7 +50,7 @@ public sealed class WriterTests
         var image = GraphicsImage.FromPng(source);
         var output = new ArrayBufferWriter<byte>();
 
-        Writer.Write(
+        ItermWriter.Write(
             image,
             new Size(2, 3),
             PlacementMode.Contain,
@@ -75,9 +75,9 @@ public sealed class WriterTests
     [Fact]
     public void GetMaximumRawPartBytes_WhenLimitIsOfficialMaximum_AccountsForFramingAndBase64()
     {
-        Writer.GetMaximumRawPartBytes(1_048_576).ShouldBe(786_417);
-        Writer.GetMaximumRawPartBytes(96).ShouldBe(57);
-        Writer.TryCalculateTransactionBytes(
+        ItermWriter.GetMaximumRawPartBytes(1_048_576).ShouldBe(786_417);
+        ItermWriter.GetMaximumRawPartBytes(96).ShouldBe(57);
+        ItermWriter.TryCalculateTransactionBytes(
             sourceBytes: 57,
             new Size(2, 3),
             maxSequenceBytes: 1_048_576,
@@ -89,12 +89,12 @@ public sealed class WriterTests
     [Fact]
     public void TryCalculateTransactionBytes_WhenSourceIsMaximumAndChunkIsTiny_ReturnsExactBound()
     {
-        Writer.TryCalculateTransactionBytes(
+        ItermWriter.TryCalculateTransactionBytes(
             256 * 1024 * 1024,
             new Size(1, 1),
             maxSequenceBytes: 85,
             out var total).ShouldBeTrue();
-        Writer.TryCalculateTransactionBytes(
+        ItermWriter.TryCalculateTransactionBytes(
             256 * 1024 * 1024,
             new Size(1, 1),
             maxSequenceBytes: 84,
@@ -112,12 +112,12 @@ public sealed class WriterTests
         var png = GraphicsImage.FromPng(CreatePngPayload(dataBytes: 0));
         var output = new ArrayBufferWriter<byte>();
 
-        _ = Should.Throw<NotSupportedException>(() => Writer.Write(
+        _ = Should.Throw<NotSupportedException>(() => ItermWriter.Write(
             rgba,
             new Size(1, 1),
             PlacementMode.Contain,
             output));
-        _ = Should.Throw<NotSupportedException>(() => Writer.Write(
+        _ = Should.Throw<NotSupportedException>(() => ItermWriter.Write(
             png,
             new Size(1, 1),
             PlacementMode.Cover,
@@ -135,7 +135,7 @@ public sealed class WriterTests
         output.Write("existing"u8);
         var before = output.WrittenSpan.ToArray();
 
-        var exception = Should.Throw<ArgumentOutOfRangeException>(() => Writer.Write(
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() => ItermWriter.Write(
             image,
             new Size(1, 1),
             (PlacementMode) int.MaxValue,
@@ -152,19 +152,19 @@ public sealed class WriterTests
         var image = GraphicsImage.FromPng(CreatePngPayload(dataBytes: 0));
         var output = new ArrayBufferWriter<byte>();
 
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => Writer.Write(
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => ItermWriter.Write(
             image,
             new Size(2, 3),
             PlacementMode.Contain,
             output,
             maxSequenceBytes: 77));
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => Writer.Write(
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => ItermWriter.Write(
             image,
             new Size(2, 3),
             PlacementMode.Contain,
             output,
             maxOutputBytes: 8));
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => Writer.Write(
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => ItermWriter.Write(
             image,
             new Size(2, 3),
             PlacementMode.Contain,
@@ -181,7 +181,7 @@ public sealed class WriterTests
         var image = GraphicsImage.FromPng(CreatePngPayload(dataBytes: 0));
         var output = new ItermFailingBufferWriter();
 
-        var exception = Should.Throw<InvalidOperationException>(() => Writer.Write(
+        var exception = Should.Throw<InvalidOperationException>(() => ItermWriter.Write(
             image,
             new Size(1, 1),
             PlacementMode.Contain,

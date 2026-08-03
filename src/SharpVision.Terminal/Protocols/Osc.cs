@@ -21,13 +21,13 @@ public static class Osc
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="title">Borrowed UTF-8 title bytes without controls.</param>
     /// <exception cref="ArgumentException"><paramref name="title"/> contains a control byte.</exception>
-    public static void IconAndTitle(Writer writer, ReadOnlySpan<byte> title) => writer.Osc(0, title);
+    public static void IconAndTitle(ProtocolWriter writer, ReadOnlySpan<byte> title) => writer.Osc(0, title);
 
     /// <summary>Sets the window title using OSC 2.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="title">Borrowed UTF-8 title bytes without controls.</param>
     /// <exception cref="ArgumentException"><paramref name="title"/> contains a control byte.</exception>
-    public static void Title(Writer writer, ReadOnlySpan<byte> title) => writer.Osc(2, title);
+    public static void Title(ProtocolWriter writer, ReadOnlySpan<byte> title) => writer.Osc(2, title);
 
     /// <summary>Opens an OSC 8 hyperlink.</summary>
     /// <param name="writer">The validated protocol writer.</param>
@@ -36,7 +36,7 @@ public static class Osc
     /// <exception cref="ArgumentException">A value contains forbidden metadata or control bytes.</exception>
     /// <exception cref="OverflowException">The combined payload length exceeds <see cref="int.MaxValue"/>.</exception>
     public static void OpenHyperlink(
-        Writer writer,
+        ProtocolWriter writer,
         ReadOnlySpan<byte> uri,
         ReadOnlySpan<byte> id = default)
     {
@@ -78,7 +78,7 @@ public static class Osc
 
     /// <summary>Closes the active OSC 8 hyperlink.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    public static void CloseHyperlink(Writer writer) => writer.Osc(8, ";"u8);
+    public static void CloseHyperlink(ProtocolWriter writer) => writer.Osc(8, ";"u8);
 
     /// <summary>Queries one indexed palette color using OSC 4.</summary>
     /// <param name="writer">The validated protocol writer.</param>
@@ -86,7 +86,7 @@ public static class Osc
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="index"/> is outside 0 through 255.
     /// </exception>
-    public static void QueryPalette(Writer writer, int index)
+    public static void QueryPalette(ProtocolWriter writer, int index)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(index, byte.MaxValue);
@@ -101,15 +101,15 @@ public static class Osc
 
     /// <summary>Queries the terminal's default foreground color using OSC 10.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    public static void QueryForeground(Writer writer) => writer.Osc(10, "?"u8);
+    public static void QueryForeground(ProtocolWriter writer) => writer.Osc(10, "?"u8);
 
     /// <summary>Queries the terminal's default background color using OSC 11.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    public static void QueryBackground(Writer writer) => writer.Osc(11, "?"u8);
+    public static void QueryBackground(ProtocolWriter writer) => writer.Osc(11, "?"u8);
 
     /// <summary>Queries iTerm2 feature-reporting capabilities using OSC 1337 ; Capabilities.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    public static void QueryItermCapabilities(Writer writer) => writer.Osc(1337, "Capabilities"u8);
+    public static void QueryItermCapabilities(ProtocolWriter writer) => writer.Osc(1337, "Capabilities"u8);
 
     private static void ValidateIdentifier(ReadOnlySpan<byte> value)
     {

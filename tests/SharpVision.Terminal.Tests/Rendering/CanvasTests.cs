@@ -45,7 +45,7 @@ public sealed class CanvasTests
         var text = new CellStyle(
             ReferenceColors.Get(45),
             Color.Default,
-            Attributes.Bold | Attributes.Overline,
+            TerminalAttributes.Bold | TerminalAttributes.Overline,
             underline: Underline.Curly,
             underlineColor: ReferenceColors.Get(220));
         frame.Canvas.Fill(new Rect(0, 0, 1, 1), new Rune(' '), surface);
@@ -55,7 +55,7 @@ public sealed class CanvasTests
         frame.GetCell(new Point(0, 0)).Style.ShouldBe(new CellStyle(
             ReferenceColors.Get(45),
             ReferenceColors.Get(238),
-            Attributes.Bold | Attributes.Overline,
+            TerminalAttributes.Bold | TerminalAttributes.Overline,
             underline: Underline.Curly,
             underlineColor: ReferenceColors.Get(220)));
     }

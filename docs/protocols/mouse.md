@@ -31,12 +31,12 @@ middle, secondary, back, and forward buttons; modifier bits, motion, release,
 four wheel directions, and the zero-coordinate leave sentinel remain distinct.
 
 Cell reports subtract the wire's one-based origin exactly once. With
-`Input.Options.PixelMouse`, SGR coordinates are retained as zero-based pixels;
-validated `Geometry.Metrics` derive optional cells from exact total dimensions
-and set `IsCellPositionInferred`. Without metrics, pixels remain available and
-cells stay null. Undefined extended buttons, negative/zero ordinary coordinates,
-overlong X10 fields, invalid UTF-8, and malformed decimal forms report once and
-recover at the next input.
+`Input.InputOptions.PixelMouse`, SGR coordinates are retained as zero-based
+pixels; validated `Geometry.CellMetrics` derive optional cells from exact total
+dimensions and set `IsCellPositionInferred`. Without metrics, pixels remain
+available and cells stay null. Undefined extended buttons, negative/zero
+ordinary coordinates, overlong X10 fields, invalid UTF-8, and malformed decimal
+forms report once and recover at the next input.
 
 Exact metrics preserve total cell and pixel dimensions. For an in-window pixel
 coordinate, each axis maps as `floor(pixel * cellCount / pixelCount)` using a
@@ -59,10 +59,10 @@ cleanup are proved by the runtime session; the UI layer routes these values
 through pointer capture and hit testing to final control output.
 
 `Modes.Mouse` owns exact mode 9/1000/1002/1003 tracking and 1005/1006/1015/1016
-coordinate commands. `Runtime.Options` selects the pair; `Runtime.Session`
-enables cell input only with proven `CellMouse` support and pixel input only
-with proven `PixelMouse` support, then restores coordinate and tracking modes in
-reverse. Tentative terminal-name hints never activate them.
+coordinate commands. `Runtime.TerminalOptions` selects the pair;
+`Runtime.Session` enables cell input only with proven `CellMouse` support and
+pixel input only with proven `PixelMouse` support, then restores coordinate and
+tracking modes in reverse. Tentative terminal-name hints never activate them.
 
 ## Sources
 

@@ -7,7 +7,7 @@ namespace SharpVision.Terminal.Capabilities;
 /// Publishes an immutable terminal feature profile.
 /// </summary>
 [PublicAPI]
-public sealed record Capabilities
+public sealed record TerminalCapabilities
 {
     /// <summary>Gets the conservative profile used before detection.</summary>
     public static TerminalCapabilities Conservative { get; } = new();

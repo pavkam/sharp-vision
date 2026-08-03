@@ -7,8 +7,7 @@ using Terminal.Capabilities;
 using Terminal.Clipboard;
 using Terminal.Kitty.Clipboard;
 
-using KittyClipboardWriter = Terminal.Kitty.Clipboard.Writer;
-using ProtocolWriter = Writer;
+using KittyClipboardWriter = Terminal.Kitty.Clipboard.KittyClipboardWriter;
 
 /// <summary>Encodes implemented output protocols and posts them through the ordered write path.</summary>
 internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard

@@ -15,7 +15,7 @@ public sealed class WriterTests
     public void Escape_WhenFinalIsValid_WritesExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         writer.Escape([], (byte) '7');
 
@@ -29,7 +29,7 @@ public sealed class WriterTests
     public void Csi_WhenParametersAreValid_WritesExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         writer.Csi("12;4"u8, [], (byte) 'H');
 
@@ -44,7 +44,7 @@ public sealed class WriterTests
     public void Osc_WhenPayloadIsValid_WritesExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         writer.Osc(2, "title"u8);
 
@@ -76,7 +76,7 @@ public sealed class WriterTests
     public void Command_WhenKindIsValid_WritesExactBytes(SequenceKind kind, byte introducer)
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         writer.Command(kind, "payload"u8);
 
@@ -103,7 +103,7 @@ public sealed class WriterTests
     public void Dcs_WhenHeaderAndPayloadAreValid_WritesExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         writer.Dcs("1;2"u8, "$"u8, (byte) 'q', "data"u8);
 
@@ -132,7 +132,7 @@ public sealed class WriterTests
     public void Write_WhenGrammarIsInvalid_ThrowsBeforeWriting()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => writer.Escape([], 0x2f));
         _ = Should.Throw<ArgumentException>(() => writer.Escape("0"u8, (byte) '7'));
@@ -152,5 +152,5 @@ public sealed class WriterTests
     /// </summary>
     [Fact]
     public void Constructor_WhenDestinationIsNull_ThrowsArgumentNullException() =>
-        _ = Should.Throw<ArgumentNullException>(static () => new Writer(null!));
+        _ = Should.Throw<ArgumentNullException>(static () => new ProtocolWriter(null!));
 }

@@ -5,13 +5,13 @@ namespace SharpVision.Terminal.Unicode;
 
 /// <summary>Defines one immutable application-wide Unicode cell policy.</summary>
 [PublicAPI]
-public sealed record Policy
+public sealed record UnicodePolicy
 {
     /// <summary>Initializes validated Unicode cell policy choices.</summary>
     /// <param name="ambiguousWidth">The East Asian Ambiguous width policy.</param>
     /// <param name="orphanPresentation">The base-less cluster presentation.</param>
     /// <exception cref="ArgumentOutOfRangeException">A policy value is unknown.</exception>
-    public Policy(
+    public UnicodePolicy(
         Ambiguous ambiguousWidth = Ambiguous.Narrow,
         Presentation orphanPresentation = Presentation.Replacement)
     {
@@ -36,7 +36,7 @@ public sealed record Policy
     }
 
     /// <summary>Gets the default pinned narrow replacement policy.</summary>
-    public static Policy Default { get; } = new();
+    public static UnicodePolicy Default { get; } = new();
 
     /// <summary>Gets the pinned Unicode Character Database version.</summary>
     public string UnicodeVersion { get; } = UnicodeInfo.Version;

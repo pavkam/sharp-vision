@@ -5,7 +5,6 @@ namespace SharpVision.Tests.Styling;
 
 using SharpVision.Tests.Controls;
 
-using TerminalAttributes = Attributes;
 
 /// <summary>Verifies ambient-face inheritance decisions against the fully folded appearance.</summary>
 public sealed class AppearanceResolverTests

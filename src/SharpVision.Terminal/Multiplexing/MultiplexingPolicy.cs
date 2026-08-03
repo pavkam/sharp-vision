@@ -11,13 +11,13 @@ using Capabilities;
 /// never establishes an outer terminal profile or enables passthrough.
 /// </remarks>
 [PublicAPI]
-public sealed class Policy
+public sealed class MultiplexingPolicy
 {
     private const int _maximumDepth = 16;
     private const int _maximumEnvelopeBytes = 16_777_216;
-    private const Operation _allOperations = Operation.CapabilityQueries |
-                                             Operation.Clipboard |
-                                             Operation.Graphics;
+    private const MultiplexingOperation _allOperations = MultiplexingOperation.CapabilityQueries |
+                                             MultiplexingOperation.Clipboard |
+                                             MultiplexingOperation.Graphics;
     private readonly ReadOnlyCollection<MultiplexerKind> _layers;
 
     /// <summary>Initializes one explicit multiplexer routing policy.</summary>
@@ -31,12 +31,12 @@ public sealed class Policy
     /// <exception cref="ArgumentNullException"><paramref name="layers"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException">An enum or bound is invalid.</exception>
     /// <exception cref="ArgumentException">A layer is none or the route exceeds <paramref name="maxDepth"/>.</exception>
-    public Policy(
+    public MultiplexingPolicy(
         IReadOnlyList<MultiplexerKind> layers,
         TerminalProfile? outerProfile,
         PassthroughMode passthrough = PassthroughMode.Disabled,
         bool paneVisible = true,
-        Operation approvedOperations = Operation.None,
+        MultiplexingOperation approvedOperations = MultiplexingOperation.None,
         int maxDepth = 4,
         int maxEnvelopeBytes = 1_048_576)
     {
@@ -112,7 +112,7 @@ public sealed class Policy
     public bool PaneVisible { get; }
 
     /// <summary>Gets the approved typed operation families.</summary>
-    public Operation ApprovedOperations { get; }
+    public MultiplexingOperation ApprovedOperations { get; }
 
     /// <summary>Gets the maximum accepted nesting depth.</summary>
     public int MaxDepth { get; }
@@ -123,7 +123,7 @@ public sealed class Policy
     /// <summary>Gets whether explicit evidence permits any passthrough operation.</summary>
     public bool IsActive => _layers.Count > 0 &&
                             OuterProfile is not null &&
-                            ApprovedOperations != Operation.None &&
+                            ApprovedOperations != MultiplexingOperation.None &&
                             (Passthrough == PassthroughMode.All ||
                              (Passthrough == PassthroughMode.Visible && PaneVisible));
 
@@ -163,7 +163,7 @@ public sealed class Policy
     /// <param name="environment">The non-null environment snapshot.</param>
     /// <returns>A conservative policy with no outer profile or approved operation.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="environment"/> is null.</exception>
-    public static Policy Detect(IReadOnlyDictionary<string, string?> environment)
+    public static MultiplexingPolicy Detect(IReadOnlyDictionary<string, string?> environment)
     {
         ArgumentNullException.ThrowIfNull(environment);
         _ = environment.TryGetValue(EnvironmentNames.Term, out var term);
@@ -175,29 +175,29 @@ public sealed class Policy
                     ? MultiplexerKind.Screen
                     : MultiplexerKind.None;
 
-        return new Policy(kind == MultiplexerKind.None ? [] : [kind], outerProfile: null);
+        return new MultiplexingPolicy(kind == MultiplexerKind.None ? [] : [kind], outerProfile: null);
     }
 
     /// <summary>Returns whether one exact typed operation family is authorized.</summary>
     /// <param name="operation">One defined non-composite operation family.</param>
     /// <returns>True when routing is active and the family is approved.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="operation"/> is none, composite, or unknown.</exception>
-    public bool Allows(Operation operation)
+    public bool Allows(MultiplexingOperation operation)
     {
         return operation switch
         {
-            Operation.None => throw InvalidOperation(operation),
-            Operation.CapabilityQueries =>
+            MultiplexingOperation.None => throw InvalidOperation(operation),
+            MultiplexingOperation.CapabilityQueries =>
                 IsActive && (ApprovedOperations & operation) == operation,
-            Operation.Clipboard =>
+            MultiplexingOperation.Clipboard =>
                 IsActive && (ApprovedOperations & operation) == operation,
-            Operation.Graphics =>
+            MultiplexingOperation.Graphics =>
                 IsActive && (ApprovedOperations & operation) == operation,
             _ => throw InvalidOperation(operation)
         };
     }
 
-    private static ArgumentOutOfRangeException InvalidOperation(Operation operation) => new(
+    private static ArgumentOutOfRangeException InvalidOperation(MultiplexingOperation operation) => new(
         nameof(operation),
         operation,
         "One typed operation family is required.");

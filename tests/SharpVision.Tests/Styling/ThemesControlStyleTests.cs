@@ -27,7 +27,7 @@ public sealed class ThemesControlStyleTests
         var focused = theme.Input.Resolve(VisualState.Focused);
 
         theme.Resolve(focused.Face.Foreground).ShouldBe(Color.FromHex("#5555ff"));
-        theme.Resolve(focused.Face.Attributes).ShouldBe(Attributes.Bold);
+        theme.Resolve(focused.Face.Attributes).ShouldBe(TerminalAttributes.Bold);
         theme.Resolve(focused.Border.Foreground).ShouldBe(Color.FromHex("#5555ff"));
         focused.Face.Background.ShouldBe(normal.Face.Background);
     }

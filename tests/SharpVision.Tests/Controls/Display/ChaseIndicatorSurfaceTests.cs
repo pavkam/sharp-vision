@@ -353,9 +353,9 @@ public sealed class ChaseIndicatorSurfaceTests
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldNotBe(firstHead);
         surface.Cell(new Point(4, 0)).Style.Foreground.ShouldNotBe(firstTrack);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(secondTheme.ResolveColor(ThemeColor.Accent), ColorDepth.Basic16));
+            TerminalPalette.Project(secondTheme.ResolveColor(ThemeColor.Accent), ColorDepth.Basic16));
         surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(secondTheme.ResolveColor(ThemeColor.Muted), ColorDepth.Basic16));
+            TerminalPalette.Project(secondTheme.ResolveColor(ThemeColor.Muted), ColorDepth.Basic16));
     }
 
     /// <summary>Verifies the default trail endpoint follows the Theme status palette independently.</summary>
@@ -401,7 +401,7 @@ public sealed class ChaseIndicatorSurfaceTests
 
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldNotBe(firstTrail);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(secondTheme.ResolveColor(ThemeColor.Muted), ColorDepth.Basic16));
+            TerminalPalette.Project(secondTheme.ResolveColor(ThemeColor.Muted), ColorDepth.Basic16));
     }
 
     /// <summary>Verifies vertical spacing and cyclic trail history through one endpoint.</summary>
@@ -454,44 +454,44 @@ public sealed class ChaseIndicatorSurfaceTests
 
         // Act and assert: N - 1 starts at the head color while N - 2 is older.
         surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(Color.Rgb(255, 255, 255), ColorDepth.Basic16));
+            TerminalPalette.Project(Color.Rgb(255, 255, 255), ColorDepth.Basic16));
         surface.Cell(new Point(2, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(Color.Rgb(128, 128, 128), ColorDepth.Basic16));
+            TerminalPalette.Project(Color.Rgb(128, 128, 128), ColorDepth.Basic16));
 
         await surface.AdvanceAsync(
             TimeSpan.FromMilliseconds(50),
             "refresh independent chase fades");
         surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(Color.Rgb(223, 223, 223), ColorDepth.Basic16));
+            TerminalPalette.Project(Color.Rgb(223, 223, 223), ColorDepth.Basic16));
         surface.Cell(new Point(2, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(Color.Rgb(96, 96, 96), ColorDepth.Basic16));
+            TerminalPalette.Project(Color.Rgb(96, 96, 96), ColorDepth.Basic16));
 
         await surface.AdvanceAsync(
             TimeSpan.FromMilliseconds(150),
             "move the chase head after intermediate fades");
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(Color.Rgb(255, 255, 255), ColorDepth.Basic16));
+            TerminalPalette.Project(Color.Rgb(255, 255, 255), ColorDepth.Basic16));
         surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(Color.Rgb(255, 255, 255), ColorDepth.Basic16));
+            TerminalPalette.Project(Color.Rgb(255, 255, 255), ColorDepth.Basic16));
 
         await surface.UpdateAsync(() => indicator.IsPlaying = false, "pause chase fades");
         await surface.AdvanceAsync(TimeSpan.FromMilliseconds(200), "hold paused chase fades");
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(Color.Rgb(255, 255, 255), ColorDepth.Basic16));
+            TerminalPalette.Project(Color.Rgb(255, 255, 255), ColorDepth.Basic16));
 
         await surface.UpdateAsync(() => indicator.IsPlaying = true, "resume chase fades");
         await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "continue chase fades");
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(Color.Rgb(223, 223, 223), ColorDepth.Basic16));
+            TerminalPalette.Project(Color.Rgb(223, 223, 223), ColorDepth.Basic16));
 
         await surface.UpdateAsync(
             () => indicator.Interval = TimeSpan.FromMilliseconds(400),
             "replace movement interval without recoloring trail");
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(Color.Rgb(223, 223, 223), ColorDepth.Basic16));
+            TerminalPalette.Project(Color.Rgb(223, 223, 223), ColorDepth.Basic16));
         await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "fade under new movement interval");
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(Color.Rgb(159, 159, 159), ColorDepth.Basic16));
+            TerminalPalette.Project(Color.Rgb(159, 159, 159), ColorDepth.Basic16));
     }
 
     /// <summary>Verifies a wrapping endpoint remains and fades after the head restarts.</summary>
@@ -525,9 +525,9 @@ public sealed class ChaseIndicatorSurfaceTests
 
         // Assert
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(Color.Rgb(223, 223, 223), ColorDepth.Basic16));
+            TerminalPalette.Project(Color.Rgb(223, 223, 223), ColorDepth.Basic16));
         surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(Color.Rgb(255, 255, 255), ColorDepth.Basic16));
+            TerminalPalette.Project(Color.Rgb(255, 255, 255), ColorDepth.Basic16));
     }
 
     /// <summary>Verifies spread frames fade both abandoned arms with one shared timestamp.</summary>
@@ -559,11 +559,11 @@ public sealed class ChaseIndicatorSurfaceTests
         await surface.AdvanceAsync(TimeSpan.FromMilliseconds(200), "spread away from shared center");
         await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "fade shared center");
         surface.Cell(new Point(2, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(Color.Rgb(223, 223, 223), ColorDepth.Basic16));
+            TerminalPalette.Project(Color.Rgb(223, 223, 223), ColorDepth.Basic16));
 
         await surface.AdvanceAsync(TimeSpan.FromMilliseconds(150), "spread to both endpoints");
         await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "fade both abandoned spread arms");
-        var expected = Palette.Project(Color.Rgb(223, 223, 223), ColorDepth.Basic16);
+        var expected = TerminalPalette.Project(Color.Rgb(223, 223, 223), ColorDepth.Basic16);
         surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(expected);
         surface.Cell(new Point(3, 0)).Style.Foreground.ShouldBe(expected);
     }
@@ -573,7 +573,7 @@ public sealed class ChaseIndicatorSurfaceTests
             AppearanceTestValues.Face(
                 foreground: foreground,
                 background: Color.Transparent,
-                attributes: Attributes.None),
+                attributes: TerminalAttributes.None),
             AppearanceTestValues.Border(BorderSide.None),
             AppearanceTestValues.Shadow(visible: false)));
 

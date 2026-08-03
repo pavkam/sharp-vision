@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Kitty.Graphics;
 
 /// <summary>Identifies direct Kitty image source encodings.</summary>
 [PublicAPI]
-public enum Format
+public enum KittyGraphicsFormat
 {
     /// <summary>Three bytes per pixel in RGB order, reserved for the official capability query.</summary>
     Rgb = 24,

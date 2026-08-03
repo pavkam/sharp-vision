@@ -12,7 +12,6 @@ using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Multiplexing;
 
-using MultiplexingOperation = Terminal.Multiplexing.Operation;
 
 /// <summary>
 /// Verifies terminal startup, ordered events, failure recovery, and reverse cleanup.
@@ -26,7 +25,7 @@ public sealed class SessionTests
         await using SessionTransport transport = new();
         await using FakeResizeSource resize = new();
         var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" })
@@ -61,7 +60,7 @@ public sealed class SessionTests
                 CellMouse = supported,
                 KittyKeyboard = supported
             });
-        var policy = new Policy(
+        var policy = new MultiplexingPolicy(
             [MultiplexerKind.Tmux],
             outerProfile,
             PassthroughMode.All,
@@ -74,7 +73,7 @@ public sealed class SessionTests
             MaxConcurrentQueries = 1,
             QueryTimeout = TimeSpan.FromMinutes(1)
         };
-        var options = new RuntimeOptions
+        var options = new TerminalOptions
         {
             AlternateScreen = false,
             HideCursor = false,
@@ -119,7 +118,7 @@ public sealed class SessionTests
                 KittyGraphics = supported,
                 Sixel = supported
             });
-        var policy = new Policy(
+        var policy = new MultiplexingPolicy(
             [MultiplexerKind.Tmux],
             outerProfile,
             PassthroughMode.All,
@@ -136,7 +135,7 @@ public sealed class SessionTests
         }
 
         transport.Close();
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?> { ["TERM"] = "tmux-256color" },
@@ -165,7 +164,7 @@ public sealed class SessionTests
         var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var outerProfile = TerminalProfile.CreateAnsi(
             TerminalCapabilities.Conservative with { Sixel = supported });
-        var policy = new Policy(
+        var policy = new MultiplexingPolicy(
             [MultiplexerKind.Screen],
             outerProfile,
             PassthroughMode.All,
@@ -181,7 +180,7 @@ public sealed class SessionTests
         }
 
         transport.Close();
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?> { ["TERM"] = "screen-256color" },
@@ -203,8 +202,8 @@ public sealed class SessionTests
     [Fact]
     public void Options_WhenProfileOrCapabilitiesValueIsNull_Throws()
     {
-        _ = Should.Throw<ArgumentNullException>(() => new RuntimeOptions { Profile = null! });
-        _ = Should.Throw<ArgumentNullException>(() => new RuntimeOptions { Capabilities = null! });
+        _ = Should.Throw<ArgumentNullException>(() => new TerminalOptions { Profile = null! });
+        _ = Should.Throw<ArgumentNullException>(() => new TerminalOptions { Capabilities = null! });
     }
 
     /// <summary>Verifies Options compatibility preserves exact capabilities and initializer source order.</summary>
@@ -216,12 +215,12 @@ public sealed class SessionTests
         var profile = TerminalProfile.CreateAnsi(
             TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.Indexed256 });
 
-        var capabilitiesLast = new RuntimeOptions
+        var capabilitiesLast = new TerminalOptions
         {
             Profile = profile,
             Capabilities = capabilities
         };
-        var profileLast = new RuntimeOptions
+        var profileLast = new TerminalOptions
         {
             Capabilities = capabilities,
             Profile = profile
@@ -257,7 +256,7 @@ public sealed class SessionTests
             transport,
             resize,
             sink,
-            RuntimeOptions.Minimal with { Profile = profile }));
+            TerminalOptions.Minimal with { Profile = profile }));
 
         // Assert
         transport.JoinedWrites.ShouldBeEmpty();
@@ -272,14 +271,14 @@ public sealed class SessionTests
         await using FakeResizeSource resize = new();
         var sink = new RuntimeSink();
         transport.Close();
-        await using Session session = new(transport, resize, sink, RuntimeOptions.Minimal);
+        await using Session session = new(transport, resize, sink, TerminalOptions.Minimal);
 
         // Act
         await session.RunAsync(TestContext.Current.CancellationToken);
 
         // Assert
-        RuntimeOptions.Minimal.Profile.Description.Suitability.ShouldBe(Suitability.Usable);
-        RuntimeOptions.Minimal.ModifyOtherKeys.ShouldBeNull();
+        TerminalOptions.Minimal.Profile.Description.Suitability.ShouldBe(Suitability.Usable);
+        TerminalOptions.Minimal.ModifyOtherKeys.ShouldBeNull();
         transport.JoinedWrites.ShouldBeEmpty();
     }
 
@@ -297,7 +296,7 @@ public sealed class SessionTests
             TerminalCapabilities.Conservative,
             ansi.Programs,
             new KeyMap([new KeyBinding("\u001b[99~"u8, Code.F63)]));
-        var options = RuntimeOptions.Minimal with { Profile = profile };
+        var options = TerminalOptions.Minimal with { Profile = profile };
         transport.Input("\u001b[99~"u8.ToArray());
         transport.Close();
         await using Session session = new(transport, resize, sink, options);
@@ -320,7 +319,7 @@ public sealed class SessionTests
         var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var profile = TerminalProfile.CreateAnsi(
             TerminalCapabilities.Conservative with { Sixel = supported });
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Profile = profile,
             Negotiation = new NegotiationOptions(new Dictionary<string, string?>())
@@ -343,7 +342,7 @@ public sealed class SessionTests
         await using SessionTransport transport = new();
         await using FakeResizeSource resize = new();
         var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Focus = true,
             Negotiation = new NegotiationOptions(
@@ -380,7 +379,7 @@ public sealed class SessionTests
         var sink = new RuntimeSink();
         var clock = new ManualTimeProvider();
         var limits = QueryLimits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" },
@@ -420,7 +419,7 @@ public sealed class SessionTests
         await using SessionTransport transport = new();
         await using FakeResizeSource resize = new();
         var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>(),
@@ -449,7 +448,7 @@ public sealed class SessionTests
         var sink = new RuntimeSink();
         var clock = new ManualTimeProvider();
         var limits = QueryLimits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>(),
@@ -484,7 +483,7 @@ public sealed class SessionTests
         await using SessionTransport transport = new();
         await using FakeResizeSource resize = new();
         var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>(),
@@ -524,7 +523,7 @@ public sealed class SessionTests
         await using SessionTransport transport = new();
         await using FakeResizeSource resize = new();
         var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Focus = true,
             Paste = true,
@@ -564,7 +563,7 @@ public sealed class SessionTests
             new Size(1200, 800));
         await using FakeResizeSource resize = new() { Current = dimensions };
         var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(new Dictionary<string, string?>())
         };
@@ -592,7 +591,7 @@ public sealed class SessionTests
         var dimensions = new Dimensions(new Size(80, 24), new Size(800, 480));
         await using FakeResizeSource resize = new() { Current = dimensions };
         var sink = new RuntimeSink();
-        await using Session session = new(transport, resize, sink, RuntimeOptions.Minimal);
+        await using Session session = new(transport, resize, sink, TerminalOptions.Minimal);
         var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
 
         // Act
@@ -615,7 +614,7 @@ public sealed class SessionTests
         var dimensions = new Dimensions(new Size(80, 24), new Size(800, 480));
         await using FakeResizeSource resize = new() { Current = dimensions };
         var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(new Dictionary<string, string?>())
         };
@@ -638,7 +637,7 @@ public sealed class SessionTests
         await using SessionTransport transport = new() { FailWriteAt = 1 };
         await using FakeResizeSource resize = new();
         var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(new Dictionary<string, string?>())
         };
@@ -665,7 +664,7 @@ public sealed class SessionTests
         var sink = new RuntimeSink();
         var clock = new ManualTimeProvider();
         var limits = QueryLimits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Focus = true,
             Negotiation = new NegotiationOptions(
@@ -707,7 +706,7 @@ public sealed class SessionTests
         await using SessionTransport transport = new();
         await using FakeResizeSource resize = new();
         var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             AlternateScreen = true,
             HideCursor = true,
@@ -744,7 +743,7 @@ public sealed class SessionTests
             transport,
             resize,
             sink,
-            RuntimeOptions.Minimal);
+            TerminalOptions.Minimal);
 
         // Act
         await session.RunAsync(TestContext.Current.CancellationToken);
@@ -771,7 +770,7 @@ public sealed class SessionTests
             transport,
             resize,
             sink,
-            new RuntimeOptions { Capabilities = capabilities });
+            new TerminalOptions { Capabilities = capabilities });
 
         await session.RunAsync(TestContext.Current.CancellationToken);
 
@@ -797,7 +796,7 @@ public sealed class SessionTests
             transport,
             resize,
             sink,
-            RuntimeOptions.Minimal);
+            TerminalOptions.Minimal);
         var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
         var expected = new Dimensions(
             new Size(120, 40),
@@ -836,7 +835,7 @@ public sealed class SessionTests
         var expected = new Dimensions(new Size(120, 40), new Size(1200, 800));
         resize.Resize(expected);
 
-        await using Session session = new(transport, resize, sink, RuntimeOptions.Minimal);
+        await using Session session = new(transport, resize, sink, TerminalOptions.Minimal);
         var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
 
         await sink.ResizeReceived.Task.WaitAsync(
@@ -872,7 +871,7 @@ public sealed class SessionTests
         transport.Close();
         resize.Resize(expected);
 
-        await using Session session = new(transport, resize, sink, RuntimeOptions.Minimal);
+        await using Session session = new(transport, resize, sink, TerminalOptions.Minimal);
 
         await session.RunAsync(TestContext.Current.CancellationToken);
 
@@ -894,7 +893,7 @@ public sealed class SessionTests
             transport,
             resize,
             sink,
-            new RuntimeOptions { Capabilities = Supported() });
+            new TerminalOptions { Capabilities = Supported() });
 
         var thrown = await Should.ThrowAsync<IOException>(async () =>
             await session.RunAsync(TestContext.Current.CancellationToken));
@@ -916,7 +915,7 @@ public sealed class SessionTests
             transport,
             resize,
             sink,
-            new RuntimeOptions { Capabilities = Supported() });
+            new TerminalOptions { Capabilities = Supported() });
         using var cancellation = new CancellationTokenSource();
         var running = session.RunAsync(cancellation.Token).AsTask();
         await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
@@ -944,7 +943,7 @@ public sealed class SessionTests
             transport,
             resize,
             sink,
-            new RuntimeOptions { Capabilities = Supported() });
+            new TerminalOptions { Capabilities = Supported() });
 
         var thrown = await Should.ThrowAsync<IOException>(async () =>
             await session.RunAsync(TestContext.Current.CancellationToken));
@@ -968,7 +967,7 @@ public sealed class SessionTests
             transport,
             resize,
             sink,
-            new RuntimeOptions { Capabilities = Supported() });
+            new TerminalOptions { Capabilities = Supported() });
 
         var thrown = await Should.ThrowAsync<InvalidOperationException>(async () =>
             await session.RunAsync(TestContext.Current.CancellationToken));
@@ -998,7 +997,7 @@ public sealed class SessionTests
                     () => session!.DisposeAsync().AsTask().GetAwaiter().GetResult())
         };
         transport.Close();
-        session = new Session(transport, resize, sink, RuntimeOptions.Minimal);
+        session = new Session(transport, resize, sink, TerminalOptions.Minimal);
 
         await session.RunAsync(TestContext.Current.CancellationToken);
 
@@ -1017,7 +1016,7 @@ public sealed class SessionTests
         var resize = new FakeResizeSource();
         var sink = new RuntimeSink();
         transport.Close();
-        var session = new Session(transport, resize, sink, RuntimeOptions.Minimal);
+        var session = new Session(transport, resize, sink, TerminalOptions.Minimal);
         await session.RunAsync(TestContext.Current.CancellationToken);
 
         await session.DisposeAsync();
@@ -1033,7 +1032,7 @@ public sealed class SessionTests
         var sink = new RuntimeSink();
         var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         var capabilities = TerminalCapabilities.Conservative with { XtermKeyboard = supported };
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Capabilities = capabilities,
             Keyboard = Enhancement.Disambiguate,
@@ -1060,7 +1059,7 @@ public sealed class SessionTests
             KittyKeyboard = supported,
             XtermKeyboard = supported
         };
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Capabilities = capabilities,
             Keyboard = Enhancement.Disambiguate,
@@ -1082,7 +1081,7 @@ public sealed class SessionTests
         await using FakeResizeSource resize = new();
         var sink = new RuntimeSink();
         var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Capabilities = TerminalCapabilities.Conservative with { XtermKeyboard = supported },
             ModifyOtherKeys = 2
@@ -1106,7 +1105,7 @@ public sealed class SessionTests
         var transport = new SessionTransport();
         var resize = new FailingResizeSource();
         var sink = new RuntimeSink();
-        var session = new Session(transport, resize, sink, RuntimeOptions.Minimal);
+        var session = new Session(transport, resize, sink, TerminalOptions.Minimal);
 
         var thrown = await Should.ThrowAsync<IOException>(async () => await session.DisposeAsync());
 
@@ -1125,7 +1124,7 @@ public sealed class SessionTests
         var transport = new SessionTransport();
         var resize = new FailingResizeSource();
         var sink = new RuntimeSink();
-        var session = new Session(transport, resize, sink, RuntimeOptions.Minimal);
+        var session = new Session(transport, resize, sink, TerminalOptions.Minimal);
         _ = await Should.ThrowAsync<IOException>(async () => await session.DisposeAsync());
 
         await session.DisposeAsync();
@@ -1148,7 +1147,7 @@ public sealed class SessionTests
             transport,
             resize,
             sink,
-            new RuntimeOptions { Capabilities = Supported() });
+            new TerminalOptions { Capabilities = Supported() });
         var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
         await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
 
@@ -1174,7 +1173,7 @@ public sealed class SessionTests
             transport,
             resize,
             sink,
-            new RuntimeOptions { Capabilities = Supported() });
+            new TerminalOptions { Capabilities = Supported() });
         var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
         await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
 
@@ -1199,7 +1198,7 @@ public sealed class SessionTests
         var transport = new SessionTransport();
         await using FakeResizeSource resize = new();
         var sink = new RuntimeSink();
-        var session = new Session(transport, resize, sink, RuntimeOptions.Minimal);
+        var session = new Session(transport, resize, sink, TerminalOptions.Minimal);
         await session.DisposeAsync();
 
         var thrown = await Should.ThrowAsync<ObjectDisposedException>(async () =>
@@ -1220,7 +1219,7 @@ public sealed class SessionTests
         await using FakeResizeSource resize = new();
         var failure = new InvalidOperationException("resize sink failed");
         var sink = new RuntimeSink { ResizeFailure = failure };
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             ReadBufferSize = 256,
             CleanupTimeout = TimeSpan.FromMilliseconds(50)
@@ -1248,7 +1247,7 @@ public sealed class SessionTests
         await using PendingReadTransport transport = new();
         await using FakeResizeSource resize = new();
         var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with { CleanupTimeout = TimeSpan.FromSeconds(30) };
+        var options = TerminalOptions.Minimal with { CleanupTimeout = TimeSpan.FromSeconds(30) };
         await using Session session = new(transport, resize, sink, options);
         using var cancellation = new CancellationTokenSource();
         var running = session.RunAsync(cancellation.Token).AsTask();
@@ -1274,7 +1273,7 @@ public sealed class SessionTests
         await using PendingReadTransport transport = new();
         await using FakeResizeSource resize = new();
         var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with { CleanupTimeout = TimeSpan.FromMilliseconds(50) };
+        var options = TerminalOptions.Minimal with { CleanupTimeout = TimeSpan.FromMilliseconds(50) };
         await using Session session = new(transport, resize, sink, options);
         using var cancellation = new CancellationTokenSource();
         var running = session.RunAsync(cancellation.Token).AsTask();

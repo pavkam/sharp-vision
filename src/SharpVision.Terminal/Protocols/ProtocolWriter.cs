@@ -15,12 +15,12 @@ namespace SharpVision.Terminal.Protocols;
 /// <example>
 /// <code>
 /// var destination = new ArrayBufferWriter&lt;byte&gt;();
-/// var writer = new Writer(destination);
+/// var writer = new ProtocolWriter(destination);
 /// writer.Csi("2"u8, [], (byte)'J');
 /// </code>
 /// </example>
 [PublicAPI]
-public readonly struct Writer
+public readonly struct ProtocolWriter
 {
     private readonly IBufferWriter<byte> _destination;
 
@@ -31,7 +31,7 @@ public readonly struct Writer
     /// <exception cref="ArgumentNullException">
     /// <paramref name="destination"/> is <see langword="null"/>.
     /// </exception>
-    public Writer(IBufferWriter<byte> destination)
+    public ProtocolWriter(IBufferWriter<byte> destination)
     {
         ArgumentNullException.ThrowIfNull(destination);
 

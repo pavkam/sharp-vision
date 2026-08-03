@@ -6,7 +6,7 @@ namespace SharpVision.Tests.Support;
 using GraphicsImage = Terminal.Graphics.ImageSource;
 using PlacementMode = Terminal.Graphics.PlacementMode;
 #pragma warning disable IDE0001 // Keep the terminal drawing alias explicit after retiring layout Canvas.
-using TerminalCanvas = Terminal.Rendering.Canvas;
+using TerminalCanvas = Terminal.Rendering.TerminalCanvas;
 #pragma warning restore IDE0001
 
 /// <summary>Draws a deterministic cell underlay followed by one semantic image placement.</summary>

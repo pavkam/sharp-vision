@@ -85,7 +85,7 @@ public sealed class WindowSurfaceTests
         };
         Overlay.SetLeft(outside, Length.Cells(12));
         var root = new Overlay { Children = { window, outside } };
-        var capabilities = Capabilities.Conservative with { ColorDepth = ColorDepth.TrueColor };
+        var capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor };
         var options = TerminalOptions.Minimal with { Capabilities = capabilities };
         await using var surface = await ComponentSurface.MountAsync(
             root,
@@ -164,7 +164,7 @@ public sealed class WindowSurfaceTests
             TestContext.Current.CancellationToken);
 
         // Assert
-        var expected = Palette.Project(
+        var expected = TerminalPalette.Project(
             ThemeColorHelper.WindowBackground(window.Theme.ShouldNotBeNull()),
             ColorDepth.Basic16);
         surface.Cell(new Point(1, 1)).Style.Background.ShouldBe(expected);
@@ -280,13 +280,13 @@ public sealed class WindowSurfaceTests
             new Size(14, 6),
             themeA,
             TestContext.Current.CancellationToken);
-        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(Palette.Project(Color.Rgb(10, 20, 30), ColorDepth.Basic16));
+        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(TerminalPalette.Project(Color.Rgb(10, 20, 30), ColorDepth.Basic16));
 
         // Act
         await surface.UpdateAsync(() => surface.Application.Theme = themeB, "swap FocusedText-only theme");
 
         // Assert
-        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(Palette.Project(Color.Rgb(200, 210, 220), ColorDepth.Basic16));
+        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(TerminalPalette.Project(Color.Rgb(200, 210, 220), ColorDepth.Basic16));
     }
 
     private static Theme WithColor(ThemeColor role, Color value)
@@ -816,19 +816,19 @@ public sealed class WindowSurfaceTests
         var rightShadow = surface.Cell(new Point(10, 0));
         rightShadow.Text.ShouldBe("▄");
         rightShadow.Style.Background.ShouldBe(ReferenceColors.Get(0));
-        rightShadow.Style.Attributes.ShouldBe(Attributes.Dim);
+        rightShadow.Style.Attributes.ShouldBe(TerminalAttributes.Dim);
 
         // Assert: bottom row shadow uses half-block with transparent background
         var bottomShadow = surface.Cell(new Point(1, 3));
         bottomShadow.Text.ShouldBe("▀");
         bottomShadow.Style.Background.ShouldBe(ReferenceColors.Get(0));
-        bottomShadow.Style.Attributes.ShouldBe(Attributes.Dim);
+        bottomShadow.Style.Attributes.ShouldBe(TerminalAttributes.Dim);
 
         // Assert: corner cell uses full block with transparent background
         var cornerShadow = surface.Cell(new Point(10, 3));
         cornerShadow.Text.ShouldBe("▀");
         cornerShadow.Style.Background.ShouldBe(ReferenceColors.Get(0));
-        cornerShadow.Style.Attributes.ShouldBe(Attributes.Dim);
+        cornerShadow.Style.Attributes.ShouldBe(TerminalAttributes.Dim);
     }
 
     /// <summary>Verifies retained content focus, fallback activation, hover ancestry, and unavailable cleanup.</summary>
@@ -975,15 +975,15 @@ public sealed class WindowSurfaceTests
 
         // Assert — shadow cell below the window body has Dim attributes
         var shadowPoint = new Point(window.Bounds.X + 2, window.Bounds.Bottom);
-        surface.Cell(shadowPoint).Style.Attributes.ShouldBe(Attributes.Dim);
+        surface.Cell(shadowPoint).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
 
         // Assert — shadow cell to the right has Dim attributes
         var rightShadow = new Point(window.Bounds.Right, window.Bounds.Y + 1);
-        surface.Cell(rightShadow).Style.Attributes.ShouldBe(Attributes.Dim);
+        surface.Cell(rightShadow).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
 
         // Assert — body cell does NOT have Dim attributes
         var bodyCell = new Point(window.Bounds.X + 1, window.Bounds.Y + 1);
-        surface.Cell(bodyCell).Style.Attributes.ShouldNotBe(Attributes.Dim);
+        surface.Cell(bodyCell).Style.Attributes.ShouldNotBe(TerminalAttributes.Dim);
     }
 
     /// <summary>Verifies BlockGlyph shadow draws the configured glyph outside the Window body.</summary>
@@ -1010,7 +1010,7 @@ public sealed class WindowSurfaceTests
         // Assert — shadow cell below has the configured glyph
         var shadowPoint = new Point(window.Bounds.X + 2, window.Bounds.Bottom);
         surface.Cell(shadowPoint).Text.ShouldBe("░");
-        surface.Cell(shadowPoint).Style.Attributes.ShouldBe(Attributes.Dim);
+        surface.Cell(shadowPoint).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
 
         // Assert — body cell does NOT contain the shadow glyph
         var bodyCell = new Point(window.Bounds.X + 1, window.Bounds.Y + 2);
@@ -1160,12 +1160,12 @@ public sealed class WindowSurfaceTests
         // Assert — Composite shadow preserves underlying glyphs but applies Dim.
         window.Shadow.IsVisible.ShouldBeTrue();
         window.Shadow.Offset.ShouldBe(new Point(2, 1));
-        surface.Cell(new Point(10, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
-        surface.Cell(new Point(11, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
-        surface.Cell(new Point(2, 4)).Style.Attributes.ShouldBe(Attributes.Dim);
-        surface.Cell(new Point(9, 4)).Style.Attributes.ShouldBe(Attributes.Dim);
+        surface.Cell(new Point(10, 1)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
+        surface.Cell(new Point(11, 1)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
+        surface.Cell(new Point(2, 4)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
+        surface.Cell(new Point(9, 4)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
         // Body inside the frame should not carry shadow Dim.
-        surface.Cell(new Point(1, 1)).Style.Attributes.ShouldNotBe(Attributes.Dim);
+        surface.Cell(new Point(1, 1)).Style.Attributes.ShouldNotBe(TerminalAttributes.Dim);
     }
 
     /// <summary>Verifies the close glyph renders with the Accent foreground in its normal unpressed state.</summary>

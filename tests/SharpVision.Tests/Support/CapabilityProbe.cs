@@ -14,8 +14,8 @@ internal sealed class CapabilityProbe: ControlBase
 
     /// <inheritdoc/>
     protected override void OnCapabilitiesChanged(
-        Capabilities previous,
-        Capabilities current)
+        TerminalCapabilities previous,
+        TerminalCapabilities current)
     {
         if (previous.ColorDepth != current.ColorDepth)
         {

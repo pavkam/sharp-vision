@@ -609,7 +609,7 @@ internal sealed class OwnedControlRegistry
                 AddPlan(ContextTransitionPlan.Create(
                     control,
                     null,
-                    Policy.Default,
+                    UnicodePolicy.Default,
                     null,
                     null,
                     null,

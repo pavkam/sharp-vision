@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Tests.Runtime;
 
 using SharpVision.Terminal.Kitty.Keyboard;
 
-/// <summary>Verifies <see cref="RuntimeOptions.Keyboard"/> validation at the option boundary.</summary>
+/// <summary>Verifies <see cref="TerminalOptions.Keyboard"/> validation at the option boundary.</summary>
 public sealed class OptionsTests
 {
     /// <summary>Verifies an undefined enhancement bit is rejected at construction instead of
@@ -15,7 +15,7 @@ public sealed class OptionsTests
     public void Keyboard_WhenValueHasUnknownBits_ThrowsArgumentOutOfRangeException()
     {
         var exception = Should.Throw<ArgumentOutOfRangeException>(() =>
-            new RuntimeOptions { Keyboard = (Enhancement) 64 });
+            new TerminalOptions { Keyboard = (Enhancement) 64 });
 
         exception.ParamName.ShouldBe("value");
     }
@@ -25,7 +25,7 @@ public sealed class OptionsTests
     public void Keyboard_WhenAssociatedTextIsSetWithoutAllKeys_ThrowsArgumentException()
     {
         var exception = Should.Throw<ArgumentException>(() =>
-            new RuntimeOptions { Keyboard = Enhancement.AssociatedText });
+            new TerminalOptions { Keyboard = Enhancement.AssociatedText });
 
         exception.ShouldNotBeOfType<ArgumentOutOfRangeException>();
         exception.ParamName.ShouldBe("value");
@@ -36,7 +36,7 @@ public sealed class OptionsTests
     public void Keyboard_WhenAssociatedTextIsPairedWithAllKeys_DoesNotThrow()
     {
         var options = Should.NotThrow(() =>
-            new RuntimeOptions { Keyboard = Enhancement.AllKeys | Enhancement.AssociatedText });
+            new TerminalOptions { Keyboard = Enhancement.AllKeys | Enhancement.AssociatedText });
 
         options.Keyboard.ShouldBe(Enhancement.AllKeys | Enhancement.AssociatedText);
     }
@@ -45,7 +45,7 @@ public sealed class OptionsTests
     [Fact]
     public void Keyboard_WhenNull_DoesNotThrow()
     {
-        var options = Should.NotThrow(() => new RuntimeOptions { Keyboard = null });
+        var options = Should.NotThrow(() => new TerminalOptions { Keyboard = null });
 
         options.Keyboard.ShouldBeNull();
     }

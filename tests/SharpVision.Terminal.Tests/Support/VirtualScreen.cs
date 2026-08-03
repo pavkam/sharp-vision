@@ -15,7 +15,7 @@ internal sealed class VirtualScreen: ISequenceSink
     private TerminalColor _foreground;
     private TerminalColor _background;
     private TerminalColor _underlineColor;
-    private Attributes _attributes;
+    private TerminalAttributes _attributes;
     private Underline _underline;
     private string? _hyperlink;
     private readonly bool _automaticMargins;
@@ -233,36 +233,36 @@ internal sealed class VirtualScreen: ISequenceSink
                     _foreground = TerminalColor.Default;
                     _background = TerminalColor.Default;
                     _underlineColor = TerminalColor.Default;
-                    _attributes = Attributes.None;
+                    _attributes = TerminalAttributes.None;
                     _underline = Underline.None;
                     break;
                 case 1:
-                    _attributes |= Attributes.Bold;
+                    _attributes |= TerminalAttributes.Bold;
                     break;
                 case 2:
-                    _attributes |= Attributes.Dim;
+                    _attributes |= TerminalAttributes.Dim;
                     break;
                 case 3:
-                    _attributes |= Attributes.Italic;
+                    _attributes |= TerminalAttributes.Italic;
                     break;
                 case 4:
-                    _attributes |= Attributes.Underline;
+                    _attributes |= TerminalAttributes.Underline;
                     _underline = Underline.None;
                     break;
                 case 5:
-                    _attributes |= Attributes.Blink;
+                    _attributes |= TerminalAttributes.Blink;
                     break;
                 case 6:
-                    _attributes |= Attributes.RapidBlink;
+                    _attributes |= TerminalAttributes.RapidBlink;
                     break;
                 case 7:
-                    _attributes |= Attributes.Reverse;
+                    _attributes |= TerminalAttributes.Reverse;
                     break;
                 case 8:
-                    _attributes |= Attributes.Hidden;
+                    _attributes |= TerminalAttributes.Hidden;
                     break;
                 case 9:
-                    _attributes |= Attributes.Strike;
+                    _attributes |= TerminalAttributes.Strike;
                     break;
                 case 38:
                     _foreground = ParseColor(values, ref index);
@@ -271,10 +271,10 @@ internal sealed class VirtualScreen: ISequenceSink
                     _background = ParseColor(values, ref index);
                     break;
                 case 53:
-                    _attributes |= Attributes.Overline;
+                    _attributes |= TerminalAttributes.Overline;
                     break;
                 case 55:
-                    _attributes &= ~Attributes.Overline;
+                    _attributes &= ~TerminalAttributes.Overline;
                     break;
                 case 58:
                     _underlineColor = ParseColor(values, ref index);
@@ -289,11 +289,11 @@ internal sealed class VirtualScreen: ISequenceSink
                     _background = TerminalColor.Default;
                     break;
                 case 24:
-                    _attributes &= ~Attributes.Underline;
+                    _attributes &= ~TerminalAttributes.Underline;
                     _underline = Underline.None;
                     break;
                 case 25:
-                    _attributes &= ~(Attributes.Blink | Attributes.RapidBlink);
+                    _attributes &= ~(TerminalAttributes.Blink | TerminalAttributes.RapidBlink);
                     break;
                 default:
                     break;
@@ -310,7 +310,7 @@ internal sealed class VirtualScreen: ISequenceSink
             throw new InvalidOperationException("The virtual screen received an unknown underline variant.");
         }
 
-        _attributes &= ~Attributes.Underline;
+        _attributes &= ~TerminalAttributes.Underline;
         _underline = (Underline) value;
     }
 

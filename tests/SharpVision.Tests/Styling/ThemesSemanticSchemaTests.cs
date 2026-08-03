@@ -20,7 +20,7 @@ public sealed class ThemesSemanticSchemaTests
         normal.Border.Foreground.ThemeColor.ShouldBe(ThemeColor.ControlBorder);
         hovered.Border.Foreground.ThemeColor.ShouldBe(ThemeColor.ActiveBorder);
         theme.ResolveColor(ThemeColor.ActiveBorder).ShouldBe(Color.Rgb(0, 255, 255));
-        theme.ResolveAttributes(ThemeDecoration.FocusedText).ShouldBe(Attributes.Bold);
+        theme.ResolveAttributes(ThemeDecoration.FocusedText).ShouldBe(TerminalAttributes.Bold);
     }
 
     /// <summary>Verifies the removed per-control selector root is rejected.</summary>

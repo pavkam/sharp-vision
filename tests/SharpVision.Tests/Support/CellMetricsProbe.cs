@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Support;
 
-using CellMetrics = Terminal.Geometry.Metrics;
 
 /// <summary>Records inherited exact cell-metric context and measure observations.</summary>
 internal sealed class CellMetricsProbe: ControlBase

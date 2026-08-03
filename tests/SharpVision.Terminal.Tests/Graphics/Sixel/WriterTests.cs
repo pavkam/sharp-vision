@@ -24,7 +24,7 @@ public sealed class WriterTests
         var image = GraphicsImage.FromRgba(new Size(2, 6), pixels);
         var output = new ArrayBufferWriter<byte>();
 
-        Writer.Write(
+        SixelWriter.Write(
             image,
             new Rect(0, 0, 2, 6),
             new Size(2, 6),
@@ -50,7 +50,7 @@ public sealed class WriterTests
         var image = GraphicsImage.FromRgba(new Size(5, 7), pixels);
         var output = new ArrayBufferWriter<byte>();
 
-        Writer.Write(
+        SixelWriter.Write(
             image,
             new Rect(0, 0, 5, 7),
             new Size(5, 7),
@@ -73,7 +73,7 @@ public sealed class WriterTests
         var image = GraphicsImage.FromRgba(new Size(2, 1), pixels);
         var output = new ArrayBufferWriter<byte>();
 
-        Writer.Write(
+        SixelWriter.Write(
             image,
             new Rect(0, 0, 2, 1),
             new Size(2, 1),
@@ -96,7 +96,7 @@ public sealed class WriterTests
         var image = GraphicsImage.FromRgba(new Size(2, 1), pixels);
         var output = new ArrayBufferWriter<byte>();
 
-        Writer.Write(
+        SixelWriter.Write(
             image,
             new Rect(1, 0, 1, 1),
             new Size(1, 1),
@@ -114,7 +114,7 @@ public sealed class WriterTests
         var image = GraphicsImage.FromRgba(new Size(1, 1), [255, 0, 0, 255]);
         var output = new ArrayBufferWriter<byte>();
 
-        Writer.Write(
+        SixelWriter.Write(
             image,
             new Rect(0, 0, 1, 1),
             new Size(3, 6),
@@ -134,7 +134,7 @@ public sealed class WriterTests
             [255, 0, 0, 255, 0, 0, 255, 255]);
         var output = new ArrayBufferWriter<byte>();
 
-        Writer.Write(
+        SixelWriter.Write(
             image,
             new Rect(0, 0, 1, 2),
             new Size(1, 1),
@@ -164,7 +164,7 @@ public sealed class WriterTests
         var image = GraphicsImage.FromPng(png);
         var output = new ArrayBufferWriter<byte>();
 
-        _ = Should.Throw<NotSupportedException>(() => Writer.Write(
+        _ = Should.Throw<NotSupportedException>(() => SixelWriter.Write(
             image,
             new Rect(0, 0, 1, 1),
             new Size(1, 1),
@@ -181,7 +181,7 @@ public sealed class WriterTests
         var image = GraphicsImage.FromRgba(new Size(1, 1), [255, 0, 0, 255]);
         var output = new ArrayBufferWriter<byte>();
 
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => Writer.Write(
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => SixelWriter.Write(
             image,
             new Rect(0, 0, 1, 1),
             new Size(1, 1),
@@ -199,7 +199,7 @@ public sealed class WriterTests
         var image = GraphicsImage.FromRgba(new Size(1, 1), [255, 0, 0, 255]);
         var output = new SixelFailingBufferWriter();
 
-        var exception = Should.Throw<InvalidOperationException>(() => Writer.Write(
+        var exception = Should.Throw<InvalidOperationException>(() => SixelWriter.Write(
             image,
             new Rect(0, 0, 1, 1),
             new Size(1, 1),
@@ -218,7 +218,7 @@ public sealed class WriterTests
         var image = GraphicsImage.FromRgba(new Size(100, 60), pixels);
         var output = new ArrayBufferWriter<byte>();
 
-        var samples = Encoder.Encode(
+        var samples = SixelEncoder.Encode(
             image,
             new Rect(0, 0, 100, 60),
             new Size(100, 60),
@@ -246,7 +246,7 @@ public sealed class WriterTests
         var image = GraphicsImage.FromRgba(new Size(1, 12), pixels);
         var output = new ArrayBufferWriter<byte>();
 
-        Writer.Write(
+        SixelWriter.Write(
             image,
             new Rect(0, 0, 1, 12),
             new Size(1, 12),
@@ -261,13 +261,13 @@ public sealed class WriterTests
     [Fact]
     public void CalculateMaximumBytes_WhenPaletteAndRasterAreLarge_RemainsCheckedAndFinite()
     {
-        var maximum = Encoder.CalculateMaximumBytes(
+        var maximum = SixelEncoder.CalculateMaximumBytes(
             new Size(4_096, 4_096),
             colorCount: 216);
 
         maximum.ShouldBe(605_017_397L);
         _ = Should.Throw<OverflowException>(() =>
-            Encoder.CalculateMaximumBytes(
+            SixelEncoder.CalculateMaximumBytes(
                 new Size(int.MaxValue, int.MaxValue),
                 colorCount: 216));
     }

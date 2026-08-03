@@ -22,7 +22,7 @@ public sealed class KittyPacketTests
             "5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==:id=req-1;AAEC"u8);
 
         packet.IsValid.ShouldBeTrue();
-        packet.Operation.ShouldBe(Operation.Read);
+        packet.Operation.ShouldBe(KittyClipboardOperation.Read);
         packet.ReplyStatus.ShouldBe(ReplyStatus.Data);
         packet.Selection.ShouldBe(Selection.Clipboard);
         packet.Id.ShouldBe("req-1");

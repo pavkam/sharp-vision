@@ -37,7 +37,7 @@ public sealed class ResponseTests
     [Fact]
     public void Parse_WhenPlacementFails_OwnsIdentifiersAndPrintableError()
     {
-        var response = Response.Parse("Gi=7,p=9;ENOENT:image missing"u8);
+        var response = KittyGraphicsResponse.Parse("Gi=7,p=9;ENOENT:image missing"u8);
 
         response.IsValid.ShouldBeTrue();
         response.ImageId.ShouldBe(7U);
@@ -64,7 +64,7 @@ public sealed class ResponseTests
     [InlineData("i=1;OK")]
     public void Parse_WhenReplyGrammarIsInvalid_ReturnsRedactedDiagnostic(string value)
     {
-        var response = Response.Parse(Encoding.ASCII.GetBytes(value));
+        var response = KittyGraphicsResponse.Parse(Encoding.ASCII.GetBytes(value));
 
         response.IsValid.ShouldBeFalse();
         _ = response.Diagnostic.ShouldNotBeNull();
@@ -75,7 +75,7 @@ public sealed class ResponseTests
     [Fact]
     public void Parse_WhenMessageHasOnePrintableCharacter_AcceptsResponse()
     {
-        var response = Response.Parse("Gi=1;E"u8);
+        var response = KittyGraphicsResponse.Parse("Gi=1;E"u8);
 
         response.IsValid.ShouldBeTrue();
         response.IsSuccess.ShouldBeFalse();
@@ -87,7 +87,7 @@ public sealed class ResponseTests
     public void Parse_WhenEightBitApcIsEnabled_ProducesGraphicsPayload()
     {
         var limits = ParserLimits.Default with { AcceptEightBitControls = true };
-        var options = Options.Default with { ParserLimits = limits };
+        var options = InputOptions.Default with { ParserLimits = limits };
         byte[] wire = [0x9f, (byte) 'G', (byte) 'i', (byte) '=', (byte) '3', (byte) ';', (byte) 'O', (byte) 'K', 0x9c];
 
         for (var split = 0; split <= wire.Length; split++)
@@ -109,7 +109,7 @@ public sealed class ResponseTests
     {
         var limits = TransferLimits.Default with { MaxMetadataBytes = 8 };
 
-        var response = Response.Parse("Gi=123456;OK"u8, limits);
+        var response = KittyGraphicsResponse.Parse("Gi=123456;OK"u8, limits);
 
         response.IsValid.ShouldBeFalse();
         response.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.StringLimit);
@@ -120,8 +120,8 @@ public sealed class ResponseTests
     public void Accept_WhenCorrelationIsReused_ReportsDuplicateWithoutReplacingResult()
     {
         var transaction = new Transaction(31);
-        var matching = Response.Parse("Gi=31;OK"u8);
-        var other = Response.Parse("Gi=32;OK"u8);
+        var matching = KittyGraphicsResponse.Parse("Gi=31;OK"u8);
+        var other = KittyGraphicsResponse.Parse("Gi=32;OK"u8);
 
         transaction.Accept(other).ShouldBe(QueryMatch.Unknown);
         transaction.Accept(matching).ShouldBe(QueryMatch.Matched);

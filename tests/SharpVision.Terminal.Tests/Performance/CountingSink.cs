@@ -15,7 +15,7 @@ internal sealed class CountingSink: IInputSink
     public void Input(in Stroke value) => Count++;
 
     /// <inheritdoc/>
-    public void Input(in InputText value) => Count++;
+    public void Input(in TerminalText value) => Count++;
 
     /// <inheritdoc/>
     public void Input(in Pointer value) => Count++;

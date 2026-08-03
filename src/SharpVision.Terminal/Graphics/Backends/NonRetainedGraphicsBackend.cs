@@ -9,9 +9,9 @@ using Graphics;
 
 using Rendering;
 
-using ItermWriter = Iterm.Writer;
+using ItermWriter = Iterm.ItermWriter;
 using MultiplexerRoute = Multiplexing.MultiplexerRoute;
-using SixelWriter = Sixel.Writer;
+using SixelWriter = Sixel.SixelWriter;
 
 /// <summary>
 /// Prepares one frame-ordered non-retained stream across enabled graphics protocols and repairs
@@ -28,12 +28,12 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
     private bool _hadMetricPlacements;
     private bool _hadPlacements;
     private bool _invalidated = true;
-    private Geometry.Metrics? _metrics;
+    private CellMetrics? _metrics;
     private byte[] _placementBytes = [];
     private bool _prepared;
     private bool _preparedHasMetricPlacements;
     private bool _preparedHasPlacements;
-    private Geometry.Metrics? _preparedMetrics;
+    private CellMetrics? _preparedMetrics;
 
     /// <summary>Initializes enabled protocols, finite output, and an optional authorized route.</summary>
     /// <param name="enableSixel">
@@ -435,7 +435,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
 
     private List<GraphicsPlacementDiagnostic>? ClassifyPlacements(
         Frame frame,
-        Geometry.Metrics? metrics,
+        CellMetrics? metrics,
         bool enableSixel,
         bool enableIterm,
         Span<bool> encodable,
@@ -472,7 +472,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
                 var reason = !enableSixel && !enableIterm
                     ? GraphicsPlacementSkipReason.ProtocolNotAuthorized
                     : !IsFormatEncodable(placement.Image!.Format, enableSixel, enableIterm) ||
-                      (sixelEligible && placement.Image.Format == Format.Png)
+                      (sixelEligible && placement.Image.Format == ImageFormat.Png)
                         ? GraphicsPlacementSkipReason.FormatNotEncodable
                         : GraphicsPlacementSkipReason.PlacementNotEncodable;
                 (skipped ??= []).Add(new GraphicsPlacementDiagnostic(placement.ImageIdentity, reason));
@@ -486,7 +486,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
     {
         image = placement.Image!;
 
-        if (image.Format == Format.Rgba)
+        if (image.Format == ImageFormat.Rgba)
         {
             return true;
         }
@@ -509,8 +509,8 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         }
     }
 
-    private static bool IsFormatEncodable(Format format, bool enableSixel, bool enableIterm) =>
-        (enableSixel && format is Format.Rgba or Format.Png) || (enableIterm && format == Format.Png);
+    private static bool IsFormatEncodable(ImageFormat format, bool enableSixel, bool enableIterm) =>
+        (enableSixel && format is ImageFormat.Rgba or ImageFormat.Png) || (enableIterm && format == ImageFormat.Png);
 
     private static int CountRenderable(
         ReadOnlySpan<bool> encodable,
@@ -583,14 +583,14 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
 
     private static bool TryGetSixelPixels(
         Placement placement,
-        Geometry.Metrics? metrics,
+        CellMetrics? metrics,
         bool enableSixel,
         out Rect pixels)
     {
         pixels = default;
         Debug.Assert(!placement.IsEmpty, "Active frame placements cannot be empty.");
         return enableSixel &&
-               placement.Image!.Format is Format.Rgba or Format.Png &&
+               placement.Image!.Format is ImageFormat.Rgba or ImageFormat.Png &&
                metrics is { } available &&
                available.TryMapCells(placement.Destination, out pixels);
     }
@@ -603,7 +603,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         Debug.Assert(!placement.IsEmpty, "Active frame placements cannot be empty.");
         var image = placement.Image!;
         if (!enableIterm ||
-            image.Format != Format.Png ||
+            image.Format != ImageFormat.Png ||
             placement.Source != new Rect(0, 0, image.Size.Width, image.Size.Height) ||
             placement.Mode is not PlacementMode.Contain and not PlacementMode.Stretch)
         {
@@ -642,7 +642,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
     #endregion
 
     private static void WriteCursor(Point value, IBufferWriter<byte> destination) =>
-        Csi.Position(new Writer(destination), value.Y + 1, value.X + 1);
+        Csi.Position(new ProtocolWriter(destination), value.Y + 1, value.X + 1);
 
     private void ClearPrepared()
     {

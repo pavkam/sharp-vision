@@ -32,7 +32,7 @@ public sealed class GroupBoxSurfaceTests
                              └──────────┘
                              """);
         surface.Cell(new Point(2, 0)).Text.ShouldBe("甌");
-        surface.Cell(new Point(2, 0)).Style.Attributes.ShouldBe(Attributes.Underline);
+        surface.Cell(new Point(2, 0)).Style.Attributes.ShouldBe(TerminalAttributes.Underline);
         var accessKey = ThemeColorHelper.AccessKey(Themes.Dark);
         surface.Cell(new Point(2, 0)).Style.Foreground.ShouldBe(accessKey);
         surface.Cell(new Point(3, 0)).IsContinuation.ShouldBeTrue();
@@ -63,7 +63,7 @@ public sealed class GroupBoxSurfaceTests
         var mnemonic = surface.Cell(new Point(2, 0));
         mnemonic.Text.ShouldBe("O");
         mnemonic.Style.Foreground.ShouldBe(disabled);
-        mnemonic.Style.Attributes.ShouldBe(Attributes.Underline);
+        mnemonic.Style.Attributes.ShouldBe(TerminalAttributes.Underline);
     }
 
     /// <summary>Verifies the built-in dark theme paints a visible frame over a transparent group surface.</summary>
@@ -181,7 +181,7 @@ public sealed class GroupBoxSurfaceTests
             group,
             new Size(12, 3),
             TestContext.Current.CancellationToken);
-        var inactiveBorder = Palette.Project(ThemeColorHelper.InactiveBorder(Themes.Dark), ColorDepth.Basic16);
+        var inactiveBorder = TerminalPalette.Project(ThemeColorHelper.InactiveBorder(Themes.Dark), ColorDepth.Basic16);
         surface.Cell(default).Style.Foreground.ShouldBe(inactiveBorder);
 
         // Act

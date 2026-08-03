@@ -8,7 +8,7 @@ namespace SharpVision.Terminal.Clipboard;
 /// </summary>
 /// <remarks>
 /// This type handles only OSC 52 text. Kitty OSC 5522 MIME transactions are a
-/// separate protocol. Encoders emit ST through <see cref="Writer"/>. Decoded
+/// separate protocol. Encoders emit ST through <see cref="ProtocolWriter"/>. Decoded
 /// data is copied into owned memory, while temporary pooled buffers are cleared.
 /// </remarks>
 /// <example>
@@ -39,7 +39,7 @@ public static class Osc52
     /// <paramref name="maxBytes"/>.
     /// </exception>
     public static void Write(
-        Writer writer,
+        ProtocolWriter writer,
         Selection selection,
         ReadOnlySpan<byte> text,
         int maxBytes = _defaultMaxBytes)
@@ -97,7 +97,7 @@ public static class Osc52
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="selection"/> is unknown.
     /// </exception>
-    public static void Query(Writer writer, Selection selection)
+    public static void Query(ProtocolWriter writer, Selection selection)
     {
         Span<byte> payload = [GetIdentifier(selection), (byte) ';', (byte) '?'];
         writer.Osc(52, payload);

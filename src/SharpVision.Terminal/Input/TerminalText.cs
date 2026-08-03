@@ -5,11 +5,11 @@ namespace SharpVision.Terminal.Input;
 
 /// <summary>Represents one decoded Unicode scalar intended for text input.</summary>
 [PublicAPI]
-public readonly record struct Text
+public readonly record struct TerminalText
 {
     /// <summary>Initializes decoded text from one valid Unicode scalar.</summary>
     /// <param name="value">The valid Unicode scalar value.</param>
-    public Text(Rune value) => Value = value;
+    public TerminalText(Rune value) => Value = value;
 
     /// <summary>Gets the decoded Unicode scalar.</summary>
     public Rune Value { get; }

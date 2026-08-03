@@ -149,7 +149,7 @@ public sealed class ChaseIndicatorTests
             _ => throw new UnreachableException()
         };
         var indicator = new ChaseIndicator { Style = style, TrailLength = 0 };
-        indicator.SetCellPolicy(new Policy(Ambiguous.Wide));
+        indicator.SetCellPolicy(new UnicodePolicy(Ambiguous.Wide));
         new LayoutEngine().Layout(indicator, new Size(5, 1));
         using Frame frame = new(new Size(5, 1), ambiguousWidth: Ambiguous.Wide);
 

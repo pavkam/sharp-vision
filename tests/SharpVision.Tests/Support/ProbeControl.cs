@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Support;
 
 #pragma warning disable IDE0001 // Keep the terminal drawing alias explicit after retiring layout Canvas.
-using TerminalCanvas = Terminal.Rendering.Canvas;
+using TerminalCanvas = Terminal.Rendering.TerminalCanvas;
 #pragma warning restore IDE0001
 
 /// <summary>Provides a recording leaf for shared control infrastructure tests.</summary>

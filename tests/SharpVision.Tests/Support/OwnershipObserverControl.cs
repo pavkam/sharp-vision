@@ -49,7 +49,7 @@ internal sealed class OwnershipObserverControl: ControlBase
     internal Theme? InheritedThemeValue => Theme;
 
     /// <summary>Gets the inherited cell-width policy.</summary>
-    internal Policy InheritedCellPolicy => CellPolicy;
+    internal UnicodePolicy InheritedCellPolicy => CellPolicy;
 
     /// <summary>Gets the inherited focus manager.</summary>
     internal FocusManager? InheritedFocusOwner => FocusOwner;

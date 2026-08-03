@@ -7,7 +7,7 @@ using Capabilities;
 
 /// <summary>Encodes semantic frame damage through one immutable terminal profile.</summary>
 [PublicAPI]
-public static class Encoder
+public static class FrameEncoder
 {
     private const int _stackLinkBytes = 512;
     [ThreadStatic]
@@ -259,7 +259,7 @@ public static class Encoder
         var projected = Project(semantic.Value, profile);
 
         if (projected.Foreground != Color.Default ||
-            projected.Attributes != Attributes.None ||
+            projected.Attributes != TerminalAttributes.None ||
             projected.Hyperlink is not null ||
             projected.Underline != Underline.None ||
             projected.UnderlineColor != Color.Default)
@@ -287,7 +287,7 @@ public static class Encoder
 
         if (!string.Equals(current.Hyperlink, target.Hyperlink, StringComparison.Ordinal))
         {
-            var writer = new Writer(destination);
+            var writer = new ProtocolWriter(destination);
 
             if (current.Hyperlink is not null)
             {
@@ -314,22 +314,22 @@ public static class Encoder
             WriteRequired(profile, interpreter, destination, "sgr0");
         }
 
-        var attributes = Attributes.None;
-        attributes |= ApplyAttribute(destination, target.Attributes, Attributes.Bold, "bold", profile, interpreter);
-        attributes |= ApplyAttribute(destination, target.Attributes, Attributes.Dim, "dim", profile, interpreter);
-        attributes |= ApplyAttribute(destination, target.Attributes, Attributes.Italic, "sitm", profile, interpreter);
-        attributes |= ApplyAttribute(destination, target.Attributes, Attributes.Blink, "blink", profile, interpreter);
-        attributes |= ApplyAttribute(destination, target.Attributes, Attributes.Reverse, "rev", profile, interpreter);
-        attributes |= ApplyAttribute(destination, target.Attributes, Attributes.Hidden, "invis", profile, interpreter);
-        attributes |= ApplyAttribute(destination, target.Attributes, Attributes.Strike, "smxx", profile, interpreter);
-        attributes |= ApplyAttribute(destination, target.Attributes, Attributes.Overline, "Smol", profile, interpreter);
+        var attributes = TerminalAttributes.None;
+        attributes |= ApplyAttribute(destination, target.Attributes, TerminalAttributes.Bold, "bold", profile, interpreter);
+        attributes |= ApplyAttribute(destination, target.Attributes, TerminalAttributes.Dim, "dim", profile, interpreter);
+        attributes |= ApplyAttribute(destination, target.Attributes, TerminalAttributes.Italic, "sitm", profile, interpreter);
+        attributes |= ApplyAttribute(destination, target.Attributes, TerminalAttributes.Blink, "blink", profile, interpreter);
+        attributes |= ApplyAttribute(destination, target.Attributes, TerminalAttributes.Reverse, "rev", profile, interpreter);
+        attributes |= ApplyAttribute(destination, target.Attributes, TerminalAttributes.Hidden, "invis", profile, interpreter);
+        attributes |= ApplyAttribute(destination, target.Attributes, TerminalAttributes.Strike, "smxx", profile, interpreter);
+        attributes |= ApplyAttribute(destination, target.Attributes, TerminalAttributes.Overline, "Smol", profile, interpreter);
         var (underlineAttribute, underline) = ApplyUnderline(destination, target, profile, interpreter);
         attributes |= underlineAttribute;
         var (foreground, background) = ApplyColors(destination, target, profile, interpreter);
         var underlineColor = ApplyUnderlineColor(
             destination,
             target.UnderlineColor,
-            underlineAttribute != Attributes.None || underline != Underline.None,
+            underlineAttribute != TerminalAttributes.None || underline != Underline.None,
             profile,
             interpreter);
         return new CellStyle(
@@ -341,10 +341,10 @@ public static class Encoder
             underlineColor);
     }
 
-    private static Attributes ApplyAttribute(
+    private static TerminalAttributes ApplyAttribute(
         IBufferWriter<byte> destination,
-        Attributes attributes,
-        Attributes value,
+        TerminalAttributes attributes,
+        TerminalAttributes value,
         string program,
         TerminalProfile profile,
         Interpreter interpreter)
@@ -352,10 +352,10 @@ public static class Encoder
         return (attributes & value) != 0 &&
             profile.Programs.TryWrite(program, [], interpreter, destination)
                 ? value
-                : Attributes.None;
+                : TerminalAttributes.None;
     }
 
-    private static (Attributes Attribute, Underline Underline) ApplyUnderline(
+    private static (TerminalAttributes Attribute, Underline Underline) ApplyUnderline(
         IBufferWriter<byte> destination,
         CellStyle style,
         TerminalProfile profile,
@@ -365,17 +365,17 @@ public static class Encoder
             profile.Capabilities.StyledUnderlines.IsAuthoritative &&
             profile.Programs.TryWrite("Smulx", [(int) style.Underline], interpreter, destination))
         {
-            return (Attributes.None, style.Underline);
+            return (TerminalAttributes.None, style.Underline);
         }
 
-        if ((style.Attributes & Attributes.Underline) != 0 || style.Underline != Underline.None)
+        if ((style.Attributes & TerminalAttributes.Underline) != 0 || style.Underline != Underline.None)
         {
             return profile.Programs.TryWrite("smul", [], interpreter, destination)
-                ? (Attributes.Underline, Underline.None)
-                : (Attributes.None, Underline.None);
+                ? (TerminalAttributes.Underline, Underline.None)
+                : (TerminalAttributes.None, Underline.None);
         }
 
-        return (Attributes.None, Underline.None);
+        return (TerminalAttributes.None, Underline.None);
     }
 
     private static Color ApplyColor(
@@ -404,7 +404,7 @@ public static class Encoder
               profile.RenderingColorDepth is ColorDepth.Basic16 or ColorDepth.Indexed256 &&
               profile.Programs.TryWrite(
                   foreground ? "setaf" : "setab",
-                  [Palette.FindPosition(color, profile.RenderingColorDepth)],
+                  [TerminalPalette.FindPosition(color, profile.RenderingColorDepth)],
                   interpreter,
                   destination)
                     ? color
@@ -458,7 +458,7 @@ public static class Encoder
     {
         if (style.Hyperlink is not null)
         {
-            Osc.CloseHyperlink(new Writer(destination));
+            Osc.CloseHyperlink(new ProtocolWriter(destination));
         }
 
         if (!IsVisualDefault(style))
@@ -476,46 +476,46 @@ public static class Encoder
 
         var programs = profile.Programs;
         var attributes = value.Attributes;
-        attributes = programs.Has("bold") ? attributes : attributes & ~Attributes.Bold;
-        attributes = programs.Has("dim") ? attributes : attributes & ~Attributes.Dim;
-        attributes = programs.Has("sitm") ? attributes : attributes & ~Attributes.Italic;
+        attributes = programs.Has("bold") ? attributes : attributes & ~TerminalAttributes.Bold;
+        attributes = programs.Has("dim") ? attributes : attributes & ~TerminalAttributes.Dim;
+        attributes = programs.Has("sitm") ? attributes : attributes & ~TerminalAttributes.Italic;
         if (programs.Has("blink"))
         {
-            if ((attributes & Attributes.RapidBlink) != 0)
+            if ((attributes & TerminalAttributes.RapidBlink) != 0)
             {
-                attributes = (attributes & ~Attributes.RapidBlink) | Attributes.Blink;
+                attributes = (attributes & ~TerminalAttributes.RapidBlink) | TerminalAttributes.Blink;
             }
         }
         else
         {
-            attributes &= ~(Attributes.Blink | Attributes.RapidBlink);
+            attributes &= ~(TerminalAttributes.Blink | TerminalAttributes.RapidBlink);
         }
-        attributes = programs.Has("rev") ? attributes : attributes & ~Attributes.Reverse;
-        attributes = programs.Has("invis") ? attributes : attributes & ~Attributes.Hidden;
-        attributes = programs.Has("smxx") ? attributes : attributes & ~Attributes.Strike;
+        attributes = programs.Has("rev") ? attributes : attributes & ~TerminalAttributes.Reverse;
+        attributes = programs.Has("invis") ? attributes : attributes & ~TerminalAttributes.Hidden;
+        attributes = programs.Has("smxx") ? attributes : attributes & ~TerminalAttributes.Strike;
         attributes = programs.Has("Smol") && profile.Capabilities.Overline.IsAuthoritative
             ? attributes
-            : attributes & ~Attributes.Overline;
+            : attributes & ~TerminalAttributes.Overline;
         var underline = value.Underline;
 
         if (underline != Underline.None &&
             (!profile.Capabilities.StyledUnderlines.IsAuthoritative || !programs.Has("Smulx")))
         {
-            attributes |= Attributes.Underline;
+            attributes |= TerminalAttributes.Underline;
             underline = Underline.None;
         }
 
         if (underline == Underline.None && !programs.Has("smul"))
         {
-            attributes &= ~Attributes.Underline;
+            attributes &= ~TerminalAttributes.Underline;
         }
 
         var underlineColor = profile.Capabilities.UnderlineColor.IsAuthoritative && programs.Has("Setulc")
-            ? Palette.Project(value.UnderlineColor, profile.RenderingColorDepth)
+            ? TerminalPalette.Project(value.UnderlineColor, profile.RenderingColorDepth)
             : Color.Default;
         return new CellStyle(
-            Palette.Project(value.Foreground, profile.RenderingColorDepth),
-            Palette.Project(value.Background, profile.RenderingColorDepth),
+            TerminalPalette.Project(value.Foreground, profile.RenderingColorDepth),
+            TerminalPalette.Project(value.Background, profile.RenderingColorDepth),
             attributes,
             value.Hyperlink,
             underline,
@@ -528,7 +528,7 @@ public static class Encoder
         CellStyle target,
         TerminalCapabilities capabilities)
     {
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         if (!string.Equals(current.Hyperlink, target.Hyperlink, StringComparison.Ordinal))
         {
@@ -557,17 +557,17 @@ public static class Encoder
             Sgr.Reset(writer);
         }
 
-        ApplyAnsiAttribute(writer, target.Attributes, Attributes.Bold, Rendition.Bold);
-        ApplyAnsiAttribute(writer, target.Attributes, Attributes.Dim, Rendition.Dim);
-        ApplyAnsiAttribute(writer, target.Attributes, Attributes.Italic, Rendition.Italic);
-        ApplyAnsiAttribute(writer, target.Attributes, Attributes.Blink, Rendition.SlowBlink);
-        ApplyAnsiAttribute(writer, target.Attributes, Attributes.RapidBlink, Rendition.RapidBlink);
-        ApplyAnsiAttribute(writer, target.Attributes, Attributes.Reverse, Rendition.Reverse);
-        ApplyAnsiAttribute(writer, target.Attributes, Attributes.Hidden, Rendition.Hidden);
-        ApplyAnsiAttribute(writer, target.Attributes, Attributes.Strike, Rendition.Strike);
-        ApplyAnsiAttribute(writer, target.Attributes, Attributes.Overline, Rendition.Overline);
+        ApplyAnsiAttribute(writer, target.Attributes, TerminalAttributes.Bold, Rendition.Bold);
+        ApplyAnsiAttribute(writer, target.Attributes, TerminalAttributes.Dim, Rendition.Dim);
+        ApplyAnsiAttribute(writer, target.Attributes, TerminalAttributes.Italic, Rendition.Italic);
+        ApplyAnsiAttribute(writer, target.Attributes, TerminalAttributes.Blink, Rendition.SlowBlink);
+        ApplyAnsiAttribute(writer, target.Attributes, TerminalAttributes.RapidBlink, Rendition.RapidBlink);
+        ApplyAnsiAttribute(writer, target.Attributes, TerminalAttributes.Reverse, Rendition.Reverse);
+        ApplyAnsiAttribute(writer, target.Attributes, TerminalAttributes.Hidden, Rendition.Hidden);
+        ApplyAnsiAttribute(writer, target.Attributes, TerminalAttributes.Strike, Rendition.Strike);
+        ApplyAnsiAttribute(writer, target.Attributes, TerminalAttributes.Overline, Rendition.Overline);
 
-        if ((target.Attributes & Attributes.Underline) != 0)
+        if ((target.Attributes & TerminalAttributes.Underline) != 0)
         {
             Sgr.Apply(writer, Rendition.Underline);
         }
@@ -586,7 +586,7 @@ public static class Encoder
     }
 
     private static void ApplyColor(
-        Writer writer,
+        ProtocolWriter writer,
         Color color,
         TerminalCapabilities capabilities,
         bool foreground)
@@ -598,7 +598,7 @@ public static class Encoder
 
         if (capabilities.ColorDepth == ColorDepth.Basic16)
         {
-            var basic = (BasicColor) Palette.FindPosition(color, capabilities.ColorDepth);
+            var basic = (BasicColor) TerminalPalette.FindPosition(color, capabilities.ColorDepth);
 
             if (foreground)
             {
@@ -614,7 +614,7 @@ public static class Encoder
 
         if (capabilities.ColorDepth == ColorDepth.Indexed256)
         {
-            var position = Palette.FindPosition(color, capabilities.ColorDepth);
+            var position = TerminalPalette.FindPosition(color, capabilities.ColorDepth);
 
             if (foreground)
             {
@@ -639,13 +639,13 @@ public static class Encoder
     }
 
     private static void ApplyUnderlineColor(
-        Writer writer,
+        ProtocolWriter writer,
         Color color,
         TerminalCapabilities capabilities)
     {
         if (capabilities.ColorDepth is ColorDepth.Basic16 or ColorDepth.Indexed256)
         {
-            Sgr.UnderlineColorPalette(writer, Palette.FindPosition(color, capabilities.ColorDepth));
+            Sgr.UnderlineColorPalette(writer, TerminalPalette.FindPosition(color, capabilities.ColorDepth));
             return;
         }
 
@@ -653,9 +653,9 @@ public static class Encoder
     }
 
     private static void ApplyAnsiAttribute(
-        Writer writer,
-        Attributes attributes,
-        Attributes value,
+        ProtocolWriter writer,
+        TerminalAttributes attributes,
+        TerminalAttributes value,
         Rendition rendition)
     {
         if ((attributes & value) != 0)
@@ -668,21 +668,21 @@ public static class Encoder
     {
         var attributes = capabilities.Overline.IsAuthoritative
             ? value.Attributes
-            : value.Attributes & ~Attributes.Overline;
+            : value.Attributes & ~TerminalAttributes.Overline;
         var underline = value.Underline;
 
         if (underline != Underline.None && !capabilities.StyledUnderlines.IsAuthoritative)
         {
-            attributes |= Attributes.Underline;
+            attributes |= TerminalAttributes.Underline;
             underline = Underline.None;
         }
 
         var underlineColor = capabilities.UnderlineColor.IsAuthoritative
-            ? Palette.Project(value.UnderlineColor, capabilities.ColorDepth)
+            ? TerminalPalette.Project(value.UnderlineColor, capabilities.ColorDepth)
             : Color.Default;
         return new CellStyle(
-            Palette.Project(value.Foreground, capabilities.ColorDepth),
-            Palette.Project(value.Background, capabilities.ColorDepth),
+            TerminalPalette.Project(value.Foreground, capabilities.ColorDepth),
+            TerminalPalette.Project(value.Background, capabilities.ColorDepth),
             attributes,
             value.Hyperlink,
             underline,
@@ -690,7 +690,7 @@ public static class Encoder
     }
 
     private static bool IsVisualDefault(CellStyle style) =>
-        style.Attributes == Attributes.None &&
+        style.Attributes == TerminalAttributes.None &&
         style.Foreground == Color.Default &&
         style.Background == Color.Default &&
         style.Underline == Underline.None &&
@@ -715,7 +715,7 @@ public static class Encoder
         }
     }
 
-    private static void OpenHyperlink(Writer writer, string hyperlink)
+    private static void OpenHyperlink(ProtocolWriter writer, string hyperlink)
     {
         var byteCount = Encoding.UTF8.GetByteCount(hyperlink);
         var rented = byteCount > _stackLinkBytes ? ArrayPool<byte>.Shared.Rent(byteCount) : null;

@@ -10,17 +10,17 @@ namespace SharpVision.Terminal.Rendering;
 [PublicAPI]
 public readonly record struct CellStyle
 {
-    private const Attributes _allAttributes =
-        Attributes.Bold |
-        Attributes.Dim |
-        Attributes.Italic |
-        Attributes.Underline |
-        Attributes.Blink |
-        Attributes.Reverse |
-        Attributes.Hidden |
-        Attributes.Strike |
-        Attributes.RapidBlink |
-        Attributes.Overline;
+    private const TerminalAttributes _allAttributes =
+        TerminalAttributes.Bold |
+        TerminalAttributes.Dim |
+        TerminalAttributes.Italic |
+        TerminalAttributes.Underline |
+        TerminalAttributes.Blink |
+        TerminalAttributes.Reverse |
+        TerminalAttributes.Hidden |
+        TerminalAttributes.Strike |
+        TerminalAttributes.RapidBlink |
+        TerminalAttributes.Overline;
 
     /// <summary>Initializes a validated semantic style.</summary>
     /// <param name="foreground">The terminal foreground color.</param>
@@ -41,7 +41,7 @@ public readonly record struct CellStyle
     public CellStyle(
         Color foreground = default,
         Color background = default,
-        Attributes attributes = Attributes.None,
+        TerminalAttributes attributes = TerminalAttributes.None,
         string? hyperlink = null,
         Underline underline = Underline.None,
         Color underlineColor = default)
@@ -63,15 +63,15 @@ public readonly record struct CellStyle
             throw new ArgumentOutOfRangeException(nameof(underline), underline, "The underline style is unknown.");
         }
 
-        if ((attributes & Attributes.Underline) != 0 && underline != Underline.None)
+        if ((attributes & TerminalAttributes.Underline) != 0 && underline != Underline.None)
         {
             throw new ArgumentException(
                 "Legacy straight underline and a typed underline variant cannot both be selected.",
                 nameof(underline));
         }
 
-        if ((attributes & (Attributes.Blink | Attributes.RapidBlink)) ==
-            (Attributes.Blink | Attributes.RapidBlink))
+        if ((attributes & (TerminalAttributes.Blink | TerminalAttributes.RapidBlink)) ==
+            (TerminalAttributes.Blink | TerminalAttributes.RapidBlink))
         {
             throw new ArgumentException(
                 "Slow and rapid blink cannot both be selected.",
@@ -80,7 +80,7 @@ public readonly record struct CellStyle
 
         if (underlineColor != Color.Default &&
             underline == Underline.None &&
-            (attributes & Attributes.Underline) == 0)
+            (attributes & TerminalAttributes.Underline) == 0)
         {
             throw new ArgumentException(
                 "Underline color requires a straight or typed underline.",
@@ -123,7 +123,7 @@ public readonly record struct CellStyle
     public Color Background { get; }
 
     /// <summary>Gets the rendition attributes.</summary>
-    public Attributes Attributes { get; }
+    public TerminalAttributes Attributes { get; }
 
     /// <summary>Gets the optional immutable hyperlink target.</summary>
     public string? Hyperlink { get; }

@@ -20,7 +20,7 @@ public readonly record struct Dimensions
             pixelSize.Width >= cells.Width &&
             pixelSize.Height >= cells.Height)
         {
-            CellMetrics = new Metrics(cells, pixelSize);
+            CellMetrics = new CellMetrics(cells, pixelSize);
         }
     }
 
@@ -31,7 +31,7 @@ public readonly record struct Dimensions
     public Size? Pixels { get; }
 
     /// <summary>Gets positive derived cell-pixel dimensions when available.</summary>
-    public Metrics? CellMetrics { get; }
+    public CellMetrics? CellMetrics { get; }
 
     /// <summary>Gets whether either cell axis is zero.</summary>
     public bool IsSuspended => Cells.Width == 0 || Cells.Height == 0;

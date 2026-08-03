@@ -7,8 +7,6 @@ using Kitty.Keyboard;
 
 using SharpVision.Terminal.Capabilities;
 
-using ProtocolWriter = Writer;
-
 /// <summary>
 /// Verifies exact Kitty keyboard commands, status replies, and query ordering.
 /// </summary>

@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Compatibility;
 
-using InputText = Terminal.Input.Text;
 
 /// <summary>Models a consumer compiled against the original protocol-sink member set.</summary>
 internal sealed class LegacyProtocolSink: IProtocolSink
@@ -12,13 +11,13 @@ internal sealed class LegacyProtocolSink: IProtocolSink
     internal List<Diagnostic> Diagnostics { get; } = [];
 
     /// <summary>Gets the legacy numeric responses received in callback order.</summary>
-    internal List<Response> Responses { get; } = [];
+    internal List<XtermCapabilitiesResponse> Responses { get; } = [];
 
     /// <inheritdoc/>
     public void Input(in Stroke value) => _ = value;
 
     /// <inheritdoc/>
-    public void Input(in InputText value) => _ = value;
+    public void Input(in TerminalText value) => _ = value;
 
     /// <inheritdoc/>
     public void Input(in Pointer value) => _ = value;
@@ -33,7 +32,7 @@ internal sealed class LegacyProtocolSink: IProtocolSink
     public void Input(in Diagnostic value) => Diagnostics.Add(value);
 
     /// <inheritdoc/>
-    public void Response(in Response value) => Responses.Add(value);
+    public void Response(in XtermCapabilitiesResponse value) => Responses.Add(value);
 
     /// <inheritdoc/>
     public void Sequence(ProtocolSequence value) => ArgumentNullException.ThrowIfNull(value);

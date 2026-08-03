@@ -28,11 +28,11 @@ public sealed class TextSurfaceTests
         surface.ShouldRender("e\u0301dit & close");
         var mnemonic = surface.Cell(default);
         mnemonic.Text.ShouldBe("e\u0301");
-        mnemonic.Style.Attributes.ShouldBe(Attributes.Underline);
+        mnemonic.Style.Attributes.ShouldBe(TerminalAttributes.Underline);
         var accessKey = ThemeColorHelper.AccessKey(Themes.Dark);
         mnemonic.Style.Foreground.ShouldBe(accessKey);
         surface.Cell(new Point(5, 0)).Text.ShouldBe("&");
-        surface.Cell(new Point(5, 0)).Style.Attributes.ShouldBe(Attributes.None);
+        surface.Cell(new Point(5, 0)).Style.Attributes.ShouldBe(TerminalAttributes.None);
     }
 
     /// <summary>Verifies disabled mnemonic text retains unavailable styling instead of actionable emphasis.</summary>
@@ -59,7 +59,7 @@ public sealed class TextSurfaceTests
         var mnemonic = surface.Cell(default);
         mnemonic.Text.ShouldBe("S");
         mnemonic.Style.Foreground.ShouldBe(disabled);
-        mnemonic.Style.Attributes.ShouldBe(Attributes.Underline);
+        mnemonic.Style.Attributes.ShouldBe(TerminalAttributes.Underline);
     }
 
     /// <summary>Verifies passive text observes physical hover without entering focus or press state.</summary>
@@ -114,7 +114,7 @@ public sealed class TextSurfaceTests
         var combining = surface.Cell(default);
         combining.Text.ShouldBe("A\u0301");
         combining.Width.ShouldBe(1);
-        combining.Style.Attributes.ShouldBe(Attributes.Bold);
+        combining.Style.Attributes.ShouldBe(TerminalAttributes.Bold);
         var wide = surface.Cell(new Point(1, 0));
         wide.Text.ShouldBe("界");
         wide.Width.ShouldBe(2);
@@ -143,8 +143,8 @@ public sealed class TextSurfaceTests
 
         // Assert
         surface.ShouldRender("AI");
-        surface.Cell(default).Style.Foreground.ShouldBe(Palette.Project(Color.Rgb(0xff, 0x88, 0x00), ColorDepth.Basic16));
-        surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(Palette.Project(Color.Rgb(0x00, 0xff, 0x88), ColorDepth.Basic16));
+        surface.Cell(default).Style.Foreground.ShouldBe(TerminalPalette.Project(Color.Rgb(0xff, 0x88, 0x00), ColorDepth.Basic16));
+        surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(TerminalPalette.Project(Color.Rgb(0x00, 0xff, 0x88), ColorDepth.Basic16));
     }
 
     /// <summary>Verifies ellipsis and alignment mutation replace every stale terminal cell.</summary>

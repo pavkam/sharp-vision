@@ -98,14 +98,14 @@ public sealed class Negotiator
     /// <param name="response">The owned typed terminal response.</param>
     /// <returns>The active, duplicate, late, or unknown match classification.</returns>
     /// <exception cref="InvalidOperationException">The negotiator has not started.</exception>
-    public QueryMatch Accept(in Response response) => _strategy.Accept(in response);
+    public QueryMatch Accept(in XtermCapabilitiesResponse response) => _strategy.Accept(in response);
 
     /// <summary>Matches one strict numeric Kitty graphics APC response.</summary>
     /// <param name="response">The non-null owned response.</param>
     /// <returns>The active, duplicate, late, or unknown match classification.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="response"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The negotiator has not started.</exception>
-    public QueryMatch Accept(Kitty.Graphics.Response response) => _strategy.Accept(response);
+    public QueryMatch Accept(Kitty.Graphics.KittyGraphicsResponse response) => _strategy.Accept(response);
 
     /// <summary>Matches one validated terminal color response.</summary>
     /// <param name="response">The immutable color response.</param>

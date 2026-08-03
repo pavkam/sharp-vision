@@ -483,7 +483,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         _ = Should.Throw<InvalidOperationException>(() => negotiator.TryStart(output, null, null));
     }
 
-    private static Response PrivateMode(int mode, int state)
+    private static XtermCapabilitiesResponse PrivateMode(int mode, int state)
     {
         var parameters = Encoding.ASCII.GetBytes($"?{mode};{state}");
         return Response(parameters, "$"u8, (byte) 'y');
@@ -501,7 +501,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         return response;
     }
 
-    private static Response Response(
+    private static XtermCapabilitiesResponse Response(
         ReadOnlySpan<byte> parameters,
         ReadOnlySpan<byte> intermediates,
         byte final)

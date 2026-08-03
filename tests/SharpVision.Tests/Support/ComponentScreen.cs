@@ -12,7 +12,7 @@ internal sealed class ComponentScreen: ISequenceSink
     private Color _foreground;
     private Color _background;
     private Color _underlineColor;
-    private Attributes _attributes;
+    private TerminalAttributes _attributes;
     private Underline _underline;
     private string? _hyperlink;
     private bool CursorVisibleValue { get; set; } = true;
@@ -241,54 +241,54 @@ internal sealed class ComponentScreen: ISequenceSink
                     ResetStyle();
                     break;
                 case 1:
-                    _attributes |= Attributes.Bold;
+                    _attributes |= TerminalAttributes.Bold;
                     break;
                 case 2:
-                    _attributes |= Attributes.Dim;
+                    _attributes |= TerminalAttributes.Dim;
                     break;
                 case 3:
-                    _attributes |= Attributes.Italic;
+                    _attributes |= TerminalAttributes.Italic;
                     break;
                 case 4:
-                    _attributes |= Attributes.Underline;
+                    _attributes |= TerminalAttributes.Underline;
                     _underline = Underline.None;
                     break;
                 case 5:
-                    _attributes |= Attributes.Blink;
+                    _attributes |= TerminalAttributes.Blink;
                     break;
                 case 6:
-                    _attributes |= Attributes.RapidBlink;
+                    _attributes |= TerminalAttributes.RapidBlink;
                     break;
                 case 7:
-                    _attributes |= Attributes.Reverse;
+                    _attributes |= TerminalAttributes.Reverse;
                     break;
                 case 8:
-                    _attributes |= Attributes.Hidden;
+                    _attributes |= TerminalAttributes.Hidden;
                     break;
                 case 9:
-                    _attributes |= Attributes.Strike;
+                    _attributes |= TerminalAttributes.Strike;
                     break;
                 case 22:
-                    _attributes &= ~(Attributes.Bold | Attributes.Dim);
+                    _attributes &= ~(TerminalAttributes.Bold | TerminalAttributes.Dim);
                     break;
                 case 23:
-                    _attributes &= ~Attributes.Italic;
+                    _attributes &= ~TerminalAttributes.Italic;
                     break;
                 case 24:
-                    _attributes &= ~Attributes.Underline;
+                    _attributes &= ~TerminalAttributes.Underline;
                     _underline = Underline.None;
                     break;
                 case 25:
-                    _attributes &= ~(Attributes.Blink | Attributes.RapidBlink);
+                    _attributes &= ~(TerminalAttributes.Blink | TerminalAttributes.RapidBlink);
                     break;
                 case 27:
-                    _attributes &= ~Attributes.Reverse;
+                    _attributes &= ~TerminalAttributes.Reverse;
                     break;
                 case 28:
-                    _attributes &= ~Attributes.Hidden;
+                    _attributes &= ~TerminalAttributes.Hidden;
                     break;
                 case 29:
-                    _attributes &= ~Attributes.Strike;
+                    _attributes &= ~TerminalAttributes.Strike;
                     break;
                 case >= 30 and <= 37:
                     _foreground = ReferenceColors.Get(value - 30);
@@ -309,10 +309,10 @@ internal sealed class ComponentScreen: ISequenceSink
                     _background = Color.Default;
                     break;
                 case 53:
-                    _attributes |= Attributes.Overline;
+                    _attributes |= TerminalAttributes.Overline;
                     break;
                 case 55:
-                    _attributes &= ~Attributes.Overline;
+                    _attributes &= ~TerminalAttributes.Overline;
                     break;
                 case 58:
                     _underlineColor = ParseColor(values, ref index);
@@ -341,7 +341,7 @@ internal sealed class ComponentScreen: ISequenceSink
             throw new InvalidOperationException("The component screen received an unknown underline variant.");
         }
 
-        _attributes &= ~Attributes.Underline;
+        _attributes &= ~TerminalAttributes.Underline;
         _underline = (Underline) value;
     }
 
@@ -350,7 +350,7 @@ internal sealed class ComponentScreen: ISequenceSink
         _foreground = Color.Default;
         _background = Color.Default;
         _underlineColor = Color.Default;
-        _attributes = Attributes.None;
+        _attributes = TerminalAttributes.None;
         _underline = Underline.None;
     }
 

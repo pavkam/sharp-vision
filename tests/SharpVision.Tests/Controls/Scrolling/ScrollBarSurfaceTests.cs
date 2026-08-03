@@ -54,11 +54,11 @@ public sealed class ScrollBarSurfaceTests
         surface.Cell(new Point(1, 0)).Style.Foreground.ShouldNotBe(firstThumb);
         surface.Cell(new Point(3, 0)).Style.Foreground.ShouldNotBe(firstTrack);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(secondTheme.ResolveColor(ThemeColor.ControlText), ColorDepth.Basic16));
+            TerminalPalette.Project(secondTheme.ResolveColor(ThemeColor.ControlText), ColorDepth.Basic16));
         surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(secondTheme.ResolveColor(ThemeColor.Accent), ColorDepth.Basic16));
+            TerminalPalette.Project(secondTheme.ResolveColor(ThemeColor.Accent), ColorDepth.Basic16));
         surface.Cell(new Point(3, 0)).Style.Foreground.ShouldBe(
-            Palette.Project(secondTheme.ResolveColor(ThemeColor.Muted), ColorDepth.Basic16));
+            TerminalPalette.Project(secondTheme.ResolveColor(ThemeColor.Muted), ColorDepth.Basic16));
     }
 
     /// <summary>Verifies full horizontal and vertical rails expose exact buttons, track, and thumb cells.</summary>
@@ -379,7 +379,7 @@ public sealed class ScrollBarSurfaceTests
             AppearanceTestValues.Face(
                 foreground: foreground,
                 background: Color.Transparent,
-                attributes: Attributes.None),
+                attributes: TerminalAttributes.None),
             AppearanceTestValues.Border(BorderSide.None),
             AppearanceTestValues.Shadow(visible: false)));
 

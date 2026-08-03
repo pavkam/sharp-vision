@@ -6,7 +6,7 @@ namespace SharpVision.Tests.Runtime;
 using SharpVision.Terminal.Kitty.Keyboard;
 
 using MultiplexerKind = Terminal.Multiplexing.MultiplexerKind;
-using MultiplexingPolicy = Terminal.Multiplexing.Policy;
+using MultiplexingPolicy = Terminal.Multiplexing.MultiplexingPolicy;
 
 /// <summary>Verifies <see cref="ConsoleRunOptions"/> defaults and terminal/host mapping.</summary>
 public sealed class ConsoleRunOptionsTests
@@ -132,11 +132,11 @@ public sealed class ConsoleRunOptionsTests
     public void ToTerminalOptions_WhenParameterlessAndProfileExists_PrefersProfile()
     {
         var profile = TerminalProfile.CreateAnsi(
-            Capabilities.Conservative with { ColorDepth = ColorDepth.Indexed256 });
+            TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.Indexed256 });
         var options = new ConsoleRunOptions
         {
             Profile = profile,
-            Capabilities = Capabilities.Conservative with { ColorDepth = ColorDepth.Basic16 }
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.Basic16 }
         };
 
         var terminal = options.ToTerminalOptions();
@@ -152,7 +152,7 @@ public sealed class ConsoleRunOptionsTests
         var database = new Feature(
             CapabilitySupport.Supported,
             Origin.Database);
-        var capabilities = Capabilities.Conservative with
+        var capabilities = TerminalCapabilities.Conservative with
         {
             ColorDepth = ColorDepth.Basic16,
             Osc52 = database
@@ -175,10 +175,10 @@ public sealed class ConsoleRunOptionsTests
     {
         var policy = new MultiplexingPolicy(
             [MultiplexerKind.Tmux],
-            TerminalProfile.CreateAnsi(Capabilities.Conservative));
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative));
         var options = new ConsoleRunOptions
         {
-            Capabilities = Capabilities.Conservative,
+            Capabilities = TerminalCapabilities.Conservative,
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>(),
                 overrides: null,
@@ -197,7 +197,7 @@ public sealed class ConsoleRunOptionsTests
     [Fact]
     public void ToTerminalOptions_WhenCapabilitiesArePinnedWithoutNegotiation_LeavesMultiplexingNull()
     {
-        var options = new ConsoleRunOptions { Capabilities = Capabilities.Conservative };
+        var options = new ConsoleRunOptions { Capabilities = TerminalCapabilities.Conservative };
 
         var terminal = options.ToTerminalOptions();
 
@@ -210,11 +210,11 @@ public sealed class ConsoleRunOptionsTests
     public void ToTerminalOptions_WhenAllOverridesExist_UsesDeterministicPrecedence()
     {
         var profile = TerminalProfile.CreateAnsi(
-            Capabilities.Conservative with { ColorDepth = ColorDepth.Indexed256 });
+            TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.Indexed256 });
         var options = new ConsoleRunOptions
         {
             Profile = profile,
-            Capabilities = Capabilities.Conservative with { ColorDepth = ColorDepth.Basic16 },
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.Basic16 },
             ColorDepth = ColorDepth.Monochrome,
             Negotiation = new NegotiationOptions(new Dictionary<string, string?>())
         };
@@ -237,7 +237,7 @@ public sealed class ConsoleRunOptionsTests
         string path)
     {
         var resolved = TerminalProfile.CreateAnsi(
-            Capabilities.Conservative with
+            TerminalCapabilities.Conservative with
             {
                 ColorDepth = ColorDepth.Indexed256,
                 ColorOrigin = Origin.Database
@@ -267,5 +267,5 @@ public sealed class ConsoleRunOptionsTests
     }
 
     private static TerminalProfile Ansi() =>
-        TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
 }

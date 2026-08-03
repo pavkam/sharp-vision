@@ -4,7 +4,7 @@
 namespace SharpVision.Terminal.Terminfo;
 
 /// <summary>Describes one immutable instruction in a compiled terminfo parameter program.</summary>
-internal readonly struct Operation
+internal readonly struct TerminfoOperation
 {
     /// <summary>Identifies a raw-literal copy.</summary>
     public const byte Literal = 1;
@@ -92,7 +92,7 @@ internal readonly struct Operation
     /// <param name="operand">The primary opcode-specific operand.</param>
     /// <param name="secondary">The secondary opcode-specific operand.</param>
     /// <param name="tertiary">The tertiary opcode-specific operand.</param>
-    public Operation(byte code, int operand = 0, int secondary = 0, int tertiary = 0)
+    public TerminfoOperation(byte code, int operand = 0, int secondary = 0, int tertiary = 0)
     {
         Code = code;
         Operand = operand;

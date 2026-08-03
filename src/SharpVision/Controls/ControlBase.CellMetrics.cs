@@ -5,7 +5,6 @@ namespace SharpVision.Controls;
 
 using System.Runtime.ExceptionServices;
 
-using CellMetrics = Metrics;
 
 /// <summary>Provides inherited protocol-neutral terminal cell geometry.</summary>
 public abstract partial class ControlBase

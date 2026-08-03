@@ -8,7 +8,7 @@ using SharpVision.Terminal.Graphics;
 
 /// <summary>Encodes validated direct Kitty graphics APC commands with finite canonical chunking.</summary>
 [PublicAPI]
-public static class Writer
+public static class KittyGraphicsWriter
 {
     private const int _encodedChunkBytes = 4_096;
     private const int _rawChunkBytes = 3_072;
@@ -234,7 +234,7 @@ public static class Writer
             position = AppendField(destination, position, (byte) 'f', (int) command.Format);
             position = AppendLiteralField(destination, position, (byte) 't', (byte) 'd');
 
-            if (command.Format is Format.Rgb or Format.Rgba)
+            if (command.Format is KittyGraphicsFormat.Rgb or KittyGraphicsFormat.Rgba)
             {
                 position = AppendField(destination, position, (byte) 's', command.PixelSize.Width);
                 position = AppendField(destination, position, (byte) 'v', command.PixelSize.Height);
@@ -338,7 +338,7 @@ public static class Writer
             return;
         }
 
-        if (command.Format == Format.Png)
+        if (command.Format == KittyGraphicsFormat.Png)
         {
             var size = payload.ReadSize();
 
@@ -350,7 +350,7 @@ public static class Writer
             return;
         }
 
-        var bytesPerPixel = command.Format == Format.Rgb ? 3 : 4;
+        var bytesPerPixel = command.Format == KittyGraphicsFormat.Rgb ? 3 : 4;
         var expected = checked((long) command.PixelSize.Width * command.PixelSize.Height * bytesPerPixel);
 
         if (payload.Length != expected)

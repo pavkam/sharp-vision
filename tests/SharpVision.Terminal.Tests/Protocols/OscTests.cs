@@ -15,7 +15,7 @@ public sealed class OscTests
     public void Title_WhenTextIsValid_WritesExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         Osc.IconAndTitle(writer, "both"u8);
         Osc.Title(writer, "title"u8);
@@ -31,7 +31,7 @@ public sealed class OscTests
     public void Hyperlink_WhenValuesAreValid_WritesExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         Osc.OpenHyperlink(writer, "https://example.test"u8, "docs"u8);
         Osc.CloseHyperlink(writer);
@@ -47,7 +47,7 @@ public sealed class OscTests
     public void ColorQuery_WhenIndexIsValid_WritesExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         Osc.QueryPalette(writer, 15);
         Osc.QueryForeground(writer);
@@ -64,7 +64,7 @@ public sealed class OscTests
     public void Command_WhenValueIsInvalid_ThrowsBeforeWriting()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         _ = Should.Throw<ArgumentException>(() => Osc.Title(writer, [(byte) 'a', 0x07]));
         _ = Should.Throw<ArgumentException>(() => Osc.OpenHyperlink(writer, "https://example.test"u8, "bad:id"u8));

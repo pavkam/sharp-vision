@@ -20,7 +20,7 @@ public static class ProtocolModes
     /// <param name="mode">The positive private mode number.</param>
     /// <param name="enabled"><see langword="true"/> for DECSET; otherwise DECRST.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="mode"/> is not positive.</exception>
-    public static void SetPrivate(Writer writer, int mode, bool enabled)
+    public static void SetPrivate(ProtocolWriter writer, int mode, bool enabled)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(mode);
 
@@ -34,37 +34,37 @@ public static class ProtocolModes
     /// <summary>Shows or hides the text cursor using mode 25.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="visible">Whether the cursor is visible.</param>
-    public static void CursorVisible(Writer writer, bool visible) =>
+    public static void CursorVisible(ProtocolWriter writer, bool visible) =>
         SetPrivate(writer, DecPrivateMode.CursorVisible, visible);
 
     /// <summary>Enters or leaves the alternate screen using mode 1049.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="enabled">Whether the alternate screen is active.</param>
-    public static void AlternateScreen(Writer writer, bool enabled) =>
+    public static void AlternateScreen(ProtocolWriter writer, bool enabled) =>
         SetPrivate(writer, DecPrivateMode.AlternateScreen, enabled);
 
     /// <summary>Enables or disables bracketed paste using mode 2004.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="enabled">Whether bracketed paste is active.</param>
-    public static void BracketedPaste(Writer writer, bool enabled) =>
+    public static void BracketedPaste(ProtocolWriter writer, bool enabled) =>
         SetPrivate(writer, DecPrivateMode.BracketedPaste, enabled);
 
     /// <summary>Enables or disables terminal focus reporting using mode 1004.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="enabled">Whether focus reporting is active.</param>
-    public static void FocusReporting(Writer writer, bool enabled) =>
+    public static void FocusReporting(ProtocolWriter writer, bool enabled) =>
         SetPrivate(writer, DecPrivateMode.FocusReporting, enabled);
 
     /// <summary>Begins or ends synchronized output using mode 2026.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="enabled">Whether synchronized output is active.</param>
-    public static void SynchronizedOutput(Writer writer, bool enabled) =>
+    public static void SynchronizedOutput(ProtocolWriter writer, bool enabled) =>
         SetPrivate(writer, DecPrivateMode.SynchronizedOutput, enabled);
 
     /// <summary>Enables or disables Kitty clipboard paste events using mode 5522.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="enabled">Whether clipboard paste events are active.</param>
-    public static void ClipboardPasteEvents(Writer writer, bool enabled) =>
+    public static void ClipboardPasteEvents(ProtocolWriter writer, bool enabled) =>
         SetPrivate(writer, DecPrivateMode.ClipboardPasteEvents, enabled);
 
     /// <summary>Enables or disables one validated mouse tracking/coordinate pair.</summary>
@@ -74,7 +74,7 @@ public static class ProtocolModes
     /// <param name="enabled">Whether to enable rather than disable the pair.</param>
     /// <exception cref="ArgumentOutOfRangeException">An enum value is unknown.</exception>
     public static void Mouse(
-        Writer writer,
+        ProtocolWriter writer,
         MouseTracking tracking,
         MouseCoordinates coordinates,
         bool enabled)

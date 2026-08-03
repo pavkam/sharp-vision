@@ -36,7 +36,7 @@ public sealed class RadioButtonSurfaceTests
         wide.Width.ShouldBe(2);
         surface.Cell(new Point(5, 2)).IsContinuation.ShouldBeTrue();
         surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(
-            Palette.Project(ThemeColorHelper.InactiveBorder(Themes.Dark), ColorDepth.Basic16));
+            TerminalPalette.Project(ThemeColorHelper.InactiveBorder(Themes.Dark), ColorDepth.Basic16));
     }
 
     /// <summary>Verifies parenthesized marks show exact unchecked and checked terminal rows.</summary>
@@ -86,7 +86,7 @@ public sealed class RadioButtonSurfaceTests
             new Size(3, 1),
             TestContext.Current.CancellationToken);
 
-        var expected = Palette.Project(color, ColorDepth.Basic16);
+        var expected = TerminalPalette.Project(color, ColorDepth.Basic16);
         surface.ShouldRender("(•)");
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(expected);
         surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(expected);
@@ -240,7 +240,7 @@ public sealed class RadioButtonSurfaceTests
         radio.IsChecked.ShouldBeTrue();
         surface.ShouldHaveState(radio, VisualState.Disabled);
         surface.ShouldRender("(•) Locked");
-        var expectedDisabledFg = Palette.Project(ThemeColorHelper.DisabledForeground(Themes.Dark), ColorDepth.Basic16);
+        var expectedDisabledFg = TerminalPalette.Project(ThemeColorHelper.DisabledForeground(Themes.Dark), ColorDepth.Basic16);
         var mark = surface.Cell(default).Style.Foreground;
         mark.IsRgb.ShouldBeTrue();
         mark.ShouldBe(expectedDisabledFg);

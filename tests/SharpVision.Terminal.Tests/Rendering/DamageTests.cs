@@ -71,7 +71,7 @@ public sealed class DamageTests
         _ = back.Canvas.Draw(
             "x".AsSpan(),
             new Point(0, 0),
-            new CellStyle(attributes: Attributes.Bold));
+            new CellStyle(attributes: TerminalAttributes.Bold));
 
         GetSpans(front, back).ShouldBe([new DamageSpan(0, 0, 1)]);
     }

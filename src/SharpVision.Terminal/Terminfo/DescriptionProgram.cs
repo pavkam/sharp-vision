@@ -10,7 +10,7 @@ namespace SharpVision.Terminal.Terminfo;
 internal readonly struct DescriptionProgram
 {
     private readonly byte[]? _representation;
-    private readonly Operation[]? _operations;
+    private readonly TerminfoOperation[]? _operations;
     private readonly byte[]? _literals;
 
     /// <summary>
@@ -54,7 +54,7 @@ internal readonly struct DescriptionProgram
     /// <param name="maximumStackDepth">The maximum evaluation depth established by the compiler.</param>
     public DescriptionProgram(
         ReadOnlySpan<byte> representation,
-        ReadOnlySpan<Operation> operations,
+        ReadOnlySpan<TerminfoOperation> operations,
         ReadOnlySpan<byte> literals,
         int maximumStackDepth)
     {
@@ -102,11 +102,11 @@ internal readonly struct DescriptionProgram
 
             foreach (var operation in Operations.Span)
             {
-                if (operation.Code == Operation.PushParameter)
+                if (operation.Code == TerminfoOperation.PushParameter)
                 {
                     count = Math.Max(count, operation.Operand + 1);
                 }
-                else if (operation.Code == Operation.IncrementParameters)
+                else if (operation.Code == TerminfoOperation.IncrementParameters)
                 {
                     count = Math.Max(count, 2);
                 }
@@ -131,17 +131,17 @@ internal readonly struct DescriptionProgram
 
             foreach (var operation in Operations.Span)
             {
-                if (operation.Code is Operation.JumpIfFalse or Operation.Jump or
-                    Operation.Divide or Operation.Modulo or
-                    Operation.StringLength or Operation.FormatString)
+                if (operation.Code is TerminfoOperation.JumpIfFalse or TerminfoOperation.Jump or
+                    TerminfoOperation.Divide or TerminfoOperation.Modulo or
+                    TerminfoOperation.StringLength or TerminfoOperation.FormatString)
                 {
                     return false;
                 }
 
                 producesOutput |= operation.Code switch
                 {
-                    Operation.Literal => operation.Secondary > 0,
-                    Operation.FormatNumber or Operation.FormatCharacter => true,
+                    TerminfoOperation.Literal => operation.Secondary > 0,
+                    TerminfoOperation.FormatNumber or TerminfoOperation.FormatCharacter => true,
                     _ => false
                 };
             }
@@ -151,7 +151,7 @@ internal readonly struct DescriptionProgram
     }
 
     /// <summary>Gets the immutable compiled instructions.</summary>
-    public ReadOnlyMemory<Operation> Operations => _operations ?? ReadOnlyMemory<Operation>.Empty;
+    public ReadOnlyMemory<TerminfoOperation> Operations => _operations ?? ReadOnlyMemory<TerminfoOperation>.Empty;
 
     /// <summary>Gets the immutable raw literal-byte pool.</summary>
     public ReadOnlyMemory<byte> Literals => _literals ?? ReadOnlyMemory<byte>.Empty;

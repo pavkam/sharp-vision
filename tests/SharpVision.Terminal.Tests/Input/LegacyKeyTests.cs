@@ -499,7 +499,7 @@ public sealed class LegacyKeyTests
         KeyAction action)
     {
         var sink = new RecordingInputSink();
-        var options = Options.Default with { UseAnsiKeyGrammar = false };
+        var options = InputOptions.Default with { UseAnsiKeyGrammar = false };
 
         using (InputDecoder decoder = new(sink, options))
         {

@@ -23,7 +23,7 @@ public sealed class RandomizedInputTests
             var hostile = new byte[random.Next(1, 513)];
             random.NextBytes(hostile);
             var sink = new RecordingInputSink();
-            var options = Options.Default with
+            var options = InputOptions.Default with
             {
                 MaxPasteBytes = 32,
                 ParserLimits = ParserLimits.Default with
@@ -84,7 +84,7 @@ public sealed class RandomizedInputTests
 
         bindings.Add(new KeyBinding([0xff], Code.F62));
         bindings.Add(new KeyBinding([0xff, 0xfe], Code.F63));
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap(bindings),
             useAnsiKeyGrammar: false);
 
@@ -133,7 +133,7 @@ public sealed class RandomizedInputTests
     public void Decode_WhenInvalidUtf8DescriptionKeyIsFragmented_UsesLongestMatchAtEverySplit()
     {
         var sequence = new byte[] { 0xff, 0xfe };
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap(
             [
                 new KeyBinding([0xff], Code.F62),
@@ -167,7 +167,7 @@ public sealed class RandomizedInputTests
         var bindings = Enumerable.Range(0xa0, 0x20)
             .Select(static value => new KeyBinding([checked((byte) value)], Code.F63))
             .ToArray();
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap(bindings),
             useAnsiKeyGrammar: false);
 
@@ -210,7 +210,7 @@ public sealed class RandomizedInputTests
             bindings.Add(new KeyBinding([0xfe, checked((byte) final)], Code.F63));
         }
 
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap(bindings),
             useAnsiKeyGrammar: false);
 
@@ -242,7 +242,7 @@ public sealed class RandomizedInputTests
     {
         const int offsetSeed = 0x4F464653;
         var random = new Random(offsetSeed);
-        var options = Options.Default.WithKeyMap(
+        var options = InputOptions.Default.WithKeyMap(
             new KeyMap([new KeyBinding([0xff], Code.F63)]),
             useAnsiKeyGrammar: false);
 

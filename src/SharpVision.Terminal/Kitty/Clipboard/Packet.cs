@@ -15,7 +15,7 @@ public sealed class Packet
 
     private Packet(
         bool isValid,
-        Operation operation,
+        KittyClipboardOperation operation,
         ReplyStatus replyStatus,
         Selection selection,
         string? id,
@@ -48,7 +48,7 @@ public sealed class Packet
     public bool IsValid { get; }
 
     /// <summary>Gets the typed packet operation.</summary>
-    public Operation Operation { get; }
+    public KittyClipboardOperation Operation { get; }
 
     /// <summary>Gets the typed response status.</summary>
     public ReplyStatus ReplyStatus { get; }
@@ -119,7 +119,7 @@ public sealed class Packet
             return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
         }
 
-        var operation = Operation.None;
+        var operation = KittyClipboardOperation.None;
         var replyStatus = ReplyStatus.None;
         var selection = Selection.Clipboard;
         string? id = null;
@@ -298,7 +298,7 @@ public sealed class Packet
         // could not be recovered before the error correctly stays unattributed.
         return new Packet(
             isValid: false,
-            Operation.None,
+            KittyClipboardOperation.None,
             ReplyStatus.None,
             Selection.Clipboard,
             id,
@@ -388,18 +388,18 @@ public sealed class Packet
 
     private static bool TryParseOperation(
         ReadOnlySpan<byte> value,
-        out Operation operation)
+        out KittyClipboardOperation operation)
     {
         operation = value switch
         {
-            _ when value.SequenceEqual("read"u8) => Operation.Read,
-            _ when value.SequenceEqual("write"u8) => Operation.Write,
-            _ when value.SequenceEqual("wdata"u8) => Operation.WriteData,
-            _ when value.SequenceEqual("walias"u8) => Operation.WriteAlias,
-            _ => Operation.None
+            _ when value.SequenceEqual("read"u8) => KittyClipboardOperation.Read,
+            _ when value.SequenceEqual("write"u8) => KittyClipboardOperation.Write,
+            _ when value.SequenceEqual("wdata"u8) => KittyClipboardOperation.WriteData,
+            _ when value.SequenceEqual("walias"u8) => KittyClipboardOperation.WriteAlias,
+            _ => KittyClipboardOperation.None
         };
 
-        return operation != Operation.None;
+        return operation != KittyClipboardOperation.None;
     }
 
     private static bool TryParseSelection(ReadOnlySpan<byte> value, out Selection selection)

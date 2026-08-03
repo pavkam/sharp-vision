@@ -6,7 +6,7 @@ namespace SharpVision.Terminal.Sixel;
 using Graphics;
 
 /// <summary>Samples one indexed raster and emits bounded DEC sixel band planes.</summary>
-internal static class Encoder
+internal static class SixelEncoder
 {
     #region Transaction encoding
 
@@ -43,7 +43,7 @@ internal static class Encoder
         {
             var raster = rentedRaster.AsSpan(0, pixelCount);
             var samples = Sample(image, source, destination, mode, raster);
-            var palette = new Palette(raster);
+            var palette = new SixelPalette(raster);
             var maximum = CalculateMaximumBytes(destination, palette.Count);
 
             if (maximum > maxOutputBytes)
@@ -184,7 +184,7 @@ internal static class Encoder
     private static void WriteRaster(
         ReadOnlySpan<byte> raster,
         Size destination,
-        Palette palette,
+        SixelPalette palette,
         IBufferWriter<byte> output)
     {
         WriteBytes(output, "\u001bP0;1;0q\"1;1;"u8);
@@ -264,7 +264,7 @@ internal static class Encoder
     private static void PopulateBand(
         ReadOnlySpan<byte> raster,
         Size destination,
-        Palette palette,
+        SixelPalette palette,
         int band,
         Span<byte> planes,
         Span<bool> bandUsed,

@@ -5,7 +5,6 @@ namespace SharpVision.Terminal.Kitty.Clipboard;
 
 using SharpVision.Terminal.Clipboard;
 
-using ProtocolWriter = Protocols.Writer;
 
 /// <summary>
 /// Encodes canonical Kitty OSC 5522 clipboard requests and MIME data packets.
@@ -16,7 +15,7 @@ using ProtocolWriter = Protocols.Writer;
 /// finish a write with <see cref="WriteEnd"/>. Invalid requests write no bytes.
 /// </remarks>
 [PublicAPI]
-public static class Writer
+public static class KittyClipboardWriter
 {
     private const int _chunkBytes = 4_096;
     private const int _defaultMaxBytes = 16_777_216;

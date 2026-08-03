@@ -407,7 +407,7 @@ by frame A, then compare the final screen, cursor, style, hyperlink, and mode
 state with a clean full render of B. Random frame pairs and targeted wide-cell
 transitions use this same oracle.
 
-`Rendering.Metrics` reports bytes, writes, damage spans, full/incremental
+`Rendering.RenderMetrics` reports bytes, writes, damage spans, full/incremental
 classification, and elapsed time only for completed operations. An unchanged
 frame reports zero bytes and writes and follows a synchronous zero-allocation
 fast path.

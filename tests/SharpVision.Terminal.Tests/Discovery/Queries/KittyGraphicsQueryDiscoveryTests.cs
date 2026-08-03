@@ -7,7 +7,7 @@ using SharpVision.Terminal.Capabilities;
 
 using SharpVision.Terminal.Discovery.Queries;
 
-using KittyResponse = Kitty.Graphics.Response;
+using KittyResponse = Kitty.Graphics.KittyGraphicsResponse;
 
 /// <summary>Proves bounded numeric Kitty graphics capability negotiation.</summary>
 public sealed class KittyGraphicsQueryDiscoveryTests
@@ -128,7 +128,7 @@ public sealed class KittyGraphicsQueryDiscoveryTests
     {
         var negotiator = Create();
         _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
-        var attributes = new Response(ResponseKind.PrimaryAttributes, [1, 2]);
+        var attributes = new XtermCapabilitiesResponse(ResponseKind.PrimaryAttributes, [1, 2]);
 
         negotiator.Accept(in attributes).ShouldBe(QueryMatch.Matched);
 

@@ -31,7 +31,7 @@ public sealed class GallerySurfaceTests
                 .Select(y => surface.Cell(new Point(composite.Bounds.Right, y))))
             .ToArray();
         var visibleShadow = shadowCells.Any(static cell =>
-            cell.Text == "·" && cell.Style.Attributes == Attributes.Dim);
+            cell.Text == "·" && cell.Style.Attributes == TerminalAttributes.Dim);
 
         // Assert
         visibleShadow.ShouldBeTrue();

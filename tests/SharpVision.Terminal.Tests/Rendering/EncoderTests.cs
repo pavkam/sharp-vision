@@ -83,7 +83,7 @@ public sealed class EncoderTests
     {
         using Frame back = new(new Size(1, 1));
         var style = new CellStyle(
-            attributes: Attributes.RapidBlink | Attributes.Overline,
+            attributes: TerminalAttributes.RapidBlink | TerminalAttributes.Overline,
             underline: Underline.Curly,
             underlineColor: Color.Rgb(1, 2, 3));
         _ = back.Canvas.Draw("x", default, style);
@@ -105,7 +105,7 @@ public sealed class EncoderTests
     {
         using Frame back = new(new Size(1, 1));
         var style = new CellStyle(
-            attributes: Attributes.RapidBlink | Attributes.Overline,
+            attributes: TerminalAttributes.RapidBlink | TerminalAttributes.Overline,
             underline: Underline.Curly,
             underlineColor: Color.Rgb(1, 2, 3));
         _ = back.Canvas.Draw("x", default, style);
@@ -203,7 +203,7 @@ public sealed class EncoderTests
     {
         using Frame back = new(new Size(1, 1));
         var style = new CellStyle(
-            attributes: Attributes.Bold,
+            attributes: TerminalAttributes.Bold,
             hyperlink: "https://example.test");
         _ = back.Canvas.Draw("x".AsSpan(), new Point(0, 0), style);
         var destination = new ArrayBufferWriter<byte>();

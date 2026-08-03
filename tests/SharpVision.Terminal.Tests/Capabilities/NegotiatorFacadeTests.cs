@@ -16,7 +16,7 @@ public sealed class NegotiatorFacadeTests
     {
         // Arrange
         var negotiator = new Negotiator(new NegotiationOptions(new Dictionary<string, string?>()));
-        var response = new Response(ResponseKind.PrimaryAttributes, [1, 2]);
+        var response = new XtermCapabilitiesResponse(ResponseKind.PrimaryAttributes, [1, 2]);
 
         // Act / Assert
         _ = Should.Throw<ArgumentNullException>(() => new Negotiator(null!));
@@ -40,7 +40,7 @@ public sealed class NegotiatorFacadeTests
         var facade = new Negotiator(options, clock);
         var strategyBytes = new ArrayBufferWriter<byte>();
         var facadeBytes = new ArrayBufferWriter<byte>();
-        var response = new Response(ResponseKind.PrimaryAttributes, [1, 2]);
+        var response = new XtermCapabilitiesResponse(ResponseKind.PrimaryAttributes, [1, 2]);
 
         // Act
         strategy.TryStart(strategyBytes, null, null).ShouldBeTrue();

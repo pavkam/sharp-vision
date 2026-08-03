@@ -7,7 +7,6 @@ using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Multiplexing;
 using SharpVision.Terminal.Protocols;
 
-using MultiplexingOperation = Terminal.Multiplexing.Operation;
 
 /// <summary>Gates the warmed allocation cost of nested-tmux graphics passthrough.</summary>
 [Collection(PerformanceGroup.Name)]
@@ -22,7 +21,7 @@ public sealed class RouteGraphicsPerformanceTests
     [Fact]
     public void TryWriteGraphics_WhenNestedFourDeepAndWarmed_StaysAllocationFlatAcrossFrames()
     {
-        var policy = new Policy(
+        var policy = new MultiplexingPolicy(
             [MultiplexerKind.Tmux, MultiplexerKind.Tmux, MultiplexerKind.Tmux, MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,

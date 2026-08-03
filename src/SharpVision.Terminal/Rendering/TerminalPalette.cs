@@ -7,7 +7,7 @@ using Capabilities;
 
 /// <summary>Projects RGB colors through a deterministic xterm-compatible reference palette.</summary>
 [PublicAPI]
-public static class Palette
+public static class TerminalPalette
 {
     /// <summary>Projects one RGB color to the nearest reference RGB supported by a color tier.</summary>
     /// <param name="source">The terminal default or RGB color.</param>
@@ -47,7 +47,7 @@ public static class Palette
 
         if (!source.IsRgb)
         {
-            throw new ArgumentException("Palette positions require an RGB color.", nameof(source));
+            throw new ArgumentException("TerminalPalette positions require an RGB color.", nameof(source));
         }
 
         var count = depth switch
@@ -55,9 +55,9 @@ public static class Palette
             ColorDepth.Basic16 => 16,
             ColorDepth.Indexed256 => 256,
             ColorDepth.Monochrome or ColorDepth.TrueColor => throw new ArgumentOutOfRangeException(
-                nameof(depth), depth, "Palette positions require a 16- or 256-color tier."),
+                nameof(depth), depth, "TerminalPalette positions require a 16- or 256-color tier."),
             _ => throw new ArgumentOutOfRangeException(
-                nameof(depth), depth, "Palette positions require a 16- or 256-color tier.")
+                nameof(depth), depth, "TerminalPalette positions require a 16- or 256-color tier.")
         };
         return Nearest(source.Red, source.Green, source.Blue, count);
     }
@@ -78,7 +78,7 @@ public static class Palette
     {
         if (source.IsTransparent)
         {
-            throw new ArgumentException("Palette operations require a concrete terminal color.", nameof(source));
+            throw new ArgumentException("TerminalPalette operations require a concrete terminal color.", nameof(source));
         }
     }
 
@@ -141,7 +141,7 @@ public static class Palette
 
     private static void Resolve(int index, out byte red, out byte green, out byte blue)
     {
-        Debug.Assert(index is >= 0 and <= byte.MaxValue, "Palette indices are one byte.");
+        Debug.Assert(index is >= 0 and <= byte.MaxValue, "TerminalPalette indices are one byte.");
 
         if (index < 16)
         {

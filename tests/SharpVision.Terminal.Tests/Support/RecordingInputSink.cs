@@ -14,7 +14,7 @@ internal sealed class RecordingInputSink: IInputSink
     internal List<Stroke> Strokes { get; } = [];
 
     /// <summary>Gets text values in delivery order.</summary>
-    internal List<InputText> Text { get; } = [];
+    internal List<TerminalText> Text { get; } = [];
 
     /// <summary>Gets pointer values in delivery order.</summary>
     internal List<Pointer> Pointers { get; } = [];
@@ -32,7 +32,7 @@ internal sealed class RecordingInputSink: IInputSink
     public void Input(in Stroke value) => Strokes.Add(value);
 
     /// <inheritdoc/>
-    public void Input(in InputText value) => Text.Add(value);
+    public void Input(in TerminalText value) => Text.Add(value);
 
     /// <inheritdoc/>
     public void Input(in Pointer value) => Pointers.Add(value);

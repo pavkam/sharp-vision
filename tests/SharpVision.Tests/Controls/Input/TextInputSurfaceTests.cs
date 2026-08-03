@@ -40,7 +40,7 @@ public sealed class TextInputSurfaceTests
         };
         var profile = new TerminalProfile(
             new Description("cursor-shape", DescriptionOrigin.Explicit, Suitability.Usable),
-            Capabilities.Conservative,
+            TerminalCapabilities.Conservative,
             new Programs(new Dictionary<string, DescriptionProgram>
             {
                 ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
@@ -90,7 +90,7 @@ public sealed class TextInputSurfaceTests
                              """);
         input.GetResolvedAppearance(VisualState.Normal).BackgroundMode.ShouldBe(BackgroundMode.Opaque);
         surface.Cell(new Point(1, 1)).Style.Background.ShouldBe(ReferenceColors.Get(0));
-        (surface.Cell(new Point(1, 1)).Style.Attributes & Attributes.Dim).ShouldBe(Attributes.Dim);
+        (surface.Cell(new Point(1, 1)).Style.Attributes & TerminalAttributes.Dim).ShouldBe(TerminalAttributes.Dim);
         surface.ShouldHaveCursor(default, visible: false);
 
         // Act
@@ -139,7 +139,7 @@ public sealed class TextInputSurfaceTests
 
         // Assert
         surface.ShouldHaveState(input, VisualState.Focused);
-        var expectedFocusedFg = Palette.Project(ThemeColorHelper.FocusedForeground(theme), ColorDepth.Basic16);
+        var expectedFocusedFg = TerminalPalette.Project(ThemeColorHelper.FocusedForeground(theme), ColorDepth.Basic16);
         surface.Cell(new Point(1, 1)).Style.Foreground.ShouldBe(expectedFocusedFg);
         surface.Cell(new Point(1, 1)).Style.Background.ShouldBe(ReferenceColors.Get(0));
     }
@@ -237,10 +237,10 @@ public sealed class TextInputSurfaceTests
         input.SelectedText.ShouldBe("界");
         input.SelectionStart.ShouldBe(2);
         input.SelectionLength.ShouldBe(1);
-        (surface.Cell(new Point(1, 0)).Style.Attributes & Attributes.Reverse)
-            .ShouldBe(Attributes.Reverse);
-        (surface.Cell(new Point(2, 0)).Style.Attributes & Attributes.Reverse)
-            .ShouldBe(Attributes.Reverse);
+        (surface.Cell(new Point(1, 0)).Style.Attributes & TerminalAttributes.Reverse)
+            .ShouldBe(TerminalAttributes.Reverse);
+        (surface.Cell(new Point(2, 0)).Style.Attributes & TerminalAttributes.Reverse)
+            .ShouldBe(TerminalAttributes.Reverse);
         surface.ShouldHaveCursor(new Point(1, 0), visible: true);
     }
 
@@ -405,10 +405,10 @@ public sealed class TextInputSurfaceTests
         input.SelectionLength.ShouldBe(4);
         input.SelectedText.ShouldBe("A界e\u0301");
         surface.ShouldHaveState(input, VisualState.PointerOver | VisualState.Focused);
-        (surface.Cell(default).Style.Attributes & Attributes.Reverse).ShouldBe(Attributes.Reverse);
-        (surface.Cell(new Point(1, 0)).Style.Attributes & Attributes.Reverse).ShouldBe(Attributes.Reverse);
-        (surface.Cell(new Point(2, 0)).Style.Attributes & Attributes.Reverse).ShouldBe(Attributes.Reverse);
-        (surface.Cell(new Point(3, 0)).Style.Attributes & Attributes.Reverse).ShouldBe(Attributes.Reverse);
+        (surface.Cell(default).Style.Attributes & TerminalAttributes.Reverse).ShouldBe(TerminalAttributes.Reverse);
+        (surface.Cell(new Point(1, 0)).Style.Attributes & TerminalAttributes.Reverse).ShouldBe(TerminalAttributes.Reverse);
+        (surface.Cell(new Point(2, 0)).Style.Attributes & TerminalAttributes.Reverse).ShouldBe(TerminalAttributes.Reverse);
+        (surface.Cell(new Point(3, 0)).Style.Attributes & TerminalAttributes.Reverse).ShouldBe(TerminalAttributes.Reverse);
         surface.ShouldHaveCursor(new Point(4, 0), visible: true);
     }
 

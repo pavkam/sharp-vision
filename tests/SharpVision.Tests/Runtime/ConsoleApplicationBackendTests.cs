@@ -118,7 +118,7 @@ public sealed class ConsoleApplicationBackendTests
 
     private static TerminalProfile XtermProfile()
     {
-        var ansi = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var ansi = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         var description = new Description(
             "xterm-256color",
             DescriptionOrigin.Database,

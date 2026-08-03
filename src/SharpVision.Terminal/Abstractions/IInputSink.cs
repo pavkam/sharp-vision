@@ -15,7 +15,7 @@ public interface IInputSink
 
     /// <summary>Receives one Unicode text scalar.</summary>
     /// <param name="value">The immutable text value.</param>
-    public void Input(in Text value);
+    public void Input(in TerminalText value);
 
     /// <summary>Receives one pointer event.</summary>
     /// <param name="value">The immutable pointer value.</param>

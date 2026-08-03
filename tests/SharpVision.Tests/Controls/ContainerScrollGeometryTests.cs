@@ -78,8 +78,8 @@ public sealed class ContainerScrollGeometryTests
         for (var sample = 0; sample < _caseCount; sample++)
         {
             var size = new Size(random.Next(0, 80), random.Next(0, 50));
-            container.HorizontalBarVisibility = Policy(random);
-            container.VerticalBarVisibility = Policy(random);
+            container.HorizontalBarVisibility = UnicodePolicy(random);
+            container.VerticalBarVisibility = UnicodePolicy(random);
             engine.Layout(container, size);
             var first = container.Viewport;
             engine.Layout(container, size);
@@ -99,6 +99,6 @@ public sealed class ContainerScrollGeometryTests
         }
     }
 
-    private static ScrollBarVisibility Policy(Random random) =>
+    private static ScrollBarVisibility UnicodePolicy(Random random) =>
         (ScrollBarVisibility) random.Next(0, 3);
 }

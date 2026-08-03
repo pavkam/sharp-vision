@@ -11,8 +11,8 @@ public sealed class Command
 
     private Command(
         GraphicsAction action,
-        Medium medium,
-        Format format,
+        KittyGraphicsMedium medium,
+        KittyGraphicsFormat format,
         Compression compression,
         uint imageId,
         uint placementId,
@@ -45,10 +45,10 @@ public sealed class Command
     public GraphicsAction Action { get; }
 
     /// <summary>Gets the direct-only transmission medium.</summary>
-    public Medium Medium { get; }
+    public KittyGraphicsMedium Medium { get; }
 
     /// <summary>Gets the image source format.</summary>
-    public Format Format { get; }
+    public KittyGraphicsFormat Format { get; }
 
     /// <summary>Gets transmission compression, which is currently always <see cref="Compression.None"/>.</summary>
     public Compression Compression { get; }
@@ -96,8 +96,8 @@ public sealed class Command
         RequireId(imageId, nameof(imageId));
         return new Command(
             GraphicsAction.Query,
-            Medium.Direct,
-            Format.Rgb,
+            KittyGraphicsMedium.Direct,
+            KittyGraphicsFormat.Rgb,
             Compression.None,
             imageId,
             0,
@@ -123,8 +123,8 @@ public sealed class Command
         ValidateQuiet(quiet);
         return new Command(
             GraphicsAction.Delete,
-            Medium.Direct,
-            Format.Rgba,
+            KittyGraphicsMedium.Direct,
+            KittyGraphicsFormat.Rgba,
             Compression.None,
             imageId,
             placementId,
@@ -150,9 +150,9 @@ public sealed class Command
     public static Command Transmit(
         uint imageId,
         Size pixelSize,
-        Format format,
+        KittyGraphicsFormat format,
         int quiet = 2,
-        Medium medium = Medium.Direct,
+        KittyGraphicsMedium medium = KittyGraphicsMedium.Direct,
         Compression compression = Compression.None)
     {
         RequireId(imageId, nameof(imageId));
@@ -163,11 +163,11 @@ public sealed class Command
 
         return !Enum.IsDefined(medium)
             ? throw new ArgumentOutOfRangeException(nameof(medium), medium, "The Kitty medium is unknown.")
-            : format == Format.Rgb
+            : format == KittyGraphicsFormat.Rgb
             ? throw new NotSupportedException("RGB is supported only by the Kitty capability query.")
             : compression != Compression.None
             ? throw new NotSupportedException("Compressed Kitty transmission is not supported.")
-            : medium != Medium.Direct
+            : medium != KittyGraphicsMedium.Direct
             ? throw new NotSupportedException("Only direct Kitty graphics transmission is supported.")
             : new Command(
             GraphicsAction.Transmit,
@@ -211,8 +211,8 @@ public sealed class Command
         ValidateQuiet(quiet);
         return new Command(
             GraphicsAction.Place,
-            Medium.Direct,
-            Format.Rgba,
+            KittyGraphicsMedium.Direct,
+            KittyGraphicsFormat.Rgba,
             Compression.None,
             imageId,
             placementId,
@@ -236,8 +236,8 @@ public sealed class Command
         ValidateQuiet(quiet);
         return new Command(
             GraphicsAction.Delete,
-            Medium.Direct,
-            Format.Rgba,
+            KittyGraphicsMedium.Direct,
+            KittyGraphicsFormat.Rgba,
             Compression.None,
             imageId,
             0,
@@ -271,8 +271,8 @@ public sealed class Command
     /// <summary>Creates a metadata-minimal continuation chunk.</summary>
     internal static Command Continuation(bool more, int quiet) => new(
         GraphicsAction.Transmit,
-        Medium.Direct,
-        Format.Rgba,
+        KittyGraphicsMedium.Direct,
+        KittyGraphicsFormat.Rgba,
         Compression.None,
         0,
         0,
@@ -304,7 +304,7 @@ public sealed class Command
         }
     }
 
-    private static void ValidateFormat(Format value)
+    private static void ValidateFormat(KittyGraphicsFormat value)
     {
         if (!Enum.IsDefined(value))
         {

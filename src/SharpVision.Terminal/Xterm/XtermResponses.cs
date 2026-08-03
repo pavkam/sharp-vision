@@ -19,7 +19,7 @@ public static class XtermResponses
         ReadOnlySpan<byte> parameters,
         ReadOnlySpan<byte> intermediates,
         byte final,
-        out Response response)
+        out XtermCapabilitiesResponse response)
     {
         response = default;
 
@@ -38,7 +38,7 @@ public static class XtermResponses
                 return false;
             }
 
-            response = new Response(kind, values);
+            response = new XtermCapabilitiesResponse(kind, values);
             return true;
         }
 
@@ -55,7 +55,7 @@ public static class XtermResponses
                 return false;
             }
 
-            response = new Response(ResponseKind.CursorPosition, values);
+            response = new XtermCapabilitiesResponse(ResponseKind.CursorPosition, values);
             return true;
         }
 
@@ -72,7 +72,7 @@ public static class XtermResponses
                 return false;
             }
 
-            response = new Response(
+            response = new XtermCapabilitiesResponse(
                 ResponseKind.PrivateMode,
                 values,
                 isSupported: values[1] is 1 or 2);
@@ -90,7 +90,7 @@ public static class XtermResponses
                 return false;
             }
 
-            response = new Response(ResponseKind.Keyboard, values);
+            response = new XtermCapabilitiesResponse(ResponseKind.Keyboard, values);
             return true;
         }
 
@@ -105,7 +105,7 @@ public static class XtermResponses
                 return false;
             }
 
-            response = new Response(ResponseKind.ModifyOtherKeys, values);
+            response = new XtermCapabilitiesResponse(ResponseKind.ModifyOtherKeys, values);
             return true;
         }
 

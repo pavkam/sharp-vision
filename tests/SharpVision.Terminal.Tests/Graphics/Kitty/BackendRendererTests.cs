@@ -8,7 +8,6 @@ using SharpVision.Terminal.Graphics;
 using SharpVision.Terminal.Multiplexing;
 
 using KittyImage = GraphicsImage;
-using MultiplexingOperation = Terminal.Multiplexing.Operation;
 
 /// <summary>Proves the real Kitty backend through renderer commit, failure, and cleanup boundaries.</summary>
 [Collection(PerformanceGroup.Name)]
@@ -188,7 +187,7 @@ public sealed class BackendRendererTests
     [Fact]
     public async Task ShutdownAsync_WhenRealBackendUsesTmux_RoutesEachDeleteIndependentlyAsync()
     {
-        var route = new MultiplexerRoute(new Policy(
+        var route = new MultiplexerRoute(new MultiplexingPolicy(
             [MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(KittyCapabilities),
             PassthroughMode.All,

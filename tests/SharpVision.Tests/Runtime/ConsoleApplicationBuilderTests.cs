@@ -35,9 +35,9 @@ public sealed class ConsoleApplicationBuilderTests
     [Fact]
     public void UseTerminalProfile_WhenCapabilitiesWereSet_PrefersCompleteProfile()
     {
-        var capabilities = Capabilities.Conservative with { ColorDepth = ColorDepth.Basic16 };
+        var capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.Basic16 };
         var profile = TerminalProfile.CreateAnsi(
-            Capabilities.Conservative with { ColorDepth = ColorDepth.Indexed256 });
+            TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.Indexed256 });
         var builder = new ConsoleApplicationBuilder(new ProbeScreen())
             .UseCapabilities(capabilities)
             .UseTerminalProfile(profile);
@@ -77,7 +77,7 @@ public sealed class ConsoleApplicationBuilderTests
         var database = new Feature(
             CapabilitySupport.Supported,
             Origin.Database);
-        var capabilities = Capabilities.Conservative with { Osc52 = database };
+        var capabilities = TerminalCapabilities.Conservative with { Osc52 = database };
         var builder = new ConsoleApplicationBuilder(new ProbeScreen())
             .UseCapabilities(capabilities);
 

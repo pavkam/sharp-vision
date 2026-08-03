@@ -692,18 +692,18 @@ public sealed class Calendar: Control<CalendarStyle>
 
         var first = (int) FirstDayOfWeek;
         var style = ResolvedStyle.WithForeground(ResolveColor(ActualStyle.WeekdayHeaderColor));
-        Span<SharpVision.Text.Line> lines = stackalloc SharpVision.Text.Line[1];
+        Span<Text.Line> lines = stackalloc Text.Line[1];
 
         for (var column = 0; column < _columnCount; column++)
         {
             var day = (DayOfWeek) ((first + column) % _columnCount);
             var label = Culture.DateTimeFormat.GetAbbreviatedDayName(day);
             var cell = new Rect(bounds.X + (column * _cellWidth), bounds.Y + _weekdayRowOffset, _cellWidth, _headerHeight);
-            _ = SharpVision.Text.Layout.Format(
+            _ = Text.Layout.Format(
                 label,
                 2,
-                SharpVision.Text.Overflow.Clip,
-                SharpVision.Text.Alignment.Start,
+                Text.Overflow.Clip,
+                Text.Alignment.Start,
                 CellPolicy.AmbiguousWidth,
                 lines);
             var line = lines[0];
@@ -791,7 +791,7 @@ public sealed class Calendar: Control<CalendarStyle>
         }
     }
 
-    private TerminalStyle ResolveDateStyle(DateOnly date, SharpVision.Text.StyleSpan? markup = null)
+    private TerminalStyle ResolveDateStyle(DateOnly date, Text.StyleSpan? markup = null)
     {
         var style = markup is { } span ? ResolveMarkupStyle(span) : ResolvedStyle;
         var adjacent = date.Year != DisplayMonth.Year || date.Month != DisplayMonth.Month;
@@ -852,7 +852,7 @@ public sealed class Calendar: Control<CalendarStyle>
         return style;
     }
 
-    private TerminalStyle ResolveMarkupStyle(SharpVision.Text.StyleSpan span)
+    private TerminalStyle ResolveMarkupStyle(Text.StyleSpan span)
     {
         var inherited = ResolvedStyle;
         var attributes = inherited.Attributes;
@@ -894,12 +894,12 @@ public sealed class Calendar: Control<CalendarStyle>
 
     private void DrawCentered(TerminalCanvas canvas, Rect bounds, string value, TerminalStyle style)
     {
-        Span<SharpVision.Text.Line> lines = stackalloc SharpVision.Text.Line[1];
-        _ = SharpVision.Text.Layout.Format(
+        Span<Text.Line> lines = stackalloc Text.Line[1];
+        _ = Text.Layout.Format(
             value,
             bounds.Width,
-            SharpVision.Text.Overflow.Clip,
-            SharpVision.Text.Alignment.Center,
+            Text.Overflow.Clip,
+            Text.Alignment.Center,
             CellPolicy.AmbiguousWidth,
             lines);
         var line = lines[0];

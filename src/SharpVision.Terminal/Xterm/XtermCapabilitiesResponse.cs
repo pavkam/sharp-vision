@@ -5,13 +5,13 @@ namespace SharpVision.Terminal.Xterm;
 
 /// <summary>Contains owned typed values from one terminal query response.</summary>
 [PublicAPI]
-public readonly record struct Response
+public readonly record struct XtermCapabilitiesResponse
 {
     /// <summary>Initializes one recognized response.</summary>
     /// <param name="kind">The response family.</param>
     /// <param name="values">Owned numeric response values.</param>
     /// <param name="isSupported">Whether a mode report proves support.</param>
-    internal Response(ResponseKind kind, int[] values, bool isSupported = false)
+    internal XtermCapabilitiesResponse(ResponseKind kind, int[] values, bool isSupported = false)
     {
         Kind = kind;
         Values = values;

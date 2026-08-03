@@ -13,7 +13,7 @@ public sealed class ModifyOtherKeysTests
     public void Commands_WhenCalled_WriteExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         XtermModifyOtherKeys.Query(writer);
         XtermModifyOtherKeys.Set(writer, 2);

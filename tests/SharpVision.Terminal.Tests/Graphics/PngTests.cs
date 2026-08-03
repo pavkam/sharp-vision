@@ -22,7 +22,7 @@ public sealed class PngTests
         _ = image.CopyTo(copied);
 
         image.Size.ShouldBe(new Size(3, 2));
-        image.Format.ShouldBe(Format.Png);
+        image.Format.ShouldBe(ImageFormat.Png);
         copied[0].ShouldBe((byte) 137);
         copied.AsSpan(12, 4).SequenceEqual("IHDR"u8).ShouldBeTrue();
         copied.AsSpan(49, 4).SequenceEqual("IEND"u8).ShouldBeTrue();
@@ -55,11 +55,11 @@ public sealed class PngTests
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             GraphicsImage.FromPng(
                 source,
-                new Limits(maxDimension: 1, maxPixels: 1, maxSourceBytes: 57)));
+                new ImageLimits(maxDimension: 1, maxPixels: 1, maxSourceBytes: 57)));
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             GraphicsImage.FromPng(
                 source,
-                new Limits(maxDimension: 2, maxPixels: 4, maxSourceBytes: 56)));
+                new ImageLimits(maxDimension: 2, maxPixels: 4, maxSourceBytes: 56)));
     }
 
     #region DecodeRgba

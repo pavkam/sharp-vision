@@ -234,7 +234,7 @@ public sealed class ConsoleConnection: IAsyncDisposable
         }
 
         if (windowsVirtualTerminal &&
-            descriptionPlatform != Terminal.Capabilities.DescriptionPlatform.Windows)
+            descriptionPlatform != Capabilities.DescriptionPlatform.Windows)
         {
             throw new ArgumentException(
                 "Windows virtual-terminal evidence requires the Windows description platform.",
@@ -311,7 +311,7 @@ public sealed class ConsoleConnection: IAsyncDisposable
             return DescriptionResult.PlatformUnavailable();
         }
 
-        var terminalName = _terminalName ?? (platform == Terminal.Capabilities.DescriptionPlatform.Windows
+        var terminalName = _terminalName ?? (platform == Capabilities.DescriptionPlatform.Windows
             ? "windows-vt"
             : _readEnvironment(EnvironmentNames.Term));
 

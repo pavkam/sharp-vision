@@ -16,14 +16,14 @@ public static class KittyKeyboard
 
     /// <summary>Queries the current progressive enhancement flags.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    public static void Query(Writer writer) => writer.Csi("?"u8, [], (byte) 'u');
+    public static void Query(ProtocolWriter writer) => writer.Csi("?"u8, [], (byte) 'u');
 
     /// <summary>Pushes current flags and replaces them with a validated set.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="flags">The flags to push.</param>
     /// <exception cref="ArgumentOutOfRangeException">Unknown flags are present.</exception>
     /// <exception cref="ArgumentException">Associated text lacks all-key reporting.</exception>
-    public static void Push(Writer writer, Enhancement flags)
+    public static void Push(ProtocolWriter writer, Enhancement flags)
     {
         Validate(flags);
         Span<byte> parameters = stackalloc byte[12];
@@ -37,7 +37,7 @@ public static class KittyKeyboard
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="count">The positive pop count; one uses the canonical omitted form.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is not positive.</exception>
-    public static void Pop(Writer writer, int count = 1)
+    public static void Pop(ProtocolWriter writer, int count = 1)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         Span<byte> parameters = stackalloc byte[12];
@@ -60,7 +60,7 @@ public static class KittyKeyboard
     /// <param name="mode">The replace, set, or clear operation.</param>
     /// <exception cref="ArgumentOutOfRangeException">Flags or mode are unknown.</exception>
     /// <exception cref="ArgumentException">Associated text lacks all-key reporting.</exception>
-    public static void Set(Writer writer, Enhancement flags, EnhancementMode mode)
+    public static void Set(ProtocolWriter writer, Enhancement flags, EnhancementMode mode)
     {
         Validate(flags);
 

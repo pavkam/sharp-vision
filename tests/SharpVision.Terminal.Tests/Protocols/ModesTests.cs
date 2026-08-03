@@ -15,7 +15,7 @@ public sealed class ModesTests
     public void Mode_WhenToggled_WritesExactBytes()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         ProtocolModes.CursorVisible(writer, true);
         ProtocolModes.CursorVisible(writer, false);
@@ -45,13 +45,13 @@ public sealed class ModesTests
         AssertEncodesMode(DecPrivateMode.SynchronizedOutput, static (writer, enabled) => ProtocolModes.SynchronizedOutput(writer, enabled));
         AssertEncodesMode(DecPrivateMode.ClipboardPasteEvents, static (writer, enabled) => ProtocolModes.ClipboardPasteEvents(writer, enabled));
 
-        static void AssertEncodesMode(int mode, Action<Writer, bool> encode)
+        static void AssertEncodesMode(int mode, Action<ProtocolWriter, bool> encode)
         {
             var destination = new ArrayBufferWriter<byte>();
-            encode(new Writer(destination), true);
+            encode(new ProtocolWriter(destination), true);
 
             var expected = new ArrayBufferWriter<byte>();
-            ProtocolModes.SetPrivate(new Writer(expected), mode, true);
+            ProtocolModes.SetPrivate(new ProtocolWriter(expected), mode, true);
 
             destination.WrittenSpan.ToArray().ShouldBe(expected.WrittenSpan.ToArray());
         }
@@ -81,7 +81,7 @@ public sealed class ModesTests
         var destination = new ArrayBufferWriter<byte>();
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
-            ProtocolModes.SetPrivate(new Writer(destination), 0, enabled: true));
+            ProtocolModes.SetPrivate(new ProtocolWriter(destination), 0, enabled: true));
 
         destination.WrittenCount.ShouldBe(0);
     }
@@ -97,7 +97,7 @@ public sealed class ModesTests
     public void Mouse_WhenTrackingVaries_WritesExactMode(MouseTracking tracking, int mode)
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         ProtocolModes.Mouse(writer, tracking, MouseCoordinates.Sgr, enabled: true);
         ProtocolModes.Mouse(writer, tracking, MouseCoordinates.Sgr, enabled: false);
@@ -122,7 +122,7 @@ public sealed class ModesTests
     {
         var destination = new ArrayBufferWriter<byte>();
 
-        ProtocolModes.Mouse(new Writer(destination), MouseTracking.Press, coordinates, enabled: true);
+        ProtocolModes.Mouse(new ProtocolWriter(destination), MouseTracking.Press, coordinates, enabled: true);
 
         var suffix = mode == 0 ? string.Empty : $"\u001b[?{mode}h";
         destination.WrittenSpan.ToArray().ShouldBe(
@@ -136,7 +136,7 @@ public sealed class ModesTests
     public void Mouse_WhenValueIsInvalid_ThrowsBeforeWriting()
     {
         var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             ProtocolModes.Mouse(writer, 0, MouseCoordinates.Sgr, enabled: true));

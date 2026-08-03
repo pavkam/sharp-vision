@@ -13,7 +13,7 @@ public sealed class TerminalContextTests
     [Fact]
     public void RuntimeAssembly_WhenTerminalContextIsRequested_ExposesContextType()
     {
-        var contextType = typeof(RuntimeOptions).Assembly.GetType(
+        var contextType = typeof(TerminalOptions).Assembly.GetType(
             "SharpVision.Terminal.Runtime.TerminalContext",
             throwOnError: false);
 
@@ -58,7 +58,7 @@ public sealed class TerminalContextTests
     [Fact]
     public void CreateContext_WhenNegotiationContainsItermEnvironment_ResolvesItermBackend()
     {
-        var options = RuntimeOptions.Minimal with
+        var options = TerminalOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(new Dictionary<string, string?>
             {
@@ -80,9 +80,9 @@ public sealed class TerminalContextTests
         var xtermProfile = new TerminalProfile(
             new Description("xterm-description", DescriptionOrigin.Explicit, Suitability.Missing),
             TerminalCapabilities.Conservative);
-        var xtermOptions = RuntimeOptions.Minimal with { Profile = xtermProfile };
+        var xtermOptions = TerminalOptions.Minimal with { Profile = xtermProfile };
 
         xtermOptions.CreateContext().Backend.ShouldBeSameAs(XtermBackend.Instance);
-        RuntimeOptions.Minimal.CreateContext().Backend.ShouldBeSameAs(VtBackend.Instance);
+        TerminalOptions.Minimal.CreateContext().Backend.ShouldBeSameAs(VtBackend.Instance);
     }
 }

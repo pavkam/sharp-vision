@@ -555,7 +555,7 @@ internal sealed class Programs
         ReadOnlySpan<int> parameters,
         IBufferWriter<byte> destination)
     {
-        var writer = new Writer(destination);
+        var writer = new ProtocolWriter(destination);
 
         switch (name)
         {

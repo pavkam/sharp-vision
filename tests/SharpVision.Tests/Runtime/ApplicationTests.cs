@@ -7,8 +7,6 @@ using Input;
 
 using SharpVision.Tests.Controls;
 
-using TerminalCapabilities = Capabilities;
-
 /// <summary>Verifies application startup, frame completion, suspension, and shutdown.</summary>
 public sealed class ApplicationTests
 {

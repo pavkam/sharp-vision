@@ -42,7 +42,7 @@ the active terminal color-depth capability.
 `Osc52` implements typed clipboard/primary/secondary/select/cut-buffer text,
 strict canonical Base64, UTF-8 validation, query payloads, owned decode results,
 and ST/BEL parser integration. OSC 5522 is deliberately handled separately,
-through `Kitty.Clipboard.Packet`, `Kitty.Clipboard.Writer`, and
+through `Kitty.Clipboard.Packet`, `Kitty.Clipboard.KittyClipboardWriter`, and
 `Kitty.Clipboard.Transaction`.
 
 ## Security and tests

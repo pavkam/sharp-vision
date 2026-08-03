@@ -28,7 +28,7 @@ public sealed class HyperlinkButtonSurfaceTests
 
 
                              """);
-        var normalForeground = Palette.Project(ThemeColorHelper.Foreground(Themes.Dark), ColorDepth.Basic16);
+        var normalForeground = TerminalPalette.Project(ThemeColorHelper.Foreground(Themes.Dark), ColorDepth.Basic16);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(normalForeground);
         surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(ReferenceColors.Get(0));
 
@@ -37,7 +37,7 @@ public sealed class HyperlinkButtonSurfaceTests
 
         // Assert — hovered state
         surface.ShouldHaveState(link, VisualState.PointerOver);
-        var hoveredForeground = Palette.Project(ThemeColorHelper.HoveredForeground(Themes.Dark), ColorDepth.Basic16);
+        var hoveredForeground = TerminalPalette.Project(ThemeColorHelper.HoveredForeground(Themes.Dark), ColorDepth.Basic16);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(hoveredForeground);
     }
 
@@ -182,7 +182,7 @@ public sealed class HyperlinkButtonSurfaceTests
 
         // Assert
         surface.ShouldHaveState(link, VisualState.Disabled);
-        var disabledForeground = Palette.Project(ThemeColorHelper.DisabledForeground(Themes.Dark), ColorDepth.Basic16);
+        var disabledForeground = TerminalPalette.Project(ThemeColorHelper.DisabledForeground(Themes.Dark), ColorDepth.Basic16);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(disabledForeground);
     }
 
@@ -257,7 +257,7 @@ public sealed class HyperlinkButtonSurfaceTests
     public async Task ActualFace_WhenCallerAssignsFace_WinsAcrossEveryStateAsync()
     {
         // Arrange
-        var pinned = new Face(Color.Rgb(1, 2, 3), Color.Rgb(4, 5, 6), Attributes.None, Underline.None, Color.Default);
+        var pinned = new Face(Color.Rgb(1, 2, 3), Color.Rgb(4, 5, 6), TerminalAttributes.None, Underline.None, Color.Default);
         var link = new HyperlinkButton("Visit") { Face = pinned };
         await using var surface = await ComponentSurface.MountAsync(
             link,

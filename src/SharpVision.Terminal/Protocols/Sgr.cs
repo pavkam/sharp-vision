@@ -21,7 +21,7 @@ public static class Sgr
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="rendition"/> is unknown.
     /// </exception>
-    public static void Apply(Writer writer, Rendition rendition)
+    public static void Apply(ProtocolWriter writer, Rendition rendition)
     {
         ValidateRendition(rendition);
         WriteNumber(writer, (int) rendition);
@@ -29,7 +29,7 @@ public static class Sgr
 
     /// <summary>Resets all rendition attributes and colors.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    public static void Reset(Writer writer) => Apply(writer, Rendition.Reset);
+    public static void Reset(ProtocolWriter writer) => Apply(writer, Rendition.Reset);
 
     /// <summary>Applies a foreground color.</summary>
     /// <param name="writer">The validated protocol writer.</param>
@@ -37,7 +37,7 @@ public static class Sgr
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="color"/> has an unknown representation.
     /// </exception>
-    public static void Foreground(Writer writer, Color color) =>
+    public static void Foreground(ProtocolWriter writer, Color color) =>
         WriteColor(writer, color, selector: 38, reset: 39);
 
     /// <summary>Applies a background color.</summary>
@@ -46,7 +46,7 @@ public static class Sgr
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="color"/> has an unknown representation.
     /// </exception>
-    public static void Background(Writer writer, Color color) =>
+    public static void Background(ProtocolWriter writer, Color color) =>
         WriteColor(writer, color, selector: 48, reset: 49);
 
     /// <summary>Applies or resets the underline color.</summary>
@@ -55,25 +55,25 @@ public static class Sgr
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="color"/> has an unknown representation.
     /// </exception>
-    public static void UnderlineColor(Writer writer, Color color) =>
+    public static void UnderlineColor(ProtocolWriter writer, Color color) =>
         WriteColor(writer, color, selector: 58, reset: 59);
 
     /// <summary>Applies one 256-color palette position to the foreground.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="position">The palette position from zero through 255.</param>
-    internal static void ForegroundPalette(Writer writer, int position) =>
+    internal static void ForegroundPalette(ProtocolWriter writer, int position) =>
         WritePaletteColor(writer, position, selector: 38);
 
     /// <summary>Applies one 256-color palette position to the background.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="position">The palette position from zero through 255.</param>
-    internal static void BackgroundPalette(Writer writer, int position) =>
+    internal static void BackgroundPalette(ProtocolWriter writer, int position) =>
         WritePaletteColor(writer, position, selector: 48);
 
     /// <summary>Applies one 256-color palette position to the underline.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="position">The palette position from zero through 255.</param>
-    internal static void UnderlineColorPalette(Writer writer, int position) =>
+    internal static void UnderlineColorPalette(ProtocolWriter writer, int position) =>
         WritePaletteColor(writer, position, selector: 58);
 
     /// <summary>Applies one xterm-compatible underline variant.</summary>
@@ -82,7 +82,7 @@ public static class Sgr
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="underline"/> is unknown.
     /// </exception>
-    public static void Apply(Writer writer, Underline underline)
+    public static void Apply(ProtocolWriter writer, Underline underline)
     {
         if (!Enum.IsDefined(underline))
         {
@@ -99,7 +99,7 @@ public static class Sgr
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="color"/> is unknown.
     /// </exception>
-    public static void Foreground(Writer writer, BasicColor color) =>
+    public static void Foreground(ProtocolWriter writer, BasicColor color) =>
         WriteBasicColor(writer, color, foreground: true);
 
     /// <summary>Applies one classic ANSI or aixterm background color.</summary>
@@ -108,7 +108,7 @@ public static class Sgr
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="color"/> is unknown.
     /// </exception>
-    public static void Background(Writer writer, BasicColor color) =>
+    public static void Background(ProtocolWriter writer, BasicColor color) =>
         WriteBasicColor(writer, color, foreground: false);
 
     private static int Append(int value, Span<byte> destination)
@@ -147,7 +147,7 @@ public static class Sgr
         }
     }
 
-    private static void WriteBasicColor(Writer writer, BasicColor color, bool foreground)
+    private static void WriteBasicColor(ProtocolWriter writer, BasicColor color, bool foreground)
     {
         if (!Enum.IsDefined(color))
         {
@@ -161,7 +161,7 @@ public static class Sgr
         WriteNumber(writer, value);
     }
 
-    private static void WriteColor(Writer writer, Color color, int selector, int reset)
+    private static void WriteColor(ProtocolWriter writer, Color color, int selector, int reset)
     {
         Span<byte> parameters = stackalloc byte[32];
         var length = 0;
@@ -192,7 +192,7 @@ public static class Sgr
         writer.Csi(parameters[..length], [], (byte) 'm');
     }
 
-    private static void WritePaletteColor(Writer writer, int position, int selector)
+    private static void WritePaletteColor(ProtocolWriter writer, int position, int selector)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(position);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(position, byte.MaxValue);
@@ -205,7 +205,7 @@ public static class Sgr
         writer.Csi(parameters[..length], [], (byte) 'm');
     }
 
-    private static void WriteNumber(Writer writer, int value)
+    private static void WriteNumber(ProtocolWriter writer, int value)
     {
         Span<byte> parameters = stackalloc byte[10];
         var length = Append(value, parameters);

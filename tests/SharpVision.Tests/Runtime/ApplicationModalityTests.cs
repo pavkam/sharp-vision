@@ -284,7 +284,7 @@ public sealed class ApplicationModalityTests
                 _ = application.Modality.Enter(plane, initialFocus: input);
             },
             TestContext.Current.CancellationToken);
-        var text = new Terminal.Input.Text(new Rune('x'));
+        var text = new TerminalText(new Rune('x'));
 
         application.Input(in text);
         application.Input(new Paste("y"u8));
@@ -414,7 +414,7 @@ public sealed class ApplicationModalityTests
             _ = application.Modality.Enter(plane);
             application.Focus.Focused.ShouldBeNull();
         }, TestContext.Current.CancellationToken);
-        var text = new Terminal.Input.Text(new Rune('x'));
+        var text = new TerminalText(new Rune('x'));
 
         application.Input(in text);
         application.Input(new Paste("null"u8));

@@ -19,7 +19,7 @@ public sealed class UnicodeGeometryTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            var policy = new Policy(Ambiguous.Wide);
+            var policy = new UnicodePolicy(Ambiguous.Wide);
             var text = new TextControl { Content = "·" };
             var marked = new TextControl("<b>·</b>");
             var input = new TextInputControl { Text = "·" };
@@ -59,7 +59,7 @@ public sealed class UnicodeGeometryTests
         {
             var input = new TextInputControl { Text = source, Width = Length.Cells(2) };
             input.SetTheme(TestThemes.BorderlessInput);
-            input.Attach(dispatcher, Policy.Default);
+            input.Attach(dispatcher, UnicodePolicy.Default);
             new LayoutEngine().Layout(input, new Size(2, 1));
             using Frame frame = new(new Size(2, 1));
 

@@ -20,7 +20,7 @@ public sealed class ImageTests
         var written = image.CopyTo(copied);
 
         image.Size.ShouldBe(new Size(2, 1));
-        image.Format.ShouldBe(Format.Rgba);
+        image.Format.ShouldBe(ImageFormat.Rgba);
         image.Identity.ShouldNotBe(0UL);
         written.ShouldBe(8);
         copied.ShouldBe([1, 2, 3, 4, 5, 6, 7, 8]);
@@ -38,7 +38,7 @@ public sealed class ImageTests
             GraphicsImage.FromRgba(
                 new Size(2, 1),
                 new byte[8],
-                new Limits(maxDimension: 1, maxPixels: 1, maxSourceBytes: 4)));
+                new ImageLimits(maxDimension: 1, maxPixels: 1, maxSourceBytes: 4)));
     }
 
     /// <summary>Verifies a short copy destination is rejected without partial mutation.</summary>
@@ -57,10 +57,10 @@ public sealed class ImageTests
     [Fact]
     public void Constructor_WhenLimitsAreInvalid_ThrowsDocumentedException()
     {
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => new Limits(maxDimension: 0));
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => new Limits(maxPixels: 0));
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => new Limits(maxSourceBytes: 0));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new ImageLimits(maxDimension: 0));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new ImageLimits(maxPixels: 0));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new ImageLimits(maxSourceBytes: 0));
         _ = Should.Throw<ArgumentException>(() =>
-            new Limits(maxDimension: 2, maxPixels: 5, maxSourceBytes: 20));
+            new ImageLimits(maxDimension: 2, maxPixels: 5, maxSourceBytes: 20));
     }
 }

@@ -14,7 +14,7 @@ public static class XtermGetCap
     /// <param name="names">One or more approved names.</param>
     /// <exception cref="ArgumentException">The list is empty or contains a duplicate.</exception>
     /// <exception cref="ArgumentOutOfRangeException">A name is undefined.</exception>
-    public static void Query(Writer writer, ReadOnlySpan<CapabilityName> names)
+    public static void Query(ProtocolWriter writer, ReadOnlySpan<CapabilityName> names)
     {
         if (names.IsEmpty)
         {

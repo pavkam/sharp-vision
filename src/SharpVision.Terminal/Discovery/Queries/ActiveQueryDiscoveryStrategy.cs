@@ -179,8 +179,8 @@ internal sealed class ActiveQueryDiscoveryStrategy
         IsStarted = true;
         var preludeQueries = new ArrayBufferWriter<byte>();
         var standardQueries = new ArrayBufferWriter<byte>();
-        var preludeWriter = new Writer(preludeQueries);
-        var writer = new Writer(standardQueries);
+        var preludeWriter = new ProtocolWriter(preludeQueries);
+        var writer = new ProtocolWriter(standardQueries);
 
         if (queryKeyboard)
         {
@@ -342,7 +342,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
         if (graphics)
         {
             Span<byte> queryPixel = [0, 0, 0];
-            Kitty.Graphics.Writer.Write(
+            Kitty.Graphics.KittyGraphicsWriter.Write(
                 Kitty.Graphics.Command.Query(31),
                 queryPixel,
                 queryBatch);
@@ -368,13 +368,13 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
     #endregion
 
-    #region Response acceptance and completion
+    #region XtermCapabilitiesResponse acceptance and completion
 
     /// <summary>Matches one recognized response and publishes when all queries complete.</summary>
     /// <param name="response">The owned typed terminal response.</param>
     /// <returns>The active, duplicate, late, or unknown match classification.</returns>
     /// <exception cref="InvalidOperationException">The negotiator has not started.</exception>
-    public QueryMatch Accept(in Response response)
+    public QueryMatch Accept(in XtermCapabilitiesResponse response)
     {
         if (!IsStarted)
         {
@@ -434,7 +434,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
     /// <returns>The active, duplicate, late, or unknown match classification.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="response"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The negotiator has not started.</exception>
-    public QueryMatch Accept(Kitty.Graphics.Response response)
+    public QueryMatch Accept(Kitty.Graphics.KittyGraphicsResponse response)
     {
         ArgumentNullException.ThrowIfNull(response);
 
@@ -686,7 +686,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
         return true;
     }
 
-    private QueryMatch AcceptPrivateMode(in Response response, DateTimeOffset now)
+    private QueryMatch AcceptPrivateMode(in XtermCapabilitiesResponse response, DateTimeOffset now)
     {
         _ = ExpireIfDeadlineReached(now);
         var values = response.Values.Span;
@@ -879,7 +879,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
     }
 
     private void AddModeQuery(
-        Writer writer,
+        ProtocolWriter writer,
         int mode,
         Feature baseline,
         bool? overrideValue,

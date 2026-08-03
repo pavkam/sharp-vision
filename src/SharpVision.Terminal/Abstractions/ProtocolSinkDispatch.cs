@@ -28,7 +28,7 @@ internal static class ProtocolSinkDispatch
             var values = value.Kind == ResponseKind.PaletteColor
                 ? new[] { value.Index.GetValueOrDefault(), value.Red, value.Green, value.Blue }
                 : [value.Red, value.Green, value.Blue];
-            var response = new Response(value.Kind, values);
+            var response = new XtermCapabilitiesResponse(value.Kind, values);
             sink.Response(in response);
         }
 
@@ -42,7 +42,7 @@ internal static class ProtocolSinkDispatch
             }
 
             int[] values = [value.Size.Width, value.Size.Height];
-            var response = new Response(value.Kind, values);
+            var response = new XtermCapabilitiesResponse(value.Kind, values);
             sink.Response(in response);
         }
 
@@ -81,7 +81,7 @@ internal static class ProtocolSinkDispatch
         }
 
         /// <summary>Dispatches one bounded Kitty graphics APC response.</summary>
-        public void Dispatch(Kitty.Graphics.Response value)
+        public void Dispatch(Kitty.Graphics.KittyGraphicsResponse value)
         {
             ArgumentNullException.ThrowIfNull(value);
 

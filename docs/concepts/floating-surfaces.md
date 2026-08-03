@@ -106,11 +106,11 @@ overlapping children, absolute `Left`/`Top`/`Right`/`Bottom` offsets, and stable
 border box inside its latest content bounds without changing the authored
 offsets.
 
-`SharpVision.Terminal.Rendering.Canvas` is the frame-owned drawing value passed
-to control rendering hooks. It draws graphemes, lines, boxes, fills, images, and
-styles; it is not a `Container`, owns no children, and performs no layout. To
-put controls above custom drawing, compose the drawing control and those
-controls in an Overlay.
+`SharpVision.Terminal.Rendering.TerminalCanvas` is the frame-owned drawing value
+passed to control rendering hooks. It draws graphemes, lines, boxes, fills,
+images, and styles; it is not a `Container`, owns no children, and performs no
+layout. To put controls above custom drawing, compose the drawing control and
+those controls in an Overlay.
 
 ## Expected behavior
 

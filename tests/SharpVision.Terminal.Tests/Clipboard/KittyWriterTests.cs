@@ -5,8 +5,6 @@ namespace SharpVision.Terminal.Tests.Clipboard;
 
 using Kitty.Clipboard;
 
-using ProtocolWriter = Writer;
-
 /// <summary>
 /// Verifies exact Kitty OSC 5522 request and data encoding.
 /// </summary>
@@ -21,8 +19,8 @@ public sealed class KittyWriterTests
         var destination = new ArrayBufferWriter<byte>();
         var writer = new ProtocolWriter(destination);
 
-        Writer.Read(writer, "text/plain image/png"u8, id: "req-1"u8);
-        Writer.List(writer, Selection.Primary);
+        KittyClipboardWriter.Read(writer, "text/plain image/png"u8, id: "req-1"u8);
+        KittyClipboardWriter.List(writer, Selection.Primary);
 
         destination.WrittenSpan.ToArray().ShouldBe(
             Encoding.ASCII.GetBytes(
@@ -38,7 +36,7 @@ public sealed class KittyWriterTests
     {
         var destination = new ArrayBufferWriter<byte>();
 
-        Writer.WriteStart(
+        KittyClipboardWriter.WriteStart(
             new ProtocolWriter(destination),
             Selection.Primary,
             "req-1"u8,
@@ -59,8 +57,8 @@ public sealed class KittyWriterTests
         var destination = new ArrayBufferWriter<byte>();
         var writer = new ProtocolWriter(destination);
 
-        Writer.WriteAlias(writer, "text/plain"u8, "text/plain text/utf8"u8);
-        Writer.WriteEnd(writer);
+        KittyClipboardWriter.WriteAlias(writer, "text/plain"u8, "text/plain text/utf8"u8);
+        KittyClipboardWriter.WriteEnd(writer);
 
         destination.WrittenSpan.ToArray().ShouldBe(
             Encoding.ASCII.GetBytes(
@@ -78,9 +76,9 @@ public sealed class KittyWriterTests
         var destination = new ArrayBufferWriter<byte>();
         var writer = new ProtocolWriter(destination);
 
-        Writer.QuerySupport(writer);
-        Writer.PasteEvents(writer, enabled: true);
-        Writer.PasteEvents(writer, enabled: false);
+        KittyClipboardWriter.QuerySupport(writer);
+        KittyClipboardWriter.PasteEvents(writer, enabled: true);
+        KittyClipboardWriter.PasteEvents(writer, enabled: false);
 
         destination.WrittenSpan.ToArray().ShouldBe(
             "\u001b[?5522$p\u001b[?5522h\u001b[?5522l"u8.ToArray());
@@ -102,7 +100,7 @@ public sealed class KittyWriterTests
         byte[] data = [.. Enumerable.Range(0, size).Select(static value => (byte) value)];
         var destination = new ArrayBufferWriter<byte>();
 
-        Writer.WriteData(new ProtocolWriter(destination), "application/octet-stream"u8, data);
+        KittyClipboardWriter.WriteData(new ProtocolWriter(destination), "application/octet-stream"u8, data);
 
         using ProtocolParser parser = new();
         var sink = new RecordingSink();
@@ -112,7 +110,7 @@ public sealed class KittyWriterTests
 
         packets.Length.ShouldBe(Math.Max(1, (size + 4095) / 4096));
         packets.ShouldAllBe(static packet => packet.IsValid);
-        packets.ShouldAllBe(static packet => packet.Operation == Operation.WriteData);
+        packets.ShouldAllBe(static packet => packet.Operation == KittyClipboardOperation.WriteData);
         packets.ShouldAllBe(static packet => packet.Data.Length <= 4096);
         packets.SelectMany(static packet => packet.Data.ToArray()).ToArray().ShouldBe(data);
 
@@ -140,11 +138,11 @@ public sealed class KittyWriterTests
         var destination = new ArrayBufferWriter<byte>();
         var writer = new ProtocolWriter(destination);
 
-        _ = Should.Throw<ArgumentException>(() => Writer.Read(writer, "text/plain"u8, id: "bad!"u8));
-        _ = Should.Throw<ArgumentException>(() => Writer.WriteData(writer, "bad mime"u8, []));
+        _ = Should.Throw<ArgumentException>(() => KittyClipboardWriter.Read(writer, "text/plain"u8, id: "bad!"u8));
+        _ = Should.Throw<ArgumentException>(() => KittyClipboardWriter.WriteData(writer, "bad mime"u8, []));
         _ = Should.Throw<ArgumentException>(() =>
-            Writer.WriteData(writer, "text/plain"u8, "large"u8, maxBytes: 2));
-        _ = Should.Throw<ArgumentException>(() => Writer.WriteStart(writer, name: [0xff]));
+            KittyClipboardWriter.WriteData(writer, "text/plain"u8, "large"u8, maxBytes: 2));
+        _ = Should.Throw<ArgumentException>(() => KittyClipboardWriter.WriteStart(writer, name: [0xff]));
 
         destination.WrittenCount.ShouldBe(0);
     }

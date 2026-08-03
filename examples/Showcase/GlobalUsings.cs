@@ -34,5 +34,3 @@ global using SharpVision.Windows;
 
 global using KeyAction = SharpVision.Terminal.Input.KeyAction;
 global using Screen = SharpVision.Controls.Screen;
-global using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
-global using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;

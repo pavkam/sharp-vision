@@ -57,7 +57,7 @@ public sealed class IntrinsicShadowTests
         FrameOracle.Get(frame, new Point(3, 2)).ShouldBe("▓");
         FrameOracle.Get(frame, new Point(4, 2)).ShouldBe("▓");
         FrameOracle.Get(frame, new Point(2, 1)).ShouldBeEmpty();
-        frame.GetCell(new Point(3, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
+        frame.GetCell(new Point(3, 1)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
     }
 
     /// <summary>Verifies fractional mode sculpts the canonical lower-right half-cell footprint.</summary>
@@ -79,8 +79,8 @@ public sealed class IntrinsicShadowTests
         FrameOracle.Get(frame, new Point(2, 1)).ShouldBe("▀");
         FrameOracle.Get(frame, new Point(3, 1)).ShouldBe("▀");
         FrameOracle.Get(frame, new Point(4, 1)).ShouldBe("▀");
-        frame.GetCell(new Point(4, 0)).Style.Attributes.ShouldBe(Attributes.Dim);
-        frame.GetCell(new Point(4, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
+        frame.GetCell(new Point(4, 0)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
+        frame.GetCell(new Point(4, 1)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
     }
 
     /// <summary>Verifies a negative half-row offset mirrors the fractional vertical boundary.</summary>
@@ -153,7 +153,7 @@ public sealed class IntrinsicShadowTests
         // Assert
         FrameOracle.Get(frame, new Point(4, 0)).ShouldBeEmpty();
         FrameOracle.Get(frame, new Point(1, 1)).ShouldBeEmpty();
-        frame.GetCell(new Point(4, 0)).Style.Attributes.ShouldBe(Attributes.None);
+        frame.GetCell(new Point(4, 0)).Style.Attributes.ShouldBe(TerminalAttributes.None);
     }
 
     /// <summary>Verifies fractional glyph replacement repairs a wide destination owner.</summary>
@@ -190,10 +190,10 @@ public sealed class IntrinsicShadowTests
         control.Render(frame.Canvas);
 
         FrameOracle.Get(frame, new Point(3, 1)).ShouldBe("x");
-        frame.GetCell(new Point(3, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
+        frame.GetCell(new Point(3, 1)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
         frame.GetCell(new Point(3, 1)).Style.Background.ShouldBe(destinationBackground);
         FrameOracle.Get(frame, new Point(2, 1)).ShouldBe("x");
-        frame.GetCell(new Point(2, 1)).Style.Attributes.ShouldBe(Attributes.None);
+        frame.GetCell(new Point(2, 1)).Style.Attributes.ShouldBe(TerminalAttributes.None);
         frame.GetCell(new Point(2, 1)).Style.Background.ShouldBe(destinationBackground);
     }
 
@@ -217,11 +217,11 @@ public sealed class IntrinsicShadowTests
 
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBeEmpty();
         frame.GetCell(new Point(0, 0)).Style.Background.ShouldBe(ReferenceColors.Get(1));
-        frame.GetCell(new Point(0, 0)).Style.Attributes.ShouldBe(Attributes.None);
+        frame.GetCell(new Point(0, 0)).Style.Attributes.ShouldBe(TerminalAttributes.None);
         FrameOracle.Get(frame, new Point(3, 1)).ShouldBe("x");
         frame.GetCell(new Point(3, 1)).Style.Foreground.ShouldBe(ReferenceColors.Get(3));
         frame.GetCell(new Point(3, 1)).Style.Background.ShouldBe(ReferenceColors.Get(4));
-        frame.GetCell(new Point(3, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
+        frame.GetCell(new Point(3, 1)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
     }
 
     /// <summary>Verifies composite mode restyles a complete wide grapheme owner.</summary>
@@ -236,8 +236,8 @@ public sealed class IntrinsicShadowTests
 
         FrameOracle.Get(frame, new Point(3, 1)).ShouldBe("界");
         frame.GetCell(new Point(4, 1)).IsContinuation.ShouldBeTrue();
-        frame.GetCell(new Point(3, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
-        frame.GetCell(new Point(4, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
+        frame.GetCell(new Point(3, 1)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
+        frame.GetCell(new Point(4, 1)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
         frame.GetCell(new Point(3, 1)).Style.Background.ShouldBe(Color.Default);
         frame.GetCell(new Point(4, 1)).Style.Background.ShouldBe(Color.Default);
     }
@@ -453,6 +453,6 @@ public sealed class IntrinsicShadowTests
     private static LayoutProbe CreateSurface(ShadowMode mode, Point offset) => new()
     {
         Face = AppearanceTestValues.Face(background: Color.Transparent),
-        Shadow = AppearanceTestValues.Shadow(visible: true, mode: mode, offset: offset, glyph: new Rune('▓'), attributes: Attributes.Dim),
+        Shadow = AppearanceTestValues.Shadow(visible: true, mode: mode, offset: offset, glyph: new Rune('▓'), attributes: TerminalAttributes.Dim),
     };
 }

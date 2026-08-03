@@ -141,7 +141,7 @@ public sealed class ConsoleApplicationTests
             static () => true,
             _ => connection,
             _ => { })
-            .UseTerminalProfile(TerminalProfile.CreateAnsi(Capabilities.Conservative));
+            .UseTerminalProfile(TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative));
 
         var run = ConsoleApplication.RunCoreAsync(builder, TestContext.Current.CancellationToken).AsTask();
         var application = await screen.Started.WaitAsync(TestContext.Current.CancellationToken);
@@ -155,7 +155,7 @@ public sealed class ConsoleApplicationTests
 
     private static TerminalProfile Unsuitable(Suitability suitability) => new(
         new Description("fixture", DescriptionOrigin.Explicit, suitability),
-        Capabilities.Conservative);
+        TerminalCapabilities.Conservative);
 
     /// <summary>Signals the exact application instance once the Started hook fires.</summary>
     private sealed class StartedSignalScreen: Screen

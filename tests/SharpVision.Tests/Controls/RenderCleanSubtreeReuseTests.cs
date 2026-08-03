@@ -9,7 +9,7 @@ using GraphicsImage = Terminal.Graphics.ImageSource;
 /// Verifies the narrow, maintainer-approved render-clean subtree reuse cut (see #26) and its
 /// #235 extensions: a leaf control that is render-clean, image-free, and owns no popup of its own
 /// copies its previous frame's cells instead of re-executing its paint sequence, but only when no
-/// layout ran since the copied frame (<see cref="Canvas.HasPreviousFrame"/>). A visible shadow now
+/// layout ran since the copied frame (<see cref="TerminalCanvas.HasPreviousFrame"/>). A visible shadow now
 /// participates too, but only when its own paint is a full destination overwrite that cannot
 /// depend on stale prior content - BlockGlyph mode with an opaque resolved background. Composite
 /// (which never replaces the underlying grapheme, regardless of background opacity) and
@@ -19,7 +19,7 @@ using GraphicsImage = Terminal.Graphics.ImageSource;
 /// Being overlapped or bordered by a popup that belongs to a DIFFERENT control needs no exclusion
 /// at all: the popup layer always repaints unconditionally after ordinary content on every frame
 /// (steady state), and any frame where a popup's footprint could have changed is, by construction,
-/// a frame where <see cref="Canvas.HasPreviousFrame"/> is false for every control application-wide
+/// a frame where <see cref="TerminalCanvas.HasPreviousFrame"/> is false for every control application-wide
 /// (open/close/move all route through <c>InvalidationImpact.Measure</c>, which forces a full
 /// non-reuse render - see the correctness note above <c>Control.CanReuseCleanRender</c>). The
 /// adversarial popup cases below lock that invariant in.
@@ -38,7 +38,7 @@ public sealed class RenderCleanSubtreeReuseTests
         new LayoutEngine().Layout(stack, size);
         using var renderer = new Renderer();
         var transport = new ConsoleApplicationTransport();
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         using var first = new Frame(size);
         stack.Render(first.Canvas);
         _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
@@ -71,7 +71,7 @@ public sealed class RenderCleanSubtreeReuseTests
         new LayoutEngine().Layout(stack, size);
         using var renderer = new Renderer();
         var transport = new ConsoleApplicationTransport();
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         using var firstFrame = new Frame(size);
         stack.Render(firstFrame.Canvas);
         _ = await renderer.RenderAsync(firstFrame, transport, profile, TestContext.Current.CancellationToken);
@@ -86,7 +86,7 @@ public sealed class RenderCleanSubtreeReuseTests
 
     /// <summary>Verifies a render-clean leaf casting the default Composite-mode, transparent-
     /// background shadow never takes the copy path. Composite mode's own contract is to preserve
-    /// the underlying grapheme and replace only its style (<see cref="Canvas.ApplyStyle"/> calls
+    /// the underlying grapheme and replace only its style (<see cref="TerminalCanvas.ApplyStyle"/> calls
     /// only <c>TrySetOwnerStyle</c>), so a copied Composite shadow cell would always carry forward
     /// whatever character was underneath in the copied frame rather than this frame's - a copy is
     /// never provably identical to a fresh paint for this mode, regardless of background opacity
@@ -99,7 +99,7 @@ public sealed class RenderCleanSubtreeReuseTests
         new LayoutEngine().Layout(control, size);
         using var renderer = new Renderer();
         var transport = new ConsoleApplicationTransport();
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         using var first = new Frame(size);
         control.Render(first.Canvas);
         _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
@@ -131,7 +131,7 @@ public sealed class RenderCleanSubtreeReuseTests
         new LayoutEngine().Layout(control, size);
         using var renderer = new Renderer();
         var transport = new ConsoleApplicationTransport();
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         using var first = new Frame(size);
         control.Render(first.Canvas);
         _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
@@ -163,7 +163,7 @@ public sealed class RenderCleanSubtreeReuseTests
         new LayoutEngine().Layout(control, size);
         using var renderer = new Renderer();
         var transport = new ConsoleApplicationTransport();
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         using var first = new Frame(size);
         control.Render(first.Canvas);
         _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
@@ -195,7 +195,7 @@ public sealed class RenderCleanSubtreeReuseTests
         new LayoutEngine().Layout(control, size);
         using var renderer = new Renderer();
         var transport = new ConsoleApplicationTransport();
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         using var first = new Frame(size);
         control.Render(first.Canvas);
         _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
@@ -232,7 +232,7 @@ public sealed class RenderCleanSubtreeReuseTests
         new LayoutEngine().Layout(overlay, size);
         using var renderer = new Renderer();
         var transport = new ConsoleApplicationTransport();
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         using var warm = new Frame(size);
         overlay.Render(warm.Canvas);
         _ = await renderer.RenderAsync(warm, transport, profile, TestContext.Current.CancellationToken);
@@ -283,7 +283,7 @@ public sealed class RenderCleanSubtreeReuseTests
         new LayoutEngine().Layout(overlay, size);
         using var renderer = new Renderer();
         var transport = new ConsoleApplicationTransport();
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         using var warm = new Frame(size);
         overlay.Render(warm.Canvas);
         _ = await renderer.RenderAsync(warm, transport, profile, TestContext.Current.CancellationToken);
@@ -316,7 +316,7 @@ public sealed class RenderCleanSubtreeReuseTests
         new LayoutEngine().Layout(control, size);
         using var renderer = new Renderer();
         var transport = new ConsoleApplicationTransport();
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         using var first = new Frame(size);
         control.Render(first.Canvas);
         _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
@@ -348,7 +348,7 @@ public sealed class RenderCleanSubtreeReuseTests
         new LayoutEngine().Layout(control, size);
         using var renderer = new Renderer();
         var transport = new ConsoleApplicationTransport();
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         using var first = new Frame(size);
         control.Render(first.Canvas);
         _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
@@ -363,7 +363,7 @@ public sealed class RenderCleanSubtreeReuseTests
 
     /// <summary>Verifies a render-clean Image with an assigned source always re-records its
     /// semantic placement instead of silently dropping it through the copy path - copying cells
-    /// never replays <see cref="Canvas.DrawImage"/> (see #26).</summary>
+    /// never replays <see cref="TerminalCanvas.DrawImage"/> (see #26).</summary>
     [Fact]
     public async Task Render_WhenImageHasSource_AlwaysRecordsPlacementAsync()
     {
@@ -377,7 +377,7 @@ public sealed class RenderCleanSubtreeReuseTests
         new LayoutEngine().Layout(image, size);
         using var renderer = new Renderer();
         var transport = new ConsoleApplicationTransport();
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         using var first = new Frame(size);
         image.Render(first.Canvas);
         first.PlacementCount.ShouldBe(1);
@@ -405,7 +405,7 @@ public sealed class RenderCleanSubtreeReuseTests
         new LayoutEngine().Layout(stack, size);
         using var renderer = new Renderer();
         var transport = new ConsoleApplicationTransport();
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         using var warm = new Frame(size);
         stack.Render(warm.Canvas);
         _ = await renderer.RenderAsync(warm, transport, profile, TestContext.Current.CancellationToken);
@@ -462,7 +462,7 @@ public sealed class RenderCleanSubtreeReuseTests
         new LayoutEngine().Layout(overlay, size);
         using var renderer = new Renderer();
         var transport = new ConsoleApplicationTransport();
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         using var warm = new Frame(size);
         overlay.Render(warm.Canvas);
         _ = await renderer.RenderAsync(warm, transport, profile, TestContext.Current.CancellationToken);
@@ -513,7 +513,7 @@ public sealed class RenderCleanSubtreeReuseTests
         new LayoutEngine().Layout(overlay, size);
         using var renderer = new Renderer();
         var transport = new ConsoleApplicationTransport();
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         using var warm = new Frame(size);
         overlay.Render(warm.Canvas);
         _ = await renderer.RenderAsync(warm, transport, profile, TestContext.Current.CancellationToken);
@@ -552,7 +552,7 @@ public sealed class RenderCleanSubtreeReuseTests
         new LayoutEngine().Layout(overlay, size);
         using var renderer = new Renderer();
         var transport = new ConsoleApplicationTransport();
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         using var warm = new Frame(size);
         overlay.Render(warm.Canvas);
         _ = await renderer.RenderAsync(warm, transport, profile, TestContext.Current.CancellationToken);
@@ -592,7 +592,7 @@ public sealed class RenderCleanSubtreeReuseTests
         new LayoutEngine().Layout(overlay, size);
         using var renderer = new Renderer();
         var transport = new ConsoleApplicationTransport();
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         using var warm = new Frame(size);
         overlay.Render(warm.Canvas);
         _ = await renderer.RenderAsync(warm, transport, profile, TestContext.Current.CancellationToken);
@@ -634,7 +634,7 @@ public sealed class RenderCleanSubtreeReuseTests
         new LayoutEngine().Layout(overlay, size);
         using var renderer = new Renderer();
         var transport = new ConsoleApplicationTransport();
-        var profile = TerminalProfile.CreateAnsi(Capabilities.Conservative);
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
         using var warm = new Frame(size);
         overlay.Render(warm.Canvas);
         _ = await renderer.RenderAsync(warm, transport, profile, TestContext.Current.CancellationToken);

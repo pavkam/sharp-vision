@@ -11,7 +11,7 @@ using Xterm;
 /// capabilities, and OSC 52 clipboard) are not declared here; a sink opts into any of them by
 /// additionally implementing the matching optional interface, for example
 /// <see cref="IPaletteResponseSink"/>. A sink that implements only this interface still
-/// observes every vendor reply, adapted through <see cref="Response(in Response)"/> or
+/// observes every vendor reply, adapted through <see cref="Response(in XtermCapabilitiesResponse)"/> or
 /// <see cref="IInputSink.Input(in Diagnostic)"/> by the dispatching decoder.
 /// </summary>
 [PublicAPI]
@@ -19,7 +19,7 @@ public interface IProtocolSink: IInputSink
 {
     /// <summary>Receives one recognized immutable terminal response.</summary>
     /// <param name="value">The owned numeric response.</param>
-    public void Response(in Response value);
+    public void Response(in XtermCapabilitiesResponse value);
 
     /// <summary>Receives one completed owned terminal string.</summary>
     /// <param name="value">The non-null copied sequence.</param>

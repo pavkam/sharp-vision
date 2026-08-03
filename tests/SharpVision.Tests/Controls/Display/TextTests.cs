@@ -5,7 +5,6 @@ namespace SharpVision.Tests.Controls.Display;
 
 using Performance;
 
-using TerminalAttributes = Attributes;
 
 /// <summary>Verifies cached Text measurement, rendering, validation, and styling.</summary>
 [Collection(PerformanceGroup.Name)]

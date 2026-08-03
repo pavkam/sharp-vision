@@ -3,7 +3,7 @@
 
 namespace SharpVision.Input;
 
-using TerminalText = Terminal.Input.Text;
+using TerminalText = Terminal.Input.TerminalText;
 
 /// <summary>Provides one immutable Unicode text scalar.</summary>
 [PublicAPI]

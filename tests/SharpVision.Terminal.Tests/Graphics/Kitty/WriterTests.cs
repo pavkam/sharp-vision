@@ -18,7 +18,7 @@ public sealed class WriterTests
     {
         var output = new ArrayBufferWriter<byte>();
 
-        Writer.Write(Command.Query(31), [0, 0, 0], output);
+        KittyGraphicsWriter.Write(Command.Query(31), [0, 0, 0], output);
 
         output.WrittenSpan.ToArray().ShouldBe(
             "\u001b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\u001b\\"u8.ToArray());
@@ -32,10 +32,10 @@ public sealed class WriterTests
         var command = Command.Transmit(
             imageId: 7,
             new Size(1, 1),
-            Format.Rgba,
+            KittyGraphicsFormat.Rgba,
             quiet: 2);
 
-        Writer.WriteTransmission(command, [1, 2, 3, 4], output);
+        KittyGraphicsWriter.WriteTransmission(command, [1, 2, 3, 4], output);
 
         output.WrittenSpan.ToArray().ShouldBe(
             "\u001b_Ga=t,f=32,t=d,s=1,v=1,i=7,q=2;AQIDBA==\u001b\\"u8.ToArray());
@@ -51,10 +51,10 @@ public sealed class WriterTests
         var command = Command.Transmit(
             imageId: 8,
             new Size(1_024, 1),
-            Format.Rgba,
+            KittyGraphicsFormat.Rgba,
             quiet: 1);
 
-        Writer.WriteTransmission(command, payload, output);
+        KittyGraphicsWriter.WriteTransmission(command, payload, output);
 
         var bytes = output.WrittenSpan;
         var second = bytes.IndexOf("\u001b_Gm=0,q=1;"u8);
@@ -73,9 +73,9 @@ public sealed class WriterTests
     {
         var output = new ArrayBufferWriter<byte>();
         var payload = CreatePngPayload(3_073);
-        var command = Command.Transmit(9, new Size(1, 1), Format.Png);
+        var command = Command.Transmit(9, new Size(1, 1), KittyGraphicsFormat.Png);
 
-        Writer.WriteTransmission(command, payload, output);
+        KittyGraphicsWriter.WriteTransmission(command, payload, output);
 
         var bytes = output.WrittenSpan;
         bytes.IndexOf("\u001b_Gm=0,q=2;"u8).ShouldBeGreaterThan(0);
@@ -101,7 +101,7 @@ public sealed class WriterTests
             quiet: 2,
             doNotMoveCursor: true);
 
-        Writer.Write(command, [], output);
+        KittyGraphicsWriter.Write(command, [], output);
 
         output.WrittenSpan.ToArray().ShouldBe(
             "\u001b_Ga=p,i=7,p=9,x=1,y=2,w=3,h=4,c=5,r=6,z=-1,q=2,C=1\u001b\\"u8.ToArray());
@@ -113,7 +113,7 @@ public sealed class WriterTests
     {
         var output = new ArrayBufferWriter<byte>();
 
-        Writer.Write(
+        KittyGraphicsWriter.Write(
             Command.Place(7, 9, new Rect(0, 0, 1, 1), new Size(2, 3)),
             [],
             output);
@@ -128,7 +128,7 @@ public sealed class WriterTests
     {
         var output = new ArrayBufferWriter<byte>();
 
-        Writer.Write(Command.DeleteImage(7), [], output);
+        KittyGraphicsWriter.Write(Command.DeleteImage(7), [], output);
 
         output.WrittenSpan.ToArray().ShouldBe(
             "\u001b_Ga=d,d=I,i=7,q=2\u001b\\"u8.ToArray());
@@ -140,7 +140,7 @@ public sealed class WriterTests
     {
         var output = new ArrayBufferWriter<byte>();
 
-        Writer.Write(Command.DeletePlacement(7, 9), [], output);
+        KittyGraphicsWriter.Write(Command.DeletePlacement(7, 9), [], output);
 
         output.WrittenSpan.ToArray().ShouldBe(
             "\u001b_Ga=d,d=i,i=7,p=9,q=2\u001b\\"u8.ToArray());
@@ -148,15 +148,15 @@ public sealed class WriterTests
 
     /// <summary>Verifies direct-only policy rejects file, temporary-file, and shared-memory media.</summary>
     [Theory]
-    [InlineData(Medium.File)]
-    [InlineData(Medium.TemporaryFile)]
-    [InlineData(Medium.SharedMemory)]
-    public void Transmit_WhenMediumIsNotDirect_ThrowsNotSupportedException(Medium medium)
+    [InlineData(KittyGraphicsMedium.File)]
+    [InlineData(KittyGraphicsMedium.TemporaryFile)]
+    [InlineData(KittyGraphicsMedium.SharedMemory)]
+    public void Transmit_WhenMediumIsNotDirect_ThrowsNotSupportedException(KittyGraphicsMedium medium)
     {
         _ = Should.Throw<NotSupportedException>(() => Command.Transmit(
             1,
             new Size(1, 1),
-            Format.Rgba,
+            KittyGraphicsFormat.Rgba,
             medium: medium));
     }
 
@@ -167,11 +167,11 @@ public sealed class WriterTests
         _ = Should.Throw<NotSupportedException>(() => Command.Transmit(
             1,
             new Size(1, 1),
-            Format.Rgb));
+            KittyGraphicsFormat.Rgb));
         _ = Should.Throw<NotSupportedException>(() => Command.Transmit(
             1,
             new Size(1, 1),
-            Format.Rgba,
+            KittyGraphicsFormat.Rgba,
             compression: Compression.Zlib));
     }
 
@@ -184,9 +184,9 @@ public sealed class WriterTests
     public void WriteEncoded_WhenPayloadIsInvalidBase64_WritesNothing()
     {
         var output = new ArrayBufferWriter<byte>();
-        var command = Command.Transmit(1, new Size(1, 1), Format.Rgba);
+        var command = Command.Transmit(1, new Size(1, 1), KittyGraphicsFormat.Rgba);
 
-        _ = Should.Throw<ArgumentException>(() => Writer.WriteEncoded(command, "***"u8, output));
+        _ = Should.Throw<ArgumentException>(() => KittyGraphicsWriter.WriteEncoded(command, "***"u8, output));
 
         output.WrittenCount.ShouldBe(0);
     }
@@ -197,9 +197,9 @@ public sealed class WriterTests
     {
         var output = new ArrayBufferWriter<byte>();
 
-        Writer.WriteEncoded(Command.Query(31), "AAAA"u8, output);
-        Writer.WriteEncoded(
-            Command.Transmit(1, new Size(1, 1), Format.Rgba),
+        KittyGraphicsWriter.WriteEncoded(Command.Query(31), "AAAA"u8, output);
+        KittyGraphicsWriter.WriteEncoded(
+            Command.Transmit(1, new Size(1, 1), KittyGraphicsFormat.Rgba),
             "AQIDBA=="u8,
             output);
 
@@ -228,8 +228,8 @@ public sealed class WriterTests
             "place" => Command.Place(1, 1, new Rect(0, 0, 1, 1), new Size(1, 1)),
             "delete" => Command.DeleteImage(1),
             "query-shape" => Command.Query(31),
-            "png-shape" => Command.Transmit(1, new Size(1, 1), Format.Png),
-            _ => Command.Transmit(1, new Size(1, 1), Format.Rgba)
+            "png-shape" => Command.Transmit(1, new Size(1, 1), KittyGraphicsFormat.Png),
+            _ => Command.Transmit(1, new Size(1, 1), KittyGraphicsFormat.Rgba)
         };
         var payload = scenario switch
         {
@@ -242,7 +242,7 @@ public sealed class WriterTests
             _ => "AAAA"u8.ToArray()
         };
 
-        _ = Should.Throw<ArgumentException>(() => Writer.WriteEncoded(command, payload, output));
+        _ = Should.Throw<ArgumentException>(() => KittyGraphicsWriter.WriteEncoded(command, payload, output));
 
         output.WrittenCount.ShouldBe(0);
     }
@@ -256,13 +256,13 @@ public sealed class WriterTests
         _ = Should.Throw<ArgumentOutOfRangeException>(() => Command.Transmit(
             1,
             new Size(16_385, 1),
-            Format.Rgba));
-        _ = Should.Throw<ArgumentException>(() => Writer.WriteTransmission(
-            Command.Transmit(1, new Size(1, 1), Format.Rgba),
+            KittyGraphicsFormat.Rgba));
+        _ = Should.Throw<ArgumentException>(() => KittyGraphicsWriter.WriteTransmission(
+            Command.Transmit(1, new Size(1, 1), KittyGraphicsFormat.Rgba),
             [1, 2, 3],
             output));
-        _ = Should.Throw<ArgumentException>(() => Writer.WriteTransmission(
-            Command.Transmit(1, new Size(1, 1), Format.Png),
+        _ = Should.Throw<ArgumentException>(() => KittyGraphicsWriter.WriteTransmission(
+            Command.Transmit(1, new Size(1, 1), KittyGraphicsFormat.Png),
             new byte[17],
             output,
             maxPayloadBytes: 16));

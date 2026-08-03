@@ -180,7 +180,7 @@ public sealed class ButtonSurfaceTests
 
 
                              """);
-        var borderColor = Palette.Project(ThemeColorHelper.InactiveBorder(Themes.Dark), ColorDepth.Basic16);
+        var borderColor = TerminalPalette.Project(ThemeColorHelper.InactiveBorder(Themes.Dark), ColorDepth.Basic16);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(borderColor);
         surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(ReferenceColors.Get(0));
         surface.Cell(new Point(1, 1)).Style.Background.ShouldBe(ReferenceColors.Get(0));
@@ -213,10 +213,10 @@ public sealed class ButtonSurfaceTests
                                   Add      ▄
                               ▀▀▀▀▀▀▀▀▀▀▀▀▀▀
                              """);
-        var face = Palette.Project(
+        var face = TerminalPalette.Project(
             ThemeColorHelper.InactiveBackground(Themes.Dark),
             ColorDepth.Basic16);
-        var shadow = Palette.Project(
+        var shadow = TerminalPalette.Project(
             ThemeColorHelper.Shadow(Themes.Dark),
             ColorDepth.Basic16);
         surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(face);
@@ -312,7 +312,7 @@ public sealed class ButtonSurfaceTests
             Width = Length.Cells(6),
             Height = Length.Cells(3),
             Style = TestButtonStyles.WithShadow(
-                AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1), attributes: Attributes.Dim)),
+                AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1), attributes: TerminalAttributes.Dim)),
             Text = "Go"
         };
         var parent = new Stack
@@ -333,7 +333,7 @@ public sealed class ButtonSurfaceTests
         surface.Cell(new Point(0, 0)).Text.ShouldBe(" ");
         surface.Cell(new Point(2, 0)).Text.ShouldBe("G");
         surface.Cell(new Point(3, 0)).Text.ShouldBe("o");
-        surface.Cell(new Point(2, 3)).Style.Attributes.ShouldBe(Attributes.Dim);
+        surface.Cell(new Point(2, 3)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
     }
 
     /// <summary>Verifies a complete block shadow survives multiple exact-fit ordinary ancestors.</summary>
@@ -349,7 +349,7 @@ public sealed class ButtonSurfaceTests
             Height = Length.Cells(3),
             Text = "Go",
             Style = TestButtonStyles.WithShadow(
-                AppearanceTestValues.Shadow(visible: true, mode: ShadowMode.BlockGlyph, offset: new Point(1, 1), glyph: new Rune('░'), attributes: Attributes.Dim)),
+                AppearanceTestValues.Shadow(visible: true, mode: ShadowMode.BlockGlyph, offset: new Point(1, 1), glyph: new Rune('░'), attributes: TerminalAttributes.Dim)),
         };
         var inner = new Stack
         {
@@ -373,9 +373,9 @@ public sealed class ButtonSurfaceTests
 
         // Assert
         surface.Cell(new Point(6, 1)).Text.ShouldBe("░");
-        surface.Cell(new Point(6, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
+        surface.Cell(new Point(6, 1)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
         surface.Cell(new Point(2, 3)).Text.ShouldBe("░");
-        surface.Cell(new Point(2, 3)).Style.Attributes.ShouldBe(Attributes.Dim);
+        surface.Cell(new Point(2, 3)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
     }
 
     /// <summary>Verifies snapshots and cells preserve a wide Button content grapheme.</summary>
@@ -445,9 +445,9 @@ public sealed class ButtonSurfaceTests
 
 
                              """);
-        var borderColor = Palette.Project(ThemeColorHelper.HoveredBorder(Themes.Dark), ColorDepth.Basic16);
-        var inactiveBorderColor = Palette.Project(ThemeColorHelper.InactiveBorder(Themes.Dark), ColorDepth.Basic16);
-        var hoveredForeground = Palette.Project(ThemeColorHelper.HoveredForeground(Themes.Dark), ColorDepth.Basic16);
+        var borderColor = TerminalPalette.Project(ThemeColorHelper.HoveredBorder(Themes.Dark), ColorDepth.Basic16);
+        var inactiveBorderColor = TerminalPalette.Project(ThemeColorHelper.InactiveBorder(Themes.Dark), ColorDepth.Basic16);
+        var hoveredForeground = TerminalPalette.Project(ThemeColorHelper.HoveredForeground(Themes.Dark), ColorDepth.Basic16);
         borderColor.ShouldNotBe(inactiveBorderColor);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(borderColor);
         var contentForeground = surface.Cell(new Point(2, 1)).Style.Foreground;
@@ -517,7 +517,7 @@ public sealed class ButtonSurfaceTests
         // Assert
         surface.ShouldHaveState(button, VisualState.PointerOver);
         button.CanFocus.ShouldBeFalse();
-        var borderColor = Palette.Project(ThemeColorHelper.HoveredBorder(Themes.Dark), ColorDepth.Basic16);
+        var borderColor = TerminalPalette.Project(ThemeColorHelper.HoveredBorder(Themes.Dark), ColorDepth.Basic16);
         surface.Cell(default).Style.Foreground.ShouldBe(borderColor);
         surface.Cell(new Point(2, 1)).Style.Foreground.ShouldBe(ReferenceColors.Get(15));
     }
@@ -560,13 +560,13 @@ public sealed class ButtonSurfaceTests
 
                              """);
         surface.Cell(new Point(0, 0)).Text.ShouldBe("┏");
-        var pressedBorder = Palette.Project(ThemeColorHelper.PressedBorder(Themes.Dark), ColorDepth.Basic16);
+        var pressedBorder = TerminalPalette.Project(ThemeColorHelper.PressedBorder(Themes.Dark), ColorDepth.Basic16);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(pressedBorder);
         surface.Cell(new Point(2, 1)).Text.ShouldBe("S");
         surface.Cell(new Point(2, 1)).Style.Foreground.ShouldBe(ReferenceColors.Get(15));
-        surface.Cell(new Point(8, 1)).Style.Attributes.ShouldNotBe(Attributes.Dim);
-        surface.Cell(new Point(9, 2)).Style.Attributes.ShouldBe(Attributes.None);
-        surface.Cell(new Point(2, 4)).Style.Attributes.ShouldBe(Attributes.None);
+        surface.Cell(new Point(8, 1)).Style.Attributes.ShouldNotBe(TerminalAttributes.Dim);
+        surface.Cell(new Point(9, 2)).Style.Attributes.ShouldBe(TerminalAttributes.None);
+        surface.Cell(new Point(2, 4)).Style.Attributes.ShouldBe(TerminalAttributes.None);
 
         // Act unavailable while held
         await surface.UpdateAsync(() => button.IsEnabled = false, "disable held Button");
@@ -618,7 +618,7 @@ public sealed class ButtonSurfaceTests
 
 
                              """);
-        var focusedBorder = Palette.Project(ThemeColorHelper.FocusedBorder(Themes.Dark), ColorDepth.Basic16);
+        var focusedBorder = TerminalPalette.Project(ThemeColorHelper.FocusedBorder(Themes.Dark), ColorDepth.Basic16);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(focusedBorder);
         surface.Cell(new Point(2, 1)).Style.Foreground.ShouldBe(ReferenceColors.Get(15));
         surface.Cell(new Point(2, 1)).Style.Background.ShouldBe(ReferenceColors.Get(0));
@@ -661,7 +661,7 @@ public sealed class ButtonSurfaceTests
 
                              """);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(ReferenceColors.Get(14));
-        surface.Cell(new Point(8, 1)).Style.Attributes.ShouldBe(Attributes.None);
+        surface.Cell(new Point(8, 1)).Style.Attributes.ShouldBe(TerminalAttributes.None);
     }
 
     /// <summary>Verifies terminal Enter and Space input activate the focused button.</summary>
@@ -708,7 +708,7 @@ public sealed class ButtonSurfaceTests
             Height = Length.Cells(3),
             Style = hasShadow
                 ? TestButtonStyles.WithShadow(
-                    AppearanceTestValues.Shadow(visible: true, mode: ShadowMode.BlockGlyph, offset: new Point(1, 1), glyph: new Rune('▓'), attributes: Attributes.Dim))
+                    AppearanceTestValues.Shadow(visible: true, mode: ShadowMode.BlockGlyph, offset: new Point(1, 1), glyph: new Rune('▓'), attributes: TerminalAttributes.Dim))
                 : hasBorder
                     ? TestButtonStyles.WithBorder(new Border(
                         BorderSide.All,
@@ -731,7 +731,7 @@ public sealed class ButtonSurfaceTests
         if (hasShadow)
         {
             surface.Cell(new Point(8, 1)).Text.ShouldBe("▓");
-            surface.Cell(new Point(8, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
+            surface.Cell(new Point(8, 1)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
         }
         else
         {
@@ -745,9 +745,9 @@ public sealed class ButtonSurfaceTests
         surface.ShouldHaveState(button, VisualState.PointerOver | VisualState.Focused | VisualState.Pressed);
         surface.ShouldRender(PressedSnapshot(hasBorder, hasShadow));
         surface.Cell(new Point(9, 2)).Text.ShouldBe(" ");
-        surface.Cell(new Point(9, 2)).Style.Attributes.ShouldBe(Attributes.None);
+        surface.Cell(new Point(9, 2)).Style.Attributes.ShouldBe(TerminalAttributes.None);
         surface.Cell(new Point(2, 4)).Text.ShouldBe(" ");
-        surface.Cell(new Point(2, 4)).Style.Attributes.ShouldBe(Attributes.None);
+        surface.Cell(new Point(2, 4)).Style.Attributes.ShouldBe(TerminalAttributes.None);
     }
 
     /// <summary>Verifies Composite shadow preserves underlying glyphs while applying shadow attributes.</summary>
@@ -772,7 +772,7 @@ public sealed class ButtonSurfaceTests
             Width = Length.Cells(8),
             Height = Length.Cells(3),
             Style = TestButtonStyles.WithShadow(
-                AppearanceTestValues.Shadow(visible: true, mode: ShadowMode.Composite, offset: new Point(1, 1), attributes: Attributes.Dim)),
+                AppearanceTestValues.Shadow(visible: true, mode: ShadowMode.Composite, offset: new Point(1, 1), attributes: TerminalAttributes.Dim)),
             Text = "Go"
         };
         var root = new Overlay { Children = { backdrop, button } };
@@ -785,11 +785,11 @@ public sealed class ButtonSurfaceTests
 
         // Assert — shadow cell preserves the backdrop "x" glyph
         surface.Cell(new Point(8, 1)).Text.ShouldBe("x");
-        surface.Cell(new Point(8, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
+        surface.Cell(new Point(8, 1)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
 
         // Assert — non-shadow backdrop cell has no Dim attribute
         surface.Cell(new Point(10, 0)).Text.ShouldBe("x");
-        surface.Cell(new Point(10, 0)).Style.Attributes.ShouldBe(Attributes.None);
+        surface.Cell(new Point(10, 0)).Style.Attributes.ShouldBe(TerminalAttributes.None);
     }
 
     #endregion

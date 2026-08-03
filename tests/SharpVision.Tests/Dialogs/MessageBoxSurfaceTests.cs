@@ -233,7 +233,7 @@ public sealed class MessageBoxSurfaceTests
             var shadowX = window.Bounds.X + 2;
             if (shadowX < 60 && shadowX < window.Bounds.Right)
             {
-                surface.Cell(new Point(shadowX, shadowY)).Style.Attributes.ShouldBe(Attributes.Dim);
+                surface.Cell(new Point(shadowX, shadowY)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
             }
         }
 

@@ -29,7 +29,7 @@ public sealed class Renderer: IDisposable
     private readonly TimeSpan _cleanupTimeout;
     private readonly TimeProvider _timeProvider;
     private readonly ProgramLimits _limits;
-    private Geometry.Metrics? _cellMetrics;
+    private CellMetrics? _cellMetrics;
     private Frame? _front;
     private TerminalProfile? _profile;
     private int _disposed;
@@ -151,7 +151,7 @@ public sealed class Renderer: IDisposable
     /// configured. Reflects only the most recently prepared frame; it is replaced (not merged)
     /// on the next successful prepare, unlike <see cref="LastCleanupException"/>. Not reachable
     /// from a hosted <c>Application</c>/<c>ConsoleApplication</c>, which owns its <see cref="Renderer"/>
-    /// privately - <see cref="Metrics.GraphicsDiagnostics"/>, returned from every successful
+    /// privately - <see cref="RenderMetrics.GraphicsDiagnostics"/>, returned from every successful
     /// render, is the supported delivery path (see #233).
     /// </remarks>
     internal IReadOnlyList<GraphicsPlacementDiagnostic> LastGraphicsDiagnostics { get; private set; } =
@@ -178,8 +178,8 @@ public sealed class Renderer: IDisposable
     /// <remarks>
     /// <para>
     /// This replaces handing out the committed frame itself. The baseline stays renderer-owned and
-    /// is reachable only through <see cref="Canvas.HasPreviousFrame"/> and
-    /// <see cref="Canvas.CopyFromPrevious"/>, which read cells without exposing the frame object,
+    /// is reachable only through <see cref="TerminalCanvas.HasPreviousFrame"/> and
+    /// <see cref="TerminalCanvas.CopyFromPrevious"/>, which read cells without exposing the frame object,
     /// so a caller can neither mutate nor dispose the state damage tracking depends on.
     /// </para>
     /// <para>
@@ -222,11 +222,11 @@ public sealed class Renderer: IDisposable
     /// <param name="transport">The transport borrowed until completion.</param>
     /// <param name="capabilities">The immutable terminal capability snapshot.</param>
     /// <param name="cancellationToken">Cancels encoding output and flush.</param>
-    /// <returns>Metrics for the completed frame operation.</returns>
+    /// <returns>RenderMetrics for the completed frame operation.</returns>
     /// <exception cref="ArgumentNullException">A required argument is null.</exception>
     /// <exception cref="InvalidOperationException">Another render is in progress.</exception>
     /// <exception cref="ObjectDisposedException">A supplied owner is disposed.</exception>
-    public ValueTask<Metrics> RenderAsync(
+    public ValueTask<RenderMetrics> RenderAsync(
         Frame back,
         ITransport transport,
         TerminalCapabilities capabilities,
@@ -253,11 +253,11 @@ public sealed class Renderer: IDisposable
     /// <param name="transport">The transport borrowed until completion.</param>
     /// <param name="profile">The immutable description, programs, and semantic capabilities.</param>
     /// <param name="cancellationToken">Cancels encoding output and flush.</param>
-    /// <returns>Metrics for the completed frame operation.</returns>
+    /// <returns>RenderMetrics for the completed frame operation.</returns>
     /// <exception cref="ArgumentNullException">A required argument is null.</exception>
     /// <exception cref="InvalidOperationException">Another render is in progress or a program cannot expand.</exception>
     /// <exception cref="ObjectDisposedException">A supplied owner is disposed.</exception>
-    public ValueTask<Metrics> RenderAsync(
+    public ValueTask<RenderMetrics> RenderAsync(
         Frame back,
         ITransport transport,
         TerminalProfile profile,
@@ -279,15 +279,15 @@ public sealed class Renderer: IDisposable
     /// <param name="profile">The immutable description, programs, and semantic capabilities.</param>
     /// <param name="cellMetrics">Exact measured cell-pixel geometry, or null when unavailable.</param>
     /// <param name="cancellationToken">Cancels encoding output and flush.</param>
-    /// <returns>Metrics for the completed frame operation.</returns>
+    /// <returns>RenderMetrics for the completed frame operation.</returns>
     /// <exception cref="ArgumentNullException">A required argument is null.</exception>
     /// <exception cref="InvalidOperationException">Another render is in progress or a program cannot expand.</exception>
     /// <exception cref="ObjectDisposedException">A supplied owner is disposed.</exception>
-    public ValueTask<Metrics> RenderAsync(
+    public ValueTask<RenderMetrics> RenderAsync(
         Frame back,
         ITransport transport,
         TerminalProfile profile,
-        Geometry.Metrics? cellMetrics,
+        CellMetrics? cellMetrics,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(back);
@@ -360,7 +360,7 @@ public sealed class Renderer: IDisposable
                 _backend!.WriteUploads(_buffer);
             }
 
-            var encoded = Encoder.Encode(
+            var encoded = FrameEncoder.Encode(
                 _front,
                 back,
                 _buffer,
@@ -404,7 +404,7 @@ public sealed class Renderer: IDisposable
                 _cellMetrics = cellMetrics;
                 _invalidated = false;
                 Volatile.Write(ref _rendering, 0);
-                return ValueTask.FromResult(new Metrics(
+                return ValueTask.FromResult(new RenderMetrics(
                     0,
                     0,
                     encoded.Spans,
@@ -576,11 +576,11 @@ public sealed class Renderer: IDisposable
         }
     }
 
-    private async ValueTask<Metrics> WriteAsync(
+    private async ValueTask<RenderMetrics> WriteAsync(
         Frame back,
         ITransport transport,
         TerminalProfile profile,
-        Geometry.Metrics? cellMetrics,
+        CellMetrics? cellMetrics,
         Interpreter transactionInterpreter,
         Frame? replacement,
         EncodeResult encoded,
@@ -608,7 +608,7 @@ public sealed class Renderer: IDisposable
             transactionInterpreter.CommitTransaction();
             _interpreter = transactionInterpreter;
             _invalidated = false;
-            return new Metrics(
+            return new RenderMetrics(
                 _buffer.WrittenCount,
                 1,
                 encoded.Spans,
@@ -687,7 +687,7 @@ public sealed class Renderer: IDisposable
     private static byte[] EncodeSynchronizedOutput(bool enabled)
     {
         var scratch = new ArrayBufferWriter<byte>();
-        ProtocolModes.SynchronizedOutput(new Writer(scratch), enabled);
+        ProtocolModes.SynchronizedOutput(new ProtocolWriter(scratch), enabled);
         return scratch.WrittenSpan.ToArray();
     }
 }

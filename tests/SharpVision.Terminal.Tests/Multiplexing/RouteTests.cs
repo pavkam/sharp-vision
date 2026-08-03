@@ -8,7 +8,6 @@ using Capabilities;
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Multiplexing;
 
-using MultiplexingOperation = Terminal.Multiplexing.Operation;
 
 /// <summary>Verifies bounded typed routing through tmux and GNU screen.</summary>
 public sealed class RouteTests
@@ -36,7 +35,7 @@ public sealed class RouteTests
             environment["TMUX"] = tmux;
         }
 
-        var policy = Policy.Detect(environment);
+        var policy = MultiplexingPolicy.Detect(environment);
 
         policy.Kind.ShouldBe((MultiplexerKind) expectedValue);
         policy.OuterProfile.ShouldBeNull();
@@ -47,7 +46,7 @@ public sealed class RouteTests
     [Fact]
     public void Detect_WhenTermNamesTmux_KeepsOuterProfileExplicit()
     {
-        var policy = Policy.Detect(new Dictionary<string, string?>
+        var policy = MultiplexingPolicy.Detect(new Dictionary<string, string?>
         {
             ["TERM"] = "tmux-256color",
             ["TERM_PROGRAM"] = "iTerm.app"
@@ -69,7 +68,7 @@ public sealed class RouteTests
         bool paneVisible,
         bool expected)
     {
-        var policy = new Policy(
+        var policy = new MultiplexingPolicy(
             [MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             (PassthroughMode) modeValue,
@@ -98,7 +97,7 @@ public sealed class RouteTests
     [Fact]
     public void TryWriteGraphics_WhenRouteHasNestedTmux_WritesExactEnvelopes()
     {
-        var policy = new Policy(
+        var policy = new MultiplexingPolicy(
             [MultiplexerKind.Tmux, MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
@@ -120,7 +119,7 @@ public sealed class RouteTests
     [Fact]
     public void TryWriteGraphics_WhenRouteContainsScreen_RejectsAtomically()
     {
-        var policy = new Policy(
+        var policy = new MultiplexingPolicy(
             [MultiplexerKind.Screen],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
@@ -253,7 +252,7 @@ public sealed class RouteTests
     [Fact]
     public void TryStart_WhenRouteCannotEncodeBatch_CompletesWithoutBytesOrPendingWork()
     {
-        var policy = new Policy(
+        var policy = new MultiplexingPolicy(
             [MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
@@ -339,7 +338,7 @@ public sealed class RouteTests
     [Fact]
     public void TryWriteCapabilityQueries_WhenEnvelopeExceedsLimit_RejectsWithoutWriting()
     {
-        var policy = new Policy(
+        var policy = new MultiplexingPolicy(
             [MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
@@ -371,7 +370,7 @@ public sealed class RouteTests
     [Fact]
     public void Constructor_WhenRouteExceedsMaximumDepth_Throws()
     {
-        _ = Should.Throw<ArgumentException>(() => new Policy(
+        _ = Should.Throw<ArgumentException>(() => new MultiplexingPolicy(
             [MultiplexerKind.Tmux, MultiplexerKind.Screen, MultiplexerKind.Tmux],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
@@ -442,7 +441,7 @@ public sealed class RouteTests
     [Fact]
     public void Route_WhenScreenEnvelopeExceedsBound_DiscardsThroughOuterTerminatorAtEverySplit()
     {
-        var policy = new Policy(
+        var policy = new MultiplexingPolicy(
             [MultiplexerKind.Screen],
             TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
             PassthroughMode.All,
@@ -598,7 +597,7 @@ public sealed class RouteTests
             Osc52 = new Feature(CapabilitySupport.Supported, Origin.Override)
         };
         var outerProfile = TerminalProfile.CreateAnsi(outerCapabilities);
-        var policy = new Policy(
+        var policy = new MultiplexingPolicy(
             [MultiplexerKind.Tmux],
             outerProfile,
             PassthroughMode.All,
@@ -626,14 +625,14 @@ public sealed class RouteTests
     }
 
     /// <summary>Creates one query-only explicit outer-terminal route.</summary>
-    private static Policy ActivePolicy(IReadOnlyList<MultiplexerKind> layers) => new(
+    private static MultiplexingPolicy ActivePolicy(IReadOnlyList<MultiplexerKind> layers) => new(
         layers,
         TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
         PassthroughMode.All,
         paneVisible: true,
         MultiplexingOperation.CapabilityQueries);
 
-    private static Response Csi(
+    private static XtermCapabilitiesResponse Csi(
         ReadOnlySpan<byte> parameters,
         ReadOnlySpan<byte> intermediates,
         byte final)

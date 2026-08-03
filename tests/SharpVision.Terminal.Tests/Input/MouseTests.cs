@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Tests.Input;
 
 using SharpVision.Terminal.Input;
 
-using InputAction = Terminal.Input.PointerAction;
+using InputAction = PointerAction;
 
 /// <summary>
 /// Verifies cell, UTF-8, SGR, pixel, and urxvt pointer decoding.
@@ -57,7 +57,7 @@ public sealed class MouseTests
         var sink = new RecordingInputSink();
         using InputDecoder decoder = new(
             sink,
-            new Options { PixelMouse = true, CellMetrics = new CellMetrics(8, 16) });
+            new InputOptions { PixelMouse = true, CellMetrics = new CellMetrics(8, 16) });
 
         decoder.Decode("\u001b[<0;17;33M"u8);
 
@@ -75,7 +75,7 @@ public sealed class MouseTests
         var sink = new RecordingInputSink();
         using InputDecoder decoder = new(
             sink,
-            new Options
+            new InputOptions
             {
                 PixelMouse = true,
                 CellMetrics = new CellMetrics(
@@ -101,7 +101,7 @@ public sealed class MouseTests
         var sink = new RecordingInputSink();
         using InputDecoder decoder = new(
             sink,
-            new Options { PixelMouse = true });
+            new InputOptions { PixelMouse = true });
 
         // Act
         decoder.Decode("\u001b[<0;17;33M"u8);
@@ -121,7 +121,7 @@ public sealed class MouseTests
         var sink = new RecordingInputSink();
         using InputDecoder decoder = new(
             sink,
-            new Options
+            new InputOptions
             {
                 PixelMouse = true,
                 CellMetrics = new CellMetrics(

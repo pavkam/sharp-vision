@@ -7,15 +7,15 @@ Primary source:
 accessed 2026-07-20. A command is APC `ESC _ G`, comma-separated control data,
 an optional semicolon plus Base64 data, and ST `ESC \`.
 
-`Kitty.Graphics.Command` and `Kitty.Graphics.Writer` provide the typed
-direct-data surface. Image identifiers and placement identifiers are canonical
-nonzero unsigned 32-bit decimal values: leading zeroes, signs, and overflow are
-rejected. The official direct RGB query uses `f=24`; transmission accepts only
-RGBA `f=32` and PNG `f=100`. RGB transmission and zlib compression are explicit
-unsupported values. File, temporary-file, and shared-memory media are rejected
-before output because they depend on filesystem paths and externally managed
-lifetimes that SharpVision does not trust. Animation and Unicode placeholder
-presentation are out of scope.
+`Kitty.Graphics.Command` and `Kitty.Graphics.KittyGraphicsWriter` provide the
+typed direct-data surface. Image identifiers and placement identifiers are
+canonical nonzero unsigned 32-bit decimal values: leading zeroes, signs, and
+overflow are rejected. The official direct RGB query uses `f=24`; transmission
+accepts only RGBA `f=32` and PNG `f=100`. RGB transmission and zlib compression
+are explicit unsupported values. File, temporary-file, and shared-memory media
+are rejected before output because they depend on filesystem paths and
+externally managed lifetimes that SharpVision does not trust. Animation and
+Unicode placeholder presentation are out of scope.
 
 ## Supported features
 
@@ -85,9 +85,9 @@ use sends `a=d,d=I,i=...`, which frees image data and all its placements.
 ## Bounds, ownership, and failure
 
 The default image and placement identifier spaces each contain 4,096 active
-values. `Graphics.Limits` bounds image dimensions and owned source bytes. The
-backend applies a 16 MiB complete prepared-output limit while staging, grows one
-reusable pooled writer only within that limit, and rejects exhaustion before
+values. `Graphics.ImageLimits` bounds image dimensions and owned source bytes.
+The backend applies a 16 MiB complete prepared-output limit while staging, grows
+one reusable pooled writer only within that limit, and rejects exhaustion before
 transport I/O. Every successfully prepared transaction is committed exactly once
 after byte-quiet completion or successful write and flush; `Changed` controls
 byte emission and metrics, not transaction completion.
@@ -123,13 +123,14 @@ makes the whole intersected placement ineffective and causes retained removal.
 ## Multiplexers
 
 Graphics passthrough requires an explicit outer profile, active visibility
-policy, and `Multiplexing.Operation.Graphics`. Each APC upload chunk or delete
-is wrapped independently through every tmux layer so a multi-chunk image does
-not become one oversized envelope. Placement CUP and the final cursor-restoring
-CUP remain ordinary pane-local bytes; only the Kitty APC between them is sent
-through passthrough. GNU screen remains unavailable because its conservative
-route is CSI-only. An unauthorized, Screen-containing, or oversized route
-rejects backend selection or preparation without destination mutation.
+policy, and `Multiplexing.MultiplexingOperation.Graphics`. Each APC upload chunk
+or delete is wrapped independently through every tmux layer so a multi-chunk
+image does not become one oversized envelope. Placement CUP and the final
+cursor-restoring CUP remain ordinary pane-local bytes; only the Kitty APC
+between them is sent through passthrough. GNU screen remains unavailable because
+its conservative route is CSI-only. An unauthorized, Screen-containing, or
+oversized route rejects backend selection or preparation without destination
+mutation.
 
 ## Security and tests
 

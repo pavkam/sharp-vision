@@ -5,8 +5,6 @@ namespace SharpVision.Terminal.Tests.Clipboard;
 
 using Kitty.Clipboard;
 
-using ProtocolWriter = Writer;
-
 /// <summary>
 /// Verifies complete typed-writer, parser, packet, and transaction paths.
 /// </summary>
@@ -19,13 +17,13 @@ public sealed class ClipboardIntegrationTests
     public void Read_WhenResponseIsFragmented_CompletesAtEverySplit()
     {
         var requestBytes = new ArrayBufferWriter<byte>();
-        Writer.Read(
+        KittyClipboardWriter.Read(
             new ProtocolWriter(requestBytes),
             "application/octet-stream"u8,
             id: "req-1"u8);
         var request = ParsePackets(requestBytes.WrittenSpan).ShouldHaveSingleItem();
 
-        request.Operation.ShouldBe(Operation.Read);
+        request.Operation.ShouldBe(KittyClipboardOperation.Read);
         request.Id.ShouldBe("req-1");
 
         var responseBytes = new ArrayBufferWriter<byte>();
@@ -86,13 +84,13 @@ public sealed class ClipboardIntegrationTests
     {
         var bytes = new ArrayBufferWriter<byte>();
 
-        Writer.WriteAlias(
+        KittyClipboardWriter.WriteAlias(
             new ProtocolWriter(bytes),
             "text/plain"u8,
             "text/plain text/utf8"u8);
 
         var packet = ParsePackets(bytes.WrittenSpan).ShouldHaveSingleItem();
-        packet.Operation.ShouldBe(Operation.WriteAlias);
+        packet.Operation.ShouldBe(KittyClipboardOperation.WriteAlias);
         packet.Mime.ToArray().ShouldBe("text/plain"u8.ToArray());
         packet.Data.ToArray().ShouldBe("text/plain text/utf8"u8.ToArray());
     }

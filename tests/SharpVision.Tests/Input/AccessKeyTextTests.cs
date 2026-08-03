@@ -48,9 +48,9 @@ public sealed class AccessKeyTextTests
         // Assert
         cells.ShouldBe(12);
         FrameOracle.Get(frame, default).ShouldBe("e\u0301");
-        frame.GetCell(default).Style.Attributes.ShouldBe(Attributes.Underline);
+        frame.GetCell(default).Style.Attributes.ShouldBe(TerminalAttributes.Underline);
         FrameOracle.Get(frame, new Point(5, 0)).ShouldBe("&");
-        frame.GetCell(new Point(5, 0)).Style.Attributes.ShouldBe(Attributes.None);
+        frame.GetCell(new Point(5, 0)).Style.Attributes.ShouldBe(TerminalAttributes.None);
     }
 
     /// <summary>Verifies markup gives only the complete marked grapheme the access-key semantic foreground.</summary>

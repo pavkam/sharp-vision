@@ -17,7 +17,7 @@ public sealed class InputDecoder: IDisposable
 {
     private readonly IInputSink _sink;
     private readonly IProtocolSink? _protocolSink;
-    private readonly Options _options;
+    private readonly InputOptions _options;
     private readonly ProtocolParser _parser;
     private readonly PasteAccumulator _pasteAccumulator;
     private KeySequenceMatcher? _keyMatcher;
@@ -42,13 +42,13 @@ public sealed class InputDecoder: IDisposable
     /// <exception cref="ArgumentNullException"><paramref name="sink"/> is null.</exception>
     public InputDecoder(
         IInputSink sink,
-        Options? options = null,
+        InputOptions? options = null,
         TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(sink);
         _sink = sink;
         _protocolSink = sink as IProtocolSink;
-        _options = options ?? Options.Default;
+        _options = options ?? InputOptions.Default;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _parser = new ProtocolParser(_options.ParserLimits);
         _pasteAccumulator = new PasteAccumulator(_options.MaxPasteBytes);
@@ -988,7 +988,7 @@ public sealed class InputDecoder: IDisposable
 
         if (_protocolSink is { } graphicsSink)
         {
-            graphicsSink.Dispatch(Kitty.Graphics.Response.Parse(value, _options.TransferLimits));
+            graphicsSink.Dispatch(Kitty.Graphics.KittyGraphicsResponse.Parse(value, _options.TransferLimits));
         }
         else
         {
@@ -1030,7 +1030,7 @@ public sealed class InputDecoder: IDisposable
         var combined = modifiers | _nextTextModifiers;
         _nextTextModifiers = Modifiers.None;
         EmitStroke(Code.Character, rune, 0, combined);
-        var text = new Text(rune);
+        var text = new TerminalText(rune);
         _sink.Input(in text);
     }
 

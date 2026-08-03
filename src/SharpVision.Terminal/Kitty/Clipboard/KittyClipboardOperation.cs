@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Kitty.Clipboard;
 
 /// <summary>Identifies a Kitty OSC 5522 packet operation.</summary>
 [PublicAPI]
-public enum Operation
+public enum KittyClipboardOperation
 {
     /// <summary>No operation was decoded.</summary>
     None,

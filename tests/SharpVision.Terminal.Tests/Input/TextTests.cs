@@ -75,7 +75,7 @@ public sealed class TextTests
             new Stroke(Code.Character, new Rune('x'), 0, Modifiers.None, KeyAction.Press),
             new Stroke(Code.Character, new Rune('y'), 0, Modifiers.Alt, KeyAction.Press)
         ]);
-        sink.Text.ShouldBe([new InputText(new Rune('x')), new InputText(new Rune('y'))]);
+        sink.Text.ShouldBe([new TerminalText(new Rune('x')), new TerminalText(new Rune('y'))]);
     }
 
     /// <summary>
@@ -103,7 +103,7 @@ public sealed class TextTests
                         Modifiers.Alt,
                         KeyAction.Press)
                 ], $"split {split}");
-            sink.Text.ShouldBe([new InputText(new Rune('é'))], $"split {split}");
+            sink.Text.ShouldBe([new TerminalText(new Rune('é'))], $"split {split}");
         }
     }
 
@@ -117,7 +117,7 @@ public sealed class TextTests
         var clock = new ManualTimeProvider();
         using InputDecoder decoder = new(
             sink,
-            new Options { EscapeTimeout = TimeSpan.FromMilliseconds(25) },
+            new InputOptions { EscapeTimeout = TimeSpan.FromMilliseconds(25) },
             clock);
         decoder.Decode("\u001b"u8);
 
@@ -144,7 +144,7 @@ public sealed class TextTests
         var clock = new ManualTimeProvider();
         using InputDecoder decoder = new(
             sink,
-            new Options { EscapeTimeout = TimeSpan.FromMilliseconds(1) },
+            new InputOptions { EscapeTimeout = TimeSpan.FromMilliseconds(1) },
             clock);
         decoder.Decode("\u001b"u8);
         clock.Advance(TimeSpan.FromMilliseconds(1));
@@ -169,7 +169,7 @@ public sealed class TextTests
         decoder.Decode("\u001b"u8);
         decoder.Complete();
 
-        sink.Text.ShouldBe([new InputText(Rune.ReplacementChar)]);
+        sink.Text.ShouldBe([new TerminalText(Rune.ReplacementChar)]);
         sink.Strokes[^1].Code.ShouldBe(Code.Escape);
     }
 

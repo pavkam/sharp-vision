@@ -5,7 +5,6 @@ namespace SharpVision.Terminal.Tests.Rendering;
 
 using SharpVision.Terminal.Capabilities;
 
-using Encoder = FrameEncoder;
 
 /// <summary>
 /// Verifies fixed-seed incremental/full frame equivalence across random states.
@@ -57,14 +56,14 @@ public sealed class RandomizedRenderingTests
             var point = new Point(random.Next(frame.Size.Width), random.Next(frame.Size.Height));
             var attributes = random.Next(8) switch
             {
-                0 => Attributes.None,
-                1 => Attributes.Bold,
-                2 => Attributes.Italic,
-                3 => Attributes.Underline | Attributes.Reverse,
-                4 => Attributes.Blink,
-                5 => Attributes.RapidBlink,
-                6 => Attributes.Overline,
-                _ => Attributes.RapidBlink | Attributes.Overline
+                0 => TerminalAttributes.None,
+                1 => TerminalAttributes.Bold,
+                2 => TerminalAttributes.Italic,
+                3 => TerminalAttributes.Underline | TerminalAttributes.Reverse,
+                4 => TerminalAttributes.Blink,
+                5 => TerminalAttributes.RapidBlink,
+                6 => TerminalAttributes.Overline,
+                _ => TerminalAttributes.RapidBlink | TerminalAttributes.Overline
             };
             var underline = random.Next(6) == 0
                 ? (Underline) random.Next((int) Underline.Straight, (int) Underline.Dashed + 1)
@@ -72,7 +71,7 @@ public sealed class RandomizedRenderingTests
 
             if (underline != Underline.None)
             {
-                attributes &= ~Attributes.Underline;
+                attributes &= ~TerminalAttributes.Underline;
             }
 
             var foreground = random.Next(3) == 0
@@ -103,7 +102,7 @@ public sealed class RandomizedRenderingTests
     private static byte[] Encode(Frame? front, Frame back)
     {
         var destination = new ArrayBufferWriter<byte>();
-        _ = Encoder.Encode(
+        _ = FrameEncoder.Encode(
             front,
             back,
             destination,

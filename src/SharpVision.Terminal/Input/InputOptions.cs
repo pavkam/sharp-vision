@@ -8,10 +8,10 @@ using SharpVision.Terminal.Clipboard;
 
 /// <summary>Defines finite immutable input decoding policy.</summary>
 [PublicAPI]
-public sealed record Options
+public sealed record InputOptions
 {
     /// <summary>Gets conservative default input policy.</summary>
-    public static Options Default { get; } = new();
+    public static InputOptions Default { get; } = new();
 
     /// <summary>Gets the lone-Escape ambiguity timeout.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive and finite.</exception>
@@ -94,7 +94,7 @@ public sealed record Options
     } = TransferLimits.Default;
 
     /// <summary>Gets optional positive cell-pixel dimensions for pixel mouse inference.</summary>
-    public Metrics? CellMetrics { get; init; }
+    public CellMetrics? CellMetrics { get; init; }
 
     /// <summary>
     /// Gets whether SGR pointer coordinates are pixels rather than cells.
@@ -112,7 +112,7 @@ public sealed record Options
     /// <param name="useAnsiKeyGrammar">Whether the explicit ANSI compatibility grammar remains active.</param>
     /// <returns>A copy with the requested key policy.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="keyMap"/> is null.</exception>
-    internal Options WithKeyMap(KeyMap keyMap, bool useAnsiKeyGrammar)
+    internal InputOptions WithKeyMap(KeyMap keyMap, bool useAnsiKeyGrammar)
     {
         ArgumentNullException.ThrowIfNull(keyMap);
 

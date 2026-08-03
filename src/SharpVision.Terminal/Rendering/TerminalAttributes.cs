@@ -8,7 +8,7 @@ namespace SharpVision.Terminal.Rendering;
 /// </summary>
 [Flags]
 [PublicAPI]
-public enum Attributes
+public enum TerminalAttributes
 {
     /// <summary>No text attribute is active.</summary>
     None = 0,

@@ -28,7 +28,7 @@ public sealed class ApplicationAccessKeyTests
             () => application.Focus.Focus(input).ShouldBeTrue(),
             TestContext.Current.CancellationToken);
         var stroke = Alt('n');
-        var text = new Terminal.Input.Text(new Rune('n'));
+        var text = new TerminalText(new Rune('n'));
 
         // Act
         application.Input(in stroke);
@@ -67,7 +67,7 @@ public sealed class ApplicationAccessKeyTests
             () => application.Focus.Focus(input).ShouldBeTrue(),
             TestContext.Current.CancellationToken);
         var stroke = Alt('n');
-        var text = new Terminal.Input.Text(new Rune('n'));
+        var text = new TerminalText(new Rune('n'));
 
         // Act
         application.Input(in stroke);

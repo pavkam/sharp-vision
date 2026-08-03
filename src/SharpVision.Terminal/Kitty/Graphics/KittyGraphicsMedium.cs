@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Kitty.Graphics;
 
 /// <summary>Identifies Kitty image transmission media.</summary>
 [PublicAPI]
-public enum Medium
+public enum KittyGraphicsMedium
 {
     /// <summary>Base64 data carried directly inside APC commands.</summary>
     Direct,

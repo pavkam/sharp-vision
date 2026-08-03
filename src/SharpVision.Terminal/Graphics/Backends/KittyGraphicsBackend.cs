@@ -11,8 +11,6 @@ using Kitty.Graphics;
 
 using Rendering;
 
-using ImageFormat = Format;
-using KittyFormat = Kitty.Graphics.Format;
 using MultiplexerRoute = Multiplexing.MultiplexerRoute;
 
 /// <summary>Implements finite transactional direct Kitty image upload and placement.</summary>
@@ -345,7 +343,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                 // still needs the explicit delete or it stays rendered as a ghost (see #172).
                 if (images.ContainsKey(previous.Placement.ImageIdentity))
                 {
-                    Writer.Write(
+                    KittyGraphicsWriter.Write(
                         Command.DeletePlacement(previous.ImageId, previous.PlacementId),
                         [],
                         output);
@@ -375,7 +373,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                         continue;
                     }
 
-                    Writer.Write(Command.DeleteImage(previous.Value.Id), [], output);
+                    KittyGraphicsWriter.Write(Command.DeleteImage(previous.Value.Id), [], output);
                     retiredImages.Add(previous.Value.Id);
                     removalCount++;
                 }
@@ -496,7 +494,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
         foreach (var image in _images.Values)
         {
-            Writer.Write(Command.DeleteImage(image.Id), [], output);
+            KittyGraphicsWriter.Write(Command.DeleteImage(image.Id), [], output);
         }
 
         var hardDeletedImageIds = new HashSet<uint>(_uncertainImageIds);
@@ -574,12 +572,12 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
         if (_route is null)
         {
-            Writer.Write(command, [], destination);
+            KittyGraphicsWriter.Write(command, [], destination);
             return;
         }
 
         var apc = new ArrayBufferWriter<byte>(256);
-        Writer.Write(command, [], apc);
+        KittyGraphicsWriter.Write(command, [], apc);
 
         if (!_route.TryWriteGraphics(destination, apc.WrittenSpan))
         {
@@ -588,12 +586,12 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     }
 
     private static void WriteCursor(Point value, IBufferWriter<byte> destination) =>
-        Csi.Position(new Protocols.Writer(destination), value.Y + 1, value.X + 1);
+        Csi.Position(new ProtocolWriter(destination), value.Y + 1, value.X + 1);
 
     private static void WriteUpload(ImageState state, IBufferWriter<byte> destination)
     {
-        var format = state.Image.Format == ImageFormat.Rgba ? KittyFormat.Rgba : KittyFormat.Png;
-        Writer.WriteTransmission(
+        var format = state.Image.Format == ImageFormat.Rgba ? KittyGraphicsFormat.Rgba : KittyGraphicsFormat.Png;
+        KittyGraphicsWriter.WriteTransmission(
             Command.Transmit(state.Id, state.Image.Size, format),
             state.Image.Source,
             destination,
@@ -662,7 +660,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
         foreach (var imageId in _uncertainImageIds)
         {
-            Writer.Write(Command.DeleteImage(imageId), [], destination);
+            KittyGraphicsWriter.Write(Command.DeleteImage(imageId), [], destination);
             count++;
         }
 
@@ -673,7 +671,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                 continue;
             }
 
-            Writer.Write(
+            KittyGraphicsWriter.Write(
                 Command.DeletePlacement(placement.ImageId, placement.PlacementId),
                 [],
                 destination);

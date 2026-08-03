@@ -149,8 +149,8 @@ public sealed class CuratedThemesTests
             {
                 shadow.ShouldNotBe(background, $"{slug} should distinguish shadow from application background");
                 shadow.ShouldNotBe(surface, $"{slug} should distinguish shadow from surface");
-                Palette.Project(shadow, ColorDepth.Basic16).ShouldNotBe(
-                    Palette.Project(background, ColorDepth.Basic16),
+                TerminalPalette.Project(shadow, ColorDepth.Basic16).ShouldNotBe(
+                    TerminalPalette.Project(background, ColorDepth.Basic16),
                     $"{slug} should keep composite shadows visible at Basic16 depth");
             }
 

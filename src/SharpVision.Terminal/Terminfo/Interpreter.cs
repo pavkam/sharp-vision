@@ -442,92 +442,92 @@ internal sealed class Interpreter
 
             switch (operation.Code)
             {
-                case Operation.Literal:
+                case TerminfoOperation.Literal:
                     Append(
                         literals.Slice(operation.Operand, operation.Secondary),
                         ref outputLength);
                     break;
-                case Operation.PushParameter:
+                case TerminfoOperation.PushParameter:
                     PushParameter(operation.Operand, ref stackDepth);
                     break;
-                case Operation.IncrementParameters:
+                case TerminfoOperation.IncrementParameters:
                     IncrementFirstTwoParameters();
                     break;
-                case Operation.PushConstant:
+                case TerminfoOperation.PushConstant:
                     PushNumber(operation.Operand, ref stackDepth);
                     break;
-                case Operation.StoreVariable:
+                case TerminfoOperation.StoreVariable:
                     StoreVariable(operation.Operand, ref stackDepth);
                     break;
-                case Operation.LoadVariable:
+                case TerminfoOperation.LoadVariable:
                     LoadVariable(operation.Operand, ref stackDepth);
                     break;
-                case Operation.StringLength:
+                case TerminfoOperation.StringLength:
                     PushNumber(PopString(ref stackDepth).Length, ref stackDepth);
                     break;
-                case Operation.Add:
+                case TerminfoOperation.Add:
                     Binary(ref stackDepth, static (left, right) => unchecked(left + right));
                     break;
-                case Operation.Subtract:
+                case TerminfoOperation.Subtract:
                     Binary(ref stackDepth, static (left, right) => unchecked(left - right));
                     break;
-                case Operation.Multiply:
+                case TerminfoOperation.Multiply:
                     Binary(ref stackDepth, static (left, right) => unchecked(left * right));
                     break;
-                case Operation.Divide:
+                case TerminfoOperation.Divide:
                     Divide(ref stackDepth);
                     break;
-                case Operation.Modulo:
+                case TerminfoOperation.Modulo:
                     Modulo(ref stackDepth);
                     break;
-                case Operation.BitAnd:
+                case TerminfoOperation.BitAnd:
                     Binary(ref stackDepth, static (left, right) => left & right);
                     break;
-                case Operation.BitOr:
+                case TerminfoOperation.BitOr:
                     Binary(ref stackDepth, static (left, right) => left | right);
                     break;
-                case Operation.BitXor:
+                case TerminfoOperation.BitXor:
                     Binary(ref stackDepth, static (left, right) => left ^ right);
                     break;
-                case Operation.Equal:
+                case TerminfoOperation.Equal:
                     Binary(ref stackDepth, static (left, right) => left == right ? 1 : 0);
                     break;
-                case Operation.LessThan:
+                case TerminfoOperation.LessThan:
                     Binary(ref stackDepth, static (left, right) => left < right ? 1 : 0);
                     break;
-                case Operation.GreaterThan:
+                case TerminfoOperation.GreaterThan:
                     Binary(ref stackDepth, static (left, right) => left > right ? 1 : 0);
                     break;
-                case Operation.LogicalAnd:
+                case TerminfoOperation.LogicalAnd:
                     Binary(ref stackDepth, static (left, right) => left != 0 && right != 0 ? 1 : 0);
                     break;
-                case Operation.LogicalOr:
+                case TerminfoOperation.LogicalOr:
                     Binary(ref stackDepth, static (left, right) => left != 0 || right != 0 ? 1 : 0);
                     break;
-                case Operation.LogicalNot:
+                case TerminfoOperation.LogicalNot:
                     _stackNumbers[RequireNumeric(stackDepth - 1)] =
                         _stackNumbers[stackDepth - 1] == 0 ? 1 : 0;
                     break;
-                case Operation.BitNot:
+                case TerminfoOperation.BitNot:
                     _stackNumbers[RequireNumeric(stackDepth - 1)] = ~_stackNumbers[stackDepth - 1];
                     break;
-                case Operation.JumpIfFalse:
+                case TerminfoOperation.JumpIfFalse:
                     if (PopNumber(ref stackDepth) == 0)
                     {
                         instruction = operation.Operand - 1;
                     }
 
                     break;
-                case Operation.Jump:
+                case TerminfoOperation.Jump:
                     instruction = operation.Operand - 1;
                     break;
-                case Operation.FormatNumber:
+                case TerminfoOperation.FormatNumber:
                     FormatNumber(operation, PopNumber(ref stackDepth), ref outputLength);
                     break;
-                case Operation.FormatCharacter:
+                case TerminfoOperation.FormatCharacter:
                     FormatCharacter(operation, PopNumber(ref stackDepth), ref outputLength);
                     break;
-                case Operation.FormatString:
+                case TerminfoOperation.FormatString:
                     FormatString(operation, PopString(ref stackDepth), ref outputLength);
                     break;
                 default:
@@ -710,7 +710,7 @@ internal sealed class Interpreter
 
     #region Formatting
 
-    private void FormatNumber(Operation operation, int value, ref int outputLength)
+    private void FormatNumber(TerminfoOperation operation, int value, ref int outputLength)
     {
         Span<byte> digits = stackalloc byte[32];
         var conversion = (byte) operation.Operand;
@@ -800,7 +800,7 @@ internal sealed class Interpreter
         }
     }
 
-    private void FormatCharacter(Operation operation, int value, ref int outputLength)
+    private void FormatCharacter(TerminfoOperation operation, int value, ref int outputLength)
     {
         var width = Math.Max(1, operation.Secondary);
         var flags = operation.Tertiary & 0xff;
@@ -820,7 +820,7 @@ internal sealed class Interpreter
         }
     }
 
-    private void FormatString(Operation operation, ReadOnlyMemory<byte> value, ref int outputLength)
+    private void FormatString(TerminfoOperation operation, ReadOnlyMemory<byte> value, ref int outputLength)
     {
         var precision = UnpackPrecision(operation.Tertiary);
         var length = precision < 0 ? value.Length : Math.Min(value.Length, precision);

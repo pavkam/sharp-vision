@@ -7,9 +7,9 @@ using ProtocolLimits = Terminal.Clipboard.TransferLimits;
 
 /// <summary>Owns one strict, bounded, redaction-safe Kitty graphics APC response.</summary>
 [PublicAPI]
-public sealed class Response
+public sealed class KittyGraphicsResponse
 {
-    private Response(
+    private KittyGraphicsResponse(
         bool isValid,
         uint imageId,
         uint placementId,
@@ -48,7 +48,7 @@ public sealed class Response
     /// <param name="value">The complete borrowed APC payload without framing.</param>
     /// <param name="limits">Optional finite protocol policy.</param>
     /// <returns>An owned valid response or redacted invalid value.</returns>
-    public static Response Parse(ReadOnlySpan<byte> value, ProtocolLimits? limits = null)
+    public static KittyGraphicsResponse Parse(ReadOnlySpan<byte> value, ProtocolLimits? limits = null)
     {
         var policy = limits ?? ProtocolLimits.Default;
 
@@ -120,7 +120,7 @@ public sealed class Response
         }
 
         var ownedMessage = Encoding.ASCII.GetString(message);
-        return new Response(
+        return new KittyGraphicsResponse(
             isValid: true,
             imageId,
             placementId,
@@ -134,7 +134,7 @@ public sealed class Response
     public override string ToString() =>
         $"KittyGraphicsResponse valid={IsValid} image={ImageId} placement={PlacementId} success={IsSuccess}";
 
-    private static Response Invalid(DiagnosticCode code, int discardedBytes) => new(
+    private static KittyGraphicsResponse Invalid(DiagnosticCode code, int discardedBytes) => new(
         isValid: false,
         imageId: 0,
         placementId: 0,

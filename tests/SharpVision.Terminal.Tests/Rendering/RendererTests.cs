@@ -5,7 +5,6 @@ namespace SharpVision.Terminal.Tests.Rendering;
 
 using SharpVision.Terminal.Capabilities;
 
-using RenderMetrics = RenderingMetrics;
 
 /// <summary>
 /// Verifies commit-on-success rendering, invalidation, cleanup, and backpressure.
@@ -86,7 +85,7 @@ public sealed class RendererTests
         await using FakeTransport transport = new();
         var profile = CreateStatefulProfile("stateful", failingNormalCursor: false);
         using var first = CreateStyled(new CellStyle(ReferenceColors.Get(5)), visible: false);
-        using var second = CreateStyled(new CellStyle(attributes: Attributes.Bold), visible: false);
+        using var second = CreateStyled(new CellStyle(attributes: TerminalAttributes.Bold), visible: false);
 
         _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
         _ = await renderer.RenderAsync(second, transport, profile, TestContext.Current.CancellationToken);
@@ -101,7 +100,7 @@ public sealed class RendererTests
         using Renderer renderer = new();
         await using FakeTransport transport = new();
         using var first = CreateStyled(new CellStyle(ReferenceColors.Get(5)), visible: false);
-        using var second = CreateStyled(new CellStyle(attributes: Attributes.Bold), visible: false);
+        using var second = CreateStyled(new CellStyle(attributes: TerminalAttributes.Bold), visible: false);
 
         _ = await renderer.RenderAsync(
             first,
@@ -239,7 +238,7 @@ public sealed class RendererTests
         var committedProfile = CreateStatefulProfile("committed", failingNormalCursor: false);
         using var committed = CreateStyled(new CellStyle(ReferenceColors.Get(5)), visible: false);
         using var candidate = CreateStyled(new CellStyle(ReferenceColors.Get(9)), visible: false);
-        using var recovery = CreateStyled(new CellStyle(attributes: Attributes.Bold), visible: false);
+        using var recovery = CreateStyled(new CellStyle(attributes: TerminalAttributes.Bold), visible: false);
         var candidateProfile = CreateFailingRequiredProfile(failingProgram);
         _ = await renderer.RenderAsync(
             committed,
@@ -423,9 +422,9 @@ public sealed class RendererTests
         // The framing must be byte-identical to ProtocolModes.SynchronizedOutput's own encoding rather
         // than a hand-typed literal that happens to agree with it today (see #93 item 2).
         var expectedBegin = new ArrayBufferWriter<byte>();
-        ProtocolModes.SynchronizedOutput(new Writer(expectedBegin), enabled: true);
+        ProtocolModes.SynchronizedOutput(new ProtocolWriter(expectedBegin), enabled: true);
         var expectedEnd = new ArrayBufferWriter<byte>();
-        ProtocolModes.SynchronizedOutput(new Writer(expectedEnd), enabled: false);
+        ProtocolModes.SynchronizedOutput(new ProtocolWriter(expectedEnd), enabled: false);
         transport.Writes[0].AsSpan()[..expectedBegin.WrittenCount].ToArray().ShouldBe(expectedBegin.WrittenSpan.ToArray());
         transport.Writes[0].AsSpan()[^expectedEnd.WrittenCount..].ToArray().ShouldBe(expectedEnd.WrittenSpan.ToArray());
     }

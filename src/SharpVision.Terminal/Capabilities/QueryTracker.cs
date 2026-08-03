@@ -231,7 +231,7 @@ public sealed class QueryTracker
     /// <param name="response">The recognized typed response.</param>
     /// <returns>The match outcome for <paramref name="response"/>.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The response kind is not query-trackable.</exception>
-    public QueryMatch Match(Response response) =>
+    public QueryMatch Match(XtermCapabilitiesResponse response) =>
         Match(response, _timeProvider.GetUtcNow());
 
     /// <summary>Matches one typed CSI response at one caller-observed batch instant.</summary>
@@ -239,7 +239,7 @@ public sealed class QueryTracker
     /// <param name="now">The exact response-observation instant.</param>
     /// <returns>The match outcome for <paramref name="response"/>.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The response kind is not query-trackable.</exception>
-    internal QueryMatch Match(Response response, DateTimeOffset now)
+    internal QueryMatch Match(XtermCapabilitiesResponse response, DateTimeOffset now)
     {
         var kind = response.Kind switch
         {

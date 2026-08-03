@@ -6,7 +6,7 @@ namespace SharpVision.Terminal.Tests.Protocols;
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Multiplexing;
 
-using TerminalInputOptions = Terminal.Input.Options;
+using TerminalInputOptions = InputOptions;
 
 /// <summary>Verifies strict finite XTGETTCAP query and response handling.</summary>
 public sealed class XtgettcapTests
@@ -18,7 +18,7 @@ public sealed class XtgettcapTests
         var destination = new ArrayBufferWriter<byte>();
         CapabilityName[] names = [CapabilityName.DirectColor, CapabilityName.Up];
 
-        XtermGetCap.Query(new Writer(destination), names);
+        XtermGetCap.Query(new ProtocolWriter(destination), names);
 
         Encoding.ASCII.GetString(destination.WrittenSpan).ShouldBe(
             "\u001bP+q524742;6B63757531\u001b\\");

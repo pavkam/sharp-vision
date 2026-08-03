@@ -83,7 +83,7 @@ public sealed class CapabilityOriginGatingTests
             "x",
             new Point(0, 0),
             new CellStyle(
-                attributes: Attributes.Overline,
+                attributes: TerminalAttributes.Overline,
                 underline: Underline.Curly,
                 underlineColor: Color.Rgb(1, 2, 3)));
 

@@ -62,7 +62,7 @@ public sealed class TabBehaviorSurfaceTests
             TestContext.Current.CancellationToken);
 
         // Assert
-        var warning = Palette.Project(
+        var warning = TerminalPalette.Project(
             tabs.Theme.ShouldNotBeNull().ResolveColor(ThemeColor.Warning),
             ColorDepth.Basic16);
         surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(warning);

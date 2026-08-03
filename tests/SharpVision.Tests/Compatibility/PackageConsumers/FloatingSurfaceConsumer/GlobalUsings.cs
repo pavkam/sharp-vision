@@ -12,6 +12,3 @@ global using SharpVision.Terminal.Geometry;
 global using SharpVision.Terminal.Protocols;
 global using SharpVision.Terminal.Rendering;
 global using SharpVision.Terminal.Runtime;
-
-global using TerminalOptions = SharpVision.Terminal.Runtime.Options;
-global using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;

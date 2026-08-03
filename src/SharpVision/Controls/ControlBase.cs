@@ -47,7 +47,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     public Dispatcher? Dispatcher { get; private set; }
 
     /// <summary>Gets the immutable Unicode cell policy inherited from the root.</summary>
-    protected internal Policy CellPolicy { get; private set; } = Policy.Default;
+    protected internal UnicodePolicy CellPolicy { get; private set; } = UnicodePolicy.Default;
 
     /// <summary>Gets or sets the requested border-box width.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -679,7 +679,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher or this control is owned.</exception>
     /// <exception cref="ObjectDisposedException">Any descendant is disposed.</exception>
     internal void Attach(Dispatcher dispatcher)
-        => Attach(dispatcher, Policy.Default);
+        => Attach(dispatcher, UnicodePolicy.Default);
 
     /// <summary>Attaches a root and descendants with one immutable cell policy.</summary>
     /// <param name="dispatcher">The non-null owning dispatcher.</param>
@@ -688,7 +688,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <exception cref="ArgumentException">Any descendant is already attached.</exception>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher or this control is owned.</exception>
     /// <exception cref="ObjectDisposedException">Any descendant is disposed.</exception>
-    internal void Attach(Dispatcher dispatcher, Policy cellPolicy)
+    internal void Attach(Dispatcher dispatcher, UnicodePolicy cellPolicy)
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
         ArgumentNullException.ThrowIfNull(cellPolicy);
@@ -715,7 +715,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <exception cref="ObjectDisposedException">Any descendant is disposed.</exception>
     internal void Attach(
         Dispatcher dispatcher,
-        Policy cellPolicy,
+        UnicodePolicy cellPolicy,
         TerminalCapabilities capabilities)
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
@@ -746,7 +746,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <exception cref="ObjectDisposedException">Any descendant is disposed.</exception>
     internal void Attach(
         Dispatcher dispatcher,
-        Policy cellPolicy,
+        UnicodePolicy cellPolicy,
         Theme theme,
         Action configure)
     {
@@ -791,7 +791,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             var plan = ContextTransitionPlan.Create(
                 this,
                 null,
-                Policy.Default,
+                UnicodePolicy.Default,
                 null,
                 null,
                 null,
@@ -817,7 +817,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <summary>Assigns one immutable Unicode cell policy recursively.</summary>
     /// <param name="value">The non-null inherited cell policy.</param>
     /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
-    internal void SetCellPolicy(Policy value)
+    internal void SetCellPolicy(UnicodePolicy value)
     {
         ArgumentNullException.ThrowIfNull(value);
 
@@ -3024,7 +3024,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
     private void CommitAndPublishContext(
         Dispatcher? dispatcher,
-        Policy cellPolicy,
+        UnicodePolicy cellPolicy,
         FocusManager? focusOwner,
         PointerManager? captureOwner,
         ModalityManager? modalityOwner,

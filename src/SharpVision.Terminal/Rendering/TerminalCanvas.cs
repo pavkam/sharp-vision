@@ -9,7 +9,7 @@ using Graphics;
 /// Draws semantic grapheme clusters into a clipped frame cell region.
 /// </summary>
 [PublicAPI]
-public readonly struct Canvas
+public readonly struct TerminalCanvas
 {
     private const int _tabWidth = 4;
     private readonly Frame _frame;
@@ -18,7 +18,7 @@ public readonly struct Canvas
     /// <summary>Initializes a frame-owned clipped canvas.</summary>
     /// <param name="frame">The owning frame.</param>
     /// <param name="clip">The validated frame intersection.</param>
-    internal Canvas(Frame frame, Rect clip)
+    internal TerminalCanvas(Frame frame, Rect clip)
     {
         _frame = frame;
         _clip = clip;
@@ -73,10 +73,10 @@ public readonly struct Canvas
     /// <param name="clip">The requested rectangle in frame coordinates.</param>
     /// <returns>A canvas using the geometric intersection.</returns>
     /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
-    public Canvas Clip(Rect clip)
+    public TerminalCanvas Clip(Rect clip)
     {
         _frame.ThrowIfDisposed();
-        return new Canvas(_frame, _clip.Intersect(clip).Intersect(_frame.Bounds));
+        return new TerminalCanvas(_frame, _clip.Intersect(clip).Intersect(_frame.Bounds));
     }
 
     #region Drawing primitives
@@ -419,7 +419,7 @@ public readonly struct Canvas
     /// </exception>
     public void DrawWithForeground(
         Rect region,
-        Action<Canvas> draw,
+        Action<TerminalCanvas> draw,
         Func<Point, Color> selector)
     {
         ArgumentNullException.ThrowIfNull(draw);
@@ -767,8 +767,8 @@ public readonly struct Canvas
         var preflight = Process(value, origin, style, edge, background, write: false, out var bytes);
         _frame.EnsureAppendable(bytes);
         var result = Process(value, origin, style, edge, background, write: true, out var written);
-        Debug.Assert(preflight == result, "Canvas preflight and mutation passes must agree.");
-        Debug.Assert(bytes == written, "Canvas UTF-8 preflight and mutation must agree.");
+        Debug.Assert(preflight == result, "TerminalCanvas preflight and mutation passes must agree.");
+        Debug.Assert(bytes == written, "TerminalCanvas UTF-8 preflight and mutation must agree.");
 
         return result;
     }

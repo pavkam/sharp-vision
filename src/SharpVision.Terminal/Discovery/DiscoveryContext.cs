@@ -5,7 +5,6 @@ namespace SharpVision.Terminal.Discovery;
 
 using Capabilities;
 
-using QueryResults = Capabilities.QueryResults;
 
 /// <summary>
 /// Owns immutable caller evidence for one capability-discovery pass without

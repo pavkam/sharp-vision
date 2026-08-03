@@ -10,7 +10,7 @@ internal readonly struct ControlContextTransition
     internal ControlContextTransition(
         ControlBase control,
         Dispatcher? dispatcher,
-        Policy cellPolicy,
+        UnicodePolicy cellPolicy,
         FocusManager? focusOwner,
         PointerManager? captureOwner,
         ModalityManager? modalityOwner,
@@ -39,7 +39,7 @@ internal readonly struct ControlContextTransition
     internal Dispatcher? Dispatcher { get; }
 
     /// <summary>Gets the prospective Unicode cell policy.</summary>
-    internal Policy CellPolicy { get; }
+    internal UnicodePolicy CellPolicy { get; }
 
     /// <summary>Gets the prospective focus manager, or null.</summary>
     internal FocusManager? FocusOwner { get; }

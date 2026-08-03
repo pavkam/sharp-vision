@@ -200,7 +200,7 @@ public sealed class SpinnerSurfaceTests
         surface.ShouldRender("⣷");
         spinner.ActualFace.Foreground.ShouldBe(Color.Rgb(0xFF, 0x00, 0x00));
         surface.Cell(default).Style.Foreground.ShouldBe(
-            Palette.Project(Color.Rgb(0xFF, 0x00, 0x00), ColorDepth.Basic16));
+            TerminalPalette.Project(Color.Rgb(0xFF, 0x00, 0x00), ColorDepth.Basic16));
 
         var firstTheme = ThemeWithControlProfile(firstStyle.Appearance);
         var secondTheme = ThemeWithControlProfile(secondStyle.Appearance);
@@ -222,7 +222,7 @@ public sealed class SpinnerSurfaceTests
 
         surface.ShouldRender("⠙");
         surface.Cell(default).Style.Foreground.ShouldBe(
-            Palette.Project(Color.Rgb(0xFF, 0x00, 0x00), ColorDepth.Basic16));
+            TerminalPalette.Project(Color.Rgb(0xFF, 0x00, 0x00), ColorDepth.Basic16));
     }
 
     private static ThemeProfile LiteralProfile(Color foreground) => new(
@@ -230,7 +230,7 @@ public sealed class SpinnerSurfaceTests
             AppearanceTestValues.Face(
                 foreground: foreground,
                 background: Color.Default,
-                attributes: Attributes.None),
+                attributes: TerminalAttributes.None),
             AppearanceTestValues.Border(BorderSide.None),
             AppearanceTestValues.Shadow(visible: false)));
 

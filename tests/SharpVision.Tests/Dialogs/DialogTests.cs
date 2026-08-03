@@ -472,7 +472,7 @@ public sealed class DialogTests
         await dispatcher.InvokeAsync(() =>
         {
             var owner = new Button { Text = "Bare" };
-            owner.Attach(dispatcher, Policy.Default, Capabilities.Conservative);
+            owner.Attach(dispatcher, UnicodePolicy.Default, TerminalCapabilities.Conservative);
             using var dialog = new TestDialog();
 
             var exception = Should.Throw<ArgumentException>(

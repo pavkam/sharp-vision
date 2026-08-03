@@ -15,16 +15,15 @@ using Terminal.Capabilities;
 using Terminal.Rendering;
 
 using MultiplexerRoute = Terminal.Multiplexing.MultiplexerRoute;
-using TerminalCellMetrics = Metrics;
+using TerminalCellMetrics = CellMetrics;
 using TerminalDiagnostic = Diagnostic;
 using TerminalDiagnosticCode = DiagnosticCode;
-using TerminalFocus = Terminal.Input.TerminalFocus;
-using TerminalOptions = Terminal.Runtime.Options;
-using TerminalResponse = Response;
+
+
+using TerminalResponse = XtermCapabilitiesResponse;
 using TerminalSequence = ProtocolSequence;
 using TerminalSequenceKind = SequenceKind;
-using TerminalText = Terminal.Input.Text;
-using UnicodePolicy = Policy;
+
 
 /// <summary>Owns the dispatcher-affine UI tree and asynchronous terminal runtime.</summary>
 [DebuggerDisplay("Application {_screen?.GetType().Name,nq}")]
@@ -741,7 +740,7 @@ public sealed class Application:
         Frame frame,
         IDisposable hold,
         TaskCompletionSource completion,
-        Metrics? metrics,
+        RenderMetrics? metrics,
         Exception? exception)
     {
         Dispatcher.VerifyAccess();
@@ -1372,12 +1371,12 @@ public sealed class Application:
     }
 
     private async Task ObserveRenderAsync(
-        ValueTask<Metrics> operation,
+        ValueTask<RenderMetrics> operation,
         Frame frame,
         IDisposable hold,
         TaskCompletionSource completion)
     {
-        Metrics? metrics = null;
+        RenderMetrics? metrics = null;
         Exception? failure = null;
 
         try

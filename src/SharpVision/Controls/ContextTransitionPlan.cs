@@ -38,7 +38,7 @@ internal sealed class ContextTransitionPlan
     internal static ContextTransitionPlan Create(
         ControlBase root,
         Dispatcher? dispatcher,
-        Policy cellPolicy,
+        UnicodePolicy cellPolicy,
         FocusManager? focusOwner,
         PointerManager? captureOwner,
         ModalityManager? modalityOwner,

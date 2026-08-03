@@ -183,7 +183,7 @@ public sealed class ConsoleApplicationPreflightTests
         "generic" => DescriptionResult.Loaded(
             new TerminalProfile(
                 new Description("dumb", DescriptionOrigin.Database, Suitability.Generic),
-                Capabilities.Conservative),
+                TerminalCapabilities.Conservative),
             Array.Empty<DescriptionDiagnostic>()),
         "provider-failed" => DescriptionResult.ProviderFailed(
             [

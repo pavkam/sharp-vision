@@ -158,7 +158,7 @@ public sealed class CheckBoxSurfaceTests
         changes.ShouldBe(0);
         surface.ShouldHaveState(checkBox, VisualState.Disabled);
         surface.ShouldRender("[✓] Disabled");
-        var expectedDisabledFg = Palette.Project(ThemeColorHelper.DisabledForeground(Themes.Dark), ColorDepth.Basic16);
+        var expectedDisabledFg = TerminalPalette.Project(ThemeColorHelper.DisabledForeground(Themes.Dark), ColorDepth.Basic16);
         var foreground = surface.Cell(default).Style.Foreground;
         foreground.IsRgb.ShouldBeTrue();
         foreground.ShouldBe(expectedDisabledFg);

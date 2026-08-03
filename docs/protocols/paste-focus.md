@@ -30,8 +30,8 @@ and every proper marker prefix remain data. Parser callbacks are bypassed until
 the exact terminator, meaning paste content can never trigger keys, focus,
 mouse, OSC, or CSI handling.
 
-Payload retention is capped by `Input.Options.MaxPasteBytes`. Overflow clears
-retained bytes, discards through the terminator, reports one structural
+Payload retention is capped by `Input.InputOptions.MaxPasteBytes`. Overflow
+clears retained bytes, discards through the terminator, reports one structural
 diagnostic, and resumes ordinary decoding at the following byte. Successful
 payloads are normalized to valid UTF-8 with U+FFFD for malformed subsequences,
 copied into an owned `Paste`, and remain stable when decoder storage is reused.

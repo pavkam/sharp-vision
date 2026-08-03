@@ -43,6 +43,5 @@ global using Shouldly;
 
 global using ControlText = SharpVision.Controls.Display.Text;
 global using KeyAction = SharpVision.Terminal.Input.KeyAction;
-global using TerminalOptions = SharpVision.Terminal.Runtime.Options;
 global using TerminalStyle = SharpVision.Terminal.Rendering.CellStyle;
 global using Text = SharpVision.Controls.Display.Text;

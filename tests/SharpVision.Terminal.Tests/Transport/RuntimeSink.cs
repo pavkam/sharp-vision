@@ -25,7 +25,7 @@ internal sealed class RuntimeSink: ISink, IPaletteResponseSink, IMetricsResponse
     public void Input(in Stroke value) => _ = value;
 
     /// <inheritdoc/>
-    public void Input(in InputText value) => _ = value;
+    public void Input(in TerminalText value) => _ = value;
 
     /// <inheritdoc/>
     public void Input(in Pointer value) => _ = value;
@@ -40,7 +40,7 @@ internal sealed class RuntimeSink: ISink, IPaletteResponseSink, IMetricsResponse
     public void Input(in Diagnostic value) => _ = value;
 
     /// <inheritdoc/>
-    public void Response(in Response value) => _ = value;
+    public void Response(in XtermCapabilitiesResponse value) => _ = value;
 
     /// <inheritdoc/>
     public void Response(in PaletteResponse value) => _ = value;
