@@ -170,6 +170,22 @@ public sealed class PngTests
         _ = Should.Throw<NotSupportedException>(() => source.AsSpan().DecodeRgba());
     }
 
+    /// <summary>Verifies decompressed bytes beyond the declared scanlines are rejected.</summary>
+    [Fact]
+    public void DecodeRgba_WhenCompressedDataExceedsDeclaredDimensions_Throws()
+    {
+        var source = CreateDecodablePng(
+            1,
+            1,
+            colorType: 0,
+            bitDepth: 8,
+            [0],
+            [[42]],
+            trailingScanlineData: [99]);
+
+        _ = Should.Throw<ArgumentException>(() => source.AsSpan().DecodeRgba());
+    }
+
     #endregion
 
     private static byte[] CreateDecodablePng(
@@ -181,7 +197,8 @@ public sealed class PngTests
         byte[][] filteredRows,
         byte[]? palette = null,
         byte[]? trns = null,
-        byte interlace = 0)
+        byte interlace = 0,
+        byte[]? trailingScanlineData = null)
     {
         using var buffer = new MemoryStream();
         buffer.Write([137, 80, 78, 71, 13, 10, 26, 10]);
@@ -213,6 +230,11 @@ public sealed class PngTests
             {
                 scanlines.WriteByte(filterTypes[row]);
                 scanlines.Write(filteredRows[row]);
+            }
+
+            if (trailingScanlineData is not null)
+            {
+                scanlines.Write(trailingScanlineData);
             }
 
             using var compressed = new MemoryStream();

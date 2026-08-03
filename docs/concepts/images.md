@@ -13,24 +13,19 @@ The first source representations are:
 - encoded PNG with a validated signature, IHDR, chunk boundaries, IDAT presence,
   IEND termination, and positive pixel dimensions.
 
-PNG validation establishes safe ownership and dimensions; it is not raster
-decoding. Sixel therefore consumes RGBA only. The Kitty and iTerm2 backends may
+PNG validation establishes safe ownership and dimensions. The decoder converts
+non-interlaced, 8-bit grayscale, RGB, indexed, grayscale-alpha, and RGBA sources
+to straight RGBA8888 for raster-only backends. The Kitty and iTerm2 backends may
 transmit owned PNG directly when their capability and route are proved.
 
-On a terminal whose only graphics protocol is sixel, a PNG placement is skipped
-and the Image control paints its shaded-cell fallback. A hosted
-`Application`/`ConsoleApplication` raises `GraphicsDiagnostic` after any frame
-that left placements falling back this way, carrying a
-`GraphicsPlacementDiagnostic` per placement with its `ImageIdentity` and a
-`GraphicsPlacementSkipReason` — so the degradation is observable instead of
-silent. A directly owned `Renderer`, outside the hosted path, reads the same
+On a terminal whose only graphics protocol is sixel, a supported PNG placement
+is decoded and rendered through sixel after the Image control paints its
+ordinary-cell fallback. A hosted `Application`/`ConsoleApplication` raises
+`GraphicsDiagnostic` after any frame that leaves a placement falling back,
+carrying a `GraphicsPlacementDiagnostic` per placement with its `ImageIdentity`
+and a `GraphicsPlacementSkipReason` — so the degradation is observable instead
+of silent. A directly owned `Renderer`, outside the hosted path, reads the same
 list from every successful render's `Metrics.GraphicsDiagnostics`.
-
-> [!IMPORTANT]
->
-> **Implementation gap:** PNG is still never decoded to raster pixels for sixel,
-> so the fallback itself cannot be avoided — only observed. Issue #233 tracks
-> decoding PNG for raster-only backends.
 
 ## Bounds and validation
 
@@ -42,7 +37,9 @@ pixel limit cannot exceed the area addressable by its dimension limit.
 RGBA dimensions, the exact byte count, and checked multiplication are validated
 before copying. PNG chunk lengths are treated as untrusted big-endian values;
 truncated, overflowing, trailing, structurally invalid, and policy-exceeding
-containers fail without publishing an image.
+containers fail without publishing an image. Raster decoding requires exactly
+the declared scanline bytes after decompression; shorter or longer payloads are
+rejected rather than partially decoded.
 
 Every image receives a stable, nonzero, process-local identity. The identity is
 semantic cache input - it is not a terminal protocol identifier and not a
@@ -61,15 +58,15 @@ Owned image values, semantic frame placements, the transactional renderer
 lifecycle, the Kitty, sixel, and iTerm2 backends, and evidence-based protocol
 selection are implemented and connected through `Application`. Backend selection
 happens lazily at the first render, after negotiated profile publication and the
-first resize barrier. Kitty accepts RGBA and PNG; sixel accepts RGBA only, with
-measured cell-pixel geometry; iTerm2 3.5+ multipart accepts complete PNG with
-contain or stretch under an explicit override. A detected multiplexer route is
-always passed to selection, including when passthrough is unauthorized, so
-direct graphics cannot leak around the policy. `TerminalOptions.Multiplexing`
-carries that routing policy independently of `Negotiation`, so a host that pins
-`Profile` or `Capabilities` to avoid probing (which discards the rest of
-`Negotiation`) still routes graphics through an approved passthrough instead of
-silently degrading to the unsafe direct path.
+first resize barrier. Kitty accepts RGBA and PNG; sixel accepts RGBA and the
+supported decoded PNG subset with measured cell-pixel geometry; iTerm2 3.5+
+multipart accepts complete PNG with contain or stretch under an explicit
+override. A detected multiplexer route is always passed to selection, including
+when passthrough is unauthorized, so direct graphics cannot leak around the
+policy. `TerminalOptions.Multiplexing` carries that routing policy independently
+of `Negotiation`, so a host that pins `Profile` or `Capabilities` to avoid
+probing (which discards the rest of `Negotiation`) still routes graphics through
+an approved passthrough instead of silently degrading to the unsafe direct path.
 
 The public [`Image` control](../controls/display/image.md#overview) paints a
 deterministic cell fallback and records only a semantic placement. Exact resize

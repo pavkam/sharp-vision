@@ -167,6 +167,13 @@ internal static class Png
                         "source",
                         exception);
                 }
+
+                if (zlib.ReadByte() != -1)
+                {
+                    throw new ArgumentException(
+                        "The PNG compressed scanline data exceeds its declared dimensions.",
+                        "source");
+                }
             }
 
             var pixels = Defilter(raw, size.Height, stride, channels);
