@@ -293,6 +293,33 @@ public sealed class DateInputSurfaceTests
         input.IsOpen.ShouldBeFalse();
     }
 
+    /// <summary>Verifies an open date popup routes navigation and selection keys to its calendar.</summary>
+    [Fact]
+    public async Task Keyboard_WhenRightAndEnterArePressedWhileOpen_SelectsNextDateAsync()
+    {
+        // Arrange
+        var input = new DateInput
+        {
+            Value = new DateOnly(2026, 3, 15),
+            Culture = CultureInfo.InvariantCulture
+        };
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.UpdateAsync(() => input.IsOpen = true, "open popup");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Right);
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        input.Value.ShouldBe(new DateOnly(2026, 3, 16));
+        input.IsOpen.ShouldBeFalse();
+    }
+
     /// <summary>Verifies typing digits enters the month value directly.</summary>
     [Fact]
     public async Task Keyboard_WhenDigitsAreTyped_SetsMonthSegmentAsync()

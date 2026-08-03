@@ -367,7 +367,20 @@ public sealed class DateInput: Control
                 return;
             }
 
-            // When the popup is open, let the calendar handle all other keys.
+            if (stroke.Code is Code.Up or Code.Down or Code.Left or Code.Right
+                or Code.PageUp or Code.PageDown or Code.Home or Code.End)
+            {
+                _calendar.InvokeDefault(eventArgs);
+                return;
+            }
+
+            if (stroke.Code == Code.Enter ||
+                (stroke.Code == Code.Character && stroke.Character == new Rune(' ')))
+            {
+                _calendar.InvokeDefault(eventArgs);
+                return;
+            }
+
             return;
         }
 

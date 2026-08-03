@@ -5,6 +5,10 @@
 `DateInput` displays a formatted date, supports inline segment editing, and
 offers an optional Calendar popup.
 
+While the popup is open, arrow, Page Up, Page Down, Home, and End keys navigate
+the calendar. Enter or Space commits its active date, and Escape closes the
+popup without changing the value.
+
 ## API
 
 | Member                       | Default                                         | Description                                                   |
