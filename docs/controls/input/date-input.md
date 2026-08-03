@@ -9,6 +9,10 @@ While the popup is open, arrow, Page Up, Page Down, Home, and End keys navigate
 the calendar. Enter or Space commits its active date, and Escape closes the
 popup without changing the value.
 
+Custom date formats follow .NET quoting and escaping rules. Date letters inside
+quoted or escaped literals remain display text and never become editable
+segments.
+
 ## API
 
 | Member                       | Default                                         | Description                                                   |

@@ -766,55 +766,25 @@ public sealed class DateInput: Control
     }
 
     private int SegmentCount()
-    {
-        var pattern = ResolveDatePattern();
-        var count = 0;
-
-        for (var index = 0; index < pattern.Length; index++)
-        {
-            if (pattern[index] is 'M' or 'd' or 'y')
-            {
-                count++;
-
-                while (index + 1 < pattern.Length && pattern[index + 1] == pattern[index])
-                {
-                    index++;
-                }
-            }
-        }
-
-        return count;
-    }
+        => BuildPlaceholderSegments().Count(static segment => segment.Kind.HasValue);
 
     private SegmentKind ResolveSegmentKind(int segmentIndex)
     {
-        var pattern = ResolveDatePattern();
         var current = 0;
 
-        for (var index = 0; index < pattern.Length; index++)
+        foreach (var segment in BuildPlaceholderSegments())
         {
-            var ch = pattern[index];
-
-            if (ch is 'M' or 'd' or 'y')
+            if (segment.Kind is not { } kind)
             {
-                if (current == segmentIndex)
-                {
-                    return ch switch
-                    {
-                        'M' => SegmentKind.Month,
-                        'd' => SegmentKind.Day,
-                        'y' => SegmentKind.Year,
-                        _ => SegmentKind.Month
-                    };
-                }
-
-                current++;
-
-                while (index + 1 < pattern.Length && pattern[index + 1] == ch)
-                {
-                    index++;
-                }
+                continue;
             }
+
+            if (current == segmentIndex)
+            {
+                return kind;
+            }
+
+            current++;
         }
 
         return SegmentKind.Day;
@@ -827,6 +797,10 @@ public sealed class DateInput: Control
             {
                 'd' => _culture.DateTimeFormat.ShortDatePattern,
                 'D' => _culture.DateTimeFormat.LongDatePattern,
+                'm' or 'M' => _culture.DateTimeFormat.MonthDayPattern,
+                'y' or 'Y' => _culture.DateTimeFormat.YearMonthPattern,
+                'o' or 'O' => "yyyy'-'MM'-'dd",
+                'r' or 'R' => "ddd, dd MMM yyyy",
                 _ => _culture.DateTimeFormat.ShortDatePattern
             };
 
@@ -834,7 +808,10 @@ public sealed class DateInput: Control
 
     #region Rendering helpers
 
-    private readonly record struct DisplaySegment(string Text, bool IsPlaceholder);
+    private readonly record struct DisplaySegment(
+        string Text,
+        bool IsPlaceholder,
+        SegmentKind? Kind = null);
 
     private DisplaySegment[] BuildSegments()
     {
@@ -888,42 +865,97 @@ public sealed class DateInput: Control
         {
             var ch = pattern[index];
 
-            if (ch is 'M' or 'd')
+            if (ch is '\'' or '"')
             {
-                segments.Add(new DisplaySegment("--", true));
+                var quote = ch;
+                var literal = new StringBuilder();
+                index++;
 
-                while (index < pattern.Length && pattern[index] == ch)
+                while (index < pattern.Length && pattern[index] != quote)
+                {
+                    if (pattern[index] == '\\' && index + 1 < pattern.Length)
+                    {
+                        index++;
+                    }
+
+                    _ = literal.Append(pattern[index]);
+                    index++;
+                }
+
+                if (index < pattern.Length)
                 {
                     index++;
                 }
+
+                AppendLiteral(segments, literal.ToString());
+                continue;
             }
-            else if (ch == 'y')
+
+            if (ch == '\\' && index + 1 < pattern.Length)
+            {
+                AppendLiteral(segments, pattern[index + 1].ToString());
+                index += 2;
+                continue;
+            }
+
+            if (ch == '%')
+            {
+                index++;
+
+                if (index >= pattern.Length)
+                {
+                    break;
+                }
+
+                ch = pattern[index];
+            }
+
+            if (ch is 'M' or 'd' or 'y')
             {
                 var count = 0;
 
-                while (index < pattern.Length && pattern[index] == 'y')
+                while (index < pattern.Length && pattern[index] == ch)
                 {
                     count++;
                     index++;
                 }
 
-                segments.Add(new DisplaySegment(count >= 4 ? "----" : "--", true));
-            }
-            else
-            {
-                var separator = new StringBuilder();
-
-                while (index < pattern.Length && pattern[index] is not ('M' or 'd' or 'y'))
+                var kind = ch switch
                 {
-                    _ = separator.Append(pattern[index]);
-                    index++;
-                }
-
-                segments.Add(new DisplaySegment(separator.ToString(), true));
+                    'M' => SegmentKind.Month,
+                    'd' => SegmentKind.Day,
+                    'y' => SegmentKind.Year,
+                    _ => SegmentKind.Day
+                };
+                var placeholder = kind == SegmentKind.Year && count >= 4 ? "----" : "--";
+                segments.Add(new DisplaySegment(placeholder, true, kind));
+                continue;
             }
+
+            AppendLiteral(
+                segments,
+                ch == '/' ? _culture.DateTimeFormat.DateSeparator : ch.ToString());
+            index++;
         }
 
         return [.. segments];
+    }
+
+    private static void AppendLiteral(List<DisplaySegment> segments, string literal)
+    {
+        if (literal.Length == 0)
+        {
+            return;
+        }
+
+        if (segments.Count > 0 && segments[^1].Kind is null)
+        {
+            var previous = segments[^1];
+            segments[^1] = new DisplaySegment(previous.Text + literal, true);
+            return;
+        }
+
+        segments.Add(new DisplaySegment(literal, true));
     }
 
     private string FormatValue()

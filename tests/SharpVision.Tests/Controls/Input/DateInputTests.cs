@@ -194,6 +194,25 @@ public sealed class DateInputTests
         _ = Should.NotThrow(() => control.Culture = new CultureInfo("de-DE"));
     }
 
+    /// <summary>Verifies date letters inside a quoted literal do not become editable segments.</summary>
+    [Fact]
+    public void Input_WhenCustomFormatStartsWithQuotedDateLetters_UpAdjustsFirstVisibleSegment()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 7, 19),
+            Culture = CultureInfo.InvariantCulture,
+            Format = "'date:' MM/dd/yyyy"
+        };
+
+        // Act
+        _ = Router.Route(control, Events.Key, KeyEvent(Code.Up));
+
+        // Assert
+        control.Value.ShouldBe(new DateOnly(2026, 8, 19));
+    }
+
     /// <summary>Verifies changing culture produces different rendered output.</summary>
     [Fact]
     public void Properties_WhenCultureChanges_InvalidatesRender()
@@ -474,6 +493,28 @@ public sealed class DateInputTests
         Row(frame, 1).ShouldContain("----.--.--");
     }
 
+    /// <summary>Verifies quoted date letters remain literal text in a null placeholder.</summary>
+    [Fact]
+    public void Render_WhenNullFormatContainsQuotedDateLetters_PreservesLiteralText()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            AllowNull = true,
+            Culture = CultureInfo.InvariantCulture,
+            Format = "'date:' MM/dd/yyyy",
+            Value = null
+        };
+        new LayoutEngine().Layout(control, new Size(30, 3));
+        using Frame frame = new(new Size(30, 3));
+
+        // Act
+        control.Render(frame.Canvas);
+
+        // Assert
+        Row(frame, 1).ShouldContain("date: --/--/----");
+    }
+
     #endregion
 
     #region Helpers
@@ -490,6 +531,13 @@ public sealed class DateInputTests
 
         return result.ToString();
     }
+
+    private static KeyEventArgs KeyEvent(Code code) => new(new Stroke(
+        code,
+        default,
+        nativeCode: 0,
+        Modifiers.None,
+        KeyAction.Press));
 
     #endregion
 }
