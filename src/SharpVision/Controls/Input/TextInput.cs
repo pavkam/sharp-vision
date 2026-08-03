@@ -1146,43 +1146,54 @@ public sealed class TextInput: ControlBase
 
         var targetXOrig = Math.Max(0, point.X - _editorBounds.X + HorizontalOffset);
         var targetYOrig = Math.Max(0, point.Y - _editorBounds.Y + VerticalOffset);
-        var xOrig = 0;
-        var yOrig = 0;
+        return IndexAtRowFast(targetYOrig, targetXOrig);
+    }
 
-        foreach (var grapheme in Graphemes.Enumerate(Text))
+    /// <summary>Finds the boundary offset at cell column <paramref name="targetX"/> on cached row
+    /// <paramref name="targetY"/> in O(log n + row length) via the cached boundary/row/column arrays,
+    /// instead of scanning <see cref="Text"/> from its start up to the target row on every call.</summary>
+    /// <remarks>
+    /// Holding Up or Down through a large non-word-wrap document previously rescanned every row from
+    /// the document start for every keystroke - the same O(document) per navigation event, summed over
+    /// n keystrokes, that the boundary cache was built to eliminate for horizontal navigation (see
+    /// #42). Row <paramref name="targetY"/> always has at least one cached entry when it exists (a
+    /// document break increments the row before recording the following boundary), so the row's start
+    /// is always found at column 0; the loop below mirrors the original scan's snap-to-nearest-half-cell
+    /// and end-of-row/end-of-document fallbacks exactly.
+    /// </remarks>
+    private int IndexAtRowFast(int targetY, int targetX)
+    {
+        var (offsets, rows, columns) = BoundaryCache();
+        var startIndex = LowerBoundByRow(rows, targetY);
+
+        if (startIndex >= rows.Length || rows[startIndex] != targetY)
         {
-            var cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
+            return Text.Length;
+        }
 
-            if (IsLineBreak(cluster))
+        var lastIndexInRow = startIndex;
+
+        for (var index = startIndex; index < rows.Length && rows[index] == targetY; index++)
+        {
+            lastIndexInRow = index;
+
+            if (index == startIndex)
             {
-                if (yOrig == targetYOrig)
-                {
-                    return grapheme.Offset;
-                }
-
-                xOrig = 0;
-                yOrig++;
                 continue;
             }
 
-            if (yOrig > targetYOrig)
+            var before = columns[index - 1];
+            var after = columns[index];
+
+            if (targetX < after)
             {
-                return grapheme.Offset;
+                return targetX < before + ((after - before + 1) / 2)
+                    ? offsets[index - 1]
+                    : offsets[index];
             }
-
-            var width = ClusterWidth(cluster, xOrig);
-
-            if (yOrig == targetYOrig && targetXOrig < xOrig + width)
-            {
-                return targetXOrig < xOrig + ((width + 1) / 2)
-                    ? grapheme.Offset
-                    : grapheme.Offset + grapheme.Length;
-            }
-
-            xOrig += width;
         }
 
-        return Text.Length;
+        return offsets[lastIndexInRow];
     }
 
     private EditResult MoveVertical(int delta, bool extend)
@@ -1281,6 +1292,33 @@ public sealed class TextInput: ControlBase
             else
             {
                 high = mid;
+            }
+        }
+
+        return low;
+    }
+
+    /// <summary>Finds the largest <see cref="_visualLines"/> index whose offset does not exceed
+    /// <paramref name="textOffset"/> via binary search over the ascending-offset array, replacing
+    /// <see cref="Position"/>'s reverse linear scan across every wrapped line (see #42).</summary>
+    /// <remarks>Requires <c>_visualLines.Length &gt; 0</c>; the first visual line always starts at
+    /// offset 0, so <paramref name="textOffset"/> is always found at or after index 0.</remarks>
+    private int VisualLineIndexAt(int textOffset)
+    {
+        var low = 0;
+        var high = _visualLines.Length - 1;
+
+        while (low < high)
+        {
+            var mid = low + ((high - low + 1) / 2);
+
+            if (_visualLines[mid].Offset <= textOffset)
+            {
+                low = mid;
+            }
+            else
+            {
+                high = mid - 1;
             }
         }
 
@@ -1432,33 +1470,22 @@ public sealed class TextInput: ControlBase
     {
         if (WordWrap && _visualLines.Length > 0)
         {
-            for (var i = _visualLines.Length - 1; i >= 0; i--)
+            y = VisualLineIndexAt(index);
+            var line = _visualLines[y];
+            x = 0;
+            var end = Math.Min(index, line.Offset + line.Length);
+            var span = Text.AsSpan(line.Offset, end - line.Offset);
+
+            foreach (var g in Graphemes.Enumerate(span))
             {
-                var line = _visualLines[i];
+                var c = span.Slice(g.Offset, g.Length);
 
-                if (index >= line.Offset)
+                if (!IsLineBreak(c))
                 {
-                    y = i;
-                    x = 0;
-                    var end = Math.Min(index, line.Offset + line.Length);
-                    var span = Text.AsSpan(line.Offset, end - line.Offset);
-
-                    foreach (var g in Graphemes.Enumerate(span))
-                    {
-                        var c = span.Slice(g.Offset, g.Length);
-
-                        if (!IsLineBreak(c))
-                        {
-                            x += ClusterWidth(c, x);
-                        }
-                    }
-
-                    return;
+                    x += ClusterWidth(c, x);
                 }
             }
 
-            x = 0;
-            y = 0;
             return;
         }
 

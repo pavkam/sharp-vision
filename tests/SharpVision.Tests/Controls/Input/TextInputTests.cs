@@ -754,6 +754,40 @@ public sealed class TextInputTests
         control.CaretIndex.ShouldBe(3);
     }
 
+    /// <summary>Verifies Up and Down snap to the nearest cell column across rows mixing single-cell
+    /// ASCII and a two-cell CJK grapheme, proving the cached row-lookup fast path
+    /// (<c>IndexAtRowFast</c>, backing <c>MoveVertical</c>) matches the exact boundary and half-cell
+    /// snap the prior full-document-per-row scan produced (see #42).</summary>
+    [Fact]
+    public void Dispatch_WhenHoldingUpAndDownAcrossMixedGraphemeWidths_SnapsToTheExactExpectedBoundary()
+    {
+        // Row 0 "ab" (columns 0-2) ends at offset 2.
+        // Row 1 "界c" (界: two cells at column 0-2; c: one cell at column 2-3) spans offsets 3-5.
+        // Row 2 "xy" (columns 0-2) spans offsets 6-8, the document end.
+        var control = new TextInput { AcceptsReturn = true, Text = "ab\n界c\nxy" };
+
+        // End of row 0 (column 2) descends to the exact matching column on row 1, past 界.
+        control.Select(2, 0);
+        Key(control, Code.Down, Modifiers.None);
+        control.CaretIndex.ShouldBe(4);
+
+        // The same column descends again to the document end on row 2.
+        Key(control, Code.Down, Modifiers.None);
+        control.CaretIndex.ShouldBe(8);
+
+        // Ascending retraces the identical boundaries back to row 0.
+        Key(control, Code.Up, Modifiers.None);
+        control.CaretIndex.ShouldBe(4);
+        Key(control, Code.Up, Modifiers.None);
+        control.CaretIndex.ShouldBe(2);
+
+        // Column 1 on row 0 (after 'a', mid-cluster of the two-cell 界 on row 1) snaps to 界's far
+        // half-cell boundary, matching the original scan's exact midpoint tie-break rule.
+        control.Select(1, 0);
+        Key(control, Code.Down, Modifiers.None);
+        control.CaretIndex.ShouldBe(4);
+    }
+
     /// <summary>Verifies losing focus during pointer selection releases capture and held state.</summary>
     [Fact]
     public async Task Dispatch_WhenFocusLeavesDuringPointerDrag_CancelsCaptureAsync()
