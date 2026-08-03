@@ -37,7 +37,8 @@ public sealed class BackendTests
         bytes.AsSpan().EndsWith("\u001b]1337;FileEnd\u001b\\\u001b[1;1H"u8).ShouldBeTrue();
     }
 
-    /// <summary>Verifies RGBA, cover, and partial PNG sources stay on the cell fallback.</summary>
+    /// <summary>Verifies RGBA, cover, and partial PNG sources stay on the cell fallback and each
+    /// reports why iTerm cannot express the placement.</summary>
     [Fact]
     public void Prepare_WhenPlacementCannotBeExpressed_DeclinesWithoutOutput()
     {
@@ -64,6 +65,10 @@ public sealed class BackendTests
 
         result.Changed.ShouldBeFalse();
         result.Placements.ShouldBe(0);
+        result.SkippedPlacements.Count.ShouldBe(3);
+        result.SkippedPlacements[0].Reason.ShouldBe(GraphicsPlacementSkipReason.FormatNotEncodable);
+        result.SkippedPlacements[1].Reason.ShouldBe(GraphicsPlacementSkipReason.PlacementNotEncodable);
+        result.SkippedPlacements[2].Reason.ShouldBe(GraphicsPlacementSkipReason.PlacementNotEncodable);
         WritePlacements(backend).ShouldBeEmpty();
     }
 

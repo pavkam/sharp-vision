@@ -11,5 +11,8 @@ public enum GraphicsPlacementSkipReason
     FormatNotEncodable,
 
     /// <summary>Every non-retained protocol the backend could otherwise use is deauthorized by the current profile.</summary>
-    ProtocolNotAuthorized
+    ProtocolNotAuthorized,
+
+    /// <summary>The image format is supported, but its source rectangle, destination geometry, or placement mode is not.</summary>
+    PlacementNotEncodable
 }

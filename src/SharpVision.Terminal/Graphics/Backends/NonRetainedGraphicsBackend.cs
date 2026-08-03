@@ -457,18 +457,16 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             {
                 encodable[index] = true;
             }
-            else if (!IsFormatEncodable(placement.Image!.Format, enableSixel, enableIterm) ||
-                     (sixelEligible && placement.Image.Format == Format.Png))
+            else
             {
-                // Isolated from the mode/rect/metrics checks above: this placement's format has
-                // no encodable path on any enabled protocol, distinct from an otherwise-encodable
-                // format that failed on some other eligibility condition (see #233). When neither
-                // protocol is authorized at all, every format necessarily fails IsFormatEncodable -
-                // that is a deauthorized-profile condition, not a format mismatch, so it gets its
-                // own reason instead of being mislabeled as FormatNotEncodable.
+                // Keep protocol authorization, image representation, and placement semantics
+                // distinct so every cell fallback is observable without a misleading reason.
                 var reason = !enableSixel && !enableIterm
                     ? GraphicsPlacementSkipReason.ProtocolNotAuthorized
-                    : GraphicsPlacementSkipReason.FormatNotEncodable;
+                    : !IsFormatEncodable(placement.Image!.Format, enableSixel, enableIterm) ||
+                      (sixelEligible && placement.Image.Format == Format.Png)
+                        ? GraphicsPlacementSkipReason.FormatNotEncodable
+                        : GraphicsPlacementSkipReason.PlacementNotEncodable;
                 (skipped ??= []).Add(new GraphicsPlacementDiagnostic(placement.ImageIdentity, reason));
             }
         }
