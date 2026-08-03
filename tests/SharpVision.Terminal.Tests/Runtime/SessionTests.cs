@@ -668,7 +668,7 @@ public sealed class SessionTests
             Focus = true,
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>(),
-                new Settings { FocusReporting = true },
+                new CapabilityOverrides { FocusReporting = true },
                 limits)
         };
         await using Session session = new(transport, resize, sink, options, clock);

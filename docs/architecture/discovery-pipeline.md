@@ -26,9 +26,10 @@ earlier snapshot and cannot skip the precedence of a later phase.
 ## Immutable input and adapters
 
 `DiscoveryContext` snapshots the baseline, the environment, optional query
-results, and optional `Settings`. It reads no process-global environment during
-detection. The snapshot preserves the caller dictionary's lookup semantics for
-the known terminal variables while publishing an ordinal, read-only owned copy.
+results, and optional `CapabilityOverrides`. It reads no process-global
+environment during detection. The snapshot preserves the caller dictionary's
+lookup semantics for the known terminal variables while publishing an ordinal,
+read-only owned copy.
 
 Adapters translate source-specific values into the neutral model, and the
 strategies own precedence:
@@ -145,7 +146,7 @@ hand-written escape sequences or interpret raw replies on its own.
 The baseline remains usable when optional evidence is absent. Environment hints
 cannot replace database command programs. Query results can refine semantic
 features but cannot rewrite description programs or key maps. Explicit
-`Settings` apply last and cannot introduce raw commands.
+`CapabilityOverrides` apply last and cannot introduce raw commands.
 
 Publication creates immutable snapshots. A response arriving after publication
 may be delivered as a typed event or diagnostic, but it cannot mutate the

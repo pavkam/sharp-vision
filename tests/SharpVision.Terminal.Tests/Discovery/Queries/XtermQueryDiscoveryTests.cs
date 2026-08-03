@@ -108,7 +108,7 @@ public sealed class XtermQueryDiscoveryTests
         var overridden = CapabilityDetector.Detect(
             environment,
             queries,
-            new Settings { XtermKeyboard = false, ColorDepth = ColorDepth.Basic16 });
+            new CapabilityOverrides { XtermKeyboard = false, ColorDepth = ColorDepth.Basic16 });
 
         detected.XtermKeyboard.ShouldBe(
             new Feature(CapabilitySupport.Supported, Origin.Query));
@@ -216,7 +216,7 @@ public sealed class XtermQueryDiscoveryTests
     {
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
-            new Settings { ColorDepth = ColorDepth.Basic16 },
+            new CapabilityOverrides { ColorDepth = ColorDepth.Basic16 },
             QueryLimits.Default with { MaxConcurrentQueries = capacity });
         var negotiator = new ActiveQueryDiscoveryStrategy(options, new ManualTimeProvider());
         var destination = new ArrayBufferWriter<byte>();
@@ -271,7 +271,7 @@ public sealed class XtermQueryDiscoveryTests
         };
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm" },
-            new Settings { ColorDepth = ColorDepth.Basic16 },
+            new CapabilityOverrides { ColorDepth = ColorDepth.Basic16 },
             QueryLimits.Default with { MaxConcurrentQueries = 6 });
         var negotiator = new ActiveQueryDiscoveryStrategy(options, baseline, new ManualTimeProvider());
         var destination = new ArrayBufferWriter<byte>();

@@ -361,8 +361,8 @@ A description loaded from a database records `Description.Origin` as
 `DescriptionOrigin.Database`; a semantic feature records supported
 `Origin.Database` evidence only when its exact non-empty backing program is
 retained. An explicit replacement `TerminalProfile` may replace command strings
-and programs as one immutable value. `Settings` overrides semantic features only
-and MUST NOT expose raw database command strings.
+and programs as one immutable value. `CapabilityOverrides` overrides semantic
+features only and MUST NOT expose raw database command strings.
 
 Exact key-byte ownership, conflicting-sequence rejection, conservative-only
 database projection, later-evidence precedence, transplanted-claim

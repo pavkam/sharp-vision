@@ -66,7 +66,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         var limits = QueryLimits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" },
-            new Settings { SynchronizedOutput = false },
+            new CapabilityOverrides { SynchronizedOutput = false },
             limits);
         var negotiator = new ActiveQueryDiscoveryStrategy(options, clock);
         _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
@@ -206,7 +206,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         var limits = QueryLimits.Default with { MaxConcurrentQueries = 3 };
         var options = new NegotiationOptions(
             new Dictionary<string, string?>(),
-            new Settings { PixelMouse = false },
+            new CapabilityOverrides { PixelMouse = false },
             limits);
         var negotiator = new ActiveQueryDiscoveryStrategy(options, baseline, new ManualTimeProvider());
         var output = new ArrayBufferWriter<byte>();

@@ -25,7 +25,7 @@ internal sealed class DiscoveryContext
         TerminalCapabilities baseline,
         IReadOnlyDictionary<string, string?> environment,
         QueryResults? queries = null,
-        Settings? overrides = null)
+        CapabilityOverrides? overrides = null)
     {
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(environment);
@@ -46,5 +46,5 @@ internal sealed class DiscoveryContext
     public QueryResults? Queries { get; }
 
     /// <summary>Gets optional explicit caller settings.</summary>
-    public Settings? Overrides { get; }
+    public CapabilityOverrides? Overrides { get; }
 }

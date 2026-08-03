@@ -14,7 +14,7 @@ internal static class OverrideEvidenceAdapter
         /// <param name="overrides">The optional explicit caller settings.</param>
         /// <returns>The original reference when <paramref name="overrides"/> is null; otherwise a settings-refined snapshot.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> is null.</exception>
-        public TerminalCapabilities Apply(Settings? overrides)
+        public TerminalCapabilities Apply(CapabilityOverrides? overrides)
         {
             ArgumentNullException.ThrowIfNull(capabilities);
 

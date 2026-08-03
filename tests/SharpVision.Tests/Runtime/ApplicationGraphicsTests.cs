@@ -254,7 +254,7 @@ public sealed class ApplicationGraphicsTests
         {
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>(),
-                new Settings { Sixel = true })
+                new CapabilityOverrides { Sixel = true })
         };
         var queried = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         terminal.Written += value =>
@@ -295,7 +295,7 @@ public sealed class ApplicationGraphicsTests
         {
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>(),
-                new Settings { Sixel = true },
+                new CapabilityOverrides { Sixel = true },
                 limits: null,
                 multiplexing: policy)
         };

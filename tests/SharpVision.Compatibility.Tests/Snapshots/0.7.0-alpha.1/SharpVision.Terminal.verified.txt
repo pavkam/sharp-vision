@@ -110,7 +110,28 @@ namespace SharpVision.Terminal.Capabilities
     }
     public static class CapabilityDetector
     {
-        public static SharpVision.Terminal.Capabilities.Capabilities Detect(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment, SharpVision.Terminal.Capabilities.QueryResults? queries = null, SharpVision.Terminal.Capabilities.Settings? overrides = null) { }
+        public static SharpVision.Terminal.Capabilities.Capabilities Detect(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment, SharpVision.Terminal.Capabilities.QueryResults? queries = null, SharpVision.Terminal.Capabilities.CapabilityOverrides? overrides = null) { }
+    }
+    public sealed class CapabilityOverrides : System.IEquatable<SharpVision.Terminal.Capabilities.CapabilityOverrides>
+    {
+        public CapabilityOverrides() { }
+        public SharpVision.Terminal.Unicode.Ambiguous? AmbiguousWidth { get; init; }
+        public bool? BracketedPaste { get; init; }
+        public bool? CellMouse { get; init; }
+        public SharpVision.Terminal.Capabilities.ColorDepth? ColorDepth { get; init; }
+        public bool? FocusReporting { get; init; }
+        public bool? ItermImages { get; init; }
+        public bool? KittyClipboard { get; init; }
+        public bool? KittyGraphics { get; init; }
+        public bool? KittyKeyboard { get; init; }
+        public bool? Osc52 { get; init; }
+        public bool? Overline { get; init; }
+        public bool? PixelMouse { get; init; }
+        public bool? Sixel { get; init; }
+        public bool? StyledUnderlines { get; init; }
+        public bool? SynchronizedOutput { get; init; }
+        public bool? UnderlineColor { get; init; }
+        public bool? XtermKeyboard { get; init; }
     }
     public enum CapabilitySupport
     {
@@ -204,12 +225,12 @@ namespace SharpVision.Terminal.Capabilities
     }
     public sealed class NegotiationOptions
     {
-        public NegotiationOptions(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment, SharpVision.Terminal.Capabilities.Settings? overrides = null, SharpVision.Terminal.Capabilities.QueryLimits? limits = null) { }
-        public NegotiationOptions(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment, SharpVision.Terminal.Capabilities.Settings? overrides, SharpVision.Terminal.Capabilities.QueryLimits? limits, SharpVision.Terminal.Multiplexing.Policy? multiplexing) { }
+        public NegotiationOptions(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment, SharpVision.Terminal.Capabilities.CapabilityOverrides? overrides = null, SharpVision.Terminal.Capabilities.QueryLimits? limits = null) { }
+        public NegotiationOptions(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment, SharpVision.Terminal.Capabilities.CapabilityOverrides? overrides, SharpVision.Terminal.Capabilities.QueryLimits? limits, SharpVision.Terminal.Multiplexing.Policy? multiplexing) { }
         public System.Collections.Generic.IReadOnlyDictionary<string, string?> Environment { get; }
         public SharpVision.Terminal.Capabilities.QueryLimits Limits { get; }
         public SharpVision.Terminal.Multiplexing.Policy Multiplexing { get; }
-        public SharpVision.Terminal.Capabilities.Settings? Overrides { get; }
+        public SharpVision.Terminal.Capabilities.CapabilityOverrides? Overrides { get; }
     }
     public sealed class Negotiator
     {
@@ -326,27 +347,6 @@ namespace SharpVision.Terminal.Capabilities
         public bool TryRegister(SharpVision.Terminal.Xterm.CapabilityName name, out SharpVision.Terminal.Capabilities.QueryToken token) { }
         public bool TryRegister(SharpVision.Terminal.Xterm.StatusName name, out SharpVision.Terminal.Capabilities.QueryToken token) { }
         public bool TryRegister(SharpVision.Terminal.Capabilities.QueryKind kind, string? id, out SharpVision.Terminal.Capabilities.QueryToken token) { }
-    }
-    public sealed class Settings : System.IEquatable<SharpVision.Terminal.Capabilities.Settings>
-    {
-        public Settings() { }
-        public SharpVision.Terminal.Unicode.Ambiguous? AmbiguousWidth { get; init; }
-        public bool? BracketedPaste { get; init; }
-        public bool? CellMouse { get; init; }
-        public SharpVision.Terminal.Capabilities.ColorDepth? ColorDepth { get; init; }
-        public bool? FocusReporting { get; init; }
-        public bool? ItermImages { get; init; }
-        public bool? KittyClipboard { get; init; }
-        public bool? KittyGraphics { get; init; }
-        public bool? KittyKeyboard { get; init; }
-        public bool? Osc52 { get; init; }
-        public bool? Overline { get; init; }
-        public bool? PixelMouse { get; init; }
-        public bool? Sixel { get; init; }
-        public bool? StyledUnderlines { get; init; }
-        public bool? SynchronizedOutput { get; init; }
-        public bool? UnderlineColor { get; init; }
-        public bool? XtermKeyboard { get; init; }
     }
     public enum Suitability
     {

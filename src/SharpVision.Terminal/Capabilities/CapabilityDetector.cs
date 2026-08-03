@@ -26,7 +26,7 @@ public static class CapabilityDetector
     public static TerminalCapabilities Detect(
         IReadOnlyDictionary<string, string?> environment,
         QueryResults? queries = null,
-        Settings? overrides = null) => Detect(
+        CapabilityOverrides? overrides = null) => Detect(
         TerminalCapabilities.Conservative,
         environment,
         queries,
@@ -43,7 +43,7 @@ public static class CapabilityDetector
         TerminalCapabilities baseline,
         IReadOnlyDictionary<string, string?> environment,
         QueryResults? queries = null,
-        Settings? overrides = null)
+        CapabilityOverrides? overrides = null)
     {
         var context = new DiscoveryContext(baseline, environment, queries, overrides);
 

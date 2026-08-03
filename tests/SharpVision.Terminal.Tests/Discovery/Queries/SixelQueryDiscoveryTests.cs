@@ -58,7 +58,7 @@ public sealed class SixelQueryDiscoveryTests
     {
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm" },
-            new Settings { Sixel = true });
+            new CapabilityOverrides { Sixel = true });
         var negotiator = new ActiveQueryDiscoveryStrategy(options);
         _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
         var response = Response("?62;1;6"u8);
@@ -76,7 +76,7 @@ public sealed class SixelQueryDiscoveryTests
     {
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm" },
-            new Settings { Sixel = false });
+            new CapabilityOverrides { Sixel = false });
         var negotiator = new ActiveQueryDiscoveryStrategy(options);
         _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
         var response = Response("?62;4"u8);

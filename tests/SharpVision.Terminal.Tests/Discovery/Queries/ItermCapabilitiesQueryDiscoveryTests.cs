@@ -38,7 +38,7 @@ public sealed class ItermCapabilitiesQueryDiscoveryTests
     {
         var options = new NegotiationOptions(
             new Dictionary<string, string?>(),
-            new Settings { ItermImages = false });
+            new CapabilityOverrides { ItermImages = false });
         var negotiator = new ActiveQueryDiscoveryStrategy(options);
         var output = new ArrayBufferWriter<byte>();
 

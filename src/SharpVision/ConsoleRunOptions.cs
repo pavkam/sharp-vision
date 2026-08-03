@@ -208,7 +208,7 @@ public sealed record ConsoleRunOptions
                           ? TerminalProfile.CreateAnsi(compatibility)
                           : TerminalProfile.CreateAnsi(CapabilityDetector.Detect(
                               new Dictionary<string, string?>(),
-                              overrides: new Settings { CellMouse = true })));
+                              overrides: new CapabilityOverrides { CellMouse = true })));
 
         return ToTerminalOptions(profile);
     }
@@ -271,6 +271,6 @@ public sealed record ConsoleRunOptions
             }
         }
 
-        return new NegotiationOptions(environment, new Settings { CellMouse = true, ColorDepth = ColorDepth });
+        return new NegotiationOptions(environment, new CapabilityOverrides { CellMouse = true, ColorDepth = ColorDepth });
     }
 }
