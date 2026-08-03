@@ -19,7 +19,9 @@ internal static class WindowsConsoleHost
 
         try
         {
-            var input = Console.OpenStandardInput(bufferSize: 1);
+            var input = new WindowsConsoleInputStream(
+                Console.OpenStandardInput(bufferSize: 1),
+                RuntimeInterop.GetStandardHandle(RuntimeInterop.StdInputHandle));
             var output = Console.OpenStandardOutput();
             var transport = new StreamTransport(input, output, leaveOpen: true);
 
