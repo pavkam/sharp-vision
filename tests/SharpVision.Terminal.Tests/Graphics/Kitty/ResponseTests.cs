@@ -6,6 +6,7 @@ namespace SharpVision.Terminal.Tests.Graphics.Kitty;
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Clipboard;
 using SharpVision.Terminal.Input;
+using SharpVision.Terminal.Kitty;
 using SharpVision.Terminal.Kitty.Graphics;
 
 /// <summary>Proves strict owned Kitty APC reply parsing and correlation.</summary>
@@ -107,12 +108,50 @@ public sealed class ResponseTests
     [Fact]
     public void Parse_WhenReplyExceedsBounds_ReturnsStringLimit()
     {
-        var limits = TransferLimits.Default with { MaxMetadataBytes = 8 };
+        var limits = KittyMetadataLimits.Default with { MaxMetadataBytes = 8 };
 
         var response = KittyGraphicsResponse.Parse("Gi=123456;OK"u8, limits);
 
         response.IsValid.ShouldBeFalse();
         response.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.StringLimit);
+    }
+
+    /// <summary>Verifies InputOptions.KittyMetadataLimits - not InputOptions.TransferLimits -
+    /// bounds the graphics APC response reached through the full decoder (see #96's deferred
+    /// finding: KittyGraphicsResponse.Parse previously borrowed the clipboard-domain
+    /// TransferLimits type through a local alias).</summary>
+    [Fact]
+    public void Parse_WhenKittyMetadataLimitsIsConfigured_BoundsGraphicsResponseThroughRouter()
+    {
+        var limits = KittyMetadataLimits.Default with { MaxMetadataBytes = 8 };
+        var options = InputOptions.Default with { KittyMetadataLimits = limits };
+        var wire = "_Gi=123456;OK\\"u8.ToArray();
+
+        var sink = new RecordingProtocolSink();
+        using var router = new ProtocolRouter(sink, options);
+        router.Route(wire);
+
+        var response = sink.KittyGraphicsResponses.ShouldHaveSingleItem();
+        response.IsValid.ShouldBeFalse();
+        response.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.StringLimit);
+    }
+
+    /// <summary>Verifies InputOptions.TransferLimits no longer bounds the graphics APC response -
+    /// the two concepts are independently configurable after the #96 split, closing the silent
+    /// cross-domain leak.</summary>
+    [Fact]
+    public void Parse_WhenOnlyTransferLimitsIsConfigured_DoesNotBoundGraphicsResponse()
+    {
+        var limits = TransferLimits.Default with { MaxMetadataBytes = 8 };
+        var options = InputOptions.Default with { TransferLimits = limits };
+        var wire = "_Gi=123456;OK\\"u8.ToArray();
+
+        var sink = new RecordingProtocolSink();
+        using var router = new ProtocolRouter(sink, options);
+        router.Route(wire);
+
+        var response = sink.KittyGraphicsResponses.ShouldHaveSingleItem();
+        response.IsValid.ShouldBeTrue();
     }
 
     /// <summary>Verifies one correlation cannot complete twice or consume another identifier.</summary>

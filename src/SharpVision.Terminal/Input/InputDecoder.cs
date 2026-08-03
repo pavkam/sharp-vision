@@ -988,7 +988,7 @@ public sealed class InputDecoder: IDisposable
 
         if (_protocolSink is { } graphicsSink)
         {
-            graphicsSink.Dispatch(Kitty.Graphics.KittyGraphicsResponse.Parse(value, _options.TransferLimits));
+            graphicsSink.Dispatch(Kitty.Graphics.KittyGraphicsResponse.Parse(value, _options.KittyMetadataLimits));
         }
         else
         {

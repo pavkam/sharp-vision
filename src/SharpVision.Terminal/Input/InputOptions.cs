@@ -5,6 +5,7 @@ namespace SharpVision.Terminal.Input;
 
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Clipboard;
+using SharpVision.Terminal.Kitty;
 
 /// <summary>Defines finite immutable input decoding policy.</summary>
 [PublicAPI]
@@ -81,7 +82,7 @@ public sealed record InputOptions
         }
     } = QueryLimits.Default;
 
-    /// <summary>Gets clipboard transfer limits used to bound Kitty graphics APC responses.</summary>
+    /// <summary>Gets clipboard transfer limits used to bound OSC 52 and Kitty OSC 5522 clipboard transfers.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
     public TransferLimits TransferLimits
     {
@@ -92,6 +93,18 @@ public sealed record InputOptions
             field = value;
         }
     } = TransferLimits.Default;
+
+    /// <summary>Gets Kitty protocol metadata limits used to bound Kitty graphics APC responses.</summary>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    public KittyMetadataLimits KittyMetadataLimits
+    {
+        get;
+        init
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            field = value;
+        }
+    } = KittyMetadataLimits.Default;
 
     /// <summary>Gets optional positive cell-pixel dimensions for pixel mouse inference.</summary>
     public CellMetrics? CellMetrics { get; init; }

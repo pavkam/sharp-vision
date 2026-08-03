@@ -3,8 +3,6 @@
 
 namespace SharpVision.Terminal.Kitty.Graphics;
 
-using ProtocolLimits = Terminal.Clipboard.TransferLimits;
-
 /// <summary>Owns one strict, bounded, redaction-safe Kitty graphics APC response.</summary>
 [PublicAPI]
 public sealed class KittyGraphicsResponse
@@ -46,11 +44,11 @@ public sealed class KittyGraphicsResponse
 
     /// <summary>Parses one APC payload beginning with the Kitty <c>G</c> selector.</summary>
     /// <param name="value">The complete borrowed APC payload without framing.</param>
-    /// <param name="limits">Optional finite protocol policy.</param>
+    /// <param name="limits">Optional finite metadata policy.</param>
     /// <returns>An owned valid response or redacted invalid value.</returns>
-    public static KittyGraphicsResponse Parse(ReadOnlySpan<byte> value, ProtocolLimits? limits = null)
+    public static KittyGraphicsResponse Parse(ReadOnlySpan<byte> value, KittyMetadataLimits? limits = null)
     {
-        var policy = limits ?? ProtocolLimits.Default;
+        var policy = limits ?? KittyMetadataLimits.Default;
 
         if (value.Length > policy.MaxMetadataBytes)
         {
