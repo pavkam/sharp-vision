@@ -44,4 +44,10 @@ runs:
 
     - name: 📦 Restore repository dependencies
       shell: bash
+      # Git Bash on Windows auto-converts POSIX-looking command-line arguments to Windows
+      # paths, which mangles the plain https:// NuGet source URL into a local path (observed
+      # directly on Windows CI: "D:\...\https:\api.nuget.org\v3\index.json"). MSYS_NO_PATHCONV
+      # disables that conversion; it's a no-op on Linux/macOS.
+      env:
+        MSYS_NO_PATHCONV: 1
       run: make restore
