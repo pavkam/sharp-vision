@@ -1,5 +1,8 @@
 name: 🧪 Build and test SharpVision
-description: Run the repository quality gates and publish test coverage artifacts.
+description: >-
+  Build, test, and publish coverage artifacts. Linting is deliberately not part of this action: it
+  is platform-independent and takes about as long as the test phase, so it runs as its own parallel
+  job instead of serially inside every platform leg.
 
 inputs:
   configuration:
@@ -14,12 +17,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: 🔍 Lint and documentation checks
-      id: lint
-      shell: bash
-      continue-on-error: true
-      run: make lint
-
     - name: 🛠️ Build
       shell: bash
       run: make build CONFIGURATION=${{ inputs.configuration }}
@@ -64,10 +61,3 @@ runs:
         files: "**/TestResults/**/*.trx"
         action_fail: true
         action_fail_on_inconclusive: true
-
-    - name: 🔍 Enforce lint result
-      if: ${{ always() && steps.lint.outcome == 'failure' }}
-      shell: bash
-      run: |
-        echo "::error::make lint failed. Formatting and documentation gates do not veto build, test, coverage, or compatibility checks, but the job still fails overall — see the '🔍 Lint and documentation checks' step above for details."
-        exit 1
