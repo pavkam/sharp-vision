@@ -10,32 +10,12 @@ inputs:
     description: Coverage report output directory.
     required: false
     default: coverage-report
-  artifact-suffix:
-    description: >-
-      Extra discriminator appended to uploaded artifact names and to the published check name.
-      Required when the same job runs more than once in a matrix, because artifact names must be
-      unique inside one workflow run.
-    required: false
-    default: ""
-  skip-lint:
-    description: >-
-      TEMPORARY (#32 diagnosis). Skips the formatting and documentation gate so the crash-repro
-      matrix finishes faster. Must be back to false before this lands on main.
-    required: false
-    default: "false"
-  coverage-settings:
-    description: >-
-      Code-coverage settings file passed to both instrumented suites. Selects static or dynamic
-      managed instrumentation while #32 is under investigation.
-    required: false
-    default: tests/coverage.static.config
 
 runs:
   using: composite
   steps:
     - name: 🔍 Lint and documentation checks
       id: lint
-      if: ${{ inputs.skip-lint != 'true' }}
       shell: bash
       continue-on-error: true
       run: make lint
@@ -44,250 +24,14 @@ runs:
       shell: bash
       run: make build CONFIGURATION=${{ inputs.configuration }}
 
-    # TEMPORARY (#32 diagnosis). The AccessViolationException that kills the Linux coverage host is
-    # attributed to arbitrary managed methods, so the only way to identify the real faulting
-    # instruction is a core dump plus the runtime's own crash report. `createdump` writes both.
-    - name: 🧷 Arm crash dumps
-      if: ${{ runner.os == 'Linux' }}
-      shell: bash
-      run: |
-        mkdir -p "$RUNNER_TEMP/crash-dumps"
-        {
-          echo "DOTNET_DbgEnableMiniDump=1"
-          echo "DOTNET_DbgMiniDumpType=4"
-          echo "DOTNET_DbgMiniDumpName=$RUNNER_TEMP/crash-dumps/coredump.%p"
-          echo "DOTNET_EnableCrashReport=1"
-          echo "DOTNET_CreateDumpDiagnostics=1"
-        } >> "$GITHUB_ENV"
-
-    # TEMPORARY (#32 diagnosis). microsoft/codecoverage#232 claims the injected coverage probe
-    # stores through a pointer into a file-backed mapping of <temp>/CodeCoverage.<session>.<module>
-    # and that those files are rewritten in place while mapped. This poller records every size
-    # change and deletion so the claim can be confirmed or refuted from CI alone, without a dump.
-    - name: 👀 Watch coverage buffer files
-      if: ${{ runner.os == 'Linux' }}
-      shell: bash
-      run: |
-        mkdir -p "$RUNNER_TEMP/cc-watch"
-        cat > "$RUNNER_TEMP/cc-watch/poll.sh" <<'POLLER'
-        #!/usr/bin/env bash
-        log="$1"
-        detail="$2"
-        declare -A seen
-
-        # Records every process that currently maps or holds the buffer open. If more than one
-        # process appears, a second participant joined the coverage session over the same file,
-        # which is a defect we own; if only the single test host appears, the rewrite comes from
-        # the coverage machinery inside that host and is upstream-only.
-        holders() {
-          local path="$1" name pid target
-          name="$(basename "$path")"
-          echo "  -- mapped by"
-
-          for maps in /proc/[0-9]*/maps; do
-            pid="${maps#/proc/}"
-            pid="${pid%/maps}"
-
-            if grep -qF "$name" "$maps" 2>/dev/null; then
-              echo "     pid=$pid cmd=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)"
-            fi
-          done
-
-          echo "  -- open by"
-
-          for fd in /proc/[0-9]*/fd/*; do
-            target="$(readlink "$fd" 2>/dev/null)" || continue
-
-            case "$target" in
-              *"$name")
-                pid="${fd#/proc/}"
-                pid="${pid%%/*}"
-                echo "     pid=$pid cmd=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)"
-                ;;
-            esac
-          done
-        }
-
-        while true; do
-          for path in /tmp/CodeCoverage.* "${TMPDIR:-/tmp}"/CodeCoverage.*; do
-            [ -e "$path" ] || continue
-            size="$(stat -c %s "$path" 2>/dev/null)" || continue
-            previous="${seen[$path]:-}"
-
-            if [ -z "$previous" ]; then
-              echo "$(date -u +%H:%M:%S.%3N) NEW  $path $size" >> "$log"
-              seen[$path]="$size"
-
-              if [ "${#seen[@]}" -le 2 ]; then
-                {
-                  echo "=== NEW $path @ $(date -u +%H:%M:%S.%3N)"
-                  holders "$path"
-                } >> "$detail"
-              fi
-            elif [ "$size" != "$previous" ]; then
-              echo "$(date -u +%H:%M:%S.%3N) SIZE $path $previous -> $size" >> "$log"
-              seen[$path]="$size"
-              {
-                echo "=== SIZE $path $previous -> $size @ $(date -u +%H:%M:%S.%3N)"
-                holders "$path"
-                echo "  -- dotnet processes"
-                ps -eo pid,ppid,etimes,args | grep -E 'dotnet|testhost|SharpVision' | grep -v grep
-              } >> "$detail"
-            fi
-          done
-
-          for path in "${!seen[@]}"; do
-            if [ ! -e "$path" ]; then
-              echo "$(date -u +%H:%M:%S.%3N) GONE $path (was ${seen[$path]})" >> "$log"
-              unset "seen[$path]"
-            fi
-          done
-
-          sleep 0.05
-        done
-        POLLER
-        chmod +x "$RUNNER_TEMP/cc-watch/poll.sh"
-        nohup "$RUNNER_TEMP/cc-watch/poll.sh" \
-          "$RUNNER_TEMP/cc-watch/buffers.log" \
-          "$RUNNER_TEMP/cc-watch/holders.log" >/dev/null 2>&1 &
-        echo "$!" > "$RUNNER_TEMP/cc-watch/poll.pid"
-        echo "TMPDIR=${TMPDIR:-<unset>}"
-        df -h /tmp "$RUNNER_TEMP"
-
     - name: 🧪 Test with coverage
       shell: bash
-      env:
-        COVERAGE_SETTINGS: ${{ inputs.coverage-settings }}
       run: make test-ci CONFIGURATION=${{ inputs.configuration }}
 
     - name: 🧪 Test controlling-terminal Unix console host
       if: ${{ runner.os != 'Windows' }}
       shell: bash
       run: make test-tty CONFIGURATION=${{ inputs.configuration }}
-
-    # TEMPORARY (#32 diagnosis).
-    - name: 🩺 Collect crash diagnostics
-      if: ${{ always() && runner.os == 'Linux' }}
-      shell: bash
-      run: |
-        if [ -f "$RUNNER_TEMP/cc-watch/poll.pid" ]; then
-          kill "$(cat "$RUNNER_TEMP/cc-watch/poll.pid")" 2>/dev/null || true
-        fi
-
-        echo "::group::Disk"
-        df -h /tmp "$RUNNER_TEMP" /
-        echo "::endgroup::"
-
-        echo "::group::Coverage buffer activity"
-        if [ -s "$RUNNER_TEMP/cc-watch/buffers.log" ]; then
-          echo "events: $(wc -l < "$RUNNER_TEMP/cc-watch/buffers.log")"
-          grep -E ' (SIZE|GONE) ' "$RUNNER_TEMP/cc-watch/buffers.log" | head -200 || true
-        else
-          echo "No coverage buffer files were observed under /tmp."
-        fi
-        echo "::endgroup::"
-
-        echo "::group::Coverage buffer holders"
-        if [ -s "$RUNNER_TEMP/cc-watch/holders.log" ]; then
-          head -400 "$RUNNER_TEMP/cc-watch/holders.log"
-        else
-          echo "No holder snapshots were captured."
-        fi
-        echo "::endgroup::"
-
-        # Static instrumentation rewrites assemblies in place and leaves a .orig beside each one;
-        # dynamic instrumentation loads a profiler instead and creates no probe buffer at all.
-        echo "::group::Instrumentation mode"
-        echo "settings: ${{ inputs.coverage-settings }}"
-        find tests -name '*.dll.orig' -printf '%p %s\n' 2>/dev/null | head -20 || \
-          echo "No statically rewritten assemblies were left behind."
-        echo "::endgroup::"
-
-        echo "::group::Coverage totals"
-        for report in $(find tests -name '*.cobertura.xml' 2>/dev/null | head -4); do
-          echo "$report: $(head -c 400 "$report" | tr -d '\n' | grep -o 'line-rate="[^"]*"' | head -1)"
-        done
-        echo "::endgroup::"
-
-        echo "::group::Crash reports"
-        shopt -s nullglob
-        reports=("$RUNNER_TEMP"/crash-dumps/*.crashreport.json)
-
-        if [ ${#reports[@]} -eq 0 ]; then
-          echo "No crash report was produced — the test hosts exited without a fatal fault."
-        else
-          for report in "${reports[@]}"; do
-            echo "--- $report"
-            jq -r '
-              .payload
-              | "process: \(.process_name) (\(.process_id))",
-                "reason: \(.reason // "?")  signal: \(.signal // "?")",
-                (.threads[]
-                  | "thread \(.native_thread_id)",
-                    (.stack_frames[]
-                      | "    \(.native_address // "?") +\(.native_offset // "?") \(.module_name // "?") \(.method_name // "")"))
-            ' "$report" | head -300
-          done
-        fi
-        echo "::endgroup::"
-
-        echo "::group::Dump files"
-        ls -la "$RUNNER_TEMP/crash-dumps" 2>/dev/null || echo "none"
-        echo "::endgroup::"
-
-    # TEMPORARY (#32 diagnosis). `verifyheap` is the decisive test. If the managed heap is intact at
-    # the moment of the fault, no product-code memory corruption occurred and the access violation
-    # came from outside the managed object graph.
-    - name: 🔬 Analyze crash dump
-      if: ${{ always() && runner.os == 'Linux' }}
-      shell: bash
-      run: |
-        shopt -s nullglob
-        cores=()
-
-        for candidate in "$RUNNER_TEMP"/crash-dumps/coredump.*; do
-          case "$candidate" in
-            *.crashreport.json | *.analysis.txt) continue ;;
-          esac
-
-          [ -f "$candidate" ] && cores+=("$candidate")
-        done
-
-        if [ ${#cores[@]} -eq 0 ]; then
-          echo "No core dump to analyze."
-          exit 0
-        fi
-
-        dotnet tool install -g dotnet-dump >/dev/null 2>&1 || true
-        export PATH="$PATH:$HOME/.dotnet/tools"
-
-        for core in "${cores[@]}"; do
-          echo "::group::Analysis of $core"
-          dotnet-dump analyze "$core" \
-            -c "clrthreads" \
-            -c "clrstack -all -f" \
-            -c "verifyheap" \
-            -c "exit" > "$core.analysis.txt" 2>&1 || true
-          head -400 "$core.analysis.txt"
-          echo "..."
-          grep -iE "verifyheap|no heap corruption|error|FaultingExceptionFrame" "$core.analysis.txt" | head -40 || true
-          echo "::endgroup::"
-        done
-
-    # TEMPORARY (#32 diagnosis). The core dumps themselves are hundreds of megabytes and are already
-    # analyzed in-job, so only the small artifacts are uploaded to keep iterations fast.
-    - name: 📤 Upload crash diagnostics
-      if: ${{ always() && runner.os == 'Linux' }}
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-      with:
-        name: crash-diagnostics-${{ runner.os }}${{ inputs.artifact-suffix }}
-        path: |
-          ${{ runner.temp }}/crash-dumps/*.crashreport.json
-          ${{ runner.temp }}/crash-dumps/*.analysis.txt
-          ${{ runner.temp }}/cc-watch/buffers.log
-          ${{ runner.temp }}/cc-watch/holders.log
-        if-no-files-found: ignore
-        retention-days: 3
 
     - name: 📊 Generate coverage report
       uses: danielpalme/ReportGenerator-GitHub-Action@7a0988e399533f3680a732dceda1a967cafdafcd # 5.2.3
@@ -300,7 +44,7 @@ runs:
       if: ${{ always() }}
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
-        name: test-results-${{ runner.os }}${{ inputs.artifact-suffix }}
+        name: test-results-${{ runner.os }}
         path: "**/TestResults/**/*.trx"
         if-no-files-found: error
 
@@ -308,7 +52,7 @@ runs:
       if: ${{ always() }}
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
-        name: coverage-report-${{ runner.os }}${{ inputs.artifact-suffix }}
+        name: coverage-report-${{ runner.os }}
         path: ${{ inputs.coverage-report-path }}
         if-no-files-found: warn
 
@@ -316,7 +60,7 @@ runs:
       if: ${{ always() && runner.os == 'Linux' }}
       uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2
       with:
-        check_name: "📋 Test results on ${{ runner.os }}${{ inputs.artifact-suffix }}"
+        check_name: "📋 Test results on ${{ runner.os }}"
         files: "**/TestResults/**/*.trx"
         action_fail: true
         action_fail_on_inconclusive: true

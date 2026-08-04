@@ -9,6 +9,16 @@ RESTORE_PACKAGES := artifacts/restore-packages
 # Package sources (nuget.org, the bootstrap-packages folder) live in NuGet.Config, not on any
 # `dotnet restore --source` command line -- see that file's comment for why.
 
+# Coverage instrumentation mode. Static instrumentation rewrites each assembly and prefixes every
+# basic block with a store into a memory-mapped probe buffer under the temporary directory. On
+# Linux the coverage host rewrites that buffer in place while the test host still has it mapped,
+# and a probe that stores into the unbacked page kills the process with an AccessViolationException
+# blamed on whatever managed method was running (#32, microsoft/codecoverage#232). Dynamic
+# instrumentation collects through the profiler and creates no such buffer, so the fault cannot
+# occur. It is used only on Linux: the profiler ships for a limited set of runtime identifiers and
+# macOS arm64 is not one of them, where it would silently report no coverage at all.
+COVERAGE_SETTINGS := $(if $(filter Linux,$(shell uname -s)),tests/coverage.dynamic.config,tests/coverage.static.config)
+
 help:
 	@echo "SharpVision - Available Make Targets"
 	@echo "===================================="
@@ -58,8 +68,8 @@ test: build
 	@echo "✅ Tests complete."
 
 test-ci: build
-	@dotnet test --project tests/SharpVision.Terminal.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 1707 --timeout $${TEST_TIMEOUT:-900s} --coverage --coverage-settings $${COVERAGE_SETTINGS:-tests/coverage.dynamic.config} --coverage-output-format cobertura --report-xunit-trx
-	@dotnet test --project tests/SharpVision.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 2600 --timeout $${TEST_TIMEOUT:-900s} --coverage --coverage-settings $${COVERAGE_SETTINGS:-tests/coverage.dynamic.config} --coverage-output-format cobertura --report-xunit-trx --parallel none
+	@dotnet test --project tests/SharpVision.Terminal.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 1707 --timeout $${TEST_TIMEOUT:-900s} --coverage --coverage-settings $(COVERAGE_SETTINGS) --coverage-output-format cobertura --report-xunit-trx
+	@dotnet test --project tests/SharpVision.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 2600 --timeout $${TEST_TIMEOUT:-900s} --coverage --coverage-settings $(COVERAGE_SETTINGS) --coverage-output-format cobertura --report-xunit-trx --parallel none
 	@dotnet test --project tests/SharpVision.Compatibility.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 3 --timeout 300s --report-xunit-trx
 	@echo "⏱️  Re-running performance gates without instrumentation..."
 	@dotnet test --project tests/SharpVision.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 26 --timeout 300s --filter-query "/*/SharpVision.Tests.Performance/*/*"
