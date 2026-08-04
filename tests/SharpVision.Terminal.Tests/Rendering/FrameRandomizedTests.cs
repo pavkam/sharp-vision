@@ -14,18 +14,16 @@ public sealed class FrameRandomizedTests
     /// Verifies random draw and clear operations never orphan a continuation.
     /// </summary>
     /// <remarks>
-    /// .NET 10 x64 Linux intermittently crashes with AccessViolationException in
-    /// Frame.get_Size() during ArrayPool stress (tracked in #32); only that exact
-    /// runtime/architecture is skipped, so every other platform still executes this
-    /// invariant. Passes reliably on macOS arm64.
+    /// This test was previously skipped on .NET 10 x64 Linux because the process died with an
+    /// AccessViolationException blamed on <c>Frame.get_Size()</c>, a plain auto-property that
+    /// cannot fault. That crash is not a frame or pooling defect: it is the code-coverage
+    /// instrumentation probe store documented in #32, which is attributed to whichever managed
+    /// method happens to be executing. The invariant itself is platform-independent, so the
+    /// quarantine is removed and every platform executes it.
     /// </remarks>
     [Fact]
     public void Mutate_WhenOperationsAreRandomized_PreservesOwnership()
     {
-        Assert.SkipWhen(
-            OperatingSystem.IsLinux() && RuntimeInformation.OSArchitecture == Architecture.X64,
-            "AccessViolationException on .NET 10 x64 Linux — tracked in #32.");
-
         var random = new Random(_seed);
         (string Source, string Presentation)[] values =
         [
