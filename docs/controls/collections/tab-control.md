@@ -95,8 +95,9 @@ dirty-state tracking and header adornments remain application concerns.
 
 The event payload exposes the requested `Item` and a mutable `Cancel` flag. When
 no handler cancels, `RequestClose` removes the item through the ordinary typed
-collection path, applies the nearest-eligible selection repair, and raises
-`SelectionChanged` if the selected index changes.
+collection path and applies the nearest-eligible selection repair, following the
+same identity rule as every other mutation: `SelectionChanged` fires only when
+the selected page itself is removed, not merely when its numeric index shifts.
 
 ## Code-owned glyphs
 

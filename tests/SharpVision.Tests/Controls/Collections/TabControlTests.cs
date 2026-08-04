@@ -429,7 +429,7 @@ public sealed class TabControlTests
 
     /// <summary>Verifies removal before the selected page notifies the shifted index and preserves presentation.</summary>
     [Fact]
-    public void Items_WhenPageBeforeSelectionIsRemoved_NotifiesShiftedSelectionAndKeepsPresentationConsistent()
+    public void Items_WhenPageBeforeSelectionIsRemoved_ShiftsSelectedIndexWithoutRaisingSelectionChanged()
     {
         var first = Create("First", "One");
         var selected = Create("Selected", "Two");
@@ -441,11 +441,10 @@ public sealed class TabControlTests
         tabs.Items.Remove(first).ShouldBeTrue();
 
         tabs.SelectedIndex.ShouldBe(0);
+        tabs.SelectedItem.ShouldBeSameAs(selected);
         tabs.Items[0].ShouldBeSameAs(selected);
         IsHeaderSelected(tabs, 0).ShouldBeTrue();
-        changes.Count.ShouldBe(1);
-        changes[0].PreviousIndex.ShouldBe(1);
-        changes[0].CurrentIndex.ShouldBe(0);
+        changes.ShouldBeEmpty();
     }
 
     /// <summary>Verifies disabling or collapsing the selected page chooses the nearest eligible page.</summary>

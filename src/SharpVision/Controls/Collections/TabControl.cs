@@ -403,8 +403,11 @@ public sealed class TabControl: ItemsControl
         {
             if (idx < _selectedIndex)
             {
-                CommitSelectionAfterMutation(_selectedIndex - 1, previousSelectedIndex, previousSelectedItem);
-                return;
+                // Mirrors InsertItem's symmetric case: the selected page's identity is
+                // unaffected by removing an earlier page, so only its numeric index shifts
+                // silently, with no SelectionChanged (see #283).
+                _selectedIndex--;
+                NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure);
             }
 
             ApplyPresentation();
