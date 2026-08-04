@@ -38,7 +38,7 @@ public readonly struct ScrollBarStyle: IEquatable<ScrollBarStyle>
         return new ScrollBarStyle(
             ParseChrome(section?.Chrome, effectiveTheme.Slug) ?? Default.Chrome,
             ParseFill(section?.Fill, effectiveTheme.Slug) ?? Default.Fill,
-            Default.Glyphs,
+            ParseGlyphs(section?.Glyphs, effectiveTheme.Slug),
             Default.TrackColor,
             Default.ThumbColor,
             Default.ButtonColor,
@@ -58,6 +58,42 @@ public readonly struct ScrollBarStyle: IEquatable<ScrollBarStyle>
             ? fill
             : throw new InvalidDataException(
                 $"Theme '{themeSlug}' styles.scrollBar.fill has unknown value '{value}'.");
+
+    private static ScrollBarGlyphs ParseGlyphs(ScrollBarGlyphsSection? section, string themeSlug) =>
+        section is null
+            ? Default.Glyphs
+            : new ScrollBarGlyphs(
+                ParseGlyph(section.VerticalDecrement, themeSlug, "verticalDecrement") ?? Default.Glyphs.VerticalDecrement,
+                ParseGlyph(section.VerticalIncrement, themeSlug, "verticalIncrement") ?? Default.Glyphs.VerticalIncrement,
+                ParseGlyph(section.HorizontalDecrement, themeSlug, "horizontalDecrement") ?? Default.Glyphs.HorizontalDecrement,
+                ParseGlyph(section.HorizontalIncrement, themeSlug, "horizontalIncrement") ?? Default.Glyphs.HorizontalIncrement,
+                ParseGlyph(section.BlockTrack, themeSlug, "blockTrack") ?? Default.Glyphs.BlockTrack,
+                ParseGlyph(section.BlockThumb, themeSlug, "blockThumb") ?? Default.Glyphs.BlockThumb,
+                ParseGlyph(section.HorizontalLineTrack, themeSlug, "horizontalLineTrack") ?? Default.Glyphs.HorizontalLineTrack,
+                ParseGlyph(section.HorizontalLineThumb, themeSlug, "horizontalLineThumb") ?? Default.Glyphs.HorizontalLineThumb,
+                ParseGlyph(section.VerticalLineTrack, themeSlug, "verticalLineTrack") ?? Default.Glyphs.VerticalLineTrack,
+                ParseGlyph(section.VerticalLineThumb, themeSlug, "verticalLineThumb") ?? Default.Glyphs.VerticalLineThumb);
+
+    private static Rune? ParseGlyph(string? value, string themeSlug, string memberName)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        var enumerator = value.EnumerateRunes();
+        if (!enumerator.MoveNext())
+        {
+            throw new InvalidDataException(
+                $"Theme '{themeSlug}' styles.scrollBar.glyphs.{memberName} must contain one Rune.");
+        }
+
+        var result = enumerator.Current;
+        return enumerator.MoveNext()
+            ? throw new InvalidDataException(
+                $"Theme '{themeSlug}' styles.scrollBar.glyphs.{memberName} must contain one Rune.")
+            : result;
+    }
 
     /// <summary>Gets the secondary definition used by generated-scrollbar hosts.</summary>
     internal static StyleDefinition<ScrollBarStyle> PartDefinition { get; } = StyleDefinitions.Part(

@@ -205,6 +205,63 @@
           "glyphStyle": "rounded"
         }
       }
+    },
+    "scrollBar": {
+      "chrome": "thin",
+      "fill": "line",
+      "glyphs": {
+        "verticalDecrement": "▲",
+        "verticalIncrement": "▼",
+        "horizontalDecrement": "◀",
+        "horizontalIncrement": "▶",
+        "blockTrack": "·",
+        "blockThumb": "━",
+        "horizontalLineTrack": "─",
+        "horizontalLineThumb": "━",
+        "verticalLineTrack": "│",
+        "verticalLineThumb": "┃"
+      }
+    },
+    "checkBox": {
+      "markStyle": "brackets",
+      "glyphs": {
+        "unchecked": "☐",
+        "checked": "☑",
+        "indeterminate": "▪"
+      }
+    },
+    "radioButton": {
+      "markStyle": "circle",
+      "glyphs": {
+        "unchecked": "○",
+        "checked": "●"
+      }
+    },
+    "button": {
+      "horizontalPadding": 1,
+      "verticalPadding": 0
+    },
+    "chaseIndicator": {
+      "active": "━",
+      "inactive": "─"
+    },
+    "slider": {
+      "fillColor": "accent",
+      "trackColor": "muted",
+      "thumbColor": "accent"
+    },
+    "progressBar": {
+      "fillColor": "accent",
+      "trackColor": "muted",
+      "indeterminateColor": "info",
+      "glyphs": {
+        "fill": "━",
+        "track": "─",
+        "indeterminate": "┈"
+      }
+    },
+    "spinner": {
+      "frames": ["-", "\\", "|", "/"]
     }
   }
 }

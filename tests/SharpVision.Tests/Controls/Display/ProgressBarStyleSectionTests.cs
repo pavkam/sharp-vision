@@ -99,4 +99,64 @@ public sealed class ProgressBarStyleSectionTests
 
         _ = Should.NotThrow(() => Themes.Parse(json));
     }
+
+    /// <summary>Verifies an authored glyphs section is applied to the resolved glyph family.</summary>
+    [Fact]
+    public void Definition_WhenThemeAuthorsGlyphsSection_ResolvesGlyphs()
+    {
+        var json = ThemeJson.Create(extraStyles: ""","progressBar":{"glyphs":{"fill":"#","track":".","indeterminate":"?"}}""");
+        var theme = Themes.Parse(json);
+
+        var style = ProgressBarStyle.Definition.Resolve(null, theme);
+
+        style.Glyphs.Fill.ShouldBe(new Rune('#'));
+        style.Glyphs.Track.ShouldBe(new Rune('.'));
+        style.Glyphs.Indeterminate.ShouldBe(new Rune('?'));
+    }
+
+    /// <summary>Verifies an unauthored member inside an authored glyphs section falls back to its
+    /// own code default independently, rather than the whole family reverting.</summary>
+    [Fact]
+    public void Definition_WhenOneGlyphIsAuthored_LeavesOtherGlyphsAtDefaults()
+    {
+        var json = ThemeJson.Create(extraStyles: ""","progressBar":{"glyphs":{"fill":"@"}}""");
+        var theme = Themes.Parse(json);
+
+        var style = ProgressBarStyle.Definition.Resolve(null, theme);
+
+        style.Glyphs.Fill.ShouldBe(new Rune('@'));
+        style.Glyphs.Track.ShouldBe(ProgressBarGlyphs.Default.Track);
+    }
+
+    /// <summary>Verifies a theme that authors no glyphs section falls back to code defaults.</summary>
+    [Fact]
+    public void Definition_WhenThemeHasNoGlyphsSection_FallsBackToDefaultGlyphs()
+    {
+        var theme = Themes.Parse(ThemeJson.Create());
+
+        var style = ProgressBarStyle.Definition.Resolve(null, theme);
+
+        style.Glyphs.ShouldBe(ProgressBarGlyphs.Default);
+    }
+
+    /// <summary>Verifies a multi-Rune glyph entry reports a source-labelled InvalidDataException.</summary>
+    [Fact]
+    public void Definition_WhenAGlyphHasMultipleRunes_Throws()
+    {
+        var json = ThemeJson.Create(extraStyles: ""","progressBar":{"glyphs":{"fill":"ab"}}""");
+        var theme = Themes.Parse(json);
+
+        _ = Should.Throw<InvalidDataException>(() => ProgressBarStyle.Definition.Resolve(null, theme));
+    }
+
+    /// <summary>Verifies a wide glyph reports the same ArgumentException a hand-authored
+    /// ProgressBarGlyphs would.</summary>
+    [Fact]
+    public void Definition_WhenAGlyphIsWide_Throws()
+    {
+        var json = ThemeJson.Create(extraStyles: ""","progressBar":{"glyphs":{"fill":"界"}}""");
+        var theme = Themes.Parse(json);
+
+        _ = Should.Throw<ArgumentException>(() => ProgressBarStyle.Definition.Resolve(null, theme));
+    }
 }

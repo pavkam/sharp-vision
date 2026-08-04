@@ -36,6 +36,56 @@ public sealed class CuratedThemesTests
         }
     }
 
+    /// <summary>Verifies every curated theme other than the two zero-config defaults authors all
+    /// eight registrable style sections (see #155): every dependent control style resolves to a
+    /// non-code-owned value, proving the section round-trips through the real mechanism rather
+    /// than merely existing unread in the JSON. "default-dark"/"default-light" back
+    /// <see cref="Themes.Dark"/>/<see cref="Themes.White"/>, the ambient zero-config theme every
+    /// unthemed control and a large share of the test suite resolves against; authoring these
+    /// eight sections there changes framework-wide default presentation rather than opting one
+    /// curated theme in, so they are deliberately left unauthored.</summary>
+    [Fact]
+    public void EveryCuratedThemeExceptTheDefaults_AuthorsAllEightStyleSections()
+    {
+        foreach (var slug in Themes.Slugs.Where(static slug => slug is not ("default-dark" or "default-light")))
+        {
+            var theme = Themes.Load(slug);
+
+            ScrollBarStyle.Definition.Resolve(null, theme).Glyphs
+                .ShouldNotBe(ScrollBarGlyphs.Default, $"{slug} scrollBar.glyphs did not round-trip");
+            CheckBoxStyle.Definition.Resolve(null, theme).Glyphs
+                .ShouldNotBe(CheckBoxStyle.Default.Glyphs, $"{slug} checkBox.glyphs did not round-trip");
+            RadioButtonStyle.Definition.Resolve(null, theme).Glyphs
+                .ShouldNotBe(RadioButtonStyle.Default.Glyphs, $"{slug} radioButton.glyphs did not round-trip");
+            _ = ButtonStyle.Definition.Resolve(null, theme);
+            ChaseIndicatorStyle.Definition.Resolve(null, theme).Active
+                .ShouldNotBe(ChaseIndicatorStyle.Default.Active, $"{slug} chaseIndicator.active did not round-trip");
+            _ = SliderStyle.Definition.Resolve(null, theme);
+            ProgressBarStyle.Definition.Resolve(null, theme).Glyphs
+                .ShouldNotBe(ProgressBarGlyphs.Default, $"{slug} progressBar.glyphs did not round-trip");
+            SpinnerStyle.Definition.Resolve(null, theme).Frames
+                .ShouldNotBe(SpinnerStyle.Default.Frames, $"{slug} spinner.frames did not round-trip");
+        }
+    }
+
+    /// <summary>Verifies the two zero-config default themes stay on code-owned defaults for all
+    /// eight registrable style sections, so authoring the curated set never silently changes
+    /// unthemed presentation (see #155).</summary>
+    [Theory]
+    [InlineData("default-dark")]
+    [InlineData("default-light")]
+    public void DefaultTheme_StaysOnCodeOwnedDefaultsForAllEightStyleSections(string slug)
+    {
+        var theme = Themes.Load(slug);
+
+        ScrollBarStyle.Definition.Resolve(null, theme).Glyphs.ShouldBe(ScrollBarGlyphs.Default);
+        CheckBoxStyle.Definition.Resolve(null, theme).Glyphs.ShouldBe(CheckBoxStyle.Default.Glyphs);
+        RadioButtonStyle.Definition.Resolve(null, theme).Glyphs.ShouldBe(RadioButtonStyle.Default.Glyphs);
+        ChaseIndicatorStyle.Definition.Resolve(null, theme).Active.ShouldBe(ChaseIndicatorStyle.Default.Active);
+        ProgressBarStyle.Definition.Resolve(null, theme).Glyphs.ShouldBe(ProgressBarGlyphs.Default);
+        SpinnerStyle.Definition.Resolve(null, theme).Frames.ShouldBe(SpinnerStyle.Default.Frames);
+    }
+
     /// <summary>Verifies every embedded theme publishes RGB colors in control state styles.</summary>
     [Fact]
     public void EveryTheme_WhenLoaded_UsesRgbControlColors()

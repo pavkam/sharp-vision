@@ -123,9 +123,13 @@ A control whose structure needs more than a semantic role - a mark family, a
 padding, a glyph sequence - can let a theme author it directly through a
 `styles` section, deserialized and memoized by the fully public
 `Theme.GetStyleSection<TSection>(sectionName)` (see
-[themes.md](themes.md#semantic-profiles)). `ScrollBar`'s own `Chrome`/`Fill`
-wiring is the library's worked example: a small JSON DTO, and a resolve step
-that checks the section before falling back to the code-owned default.
+[themes.md](themes.md#semantic-profiles)). Eight library controls now use this
+path - `ScrollBar`, `CheckBox`, `RadioButton`, `Button`, `ChaseIndicator`,
+`Slider`, `ProgressBar`, and `Spinner` - each with the same shape: a small JSON
+DTO, and a resolve step that checks the section before falling back to the
+code-owned default. `ScrollBar`'s own `Chrome`/`Fill`/`glyphs` wiring is a
+representative worked example, including a nested `glyphs` object with ten
+independently overridable one-cell Rune members.
 
 ```csharp
 public sealed class WidgetStyleSection
@@ -168,6 +172,17 @@ the control already resolves its appearance (a property getter,
 Prove a JSON-authored member the same way the role-profile fallback is proven: a
 themed-load round-trip that asserts the resolved value, and an unauthored-theme
 case that asserts the code-owned default survives.
+`ScrollBarStyleSectionTests.cs` and its seven siblings (one per wired control,
+alongside its `*Style.cs`) are concrete, current examples of that shape -
+including the glyph-specific cases every glyph-typed section needs: a multi-Rune
+entry rejected with a source- labelled `InvalidDataException`, and a wide glyph
+rejected with the same `ArgumentException` a hand-authored value would get.
+`CuratedThemesTests.cs` additionally proves every bundled theme actually authors
+real content for all eight sections (not just that the mechanism can parse a
+test fixture) - except the two zero-config defaults,
+`default-dark`/`default-light`, which stay on code-owned defaults for all eight
+sections so authoring the curated set never silently changes unthemed
+presentation.
 
 ## Rendering and proof
 

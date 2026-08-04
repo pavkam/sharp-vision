@@ -33,7 +33,7 @@ public readonly struct CheckBoxStyle: IEquatable<CheckBoxStyle>
 
         return new CheckBoxStyle(
             ParseMarkStyle(section?.MarkStyle, effectiveTheme.Slug) ?? Default.MarkStyle,
-            Default.Glyphs,
+            ParseGlyphs(section?.Glyphs, effectiveTheme.Slug),
             effectiveTheme.GetProfile(ThemeRole.Input).WithoutChrome());
     }
 
@@ -43,6 +43,35 @@ public readonly struct CheckBoxStyle: IEquatable<CheckBoxStyle>
             ? markStyle
             : throw new InvalidDataException(
                 $"Theme '{themeSlug}' styles.checkBox.markStyle has unknown value '{value}'.");
+
+    private static CheckBoxGlyphs ParseGlyphs(CheckBoxGlyphsSection? section, string themeSlug) =>
+        section is null
+            ? Default.Glyphs
+            : new CheckBoxGlyphs(
+                ParseGlyph(section.Unchecked, themeSlug, "unchecked") ?? Default.Glyphs.Unchecked,
+                ParseGlyph(section.Checked, themeSlug, "checked") ?? Default.Glyphs.Checked,
+                ParseGlyph(section.Indeterminate, themeSlug, "indeterminate") ?? Default.Glyphs.Indeterminate);
+
+    private static Rune? ParseGlyph(string? value, string themeSlug, string memberName)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        var enumerator = value.EnumerateRunes();
+        if (!enumerator.MoveNext())
+        {
+            throw new InvalidDataException(
+                $"Theme '{themeSlug}' styles.checkBox.glyphs.{memberName} must contain one Rune.");
+        }
+
+        var result = enumerator.Current;
+        return enumerator.MoveNext()
+            ? throw new InvalidDataException(
+                $"Theme '{themeSlug}' styles.checkBox.glyphs.{memberName} must contain one Rune.")
+            : result;
+    }
 
     private static InvalidationImpact Compare(
         CheckBoxStyle previous,

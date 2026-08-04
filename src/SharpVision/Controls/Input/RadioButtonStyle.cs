@@ -33,7 +33,7 @@ public readonly struct RadioButtonStyle: IEquatable<RadioButtonStyle>
 
         return new RadioButtonStyle(
             ParseMarkStyle(section?.MarkStyle, effectiveTheme.Slug) ?? Default.MarkStyle,
-            Default.Glyphs,
+            ParseGlyphs(section?.Glyphs, effectiveTheme.Slug),
             WithCheckedAccent(effectiveTheme.GetProfile(ThemeRole.Input).WithoutChrome()));
     }
 
@@ -43,6 +43,34 @@ public readonly struct RadioButtonStyle: IEquatable<RadioButtonStyle>
             ? markStyle
             : throw new InvalidDataException(
                 $"Theme '{themeSlug}' styles.radioButton.markStyle has unknown value '{value}'.");
+
+    private static RadioButtonGlyphs ParseGlyphs(RadioButtonGlyphsSection? section, string themeSlug) =>
+        section is null
+            ? Default.Glyphs
+            : new RadioButtonGlyphs(
+                ParseGlyph(section.Unchecked, themeSlug, "unchecked") ?? Default.Glyphs.Unchecked,
+                ParseGlyph(section.Checked, themeSlug, "checked") ?? Default.Glyphs.Checked);
+
+    private static Rune? ParseGlyph(string? value, string themeSlug, string memberName)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        var enumerator = value.EnumerateRunes();
+        if (!enumerator.MoveNext())
+        {
+            throw new InvalidDataException(
+                $"Theme '{themeSlug}' styles.radioButton.glyphs.{memberName} must contain one Rune.");
+        }
+
+        var result = enumerator.Current;
+        return enumerator.MoveNext()
+            ? throw new InvalidDataException(
+                $"Theme '{themeSlug}' styles.radioButton.glyphs.{memberName} must contain one Rune.")
+            : result;
+    }
 
     private static InvalidationImpact Compare(
         RadioButtonStyle previous,

@@ -65,4 +65,63 @@ public sealed class RadioButtonStyleSectionTests
 
         _ = Should.NotThrow(() => Themes.Parse(json));
     }
+
+    /// <summary>Verifies an authored glyphs section is applied to the resolved glyph pair.</summary>
+    [Fact]
+    public void Definition_WhenThemeAuthorsGlyphsSection_ResolvesGlyphs()
+    {
+        var json = ThemeJson.Create(extraStyles: ""","radioButton":{"glyphs":{"unchecked":"(","checked":"*"}}""");
+        var theme = Themes.Parse(json);
+
+        var style = RadioButtonStyle.Definition.Resolve(null, theme);
+
+        style.Glyphs.Unchecked.ShouldBe(new Rune('('));
+        style.Glyphs.Checked.ShouldBe(new Rune('*'));
+    }
+
+    /// <summary>Verifies an unauthored member inside an authored glyphs section falls back to its
+    /// own code default independently, rather than the whole pair reverting.</summary>
+    [Fact]
+    public void Definition_WhenOneGlyphIsAuthored_LeavesTheOtherGlyphAtDefault()
+    {
+        var json = ThemeJson.Create(extraStyles: ""","radioButton":{"glyphs":{"checked":"*"}}""");
+        var theme = Themes.Parse(json);
+
+        var style = RadioButtonStyle.Definition.Resolve(null, theme);
+
+        style.Glyphs.Checked.ShouldBe(new Rune('*'));
+        style.Glyphs.Unchecked.ShouldBe(RadioButtonStyle.Default.Glyphs.Unchecked);
+    }
+
+    /// <summary>Verifies a theme that authors no glyphs section falls back to code defaults.</summary>
+    [Fact]
+    public void Definition_WhenThemeHasNoGlyphsSection_FallsBackToDefaultGlyphs()
+    {
+        var theme = Themes.Parse(ThemeJson.Create());
+
+        var style = RadioButtonStyle.Definition.Resolve(null, theme);
+
+        style.Glyphs.ShouldBe(RadioButtonStyle.Default.Glyphs);
+    }
+
+    /// <summary>Verifies a multi-Rune glyph entry reports a source-labelled InvalidDataException.</summary>
+    [Fact]
+    public void Definition_WhenAGlyphHasMultipleRunes_Throws()
+    {
+        var json = ThemeJson.Create(extraStyles: ""","radioButton":{"glyphs":{"checked":"ab"}}""");
+        var theme = Themes.Parse(json);
+
+        _ = Should.Throw<InvalidDataException>(() => RadioButtonStyle.Definition.Resolve(null, theme));
+    }
+
+    /// <summary>Verifies a wide glyph reports the same ArgumentException a hand-authored
+    /// RadioButtonGlyphs would.</summary>
+    [Fact]
+    public void Definition_WhenAGlyphIsWide_Throws()
+    {
+        var json = ThemeJson.Create(extraStyles: ""","radioButton":{"glyphs":{"checked":"界"}}""");
+        var theme = Themes.Parse(json);
+
+        _ = Should.Throw<ArgumentException>(() => RadioButtonStyle.Definition.Resolve(null, theme));
+    }
 }

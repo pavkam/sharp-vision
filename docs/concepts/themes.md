@@ -120,23 +120,31 @@ Eight controls are the first exceptions, each resolving part of its structural
 `Style` from a library-registered `styles` section ahead of the code-owned
 default, whenever no local `Style` is assigned:
 
-| Section name     | Control          | Members                                                  |
-| ---------------- | ---------------- | -------------------------------------------------------- |
-| `scrollBar`      | `ScrollBar`      | `chrome`, `fill` (strings)                               |
-| `checkBox`       | `CheckBox`       | `markStyle` (string)                                     |
-| `radioButton`    | `RadioButton`    | `markStyle` (string)                                     |
-| `button`         | `Button`         | `horizontalPadding`, `verticalPadding` (integers)        |
-| `chaseIndicator` | `ChaseIndicator` | `active`, `inactive` (one-character strings)             |
-| `slider`         | `Slider`         | `fillColor`, `trackColor`, `thumbColor` (colors)         |
-| `progressBar`    | `ProgressBar`    | `fillColor`, `trackColor`, `indeterminateColor` (colors) |
-| `spinner`        | `Spinner`        | `frames` (array of one-character strings)                |
+| Section name     | Control          | Members                                                                                          |
+| ---------------- | ---------------- | ------------------------------------------------------------------------------------------------ |
+| `scrollBar`      | `ScrollBar`      | `chrome`, `fill` (strings), `glyphs` (ten one-character strings)                                 |
+| `checkBox`       | `CheckBox`       | `markStyle` (string), `glyphs` (three one-character strings)                                     |
+| `radioButton`    | `RadioButton`    | `markStyle` (string), `glyphs` (two one-character strings)                                       |
+| `button`         | `Button`         | `horizontalPadding`, `verticalPadding` (integers)                                                |
+| `chaseIndicator` | `ChaseIndicator` | `active`, `inactive` (one-character strings)                                                     |
+| `slider`         | `Slider`         | `fillColor`, `trackColor`, `thumbColor` (colors)                                                 |
+| `progressBar`    | `ProgressBar`    | `fillColor`, `trackColor`, `indeterminateColor` (colors), `glyphs` (three one-character strings) |
+| `spinner`        | `Spinner`        | `frames` (array of one-character strings)                                                        |
 
 A color member accepts the same shapes a semantic profile color does: a
 `ThemeColor` name, a `#RGB`/`#RRGGBB` literal, a palette key, or
 `"transparent"`/`"default"`, resolved through `Theme.Palette` rather than the
-eager parse-time dictionary. Every wired control's glyph family (where it has
-one) stays code-owned; none of the eight sections above authors glyphs beyond
-`chaseIndicator`'s two marks and `spinner`'s frame sequence.
+eager parse-time dictionary. A `glyphs` member is a nested object whose own
+members are each one printable, one-cell Rune string — an entry with more than
+one Rune, or a Rune that measures wider than one cell, is rejected the same way
+a hand-authored glyph value would be. `Slider` is the one control in this set
+with no independently overridable glyph family (its rail/thumb rendering has no
+glyph-typed member to expose); every other control's family is now fully
+theme-authorable, not just `chaseIndicator`'s two marks and `spinner`'s frame
+sequence. Every bundled theme except the two zero-config defaults
+(`default-dark`/`default-light`, backing `Themes.Dark`/`Themes.White`) authors
+all eight sections - the defaults are deliberately left unauthored so authoring
+the curated set never silently changes unthemed presentation.
 
 Alongside the five fixed profiles and the eight names above, `styles` accepts a
 namespaced `vendor.control` key (for example `"acme.widget"`) as a third-party

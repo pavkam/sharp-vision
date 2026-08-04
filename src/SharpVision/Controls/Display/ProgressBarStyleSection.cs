@@ -21,4 +21,25 @@ internal sealed class ProgressBarStyleSection
     /// <summary>Gets or sets the indeterminate-state foreground.</summary>
     [JsonPropertyName("indeterminateColor")]
     public string? IndeterminateColor { get; set; }
+
+    /// <summary>Gets or sets the complete fill, track, and indeterminate glyph family.</summary>
+    [JsonPropertyName("glyphs")]
+    public ProgressBarGlyphsSection? Glyphs { get; set; }
+}
+
+/// <summary>Defines the "progressBar.glyphs" theme-file style section (see #155). Every member is
+/// one printable one-cell Rune string, matching <see cref="ProgressBarGlyphs"/>'s own members.</summary>
+internal sealed class ProgressBarGlyphsSection
+{
+    /// <summary>Gets or sets the fully filled glyph.</summary>
+    [JsonPropertyName("fill")]
+    public string? Fill { get; set; }
+
+    /// <summary>Gets or sets the empty-track glyph.</summary>
+    [JsonPropertyName("track")]
+    public string? Track { get; set; }
+
+    /// <summary>Gets or sets the indeterminate-state glyph.</summary>
+    [JsonPropertyName("indeterminate")]
+    public string? Indeterminate { get; set; }
 }
