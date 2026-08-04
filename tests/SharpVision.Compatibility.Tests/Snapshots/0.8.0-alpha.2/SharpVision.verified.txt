@@ -1452,6 +1452,7 @@ namespace SharpVision.Controls.Input
     {
         public TimeInput() { }
         public bool AllowNull { get; set; }
+        public System.Globalization.CultureInfo Culture { get; set; }
         public System.TimeOnly MaximumTime { get; set; }
         public System.TimeOnly MinimumTime { get; set; }
         public bool ShowSeconds { get; set; }

@@ -46,6 +46,17 @@ internal sealed class TimeInputPane: CompositeControlBase
             statusNull.Content = $"Value: {FormatTime(eventArgs.Value)}";
         statusNull.Content = $"Value: {FormatTime(inputNull.Value)}";
 
+        // Localized culture.
+        var statusCulture = new Text("Value: (pick a time)");
+        var inputCulture = new TimeInput
+        {
+            Culture = new CultureInfo("fi-FI"),
+            Use24HourFormat = false
+        };
+        inputCulture.ValueChanged += (_, eventArgs) =>
+            statusCulture.Content = $"Value: {FormatTime(eventArgs.Value)}";
+        statusCulture.Content = $"Value: {FormatTime(inputCulture.Value)}";
+
         return new DocPage(
             Title,
             "<info>TimeInput</info> edits a time value with inline segment navigation and optional 12-hour or seconds display.",
@@ -84,7 +95,16 @@ internal sealed class TimeInputPane: CompositeControlBase
                     "Clearable time field",
                     "Press <reverse>Delete</reverse> to clear. Any subsequent edit restores a concrete time value.",
                     new DocColumn(inputNull, statusNull),
-                    "timeInput.AllowNull = true;\n// Value is null when cleared")));
+                    "timeInput.AllowNull = true;\n// Value is null when cleared")),
+            new DocSection(
+                "🌍",
+                "Localized culture",
+                "<info>Culture</info> localizes the time separator and the AM/PM designator text. It defaults to invariant, so out-of-the-box rendering never depends on the host locale.",
+                new DocExample(
+                    "Finnish time field",
+                    "Finnish uses a period time separator and \"ap.\"/\"ip.\" designators instead of a colon and \"AM\"/\"PM\".",
+                    new DocColumn(inputCulture, statusCulture),
+                    "timeInput.Culture = new CultureInfo(\"fi-FI\");\ntimeInput.Use24HourFormat = false;")));
     }
 
     private static string FormatTime(TimeOnly? time, bool showSeconds = false) =>

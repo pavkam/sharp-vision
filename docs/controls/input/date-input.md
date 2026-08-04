@@ -14,6 +14,12 @@ quoted or escaped literals remain display text and never become editable
 segments. When a format contains no editable segments, segment-editing keys are
 left unhandled while popup and clearing commands remain available.
 
+`DateInput` shares its active-segment navigation, digit-entry buffering, and
+pointer hit-testing engine with [`TimeInput`](time-input.md) and
+[`DateTimeInput`](date-time-input.md); see issue 69. Each control keeps its own
+calendar/clock arithmetic and pattern (`ResolveDatePattern` here) on top of that
+shared engine.
+
 ## API
 
 | Member                             | Default                                         | Description                                                           |

@@ -194,6 +194,45 @@ public sealed class TimeInputTests
 
     #endregion
 
+    #region Culture
+
+    /// <summary>Verifies the default culture is invariant, so out-of-the-box rendering never
+    /// depends on the host operating system's locale.</summary>
+    [Fact]
+    public void Culture_WhenControlIsConstructed_DefaultsToInvariant()
+    {
+        // Arrange
+        using var control = new TimeInput();
+
+        // Assert
+        control.Culture.ShouldBeSameAs(CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>Verifies assigning a null culture throws.</summary>
+    [Fact]
+    public void Culture_WhenAssignedNull_Throws()
+    {
+        // Arrange
+        using var control = new TimeInput();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentNullException>(() => control.Culture = null!);
+    }
+
+    /// <summary>Verifies a culture change invalidates measure.</summary>
+    [Fact]
+    public void Culture_WhenChanged_InvalidatesMeasure()
+    {
+        // Arrange
+        using var control = new TimeInput();
+        new LayoutEngine().Layout(control, new Size(20, 3));
+
+        // Act and assert
+        _ = Should.NotThrow(() => control.Culture = new CultureInfo("fi-FI"));
+    }
+
+    #endregion
+
     #region Rendering
 
     /// <summary>Verifies a set time value is rendered as formatted text inside the border.</summary>
@@ -227,6 +266,73 @@ public sealed class TimeInputTests
 
         // Assert
         Row(frame, 1).ShouldContain("--:--");
+    }
+
+    /// <summary>Verifies a Finnish culture renders its own time separator instead of a hardcoded
+    /// colon, proving the typed field is culture-driven rather than fixed (see #69).</summary>
+    [Fact]
+    public void Render_WhenCultureIsFinnish_DrawsLocalizedTimeSeparator()
+    {
+        // Arrange
+        using var control = new TimeInput
+        {
+            Culture = new CultureInfo("fi-FI"),
+            Value = new TimeOnly(14, 30)
+        };
+        new LayoutEngine().Layout(control, new Size(20, 3));
+        using Frame frame = new(new Size(20, 3));
+
+        // Act
+        control.Render(frame.Canvas);
+
+        // Assert
+        Row(frame, 1).ShouldContain("14.30");
+        Row(frame, 1).ShouldNotContain("14:30");
+    }
+
+    /// <summary>Verifies a Finnish culture's own AM/PM designator text is rendered instead of the
+    /// hardcoded English "AM"/"PM" literals (see #69).</summary>
+    [Fact]
+    public void Render_WhenCultureIsFinnishAndTwelveHour_DrawsLocalizedDesignator()
+    {
+        // Arrange
+        using var control = new TimeInput
+        {
+            Culture = new CultureInfo("fi-FI"),
+            Use24HourFormat = false,
+            Value = new TimeOnly(14, 30)
+        };
+        new LayoutEngine().Layout(control, new Size(20, 3));
+        using Frame frame = new(new Size(20, 3));
+
+        // Act
+        control.Render(frame.Canvas);
+
+        // Assert
+        Row(frame, 1).ShouldContain("ip.");
+        Row(frame, 1).ShouldNotContain("PM");
+    }
+
+    /// <summary>Verifies a Japanese culture's non-Latin AM/PM designator text renders correctly,
+    /// proving designator localization is not limited to ASCII replacements.</summary>
+    [Fact]
+    public void Render_WhenCultureIsJapaneseAndTwelveHour_DrawsNonLatinDesignator()
+    {
+        // Arrange
+        using var control = new TimeInput
+        {
+            Culture = new CultureInfo("ja-JP"),
+            Use24HourFormat = false,
+            Value = new TimeOnly(9, 15)
+        };
+        new LayoutEngine().Layout(control, new Size(20, 3));
+        using Frame frame = new(new Size(20, 3));
+
+        // Act
+        control.Render(frame.Canvas);
+
+        // Assert
+        Row(frame, 1).ShouldContain("午前");
     }
 
     #endregion

@@ -20,14 +20,22 @@ public sealed class DateInput: ControlBase
     // (max 2077-11-16) - can represent this date, unlike DateOnly.MaxValue (see #182).
     private static readonly DateOnly _probeDate = DateOnly.FromDateTime(DateTime.UnixEpoch);
 
+    private static readonly IReadOnlyDictionary<char, TemporalSegmentKind> _tokenKinds =
+        new Dictionary<char, TemporalSegmentKind>
+        {
+            ['M'] = TemporalSegmentKind.Month,
+            ['d'] = TemporalSegmentKind.Day,
+            ['y'] = TemporalSegmentKind.Year
+        };
+
     private readonly Calendar _calendar;
     private readonly Popup _popup;
     private readonly OwnedControlSlot _popupSlot;
     private readonly PressBehavior _interaction;
     private readonly PopupModalTracker _modalTracker;
+    private readonly SegmentFieldBehavior _segments;
     private DateOnly? _value;
     private CultureInfo _culture;
-    private int _activeSegment;
     private Rune? _dropDownGlyph;
 
     #region Construction and properties
@@ -79,6 +87,12 @@ public sealed class DateInput: ControlBase
             ReleasePointerCapture,
             SetPressed,
             Activate);
+        _segments = new SegmentFieldBehavior(
+            BuildSegments,
+            ApplySegmentDigit,
+            ApplySegmentIncrement,
+            ClearSegmentValue,
+            () => Invalidate(InvalidationImpact.Render));
         Focusable = true;
         TabStop = true;
         TabNavigation = TabNavigation.None;
@@ -397,14 +411,22 @@ public sealed class DateInput: ControlBase
         var style = ResolvedStyle;
         var textAreaWidth = Math.Max(0, content.Width - 2);
         var segments = BuildSegments();
+        var isPlaceholder = _value is null;
         var x = content.X;
+        var editableIndex = -1;
 
         for (var index = 0; index < segments.Length && x < content.X + textAreaWidth; index++)
         {
             var segment = segments[index];
-            var segmentStyle = IsFocused && !IsOpen && segment.EditableIndex == _activeSegment
+
+            if (segment.IsEditable)
+            {
+                editableIndex++;
+            }
+
+            var segmentStyle = IsFocused && !IsOpen && segment.IsEditable && editableIndex == _segments.ActiveSegment
                 ? SegmentHighlightStyle(style)
-                : segment.IsPlaceholder
+                : isPlaceholder
                     ? PlaceholderStyle(style)
                     : style;
             var clipped = canvas.Clip(new Rect(x, content.Y, Math.Max(0, content.X + textAreaWidth - x), 1));
@@ -482,46 +504,46 @@ public sealed class DateInput: ControlBase
                 return;
             }
 
-            var hasEditableSegments = SegmentCount() > 0;
+            var hasEditableSegments = _segments.HasEditableSegments;
 
             if (hasEditableSegments && key.Code == Code.Up)
             {
-                IncrementActiveSegment(1);
+                _ = _segments.Increment(1);
                 eventArgs.Handled = true;
                 return;
             }
 
             if (hasEditableSegments && key.Code == Code.Down)
             {
-                IncrementActiveSegment(-1);
+                _ = _segments.Increment(-1);
                 eventArgs.Handled = true;
                 return;
             }
 
             if (hasEditableSegments && key.Code == Code.Left)
             {
-                NavigateSegment(-1);
+                _ = _segments.MoveSegment(-1, wrap: false);
                 eventArgs.Handled = true;
                 return;
             }
 
             if (hasEditableSegments && key.Code == Code.Right)
             {
-                NavigateSegment(1);
+                _ = _segments.MoveSegment(1, wrap: false);
                 eventArgs.Handled = true;
                 return;
             }
 
             if (hasEditableSegments && key.Code == Code.Home)
             {
-                MoveToEdge(first: true);
+                _ = _segments.MoveToEdge(first: true);
                 eventArgs.Handled = true;
                 return;
             }
 
             if (hasEditableSegments && key.Code == Code.End)
             {
-                MoveToEdge(first: false);
+                _ = _segments.MoveToEdge(first: false);
                 eventArgs.Handled = true;
                 return;
             }
@@ -535,7 +557,7 @@ public sealed class DateInput: ControlBase
 
             if (hasEditableSegments && key.Code == Code.Backspace)
             {
-                ClearActiveSegment();
+                _ = _segments.ClearActiveSegment();
                 eventArgs.Handled = true;
                 return;
             }
@@ -543,7 +565,7 @@ public sealed class DateInput: ControlBase
             if (hasEditableSegments && key.Code == Code.Character && key.Character is { } ch &&
                 ch.Value is >= '0' and <= '9')
             {
-                TypeDigit(ch.Value - '0');
+                _ = _segments.TypeDigit(ch.Value - '0');
                 eventArgs.Handled = true;
                 return;
             }
@@ -578,9 +600,7 @@ public sealed class DateInput: ControlBase
 
         if (focused)
         {
-            _activeSegment = 0;
-            _digitBuffer = null;
-            _yearDigitCount = 0;
+            _segments.ActivateFirstSegment();
         }
     }
 
@@ -712,17 +732,11 @@ public sealed class DateInput: ControlBase
         }
 
         var localX = cells.X - content.X;
-        var segment = SegmentAtColumn(localX);
 
-        if (segment < 0)
+        if (!_segments.ActivateSegmentAtColumn(localX))
         {
             return;
         }
-
-        _activeSegment = segment;
-        _digitBuffer = null;
-        _yearDigitCount = 0;
-        Invalidate(InvalidationImpact.Render);
 
         if (!IsFocused)
         {
@@ -732,228 +746,97 @@ public sealed class DateInput: ControlBase
         eventArgs.Handled = true;
     }
 
-    private int SegmentAtColumn(int column)
-    {
-        var segments = BuildSegments();
-        var running = 0;
-        var threshold = 0;
-        var editableIndex = -1;
-
-        foreach (var segment in segments)
-        {
-            running += Terminal.Unicode.Width.Measure(segment.Text).Cells;
-
-            if (segment.EditableIndex >= 0)
-            {
-                threshold = running;
-                editableIndex = segment.EditableIndex;
-            }
-
-            if (column < threshold)
-            {
-                return editableIndex;
-            }
-        }
-
-        return editableIndex;
-    }
-
-    private void IncrementActiveSegment(int delta)
+    private bool ApplySegmentIncrement(TemporalSegmentKind kind, int delta)
     {
         if (_value is not { } date)
         {
-            return;
+            return false;
         }
-
-        _digitBuffer = null;
-        _yearDigitCount = 0;
-        var segmentKind = ResolveSegmentKind(_activeSegment);
 
         try
         {
-            var adjusted = segmentKind switch
+#pragma warning disable IDE0072 // Only date-kind segments are reachable from DateInput's layout.
+            var adjusted = kind switch
             {
-                SegmentKind.Month => date.AddMonths(delta),
-                SegmentKind.Day => date.AddDays(delta),
-                SegmentKind.Year => new DateOnly(date.Year + delta, date.Month, Math.Min(date.Day, DateTime.DaysInMonth(date.Year + delta, date.Month))),
+                TemporalSegmentKind.Month => date.AddMonths(delta),
+                TemporalSegmentKind.Day => date.AddDays(delta),
+                TemporalSegmentKind.Year => new DateOnly(date.Year + delta, date.Month, Math.Min(date.Day, DateTime.DaysInMonth(date.Year + delta, date.Month))),
                 _ => date
             };
+#pragma warning restore IDE0072
 
-            Value = ClampDate(adjusted);
+            return CommitSegmentValue(ClampDate(adjusted));
         }
         catch (ArgumentOutOfRangeException)
         {
             // Silently ignore increments that push beyond DateOnly bounds.
+            return false;
         }
     }
 
-    private int? _digitBuffer;
-    private int _yearDigitCount;
-
-    private void TypeDigit(int digit)
+    private bool ApplySegmentDigit(TemporalSegmentKind kind, int value)
     {
         if (_value is not { } date)
         {
-            return;
+            return false;
         }
 
-        var kind = ResolveSegmentKind(_activeSegment);
-
-        if (_digitBuffer.HasValue)
-        {
-            var combined = (_digitBuffer.Value * 10) + digit;
-
-            // Year needs four digits, not two: keep buffering and stay on the segment
-            // until the count reaches four instead of committing after the second.
-            if (kind == SegmentKind.Year && ++_yearDigitCount < 4)
-            {
-                _digitBuffer = combined;
-                ApplySegmentDigit(date, kind, combined);
-                return;
-            }
-
-            _digitBuffer = null;
-            _yearDigitCount = 0;
-            ApplySegmentDigit(date, kind, combined);
-
-            if (_activeSegment < SegmentCount() - 1)
-            {
-                _activeSegment++;
-                Invalidate(InvalidationImpact.Render);
-            }
-
-            return;
-        }
-
-        var maxFirst = kind switch
-        {
-            SegmentKind.Month => 1,
-            SegmentKind.Day => 3,
-            SegmentKind.Year => 9,
-            _ => 0
-        };
-
-        if (digit > maxFirst && kind != SegmentKind.Year)
-        {
-            ApplySegmentDigit(date, kind, digit);
-
-            if (_activeSegment < SegmentCount() - 1)
-            {
-                _activeSegment++;
-                Invalidate(InvalidationImpact.Render);
-            }
-
-            return;
-        }
-
-        _digitBuffer = digit;
-        _yearDigitCount = kind == SegmentKind.Year ? 1 : 0;
-        ApplySegmentDigit(date, kind, digit);
-    }
-
-    private void ApplySegmentDigit(DateOnly date, SegmentKind kind, int value)
-    {
         try
         {
+#pragma warning disable IDE0072 // Only date-kind segments are reachable from DateInput's layout.
             var result = kind switch
             {
-                SegmentKind.Month => new DateOnly(date.Year, Math.Clamp(value, 1, 12),
+                TemporalSegmentKind.Month => new DateOnly(date.Year, Math.Clamp(value, 1, 12),
                     Math.Min(date.Day, DateTime.DaysInMonth(date.Year, Math.Clamp(value, 1, 12)))),
-                SegmentKind.Day => new DateOnly(date.Year, date.Month,
+                TemporalSegmentKind.Day => new DateOnly(date.Year, date.Month,
                     Math.Clamp(value, 1, DateTime.DaysInMonth(date.Year, date.Month))),
-                SegmentKind.Year => new DateOnly(Math.Clamp(value, 1, 9999), date.Month,
+                TemporalSegmentKind.Year => new DateOnly(Math.Clamp(value, 1, 9999), date.Month,
                     Math.Min(date.Day, DateTime.DaysInMonth(Math.Clamp(value, 1, 9999), date.Month))),
                 _ => date
             };
+#pragma warning restore IDE0072
 
-            Value = ClampDate(result);
+            return CommitSegmentValue(ClampDate(result));
         }
         catch (ArgumentOutOfRangeException)
         {
+            return false;
         }
     }
 
-    private void ClearActiveSegment()
+    private bool ClearSegmentValue(TemporalSegmentKind kind)
     {
         if (_value is not { } date)
         {
-            return;
+            return false;
         }
-
-        _digitBuffer = null;
-        _yearDigitCount = 0;
-        var kind = ResolveSegmentKind(_activeSegment);
 
         try
         {
+#pragma warning disable IDE0072 // Only date-kind segments are reachable from DateInput's layout.
             var result = kind switch
             {
-                SegmentKind.Month => new DateOnly(date.Year, 1, Math.Min(date.Day, 31)),
-                SegmentKind.Day => new DateOnly(date.Year, date.Month, 1),
-                SegmentKind.Year => new DateOnly(1, date.Month,
+                TemporalSegmentKind.Month => new DateOnly(date.Year, 1, Math.Min(date.Day, 31)),
+                TemporalSegmentKind.Day => new DateOnly(date.Year, date.Month, 1),
+                TemporalSegmentKind.Year => new DateOnly(1, date.Month,
                     Math.Min(date.Day, DateTime.DaysInMonth(1, date.Month))),
                 _ => date
             };
+#pragma warning restore IDE0072
 
-            Value = ClampDate(result);
+            return CommitSegmentValue(ClampDate(result));
         }
         catch (ArgumentOutOfRangeException)
         {
+            return false;
         }
     }
 
-    private void NavigateSegment(int direction)
+    private bool CommitSegmentValue(DateOnly value)
     {
-        var count = SegmentCount();
-        var next = _activeSegment + direction;
-
-        if (next >= 0 && next < count)
-        {
-            _activeSegment = next;
-            _digitBuffer = null;
-            _yearDigitCount = 0;
-            Invalidate(InvalidationImpact.Render);
-        }
-    }
-
-    private void MoveToEdge(bool first)
-    {
-        var target = first ? 0 : SegmentCount() - 1;
-
-        if (_activeSegment == target)
-        {
-            return;
-        }
-
-        _activeSegment = target;
-        _digitBuffer = null;
-        _yearDigitCount = 0;
-        Invalidate(InvalidationImpact.Render);
-    }
-
-    private int SegmentCount()
-        => BuildPlaceholderSegments().Count(static segment => segment.Kind.HasValue);
-
-    private SegmentKind ResolveSegmentKind(int segmentIndex)
-    {
-        var current = 0;
-
-        foreach (var segment in BuildPlaceholderSegments())
-        {
-            if (segment.Kind is not { } kind)
-            {
-                continue;
-            }
-
-            if (current == segmentIndex)
-            {
-                return kind;
-            }
-
-            current++;
-        }
-
-        return SegmentKind.Day;
+        var previous = _value;
+        Value = value;
+        return _value != previous;
     }
 
     private string ResolveDatePattern() =>
@@ -974,290 +857,80 @@ public sealed class DateInput: ControlBase
 
     #region Rendering helpers
 
-    private readonly record struct DisplaySegment(
-        string Text,
-        bool IsPlaceholder,
-        SegmentKind? Kind = null,
-        int EditableIndex = -1);
-
-    private DisplaySegment[] BuildSegments()
-    {
-        if (_value is not { } date)
-        {
-            return BuildPlaceholderSegments();
-        }
-
-        var kinds = BuildPlaceholderSegments()
-            .Where(static segment => segment.Kind.HasValue)
-            .Select(static segment => segment.Kind!.Value)
-            .ToArray();
-        var renderingCulture = Format.Length == 1 && Format[0] is 'r' or 'R'
-            ? CultureInfo.InvariantCulture
-            : _culture;
-        var unmarked = date.ToString(Format, renderingCulture);
-        var startMarker = FindAvailableMarker(unmarked, excluded: default);
-        var endMarker = FindAvailableMarker(unmarked, startMarker);
-        var formatted = date.ToString(BuildMarkedFormat(startMarker, endMarker), renderingCulture);
-        var segments = new List<DisplaySegment>();
-        var cursor = 0;
-        var editableIndex = 0;
-
-        while (cursor < formatted.Length)
-        {
-            var start = formatted.IndexOf(startMarker, cursor);
-
-            if (start < 0)
-            {
-                segments.Add(new DisplaySegment(formatted[cursor..], false));
-                break;
-            }
-
-            if (start > cursor)
-            {
-                segments.Add(new DisplaySegment(formatted[cursor..start], false));
-            }
-
-            var contentStart = start + 1;
-            var end = formatted.IndexOf(endMarker, contentStart);
-
-            if (end < 0)
-            {
-                Debug.Fail("Validated marked date format omitted an editable-segment end marker.");
-                segments.Add(new DisplaySegment(formatted[contentStart..], false));
-                break;
-            }
-
-            Debug.Assert(editableIndex < kinds.Length);
-            var kind = editableIndex < kinds.Length ? kinds[editableIndex] : SegmentKind.Day;
-            segments.Add(new DisplaySegment(
-                formatted[contentStart..end],
-                false,
-                kind,
-                editableIndex));
-            editableIndex++;
-            cursor = end + 1;
-        }
-
-        return [.. segments];
-    }
-
-    private string BuildMarkedFormat(char startMarker, char endMarker)
+    private SegmentDescriptor[] BuildSegments()
     {
         var pattern = ResolveDatePattern();
-        var marked = new StringBuilder(pattern.Length + 16);
-        var index = 0;
+        var tokens = TemporalPatternSegmenter.ParseTokens(pattern, _tokenKinds, _culture);
 
-        while (index < pattern.Length)
+        IReadOnlyList<string> text;
+
+        if (_value is { } date)
         {
-            var ch = pattern[index];
-
-            if (ch is '\'' or '"')
-            {
-                var quote = ch;
-                _ = marked.Append(ch);
-                index++;
-
-                while (index < pattern.Length)
-                {
-                    ch = pattern[index];
-                    _ = marked.Append(ch);
-                    index++;
-
-                    if (ch == '\\' && index < pattern.Length)
-                    {
-                        _ = marked.Append(pattern[index]);
-                        index++;
-                    }
-                    else if (ch == quote)
-                    {
-                        break;
-                    }
-                }
-
-                continue;
-            }
-
-            if (ch == '\\' && index + 1 < pattern.Length)
-            {
-                _ = marked.Append(ch).Append(pattern[index + 1]);
-                index += 2;
-                continue;
-            }
-
-            var percentPrefixed = ch == '%' && index + 1 < pattern.Length;
-            var tokenStart = percentPrefixed ? index + 1 : index;
-            var token = pattern[tokenStart];
-
-            if (token is 'M' or 'd' or 'y')
-            {
-                AppendFormatMarker(marked, startMarker);
-
-                if (percentPrefixed)
-                {
-                    _ = marked.Append('%');
-                }
-
-                do
-                {
-                    _ = marked.Append(pattern[tokenStart]);
-                    tokenStart++;
-                }
-                while (!percentPrefixed && tokenStart < pattern.Length && pattern[tokenStart] == token);
-
-                AppendFormatMarker(marked, endMarker);
-                index = tokenStart;
-                continue;
-            }
-
-            _ = marked.Append(ch);
-            index++;
+            var renderingCulture = Format.Length == 1 && Format[0] is 'r' or 'R'
+                ? CultureInfo.InvariantCulture
+                : _culture;
+            text = TemporalPatternSegmenter.FormatSegments(
+                pattern,
+                tokens,
+                _tokenKinds,
+                format => date.ToString(format, renderingCulture));
         }
-
-        return marked.ToString();
-    }
-
-    private static void AppendFormatMarker(StringBuilder format, char marker) =>
-        _ = format.Append('\'').Append(marker).Append('\'');
-
-    private static char FindAvailableMarker(string formatted, char excluded)
-    {
-        for (var value = 1; value < char.MaxValue; value++)
+        else
         {
-            var candidate = (char) value;
+            var placeholder = new string[tokens.Count];
 
-            if (candidate != excluded &&
-                candidate is not ('\'' or '"' or '\\') &&
-                !char.IsSurrogate(candidate) &&
-                !formatted.Contains(candidate))
+            for (var index = 0; index < tokens.Count; index++)
             {
-                return candidate;
-            }
-        }
-
-        throw new InvalidOperationException("The formatted date exhausts all available segment markers.");
-    }
-
-    private DisplaySegment[] BuildPlaceholderSegments()
-    {
-        var pattern = ResolveDatePattern();
-        var segments = new List<DisplaySegment>();
-        var index = 0;
-        var editableIndex = 0;
-
-        while (index < pattern.Length)
-        {
-            var ch = pattern[index];
-
-            if (ch is '\'' or '"')
-            {
-                var quote = ch;
-                var literal = new StringBuilder();
-                index++;
-
-                while (index < pattern.Length && pattern[index] != quote)
+                var token = tokens[index];
+#pragma warning disable IDE0072 // Only date-kind segments are reachable from DateInput's layout.
+                placeholder[index] = token.Kind switch
                 {
-                    if (pattern[index] == '\\' && index + 1 < pattern.Length)
-                    {
-                        index++;
-                    }
-
-                    _ = literal.Append(pattern[index]);
-                    index++;
-                }
-
-                if (index < pattern.Length)
-                {
-                    index++;
-                }
-
-                AppendLiteral(segments, literal.ToString());
-                continue;
-            }
-
-            if (ch == '\\' && index + 1 < pattern.Length)
-            {
-                AppendLiteral(segments, pattern[index + 1].ToString());
-                index += 2;
-                continue;
-            }
-
-            if (ch == '%')
-            {
-                index++;
-
-                if (index >= pattern.Length)
-                {
-                    break;
-                }
-
-                ch = pattern[index];
-            }
-
-            if (ch is 'M' or 'd' or 'y')
-            {
-                var count = 0;
-
-                while (index < pattern.Length && pattern[index] == ch)
-                {
-                    count++;
-                    index++;
-                }
-
-                var kind = ch switch
-                {
-                    'M' => SegmentKind.Month,
-                    'd' => SegmentKind.Day,
-                    'y' => SegmentKind.Year,
-                    _ => SegmentKind.Day
+                    null => token.LiteralText,
+                    TemporalSegmentKind.Year when token.RunLength >= 4 => "----",
+                    _ => "--"
                 };
-                var placeholder = kind == SegmentKind.Year && count >= 4 ? "----" : "--";
-                segments.Add(new DisplaySegment(placeholder, true, kind, editableIndex));
-                editableIndex++;
-                continue;
+#pragma warning restore IDE0072
             }
 
-            AppendLiteral(
-                segments,
-                ch == '/' ? _culture.DateTimeFormat.DateSeparator : ch.ToString());
-            index++;
+            text = placeholder;
         }
 
-        return [.. segments];
-    }
+        var descriptors = new SegmentDescriptor[tokens.Count];
 
-    private static void AppendLiteral(List<DisplaySegment> segments, string literal)
-    {
-        if (literal.Length == 0)
+        for (var index = 0; index < tokens.Count; index++)
         {
-            return;
+            var token = tokens[index];
+
+            descriptors[index] = token.Kind is not { } kind
+                ? new SegmentDescriptor(text[index])
+                : new SegmentDescriptor(
+                    text[index],
+                    kind,
+                    kind == TemporalSegmentKind.Year && token.RunLength >= 4 ? 4 : 2,
+#pragma warning disable IDE0072 // Only date-kind segments are reachable from DateInput's layout.
+                    kind switch
+                    {
+                        TemporalSegmentKind.Month => 12,
+                        TemporalSegmentKind.Day => 31,
+                        TemporalSegmentKind.Year => 9999,
+                        _ => 0
+                    });
+#pragma warning restore IDE0072
         }
 
-        if (segments.Count > 0 && segments[^1].Kind is null)
-        {
-            var previous = segments[^1];
-            segments[^1] = new DisplaySegment(previous.Text + literal, true);
-            return;
-        }
-
-        segments.Add(new DisplaySegment(literal, true));
+        return descriptors;
     }
 
     private string FormatValue()
     {
-        if (_value is not { } date)
+        var builder = new StringBuilder();
+
+        foreach (var segment in BuildSegments())
         {
-            var placeholder = BuildPlaceholderSegments();
-            var sb = new StringBuilder();
-
-            foreach (var segment in placeholder)
-            {
-                _ = sb.Append(segment.Text);
-            }
-
-            return sb.ToString();
+            _ = builder.Append(segment.Text);
         }
 
-        return date.ToString(Format, _culture);
+        return builder.ToString();
     }
 
     private static TerminalStyle SegmentHighlightStyle(TerminalStyle source) => new(
@@ -1328,11 +1001,4 @@ public sealed class DateInput: ControlBase
     }
 
     #endregion
-
-    private enum SegmentKind
-    {
-        Month,
-        Day,
-        Year
-    }
 }

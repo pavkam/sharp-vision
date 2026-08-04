@@ -27,34 +27,29 @@ public sealed class DateTimeInput: ControlBase
     private const int _fieldBorderWidth = 2;
     private const int _indicatorWidth = 1;
     private const int _defaultDropDownHeight = 10;
-    // Date/time faces use fixed-width terminal cells for numeric segments and separators.
-    private const int _dateSegmentWidth = 2;
-    private const int _yearSegmentWidth = 4;
-    private const int _dateSeparatorWidth = 1;
-    private const int _dateTimeSeparatorWidth = 1;
-    private const int _timeSegmentWidth = 2;
-    private const int _timeSeparatorWidth = 1;
-    private const int _singleCellWidth = 1;
-    private const int _segmentMonth = 0;
-    private const int _segmentDay = 1;
-    private const int _segmentYear = 2;
-    private const int _segmentHour = 3;
-    private const int _segmentMinute = 4;
-    private const int _segmentSecond = 5;
-    private const int _segmentAmPm = 6;
+
+    private static readonly IReadOnlyDictionary<char, TemporalSegmentKind> _tokenKinds =
+        new Dictionary<char, TemporalSegmentKind>
+        {
+            ['M'] = TemporalSegmentKind.Month,
+            ['d'] = TemporalSegmentKind.Day,
+            ['y'] = TemporalSegmentKind.Year,
+            ['H'] = TemporalSegmentKind.Hour,
+            ['h'] = TemporalSegmentKind.Hour,
+            ['m'] = TemporalSegmentKind.Minute,
+            ['s'] = TemporalSegmentKind.Second,
+            ['t'] = TemporalSegmentKind.AmPmDesignator
+        };
 
     private readonly Calendar _calendar;
     private readonly Popup _popup;
     private readonly OwnedControlSlot _popupSlot;
     private readonly PressBehavior _interaction;
     private readonly PopupModalTracker _modalTracker;
+    private readonly SegmentFieldBehavior _segments;
 
     private DateTime? _value;
     private CultureInfo _culture;
-
-    private int _activeSegment;
-    private int? _digitBuffer;
-    private int _yearDigitCount;
     private Rune? _dropDownGlyph;
 
     #region Construction and properties
@@ -63,9 +58,7 @@ public sealed class DateTimeInput: ControlBase
     public DateTimeInput()
     {
         _value = TimeProvider.System.GetLocalNow().DateTime;
-        _culture = CultureInfo.CurrentCulture.DateTimeFormat.Calendar is GregorianCalendar
-            ? CultureInfo.CurrentCulture
-            : CultureInfo.InvariantCulture;
+        _culture = CultureInfo.InvariantCulture;
         _calendar = new Calendar
         {
             SelectionMode = CalendarSelectionMode.Select,
@@ -117,6 +110,12 @@ public sealed class DateTimeInput: ControlBase
             ReleasePointerCapture,
             SetPressed,
             Activate);
+        _segments = new SegmentFieldBehavior(
+            BuildSegments,
+            ApplyDigitValue,
+            IncrementSegmentValue,
+            ClearSegmentValue,
+            () => Invalidate(InvalidationImpact.Render));
         Focusable = true;
         TabStop = true;
         TabNavigation = TabNavigation.None;
@@ -156,14 +155,19 @@ public sealed class DateTimeInput: ControlBase
     } = true;
 
     /// <summary>
-    /// Gets or sets the Gregorian culture applied to the popup <see cref="Calendar"/>'s month and day
-    /// names and navigation. Default is <see cref="CultureInfo.CurrentCulture"/>.
+    /// Gets or sets the Gregorian culture applied to both the popup <see cref="Calendar"/>'s month
+    /// and day names and the typed field's own segment order, separators, and AM/PM designator
+    /// text. Default is <see cref="CultureInfo.InvariantCulture"/>, so out-of-the-box rendering
+    /// never depends on the host operating system's locale; set this explicitly to localize the
+    /// field.
     /// </summary>
     /// <remarks>
-    /// This affects only the popup calendar. The typed field itself always renders a fixed
-    /// month/day/year segment order with invariant digits and separators, regardless of this
-    /// value; it does not currently derive its layout from a culture's date pattern the way
-    /// <see cref="DateInput.Culture"/> does.
+    /// The date portion of the typed field derives its segment order, widths, and separators from
+    /// <see cref="DateTimeFormatInfo.ShortDatePattern"/> the same way <see cref="DateInput.Culture"/>
+    /// does - for example a German culture renders day before month with a period separator. The
+    /// time portion keeps the fixed hour/minute/[second]/[AM-PM] structure <see cref="Use24HourFormat"/>
+    /// and <see cref="ShowSeconds"/> already select, localizing only its separator, AM/PM designator
+    /// text, and digit glyphs.
     /// </remarks>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
     /// <exception cref="ArgumentException">The culture's active calendar is not Gregorian.</exception>
@@ -185,6 +189,8 @@ public sealed class DateTimeInput: ControlBase
             if (SetProperty(ref _culture, value, InvalidationImpact.Measure))
             {
                 _calendar.Culture = value;
+                _segments.ClampActiveSegment();
+                _segments.ResetDigitBuffer();
             }
         }
     }
@@ -199,9 +205,8 @@ public sealed class DateTimeInput: ControlBase
         {
             if (SetProperty(ref field, value, InvalidationImpact.Measure))
             {
-                _activeSegment = Math.Min(_activeSegment, LastSegment());
-                _digitBuffer = null;
-                _yearDigitCount = 0;
+                _segments.ClampActiveSegment();
+                _segments.ResetDigitBuffer();
             }
         }
     } = true;
@@ -216,9 +221,8 @@ public sealed class DateTimeInput: ControlBase
         {
             if (SetProperty(ref field, value, InvalidationImpact.Measure))
             {
-                _activeSegment = Math.Min(_activeSegment, LastSegment());
-                _digitBuffer = null;
-                _yearDigitCount = 0;
+                _segments.ClampActiveSegment();
+                _segments.ResetDigitBuffer();
             }
         }
     }
@@ -414,7 +418,13 @@ public sealed class DateTimeInput: ControlBase
     protected override Size MeasureOverride(Constraint constraint)
     {
         _ = MeasureChild(_popup, new Constraint(constraint.Width, DropDownHeight));
-        var width = FormatWidth() + _fieldBorderWidth;
+        var width = _fieldBorderWidth;
+
+        foreach (var segment in BuildSegments())
+        {
+            width += Terminal.Unicode.Width.Measure(segment.Text).Cells;
+        }
+
         return new Size(width, _fieldContentHeight);
     }
 
@@ -437,14 +447,22 @@ public sealed class DateTimeInput: ControlBase
             style.Foreground,
             style.Background,
             style.Attributes | TerminalAttributes.Reverse);
+        var canHighlight = IsFocused;
+        var x = content.X;
+        var editableIndex = -1;
 
-        if (!_value.HasValue)
+        foreach (var segment in BuildSegments())
         {
-            DrawPlaceholder(canvas, content, style);
-        }
-        else
-        {
-            DrawSegments(canvas, content, style, highlight);
+            if (segment.IsEditable)
+            {
+                editableIndex++;
+            }
+
+            var segmentStyle = canHighlight && segment.IsEditable && editableIndex == _segments.ActiveSegment
+                ? highlight
+                : style;
+            _ = canvas.Draw(segment.Text.AsSpan(), new Point(x, content.Y), segmentStyle, background: BackgroundMode.Transparent);
+            x += Terminal.Unicode.Width.Measure(segment.Text).Cells;
         }
 
         var themed = ControlGlyphs.Disclosure.DropDown;
@@ -536,8 +554,7 @@ public sealed class DateTimeInput: ControlBase
 
         if (!focused)
         {
-            _digitBuffer = null;
-            _yearDigitCount = 0;
+            _segments.ResetDigitBuffer();
         }
 
         Invalidate(InvalidationImpact.Render);
@@ -602,15 +619,15 @@ public sealed class DateTimeInput: ControlBase
 #pragma warning disable IDE0072 // Unknown or unsupported keys intentionally remain unhandled.
         var handled = stroke.Code switch
         {
-            Code.Left => MoveSegment(-1),
-            Code.Right => MoveSegment(1),
-            Code.Up => IncrementSegment(1),
-            Code.Down => IncrementSegment(-1),
-            Code.Home => MoveToEdge(first: true),
-            Code.End => MoveToEdge(first: false),
+            Code.Left => _segments.MoveSegment(-1, wrap: true),
+            Code.Right => _segments.MoveSegment(1, wrap: true),
+            Code.Up => _segments.Increment(1),
+            Code.Down => _segments.Increment(-1),
+            Code.Home => _segments.MoveToEdge(first: true),
+            Code.End => _segments.MoveToEdge(first: false),
             Code.Delete => ClearValue(),
-            Code.Backspace => ClearSegment(),
-            Code.Character when stroke.Character is { } ch && IsDigit(ch) => TypeDigit(ch.Value - '0'),
+            Code.Backspace => _segments.ClearActiveSegment(),
+            Code.Character when stroke.Character is { } ch && IsDigit(ch) => _segments.TypeDigit(ch.Value - '0'),
             Code.Character when stroke.Character is { } ch && IsAmPmToggle(ch) => ToggleAmPm(),
             _ => false
         };
@@ -644,15 +661,7 @@ public sealed class DateTimeInput: ControlBase
         }
 
         var localX = cells.X - content.X;
-        var segment = SegmentAtColumn(localX);
-
-        if (segment >= 0)
-        {
-            _activeSegment = segment;
-            _digitBuffer = null;
-            _yearDigitCount = 0;
-            Invalidate(InvalidationImpact.Render);
-        }
+        _ = _segments.ActivateSegmentAtColumn(localX);
 
         if (!IsFocused)
         {
@@ -662,80 +671,48 @@ public sealed class DateTimeInput: ControlBase
         eventArgs.Handled = true;
     }
 
-    private bool MoveSegment(int direction)
+    private bool ToggleAmPm()
     {
-        var target = _activeSegment + direction;
-
-        if (target < 0)
-        {
-            target = LastSegment();
-        }
-        else if (target > LastSegment())
-        {
-            target = 0;
-        }
-
-        if (_activeSegment == target)
+        if (Use24HourFormat || !_value.HasValue)
         {
             return false;
         }
 
-        _activeSegment = target;
-        _digitBuffer = null;
-        _yearDigitCount = 0;
-        Invalidate(InvalidationImpact.Render);
-        return true;
-    }
+        var index = FindEditableIndex(TemporalSegmentKind.AmPmDesignator);
 
-    private bool MoveToEdge(bool first)
-    {
-        var target = first ? 0 : LastSegment();
-
-        if (_activeSegment == target)
+        if (index < 0)
         {
             return false;
         }
 
-        _activeSegment = target;
-        _digitBuffer = null;
-        _yearDigitCount = 0;
-        Invalidate(InvalidationImpact.Render);
-        return true;
+        _segments.ActivateSegment(index);
+        return _segments.Increment(1);
     }
 
-    private bool IncrementSegment(int delta)
+    private int FindEditableIndex(TemporalSegmentKind kind)
     {
-        if (!_value.HasValue)
+        var editableIndex = -1;
+
+        foreach (var segment in BuildSegments())
         {
-            return Commit(ClampToRange(TimeProvider.System.GetLocalNow().DateTime));
+            if (!segment.IsEditable)
+            {
+                continue;
+            }
+
+            editableIndex++;
+
+            if (segment.Kind == kind)
+            {
+                return editableIndex;
+            }
         }
 
-        var dt = _value.Value;
-        var result = _activeSegment switch
-        {
-            _segmentMonth => SafeAddMonths(dt, delta),
-            _segmentDay => SafeAddDays(dt, delta),
-            _segmentYear => SafeAddYears(dt, delta),
-            _segmentHour => SafeAddTicks(dt, TimeSpan.TicksPerHour * delta),
-            _segmentMinute => SafeAddTicks(dt, TimeStep.Ticks * delta),
-            _segmentSecond when ShowSeconds => SafeAddTicks(dt, TimeSpan.TicksPerSecond * delta),
-            _ when _activeSegment == AmPmSegmentIndex() && !Use24HourFormat =>
-                dt.AddHours(dt.Hour < 12 ? 12 : -12),
-            _ => dt
-        };
-
-        _digitBuffer = null;
-        _yearDigitCount = 0;
-        return Commit(result);
+        return -1;
     }
 
-    private bool TypeDigit(int digit)
+    private bool ApplyDigitValue(TemporalSegmentKind kind, int value)
     {
-        if (_activeSegment == AmPmSegmentIndex() && !Use24HourFormat)
-        {
-            return false;
-        }
-
         if (!_value.HasValue)
         {
             _ = Commit(ClampToRange(TimeProvider.System.GetLocalNow().DateTime));
@@ -748,87 +725,31 @@ public sealed class DateTimeInput: ControlBase
 
         var dt = _value.Value;
 
-        if (_digitBuffer.HasValue)
-        {
-            var newValue = (_digitBuffer.Value * 10) + digit;
-
-            // Year needs four digits, not two: keep buffering and stay on the segment
-            // until the count reaches four instead of committing after the second.
-            if (_activeSegment == _segmentYear && ++_yearDigitCount < 4)
-            {
-                _digitBuffer = newValue;
-                return ApplySegmentValue(dt, _activeSegment, newValue);
-            }
-
-            _digitBuffer = null;
-            _yearDigitCount = 0;
-
-            var committed = ApplySegmentValue(dt, _activeSegment, newValue);
-
-            if (committed)
-            {
-                var next = _activeSegment + 1;
-
-                if (next <= LastSegment() && next != AmPmSegmentIndex())
-                {
-                    _activeSegment = next;
-                }
-                else if (_activeSegment == _segmentYear && next <= LastSegment())
-                {
-                    _activeSegment = next;
-                }
-            }
-
-            return committed;
-        }
-
-        var maxFirst = _activeSegment switch
-        {
-            _segmentMonth => 1,
-            _segmentDay => 3,
-            _segmentYear => 9,
-            _segmentHour when Use24HourFormat => 2,
-            _segmentHour => 1,
-            _segmentMinute => 5,
-            _segmentSecond => 5,
-            _ => 0
-        };
-
-        if (digit > maxFirst && _activeSegment != _segmentYear)
-        {
-            return ApplySegmentValue(dt, _activeSegment, digit);
-        }
-
-        _digitBuffer = digit;
-        _yearDigitCount = _activeSegment == _segmentYear ? 1 : 0;
-        return ApplySegmentValue(dt, _activeSegment, digit);
-    }
-
-    private bool ApplySegmentValue(DateTime dt, int segment, int value)
-    {
         try
         {
-            var result = segment switch
+#pragma warning disable IDE0072 // AmPmDesignator never reaches this callback: its digit capacity is zero.
+            var result = kind switch
             {
-                _segmentMonth => ReplaceMonth(dt, Math.Clamp(value, 1, 12)),
-                _segmentDay => ReplaceDay(dt, Math.Clamp(value, 1,
+                TemporalSegmentKind.Month => ReplaceMonth(dt, Math.Clamp(value, 1, 12)),
+                TemporalSegmentKind.Day => ReplaceDay(dt, Math.Clamp(value, 1,
                     DateTime.DaysInMonth(dt.Year, dt.Month))),
-                _segmentYear => ReplaceYear(dt, Math.Clamp(value, 1, 9999)),
-                _segmentHour when !Use24HourFormat =>
+                TemporalSegmentKind.Year => ReplaceYear(dt, Math.Clamp(value, 1, 9999)),
+                TemporalSegmentKind.Hour when !Use24HourFormat =>
                     dt.Date.Add(new TimeSpan(
                         To24Hour(Math.Clamp(value, 1, 12), dt.Hour >= 12),
                         dt.Minute, dt.Second)),
-                _segmentHour =>
+                TemporalSegmentKind.Hour =>
                     dt.Date.Add(new TimeSpan(
                         Math.Clamp(value, 0, 23), dt.Minute, dt.Second)),
-                _segmentMinute =>
+                TemporalSegmentKind.Minute =>
                     dt.Date.Add(new TimeSpan(
                         dt.Hour, Math.Clamp(value, 0, 59), dt.Second)),
-                _segmentSecond =>
+                TemporalSegmentKind.Second =>
                     dt.Date.Add(new TimeSpan(
                         dt.Hour, dt.Minute, Math.Clamp(value, 0, 59))),
                 _ => dt
             };
+#pragma warning restore IDE0072
 
             return Commit(result);
         }
@@ -838,40 +759,54 @@ public sealed class DateTimeInput: ControlBase
         }
     }
 
-    private bool ToggleAmPm()
+    private bool IncrementSegmentValue(TemporalSegmentKind kind, int delta)
     {
-        if (Use24HourFormat || !_value.HasValue)
+        if (!_value.HasValue)
         {
-            return false;
+            return Commit(ClampToRange(TimeProvider.System.GetLocalNow().DateTime));
         }
 
-        _activeSegment = AmPmSegmentIndex();
-        return IncrementSegment(1);
+        var dt = _value.Value;
+#pragma warning disable IDE0072 // Every calendar/clock kind is individually handled or intentionally falls through.
+        var result = kind switch
+        {
+            TemporalSegmentKind.Month => SafeAddMonths(dt, delta),
+            TemporalSegmentKind.Day => SafeAddDays(dt, delta),
+            TemporalSegmentKind.Year => SafeAddYears(dt, delta),
+            TemporalSegmentKind.Hour => SafeAddTicks(dt, TimeSpan.TicksPerHour * delta),
+            TemporalSegmentKind.Minute => SafeAddTicks(dt, TimeStep.Ticks * delta),
+            TemporalSegmentKind.Second when ShowSeconds => SafeAddTicks(dt, TimeSpan.TicksPerSecond * delta),
+            TemporalSegmentKind.AmPmDesignator when !Use24HourFormat => dt.AddHours(dt.Hour < 12 ? 12 : -12),
+            _ => dt
+        };
+#pragma warning restore IDE0072
+
+        return Commit(result);
     }
 
-    private bool ClearSegment()
+    private bool ClearSegmentValue(TemporalSegmentKind kind)
     {
         if (!_value.HasValue)
         {
             return false;
         }
 
-        _digitBuffer = null;
-        _yearDigitCount = 0;
         var dt = _value.Value;
 
         try
         {
-            var result = _activeSegment switch
+#pragma warning disable IDE0072 // AmPmDesignator is intentionally a no-op here.
+            var result = kind switch
             {
-                _segmentMonth => ReplaceMonth(dt, 1),
-                _segmentDay => ReplaceDay(dt, 1),
-                _segmentYear => ReplaceYear(dt, 1),
-                _segmentHour => dt.Date.Add(new TimeSpan(0, dt.Minute, dt.Second)),
-                _segmentMinute => dt.Date.Add(new TimeSpan(dt.Hour, 0, dt.Second)),
-                _segmentSecond when ShowSeconds => dt.Date.Add(new TimeSpan(dt.Hour, dt.Minute, 0)),
+                TemporalSegmentKind.Month => ReplaceMonth(dt, 1),
+                TemporalSegmentKind.Day => ReplaceDay(dt, 1),
+                TemporalSegmentKind.Year => ReplaceYear(dt, 1),
+                TemporalSegmentKind.Hour => dt.Date.Add(new TimeSpan(0, dt.Minute, dt.Second)),
+                TemporalSegmentKind.Minute => dt.Date.Add(new TimeSpan(dt.Hour, 0, dt.Second)),
+                TemporalSegmentKind.Second when ShowSeconds => dt.Date.Add(new TimeSpan(dt.Hour, dt.Minute, 0)),
                 _ => dt
             };
+#pragma warning restore IDE0072
 
             return Commit(result);
         }
@@ -1021,166 +956,91 @@ public sealed class DateTimeInput: ControlBase
 
     #region Rendering
 
-    private void DrawSegments(TerminalCanvas canvas, Rect content, TerminalStyle style, TerminalStyle highlight)
+    private string ResolveDateTimePattern()
     {
-        var dt = _value!.Value;
-        var x = content.X;
-        var y = content.Y;
-        var focused = IsFocused;
-
-        var monthText = dt.Month.ToString("D2", CultureInfo.InvariantCulture);
-        var monthStyle = focused && _activeSegment == _segmentMonth ? highlight : style;
-        _ = canvas.Draw(monthText.AsSpan(), new Point(x, y), monthStyle, background: BackgroundMode.Transparent);
-        x += _dateSegmentWidth;
-
-        _ = canvas.Draw("/".AsSpan(), new Point(x, y), style, background: BackgroundMode.Transparent);
-        x += _dateSeparatorWidth;
-
-        var dayText = dt.Day.ToString("D2", CultureInfo.InvariantCulture);
-        var dayStyle = focused && _activeSegment == _segmentDay ? highlight : style;
-        _ = canvas.Draw(dayText.AsSpan(), new Point(x, y), dayStyle, background: BackgroundMode.Transparent);
-        x += _dateSegmentWidth;
-
-        _ = canvas.Draw("/".AsSpan(), new Point(x, y), style, background: BackgroundMode.Transparent);
-        x += _dateSeparatorWidth;
-
-        var yearText = dt.Year.ToString("D4", CultureInfo.InvariantCulture);
-        var yearStyle = focused && _activeSegment == _segmentYear ? highlight : style;
-        _ = canvas.Draw(yearText.AsSpan(), new Point(x, y), yearStyle, background: BackgroundMode.Transparent);
-        x += _yearSegmentWidth;
-
-        _ = canvas.Draw(" ".AsSpan(), new Point(x, y), style, background: BackgroundMode.Transparent);
-        x += _dateTimeSeparatorWidth;
-
-        var hourText = FormatHour(dt);
-        var hourStyle = focused && _activeSegment == _segmentHour ? highlight : style;
-        _ = canvas.Draw(hourText.AsSpan(), new Point(x, y), hourStyle, background: BackgroundMode.Transparent);
-        x += _timeSegmentWidth;
-
-        _ = canvas.Draw(":".AsSpan(), new Point(x, y), style, background: BackgroundMode.Transparent);
-        x += _timeSeparatorWidth;
-
-        var minuteText = dt.Minute.ToString("D2", CultureInfo.InvariantCulture);
-        var minuteStyle = focused && _activeSegment == _segmentMinute ? highlight : style;
-        _ = canvas.Draw(minuteText.AsSpan(), new Point(x, y), minuteStyle, background: BackgroundMode.Transparent);
-        x += _timeSegmentWidth;
+        var datePattern = _culture.DateTimeFormat.ShortDatePattern;
+        var timePattern = new StringBuilder(Use24HourFormat ? "HH" : "hh").Append(':').Append("mm");
 
         if (ShowSeconds)
         {
-            _ = canvas.Draw(":".AsSpan(), new Point(x, y), style, background: BackgroundMode.Transparent);
-            x += _timeSeparatorWidth;
-
-            var secondText = dt.Second.ToString("D2", CultureInfo.InvariantCulture);
-            var secondStyle = focused && _activeSegment == _segmentSecond ? highlight : style;
-            _ = canvas.Draw(secondText.AsSpan(), new Point(x, y), secondStyle, background: BackgroundMode.Transparent);
-            x += _timeSegmentWidth;
+            _ = timePattern.Append(':').Append("ss");
         }
 
         if (!Use24HourFormat)
         {
-            _ = canvas.Draw(" ".AsSpan(), new Point(x, y), style, background: BackgroundMode.Transparent);
-            x += _dateTimeSeparatorWidth;
-
-            var amPmText = dt.Hour < 12 ? "AM" : "PM";
-            var amPmStyle = focused && _activeSegment == AmPmSegmentIndex() ? highlight : style;
-            _ = canvas.Draw(amPmText.AsSpan(), new Point(x, y), amPmStyle, background: BackgroundMode.Transparent);
+            _ = timePattern.Append(' ').Append("tt");
         }
+
+        return $"{datePattern} {timePattern}";
     }
 
-    private void DrawPlaceholder(TerminalCanvas canvas, Rect content, TerminalStyle style)
+    private SegmentDescriptor[] BuildSegments()
     {
-        var datePart = "--/--/----";
-        var timePart = Use24HourFormat
-            ? ShowSeconds ? "--:--:--" : "--:--"
-            : ShowSeconds ? "--:--:-- --" : "--:-- --";
-        var placeholder = $"{datePart} {timePart}";
+        var pattern = ResolveDateTimePattern();
+        var tokens = TemporalPatternSegmenter.ParseTokens(pattern, _tokenKinds, _culture);
 
-        var focused = IsFocused;
-        var highlight = new TerminalStyle(
-            style.Foreground,
-            style.Background,
-            style.Attributes | TerminalAttributes.Reverse);
+        IReadOnlyList<string> text;
 
-        if (!focused)
+        if (_value is { } dt)
         {
-            _ = canvas.Draw(
-                placeholder.AsSpan(),
-                new Point(content.X, content.Y),
-                style,
-                background: BackgroundMode.Transparent);
-            return;
+            text = TemporalPatternSegmenter.FormatSegments(
+                pattern,
+                tokens,
+                _tokenKinds,
+                format => dt.ToString(format, _culture));
+        }
+        else
+        {
+            var placeholder = new string[tokens.Count];
+
+            for (var index = 0; index < tokens.Count; index++)
+            {
+                var token = tokens[index];
+#pragma warning disable IDE0072 // Every non-literal kind is intentionally a two-character placeholder except Year.
+                placeholder[index] = token.Kind switch
+                {
+                    null => token.LiteralText,
+                    TemporalSegmentKind.Year when token.RunLength >= 4 => "----",
+                    _ => "--"
+                };
+#pragma warning restore IDE0072
+            }
+
+            text = placeholder;
         }
 
-        var x = content.X;
-        var y = content.Y;
+        var descriptors = new SegmentDescriptor[tokens.Count];
 
-        for (var i = 0; i < placeholder.Length && x < content.Right - _singleCellWidth; i++)
+        for (var index = 0; index < tokens.Count; index++)
         {
-            var segmentIndex = SegmentAtColumn(i);
-            var charStyle = segmentIndex == _activeSegment ? highlight : style;
-            _ = canvas.Draw(
-                placeholder.AsSpan(i, _singleCellWidth),
-                new Point(x, y),
-                charStyle,
-                background: BackgroundMode.Transparent);
-            x += _singleCellWidth;
+            var token = tokens[index];
+
+            descriptors[index] = token.Kind is not { } kind
+                ? new SegmentDescriptor(text[index])
+                : new SegmentDescriptor(
+                    text[index],
+                    kind,
+                    kind == TemporalSegmentKind.AmPmDesignator ? 0
+                        : kind == TemporalSegmentKind.Year && token.RunLength >= 4 ? 4
+                        : 2,
+                    MaxValueFor(kind));
         }
+
+        return descriptors;
     }
 
-    private string FormatHour(DateTime dt)
-    {
-        if (Use24HourFormat)
+#pragma warning disable IDE0072 // Every segment kind is individually handled.
+    private int MaxValueFor(TemporalSegmentKind kind) =>
+        kind switch
         {
-            return dt.Hour.ToString("D2", CultureInfo.InvariantCulture);
-        }
-
-        var hour12 = dt.Hour % 12;
-
-        if (hour12 == 0)
-        {
-            hour12 = 12;
-        }
-
-        return hour12.ToString("D2", CultureInfo.InvariantCulture);
-    }
-
-    #endregion
-
-    #region Segment helpers
-
-    private int LastSegment() =>
-        !Use24HourFormat ? AmPmSegmentIndex() : ShowSeconds ? _segmentSecond : _segmentMinute;
-
-    private int AmPmSegmentIndex() =>
-        ShowSeconds ? _segmentAmPm : _segmentSecond;
-
-    private int SegmentAtColumn(int column) =>
-        column < _dateSegmentWidth ? _segmentMonth
-        : column < _dateSegmentWidth + _dateSeparatorWidth + _dateSegmentWidth ? _segmentDay
-        : column < (_dateSegmentWidth * 2) + (_dateSeparatorWidth * 2) + _yearSegmentWidth ? _segmentYear
-        : column - (_dateSegmentWidth * 2) - (_dateSeparatorWidth * 2) - _yearSegmentWidth - _dateTimeSeparatorWidth < _timeSegmentWidth ? _segmentHour
-        : column - (_dateSegmentWidth * 2) - (_dateSeparatorWidth * 2) - _yearSegmentWidth - _dateTimeSeparatorWidth < (_timeSegmentWidth * 2) + _timeSeparatorWidth ? _segmentMinute
-        : ShowSeconds && column - (_dateSegmentWidth * 2) - (_dateSeparatorWidth * 2) - _yearSegmentWidth - _dateTimeSeparatorWidth < (_timeSegmentWidth * 3) + (_timeSeparatorWidth * 2) ? _segmentSecond
-        : !Use24HourFormat ? AmPmSegmentIndex()
-        : ShowSeconds ? _segmentSecond : _segmentMinute;
-
-    private int FormatWidth()
-    {
-        var width = (_dateSegmentWidth * 2) + (_dateSeparatorWidth * 2) + _yearSegmentWidth
-            + _dateTimeSeparatorWidth + (_timeSegmentWidth * 2) + _timeSeparatorWidth;
-
-        if (ShowSeconds)
-        {
-            width += _timeSeparatorWidth + _timeSegmentWidth;
-        }
-
-        if (!Use24HourFormat)
-        {
-            width += _dateTimeSeparatorWidth + _timeSegmentWidth;
-        }
-
-        return width;
-    }
+            TemporalSegmentKind.Month => 12,
+            TemporalSegmentKind.Day => 31,
+            TemporalSegmentKind.Year => 9999,
+            TemporalSegmentKind.Hour => Use24HourFormat ? 23 : 12,
+            TemporalSegmentKind.Minute or TemporalSegmentKind.Second => 59,
+            _ => 0
+        };
+#pragma warning restore IDE0072
 
     #endregion
 

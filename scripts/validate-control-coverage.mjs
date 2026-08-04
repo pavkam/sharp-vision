@@ -18,6 +18,8 @@ const sharedControlSourceFiles = new Set([
   "/src/SharpVision/Input/CurrentItemNavigator.cs",
   "/src/SharpVision/Input/DragBehavior.cs",
   "/src/SharpVision/Input/PressBehavior.cs",
+  "/src/SharpVision/Input/SegmentFieldBehavior.cs",
+  "/src/SharpVision/Input/TemporalPatternSegmenter.cs",
   "/src/SharpVision/Layout/LayoutMath.cs",
   "/src/SharpVision/Layout/ResolvedAxes.cs",
   "/src/SharpVision/Styling/BorderGlyphs.cs",

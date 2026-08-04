@@ -39,6 +39,13 @@ internal sealed class DateTimeInputPane: CompositeControlBase
             statusNull.Content = $"Value: {FormatDateTime(eventArgs.Value)}";
         statusNull.Content = $"Value: {FormatDateTime(inputNull.Value)}";
 
+        // Localized culture.
+        var statusCulture = new Text("Value: (pick a date and time)");
+        var inputCulture = new DateTimeInput { Culture = new CultureInfo("de-DE") };
+        inputCulture.ValueChanged += (_, eventArgs) =>
+            statusCulture.Content = $"Value: {FormatDateTime(eventArgs.Value)}";
+        statusCulture.Content = $"Value: {FormatDateTime(inputCulture.Value)}";
+
         return new DocPage(
             Title,
             "<info>DateTimeInput</info> combines date and time editing in one bordered field with a Calendar popup for date segments and inline editing for time segments.",
@@ -68,7 +75,16 @@ internal sealed class DateTimeInputPane: CompositeControlBase
                     "Clearable date-time field",
                     "Press <reverse>Delete</reverse> to clear. The Calendar popup or inline editing restores a concrete value on the next interaction.",
                     new DocColumn(inputNull, statusNull),
-                    "dateTime.AllowNull = true;\n// Value is null when cleared")));
+                    "dateTime.AllowNull = true;\n// Value is null when cleared")),
+            new DocSection(
+                "🌍",
+                "Localized culture",
+                "<info>Culture</info> localizes both the popup calendar and the typed field's date segment order, separators, and digits. It defaults to invariant, so out-of-the-box rendering never depends on the host locale.",
+                new DocExample(
+                    "German date-time field",
+                    "German renders day before month with a period separator (\"dd.MM.yyyy\") instead of the invariant month-day-year slash order.",
+                    new DocColumn(inputCulture, statusCulture),
+                    "dateTime.Culture = new CultureInfo(\"de-DE\");")));
     }
 
     private static string FormatDateTime(DateTime? dateTime, bool use12Hour = false) =>
