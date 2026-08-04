@@ -66,7 +66,41 @@ runs:
         cat > "$RUNNER_TEMP/cc-watch/poll.sh" <<'POLLER'
         #!/usr/bin/env bash
         log="$1"
+        detail="$2"
         declare -A seen
+
+        # Records every process that currently maps or holds the buffer open. If more than one
+        # process appears, a second participant joined the coverage session over the same file,
+        # which is a defect we own; if only the single test host appears, the rewrite comes from
+        # the coverage machinery inside that host and is upstream-only.
+        holders() {
+          local path="$1" name pid target
+          name="$(basename "$path")"
+          echo "  -- mapped by"
+
+          for maps in /proc/[0-9]*/maps; do
+            pid="${maps#/proc/}"
+            pid="${pid%/maps}"
+
+            if grep -qF "$name" "$maps" 2>/dev/null; then
+              echo "     pid=$pid cmd=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)"
+            fi
+          done
+
+          echo "  -- open by"
+
+          for fd in /proc/[0-9]*/fd/*; do
+            target="$(readlink "$fd" 2>/dev/null)" || continue
+
+            case "$target" in
+              *"$name")
+                pid="${fd#/proc/}"
+                pid="${pid%%/*}"
+                echo "     pid=$pid cmd=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)"
+                ;;
+            esac
+          done
+        }
 
         while true; do
           for path in /tmp/CodeCoverage.* "${TMPDIR:-/tmp}"/CodeCoverage.*; do
@@ -77,9 +111,22 @@ runs:
             if [ -z "$previous" ]; then
               echo "$(date -u +%H:%M:%S.%3N) NEW  $path $size" >> "$log"
               seen[$path]="$size"
+
+              if [ "${#seen[@]}" -le 2 ]; then
+                {
+                  echo "=== NEW $path @ $(date -u +%H:%M:%S.%3N)"
+                  holders "$path"
+                } >> "$detail"
+              fi
             elif [ "$size" != "$previous" ]; then
               echo "$(date -u +%H:%M:%S.%3N) SIZE $path $previous -> $size" >> "$log"
               seen[$path]="$size"
+              {
+                echo "=== SIZE $path $previous -> $size @ $(date -u +%H:%M:%S.%3N)"
+                holders "$path"
+                echo "  -- dotnet processes"
+                ps -eo pid,ppid,etimes,args | grep -E 'dotnet|testhost|SharpVision' | grep -v grep
+              } >> "$detail"
             fi
           done
 
@@ -94,7 +141,9 @@ runs:
         done
         POLLER
         chmod +x "$RUNNER_TEMP/cc-watch/poll.sh"
-        nohup "$RUNNER_TEMP/cc-watch/poll.sh" "$RUNNER_TEMP/cc-watch/buffers.log" >/dev/null 2>&1 &
+        nohup "$RUNNER_TEMP/cc-watch/poll.sh" \
+          "$RUNNER_TEMP/cc-watch/buffers.log" \
+          "$RUNNER_TEMP/cc-watch/holders.log" >/dev/null 2>&1 &
         echo "$!" > "$RUNNER_TEMP/cc-watch/poll.pid"
         echo "TMPDIR=${TMPDIR:-<unset>}"
         df -h /tmp "$RUNNER_TEMP"
@@ -123,11 +172,27 @@ runs:
 
         echo "::group::Coverage buffer activity"
         if [ -s "$RUNNER_TEMP/cc-watch/buffers.log" ]; then
-          wc -l < "$RUNNER_TEMP/cc-watch/buffers.log"
+          echo "events: $(wc -l < "$RUNNER_TEMP/cc-watch/buffers.log")"
           grep -E ' (SIZE|GONE) ' "$RUNNER_TEMP/cc-watch/buffers.log" | head -200 || true
         else
           echo "No coverage buffer files were observed under /tmp."
         fi
+        echo "::endgroup::"
+
+        echo "::group::Coverage buffer holders"
+        if [ -s "$RUNNER_TEMP/cc-watch/holders.log" ]; then
+          head -400 "$RUNNER_TEMP/cc-watch/holders.log"
+        else
+          echo "No holder snapshots were captured."
+        fi
+        echo "::endgroup::"
+
+        # Static instrumentation rewrites assemblies in place and leaves a .orig beside each one.
+        # Its presence rules the profiler-environment route out and confirms the rewrite route.
+        echo "::group::Instrumentation mode"
+        find tests -name '*.dll.orig' -printf '%p %s\n' 2>/dev/null | head -20 || true
+        env | grep -iE '^(CORECLR_|COR_|MicrosoftInstrumentationEngine|CodeCoverage|CODE_COVERAGE)' || \
+          echo "No profiler environment variables are set in the job shell."
         echo "::endgroup::"
 
         echo "::group::Crash reports"
@@ -156,16 +221,57 @@ runs:
         ls -la "$RUNNER_TEMP/crash-dumps" 2>/dev/null || echo "none"
         echo "::endgroup::"
 
-    # TEMPORARY (#32 diagnosis). Full-memory dumps are large; they are the only artifact that
-    # carries the faulting instruction bytes and the NT_FILE mapping table together.
-    - name: 📤 Upload crash dumps
+    # TEMPORARY (#32 diagnosis). `verifyheap` is the decisive test. If the managed heap is intact at
+    # the moment of the fault, no product-code memory corruption occurred and the access violation
+    # came from outside the managed object graph.
+    - name: 🔬 Analyze crash dump
+      if: ${{ always() && runner.os == 'Linux' }}
+      shell: bash
+      run: |
+        shopt -s nullglob
+        cores=()
+
+        for candidate in "$RUNNER_TEMP"/crash-dumps/coredump.*; do
+          case "$candidate" in
+            *.crashreport.json | *.analysis.txt) continue ;;
+          esac
+
+          [ -f "$candidate" ] && cores+=("$candidate")
+        done
+
+        if [ ${#cores[@]} -eq 0 ]; then
+          echo "No core dump to analyze."
+          exit 0
+        fi
+
+        dotnet tool install -g dotnet-dump >/dev/null 2>&1 || true
+        export PATH="$PATH:$HOME/.dotnet/tools"
+
+        for core in "${cores[@]}"; do
+          echo "::group::Analysis of $core"
+          dotnet-dump analyze "$core" \
+            -c "clrthreads" \
+            -c "clrstack -all -f" \
+            -c "verifyheap" \
+            -c "exit" > "$core.analysis.txt" 2>&1 || true
+          head -400 "$core.analysis.txt"
+          echo "..."
+          grep -iE "verifyheap|no heap corruption|error|FaultingExceptionFrame" "$core.analysis.txt" | head -40 || true
+          echo "::endgroup::"
+        done
+
+    # TEMPORARY (#32 diagnosis). The core dumps themselves are hundreds of megabytes and are already
+    # analyzed in-job, so only the small artifacts are uploaded to keep iterations fast.
+    - name: 📤 Upload crash diagnostics
       if: ${{ always() && runner.os == 'Linux' }}
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
-        name: crash-dumps-${{ runner.os }}${{ inputs.artifact-suffix }}
+        name: crash-diagnostics-${{ runner.os }}${{ inputs.artifact-suffix }}
         path: |
-          ${{ runner.temp }}/crash-dumps/**
+          ${{ runner.temp }}/crash-dumps/*.crashreport.json
+          ${{ runner.temp }}/crash-dumps/*.analysis.txt
           ${{ runner.temp }}/cc-watch/buffers.log
+          ${{ runner.temp }}/cc-watch/holders.log
         if-no-files-found: ignore
         retention-days: 3
 
