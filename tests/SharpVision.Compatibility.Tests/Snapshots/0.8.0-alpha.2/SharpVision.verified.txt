@@ -1219,8 +1219,8 @@ namespace SharpVision.Controls.Input
         public int DropDownHeight { get; set; }
         public string Format { get; set; }
         public bool IsOpen { get; set; }
-        public System.DateOnly MaximumDate { get; set; }
-        public System.DateOnly MinimumDate { get; set; }
+        public System.DateOnly Maximum { get; set; }
+        public System.DateOnly Minimum { get; set; }
         public SharpVision.Styling.Border? PopupBorder { get; set; }
         protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public System.DateOnly? Value { get; set; }
@@ -1254,9 +1254,10 @@ namespace SharpVision.Controls.Input
         public System.Globalization.CultureInfo Culture { get; set; }
         public System.Text.Rune DropDownGlyph { get; set; }
         public int DropDownHeight { get; set; }
+        public string? Format { get; set; }
         public bool IsOpen { get; set; }
-        public System.DateTime MaximumValue { get; set; }
-        public System.DateTime MinimumValue { get; set; }
+        public System.DateTime Maximum { get; set; }
+        public System.DateTime Minimum { get; set; }
         public SharpVision.Styling.Border? PopupBorder { get; set; }
         public bool ShowSeconds { get; set; }
         protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
@@ -1454,8 +1455,9 @@ namespace SharpVision.Controls.Input
         public TimeInput() { }
         public bool AllowNull { get; set; }
         public System.Globalization.CultureInfo Culture { get; set; }
-        public System.TimeOnly MaximumTime { get; set; }
-        public System.TimeOnly MinimumTime { get; set; }
+        public string? Format { get; set; }
+        public System.TimeOnly Maximum { get; set; }
+        public System.TimeOnly Minimum { get; set; }
         public bool ShowSeconds { get; set; }
         protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public System.TimeSpan TimeStep { get; set; }

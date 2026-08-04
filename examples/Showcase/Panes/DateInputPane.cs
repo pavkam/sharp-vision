@@ -28,15 +28,15 @@ internal sealed class DateInputPane: CompositeControlBase
             basicStatus.Content = $"Value: {FormatDate(eventArgs.Value)}";
         basicStatus.Content = $"Value: {FormatDate(basic.Value)}";
 
-        // Bounded range with MinimumDate and MaximumDate.
+        // Bounded range with Minimum and Maximum.
         var boundsStatus = new Text("Value: (pick a date)");
         var minDate = new DateOnly(2026, 1, 1);
         var maxDate = new DateOnly(2026, 12, 31);
         var bounded = new DateInput
         {
             Culture = CultureInfo.InvariantCulture,
-            MinimumDate = minDate,
-            MaximumDate = maxDate
+            Minimum = minDate,
+            Maximum = maxDate
         };
         bounded.ValueChanged += (_, eventArgs) =>
             boundsStatus.Content = $"Value: {FormatDate(eventArgs.Value)}";
@@ -68,12 +68,12 @@ internal sealed class DateInputPane: CompositeControlBase
             new DocSection(
                 "📐",
                 "Bounds and validation",
-                "Constrain the selectable range with <info>MinimumDate</info> and <info>MaximumDate</info>. Values outside the range are clamped automatically.",
+                "Constrain the selectable range with <info>Minimum</info> and <info>Maximum</info>. Values outside the range are clamped automatically.",
                 new DocExample(
                     "Bounded to a single year",
                     "Segments that would push the date outside the permitted range are clamped, and the Calendar popup greys out blocked months.",
                     new DocColumn(bounded, boundsStatus),
-                    "dateInput.MinimumDate = new DateOnly(2026, 1, 1);\ndateInput.MaximumDate = new DateOnly(2026, 12, 31);")),
+                    "dateInput.Minimum = new DateOnly(2026, 1, 1);\ndateInput.Maximum = new DateOnly(2026, 12, 31);")),
             new DocSection(
                 "🚫",
                 "Nullable",

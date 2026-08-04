@@ -61,8 +61,8 @@ public sealed class TimeInputTests
         // Arrange
         using var control = new TimeInput
         {
-            MinimumTime = new TimeOnly(10, 0),
-            MaximumTime = new TimeOnly(14, 0)
+            Minimum = new TimeOnly(10, 0),
+            Maximum = new TimeOnly(14, 0)
         };
 
         // Act
@@ -142,8 +142,8 @@ public sealed class TimeInputTests
         using var control = new TimeInput
         {
             Value = bound,
-            MinimumTime = new TimeOnly(0, 0),
-            MaximumTime = new TimeOnly(23, 59)
+            Minimum = new TimeOnly(0, 0),
+            Maximum = new TimeOnly(23, 59)
         };
         _ = Router.Route(control, Events.Key, Key(Code.Right));
 
@@ -229,6 +229,89 @@ public sealed class TimeInputTests
 
         // Act and assert
         _ = Should.NotThrow(() => control.Culture = new CultureInfo("fi-FI"));
+    }
+
+    #endregion
+
+    #region Format
+
+    /// <summary>Verifies the default Format is null, so layout derives from Use24HourFormat and ShowSeconds.</summary>
+    [Fact]
+    public void Format_WhenControlIsConstructed_DefaultsToNull()
+    {
+        // Arrange
+        using var control = new TimeInput();
+
+        // Assert
+        control.Format.ShouldBeNull();
+    }
+
+    /// <summary>Verifies assigning an empty Format throws.</summary>
+    [Fact]
+    public void Format_WhenAssignedEmpty_Throws()
+    {
+        // Arrange
+        using var control = new TimeInput();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentException>(() => control.Format = string.Empty);
+    }
+
+    /// <summary>Verifies a Format containing date-only tokens is rejected, since TimeOnly cannot render them.</summary>
+    [Fact]
+    public void Format_WhenPatternContainsDateTokens_Throws()
+    {
+        // Arrange
+        using var control = new TimeInput();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentException>(() => control.Format = "yyyy-MM-dd");
+    }
+
+    /// <summary>Verifies a custom Format overrides Use24HourFormat/ShowSeconds-derived layout.</summary>
+    [Fact]
+    public void Render_WhenFormatIsCustom_OverridesDerivedLayout()
+    {
+        // Arrange
+        using var control = new TimeInput
+        {
+            Use24HourFormat = true,
+            ShowSeconds = false,
+            Format = "hh:mm:ss tt",
+            Value = new TimeOnly(14, 30, 5)
+        };
+        new LayoutEngine().Layout(control, new Size(20, 3));
+        using Frame frame = new(new Size(20, 3));
+
+        // Act
+        control.Render(frame.Canvas);
+
+        // Assert — the custom 12-hour, seconds-visible pattern wins over the derived 24-hour,
+        // seconds-hidden defaults.
+        Row(frame, 1).ShouldContain("02:30:05 PM");
+    }
+
+    /// <summary>Verifies typing a two-digit hour on a Format-driven 12-hour segment clamps to 12,
+    /// proving the hour segment's effective range follows the pattern's own tokens rather than
+    /// the unrelated Use24HourFormat flag left at its default.</summary>
+    [Fact]
+    public void TypeDigit_WhenFormatUsesTwelveHourTokenAndUse24HourFormatIsStillTrue_ClampsHourToTwelve()
+    {
+        // Arrange
+        using var control = new TimeInput
+        {
+            Format = "hh:mm tt",
+            Value = new TimeOnly(15, 0)
+        };
+
+        // Act — type "1" then "5" for the hour segment: 15 clamps to 12 under 12-hour rules,
+        // which is noon (hour 12) in this PM context.
+        TypeCharacter(control, '1');
+        TypeCharacter(control, '5');
+
+        // Assert
+        _ = control.Value.ShouldNotBeNull();
+        control.Value.Value.Hour.ShouldBe(12);
     }
 
     #endregion
@@ -358,6 +441,17 @@ public sealed class TimeInputTests
         nativeCode: 0,
         Modifiers.None,
         KeyAction.Press));
+
+    private static void TypeCharacter(TimeInput control, char digit) =>
+        Router.Route(
+            control,
+            Events.Key,
+            new KeyEventArgs(new Stroke(
+                Code.Character,
+                new Rune(digit),
+                nativeCode: 0,
+                Modifiers.None,
+                KeyAction.Press)));
 
     #endregion
 }

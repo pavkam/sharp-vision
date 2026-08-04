@@ -225,17 +225,17 @@ public sealed class DateInput: ControlBase
     }
 
     /// <summary>Gets or sets the earliest selectable date.</summary>
-    /// <exception cref="ArgumentException">The value exceeds <see cref="MaximumDate"/>.</exception>
+    /// <exception cref="ArgumentException">The value exceeds <see cref="Maximum"/>.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public DateOnly MinimumDate
+    public DateOnly Minimum
     {
         get;
         set
         {
-            if (value > MaximumDate)
+            if (value > Maximum)
             {
-                throw new ArgumentException("MinimumDate cannot exceed MaximumDate.", nameof(value));
+                throw new ArgumentException("Minimum cannot exceed Maximum.", nameof(value));
             }
 
             if (SetProperty(ref field, value, InvalidationImpact.None))
@@ -247,17 +247,17 @@ public sealed class DateInput: ControlBase
     } = DateOnly.MinValue;
 
     /// <summary>Gets or sets the latest selectable date.</summary>
-    /// <exception cref="ArgumentException">The value precedes <see cref="MinimumDate"/>.</exception>
+    /// <exception cref="ArgumentException">The value precedes <see cref="Minimum"/>.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public DateOnly MaximumDate
+    public DateOnly Maximum
     {
         get;
         set
         {
-            if (value < MinimumDate)
+            if (value < Minimum)
             {
-                throw new ArgumentException("MaximumDate cannot precede MinimumDate.", nameof(value));
+                throw new ArgumentException("Maximum cannot precede Minimum.", nameof(value));
             }
 
             if (SetProperty(ref field, value, InvalidationImpact.None))
@@ -958,8 +958,8 @@ public sealed class DateInput: ControlBase
         _calendar.Culture = _culture.DateTimeFormat.Calendar is GregorianCalendar
             ? _culture
             : CultureInfo.InvariantCulture;
-        _calendar.MinimumDate = MinimumDate;
-        _calendar.MaximumDate = MaximumDate;
+        _calendar.MinimumDate = Minimum;
+        _calendar.MaximumDate = Maximum;
 
         if (_value is { } date)
         {
@@ -972,10 +972,10 @@ public sealed class DateInput: ControlBase
     }
 
     private DateOnly ClampDate(DateOnly date) =>
-        date < MinimumDate
-            ? MinimumDate
-            : date > MaximumDate
-                ? MaximumDate
+        date < Minimum
+            ? Minimum
+            : date > Maximum
+                ? Maximum
                 : date;
 
     private void RepairValue()

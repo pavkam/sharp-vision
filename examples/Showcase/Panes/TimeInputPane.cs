@@ -57,6 +57,13 @@ internal sealed class TimeInputPane: CompositeControlBase
             statusCulture.Content = $"Value: {FormatTime(eventArgs.Value)}";
         statusCulture.Content = $"Value: {FormatTime(inputCulture.Value)}";
 
+        // Custom format.
+        var statusFormat = new Text("Value: (pick a time)");
+        var inputFormat = new TimeInput { Format = "hh:mm:ss tt" };
+        inputFormat.ValueChanged += (_, eventArgs) =>
+            statusFormat.Content = $"Value: {FormatTime(eventArgs.Value, showSeconds: true)}";
+        statusFormat.Content = $"Value: {FormatTime(inputFormat.Value, showSeconds: true)}";
+
         return new DocPage(
             Title,
             "<info>TimeInput</info> edits a time value with inline segment navigation and optional 12-hour or seconds display.",
@@ -104,7 +111,16 @@ internal sealed class TimeInputPane: CompositeControlBase
                     "Finnish time field",
                     "Finnish uses a period time separator and \"ap.\"/\"ip.\" designators instead of a colon and \"AM\"/\"PM\".",
                     new DocColumn(inputCulture, statusCulture),
-                    "timeInput.Culture = new CultureInfo(\"fi-FI\");\ntimeInput.Use24HourFormat = false;")));
+                    "timeInput.Culture = new CultureInfo(\"fi-FI\");\ntimeInput.Use24HourFormat = false;")),
+            new DocSection(
+                "🧩",
+                "Custom format",
+                "<info>Format</info> overrides the derived segment order entirely with a custom pattern, taking precedence over <info>Use24HourFormat</info> and <info>ShowSeconds</info>.",
+                new DocExample(
+                    "Explicit 12-hour, seconds-visible field",
+                    "The pattern's own hour token selects 12-hour clamping; pair it with a designator token for correct AM/PM behavior.",
+                    new DocColumn(inputFormat, statusFormat),
+                    "timeInput.Format = \"hh:mm:ss tt\";")));
     }
 
     private static string FormatTime(TimeOnly? time, bool showSeconds = false) =>

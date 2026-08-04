@@ -13,10 +13,10 @@ using SharpVision.Terminal.Input;
 /// Delete or Backspace clears the value to null when <see cref="AllowNull"/> is set.
 /// <see cref="Culture"/> localizes the rendered time separator, the AM/PM designator text, and
 /// the digit glyphs used for each numeric segment. The segment order itself - hour, minute,
-/// optionally second, optionally an AM/PM designator - is controlled explicitly by
-/// <see cref="Use24HourFormat"/> and <see cref="ShowSeconds"/> rather than derived from
-/// <see cref="CultureInfo.DateTimeFormat"/>'s time pattern, since those two properties are
-/// already the field's own explicit structural contract.
+/// optionally second, optionally an AM/PM designator - defaults to <see cref="Use24HourFormat"/>
+/// and <see cref="ShowSeconds"/> rather than <see cref="CultureInfo.DateTimeFormat"/>'s time
+/// pattern, since those two properties are the field's own explicit structural contract; set
+/// <see cref="Format"/> to override that structure with a custom pattern.
 /// </remarks>
 [PublicAPI]
 public sealed class TimeInput: ControlBase
@@ -90,6 +90,7 @@ public sealed class TimeInput: ControlBase
     /// <see cref="CultureInfo.InvariantCulture"/>, so out-of-the-box rendering never depends on
     /// the host operating system's locale; set this explicitly to localize the field.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="ArgumentException">A non-null <see cref="Format"/> cannot be rendered by a <see cref="TimeOnly"/> under this culture.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public CultureInfo Culture
@@ -99,8 +100,14 @@ public sealed class TimeInput: ControlBase
         {
             ArgumentNullException.ThrowIfNull(value);
 
+            if (Format is { } format)
+            {
+                ValidateTimeFormat(format, value, nameof(value));
+            }
+
             if (SetProperty(ref _culture, value, InvalidationImpact.Measure))
             {
+                _segments.ClampActiveSegment();
                 _segments.ResetDigitBuffer();
             }
         }
@@ -138,6 +145,55 @@ public sealed class TimeInput: ControlBase
         }
     }
 
+    /// <summary>Gets or sets a custom time format pattern, or null to derive the pattern from
+    /// <see cref="Use24HourFormat"/> and <see cref="ShowSeconds"/>. Default is null.</summary>
+    /// <remarks>
+    /// When set, the pattern's own hour/minute/second/AM-PM token runs - not
+    /// <see cref="Use24HourFormat"/> or <see cref="ShowSeconds"/> - determine the segment order and
+    /// count; pair a 12-hour <c>h</c>/<c>hh</c> hour token with a <c>t</c>/<c>tt</c> AM/PM
+    /// designator token for correct 12-hour clamping, since a 12-hour hour token without a
+    /// designator token is treated as a 24-hour segment for editing purposes.
+    /// </remarks>
+    /// <exception cref="ArgumentException">The value is empty, or cannot be rendered by a <see cref="TimeOnly"/> under <see cref="Culture"/>.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public string? Format
+    {
+        get;
+        set
+        {
+            if (value is not null)
+            {
+                ArgumentException.ThrowIfNullOrEmpty(value);
+                ValidateTimeFormat(value, _culture, nameof(value));
+            }
+
+            if (SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                _segments.ClampActiveSegment();
+                _segments.ResetDigitBuffer();
+            }
+        }
+    }
+
+    /// <summary>Validates that a format pattern is renderable by <see cref="TimeOnly"/> under a
+    /// culture, so an invalid pattern is rejected at the property boundary instead of throwing
+    /// later from the layout pass.</summary>
+    private static void ValidateTimeFormat(string format, CultureInfo culture, string paramName)
+    {
+        try
+        {
+            _ = TimeOnly.MinValue.ToString(format, culture);
+        }
+        catch (Exception exception) when (exception is FormatException or ArgumentOutOfRangeException)
+        {
+            throw new ArgumentException(
+                $"The format \"{format}\" cannot be rendered by a TimeOnly value.",
+                paramName,
+                exception);
+        }
+    }
+
     /// <summary>Gets or sets the increment used when the minute segment is adjusted.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is zero, negative, or not a whole minute.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -157,17 +213,17 @@ public sealed class TimeInput: ControlBase
     } = TimeSpan.FromMinutes(1);
 
     /// <summary>Gets or sets the inclusive lower bound for the value. Default is <see cref="TimeOnly.MinValue"/>.</summary>
-    /// <exception cref="ArgumentException">The minimum exceeds <see cref="MaximumTime"/>.</exception>
+    /// <exception cref="ArgumentException">The minimum exceeds <see cref="Maximum"/>.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public TimeOnly MinimumTime
+    public TimeOnly Minimum
     {
         get;
         set
         {
-            if (value > MaximumTime)
+            if (value > Maximum)
             {
-                throw new ArgumentException("Minimum time cannot exceed maximum time.", nameof(value));
+                throw new ArgumentException("Minimum cannot exceed Maximum.", nameof(value));
             }
 
             if (SetProperty(ref field, value, InvalidationImpact.Render))
@@ -178,17 +234,17 @@ public sealed class TimeInput: ControlBase
     } = TimeOnly.MinValue;
 
     /// <summary>Gets or sets the inclusive upper bound for the value. Default is <see cref="TimeOnly.MaxValue"/>.</summary>
-    /// <exception cref="ArgumentException">The maximum is below <see cref="MinimumTime"/>.</exception>
+    /// <exception cref="ArgumentException">The maximum is below <see cref="Minimum"/>.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public TimeOnly MaximumTime
+    public TimeOnly Maximum
     {
         get;
         set
         {
-            if (value < MinimumTime)
+            if (value < Minimum)
             {
-                throw new ArgumentException("Maximum time cannot be less than minimum time.", nameof(value));
+                throw new ArgumentException("Maximum cannot be less than Minimum.", nameof(value));
             }
 
             if (SetProperty(ref field, value, InvalidationImpact.Render))
@@ -313,7 +369,7 @@ public sealed class TimeInput: ControlBase
 
     private bool ToggleAmPm()
     {
-        if (Use24HourFormat || !_value.HasValue)
+        if (!_value.HasValue)
         {
             return false;
         }
@@ -351,6 +407,11 @@ public sealed class TimeInput: ControlBase
         return -1;
     }
 
+    /// <summary>Gets whether the current layout - whether derived from <see cref="Use24HourFormat"/>
+    /// or overridden by <see cref="Format"/> - includes an AM/PM designator segment, used as the
+    /// effective 12-versus-24-hour policy for editing the hour segment.</summary>
+    private bool HasAmPmDesignator => FindEditableIndex(TemporalSegmentKind.AmPmDesignator) >= 0;
+
     private bool ClearValue() =>
         AllowNull && _value.HasValue && Commit(null);
 
@@ -378,11 +439,12 @@ public sealed class TimeInput: ControlBase
 
         var time = _value.Value;
 
+        var hasAmPm = HasAmPmDesignator;
 #pragma warning disable IDE0072 // AM/PM designator segments never reach this callback: their digit capacity is zero.
         var clamped = kind switch
         {
-            TemporalSegmentKind.Hour when Use24HourFormat => Math.Clamp(value, 0, 23),
-            TemporalSegmentKind.Hour => Math.Clamp(value, 1, 12),
+            TemporalSegmentKind.Hour when hasAmPm => Math.Clamp(value, 1, 12),
+            TemporalSegmentKind.Hour => Math.Clamp(value, 0, 23),
             TemporalSegmentKind.Minute => Math.Clamp(value, 0, 59),
             TemporalSegmentKind.Second => Math.Clamp(value, 0, 59),
             _ => value
@@ -390,7 +452,7 @@ public sealed class TimeInput: ControlBase
 
         var result = kind switch
         {
-            TemporalSegmentKind.Hour when !Use24HourFormat =>
+            TemporalSegmentKind.Hour when hasAmPm =>
                 new TimeOnly(To24Hour(clamped, time.Hour >= 12), time.Minute, time.Second),
             TemporalSegmentKind.Hour =>
                 new TimeOnly(clamped, time.Minute, time.Second),
@@ -413,13 +475,17 @@ public sealed class TimeInput: ControlBase
         }
 
         var time = _value.Value;
+
+        // Every case below is only reached for a kind the current layout actually contains
+        // (the engine dispatches by the active segment's own kind), so no additional
+        // Use24HourFormat/ShowSeconds guard is needed here.
 #pragma warning disable IDE0072 // Every calendar kind (Month, Day, Year) is unreachable from TimeInput's time-only layout.
         var result = kind switch
         {
             TemporalSegmentKind.Hour => AddWithoutWrap(time, TimeSpan.TicksPerHour * delta),
             TemporalSegmentKind.Minute => AddWithoutWrap(time, TimeStep.Ticks * delta),
-            TemporalSegmentKind.AmPmDesignator when !Use24HourFormat => time.AddHours(time.Hour < 12 ? 12 : -12),
-            TemporalSegmentKind.Second when ShowSeconds => AddWithoutWrap(time, TimeSpan.TicksPerSecond * delta),
+            TemporalSegmentKind.AmPmDesignator => time.AddHours(time.Hour < 12 ? 12 : -12),
+            TemporalSegmentKind.Second => AddWithoutWrap(time, TimeSpan.TicksPerSecond * delta),
             _ => time
         };
 #pragma warning restore IDE0072
@@ -440,7 +506,7 @@ public sealed class TimeInput: ControlBase
         {
             TemporalSegmentKind.Hour => new TimeOnly(0, time.Minute, time.Second),
             TemporalSegmentKind.Minute => new TimeOnly(time.Hour, 0, time.Second),
-            TemporalSegmentKind.Second when ShowSeconds => new TimeOnly(time.Hour, time.Minute, 0),
+            TemporalSegmentKind.Second => new TimeOnly(time.Hour, time.Minute, 0),
             _ => time
         };
 #pragma warning restore IDE0072
@@ -482,8 +548,8 @@ public sealed class TimeInput: ControlBase
     }
 
     private TimeOnly ClampToRange(TimeOnly time) =>
-        time < MinimumTime ? MinimumTime
-        : time > MaximumTime ? MaximumTime
+        time < Minimum ? Minimum
+        : time > Maximum ? Maximum
         : time;
 
     private void ClampCurrentValue()
@@ -541,7 +607,9 @@ public sealed class TimeInput: ControlBase
 
     #region Segment layout
 
-    private string ResolveTimePattern()
+    private string ResolveTimePattern() => Format ?? BuildDefaultTimePattern();
+
+    private string BuildDefaultTimePattern()
     {
         var pattern = new StringBuilder(Use24HourFormat ? "HH" : "hh").Append(':').Append("mm");
 
@@ -562,6 +630,16 @@ public sealed class TimeInput: ControlBase
     {
         var pattern = ResolveTimePattern();
         var tokens = TemporalPatternSegmenter.ParseTokens(pattern, _tokenKinds, _culture);
+        var hasAmPm = false;
+
+        foreach (var token in tokens)
+        {
+            if (token.Kind == TemporalSegmentKind.AmPmDesignator)
+            {
+                hasAmPm = true;
+                break;
+            }
+        }
 
         IReadOnlyList<string> text;
 
@@ -597,17 +675,17 @@ public sealed class TimeInput: ControlBase
                     text[index],
                     kind,
                     kind == TemporalSegmentKind.AmPmDesignator ? 0 : 2,
-                    MaxValueFor(kind));
+                    MaxValueFor(kind, hasAmPm));
         }
 
         return descriptors;
     }
 
 #pragma warning disable IDE0072 // Month, Day, Year, and AmPmDesignator are unreachable from TimeInput's time-only layout.
-    private int MaxValueFor(TemporalSegmentKind kind) =>
+    private static int MaxValueFor(TemporalSegmentKind kind, bool hasAmPm) =>
         kind switch
         {
-            TemporalSegmentKind.Hour => Use24HourFormat ? 23 : 12,
+            TemporalSegmentKind.Hour => hasAmPm ? 12 : 23,
             TemporalSegmentKind.Minute or TemporalSegmentKind.Second => 59,
             _ => 0
         };

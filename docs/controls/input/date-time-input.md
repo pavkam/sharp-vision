@@ -19,7 +19,11 @@ layout from `DateTimeFormatInfo.ShortDatePattern` - so a German culture, for
 example, renders day before month with a period separator. The time portion
 keeps the fixed hour/minute/[second]/[AM-PM] structure `Use24HourFormat` and
 `ShowSeconds` already select, localizing only its separator, AM/PM designator
-text, and digit glyphs.
+text, and digit glyphs. Set `Format` to a custom combined pattern (for example
+`"yyyy/MM/dd hh:mm tt"`) to override that structure directly; pair a 12-hour
+`h`/`hh` hour token with a `t`/`tt` AM/PM designator token for correct 12-hour
+clamping, since a 12-hour hour token without a designator is treated as a
+24-hour segment for editing purposes.
 
 ## API
 
@@ -30,8 +34,9 @@ text, and digit glyphs.
 | `Culture`                          | `CultureInfo.InvariantCulture`           | Localizes both the popup calendar and the typed field's date order, separators, designator text, and digits; must use a Gregorian calendar. |
 | `Use24HourFormat`                  | `true`                                   | Selects 24-hour or AM/PM segments.                                                                                                          |
 | `ShowSeconds`                      | `false`                                  | Adds the seconds segment.                                                                                                                   |
+| `Format`                           | `null`                                   | A custom combined pattern overriding the derived segment order and count.                                                                   |
 | `TimeStep`                         | one minute                               | The positive whole-minute increment for the minute segment.                                                                                 |
-| `MinimumValue`, `MaximumValue`     | `DateTime.MinValue`, `DateTime.MaxValue` | Ordered inclusive bounds that repair the current value.                                                                                     |
+| `Minimum`, `Maximum`               | `DateTime.MinValue`, `DateTime.MaxValue` | Ordered inclusive bounds that repair the current value.                                                                                     |
 | `DropDownHeight`                   | `10` cells                               | The positive maximum visible calendar height.                                                                                               |
 | `IsOpen`                           | `false`                                  | Opens or closes the retained Calendar popup.                                                                                                |
 | `DropDownGlyph`                    | code-owned disclosure glyph              | The validated one-cell indicator; `ResetDropDownGlyph()` restores it.                                                                       |

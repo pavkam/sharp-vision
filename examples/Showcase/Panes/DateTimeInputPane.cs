@@ -46,6 +46,13 @@ internal sealed class DateTimeInputPane: CompositeControlBase
             statusCulture.Content = $"Value: {FormatDateTime(eventArgs.Value)}";
         statusCulture.Content = $"Value: {FormatDateTime(inputCulture.Value)}";
 
+        // Custom format.
+        var statusFormat = new Text("Value: (pick a date and time)");
+        var inputFormat = new DateTimeInput { Format = "yyyy/MM/dd hh:mm tt" };
+        inputFormat.ValueChanged += (_, eventArgs) =>
+            statusFormat.Content = $"Value: {FormatDateTime(eventArgs.Value, use12Hour: true)}";
+        statusFormat.Content = $"Value: {FormatDateTime(inputFormat.Value, use12Hour: true)}";
+
         return new DocPage(
             Title,
             "<info>DateTimeInput</info> combines date and time editing in one bordered field with a Calendar popup for date segments and inline editing for time segments.",
@@ -84,7 +91,16 @@ internal sealed class DateTimeInputPane: CompositeControlBase
                     "German date-time field",
                     "German renders day before month with a period separator (\"dd.MM.yyyy\") instead of the invariant month-day-year slash order.",
                     new DocColumn(inputCulture, statusCulture),
-                    "dateTime.Culture = new CultureInfo(\"de-DE\");")));
+                    "dateTime.Culture = new CultureInfo(\"de-DE\");")),
+            new DocSection(
+                "🧩",
+                "Custom format",
+                "<info>Format</info> overrides the derived combined pattern entirely, taking precedence over <info>Culture</info>'s date pattern and <info>Use24HourFormat</info>/<info>ShowSeconds</info>.",
+                new DocExample(
+                    "Year-first, 12-hour combined field",
+                    "The pattern's own tokens select both the date segment order and the hour segment's 12-hour clamping.",
+                    new DocColumn(inputFormat, statusFormat),
+                    "dateTime.Format = \"yyyy/MM/dd hh:mm tt\";")));
     }
 
     private static string FormatDateTime(DateTime? dateTime, bool use12Hour = false) =>

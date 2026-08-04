@@ -64,8 +64,8 @@ public sealed class DateInputTests
         // Arrange
         using var control = new DateInput
         {
-            MinimumDate = new DateOnly(2026, 7, 15),
-            MaximumDate = new DateOnly(2026, 7, 25)
+            Minimum = new DateOnly(2026, 7, 15),
+            Maximum = new DateOnly(2026, 7, 25)
         };
 
         // Act

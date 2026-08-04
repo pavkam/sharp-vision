@@ -167,10 +167,10 @@ public sealed class DateTimeInput: ControlBase
     /// does - for example a German culture renders day before month with a period separator. The
     /// time portion keeps the fixed hour/minute/[second]/[AM-PM] structure <see cref="Use24HourFormat"/>
     /// and <see cref="ShowSeconds"/> already select, localizing only its separator, AM/PM designator
-    /// text, and digit glyphs.
+    /// text, and digit glyphs. Set <see cref="Format"/> to override the combined pattern entirely.
     /// </remarks>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
-    /// <exception cref="ArgumentException">The culture's active calendar is not Gregorian.</exception>
+    /// <exception cref="ArgumentException">The culture's active calendar is not Gregorian, or a non-null <see cref="Format"/> cannot be rendered by a <see cref="DateTime"/> under this culture.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public CultureInfo Culture
@@ -184,6 +184,11 @@ public sealed class DateTimeInput: ControlBase
             {
                 throw new ArgumentException(
                     "DateTimeInput requires a Gregorian display culture.", nameof(value));
+            }
+
+            if (Format is { } format)
+            {
+                ValidateDateTimeFormat(format, value, nameof(value));
             }
 
             if (SetProperty(ref _culture, value, InvalidationImpact.Measure))
@@ -227,6 +232,56 @@ public sealed class DateTimeInput: ControlBase
         }
     }
 
+    /// <summary>Gets or sets a custom combined date-time format pattern, or null to derive the
+    /// pattern from <see cref="Culture"/>'s <see cref="DateTimeFormatInfo.ShortDatePattern"/> plus
+    /// <see cref="Use24HourFormat"/> and <see cref="ShowSeconds"/>. Default is null.</summary>
+    /// <remarks>
+    /// When set, the pattern's own token runs - not <see cref="Culture"/>'s date pattern or
+    /// <see cref="Use24HourFormat"/>/<see cref="ShowSeconds"/> - determine the segment order and
+    /// count; pair a 12-hour <c>h</c>/<c>hh</c> hour token with a <c>t</c>/<c>tt</c> AM/PM
+    /// designator token for correct 12-hour clamping, since a 12-hour hour token without a
+    /// designator token is treated as a 24-hour segment for editing purposes.
+    /// </remarks>
+    /// <exception cref="ArgumentException">The value is empty, or cannot be rendered by a <see cref="DateTime"/> under <see cref="Culture"/>.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public string? Format
+    {
+        get;
+        set
+        {
+            if (value is not null)
+            {
+                ArgumentException.ThrowIfNullOrEmpty(value);
+                ValidateDateTimeFormat(value, _culture, nameof(value));
+            }
+
+            if (SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                _segments.ClampActiveSegment();
+                _segments.ResetDigitBuffer();
+            }
+        }
+    }
+
+    /// <summary>Validates that a format pattern is renderable by <see cref="DateTime"/> under a
+    /// culture, so an invalid pattern is rejected at the property boundary instead of throwing
+    /// later from the layout pass.</summary>
+    private static void ValidateDateTimeFormat(string format, CultureInfo culture, string paramName)
+    {
+        try
+        {
+            _ = DateTime.MinValue.ToString(format, culture);
+        }
+        catch (Exception exception) when (exception is FormatException or ArgumentOutOfRangeException)
+        {
+            throw new ArgumentException(
+                $"The format \"{format}\" cannot be rendered by a DateTime value.",
+                paramName,
+                exception);
+        }
+    }
+
     /// <summary>Gets or sets the increment used when the minute segment is adjusted.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is zero, negative, or not a whole minute.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -246,20 +301,20 @@ public sealed class DateTimeInput: ControlBase
     } = TimeSpan.FromMinutes(1);
 
     /// <summary>Gets or sets the inclusive lower bound for the value. Default is <see cref="DateTime.MinValue"/>.</summary>
-    /// <exception cref="ArgumentException">The minimum exceeds <see cref="MaximumValue"/>.</exception>
+    /// <exception cref="ArgumentException">The minimum exceeds <see cref="Maximum"/>.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public DateTime MinimumValue
+    public DateTime Minimum
     {
         get;
         set
         {
             VerifyMutable();
 
-            if (value > MaximumValue)
+            if (value > Maximum)
             {
                 throw new ArgumentException(
-                    "MinimumValue cannot exceed MaximumValue.", nameof(value));
+                    "Minimum cannot exceed Maximum.", nameof(value));
             }
 
             if (SetProperty(ref field, value, InvalidationImpact.Render))
@@ -271,20 +326,20 @@ public sealed class DateTimeInput: ControlBase
     } = DateTime.MinValue;
 
     /// <summary>Gets or sets the inclusive upper bound for the value. Default is <see cref="DateTime.MaxValue"/>.</summary>
-    /// <exception cref="ArgumentException">The maximum is below <see cref="MinimumValue"/>.</exception>
+    /// <exception cref="ArgumentException">The maximum is below <see cref="Minimum"/>.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public DateTime MaximumValue
+    public DateTime Maximum
     {
         get;
         set
         {
             VerifyMutable();
 
-            if (value < MinimumValue)
+            if (value < Minimum)
             {
                 throw new ArgumentException(
-                    "MaximumValue cannot be less than MinimumValue.", nameof(value));
+                    "Maximum cannot be less than Minimum.", nameof(value));
             }
 
             if (SetProperty(ref field, value, InvalidationImpact.Render))
@@ -673,7 +728,7 @@ public sealed class DateTimeInput: ControlBase
 
     private bool ToggleAmPm()
     {
-        if (Use24HourFormat || !_value.HasValue)
+        if (!_value.HasValue)
         {
             return false;
         }
@@ -711,6 +766,11 @@ public sealed class DateTimeInput: ControlBase
         return -1;
     }
 
+    /// <summary>Gets whether the current layout - whether derived from <see cref="Use24HourFormat"/>
+    /// or overridden by <see cref="Format"/> - includes an AM/PM designator segment, used as the
+    /// effective 12-versus-24-hour policy for editing the hour segment.</summary>
+    private bool HasAmPmDesignator => FindEditableIndex(TemporalSegmentKind.AmPmDesignator) >= 0;
+
     private bool ApplyDigitValue(TemporalSegmentKind kind, int value)
     {
         if (!_value.HasValue)
@@ -724,6 +784,7 @@ public sealed class DateTimeInput: ControlBase
         }
 
         var dt = _value.Value;
+        var hasAmPm = HasAmPmDesignator;
 
         try
         {
@@ -734,7 +795,7 @@ public sealed class DateTimeInput: ControlBase
                 TemporalSegmentKind.Day => ReplaceDay(dt, Math.Clamp(value, 1,
                     DateTime.DaysInMonth(dt.Year, dt.Month))),
                 TemporalSegmentKind.Year => ReplaceYear(dt, Math.Clamp(value, 1, 9999)),
-                TemporalSegmentKind.Hour when !Use24HourFormat =>
+                TemporalSegmentKind.Hour when hasAmPm =>
                     dt.Date.Add(new TimeSpan(
                         To24Hour(Math.Clamp(value, 1, 12), dt.Hour >= 12),
                         dt.Minute, dt.Second)),
@@ -767,6 +828,10 @@ public sealed class DateTimeInput: ControlBase
         }
 
         var dt = _value.Value;
+
+        // Every case below is only reached for a kind the current layout actually contains
+        // (the engine dispatches by the active segment's own kind), so no additional
+        // Use24HourFormat/ShowSeconds guard is needed here.
 #pragma warning disable IDE0072 // Every calendar/clock kind is individually handled or intentionally falls through.
         var result = kind switch
         {
@@ -775,8 +840,8 @@ public sealed class DateTimeInput: ControlBase
             TemporalSegmentKind.Year => SafeAddYears(dt, delta),
             TemporalSegmentKind.Hour => SafeAddTicks(dt, TimeSpan.TicksPerHour * delta),
             TemporalSegmentKind.Minute => SafeAddTicks(dt, TimeStep.Ticks * delta),
-            TemporalSegmentKind.Second when ShowSeconds => SafeAddTicks(dt, TimeSpan.TicksPerSecond * delta),
-            TemporalSegmentKind.AmPmDesignator when !Use24HourFormat => dt.AddHours(dt.Hour < 12 ? 12 : -12),
+            TemporalSegmentKind.Second => SafeAddTicks(dt, TimeSpan.TicksPerSecond * delta),
+            TemporalSegmentKind.AmPmDesignator => dt.AddHours(dt.Hour < 12 ? 12 : -12),
             _ => dt
         };
 #pragma warning restore IDE0072
@@ -803,7 +868,7 @@ public sealed class DateTimeInput: ControlBase
                 TemporalSegmentKind.Year => ReplaceYear(dt, 1),
                 TemporalSegmentKind.Hour => dt.Date.Add(new TimeSpan(0, dt.Minute, dt.Second)),
                 TemporalSegmentKind.Minute => dt.Date.Add(new TimeSpan(dt.Hour, 0, dt.Second)),
-                TemporalSegmentKind.Second when ShowSeconds => dt.Date.Add(new TimeSpan(dt.Hour, dt.Minute, 0)),
+                TemporalSegmentKind.Second => dt.Date.Add(new TimeSpan(dt.Hour, dt.Minute, 0)),
                 _ => dt
             };
 #pragma warning restore IDE0072
@@ -852,8 +917,8 @@ public sealed class DateTimeInput: ControlBase
     }
 
     private DateTime ClampToRange(DateTime dateTime) =>
-        dateTime < MinimumValue ? MinimumValue
-        : dateTime > MaximumValue ? MaximumValue
+        dateTime < Minimum ? Minimum
+        : dateTime > Maximum ? Maximum
         : dateTime;
 
     private void ClampCurrentValue()
@@ -866,12 +931,12 @@ public sealed class DateTimeInput: ControlBase
 
     private void SyncCalendarBounds()
     {
-        _calendar.MinimumDate = MinimumValue > DateTime.MinValue
-            ? DateOnly.FromDateTime(MinimumValue)
+        _calendar.MinimumDate = Minimum > DateTime.MinValue
+            ? DateOnly.FromDateTime(Minimum)
             : DateOnly.MinValue;
 
-        _calendar.MaximumDate = MaximumValue < DateTime.MaxValue
-            ? DateOnly.FromDateTime(MaximumValue)
+        _calendar.MaximumDate = Maximum < DateTime.MaxValue
+            ? DateOnly.FromDateTime(Maximum)
             : DateOnly.MaxValue;
     }
 
@@ -956,7 +1021,9 @@ public sealed class DateTimeInput: ControlBase
 
     #region Rendering
 
-    private string ResolveDateTimePattern()
+    private string ResolveDateTimePattern() => Format ?? BuildDefaultDateTimePattern();
+
+    private string BuildDefaultDateTimePattern()
     {
         var datePattern = _culture.DateTimeFormat.ShortDatePattern;
         var timePattern = new StringBuilder(Use24HourFormat ? "HH" : "hh").Append(':').Append("mm");
@@ -978,6 +1045,16 @@ public sealed class DateTimeInput: ControlBase
     {
         var pattern = ResolveDateTimePattern();
         var tokens = TemporalPatternSegmenter.ParseTokens(pattern, _tokenKinds, _culture);
+        var hasAmPm = false;
+
+        foreach (var token in tokens)
+        {
+            if (token.Kind == TemporalSegmentKind.AmPmDesignator)
+            {
+                hasAmPm = true;
+                break;
+            }
+        }
 
         IReadOnlyList<string> text;
 
@@ -1023,20 +1100,20 @@ public sealed class DateTimeInput: ControlBase
                     kind == TemporalSegmentKind.AmPmDesignator ? 0
                         : kind == TemporalSegmentKind.Year && token.RunLength >= 4 ? 4
                         : 2,
-                    MaxValueFor(kind));
+                    MaxValueFor(kind, hasAmPm));
         }
 
         return descriptors;
     }
 
 #pragma warning disable IDE0072 // Every segment kind is individually handled.
-    private int MaxValueFor(TemporalSegmentKind kind) =>
+    private static int MaxValueFor(TemporalSegmentKind kind, bool hasAmPm) =>
         kind switch
         {
             TemporalSegmentKind.Month => 12,
             TemporalSegmentKind.Day => 31,
             TemporalSegmentKind.Year => 9999,
-            TemporalSegmentKind.Hour => Use24HourFormat ? 23 : 12,
+            TemporalSegmentKind.Hour => hasAmPm ? 12 : 23,
             TemporalSegmentKind.Minute or TemporalSegmentKind.Second => 59,
             _ => 0
         };

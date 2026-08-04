@@ -44,8 +44,8 @@ public sealed class DateTimeInputTests
         // Arrange
         using var control = new DateTimeInput
         {
-            MinimumValue = new DateTime(2026, 7, 15, 10, 0, 0),
-            MaximumValue = new DateTime(2026, 7, 25, 14, 0, 0)
+            Minimum = new DateTime(2026, 7, 15, 10, 0, 0),
+            Maximum = new DateTime(2026, 7, 25, 14, 0, 0)
         };
 
         // Act
@@ -285,6 +285,55 @@ public sealed class DateTimeInputTests
 
         // Act and assert
         _ = Should.Throw<ArgumentException>(() => control.Culture = new CultureInfo("ar-SA"));
+    }
+
+    #endregion
+
+    #region Format
+
+    /// <summary>Verifies the default Format is null, so layout derives from Culture, Use24HourFormat, and ShowSeconds.</summary>
+    [Fact]
+    public void Format_WhenControlIsConstructed_DefaultsToNull()
+    {
+        // Arrange
+        using var control = new DateTimeInput();
+
+        // Assert
+        control.Format.ShouldBeNull();
+    }
+
+    /// <summary>Verifies assigning an empty Format throws.</summary>
+    [Fact]
+    public void Format_WhenAssignedEmpty_Throws()
+    {
+        // Arrange
+        using var control = new DateTimeInput();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentException>(() => control.Format = string.Empty);
+    }
+
+    /// <summary>Verifies a custom Format overrides the culture- and flag-derived layout.</summary>
+    [Fact]
+    public void Render_WhenFormatIsCustom_OverridesDerivedLayout()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Format = "yyyy/MM/dd hh:mm tt",
+            Value = new DateTime(2026, 7, 19, 14, 30, 0)
+        };
+        new LayoutEngine().Layout(control, new Size(30, 3));
+        using Frame frame = new(new Size(30, 3));
+
+        // Act
+        control.Render(frame.Canvas);
+
+        // Assert — year-first order with a 12-hour clock and PM designator, overriding the
+        // default invariant "MM/dd/yyyy HH:mm" layout.
+        var row = Row(frame, 1);
+        row.ShouldContain("2026/07/19");
+        row.ShouldContain("02:30 PM");
     }
 
     #endregion

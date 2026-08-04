@@ -28,7 +28,7 @@ shared engine.
 | `AllowNull`                        | `true`                                          | Allows clearing the value; disabling it repairs a null value.         |
 | `Culture`                          | current Gregorian culture or invariant fallback | Supplies the segment order and formatting.                            |
 | `Format`                           | `"d"`                                           | A non-null, non-empty date format string.                             |
-| `MinimumDate`, `MaximumDate`       | `DateOnly.MinValue`, `DateOnly.MaxValue`        | Ordered inclusive bounds that repair the current value.               |
+| `Minimum`, `Maximum`               | `DateOnly.MinValue`, `DateOnly.MaxValue`        | Ordered inclusive bounds that repair the current value.               |
 | `DropDownHeight`                   | `10` cells                                      | The positive maximum visible calendar height.                         |
 | `IsOpen`                           | `false`                                         | Opens or closes the retained Calendar popup.                          |
 | `DropDownGlyph`                    | code-owned disclosure glyph                     | The validated one-cell indicator; `ResetDropDownGlyph()` restores it. |
