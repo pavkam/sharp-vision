@@ -344,6 +344,31 @@ public sealed class DateInputTests
         control.DropDownGlyph.ShouldBe(defaultGlyph);
     }
 
+    /// <summary>Verifies PopupBorder applies to the owned Calendar popup without leaking it, and
+    /// ResetPopupBorder returns it to the ThemeRole.Popup appearance (see #81).</summary>
+    [Fact]
+    public void PopupBorder_WhenSetAndReset_AppliesToOwnedPopupAndReturnsToThemeRole()
+    {
+        // Arrange
+        using var control = new DateInput();
+        var popup = OwnedTree.Find<Popup>(control).ShouldNotBeNull();
+        var themeRoleBorder = popup.Border;
+        var border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
+
+        // Act
+        control.PopupBorder = border;
+
+        // Assert
+        popup.Border.ShouldBe(border);
+
+        // Act
+        control.ResetPopupBorder();
+
+        // Assert
+        control.PopupBorder.ShouldBeNull();
+        popup.Border.ShouldBe(themeRoleBorder);
+    }
+
     #endregion
 
     #region Commit
