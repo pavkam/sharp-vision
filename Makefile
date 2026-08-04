@@ -58,8 +58,8 @@ test: build
 	@echo "✅ Tests complete."
 
 test-ci: build
-	@dotnet test --project tests/SharpVision.Terminal.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 1707 --timeout $${TEST_TIMEOUT:-300s} --coverage --coverage-output-format cobertura --report-xunit-trx
-	@dotnet test --project tests/SharpVision.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 2600 --timeout $${TEST_TIMEOUT:-300s} --coverage --coverage-settings tests/SharpVision.Tests/coverage.config --coverage-output-format cobertura --report-xunit-trx --parallel none
+	@dotnet test --project tests/SharpVision.Terminal.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 1707 --timeout $${TEST_TIMEOUT:-300s} --coverage --coverage-settings $${COVERAGE_SETTINGS:-tests/coverage.static.config} --coverage-output-format cobertura --report-xunit-trx
+	@dotnet test --project tests/SharpVision.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 2600 --timeout $${TEST_TIMEOUT:-300s} --coverage --coverage-settings $${COVERAGE_SETTINGS:-tests/coverage.static.config} --coverage-output-format cobertura --report-xunit-trx --parallel none
 	@dotnet test --project tests/SharpVision.Compatibility.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 3 --timeout 300s --report-xunit-trx
 	@node scripts/validate-control-coverage.mjs --results tests/SharpVision.Tests/bin/$${CONFIGURATION:-Release}/net10.0/TestResults --minimum 0.85
 	@npm run test:docs
