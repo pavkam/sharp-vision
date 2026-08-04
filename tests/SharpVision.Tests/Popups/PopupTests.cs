@@ -551,6 +551,27 @@ public sealed class PopupTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a CloseRequested veto is honored while un-staging a detached Popup - the
+    /// CloseUnpresented path a staged-then-cleared IsOpen takes never presents at all - matching
+    /// the presented path's own veto guarantee instead of ignoring it outright (see #284).</summary>
+    [Fact]
+    public void CloseRequested_WhenStagedDetached_HonorsVeto()
+    {
+        var popup = new Popup { Content = new ProbeControl(), IsOpen = true };
+
+        popup.CloseRequested += (_, eventArgs) => eventArgs.Cancel = true;
+        var closingCalls = 0;
+        var closedCalls = 0;
+        popup.Closing += (_, _) => closingCalls++;
+        popup.Closed += (_, _) => closedCalls++;
+
+        popup.IsOpen = false;
+
+        popup.IsOpen.ShouldBeTrue();
+        closingCalls.ShouldBe(0);
+        closedCalls.ShouldBe(0);
+    }
+
     /// <summary>Verifies an uncancelled CloseRequested still closes normally, publishing the
     /// request once before Closing and Closed each fire exactly once (see #223).</summary>
     [Fact]

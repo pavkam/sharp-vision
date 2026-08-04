@@ -59,10 +59,14 @@ lifecycle event.
 whole Popup family, and `Dialog<TResult>`'s own typed-completion path — and also
 from Window's close affordance, `CloseOnEscape`, and modal dismiss, each of
 which still hand-rolls its own sequence rather than routing through the shared
-`CloseSurface` engine (that unification remains tracked in
-[#223](https://github.com/pavkam/sharp-vision/issues/223)), but now raises
-`CloseRequested` first via the same `FloatingSurfaceBase.RaiseCloseRequested`
-helper the engine uses, honoring the same veto contract.
+`CloseSurface` engine (full unification is not yet tracked by an open issue;
+Window has no separate open flag - `Visibility == Visible` is its open state -
+and a `Closing` handler may retain the Window by touching `Visibility`, which
+the engine's own `commitClosingState` does not support), but every hand-rolled
+path still raises `CloseRequested` first via the same
+`FloatingSurfaceBase.RaiseCloseRequested` helper the engine uses and is guarded
+so repeated closure after committed cleanup raises nothing, honoring the same
+idempotency and veto contract the engine already guarantees.
 
 An ordinary Window close affordance, Escape action, or modal dismiss request
 first raises `CloseRequested`; an uncancelled request then publishes `Closing`,

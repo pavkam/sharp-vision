@@ -851,6 +851,14 @@ public class Popup: FloatingSurfaceBase
 
     private void CloseUnpresented()
     {
+        // CommitClosedState is the first mutation on this path (SetOpen never assigns
+        // _isOpen), so a veto here leaves _isOpen == true untouched - matching the presented
+        // path, where CloseSurfaceCore returns before committing (see #284).
+        if (!RaiseCloseRequested())
+        {
+            return;
+        }
+
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(CommitClosedState, ref failure);
         ExceptionAggregation.Capture(RaiseSurfaceClosing, ref failure);

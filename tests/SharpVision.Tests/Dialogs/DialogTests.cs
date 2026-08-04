@@ -73,6 +73,41 @@ public sealed class DialogTests
         dialog.IsDisposed.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a modeless dialog (attached directly, never presented through
+    /// ShowAsync/ShowModalAsync) does not re-publish its cancellation result on every redundant
+    /// Close() call after the first (see #284). Selecting a result and then closing the already
+    /// resultless-but-still-presented dialog once legitimately runs OnClosing's
+    /// Complete(cancelled) - that is not the defect. The defect was Window.RequestClose lacking
+    /// a presented-guard, so every *further* Close() call on the now-collapsed, invisible dialog
+    /// re-ran the same sequence and re-published a fresh cancellation result.</summary>
+    [Fact]
+    public async Task ResultSelected_WhenModelessDialogIsClosedRepeatedly_StopsAfterTheFirstCloseAsync()
+    {
+        var host = new Overlay();
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            TestContext.Current.CancellationToken);
+        var messageBox = new MessageBox("Ready.", "Status", MessageBoxButtons.YesNo);
+        var results = new List<MessageBoxResult>();
+        messageBox.ResultSelected += (_, _) => results.Add(messageBox.SelectedResult);
+
+        await surface.UpdateAsync(() => host.Children.Add(messageBox), "attach modeless dialog");
+        var yes = OwnedTree.FindAll<Button>(messageBox).First(button => button.Text == "&Yes");
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                yes.PerformClick();
+                messageBox.Close();
+                messageBox.Close();
+                messageBox.Close();
+            },
+            "select a result then close redundantly");
+
+        results.ShouldBe([MessageBoxResult.Yes, MessageBoxResult.Cancel]);
+    }
+
     /// <summary>Verifies explicit disposal settles cancellation and releases host and modality ownership.</summary>
     [Fact]
     public async Task Dispose_WhenDialogIsPending_CompletesCancellationWithoutLeaksAsync()

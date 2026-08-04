@@ -724,6 +724,16 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             return;
         }
 
+        // An unattached Window is Visible but never presented, and Escape/affordance closure is
+        // still expected to raise Closing for it - so the guard cannot be the plain
+        // !IsSurfacePresented check CloseSurfaceCore uses. A Window that is neither presented
+        // nor still Visible (already closed, or detached after being collapsed) has nothing left
+        // to close, and closing it again must raise nothing (see #284).
+        if (!IsSurfacePresented && Visibility != Visibility.Visible)
+        {
+            return;
+        }
+
         if (!RaiseCloseRequested())
         {
             return;

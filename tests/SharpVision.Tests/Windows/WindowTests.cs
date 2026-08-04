@@ -860,6 +860,64 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies calling Close() again after committed cleanup raises nothing, matching
+    /// FloatingSurfaceBase's own idempotency contract instead of re-raising CloseRequested and
+    /// Closing against an already-closed Window (see #284).</summary>
+    [Fact]
+    public async Task Close_WhenAlreadyClosed_RaisesNothingAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var window = new Window { CanMove = false, CanClose = true, HeaderPlacement = WindowTitlePlacement.Center };
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+            window.Close();
+            var order = new List<string>();
+            window.CloseRequested += (_, _) => order.Add("requested");
+            window.Closing += (_, _) => order.Add("closing");
+            window.Closed += (_, _) => order.Add("closed");
+
+            window.Close();
+
+            order.ShouldBeEmpty();
+            window.Visibility.ShouldBe(Visibility.Collapsed);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies closing a Window that was never presented (Collapsed from construction,
+    /// or detached) raises nothing, rather than publishing a phantom close sequence for a Window
+    /// that was never open (see #284).</summary>
+    [Fact]
+    public async Task Close_WhenNeverPresented_RaisesNothingAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var window = new Window
+            {
+                CanMove = false,
+                CanClose = true,
+                Visibility = Visibility.Collapsed
+            };
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+            var order = new List<string>();
+            window.CloseRequested += (_, _) => order.Add("requested");
+            window.Closing += (_, _) => order.Add("closing");
+            window.Closed += (_, _) => order.Add("closed");
+
+            window.Close();
+
+            order.ShouldBeEmpty();
+            window.Visibility.ShouldBe(Visibility.Collapsed);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies Close() closes regardless of CanClose, matching modal outside-dismissal's own
     /// behavior - CanClose only gates the close affordance and CloseOnEscape (see #223).</summary>
     [Fact]
