@@ -34,12 +34,36 @@ the instrumented UI classes under `src/SharpVision/Controls/`, `Dialogs/`,
 `Menus/`, `Navigation/`, `Popups/`, and `Windows/`. This scoped floor
 supplements the behavioral catalogs; it does not let line coverage stand in for
 mounted pointer, keyboard, focus, hover, pressed-state, box-model, frame,
-resize, or tiny-bound assertions. The coverage-instrumented UI run uses static
-managed instrumentation and disables collection parallelization so coverage
-stays complete and deterministic across runners; the ordinary test target keeps
-the suite's normal parallel execution. The terminal and UI coverage commands run
-one after the other, and a failure in either stops the target. The workflow
-badge in the [README](../../README.md#sharpvision) reflects that automation.
+resize, or tiny-bound assertions. The coverage-instrumented UI run disables
+collection parallelization so coverage stays complete and deterministic across
+runners; the ordinary test target keeps the suite's normal parallel execution.
+The terminal and UI coverage commands run one after the other, and a failure in
+either stops the target. The workflow badge in the
+[README](../../README.md#sharpvision) reflects that automation.
+
+Both instrumented suites share one coverage settings file, selected by platform.
+Linux uses
+[`tests/coverage.dynamic.config`](../../tests/coverage.dynamic.config) and every
+other platform uses
+[`tests/coverage.static.config`](../../tests/coverage.static.config). Static
+instrumentation rewrites each assembly and prefixes every basic block with a
+store into a memory-mapped probe buffer in the temporary directory. On Linux the
+coverage host rewrites that buffer in place while the test host still has it
+mapped, and a probe that stores into the resulting unbacked page terminates the
+process with an `AccessViolationException` attributed to whichever managed
+method was executing — a roaming, unreproducible failure that has no
+relationship to the blamed code. Dynamic instrumentation collects through the
+profiler and creates no such buffer. It is confined to Linux because the
+profiler ships only for a limited set of runtime identifiers, and on the ones it
+does not cover, such as macOS arm64, it silently reports no coverage at all.
+
+Dynamic instrumentation hooks every managed method, so an absolute wall-clock
+budget measured under it gates the profiler instead of the product. Those
+budgets skip while a profiler is attached, and `make test-ci` re-runs the whole
+`SharpVision.Tests.Performance` namespace without instrumentation afterwards so
+they stay enforced. Budgets expressed as a ratio between two measurements taken
+in the same process are unaffected, because both sides carry the same overhead,
+and keep running inside the instrumented pass.
 
 ## Local command mapping
 
