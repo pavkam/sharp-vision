@@ -345,15 +345,17 @@ public sealed class Calendar: Control<CalendarStyle>
             return false;
         }
 
-        SetActiveDate(date);
-
         if (SelectionMode == CalendarSelectionMode.Select)
         {
+            // CommitSelection sets ActiveDate to interval.Start (== date) at :954.
             return CommitSelection(new DateInterval(date, date));
         }
 
         if (_intervalAnchor is not { } anchor)
         {
+            // CommitSelection(null) skips the ActiveDate assignment entirely, so the first
+            // interval endpoint needs its own explicit move.
+            SetActiveDate(date);
             _ = CommitSelection(null);
             SetIntervalAnchor(date);
             return true;
@@ -363,11 +365,15 @@ public sealed class Calendar: Control<CalendarStyle>
             ? new DateInterval(date, anchor)
             : new DateInterval(anchor, date);
 
+        // Validate before moving the active date or repaging DisplayMonth (see #285): a
+        // rejected endpoint must leave both untouched, matching "every selection is checked
+        // before any state changes."
         if (BlockedDates.Intersects(interval))
         {
             return false;
         }
 
+        SetActiveDate(date);
         SetIntervalAnchor(null);
         return CommitSelection(interval);
     }
@@ -1000,7 +1006,14 @@ public sealed class Calendar: Control<CalendarStyle>
 
         if (!BlockedDates.Contains(clamped))
         {
-            SetActiveDate(clamped);
+            // No change to the active date must not repage the caller-owned DisplayMonth
+            // (see #285): SetActiveDate always repages, but repair only needs to move the
+            // active date when it actually moved.
+            if (clamped != ActiveDate)
+            {
+                SetActiveDate(clamped);
+            }
+
             return;
         }
 

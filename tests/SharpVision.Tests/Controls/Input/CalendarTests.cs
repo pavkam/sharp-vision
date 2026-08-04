@@ -736,6 +736,129 @@ public sealed class CalendarTests
         containsEnd.ShouldBeTrue();
     }
 
+    /// <summary>Verifies blocking an unrelated date does not repage a caller-set DisplayMonth
+    /// when the active date does not move (see #285).</summary>
+    [Fact]
+    public void Block_WhenActiveDateDoesNotMove_PreservesCallerSetDisplayMonth()
+    {
+        // Arrange
+        var active = new DateOnly(2026, 8, 4);
+        using var calendar = new UiCalendar { Selection = new DateInterval(active, active) };
+        calendar.DisplayMonth = new DateOnly(2026, 1, 1);
+
+        // Act
+        calendar.BlockedDates.Block(new DateOnly(2030, 6, 6));
+
+        // Assert
+        calendar.DisplayMonth.ShouldBe(new DateOnly(2026, 1, 1));
+        calendar.ActiveDate.ShouldBe(active);
+    }
+
+    /// <summary>Verifies widening MinimumDate or MaximumDate, which repairs nothing, does not
+    /// repage a caller-set DisplayMonth (see #285).</summary>
+    [Fact]
+    public void Bounds_WhenWidenedAndActiveDateDoesNotMove_PreservesCallerSetDisplayMonth()
+    {
+        // Arrange
+        var active = new DateOnly(2026, 8, 4);
+        using var calendar = new UiCalendar { Selection = new DateInterval(active, active) };
+        calendar.DisplayMonth = new DateOnly(2026, 1, 1);
+
+        // Act
+        calendar.MinimumDate = new DateOnly(1900, 1, 1);
+        calendar.MaximumDate = new DateOnly(2999, 12, 31);
+
+        // Assert
+        calendar.DisplayMonth.ShouldBe(new DateOnly(2026, 1, 1));
+        calendar.ActiveDate.ShouldBe(active);
+    }
+
+    /// <summary>Verifies unblocking a date does not repage a caller-set DisplayMonth when the
+    /// active date does not move (see #285).</summary>
+    [Fact]
+    public void Unblock_WhenActiveDateDoesNotMove_PreservesCallerSetDisplayMonth()
+    {
+        // Arrange
+        var active = new DateOnly(2026, 8, 4);
+        using var calendar = new UiCalendar { Selection = new DateInterval(active, active) };
+        calendar.BlockedDates.Block(new DateOnly(2030, 6, 6));
+        calendar.DisplayMonth = new DateOnly(2026, 1, 1);
+
+        // Act
+        calendar.BlockedDates.Unblock(new DateOnly(2030, 6, 6));
+
+        // Assert
+        calendar.DisplayMonth.ShouldBe(new DateOnly(2026, 1, 1));
+        calendar.ActiveDate.ShouldBe(active);
+    }
+
+    /// <summary>Verifies clearing an already-populated blocked collection does not repage a
+    /// caller-set DisplayMonth when the active date does not move (see #285).</summary>
+    [Fact]
+    public void Clear_WhenActiveDateDoesNotMove_PreservesCallerSetDisplayMonth()
+    {
+        // Arrange
+        var active = new DateOnly(2026, 8, 4);
+        using var calendar = new UiCalendar { Selection = new DateInterval(active, active) };
+        calendar.BlockedDates.Block(new DateOnly(2030, 6, 6));
+        calendar.DisplayMonth = new DateOnly(2026, 1, 1);
+
+        // Act
+        calendar.BlockedDates.Clear();
+
+        // Assert
+        calendar.DisplayMonth.ShouldBe(new DateOnly(2026, 1, 1));
+        calendar.ActiveDate.ShouldBe(active);
+    }
+
+    /// <summary>Verifies the documented example (calendar.md) sets its DisplayMonth before
+    /// blocking a range and the block does not silently repage it (see #285).</summary>
+    [Fact]
+    public void Block_WhenFollowingDocumentedExample_KeepsAuthoredDisplayMonth()
+    {
+        // Arrange
+        using var booking = new UiCalendar
+        {
+            SelectionMode = CalendarSelectionMode.Interval,
+            DisplayMonth = new DateOnly(2026, 7, 1)
+        };
+
+        // Act
+        booking.BlockedDates.Block(
+            new DateInterval(new DateOnly(2026, 7, 12), new DateOnly(2026, 7, 14)));
+
+        // Assert
+        booking.DisplayMonth.ShouldBe(new DateOnly(2026, 7, 1));
+    }
+
+    /// <summary>Verifies a rejected interval endpoint - one whose span crosses a blocked date -
+    /// leaves ActiveDate and DisplayMonth untouched, rather than committing the anchor move
+    /// before the rejection is discovered (see #285).</summary>
+    [Fact]
+    public void ActivateDate_WhenIntervalCrossesBlockedDate_LeavesActiveDateAndDisplayMonthUntouched()
+    {
+        // Arrange
+        var anchor = new DateOnly(2026, 7, 10);
+        using var calendar = new UiCalendar
+        {
+            SelectionMode = CalendarSelectionMode.Interval,
+            DisplayMonth = new DateOnly(2026, 7, 1)
+        };
+        calendar.BlockedDates.Block(new DateOnly(2026, 7, 15));
+        _ = calendar.ActivateDate(anchor);
+        var activeBeforeReject = calendar.ActiveDate;
+        var displayBeforeReject = calendar.DisplayMonth;
+
+        // Act
+        var accepted = calendar.ActivateDate(new DateOnly(2026, 8, 2));
+
+        // Assert
+        accepted.ShouldBeFalse();
+        calendar.ActiveDate.ShouldBe(activeBeforeReject);
+        calendar.DisplayMonth.ShouldBe(displayBeforeReject);
+        calendar.IntervalAnchor.ShouldBe(anchor);
+    }
+
     #endregion
 
     #region Helpers
