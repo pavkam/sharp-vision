@@ -119,30 +119,63 @@ public sealed class TextInput: ControlBase
     }
 
     /// <summary>Gets or sets whether user input may mutate text.</summary>
+    /// <remarks>Setting this to true clears the retained undo and redo history, since a
+    /// pre-existing entry could otherwise re-commit a state this policy would now refuse to
+    /// create by any other route (see #273).</remarks>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public bool IsReadOnly
     {
         get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
+        set
+        {
+            var tightened = value && !field;
+
+            if (SetProperty(ref field, value, InvalidationImpact.Render) && tightened)
+            {
+                ClearHistory();
+            }
+        }
     }
 
     /// <summary>Gets or sets whether inserted CR or LF values are accepted.</summary>
+    /// <remarks>Clearing this clears the retained undo and redo history, since a pre-existing
+    /// entry could otherwise re-commit embedded CR/LF text this policy would now refuse to
+    /// create by any other route (see #273).</remarks>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public bool AcceptsReturn
     {
         get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+        set
+        {
+            var tightened = !value && field;
+
+            if (SetProperty(ref field, value, InvalidationImpact.Measure) && tightened)
+            {
+                ClearHistory();
+            }
+        }
     }
 
     /// <summary>Gets or sets whether inserted tab values are accepted.</summary>
+    /// <remarks>Clearing this clears the retained undo and redo history, since a pre-existing
+    /// entry could otherwise re-commit embedded tab text this policy would now refuse to create
+    /// by any other route (see #273).</remarks>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public bool AcceptsTab
     {
         get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+        set
+        {
+            var tightened = !value && field;
+
+            if (SetProperty(ref field, value, InvalidationImpact.Measure) && tightened)
+            {
+                ClearHistory();
+            }
+        }
     }
 
     /// <summary>Gets or sets the optional printable narrow display mask.</summary>
@@ -164,6 +197,9 @@ public sealed class TextInput: ControlBase
     }
 
     /// <summary>Gets or sets zero for unlimited or a positive maximum grapheme count.</summary>
+    /// <remarks>Lowering this to a smaller positive value, or from unlimited (zero) to any
+    /// positive value, clears the retained undo and redo history, since a pre-existing entry
+    /// could otherwise re-commit text exceeding this policy by any other route (see #273).</remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="ArgumentException">The current text exceeds a non-zero value.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -180,7 +216,12 @@ public sealed class TextInput: ControlBase
                 throw new ArgumentException("MaxLength cannot exclude current text.", nameof(value));
             }
 
-            _ = SetProperty(ref field, value, InvalidationImpact.None);
+            var tightened = value > 0 && (field == 0 || value < field);
+
+            if (SetProperty(ref field, value, InvalidationImpact.None) && tightened)
+            {
+                ClearHistory();
+            }
         }
     }
 
@@ -684,9 +725,16 @@ public sealed class TextInput: ControlBase
             TextChanged = null;
             SelectionChanged = null;
             Submitted = null;
-            _undo.Clear();
-            _redo.Clear();
+            ClearHistory();
         }
+    }
+
+    /// <summary>Clears both retained history stacks, so CanUndo/CanRedo report false and neither
+    /// Undo() nor Redo() can execute a stale entry.</summary>
+    private void ClearHistory()
+    {
+        _undo.Clear();
+        _redo.Clear();
     }
 
     /// <inheritdoc/>
@@ -1708,12 +1756,24 @@ public sealed class TextInput: ControlBase
     {
         VerifyMutable();
 
-        if (source.Count == 0)
+        // Restore is the only edit path that commits a stored snapshot without going through
+        // Edit.Replace, so it is the only one that can re-commit a state a currently tightened
+        // policy (IsReadOnly, MaxLength, AcceptsReturn, AcceptsTab) would refuse to create by
+        // any other route (see #273). Snapshots are validated against the policy in force when
+        // recorded, then re-committed under whatever policy is in force later; without this
+        // check, tightening a policy after edits exist is retroactively bypassable by one undo.
+        if (IsReadOnly || source.Count == 0)
         {
             return false;
         }
 
         var snapshot = source[^1];
+
+        if (!IsPermittedByPolicy(snapshot.Text))
+        {
+            return false;
+        }
+
         var current = new EditResult(Text, _selection, false);
 
         if (!Commit(new EditResult(snapshot.Text, snapshot.Selection, true), false))
@@ -1724,6 +1784,14 @@ public sealed class TextInput: ControlBase
         source.RemoveAt(source.Count - 1);
         Push(destination, current);
         return true;
+    }
+
+    /// <summary>Determines whether a text value survives the current editing policy unchanged,
+    /// reusing the same validator the Text setter applies rather than duplicating policy logic.</summary>
+    private bool IsPermittedByPolicy(string text)
+    {
+        var validated = Edit.Replace(string.Empty, default, text, MaxLength, AcceptsReturn, AcceptsTab);
+        return string.Equals(validated.Text, text, StringComparison.Ordinal);
     }
 
     private void Push(List<EditResult> history, EditResult value)

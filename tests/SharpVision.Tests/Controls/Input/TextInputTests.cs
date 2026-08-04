@@ -285,6 +285,79 @@ public sealed class TextInputTests
         control.Redo().ShouldBeFalse();
     }
 
+    /// <summary>Verifies setting IsReadOnly clears retained history, so Undo() cannot delete text
+    /// from an editor the application just locked (see #273).</summary>
+    [Fact]
+    public void IsReadOnly_WhenSetTrueWithLiveHistory_ClearsHistorySoUndoCannotMutate()
+    {
+        var control = new TextInput { Text = "value" };
+        control.CanUndo.ShouldBeTrue();
+
+        control.IsReadOnly = true;
+
+        control.CanUndo.ShouldBeFalse();
+        control.Undo().ShouldBeFalse();
+        control.Text.ShouldBe("value");
+    }
+
+    /// <summary>Verifies lowering MaxLength below the length an undo entry would restore clears
+    /// retained history, so Undo() cannot recreate text the control could not otherwise hold and
+    /// then reject its own configuration being re-applied (see #273).</summary>
+    [Fact]
+    public void MaxLength_WhenLoweredBelowAnUndoEntry_ClearsHistorySoUndoCannotExceedIt()
+    {
+        var control = new TextInput { Text = "abcdef" };
+        control.Text = "abc";
+        control.CanUndo.ShouldBeTrue();
+
+        control.MaxLength = 3;
+
+        control.CanUndo.ShouldBeFalse();
+        control.Undo().ShouldBeFalse();
+        control.Text.ShouldBe("abc");
+        _ = Should.NotThrow(() => control.MaxLength = 3);
+    }
+
+    /// <summary>Verifies clearing AcceptsReturn clears retained history, so Undo() cannot
+    /// reintroduce an embedded line feed into a single-line editor - and the next Enter still
+    /// submits single-line text, per the Submitted contract (see #273).</summary>
+    [Fact]
+    public void AcceptsReturn_WhenClearedWithLiveHistory_ClearsHistorySoUndoCannotReintroduceNewline()
+    {
+        var control = new TextInput { AcceptsReturn = true, Text = "a\nb" };
+        control.Text = "ab";
+        control.CanUndo.ShouldBeTrue();
+
+        control.AcceptsReturn = false;
+
+        control.CanUndo.ShouldBeFalse();
+        control.Undo().ShouldBeFalse();
+        control.Text.ShouldBe("ab");
+
+        SubmittedEventArgs? submitted = null;
+        control.Submitted += (_, eventArgs) => submitted = eventArgs;
+        Key(control, Code.Enter, Modifiers.None);
+
+        _ = submitted.ShouldNotBeNull();
+        submitted.Text.ShouldBe("ab");
+    }
+
+    /// <summary>Verifies clearing AcceptsTab clears retained history, so Undo() cannot
+    /// reintroduce an embedded tab into an editor that now rejects them (see #273).</summary>
+    [Fact]
+    public void AcceptsTab_WhenClearedWithLiveHistory_ClearsHistorySoUndoCannotReintroduceTab()
+    {
+        var control = new TextInput { AcceptsTab = true, Text = "a\tb" };
+        control.Text = "ab";
+        control.CanUndo.ShouldBeTrue();
+
+        control.AcceptsTab = false;
+
+        control.CanUndo.ShouldBeFalse();
+        control.Undo().ShouldBeFalse();
+        control.Text.ShouldBe("ab");
+    }
+
     /// <summary>Verifies read-only suppresses mutation while single-line Enter submits committed text.</summary>
     [Fact]
     public void Dispatch_WhenReadOnlyOrSubmitted_UsesDocumentedBehavior()
