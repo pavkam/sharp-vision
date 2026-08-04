@@ -181,8 +181,8 @@ public sealed class Grid: Container
         var columns = Definitions(Columns);
 
         MeasureChildren(new Constraint(width: null, height: null));
-        var rowRequests = Requests(rows.Length, rows: true);
-        var columnRequests = Requests(columns.Length, rows: false);
+        var rowRequests = Requests(rows.Length, rows: true, rows, constraint.Height);
+        var columnRequests = Requests(columns.Length, rows: false, columns, constraint.Width);
         var rowExtents = Resolve(constraint.Height, RowSpacing, rows, rowRequests);
         var columnExtents = Resolve(constraint.Width, ColumnSpacing, columns, columnRequests);
 
@@ -194,14 +194,14 @@ public sealed class Grid: Container
             columnExtents,
             constraint.Height,
             constraint.Width);
-        columnRequests = Requests(columns.Length, rows: false);
+        columnRequests = Requests(columns.Length, rows: false, columns, constraint.Width);
         columnExtents = Resolve(constraint.Width, ColumnSpacing, columns, columnRequests);
 
         // Automatic rows must let wrapped children report their newly expanded
         // height after finite column widths are known. The initial row extent is
         // only a probe and would otherwise cap the remeasure to one old line.
         MeasureAutomaticRows(rows, columnExtents, constraint.Width);
-        rowRequests = Requests(rows.Length, rows: true);
+        rowRequests = Requests(rows.Length, rows: true, rows, constraint.Height);
         rowExtents = Resolve(constraint.Height, RowSpacing, rows, rowRequests);
 
         _lastResolvedContentConstraint = constraint;
@@ -217,8 +217,8 @@ public sealed class Grid: Container
         ValidatePlacements();
         var rows = Definitions(Rows);
         var columns = Definitions(Columns);
-        var rowRequests = Requests(rows.Length, rows: true);
-        var columnRequests = Requests(columns.Length, rows: false);
+        var rowRequests = Requests(rows.Length, rows: true, rows, bounds.Height);
+        var columnRequests = Requests(columns.Length, rows: false, columns, bounds.Width);
         var rowExtents = Resolve(bounds.Height, RowSpacing, rows, rowRequests);
         var columnExtents = Resolve(bounds.Width, ColumnSpacing, columns, columnRequests);
 
@@ -232,10 +232,10 @@ public sealed class Grid: Container
         if (viewportChanged)
         {
             MeasureChildren(rowExtents, columnExtents, bounds.Height, bounds.Width);
-            columnRequests = Requests(columns.Length, rows: false);
+            columnRequests = Requests(columns.Length, rows: false, columns, bounds.Width);
             columnExtents = Resolve(bounds.Width, ColumnSpacing, columns, columnRequests);
             MeasureAutomaticRows(rows, columnExtents, bounds.Width);
-            rowRequests = Requests(rows.Length, rows: true);
+            rowRequests = Requests(rows.Length, rows: true, rows, bounds.Height);
             rowExtents = Resolve(bounds.Height, RowSpacing, rows, rowRequests);
 
             // Children now describe bounds, not the constraint MeasureOverride last recorded. A
@@ -436,9 +436,10 @@ public sealed class Grid: Container
         return result;
     }
 
-    private int[] Requests(int count, bool rows)
+    private int[] Requests(int count, bool rows, ReadOnlySpan<Track> definitions, int? available)
     {
         Debug.Assert(count >= 1, "Grid requests require at least one track.");
+        Debug.Assert(definitions.Length == count, "Every track has one definition.");
 
         var result = new int[count];
 
@@ -464,8 +465,23 @@ public sealed class Grid: Container
             result[origin] = Math.Max(result[origin], desired);
         }
 
-        // Spanning requests expand the established tracks only by the cells
-        // still required after their internal Grid gaps are accounted for.
+        // ResolveCore reads the automatic request back only for the "absorbing" kinds - Auto
+        // alone when bounded, everything except Cells when unbounded (see #272). A spanning
+        // child's request must therefore be deposited only into the span's absorbing tracks,
+        // net of the extent the span's own non-absorbing tracks (Cells always; Percent and Star
+        // when bounded) already independently contribute - otherwise that contribution is
+        // silently discarded rather than counted, and a non-Auto-only span degrades to a
+        // fraction of the child's intrinsic size.
+        var spacing = rows ? RowSpacing : ColumnSpacing;
+        var resolvedNonAbsorbing = available.HasValue
+            ? Resolve(available, spacing, definitions, result)
+            : null;
+
+        // Spanning requests expand the span's absorbing tracks only by the cells still required
+        // after their internal Grid gaps and the span's already-resolvable extent are accounted
+        // for.
+        List<int>? absorbing = null;
+
         foreach (var child in Children)
         {
             if (child.Visibility == Visibility.Collapsed)
@@ -484,12 +500,75 @@ public sealed class Grid: Container
             var desired = rows
                 ? child.DesiredSize.Height.Add(child.Margin.Vertical)
                 : child.DesiredSize.Width.Add(child.Margin.Horizontal);
-            var spacing = rows ? RowSpacing : ColumnSpacing;
             var internalSpacing = Spacing(spacing, span, desired);
-            Tracks.Satisfy(result, origin, span, Math.Max(0, desired - internalSpacing));
+            var required = Math.Max(0, desired - internalSpacing);
+
+            absorbing ??= new List<int>(count);
+            absorbing.Clear();
+            var reserved = 0;
+
+            for (var index = origin; index < origin + span; index++)
+            {
+                var isAbsorbing = available.HasValue
+                    ? definitions[index].Length.Kind == LengthKind.Auto
+                    : definitions[index].Length.Kind != LengthKind.Cells;
+
+                if (isAbsorbing)
+                {
+                    absorbing.Add(index);
+                }
+                else
+                {
+                    reserved += available.HasValue
+                        ? resolvedNonAbsorbing![index]
+                        : (int) definitions[index].Length.Value;
+                }
+            }
+
+            if (absorbing.Count == 0)
+            {
+                // No track in the span reads the automatic request back - a fixed-only span
+                // (for example Cells + Cells) genuinely caps the child, matching Tracks'
+                // documented, deliberately kind-blind Satisfy contract for that case.
+                continue;
+            }
+
+            SatisfyAbsorbing(result, absorbing, Math.Max(0, required - reserved));
         }
 
         return result;
+    }
+
+    /// <summary>Distributes a deficit across a possibly non-contiguous set of absorbing track
+    /// indices using the same deterministic cumulative-ratio rounding
+    /// <see cref="Tracks.Satisfy"/> uses for a contiguous span, since a spanning child's
+    /// absorbing tracks are not necessarily adjacent once non-absorbing tracks in the span are
+    /// excluded.</summary>
+    private static void SatisfyAbsorbing(int[] tracks, List<int> indices, int required)
+    {
+        Debug.Assert(indices.Count > 0, "Absorbing distribution requires at least one track.");
+
+        var current = 0L;
+
+        foreach (var index in indices)
+        {
+            current += tracks[index];
+        }
+
+        if (current >= required)
+        {
+            return;
+        }
+
+        var deficit = required - (int) current;
+        var previous = 0;
+
+        for (var offset = 0; offset < indices.Count; offset++)
+        {
+            var edge = (int) ((((long) deficit * (offset + 1)) + (indices.Count / 2L)) / indices.Count);
+            tracks[indices[offset]] += edge - previous;
+            previous = edge;
+        }
     }
 
     private void MeasureChildren(Constraint constraint)

@@ -83,6 +83,136 @@ public sealed class GridTests
         child.Bounds.ShouldBe(new Rect(0, 0, 5, 1));
     }
 
+    /// <summary>Verifies a child spanning a Cells track and an Auto track gets its full
+    /// intrinsic width, instead of the Cells track's deposited cells being silently discarded
+    /// because Tracks.ResolveCore only reads the automatic request back for Auto (see #272).</summary>
+    [Fact]
+    public void Measure_WhenChildSpansCellsAndAutoColumns_ReceivesFullIntrinsicWidth()
+    {
+        var grid = new Grid();
+        grid.Columns.Add(Track.Cells(4));
+        grid.Columns.Add(Track.Auto());
+        var child = new ProbeControl(new Size(20, 1));
+        Grid.SetColumnSpan(child, 2);
+        grid.Children.Add(child);
+
+        new LayoutEngine().Layout(grid, new Size(60, 5));
+
+        grid.DesiredSize.Width.ShouldBe(20);
+        child.Bounds.Width.ShouldBe(20);
+    }
+
+    /// <summary>Verifies the same Cells + Auto span receives its full intrinsic width from the
+    /// unbounded intrinsic measure path too, since the unbounded branch's absorbing set (every
+    /// kind except Cells) differs from the bounded branch's (Auto only) (see #272).</summary>
+    [Fact]
+    public void Measure_WhenChildSpansCellsAndAutoColumnsUnbounded_ReceivesFullIntrinsicWidth()
+    {
+        var grid = new Grid();
+        grid.Columns.Add(Track.Cells(4));
+        grid.Columns.Add(Track.Auto());
+        var child = new ProbeControl(new Size(20, 1));
+        Grid.SetColumnSpan(child, 2);
+        grid.Children.Add(child);
+
+        grid.Measure(new Constraint(null, null));
+
+        grid.DesiredSize.Width.ShouldBe(20);
+    }
+
+    /// <summary>Verifies a child spanning a Percent track and an Auto track gets its full
+    /// intrinsic width (see #272).</summary>
+    [Fact]
+    public void Measure_WhenChildSpansPercentAndAutoColumns_ReceivesFullIntrinsicWidth()
+    {
+        var grid = new Grid();
+        grid.Columns.Add(Track.Percent(10));
+        grid.Columns.Add(Track.Auto());
+        var child = new ProbeControl(new Size(20, 1));
+        Grid.SetColumnSpan(child, 2);
+        grid.Children.Add(child);
+
+        new LayoutEngine().Layout(grid, new Size(60, 5));
+
+        grid.DesiredSize.Width.ShouldBe(20);
+        child.Bounds.Width.ShouldBe(20);
+    }
+
+    /// <summary>Verifies row spans over a Cells + Auto pair also receive the full intrinsic
+    /// height, since the defect is not axis-specific (see #272).</summary>
+    [Fact]
+    public void Measure_WhenChildSpansCellsAndAutoRows_ReceivesFullIntrinsicHeight()
+    {
+        var grid = new Grid();
+        grid.Rows.Add(Track.Cells(2));
+        grid.Rows.Add(Track.Auto());
+        var child = new ProbeControl(new Size(5, 10));
+        Grid.SetRowSpan(child, 2);
+        grid.Children.Add(child);
+
+        new LayoutEngine().Layout(grid, new Size(60, 40));
+
+        grid.DesiredSize.Height.ShouldBe(10);
+        child.Bounds.Height.ShouldBe(10);
+    }
+
+    /// <summary>Verifies a three-track span over two Cells tracks and one Auto track receives
+    /// its full intrinsic width, so a wider span does not degrade proportionally worse
+    /// (see #272).</summary>
+    [Fact]
+    public void Measure_WhenChildSpansThreeTracksMixingCellsAndAuto_ReceivesFullIntrinsicWidth()
+    {
+        var grid = new Grid();
+        grid.Columns.Add(Track.Cells(2));
+        grid.Columns.Add(Track.Cells(2));
+        grid.Columns.Add(Track.Auto());
+        var child = new ProbeControl(new Size(30, 1));
+        Grid.SetColumnSpan(child, 3);
+        grid.Children.Add(child);
+
+        new LayoutEngine().Layout(grid, new Size(80, 5));
+
+        grid.DesiredSize.Width.ShouldBe(30);
+        child.Bounds.Width.ShouldBe(30);
+    }
+
+    /// <summary>Verifies the fix is order-independent: an Auto track before a Cells track in
+    /// the span behaves the same as a Cells track before an Auto track (see #272).</summary>
+    [Fact]
+    public void Measure_WhenChildSpansAutoThenCellsColumns_ReceivesFullIntrinsicWidth()
+    {
+        var grid = new Grid();
+        grid.Columns.Add(Track.Auto());
+        grid.Columns.Add(Track.Cells(4));
+        var child = new ProbeControl(new Size(10, 1));
+        Grid.SetColumnSpan(child, 2);
+        grid.Children.Add(child);
+
+        new LayoutEngine().Layout(grid, new Size(60, 5));
+
+        grid.DesiredSize.Width.ShouldBe(10);
+        child.Bounds.Width.ShouldBe(10);
+    }
+
+    /// <summary>Verifies a span over two Cells tracks still caps the child at their combined
+    /// fixed width, since neither track is absorbing and Tracks' Satisfy contract is
+    /// deliberately kind-blind for that case (see #272).</summary>
+    [Fact]
+    public void Measure_WhenChildSpansTwoCellsColumns_CapsAtCombinedFixedWidth()
+    {
+        var grid = new Grid();
+        grid.Columns.Add(Track.Cells(4));
+        grid.Columns.Add(Track.Cells(4));
+        var child = new ProbeControl(new Size(20, 1));
+        Grid.SetColumnSpan(child, 2);
+        grid.Children.Add(child);
+
+        new LayoutEngine().Layout(grid, new Size(60, 5));
+
+        grid.DesiredSize.Width.ShouldBe(8);
+        child.Bounds.Width.ShouldBe(8);
+    }
+
     /// <summary>Verifies min/max clipping redistributes remaining star cells.</summary>
     [Fact]
     public void Layout_WhenStarTrackHasMaximum_RedistributesRemainder()
