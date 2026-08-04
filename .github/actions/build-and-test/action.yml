@@ -23,6 +23,12 @@ inputs:
       matrix finishes faster. Must be back to false before this lands on main.
     required: false
     default: "false"
+  coverage-settings:
+    description: >-
+      Code-coverage settings file passed to both instrumented suites. Selects static or dynamic
+      managed instrumentation while #32 is under investigation.
+    required: false
+    default: tests/coverage.static.config
 
 runs:
   using: composite
@@ -150,6 +156,8 @@ runs:
 
     - name: 🧪 Test with coverage
       shell: bash
+      env:
+        COVERAGE_SETTINGS: ${{ inputs.coverage-settings }}
       run: make test-ci CONFIGURATION=${{ inputs.configuration }}
 
     - name: 🧪 Test controlling-terminal Unix console host
@@ -187,12 +195,18 @@ runs:
         fi
         echo "::endgroup::"
 
-        # Static instrumentation rewrites assemblies in place and leaves a .orig beside each one.
-        # Its presence rules the profiler-environment route out and confirms the rewrite route.
+        # Static instrumentation rewrites assemblies in place and leaves a .orig beside each one;
+        # dynamic instrumentation loads a profiler instead and creates no probe buffer at all.
         echo "::group::Instrumentation mode"
-        find tests -name '*.dll.orig' -printf '%p %s\n' 2>/dev/null | head -20 || true
-        env | grep -iE '^(CORECLR_|COR_|MicrosoftInstrumentationEngine|CodeCoverage|CODE_COVERAGE)' || \
-          echo "No profiler environment variables are set in the job shell."
+        echo "settings: ${{ inputs.coverage-settings }}"
+        find tests -name '*.dll.orig' -printf '%p %s\n' 2>/dev/null | head -20 || \
+          echo "No statically rewritten assemblies were left behind."
+        echo "::endgroup::"
+
+        echo "::group::Coverage totals"
+        for report in $(find tests -name '*.cobertura.xml' 2>/dev/null | head -4); do
+          echo "$report: $(head -c 400 "$report" | tr -d '\n' | grep -o 'line-rate="[^"]*"' | head -1)"
+        done
         echo "::endgroup::"
 
         echo "::group::Crash reports"
