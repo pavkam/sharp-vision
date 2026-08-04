@@ -72,6 +72,70 @@ public sealed class ContextMenuSurfaceTests
         menu.IsOpen.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a ContextMenu assigned and shown in the same dispatcher turn actually
+    /// paints, rather than opening with Bounds stuck at default because the newly spliced,
+    /// never-laid-out popup's own Pending == All request was swallowed by the owner's
+    /// None-impact slot (see #275).</summary>
+    [Fact]
+    public async Task Show_WhenAssignedAndShownInTheSameTurn_PaintsAsync()
+    {
+        var button = new Button
+        {
+            Text = "Target",
+            Width = Length.Cells(10),
+            Height = Length.Cells(1)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            button, new Size(30, 10), TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                var menu = new ContextMenu();
+                menu.Items.Add(new MenuItem { Text = "Inspect" });
+                button.ContextMenu = menu;
+                menu.Show(2, 2);
+            },
+            "assign and show a context menu in one turn");
+
+        var menu = button.ContextMenu.ShouldNotBeNull();
+        var popup = (Popup) menu.Presentation;
+
+        menu.IsOpen.ShouldBeTrue();
+        popup.SurfaceBounds.ShouldNotBe(default);
+        surface.Cell(new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Y)).Text.ShouldNotBeNullOrEmpty();
+    }
+
+    /// <summary>Verifies detaching an open ContextMenu's owner repaints the popup's vacated
+    /// cells, rather than leaving them stale under the None-impact slot's missing Render floor
+    /// on removal (see #275).</summary>
+    [Fact]
+    public async Task ContextMenu_WhenOwnerDetachesWhileOpen_RepaintsVacatedCellsAsync()
+    {
+        var menu = new ContextMenu();
+        menu.Items.Add(new MenuItem { Text = "Inspect" });
+        var button = new Button
+        {
+            Text = "Target",
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            ContextMenu = menu
+        };
+        var host = new Overlay { Children = { button } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host, new Size(30, 10), TestContext.Current.CancellationToken);
+        await surface.Pointer.RightClickAsync(button);
+        menu.IsOpen.ShouldBeTrue();
+        var popup = (Popup) menu.Presentation;
+        var openBounds = popup.SurfaceBounds;
+        var openText = surface.Cell(new Point(openBounds.X, openBounds.Y)).Text;
+        openText.ShouldNotBeNullOrEmpty();
+
+        await surface.UpdateAsync(() => host.Children.Remove(button), "detach the context menu's owner while open");
+
+        surface.Cell(new Point(openBounds.X, openBounds.Y)).Text.ShouldNotBe(openText);
+    }
+
     /// <summary>Verifies right-click on a TextInput opens the default TextInputContextMenu.</summary>
     [ComponentBehaviorEvidence(
         typeof(TextInputContextMenu),

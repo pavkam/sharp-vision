@@ -732,7 +732,34 @@ internal sealed class OwnedControlRegistry
             }
 
             invalidated = true;
-            Owner.Invalidate(ControlBase.InvalidationFor(slot.Options.Impact));
+
+            // A newly spliced root can still carry its construction-default Pending == All
+            // (or any other unretired invalidation), which the owner's own Invalidate would
+            // otherwise never learn about under an Invalidation.None slot impact - breaking
+            // the propagation invariant that a parent becomes dirty whenever any owned
+            // descendant needs work (see #275). Union the slot's own impact with whatever the
+            // added roots still owe, floor to Render when anything was removed so stale cells
+            // are repainted, and normalize to the earliest single named phase, since Expand
+            // only closes over dependents for the named singletons.
+            var invalidation = ControlBase.InvalidationFor(slot.Options.Impact);
+
+            foreach (var control in added)
+            {
+                invalidation |= control.Pending;
+            }
+
+            if (removed.Count > 0)
+            {
+                invalidation |= Invalidation.Render;
+            }
+
+            var normalized =
+                (invalidation & Invalidation.Measure) != Invalidation.None ? Invalidation.Measure
+                : (invalidation & Invalidation.Arrange) != Invalidation.None ? Invalidation.Arrange
+                : (invalidation & Invalidation.Render) != Invalidation.None ? Invalidation.Render
+                : Invalidation.None;
+
+            Owner.Invalidate(normalized);
         }
     }
 

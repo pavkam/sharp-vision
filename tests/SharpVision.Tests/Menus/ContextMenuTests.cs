@@ -16,6 +16,27 @@ public sealed class ContextMenuTests
         menu.Items.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies assigning a ContextMenu to an already-laid-out, clean control dirties
+    /// the owner - the None-impact context-menu slot must not leave the owner clean while its
+    /// newly spliced presentation still owes a full layout pass (see #275).</summary>
+    [Fact]
+    public void ContextMenu_WhenAssignedToLaidOutControl_DirtiesOwner()
+    {
+        // Arrange
+        var button = new Button { Text = "Target" };
+        var stack = new Stack { Children = { button } };
+        new LayoutEngine().Layout(stack, new Size(20, 4));
+        button.Clear(Invalidation.All);
+        stack.Clear(Invalidation.All);
+        button.Pending.ShouldBe(Invalidation.None);
+
+        // Act
+        button.ContextMenu = new ContextMenu();
+
+        // Assert
+        button.Pending.ShouldNotBe(Invalidation.None);
+    }
+
     /// <summary>Verifies PopupStyle applies to the owned popup without leaking it, and
     /// ResetPopupStyle returns it to the ThemeRole.Popup appearance (see #81).</summary>
     [Fact]
