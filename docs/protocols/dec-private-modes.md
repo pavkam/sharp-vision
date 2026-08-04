@@ -23,12 +23,12 @@ protocol states that rule, and value 3 ("permanently set") means supported for
 every mode except 2026, whose value encodes an in-progress update rather than a
 feature toggle.
 
-## Restoration and tests
+## Restoration lifecycle
 
 Shutdown, cancellation, transport failure, and exceptions attempt reverse-order
 restoration. Cleanup failure is diagnostic and never hides the original error.
-Tests cover nesting, duplicate enable/disable, partial initialization, missing
-responses, contradictory responses, and all failure exits.
+The observable evidence covers nesting, duplicate enable/disable, partial
+initialization, missing or contradictory responses, and every failure exit.
 
 Session leases own exact enable and disable bytes captured before their first
 write. Description lifecycle modes use complete compiled pairs; typed focus,
@@ -59,7 +59,7 @@ for invalid combinations.
 
 ## Sources
 
-- [XTerm Control Sequences, Patch #410](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
+- [XTerm Control Sequences, patch level 410](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
   defines the supported DECSET, DECRST, DECRQM, and DECRPM forms.
 
 Source accessed 2026-07-28.

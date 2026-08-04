@@ -108,7 +108,7 @@ ESC plus printable text represents Alt-modified text. Unknown valid tilde keys
 remain `Code.Unknown` with their numeric parameter, while malformed parameter
 grammars report a redacted diagnostic and recover at the next sequence.
 
-## Selection, fallback, and tests
+## Selection and fallback
 
 An explicit `TerminalProfile` wins before any provider call. Unix requests use
 the ncurses provider; Windows requests use the built-in provider only after VT
@@ -121,11 +121,11 @@ Unix provider. It does not replace the ambiguous missing-or-generic result
 because that result may represent an accepted generic entry, and it never hides
 provider failure.
 
-Tests pair each built-in command with its exact compiled source bytes, compare
-the fixed key map byte-for-byte, and prove provider-selection precedence and
-fallback exclusions. Existing typed command tests repeat representative input at
-every split. The frame encoder is independently checked against a semantic
-virtual terminal in the [rendering oracle](../testing/rendering.md#overview).
+The exact-byte evidence pairs each built-in command with its compiled source,
+compares the fixed key map byte-for-byte, and covers provider precedence and
+fallback exclusions. Representative typed input has the same result at every
+read split. The [rendering oracle](../testing/rendering.md#overview)
+independently compares frame output with a semantic virtual terminal.
 
 ## Sources
 

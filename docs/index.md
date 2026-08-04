@@ -17,6 +17,7 @@ showcase evidence agree.
 | Display terminal-safe images       | [Image control](controls/display/image.md#overview)                                   | [ImageSource ownership](concepts/images.md#overview)                                   |
 | Update the UI from background work | [Background work](walkthroughs/background-work.md#background-work-and-the-dispatcher) | [Threading](concepts/threading.md#overview)                                            |
 | Use terminal capabilities safely   | [Terminal services](walkthroughs/terminal-services.md#use-terminal-services)          | [Coverage matrix](protocols/coverage-matrix.md#coverage)                               |
+| Understand terminal protocols      | [Protocol guide](protocols/index.md#protocol-families)                                | [Discovery pipeline](architecture/discovery-pipeline.md#overview)                      |
 | Build a reusable component         | [Custom controls](walkthroughs/custom-controls.md#build-a-custom-control)             | [Control catalog](controls/index.md#control-catalog)                                   |
 | Understand floating UI             | [Floating surfaces](concepts/floating-surfaces.md#overview)                           | [Modality](concepts/modality.md#overview)                                              |
 | Understand the implementation      | [Architecture map](architecture/index.md#architecture-map)                            | [Terminal backends](architecture/terminal-backends.md#overview)                        |

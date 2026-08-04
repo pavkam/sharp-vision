@@ -19,8 +19,8 @@ When the implementation does not do what the page says yet, keep the intended
 behavior and mark the difference with an
 [implementation-gap callout](#implementation-gaps) right beside the affected
 rule. Never rewrite a page to bless an implementation shortcut: if the current
-behavior is a workaround, document the behavior users should get, flag the gap,
-and file a GitHub issue so the code catches up. The
+behavior is a workaround, document the behavior users should get and flag the
+gap. Track the implementation work outside the public documentation. The
 [coverage matrix](protocols/coverage-matrix.md#coverage) stays a factual list of
 what is implemented and verified today.
 
@@ -71,6 +71,26 @@ Cover, in this order:
 Use RFC 2119-style uppercase words only when quoting or defining protocol
 requirements that need that convention. Ordinary prose uses "must" sparingly and
 never presents planned behavior as if it worked today.
+
+Assume the reader knows C# but does not know SharpVision internals or terminal
+protocol vocabulary. Introduce each specialized term before using its acronym.
+For example, explain that a terminal description is a database entry containing
+commands and key sequences before discussing terminfo, and explain that evidence
+is a fact from a named source before discussing evidence precedence.
+
+Choose structure by the question the reader is trying to answer:
+
+| Reader question                         | Preferred structure                        |
+| --------------------------------------- | ------------------------------------------ |
+| What values or variants exist?          | Table with one row per value or variant.   |
+| What happens in a fixed order?          | Numbered list or sequence diagram.         |
+| Which branch or fallback is selected?   | Flowchart or decision table.               |
+| Which states can a value move between?  | State diagram.                             |
+| Who owns data or performs an operation? | Ownership table or responsibility diagram. |
+| What can go wrong?                      | Failure table with observable outcomes.    |
+
+Paragraphs explain why a rule exists. They do not hide a procedure, state
+machine, precedence order, or catalog that is clearer in one of these forms.
 
 ## API sections
 
@@ -123,12 +143,14 @@ place this GitHub callout immediately after it:
 > public type or subsystem. Do not promise a release date or hide the gap in a
 > testing-only section.
 
-Each gap should have a matching GitHub issue that describes the code change
-needed to close it. Use `NOTE` for compatibility details that do not conflict
-with the documented behavior and `WARNING` when current behavior can lose data,
-leak resources, weaken safety, or leave the terminal in an invalid state. Each
-gap stays local to the rule it affects so readers cannot mistake intended
-behavior for verified support.
+Each gap should have corresponding work tracked outside the public docs. Never
+include a GitHub issue identifier such as a hash followed by digits, an issue
+URL, or issue-tracker status in documentation. Those references go stale and
+tell readers nothing about the behavior they can rely on. Use `NOTE` for
+compatibility details that do not conflict with the documented behavior and
+`WARNING` when current behavior can lose data, leak resources, weaken safety, or
+leave the terminal in an invalid state. Each gap stays local to the rule it
+affects so readers cannot mistake intended behavior for verified support.
 
 ## Links and ownership
 
@@ -140,7 +162,8 @@ behavior for verified support.
   record an edition, version, or access date.
 - Paths, commands, type names, and member names match the current repository.
 - Reference pages contain no placeholder markers, delivery plans, internal
-  milestone names, vague edge-case promises, or speculative support claims.
+  milestone names, issue identifiers, vague edge-case promises, or speculative
+  support claims.
 - Multi-step lifetimes and ordered behavior use sequence or state diagrams.
   Ownership, inheritance, and graph relationships use class or flow diagrams.
 - Shared behavior such as invalidation, layout, rendering, input routing, and

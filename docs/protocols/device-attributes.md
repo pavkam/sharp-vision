@@ -2,8 +2,21 @@
 
 ## Overview
 
-DA1 uses `CSI c` or `CSI 0 c`; DA2 uses `CSI > c`. DEC private mode reports use
-DECRQM/DECRPM as specified in the
+Device-attribute and capability queries let SharpVision ask the terminal about
+optional behavior before enabling it. The request is not proof by itself: only a
+valid reply matched to an active query can refine capability evidence.
+
+The common query families are:
+
+| Name      | Purpose                                               | Request form               |
+| --------- | ----------------------------------------------------- | -------------------------- |
+| DA1       | Primary device attributes, including sixel support.   | `CSI c` or `CSI 0 c`       |
+| DA2       | Secondary device identity and firmware information.   | `CSI > c`                  |
+| DECRQM    | Ask whether one DEC private mode is active or usable. | Mode-specific CSI request. |
+| DECRQSS   | Ask for a bounded xterm status-string value.          | DCS status request.        |
+| XTGETTCAP | Ask for one allowlisted xterm capability value.       | DCS capability request.    |
+
+DEC private mode reports use DECRQM/DECRPM as specified in the
 [DEC mode contract](dec-private-modes.md#overview). xterm and Kitty add color,
 cell-size, keyboard, graphics, and clipboard queries.
 
@@ -30,10 +43,16 @@ but the startup batch does not issue it; see the
 
 ## Detection outcomes
 
-No response, partial, late, duplicate, conflicting, or spoofed responses leave
-the profile conservative. Multiplexer hints remain subordinate to explicit
-overrides, published capability values stay immutable, and timeouts never
-promote unknown support.
+| Observed outcome                      | Result                                                              |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| Valid reply for the active identity   | The query may refine its declared feature.                          |
+| No response or partial response       | Existing conservative evidence remains.                             |
+| Late or duplicate reply               | The reply stays observable but cannot change the published profile. |
+| Wrong identity or conflicting reply   | The active request remains protected from unrelated evidence.       |
+| Malformed, oversized, or spoofed data | The decoder rejects it and publishes only a redacted diagnostic.    |
+
+Multiplexer hints remain subordinate to explicit overrides, published capability
+values stay immutable, and timeouts never promote unknown support.
 
 ## Typed API and behavior
 
@@ -82,6 +101,25 @@ status reply is therefore late evidence and cannot silently enable the mode.
 
 ## Runtime startup batch
 
+```mermaid
+sequenceDiagram
+    participant Session
+    participant Tracker as QueryTracker
+    participant Terminal
+    participant App as Application dispatcher
+
+    Session->>Tracker: Register bounded query families
+    Session->>Terminal: Write one atomic query batch
+    loop Replies before the exclusive deadline
+        Terminal-->>Session: Fragmented protocol bytes
+        Session->>Session: Parse and validate typed reply
+        Session->>Tracker: Correlate family and identity
+        Tracker-->>Session: Matched, duplicate, late, or unknown
+    end
+    Session->>App: Publish one immutable capability snapshot
+    Session->>Session: Enable authorized optional modes
+```
+
 The runtime emits one description-first bounded batch. DA1 is always admitted.
 When Kitty status is still unknown and the limit has at least two slots, its
 status query appears immediately before DA1. DA2 follows DA1 when another slot
@@ -105,15 +143,15 @@ does not consume, extend, or otherwise alter the pending transaction.
 For a non-Kitty xterm hint, remaining capacity then appends XTGETTCAP `RGB` when
 color evidence needs refinement, followed by DECRQSS `>4m`. On an approved outer
 route, this hint is sourced from the route's explicit outer-terminal identity,
-not the inner pane's `TERM` (see #260). An unrouted native Windows connection
-accepts the built-in `windows-vt` description name as the same hint instead,
-because `TERM` is essentially never set there and an unrecognized XTGETTCAP
-request is safely consumed like any other unknown DCS. A matched status reply
-proves xterm enhanced-key support. Validated positive `RGB` data may replace
-default or environment-only semantic color depth with query evidence; database,
-prior query, and override evidence win. An explicit `Settings.ColorDepth`
-suppresses the XTGETTCAP registration and bytes entirely, so the slot remains
-available to the bounded batch.
+not the inner pane's `TERM`. An unrouted native Windows connection accepts the
+built-in `windows-vt` description name as the same hint instead, because `TERM`
+is essentially never set there and an unrecognized XTGETTCAP request is safely
+consumed like any other unknown DCS. A matched status reply proves xterm
+enhanced-key support. Validated positive `RGB` data may replace default or
+environment-only semantic color depth with query evidence; database, prior
+query, and override evidence win. An explicit `Settings.ColorDepth` suppresses
+the XTGETTCAP registration and bytes entirely, so the slot remains available to
+the bounded batch.
 
 One absolute exclusive deadline is captured before the first registration and
 shared by every emitted query. Out-of-order replies observed strictly before it
@@ -131,9 +169,22 @@ The public `ResponseKind` and `QueryKind` numeric values are explicit and
 append-only. Existing family ordinals remain stable when a later protocol family
 is added.
 
+```mermaid
+stateDiagram-v2
+    [*] --> Pending: Query registered
+    Pending --> Matched: Valid reply before deadline
+    Pending --> Expired: Fence or deadline
+    Pending --> Cancelled: Startup is cancelled
+    Matched --> Grace: Result published
+    Expired --> Grace: Absence published
+    Cancelled --> Grace: Cancellation recorded
+    Grace --> Grace: Duplicate or late reply classified
+    Grace --> [*]: Bounded history expires
+```
+
 ## Sources
 
-- [XTerm Control Sequences, Patch #410, 2026-04-19](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
+- [XTerm Control Sequences, patch level 410, 2026-04-19](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
   defines current DA, DSR, window, color, mouse-pixel, and private-mode query
   forms used by the xterm-compatible profile.
 - [Kitty keyboard protocol](https://sw.kovidgoyal.net/kitty/keyboard-protocol/)

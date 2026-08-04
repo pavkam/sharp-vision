@@ -223,8 +223,7 @@ effect through `OnReuseCleanRender`, called at the exact traversal position
 properties, never a cached prior value, so the reasserted state is provably
 identical to what a fresh paint would have produced: an unset render bit already
 proves nothing that would change them fired since the last real paint. This
-closes the last excluded case from the narrow, conservative first cut (see #26
-and #235).
+closes the last excluded case from the earlier narrow, conservative behavior.
 
 Hidden, collapsed, and effectively hidden subtrees draw nothing. Every control
 renders its normal-layer ownership slots in slot-registration then item order,

@@ -113,7 +113,7 @@ the ComboBox plane closes the drop-down and is consumed.
 > **Implementation gap:** An endpoint wheel inside the open list is currently
 > treated like outside interaction: when the ListView has no scroll range or is
 > already at the requested endpoint, the unhandled wheel dismisses the
-> drop-down. Issue #225 tracks the fix.
+> drop-down.
 
 ### Keyboard navigation inside the popup
 
