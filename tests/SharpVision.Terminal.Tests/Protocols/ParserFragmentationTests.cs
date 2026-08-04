@@ -67,6 +67,50 @@ public sealed class ParserFragmentationTests
     }
 
     /// <summary>
+    /// Verifies a CSI sequence ignored for exceeding its parameter limit recovers at a new
+    /// Escape introducer, with no final byte ever ending the ignored sequence first (see #266 and
+    /// docs/protocols/ecma-48.md's "streaming grammar" section).
+    /// </summary>
+    [Fact]
+    public void Parse_WhenIgnoredCsiIsFollowedByNewEscape_RecoversAtIntroducer()
+    {
+        var limits = ParserLimits.Default with { MaxParameterBytes = 2 };
+        using ProtocolParser parser = new(limits);
+        var sink = new RecordingSink();
+
+        // "123" exceeds the two-byte parameter limit on its third byte, entering CsiIgnore;
+        // no CSI final byte (0x40..0x7e) ever appears before the next ESC arrives.
+        parser.Parse("\u001b[123\u001b[A"u8, ref sink);
+
+        sink.Observations.Count.ShouldBe(2);
+        sink.Observations[0].Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.ParameterLimit);
+        sink.Observations[1].Type.ShouldBe("Csi");
+        sink.Observations[1].Final.ShouldBe((byte) 'A');
+        sink.Observations[1].First.ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Verifies an Escape sequence ignored for exceeding its intermediate limit recovers at a new
+    /// Escape introducer, with no final byte ever ending the ignored sequence first (see #266).
+    /// </summary>
+    [Fact]
+    public void Parse_WhenIgnoredEscapeIsFollowedByNewEscape_RecoversAtIntroducer()
+    {
+        var limits = ParserLimits.Default with { MaxIntermediateBytes = 1 };
+        using ProtocolParser parser = new(limits);
+        var sink = new RecordingSink();
+
+        // The second '$' exceeds the one-byte intermediate limit, entering EscapeIgnore; no
+        // Escape final byte ever appears before the next ESC arrives.
+        parser.Parse("\u001b($$\u001b[A"u8, ref sink);
+
+        sink.Observations.Count.ShouldBe(2);
+        sink.Observations[0].Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.IntermediateLimit);
+        sink.Observations[1].Type.ShouldBe("Csi");
+        sink.Observations[1].Final.ShouldBe((byte) 'A');
+    }
+
+    /// <summary>
     /// Verifies parameters after CSI intermediates are malformed and recoverable.
     /// </summary>
     [Fact]

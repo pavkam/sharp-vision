@@ -18,8 +18,14 @@ controls.
 A parser state consumes one byte at a time and retains only bounded state. A
 control sequence can span any number of reads. CAN and SUB abort an active
 escape sequence according to the selected compatibility profile. Malformed or
-oversized strings emit diagnostics and recover at a recognized terminator or new
-control introducer.
+oversized strings emit diagnostics and recover at a recognized terminator;
+malformed or oversized CSI and escape sequences additionally recover at a new
+control introducer. A string's recognized terminators are `ESC \` (ST), CAN,
+SUB, an 8-bit ST when `ParserLimits.AcceptEightBitControls` is set, and BEL for
+OSC when `ParserLimits.AcceptBellTerminatedOsc` is set; no other byte, including
+a following `ESC [`, ends string recovery. This is standards-conformant: ECMA-48
+leaves recovery from an unterminated control string unspecified, and closed #20
+pinned terminator-only recovery as the deliberate choice.
 
 Default limits bound parameter count, parameter magnitude, intermediate bytes,
 and string payload length. Options may lower or raise limits but cannot disable

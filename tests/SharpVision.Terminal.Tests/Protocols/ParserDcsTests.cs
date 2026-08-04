@@ -94,6 +94,30 @@ public sealed class ParserDcsTests
     }
 
     /// <summary>
+    /// Verifies an ignored oversized string does NOT recover at a new control introducer,
+    /// unlike CSI and Escape ignore states: an embedded "ESC [ A" is swallowed as ordinary
+    /// (non-terminating) payload search, and only a genuine ST ends the ignore (see #266 and
+    /// docs/protocols/ecma-48.md's "streaming grammar" section).
+    /// </summary>
+    [Fact]
+    public void Parse_WhenIgnoredStringIsFollowedByFakeIntroducer_DoesNotRecoverUntilRealTerminator()
+    {
+        var limits = ParserLimits.Default with { MaxStringBytes = 4 };
+        using ProtocolParser parser = new(limits);
+        var sink = new RecordingSink();
+
+        // "12345" exceeds the four-byte string limit on its fifth byte, entering StringIgnore.
+        // "\u001b[A" that follows is not a real ST and must not restart the parser as a new CSI.
+        parser.Parse("\u001b]12345\u001b[A\u001b\\Z"u8, ref sink);
+
+        sink.Observations.Count.ShouldBe(2);
+        sink.Observations[0].Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.StringLimit);
+        sink.Observations.ShouldNotContain(observation => observation.Type == "Csi");
+        sink.Observations[1].Type.ShouldBe("Text");
+        sink.Observations[1].First.ShouldBe("Z"u8.ToArray());
+    }
+
+    /// <summary>
     /// Verifies every-fragment-split coverage for a false ESC candidate
     /// followed by a genuine ST terminator.
     /// </summary>
