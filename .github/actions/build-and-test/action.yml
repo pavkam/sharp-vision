@@ -10,12 +10,26 @@ inputs:
     description: Coverage report output directory.
     required: false
     default: coverage-report
+  artifact-suffix:
+    description: >-
+      Extra discriminator appended to uploaded artifact names and to the published check name.
+      Required when the same job runs more than once in a matrix, because artifact names must be
+      unique inside one workflow run.
+    required: false
+    default: ""
+  skip-lint:
+    description: >-
+      TEMPORARY (#32 diagnosis). Skips the formatting and documentation gate so the crash-repro
+      matrix finishes faster. Must be back to false before this lands on main.
+    required: false
+    default: "false"
 
 runs:
   using: composite
   steps:
     - name: 🔍 Lint and documentation checks
       id: lint
+      if: ${{ inputs.skip-lint != 'true' }}
       shell: bash
       continue-on-error: true
       run: make lint
@@ -23,6 +37,67 @@ runs:
     - name: 🛠️ Build
       shell: bash
       run: make build CONFIGURATION=${{ inputs.configuration }}
+
+    # TEMPORARY (#32 diagnosis). The AccessViolationException that kills the Linux coverage host is
+    # attributed to arbitrary managed methods, so the only way to identify the real faulting
+    # instruction is a core dump plus the runtime's own crash report. `createdump` writes both.
+    - name: 🧷 Arm crash dumps
+      if: ${{ runner.os == 'Linux' }}
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/crash-dumps"
+        {
+          echo "DOTNET_DbgEnableMiniDump=1"
+          echo "DOTNET_DbgMiniDumpType=4"
+          echo "DOTNET_DbgMiniDumpName=$RUNNER_TEMP/crash-dumps/coredump.%p"
+          echo "DOTNET_EnableCrashReport=1"
+          echo "DOTNET_CreateDumpDiagnostics=1"
+        } >> "$GITHUB_ENV"
+
+    # TEMPORARY (#32 diagnosis). microsoft/codecoverage#232 claims the injected coverage probe
+    # stores through a pointer into a file-backed mapping of <temp>/CodeCoverage.<session>.<module>
+    # and that those files are rewritten in place while mapped. This poller records every size
+    # change and deletion so the claim can be confirmed or refuted from CI alone, without a dump.
+    - name: 👀 Watch coverage buffer files
+      if: ${{ runner.os == 'Linux' }}
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/cc-watch"
+        cat > "$RUNNER_TEMP/cc-watch/poll.sh" <<'POLLER'
+        #!/usr/bin/env bash
+        log="$1"
+        declare -A seen
+
+        while true; do
+          for path in /tmp/CodeCoverage.* "${TMPDIR:-/tmp}"/CodeCoverage.*; do
+            [ -e "$path" ] || continue
+            size="$(stat -c %s "$path" 2>/dev/null)" || continue
+            previous="${seen[$path]:-}"
+
+            if [ -z "$previous" ]; then
+              echo "$(date -u +%H:%M:%S.%3N) NEW  $path $size" >> "$log"
+              seen[$path]="$size"
+            elif [ "$size" != "$previous" ]; then
+              echo "$(date -u +%H:%M:%S.%3N) SIZE $path $previous -> $size" >> "$log"
+              seen[$path]="$size"
+            fi
+          done
+
+          for path in "${!seen[@]}"; do
+            if [ ! -e "$path" ]; then
+              echo "$(date -u +%H:%M:%S.%3N) GONE $path (was ${seen[$path]})" >> "$log"
+              unset "seen[$path]"
+            fi
+          done
+
+          sleep 0.05
+        done
+        POLLER
+        chmod +x "$RUNNER_TEMP/cc-watch/poll.sh"
+        nohup "$RUNNER_TEMP/cc-watch/poll.sh" "$RUNNER_TEMP/cc-watch/buffers.log" >/dev/null 2>&1 &
+        echo "$!" > "$RUNNER_TEMP/cc-watch/poll.pid"
+        echo "TMPDIR=${TMPDIR:-<unset>}"
+        df -h /tmp "$RUNNER_TEMP"
 
     - name: 🧪 Test with coverage
       shell: bash
@@ -32,6 +107,67 @@ runs:
       if: ${{ runner.os != 'Windows' }}
       shell: bash
       run: make test-tty CONFIGURATION=${{ inputs.configuration }}
+
+    # TEMPORARY (#32 diagnosis).
+    - name: 🩺 Collect crash diagnostics
+      if: ${{ always() && runner.os == 'Linux' }}
+      shell: bash
+      run: |
+        if [ -f "$RUNNER_TEMP/cc-watch/poll.pid" ]; then
+          kill "$(cat "$RUNNER_TEMP/cc-watch/poll.pid")" 2>/dev/null || true
+        fi
+
+        echo "::group::Disk"
+        df -h /tmp "$RUNNER_TEMP" /
+        echo "::endgroup::"
+
+        echo "::group::Coverage buffer activity"
+        if [ -s "$RUNNER_TEMP/cc-watch/buffers.log" ]; then
+          wc -l < "$RUNNER_TEMP/cc-watch/buffers.log"
+          grep -E ' (SIZE|GONE) ' "$RUNNER_TEMP/cc-watch/buffers.log" | head -200 || true
+        else
+          echo "No coverage buffer files were observed under /tmp."
+        fi
+        echo "::endgroup::"
+
+        echo "::group::Crash reports"
+        shopt -s nullglob
+        reports=("$RUNNER_TEMP"/crash-dumps/*.crashreport.json)
+
+        if [ ${#reports[@]} -eq 0 ]; then
+          echo "No crash report was produced — the test hosts exited without a fatal fault."
+        else
+          for report in "${reports[@]}"; do
+            echo "--- $report"
+            jq -r '
+              .payload
+              | "process: \(.process_name) (\(.process_id))",
+                "reason: \(.reason // "?")  signal: \(.signal // "?")",
+                (.threads[]
+                  | "thread \(.native_thread_id)",
+                    (.stack_frames[]
+                      | "    \(.native_address // "?") +\(.native_offset // "?") \(.module_name // "?") \(.method_name // "")"))
+            ' "$report" | head -300
+          done
+        fi
+        echo "::endgroup::"
+
+        echo "::group::Dump files"
+        ls -la "$RUNNER_TEMP/crash-dumps" 2>/dev/null || echo "none"
+        echo "::endgroup::"
+
+    # TEMPORARY (#32 diagnosis). Full-memory dumps are large; they are the only artifact that
+    # carries the faulting instruction bytes and the NT_FILE mapping table together.
+    - name: 📤 Upload crash dumps
+      if: ${{ always() && runner.os == 'Linux' }}
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: crash-dumps-${{ runner.os }}${{ inputs.artifact-suffix }}
+        path: |
+          ${{ runner.temp }}/crash-dumps/**
+          ${{ runner.temp }}/cc-watch/buffers.log
+        if-no-files-found: ignore
+        retention-days: 3
 
     - name: 📊 Generate coverage report
       uses: danielpalme/ReportGenerator-GitHub-Action@7a0988e399533f3680a732dceda1a967cafdafcd # 5.2.3
@@ -44,7 +180,7 @@ runs:
       if: ${{ always() }}
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
-        name: test-results-${{ runner.os }}
+        name: test-results-${{ runner.os }}${{ inputs.artifact-suffix }}
         path: "**/TestResults/**/*.trx"
         if-no-files-found: error
 
@@ -52,7 +188,7 @@ runs:
       if: ${{ always() }}
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
-        name: coverage-report-${{ runner.os }}
+        name: coverage-report-${{ runner.os }}${{ inputs.artifact-suffix }}
         path: ${{ inputs.coverage-report-path }}
         if-no-files-found: warn
 
@@ -60,7 +196,7 @@ runs:
       if: ${{ always() && runner.os == 'Linux' }}
       uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2
       with:
-        check_name: "📋 Test results on ${{ runner.os }}"
+        check_name: "📋 Test results on ${{ runner.os }}${{ inputs.artifact-suffix }}"
         files: "**/TestResults/**/*.trx"
         action_fail: true
         action_fail_on_inconclusive: true
