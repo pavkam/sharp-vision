@@ -327,6 +327,45 @@ public sealed class ComboBox: ControlBase
     /// <summary>Gets the resolved drop-down scrollbar style.</summary>
     public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
 
+    /// <summary>Gets or sets the complete locally authored border for the owned drop-down popup.</summary>
+    /// <remarks>
+    /// Null (the default) leaves the popup on its own <see cref="ThemeRole.Popup"/> role appearance
+    /// (see #81).
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
+    public Border? PopupBorder
+    {
+        get;
+        set
+        {
+            VerifyMutable();
+
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+
+            if (value.HasValue)
+            {
+                _popup.Border = value.Value;
+            }
+            else
+            {
+                _popup.ResetBorder();
+            }
+
+            NotifyPropertyChanged(nameof(PopupBorder), InvalidationImpact.None);
+        }
+    }
+
+    /// <summary>Returns the drop-down popup's border to <see cref="ThemeRole.Popup"/> ownership.</summary>
+    /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
+    public void ResetPopupBorder() => PopupBorder = null;
+
     /// <summary>Gets or sets whether the private drop-down owns a dismissing modal plane rooted at this field.</summary>
     /// <exception cref="ArgumentException">The attached ComboBox is not an eligible modal root.</exception>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>

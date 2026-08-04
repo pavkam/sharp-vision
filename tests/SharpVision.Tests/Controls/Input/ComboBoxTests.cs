@@ -114,6 +114,35 @@ public sealed class ComboBoxTests
         notifications.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies PopupBorder applies to the owned drop-down popup without leaking it (see
+    /// #81).</summary>
+    [Fact]
+    public void PopupBorder_WhenSet_AppliesToOwnedPopup()
+    {
+        var border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
+        var box = new ComboBox();
+        var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
+
+        box.PopupBorder = border;
+
+        popup.Border.ShouldBe(border);
+    }
+
+    /// <summary>Verifies ResetPopupBorder returns the owned popup to its ThemeRole.Popup appearance.</summary>
+    [Fact]
+    public void ResetPopupBorder_WhenPopupHasLocalOverride_ReturnsToThemeRoleAppearance()
+    {
+        var box = new ComboBox();
+        var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
+        var themeRoleBorder = popup.Border;
+        box.PopupBorder = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
+
+        box.ResetPopupBorder();
+
+        box.PopupBorder.ShouldBeNull();
+        popup.Border.ShouldBe(themeRoleBorder);
+    }
+
     /// <summary>Verifies ComboBox publishes its committed index before forwarding selection change.</summary>
     [Fact]
     public void SelectedIndex_WhenChanged_PublishesPropertyBeforeSelectionEvent()
