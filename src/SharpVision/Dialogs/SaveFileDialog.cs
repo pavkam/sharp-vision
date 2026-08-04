@@ -154,6 +154,7 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>
     protected override Grid CreateContent()
     {
         var location = CreateLocationBar();
+        var metadata = CreateMetadata();
 
         var fileNameRow = new Grid
         {
@@ -191,18 +192,18 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>
             minimum: Math.Min(5, FileListSurface.MaxHeight),
             maximum: FileListSurface.MaxHeight));
         root.Rows.Add(Track.Auto(minimum: 1));
-        root.Rows.Add(Track.Auto(minimum: 1));
-        root.Rows.Add(Track.Auto(minimum: 1));
         root.Rows.Add(Track.Auto(minimum: 3));
+        root.Rows.Add(Track.Auto(minimum: 1));
+        root.Rows.Add(Track.Auto(minimum: 4));
         Grid.SetRow(FileListSurface, 1);
         Grid.SetRow(fileNameRow, 2);
-        Grid.SetRow(StatusText, 3);
+        Grid.SetRow(metadata, 3);
         Grid.SetRow(hidden, 4);
         Grid.SetRow(footer, 5);
         root.Children.Add(location);
         root.Children.Add(FileListSurface);
         root.Children.Add(fileNameRow);
-        root.Children.Add(StatusText);
+        root.Children.Add(metadata);
         root.Children.Add(hidden);
         root.Children.Add(footer);
         return root;

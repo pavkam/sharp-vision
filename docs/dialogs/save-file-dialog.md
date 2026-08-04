@@ -99,13 +99,16 @@ host after a resize.
 
 One padded Grid owns six rows:
 
-1. A three-cell parent-directory Button next to a stretching directory-path
-   input.
+1. A five-cell parent-directory Button whose themed padding leaves `↑` visible,
+   next to a stretching directory-path input.
 2. A bordered, vertically scrolling single-selection ListView.
 3. A `Name:` label next to a stretching filename input.
-4. Ellipsized loading, count, or error status.
+4. A full-width metadata row with the filter ComboBox aligned to the leading
+   edge and ellipsized loading, count, or error status aligned to the trailing
+   edge.
 5. The Show hidden CheckBox.
-6. A two-row footer with the filter ComboBox and the Save and Cancel actions.
+6. A full-width horizontal Separator directly above trailing Save and Cancel
+   actions.
 
 The Window supplies the outer frame, and the dialog assigns no RGB colors and
 emits no terminal bytes on its own. Directory rows use `▸` plus the platform

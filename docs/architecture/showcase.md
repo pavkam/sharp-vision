@@ -125,14 +125,13 @@ sibling switching and the nested Open Recent path remain one
 [menu plane](../concepts/modality.md#menu-planes), reported through public
 selection and invocation events rather than internal state.
 
-The FilePicker page keeps a bounded workspace as an inert backdrop but launches
-the real `SharpVision.Dialogs.FilePickerDialog` and `SaveFileDialog` from its
-Buttons, so each temporary modal surface resolves the application-level host
-instead of becoming a child of the specimen stage. Single, multiple, and save
-variants expose source, document, and all-file filters; the multiple variant
-begins with hidden entries visible. The retained result label reports accepted
-basenames, the confirmed save basename, or cancellation only after the temporary
-modal surface has restored focus and removed itself.
+The FilePicker page launches the real `SharpVision.Dialogs.FilePickerDialog` and
+`SaveFileDialog` directly from its Buttons, without a decorative specimen
+surface that cannot host the application-level Window. Single, multiple, and
+save variants expose source, document, and all-file filters; the multiple
+variant begins with hidden entries visible. The retained result label reports
+accepted basenames, the confirmed save basename, or cancellation only after the
+temporary modal surface has restored focus and removed itself.
 
 The StatusBar page presents the control at application scale inside a bordered
 72-by-11-cell editor workspace. The pretend editor uses the same semantic

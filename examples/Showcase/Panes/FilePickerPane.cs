@@ -18,29 +18,6 @@ internal sealed class FilePickerPane: CompositeControlBase
     private static Dock CreateContent()
     {
         var status = new Text("Result: no picker opened");
-        var stage = new Overlay
-        {
-            Width = Length.Cells(78),
-            Height = Length.Cells(28),
-            Border = new Border(
-                BorderSide.All,
-                BorderGlyphStyle.Light,
-                ThemeColor.ControlBorder,
-                Color.Transparent,
-                ThemeDecoration.Border),
-            Children =
-            {
-                new Text(
-                    "Project workspace\n\n" +
-                    "Open a picker, navigate with Enter or Backspace, switch filters, and toggle hidden entries.\n\n" +
-                    "The workspace remains inert while the dialog owns modality.")
-                {
-                    Margin = new Thickness(2, 2),
-                    Overflow = Overflow.Wrap,
-                    IsHitTestVisible = false
-                }
-            }
-        };
         var single = CreateLauncher(status, "&Open one file", allowMultiple: false, showHidden: false);
         var multiple = CreateLauncher(status, "Open &multiple files", allowMultiple: true, showHidden: true);
         var save = CreateSaveLauncher(status);
@@ -57,7 +34,7 @@ internal sealed class FilePickerPane: CompositeControlBase
                 Doc.Example(
                     "Single, multiple, and save selection",
                     "Open either variant. Entries are directories first and name-sorted; refreshes retain an existing selected path. Use ↑, the location bar, filters, Show hidden, pointer selection, Control/Shift ranges, Enter, Backspace, Open/Save, or Cancel.",
-                    Doc.Column(launchers, stage, status),
+                    Doc.Column(launchers, status),
                     "var result = await FilePickerDialog.ShowAsync(owner, new FilePickerOptions\n{\n    AllowMultiple = true,\n    MaxVisibleRows = 20,\n    Filters = [new FilePickerFilter(\"Sources\", \"*.cs\"), FilePickerFilter.AllFiles],\n});")));
     }
 

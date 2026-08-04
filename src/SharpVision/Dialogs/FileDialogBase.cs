@@ -5,6 +5,7 @@ namespace SharpVision.Dialogs;
 
 using Controls.Collections;
 
+using SharpVision.Controls.Display;
 using SharpVision.Controls.Input;
 using SharpVision.Controls.Layout;
 using SharpVision.Controls.Scrolling;
@@ -81,7 +82,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         _upButton = new Button
         {
             Text = "↑",
-            Width = Length.Cells(3)
+            Width = Length.Cells(5)
         };
         PathInput = new TextInput
         {
@@ -272,27 +273,51 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         return location;
     }
 
-    /// <summary>Creates the shared footer grid containing the filter picker, accept button, and cancel button.</summary>
+    /// <summary>Creates the shared metadata row containing the filter picker and trailing status.</summary>
+    /// <returns>The non-null full-width metadata grid.</returns>
+    private protected Grid CreateMetadata()
+    {
+        var metadata = new Grid
+        {
+            ColumnSpacing = 1,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        metadata.Columns.Add(Track.Star(1, minimum: 8));
+        metadata.Columns.Add(Track.Auto());
+        StatusText.HorizontalAlignment = HorizontalAlignment.Right;
+        StatusText.VerticalAlignment = VerticalAlignment.Center;
+        var statusHost = new Overlay
+        {
+            Children = { StatusText }
+        };
+        Grid.SetColumn(statusHost, 1);
+        metadata.Children.Add(_filterPicker);
+        metadata.Children.Add(statusHost);
+        return metadata;
+    }
+
+    /// <summary>Creates the shared footer containing a delimiter and trailing dialog actions.</summary>
     /// <param name="acceptButton">The dialog-specific accept button (Open or Save).</param>
     /// <returns>The non-null footer grid.</returns>
     protected Grid CreateFooter(Button acceptButton)
     {
+        var separator = new Separator();
         var footer = new Grid
         {
             ColumnSpacing = 1,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        footer.Columns.Add(Track.Auto());
         footer.Columns.Add(Track.Star(1, minimum: 1));
         footer.Columns.Add(Track.Auto());
         footer.Columns.Add(Track.Auto());
         footer.Rows.Add(Track.Auto(minimum: 1));
-        footer.Rows.Add(Track.Auto(minimum: 1));
-        Grid.SetColumn(acceptButton, 2);
-        Grid.SetColumn(_cancelButton, 3);
+        footer.Rows.Add(Track.Auto(minimum: 3));
+        Grid.SetColumnSpan(separator, 3);
+        Grid.SetColumn(acceptButton, 1);
+        Grid.SetColumn(_cancelButton, 2);
         Grid.SetRow(acceptButton, 1);
         Grid.SetRow(_cancelButton, 1);
-        footer.Children.Add(_filterPicker);
+        footer.Children.Add(separator);
         footer.Children.Add(acceptButton);
         footer.Children.Add(_cancelButton);
         return footer;

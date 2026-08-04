@@ -347,7 +347,7 @@ public sealed class Gallery: Screen
             Children =
             {
                 actions,
-                new FigletText(FigletCatalog.Default.Load("Classy"))
+                new FigletText(FigletCatalog.Default.Load("mini"))
                 {
                     Content = "SharpVision",
                     Face = new Face(

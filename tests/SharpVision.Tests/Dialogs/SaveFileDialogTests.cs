@@ -72,6 +72,47 @@ public sealed class SaveFileDialogTests
         textInputs.ShouldContain(static input => input.Placeholder == "File name");
     }
 
+    /// <summary>Verifies the save dialog shares the visible up glyph, aligned metadata, and separated actions.</summary>
+    [Fact]
+    public async Task Render_WhenShowcaseSized_AlignsMetadataAndSeparatesActionsAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "save-polish"));
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory);
+        var dialog = new SaveFileDialog(new SaveFileOptions { InitialDirectory = directory }, source);
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(76, 35),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(static () => { }, "settle save dialog load");
+        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
+        var listSurface = list.Parent.ShouldBeOfType<Dock>();
+        var filter = OwnedTree.Find<ComboBox>(dialog).ShouldNotBeNull();
+        var status = OwnedTree.FindAll<ControlText>(dialog).Single(static text =>
+            text.Content == "0 folders · 0 files");
+        var separator = OwnedTree.Find<Separator>(dialog).ShouldNotBeNull();
+        var up = OwnedTree.FindAll<Button>(dialog).Single(static button => button.Text == "↑");
+        var save = OwnedTree.FindAll<Button>(dialog).Single(static button => button.Text == "&Save");
+        var cancel = OwnedTree.FindAll<Button>(dialog).Single(static button => button.Text == "&Cancel");
+
+        // Assert
+        up.Bounds.Width.ShouldBe(5);
+        var upGlyph = up.TextControl.ShouldNotBeNull();
+        upGlyph.Bounds.ShouldBe(new Rect(up.Bounds.X + 2, up.Bounds.Y + 1, 1, 1));
+        surface.Cell(new Point(upGlyph.Bounds.X, upGlyph.Bounds.Y)).Text.ShouldBe("↑");
+        filter.Bounds.X.ShouldBe(listSurface.Bounds.X);
+        status.Bounds.Right.ShouldBe(listSurface.Bounds.Right);
+        status.Bounds.Y.ShouldBe(filter.Bounds.Y + 1);
+        status.Bounds.Height.ShouldBe(1);
+        separator.Bounds.X.ShouldBe(listSurface.Bounds.X);
+        separator.Bounds.Right.ShouldBe(listSurface.Bounds.Right);
+        save.Bounds.Y.ShouldBe(separator.Bounds.Bottom);
+        cancel.Bounds.Y.ShouldBe(save.Bounds.Y);
+    }
+
     /// <summary>Verifies the Save button is disabled when the filename input is empty.</summary>
     [Fact]
     public async Task SaveButton_WhenFileNameIsEmpty_IsDisabledAsync()

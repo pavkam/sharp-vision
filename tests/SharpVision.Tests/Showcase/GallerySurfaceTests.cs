@@ -79,6 +79,25 @@ public sealed class GallerySurfaceTests
         text.ToString().ShouldContain("Quit  Ctrl+Q");
     }
 
+    /// <summary>Verifies the product identity uses a FIGfont that fits beside the global actions.</summary>
+    [Fact]
+    public async Task Render_WhenApplicationStarts_FitsTheProductIdentityInsideItsRegionAsync()
+    {
+        // Arrange
+        var gallery = new Gallery();
+
+        // Act
+        await using var surface = await ComponentSurface.MountScreenAsync(
+            gallery,
+            new Size(80, 24),
+            TestContext.Current.CancellationToken);
+        var title = OwnedTree.Find<FigletText>(gallery.ApplicationBar).ShouldNotBeNull();
+
+        // Assert
+        title.DesiredSize.Width.ShouldBeLessThan(title.Bounds.Width);
+        title.DesiredSize.Height.ShouldBeLessThanOrEqualTo(title.Bounds.Height);
+    }
+
     /// <summary>Verifies the MessageBox example launches into the application plane without nested specimen surfaces.</summary>
     [Fact]
     public async Task MessageBoxPage_WhenLauncherIsInvoked_UsesApplicationPresentationWithoutExampleSurfacesAsync()
@@ -110,6 +129,40 @@ public sealed class GallerySurfaceTests
         messageBox.Header.ShouldBe("MessageBox");
         messageBox.Bounds.X.ShouldBe((120 - messageBox.Bounds.Width) / 2);
         messageBox.Bounds.Y.ShouldBe((40 - messageBox.Bounds.Height) / 2);
+
+        // Cleanup
+        await surface.Keyboard.PressAsync(Code.Escape);
+    }
+
+    /// <summary>Verifies the file-dialog example does not retain a decorative surface behind its application-wide Window.</summary>
+    [Fact]
+    public async Task FilePickerPage_WhenLauncherIsInvoked_UsesApplicationPresentationWithoutExampleSurfacesAsync()
+    {
+        // Arrange
+        var gallery = new Gallery();
+        await using var surface = await ComponentSurface.MountScreenAsync(
+            gallery,
+            new Size(120, 40),
+            TestContext.Current.CancellationToken);
+        var pageIndex = gallery.Pages
+            .Select(static (name, index) => (name, index))
+            .Single(static entry => entry.name == FilePickerPane.Title)
+            .index;
+        await surface.UpdateAsync(() => gallery.Select(pageIndex), "open FilePicker showcase page");
+        var page = gallery.CurrentPage;
+        var launcher = OwnedTree.FindAll<Button>(page).Single(static button =>
+            button.Text == "&Open one file");
+
+        // Assert simplified example composition
+        OwnedTree.FindAll<Overlay>(page).ShouldBeEmpty();
+
+        // Act
+        await surface.Pointer.ClickAsync(launcher);
+
+        // Assert application-wide presentation
+        var picker = OwnedTree.Find<FilePickerDialog>(gallery).ShouldNotBeNull();
+        picker.Header.ShouldBe("Open a file");
+        picker.Parent.ShouldNotBeSameAs(page);
 
         // Cleanup
         await surface.Keyboard.PressAsync(Code.Escape);

@@ -139,6 +139,7 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>
     protected override Grid CreateContent()
     {
         var location = CreateLocationBar();
+        var metadata = CreateMetadata();
 
         var hidden = new Overlay
         {
@@ -160,16 +161,16 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>
             1,
             minimum: Math.Min(5, FileListSurface.MaxHeight),
             maximum: FileListSurface.MaxHeight));
-        root.Rows.Add(Track.Auto(minimum: 1));
-        root.Rows.Add(Track.Auto(minimum: 1));
         root.Rows.Add(Track.Auto(minimum: 3));
+        root.Rows.Add(Track.Auto(minimum: 1));
+        root.Rows.Add(Track.Auto(minimum: 4));
         Grid.SetRow(FileListSurface, 1);
-        Grid.SetRow(StatusText, 2);
+        Grid.SetRow(metadata, 2);
         Grid.SetRow(hidden, 3);
         Grid.SetRow(footer, 4);
         root.Children.Add(location);
         root.Children.Add(FileListSurface);
-        root.Children.Add(StatusText);
+        root.Children.Add(metadata);
         root.Children.Add(hidden);
         root.Children.Add(footer);
         return root;

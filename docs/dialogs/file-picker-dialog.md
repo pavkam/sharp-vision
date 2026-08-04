@@ -123,17 +123,18 @@ the host after a resize, including tiny hosts.
 One padded Grid uses a single explicit star column, so every row reaches the
 trailing content edge. The grid owns five rows:
 
-1. A bordered parent-directory Button, exactly three cells wide with `↑` in its
-   middle cell, next to a star-sized editable directory path without visible
-   scrollbars.
+1. A bordered parent-directory Button, exactly five cells wide so its themed
+   padding leaves `↑` visible in the middle cell, next to a star-sized editable
+   directory path without visible scrollbars.
 2. A star-sized bordered ListView with automatic vertical scrolling. It grows
    into the available height until its content reaches `MaxVisibleRows`; the two
    border rows do not count toward that limit.
-3. Ellipsized folder and file counts immediately below the ListView.
-4. The Show hidden CheckBox, above the filter.
-5. A two-row footer with a borderless one-row filter ComboBox at the leading
-   edge, followed by naturally sized Open and Cancel actions in the default
-   Button appearance.
+3. A full-width metadata row immediately below the ListView, with the filter
+   ComboBox aligned to the leading edge and ellipsized folder and file counts
+   aligned to the trailing edge.
+4. The Show hidden CheckBox.
+5. A full-width horizontal Separator directly above naturally sized, trailing
+   Open and Cancel actions in the default Button appearance.
 
 The Window supplies the outer frame. Directory rows use a single-cell `▸` prefix
 and a trailing platform separator, and file rows use a single-cell `·` prefix.

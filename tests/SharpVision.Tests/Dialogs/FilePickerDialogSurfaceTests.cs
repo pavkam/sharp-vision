@@ -33,6 +33,7 @@ public sealed class FilePickerDialogSurfaceTests
         var filter = OwnedTree.Find<ComboBox>(dialog).ShouldNotBeNull();
         var hidden = OwnedTree.Find<CheckBox>(dialog).ShouldNotBeNull();
         var status = FindAll<ControlText>(dialog).Single(static text => text.Content == "0 folders · 1 file");
+        var separator = OwnedTree.Find<Separator>(dialog).ShouldNotBeNull();
         var up = FindAll<Button>(dialog).Single(static button =>
             button.Text == "↑");
         var open = FindAll<Button>(dialog).Single(static button =>
@@ -49,27 +50,33 @@ public sealed class FilePickerDialogSurfaceTests
         path.ScrollBars.ShouldBe(ScrollBars.None);
         up.ActualBorder.Sides.ShouldBe(BorderSide.All);
         up.ActualShadow.IsVisible.ShouldBeFalse();
-        up.Bounds.Width.ShouldBe(3);
+        up.Bounds.Width.ShouldBe(5);
         up.Bounds.Height.ShouldBe(3);
-        // The exact border glyph depends on width constraints in the dialog layout.
-        up.Bounds.Width.ShouldBeGreaterThan(0);
+        var upGlyph = up.TextControl.ShouldNotBeNull();
+        upGlyph.Bounds.ShouldBe(new Rect(up.Bounds.X + 2, up.Bounds.Y + 1, 1, 1));
+        surface.Cell(new Point(upGlyph.Bounds.X, upGlyph.Bounds.Y)).Text.ShouldBe("↑");
         FindAll<ControlText>(dialog).ShouldNotContain(static text =>
             text.Content == "Filter" || text.Content.Contains("Refresh", StringComparison.Ordinal));
-        up.Bounds.Width.ShouldBe(3);
+        up.Bounds.Width.ShouldBe(5);
         ReadRow(surface, path.ContentBounds).ShouldContain("picker-polish");
         path.Bounds.Right.ShouldBe(listSurface.Bounds.Right);
         listSurface.Bounds.X.ShouldBe(root.ContentBounds.X);
         listSurface.Bounds.Right.ShouldBe(root.ContentBounds.Right);
-        status.Bounds.X.ShouldBe(listSurface.Bounds.X);
-        status.Bounds.Y.ShouldBe(listSurface.Bounds.Bottom + 1);
+        status.Bounds.Right.ShouldBe(listSurface.Bounds.Right);
+        status.Bounds.Y.ShouldBe(filter.Bounds.Y + 1);
+        status.Bounds.Height.ShouldBe(1);
         ReadRow(surface, status.Bounds).ShouldContain("0 folders · 1 file");
         hidden.Bounds.X.ShouldBe(listSurface.Bounds.X);
-        hidden.Bounds.Y.ShouldBeLessThan(filter.Bounds.Y);
+        hidden.Bounds.Y.ShouldBeGreaterThan(filter.Bounds.Bottom);
         filter.ActualBorder.Sides.ShouldBe(BorderSide.All);
         filter.Bounds.Height.ShouldBe(3);
         filter.Bounds.X.ShouldBe(listSurface.Bounds.X);
-        open.Bounds.Y.ShouldBe(filter.Bounds.Bottom);
-        cancel.Bounds.Y.ShouldBe(filter.Bounds.Bottom);
+        filter.Bounds.Y.ShouldBe(listSurface.Bounds.Bottom + 1);
+        separator.Bounds.X.ShouldBe(listSurface.Bounds.X);
+        separator.Bounds.Right.ShouldBe(listSurface.Bounds.Right);
+        separator.Bounds.Y.ShouldBeGreaterThan(hidden.Bounds.Bottom);
+        open.Bounds.Y.ShouldBe(separator.Bounds.Bottom);
+        cancel.Bounds.Y.ShouldBe(separator.Bounds.Bottom);
         open.Bounds.Y.ShouldBe(cancel.Bounds.Y);
         open.Bounds.Height.ShouldBe(cancel.Bounds.Height);
         open.Bounds.Right.ShouldBe(cancel.Bounds.X - 1);
