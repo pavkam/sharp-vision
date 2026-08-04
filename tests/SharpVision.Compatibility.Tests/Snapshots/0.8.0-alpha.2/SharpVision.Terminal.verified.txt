@@ -894,6 +894,7 @@ namespace SharpVision.Terminal.Kitty.Graphics
     {
         public SharpVision.Terminal.Protocols.Diagnostic? Diagnostic { get; }
         public uint ImageId { get; }
+        public uint ImageNumber { get; }
         public bool IsSuccess { get; }
         public bool IsValid { get; }
         public string? Message { get; }

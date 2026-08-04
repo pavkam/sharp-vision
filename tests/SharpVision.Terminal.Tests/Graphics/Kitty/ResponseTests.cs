@@ -48,6 +48,47 @@ public sealed class ResponseTests
         response.ToString().ShouldNotContain("image missing");
     }
 
+    /// <summary>
+    /// Verifies the image-number acknowledgement form is accepted: a client that creates an
+    /// image with I=&lt;number&gt; instead of an explicit id receives both the terminal-assigned
+    /// id and the echoed number together, per the kitty graphics protocol's "Requesting image
+    /// ids from the terminal" section.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenImageNumberIsEchoedAlongsideAssignedId_OwnsBothIdentifiers()
+    {
+        var response = KittyGraphicsResponse.Parse("Gi=99,I=13;OK"u8);
+
+        response.IsValid.ShouldBeTrue();
+        response.ImageId.ShouldBe(99U);
+        response.ImageNumber.ShouldBe(13U);
+        response.PlacementId.ShouldBe(0U);
+        response.IsSuccess.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies the image-number acknowledgement form parses identically at every transport
+    /// split boundary.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenImageNumberReplyIsFragmented_ProducesSameTypedResponseAtEverySplit()
+    {
+        var wire = "\u001b_Gi=99,I=13;OK\u001b\\"u8.ToArray();
+
+        for (var split = 0; split <= wire.Length; split++)
+        {
+            var sink = new RecordingProtocolSink();
+            using var router = new ProtocolRouter(sink);
+            router.Route(wire.AsSpan(0, split));
+            router.Route(wire.AsSpan(split));
+
+            var response = sink.KittyGraphicsResponses.ShouldHaveSingleItem();
+            response.IsValid.ShouldBeTrue($"split {split}");
+            response.ImageId.ShouldBe(99U);
+            response.ImageNumber.ShouldBe(13U);
+        }
+    }
+
     /// <summary>Verifies unknown, duplicate, malformed, and oversized replies are rejected.</summary>
     [Theory]
     [InlineData("Gi=1,x=2;OK")]
@@ -63,6 +104,9 @@ public sealed class ResponseTests
     [InlineData("Gi=1;")]
     [InlineData("Gi=1;O\nK")]
     [InlineData("i=1;OK")]
+    [InlineData("Gi=1,I=2,I=3;OK")]
+    [InlineData("Gi=1,I=0;OK")]
+    [InlineData("Gi=1,I=abc;OK")]
     public void Parse_WhenReplyGrammarIsInvalid_ReturnsRedactedDiagnostic(string value)
     {
         var response = KittyGraphicsResponse.Parse(Encoding.ASCII.GetBytes(value));

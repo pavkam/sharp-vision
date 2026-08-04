@@ -11,6 +11,7 @@ public sealed class KittyGraphicsResponse
         bool isValid,
         uint imageId,
         uint placementId,
+        uint imageNumber,
         bool isSuccess,
         string? message,
         Diagnostic? diagnostic)
@@ -18,6 +19,7 @@ public sealed class KittyGraphicsResponse
         IsValid = isValid;
         ImageId = imageId;
         PlacementId = placementId;
+        ImageNumber = imageNumber;
         IsSuccess = isSuccess;
         Message = message;
         Diagnostic = diagnostic;
@@ -31,6 +33,15 @@ public sealed class KittyGraphicsResponse
 
     /// <summary>Gets the optional nonzero placement identifier.</summary>
     public uint PlacementId { get; }
+
+    /// <summary>
+    /// Gets the optional nonzero client-assigned image number this response echoes back, or
+    /// zero when absent. A client that created an image with the <c>I</c> (image number) key
+    /// instead of an explicit <c>i</c> (image id) receives both fields together in the reply,
+    /// for example <c>i=99,I=13;OK</c>, where <see cref="ImageId"/> is the id the terminal
+    /// assigned and this is the number the client originally sent.
+    /// </summary>
+    public uint ImageNumber { get; }
 
     /// <summary>Gets whether the terminal returned the exact success token <c>OK</c>.</summary>
     public bool IsSuccess { get; }
@@ -71,8 +82,10 @@ public sealed class KittyGraphicsResponse
         var message = value[(separator + 1)..];
         uint imageId = 0;
         uint placementId = 0;
+        uint imageNumber = 0;
         var seenImage = false;
         var seenPlacement = false;
+        var seenImageNumber = false;
 
         while (!metadata.IsEmpty)
         {
@@ -106,6 +119,20 @@ public sealed class KittyGraphicsResponse
 
                 seenPlacement = true;
             }
+            else if (field[0] == (byte) 'I')
+            {
+                // A client that creates an image by number (I=<number>) rather than by an
+                // explicit id receives both fields together in the acknowledgement, e.g.
+                // "i=99,I=13;OK" - the assigned id plus the echoed number (see the kitty
+                // graphics protocol's "Requesting image ids from the terminal" section).
+                // Rejecting this field as unknown metadata would fail every such reply.
+                if (seenImageNumber || !TryParseIdentifier(number, out imageNumber))
+                {
+                    return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
+                }
+
+                seenImageNumber = true;
+            }
             else
             {
                 return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
@@ -122,6 +149,7 @@ public sealed class KittyGraphicsResponse
             isValid: true,
             imageId,
             placementId,
+            imageNumber,
             isSuccess: message.SequenceEqual("OK"u8),
             ownedMessage,
             diagnostic: null);
@@ -136,6 +164,7 @@ public sealed class KittyGraphicsResponse
         isValid: false,
         imageId: 0,
         placementId: 0,
+        imageNumber: 0,
         isSuccess: false,
         message: null,
         new Diagnostic(code, SequenceKind.Apc, offset: 0, discardedBytes));

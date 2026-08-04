@@ -46,9 +46,12 @@ terminal understood the graphics command. Primary DA is the ordering barrier: an
 unanswered active graphics query becomes unsupported query evidence when DA
 arrives.
 
-Replies are APC payloads beginning with `G`. Only one `i` field and optional `p`
-field are accepted, both canonical nonzero ASCII decimal values within `uint`.
-The nonempty response text must be printable ASCII and is copied within
+Replies are APC payloads beginning with `G`. A required `i` field and optional
+`p` and `I` fields are accepted, each a canonical nonzero ASCII decimal value
+within `uint`. `I` echoes back the client-assigned image number for a
+number-created image, alongside the terminal-assigned `i` (for example
+`i=99,I=13;OK`); `KittyGraphicsResponse.ImageNumber` exposes it, zero when
+absent. The nonempty response text must be printable ASCII and is copied within
 `Kitty.KittyMetadataLimits.MaxMetadataBytes`. `KittyGraphicsResponse.Message`
 exposes that bounded but untrusted terminal text to an explicit caller.
 Diagnostics and `ToString()` never include it. Malformed, duplicate-field,
