@@ -117,6 +117,58 @@ Implement `IsCheckedState`, `IsSelectedState`, or `IsIndeterminateState` only
 when the control genuinely owns that semantic fact. `Focused` means direct
 focus; `FocusWithin` means a descendant has focus.
 
+## Registering a theme-authored style section
+
+A control whose structure needs more than a semantic role - a mark family, a
+padding, a glyph sequence - can let a theme author it directly through a
+`styles` section, deserialized and memoized by the fully public
+`Theme.GetStyleSection<TSection>(sectionName)` (see
+[themes.md](themes.md#semantic-profiles)). `ScrollBar`'s own `Chrome`/`Fill`
+wiring is the library's worked example: a small JSON DTO, and a resolve step
+that checks the section before falling back to the code-owned default.
+
+```csharp
+public sealed class WidgetStyleSection
+{
+    public string? Chrome { get; set; }
+}
+
+public static class WidgetTheming
+{
+    // A third-party section name must be namespaced ("acme.widget", not a
+    // bare word) - an unqualified name outside the library's own registered
+    // set is rejected as a likely typo.
+    public static ScrollBarChrome ResolveChrome(Theme theme, ScrollBarChrome fallback)
+    {
+        var section = theme.GetStyleSection<WidgetStyleSection>("acme.widget");
+
+        return section?.Chrome is { } chromeName
+            ? Enum.Parse<ScrollBarChrome>(chromeName, ignoreCase: true)
+            : fallback;
+    }
+}
+```
+
+`GetStyleSection` is the only member this needs, and it is public - no internal
+access is required. It deserializes and memoizes the section on first access per
+`Theme` instance, and returns `null` for a theme that never authored it; the
+caller's own code is what decides the fallback, not the framework. `ScrollBar`
+itself (`public sealed class ScrollBar: Control<ScrollBarStyle>`) uses exactly
+the `Control<TStyle>` + `StyleDefinition<TStyle>` facade shown earlier in this
+page, just with a custom resolve function that calls `GetStyleSection` instead
+of the `StyleDefinitions.Control` factory - see `ScrollBarStyle.cs` and its
+sibling `ScrollBarStyleSection.cs` for that complete, current implementation.
+Constructing a `StyleDefinition<TStyle>` directly (rather than through the
+`StyleDefinitions` factory methods) needs its internal constructor, so a
+third-party control outside this assembly cannot replicate that exact
+resolve-function customization; calling `GetStyleSection` directly from wherever
+the control already resolves its appearance (a property getter,
+`OnRenderContent`, or a small local helper, as above) is the third-party path.
+
+Prove a JSON-authored member the same way the role-profile fallback is proven: a
+themed-load round-trip that asserts the resolved value, and an unauthored-theme
+case that asserts the code-owned default survives.
+
 ## Rendering and proof
 
 Controls render through the canvas and never emit terminal bytes. Reusable
