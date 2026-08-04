@@ -11,33 +11,31 @@ public sealed class ZZProbeTests
     public async Task ProbeAsync()
     {
         Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "unix");
-        var log = TestContext.Current.TestOutputHelper!;
+        var outcomes = new Dictionary<string, int>(StringComparer.Ordinal);
 
-        // 200 attempts, because the hang-up only races into view occasionally.
-        for (var attempt = 0; attempt < 200; attempt++)
+        for (var attempt = 0; attempt < 400; attempt++)
         {
             var pty = Support.UnixPseudoterminal.Open();
             await pty.CloseMasterAsync();
+            string key;
 
             try
             {
                 var read = await pty.Slave.ReadAsync(new byte[1], TestContext.Current.CancellationToken);
-
-                if (read != 0)
-                {
-                    log.WriteLine($"PROBE attempt {attempt}: read returned {read}");
-                }
+                key = $"read={read}";
             }
             catch (Exception error)
             {
-                log.WriteLine(
-                    $"PROBE attempt {attempt}: {error.GetType().FullName} HResult={error.HResult} " +
-                    $"message='{error.Message}' inner={error.InnerException?.GetType().FullName ?? "none"}");
+                key = $"{error.GetType().FullName} HResult={error.HResult} message='{error.Message}'";
             }
 
+            outcomes[key] = outcomes.TryGetValue(key, out var count) ? count + 1 : 1;
             await pty.DisposeAsync();
         }
 
-        log.WriteLine("PROBE complete");
+        // Deliberate failure: xunit only surfaces output for failing tests, and this probe exists
+        // solely to publish the distribution into the CI log.
+        throw new InvalidOperationException(
+            "PROBE RESULTS :: " + string.Join(" | ", outcomes.Select(pair => $"{pair.Key} x{pair.Value}")));
     }
 }
