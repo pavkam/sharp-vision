@@ -19,10 +19,11 @@ redacted from diagnostics.
 
 ## Detection and state
 
-`CSI ? 5522 $ p` queries support; DECRPM values 0 or 4 mean unsupported. Private
-mode 5522 enables paste events. Transactions enforce documented ordering,
-total-size, metadata-size, timeout, and concurrency limits. Invalid Base64 or
-ordering aborts only that transaction and preserves outer parsing.
+`CSI ? 5522 $ p` queries support; DECRPM values 0 or 4 mean unsupported and 1,
+2, or 3 mean supported. Private mode 5522 enables paste events. Transactions
+enforce documented ordering, total-size, metadata-size, timeout, and concurrency
+limits. Invalid Base64 or ordering aborts only that transaction and preserves
+outer parsing.
 
 `Kitty.Clipboard.Packet` validates colon-separated metadata, all documented
 statuses, Base64 MIME/password/name values, optional primary location, and

@@ -31,6 +31,7 @@ public sealed class ResponsesTests
     [InlineData("?5522;4", false)]
     [InlineData("?5522;1", true)]
     [InlineData("?5522;2", true)]
+    [InlineData("?5522;3", true)]
     public void TryCsi_WhenPrivateModeResponseIsValid_MapsSupport(
         string parameters,
         bool supported)

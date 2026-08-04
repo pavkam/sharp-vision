@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Input;
 
+using Protocols;
+
 using Xterm;
 
 /// <summary>
@@ -57,7 +59,12 @@ public sealed class InputDecoder: IDisposable
             : new KeySequenceMatcher(_options.KeyMap.FallbackBindings);
         _keyReplay = _keyMatcher is null ? null : new byte[_keyMatcher.MaximumLength];
         _cellMetricsResolver = new CellMetricsResolver(_options.CellMetrics);
-        _mouseDecoder = new MouseDecoder(_sink, _cellMetricsResolver, _options.PixelMouse, Report);
+        _mouseDecoder = new MouseDecoder(
+            _sink,
+            _cellMetricsResolver,
+            _options.PixelMouse,
+            _options.MouseCoordinates == MouseCoordinates.Utf8,
+            Report);
         _kittyKeyDecoder = new Kitty.Keyboard.KeyDecoder(_sink, Report);
         _utf8 = new Utf8TextAccumulator(rune => EmitText(rune));
         _csiHandlers =
@@ -324,8 +331,15 @@ public sealed class InputDecoder: IDisposable
 
             _escapePending = false;
 
-            // Legacy terminals encode Alt plus non-ASCII text as ESC then UTF-8.
-            if (value >= 0x80)
+            // Legacy terminals encode Alt plus non-ASCII text as ESC then UTF-8. Arming
+            // _nextTextModifiers is only safe when this byte will actually reach EmitText: a
+            // pending SS3 or X10 mouse continuation consumes the byte itself before the UTF-8
+            // accumulator ever sees it, which would otherwise leave the flag armed indefinitely
+            // and attach Alt to an unrelated later keystroke (#264). The range is also narrowed
+            // to valid UTF-8 lead bytes (0xC2..0xF4): a continuation byte (0x80..0xBF) can never
+            // begin a scalar, so treating one as the start of Alt+text would swallow the Escape
+            // and still never produce text.
+            if (value is >= 0xc2 and <= 0xf4 && !_ss3Pending && !_mouseDecoder.IsPending)
             {
                 _skippedBytes = checked(_skippedBytes + 1);
                 _nextTextModifiers = Modifiers.Alt;
@@ -345,6 +359,18 @@ public sealed class InputDecoder: IDisposable
         if (_parser.IsGround && value == 0x7f)
         {
             _skippedBytes = checked(_skippedBytes + 1);
+
+            // 0x7f is a legal X10 mouse field byte (coordinate 95, via value + 32) and the only
+            // out-of-band byte this fast path injects that a pending report can legally contain.
+            // Feed it to the mouse decoder instead of destroying the in-progress report and
+            // falling through to a phantom Backspace plus a leaked literal character (#263).
+            if (_mouseDecoder.IsPending)
+            {
+                Span<byte> pending = [value];
+                _ = _mouseDecoder.ConsumeX10(pending);
+                return;
+            }
+
             _utf8.Flush();
             HandleControl(value);
             return;

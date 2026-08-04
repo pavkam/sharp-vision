@@ -15,22 +15,30 @@ internal sealed class MouseDecoder
     private readonly Action<DiagnosticCode, SequenceKind> _report;
     private readonly byte[] _x10 = new byte[12];
     private readonly bool _pixelMouse;
+    private readonly bool _utf8Coordinates;
     private int _x10Length;
 
     /// <summary>Initializes a mouse decoder sharing its host's sink, diagnostics, and metrics.</summary>
     /// <param name="sink">The non-null event sink pointer reports are emitted to.</param>
     /// <param name="cellMetrics">The non-null shared cell-metrics resolver.</param>
     /// <param name="pixelMouse">Whether pixel coordinates are preferred over cell inference.</param>
+    /// <param name="utf8Coordinates">
+    /// Whether the negotiated X10 field encoding is UTF-8 (mode 1005) rather than raw single-byte
+    /// X10 fields. The two are mutually ambiguous above <c>0x7F</c>, so this must reflect the
+    /// actual negotiated mode rather than being inferred from the byte stream (see #270).
+    /// </param>
     /// <param name="report">The non-null host diagnostic-reporting delegate.</param>
     public MouseDecoder(
         IInputSink sink,
         CellMetricsResolver cellMetrics,
         bool pixelMouse,
+        bool utf8Coordinates,
         Action<DiagnosticCode, SequenceKind> report)
     {
         _sink = sink;
         _cellMetrics = cellMetrics;
         _pixelMouse = pixelMouse;
+        _utf8Coordinates = utf8Coordinates;
         _report = report;
     }
 
@@ -120,6 +128,17 @@ internal sealed class MouseDecoder
 
     private bool TryReadX10(out int code, out int x, out int y)
     {
+        // Mode 1005 (Utf8) encodes each field as a UTF-8 scalar; raw X10 (Default) encodes each
+        // field as exactly one byte with no character encoding involved. The two are mutually
+        // ambiguous above 0x7F by construction, so which reader runs must reflect the negotiated
+        // mode rather than being guessed from the bytes (#270).
+        return _utf8Coordinates
+            ? TryReadUtf8Fields(out code, out x, out y)
+            : TryReadRawFields(out code, out x, out y);
+    }
+
+    private bool TryReadUtf8Fields(out int code, out int x, out int y)
+    {
         Span<int> values = stackalloc int[3];
         var position = 0;
 
@@ -155,6 +174,22 @@ internal sealed class MouseDecoder
         x = values[1];
         y = values[2];
         return position == _x10Length;
+    }
+
+    private bool TryReadRawFields(out int code, out int x, out int y)
+    {
+        if (_x10Length < 3)
+        {
+            code = 0;
+            x = 0;
+            y = 0;
+            return false;
+        }
+
+        code = _x10[0];
+        x = _x10[1];
+        y = _x10[2];
+        return true;
     }
 
     private void EmitPointer(int code, int wireX, int wireY, bool release)

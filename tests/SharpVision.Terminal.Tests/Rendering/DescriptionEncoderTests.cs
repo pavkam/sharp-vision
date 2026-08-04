@@ -128,7 +128,7 @@ public sealed class DescriptionEncoderTests
 
         _ = FrameEncoder.Encode(null, frame, destination, profile);
 
-        destination.WrittenSpan.StartsWith("\u001b[m\u001b[2J\u001b[H"u8).ShouldBeTrue();
+        destination.WrittenSpan.StartsWith("\u001b]8;;\u001b\\\u001b[m\u001b[2J\u001b[H"u8).ShouldBeTrue();
         screen.Apply(destination.WrittenSpan);
         screen.ShouldMatch(frame);
     }
@@ -154,7 +154,7 @@ public sealed class DescriptionEncoderTests
 
         _ = FrameEncoder.Encode(null, frame, destination, profile);
 
-        destination.WrittenSpan.StartsWith("\u001b[m\u001b[1;1f\u001b[2J"u8).ShouldBeTrue();
+        destination.WrittenSpan.StartsWith("\u001b]8;;\u001b\\\u001b[m\u001b[1;1f\u001b[2J"u8).ShouldBeTrue();
         screen.Apply(destination.WrittenSpan);
         screen.ShouldMatch(frame);
     }

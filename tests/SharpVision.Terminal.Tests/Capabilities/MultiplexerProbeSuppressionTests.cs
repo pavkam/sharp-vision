@@ -148,6 +148,79 @@ public sealed class MultiplexerProbeSuppressionTests
     }
 
     /// <summary>
+    /// Verifies the routed-outer-profile carve-out extends to the xterm-proprietary DCS probe
+    /// gates: an approved route's own outer terminal identity decides whether the XTGETTCAP RGB
+    /// and DECRQSS modifyOtherKeys probes are written, not the inner pane's TERM. tmux's own
+    /// defaults (tmux-256color, screen-256color) must not suppress these probes when the outer
+    /// terminal is explicitly known to be xterm (see #260).
+    /// </summary>
+    [Fact]
+    public void TryStart_WhenRouteHasExplicitXtermOuterProfile_WritesBothDcsProbesRegardlessOfInnerTerm()
+    {
+        var environment = new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["TERM"] = "tmux-256color"
+        };
+        var options = new NegotiationOptions(environment);
+        var strategy = new ActiveQueryDiscoveryStrategy(
+            options,
+            TerminalCapabilities.Conservative,
+            TimeProvider.System);
+        var destination = new ArrayBufferWriter<byte>();
+        var outerProfile = new TerminalProfile(
+            new Description("xterm-256color", DescriptionOrigin.BuiltIn, Suitability.Usable),
+            TerminalCapabilities.Conservative);
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            outerProfile,
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.CapabilityQueries);
+        var route = new MultiplexerRoute(policy);
+
+        var started = strategy.TryStart(destination, cells: null, pixels: null, route);
+
+        started.ShouldBeTrue();
+        var written = Encoding.ASCII.GetString(destination.WrittenSpan);
+        written.ShouldContain("+q524742");
+        written.ShouldContain("$q>4m");
+    }
+
+    /// <summary>
+    /// Verifies the negative of the test above: a declared non-xterm outer profile (here, plain
+    /// ANSI) still withholds the xterm-proprietary probes even though the route is approved,
+    /// because the outer terminal genuinely is not xterm (see #260).
+    /// </summary>
+    [Fact]
+    public void TryStart_WhenRouteHasExplicitNonXtermOuterProfile_WithholdsBothDcsProbes()
+    {
+        var environment = new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["TERM"] = "xterm-256color"
+        };
+        var options = new NegotiationOptions(environment);
+        var strategy = new ActiveQueryDiscoveryStrategy(
+            options,
+            TerminalCapabilities.Conservative,
+            TimeProvider.System);
+        var destination = new ArrayBufferWriter<byte>();
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.CapabilityQueries);
+        var route = new MultiplexerRoute(policy);
+
+        var started = strategy.TryStart(destination, cells: null, pixels: null, route);
+
+        started.ShouldBeTrue();
+        var written = Encoding.ASCII.GetString(destination.WrittenSpan);
+        written.ShouldNotContain("+q524742");
+        written.ShouldNotContain("$q>4m");
+    }
+
+    /// <summary>
     /// Verifies a suppressed probe still publishes Unsupported/Origin.Environment rather than
     /// sitting at Unknown, so callers see the same conclusion the probe would have proven, sourced
     /// honestly (see #249).

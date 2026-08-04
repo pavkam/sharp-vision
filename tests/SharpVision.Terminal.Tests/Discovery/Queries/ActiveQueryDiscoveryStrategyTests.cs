@@ -131,6 +131,50 @@ public sealed class ActiveQueryDiscoveryStrategyTests
             new Feature(CapabilitySupport.Supported, Origin.Query));
     }
 
+    /// <summary>
+    /// Verifies DECRPM value 3 ("permanently set") publishes support for every probed mode
+    /// except synchronized output, whose value encodes an in-progress update rather than a
+    /// feature toggle and so is treated as unusable when reported permanently set.
+    /// </summary>
+    [Fact]
+    public void Accept_WhenPrivateModeIsPermanentlySet_SupportsEveryModeExceptSynchronizedOutput()
+    {
+        // Arrange
+        var limits = QueryLimits.Default with { MaxConcurrentQueries = 8 };
+        var negotiator = new ActiveQueryDiscoveryStrategy(
+            new NegotiationOptions(new Dictionary<string, string?>(), limits: limits));
+        _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
+        int[] modes = [1016, 1006, 2004, 1004, 2026];
+
+        // Act
+        foreach (var mode in modes)
+        {
+            var response = PrivateMode(mode, state: 3);
+            negotiator.Accept(in response).ShouldBe(QueryMatch.Matched);
+        }
+
+        var keyboard = Response("?3"u8, [], (byte) 'u');
+        negotiator.Accept(in keyboard).ShouldBe(QueryMatch.Matched);
+        var secondary = Response(">41;410;0"u8, [], (byte) 'c');
+        negotiator.Accept(in secondary).ShouldBe(QueryMatch.Matched);
+        var attributes = Response("?1;2"u8, [], (byte) 'c');
+        negotiator.Accept(in attributes).ShouldBe(QueryMatch.Matched);
+
+        // Assert
+        negotiator.IsComplete.ShouldBeTrue();
+        var capabilities = negotiator.Capabilities;
+        capabilities.SynchronizedOutput.ShouldBe(
+            new Feature(CapabilitySupport.Unsupported, Origin.Query));
+        capabilities.FocusReporting.ShouldBe(
+            new Feature(CapabilitySupport.Supported, Origin.Query));
+        capabilities.BracketedPaste.ShouldBe(
+            new Feature(CapabilitySupport.Supported, Origin.Query));
+        capabilities.CellMouse.ShouldBe(
+            new Feature(CapabilitySupport.Supported, Origin.Query));
+        capabilities.PixelMouse.ShouldBe(
+            new Feature(CapabilitySupport.Supported, Origin.Query));
+    }
+
     /// <summary>Verifies the configured query limit truncates by fixed priority.</summary>
     /// <param name="capacity">The maximum concurrent query count.</param>
     /// <param name="expected">The exact expected startup bytes.</param>

@@ -537,7 +537,8 @@ public sealed class Session: IAsyncDisposable
     {
         var inputOptions = (_options.Input with
         {
-            PixelMouse = _options.Coordinates == MouseCoordinates.Pixel
+            PixelMouse = _options.Coordinates == MouseCoordinates.Pixel,
+            MouseCoordinates = _options.Coordinates
         }).WithKeyMap(
             _context.Profile.KeyMap,
             _context.Profile.UsesAnsiKeyGrammar);

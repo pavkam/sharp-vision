@@ -75,7 +75,7 @@ public static class XtermResponses
             response = new XtermCapabilitiesResponse(
                 ResponseKind.PrivateMode,
                 values,
-                isSupported: values[1] is 1 or 2);
+                isSupported: values[1] is 1 or 2 or 3);
             return true;
         }
 

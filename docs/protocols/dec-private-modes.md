@@ -19,7 +19,9 @@ Typed modes cover cursor-key/application keypad behavior, origin/wrap, cursor
 visibility, alternate screen, mouse families, focus 1004, bracketed paste 2004,
 synchronized output 2026, and Kitty clipboard paste 5522. Queries are bounded
 and correlated; response values 0 and 4 mean unsupported where the defining
-protocol states that rule.
+protocol states that rule, and value 3 ("permanently set") means supported for
+every mode except 2026, whose value encodes an in-progress update rather than a
+feature toggle.
 
 ## Restoration and tests
 
@@ -42,8 +44,9 @@ the original exception.
 
 `Modes` provides exact DECSET/DECRST bytes for modes 9, 25, 1000, 1002, 1003,
 1004, 1005, 1006, 1015, 1016, 1049, 2004, 2026, and 5522. `Csi.QueryPrivateMode`
-emits DECRQM; `Responses.TryCsi` validates DECRPM and maps states 1/2 to
-supported while 0/4 remain unsupported. `QueryTracker` bounds in-flight queries,
+emits DECRQM; `XtermResponses.TryCsi` validates DECRPM and maps states 1/2/3 to
+supported while 0/4 remain unsupported, except mode 2026 where state 3 is also
+treated as unsupported (see above). `QueryTracker` bounds in-flight queries,
 rejects ambiguous duplicate uncorrelated requests, correlates Kitty IDs, and
 distinguishes duplicate from late replies using an injected `TimeProvider`. Mode
 ownership and reverse-order terminal restoration are implemented by

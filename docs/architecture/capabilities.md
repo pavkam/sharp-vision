@@ -242,13 +242,17 @@ this section owns the capability-specific query order.
 
 When `TERM` is an xterm hint but not a Kitty hint, the remaining slots append
 the finite XTGETTCAP `RGB` refinement followed by the DECRQSS modifyOtherKeys
-status. That status may publish query-origin `XtermKeyboard` support. RGB can
-refine only default or environment-only color evidence; database, prior-query,
-and override origins remain authoritative. An explicit `Settings.ColorDepth`
-prevents the RGB query from registering or writing, which preserves its capacity
-slot. `Session` prefers proven Kitty keyboard support; otherwise it leases the
-configured xterm level and restores xterm's initial resource value during
-reverse cleanup.
+status. On an approved outer route, that hint is read from the route's own
+explicit outer-terminal identity rather than the inner pane's `TERM`, matching
+the routed carve-out already applied to publication and query planning below —
+otherwise the inner pane's `TERM` would decide whether the outer terminal's own
+DCS probes are written (see #260). That status may publish query-origin
+`XtermKeyboard` support. RGB can refine only default or environment-only color
+evidence; database, prior-query, and override origins remain authoritative. An
+explicit `Settings.ColorDepth` prevents the RGB query from registering or
+writing, which preserves its capacity slot. `Session` prefers proven Kitty
+keyboard support; otherwise it leases the configured xterm level and restores
+xterm's initial resource value during reverse cleanup.
 
 Synchronous host dimensions are the highest-confidence geometry evidence.
 `TIOCGWINSZ` cells and pixels suppress the corresponding window queries before

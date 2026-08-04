@@ -320,4 +320,68 @@ public sealed class TextTests
             true,
             false));
     }
+
+    /// <summary>
+    /// Verifies a pending SS3 continuation that consumes a would-be Alt-marked byte does not arm
+    /// a decoder-wide modifier that then attaches to a later, unrelated keystroke (#264).
+    /// </summary>
+    [Fact]
+    public void Decode_WhenSs3PendingConsumesAltMarkedByte_DoesNotArmLaterText()
+    {
+        var sink = new RecordingInputSink();
+        using InputDecoder decoder = new(sink);
+
+        // ESC O arms a pending SS3 continuation; the next ESC then a UTF-8 lead byte would,
+        // without the fix, be misread as Alt-prefixed text even though the SS3 decoder consumes
+        // the lead byte itself and never reaches EmitText.
+        decoder.Decode([0x1b, (byte) 'O', 0x1b, 0xc3, (byte) 's']);
+        decoder.Complete();
+
+        var stroke = sink.Strokes.ShouldHaveSingleItem();
+        stroke.Character.ShouldBe(new Rune('s'));
+        stroke.Modifiers.ShouldBe(Modifiers.None);
+        sink.Text.ShouldHaveSingleItem().Value.ShouldBe(new Rune('s'));
+    }
+
+    /// <summary>
+    /// Verifies a pending X10 mouse continuation that consumes a would-be Alt-marked byte does
+    /// not arm a decoder-wide modifier that then attaches to a later, unrelated keystroke (#264).
+    /// </summary>
+    [Fact]
+    public void Decode_WhenX10PendingConsumesAltMarkedByte_DoesNotArmLaterText()
+    {
+        var sink = new RecordingInputSink();
+        using InputDecoder decoder = new(sink);
+
+        // ESC [ M arms a pending X10 mouse report; the next ESC then a UTF-8 lead byte would,
+        // without the fix, be misread as Alt-prefixed text even though the mouse decoder consumes
+        // the lead byte itself and never reaches EmitText.
+        decoder.Decode([0x1b, (byte) '[', (byte) 'M', 0x1b, 0xc3, (byte) 's']);
+        decoder.Complete();
+
+        var stroke = sink.Strokes.ShouldHaveSingleItem();
+        stroke.Character.ShouldBe(new Rune('s'));
+        stroke.Modifiers.ShouldBe(Modifiers.None);
+        sink.Text.ShouldHaveSingleItem().Value.ShouldBe(new Rune('s'));
+    }
+
+    /// <summary>
+    /// Verifies a UTF-8 continuation byte (0x80..0xBF) following Escape cannot begin a scalar
+    /// and so does not arm Alt for text that can never be produced: the malformed Escape sequence
+    /// is reported and recovers, and a following ordinary keystroke carries no leaked Alt (#264).
+    /// </summary>
+    [Fact]
+    public void Decode_WhenEscapeIsFollowedByUtf8ContinuationByte_DoesNotArmLaterText()
+    {
+        var sink = new RecordingInputSink();
+        using InputDecoder decoder = new(sink);
+
+        decoder.Decode([0x1b, 0x80, (byte) 'x']);
+        decoder.Complete();
+
+        sink.Diagnostics.ShouldNotBeEmpty();
+        var stroke = sink.Strokes.ShouldHaveSingleItem();
+        stroke.Character.ShouldBe(new Rune('x'));
+        stroke.Modifiers.ShouldBe(Modifiers.None);
+    }
 }

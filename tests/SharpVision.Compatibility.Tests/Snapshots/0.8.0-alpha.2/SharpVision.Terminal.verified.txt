@@ -663,6 +663,7 @@ namespace SharpVision.Terminal.Input
         public System.TimeSpan EscapeTimeout { get; init; }
         public SharpVision.Terminal.Kitty.KittyMetadataLimits KittyMetadataLimits { get; init; }
         public int MaxPasteBytes { get; init; }
+        public SharpVision.Terminal.Protocols.MouseCoordinates MouseCoordinates { get; init; }
         public SharpVision.Terminal.Protocols.ParserLimits ParserLimits { get; init; }
         public bool PixelMouse { get; init; }
         public SharpVision.Terminal.Terminfo.ProgramLimits ProgramLimits { get; init; }

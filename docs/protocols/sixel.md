@@ -60,7 +60,11 @@ byte-quiet because the protocol contract owns no remote IDs or delete command.
 Direct output is supported. An explicit tmux route wraps each complete DCS
 independently while CUP remains pane-local. GNU Screen routes are unavailable
 because its passthrough cannot represent a nested ST-terminated DCS. Route
-failure occurs during preparation, before transport I/O.
+failure occurs during preparation, before transport I/O. A placement whose
+encoded DCS would exceed the authorized route's envelope is budgeted against
+that exact bound before encoding — mirroring the iTerm2 fallback path — and
+declines to ordinary cell fallback with a diagnostic rather than throwing out of
+preparation.
 
 ## Detection and selection boundary
 

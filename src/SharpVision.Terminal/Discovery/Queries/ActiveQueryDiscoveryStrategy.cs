@@ -41,6 +41,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
     private bool _graphicsQueried;
     private bool _fenceQueried;
     private bool _usesExplicitOuterProfile;
+    private string? _planningTerminalName;
     private PaletteResponse? _paletteColor;
     private PaletteResponse? _foregroundColor;
     private PaletteResponse? _backgroundColor;
@@ -138,6 +139,14 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
         Deadline = _timeProvider.GetUtcNow() + _options.Limits.QueryTimeout;
         _usesExplicitOuterProfile = route?.CanRouteCapabilityQueries == true;
+
+        // The xterm-proprietary probe gates below must test the identity the baseline
+        // capabilities actually came from, not the inner pane's TERM: on an approved outer
+        // route, the outer terminal's own name is known and authoritative, while the inner
+        // environment is exactly the hint the route exists to route around (#260).
+        _planningTerminalName = _usesExplicitOuterProfile
+            ? route!.Policy.OuterProfile?.Description.Name
+            : _options.Environment.TryGetValue(EnvironmentNames.Term, out var term) ? term : null;
         var supportsStringQueries = route?.SupportsStringTerminatedQueries != false;
         var remaining = _options.Limits.MaxConcurrentQueries;
 
@@ -718,7 +727,14 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
         LastDiagnostic = null;
         _ = _completedModes.Add(mode);
-        SetModeResult(mode, response.IsSupported);
+
+        // DECRPM value 3 ("permanently set") means usable for every mode except 2026: that
+        // mode's *value* encodes "an update is currently in progress" (DECSET begins, DECRST
+        // ends), so a terminal claiming it is permanently set would never present a frame.
+        // Treat that specific reply as unusable rather than as proof of a working toggle.
+        var supported = response.IsSupported && (mode != DecPrivateMode.SynchronizedOutput || values[1] != 3);
+
+        SetModeResult(mode, supported);
         TryPublish();
         return QueryMatch.Matched;
     }
@@ -956,14 +972,14 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
     private bool ShouldQueryXtermKeyboard()
     {
-        _ = _options.Environment.TryGetValue(EnvironmentNames.Term, out var term);
+        var term = _planningTerminalName;
         return Contains(term, "xterm") && !Contains(term, "kitty") &&
                ShouldQuery(_baseline.XtermKeyboard, _options.Overrides?.XtermKeyboard);
     }
 
     private bool ShouldQueryXtermCapability()
     {
-        _ = _options.Environment.TryGetValue(EnvironmentNames.Term, out var term);
+        var term = _planningTerminalName;
         return Contains(term, "xterm") && !Contains(term, "kitty") &&
                _baseline.ColorOrigin is Origin.Default or Origin.Environment &&
                _options.Overrides?.ColorDepth is null;

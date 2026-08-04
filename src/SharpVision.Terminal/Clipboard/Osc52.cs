@@ -23,6 +23,11 @@ public static class Osc52
     private const int _defaultMaxBytes = 1_048_576;
     private const int _stackPayloadLimit = 512;
 
+    // The specification's own selection alphabet has 12 members (c, p, q, s, 0-7); a Pc field
+    // longer than this cannot contain a new valid character and is rejected before scanning,
+    // bounding direct public-API callers who bypass the parser's overall string length cap.
+    private const int _maxSelectionListLength = 32;
+
     /// <summary>
     /// Writes UTF-8 text to one OSC 52 selection.
     /// </summary>
@@ -121,15 +126,22 @@ public static class Osc52
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxBytes);
 
-        if (value.Length < 5 ||
-            !value.StartsWith("52;"u8) ||
-            value[4] != (byte) ';' ||
-            !TryGetSelection(value[3], out var selection))
+        if (value.Length < 4 || !value.StartsWith("52;"u8))
         {
             return Malformed();
         }
 
-        var encoded = value[5..];
+        var afterPrefix = value[3..];
+        var separatorIndex = afterPrefix.IndexOf((byte) ';');
+
+        if (separatorIndex < 0 ||
+            separatorIndex > _maxSelectionListLength ||
+            !TryResolveSelection(afterPrefix[..separatorIndex], out var selection))
+        {
+            return Malformed();
+        }
+
+        var encoded = afterPrefix[(separatorIndex + 1)..];
 
         if (encoded.SequenceEqual("?"u8))
         {
@@ -200,6 +212,31 @@ public static class Osc52
 
     private static ClipboardReply Malformed(Selection selection = Selection.Clipboard) =>
         new(ClipboardStatus.Malformed, selection, ReadOnlyMemory<byte>.Empty);
+
+    // The specification's Pc field carries zero or more selection characters, resolved to the
+    // first entry actually present rather than a fixed offset. An empty Pc has the documented
+    // meaning "the configurable primary/clipboard selection and cut-buffer 0"; Selection.Select
+    // is the closer of the two for a single-value result, since it names the caller-configured
+    // target rather than a specific numbered cut buffer.
+    private static bool TryResolveSelection(ReadOnlySpan<byte> pc, out Selection selection)
+    {
+        if (pc.IsEmpty)
+        {
+            selection = Selection.Select;
+            return true;
+        }
+
+        foreach (var candidate in pc)
+        {
+            if (TryGetSelection(candidate, out selection))
+            {
+                return true;
+            }
+        }
+
+        selection = default;
+        return false;
+    }
 
     private static bool TryGetSelection(byte value, out Selection selection)
     {

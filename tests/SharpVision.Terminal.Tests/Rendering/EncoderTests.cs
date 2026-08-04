@@ -18,11 +18,11 @@ public sealed class EncoderTests
     {
         {
             ColorDepth.TrueColor,
-            "\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[38;2;95;135;175m\u001b[48;2;255;0;0mx\u001b[0m\u001b[1;1H\u001b[?25l"
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[38;2;95;135;175m\u001b[48;2;255;0;0mx\u001b[0m\u001b[1;1H\u001b[?25l"
         },
-        { ColorDepth.Indexed256, "\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[38;5;67m\u001b[48;5;9mx\u001b[0m\u001b[1;1H\u001b[?25l" },
-        { ColorDepth.Basic16, "\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[90m\u001b[101mx\u001b[0m\u001b[1;1H\u001b[?25l" },
-        { ColorDepth.Monochrome, "\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1Hx\u001b[1;1H\u001b[?25l" }
+        { ColorDepth.Indexed256, "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[38;5;67m\u001b[48;5;9mx\u001b[0m\u001b[1;1H\u001b[?25l" },
+        { ColorDepth.Basic16, "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[90m\u001b[101mx\u001b[0m\u001b[1;1H\u001b[?25l" },
+        { ColorDepth.Monochrome, "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1Hx\u001b[1;1H\u001b[?25l" }
     };
 
     /// <summary>Verifies semantic colors project to exact bytes at every capability tier.</summary>
@@ -61,7 +61,7 @@ public sealed class EncoderTests
             TerminalCapabilities.Conservative);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            "\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[91mab\u001b[0m\u001b[1;1H\u001b[?25l"u8.ToArray());
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[91mab\u001b[0m\u001b[1;1H\u001b[?25l"u8.ToArray());
     }
 
     /// <summary>Verifies a missing capability snapshot fails before destination mutation.</summary>
@@ -96,7 +96,7 @@ public sealed class EncoderTests
             TrueColorCapabilities);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            "\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[6m\u001b[4mx\u001b[0m\u001b[1;1H\u001b[?25l"u8.ToArray());
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[6m\u001b[4mx\u001b[0m\u001b[1;1H\u001b[?25l"u8.ToArray());
     }
 
     /// <summary>Verifies proven optional decoration support emits exact modern SGR.</summary>
@@ -121,7 +121,7 @@ public sealed class EncoderTests
         _ = FrameEncoder.Encode(null, back, destination, capabilities);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            "\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[6m\u001b[53m\u001b[4:3m\u001b[58;2;1;2;3mx"u8.ToArray()
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[6m\u001b[53m\u001b[4:3m\u001b[58;2;1;2;3mx"u8.ToArray()
                 .Concat("\u001b[0m\u001b[1;1H\u001b[?25l"u8.ToArray())
                 .ToArray());
     }
@@ -141,7 +141,7 @@ public sealed class EncoderTests
 
         // Assert
         destination.WrittenSpan.ToArray().ShouldBe(
-            "\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1Ha�\u001b[1;1H\u001b[?25l"u8.ToArray());
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1Ha�\u001b[1;1H\u001b[?25l"u8.ToArray());
         destination.WrittenSpan.IndexOf("\u0301"u8).ShouldBe(-1);
     }
 
@@ -157,7 +157,7 @@ public sealed class EncoderTests
         var result = FrameEncoder.Encode(null, back, destination, TrueColorCapabilities);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            "\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1Hab\u001b[1;1H\u001b[?25l"u8.ToArray());
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1Hab\u001b[1;1H\u001b[?25l"u8.ToArray());
         result.ShouldBe(new EncodeResult(1, true));
     }
 
@@ -212,6 +212,7 @@ public sealed class EncoderTests
 
         destination.WrittenSpan.ToArray().ShouldBe(
             Encoding.UTF8.GetBytes(
+                "\u001b]8;;\u001b\\" +
                 "\u001b[0m\u001b[1;1H\u001b[2J" +
                 "\u001b[1;1H" +
                 "\u001b]8;;https://example.test\u001b\\" +

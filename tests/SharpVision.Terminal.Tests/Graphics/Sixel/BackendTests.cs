@@ -191,6 +191,31 @@ public sealed class BackendTests
         ]);
     }
 
+    /// <summary>
+    /// Verifies a sixel DCS exceeding an authorized route's envelope declines that placement to
+    /// cell fallback deterministically, rather than fully encoding it and only then throwing out
+    /// of <c>Prepare</c> and hanging the host — the sixel twin of the iTerm2 test with the same
+    /// name (#267).
+    /// </summary>
+    [Fact]
+    public void Prepare_WhenAuthorizedRouteIsTooSmall_DeclinesPlacementWithoutThrowing()
+    {
+        var route = new MultiplexerRoute(new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Graphics,
+            maxEnvelopeBytes: 10));
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false, route: route);
+        using var frame = Frame("a", (Red(), new Rect(0, 0, 1, 1)));
+
+        var result = backend.Prepare(null, frame, full: true, Context(new CellMetrics(1, 6)));
+
+        result.Placements.ShouldBe(0);
+        WritePlacements(backend).ShouldBeEmpty();
+    }
+
     /// <summary>Verifies GNU Screen routes are rejected before any frame state exists.</summary>
     [Fact]
     public void Constructor_WhenRouteContainsScreen_ThrowsNotSupportedException()

@@ -117,6 +117,8 @@ public sealed class Osc52Tests
     [InlineData("52;c;***", 16)]
     [InlineData("52;c;/w==", 16)]
     [InlineData("52;c;YWJj", 2)]
+    [InlineData("52;yz;YQ==", 16)]
+    [InlineData("52;c", 16)]
     public void Decode_WhenReplyIsInvalid_ReturnsMalformed(string payload, int maximum)
     {
         var result = Osc52.Decode(
@@ -125,6 +127,47 @@ public sealed class Osc52Tests
 
         result.Status.ShouldBe(ClipboardStatus.Malformed);
         result.Data.Length.ShouldBe(0);
+    }
+
+    /// <summary>
+    /// Verifies an empty Pc field decodes with the specification's documented default of the
+    /// configurable primary/clipboard selection, rather than being rejected.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenPcFieldIsEmpty_ResolvesDefaultSelection()
+    {
+        var result = Osc52.Decode("52;;aGk="u8, maxBytes: 16);
+
+        result.Status.ShouldBe(ClipboardStatus.Success);
+        result.Selection.ShouldBe(Selection.Select);
+        result.Data.ToArray().ShouldBe("hi"u8.ToArray());
+    }
+
+    /// <summary>
+    /// Verifies an empty Pc field still distinguishes a query payload.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenPcFieldIsEmptyAndPayloadIsQuery_ReturnsQueryStatus()
+    {
+        var result = Osc52.Decode("52;;?"u8, maxBytes: 16);
+
+        result.Status.ShouldBe(ClipboardStatus.Query);
+        result.Selection.ShouldBe(Selection.Select);
+        result.Data.Length.ShouldBe(0);
+    }
+
+    /// <summary>
+    /// Verifies a multi-character Pc field resolves to the first recognized selection in the
+    /// order given, per the specification's selection-list semantics.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenPcFieldListsMultipleSelections_ResolvesFirstRecognized()
+    {
+        var result = Osc52.Decode("52;pc;aGk="u8, maxBytes: 16);
+
+        result.Status.ShouldBe(ClipboardStatus.Success);
+        result.Selection.ShouldBe(Selection.Primary);
+        result.Data.ToArray().ShouldBe("hi"u8.ToArray());
     }
 
     /// <summary>

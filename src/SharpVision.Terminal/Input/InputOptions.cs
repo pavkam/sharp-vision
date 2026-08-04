@@ -6,6 +6,7 @@ namespace SharpVision.Terminal.Input;
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Clipboard;
 using SharpVision.Terminal.Kitty;
+using SharpVision.Terminal.Protocols;
 
 /// <summary>Defines finite immutable input decoding policy.</summary>
 [PublicAPI]
@@ -113,6 +114,17 @@ public sealed record InputOptions
     /// Gets whether SGR pointer coordinates are pixels rather than cells.
     /// </summary>
     public bool PixelMouse { get; init; }
+
+    /// <summary>
+    /// Gets the negotiated legacy X10 mouse coordinate encoding. Only
+    /// <see cref="MouseCoordinates.Default"/> and <see cref="MouseCoordinates.Utf8"/>
+    /// affect decoding: SGR, urxvt, and pixel reports arrive as CSI parameters and never use the
+    /// three-byte X10 field format this option governs. Threaded from the same
+    /// <c>TerminalOptions.Coordinates</c> value that selects which DECSET mode is enabled on
+    /// write, so the input and output sides cannot disagree about which encoding is in force
+    /// (see #270).
+    /// </summary>
+    public MouseCoordinates MouseCoordinates { get; init; } = MouseCoordinates.Sgr;
 
     /// <summary>Gets the active immutable terminal-description key map.</summary>
     internal KeyMap KeyMap { get; init; } = KeyMap.Empty;

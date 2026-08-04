@@ -18,7 +18,11 @@ keys, a non-negative native numeric code, composable `Modifiers`, and a
 press/repeat/release `KeyAction`. A `Text` value contains exactly one valid
 Rune. Printable input emits a stroke/text pair, which keeps keyboard commands
 and text composition distinct. Legacy Escape-prefixed printable text sets Alt on
-the stroke while preserving the same text Rune.
+the stroke while preserving the same text Rune. That marker is armed only when
+the following byte is a valid UTF-8 lead byte (`0xC2`..`0xF4`) that will
+actually reach text emission; a byte a pending SS3 or X10 mouse continuation
+consumes instead never arms it, so the Escape itself is recovered rather than
+leaving Alt attached to an unrelated later keystroke (see #264).
 
 The decoder retains at most three incomplete UTF-8 bytes and replaces malformed
 subsequences minimally with U+FFFD. It maps Enter, Tab, Backspace, cursor keys,

@@ -113,6 +113,12 @@ public static class FrameEncoder
 
         if (redraw)
         {
+            // sgr0 restores SGR attributes only; it never terminates an OSC 8 hyperlink
+            // (IsVisualDefault below deliberately excludes Hyperlink for the same reason).
+            // A redraw exists to repair unknown terminal state after a torn or interrupted
+            // write, so it must assume nothing about hyperlink state either, or a link left
+            // open by a truncated prior frame strands every later cell inside it (#265).
+            Osc.CloseHyperlink(new ProtocolWriter(destination));
             WriteRequired(profile, interpreter, destination, "sgr0");
 
             if (!profile.Programs.TryWrite("clear", [], interpreter, destination))

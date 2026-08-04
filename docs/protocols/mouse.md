@@ -24,11 +24,21 @@ SharpVision decodes X10 and VT200 compatibility, SGR cell/pixel, wheel, motion,
 extra buttons, modifiers, and Kitty's pixel-mode leave notification. It encodes
 safe mode leases and restores previous tracking on shutdown.
 
-`Input.InputDecoder` accepts three compatibility families: the three UTF-8
-scalar fields following X10 `CSI M`, urxvt decimal reports, and SGR reports with
-`<`. All fragmented fields remain bounded. Button codes preserve primary,
-middle, secondary, back, and forward buttons; modifier bits, motion, release,
-four wheel directions, and the zero-coordinate leave sentinel remain distinct.
+`Input.InputDecoder` accepts three compatibility families: the three-field X10
+report following `CSI M`, urxvt decimal reports, and SGR reports with `<`. All
+fragmented fields remain bounded. Button codes preserve primary, middle,
+secondary, back, and forward buttons; modifier bits, motion, release, four wheel
+directions, and the zero-coordinate leave sentinel remain distinct.
+
+The X10 field reader honors the negotiated `Protocols.MouseCoordinates`,
+threaded into `Input.InputOptions.MouseCoordinates` from the same
+`Runtime.TerminalOptions.Coordinates` value that selects the write-side DECSET
+mode: raw single-byte fields under `MouseCoordinates.Default`, UTF-8 scalar
+fields under `MouseCoordinates.Utf8`. The two encodings are mutually ambiguous
+for field bytes at or above `0x80`, so the decoder cannot infer which is in
+force from the byte stream alone — the input and output sides must agree. `0x7F`
+(DEL) is a legal field byte (coordinate 95) under both encodings and is fed to a
+pending X10 report rather than being treated as a keystroke.
 
 Cell reports subtract the wire's one-based origin exactly once. With
 `Input.InputOptions.PixelMouse`, SGR coordinates are retained as zero-based

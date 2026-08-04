@@ -330,6 +330,13 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         {
             return false;
         }
+        catch (InvalidOperationException)
+        {
+            // Defense-in-depth: the pre-flight route budget above should make this unreachable,
+            // but declining is strictly safer than letting a route-rejection throw escape
+            // Prepare and hang a hosted Application (#267).
+            return false;
+        }
     }
 
     private void WriteSixel(
@@ -341,10 +348,9 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
     {
         var source = placement.Source;
 
-        WriteCursor(new Point(placement.Destination.X, placement.Destination.Y), destination);
-
         if (_route is null)
         {
+            WriteCursor(new Point(placement.Destination.X, placement.Destination.Y), destination);
             SixelWriter.Write(
                 image,
                 source,
@@ -355,6 +361,23 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             return;
         }
 
+        // Budget the encode against the authorized route's exact inner-frame bound, and decline
+        // before the cursor move is written, mirroring the iTerm2 path (CanEncodeIterm). A sixel
+        // DCS has exactly 2 ESC bytes (open and ST), and the frame is a single unsplittable unit,
+        // so the bound is exact rather than per-chunk. Without this, an oversize DCS is fully
+        // encoded and only then rejected by WriteRoutedFrame, throwing out of Prepare instead of
+        // degrading to cell fallback (#267).
+        var routeMaxBytes = _route.GetMaximumGraphicsFrameBytes(escapeBytes: 2);
+
+        if (routeMaxBytes == 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maxOutputBytes),
+                maxOutputBytes,
+                "The authorized route cannot hold a sixel DCS frame.");
+        }
+
+        WriteCursor(new Point(placement.Destination.X, placement.Destination.Y), destination);
         var dcs = new ArrayBufferWriter<byte>();
         SixelWriter.Write(
             image,
@@ -362,7 +385,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             new Size(pixels.Width, pixels.Height),
             placement.Mode,
             dcs,
-            maxOutputBytes);
+            Math.Min(maxOutputBytes, routeMaxBytes));
         WriteRoutedFrame(dcs.WrittenSpan, destination);
     }
 
