@@ -114,33 +114,67 @@ public sealed class ComboBoxTests
         notifications.ShouldBeEmpty();
     }
 
-    /// <summary>Verifies PopupBorder applies to the owned drop-down popup without leaking it (see
-    /// #81).</summary>
+    /// <summary>Verifies PopupStyle applies border and shadow to the owned drop-down popup without
+    /// leaking it (see #81).</summary>
     [Fact]
-    public void PopupBorder_WhenSet_AppliesToOwnedPopup()
+    public void PopupStyle_WhenSet_AppliesToOwnedPopup()
+    {
+        var border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
+        var shadow = AppearanceTestValues.Shadow(visible: true);
+        var box = new ComboBox();
+        var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
+
+        box.PopupStyle = new PopupStyle { Border = border, Shadow = shadow };
+
+        popup.Border.ShouldBe(border);
+        popup.Shadow.ShouldBe(shadow);
+    }
+
+    /// <summary>Verifies a PopupStyle component left null keeps that part on ThemeRole.Popup
+    /// ownership while the other component is still locally applied (see #81).</summary>
+    [Fact]
+    public void PopupStyle_WhenOnlyBorderIsSet_LeavesShadowOnThemeRoleAppearance()
     {
         var border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
         var box = new ComboBox();
         var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
+        var themeRoleShadow = popup.Shadow;
 
-        box.PopupBorder = border;
+        box.PopupStyle = new PopupStyle { Border = border };
 
         popup.Border.ShouldBe(border);
+        popup.Shadow.ShouldBe(themeRoleShadow);
     }
 
-    /// <summary>Verifies ResetPopupBorder returns the owned popup to its ThemeRole.Popup appearance.</summary>
+    /// <summary>Verifies ResetPopupStyle returns the owned popup to its ThemeRole.Popup appearance.</summary>
     [Fact]
-    public void ResetPopupBorder_WhenPopupHasLocalOverride_ReturnsToThemeRoleAppearance()
+    public void ResetPopupStyle_WhenPopupHasLocalOverride_ReturnsToThemeRoleAppearance()
     {
         var box = new ComboBox();
         var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
         var themeRoleBorder = popup.Border;
-        box.PopupBorder = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
+        box.PopupStyle = new PopupStyle
+        {
+            Border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None)
+        };
 
-        box.ResetPopupBorder();
+        box.ResetPopupStyle();
 
-        box.PopupBorder.ShouldBeNull();
+        box.PopupStyle.ShouldBe(default);
         popup.Border.ShouldBe(themeRoleBorder);
+    }
+
+    /// <summary>Verifies RowHeight forwards to the owned drop-down list without leaking it (see #81).</summary>
+    [Fact]
+    public void RowHeight_WhenSet_AppliesToOwnedListView()
+    {
+        var box = new ComboBox();
+        var list = OwnedTree.Find<ListView>(box).ShouldNotBeNull();
+
+        box.RowHeight = 3;
+
+        list.RowHeight.ShouldBe(3);
+        box.RowHeight.ShouldBe(3);
     }
 
     /// <summary>Verifies ComboBox publishes its committed index before forwarding selection change.</summary>

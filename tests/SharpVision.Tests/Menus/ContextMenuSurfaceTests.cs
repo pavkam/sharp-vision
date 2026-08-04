@@ -6,6 +6,39 @@ namespace SharpVision.Tests.Menus;
 /// <summary>Verifies context menu behaviour with real pointer routing across control types and configurations.</summary>
 public sealed class ContextMenuSurfaceTests
 {
+    /// <summary>Verifies PopupStyle's border override reaches the rendered open context menu frame,
+    /// not just the property value (see #81).</summary>
+    [Fact]
+    public async Task PopupStyle_WhenSetAndOpen_RendersOverriddenBorderGlyphAsync()
+    {
+        // Arrange
+        var menu = new ContextMenu
+        {
+            PopupStyle = new PopupStyle
+            {
+                Border = new Border(BorderSide.All, BorderGlyphStyle.Ascii, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None)
+            }
+        };
+        menu.Items.Add(new MenuItem { Text = "Inspect" });
+        var button = new Button
+        {
+            Text = "Target",
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            ContextMenu = menu
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            button, new Size(30, 10), TestContext.Current.CancellationToken);
+        var popup = (Popup) menu.Presentation;
+
+        // Act
+        await surface.Pointer.RightClickAsync(button);
+
+        // Assert
+        menu.IsOpen.ShouldBeTrue();
+        surface.Cell(new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Y)).Text.ShouldBe("+");
+    }
+
     /// <summary>Verifies right-click on a button with a custom ContextMenu opens the popup.</summary>
     [ComponentBehaviorEvidence(
         typeof(ContextMenu),

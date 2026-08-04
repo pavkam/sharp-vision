@@ -67,6 +67,12 @@ through intrinsic promotion.
 - `Face`, `Border`, and `Shadow` resolve from the active theme's `Popup` profile
   unless a caller assigns a complete local composite. `ResetFace()`,
   `ResetBorder()`, and `ResetShadow()` return those values to theme ownership.
+  `Style` sets `Border` and `Shadow` together as one `PopupStyle` value; a
+  component left null in it keeps that part on theme ownership. Every control
+  that owns a retained Popup (`ComboBox`, `DateInput`, `DateTimeInput`,
+  `MenuItem`, `ContextMenu`) forwards this same `PopupStyle` fragment through
+  its own `PopupStyle`/`SubmenuStyle` property, instead of leaking the private
+  Popup.
 - The resolved `ActualShadow` applies to `SurfaceBounds`, not to the Popup's
   root-sized layout slot. It stays outside popup hit testing and obeys the root
   frame clip.

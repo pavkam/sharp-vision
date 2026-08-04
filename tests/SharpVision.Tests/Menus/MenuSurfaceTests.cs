@@ -6,6 +6,38 @@ namespace SharpVision.Tests.Menus;
 /// <summary>Proves menu entries and navigation through mounted terminal surfaces.</summary>
 public sealed class MenuSurfaceTests
 {
+    /// <summary>Verifies SubmenuStyle's border override reaches the rendered open submenu frame,
+    /// not just the property value (see #81).</summary>
+    [Fact]
+    public async Task SubmenuStyle_WhenSetAndOpen_RendersOverriddenBorderGlyphAsync()
+    {
+        // Arrange
+        var submenu = new Menu { Orientation = Orientation.Vertical };
+        submenu.Items.Add(new MenuItem { Text = "About" });
+        var help = new MenuItem
+        {
+            Text = "Help",
+            Submenu = submenu,
+            SubmenuStyle = new PopupStyle
+            {
+                Border = new Border(BorderSide.All, BorderGlyphStyle.Ascii, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None)
+            }
+        };
+        var menu = new Menu();
+        menu.Items.Add(help);
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(20, 5),
+            TestContext.Current.CancellationToken);
+        var popup = OwnedTree.Find<Popup>(help).ShouldNotBeNull();
+
+        // Act
+        await surface.Pointer.ClickAsync(help);
+
+        // Assert
+        surface.Cell(new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Y)).Text.ShouldBe("+");
+    }
+
     /// <summary>Verifies a short submenu uses the shipped menu minimum before popup framing.</summary>
     [Fact]
     public async Task Submenu_WhenShortDefaultOpens_UsesTenCellMenuWidthAsync()

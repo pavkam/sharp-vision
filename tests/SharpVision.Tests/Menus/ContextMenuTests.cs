@@ -16,10 +16,10 @@ public sealed class ContextMenuTests
         menu.Items.ShouldBeEmpty();
     }
 
-    /// <summary>Verifies PopupBorder applies to the owned popup without leaking it, and
-    /// ResetPopupBorder returns it to the ThemeRole.Popup appearance (see #81).</summary>
+    /// <summary>Verifies PopupStyle applies to the owned popup without leaking it, and
+    /// ResetPopupStyle returns it to the ThemeRole.Popup appearance (see #81).</summary>
     [Fact]
-    public void PopupBorder_WhenSetAndReset_AppliesToOwnedPopupAndReturnsToThemeRole()
+    public void PopupStyle_WhenSetAndReset_AppliesToOwnedPopupAndReturnsToThemeRole()
     {
         // Arrange
         using var menu = new ContextMenu();
@@ -28,16 +28,16 @@ public sealed class ContextMenuTests
         var border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
 
         // Act
-        menu.PopupBorder = border;
+        menu.PopupStyle = new PopupStyle { Border = border };
 
         // Assert
         popup.Border.ShouldBe(border);
 
         // Act
-        menu.ResetPopupBorder();
+        menu.ResetPopupStyle();
 
         // Assert
-        menu.PopupBorder.ShouldBeNull();
+        menu.PopupStyle.ShouldBe(default);
         popup.Border.ShouldBe(themeRoleBorder);
     }
 

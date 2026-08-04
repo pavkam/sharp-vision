@@ -327,44 +327,56 @@ public sealed class ComboBox: ControlBase
     /// <summary>Gets the resolved drop-down scrollbar style.</summary>
     public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
 
-    /// <summary>Gets or sets the complete locally authored border for the owned drop-down popup.</summary>
+    /// <summary>Gets or sets the owned drop-down popup's border and shadow together.</summary>
     /// <remarks>
-    /// Null (the default) leaves the popup on its own <see cref="ThemeRole.Popup"/> role appearance
-    /// (see #81).
+    /// A component left null keeps the popup on its own <see cref="ThemeRole.Popup"/> role
+    /// appearance for that part (see #81).
     /// </remarks>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
-    public Border? PopupBorder
+    public PopupStyle PopupStyle
     {
-        get;
+        get => _popup.Style;
         set
         {
             VerifyMutable();
 
-            if (field == value)
+            if (_popup.Style == value)
             {
                 return;
             }
 
-            field = value;
-
-            if (value.HasValue)
-            {
-                _popup.Border = value.Value;
-            }
-            else
-            {
-                _popup.ResetBorder();
-            }
-
-            NotifyPropertyChanged(nameof(PopupBorder), InvalidationImpact.None);
+            _popup.Style = value;
+            NotifyPropertyChanged(nameof(PopupStyle), InvalidationImpact.None);
         }
     }
 
-    /// <summary>Returns the drop-down popup's border to <see cref="ThemeRole.Popup"/> ownership.</summary>
+    /// <summary>Returns the drop-down popup's border and shadow to <see cref="ThemeRole.Popup"/> ownership.</summary>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
-    public void ResetPopupBorder() => PopupBorder = null;
+    public void ResetPopupStyle() => PopupStyle = default;
+
+    /// <summary>Gets or sets the fixed row height of every owned drop-down item, or null to size each
+    /// row to its content.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
+    public int? RowHeight
+    {
+        get => _list.RowHeight;
+        set
+        {
+            VerifyMutable();
+
+            if (_list.RowHeight == value)
+            {
+                return;
+            }
+
+            _list.RowHeight = value;
+            NotifyPropertyChanged(nameof(RowHeight), InvalidationImpact.None);
+        }
+    }
 
     /// <summary>Gets or sets whether the private drop-down owns a dismissing modal plane rooted at this field.</summary>
     /// <exception cref="ArgumentException">The attached ComboBox is not an eligible modal root.</exception>

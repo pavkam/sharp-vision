@@ -24,6 +24,33 @@ public class Popup: FloatingSurfaceBase
     /// <summary>Returns shadow ownership to the active Theme.</summary>
     public new void ResetShadow() => base.ResetShadow();
 
+    /// <summary>Gets or sets the border and shadow together as one composite value; either component
+    /// left null keeps that part on Theme ownership (see #81).</summary>
+    public PopupStyle Style
+    {
+        get => new() { Border = LocalBorder, Shadow = LocalShadow };
+        set
+        {
+            if (value.Border.HasValue)
+            {
+                Border = value.Border.Value;
+            }
+            else
+            {
+                ResetBorder();
+            }
+
+            if (value.Shadow.HasValue)
+            {
+                Shadow = value.Shadow.Value;
+            }
+            else
+            {
+                ResetShadow();
+            }
+        }
+    }
+
     #region Construction and ownership
 
     /// <inheritdoc/>

@@ -96,18 +96,21 @@ internal sealed class MenuPane: CompositeControlBase
         var helpSubmenu = new Menu { Orientation = Orientation.Vertical };
         helpSubmenu.Items.Add(helpAbout);
 
-        // SubmenuBorder demonstrates #81's owned-popup-presentation surface: a local override on
+        // SubmenuStyle demonstrates #81's owned-popup-presentation surface: a local override on
         // the owning MenuItem, with no private Popup access required.
         var fileItem = new MenuItem
         {
             Text = "&File",
             Submenu = fileSubmenu,
-            SubmenuBorder = new Border(
-                BorderSide.All,
-                BorderGlyphStyle.Heavy,
-                Color.Rgb(0x77, 0xaa, 0xff),
-                Color.Transparent,
-                TerminalAttributes.None)
+            SubmenuStyle = new PopupStyle
+            {
+                Border = new Border(
+                    BorderSide.All,
+                    BorderGlyphStyle.Heavy,
+                    Color.Rgb(0x77, 0xaa, 0xff),
+                    Color.Transparent,
+                    TerminalAttributes.None)
+            }
         };
         var editItem = new MenuItem { Text = "&Edit", Submenu = editSubmenu };
         var viewItem = new MenuItem { Text = "&View", Submenu = viewSubmenu };

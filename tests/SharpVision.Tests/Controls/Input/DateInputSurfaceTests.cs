@@ -44,6 +44,36 @@ public sealed class DateInputSurfaceTests
         input.IsFocused.ShouldBeTrue();
     }
 
+    /// <summary>Verifies PopupStyle's border override reaches the rendered open Calendar frame, not
+    /// just the property value (see #81).</summary>
+    [Fact]
+    public async Task PopupStyle_WhenSetAndOpen_RendersOverriddenBorderGlyphAsync()
+    {
+        // Arrange
+        var input = new DateInput
+        {
+            Value = new DateOnly(2026, 3, 15),
+            Culture = CultureInfo.InvariantCulture,
+            PopupStyle = new PopupStyle
+            {
+                Border = new Border(BorderSide.All, BorderGlyphStyle.Ascii, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None)
+            }
+        };
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+        var popup = OwnedTree.Find<Popup>(input).ShouldNotBeNull();
+
+        // Act
+        await surface.UpdateAsync(() => input.IsOpen = true, "open Calendar popup with overridden popup style");
+
+        // Assert
+        // ConnectsToAnchor omits the popup's top edge, so the bottom-left corner is checked instead.
+        surface.Cell(new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Bottom - 1)).Text.ShouldBe("+");
+    }
+
     /// <summary>Verifies Up arrow increments the focused month segment.</summary>
     [Fact]
     public async Task Keyboard_WhenUpIsPressed_IncrementsMonthSegmentAsync()

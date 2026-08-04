@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
+using UiCalendar = SharpVision.Controls.Input.Calendar;
+
 /// <summary>Proves the detached public DateInput contract, clamping, culture, and rendering.</summary>
 public sealed class DateInputTests
 {
@@ -344,10 +346,10 @@ public sealed class DateInputTests
         control.DropDownGlyph.ShouldBe(defaultGlyph);
     }
 
-    /// <summary>Verifies PopupBorder applies to the owned Calendar popup without leaking it, and
-    /// ResetPopupBorder returns it to the ThemeRole.Popup appearance (see #81).</summary>
+    /// <summary>Verifies PopupStyle applies to the owned Calendar popup without leaking it, and
+    /// ResetPopupStyle returns it to the ThemeRole.Popup appearance (see #81).</summary>
     [Fact]
-    public void PopupBorder_WhenSetAndReset_AppliesToOwnedPopupAndReturnsToThemeRole()
+    public void PopupStyle_WhenSetAndReset_AppliesToOwnedPopupAndReturnsToThemeRole()
     {
         // Arrange
         using var control = new DateInput();
@@ -356,17 +358,32 @@ public sealed class DateInputTests
         var border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
 
         // Act
-        control.PopupBorder = border;
+        control.PopupStyle = new PopupStyle { Border = border };
 
         // Assert
         popup.Border.ShouldBe(border);
 
         // Act
-        control.ResetPopupBorder();
+        control.ResetPopupStyle();
 
         // Assert
-        control.PopupBorder.ShouldBeNull();
+        control.PopupStyle.ShouldBe(default);
         popup.Border.ShouldBe(themeRoleBorder);
+    }
+
+    /// <summary>Verifies CalendarStyle applies to the owned Calendar without leaking it, and reading
+    /// it back reflects the resolved presentation through ActualCalendarStyle (see #81).</summary>
+    [Fact]
+    public void CalendarStyle_WhenSet_AppliesToOwnedCalendar()
+    {
+        using var control = new DateInput();
+        var calendar = OwnedTree.Find<UiCalendar>(control).ShouldNotBeNull();
+        var style = CalendarStyle.Default.With(selectedDayColor: Color.Rgb(65, 43, 21));
+
+        control.CalendarStyle = style;
+
+        calendar.Style.ShouldBe(style);
+        control.ActualCalendarStyle.ShouldBe(calendar.ActualStyle);
     }
 
     #endregion

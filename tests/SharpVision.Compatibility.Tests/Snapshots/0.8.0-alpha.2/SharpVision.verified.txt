@@ -1188,7 +1188,8 @@ namespace SharpVision.Controls.Input
         public SharpVision.Controls.Collections.ItemTemplate ItemTemplate { get; set; }
         public System.Collections.Generic.IReadOnlyList<object?> Items { get; set; }
         public string Placeholder { get; set; }
-        public SharpVision.Styling.Border? PopupBorder { get; set; }
+        public SharpVision.Popups.PopupStyle PopupStyle { get; set; }
+        public int? RowHeight { get; set; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
         public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
         public int SelectedIndex { get; set; }
@@ -1208,12 +1209,14 @@ namespace SharpVision.Controls.Input
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetDropDownGlyph() { }
-        public void ResetPopupBorder() { }
+        public void ResetPopupStyle() { }
     }
     public sealed class DateInput : SharpVision.Controls.ControlBase
     {
         public DateInput() { }
+        public SharpVision.Controls.Input.CalendarStyle ActualCalendarStyle { get; }
         public bool AllowNull { get; set; }
+        public SharpVision.Controls.Input.CalendarStyle? CalendarStyle { get; set; }
         public System.Globalization.CultureInfo Culture { get; set; }
         public System.Text.Rune DropDownGlyph { get; set; }
         public int DropDownHeight { get; set; }
@@ -1221,7 +1224,7 @@ namespace SharpVision.Controls.Input
         public bool IsOpen { get; set; }
         public System.DateOnly Maximum { get; set; }
         public System.DateOnly Minimum { get; set; }
-        public SharpVision.Styling.Border? PopupBorder { get; set; }
+        public SharpVision.Popups.PopupStyle PopupStyle { get; set; }
         protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public System.DateOnly? Value { get; set; }
         public event System.EventHandler? DropDownClosed;
@@ -1236,7 +1239,7 @@ namespace SharpVision.Controls.Input
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetDropDownGlyph() { }
-        public void ResetPopupBorder() { }
+        public void ResetPopupStyle() { }
     }
     public readonly struct DateInterval : System.IEquatable<SharpVision.Controls.Input.DateInterval>
     {
@@ -1250,7 +1253,9 @@ namespace SharpVision.Controls.Input
     public sealed class DateTimeInput : SharpVision.Controls.ControlBase
     {
         public DateTimeInput() { }
+        public SharpVision.Controls.Input.CalendarStyle ActualCalendarStyle { get; }
         public bool AllowNull { get; set; }
+        public SharpVision.Controls.Input.CalendarStyle? CalendarStyle { get; set; }
         public System.Globalization.CultureInfo Culture { get; set; }
         public System.Text.Rune DropDownGlyph { get; set; }
         public int DropDownHeight { get; set; }
@@ -1258,7 +1263,7 @@ namespace SharpVision.Controls.Input
         public bool IsOpen { get; set; }
         public System.DateTime Maximum { get; set; }
         public System.DateTime Minimum { get; set; }
-        public SharpVision.Styling.Border? PopupBorder { get; set; }
+        public SharpVision.Popups.PopupStyle PopupStyle { get; set; }
         public bool ShowSeconds { get; set; }
         protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public System.TimeSpan TimeStep { get; set; }
@@ -1276,7 +1281,7 @@ namespace SharpVision.Controls.Input
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetDropDownGlyph() { }
-        public void ResetPopupBorder() { }
+        public void ResetPopupStyle() { }
     }
     public sealed class HyperlinkButton : SharpVision.Controls.PressableBase
     {
@@ -2517,14 +2522,14 @@ namespace SharpVision.Menus
         public ContextMenu() { }
         public bool IsOpen { get; }
         public SharpVision.Menus.MenuEntryCollection Items { get; }
-        public SharpVision.Styling.Border? PopupBorder { get; set; }
+        public SharpVision.Popups.PopupStyle PopupStyle { get; set; }
         public event System.EventHandler? Closed;
         public event System.EventHandler? Closing;
         public event System.EventHandler? Opening;
         public void Close() { }
         public void Dispose() { }
         protected virtual void Dispose(bool disposing) { }
-        public void ResetPopupBorder() { }
+        public void ResetPopupStyle() { }
         public void Show(int row, int col) { }
     }
     public sealed class Menu : SharpVision.Controls.ItemsControl
@@ -2579,7 +2584,7 @@ namespace SharpVision.Menus
         public SharpVision.Input.KeyGesture? Shortcut { get; set; }
         public string? ShortcutText { get; set; }
         public SharpVision.Menus.Menu? Submenu { get; set; }
-        public SharpVision.Styling.Border? SubmenuBorder { get; set; }
+        public SharpVision.Popups.PopupStyle SubmenuStyle { get; set; }
         public System.Text.Rune UncheckedGlyph { get; set; }
         public event System.EventHandler<SharpVision.Menus.MenuItemInvokedEventArgs>? Invoked;
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
@@ -2591,7 +2596,7 @@ namespace SharpVision.Menus
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void PerformInvoke() { }
         public void ResetGlyphs() { }
-        public void ResetSubmenuBorder() { }
+        public void ResetSubmenuStyle() { }
     }
     public sealed class MenuItemInvokedEventArgs : System.EventArgs
     {
@@ -2740,6 +2745,7 @@ namespace SharpVision.Popups
         public SharpVision.Popups.PopupPlacement Placement { get; set; }
         public new SharpVision.Styling.Shadow Shadow { get; set; }
         public bool ShowAnchorIndicator { get; set; }
+        public SharpVision.Popups.PopupStyle Style { get; set; }
         public bool SuppressCloseOtherPopups { get; init; }
         protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         protected override SharpVision.Terminal.Geometry.Rect VisualBounds { get; }
@@ -2768,6 +2774,11 @@ namespace SharpVision.Popups
         Above = 1,
         Right = 2,
         Left = 3,
+    }
+    public readonly struct PopupStyle : System.IEquatable<SharpVision.Popups.PopupStyle>
+    {
+        public SharpVision.Styling.Border? Border { get; init; }
+        public SharpVision.Styling.Shadow? Shadow { get; init; }
     }
     public sealed class Tooltip : SharpVision.Popups.Popup
     {

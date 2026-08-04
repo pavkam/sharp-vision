@@ -26,20 +26,22 @@ taking on its single-content inheritance role.
 
 ## API
 
-| Member                                   | Default             | Purpose                                                                                     |
-| ---------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------- |
-| `Items`                                  | Empty snapshot      | Copies the available choices into the private single-selection list.                        |
-| `SelectedIndex`                          | `-1`                | Selects one choice or clears the selection.                                                 |
-| `AllowNull`                              | `true`              | Allows Delete/Backspace to clear the selection.                                             |
-| `Placeholder`                            | `Select…`           | Face text shown when no item is selected.                                                   |
-| `DropDownHeight`                         | `8` cells           | Caps the ListView interior; the connected Popup's three visible frame edges are additional. |
-| `IsOpen`                                 | `false`             | Controls popup layout, rendering, and hit testing.                                          |
-| `ScrollBars`, `ShowScrollBars`           | ListView defaults   | Configure overflow visibility in the private list.                                          |
-| `ScrollBarStyle`, `ActualScrollBarStyle` | `null`, Theme style | Override or inspect the private list's complete rail presentation.                          |
-| `DropDownGlyph`                          | Code-owned          | Overrides the validated one-cell disclosure marker.                                         |
-| `SelectionChanged`                       | No subscribers      | Reports the selection after `SelectedIndex` commits.                                        |
-| `ItemTemplate`                           | ListView default    | Forwards directly to the private ListView's own `ItemTemplate`, realizing each popup row.   |
-| `TextSelector`                           | `null`              | Projects an item to its closed-field and type-ahead text; falls back to `Convert.ToString`. |
+| Member                                   | Default             | Purpose                                                                                                        |
+| ---------------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `Items`                                  | Empty snapshot      | Copies the available choices into the private single-selection list.                                           |
+| `SelectedIndex`                          | `-1`                | Selects one choice or clears the selection.                                                                    |
+| `AllowNull`                              | `true`              | Allows Delete/Backspace to clear the selection.                                                                |
+| `Placeholder`                            | `Select…`           | Face text shown when no item is selected.                                                                      |
+| `DropDownHeight`                         | `8` cells           | Caps the ListView interior; the connected Popup's three visible frame edges are additional.                    |
+| `IsOpen`                                 | `false`             | Controls popup layout, rendering, and hit testing.                                                             |
+| `ScrollBars`, `ShowScrollBars`           | ListView defaults   | Configure overflow visibility in the private list.                                                             |
+| `ScrollBarStyle`, `ActualScrollBarStyle` | `null`, Theme style | Override or inspect the private list's complete rail presentation.                                             |
+| `RowHeight`                              | `null`              | Forwards to the private list's fixed row height, or `null` to size each row to its content.                    |
+| `PopupStyle`, `ResetPopupStyle`          | `default`           | Overrides or resets the private Popup's border and shadow together (see [Popup](../popups/popup.md#overview)). |
+| `DropDownGlyph`                          | Code-owned          | Overrides the validated one-cell disclosure marker.                                                            |
+| `SelectionChanged`                       | No subscribers      | Reports the selection after `SelectedIndex` commits.                                                           |
+| `ItemTemplate`                           | ListView default    | Forwards directly to the private ListView's own `ItemTemplate`, realizing each popup row.                      |
+| `TextSelector`                           | `null`              | Projects an item to its closed-field and type-ahead text; falls back to `Convert.ToString`.                    |
 
 `TextSelector` drives both the closed field's displayed text and keyboard
 type-ahead matching through the same projection, so the two cannot drift from

@@ -79,6 +79,38 @@ public sealed class ComboBoxSurfaceTests
         combo.IsOpen.ShouldBeFalse();
     }
 
+    /// <summary>Verifies PopupStyle's border override reaches the rendered open drop-down frame,
+    /// not just the property value (see #81).</summary>
+    [Fact]
+    public async Task PopupStyle_WhenSetAndOpen_RendersOverriddenBorderGlyphAsync()
+    {
+        // Arrange
+        var combo = new ComboBox
+        {
+            Width = Length.Cells(10),
+            Height = Length.Cells(3),
+            DropDownHeight = 2,
+            Items = ["One", "Two"],
+            PopupStyle = new PopupStyle
+            {
+                Border = new Border(BorderSide.All, BorderGlyphStyle.Ascii, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None)
+            }
+        };
+        var root = new Overlay { Children = { combo } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(12, 7),
+            TestContext.Current.CancellationToken);
+        var popup = OwnedTree.Find<Popup>(combo).ShouldNotBeNull();
+
+        // Act
+        await surface.UpdateAsync(() => combo.IsOpen = true, "open drop-down with overridden popup style");
+
+        // Assert
+        // ConnectsToAnchor omits the popup's top edge, so the bottom-left corner is checked instead.
+        surface.Cell(new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Bottom - 1)).Text.ShouldBe("+");
+    }
+
     /// <summary>Verifies a wheel with no ListView range to scroll is left unhandled, so the
     /// documented Dismiss policy closes the drop-down instead of leaking to the parent's own
     /// scroll (see #211).</summary>

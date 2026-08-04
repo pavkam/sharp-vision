@@ -99,9 +99,9 @@ public sealed class MenuItem: PressableBase
                 Content = value,
             };
 
-        if (newPopup is not null && SubmenuBorder.HasValue)
+        if (newPopup is not null && SubmenuStyle != default)
         {
-            newPopup.Border = SubmenuBorder.Value;
+            newPopup.Style = SubmenuStyle;
         }
 
         if (_submenu is { } previous)
@@ -132,16 +132,16 @@ public sealed class MenuItem: PressableBase
         NotifyPropertyChanged(nameof(Submenu), InvalidationImpact.None);
     }
 
-    /// <summary>Gets or sets the complete locally authored border for the submenu's owned popup.</summary>
+    /// <summary>Gets or sets the submenu's owned popup border and shadow together.</summary>
     /// <remarks>
-    /// Null (the default) leaves the popup on its own <see cref="ThemeRole.Popup"/> role appearance,
-    /// exactly as an unset <see cref="Popup.Border"/> would. Applies immediately to an already-open
-    /// submenu's popup, and survives a <see cref="Submenu"/> reassignment, which recreates the
-    /// popup (see #81).
+    /// A component left null keeps the popup on its own <see cref="ThemeRole.Popup"/> role
+    /// appearance for that part, exactly as an unset <see cref="Popup.Style"/> would. Applies
+    /// immediately to an already-open submenu's popup, and survives a <see cref="Submenu"/>
+    /// reassignment, which recreates the popup (see #81).
     /// </remarks>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
-    public Border? SubmenuBorder
+    public PopupStyle SubmenuStyle
     {
         get;
         set
@@ -154,27 +154,15 @@ public sealed class MenuItem: PressableBase
             }
 
             field = value;
-
-            if (_submenuPopup is not null)
-            {
-                if (value.HasValue)
-                {
-                    _submenuPopup.Border = value.Value;
-                }
-                else
-                {
-                    _submenuPopup.ResetBorder();
-                }
-            }
-
-            NotifyPropertyChanged(nameof(SubmenuBorder), InvalidationImpact.None);
+            _ = _submenuPopup?.Style = value;
+            NotifyPropertyChanged(nameof(SubmenuStyle), InvalidationImpact.None);
         }
     }
 
-    /// <summary>Returns the submenu popup's border to <see cref="ThemeRole.Popup"/> ownership.</summary>
+    /// <summary>Returns the submenu popup's border and shadow to <see cref="ThemeRole.Popup"/> ownership.</summary>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
-    public void ResetSubmenuBorder() => SubmenuBorder = null;
+    public void ResetSubmenuStyle() => SubmenuStyle = default;
 
     /// <summary>Gets or sets the optional keyboard shortcut hint displayed right-aligned after the label.</summary>
     /// <remarks>
