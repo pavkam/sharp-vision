@@ -105,12 +105,15 @@ does not consume, extend, or otherwise alter the pending transaction.
 For a non-Kitty xterm hint, remaining capacity then appends XTGETTCAP `RGB` when
 color evidence needs refinement, followed by DECRQSS `>4m`. On an approved outer
 route, this hint is sourced from the route's explicit outer-terminal identity,
-not the inner pane's `TERM` (see #260). A matched status reply proves xterm
-enhanced-key support. Validated positive `RGB` data may replace default or
-environment-only semantic color depth with query evidence; database, prior
-query, and override evidence win. An explicit `Settings.ColorDepth` suppresses
-the XTGETTCAP registration and bytes entirely, so the slot remains available to
-the bounded batch.
+not the inner pane's `TERM` (see #260). An unrouted native Windows connection
+accepts the built-in `windows-vt` description name as the same hint instead,
+because `TERM` is essentially never set there and an unrecognized XTGETTCAP
+request is safely consumed like any other unknown DCS. A matched status reply
+proves xterm enhanced-key support. Validated positive `RGB` data may replace
+default or environment-only semantic color depth with query evidence; database,
+prior query, and override evidence win. An explicit `Settings.ColorDepth`
+suppresses the XTGETTCAP registration and bytes entirely, so the slot remains
+available to the bounded batch.
 
 One absolute exclusive deadline is captured before the first registration and
 shared by every emitted query. Out-of-order replies observed strictly before it

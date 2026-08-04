@@ -121,6 +121,11 @@ internal sealed class ActiveQueryDiscoveryStrategy
     /// <param name="cells">Optional locally observed text-area cells.</param>
     /// <param name="pixels">Optional locally observed text-area pixels.</param>
     /// <param name="route">Optional explicit typed outer-terminal query route.</param>
+    /// <param name="describedTerminalName">
+    /// The connection's own resolved description name, used only as a planning-name fallback
+    /// when neither a route nor <c>TERM</c> supplies one (see the built-in Windows VT carve-out
+    /// below).
+    /// </param>
     /// <returns>True when the query batch was written; false when route encoding failed atomically.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="destination"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The negotiator already started.</exception>
@@ -128,7 +133,8 @@ internal sealed class ActiveQueryDiscoveryStrategy
         IBufferWriter<byte> destination,
         Size? cells,
         Size? pixels,
-        MultiplexerRoute? route = null)
+        MultiplexerRoute? route = null,
+        string? describedTerminalName = null)
     {
         ArgumentNullException.ThrowIfNull(destination);
 
@@ -144,9 +150,23 @@ internal sealed class ActiveQueryDiscoveryStrategy
         // capabilities actually came from, not the inner pane's TERM: on an approved outer
         // route, the outer terminal's own name is known and authoritative, while the inner
         // environment is exactly the hint the route exists to route around (#260).
+        //
+        // Native Windows connections almost never set TERM at all - not under classic conhost,
+        // and not under modern Windows Terminal either (which sets WT_SESSION, not TERM). Falling
+        // back to the connection's own "windows-vt" description name here - which SharpVision
+        // only selects after confirming ENABLE_VIRTUAL_TERMINAL_PROCESSING succeeded - lets the
+        // two DEC/xterm-proprietary probes below reach real VT-capable Windows terminals instead
+        // of being permanently withheld by an environment variable Windows structurally never
+        // sets. This is safe on a terminal that doesn't understand them: both probes are DCS
+        // forms conhost's own parser either answers with a conformant negative reply (DECRQSS,
+        // confirmed via its current AdaptDispatch::RequestSetting implementation) or consumes and
+        // discards unrecognized (XTGETTCAP, the same "unknown DCS" path every other unsupported
+        // terminal already takes) - see docs/protocols/xterm.md for the citation.
         _planningTerminalName = _usesExplicitOuterProfile
             ? route!.Policy.OuterProfile?.Description.Name
-            : _options.Environment.TryGetValue(EvidenceEnvironmentVars.Term, out var term) ? term : null;
+            : _options.Environment.TryGetValue(EvidenceEnvironmentVars.Term, out var term) && !string.IsNullOrEmpty(term)
+                ? term
+                : describedTerminalName;
         var supportsStringQueries = route?.SupportsStringTerminatedQueries != false;
         var remaining = _options.Limits.MaxConcurrentQueries;
 
@@ -973,20 +993,28 @@ internal sealed class ActiveQueryDiscoveryStrategy
     private bool ShouldQueryXtermKeyboard()
     {
         var term = _planningTerminalName;
-        return Contains(term, "xterm") && !Contains(term, "kitty") &&
+        return IsXtermLikeHint(term) &&
                ShouldQuery(_baseline.XtermKeyboard, _options.Overrides?.XtermKeyboard);
     }
 
     private bool ShouldQueryXtermCapability()
     {
         var term = _planningTerminalName;
-        return Contains(term, "xterm") && !Contains(term, "kitty") &&
+        return IsXtermLikeHint(term) &&
                _baseline.ColorOrigin is Origin.Default or Origin.Environment &&
                _options.Overrides?.ColorDepth is null;
     }
 
     private static bool Contains(string? value, string fragment) =>
         value?.Contains(fragment, StringComparison.OrdinalIgnoreCase) == true;
+
+    // "windows-vt" is SharpVision's own built-in description name, selected only after
+    // confirming ENABLE_VIRTUAL_TERMINAL_PROCESSING succeeded (see WindowsVtProvider). It never
+    // contains "xterm", so it needs its own explicit carve-out alongside the environment-hint
+    // test rather than being folded into it (see #260's follow-up in TryStart above).
+    private static bool IsXtermLikeHint(string? term) =>
+        (Contains(term, "xterm") && !Contains(term, "kitty")) ||
+        string.Equals(term, "windows-vt", StringComparison.Ordinal);
 
     private static bool HasPositive(Size? value) =>
         value is { Width: > 0, Height: > 0 };

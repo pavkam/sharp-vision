@@ -221,6 +221,99 @@ public sealed class MultiplexerProbeSuppressionTests
     }
 
     /// <summary>
+    /// Verifies the built-in Windows VT connection carve-out: native Windows sessions almost
+    /// never set TERM (not under classic conhost, and not under modern Windows Terminal either,
+    /// which sets WT_SESSION instead), so the connection's own "windows-vt" description name -
+    /// selected only after ENABLE_VIRTUAL_TERMINAL_PROCESSING is confirmed active - is accepted
+    /// as an xterm-like hint for the XTGETTCAP RGB and DECRQSS modifyOtherKeys probes instead of
+    /// permanently withholding them.
+    /// </summary>
+    [Fact]
+    public void TryStart_WhenDescribedTerminalIsWindowsVtWithNoTerm_WritesBothDcsProbes()
+    {
+        var options = new NegotiationOptions(new Dictionary<string, string?>(StringComparer.Ordinal));
+        var strategy = new ActiveQueryDiscoveryStrategy(
+            options,
+            TerminalCapabilities.Conservative,
+            TimeProvider.System);
+        var destination = new ArrayBufferWriter<byte>();
+
+        var started = strategy.TryStart(
+            destination,
+            cells: null,
+            pixels: null,
+            route: null,
+            describedTerminalName: "windows-vt");
+
+        started.ShouldBeTrue();
+        var written = Encoding.ASCII.GetString(destination.WrittenSpan);
+        written.ShouldContain("+q524742");
+        written.ShouldContain("$q>4m");
+    }
+
+    /// <summary>
+    /// Verifies the negative of the test above: a described terminal name that is not the
+    /// built-in Windows VT connection (and no TERM) still withholds both xterm-proprietary
+    /// probes, so the carve-out is exact rather than treating every fallback description as
+    /// xterm-compatible.
+    /// </summary>
+    [Fact]
+    public void TryStart_WhenDescribedTerminalIsNotWindowsVtWithNoTerm_WithholdsBothDcsProbes()
+    {
+        var options = new NegotiationOptions(new Dictionary<string, string?>(StringComparer.Ordinal));
+        var strategy = new ActiveQueryDiscoveryStrategy(
+            options,
+            TerminalCapabilities.Conservative,
+            TimeProvider.System);
+        var destination = new ArrayBufferWriter<byte>();
+
+        var started = strategy.TryStart(
+            destination,
+            cells: null,
+            pixels: null,
+            route: null,
+            describedTerminalName: "ansi");
+
+        started.ShouldBeTrue();
+        var written = Encoding.ASCII.GetString(destination.WrittenSpan);
+        written.ShouldNotContain("+q524742");
+        written.ShouldNotContain("$q>4m");
+    }
+
+    /// <summary>
+    /// Verifies an explicit TERM still wins over the described-terminal fallback: a Windows
+    /// connection whose caller-supplied environment happens to set a non-xterm TERM is not
+    /// upgraded by the "windows-vt" carve-out, since a present TERM is a stronger, more specific
+    /// signal than the generic built-in connection name.
+    /// </summary>
+    [Fact]
+    public void TryStart_WhenTermIsPresentAndNonXterm_WindowsVtCarveOutDoesNotApply()
+    {
+        var environment = new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["TERM"] = "dumb"
+        };
+        var options = new NegotiationOptions(environment);
+        var strategy = new ActiveQueryDiscoveryStrategy(
+            options,
+            TerminalCapabilities.Conservative,
+            TimeProvider.System);
+        var destination = new ArrayBufferWriter<byte>();
+
+        var started = strategy.TryStart(
+            destination,
+            cells: null,
+            pixels: null,
+            route: null,
+            describedTerminalName: "windows-vt");
+
+        started.ShouldBeTrue();
+        var written = Encoding.ASCII.GetString(destination.WrittenSpan);
+        written.ShouldNotContain("+q524742");
+        written.ShouldNotContain("$q>4m");
+    }
+
+    /// <summary>
     /// Verifies a suppressed probe still publishes Unsupported/Origin.Environment rather than
     /// sitting at Unknown, so callers see the same conclusion the probe would have proven, sourced
     /// honestly (see #249).

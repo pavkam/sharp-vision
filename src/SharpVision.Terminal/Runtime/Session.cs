@@ -583,7 +583,8 @@ public sealed class Session: IAsyncDisposable
                 queries,
                 localDimensions?.Cells,
                 localDimensions?.Pixels,
-                multiplexerRoute);
+                multiplexerRoute,
+                _context.Profile.Description.Name);
 
             if (started)
             {

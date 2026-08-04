@@ -83,6 +83,7 @@ public sealed class Negotiator
     /// <param name="localCells">Optional locally observed text-area cells.</param>
     /// <param name="localPixels">Optional locally observed text-area pixels.</param>
     /// <param name="route">Optional explicit typed outer-terminal query route.</param>
+    /// <param name="describedTerminalName">The connection's own resolved description name.</param>
     /// <returns>True when the query batch was written; false when route encoding failed atomically.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="destination"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The negotiator already started.</exception>
@@ -90,8 +91,9 @@ public sealed class Negotiator
         IBufferWriter<byte> destination,
         Size? localCells,
         Size? localPixels,
-        MultiplexerRoute? route = null) =>
-        _strategy.TryStart(destination, localCells, localPixels, route);
+        MultiplexerRoute? route = null,
+        string? describedTerminalName = null) =>
+        _strategy.TryStart(destination, localCells, localPixels, route, describedTerminalName);
 
     /// <summary>Matches one recognized response and publishes when all queries complete.</summary>
     /// <param name="response">The owned typed terminal response.</param>

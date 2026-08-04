@@ -71,10 +71,13 @@ legacy `CSI 27 ; modifier ; key ~` form and the compatible
 grammar retaining precedence. Runtime negotiation probes `>4m` through DECRQSS
 only for an xterm hint when Kitty is not hinted; on an approved outer route,
 that hint is the route's own outer-terminal identity rather than the inner
-pane's `TERM` (see #260). A matched reply produces query-origin `XtermKeyboard`
-evidence. `Session` prefers an authorized Kitty keyboard lease; otherwise it may
-lease a configured modifyOtherKeys level and always records the exact
-initial-value restore before attempting the enable write.
+pane's `TERM` (see #260). An unrouted native Windows connection accepts the
+built-in `windows-vt` description name as the same hint, since `TERM` is
+essentially never set there and conhost answers an unrecognized DECRQSS status
+with a safe negative reply. A matched reply produces query-origin
+`XtermKeyboard` evidence. `Session` prefers an authorized Kitty keyboard lease;
+otherwise it may lease a configured modifyOtherKeys level and always records the
+exact initial-value restore before attempting the enable write.
 
 ## Quirks and tests
 

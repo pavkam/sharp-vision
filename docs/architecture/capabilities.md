@@ -246,7 +246,17 @@ status. On an approved outer route, that hint is read from the route's own
 explicit outer-terminal identity rather than the inner pane's `TERM`, matching
 the routed carve-out already applied to publication and query planning below —
 otherwise the inner pane's `TERM` would decide whether the outer terminal's own
-DCS probes are written (see #260). That status may publish query-origin
+DCS probes are written (see #260). A native Windows connection carries the same
+risk from the opposite direction: `TERM` is essentially never set there, under
+either classic conhost or modern Windows Terminal (which sets `WT_SESSION`, not
+`TERM`), so an unrouted connection whose resolved description is the built-in
+`windows-vt` profile is also accepted as an xterm-like hint for these two
+probes. That description is only selected after
+`ENABLE_VIRTUAL_TERMINAL_PROCESSING` is confirmed active, and both probes
+degrade safely on a terminal that does not understand them: conhost's own DCS
+parser answers an unrecognized DECRQSS status with a conformant `DCS 0 $ r ST`
+negative reply and consumes an unrecognized XTGETTCAP request the same way it
+discards any other unknown DCS. That status may publish query-origin
 `XtermKeyboard` support. RGB can refine only default or environment-only color
 evidence; database, prior-query, and override origins remain authoritative. An
 explicit `Settings.ColorDepth` prevents the RGB query from registering or
