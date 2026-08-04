@@ -257,10 +257,14 @@ public sealed class StackSurfaceTests
             new Size(3, 10),
             TestContext.Current.CancellationToken);
 
-        // Assert — fixed=2, percent=50% of 8 remaining=4, star=remainder=4
+        // Assert — fixed=2, percent=50% of the complete 10-cell axis=5, star=remainder=3
+        // (see #274: percentages resolve against the complete final axis, not the smaller
+        // remainder left after reserving the fixed track).
         fixedChild.Bounds.Height.ShouldBe(2);
         percentChild.Bounds.Y.ShouldBe(2);
+        percentChild.Bounds.Height.ShouldBe(5);
         starChild.Bounds.Y.ShouldBeGreaterThanOrEqualTo(percentChild.Bounds.Bottom);
+        starChild.Bounds.Height.ShouldBe(3);
         (fixedChild.Bounds.Height + percentChild.Bounds.Height + starChild.Bounds.Height).ShouldBe(10);
     }
 

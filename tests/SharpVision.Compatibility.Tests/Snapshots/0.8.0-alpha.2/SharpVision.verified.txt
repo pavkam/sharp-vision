@@ -2499,6 +2499,7 @@ namespace SharpVision.Layout
     {
         public static int[] Resolve(int? available, System.ReadOnlySpan<SharpVision.Layout.Length> lengths, System.ReadOnlySpan<int> automatic) { }
         public static void Resolve(int? available, System.ReadOnlySpan<SharpVision.Layout.Length> lengths, System.ReadOnlySpan<int> automatic, System.ReadOnlySpan<int> minimum, System.ReadOnlySpan<int> maximum, System.Span<int> destination) { }
+        public static void Resolve(int? available, System.ReadOnlySpan<SharpVision.Layout.Length> lengths, System.ReadOnlySpan<int> automatic, System.ReadOnlySpan<int> minimum, System.ReadOnlySpan<int> maximum, System.Span<int> destination, int? percentBase) { }
         public static void Satisfy(System.Span<int> tracks, int start, int count, int required) { }
     }
     public enum VerticalAlignment

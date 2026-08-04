@@ -156,18 +156,12 @@ public sealed class Stack: Container
             var margins = SumMargins(children);
             var available = Math.Max(0, axis - spacing - margins);
 
-            // Percentages use the complete final content axis. Converting the
-            // resolved request to cells lets margins reserve their own space
-            // without changing that percentage base or star remainder.
-            for (var index = 0; index < count; index++)
-            {
-                if (lengths[index].Kind == LengthKind.Percent)
-                {
-                    lengths[index] = Length.Cells(Percent(axis, lengths[index].Value));
-                }
-            }
-
-            Tracks.Resolve(available, lengths, automatic, minimum, maximum, extents);
+            // Percentages resolve against the complete final content axis, not the smaller
+            // area left after reserving spacing and margins - so the percentage base is passed
+            // through explicitly instead of pre-converting Percent lengths to Cells, which would
+            // hide them from Percent's shrink priority and lose their shared cumulative
+            // rounding edges (see #274).
+            Tracks.Resolve(available, lengths, automatic, minimum, maximum, extents, percentBase: axis);
             Arrange(children, extents, bounds, spacing);
         }
         finally
@@ -218,14 +212,6 @@ public sealed class Stack: Container
         {
             Children[index].RenderPopupBranch(canvas, OwnedControlLayer.Normal);
         }
-    }
-
-    private static int Percent(int axis, double value)
-    {
-        Debug.Assert(axis >= 0, "Percentage base axis is non-negative.");
-
-        var result = Math.Round(axis * value / 100, MidpointRounding.AwayFromZero);
-        return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
     private int CountParticipants()

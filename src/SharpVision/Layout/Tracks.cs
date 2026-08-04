@@ -25,7 +25,7 @@ public static class Tracks
     {
         Validate(available, lengths, automatic, [], [], lengths.Length);
         var result = new int[lengths.Length];
-        ResolveCore(available, lengths, automatic, [], [], result);
+        ResolveCore(available, lengths, automatic, [], [], result, percentBase: null);
         return result;
     }
 
@@ -51,7 +51,50 @@ public static class Tracks
         Span<int> destination)
     {
         Validate(available, lengths, automatic, minimum, maximum, destination.Length);
-        ResolveCore(available, lengths, automatic, minimum, maximum, destination);
+        ResolveCore(available, lengths, automatic, minimum, maximum, destination, percentBase: null);
+    }
+
+    /// <summary>Resolves tracks into caller-owned storage without managed allocation, taking
+    /// percentage tracks against an explicit base distinct from the allocation area.</summary>
+    /// <param name="available">The bounded axis, or null during intrinsic measure.</param>
+    /// <param name="lengths">The validated track definitions.</param>
+    /// <param name="automatic">The non-negative intrinsic request for each track.</param>
+    /// <param name="minimum">The non-negative minimum for each track.</param>
+    /// <param name="maximum">The maximum for each track, not below its minimum.</param>
+    /// <param name="destination">Caller-owned output with one element per track.</param>
+    /// <param name="percentBase">
+    /// The non-negative axis percentage tracks resolve against, or null to use
+    /// <paramref name="available"/> - the ordinary case. A caller that allocates within a
+    /// smaller area than the axis it wants percentages to sum to (for example one that reserves
+    /// spacing and margins out of <paramref name="available"/> while still wanting percentages
+    /// of the complete axis) supplies that larger axis here instead of pre-converting percentage
+    /// lengths to cells, which would hide them from <see cref="LengthKind.Percent"/>'s shrink
+    /// priority and lose their shared cumulative rounding edges.
+    /// </param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="available"/>, <paramref name="percentBase"/>, an intrinsic request, or a
+    /// limit is negative.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// Input/output lengths differ or a maximum is below its minimum.
+    /// </exception>
+    public static void Resolve(
+        int? available,
+        ReadOnlySpan<Length> lengths,
+        ReadOnlySpan<int> automatic,
+        ReadOnlySpan<int> minimum,
+        ReadOnlySpan<int> maximum,
+        Span<int> destination,
+        int? percentBase)
+    {
+        Validate(available, lengths, automatic, minimum, maximum, destination.Length);
+
+        if (percentBase.HasValue)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(percentBase.Value, nameof(percentBase));
+        }
+
+        ResolveCore(available, lengths, automatic, minimum, maximum, destination, percentBase);
     }
 
     /// <summary>Expands a contiguous span of tracks to satisfy an intrinsic request.</summary>
@@ -218,7 +261,8 @@ public static class Tracks
         ReadOnlySpan<int> automatic,
         ReadOnlySpan<int> minimum,
         ReadOnlySpan<int> maximum,
-        Span<int> destination)
+        Span<int> destination,
+        int? percentBase)
     {
         Debug.Assert(lengths.Length == automatic.Length, "Validated resolution inputs have aligned lengths.");
         Debug.Assert(lengths.Length == destination.Length, "Validated resolution output matches track count.");
@@ -251,7 +295,7 @@ public static class Tracks
                 LengthKind.Auto => automatic[index],
                 LengthKind.Cells => (int) lengths[index].Value,
                 LengthKind.Percent => ResolvePercentRequest(
-                    available.Value,
+                    percentBase ?? available.Value,
                     lengths[index].Value,
                     ref cumulativePercent,
                     ref previousPercentEdge),

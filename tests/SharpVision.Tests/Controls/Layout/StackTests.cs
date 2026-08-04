@@ -410,6 +410,82 @@ public sealed class StackTests
         percentChild.Bounds.Width.ShouldBe(10);
     }
 
+    /// <summary>Verifies an Auto sibling keeps its intrinsic extent against a Percent(100)
+    /// track under deficit, instead of being annihilated because the laundered Percent length
+    /// was invisible to Percent's shrink priority (see #274).</summary>
+    [Fact]
+    public void Layout_WhenAutoCompetesWithFullPercentUnderDeficit_KeepsAutoIntrinsicExtent()
+    {
+        var panel = new Panel
+        {
+            Orientation = Orientation.Vertical,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var header = new ProbeControl(new Size(3, 2));
+        var body = new ProbeControl(new Size(3, 1)) { Height = Length.Percent(100) };
+
+        panel.Children.Add(header);
+        panel.Children.Add(body);
+
+        new LayoutEngine().Layout(panel, new Size(10, 10));
+
+        // Percent is the first shrink priority, so it alone absorbs the full deficit (from its
+        // requested 10 down to 8) before Auto is touched at all - the header keeps its
+        // untouched intrinsic height of 2 instead of being annihilated to 0.
+        header.Bounds.Height.ShouldBe(2);
+        body.Bounds.Height.ShouldBe(8);
+    }
+
+    /// <summary>Verifies a fixed sibling keeps its exact extent when it follows a Percent(100)
+    /// track under deficit, instead of being annihilated because Percent's shrink priority never
+    /// saw the laundered Cells-typed length as a Percent track (see #274).</summary>
+    [Fact]
+    public void Layout_WhenFixedFollowsFullPercentUnderDeficit_KeepsFixedExactExtent()
+    {
+        var panel = new Panel
+        {
+            Orientation = Orientation.Vertical,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var percentChild = new ProbeControl(new Size(3, 1)) { Height = Length.Percent(100) };
+        var fixedChild = new ProbeControl(new Size(3, 1)) { Height = Length.Cells(4) };
+
+        panel.Children.Add(percentChild);
+        panel.Children.Add(fixedChild);
+
+        new LayoutEngine().Layout(panel, new Size(10, 10));
+
+        fixedChild.Bounds.Height.ShouldBe(4);
+        percentChild.Bounds.Height.ShouldBe(6);
+    }
+
+    /// <summary>Verifies three equal-thirds percentage tracks sum to the complete axis instead
+    /// of losing a cell to independent per-track rounding with no shared cumulative edge state
+    /// (see #274).</summary>
+    [Fact]
+    public void Layout_WhenThreeEqualPercentTracksShareAnAxis_SumToTheCompleteAxis()
+    {
+        var panel = new Panel
+        {
+            Orientation = Orientation.Vertical,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var first = new ProbeControl(new Size(3, 1)) { Height = Length.Percent(100.0 / 3) };
+        var second = new ProbeControl(new Size(3, 1)) { Height = Length.Percent(100.0 / 3) };
+        var third = new ProbeControl(new Size(3, 1)) { Height = Length.Percent(100.0 / 3) };
+
+        panel.Children.Add(first);
+        panel.Children.Add(second);
+        panel.Children.Add(third);
+
+        new LayoutEngine().Layout(panel, new Size(10, 10));
+
+        (first.Bounds.Height + second.Bounds.Height + third.Bounds.Height).ShouldBe(10);
+    }
+
     /// <summary>Verifies spacing between children does not contribute spacing before the first or after the last.</summary>
     [Fact]
     public void Layout_WhenSpacingIsSet_DoesNotAddExtraAtEdges()
