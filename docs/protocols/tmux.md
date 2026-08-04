@@ -46,6 +46,23 @@ tmux DCS envelope. A Screen-before-tmux route, duplicate Screen layers, or any
 OSC/DCS query in a Screen-containing batch is rejected before destination
 mutation. See the [Screen framing limit](gnu-screen.md#dcs-framing-limit).
 
+```mermaid
+sequenceDiagram
+    participant Discovery
+    participant Policy as MultiplexingPolicy
+    participant Tmux as Nearest tmux layer
+    participant Outer as Explicit outer terminal
+
+    Discovery->>Policy: Typed bounded query batch
+    Policy->>Policy: Check operation, visibility, depth, and byte limits
+    Policy->>Tmux: Complete wrapped envelope
+    Tmux->>Outer: Unwrapped query bytes
+    Outer-->>Tmux: Typed protocol reply
+    Tmux-->>Policy: Wrapped reply envelope
+    Policy->>Policy: Unwrap exactly one recognized reply
+    Policy-->>Discovery: Typed reply for exact correlation
+```
+
 Startup negotiation uses the explicit outer profile as its semantic baseline
 without replacing the active inner description, programs, or key map. Its
 capability evidence is not reinterpreted through inner `TERM`, `TMUX`, or

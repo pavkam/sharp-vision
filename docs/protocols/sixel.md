@@ -7,7 +7,7 @@ Primary sources:
 - [DEC VT330/VT340 Programmer Reference, Chapter 14](https://vt100.net/docs/vt3xx-gp/chapter14.html)
   defines sixel data, repeat, raster attributes, palette selection, graphics
   carriage return/newline, transparent background, and DCS framing;
-- [XTerm Control Sequences, Patch #410, 2026-04-19](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
+- [XTerm Control Sequences, patch level 410, 2026-04-19](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
   records the current `DCS Pa ; Pb ; Ph q data ST` form and DA1 parameter 4.
 
 Sources accessed 2026-07-20.
@@ -101,7 +101,7 @@ exact uneven pixel grid in raster geometry.
 ## Sources
 
 - [DEC VT330/VT340 Programmer Reference, Chapter 14](https://vt100.net/docs/vt3xx-gp/chapter14.html)
-- [XTerm Control Sequences, Patch #410](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
+- [XTerm Control Sequences, patch level 410](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
 
 Sources accessed 2026-07-28.
 

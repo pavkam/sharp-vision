@@ -2,7 +2,8 @@
 
 ## Overview
 
-Terminal integration is one ordered runtime path that starts at an owned
+Terminal integration is the bridge between SharpVision controls and the user's
+terminal program. It is one ordered runtime path that starts at an owned
 physical console connection and ends at typed input, retained UI state, rendered
 cells, and restored terminal modes. Application code enters through
 `SharpVision.ConsoleApplication`; it does not construct a session, transport,

@@ -14,17 +14,34 @@ VT/xterm/Kitty/iTerm2 identity, while the
 adapters, resolution, and immutable publication.
 
 The capability profile represents each optional protocol as a `Feature` carrying
-a `Support` state and an `Origin`. `Support` is unknown, unsupported, tentative,
-or supported. Emitting active protocol output requires both
-`Feature.IsSupported` and an authoritative origin — database, bounded query, or
-explicit override — which `Feature.IsAuthoritative` reports as one predicate.
-Default and environment origins never authorize output, even if a caller
-constructs the otherwise inconsistent `Supported` state. Session mode leases,
-`Renderer` synchronized output, and both encoder paths gate on that predicate,
-so environment-only evidence emits no mode-2026 wrapping, no overline, no typed
-underline, and no underline color. Environment evidence remains observable, but
-it cannot silently enable a feature. `ColorDepth` separately records monochrome,
-16-color, indexed-256, or true-color fidelity together with its origin.
+a support state and an origin. The state says what SharpVision currently knows;
+the origin says where that knowledge came from.
+
+| Support state | Reader-facing meaning                                                      |
+| ------------- | -------------------------------------------------------------------------- |
+| Unknown       | No source has established whether the feature works.                       |
+| Unsupported   | A source established that the feature must not be used.                    |
+| Tentative     | A hint suggests the feature, but output is not yet authorized.             |
+| Supported     | The source reports support; its origin still decides whether it is usable. |
+
+| Origin      | Typical source                            | Authorizes output? |
+| ----------- | ----------------------------------------- | ------------------ |
+| Default     | Conservative library starting value.      | No.                |
+| Environment | `TERM` or another allowlisted host hint.  | No.                |
+| Database    | A validated terminal-description program. | Yes.               |
+| Query       | A bounded, correlated terminal reply.     | Yes.               |
+| Override    | Explicit caller policy.                   | Yes.               |
+
+Emitting active protocol output requires both `Feature.IsSupported` and an
+authoritative origin — database, bounded query, or explicit override — which
+`Feature.IsAuthoritative` reports as one predicate. Default and environment
+origins never authorize output, even if a caller constructs the otherwise
+inconsistent `Supported` state. Session mode leases, `Renderer` synchronized
+output, and both encoder paths gate on that predicate, so environment-only
+evidence emits no mode-2026 wrapping, no overline, no typed underline, and no
+underline color. Environment evidence remains observable, but it cannot silently
+enable a feature. `ColorDepth` separately records monochrome, 16-color,
+indexed-256, or true-color fidelity together with its origin.
 
 The profile reports `UnicodeVersion` as the library's pinned Unicode 17.0.0 data
 and carries an explicit `AmbiguousWidth` policy. The policy defaults to narrow,
@@ -46,6 +63,17 @@ flowchart LR
 The arrows describe evidence flow, not equal authority. The
 [discovery pipeline](discovery-pipeline.md#overview) owns the ordered precedence
 and publication rules.
+
+```mermaid
+flowchart TD
+    Feature["Feature support and origin"] --> Supported{"Support is Supported?"}
+    Supported -->|No| Fallback["Keep the documented fallback"]
+    Supported -->|Yes| Origin{"Origin is Database, Query, or Override?"}
+    Origin -->|No| Fallback
+    Origin -->|Yes| Program{"Required command program or route exists?"}
+    Program -->|No| Fallback
+    Program -->|Yes| Enable["Authorize typed protocol output"]
+```
 
 ## Terminal-description boundary
 
@@ -74,6 +102,15 @@ and remains byte-quiet. `Runtime.Session` consumes the matched lifecycle
 programs and routes the profile's key map into its input decoder. The renderer
 consumes the description programs. The
 [coverage matrix](../protocols/coverage-matrix.md#coverage) owns that boundary.
+
+The description boundary therefore runs in this order:
+
+1. Select an explicit profile, the platform provider, or the permitted ANSI
+   fallback.
+2. Load one owned description result with redacted diagnostics.
+3. Validate full-screen suitability before any terminal output.
+4. Compile and retain only accepted programs and key bindings.
+5. Publish the profile as the semantic baseline for discovery and runtime use.
 
 ## Terminal-description profile
 
@@ -229,13 +266,21 @@ programs.
 ### Runtime negotiator
 
 `Negotiator` is the compatibility facade over `ActiveQueryDiscoveryStrategy`.
-The strategy snapshots caller-supplied environment values and emits one bounded
-startup batch. DA1 has the highest priority. Kitty keyboard status precedes DA1
-only when it remains unknown and two query slots are available. DA2 follows DA1
-when capacity permits. Remaining slots refine only unknown or tentative private
-modes 2026, 1004, 2004, 1006, and 1016, then query missing geometry and OSC
-palette/default colors. Definitive database evidence and explicit overrides
-suppress redundant feature probes. The
+The strategy snapshots caller-supplied environment values and fills one bounded
+startup batch in priority order:
+
+| Priority | Query family                               | When it is included                                                   |
+| -------: | ------------------------------------------ | --------------------------------------------------------------------- |
+|        1 | Kitty keyboard status                      | Support is unknown and at least two query slots exist.                |
+|        2 | Primary device attributes (DA1)            | Always.                                                               |
+|        3 | Secondary device attributes (DA2)          | Capacity remains.                                                     |
+|        4 | Private modes 2026, 1004, 2004, 1006, 1016 | The corresponding feature is unknown or tentative.                    |
+|        5 | Geometry                                   | Local host geometry is incomplete.                                    |
+|        6 | Palette and default colors                 | Capacity remains; results remain diagnostic or caller-consumed facts. |
+|        7 | Finite xterm refinements                   | An xterm-like hint exists and stronger evidence has not settled it.   |
+
+Definitive database evidence and explicit overrides suppress redundant feature
+probes. The
 [active-query architecture](discovery-pipeline.md#active-query-strategy) owns
 the facade, deadline, correlation, classification, and publication boundaries;
 this section owns the capability-specific query order.
@@ -246,9 +291,9 @@ status. On an approved outer route, that hint is read from the route's own
 explicit outer-terminal identity rather than the inner pane's `TERM`, matching
 the routed carve-out already applied to publication and query planning below —
 otherwise the inner pane's `TERM` would decide whether the outer terminal's own
-DCS probes are written (see #260). A native Windows connection carries the same
-risk from the opposite direction: `TERM` is essentially never set there, under
-either classic conhost or modern Windows Terminal (which sets `WT_SESSION`, not
+DCS probes are written. A native Windows connection carries the same risk from
+the opposite direction: `TERM` is essentially never set there, under either
+classic conhost or modern Windows Terminal (which sets `WT_SESSION`, not
 `TERM`), so an unrouted connection whose resolved description is the built-in
 `windows-vt` profile is also accepted as an xterm-like hint for these two
 probes. That description is only selected after

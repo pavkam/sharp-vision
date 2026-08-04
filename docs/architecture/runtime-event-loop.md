@@ -291,8 +291,8 @@ with a clear exception rather than hang.
 > [!WARNING]
 >
 > **Implementation gap:** There is currently no reentrancy guard — awaiting
-> `DisposeAsync` from a sink callback deadlocks silently. Issue #229 tracks
-> detecting the reentrant call and failing fast or deferring teardown.
+> `DisposeAsync` from a sink callback deadlocks silently. The runtime needs to
+> detect the reentrant call and either fail fast or defer teardown.
 
 ## Expected behavior
 

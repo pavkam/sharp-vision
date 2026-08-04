@@ -59,8 +59,7 @@ view.
 > **Implementation gap:** Table currently marks these keys handled only when the
 > active cell actually moved, so PageUp at the first row (or PageDown at the
 > last) still escapes and pages an enclosing scrollable container. TreeView and
-> NavigationView already handle the boundary press as documented here. Issue
-> #222 tracks the fix.
+> NavigationView already handle the boundary press as documented here.
 
 `Enter` activates the active row, and begins editing when the active cell is an
 editable `TextInput`. While editing, `Enter` commits, `Escape` restores the

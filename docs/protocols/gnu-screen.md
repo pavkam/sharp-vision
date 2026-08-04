@@ -21,6 +21,16 @@ consumes the inner ST as its own terminator. A real Screen 4.00.03
 the host as the exact CSI query, while wrapped XTGETTCAP and DECRQSS reach the
 host as unterminated DCS bodies. SharpVision does not invent an escaping form.
 
+```mermaid
+flowchart TD
+    Query["Typed outer-terminal query"] --> Contains{"Contains OSC, DCS, or another inner ST?"}
+    Contains -->|Yes| Reject["Reject before registration or output"]
+    Contains -->|No, CSI only| Wrap["Wrap in one Screen DCS envelope"]
+    Wrap --> Relay["Screen relays CSI bytes to the outer terminal"]
+    Relay --> Reply["Accept one complete CSI reply"]
+    Reply --> Correlate["Correlate through the shared query tracker"]
+```
+
 ## Implemented passthrough behavior
 
 [`GnuScreenWriter.WritePassthrough`](../../src/SharpVision.Terminal/Multiplexing/GnuScreenWriter.cs)

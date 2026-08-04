@@ -23,9 +23,8 @@ surfaces as a real test failure rather than a silent skip.
 > [!NOTE]
 >
 > The production `WindowsConsoleMode.Enter` output-mode-set failure path (the
-> rollback that restores the input mode before throwing) still has no test: it
-> needs the same native-call injection seam issue #27 is tracked to add. See the
-> `Skip` reason on
+> rollback that restores the input mode before throwing) still has no test. It
+> needs a native-call injection seam. See the `Skip` reason on
 > `Open_WhenOutputModeCannotBeSet_RestoresInputModeBeforeThrowing`.
 
 ## Scenarios

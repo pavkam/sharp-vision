@@ -2,14 +2,15 @@
 
 ## Overview
 
-SharpVision loads one requested Unix terminfo description through the ncurses 6
-low-level API, copies the finite allowlist under one process-wide lock, compiles
-retained output programs, and publishes an owned `TerminalProfile`. Console
-hosting selects that profile before output, the session consumes its matched
-lifecycle pairs, and rendering consumes exact compiled output programs.
-Description key strings are compiled into typed parser signatures or a bounded
-longest-match trie and drive the active input decoder. The
-[coverage matrix](coverage-matrix.md#coverage) is the current support claim.
+Terminfo is the Unix database that maps a terminal name to commands, key
+sequences, and descriptive values. SharpVision loads one requested description
+through the ncurses 6 low-level API, copies the finite allowlist under one
+process-wide lock, compiles retained output programs, and publishes an owned
+`TerminalProfile`. Console hosting selects that profile before output, the
+session consumes its matched lifecycle pairs, and rendering consumes exact
+compiled output programs. Description key strings are compiled into typed parser
+signatures or a bounded longest-match trie and drive the active input decoder.
+The [coverage matrix](coverage-matrix.md#coverage) is the current support claim.
 
 ## Native description boundary
 
@@ -49,6 +50,21 @@ entry:
    empty entry means the configured system location.
 4. The terminal-description directory configured into that ncurses provider,
    including its configured `/usr/share/terminfo` location when present.
+
+```mermaid
+flowchart TD
+    Request["Requested terminal name"] --> Setup["One ncurses setupterm call"]
+    Setup --> Terminfo["Search ncurses terminfo sources in configured order"]
+    Terminfo --> Found{"Resolved entry?"}
+    Found -->|Yes| Copy["Copy finite allowlist and validate limits"]
+    Found -->|No, compatible build| Termcap["ncurses-owned termcap compatibility search"]
+    Found -->|No| Absent["Publish typed absence or failure"]
+    Termcap --> Copy
+    Termcap --> Absent
+    Copy --> Suitable{"Full-screen requirements satisfied?"}
+    Suitable -->|Yes| Profile["Compile and publish owned TerminalProfile"]
+    Suitable -->|No| Reject["Reject before terminal output"]
+```
 
 When the loaded ncurses build includes full termcap compatibility, `setupterm`
 also owns its documented [termcap search](termcap.md#termcap-lookup).

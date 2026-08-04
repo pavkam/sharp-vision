@@ -2,11 +2,18 @@
 
 ## Overview
 
-Terminal initialization turns bounded, caller-owned evidence into two distinct
+Terminal initialization gathers facts about the current terminal before the
+first frame. Each fact is **evidence**: a value paired with the source that
+produced it. SharpVision turns bounded, caller-owned evidence into two distinct
 results: one fixed terminal backend identity, and one immutable capability
 profile that may be refined before publication. Discovery does not own the TTY,
 does not copy protocol codecs, and does not authorize output outside the
 [capability contract](capabilities.md#overview).
+
+| Result                    | Answers                                      | Can change after startup? |
+| ------------------------- | -------------------------------------------- | ------------------------- |
+| Terminal backend identity | Which protocol family should route messages? | No.                       |
+| Capability profile        | Which optional features are safe to use?     | Yes, by replacement.      |
 
 The effective precedence is:
 
@@ -79,6 +86,30 @@ once, writes one atomic bounded batch, correlates typed replies through
 snapshot. `Negotiator` and `NegotiationSink` forward to that lifecycle; they do
 not maintain a competing tracker or publication path.
 
+```mermaid
+stateDiagram-v2
+    [*] --> Planned: Build bounded query plan
+    Planned --> Active: Register families and write one batch
+    Planned --> PublishedAbsent: Route encoding fails
+    Active --> Active: Accept matched reply
+    Active --> Active: Observe duplicate or unknown reply
+    Active --> Published: All families retire or fence arrives
+    Active --> Published: Exclusive deadline expires
+    PublishedAbsent --> [*]
+    Published --> [*]
+```
+
+The tracker classifies each valid reply without changing transport order:
+
+| Classification | Meaning                                                     | Capability effect                         |
+| -------------- | ----------------------------------------------------------- | ----------------------------------------- |
+| Matched        | The reply has the expected family and identity.             | May refine evidence.                      |
+| Duplicate      | The matching request already completed.                     | None.                                     |
+| Late           | The reply arrived at or after the exclusive deadline.       | None.                                     |
+| Unknown        | No registered request owns the reply.                       | None.                                     |
+| Contradictory  | The reply is valid but conflicts with authoritative policy. | None; the stronger evidence remains.      |
+| Malformed      | A protocol decoder rejected the bytes before correlation.   | None; a redacted diagnostic is published. |
+
 The configured `QueryLimits` bound concurrent queries, payloads, route depth and
 bytes, and response history. The strategy records one absolute exclusive UTC
 deadline before registering any family, and every registered family uses that
@@ -104,28 +135,31 @@ encoding fails, the batch is retired and absent evidence is published atomically
 — no partial bytes, no flush, no active optional modes, and no scheduled
 deadline work. A route never changes backend identity.
 
-Only two families retire early on their own: `Keyboard` and `KittyGraphics` both
-piggyback on `PrimaryAttributes`, so a terminal that answers DA1 but stays
-silent on either resolves it immediately instead of waiting out the deadline.
-Every other family has no such piggyback, so the batch writes a terminating
-fence as its last standard query — `CSI 6n` (DSR cursor position), a family
-answered by effectively every terminal that speaks any protocol in this batch.
-When its reply arrives, every family still outstanding at that instant retires
-without recording any evidence for it: the fence proves nothing about _those_
-families, so they stay absent rather than becoming `Unsupported`/`Origin.Query`
-— the same rule ordinary deadline expiration already follows. The one shared
-exclusive deadline remains the backstop when no reply reaches the fence at all.
+The batch retires outstanding families in three ways:
 
-Query planning also consults a projection of the baseline with environment
-evidence already applied — computed once from `_options.Environment`, never
-assigned back onto the baseline field, and never passed to
-`CapabilityDetector.Detect`. Only two probes are ever affected:
-`OSC 1337 ; Capabilities` under a detected multiplexer, and the Kitty clipboard
-mode probe under a detected multiplexer or SSH, both cases where environment
-evidence already narrows the family to `Unsupported` before any byte is written.
-The projection is skipped when an approved route can carry capability queries,
-matching the empty-environment rule publication itself follows so an inner
-multiplexer's variables cannot narrow or augment explicit outer evidence.
+1. `Keyboard` and `KittyGraphics` piggyback on primary device attributes (DA1).
+   If DA1 arrives without their reply, they retire immediately instead of
+   waiting for the deadline.
+2. The last standard query is `CSI 6n`, a cursor-position request used as a
+   completion fence. Its reply retires every family still outstanding without
+   adding evidence for them.
+3. The one shared exclusive deadline retires the batch when no fence reply
+   arrives.
+
+Silence never means unsupported. A family retired by the fence or deadline stays
+absent because neither event proves what that feature can do.
+
+Query planning consults a temporary projection of the baseline with environment
+evidence applied. The projection affects only these decisions:
+
+| Situation                              | Probe omitted                                  | Reason                                                      |
+| -------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------- |
+| Detected multiplexer without a route   | `OSC 1337 ; Capabilities`                      | The inner environment cannot prove the outer iTerm2 host.   |
+| Detected multiplexer or SSH connection | Kitty clipboard mode                           | The environment already narrows the feature to unsupported. |
+| Approved outer-terminal route          | Neither probe is omitted for this reason alone | Explicit outer evidence replaces inner environment hints.   |
+
+The projection is never assigned back to the baseline or passed to
+`CapabilityDetector.Detect`; it changes query planning, not evidence precedence.
 
 ## Initialization sequence
 
@@ -171,13 +205,19 @@ cannot replace database command programs. Query results can refine semantic
 features but cannot rewrite description programs or key maps. Explicit
 `CapabilityOverrides` apply last and cannot introduce raw commands.
 
-Publication creates immutable snapshots. A response arriving after publication
-may be delivered as a typed event or diagnostic, but it cannot mutate the
-profile used by an in-flight frame. A capability refresh preserves backend
-identity and forces the documented layout or rendering invalidation before a
-later frame. Unknown identity keeps the VT backend, and absent optional evidence
-keeps the safe fallback. Strict mode may promote an existing diagnostic where
-specified, but it does not change valid output.
+Publication creates immutable snapshots. The following fallbacks are observable
+at the public boundary:
+
+| Condition                            | Result                                                                        |
+| ------------------------------------ | ----------------------------------------------------------------------------- |
+| Description is valid; queries silent | The conservative description-based profile remains usable.                    |
+| Reply arrives after publication      | A typed event or diagnostic is delivered; the active profile does not mutate. |
+| Capability profile is replaced       | Backend identity is preserved and later layout or rendering is invalidated.   |
+| Identity is unknown                  | The VT backend is retained.                                                   |
+| Optional evidence is absent          | The feature stays unavailable or uses its documented safe fallback.           |
+
+Strict mode may promote an existing diagnostic where specified, but it does not
+change valid output.
 
 ## Expected behavior
 

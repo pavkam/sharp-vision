@@ -24,8 +24,8 @@ control introducer. A string's recognized terminators are `ESC \` (ST), CAN,
 SUB, an 8-bit ST when `ParserLimits.AcceptEightBitControls` is set, and BEL for
 OSC when `ParserLimits.AcceptBellTerminatedOsc` is set; no other byte, including
 a following `ESC [`, ends string recovery. This is standards-conformant: ECMA-48
-leaves recovery from an unterminated control string unspecified, and closed #20
-pinned terminator-only recovery as the deliberate choice.
+leaves recovery from an unterminated control string unspecified, so SharpVision
+deliberately uses terminator-only recovery.
 
 Default limits bound parameter count, parameter magnitude, intermediate bytes,
 and string payload length. Options may lower or raise limits but cannot disable
@@ -61,6 +61,7 @@ Source accessed 2026-07-28.
 
 ## Expected behavior
 
-Every representative sequence is tested whole, at every read split, adjacent to
-text and other controls, malformed, truncated, cancelled, and followed by a
-known sequence that proves recovery.
+Readers can rely on the same typed result regardless of where transport reads
+split a sequence. Text and adjacent controls keep their order. Malformed,
+truncated, cancelled, and oversized sequences produce bounded diagnostics, then
+recover at the documented boundary so the next valid sequence is decoded.

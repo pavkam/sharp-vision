@@ -52,7 +52,7 @@ cancellation, or cleanup failure.
 
 ## Sources
 
-- [XTerm Control Sequences, Patch #410](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
+- [XTerm Control Sequences, patch level 410](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
   defines bracketed-paste mode 2004 and focus-reporting mode 1004.
 
 Source accessed 2026-07-28.

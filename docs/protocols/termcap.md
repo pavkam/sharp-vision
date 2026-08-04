@@ -2,11 +2,12 @@
 
 ## Overview
 
-The Unix provider calls only `setupterm`. When the loaded ncurses build includes
-full termcap compatibility, that one call owns `TERMCAP`, `TERMPATH`, aliases,
-and `tc` resolution and exposes canonical `tiget*` results. A build without
-usable matching inline `TERMCAP` support returns a typed provider failure with a
-structured diagnostic. The
+Termcap is an older Unix terminal-description format. SharpVision does not parse
+it directly. The Unix provider calls only `setupterm`; when the loaded ncurses
+build includes full termcap compatibility, that one call owns `TERMCAP`,
+`TERMPATH`, aliases, and `tc` resolution and exposes canonical `tiget*` results.
+A build without usable matching inline `TERMCAP` support returns a typed
+provider failure with a structured diagnostic. The
 [terminal integration contract](../architecture/terminal-integration.md#overview)
 owns host selection, while the
 [rendering pipeline](../architecture/rendering-pipeline.md#overview) owns
@@ -40,6 +41,19 @@ builds. SharpVision does not initiate or observe a separate fallback call:
    searched as its declared Unix colon-separated file list.
 3. If neither variable supplies a usable source, search `/etc/termcap`,
    `/usr/share/misc/termcap`, and `$HOME/.termcap`, in that order.
+
+```mermaid
+flowchart TD
+    Start["ncurses setupterm compatibility path"] --> Inline{"Matching inline TERMCAP?"}
+    Inline -->|Yes| Resolve["Resolve aliases and tc inheritance"]
+    Inline -->|No| File{"TERMCAP file or TERMPATH result?"}
+    File -->|Yes| Resolve
+    File -->|No| Defaults["Try ncurses default termcap files"]
+    Defaults --> Resolve
+    Resolve --> Canonical["Expose canonical terminfo identifiers"]
+    Canonical --> Validate["Apply SharpVision allowlist, limits, and suitability"]
+    Validate --> Result["Owned profile or typed provider failure"]
+```
 
 Native lookup is governed by the
 [provider trust boundary](terminfo.md#native-provider-trust-boundary). Before
@@ -89,11 +103,12 @@ requested cursor or alternate-screen change still requires its matched fallback.
 
 ## Expected behavior
 
-Provider fixtures prove the single `setupterm` path with the native build's
-`TERMCAP` file and ordered `TERMPATH`; the required raw-to-canonical mappings;
-optional normalization without guessed aliases; inline 1023-byte rejection;
-provider-failure handling; absent extended-capability evidence; and no output
-before a required capability failure.
+Readers can rely on one `setupterm` path, the native build's ordered `TERMCAP`
+and `TERMPATH` handling, the documented raw-to-canonical mappings, and
+normalization without guessed aliases. Oversized inline content and provider
+failures return typed failures. Missing required capabilities reject the
+description before any terminal output; missing optional values remain absent
+evidence.
 
 > [!NOTE]
 >

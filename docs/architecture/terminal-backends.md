@@ -69,6 +69,17 @@ capability values. The most specific satisfied identity wins in this order:
 3. xterm-compatible; and
 4. conservative VT fallback.
 
+```mermaid
+flowchart TD
+    Evidence["Description and environment identity evidence"] --> Kitty{"Kitty evidence?"}
+    Kitty -->|Yes| UseKitty["Kitty backend"]
+    Kitty -->|No| Iterm{"iTerm2 evidence?"}
+    Iterm -->|Yes| UseIterm["iTerm2 backend"]
+    Iterm -->|No| Xterm{"xterm-compatible evidence?"}
+    Xterm -->|Yes| UseXterm["xterm backend"]
+    Xterm -->|No| UseVt["Conservative VT backend"]
+```
+
 The fallback authorizes no optional output by itself. A sixel response enables
 the sixel extension when its evidence is authoritative; it never changes the
 identity to a sixel backend, and there is no `SixelBackend`. Likewise, Kitty

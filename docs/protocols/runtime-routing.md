@@ -8,6 +8,28 @@ responses, and bounded raw extension strings. Parser callback spans are
 borrowed; every `ProtocolSequence` copies its header and payload before the
 callback returns.
 
+| Parsed value                           | Runtime owner                                  | Application-visible result                 |
+| -------------------------------------- | ---------------------------------------------- | ------------------------------------------ |
+| Key, text, mouse, paste, or focus      | Input decoders and routed UI input             | Dispatcher-ordered input event.            |
+| Active startup-query reply             | Query tracker, then the response event surface | Evidence refinement plus a typed event.    |
+| Valid unsolicited or late reply        | Response event surface                         | Typed event without capability mutation.   |
+| Registered clipboard or graphics data  | The corresponding typed protocol consumer      | Service- or renderer-owned transaction.    |
+| Unknown valid string                   | `IProtocolSink.Sequence`                       | Owned bounded sequence.                    |
+| Malformed, oversized, or unrouted data | Diagnostic path                                | Redacted diagnostic; payload is discarded. |
+
+```mermaid
+flowchart TD
+    Bytes["Transport bytes"] --> Parser["Bounded incremental parser"]
+    Parser --> Valid{"Complete valid sequence?"}
+    Valid -->|No| Diagnostic["Redacted diagnostic and recovery"]
+    Valid -->|Yes| Typed{"Registered typed consumer?"}
+    Typed -->|Yes| Consumer["Reply, input, clipboard, or graphics consumer"]
+    Typed -->|No| Key{"Exact described key or ANSI input?"}
+    Key -->|Yes| Input["Dispatcher-ordered application input"]
+    Key -->|No| Sequence["Owned bounded extension sequence"]
+    Consumer --> Events["Typed dispatcher event when public"]
+```
+
 The active terminal profile's key map is copied into immutable input options
 when `Session` constructs its router. CSI, SS3, Escape, and control callbacks
 first run registered reply, paste, mouse, focus, and Kitty consumers, then exact
@@ -147,12 +169,23 @@ surface.
 
 ## Expected behavior
 
-Test each recognized reply and each string family whole and at every read split.
-Mutate the source buffer after routing to prove ownership. Test adjacent input
-and responses to prove ordering. Follow malformed, cancelled, truncated, and
-oversized strings with known input to prove recovery. Drive at least one reply
-through `ProtocolRouter`, `Session`, and the application dispatcher. Exercise
-matched, wrong-identity, duplicate, and late typed DCS delivery in transport
-order, retain the event values after the source buffer is overwritten, and run
-both DCS families through a legacy sink at every read split to prove the
-observable default fallback.
+Readers can rely on these observable outcomes:
+
+- Every recognized reply and string family has the same result regardless of how
+  transport reads split its bytes.
+- Routed values own their data and remain valid after the source buffer is
+  reused.
+- Adjacent input and replies preserve transport order through the dispatcher.
+- Malformed, cancelled, truncated, and oversized strings recover before the next
+  valid input value.
+- Matched, wrong-identity, duplicate, and late DCS replies remain observable;
+  only a matched active query may refine capability evidence.
+- A sink that implements only the base interface receives the documented
+  compatibility diagnostic instead of silently losing an extension reply.
+
+| Evidence layer | What remains observable                                                      |
+| -------------- | ---------------------------------------------------------------------------- |
+| Decoder        | Whole and fragmented inputs produce the same typed values and recovery.      |
+| Ownership      | Values survive source-buffer reuse without retaining borrowed memory.        |
+| Integration    | Router, session, query tracker, and dispatcher preserve order and ownership. |
+| Compatibility  | Legacy sinks receive bounded, redacted fallback diagnostics.                 |

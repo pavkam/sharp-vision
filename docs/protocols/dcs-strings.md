@@ -43,7 +43,7 @@ recovery.
 
 - [ECMA-48, fifth edition, June 1991](https://ecma-international.org/publications-and-standards/standards/ecma-48/)
   defines DCS, SOS, OSC, PM, APC, ST, and cancellation controls.
-- [XTerm Control Sequences, Patch #410, 2026-04-19](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
+- [XTerm Control Sequences, patch level 410, 2026-04-19](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
   records xterm string handling and compatibility behavior.
 
 Sources accessed 2026-07-17.

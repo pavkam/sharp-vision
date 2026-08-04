@@ -50,7 +50,7 @@ cover absent, zero, default, maximum, and rejected values.
 - [ECMA-48, fifth edition, June 1991](https://ecma-international.org/publications-and-standards/standards/ecma-48/)
   defines CSI byte classes, parameter and intermediate ranges, final bytes, and
   standard control functions.
-- [XTerm Control Sequences, Patch #410, 2026-04-19](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
+- [XTerm Control Sequences, patch level 410, 2026-04-19](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
   defines the xterm and DEC-compatible private forms used by the supported
   profile.
 

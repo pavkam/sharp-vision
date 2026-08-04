@@ -76,7 +76,7 @@ tracking modes in reverse. Tentative terminal-name hints never activate them.
 
 ## Sources
 
-- [XTerm Control Sequences, Patch #410](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
+- [XTerm Control Sequences, patch level 410](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
   defines modes 9, 1000, 1002, 1003, 1005, 1006, 1015, and 1016.
 
 Source accessed 2026-07-28.
