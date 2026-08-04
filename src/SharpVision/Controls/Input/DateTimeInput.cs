@@ -367,6 +367,45 @@ public sealed class DateTimeInput: ControlBase
         }
     }
 
+    /// <summary>Gets or sets the complete locally authored border for the owned Calendar popup.</summary>
+    /// <remarks>
+    /// Null (the default) leaves the popup on its own <see cref="ThemeRole.Popup"/> role appearance
+    /// (see #81).
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Border? PopupBorder
+    {
+        get;
+        set
+        {
+            VerifyMutable();
+
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+
+            if (value.HasValue)
+            {
+                _popup.Border = value.Value;
+            }
+            else
+            {
+                _popup.ResetBorder();
+            }
+
+            NotifyPropertyChanged(nameof(PopupBorder), InvalidationImpact.None);
+        }
+    }
+
+    /// <summary>Returns the Calendar popup's border to <see cref="ThemeRole.Popup"/> ownership.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public void ResetPopupBorder() => PopupBorder = null;
+
     #endregion
 
     #region Input, layout, and rendering
