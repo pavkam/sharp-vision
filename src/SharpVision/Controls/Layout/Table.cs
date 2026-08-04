@@ -514,11 +514,15 @@ public sealed class Table: ItemsControl
             return;
         }
 
-        if (SelectionMode is TableSelectionMode.Row or TableSelectionMode.MultipleRows)
+        if (SelectionMode == TableSelectionMode.MultipleRows)
         {
             CommitSelection([.. Rows], []);
         }
-        else
+        else if (SelectionMode == TableSelectionMode.Row)
+        {
+            CommitSelection([Rows[0]], []);
+        }
+        else if (SelectionMode == TableSelectionMode.MultipleCells)
         {
             HashSet<TableCellReference> all = [];
 
@@ -531,6 +535,10 @@ public sealed class Table: ItemsControl
             }
 
             CommitSelection([], all);
+        }
+        else
+        {
+            CommitSelection([], [new TableCellReference(Rows[0], 0)]);
         }
 
         SetActive(Rows[0], 0);

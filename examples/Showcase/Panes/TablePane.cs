@@ -83,7 +83,7 @@ internal sealed class TablePane: CompositeControlBase
         var behavior = new Table
         {
             Width = Length.Cells(42),
-            SelectionMode = TableSelectionMode.Cell,
+            SelectionMode = TableSelectionMode.MultipleCells,
             CellPadding = new Thickness(1, 0),
             ShowGridLines = true
         };

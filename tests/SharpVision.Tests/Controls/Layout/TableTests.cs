@@ -330,6 +330,64 @@ public sealed class TableTests
         table.CopySelection().ShouldBe("A1\tB1\nA2\tB2");
     }
 
+    /// <summary>Verifies SelectAll respects the single-selection Row mode instead of selecting
+    /// every row, honoring the mode's own multiplicity contract (see #278).</summary>
+    [Fact]
+    public void SelectAll_WhenSelectionModeIsSingleRow_SelectsOnlyTheFirstRow()
+    {
+        var first = new TableRow([new ControlText("A1")]);
+        var second = new TableRow([new ControlText("A2")]);
+        var third = new TableRow([new ControlText("A3")]);
+        var table = new Table { SelectionMode = TableSelectionMode.Row };
+        table.Columns.Add(TableColumn.Auto("A"));
+        table.Rows.Add(first);
+        table.Rows.Add(second);
+        table.Rows.Add(third);
+
+        table.SelectAll();
+
+        table.SelectedRows.Count.ShouldBe(1);
+        table.SelectedRows.ShouldBe([first]);
+    }
+
+    /// <summary>Verifies SelectAll respects the single-selection Cell mode instead of selecting
+    /// every cell (see #278).</summary>
+    [Fact]
+    public void SelectAll_WhenSelectionModeIsSingleCell_SelectsOnlyTheFirstCell()
+    {
+        var first = new TableRow([new ControlText("A1"), new ControlText("B1")]);
+        var second = new TableRow([new ControlText("A2"), new ControlText("B2")]);
+        var table = new Table { SelectionMode = TableSelectionMode.Cell };
+        table.Columns.Add(TableColumn.Auto("A"));
+        table.Columns.Add(TableColumn.Auto("B"));
+        table.Rows.Add(first);
+        table.Rows.Add(second);
+
+        table.SelectAll();
+
+        table.SelectedCells.Count.ShouldBe(1);
+        table.SelectedCells.ShouldBe([new TableCellReference(first, 0)]);
+    }
+
+    /// <summary>Verifies the single-row selection SelectAll produces stays correct after a sort
+    /// and a row removal, rather than reverting to a multi-row selection (see #278).</summary>
+    [Fact]
+    public void SelectAll_WhenSelectionModeIsSingleRow_StaysSingleAfterSortAndRemoval()
+    {
+        var first = new TableRow([new ControlText("B")]);
+        var second = new TableRow([new ControlText("A")]);
+        var table = new Table { SelectionMode = TableSelectionMode.Row };
+        table.Columns.Add(TableColumn.Auto("A"));
+        table.Rows.Add(first);
+        table.Rows.Add(second);
+
+        table.SelectAll();
+        table.SortBy(0);
+        _ = table.Rows.Remove(second);
+
+        table.SelectedRows.Count.ShouldBe(1);
+    }
+
     /// <summary>Verifies sorting preserves row selection instead of silently clearing it — the
     /// reorder relocates the exact same row instances rather than removing and re-adding new
     /// ones, so selection referencing those instances must survive (see #109).</summary>
