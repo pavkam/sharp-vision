@@ -62,7 +62,7 @@ public sealed class Application:
     private ShortcutManager? _shortcuts;
     private KeyEventArgs? _routedKeyArgs;
     private ControlBase? _routedKeyTarget;
-    private Rune? _suppressedAccessKeyText;
+    private Rune? _suppressedPairedText;
     private string _clipboardText = string.Empty;
     private readonly TerminalServices _terminalServices;
     private Dimensions _latestResize;
@@ -793,7 +793,7 @@ public sealed class Application:
     {
         if (record.Kind != RecordKind.Text)
         {
-            _suppressedAccessKeyText = null;
+            _suppressedPairedText = null;
         }
 
         switch (record.Kind)
@@ -802,6 +802,7 @@ public sealed class Application:
                 {
                     if (_shortcuts?.Process(record.Stroke) == true)
                     {
+                        SuppressPairedText(record.Stroke);
                         break;
                     }
 
@@ -837,15 +838,15 @@ public sealed class Application:
 
                     if (!result.Handled && _accessKeys?.Process(record.Stroke) == true)
                     {
-                        _suppressedAccessKeyText = record.Stroke.Character;
+                        SuppressPairedText(record.Stroke);
                     }
                 }
 
                 break;
             case RecordKind.Text:
-                if (_suppressedAccessKeyText is { } suppressed)
+                if (_suppressedPairedText is { } suppressed)
                 {
-                    _suppressedAccessKeyText = null;
+                    _suppressedPairedText = null;
 
                     if (record.Text.Value == suppressed)
                     {
@@ -932,6 +933,12 @@ public sealed class Application:
                 throw new UnreachableException();
         }
     }
+
+    /// <summary>Marks a stroke's paired text record - the associated-text record the terminal
+    /// reports alongside a printable key when the decoder emits both - as one to drop rather
+    /// than route, because framework-level dispatch (an access key or a menu shortcut) already
+    /// consumed the stroke itself. A stroke with no character arms nothing.</summary>
+    private void SuppressPairedText(in Stroke stroke) => _suppressedPairedText = stroke.Character;
 
     private void OnClipboardShortcut(object? sender, KeyEventArgs eventArgs)
     {
@@ -1288,7 +1295,7 @@ public sealed class Application:
             _clipboardText = string.Empty;
             _accessKeys = null;
             _shortcuts = null;
-            _suppressedAccessKeyText = null;
+            _suppressedPairedText = null;
             CaptureCleanup(() => ModalityValue?.Shutdown(), ref cleanupFailure);
             CaptureCleanup(() => CaptureValue?.Dispose(), ref cleanupFailure);
 

@@ -49,6 +49,44 @@ public sealed class ApplicationShortcutTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a modifier-less shortcut suppresses its adjacent paired text record, so
+    /// the chord fires its command without also typing the character into the focused editor
+    /// (see #280). Plain printable chords are the leaking case: the terminal reports a stroke
+    /// and a text record for the same keystroke, and only the access-key path suppressed the
+    /// text record before this fix.</summary>
+    [Fact]
+    public async Task Input_WhenPlainShortcutMatchesWhileTextInputIsFocused_SuppressesPairedTextAsync()
+    {
+        // Arrange
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var input = new TextInput { Text = "seed" };
+        var menu = new Menu();
+        var gesture = new KeyGesture(Code.Character, Modifiers.None, new Rune('q'));
+        var quit = new MenuItem { Text = "Quit", Shortcut = gesture };
+        menu.Items.Add(quit);
+        var root = new Stack { Children = { input, menu } };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        var invocations = 0;
+        quit.Invoked += (_, _) => invocations++;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(input).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        var stroke = new Stroke(Code.Character, new Rune('q'), nativeCode: 0, Modifiers.None, KeyAction.Press);
+        var text = new TerminalText(new Rune('q'));
+
+        // Act
+        application.Input(in stroke);
+        application.Input(in text);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        invocations.ShouldBe(1);
+        input.Text.ShouldBe("seed");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies an unmatched key still reaches routed handling normally.</summary>
     [Fact]
     public async Task Input_WhenNoShortcutMatches_RoutesTheKeyNormallyAsync()

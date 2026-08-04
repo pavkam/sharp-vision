@@ -61,7 +61,9 @@ its text record is left untouched.
 `MenuItem.Shortcut` dispatch is the mirror image: it runs _before_ the ordinary
 route, not after. A matching chord invokes its item and the stroke never reaches
 routing at all, so a shortcut always wins over whatever the focused control
-would otherwise do with the same keys. See
+would otherwise do with the same keys. Like the access-key path, a shortcut
+match also consumes the stroke's adjacent paired text record, so the chord is
+never also typed into whatever currently has focus. See
 [MenuItem shortcut dispatch](../controls/menus/menu-item.md#shortcut-dispatch)
 for its discovery rules, which mirror this section's precisely.
 
