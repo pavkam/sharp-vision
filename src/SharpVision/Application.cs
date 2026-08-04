@@ -62,7 +62,7 @@ public sealed class Application:
     private ShortcutManager? _shortcuts;
     private KeyEventArgs? _routedKeyArgs;
     private ControlBase? _routedKeyTarget;
-    private Rune? _suppressedPairedText;
+    private bool _suppressPairedText;
     private string _clipboardText = string.Empty;
     private readonly TerminalServices _terminalServices;
     private Dimensions _latestResize;
@@ -791,9 +791,13 @@ public sealed class Application:
 
     private void Dispatch(Record record)
     {
-        if (record.Kind != RecordKind.Text)
+        // Only a new keystroke resets suppression (see #286). Resetting on every non-Text
+        // record would strand an armed suppression when an unrelated concurrent producer -
+        // resize, a diagnostic, a fault - is enqueued between a consumed stroke and its
+        // paired text record(s), which are otherwise always adjacent in dispatch order.
+        if (record.Kind == RecordKind.Key)
         {
-            _suppressedPairedText = null;
+            _suppressPairedText = false;
         }
 
         switch (record.Kind)
@@ -844,14 +848,13 @@ public sealed class Application:
 
                 break;
             case RecordKind.Text:
-                if (_suppressedPairedText is { } suppressed)
+                if (_suppressPairedText)
                 {
-                    _suppressedPairedText = null;
-
-                    if (record.Text.Value == suppressed)
-                    {
-                        break;
-                    }
+                    // A single consumed stroke can be paired with more than one text record -
+                    // Kitty associated text emits one record per colon-separated scalar (see
+                    // #286) - so every consecutive text record is dropped, not just the first,
+                    // until the next keystroke re-arms or clears suppression.
+                    break;
                 }
 
                 if (Modality.FocusedTarget(Focus.Focused) is { } textTarget)
@@ -934,11 +937,12 @@ public sealed class Application:
         }
     }
 
-    /// <summary>Marks a stroke's paired text record - the associated-text record the terminal
-    /// reports alongside a printable key when the decoder emits both - as one to drop rather
-    /// than route, because framework-level dispatch (an access key or a menu shortcut) already
-    /// consumed the stroke itself. A stroke with no character arms nothing.</summary>
-    private void SuppressPairedText(in Stroke stroke) => _suppressedPairedText = stroke.Character;
+    /// <summary>Arms suppression of a stroke's paired text record(s) - the associated-text
+    /// record(s) the terminal reports alongside a key when the decoder emits both - so they are
+    /// dropped rather than routed, because framework-level dispatch (an access key or a menu
+    /// shortcut) already consumed the stroke itself. A stroke with no character arms nothing,
+    /// since a codeless stroke (an arrow key, a function key) is never paired with text.</summary>
+    private void SuppressPairedText(in Stroke stroke) => _suppressPairedText = stroke.Character.HasValue;
 
     private void OnClipboardShortcut(object? sender, KeyEventArgs eventArgs)
     {
@@ -1295,7 +1299,7 @@ public sealed class Application:
             _clipboardText = string.Empty;
             _accessKeys = null;
             _shortcuts = null;
-            _suppressedPairedText = null;
+            _suppressPairedText = false;
             CaptureCleanup(() => ModalityValue?.Shutdown(), ref cleanupFailure);
             CaptureCleanup(() => CaptureValue?.Dispose(), ref cleanupFailure);
 
