@@ -242,6 +242,43 @@ public sealed class NavigationViewTests
         Should.NotThrow(() => navigation.SelectItem(other));
     }
 
+    /// <summary>Verifies owner disposal can retire a grouped current item after the group has
+    /// already disposed that descendant, matching application shutdown of grouped navigation.</summary>
+    [Fact]
+    public void Dispose_WhenGroupedItemIsCurrent_DoesNotMutateDisposedDescendant()
+    {
+        var selected = new NavigationViewItem { Text = "Selected" };
+        var group = new NavigationViewGroup { Header = "Group" };
+        group.Items.Add(selected);
+        var navigation = new NavigationView();
+        navigation.Items.Add(new NavigationViewGroup { Header = "Earlier group" });
+        navigation.Items.Add(group);
+        navigation.SelectItem(selected);
+
+        Should.NotThrow(navigation.Dispose);
+
+        navigation.IsDisposed.ShouldBeTrue();
+        group.IsDisposed.ShouldBeTrue();
+        selected.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies disposal retires the selected identity even when its group is the final
+    /// top-level entry and no later host change can repair retained navigation state.</summary>
+    [Fact]
+    public void Dispose_WhenSelectedGroupIsFinalEntry_ClearsSelectedItem()
+    {
+        var selected = new NavigationViewItem { Text = "Selected" };
+        var group = new NavigationViewGroup { Header = "Group" };
+        group.Items.Add(selected);
+        var navigation = new NavigationView();
+        navigation.Items.Add(group);
+        navigation.SelectItem(selected);
+
+        navigation.Dispose();
+
+        navigation.SelectedItem.ShouldBeNull();
+    }
+
     /// <summary>Verifies removing the selected item directly from its group repairs
     /// selection through the owning view and raises exactly one SelectionChanged.</summary>
     [Fact]

@@ -168,6 +168,29 @@ public sealed class GallerySurfaceTests
         await surface.Keyboard.PressAsync(Code.Escape);
     }
 
+    /// <summary>Verifies quitting from the grouped FilePicker navigation entry disposes the
+    /// complete showcase tree without retaining a disposed current or selected item.</summary>
+    [Fact]
+    public async Task Quit_WhenFilePickerPageIsSelected_StopsWithoutCleanupFailureAsync()
+    {
+        var gallery = new Gallery();
+        await using var surface = await ComponentSurface.MountScreenAsync(
+            gallery,
+            new Size(120, 40),
+            TestContext.Current.CancellationToken);
+        var pageIndex = gallery.Pages
+            .Select(static (name, index) => (name, index))
+            .Single(static entry => entry.name == FilePickerPane.Title)
+            .index;
+        await surface.UpdateAsync(() => gallery.Select(pageIndex), "select FilePicker before quit");
+
+        await Should.NotThrowAsync(async () =>
+            await surface.Application.StopAsync(TestContext.Current.CancellationToken));
+
+        surface.Application.Failure.ShouldBeNull();
+        gallery.IsDisposed.ShouldBeTrue();
+    }
+
     /// <summary>
     /// Verifies every production catalog page mounts, lays out, and renders
     /// without throwing at three representative sizes. Gallery.CreatePage is a

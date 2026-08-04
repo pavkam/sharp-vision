@@ -53,7 +53,11 @@ internal sealed class CurrentItemNavigator
             return false;
         }
 
-        Current?.SetCurrentState(false);
+        if (Current is { IsDisposed: false } current)
+        {
+            current.SetCurrentState(false);
+        }
+
         Current = value;
         Current?.SetCurrentState(true);
         return true;

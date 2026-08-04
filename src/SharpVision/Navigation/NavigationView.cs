@@ -651,6 +651,8 @@ public sealed class NavigationView: CompositeControlBase
         if (reason == ReleaseReason.Disposed)
         {
             SelectionChanged = null;
+            _ = _navigator.SetCurrent(null);
+            Select(null);
         }
     }
 
@@ -714,7 +716,11 @@ public sealed class NavigationView: CompositeControlBase
         }
 
         var previous = SelectedItem;
-        previous?.CommitSelection(false);
+
+        if (previous is { IsDisposed: false })
+        {
+            previous.CommitSelection(false);
+        }
 
         SelectedItem = item;
 
