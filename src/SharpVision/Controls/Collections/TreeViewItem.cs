@@ -259,7 +259,7 @@ public sealed class TreeViewItem: ControlBase
                 _disclosureWidthCells +
                 checkWidth +
                 _headerLeadingSpaceCells +
-                Terminal.Unicode.Width.Measure(Header).Cells),
+                MeasureCells(Header)),
             _rowHeightCells);
     }
 

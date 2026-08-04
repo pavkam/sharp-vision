@@ -210,7 +210,7 @@ public sealed class TimeInput: ControlBase
 
         foreach (var segment in BuildSegments())
         {
-            width += Terminal.Unicode.Width.Measure(segment.Text).Cells;
+            width += MeasureCells(segment.Text);
         }
 
         return new Size(width, _contentHeight);
@@ -301,7 +301,7 @@ public sealed class TimeInput: ControlBase
         }
 
         var localX = cells.X - content.X;
-        _ = _segments.ActivateSegmentAtColumn(localX);
+        _ = _segments.ActivateSegmentAtColumn(localX, CellPolicy.AmbiguousWidth);
 
         if (!IsFocused)
         {
@@ -525,7 +525,7 @@ public sealed class TimeInput: ControlBase
                 ? highlight
                 : style;
             _ = canvas.Draw(segment.Text.AsSpan(), new Point(x, content.Y), segmentStyle, background: BackgroundMode.Transparent);
-            x += Terminal.Unicode.Width.Measure(segment.Text).Cells;
+            x += MeasureCells(segment.Text);
         }
     }
 

@@ -49,6 +49,19 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <summary>Gets the immutable Unicode cell policy inherited from the root.</summary>
     protected internal UnicodePolicy CellPolicy { get; private set; } = UnicodePolicy.Default;
 
+    /// <summary>Measures printable cells under the tree's ambient East Asian Ambiguous width
+    /// policy.</summary>
+    /// <param name="value">The borrowed UTF-16 text.</param>
+    /// <returns>The printable cell count <see cref="CellPolicy"/> would render.</returns>
+    /// <remarks>
+    /// The bare <c>Terminal.Unicode.Width.Measure(value)</c> overload defaults to
+    /// <see cref="Ambiguous.Narrow"/>, which silently disagrees with a control tree whose
+    /// <see cref="CellPolicy"/> resolved to <see cref="Ambiguous.Wide"/> - measurement and
+    /// rendering must consult the same policy (see #262).
+    /// </remarks>
+    protected internal int MeasureCells(ReadOnlySpan<char> value) =>
+        Terminal.Unicode.Width.Measure(value, CellPolicy.AmbiguousWidth).Cells;
+
     /// <summary>Gets or sets the requested border-box width.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>

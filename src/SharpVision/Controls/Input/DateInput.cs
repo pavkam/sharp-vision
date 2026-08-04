@@ -391,7 +391,7 @@ public sealed class DateInput: ControlBase
     protected override Size MeasureOverride(Constraint constraint)
     {
         _ = MeasureChild(_popup, new Constraint(constraint.Width, DropDownHeight.Add(1)));
-        var width = Terminal.Unicode.Width.Measure(FormatValue()).Cells.Add(2);
+        var width = MeasureCells(FormatValue()).Add(2);
         return new Size(width, 1);
     }
 
@@ -435,7 +435,7 @@ public sealed class DateInput: ControlBase
                 new Point(x, content.Y),
                 segmentStyle,
                 background: BackgroundMode.Transparent);
-            x += Terminal.Unicode.Width.Measure(segment.Text).Cells;
+            x += MeasureCells(segment.Text);
         }
 
         var themed = ControlGlyphs.Disclosure.DropDown;
@@ -733,7 +733,7 @@ public sealed class DateInput: ControlBase
 
         var localX = cells.X - content.X;
 
-        if (!_segments.ActivateSegmentAtColumn(localX))
+        if (!_segments.ActivateSegmentAtColumn(localX, CellPolicy.AmbiguousWidth))
         {
             return;
         }

@@ -397,7 +397,7 @@ internal sealed class TablePresenter: Container
         for (var columnIndex = 0; columnIndex < _owner.Columns.Count; columnIndex++)
         {
             lengths[columnIndex] = _owner.Columns[columnIndex].Width;
-            automatic[columnIndex] = Terminal.Unicode.Width.Measure(_owner.Columns[columnIndex].Header).Cells.Add(_owner.CellPadding.Horizontal);
+            automatic[columnIndex] = MeasureCells(_owner.Columns[columnIndex].Header).Add(_owner.CellPadding.Horizontal);
         }
 
         foreach (var row in _owner.Rows)

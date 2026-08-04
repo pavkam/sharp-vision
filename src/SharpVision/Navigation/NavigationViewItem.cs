@@ -121,7 +121,7 @@ public sealed class NavigationViewItem: PressableBase
     protected override Size MeasureOverride(Constraint constraint)
     {
         _ = constraint;
-        var prefix = Glyph is not null ? Terminal.Unicode.Width.Measure(Glyph).Cells + 1 : 0;
+        var prefix = Glyph is not null ? MeasureCells(Glyph) + 1 : 0;
         return new Size(
             (int) Math.Min(
                 int.MaxValue,

@@ -271,10 +271,14 @@ internal sealed class SegmentFieldBehavior
 
     /// <summary>Activates the editable segment occupying a rendered column, discarding any partial digit.</summary>
     /// <param name="column">The zero-based column within the field's content area.</param>
+    /// <param name="ambiguousWidth">
+    /// The owning control's ambient East Asian Ambiguous width policy, matching the policy its
+    /// canvas rendered the same segments under (see #262).
+    /// </param>
     /// <returns>True if an editable segment occupies that column and became active.</returns>
-    public bool ActivateSegmentAtColumn(int column)
+    public bool ActivateSegmentAtColumn(int column, Ambiguous ambiguousWidth = Ambiguous.Narrow)
     {
-        var index = SegmentIndexAtColumn(column);
+        var index = SegmentIndexAtColumn(column, ambiguousWidth);
 
         if (index < 0)
         {
@@ -289,8 +293,12 @@ internal sealed class SegmentFieldBehavior
 
     /// <summary>Resolves the editable-segment index whose rendered column range contains a column.</summary>
     /// <param name="column">The zero-based column within the field's content area.</param>
+    /// <param name="ambiguousWidth">
+    /// The owning control's ambient East Asian Ambiguous width policy, matching the policy its
+    /// canvas rendered the same segments under (see #262).
+    /// </param>
     /// <returns>The editable segment index, or -1 when the layout has no editable segments.</returns>
-    public int SegmentIndexAtColumn(int column)
+    public int SegmentIndexAtColumn(int column, Ambiguous ambiguousWidth = Ambiguous.Narrow)
     {
         var running = 0;
         var threshold = 0;
@@ -298,7 +306,7 @@ internal sealed class SegmentFieldBehavior
 
         foreach (var segment in _segmentsProvider())
         {
-            running += Width.Measure(segment.Text).Cells;
+            running += Width.Measure(segment.Text, ambiguousWidth).Cells;
 
             if (segment.IsEditable)
             {

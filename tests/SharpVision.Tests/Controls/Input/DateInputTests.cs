@@ -502,6 +502,45 @@ public sealed class DateInputTests
                 Modifiers.None,
                 KeyAction.Press)));
 
+    /// <summary>Verifies pointer hit-testing measures each rendered segment under the tree's
+    /// ambient ambiguous-width policy instead of always Narrow, so a click on a rendered column
+    /// resolves to the segment actually occupying it (see #262).</summary>
+    [Fact]
+    public void SegmentAtColumn_WhenAmbiguousWidthIsWideAndFormatHasAmbiguousSeparators_ResolvesRenderedColumnToCorrectSegment()
+    {
+        // Arrange — "dd·MM·yyyy" places an ambiguous-width "·" separator (1 cell under Narrow, 2
+        // under Wide) between every field. Under Wide, "15·03·2026" renders Day at content
+        // columns 0-1, the separator at 2-3, and Month at 4-5 - column 5 is the last rendered
+        // column of Month. A hit-test that still measures separators under Narrow undercounts by
+        // one cell per separator crossed, so this same column would resolve past Month to Year.
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 3, 15),
+            Culture = CultureInfo.InvariantCulture,
+            Format = "dd·MM·yyyy"
+        };
+        control.SetCellPolicy(new UnicodePolicy(Ambiguous.Wide));
+        new LayoutEngine().Layout(control, new Size(20, 3));
+        var content = control.ContentBounds;
+        var eventArgs = new PointerEventArgs(new Pointer(
+            new Point(content.X + 5, content.Y),
+            pixels: null,
+            Buttons.Primary,
+            PointerAction.Press,
+            wheelX: 0,
+            wheelY: 0,
+            Modifiers.None,
+            isMotion: false,
+            isCellPositionInferred: false));
+
+        // Act
+        _ = Router.Route(control, Events.Pointer, eventArgs);
+        PressKey(control, Code.Up);
+
+        // Assert — the Month field incremented, proving the click activated Month, not Year.
+        control.Value.ShouldBe(new DateOnly(2026, 4, 15));
+    }
+
     #endregion
 
     #region Rendering

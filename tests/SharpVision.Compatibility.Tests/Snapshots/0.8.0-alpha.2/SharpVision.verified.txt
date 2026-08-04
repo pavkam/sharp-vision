@@ -599,6 +599,7 @@ namespace SharpVision.Controls
         public void Invalidate() { }
         protected void Invalidate(SharpVision.Controls.InvalidationImpact impact) { }
         protected void InvalidateVisualState() { }
+        protected int MeasureCells(System.ReadOnlySpan<char> value) { }
         protected SharpVision.Terminal.Geometry.Size MeasureChild(SharpVision.Controls.ControlBase child, SharpVision.Layout.Constraint constraint) { }
         protected virtual SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected void NotifyPropertyChanged(string propertyName, SharpVision.Controls.InvalidationImpact impact) { }

@@ -24,26 +24,54 @@ public sealed class UnicodeGeometryTests
             var marked = new TextControl("<b>·</b>");
             var input = new TextInputControl { Text = "·" };
             var table = new Table();
-            table.Columns.Add(TableColumn.Fixed("Value", 4));
-            table.Rows.Add(new TableRow([new TextControl("·")]));
-            var combo = new ComboBoxControl { Items = ["·"] };
+            table.Columns.Add(TableColumn.Auto("·"));
+            var combo = new ComboBoxControl { Items = ["·"], SelectedIndex = 0 };
+            var treeItem = new TreeViewItem { Header = "·" };
+            var navItem = new NavigationViewItem { Text = "Home", Glyph = "·" };
             var stack = new Stack();
             stack.Children.Add(text);
             stack.Children.Add(marked);
             stack.Children.Add(input);
             stack.Children.Add(table);
             stack.Children.Add(combo);
+            stack.Children.Add(treeItem);
+            stack.Children.Add(navItem);
             stack.SetTheme(TestThemes.BorderlessInput);
             stack.Attach(dispatcher, policy);
-            new LayoutEngine().Layout(stack, new Size(20, 12));
+            new LayoutEngine().Layout(stack, new Size(40, 14));
 
             // Assert
             text.DesiredSize.Width.ShouldBe(2);
             marked.DesiredSize.Width.ShouldBe(2);
             input.DesiredSize.Width.ShouldBe(2);
-            table.DesiredSize.Width.ShouldBeGreaterThanOrEqualTo(2);
-            combo.DesiredSize.Width.ShouldBeGreaterThanOrEqualTo(2);
             text.CellPolicy.AmbiguousWidth.ShouldBe(Ambiguous.Wide);
+
+            // #262: TablePresenter's Auto column, ComboBox's field, TreeViewItem's header, and
+            // NavigationViewItem's glyph each reserve exactly one more cell than the equivalent
+            // Narrow-policy layout below, since "·" alone drives their measured width and is
+            // ambiguous-width (1 cell Narrow, 2 cells Wide). Compared as a delta rather than an
+            // absolute width, since the absolute figure also depends on border/padding/glyph-
+            // reservation constants not worth hardcoding here. Before the fix this delta was 0 for
+            // all four: every affected site always measured under Narrow regardless of the
+            // ambient policy, so switching the tree to Wide never moved their desired size at all.
+            var narrowTable = new Table();
+            narrowTable.Columns.Add(TableColumn.Auto("·"));
+            var narrowCombo = new ComboBoxControl { Items = ["·"], SelectedIndex = 0 };
+            var narrowTreeItem = new TreeViewItem { Header = "·" };
+            var narrowNavItem = new NavigationViewItem { Text = "Home", Glyph = "·" };
+            var narrowStack = new Stack();
+            narrowStack.Children.Add(narrowTable);
+            narrowStack.Children.Add(narrowCombo);
+            narrowStack.Children.Add(narrowTreeItem);
+            narrowStack.Children.Add(narrowNavItem);
+            narrowStack.SetTheme(TestThemes.BorderlessInput);
+            narrowStack.Attach(dispatcher, UnicodePolicy.Default);
+            new LayoutEngine().Layout(narrowStack, new Size(40, 14));
+
+            (table.DesiredSize.Width - narrowTable.DesiredSize.Width).ShouldBe(1);
+            (combo.DesiredSize.Width - narrowCombo.DesiredSize.Width).ShouldBe(1);
+            (treeItem.DesiredSize.Width - narrowTreeItem.DesiredSize.Width).ShouldBe(1);
+            (navItem.DesiredSize.Width - narrowNavItem.DesiredSize.Width).ShouldBe(1);
         }, TestContext.Current.CancellationToken);
     }
 
