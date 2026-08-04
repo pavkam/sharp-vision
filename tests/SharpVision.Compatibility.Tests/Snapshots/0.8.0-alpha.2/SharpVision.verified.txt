@@ -3253,7 +3253,7 @@ namespace SharpVision.Text
         public static SharpVision.Text.EditResult MoveNextWord(string text, SharpVision.Text.Selection selection, bool extend) { }
         public static SharpVision.Text.EditResult MovePrevious(string text, SharpVision.Text.Selection selection, bool extend) { }
         public static SharpVision.Text.EditResult MovePreviousWord(string text, SharpVision.Text.Selection selection, bool extend) { }
-        public static string ProjectPassword(string text, System.Text.Rune mask) { }
+        public static string ProjectPassword(string text, System.Text.Rune mask, SharpVision.Terminal.Unicode.Ambiguous ambiguousWidth = 0) { }
         public static SharpVision.Text.EditResult Replace(string text, SharpVision.Text.Selection selection, string replacement, int maxLength = 0, bool acceptsReturn = false, bool acceptsTab = false) { }
         public static SharpVision.Text.Selection SelectWord(string text, int index) { }
         public static void Validate(string text, SharpVision.Text.Selection selection) { }

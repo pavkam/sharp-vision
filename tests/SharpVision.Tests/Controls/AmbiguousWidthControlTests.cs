@@ -107,4 +107,16 @@ public sealed class AmbiguousWidthControlTests
         frame.GetCell(new Point(1, 0)).IsContinuation.ShouldBeTrue();
         frame.Cursor.Position.ShouldBe(new Point(2, 0));
     }
+
+    /// <summary>Verifies PasswordCharacter validates the mask against the tree's already-active
+    /// ambient policy rather than always Narrow, so a mask that is genuinely two cells wide under
+    /// the active Wide policy is rejected instead of silently accepted (see #271).</summary>
+    [Fact]
+    public void PasswordCharacter_WhenAmbiguousWidthIsAlreadyWide_RejectsAMaskThatIsNotOneCellUnderIt()
+    {
+        var input = new TextInput();
+        input.SetCellPolicy(new UnicodePolicy(Ambiguous.Wide));
+
+        _ = Should.Throw<ArgumentException>(() => input.PasswordCharacter = new Rune('·'));
+    }
 }

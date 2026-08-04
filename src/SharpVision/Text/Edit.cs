@@ -377,19 +377,24 @@ public static class Edit
             : Unchanged(text, selection);
     }
 
-    /// <summary>Projects one printable narrow mask Rune per source grapheme.</summary>
+    /// <summary>Projects one printable mask Rune per source grapheme.</summary>
     /// <param name="text">The non-null source whose content is never copied to output.</param>
     /// <param name="mask">The printable one-cell mask.</param>
+    /// <param name="ambiguousWidth">
+    /// The caller's ambient East Asian Ambiguous width policy - the mask must occupy one cell
+    /// under the same policy that will measure and draw it, not always <see cref="Ambiguous.Narrow"/>
+    /// (see #271).
+    /// </param>
     /// <returns>The owned masked projection.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
     /// <exception cref="ArgumentException">The mask is a control or not one cell wide.</exception>
     /// <exception cref="OverflowException">The projected UTF-16 length exceeds an integer.</exception>
-    public static string ProjectPassword(string text, Rune mask)
+    public static string ProjectPassword(string text, Rune mask, Ambiguous ambiguousWidth = Ambiguous.Narrow)
     {
         ArgumentNullException.ThrowIfNull(text);
         Span<char> encoded = stackalloc char[2];
         var encodedLength = mask.EncodeToUtf16(encoded);
-        var measurement = Width.Measure(encoded[..encodedLength]);
+        var measurement = Width.Measure(encoded[..encodedLength], ambiguousWidth);
 
         if (measurement.Controls != 0 || measurement.Cells != 1)
         {

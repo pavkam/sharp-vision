@@ -156,7 +156,7 @@ public sealed class TextInput: ControlBase
         {
             if (value is { } mask)
             {
-                _ = Edit.ProjectPassword(string.Empty, mask);
+                _ = Edit.ProjectPassword(string.Empty, mask, CellPolicy.AmbiguousWidth);
             }
 
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
