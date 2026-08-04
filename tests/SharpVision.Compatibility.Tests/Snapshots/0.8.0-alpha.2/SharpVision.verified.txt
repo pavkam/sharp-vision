@@ -2513,12 +2513,14 @@ namespace SharpVision.Menus
         public ContextMenu() { }
         public bool IsOpen { get; }
         public SharpVision.Menus.MenuEntryCollection Items { get; }
+        public SharpVision.Styling.Border? PopupBorder { get; set; }
         public event System.EventHandler? Closed;
         public event System.EventHandler? Closing;
         public event System.EventHandler? Opening;
         public void Close() { }
         public void Dispose() { }
         protected virtual void Dispose(bool disposing) { }
+        public void ResetPopupBorder() { }
         public void Show(int row, int col) { }
     }
     public sealed class Menu : SharpVision.Controls.ItemsControl

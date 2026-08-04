@@ -16,6 +16,31 @@ public sealed class ContextMenuTests
         menu.Items.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies PopupBorder applies to the owned popup without leaking it, and
+    /// ResetPopupBorder returns it to the ThemeRole.Popup appearance (see #81).</summary>
+    [Fact]
+    public void PopupBorder_WhenSetAndReset_AppliesToOwnedPopupAndReturnsToThemeRole()
+    {
+        // Arrange
+        using var menu = new ContextMenu();
+        var popup = (Popup) menu.Presentation;
+        var themeRoleBorder = popup.Border;
+        var border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
+
+        // Act
+        menu.PopupBorder = border;
+
+        // Assert
+        popup.Border.ShouldBe(border);
+
+        // Act
+        menu.ResetPopupBorder();
+
+        // Assert
+        menu.PopupBorder.ShouldBeNull();
+        popup.Border.ShouldBe(themeRoleBorder);
+    }
+
     /// <summary>Verifies items can be added and retrieved.</summary>
     [Fact]
     public void Items_WhenAdded_CanBeRetrieved()

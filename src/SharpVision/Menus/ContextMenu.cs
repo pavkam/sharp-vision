@@ -48,6 +48,37 @@ public class ContextMenu: IDisposable
 
     internal Menu Menu { get; }
 
+    /// <summary>Gets or sets the complete locally authored border for the owned popup.</summary>
+    /// <remarks>
+    /// Null (the default) leaves the popup on its own <see cref="ThemeRole.Popup"/> role appearance
+    /// (see #81).
+    /// </remarks>
+    public Border? PopupBorder
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+
+            if (value.HasValue)
+            {
+                _popup.Border = value.Value;
+            }
+            else
+            {
+                _popup.ResetBorder();
+            }
+        }
+    }
+
+    /// <summary>Returns the popup's border to <see cref="ThemeRole.Popup"/> ownership.</summary>
+    public void ResetPopupBorder() => PopupBorder = null;
+
     /// <summary>Opens the context menu at the specified cell position.</summary>
     /// <param name="row">The zero-based row in root coordinates.</param>
     /// <param name="col">The zero-based column in root coordinates.</param>
