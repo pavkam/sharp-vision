@@ -12,4 +12,17 @@
 *.verified.bin binary
 *.bin binary
 
+# extern/unicode holds byte-exact pinned Unicode Character Database sources,
+# hashed and compared verbatim by scripts/generate-unicode-data.mjs. Without
+# a forced LF checkout, Windows converts them to CRLF on clone, which no
+# longer matches the SHA-256 pinned against the original LF source (#257).
+extern/unicode/**/*.txt text eol=lf working-tree-encoding=UTF-8
+
+# .flf FIGlet fonts are embedded as manifest resources and read back as raw
+# bytes, pinned to an exact length and SHA-256 in fonts.manifest.json - not
+# text content. A CRLF checkout on Windows adds a byte per line, breaking
+# both the length and hash check (#258); binary disables any line-ending or
+# encoding translation, on every platform.
+*.flf binary
+
 **/Snapshots/** linguist-generated=true
