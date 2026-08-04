@@ -243,6 +243,48 @@ public sealed class TextInputTests
         control.Text.ShouldBe("AB");
     }
 
+    /// <summary>Verifies UndoLimit = 0 disables both retained undo and retained redo, not just undo.</summary>
+    [Fact]
+    public void UndoLimit_WhenSetToZero_DisablesBothUndoAndRedo()
+    {
+        var control = new TextInput { UndoLimit = 1, Text = "A" };
+        control.Text = "AB";
+        _ = control.Undo();
+        control.CanUndo.ShouldBeFalse();
+        control.CanRedo.ShouldBeTrue();
+
+        control.UndoLimit = 0;
+
+        control.CanUndo.ShouldBeFalse();
+        control.CanRedo.ShouldBeFalse();
+        control.Redo().ShouldBeFalse();
+        control.Text.ShouldBe("A");
+    }
+
+    /// <summary>Verifies lowering UndoLimit while both stacks are populated trims the redo stack
+    /// too, dropping its oldest entries rather than only the undo stack's, so a redo entry that
+    /// Push would later drop cannot survive as an executable, un-undoable edit.</summary>
+    [Fact]
+    public void UndoLimit_WhenLoweredWithBothStacksPopulated_TrimsRedoToo()
+    {
+        var control = new TextInput { UndoLimit = 5, Text = "A" };
+        control.Text = "AB";
+        control.Text = "ABC";
+        _ = control.Undo();
+        _ = control.Undo();
+        control.Text.ShouldBe("A");
+
+        control.UndoLimit = 1;
+
+        // Only the most recently pushed redo entry ("AB") survives the trim; the older
+        // ("ABC") entry is dropped, so exactly one redo succeeds and no more remain.
+        control.CanRedo.ShouldBeTrue();
+        control.Redo().ShouldBeTrue();
+        control.Text.ShouldBe("AB");
+        control.CanRedo.ShouldBeFalse();
+        control.Redo().ShouldBeFalse();
+    }
+
     /// <summary>Verifies read-only suppresses mutation while single-line Enter submits committed text.</summary>
     [Fact]
     public void Dispatch_WhenReadOnlyOrSubmitted_UsesDocumentedBehavior()

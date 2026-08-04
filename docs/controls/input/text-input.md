@@ -135,9 +135,10 @@ unconditionally validated `Edit.MoveHome`/`Edit.MoveEnd`.
   read-only policy, the application clipboard content, the text length, and
   undo/redo availability. Callers may replace or clear it through the ordinary
   context-menu ownership contract.
-- `UndoLimit` defaults to 100, and zero disables retained undo. `CanUndo`,
-  `CanRedo`, `Undo()`, and `Redo()` operate on immutable text-and-selection
-  snapshots and never keep more than the configured number per stack.
+- `UndoLimit` defaults to 100, and zero disables both retained undo and retained
+  redo. `CanUndo`, `CanRedo`, `Undo()`, and `Redo()` operate on immutable
+  text-and-selection snapshots and never keep more than the configured number
+  per stack, independently for undo and redo.
 - `TextChanging` receives the complete proposed `EditResult` and may cancel it
   before any field changes. After the text, selection, and scroll commit
   atomically, `TextChanged` precedes `SelectionChanged` when both apply.

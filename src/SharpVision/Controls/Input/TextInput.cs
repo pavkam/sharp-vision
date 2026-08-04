@@ -300,7 +300,8 @@ public sealed class TextInput: ControlBase
     /// <summary>Gets the resolved editor-rail style.</summary>
     public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
 
-    /// <summary>Gets or sets the maximum retained undo snapshots.</summary>
+    /// <summary>Gets or sets the maximum retained snapshots, applied independently to the undo
+    /// stack and the redo stack. Zero disables both retained undo and retained redo.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -312,6 +313,7 @@ public sealed class TextInput: ControlBase
             ArgumentOutOfRangeException.ThrowIfNegative(value);
             _ = SetProperty(ref field, value, InvalidationImpact.None);
             Trim(_undo);
+            Trim(_redo);
         }
     } = 100;
 
