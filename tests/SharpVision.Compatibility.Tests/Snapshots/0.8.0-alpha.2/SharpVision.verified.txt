@@ -2567,6 +2567,7 @@ namespace SharpVision.Menus
         public SharpVision.Input.KeyGesture? Shortcut { get; set; }
         public string? ShortcutText { get; set; }
         public SharpVision.Menus.Menu? Submenu { get; set; }
+        public SharpVision.Styling.Border? SubmenuBorder { get; set; }
         public System.Text.Rune UncheckedGlyph { get; set; }
         public event System.EventHandler<SharpVision.Menus.MenuItemInvokedEventArgs>? Invoked;
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
@@ -2578,6 +2579,7 @@ namespace SharpVision.Menus
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void PerformInvoke() { }
         public void ResetGlyphs() { }
+        public void ResetSubmenuBorder() { }
     }
     public sealed class MenuItemInvokedEventArgs : System.EventArgs
     {

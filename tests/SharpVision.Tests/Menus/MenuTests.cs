@@ -528,6 +528,93 @@ public sealed class MenuTests
         submenuPopup.Face.Background.ShouldBe(contextMenuPopup.Face.Background);
     }
 
+    /// <summary>Verifies SubmenuBorder applies to an already-open submenu's popup without leaking
+    /// the private Popup itself (see #81).</summary>
+    [Fact]
+    public void SubmenuBorder_WhenSetOnAnOpenSubmenu_AppliesToItsPopup()
+    {
+        var border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
+        var submenu = new Menu { Orientation = Orientation.Vertical };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var item = new MenuItem { Text = "File", Submenu = submenu };
+        var owner = new Menu { Orientation = Orientation.Horizontal };
+        owner.Items.Add(item);
+        _ = new Overlay { Children = { owner } };
+        item.PerformInvoke();
+        var submenuPopup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
+
+        item.SubmenuBorder = border;
+
+        submenuPopup.Border.ShouldBe(border);
+    }
+
+    /// <summary>Verifies SubmenuBorder set before a submenu is ever assigned still applies once the
+    /// popup is created for it (see #81).</summary>
+    [Fact]
+    public void SubmenuBorder_WhenSetBeforeSubmenuIsAssigned_AppliesToTheCreatedPopup()
+    {
+        var border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
+        var item = new MenuItem { Text = "File", SubmenuBorder = border };
+
+        var submenu = new Menu { Orientation = Orientation.Vertical };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        item.Submenu = submenu;
+
+        var submenuPopup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
+        submenuPopup.Border.ShouldBe(border);
+    }
+
+    /// <summary>Verifies SubmenuBorder survives a Submenu reassignment, which recreates the popup.</summary>
+    [Fact]
+    public void SubmenuBorder_WhenSubmenuIsReassigned_StillAppliesToTheNewPopup()
+    {
+        var border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
+        var first = new Menu { Orientation = Orientation.Vertical };
+        first.Items.Add(new MenuItem { Text = "First" });
+        var item = new MenuItem { Text = "File", Submenu = first, SubmenuBorder = border };
+
+        var second = new Menu { Orientation = Orientation.Vertical };
+        second.Items.Add(new MenuItem { Text = "Second" });
+        item.Submenu = second;
+
+        var submenuPopup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
+        submenuPopup.Border.ShouldBe(border);
+    }
+
+    /// <summary>Verifies ResetSubmenuBorder returns an open submenu's popup to its ThemeRole.Popup
+    /// appearance, matching an item that never authored a local override.</summary>
+    [Fact]
+    public void ResetSubmenuBorder_WhenPopupHasLocalOverride_ReturnsToThemeRoleAppearance()
+    {
+        var submenu = new Menu { Orientation = Orientation.Vertical };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var item = new MenuItem { Text = "File", Submenu = submenu };
+        var owner = new Menu { Orientation = Orientation.Horizontal };
+        owner.Items.Add(item);
+        _ = new Overlay { Children = { owner } };
+        item.PerformInvoke();
+        var submenuPopup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
+        var themeRoleBorder = submenuPopup.Border;
+        item.SubmenuBorder = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
+
+        item.ResetSubmenuBorder();
+
+        item.SubmenuBorder.ShouldBeNull();
+        submenuPopup.Border.ShouldBe(themeRoleBorder);
+    }
+
+    /// <summary>Verifies SubmenuBorder round-trips on a standalone item with no submenu, and has no
+    /// popup to apply to until one exists.</summary>
+    [Fact]
+    public void SubmenuBorder_WhenNoSubmenuExists_RoundTripsWithoutThrowing()
+    {
+        var border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
+        var item = new MenuItem { Text = "File", SubmenuBorder = border };
+
+        item.SubmenuBorder.ShouldBe(border);
+        OwnedTree.Find<Popup>(item).ShouldBeNull();
+    }
+
     /// <summary>Verifies replacing a standalone item's submenu detaches the previous menu without
     /// disposing it, while the framework-owned popup that hosted it is disposed (see #181).</summary>
     [Fact]

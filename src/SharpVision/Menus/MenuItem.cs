@@ -99,6 +99,11 @@ public sealed class MenuItem: PressableBase
                 Content = value,
             };
 
+        if (newPopup is not null && SubmenuBorder.HasValue)
+        {
+            newPopup.Border = SubmenuBorder.Value;
+        }
+
         if (_submenu is { } previous)
         {
             previous.ItemInvoked -= OnSubmenuItemInvoked;
@@ -126,6 +131,50 @@ public sealed class MenuItem: PressableBase
 
         NotifyPropertyChanged(nameof(Submenu), InvalidationImpact.None);
     }
+
+    /// <summary>Gets or sets the complete locally authored border for the submenu's owned popup.</summary>
+    /// <remarks>
+    /// Null (the default) leaves the popup on its own <see cref="ThemeRole.Popup"/> role appearance,
+    /// exactly as an unset <see cref="Popup.Border"/> would. Applies immediately to an already-open
+    /// submenu's popup, and survives a <see cref="Submenu"/> reassignment, which recreates the
+    /// popup (see #81).
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
+    public Border? SubmenuBorder
+    {
+        get;
+        set
+        {
+            VerifyMutable();
+
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+
+            if (_submenuPopup is not null)
+            {
+                if (value.HasValue)
+                {
+                    _submenuPopup.Border = value.Value;
+                }
+                else
+                {
+                    _submenuPopup.ResetBorder();
+                }
+            }
+
+            NotifyPropertyChanged(nameof(SubmenuBorder), InvalidationImpact.None);
+        }
+    }
+
+    /// <summary>Returns the submenu popup's border to <see cref="ThemeRole.Popup"/> ownership.</summary>
+    /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
+    public void ResetSubmenuBorder() => SubmenuBorder = null;
 
     /// <summary>Gets or sets the optional keyboard shortcut hint displayed right-aligned after the label.</summary>
     /// <remarks>
