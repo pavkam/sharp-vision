@@ -4,25 +4,32 @@
 
 The pull-request workflow verifies changes proposed to `main` by running the
 shared build-and-test action on Linux, Windows, and macOS as three independent
-jobs; a summary job then fails the workflow unless all three platforms pass. The
-package publication workflow runs the same build-and-test action once on Linux
-for pushes to `main`, before it packs or publishes anything — cross-platform
-verification happens at the pull-request gate, not again at publication. These
-workflows reproduce the repository quality surface; they do not replace focused
-local testing while developing.
+jobs, alongside a fourth, parallel lint job; a summary job then fails the
+workflow unless all three platforms and the lint gate pass. The package
+publication workflow runs the same build-and-test action once on Linux for
+pushes to `main` — cross-platform verification happens at the pull-request gate,
+not again at publication — in parallel with the same lint job, and a final push
+job that needs both before it uploads anything to NuGet. These workflows
+reproduce the repository quality surface; they do not replace focused local
+testing while developing.
 
-The shared composite action runs `make lint`, the Release build, the tests with
-coverage, coverage-report generation, and artifact publication, in that order.
-`make lint` is exactly four commands: `dotnet format --verify-no-changes`,
-`prettier --check`, `markdownlint-cli2`, and the local-link validator. A lint
-failure does not skip the later gates: the lint step runs with
-`continue-on-error`, every later step still runs, and the action fails the job
-at the end if lint failed. A formatting violation therefore cannot suppress the
-build, test, coverage, or compatibility-snapshot results. Tests run on the
-Microsoft Testing Platform, enforce a discovery minimum, and produce xUnit TRX
-plus Cobertura output. The action publishes the test-result check and uploads
-both the raw TRX files and an HTML/Cobertura/badge coverage report as workflow
-artifacts.
+Linting is a job, not a step. It inspects sources, Markdown, and links, none of
+which vary by operating system, so running it inside the composite action meant
+paying for it once per platform and paying for it serially ahead of the tests it
+cannot affect. As its own job it costs about as much wall-clock time as the test
+phase and now overlaps it entirely. `make lint` is exactly four commands:
+`dotnet format --verify-no-changes`, `prettier --check`, `markdownlint-cli2`,
+and the local-link validator. A lint failure still cannot suppress the build,
+test, coverage, or compatibility-snapshot results, because those run in
+different jobs that neither wait for it nor observe it; and publication still
+cannot happen while lint is failing, because the push job needs both gates.
+
+The shared composite action runs the Release build, the tests with coverage,
+coverage-report generation, and artifact publication, in that order. Tests run
+on the Microsoft Testing Platform, enforce a discovery minimum, and produce
+xUnit TRX plus Cobertura output. The action publishes the test-result check and
+uploads both the raw TRX files and an HTML/Cobertura/badge coverage report as
+workflow artifacts.
 
 The target the action actually runs is `make test-ci`. It also runs
 `npm run test:docs` — the Node unit suite covering the `scripts/` gate layer
@@ -134,9 +141,9 @@ terminal, Unicode, rendering, and control behavior.
 
 ## Required evidence
 
-| Gate            | Pass condition                                                                                                           |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Format and lint | No C# formatting/analyzer, Markdown formatting/lint, or local-link violations; failure here does not skip build or test. |
-| Build           | Zero warnings/errors across production, examples, showcase, tests, and XML documentation.                                |
-| Test            | Minimum discovery is met and every discovered test passes without retries.                                               |
-| Package         | All three packages and symbols use the approved version and validated metadata; dependencies publish before dependents.  |
+| Gate            | Pass condition                                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Format and lint | No C# formatting/analyzer, Markdown formatting/lint, or local-link violations; runs as its own job beside build and test. |
+| Build           | Zero warnings/errors across production, examples, showcase, tests, and XML documentation.                                 |
+| Test            | Minimum discovery is met and every discovered test passes without retries.                                                |
+| Package         | All three packages and symbols use the approved version and validated metadata; dependencies publish before dependents.   |
