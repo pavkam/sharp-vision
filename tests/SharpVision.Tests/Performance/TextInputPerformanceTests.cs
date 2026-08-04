@@ -40,6 +40,10 @@ public sealed class TextInputPerformanceTests
     [Fact]
     public void Left_WhenWalkingBackwardThroughALargeDocument_CompletesWellUnderTheOldMeasuredCost()
     {
+        Assert.SkipWhen(
+            CoverageInstrumentation.IsProfilerAttached,
+            "An absolute wall-clock budget measures the coverage profiler, not the product.");
+
         var control = new TextInput { Text = new string('a', 8_000) };
         Key(control, Code.End, Modifiers.None);
         var watch = Stopwatch.StartNew();
@@ -61,6 +65,10 @@ public sealed class TextInputPerformanceTests
     [Fact]
     public void Up_WhenWalkingUpwardThroughALargeMultiRowDocument_CompletesWellUnderTheOldMeasuredCost()
     {
+        Assert.SkipWhen(
+            CoverageInstrumentation.IsProfilerAttached,
+            "An absolute wall-clock budget measures the coverage profiler, not the product.");
+
         var text = string.Concat(Enumerable.Repeat("x\n", 8_000)) + "x";
         var control = new TextInput { AcceptsReturn = true, Text = text };
         Key(control, Code.End, Modifiers.None);
