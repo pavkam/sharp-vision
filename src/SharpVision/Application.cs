@@ -316,6 +316,11 @@ public sealed class Application:
     /// <summary>Gets the owned session, exposed only for test seams that need its identity.</summary>
     internal Session Session { get; }
 
+    /// <summary>Installs a renderer directly in place of capability-derived selection, for
+    /// synchronous-fault test seams that need a backend double.</summary>
+    /// <param name="renderer">The renderer used for subsequent render cycles.</param>
+    internal void SeedRenderer(Renderer renderer) => _renderer = renderer;
+
     /// <summary>Gets the immutable Unicode cell policy used by the active tree and frame.</summary>
     public UnicodePolicy CellPolicy { get; private set; }
 
@@ -1706,12 +1711,36 @@ public sealed class Application:
             TaskCreationOptions.RunContinuationsAsynchronously);
         _renderTask = completion.Task;
         _rendering = true;
-        var operation = renderer.RenderAsync(
-            frame,
-            _transport,
-            TerminalProfile,
-            _cellMetrics,
-            _lifetime.Token);
+
+        ValueTask<RenderMetrics> operation;
+
+        try
+        {
+            operation = renderer.RenderAsync(
+                frame,
+                _transport,
+                TerminalProfile,
+                _cellMetrics,
+                _lifetime.Token);
+        }
+        catch
+        {
+            // RenderAsync is a non-async ValueTask method: a fault raised before its first await
+            // (e.g. out of backend Prepare) propagates synchronously here instead of completing
+            // the returned ValueTask. Without this catch, hold/completion/_rendering would never
+            // retire and ObserveRenderAsync would never run to dispose the frame, wedging shutdown
+            // on an unobservable _renderTask (see #269). This performs exactly the retirement
+            // CompleteRender would perform for the equivalent asynchronous fault, then rethrows so
+            // the single Report call happens where it always does - OnDispatcherUnhandled.
+            frame.Dispose();
+            _rendering = false;
+            _renderer?.Invalidate();
+            _rendererInvalidationPending = false;
+            hold.Dispose();
+            _ = completion.TrySetResult();
+            throw;
+        }
+
         _ = ObserveRenderAsync(operation, frame, hold, completion);
     }
 
