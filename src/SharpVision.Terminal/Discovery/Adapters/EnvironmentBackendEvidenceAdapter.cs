@@ -21,8 +21,8 @@ internal sealed class EnvironmentBackendEvidenceAdapter: IBackendEvidenceAdapter
     {
         ArgumentNullException.ThrowIfNull(environment);
 
-        _ = environment.TryGetValue(EnvironmentNames.Term, out var term);
-        _ = environment.TryGetValue(EnvironmentNames.TermProgram, out var program);
+        _ = environment.TryGetValue(EvidenceEnvironmentVars.Term, out var term);
+        _ = environment.TryGetValue(EvidenceEnvironmentVars.TermProgram, out var program);
 
         // Reuse the same authoritative multiplexer detection Policy.Detect already applies
         // elsewhere in this discovery pass (TMUX first, then the TERM prefixes), rather than a

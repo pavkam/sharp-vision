@@ -313,7 +313,7 @@ public sealed class ConsoleConnection: IAsyncDisposable
 
         var terminalName = _terminalName ?? (platform == Capabilities.DescriptionPlatform.Windows
             ? "windows-vt"
-            : _readEnvironment(EnvironmentNames.Term));
+            : _readEnvironment(EvidenceEnvironmentVars.Term));
 
         if (string.IsNullOrWhiteSpace(terminalName))
         {

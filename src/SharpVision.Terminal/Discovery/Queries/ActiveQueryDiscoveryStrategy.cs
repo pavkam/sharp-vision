@@ -146,7 +146,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
         // environment is exactly the hint the route exists to route around (#260).
         _planningTerminalName = _usesExplicitOuterProfile
             ? route!.Policy.OuterProfile?.Description.Name
-            : _options.Environment.TryGetValue(EnvironmentNames.Term, out var term) ? term : null;
+            : _options.Environment.TryGetValue(EvidenceEnvironmentVars.Term, out var term) ? term : null;
         var supportsStringQueries = route?.SupportsStringTerminatedQueries != false;
         var remaining = _options.Limits.MaxConcurrentQueries;
 

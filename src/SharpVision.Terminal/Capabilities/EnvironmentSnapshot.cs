@@ -19,13 +19,13 @@ internal static class EnvironmentSnapshot
 {
     private static readonly string[] _recognized =
     [
-        EnvironmentNames.Term,
-        EnvironmentNames.ColorTerm,
-        EnvironmentNames.TermProgram,
-        EnvironmentNames.TermProgramVersion,
-        EnvironmentNames.Tmux,
-        EnvironmentNames.SshConnection,
-        EnvironmentNames.SshTty
+        EvidenceEnvironmentVars.Term,
+        EvidenceEnvironmentVars.ColorTerm,
+        EvidenceEnvironmentVars.TermProgram,
+        EvidenceEnvironmentVars.TermProgramVersion,
+        EvidenceEnvironmentVars.Tmux,
+        EvidenceEnvironmentVars.SshConnection,
+        EvidenceEnvironmentVars.SshTty
     ];
 
     /// <summary>Creates the owned ordinal snapshot for one caller environment.</summary>

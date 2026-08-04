@@ -94,7 +94,7 @@ internal static class QueryEvidenceAdapter
         Feature current,
         IReadOnlyDictionary<string, string?> environment) =>
         current.State == CapabilitySupport.Supported &&
-        environment.TryGetValue(EnvironmentNames.TermProgramVersion, out var raw) &&
+        environment.TryGetValue(EvidenceEnvironmentVars.TermProgramVersion, out var raw) &&
         Version.TryParse(raw, out var version) &&
         version < _multipartMinimumVersion
             ? new Feature(CapabilitySupport.Unsupported, current.Origin)

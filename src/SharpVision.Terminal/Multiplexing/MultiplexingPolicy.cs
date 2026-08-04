@@ -166,8 +166,8 @@ public sealed class MultiplexingPolicy
     public static MultiplexingPolicy Detect(IReadOnlyDictionary<string, string?> environment)
     {
         ArgumentNullException.ThrowIfNull(environment);
-        _ = environment.TryGetValue(EnvironmentNames.Term, out var term);
-        var kind = environment.TryGetValue(EnvironmentNames.Tmux, out var tmux) && !string.IsNullOrWhiteSpace(tmux)
+        _ = environment.TryGetValue(EvidenceEnvironmentVars.Term, out var term);
+        var kind = environment.TryGetValue(EvidenceEnvironmentVars.Tmux, out var tmux) && !string.IsNullOrWhiteSpace(tmux)
             ? MultiplexerKind.Tmux
             : StartsWith(term, "tmux-")
                 ? MultiplexerKind.Tmux

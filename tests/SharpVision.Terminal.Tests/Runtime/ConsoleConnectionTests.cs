@@ -222,7 +222,7 @@ public sealed class ConsoleConnectionTests
 
         _ = connection.ResolveDescription();
 
-        requestedKeys.ShouldContain(EnvironmentNames.Term);
+        requestedKeys.ShouldContain(EvidenceEnvironmentVars.Term);
         provider.Request.ShouldNotBeNull().TerminalName.ShouldBe("fake-term-256color");
     }
 

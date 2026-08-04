@@ -8,7 +8,7 @@ namespace SharpVision.Terminal.Capabilities;
 /// <see cref="EnvironmentSnapshot"/>'s allowlist and every reader agree by construction
 /// rather than by review (see #93).
 /// </summary>
-internal static class EnvironmentNames
+internal static class EvidenceEnvironmentVars
 {
     /// <summary>The terminal type identifier.</summary>
     public const string Term = "TERM";

@@ -17,17 +17,17 @@ public sealed class EnvironmentSnapshotTests
     [Fact]
     public void EnvironmentNames_WhenRead_MatchDocumentedVariableNames()
     {
-        EnvironmentNames.Term.ShouldBe("TERM");
-        EnvironmentNames.ColorTerm.ShouldBe("COLORTERM");
-        EnvironmentNames.TermProgram.ShouldBe("TERM_PROGRAM");
-        EnvironmentNames.TermProgramVersion.ShouldBe("TERM_PROGRAM_VERSION");
-        EnvironmentNames.Tmux.ShouldBe("TMUX");
-        EnvironmentNames.SshConnection.ShouldBe("SSH_CONNECTION");
-        EnvironmentNames.SshTty.ShouldBe("SSH_TTY");
+        EvidenceEnvironmentVars.Term.ShouldBe("TERM");
+        EvidenceEnvironmentVars.ColorTerm.ShouldBe("COLORTERM");
+        EvidenceEnvironmentVars.TermProgram.ShouldBe("TERM_PROGRAM");
+        EvidenceEnvironmentVars.TermProgramVersion.ShouldBe("TERM_PROGRAM_VERSION");
+        EvidenceEnvironmentVars.Tmux.ShouldBe("TMUX");
+        EvidenceEnvironmentVars.SshConnection.ShouldBe("SSH_CONNECTION");
+        EvidenceEnvironmentVars.SshTty.ShouldBe("SSH_TTY");
     }
 
     /// <summary>
-    /// Verifies TERM_PROGRAM_VERSION supplied only under its EnvironmentNames constant is
+    /// Verifies TERM_PROGRAM_VERSION supplied only under its EvidenceEnvironmentVars constant is
     /// recognized and canonicalized, the same way the other recognized keys are (see #230).
     /// </summary>
     [Fact]
@@ -35,16 +35,16 @@ public sealed class EnvironmentSnapshotTests
     {
         var environment = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
         {
-            [EnvironmentNames.TermProgramVersion.ToLowerInvariant()] = "3.5.0"
+            [EvidenceEnvironmentVars.TermProgramVersion.ToLowerInvariant()] = "3.5.0"
         };
 
         var options = new NegotiationOptions(environment);
 
-        options.Environment[EnvironmentNames.TermProgramVersion].ShouldBe("3.5.0");
+        options.Environment[EvidenceEnvironmentVars.TermProgramVersion].ShouldBe("3.5.0");
     }
 
     /// <summary>
-    /// Verifies a variable supplied only under its EnvironmentNames constant -- not a
+    /// Verifies a variable supplied only under its EvidenceEnvironmentVars constant -- not a
     /// hand-typed literal -- is still recognized and canonicalized, proving the snapshot's
     /// allowlist and this test reference the same symbol rather than two copies that could drift.
     /// </summary>
@@ -53,12 +53,12 @@ public sealed class EnvironmentSnapshotTests
     {
         var environment = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
         {
-            [EnvironmentNames.Term.ToLowerInvariant()] = "xterm-256color"
+            [EvidenceEnvironmentVars.Term.ToLowerInvariant()] = "xterm-256color"
         };
 
         var options = new NegotiationOptions(environment);
 
-        options.Environment[EnvironmentNames.Term].ShouldBe("xterm-256color");
+        options.Environment[EvidenceEnvironmentVars.Term].ShouldBe("xterm-256color");
     }
 
     /// <summary>
