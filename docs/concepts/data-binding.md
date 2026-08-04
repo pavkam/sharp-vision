@@ -80,8 +80,13 @@ label.BindProperty(
     fallbackValue: "0");
 ```
 
-Converted `TwoWay` and `OneWayToSource` bindings require a reverse converter.
-Converters execute once per destination update and never hide endpoint errors.
+Converted `TwoWay` and `OneWayToSource` bindings require a reverse converter. A
+binding declaration error - a read-only leaf, an unsupported expression, a
+duplicate target property - throws with its original identity. A runtime value
+rejection from a converter or a property setter does not: a forward converter or
+target write that throws applies the declared fallback value instead, and a
+reverse converter or model setter that throws drops the update, leaving the
+model untouched.
 
 ## Paths, nulls, and ordering
 
@@ -100,10 +105,12 @@ safe fallback in that state: empty text, a null check state, the current range
 minimum, or selection index `-1`. Observation resumes as soon as the branch
 becomes reachable again. A null leaf is just an ordinary value.
 
-A reverse update cannot write through a null intermediate. It throws
-`InvalidOperationException` after the target has committed and before any model
-mutation; binding never constructs model objects and never silently discards
-input.
+A reverse update cannot write through a null intermediate: binding never
+constructs model objects, so it drops the update rather than writing through
+one. The target has already committed and raised its own change notification by
+that point; the model is simply left untouched, and the next forward update -
+once the intermediate becomes reachable again - reconciles the target back to
+the source's real value.
 
 Binding compares the converted destination value before invoking its setter, so
 equal values are not assigned. Direction guards suppress only the binding's own
@@ -112,9 +119,10 @@ two-way model updates happen before later typed events such as
 `TextInput.TextChanged`.
 
 Invalid declarations fail before registration, and a failed initialization
-removes any subscriptions it created. Runtime getter, converter, setter,
-validation, and subscriber exceptions keep their original identity. Only one
-live binding may author a given target property.
+removes any subscriptions it created, keeping their original identity. Runtime
+getter and subscriber exceptions also keep their original identity; a
+converter's or a property setter's runtime exception does not - see above. Only
+one live binding may author a given target property.
 
 ## Dispatcher and responsiveness
 

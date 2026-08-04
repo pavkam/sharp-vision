@@ -78,6 +78,55 @@ public sealed class BindingConversionTests
         target.Value.ShouldBe(0);
     }
 
+    /// <summary>Verifies a reverse converter that throws on an unparseable target value is
+    /// dropped rather than erupting out of the control's own property setter, leaving the
+    /// model untouched (see #277).</summary>
+    [Fact]
+    public void BindProperty_WhenReverseConverterThrows_DropsTheUpdate()
+    {
+        var model = new BindingModel { Number = 12 };
+        var target = new TextInput();
+        using var binding = target.BindProperty(
+            control => control.Text,
+            model,
+            source => source.Number,
+            value => value.ToString(CultureInfo.InvariantCulture),
+            value => int.Parse(value, CultureInfo.InvariantCulture),
+            BindingMode.TwoWay,
+            "0");
+
+        target.Text.ShouldBe("12");
+
+        _ = Should.NotThrow(() => target.Text = "12x");
+
+        model.Number.ShouldBe(12);
+    }
+
+    /// <summary>Verifies a validating model setter that throws on the reverse write is dropped
+    /// rather than erupting out of the control's own property setter, leaving the model
+    /// untouched and the target keeping its already-committed value (see #277).</summary>
+    [Fact]
+    public void BindProperty_WhenReverseWriteThrows_DropsTheUpdate()
+    {
+        var model = new BindingModel { ValidatedNumber = 25 };
+        var target = new Slider { Minimum = -100, Maximum = 100 };
+        using var binding = target.BindProperty(
+            control => control.Value,
+            model,
+            source => source.ValidatedNumber,
+            value => value,
+            value => value,
+            BindingMode.TwoWay,
+            0);
+
+        target.Value.ShouldBe(25);
+
+        _ = Should.NotThrow(() => target.Value = -5);
+
+        model.ValidatedNumber.ShouldBe(25);
+        target.Value.ShouldBe(-5);
+    }
+
     /// <summary>Verifies an unavailable nested path uses only the declared fallback.</summary>
     [Fact]
     public void BindProperty_WhenPathIsUnavailable_UsesFallback()

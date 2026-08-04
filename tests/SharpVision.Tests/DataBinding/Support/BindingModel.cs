@@ -93,6 +93,29 @@ internal sealed class BindingModel: INotifyPropertyChanged
         }
     }
 
+    /// <summary>Gets or sets a notifying integer whose setter throws for a negative value,
+    /// modeling an ordinary validating model setter reached through a binding's reverse leg.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    public int ValidatedNumber
+    {
+        get;
+        set
+        {
+            if (value < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "Value cannot be negative.");
+            }
+
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ValidatedNumber)));
+        }
+    }
+
     /// <summary>Gets or sets a notifying floating-point value.</summary>
     public double Progress
     {

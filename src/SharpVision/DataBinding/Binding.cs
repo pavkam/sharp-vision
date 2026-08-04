@@ -268,7 +268,20 @@ public sealed class Binding: IDisposable
         }
 
         _ = _targetPath.TryRead(Target, out var targetValue);
-        var sourceValue = _convertBack(targetValue);
+        object? sourceValue;
+
+        try
+        {
+            sourceValue = _convertBack(targetValue);
+        }
+        catch
+        {
+            // A throwing reverse converter is a value rejection, not a binding contract
+            // violation - the direct mirror of a validating model setter below. Drop it here,
+            // before _direction is set, so there is nothing to unwind; the target keeps its
+            // already-committed value (see #277).
+            return;
+        }
 
         if (_sourcePath.TryRead(_source, out var current) && Equals(current, sourceValue))
         {
@@ -284,7 +297,15 @@ public sealed class Binding: IDisposable
             // intermediate is non-null) reconciles the target back to the source's real value.
             // Throwing here would erupt out of the control's own property setter, after the
             // control already committed its value and raised PropertyChanged (see #232).
+            //
+            // A validating model setter that throws outright is the same value-rejection case
+            // as the null intermediate above, not a binding contract violation: drop it and
+            // leave the model untouched rather than letting it erupt out of the control's own
+            // property setter and force-stop the application (see #277).
             _ = _sourcePath.Write(_source, sourceValue);
+        }
+        catch
+        {
         }
         finally
         {
