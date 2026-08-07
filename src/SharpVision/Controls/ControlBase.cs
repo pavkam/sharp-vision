@@ -1161,7 +1161,8 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                 OnRenderContent(visual);
                 var descendantBounds = DescendantRenderBounds;
                 var descendantClip = ClipsChildren
-                    ? contentClip.Intersect(descendantBounds)
+                    ? ControlChrome.ResolveClipBox(contentClip, Bounds, descendantBounds, canvas.Bounds)
+                        .Intersect(descendantBounds)
                     : contentClip;
                 var descendantCanvas = ClipsDescendantVisualOverflow
                     ? canvas.Clip(descendantBounds)

@@ -34,6 +34,22 @@ internal static class ControlChrome
         Rect contentClip,
         Rect body,
         Rect visual,
+        Rect hardClip) =>
+        visual.Intersect(ResolveClipBox(contentClip, body, visual, hardClip));
+
+    /// <summary>Widens an inherited soft-layout aperture so it follows a rectangle that extends
+    /// beyond one control's own body, exactly as <see cref="ResolveVisualClip"/> widens the own-paint
+    /// clip for a visual that overflows its body - clamped last by one hard constraint.</summary>
+    /// <param name="contentClip">The inherited ordinary-layout aperture.</param>
+    /// <param name="body">The control's arranged body rectangle.</param>
+    /// <param name="extent">The rectangle being clipped, compared against <paramref name="body"/>
+    /// to decide whether - and how far - the aperture widens.</param>
+    /// <param name="hardClip">The nearest frame, viewport, or explicit clipping rectangle.</param>
+    /// <returns>The widened aperture, not yet intersected with <paramref name="extent"/>.</returns>
+    public static Rect ResolveClipBox(
+        Rect contentClip,
+        Rect body,
+        Rect extent,
         Rect hardClip)
     {
         var left = contentClip.X;
@@ -44,24 +60,24 @@ internal static class ControlChrome
 
         if (bodyIntersection.Width > 0 && bodyIntersection.Height > 0)
         {
-            if (visual.X < body.X)
+            if (extent.X < body.X)
             {
-                left = Math.Min(left, visual.X);
+                left = Math.Min(left, extent.X);
             }
 
-            if (visual.Y < body.Y)
+            if (extent.Y < body.Y)
             {
-                top = Math.Min(top, visual.Y);
+                top = Math.Min(top, extent.Y);
             }
 
-            if (visual.Right > body.Right)
+            if (extent.Right > body.Right)
             {
-                right = Math.Max(right, visual.Right);
+                right = Math.Max(right, extent.Right);
             }
 
-            if (visual.Bottom > body.Bottom)
+            if (extent.Bottom > body.Bottom)
             {
-                bottom = Math.Max(bottom, visual.Bottom);
+                bottom = Math.Max(bottom, extent.Bottom);
             }
         }
 
@@ -69,8 +85,7 @@ internal static class ControlChrome
         top = Math.Max(top, hardClip.Y);
         right = Math.Max(left, Math.Min(right, hardClip.Right));
         bottom = Math.Max(top, Math.Min(bottom, hardClip.Bottom));
-        var branch = new Rect(left, top, Extent(left, right), Extent(top, bottom));
-        return visual.Intersect(branch);
+        return new Rect(left, top, Extent(left, right), Extent(top, bottom));
     }
 
     /// <summary>Draws shadow, optional opaque fill, and border chrome for one control body.</summary>

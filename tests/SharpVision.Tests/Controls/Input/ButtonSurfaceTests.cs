@@ -380,6 +380,55 @@ public sealed class ButtonSurfaceTests
         surface.Cell(new Point(2, 3)).Style.Attributes.ShouldBe(TerminalAttributes.Dim);
     }
 
+    /// <summary>Verifies a pressed button's caption survives translation by a Y-offset shadow
+    /// even when nested through exact-fit ordinary ancestors. The ancestors' inherited content
+    /// clip stops at the button's own untranslated Bounds, so a caption arranged inside the
+    /// shadow-translated face needs that clip widened the same way the button's own face/border
+    /// paint already is - otherwise the whole caption row falls outside the inherited clip and
+    /// renders blank.</summary>
+    [Fact]
+    public async Task Render_WhenPressedButtonIsNestedThroughClippingAncestors_PreservesCaptionAsync()
+    {
+        // Arrange - a single-row button so the pressed face's caption row (offset by the
+        // shadow's Y component) lands entirely outside the ancestors' untranslated content clip
+        // unless that clip is widened to follow the translated face.
+        var button = new Button
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(6),
+            Height = Length.Cells(1),
+            Text = "Go",
+            Style = TestButtonStyles.WithShadow(
+                AppearanceTestValues.Shadow(visible: true, mode: ShadowMode.BlockGlyph, offset: new Point(1, 1), glyph: new Rune('░'), attributes: TerminalAttributes.Dim)),
+        };
+        var inner = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Children = { button }
+        };
+        var root = new Stack
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(6),
+            Height = Length.Cells(1),
+            Children = { inner }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(8, 5),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.MoveToAsync(button);
+        await surface.Pointer.PressAsync();
+
+        // Assert - the caption renders at its translated cells, not blank.
+        surface.Cell(new Point(3, 1)).Text.ShouldBe("G");
+        surface.Cell(new Point(4, 1)).Text.ShouldBe("o");
+    }
+
     /// <summary>Verifies press/release interaction follows the drawn, translated face while a
     /// whole-cell shadow is visible, instead of the untranslated Bounds the face no longer
     /// occupies. Releasing on the translated face's own bottom-right cell - outside
@@ -800,6 +849,15 @@ public sealed class ButtonSurfaceTests
         surface.Cell(new Point(9, 2)).Style.Attributes.ShouldBe(TerminalAttributes.None);
         surface.Cell(new Point(2, 4)).Text.ShouldBe(" ");
         surface.Cell(new Point(2, 4)).Style.Attributes.ShouldBe(TerminalAttributes.None);
+
+        // Assert the caption itself, not just surrounding geometry: only a visible shadow
+        // translates the pressed face (and its caption) down and right by the shadow offset.
+        var captionRow = hasShadow || hasBorder ? 1 : 0;
+        var captionColumn = hasShadow ? 3 : 2;
+        surface.Cell(new Point(captionColumn, captionRow)).Text.ShouldBe("S");
+        surface.Cell(new Point(captionColumn + 1, captionRow)).Text.ShouldBe("a");
+        surface.Cell(new Point(captionColumn + 2, captionRow)).Text.ShouldBe("v");
+        surface.Cell(new Point(captionColumn + 3, captionRow)).Text.ShouldBe("e");
     }
 
     /// <summary>Verifies Composite shadow preserves underlying glyphs while applying shadow attributes.</summary>
