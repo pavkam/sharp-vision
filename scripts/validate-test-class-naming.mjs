@@ -35,8 +35,9 @@ const testClassPattern =
   /^(?:(?:public|internal|private|protected)\s+)?(?:(?:sealed|abstract|static|partial)\s+)*class\s+(\w+Tests)\b/;
 
 // Not indent-restricted: a test class can legitimately be named after a private nested type.
+// Covers class, record, record class, record struct, struct, interface, and enum declarations.
 const typeDeclarationPattern =
-  /^\s*(?:(?:public|internal|private|protected)\s+)?(?:(?:static|sealed|abstract|partial|readonly|unsafe|new)\s+)*(?:record\s+class|record\s+struct|record|class|struct|interface)\s+(\w+)/;
+  /^\s*(?:(?:public|internal|private|protected)\s+)?(?:(?:static|sealed|abstract|partial|readonly|unsafe|new)\s+)*(?:record\s+class|record\s+struct|record|class|struct|interface|enum)\s+(\w+)/;
 
 const factOrTheoryPattern = /\[(?:Fact|Theory)\b/;
 

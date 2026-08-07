@@ -85,6 +85,11 @@ test("discoverSubjectTypes_WhenSrcAndExamplesDeclareTypes_CollectsBareNames", as
       "examples/Showcase/Gadget.cs",
       "namespace Showcase;\n\ninternal readonly record struct Gadget;\n",
     );
+    await writeSource(
+      root,
+      "src/ParameterStatus.cs",
+      "namespace SharpVision;\n\npublic enum ParameterStatus\n{\n    End,\n    Default,\n}\n",
+    );
 
     const types = await discoverSubjectTypes(root);
 
@@ -92,6 +97,7 @@ test("discoverSubjectTypes_WhenSrcAndExamplesDeclareTypes_CollectsBareNames", as
     assert.equal(types.has("IChartControl"), true);
     assert.equal(types.has("ChartControl"), true);
     assert.equal(types.has("Gadget"), true);
+    assert.equal(types.has("ParameterStatus"), true);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -159,6 +165,32 @@ test("computeViolations_WhenClassNamesSubjectType_Passes", async () => {
     await writeSource(root, "tests/Widgets/WidgetPerformanceTests.cs", testClassFile("WidgetPerformanceTests"));
     await writeSource(root, "tests/Widgets/WidgetConsumerTests.cs", testClassFile("WidgetConsumerTests"));
     await writeSource(root, "tests/Widgets/WidgetCompatibilityTests.cs", testClassFile("WidgetCompatibilityTests"));
+
+    const violations = await computeViolations(root);
+
+    assert.deepEqual(violations, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("computeViolations_WhenClassNamesAnEnumSubject_Passes", async () => {
+  const root = await makeFixtureRoot();
+
+  try {
+    // Regression coverage: ParameterStatus is a real `public enum` under src/, and
+    // ParameterStatusTests was wrongly reported as a violation because enum declarations were not
+    // collected as subject types.
+    await writeSource(
+      root,
+      "src/ParameterStatus.cs",
+      "namespace SharpVision;\n\npublic enum ParameterStatus\n{\n    End,\n    Default,\n}\n",
+    );
+    await writeSource(
+      root,
+      "tests/Protocols/ParameterStatusTests.cs",
+      testClassFile("ParameterStatusTests"),
+    );
 
     const violations = await computeViolations(root);
 
