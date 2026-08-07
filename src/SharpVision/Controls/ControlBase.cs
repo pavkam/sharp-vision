@@ -626,6 +626,14 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
     private bool IsArranging { get; set; }
 
+    /// <summary>
+    /// Children whose upward Arrange propagation was swallowed while this control was arranging
+    /// them, recorded so <see cref="Arrange(Rect, bool, bool)"/> can re-run that propagation for
+    /// any child the transaction did not actually arrange. Lazily allocated - the overwhelming
+    /// majority of arranges never swallow anything - and cleared at the end of every arrange.
+    /// </summary>
+    private List<ControlBase>? SwallowedArrangeChildren { get; set; }
+
     private bool IsRendering { get; set; }
 
     /// <summary>Gets whether disposal is currently unwinding this control, before <see cref="Disposed"/> flips true.</summary>
@@ -1031,6 +1039,28 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         finally
         {
             IsArranging = false;
+
+            // Self-heal for the swallow above: this control's own Pending is checked first so the
+            // common case - nothing was recorded, or every recorded child was actually arranged
+            // and its Arrange bit already cleared - costs one null/empty check. Anything left
+            // still carrying Invalidation.Arrange means this transaction measured that child
+            // without arranging it, so replay the propagation its own Invalidate call withheld:
+            // re-adding this control's expanded bits and notifying Parent. Calling the child's own
+            // Invalidate again would not help - its Pending already holds the bit, so it would see
+            // added == None and stay silent - the withheld half was always the notification to
+            // this control's ancestors, not the child's own bookkeeping.
+            if (SwallowedArrangeChildren is { Count: > 0 } swallowedArrangeChildren)
+            {
+                foreach (var child in swallowedArrangeChildren)
+                {
+                    if ((child.Pending & Invalidation.Arrange) != 0)
+                    {
+                        Invalidate(Invalidation.Arrange);
+                    }
+                }
+
+                swallowedArrangeChildren.Clear();
+            }
         }
     }
 
@@ -1294,12 +1324,18 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
         Pending |= expanded;
 
-        // A parent may remeasure a child while resolving its final arrangement,
-        // as Grid does for finite tracks. The parent will arrange that child in
-        // the same transaction, so propagating the child's resulting arrange
-        // request would schedule an identical ancestor layout forever.
-        if (value == Invalidation.Arrange && Parent is { IsArranging: true })
+        // A parent may remeasure a child while resolving its final arrangement, as Grid does for
+        // finite tracks. The parent is trusted to arrange that child in the same transaction, so
+        // propagating the child's resulting arrange request here would schedule an identical
+        // ancestor layout forever. That trust is a contract this method cannot itself enforce -
+        // if the parent's override measures a child it then does not arrange, record the child
+        // here instead of dropping the request outright. Arrange's finally block re-runs the
+        // withheld propagation for any recorded child still dirty once it stops arranging, so a
+        // rare contract violation still reaches an ancestor on a later pass instead of freezing
+        // the child's subtree forever.
+        if (value == Invalidation.Arrange && Parent is { IsArranging: true } arrangingParent)
         {
+            (arrangingParent.SwallowedArrangeChildren ??= []).Add(this);
             return;
         }
 
