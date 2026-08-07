@@ -8,7 +8,7 @@ using SharpVision.Terminal.Sixel;
 
 /// <summary>Gates the cost of a sixel write that is guaranteed to exceed its output policy.</summary>
 [Collection(PerformanceGroup.Name)]
-public sealed class SixelEncoderPerformanceTests
+public sealed class SixelWriterPerformanceTests
 {
     /// <summary>Verifies a write whose zero-color worst-case bound already exceeds a tiny policy is
     /// rejected without renting or sampling the destination raster — the bound is monotone in

@@ -19,7 +19,7 @@ bytes.
 - Protocol-neutral graphics values: `src/SharpVision.Terminal/Graphics/`
 - Encoders: `Graphics/Backends/`, `Kitty/`, `Iterm/`, and `Sixel/`
 - Selection proof:
-  `tests/SharpVision.Terminal.Tests/Graphics/BackendSelectorTests.cs`
+  `tests/SharpVision.Terminal.Tests/Graphics/GraphicsBackendSelectorTests.cs`
 - Family tests: `tests/SharpVision.Terminal.Tests/Graphics/`
 
 ## Workflow

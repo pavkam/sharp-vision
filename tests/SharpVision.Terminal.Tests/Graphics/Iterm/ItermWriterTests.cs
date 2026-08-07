@@ -9,7 +9,7 @@ using SharpVision.Terminal.Graphics;
 using SharpVision.Terminal.Iterm;
 
 /// <summary>Proves canonical bounded iTerm2 3.5 multipart inline-image encoding.</summary>
-public sealed class WriterTests
+public sealed class ItermWriterTests
 {
     /// <summary>Verifies metadata, PNG Base64, inline policy, omitted name, and canonical ST exactly.</summary>
     [Fact]

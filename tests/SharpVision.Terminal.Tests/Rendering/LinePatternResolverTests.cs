@@ -4,7 +4,7 @@
 namespace SharpVision.Terminal.Tests.Rendering;
 
 /// <summary>Verifies the patterned <c>DrawQuadrantLine</c> overload's on/off dash geometry.</summary>
-public sealed class QuadrantLinePatternTests
+public sealed class LinePatternResolverTests
 {
     #region Horizontal, vertical, and sloped exact-cell coverage
 

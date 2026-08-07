@@ -10,7 +10,7 @@ using SharpVision.Terminal.Kitty;
 using SharpVision.Terminal.Kitty.Graphics;
 
 /// <summary>Proves strict owned Kitty APC reply parsing and correlation.</summary>
-public sealed class ResponseTests
+public sealed class KittyGraphicsResponseTests
 {
     /// <summary>Verifies an official successful query reply parses at every transport split.</summary>
     [Fact]

@@ -10,7 +10,7 @@ using SharpVision.Terminal.Protocols;
 
 /// <summary>Gates the warmed allocation cost of nested-tmux graphics passthrough.</summary>
 [Collection(PerformanceGroup.Name)]
-public sealed class RouteGraphicsPerformanceTests
+public sealed class MultiplexerRoutePerformanceTests
 {
     /// <summary>Verifies warmed nested-tmux graphics passthrough stays allocation-flat instead of
     /// scaling with nesting depth and frame size — TryWritePassthrough used to copy the frame into

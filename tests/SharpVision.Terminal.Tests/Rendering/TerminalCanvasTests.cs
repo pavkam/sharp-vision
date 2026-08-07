@@ -3,12 +3,336 @@
 
 namespace SharpVision.Terminal.Tests.Rendering;
 
-/// <summary>Verifies validated Rune, fill, and grapheme-preserving style primitives.</summary>
-[Collection(PerformanceGroup.Name)]
-public sealed class CanvasPrimitiveTests
+/// <summary>
+/// Verifies grapheme-safe canvas drawing, clipping, wrapping, and repair; validated Rune, fill,
+/// and grapheme-preserving style primitives; overflow-safe arbitrary geometry at extreme
+/// coordinates; ambiguous-width physical-cell primitives; and previous-frame region copy.
+/// </summary>
+public sealed class TerminalCanvasTests
 {
-    private static readonly Action<TerminalCanvas> _allocationDraw = DrawAllocationCell;
-    private static readonly Func<Point, Color> _allocationSelector = SelectAllocationForeground;
+    /// <summary>Verifies a base-less cluster cannot alter its preceding cell.</summary>
+    /// <param name="value">The base-less source cluster.</param>
+    [Theory]
+    [InlineData("\u0301")]
+    [InlineData("\u0903")]
+    [InlineData("\u0600")]
+    [InlineData("\u200d")]
+    [InlineData("\ufe0f")]
+    [InlineData("🏽")]
+    [InlineData("\U000e0067")]
+    public void Draw_WhenClusterHasNoBase_StoresIndependentReplacement(
+        string value)
+    {
+        // Arrange
+        using Frame frame = new(new Size(2, 1));
+        _ = frame.Canvas.Draw("a".AsSpan(), new Point(0, 0));
+
+        // Act
+        var result = frame.Canvas.Draw(value.AsSpan(), new Point(1, 0));
+
+        // Assert
+        FrameTests.GetText(frame, new Point(0, 0)).ShouldBe("a");
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("�");
+        result.Final.ShouldBe(new Point(2, 0));
+        result.Cells.ShouldBe(1);
+        result.Replaced.ShouldBe(1);
+    }
+
+    /// <summary>Verifies transparent drawing preserves the destination background while replacing text semantics.</summary>
+    [Fact]
+    public void Draw_WhenBackgroundIsTransparent_PreservesDestinationBackground()
+    {
+        using Frame frame = new(new Size(1, 1));
+        var surface = new CellStyle(ReferenceColors.Get(255), ReferenceColors.Get(238));
+        var text = new CellStyle(
+            ReferenceColors.Get(45),
+            Color.Default,
+            TerminalAttributes.Bold | TerminalAttributes.Overline,
+            underline: Underline.Curly,
+            underlineColor: ReferenceColors.Get(220));
+        frame.Canvas.Fill(new Rect(0, 0, 1, 1), new Rune(' '), surface);
+
+        _ = frame.Canvas.Draw("X".AsSpan(), new Point(0, 0), text, background: BackgroundMode.Transparent);
+
+        frame.GetCell(new Point(0, 0)).Style.ShouldBe(new CellStyle(
+            ReferenceColors.Get(45),
+            ReferenceColors.Get(238),
+            TerminalAttributes.Bold | TerminalAttributes.Overline,
+            underline: Underline.Curly,
+            underlineColor: ReferenceColors.Get(220)));
+    }
+
+    /// <summary>Verifies a transparent style background requests composition without a separate mode.</summary>
+    [Fact]
+    public void Draw_WhenStyleBackgroundIsTransparent_PreservesDestinationBackground()
+    {
+        using Frame frame = new(new Size(1, 1));
+        frame.Canvas.Fill(
+            new Rect(0, 0, 1, 1),
+            new Rune(' '),
+            new CellStyle(ReferenceColors.Get(15), ReferenceColors.Get(4)));
+
+        _ = frame.Canvas.Draw(
+            "X".AsSpan(),
+            default,
+            new CellStyle(ReferenceColors.Get(14), Color.Transparent));
+
+        frame.GetCell(new Point(0, 0)).Style.ShouldBe(new CellStyle(ReferenceColors.Get(14), ReferenceColors.Get(4)));
+    }
+
+    /// <summary>
+    /// Verifies the frame's explicit ambiguous-width policy reaches drawing.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenAmbiguousPolicyIsWide_OwnsTwoCells()
+    {
+        using Frame frame = new(new Size(2, 1), ambiguousWidth: Ambiguous.Wide);
+
+        _ = frame.Canvas.Draw("·".AsSpan(), new Point(0, 0));
+
+        frame.GetCell(new Point(0, 0)).Width.ShouldBe(2);
+        frame.GetCell(new Point(1, 0)).Continuation.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies narrow and wide graphemes create semantic lead/continuation cells.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenTextContainsNarrowAndWideClusters_AssignsCellOwnership()
+    {
+        using Frame frame = new(new Size(4, 1));
+
+        var result = frame.Canvas.Draw("A界".AsSpan(), new Point(0, 0));
+
+        result.Final.ShouldBe(new Point(3, 0));
+        result.Graphemes.ShouldBe(2);
+        result.Cells.ShouldBe(3);
+        FrameTests.GetText(frame, new Point(0, 0)).ShouldBe("A");
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("界");
+        frame.GetCell(new Point(2, 0)).Continuation.ShouldBeTrue();
+        frame.GetCell(new Point(2, 0)).Lead.ShouldBe(new Point(1, 0));
+    }
+
+    /// <summary>
+    /// Verifies overwriting a continuation repairs the complete previous glyph.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenContinuationIsOverwritten_RepairsWholeWideCluster()
+    {
+        using Frame frame = new(new Size(2, 1));
+        _ = frame.Canvas.Draw("界".AsSpan(), new Point(0, 0));
+
+        _ = frame.Canvas.Draw("x".AsSpan(), new Point(1, 0));
+
+        frame.GetCell(new Point(0, 0)).ShouldBe(CellInfo.Blank);
+        frame.GetCell(new Point(1, 0)).Continuation.ShouldBeFalse();
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("x");
+    }
+
+    /// <summary>
+    /// Verifies overwriting a wide lead clears its stale continuation.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenWideLeadIsOverwritten_RepairsContinuation()
+    {
+        using Frame frame = new(new Size(2, 1));
+        _ = frame.Canvas.Draw("界".AsSpan(), new Point(0, 0));
+
+        _ = frame.Canvas.Draw("x".AsSpan(), new Point(0, 0));
+
+        FrameTests.GetText(frame, new Point(0, 0)).ShouldBe("x");
+        frame.GetCell(new Point(1, 0)).ShouldBe(CellInfo.Blank);
+    }
+
+    /// <summary>
+    /// Verifies clearing either occupied cell expands to the full glyph.
+    /// </summary>
+    [Fact]
+    public void Clear_WhenRegionTouchesContinuation_RepairsWholeWideCluster()
+    {
+        using Frame frame = new(new Size(3, 1));
+        _ = frame.Canvas.Draw("界z".AsSpan(), new Point(0, 0));
+
+        frame.Canvas.Clear(new Rect(1, 0, 1, 1));
+
+        frame.GetCell(new Point(0, 0)).ShouldBe(CellInfo.Blank);
+        frame.GetCell(new Point(1, 0)).ShouldBe(CellInfo.Blank);
+        FrameTests.GetText(frame, new Point(2, 0)).ShouldBe("z");
+    }
+
+    /// <summary>
+    /// Verifies a wide edge cluster can be clipped without half output.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenWideClusterHitsEdgeAndPolicyIsClip_SkipsWholeCluster()
+    {
+        using Frame frame = new(new Size(2, 1));
+
+        var result = frame.Canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Clip);
+
+        result.Clipped.ShouldBe(1);
+        FrameTests.GetText(frame, new Point(0, 0)).ShouldBe("a");
+        frame.GetCell(new Point(1, 0)).ShouldBe(CellInfo.Blank);
+    }
+
+    /// <summary>
+    /// Verifies a wide edge cluster wraps as one glyph.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenWideClusterHitsEdgeAndPolicyIsWrap_MovesWholeCluster()
+    {
+        using Frame frame = new(new Size(2, 2));
+
+        var result = frame.Canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Wrap);
+
+        result.Final.ShouldBe(new Point(2, 1));
+        FrameTests.GetText(frame, new Point(0, 1)).ShouldBe("界");
+        frame.GetCell(new Point(1, 1)).Continuation.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies a wide edge cluster can be replaced with one visible cell.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenWideClusterHitsEdgeAndPolicyIsReplace_WritesReplacement()
+    {
+        using Frame frame = new(new Size(2, 1));
+
+        var result = frame.Canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Replace);
+
+        result.Replaced.ShouldBe(1);
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("�");
+        frame.GetCell(new Point(1, 0)).Width.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies <see cref="DrawResult.Cells"/> counts the logical cell advance actually applied
+    /// (matching <see cref="DrawResult.Final"/>), not the pre-demotion width of a wide cluster
+    /// that <see cref="Edge.Replace"/> narrowed to a single-cell replacement glyph.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenWideClusterHitsEdgeAndPolicyIsReplace_CellsMatchesFinalAdvance()
+    {
+        using Frame frame = new(new Size(2, 1));
+
+        var result = frame.Canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Replace);
+
+        result.Final.ShouldBe(new Point(2, 0));
+        result.Cells.ShouldBe(2, "'a' advances 1 cell and the replaced wide cluster advances only the 1 cell it was demoted to");
+    }
+
+    /// <summary>
+    /// Verifies combining and ZWJ text is stored once as complete UTF-8.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenClusterHasMultipleRunes_StoresCompleteGrapheme()
+    {
+        using Frame frame = new(new Size(3, 1));
+
+        _ = frame.Canvas.Draw("e\u0301👩‍💻".AsSpan(), new Point(0, 0));
+
+        FrameTests.GetText(frame, new Point(0, 0)).ShouldBe("e\u0301");
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("👩‍💻");
+        frame.GetCell(new Point(2, 0)).Continuation.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies invalid UTF-16 is stored as one replacement-cell payload.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenUtf16IsInvalid_StoresReplacementRune()
+    {
+        using Frame frame = new(new Size(1, 1));
+
+        _ = frame.Canvas.Draw("\ud800".AsSpan(), new Point(0, 0));
+
+        FrameTests.GetText(frame, new Point(0, 0)).ShouldBe("�");
+        frame.GetCell(new Point(0, 0)).Width.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies arena-limit validation happens before any cell mutation.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenTextExceedsArenaLimit_ThrowsBeforeMutation()
+    {
+        using Frame frame = new(new Size(2, 1), maxTextBytes: 1);
+
+        _ = Should.Throw<InvalidOperationException>(() => frame.Canvas.Draw("ab".AsSpan(), new Point(0, 0)));
+
+        frame.GetCell(new Point(0, 0)).ShouldBe(CellInfo.Blank);
+        frame.GetCell(new Point(1, 0)).ShouldBe(CellInfo.Blank);
+    }
+
+    /// <summary>
+    /// Verifies child clips never draw outside their intersection.
+    /// </summary>
+    [Fact]
+    public void Clip_WhenDrawingCrossesIntersection_PreservesOutsideCells()
+    {
+        using Frame frame = new(new Size(4, 1));
+        var canvas = frame.Canvas.Clip(new Rect(1, 0, 2, 1));
+
+        _ = canvas.Draw("abcd".AsSpan(), new Point(0, 0));
+
+        frame.GetCell(new Point(0, 0)).ShouldBe(CellInfo.Blank);
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("b");
+        FrameTests.GetText(frame, new Point(2, 0)).ShouldBe("c");
+        frame.GetCell(new Point(3, 0)).ShouldBe(CellInfo.Blank);
+    }
+
+    #region Line and column control clusters
+
+    /// <summary>Verifies "\n" moves to the next row at the line's origin column.</summary>
+    [Fact]
+    public void Draw_WhenTextContainsLineFeed_MovesToNextRowAtOrigin()
+    {
+        using Frame frame = new(new Size(4, 2));
+
+        var result = frame.Canvas.Draw("ab\ncd".AsSpan(), new Point(1, 0));
+
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("a");
+        FrameTests.GetText(frame, new Point(2, 0)).ShouldBe("b");
+        FrameTests.GetText(frame, new Point(1, 1)).ShouldBe("c");
+        FrameTests.GetText(frame, new Point(2, 1)).ShouldBe("d");
+        result.Final.ShouldBe(new Point(3, 1));
+    }
+
+    /// <summary>Verifies "\r\n" moves to the next row at the line's origin column, same as "\n" alone.</summary>
+    [Fact]
+    public void Draw_WhenTextContainsCarriageReturnLineFeed_MovesToNextRowAtOrigin()
+    {
+        using Frame frame = new(new Size(4, 2));
+
+        var result = frame.Canvas.Draw("ab\r\ncd".AsSpan(), new Point(1, 0));
+
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("a");
+        FrameTests.GetText(frame, new Point(2, 0)).ShouldBe("b");
+        FrameTests.GetText(frame, new Point(1, 1)).ShouldBe("c");
+        FrameTests.GetText(frame, new Point(2, 1)).ShouldBe("d");
+        result.Final.ShouldBe(new Point(3, 1));
+    }
+
+    /// <summary>
+    /// Verifies a lone "\r" (not followed by "\n", so grapheme segmentation (GB3) keeps it as its
+    /// own cluster) returns to the line's origin column on the same row, matching canonical
+    /// terminal carriage-return semantics, instead of also advancing to the next row like "\n".
+    /// </summary>
+    [Fact]
+    public void Draw_WhenTextContainsLoneCarriageReturn_ReturnsToOriginOnSameRow()
+    {
+        using Frame frame = new(new Size(4, 2));
+
+        var result = frame.Canvas.Draw("ab\rcd".AsSpan(), new Point(1, 0));
+
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("c");
+        FrameTests.GetText(frame, new Point(2, 0)).ShouldBe("d");
+        frame.GetCell(new Point(1, 1)).ShouldBe(CellInfo.Blank);
+        frame.GetCell(new Point(2, 1)).ShouldBe(CellInfo.Blank);
+        result.Final.ShouldBe(new Point(3, 0));
+    }
+
+    #endregion
 
     #region Arbitrary geometry
 
@@ -700,50 +1024,285 @@ public sealed class CanvasPrimitiveTests
         DamageTests.GetSpans(front, back).ShouldBeEmpty();
     }
 
-    /// <summary>Verifies warmed write-scoped foreground drawing allocates no managed memory per render.</summary>
+    #endregion
+
+    #region Bounded geometry
+
+    // Overflow-safe geometry at extreme public coordinates carries a bounded-work obligation -
+    // hostile geometry must not monopolize the render thread - but that property has no dedicated
+    // regression test here. Proving it directly would require either a wall-clock budget (which
+    // measures the host machine as much as the product and is inherently flaky under CI load or
+    // coverage instrumentation) or a mutable instance counter on <see cref="Frame"/> solely for
+    // test observability, and neither belongs in this type. The bound is documented on each
+    // primitive's early-reject check and enforced by code review; this region keeps only the cases
+    // that assert an observable, deterministic result.
+
+    /// <summary>Verifies a fully invisible segment writes nothing at all.</summary>
     [Fact]
-    public void DrawWithForeground_WhenCallbacksAreCached_AllocatesNoManagedMemory()
+    public void DrawLine_WhenGeometryIsFullyOutsideClip_WritesNoCells()
     {
-        using Frame frame = new(new Size(1, 1));
-        var canvas = frame.Canvas;
+        using Frame frame = new(new Size(6, 3));
+        var canvas = frame.Canvas.Clip(new Rect(1, 1, 2, 1));
 
-        for (var index = 0; index < 32; index++)
+        canvas.DrawLine(new Point(0, 0), new Point(5, 0), new Rune('*'));
+
+        AssertBlank(frame);
+    }
+
+    /// <summary>
+    /// Verifies an origin at the integer maximum does not wrap its inset arithmetic into negative
+    /// coordinates and draw a box nowhere near the request.
+    /// </summary>
+    [Fact]
+    public void DrawBox_WhenOriginIsIntMaxValue_DoesNotWrapCoordinates()
+    {
+        using Frame frame = new(new Size(6, 3));
+
+        frame.Canvas.DrawBox(new Rect(int.MaxValue, int.MaxValue, 4, 3), LineStyle.Light);
+
+        AssertBlank(frame);
+    }
+
+    /// <summary>
+    /// Verifies an axis line whose origin plus length exceeds the integer range clips instead of
+    /// throwing, and still paints its visible span.
+    /// </summary>
+    [Fact]
+    public void DrawHorizontalLine_WhenOriginPlusLengthOverflows_ClipsWithoutThrowing()
+    {
+        using Frame frame = new(new Size(6, 3));
+
+        frame.Canvas.DrawHorizontalLine(new Point(int.MaxValue - 2, 1), int.MaxValue, LineStyle.Light);
+
+        AssertBlank(frame);
+    }
+
+    private static void AssertBlank(Frame frame)
+    {
+        for (var y = 0; y < frame.Size.Height; y++)
         {
-            Render();
-        }
-
-        var minimum = long.MaxValue;
-
-        for (var sample = 0; sample < 5; sample++)
-        {
-            var before = GC.GetAllocatedBytesForCurrentThread();
-
-            for (var index = 0; index < 128; index++)
+            for (var x = 0; x < frame.Size.Width; x++)
             {
-                Render();
+                FrameTests.GetText(frame, new Point(x, y)).ShouldBeEmpty();
             }
-
-            minimum = Math.Min(
-                minimum,
-                GC.GetAllocatedBytesForCurrentThread() - before);
-        }
-
-        minimum.ShouldBe(0);
-        return;
-
-        void Render()
-        {
-            frame.Clear();
-            canvas.DrawWithForeground(canvas.Bounds, _allocationDraw, _allocationSelector);
         }
     }
 
     #endregion
 
-    private static void DrawAllocationCell(TerminalCanvas canvas) =>
-        canvas.DrawRune(new Rune('A'), default);
+    #region Ambiguous width primitives
 
-    private static Color SelectAllocationForeground(Point _) => ReferenceColors.Get(7);
+    /// <summary>Verifies a direct one-cell Rune write rejects a Rune that is wide for this frame.</summary>
+    [Fact]
+    public void DrawRune_WhenAmbiguousRuneIsWideForFrame_ThrowsBeforeMutation()
+    {
+        using Frame frame = new(new Size(2, 1), ambiguousWidth: Ambiguous.Wide);
+
+        _ = Should.Throw<ArgumentException>(() =>
+            frame.Canvas.DrawRune(new Rune('·'), default));
+
+        frame.GetCell(new Point(0, 0)).ShouldBe(CellInfo.Blank);
+        frame.GetCell(new Point(1, 0)).ShouldBe(CellInfo.Blank);
+    }
+
+    /// <summary>Verifies Unicode line topology degrades to portable ASCII in a wide frame.</summary>
+    [Fact]
+    public void DrawBox_WhenAmbiguousWidthIsWide_WritesSingleCellAsciiTopology()
+    {
+        using Frame frame = new(new Size(3, 3), ambiguousWidth: Ambiguous.Wide);
+
+        frame.Canvas.DrawBox(frame.Canvas.Bounds, LineStyle.Light);
+
+        FrameTests.GetText(frame, new Point(0, 0)).ShouldBe("+");
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("-");
+        FrameTests.GetText(frame, new Point(2, 0)).ShouldBe("+");
+        FrameTests.GetText(frame, new Point(0, 1)).ShouldBe("|");
+    }
+
+    /// <summary>Verifies shade fills retain one physical cell per requested destination.</summary>
+    [Fact]
+    public void FillShade_WhenAmbiguousWidthIsWide_WritesPortableAsciiShade()
+    {
+        using Frame frame = new(new Size(2, 1), ambiguousWidth: Ambiguous.Wide);
+
+        frame.Canvas.FillShade(frame.Canvas.Bounds, Shade.Medium);
+
+        FrameTests.GetText(frame, new Point(0, 0)).ShouldBe(":");
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe(":");
+    }
+
+    /// <summary>Verifies quadrant drawing uses a one-cell portable representation.</summary>
+    [Fact]
+    public void DrawQuadrants_WhenAmbiguousWidthIsWide_WritesPortableAsciiBlock()
+    {
+        using Frame frame = new(new Size(1, 1), ambiguousWidth: Ambiguous.Wide);
+
+        frame.Canvas.DrawQuadrants(default, Quadrants.UpperLeft);
+
+        FrameTests.GetText(frame, default).ShouldBe("#");
+    }
+
+    #endregion
+
+    #region Frame region copy
+
+    // The copy is the mechanism behind render-clean subtree reuse, so an invalid destination here
+    // would surface much later as a corrupt frame rather than as a failed copy.
+
+    /// <summary>
+    /// Verifies copying only the continuation column of a wide cluster blanks it instead of
+    /// producing a continuation whose lead was never copied.
+    /// </summary>
+    [Fact]
+    public void CopyFromPrevious_WhenRegionSplitsWideClusterContinuation_WritesBlank()
+    {
+        using var previous = new Frame(new Size(4, 1));
+        _ = previous.Canvas.Draw("\u4f60", new Point(0, 0));
+        using var frame = new Frame(new Size(4, 1));
+        Attach(frame, previous);
+
+        frame.Canvas.CopyFromPrevious(new Rect(1, 0, 3, 1));
+
+        FrameTests.GetText(frame, new Point(0, 0)).ShouldBeEmpty();
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Verifies copying only the lead column of a wide cluster blanks it instead of leaving a lead
+    /// whose continuation column stayed outside the region.
+    /// </summary>
+    [Fact]
+    public void CopyFromPrevious_WhenRegionSplitsWideClusterLead_WritesBlank()
+    {
+        using var previous = new Frame(new Size(4, 1));
+        _ = previous.Canvas.Draw("\u4f60", new Point(0, 0));
+        using var frame = new Frame(new Size(4, 1));
+        Attach(frame, previous);
+
+        frame.Canvas.CopyFromPrevious(new Rect(0, 0, 1, 1));
+
+        FrameTests.GetText(frame, new Point(0, 0)).ShouldBeEmpty();
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Verifies a destination wide lead straddling the region's left edge is repaired rather than
+    /// left with its continuation overwritten, which would otherwise leave an orphan lead that
+    /// shifts every later cell in the row one column to the right.
+    /// </summary>
+    [Fact]
+    public void CopyFromPrevious_WhenDestinationWideLeadPrecedesRegion_RepairsTheOrphanedLead()
+    {
+        using var previous = new Frame(new Size(4, 1));
+        _ = previous.Canvas.Draw("w", new Point(3, 0));
+        using var frame = new Frame(new Size(4, 1));
+        _ = frame.Canvas.Draw("你", new Point(2, 0));
+        Attach(frame, previous);
+
+        frame.Canvas.CopyFromPrevious(new Rect(3, 0, 1, 1));
+
+        FrameTests.GetText(frame, new Point(2, 0)).ShouldBeEmpty();
+        FrameTests.GetText(frame, new Point(3, 0)).ShouldBe("w");
+    }
+
+    /// <summary>
+    /// Verifies a destination wide lead straddling the region's right edge is repaired rather than
+    /// leaving its continuation intact, which would otherwise leave an orphan continuation and stale
+    /// content surviving past the end of the copied span.
+    /// </summary>
+    [Fact]
+    public void CopyFromPrevious_WhenDestinationWideLeadEndsRegion_RepairsTheOrphanedContinuation()
+    {
+        using var previous = new Frame(new Size(5, 1));
+        _ = previous.Canvas.Draw("z", new Point(3, 0));
+        using var frame = new Frame(new Size(5, 1));
+        _ = frame.Canvas.Draw("你", new Point(3, 0));
+        Attach(frame, previous);
+
+        frame.Canvas.CopyFromPrevious(new Rect(0, 0, 4, 1));
+
+        FrameTests.GetText(frame, new Point(3, 0)).ShouldBe("z");
+        FrameTests.GetText(frame, new Point(4, 0)).ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a region containing the complete cluster copies it intact.</summary>
+    [Fact]
+    public void CopyFromPrevious_WhenRegionContainsCompleteCluster_CopiesIt()
+    {
+        using var previous = new Frame(new Size(4, 1));
+        _ = previous.Canvas.Draw("\u4f60", new Point(0, 0));
+        using var frame = new Frame(new Size(4, 1));
+        Attach(frame, previous);
+
+        frame.Canvas.CopyFromPrevious(new Rect(0, 0, 2, 1));
+
+        FrameTests.GetText(frame, new Point(0, 0)).ShouldBe("\u4f60");
+    }
+
+    /// <summary>
+    /// Verifies a mismatched previous frame is rejected before any destination cell changes, so a
+    /// stride mismatch cannot silently copy the wrong row.
+    /// </summary>
+    [Fact]
+    public void CopyFromPrevious_WhenGeometryDiffers_ThrowsWithoutMutating()
+    {
+        using var previous = new Frame(new Size(8, 2));
+        _ = previous.Canvas.Draw("x", new Point(0, 0));
+        using var frame = new Frame(new Size(4, 1));
+        _ = frame.Canvas.Draw("a", new Point(0, 0));
+        Attach(frame, previous);
+
+        _ = Should.Throw<InvalidOperationException>(
+            () => frame.Canvas.CopyFromPrevious(new Rect(0, 0, 4, 1)));
+
+        FrameTests.GetText(frame, new Point(0, 0)).ShouldBe("a");
+    }
+
+    /// <summary>
+    /// Verifies a copy that cannot fit the destination arena is rejected whole, instead of
+    /// appending past the advertised bound one cell at a time.
+    /// </summary>
+    [Fact]
+    public void CopyFromPrevious_WhenRegionExceedsTextArena_ThrowsWithoutMutating()
+    {
+        using var previous = new Frame(new Size(4, 1));
+        _ = previous.Canvas.Draw("\u00e9", new Point(0, 0));
+        using var frame = new Frame(new Size(4, 1), maxTextBytes: 1);
+        Attach(frame, previous);
+
+        _ = Should.Throw<InvalidOperationException>(
+            () => frame.Canvas.CopyFromPrevious(new Rect(0, 0, 4, 1)));
+
+        FrameTests.GetText(frame, new Point(0, 0)).ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies repeated copies cannot grow the arena past the advertised bound.</summary>
+    [Fact]
+    public void CopyFromPrevious_WhenRepeated_NeverExceedsTextArena()
+    {
+        using var previous = new Frame(new Size(4, 1));
+        _ = previous.Canvas.Draw("\u00e9", new Point(0, 0));
+        using var frame = new Frame(new Size(4, 1), maxTextBytes: 8);
+        Attach(frame, previous);
+
+        for (var iteration = 0; iteration < 8; iteration++)
+        {
+            try
+            {
+                frame.Canvas.CopyFromPrevious(new Rect(0, 0, 4, 1));
+            }
+            catch (InvalidOperationException)
+            {
+                // The arena is finite; refusing the copy is the contract under test.
+            }
+        }
+
+        frame.TextLength.ShouldBeLessThanOrEqualTo(frame.MaxTextBytes);
+    }
+
+    private static void Attach(Frame frame, Frame previous) => frame.PreviousFrame = previous;
+
+    #endregion
 
     private static void AssertPreserved(CellStyle original, CellStyle actual, Color foreground)
     {

@@ -11,7 +11,7 @@ using SharpVision.Terminal.Multiplexing;
 
 
 /// <summary>Proves authoritative backend priority and mixed per-placement fallback.</summary>
-public sealed class BackendSelectorTests
+public sealed class GraphicsBackendSelectorTests
 {
     /// <summary>Verifies the shared default prepared-byte budget matches its documented value.
     /// KittyGraphicsBackend and NonRetainedGraphicsBackend (which configures sixel and iTerm2

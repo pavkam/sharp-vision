@@ -5,9 +5,251 @@ namespace SharpVision.Terminal.Tests.Rendering;
 
 using SharpVision.Terminal.Capabilities;
 
-/// <summary>Verifies rendering through compiled terminal-description programs.</summary>
-public sealed class DescriptionEncoderTests
+/// <summary>
+/// Verifies deterministic exact bytes for full and incremental frame encoding; rendering through
+/// compiled terminal-description programs; incremental output reaching the same semantic terminal
+/// state as full output; and fixed-seed incremental/full equivalence across random states.
+/// </summary>
+public sealed class FrameEncoderTests
 {
+    private const int _seed = 0xD1FF;
+
+    private static TerminalCapabilities TrueColorCapabilities { get; } =
+        TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor };
+
+    /// <summary>Provides exact foreground/background degradation for every color tier.</summary>
+    public static TheoryData<ColorDepth, string> ColorDepthCases => new()
+    {
+        {
+            ColorDepth.TrueColor,
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[38;2;95;135;175m\u001b[48;2;255;0;0mx\u001b[0m\u001b[1;1H\u001b[?25l"
+        },
+        { ColorDepth.Indexed256, "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[38;5;67m\u001b[48;5;9mx\u001b[0m\u001b[1;1H\u001b[?25l" },
+        { ColorDepth.Basic16, "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[90m\u001b[101mx\u001b[0m\u001b[1;1H\u001b[?25l" },
+        { ColorDepth.Monochrome, "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1Hx\u001b[1;1H\u001b[?25l" }
+    };
+
+    /// <summary>Verifies semantic colors project to exact bytes at every capability tier.</summary>
+    /// <param name="depth">The active color fidelity.</param>
+    /// <param name="expected">The complete expected frame output.</param>
+    [Theory]
+    [MemberData(nameof(ColorDepthCases))]
+    public void Encode_WhenColorDepthChanges_WritesHighestSupportedRepresentation(
+        ColorDepth depth,
+        string expected)
+    {
+        using Frame back = new(new Size(1, 1));
+        var style = new CellStyle(Color.Rgb(95, 135, 175), Color.Rgb(255, 0, 0));
+        _ = back.Canvas.Draw("x", default, style);
+        var destination = new ArrayBufferWriter<byte>();
+        var capabilities = TerminalCapabilities.Conservative with { ColorDepth = depth };
+
+        _ = FrameEncoder.Encode(null, back, destination, capabilities);
+
+        destination.WrittenSpan.ToArray().ShouldBe(Encoding.ASCII.GetBytes(expected));
+    }
+
+    /// <summary>Verifies RGB colors collapsing to one basic color emit one transition.</summary>
+    [Fact]
+    public void Encode_WhenRgbColorsProjectEqually_DoesNotEmitRedundantTransition()
+    {
+        using Frame back = new(new Size(2, 1));
+        _ = back.Canvas.Draw("a", default, new CellStyle(Color.Rgb(255, 0, 0)));
+        _ = back.Canvas.Draw("b", new Point(1, 0), new CellStyle(Color.Rgb(250, 5, 5)));
+        var destination = new ArrayBufferWriter<byte>();
+
+        _ = FrameEncoder.Encode(
+            null,
+            back,
+            destination,
+            TerminalCapabilities.Conservative);
+
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[91mab\u001b[0m\u001b[1;1H\u001b[?25l"u8.ToArray());
+    }
+
+    /// <summary>Verifies a missing capability snapshot fails before destination mutation.</summary>
+    [Fact]
+    public void Encode_WhenCapabilitiesAreNull_ThrowsBeforeWriting()
+    {
+        using var back = Create("x");
+        var destination = new ArrayBufferWriter<byte>();
+
+        _ = Should.Throw<ArgumentNullException>(() =>
+            FrameEncoder.Encode(null, back, destination, (TerminalCapabilities) null!));
+
+        destination.WrittenCount.ShouldBe(0);
+    }
+
+    /// <summary>Verifies unknown optional decoration support uses conservative fallbacks.</summary>
+    [Fact]
+    public void Encode_WhenModernDecorationsAreUnknown_DegradesWithoutUnsupportedBytes()
+    {
+        using Frame back = new(new Size(1, 1));
+        var style = new CellStyle(
+            attributes: TerminalAttributes.RapidBlink | TerminalAttributes.Overline,
+            underline: Underline.Curly,
+            underlineColor: Color.Rgb(1, 2, 3));
+        _ = back.Canvas.Draw("x", default, style);
+        var destination = new ArrayBufferWriter<byte>();
+
+        _ = FrameEncoder.Encode(
+            null,
+            back,
+            destination,
+            TrueColorCapabilities);
+
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[6m\u001b[4mx\u001b[0m\u001b[1;1H\u001b[?25l"u8.ToArray());
+    }
+
+    /// <summary>Verifies proven optional decoration support emits exact modern SGR.</summary>
+    [Fact]
+    public void Encode_WhenModernDecorationsAreSupported_WritesExactBytes()
+    {
+        using Frame back = new(new Size(1, 1));
+        var style = new CellStyle(
+            attributes: TerminalAttributes.RapidBlink | TerminalAttributes.Overline,
+            underline: Underline.Curly,
+            underlineColor: Color.Rgb(1, 2, 3));
+        _ = back.Canvas.Draw("x", default, style);
+        var destination = new ArrayBufferWriter<byte>();
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var capabilities = TrueColorCapabilities with
+        {
+            StyledUnderlines = supported,
+            UnderlineColor = supported,
+            Overline = supported
+        };
+
+        _ = FrameEncoder.Encode(null, back, destination, capabilities);
+
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[6m\u001b[53m\u001b[4:3m\u001b[58;2;1;2;3mx"u8.ToArray()
+                .Concat("\u001b[0m\u001b[1;1H\u001b[?25l"u8.ToArray())
+                .ToArray());
+    }
+
+    /// <summary>Verifies an orphan component is emitted as an independent replacement cell.</summary>
+    [Fact]
+    public void Encode_WhenFrameContainsOrphanMark_WritesReplacementBytes()
+    {
+        // Arrange
+        using Frame back = new(new Size(2, 1));
+        _ = back.Canvas.Draw("a".AsSpan(), new Point(0, 0));
+        _ = back.Canvas.Draw("\u0301".AsSpan(), new Point(1, 0));
+        var destination = new ArrayBufferWriter<byte>();
+
+        // Act
+        _ = FrameEncoder.Encode(null, back, destination, TrueColorCapabilities);
+
+        // Assert
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1Ha�\u001b[1;1H\u001b[?25l"u8.ToArray());
+        destination.WrittenSpan.IndexOf("\u0301"u8).ShouldBe(-1);
+    }
+
+    /// <summary>
+    /// Verifies a complete default-style frame emits exact position/text/cursor bytes.
+    /// </summary>
+    [Fact]
+    public void Encode_WhenFrameIsFull_WritesExactBytes()
+    {
+        using var back = Create("ab");
+        var destination = new ArrayBufferWriter<byte>();
+
+        var result = FrameEncoder.Encode(null, back, destination, TrueColorCapabilities);
+
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1Hab\u001b[1;1H\u001b[?25l"u8.ToArray());
+        result.ShouldBe(new EncodeResult(1, true));
+    }
+
+    /// <summary>
+    /// Verifies a sparse change emits only its run and restores cursor position.
+    /// </summary>
+    [Fact]
+    public void Encode_WhenOneCellChanges_WritesSparseRun()
+    {
+        using var front = Create("ab");
+        using var back = Create("ac");
+        var destination = new ArrayBufferWriter<byte>();
+
+        var result = FrameEncoder.Encode(front, back, destination, TrueColorCapabilities);
+
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "\u001b[1;2Hc\u001b[1;1H"u8.ToArray());
+        result.Full.ShouldBeFalse();
+        result.Spans.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies equal content and cursor state emits no bytes.
+    /// </summary>
+    [Fact]
+    public void Encode_WhenFrameIsUnchanged_WritesNothing()
+    {
+        using var front = Create("ab");
+        using var back = Create("ab");
+        var destination = new ArrayBufferWriter<byte>();
+
+        var result = FrameEncoder.Encode(front, back, destination, TrueColorCapabilities);
+
+        destination.WrittenCount.ShouldBe(0);
+        result.ShouldBe(new EncodeResult(0, false));
+    }
+
+    /// <summary>
+    /// Verifies style and hyperlink transitions close and reset to known state.
+    /// </summary>
+    [Fact]
+    public void Encode_WhenCellIsStyled_WritesExactTransitions()
+    {
+        using Frame back = new(new Size(1, 1));
+        var style = new CellStyle(
+            attributes: TerminalAttributes.Bold,
+            hyperlink: "https://example.test");
+        _ = back.Canvas.Draw("x".AsSpan(), new Point(0, 0), style);
+        var destination = new ArrayBufferWriter<byte>();
+
+        _ = FrameEncoder.Encode(null, back, destination, TrueColorCapabilities);
+
+        destination.WrittenSpan.ToArray().ShouldBe(
+            Encoding.UTF8.GetBytes(
+                "\u001b]8;;\u001b\\" +
+                "\u001b[0m\u001b[1;1H\u001b[2J" +
+                "\u001b[1;1H" +
+                "\u001b]8;;https://example.test\u001b\\" +
+                "\u001b[1m" +
+                "x" +
+                "\u001b]8;;\u001b\\" +
+                "\u001b[0m" +
+                "\u001b[1;1H" +
+                "\u001b[?25l"));
+    }
+
+    /// <summary>
+    /// Verifies the requested visible cursor state is restored after drawing.
+    /// </summary>
+    [Fact]
+    public void Encode_WhenCursorIsVisible_RestoresPositionAndVisibility()
+    {
+        using var back = Create("ab");
+        back.SetCursor(new Point(1, 0), visible: true);
+        var destination = new ArrayBufferWriter<byte>();
+
+        _ = FrameEncoder.Encode(null, back, destination, TrueColorCapabilities);
+
+        destination.WrittenSpan.EndsWith("\u001b[1;2H\u001b[?25h"u8).ShouldBeTrue();
+    }
+
+    private static Frame Create(string value)
+    {
+        var frame = new Frame(new Size(value.Length, 1));
+        _ = frame.Canvas.Draw(value.AsSpan(), new Point(0, 0));
+        return frame;
+    }
+
     /// <summary>Verifies one-sided cursor visibility programs cannot create unrestorable state.</summary>
     /// <param name="program">The only retained visibility program.</param>
     /// <param name="visible">The requested cursor visibility.</param>
@@ -611,5 +853,208 @@ public sealed class DescriptionEncoderTests
         programs["setrgbf"] = new DescriptionProgram("\u001b[38;2;%p1%d;%p2%d;%p3%dm"u8);
         programs["setrgbb"] = new DescriptionProgram("\u001b[48;2;%p1%d;%p2%d;%p3%dm"u8);
         return programs;
+    }
+
+    /// <summary>
+    /// Verifies targeted multi-frame transitions against an independent terminal model.
+    /// </summary>
+    /// <param name="frontText">The committed front-frame text.</param>
+    /// <param name="backText">The target back-frame text.</param>
+    [Theory]
+    [InlineData("abcd", "abXd")]
+    [InlineData("界x", "abx")]
+    [InlineData("abx", "界x")]
+    [InlineData("e\u0301x", "éx")]
+    public void Encode_WhenFrameTransitions_AgreesWithFullRender(
+        string frontText,
+        string backText)
+    {
+        using var front = CreateFixedWidthFrame(frontText);
+        using var back = CreateFixedWidthFrame(backText);
+        var incremental = new VirtualScreen(back.Size);
+        incremental.Apply(Encode(null, front));
+        incremental.Apply(Encode(front, back));
+        var full = new VirtualScreen(back.Size);
+        full.Apply(Encode(null, back));
+
+        incremental.ShouldMatch(back);
+        full.ShouldMatch(back);
+        incremental.ShouldMatch(full);
+    }
+
+    /// <summary>
+    /// Verifies style, hyperlink, and cursor transitions are semantically equivalent.
+    /// </summary>
+    [Fact]
+    public void Encode_WhenStyleAndCursorChange_AgreesWithFullRender()
+    {
+        using Frame front = new(new Size(2, 1));
+        using Frame back = new(new Size(2, 1));
+        _ = front.Canvas.Draw("ab".AsSpan(), new Point(0, 0));
+        _ = back.Canvas.Draw(
+            "ab".AsSpan(),
+            new Point(0, 0),
+            new CellStyle(attributes: TerminalAttributes.Bold, hyperlink: "https://example.test"));
+        back.SetCursor(new Point(1, 0), visible: true);
+        var incremental = new VirtualScreen(back.Size);
+        incremental.Apply(Encode(null, front));
+        incremental.Apply(Encode(front, back));
+        var full = new VirtualScreen(back.Size);
+        full.Apply(Encode(null, back));
+
+        incremental.ShouldMatch(back);
+        incremental.ShouldMatch(full);
+    }
+
+    /// <summary>
+    /// Verifies modern decorations survive supported output and independent parsing.
+    /// </summary>
+    [Fact]
+    public void Encode_WhenModernDecorationsAreSupported_AgreesWithFullRender()
+    {
+        using Frame frame = new(new Size(2, 1));
+        var style = new CellStyle(
+            attributes: TerminalAttributes.RapidBlink | TerminalAttributes.Overline,
+            underline: Underline.Curly,
+            underlineColor: Color.Rgb(12, 34, 56));
+        _ = frame.Canvas.Draw("ab".AsSpan(), new Point(0, 0), style);
+        var screen = new VirtualScreen(frame.Size);
+
+        screen.Apply(Encode(null, frame, ModernDecorationCapabilities));
+
+        screen.ShouldMatch(frame);
+    }
+
+    private static TerminalCapabilities ModernDecorationCapabilities =>
+        TerminalCapabilities.Conservative with
+        {
+            ColorDepth = ColorDepth.TrueColor,
+            StyledUnderlines = new Feature(CapabilitySupport.Supported, Origin.Override),
+            UnderlineColor = new Feature(CapabilitySupport.Supported, Origin.Override),
+            Overline = new Feature(CapabilitySupport.Supported, Origin.Override)
+        };
+
+    private static byte[] Encode(
+        Frame? front,
+        Frame back,
+        TerminalCapabilities? capabilities = null)
+    {
+        var destination = new ArrayBufferWriter<byte>();
+        _ = FrameEncoder.Encode(
+            front,
+            back,
+            destination,
+            capabilities ?? TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
+        return destination.WrittenSpan.ToArray();
+    }
+
+    private static Frame CreateFixedWidthFrame(string value)
+    {
+        var frame = new Frame(new Size(3, 1));
+        _ = frame.Canvas.Draw(value.AsSpan(), new Point(0, 0));
+        return frame;
+    }
+
+    /// <summary>
+    /// Verifies random semantic frame pairs converge to the same terminal model.
+    /// </summary>
+    [Fact]
+    public void Encode_WhenFramesAreRandomized_MatchesFullRender()
+    {
+        var random = new Random(_seed);
+
+        for (var testCase = 0; testCase < 128; testCase++)
+        {
+            using var front = Create(random);
+            using var back = Create(random);
+
+            try
+            {
+                var incremental = new VirtualScreen(back.Size);
+                incremental.Apply(EncodeRandomized(null, front));
+                incremental.Apply(EncodeRandomized(front, back));
+                var full = new VirtualScreen(back.Size);
+                full.Apply(EncodeRandomized(null, back));
+                incremental.ShouldMatch(back);
+                incremental.ShouldMatch(full);
+            }
+            catch (ShouldAssertException exception)
+            {
+                throw new InvalidOperationException(
+                    $"Rendering seed {_seed}, case {testCase}.",
+                    exception);
+            }
+        }
+    }
+
+    private static Frame Create(Random random)
+    {
+        var frame = new Frame(new Size(10, 4));
+        string[] values = ["a", "Z", "界", "語", "e\u0301", "👩‍💻", " "];
+        string?[] links = [null, "https://one.test", "https://two.test"];
+
+        for (var index = 0; index < 24; index++)
+        {
+            var point = new Point(random.Next(frame.Size.Width), random.Next(frame.Size.Height));
+            var attributes = random.Next(8) switch
+            {
+                0 => TerminalAttributes.None,
+                1 => TerminalAttributes.Bold,
+                2 => TerminalAttributes.Italic,
+                3 => TerminalAttributes.Underline | TerminalAttributes.Reverse,
+                4 => TerminalAttributes.Blink,
+                5 => TerminalAttributes.RapidBlink,
+                6 => TerminalAttributes.Overline,
+                _ => TerminalAttributes.RapidBlink | TerminalAttributes.Overline
+            };
+            var underline = random.Next(6) == 0
+                ? (Underline) random.Next((int) Underline.Straight, (int) Underline.Dashed + 1)
+                : Underline.None;
+
+            if (underline != Underline.None)
+            {
+                attributes &= ~TerminalAttributes.Underline;
+            }
+
+            var foreground = random.Next(3) == 0
+                ? ReferenceColors.Get(random.Next(16))
+                : Color.Default;
+            var underlineColor = underline != Underline.None && random.Next(2) == 0
+                ? Color.Rgb(random.Next(256), random.Next(256), random.Next(256))
+                : Color.Default;
+            var style = new CellStyle(
+                foreground,
+                attributes: attributes,
+                hyperlink: links[random.Next(links.Length)],
+                underline: underline,
+                underlineColor: underlineColor);
+            _ = frame.Canvas.Draw(
+                values[random.Next(values.Length)].AsSpan(),
+                point,
+                style,
+                (Edge) random.Next(3));
+        }
+
+        frame.SetCursor(
+            new Point(random.Next(frame.Size.Width), random.Next(frame.Size.Height)),
+            random.Next(2) == 0);
+        return frame;
+    }
+
+    private static byte[] EncodeRandomized(Frame? front, Frame back)
+    {
+        var destination = new ArrayBufferWriter<byte>();
+        _ = FrameEncoder.Encode(
+            front,
+            back,
+            destination,
+            TerminalCapabilities.Conservative with
+            {
+                ColorDepth = ColorDepth.TrueColor,
+                StyledUnderlines = new Feature(CapabilitySupport.Supported, Origin.Override),
+                UnderlineColor = new Feature(CapabilitySupport.Supported, Origin.Override),
+                Overline = new Feature(CapabilitySupport.Supported, Origin.Override)
+            });
+        return destination.WrittenSpan.ToArray();
     }
 }

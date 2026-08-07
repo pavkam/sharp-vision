@@ -8,7 +8,7 @@ using System.Buffers.Binary;
 using SharpVision.Terminal.Kitty.Graphics;
 
 /// <summary>Proves canonical bounded Kitty graphics command encoding.</summary>
-public sealed class WriterTests
+public sealed class KittyGraphicsWriterTests
 {
     #region Encoding and chunking
 

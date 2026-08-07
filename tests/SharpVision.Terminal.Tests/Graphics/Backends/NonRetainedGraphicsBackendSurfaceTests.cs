@@ -1,14 +1,66 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Terminal.Tests.Graphics.Sixel;
+namespace SharpVision.Terminal.Tests.Graphics.Backends;
 
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Graphics;
 
-/// <summary>Proves sixel stale-pixel repair through the real renderer transaction.</summary>
-public sealed class BackendRendererTests
+/// <summary>
+/// Proves iTerm2 and sixel stale-pixel repair, diagnostics, and protocol authorization through
+/// real <see cref="Renderer"/> render transactions against the shared non-retained backend.
+/// </summary>
+public sealed class NonRetainedGraphicsBackendSurfaceTests
 {
+    /// <summary>Verifies partial transport failure invalidates and fully reconstructs cells and PNG.</summary>
+    [Fact]
+    public async Task RenderAsync_WhenTransportFails_RetryReconstructsCellsAndMultipartImageAsync()
+    {
+        using var renderer = new Renderer(new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true));
+        await using var transport = new FakeTransport();
+        var image = Png();
+        using var first = ItermFrame(image, new Rect(0, 0, 1, 1));
+        using var moved = ItermFrame(image, new Rect(1, 0, 1, 1));
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
+        {
+            ItermImages = new Feature(CapabilitySupport.Supported, Origin.Override)
+        });
+        _ = await renderer.RenderAsync(
+            first,
+            transport,
+            profile,
+            cellMetrics: null,
+            TestContext.Current.CancellationToken);
+        transport.QueueFailure(new IOException("partial iTerm2 batch"), prefixBytes: 1);
+        _ = await Should.ThrowAsync<IOException>(async () => await renderer.RenderAsync(
+            moved,
+            transport,
+            profile,
+            cellMetrics: null,
+            TestContext.Current.CancellationToken));
+        transport.Writes.Clear();
+
+        var recovered = await renderer.RenderAsync(
+            moved,
+            transport,
+            profile,
+            cellMetrics: null,
+            TestContext.Current.CancellationToken);
+        var bytes = transport.Writes.ShouldHaveSingleItem();
+
+        recovered.Full.ShouldBeTrue();
+        bytes.AsSpan().IndexOf("ab"u8).ShouldBeGreaterThanOrEqualTo(0);
+        bytes.AsSpan().IndexOf("\u001b]1337;MultipartFile="u8).ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    private static Frame ItermFrame(GraphicsImage image, Rect destination)
+    {
+        var frame = new Frame(new Size(2, 1));
+        _ = frame.Canvas.Draw("ab", default);
+        frame.Canvas.DrawImage(image, destination, PlacementMode.Contain);
+        return frame;
+    }
+
     /// <summary>Verifies movement rewrites complete cells before re-emitting the target sixel.</summary>
     [Fact]
     public async Task RenderAsync_WhenPlacementMoves_ClearsCellsBeforeTargetSixelAsync()
@@ -16,8 +68,8 @@ public sealed class BackendRendererTests
         using var renderer = new Renderer(new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false));
         await using var transport = new FakeTransport();
         var image = Red();
-        using var first = Frame(image, new Rect(0, 0, 1, 1));
-        using var moved = Frame(image, new Rect(1, 0, 1, 1));
+        using var first = SixelFrame(image, new Rect(0, 0, 1, 1));
+        using var moved = SixelFrame(image, new Rect(1, 0, 1, 1));
         var profile = Profile();
         _ = await renderer.RenderAsync(
             first,
@@ -48,7 +100,7 @@ public sealed class BackendRendererTests
     {
         using var renderer = new Renderer(new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false));
         await using var transport = new FakeTransport();
-        using var frame = Frame(Red(), new Rect(0, 0, 1, 1));
+        using var frame = SixelFrame(Red(), new Rect(0, 0, 1, 1));
         var profile = Profile();
         _ = await renderer.RenderAsync(
             frame,
@@ -88,8 +140,8 @@ public sealed class BackendRendererTests
         using var renderer = new Renderer(new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false));
         await using var transport = new FakeTransport();
         var image = Red();
-        using var first = Frame(image, new Rect(0, 0, 1, 1));
-        using var moved = Frame(image, new Rect(1, 0, 1, 1));
+        using var first = SixelFrame(image, new Rect(0, 0, 1, 1));
+        using var moved = SixelFrame(image, new Rect(1, 0, 1, 1));
         var profile = Profile();
         var metrics = new CellMetrics(1, 6);
         _ = await renderer.RenderAsync(
@@ -128,7 +180,7 @@ public sealed class BackendRendererTests
         using var renderer = new Renderer(new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true));
         await using var transport = new FakeTransport();
         var image = Red();
-        using var frame = Frame(image, new Rect(0, 0, 1, 1));
+        using var frame = SixelFrame(image, new Rect(0, 0, 1, 1));
         var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
         {
             ItermImages = new Feature(CapabilitySupport.Supported, Origin.Override)
@@ -154,7 +206,7 @@ public sealed class BackendRendererTests
         using var renderer = new Renderer(new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false));
         await using var transport = new FakeTransport();
         var image = Png();
-        using var frame = Frame(image, new Rect(0, 0, 1, 1));
+        using var frame = SixelFrame(image, new Rect(0, 0, 1, 1));
         var profile = Profile();
 
         _ = await renderer.RenderAsync(
@@ -177,7 +229,7 @@ public sealed class BackendRendererTests
     {
         using var renderer = new Renderer(new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false));
         await using var transport = new FakeTransport();
-        using var frame = Frame(Red(), new Rect(0, 0, 1, 1));
+        using var frame = SixelFrame(Red(), new Rect(0, 0, 1, 1));
         var profile = Profile();
 
         _ = await renderer.RenderAsync(
@@ -201,7 +253,7 @@ public sealed class BackendRendererTests
         using var renderer = new Renderer(new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false));
         await using var transport = new FakeTransport();
         var image = Red();
-        using var frame = Frame(image, new Rect(0, 0, 1, 1));
+        using var frame = SixelFrame(image, new Rect(0, 0, 1, 1));
         var deauthorized = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
         {
             Sixel = new Feature(CapabilitySupport.Unsupported, Origin.Override)
@@ -241,7 +293,7 @@ public sealed class BackendRendererTests
             Sixel = new Feature(CapabilitySupport.Supported, Origin.Override)
         });
 
-    private static Frame Frame(GraphicsImage image, Rect destination)
+    private static Frame SixelFrame(GraphicsImage image, Rect destination)
     {
         var frame = new Frame(new Size(2, 1));
         _ = frame.Canvas.Draw("ab", default);

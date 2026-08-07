@@ -7,7 +7,7 @@ using SharpVision.Terminal.Graphics;
 using SharpVision.Terminal.Sixel;
 
 /// <summary>Proves deterministic bounded sixel encoding from owned RGBA pixels.</summary>
-public sealed class WriterTests
+public sealed class SixelWriterTests
 {
     /// <summary>Verifies raster attributes, palette definition, transparency, and canonical framing.</summary>
     [Fact]

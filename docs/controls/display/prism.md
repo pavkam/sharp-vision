@@ -182,13 +182,14 @@ shared base-control suites:
   for a child covering only part of the region; wide-owner atomicity;
   stored-space versus untouched-blank behavior; empty, tiny, and border-consumed
   bounds; and ordinary `ContentControl` replacement, clearing, and parentage.
-- `CanvasPrimitiveTests` demonstrate row-major once-per-lead selection,
+- `TerminalCanvasTests` demonstrate row-major once-per-lead selection,
   non-foreground preservation, exclusion of clipped wide owners, null-callback
   and selector-failure behavior, stored spaces versus blanks, and actual-write
   provenance for identical overwrites, underlay, selector-side writes to later
   or current owners, nesting, and mixed narrow and wide owners. They also
-  demonstrate drawing-failure behavior, that provenance metadata stays out of
-  semantic damage, and the cached-callback allocation behavior.
+  demonstrate drawing-failure behavior and that provenance metadata stays out of
+  semantic damage; `TerminalCanvasPerformanceTests` demonstrates the
+  cached-callback allocation behavior.
 - Shared base-control suites demonstrate general dispatcher affinity, disposal,
   the `ContentControl` lifecycle, and popup-layer routing. Those are
   infrastructure guarantees rather than focused Prism-specific assertions.

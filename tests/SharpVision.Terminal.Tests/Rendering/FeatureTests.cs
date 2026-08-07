@@ -9,7 +9,7 @@ using SharpVision.Terminal.Capabilities;
 /// Verifies optional terminal output requires authoritative capability evidence, not merely a
 /// supported state a caller can construct from a guess.
 /// </summary>
-public sealed class CapabilityOriginGatingTests
+public sealed class FeatureTests
 {
     /// <summary>Verifies only description, query, and override evidence authorizes output.</summary>
     /// <param name="origin">The evidence origin under test.</param>

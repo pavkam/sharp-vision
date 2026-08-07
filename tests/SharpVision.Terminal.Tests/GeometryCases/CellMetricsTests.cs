@@ -6,7 +6,7 @@ namespace SharpVision.Terminal.Tests.GeometryCases;
 using Metrics = CellMetrics;
 
 /// <summary>Verifies exact rational and uniform pixel-to-cell grid mapping.</summary>
-public sealed class MetricsTests
+public sealed class CellMetricsTests
 {
     /// <summary>Verifies image pixel extents map to intrinsic cells across uniform and uneven grids.</summary>
     [Fact]

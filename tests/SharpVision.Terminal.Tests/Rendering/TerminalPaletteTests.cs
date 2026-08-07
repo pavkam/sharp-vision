@@ -6,7 +6,7 @@ namespace SharpVision.Terminal.Tests.Rendering;
 using SharpVision.Terminal.Capabilities;
 
 /// <summary>Verifies deterministic semantic-color projection to terminal tiers.</summary>
-public sealed class PaletteTests
+public sealed class TerminalPaletteTests
 {
     /// <summary>Provides exact reference-palette and degradation cases.</summary>
     public static TheoryData<Color, ColorDepth, Color> ProjectionCases => new()

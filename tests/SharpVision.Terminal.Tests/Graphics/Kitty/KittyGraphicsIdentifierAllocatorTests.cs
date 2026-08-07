@@ -6,7 +6,7 @@ namespace SharpVision.Terminal.Tests.Graphics.Kitty;
 using SharpVision.Terminal.Kitty.Graphics;
 
 /// <summary>Proves finite nonzero Kitty identifier ownership and reuse.</summary>
-public sealed class IdentifierAllocatorTests
+public sealed class KittyGraphicsIdentifierAllocatorTests
 {
     /// <summary>Verifies active identifiers are unique and released identifiers are reusable.</summary>
     [Fact]

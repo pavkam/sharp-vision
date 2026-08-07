@@ -11,7 +11,7 @@ using KittyImage = GraphicsImage;
 
 /// <summary>Proves the real Kitty backend through renderer commit, failure, and cleanup boundaries.</summary>
 [Collection(PerformanceGroup.Name)]
-public sealed class BackendRendererTests
+public sealed class KittyGraphicsBackendSurfaceTests
 {
     private static TerminalCapabilities KittyCapabilities { get; } = TerminalCapabilities.Conservative with
     {

@@ -6,7 +6,7 @@ namespace SharpVision.Terminal.Tests.Rendering;
 using SharpVision.Terminal.Graphics;
 
 /// <summary>Verifies completed render metrics retain immutable diagnostic snapshots.</summary>
-public sealed class RenderingMetricsTests
+public sealed class RenderMetricsTests
 {
     /// <summary>Verifies the valid default metrics value exposes an empty diagnostic snapshot.</summary>
     [Fact]

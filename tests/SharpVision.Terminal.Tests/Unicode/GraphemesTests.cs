@@ -7,7 +7,7 @@ namespace SharpVision.Terminal.Tests.Unicode;
 /// Verifies curated extended-grapheme behavior and allocation bounds.
 /// </summary>
 [Collection(PerformanceGroup.Name)]
-public sealed class GraphemeTests
+public sealed class GraphemesTests
 {
     /// <summary>
     /// Verifies user-perceived characters remain whole.

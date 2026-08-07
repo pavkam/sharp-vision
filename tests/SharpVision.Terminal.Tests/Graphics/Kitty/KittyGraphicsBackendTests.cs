@@ -11,7 +11,7 @@ using RenderFrame = Frame;
 
 /// <summary>Proves finite renderer-owned Kitty image and placement transactions.</summary>
 [Collection(PerformanceGroup.Name)]
-public sealed class BackendTests
+public sealed class KittyGraphicsBackendTests
 {
     /// <summary>Verifies upload, cursor-positioned placement, movement reuse, and last-use deletion.</summary>
     [Fact]

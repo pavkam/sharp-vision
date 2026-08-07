@@ -4,7 +4,7 @@
 namespace SharpVision.Terminal.Tests.Rendering;
 
 /// <summary>Verifies topology-aware Unicode line and box drawing.</summary>
-public sealed class LineTests
+public sealed class LineResolverTests
 {
     #region Line families
 

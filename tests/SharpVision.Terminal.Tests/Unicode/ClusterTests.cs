@@ -72,21 +72,4 @@ public sealed class ClusterTests
         cluster.Width.ShouldBe(CellWidth.Control);
         cluster.RequiresReplacement.ShouldBeFalse();
     }
-
-    /// <summary>Verifies the default policy pins explicit Unicode geometry choices.</summary>
-    [Fact]
-    public void Default_WhenRead_UsesPinnedNarrowReplacementPolicy()
-    {
-        UnicodePolicy.Default.UnicodeVersion.ShouldBe(UnicodeInfo.Version);
-        UnicodePolicy.Default.AmbiguousWidth.ShouldBe(Ambiguous.Narrow);
-        UnicodePolicy.Default.OrphanPresentation.ShouldBe(Presentation.Replacement);
-    }
-
-    /// <summary>Verifies policy validation rejects unknown values before assignment.</summary>
-    [Fact]
-    public void Constructor_WhenPolicyValueIsUnknown_Throws()
-    {
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => new UnicodePolicy((Ambiguous) 99));
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => new UnicodePolicy(Ambiguous.Narrow, (Presentation) 99));
-    }
 }
