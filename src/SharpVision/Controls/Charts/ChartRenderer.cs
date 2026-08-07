@@ -27,6 +27,12 @@ internal static class ChartRenderer
         ChartDataPoint point,
         int seriesIndex) => point.Color ?? series.Color ?? style.GetSeriesColor(seriesIndex);
 
+    /// <summary>Resolves the authored series dash pattern, falling back to the style's default.
+    /// Resolved once per series - not per point - so a segment's phase counter can run
+    /// continuously across the whole polyline.</summary>
+    internal static LinePattern ResolveSeriesPattern(ChartStyle style, ChartSeries series) =>
+        series.LinePattern ?? style.LinePattern;
+
     /// <summary>Maps a finite value to an inclusive vertical plot cell.</summary>
     internal static int MapY(ChartScaleRange range, double value, Rect plot)
     {

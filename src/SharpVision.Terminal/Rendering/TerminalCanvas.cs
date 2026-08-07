@@ -783,7 +783,7 @@ public readonly struct TerminalCanvas
         }
     }
 
-    /// <summary>Draws and merges a line between two inclusive half-cell coordinates.</summary>
+    /// <summary>Draws and merges a solid line between two inclusive half-cell coordinates.</summary>
     /// <param name="start">The first point, in half-cell coordinates.</param>
     /// <param name="end">The final point, in half-cell coordinates.</param>
     /// <param name="style">The semantic cell style.</param>
@@ -796,8 +796,41 @@ public readonly struct TerminalCanvas
     /// </remarks>
     /// <exception cref="InvalidOperationException">The finite frame arena would be exceeded.</exception>
     /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
-    public void DrawQuadrantLine(Point start, Point end, CellStyle style = default)
+    public void DrawQuadrantLine(Point start, Point end, CellStyle style = default) =>
+        DrawQuadrantLine(start, end, LinePattern.Solid, patternStep: 0, style);
+
+    /// <summary>Draws and merges a patterned line between two inclusive half-cell coordinates.</summary>
+    /// <param name="start">The first point, in half-cell coordinates.</param>
+    /// <param name="end">The final point, in half-cell coordinates.</param>
+    /// <param name="pattern">The on/off dash pattern.</param>
+    /// <param name="patternStep">The zero-based pattern step the segment continues from, letting
+    /// a polyline's dash phase stay continuous across chained calls.</param>
+    /// <param name="style">The semantic cell style.</param>
+    /// <returns>The pattern step immediately after the segment's final point, for a chained call
+    /// that continues the same polyline.</returns>
+    /// <remarks>
+    /// Half-cell coordinates double both axes: cell (0, 0) covers half-cell columns 0-1 and rows
+    /// 0-1. Traversal uses integer Bresenham geometry over that doubled grid, and every plotted
+    /// point merges one quadrant into its cell exactly like <see cref="DrawQuadrants"/>, so
+    /// crossing and touching lines accumulate into the connected quadrant glyphs instead of
+    /// overwriting one another. A monotonic step counter advances once per Bresenham iteration,
+    /// independent of slope; <paramref name="pattern"/> resolves each step to an on or off run,
+    /// and an off step skips the write entirely rather than drawing an empty quadrant, so a
+    /// dashed line still merges correctly with a crossing solid line and still degrades to the
+    /// same portable fallback under a wide Ambiguous policy.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="pattern"/> is unknown, or
+    /// <paramref name="patternStep"/> is negative.</exception>
+    /// <exception cref="InvalidOperationException">The finite frame arena would be exceeded.</exception>
+    /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
+    public int DrawQuadrantLine(Point start, Point end, LinePattern pattern, int patternStep, CellStyle style = default)
     {
+        if (!Enum.IsDefined(pattern))
+        {
+            throw new ArgumentOutOfRangeException(nameof(pattern), pattern, "The line pattern is unknown.");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegative(patternStep);
         _frame.ThrowIfDisposed();
 
         var deltaX = Math.Abs(end.X - start.X);
@@ -806,21 +839,27 @@ public readonly struct TerminalCanvas
         var signY = start.Y < end.Y ? 1 : -1;
         var error = deltaX + deltaY;
         var (x, y) = (start.X, start.Y);
+        var step = patternStep;
 
         while (true)
         {
-            // Arithmetic shift and masking floor negative halves consistently, so an off-frame
-            // segment clips per cell instead of folding onto cell zero.
-            DrawQuadrants(
-                new Point(x >> 1, y >> 1),
-                (y & 1) == 0
-                    ? (x & 1) == 0 ? Quadrants.UpperLeft : Quadrants.UpperRight
-                    : (x & 1) == 0 ? Quadrants.LowerLeft : Quadrants.LowerRight,
-                style);
+            if (pattern.IsStepOn(step))
+            {
+                // Arithmetic shift and masking floor negative halves consistently, so an
+                // off-frame segment clips per cell instead of folding onto cell zero.
+                DrawQuadrants(
+                    new Point(x >> 1, y >> 1),
+                    (y & 1) == 0
+                        ? (x & 1) == 0 ? Quadrants.UpperLeft : Quadrants.UpperRight
+                        : (x & 1) == 0 ? Quadrants.LowerLeft : Quadrants.LowerRight,
+                    style);
+            }
+
+            step++;
 
             if (x == end.X && y == end.Y)
             {
-                return;
+                return step;
             }
 
             var doubled = 2 * error;

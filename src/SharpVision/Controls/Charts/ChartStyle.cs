@@ -162,6 +162,23 @@ public sealed record ChartStyle: ControlStyle
         }
     } = ChartLineMode.Quadrant;
 
+    /// <summary>Gets the default dash pattern a series without its own override draws with when
+    /// the chart draws through the quadrant line renderer.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The replacement value is unknown.</exception>
+    public LinePattern LinePattern
+    {
+        get;
+        init
+        {
+            if (!Enum.IsDefined(value))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The line pattern is unknown.");
+            }
+
+            field = value;
+        }
+    } = LinePattern.Solid;
+
     /// <summary>Gets one deterministic fallback series foreground by zero-based index.</summary>
     internal ControlColor GetSeriesColor(int index) => Math.Abs(index % 3) switch
     {

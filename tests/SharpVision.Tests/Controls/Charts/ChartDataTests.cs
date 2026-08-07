@@ -43,6 +43,41 @@ public sealed class ChartDataTests
         names.ShouldBe([nameof(ChartDataPoint.Label), nameof(ChartDataPoint.Value), nameof(ChartDataPoint.Color)]);
     }
 
+    /// <summary>Verifies a series rejects an unknown pattern before changing observable state.</summary>
+    [Fact]
+    public void LinePattern_WhenAssignedUnknownValue_RejectsBeforeMutation()
+    {
+        // Arrange
+        var series = new ChartSeries("CPU") { LinePattern = LinePattern.DoubleDash };
+        var notifications = 0;
+        series.PropertyChanged += (_, _) => notifications++;
+
+        // Act
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => series.LinePattern = (LinePattern) 99);
+
+        // Assert
+        series.LinePattern.ShouldBe(LinePattern.DoubleDash);
+        notifications.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a changed series pattern publishes its exact property name, exactly like
+    /// the existing color property.</summary>
+    [Fact]
+    public void LinePattern_WhenChanged_PublishesObservableNotification()
+    {
+        // Arrange
+        var series = new ChartSeries("CPU");
+        var names = new List<string?>();
+        series.PropertyChanged += (_, eventArgs) => names.Add(eventArgs.PropertyName);
+
+        // Act
+        series.LinePattern = LinePattern.TripleDash;
+
+        // Assert
+        names.ShouldBe([nameof(ChartSeries.LinePattern)]);
+        series.LinePattern.ShouldBe(LinePattern.TripleDash);
+    }
+
     /// <summary>Verifies point membership rejects duplicate references without partial mutation.</summary>
     [Fact]
     public void Add_WhenPointAlreadyExists_RejectsBeforeMutation()

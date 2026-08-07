@@ -790,6 +790,41 @@ public sealed class ChartSurfaceTests
         surface.Cell(new Point(3, 0)).Text.ShouldBe("●");
     }
 
+    /// <summary>Verifies a series-level dash pattern skips exactly its "off" half-cell steps
+    /// end-to-end through the mounted quadrant renderer, so a dashed series stays visually
+    /// distinct from a solid one without relying on color.</summary>
+    [Fact]
+    public async Task Render_WhenSeriesHasLinePattern_SkipsOffStepsInHalfCellsAsync()
+    {
+        // Arrange
+        var chart = new LineChart
+        {
+            Series = [new ChartSeries("CPU", [
+                new ChartDataPoint("A", 0),
+                new ChartDataPoint("B", 2)])
+            {
+                LinePattern = LinePattern.DoubleDash
+            }],
+            Scale = new ChartScale(0, 2, includeZero: false),
+            LegendPlacement = ChartLegendPlacement.Hidden,
+            ShowCategoryLabels = false
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(4, 2),
+            TestContext.Current.CancellationToken);
+
+        // Assert: the same half-cell Bresenham walk as the solid case, but DoubleDash's 3-on/2-off
+        // cycle skips one half of each mid-segment cell - (1,1) keeps only its upper-left half and
+        // (2,0) only its lower-right half - instead of the solid line's full "▀" and "▄".
+        surface.Cell(new Point(0, 1)).Text.ShouldBe("●");
+        surface.Cell(new Point(1, 1)).Text.ShouldBe("▘");
+        surface.Cell(new Point(2, 0)).Text.ShouldBe("▗");
+        surface.Cell(new Point(3, 0)).Text.ShouldBe("●");
+    }
+
     /// <summary>Verifies the glyph line mode keeps whole-cell segments drawn with the style's own
     /// line glyph exactly - the contract a theme that replaces the glyph relies on.</summary>
     [Fact]

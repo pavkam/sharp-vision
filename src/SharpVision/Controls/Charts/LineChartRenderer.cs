@@ -22,6 +22,12 @@ internal static class LineChartRenderer
         for (var seriesIndex = 0; seriesIndex < chart.Series.Count; seriesIndex++)
         {
             var series = chart.Series[seriesIndex];
+
+            // The dash pattern resolves once per series, not per point, so its on/off run-length
+            // phase can advance continuously across every segment of the series polyline instead
+            // of restarting (and potentially misaligning) at each point.
+            var pattern = ChartRenderer.ResolveSeriesPattern(chart.ActualStyle, series);
+            var patternStep = 0;
             Point? previous = null;
             Point? previousHalf = null;
 
@@ -36,11 +42,13 @@ internal static class LineChartRenderer
                 {
                     if (previousHalf is { } startHalf)
                     {
-                        canvas.DrawQuadrantLine(startHalf, half, style);
+                        patternStep = canvas.DrawQuadrantLine(startHalf, half, pattern, patternStep, style);
                     }
                 }
                 else if (previous is { } start)
                 {
+                    // Glyph mode is deliberately unaffected by the resolved pattern - a theme
+                    // that replaces the line glyph already owns this mode's appearance.
                     canvas.DrawLine(start, current, chart.ActualStyle.Glyphs.Line, style);
                 }
 

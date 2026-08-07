@@ -75,6 +75,29 @@ public sealed class ChartSeries: INotifyPropertyChanged
         }
     }
 
+    /// <summary>Gets or sets the optional dash pattern that overrides the style's default for
+    /// this series when the chart draws through the quadrant line renderer.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The assigned value is unknown.</exception>
+    public LinePattern? LinePattern
+    {
+        get;
+        set
+        {
+            if (value is { } pattern && !Enum.IsDefined(pattern))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), pattern, "The line pattern is unknown.");
+            }
+
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LinePattern)));
+        }
+    }
+
     /// <summary>Gets the retained observable point collection owned by this series.</summary>
     public ChartDataPointCollection Points { get; }
 }

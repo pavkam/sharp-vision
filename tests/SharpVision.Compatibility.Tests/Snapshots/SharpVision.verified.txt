@@ -312,6 +312,7 @@ namespace SharpVision.Controls.Charts
         public ChartSeries(string name) { }
         public ChartSeries(string name, System.Collections.Generic.IEnumerable<SharpVision.Controls.Charts.ChartDataPoint> points) { }
         public SharpVision.Styling.ControlColor? Color { get; set; }
+        public SharpVision.Terminal.Rendering.LinePattern? LinePattern { get; set; }
         public string Name { get; set; }
         public SharpVision.Controls.Charts.ChartDataPointCollection Points { get; }
         public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
@@ -324,6 +325,7 @@ namespace SharpVision.Controls.Charts
         public required SharpVision.Controls.Charts.ChartGlyphs Glyphs { get; init; }
         public required SharpVision.Styling.ControlColor LabelColor { get; init; }
         public SharpVision.Controls.Charts.ChartLineMode LineMode { get; init; }
+        public SharpVision.Terminal.Rendering.LinePattern LinePattern { get; init; }
         public required SharpVision.Styling.ControlColor PrimaryColor { get; init; }
         public required SharpVision.Styling.ControlColor SecondaryColor { get; init; }
         public required SharpVision.Styling.ControlColor TertiaryColor { get; init; }

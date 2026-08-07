@@ -10,10 +10,13 @@ protocol bytes and do not handle pointer or keyboard input.
 
 ## API
 
-`ChartSeries` has a non-null `Name`, optional `Color`, and observable `Points`.
-Each `ChartDataPoint` has a non-null `Label`, finite `Value`, and optional
-`Color`. A point color overrides its series color; a series color overrides the
-control's deterministic theme palette.
+`ChartSeries` has a non-null `Name`, optional `Color`, optional `LinePattern`,
+and observable `Points`. Each `ChartDataPoint` has a non-null `Label`, finite
+`Value`, and optional `Color`. A point color overrides its series color; a
+series color overrides the control's deterministic theme palette. A series
+`LinePattern` overrides `ChartStyle.LinePattern`, the dash pattern line series
+draw with in `Quadrant` mode; see [LineChart](line-chart.md) for how the pattern
+renders.
 
 Full charts expose `Series`, `Scale`, `LegendPlacement`, `ShowCategoryLabels`,
 and `ShowValueLabels`. `Sparkline` exposes only `Series` and `Scale`, accepts at

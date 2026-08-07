@@ -62,7 +62,8 @@ internal sealed class LineChartPane: CompositeControlBase
             new ChartDataPoint("09", 14), new ChartDataPoint("10", 9),
             new ChartDataPoint("11", 12), new ChartDataPoint("12", 6)])
         {
-            Color = new ControlColor(SemanticColor.Error)
+            Color = new ControlColor(SemanticColor.Error),
+            LinePattern = LinePattern.DoubleDash
         };
         var colored = new LineChart
         {
@@ -91,9 +92,9 @@ internal sealed class LineChartPane: CompositeControlBase
                     "chart.Scale = new ChartScale(18, 20, includeZero: false);\nchart.ShowValueLabels = true;"),
                 new DocExample(
                     "Semantic error color",
-                    "A right legend identifies the request and error lines while errors use the theme's semantic color.",
+                    "A right legend identifies the request and error lines; errors use the theme's semantic color and a dashed stroke, so they stay distinguishable without relying on color alone.",
                     colored,
-                    "errors.Color = new ControlColor(SemanticColor.Error);\nchart.LegendPlacement = ChartLegendPlacement.Right;"))));
+                    "errors.Color = new ControlColor(SemanticColor.Error);\nerrors.LinePattern = LinePattern.DoubleDash;\nchart.LegendPlacement = ChartLegendPlacement.Right;"))));
     }
 
     // A smooth 24-point waveform: enough density that the half-cell segment rasterization reads
