@@ -163,6 +163,9 @@ public sealed class ApplicationOutOfBandTests
             async () => await application.StopAsync(TestContext.Current.CancellationToken));
     }
 
+    // IsRendering has no change notification of its own, so a condition built on it cannot be
+    // awaited through an event or a completion source. Polling the flag is the only available
+    // signal; the wait stays real wall-clock by necessity, not oversight.
     private static async Task WaitForAsync(Func<bool> condition, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;
