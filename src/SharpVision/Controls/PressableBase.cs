@@ -9,15 +9,13 @@ using DisplayText = Display.Text;
 
 /// <summary>Defines a focusable text-captioned control with reusable press interaction.</summary>
 [PublicAPI]
-public abstract class PressableBase: ControlBase
+public abstract class PressableBase: PressInteractionBase
 {
     private readonly OwnedControlSlot _textSlot;
-    private readonly PressBehavior _interaction;
     private ICommand? _command;
 
     /// <summary>Initializes an empty focusable text-captioned control.</summary>
-    protected PressableBase()
-    {
+    protected PressableBase() =>
         _textSlot = RegisterOwnedSlot(
             new OwnedControlOptions(
                 OwnedControlRole.Content,
@@ -27,20 +25,6 @@ public abstract class PressableBase: ControlBase
                 partKey: null,
                 InvalidationImpact.Measure),
             capacity: 1);
-        _interaction = new PressBehavior(
-            () => InteractionBounds,
-            () => EffectiveIsEnabled && EffectiveIsVisible,
-            () => FocusOwner is null || Focused,
-            RequestFocus,
-            CapturePointer,
-            () => HasPointerCapture,
-            ReleasePointerCapture,
-            SetPressed,
-            Activate,
-            () => Capabilities.KittyKeyboard.Authoritative);
-        Focusable = true;
-        TabStop = true;
-    }
 
     /// <summary>Gets or sets the non-null caption text.</summary>
     /// <remarks>
@@ -116,26 +100,12 @@ public abstract class PressableBase: ControlBase
         set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
     }
 
-    /// <summary>Gets the rectangle press interaction (pointer press/drag/release and hit testing
-    /// via <see cref="ControlBase.HitTest"/>) is evaluated against. Defaults to <see cref="ControlBase.Bounds"/>.</summary>
-    /// <remarks>
-    /// A concrete control whose pressed visual state translates the drawn face away from
-    /// <see cref="ControlBase.Bounds"/> - a Button showing a whole-cell shadow, for example -
-    /// must override this to the same translated rectangle it actually paints, so the pointer
-    /// geometry a user presses and releases against agrees with what is on screen.
-    /// </remarks>
-    protected virtual Rect InteractionBounds => Bounds;
-
-    /// <summary>Completes one validated activation in a concrete control.</summary>
-    /// <param name="cause">The input path that completed activation.</param>
-    protected abstract void Activate(ActivationCause cause);
-
     /// <summary>
     /// Invokes <see cref="Command"/> with <see cref="CommandParameter"/> when a command is bound
     /// and allows execution.
     /// </summary>
     /// <remarks>
-    /// A concrete control's <see cref="Activate"/> override calls this after committing its own
+    /// A concrete control's <see cref="PressInteractionBase.Activate"/> override calls this after committing its own
     /// state and raising its own events, so a command that cannot execute never suppresses the
     /// control's own activation semantics (a toggle still toggles; a menu item still invokes).
     /// </remarks>
@@ -207,28 +177,13 @@ public abstract class PressableBase: ControlBase
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         base.OnEvent(eventArgs);
-        _interaction.Handle(eventArgs);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-        _interaction.FocusChanged(focused);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
-        base.OnLostPointerCapture(reason);
-        _interaction.CaptureLost();
+        Interaction.Handle(eventArgs);
     }
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        _interaction.Unavailable();
 
         if (reason == ReleaseReason.Disposed && _command is not null)
         {

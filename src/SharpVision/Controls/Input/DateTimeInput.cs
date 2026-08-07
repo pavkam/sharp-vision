@@ -17,7 +17,7 @@ using SharpVision.Terminal.Input;
 /// Alt+Down opens the calendar popup from any segment.
 /// </remarks>
 [PublicAPI]
-public sealed class DateTimeInput: ControlBase
+public sealed class DateTimeInput: PressInteractionBase
 {
     /// <inheritdoc/>
     protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
@@ -45,7 +45,6 @@ public sealed class DateTimeInput: ControlBase
     private readonly Calendar _calendar;
     private readonly Popup _popup;
     private readonly OwnedControlSlot _popupSlot;
-    private readonly PressBehavior _interaction;
     private readonly PopupModalTracker _modalTracker;
     private readonly SegmentFieldBehavior _segments;
 
@@ -100,25 +99,12 @@ public sealed class DateTimeInput: ControlBase
                 InvalidationImpact.Measure),
             capacity: 1);
         _popupSlot.Add(_popup);
-        _interaction = new PressBehavior(
-            () => Bounds,
-            () => EffectiveIsEnabled && EffectiveIsVisible,
-            () => FocusOwner is null || Focused,
-            RequestFocus,
-            CapturePointer,
-            () => HasPointerCapture,
-            ReleasePointerCapture,
-            SetPressed,
-            Activate,
-            () => Capabilities.KittyKeyboard.Authoritative);
         _segments = new SegmentFieldBehavior(
             BuildSegments,
             ApplyDigitValue,
             IncrementSegmentValue,
             ClearSegmentValue,
             () => Invalidate(InvalidationImpact.Render));
-        Focusable = true;
-        TabStop = true;
         TabNavigation = TabNavigation.None;
     }
 
@@ -571,7 +557,7 @@ public sealed class DateTimeInput: ControlBase
 
         if (!eventArgs.Handled)
         {
-            _interaction.Handle(eventArgs);
+            Interaction.Handle(eventArgs);
         }
 
         if (!eventArgs.Handled)
@@ -584,7 +570,6 @@ public sealed class DateTimeInput: ControlBase
     protected override void OnFocusChanged(bool focused)
     {
         base.OnFocusChanged(focused);
-        _interaction.FocusChanged(focused);
 
         if (!focused)
         {
@@ -592,13 +577,6 @@ public sealed class DateTimeInput: ControlBase
         }
 
         Invalidate(InvalidationImpact.Render);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
-        base.OnLostPointerCapture(reason);
-        _interaction.CaptureLost();
     }
 
     /// <inheritdoc/>
@@ -616,7 +594,6 @@ public sealed class DateTimeInput: ControlBase
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        _interaction.Unavailable();
 
         if (reason == ReleaseReason.Disposed)
         {
@@ -923,7 +900,8 @@ public sealed class DateTimeInput: ControlBase
 
     #region Drop-down coordination
 
-    private void Activate(ActivationCause cause)
+    /// <inheritdoc/>
+    protected override void Activate(ActivationCause cause)
     {
         if (cause == ActivationCause.Keyboard)
         {

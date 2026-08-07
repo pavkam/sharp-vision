@@ -55,4 +55,24 @@ public sealed class CapabilitiesTests
         original.Osc52.State.ShouldBe(CapabilitySupport.Unknown);
         derived.Osc52.State.ShouldBe(CapabilitySupport.Supported);
     }
+
+    /// <summary>
+    /// Verifies the key-release behavioral capability mirrors Kitty keyboard support without
+    /// requiring a caller to know which protocol provides it.
+    /// </summary>
+    [Fact]
+    public void KeyReleaseEvents_WhenRead_MirrorsKittyKeyboard()
+    {
+        var unsupported = TerminalCapabilities.Conservative;
+
+        unsupported.KeyReleaseEvents.State.ShouldBe(CapabilitySupport.Unknown);
+
+        var supported = unsupported with
+        {
+            KittyKeyboard = new Feature(CapabilitySupport.Supported, Origin.Query)
+        };
+
+        supported.KeyReleaseEvents.Authoritative.ShouldBeTrue();
+        supported.KeyReleaseEvents.ShouldBe(supported.KittyKeyboard);
+    }
 }

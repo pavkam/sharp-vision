@@ -36,7 +36,7 @@ public sealed class Expander: HeaderedContentControl
             () => FocusOwner is null || Focused, RequestFocus, CapturePointer,
             () => HasPointerCapture, ReleasePointerCapture, SetPressed,
             _ => Expanded = !Expanded,
-            () => Capabilities.KittyKeyboard.Authoritative);
+            () => Capabilities.KeyReleaseEvents.Authoritative);
         Focusable = true;
         TabStop = true;
     }

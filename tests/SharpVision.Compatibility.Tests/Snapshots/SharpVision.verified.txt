@@ -633,23 +633,28 @@ namespace SharpVision.Controls
         protected void ReplaceItemControl(int index, SharpVision.Controls.ControlBase control) { }
         protected void ReplaceItemControls(System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase> controls) { }
     }
-    public abstract class PressableBase : SharpVision.Controls.ControlBase
+    public abstract class PressInteractionBase : SharpVision.Controls.ControlBase
+    {
+        protected PressInteractionBase() { }
+        protected virtual SharpVision.Terminal.Geometry.Rect InteractionBounds { get; }
+        protected abstract void Activate(SharpVision.Input.ActivationCause cause);
+        protected override void OnFocusChanged(bool focused) { }
+        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+    }
+    public abstract class PressableBase : SharpVision.Controls.PressInteractionBase
     {
         protected PressableBase() { }
         protected override string? AccessKeyText { get; }
         public System.Windows.Input.ICommand? Command { get; set; }
         public object? CommandParameter { get; set; }
-        protected virtual SharpVision.Terminal.Geometry.Rect InteractionBounds { get; }
         public virtual string Text { get; set; }
         protected SharpVision.Controls.Display.Text? TextControl { get; }
-        protected abstract void Activate(SharpVision.Input.ActivationCause cause);
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected void ExecuteCommandIfAny() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnFocusChanged(bool focused) { }
-        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
     public abstract class Pressable<TStyle> : SharpVision.Controls.PressableBase
@@ -1361,7 +1366,7 @@ namespace SharpVision.Controls.Input
         public SharpVision.Controls.Input.SliderStyle? SliderStyle { get; init; }
         public SharpVision.Styling.Face? StatusFace { get; init; }
     }
-    public sealed class ComboBox : SharpVision.Controls.ControlBase
+    public sealed class ComboBox : SharpVision.Controls.PressInteractionBase
     {
         public ComboBox() { }
         public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
@@ -1382,18 +1387,17 @@ namespace SharpVision.Controls.Input
         public event System.EventHandler? DropDownClosed;
         public event System.EventHandler? DropDownOpened;
         public event System.EventHandler<SharpVision.Input.ListSelectionChangedEventArgs>? SelectionChanged;
+        protected override void Activate(SharpVision.Input.ActivationCause cause) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnAttached() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnFocusChanged(bool focused) { }
-        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetPopupChrome() { }
     }
-    public sealed class DateInput : SharpVision.Controls.ControlBase
+    public sealed class DateInput : SharpVision.Controls.PressInteractionBase
     {
         public DateInput() { }
         public SharpVision.Controls.Input.CalendarStyle ActualCalendarStyle { get; }
@@ -1410,13 +1414,13 @@ namespace SharpVision.Controls.Input
         public event System.EventHandler? DropDownClosed;
         public event System.EventHandler? DropDownOpened;
         public event System.EventHandler<SharpVision.Input.DateInputValueChangedEventArgs>? ValueChanged;
+        protected override void Activate(SharpVision.Input.ActivationCause cause) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnAttached() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
-        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetPopupChrome() { }
@@ -1430,7 +1434,7 @@ namespace SharpVision.Controls.Input
         public bool Contains(System.DateOnly date) { }
         public bool Intersects(SharpVision.Controls.Input.DateInterval other) { }
     }
-    public sealed class DateTimeInput : SharpVision.Controls.ControlBase
+    public sealed class DateTimeInput : SharpVision.Controls.PressInteractionBase
     {
         public DateTimeInput() { }
         public SharpVision.Controls.Input.CalendarStyle ActualCalendarStyle { get; }
@@ -1450,13 +1454,13 @@ namespace SharpVision.Controls.Input
         public event System.EventHandler? DropDownClosed;
         public event System.EventHandler? DropDownOpened;
         public event System.EventHandler<SharpVision.Input.DateTimeInputValueChangedEventArgs>? ValueChanged;
+        protected override void Activate(SharpVision.Input.ActivationCause cause) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnAttached() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
-        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetPopupChrome() { }

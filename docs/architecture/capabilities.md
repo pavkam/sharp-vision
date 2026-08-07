@@ -48,6 +48,18 @@ and carries an explicit `AmbiguousWidth` policy. The policy defaults to narrow,
 never changes because of locale or terminal-name hints, and may be set to wide
 only by caller `CapabilityOverrides` applied at the final precedence step.
 
+Most `Feature` properties are stored evidence, but a few are computed behavioral
+guarantees derived from stored evidence, so a consumer outside this assembly
+depends on the behavior it needs rather than on which specific terminal protocol
+happens to provide it today. `KeyReleaseEvents` is one example: it currently
+mirrors `KittyKeyboard` exactly, because Kitty's progressive enhancement is the
+only implemented protocol that reports key release, but nothing outside
+`SharpVision.Terminal` ever names Kitty to ask whether key release is available.
+A future protocol that also reports key release only needs to extend the
+computed property; every caller keeps working unchanged. A computed capability
+is not independently queryable, so it has no `TerminalProtocol` value and does
+not appear in `Support(TerminalProtocol)` or `Features`.
+
 ```mermaid
 flowchart LR
     Description["Validated terminal description"] --> Profile["Immutable TerminalProfile"]

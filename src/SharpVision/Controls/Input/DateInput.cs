@@ -11,7 +11,7 @@ using SharpVision.Terminal.Input;
 
 /// <summary>Displays a formatted date with inline segment editing and a Calendar popup for selection.</summary>
 [PublicAPI]
-public sealed class DateInput: ControlBase
+public sealed class DateInput: PressInteractionBase
 {
     /// <inheritdoc/>
     protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
@@ -32,7 +32,6 @@ public sealed class DateInput: ControlBase
     private readonly Calendar _calendar;
     private readonly Popup _popup;
     private readonly OwnedControlSlot _popupSlot;
-    private readonly PressBehavior _interaction;
     private readonly PopupModalTracker _modalTracker;
     private readonly SegmentFieldBehavior _segments;
     private DateOnly? _value;
@@ -78,25 +77,12 @@ public sealed class DateInput: ControlBase
                 InvalidationImpact.Measure),
             capacity: 1);
         _popupSlot.Add(_popup);
-        _interaction = new PressBehavior(
-            () => Bounds,
-            () => EffectiveIsEnabled && EffectiveIsVisible,
-            () => FocusOwner is null || Focused,
-            RequestFocus,
-            CapturePointer,
-            () => HasPointerCapture,
-            ReleasePointerCapture,
-            SetPressed,
-            Activate,
-            () => Capabilities.KittyKeyboard.Authoritative);
         _segments = new SegmentFieldBehavior(
             BuildSegments,
             ApplySegmentDigit,
             ApplySegmentIncrement,
             ClearSegmentValue,
             () => Invalidate(InvalidationImpact.Render));
-        Focusable = true;
-        TabStop = true;
         TabNavigation = TabNavigation.None;
     }
 
@@ -568,7 +554,7 @@ public sealed class DateInput: ControlBase
 
         if (!eventArgs.Handled)
         {
-            _interaction.Handle(eventArgs);
+            Interaction.Handle(eventArgs);
         }
 
         if (!eventArgs.Handled)
@@ -581,19 +567,11 @@ public sealed class DateInput: ControlBase
     protected override void OnFocusChanged(bool focused)
     {
         base.OnFocusChanged(focused);
-        _interaction.FocusChanged(focused);
 
         if (focused)
         {
             _segments.ActivateFirstSegment();
         }
-    }
-
-    /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
-        base.OnLostPointerCapture(reason);
-        _interaction.CaptureLost();
     }
 
     /// <inheritdoc/>
@@ -611,7 +589,6 @@ public sealed class DateInput: ControlBase
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        _interaction.Unavailable();
 
         if (reason == ReleaseReason.Disposed)
         {
@@ -629,7 +606,8 @@ public sealed class DateInput: ControlBase
 
     #region Drop-down coordination
 
-    private void Activate(ActivationCause cause)
+    /// <inheritdoc/>
+    protected override void Activate(ActivationCause cause)
     {
         if (cause == ActivationCause.Keyboard)
         {

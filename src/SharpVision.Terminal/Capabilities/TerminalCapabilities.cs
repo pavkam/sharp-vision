@@ -90,6 +90,21 @@ public sealed record TerminalCapabilities
     /// <summary>Gets Kitty keyboard protocol support.</summary>
     public Feature KittyKeyboard { get; init; } = Feature.Unknown;
 
+    /// <summary>
+    /// Gets whether the terminal reliably reports both key press and key release (key-up) events,
+    /// so a caller can safely latch state between a press and its matching release instead of
+    /// treating every activation as one instantaneous pulse.
+    /// </summary>
+    /// <remarks>
+    /// This is a behavioral guarantee, not a wire protocol of its own: it is currently implied
+    /// entirely by an authoritative <see cref="KittyKeyboard"/> profile, the only implemented
+    /// protocol that reports key release. Exposing it as its own named capability lets a caller
+    /// depend on the behavior it actually needs rather than on which specific terminal protocol
+    /// happens to provide it today; a future protocol that also reports key release only needs to
+    /// extend this computed value, with no change required outside this assembly.
+    /// </remarks>
+    public Feature KeyReleaseEvents => KittyKeyboard;
+
     /// <summary>Gets xterm modifyOtherKeys protocol support.</summary>
     public Feature XtermKeyboard { get; init; } = Feature.Unknown;
 

@@ -337,6 +337,7 @@ namespace SharpVision.Terminal.Capabilities
         public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Capabilities.ProtocolSupport> Features { get; }
         public SharpVision.Terminal.Capabilities.Feature FocusReporting { get; init; }
         public SharpVision.Terminal.Capabilities.Feature ItermImages { get; init; }
+        public SharpVision.Terminal.Capabilities.Feature KeyReleaseEvents { get; }
         public SharpVision.Terminal.Capabilities.Feature KittyClipboard { get; init; }
         public SharpVision.Terminal.Capabilities.Feature KittyGraphics { get; init; }
         public SharpVision.Terminal.Capabilities.Feature KittyKeyboard { get; init; }

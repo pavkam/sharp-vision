@@ -5,14 +5,15 @@ function components, reconciliation, or hook-style state.
 
 ## Choose the right base type
 
-| Requirement                            | Base type              | Ownership model                                   |
-| -------------------------------------- | ---------------------- | ------------------------------------------------- |
-| Draw one custom cell surface           | `ControlBase`          | No public child                                   |
-| Expose replaceable single content      | `ContentControl`       | Caller owns zero or one content value             |
-| Reuse press/capture activation         | `PressableBase`        | Replaceable content plus activation state machine |
-| Retain private implementation controls | `CompositeControlBase` | Constructor creates one permanent private root    |
-| Expose typed semantic items            | `ItemsControl`         | Public items, private presentation controls       |
-| Expose arbitrary public children       | `Container`            | Ordered caller-managed child collection           |
+| Requirement                                         | Base type              | Ownership model                                     |
+| --------------------------------------------------- | ---------------------- | --------------------------------------------------- |
+| Draw one custom cell surface                        | `ControlBase`          | No public child                                     |
+| Expose replaceable single content                   | `ContentControl`       | Caller owns zero or one content value               |
+| Reuse press/capture activation, single text caption | `PressableBase`        | No public child; `Text` is the sole caption surface |
+| Reuse press/capture activation, arbitrary content   | `PressInteractionBase` | Whatever ownership role the concrete control needs  |
+| Retain private implementation controls              | `CompositeControlBase` | Constructor creates one permanent private root      |
+| Expose typed semantic items                         | `ItemsControl`         | Public items, private presentation controls         |
+| Expose arbitrary public children                    | `Container`            | Ordered caller-managed child collection             |
 
 The contracts for [`Container`](../controls/container.md#overview),
 [`ContentControl`](../controls/content-control.md#overview),

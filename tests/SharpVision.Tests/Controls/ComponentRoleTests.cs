@@ -60,7 +60,7 @@ public sealed class ComponentRoleTests
             typeof(ProbePressable)
         ];
 
-        pressable.BaseType.ShouldBe(typeof(ControlBase));
+        pressable.BaseType.ShouldBe(typeof(PressInteractionBase));
         pressable.GetProperty(nameof(ContentControl.Content),
                 BindingFlags.Public | BindingFlags.Instance)
             .ShouldBeNull();
@@ -103,7 +103,7 @@ public sealed class ComponentRoleTests
     {
         var type = typeof(ComboBox);
 
-        type.BaseType.ShouldBe(typeof(ControlBase));
+        type.BaseType.ShouldBe(typeof(PressInteractionBase));
         type.GetProperty(nameof(ContentControl.Content), BindingFlags.Public | BindingFlags.Instance).ShouldBeNull();
         type.GetProperty("Children", BindingFlags.Public | BindingFlags.Instance).ShouldBeNull();
         type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)

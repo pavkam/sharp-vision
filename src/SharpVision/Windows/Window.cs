@@ -63,7 +63,7 @@ public partial class Window: ChromeAuthoringFloatingSurface, IOverlayPositionCon
             ReleasePointerCapture,
             SetClosePressed,
             _ => RequestClose(),
-            () => Capabilities.KittyKeyboard.Authoritative);
+            () => Capabilities.KeyReleaseEvents.Authoritative);
         PropertyChanged += OnWindowPropertyChanged;
     }
 

@@ -2,26 +2,40 @@
 
 ## Overview
 
-`PressableBase : ControlBase` is the public base for a focusable,
-single-text-caption control that completes a semantic activation through
-keyboard or pointer input. `Pressable<TStyle>` adds the standard primary
-`Style`/`ActualStyle` slot on top of `PressableBase` for a pressable with an
-immutable complete typed style. `PressableBase` has no `Content` and no
-`Children` collection: the only caption surface is the string `Text` property,
-backed by a lazily materialized owned caption child that never allocates until a
-control's text is first assigned. A control that needs arbitrary owned content
-instead of a plain caption does not derive from `PressableBase` — `ListItem`
-composes the same shared press behavior directly while keeping
+`PressInteractionBase : ControlBase` is the public base for any focusable
+control that completes a semantic activation through keyboard or pointer input,
+independent of what content the concrete control owns. It builds the shared
+press-interaction state machine, makes the control focusable, and forwards
+focus-loss, capture-loss, and availability-loss notifications into that state
+machine; a concrete control implements `Activate(ActivationCause)` and, when its
+own event handling needs to intercept or short-circuit routed events first (a
+drop-down's own Escape/arrow-key handling, for example), overrides `OnEvent` and
+forwards to the protected `Interaction` member itself at the point that fits its
+own routing.
+
+`PressableBase : PressInteractionBase` layers the single-text-caption authoring
+role on top: no `Content` and no `Children` collection, with the only caption
+surface being the string `Text` property, backed by a lazily materialized owned
+caption child that never allocates until a control's text is first assigned.
+`Pressable<TStyle>` further adds the standard primary `Style`/`ActualStyle` slot
+on top of `PressableBase` for a pressable with an immutable complete typed
+style. A control that needs arbitrary owned content instead of a plain caption
+does not derive from `PressableBase` — it derives from `PressInteractionBase`
+directly instead, the way [`ComboBox`](input/combo-box.md#overview),
+`DateInput`, and `DateTimeInput` do for their popup-backed fields. `ListItem`
+composes the same shared press behavior directly (not through
+`PressInteractionBase`) while keeping
 [`ContentControl`](content-control.md#overview)'s replaceable `Content` edge for
-realized template output.
+realized template output, since it already derives from `ContentControl` for
+that reason.
 
 Concrete controls implement `Activate(ActivationCause)`. `Button`, `CheckBox`,
 and `RadioButton` use `Pressable<TStyle>`; `HyperlinkButton`, `MenuItem`, and
 `NavigationViewItem` use `PressableBase` directly; each internal `TabHeader`
 also does, with its own field-backed `Text` override that never materializes a
 caption child. A control whose face is derived from data rather than a caption,
-such as [`ComboBox`](input/combo-box.md#overview), derives from `ControlBase`
-instead of pretending to be a `PressableBase`.
+such as [`ComboBox`](input/combo-box.md#overview), derives from
+`PressInteractionBase` instead of pretending to be a `PressableBase`.
 
 ## API
 
@@ -77,11 +91,17 @@ already clear. Keyboard and pointer completions carry the `Keyboard` and
 `Pointer` `ActivationCause` values; a concrete programmatic API uses
 `Programmatic`.
 
-The input state machine is one internal composed behavior, also composed by
-`ComboBox`, `DateInput`, `DateTimeInput`, `Expander`, and `Window`. It owns no
-control-tree state and operates only through the protected focus and capture
-boundaries. That keeps the public inheritance role about replaceable single
-content, rather than using inheritance merely to reuse event handling.
+The input state machine is one internal composed behavior, built once by
+`PressInteractionBase` and inherited by every `PressableBase` descendant as well
+as `ComboBox`, `DateInput`, and `DateTimeInput`. `Expander`, `ListItem`, and
+`Window` compose the same behavior directly instead of through
+`PressInteractionBase`, since each already derives from a different public base
+(`HeaderedContentControl`, `ContentControl`, and
+`ChromeAuthoringFloatingSurface` respectively) for its own content role. In
+every case the behavior owns no control-tree state and operates only through the
+protected focus and capture boundaries, keeping the public inheritance role
+about replaceable content, rather than using inheritance merely to reuse event
+handling.
 
 ## Visual state and extension
 
@@ -122,12 +142,13 @@ public sealed class ActionChip : PressableBase
 
 ## Expected behavior
 
-A `PressableBase` derives from `ControlBase`, not `ContentControl`, and exposes
-no `Content` or `Children`; `Text` is the sole caption surface, and assigning it
-notifies exactly once and is silent on same-value assignment. Space and Enter
-follow the transitions above, pointer presses that originate on the owned
-caption child still route focus and capture to the owner, and an inside release
-activates exactly once while an outside release cancels. Every availability
-change cancels a held press without activating, visual-state changes request
-their combined impact, callbacks arrive in the documented order, and Unicode
-captions and tiny bounds render safely. Tests cover each of these paths.
+A `PressableBase` derives from `PressInteractionBase`, not `ContentControl`, and
+exposes no `Content` or `Children`; `Text` is the sole caption surface, and
+assigning it notifies exactly once and is silent on same-value assignment. Space
+and Enter follow the transitions above, pointer presses that originate on the
+owned caption child still route focus and capture to the owner, and an inside
+release activates exactly once while an outside release cancels. Every
+availability change cancels a held press without activating, visual-state
+changes request their combined impact, callbacks arrive in the documented order,
+and Unicode captions and tiny bounds render safely. Tests cover each of these
+paths.

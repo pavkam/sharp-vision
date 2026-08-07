@@ -2,15 +2,16 @@
 
 ## Overview
 
-`ComboBox` derives directly from `ControlBase`. It shows the selected value in a
-compact field and owns a private [Popup](../popups/popup.md#overview) containing
-a [ListView](../collections/list-view.md#overview) that opens immediately below
-the field. The Popup clears its surface before the list renders, so choices
-never show through content behind the drop-down. The connected frame omits the
-edge that adjoins the field: with below placement the first ListView row sits at
-`ComboBox.Bounds.Bottom`, while the above fallback omits the bottom edge and
-puts the last ListView row immediately before `ComboBox.Bounds.Y`. The other
-three frame edges stay visible.
+`ComboBox` derives directly from
+[`PressInteractionBase`](../pressable.md#overview). It shows the selected value
+in a compact field and owns a private [Popup](../popups/popup.md#overview)
+containing a [ListView](../collections/list-view.md#overview) that opens
+immediately below the field. The Popup clears its surface before the list
+renders, so choices never show through content behind the drop-down. The
+connected frame omits the edge that adjoins the field: with below placement the
+first ListView row sits at `ComboBox.Bounds.Bottom`, while the above fallback
+omits the bottom edge and puts the last ListView row immediately before
+`ComboBox.Bounds.Y`. The other three frame edges stay visible.
 
 The list uses the same keyboard, pointer, selection, and scrolling semantics as
 a standalone list. When the resolved appearance supplies a
@@ -21,8 +22,9 @@ interior row, including trailing blank cells, following the
 The selected value is the field's face, so `ComboBox` exposes neither `Content`
 nor `Children`. It owns exactly one popup-layer framework part, and that
 `Popup.Content` owns the private ListView. Keyboard and pointer press mechanics
-are composed from the same internal behavior `PressableBase` uses, without
-taking on its single-content inheritance role.
+are inherited from [`PressInteractionBase`](../pressable.md#overview), the same
+base `PressableBase` derives from, without taking on `PressableBase`'s
+single-text-caption inheritance role.
 
 ## API
 

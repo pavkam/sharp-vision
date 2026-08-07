@@ -15,7 +15,7 @@ using SharpVision.Terminal.Input;
 
 /// <summary>Displays one selected value and composes a private popup list for choosing another.</summary>
 [PublicAPI]
-public sealed class ComboBox: ControlBase
+public sealed class ComboBox: PressInteractionBase
 {
     // A field has one content row, two border columns, and one indicator cell.
     private const int _fieldContentHeight = 1;
@@ -26,7 +26,6 @@ public sealed class ComboBox: ControlBase
     private readonly ListView _list;
     private readonly Popup _popup;
     private readonly OwnedControlSlot _popupSlot;
-    private readonly PressBehavior _interaction;
     private readonly PopupModalTracker _modalTracker;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private string _typeAhead = string.Empty;
@@ -73,19 +72,6 @@ public sealed class ComboBox: ControlBase
             ScrollBarStyle.ForwardingDefinition,
             nameof(ScrollBarStyle));
         BindStyle(_scrollBarStyle, _list, nameof(ScrollBarStyle));
-        _interaction = new PressBehavior(
-            () => Bounds,
-            () => EffectiveIsEnabled && EffectiveIsVisible,
-            () => FocusOwner is null || Focused,
-            RequestFocus,
-            CapturePointer,
-            () => HasPointerCapture,
-            ReleasePointerCapture,
-            SetPressed,
-            Activate,
-            () => Capabilities.KittyKeyboard.Authoritative);
-        Focusable = true;
-        TabStop = true;
         TabNavigation = TabNavigation.None;
     }
 
@@ -477,27 +463,13 @@ public sealed class ComboBox: ControlBase
             }
         }
 
-        _interaction.Handle(eventArgs);
+        Interaction.Handle(eventArgs);
 
         if (!eventArgs.Handled && eventArgs is KeyEventArgs { Stroke: { Action: KeyAction.Press } key }
             && key.Code is Code.Delete or Code.Backspace)
         {
             eventArgs.Handled = ClearSelection();
         }
-    }
-
-    /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-        _interaction.FocusChanged(focused);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
-        base.OnLostPointerCapture(reason);
-        _interaction.CaptureLost();
     }
 
     /// <inheritdoc/>
@@ -515,7 +487,6 @@ public sealed class ComboBox: ControlBase
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        _interaction.Unavailable();
 
         if (reason == ReleaseReason.Disposed)
         {
@@ -534,7 +505,8 @@ public sealed class ComboBox: ControlBase
 
     #region Drop-down coordination
 
-    private void Activate(ActivationCause cause)
+    /// <inheritdoc/>
+    protected override void Activate(ActivationCause cause)
     {
         _ = cause;
         Opened = !Opened;
