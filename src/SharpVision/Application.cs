@@ -1832,7 +1832,13 @@ public sealed class Application:
                 (failure is not OperationCanceledException || !_lifetime.IsCancellationRequested))
             {
                 Report(failure);
-                return;
+
+                // No early return here even though the write failed: a handler that marks the
+                // failure handled is the documented way to keep a surviving application running,
+                // and _stopping stays false in that case, so a render deferred behind this
+                // out-of-band write must still be pumped or it is stranded until an unrelated
+                // invalidation or idle tick. When the failure went unhandled, Report already
+                // latched _stopping above, and PumpAfterWrite's own guard makes this a no-op.
             }
 
             PumpAfterWrite();
