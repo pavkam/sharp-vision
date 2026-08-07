@@ -23,9 +23,14 @@ public sealed class FilePickerDialogSurfaceTests
             dialog,
             new Size(76, 33),
             TestContext.Current.CancellationToken);
+        var path = OwnedTree.Find<TextInput>(dialog).ShouldNotBeNull();
+
+        // A directly-mounted dialog never receives PresentAsync's initial focus of
+        // GetModalFocusTarget(); apply it explicitly so this test reproduces the
+        // same initial-focus sequence a real caller's PresentAsync would produce.
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(path).ShouldBeTrue(), "focus path input");
         await WaitUntilAsync(surface, () => !dialog.Loading);
         var window = OwnedTree.Find<Window>(dialog).ShouldNotBeNull();
-        var path = OwnedTree.Find<TextInput>(dialog).ShouldNotBeNull();
         var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
         var listSurface = list.Parent.ShouldBeOfType<Dock>();
         var root = listSurface.Parent.ShouldBeOfType<Grid>();

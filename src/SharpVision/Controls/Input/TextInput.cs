@@ -753,10 +753,32 @@ public sealed class TextInput: ControlBase
     {
         base.OnFocusChanged(focused);
 
-        if (!focused)
+        if (focused)
         {
-            CancelPointer(releaseCapture: true);
+            // The caret-reveal chase resumes on focus, but nothing else forces a
+            // pass immediately - the next arrange or edit could be arbitrarily far
+            // off. Force one now so the caret becomes visible the instant focus
+            // lands, matching what a sighted user expects when they tab or click
+            // into a field whose caret is currently out of view.
+            //
+            // A default Rect means ArrangeOverride has never run (construction, or
+            // detached from layout), so there is nothing to reveal yet - the
+            // upcoming arrange's own EnsureCaretVisible call covers that case. One
+            // axis legitimately sitting at 0 post-arrange (for example a scrollbar
+            // consuming a viewport's only row) is not the same as never-arranged,
+            // so it still gets a chase pass on whichever axis remains usable.
+            if (_editorBounds != default)
+            {
+                EnsureCaretVisible(_editorBounds);
+            }
+
+            return;
         }
+
+        // Losing focus does not touch either offset - a caret nobody can see has
+        // nothing left to reveal, and resetting would discard a position the user
+        // may have reached by wheel-scrolling (which stays focus-independent).
+        CancelPointer(releaseCapture: true);
     }
 
     private bool Commit(EditResult proposal, bool recordHistory)
@@ -1268,8 +1290,22 @@ public sealed class TextInput: ControlBase
         if (WordWrap && _visualLines.Length > 0)
         {
             _contentHeight = _visualLines.Length;
-            Position(_selection.Caret, out _, out var y);
-            VerticalOffset = Offset(VerticalOffset, y, bounds.Height, _contentHeight);
+
+            // The caret-reveal chase only runs while focused - nobody can see an
+            // unfocused caret, so there is nothing to chase into view. The offset
+            // is still clamped unconditionally below so a shrunken viewport (a
+            // resize, or text deleted out from under a wheel-scrolled position)
+            // never leaves a stale out-of-range offset behind.
+            if (Focused)
+            {
+                Position(_selection.Caret, out _, out var y);
+                VerticalOffset = Offset(VerticalOffset, y, bounds.Height, _contentHeight);
+            }
+            else
+            {
+                VerticalOffset = ClampOffset(VerticalOffset, bounds.Height, _contentHeight);
+            }
+
             return;
         }
 
@@ -1278,13 +1314,34 @@ public sealed class TextInput: ControlBase
             MeasureText(out _contentWidth, out _contentHeight);
         }
 
-        Position(_selection.Caret, out var x, out var caretY);
+        // Same focus gate as the word-wrap branch above: chase the caret only while
+        // focused, otherwise just clamp. This is what lets an unfocused, never-
+        // chased field keep showing its value from the first character, and lets a
+        // blurred field keep whatever offset a wheel scroll (which stays focus-
+        // independent) last left it at.
+        if (Focused)
+        {
+            Position(_selection.Caret, out var x, out var caretY);
 
-        HorizontalOffset = AlignToClusterStart(
-            Offset(HorizontalOffset, x, bounds.Width, _contentWidth),
-            caretY);
-        VerticalOffset = Offset(VerticalOffset, caretY, bounds.Height, _contentHeight);
+            HorizontalOffset = AlignToClusterStart(
+                Offset(HorizontalOffset, x, bounds.Width, _contentWidth),
+                caretY);
+            VerticalOffset = Offset(VerticalOffset, caretY, bounds.Height, _contentHeight);
+        }
+        else
+        {
+            HorizontalOffset = ClampOffset(HorizontalOffset, bounds.Width, _contentWidth);
+            VerticalOffset = ClampOffset(VerticalOffset, bounds.Height, _contentHeight);
+        }
     }
+
+    /// <summary>Clamps an offset into the valid scroll range for a given viewport and content
+    /// size without chasing any caret position - the unfocused counterpart of <see
+    /// cref="Offset(int, int, int, int)"/>. Keeps an offset left behind by a wheel scroll (or any
+    /// prior focused chase) in range after the viewport or content size changes, without pulling
+    /// it toward a caret nobody can currently see.</summary>
+    private static int ClampOffset(int current, int viewport, int content) =>
+        viewport <= 0 ? 0 : Math.Clamp(current, 0, Math.Max(0, content - viewport + 1));
 
     /// <summary>Snaps a rightward-scrolled horizontal offset down to the start of whichever cluster
     /// it lands inside, on the given row.</summary>

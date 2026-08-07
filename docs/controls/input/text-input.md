@@ -113,7 +113,16 @@ unconditionally validated `Edit.MoveHome`/`Edit.MoveEnd`.
   grapheme boundaries before committing a forward range.
 - `SelectedText` returns a caller-owned copy. `HorizontalOffset` and
   `VerticalOffset` expose the automatic caret scrolling in cells and logical
-  lines.
+  lines. The automatic caret-reveal chase that keeps these offsets tracking the
+  caret runs only while the editor is focused, since there is no visible caret
+  to reveal otherwise. Gaining focus forces one reveal pass immediately, so a
+  field whose caret was out of view scrolls the instant it becomes focused
+  instead of waiting for the next edit or layout pass. Losing focus leaves both
+  offsets exactly where they were — a field left scrolled while focused stays
+  scrolled after it blurs, and an editor that was never focused keeps showing
+  its value from the first character. Only content or viewport size changes
+  still clamp an out-of-range offset back into bounds, focused or not. Wheel
+  scrolling is unaffected by any of this — see below.
 - `CursorShape` accepts only `Block`, `Underline`, or `Bar`. Changing it is
   dispatcher-affine and invalidates rendering only. The focused editor commits
   the value to the semantic frame; a terminal without a complete described
@@ -213,11 +222,13 @@ grapheme beneath the pointer. The routed input manager owns the deterministic
 owns only the resulting grapheme-aligned selection.
 
 Wheel deltas scroll the editor's existing horizontal and vertical content
-offsets in cell and logical-line units. The editor handles a wheel event only
-when at least one enabled offset changes. At either endpoint it leaves an
-otherwise unmoved event unhandled, so normal bubble routing can offer it to an
-enclosing [scrollable `Container`](../../concepts/scrolling.md) instead of
-swallowing nested scrolling.
+offsets in cell and logical-line units, whether or not the editor is focused —
+unlike the caret-reveal chase described above, wheel scrolling never depends on
+focus. The editor handles a wheel event only when at least one enabled offset
+changes. At either endpoint it leaves an otherwise unmoved event unhandled, so
+normal bubble routing can offer it to an enclosing
+[scrollable `Container`](../../concepts/scrolling.md) instead of swallowing
+nested scrolling.
 
 ## Example
 

@@ -533,6 +533,7 @@ public sealed class TextInputTests
     {
         var control = new TextInput { Text = "abcdefghij", CaretIndex = 0 };
         control.SetTheme(TestThemes.BorderlessInput);
+        control.SetFocused(true);
         new LayoutEngine().Layout(control, new Size(4, 1));
 
         control.HorizontalOffset.ShouldBe(0);
@@ -565,6 +566,7 @@ public sealed class TextInputTests
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         control.SetTheme(TestThemes.BorderlessInput);
+        control.SetFocused(true);
         var engine = new LayoutEngine();
 
         engine.Layout(control, new Size(3, 2));
@@ -577,6 +579,78 @@ public sealed class TextInputTests
         control.VerticalOffset.ShouldBe(0);
         engine.Layout(control, new Size(10, 5));
         control.HorizontalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies an unfocused editor never chases a caret into view: a narrow explicit
+    /// Width holding a longer, programmatically-assigned Text stays scrolled to the start after
+    /// layout instead of jumping to reveal the caret the assignment moved to the text's end.</summary>
+    [Fact]
+    public void Layout_WhenUnfocusedNarrowWidthGetsLongerText_KeepsHorizontalOffsetAtZero()
+    {
+        var control = new TextInput { Width = Length.Cells(4) };
+        control.SetTheme(TestThemes.BorderlessInput);
+        control.Text = "abcdefghij";
+
+        new LayoutEngine().Layout(control, new Size(4, 1));
+
+        control.Focused.ShouldBeFalse();
+        control.HorizontalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a wheel-scrolled offset on an unfocused editor survives a subsequent
+    /// layout pass unchanged: the caret-reveal chase never runs while unfocused, and wheel
+    /// scrolling itself stays focus-independent, so nothing pulls the offset back to 0.</summary>
+    [Fact]
+    public void Layout_WhenUnfocusedEditorIsWheelScrolled_PreservesOffsetAcrossRelayout()
+    {
+        var control = new TextInput { Text = "abcdefghij", CaretIndex = 0, Width = Length.Cells(4) };
+        control.SetTheme(TestThemes.BorderlessInput);
+        new LayoutEngine().Layout(control, new Size(4, 1));
+
+        Route(control, Wheel(wheelX: 2, wheelY: 0), Events.Pointer);
+        control.Focused.ShouldBeFalse();
+        var scrolled = control.HorizontalOffset;
+        scrolled.ShouldBeGreaterThan(0);
+
+        new LayoutEngine().Layout(control, new Size(4, 1));
+
+        control.HorizontalOffset.ShouldBe(scrolled);
+    }
+
+    /// <summary>Verifies gaining focus forces one caret-reveal pass: an editor left unfocused
+    /// with its caret past the viewport (and therefore never chased into view) scrolls the
+    /// instant it receives focus, without waiting for a subsequent edit or layout pass.</summary>
+    [Fact]
+    public void SetFocused_WhenGainingFocusWithCaretOutOfView_RevealsCaret()
+    {
+        var control = new TextInput { Text = "abcdefghij", Width = Length.Cells(4) };
+        control.SetTheme(TestThemes.BorderlessInput);
+        new LayoutEngine().Layout(control, new Size(4, 1));
+
+        control.Focused.ShouldBeFalse();
+        control.HorizontalOffset.ShouldBe(0);
+
+        control.SetFocused(true);
+
+        control.HorizontalOffset.ShouldBeGreaterThan(0);
+    }
+
+    /// <summary>Verifies losing focus preserves whatever offset the focused chase produced,
+    /// instead of resetting it the way an unconditional re-chase on the next pass would.</summary>
+    [Fact]
+    public void SetFocused_WhenLosingFocusAfterChase_PreservesOffset()
+    {
+        var control = new TextInput { Text = "abcdefghij", Width = Length.Cells(4) };
+        control.SetTheme(TestThemes.BorderlessInput);
+        control.SetFocused(true);
+        new LayoutEngine().Layout(control, new Size(4, 1));
+
+        var chased = control.HorizontalOffset;
+        chased.ShouldBeGreaterThan(0);
+
+        control.SetFocused(false);
+
+        control.HorizontalOffset.ShouldBe(chased);
     }
 
     /// <summary>Verifies a wheel scroll moves the editor while movement remains and bubbles at its endpoint.</summary>

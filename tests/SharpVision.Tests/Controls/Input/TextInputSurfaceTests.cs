@@ -639,4 +639,34 @@ public sealed class TextInputSurfaceTests
         input.HorizontalOffset.ShouldBe(0);
         surface.ShouldRender("X");
     }
+
+    /// <summary>Verifies a never-focused editor with an explicit narrow Width renders its
+    /// leading character instead of scrolling to reveal a caret nobody has seen, mirroring
+    /// TableSurfaceTests's auto-column coverage of the same rule for auto-sized editors: the
+    /// caret-reveal chase never runs while unfocused, so content naturally starts at the first
+    /// character exactly as it was assigned.</summary>
+    [Fact]
+    public async Task Render_WhenNeverFocusedNarrowWidthHoldsLongerText_RendersLeadingCharacterAsync()
+    {
+        // Arrange
+        var input = new TextInput
+        {
+            Text = "abcdefghij",
+            Width = Length.Cells(4),
+            Height = Length.Cells(1),
+            ScrollBars = ScrollBars.None
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(4, 1),
+            TestThemes.BorderlessInput,
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        input.Focused.ShouldBeFalse();
+        input.HorizontalOffset.ShouldBe(0);
+        surface.ShouldRender("abcd");
+    }
 }
