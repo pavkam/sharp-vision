@@ -17,6 +17,12 @@ internal sealed class TablePresenter: Container
     private const int _headerTextHeight = 1;
     private const int _gridLineThickness = 1;
 
+    // Reserved uniformly on every column's own automatic header request, not only the sorted
+    // one, so the sorted column can move between columns without any column's measured width
+    // changing. Reserving it only on the sorted column would make every click that moves the
+    // sort to a new column also resize that column's header, jittering the whole row.
+    private const int _sortIndicatorWidth = 1;
+
     // A complete constructor Face outranks every theme state contribution and disables ambient
     // inheritance, permanently opting this presenter out of visual-state feedback. Only the
     // transparent background is presenter-specific; the rest matches the ControlBase role's own
@@ -283,12 +289,28 @@ internal sealed class TablePresenter: Container
             for (var index = 0; index < _owner.Columns.Count; index++)
             {
                 var area = new Rect(x, ContentSlot.Y + _owner.ActualStyle.CellPadding.Top, ColumnWidths[index], _headerTextHeight);
-                var text = canvas.Clip(_owner.ActualStyle.CellPadding.Deflate(area));
+                var padded = _owner.ActualStyle.CellPadding.Deflate(area);
+                var isSortedColumn = index == _owner.SortColumnIndex && _owner.SortDirection != TableSortDirection.None;
+
+                // The sorted column's caption stops one cell short of its own trailing edge -
+                // the reserved cell every column's measured width already carries - so the
+                // indicator glyph drawn there can never collide with the caption text.
+                var captionWidth = isSortedColumn ? Math.Max(0, padded.Width - 1) : padded.Width;
+                var text = canvas.Clip(new Rect(padded.X, padded.Y, captionWidth, padded.Height));
                 _ = text.Draw(
                     _owner.Columns[index].Header.AsSpan(),
                     new Point(area.X + _owner.ActualStyle.CellPadding.Left, area.Y),
                     header,
                     background: BackgroundMode.Transparent);
+
+                if (isSortedColumn && padded.Width > 0)
+                {
+                    var indicator = _owner.SortDirection == TableSortDirection.Ascending
+                        ? _owner.ResolvedSortAscendingGlyph
+                        : _owner.ResolvedSortDescendingGlyph;
+                    canvas.DrawRune(indicator, new Point(padded.Right - 1, padded.Y), header, BackgroundMode.Transparent);
+                }
+
                 x = x.Add(ColumnWidths[index].Add(ColumnGap));
             }
         }
@@ -397,7 +419,9 @@ internal sealed class TablePresenter: Container
         for (var columnIndex = 0; columnIndex < _owner.Columns.Count; columnIndex++)
         {
             lengths[columnIndex] = _owner.Columns[columnIndex].Width;
-            automatic[columnIndex] = MeasureCells(_owner.Columns[columnIndex].Header).Add(_owner.ActualStyle.CellPadding.Horizontal);
+            automatic[columnIndex] = MeasureCells(_owner.Columns[columnIndex].Header)
+                .Add(_owner.ActualStyle.CellPadding.Horizontal)
+                .Add(_sortIndicatorWidth);
         }
 
         foreach (var row in _owner.Rows)

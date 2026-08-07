@@ -1829,8 +1829,11 @@ namespace SharpVision.Controls.Layout
     public readonly struct TableGlyphs : System.IEquatable<SharpVision.Controls.Layout.TableGlyphs>
     {
         public TableGlyphs(System.Text.Rune horizontal, System.Text.Rune vertical, System.Text.Rune cross) { }
+        public TableGlyphs(System.Text.Rune horizontal, System.Text.Rune vertical, System.Text.Rune cross, System.Text.Rune sortAscending, System.Text.Rune sortDescending) { }
         public System.Text.Rune Cross { get; init; }
         public System.Text.Rune Horizontal { get; init; }
+        public System.Text.Rune SortAscending { get; init; }
+        public System.Text.Rune SortDescending { get; init; }
         public System.Text.Rune Vertical { get; init; }
         public static SharpVision.Controls.Layout.TableGlyphs Default { get; }
     }

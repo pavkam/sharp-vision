@@ -569,14 +569,17 @@ public sealed class Table: ItemsControl
             SortDirection = TableSortDirection.None;
             ReorderRows(_sourceRows);
 
+            // Render, not None: the header chrome draws a direction glyph in the sorted column,
+            // so clearing the sort must repaint even when ReorderRows finds the row order already
+            // matches insertion order and skips its own invalidation.
             if (resetColumnChanged)
             {
-                NotifyPropertyChanged(nameof(SortColumnIndex), InvalidationImpact.None);
+                NotifyPropertyChanged(nameof(SortColumnIndex), InvalidationImpact.Render);
             }
 
             if (resetDirectionChanged)
             {
-                NotifyPropertyChanged(nameof(SortDirection), InvalidationImpact.None);
+                NotifyPropertyChanged(nameof(SortDirection), InvalidationImpact.Render);
             }
 
             // SortChanged reports a real change to the sort settings, not merely that
@@ -614,14 +617,16 @@ public sealed class Table: ItemsControl
 
         ReorderRows(ordered);
 
+        // Render, not None: see the matching comment in the reset branch above - the header
+        // glyph must repaint even on the rare reorder that leaves row order unchanged.
         if (columnChanged)
         {
-            NotifyPropertyChanged(nameof(SortColumnIndex), InvalidationImpact.None);
+            NotifyPropertyChanged(nameof(SortColumnIndex), InvalidationImpact.Render);
         }
 
         if (directionChanged)
         {
-            NotifyPropertyChanged(nameof(SortDirection), InvalidationImpact.None);
+            NotifyPropertyChanged(nameof(SortDirection), InvalidationImpact.Render);
         }
 
         // SortChanged reports a real change to the sort settings, not merely that SetSort was
@@ -761,6 +766,12 @@ public sealed class Table: ItemsControl
 
     /// <summary>Gets the terminal-safe grid-intersection glyph for the current theme and cell policy.</summary>
     internal Rune ResolvedCrossGridGlyph => ResolveGridGlyph(ActualStyle.Glyphs.CrossGlyph);
+
+    /// <summary>Gets the terminal-safe ascending sort indicator for the current theme and cell policy.</summary>
+    internal Rune ResolvedSortAscendingGlyph => ResolveGridGlyph(ActualStyle.Glyphs.SortAscendingGlyph);
+
+    /// <summary>Gets the terminal-safe descending sort indicator for the current theme and cell policy.</summary>
+    internal Rune ResolvedSortDescendingGlyph => ResolveGridGlyph(ActualStyle.Glyphs.SortDescendingGlyph);
 
     #endregion
 

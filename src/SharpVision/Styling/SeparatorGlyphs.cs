@@ -13,6 +13,8 @@ internal readonly record struct SeparatorGlyphs
     /// <param name="tableHorizontal">The table horizontal grid glyph.</param>
     /// <param name="tableVertical">The table vertical grid glyph.</param>
     /// <param name="tableCross">The table grid-intersection glyph.</param>
+    /// <param name="tableSortAscending">The table ascending sort indicator.</param>
+    /// <param name="tableSortDescending">The table descending sort indicator.</param>
     /// <param name="tabDivider">The tab-divider glyph.</param>
     /// <param name="tabUnderline">The selected-tab underline glyph.</param>
     public SeparatorGlyphs(
@@ -22,6 +24,8 @@ internal readonly record struct SeparatorGlyphs
         ControlGlyph tableHorizontal,
         ControlGlyph tableVertical,
         ControlGlyph tableCross,
+        ControlGlyph tableSortAscending,
+        ControlGlyph tableSortDescending,
         ControlGlyph tabDivider,
         ControlGlyph tabUnderline)
     {
@@ -31,6 +35,8 @@ internal readonly record struct SeparatorGlyphs
         TableHorizontal = tableHorizontal;
         TableVertical = tableVertical;
         TableCross = tableCross;
+        TableSortAscending = tableSortAscending;
+        TableSortDescending = tableSortDescending;
         TabDivider = tabDivider;
         TabUnderline = tabUnderline;
     }
@@ -52,6 +58,12 @@ internal readonly record struct SeparatorGlyphs
 
     /// <summary>Gets the table grid intersection glyph.</summary>
     public ControlGlyph TableCross { get; }
+
+    /// <summary>Gets the table ascending sort indicator.</summary>
+    public ControlGlyph TableSortAscending { get; }
+
+    /// <summary>Gets the table descending sort indicator.</summary>
+    public ControlGlyph TableSortDescending { get; }
 
     /// <summary>Gets the tab divider.</summary>
     public ControlGlyph TabDivider { get; }

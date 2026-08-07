@@ -333,7 +333,10 @@ public sealed class TableSurfaceTests
         invoked.ShouldBe([second, first]);
     }
 
-    /// <summary>Verifies mounted header presses cycle ascending, descending, and reset sorting.</summary>
+    /// <summary>Verifies mounted header presses cycle ascending, descending, and reset sorting, and
+    /// that the sorted column's header draws the matching direction indicator in its one reserved
+    /// trailing cell - reset leaves that cell showing the caption's own text again, not a stale
+    /// glyph.</summary>
     [Fact]
     public async Task Pointer_WhenHeaderIsPressed_CyclesStableSortDirectionsAsync()
     {
@@ -353,18 +356,25 @@ public sealed class TableSurfaceTests
             table,
             new Size(6, 4),
             TestContext.Current.CancellationToken);
+        var indicatorCell = new Point(3, 0);
+
+        // Unsorted: the reserved trailing cell is still ordinary caption text ("Name"[3] == 'e').
+        surface.Cell(indicatorCell).Text.ShouldBe("e");
 
         await surface.Pointer.ClickAsync(table, new Point(1, 0));
         table.SortDirection.ShouldBe(TableSortDirection.Ascending);
         table.Rows.ShouldBe([second, first]);
+        surface.Cell(indicatorCell).Text.ShouldBe(table.ActualStyle.Glyphs.SortAscending.ToString());
 
         await surface.Pointer.ClickAsync(table, new Point(1, 0));
         table.SortDirection.ShouldBe(TableSortDirection.Descending);
         table.Rows.ShouldBe([first, second]);
+        surface.Cell(indicatorCell).Text.ShouldBe(table.ActualStyle.Glyphs.SortDescending.ToString());
 
         await surface.Pointer.ClickAsync(table, new Point(1, 0));
         table.SortDirection.ShouldBe(TableSortDirection.None);
         table.Rows.ShouldBe([first, second]);
+        surface.Cell(indicatorCell).Text.ShouldBe("e");
         directions.ShouldBe([
             TableSortDirection.Ascending,
             TableSortDirection.Descending,

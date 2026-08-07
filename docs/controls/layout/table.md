@@ -79,12 +79,24 @@ tab-separated text with LF row separators. A host can pass that text to the
 existing application clipboard service; the control does not emit clipboard
 protocol bytes itself.
 
-## Code-owned glyphs
+## Glyphs and sort indicator
 
-`HorizontalGridGlyph`, `VerticalGridGlyph`, and `CrossGridGlyph` are validated
-one-cell local overrides. When they are not set, the table chrome resolves the
-corresponding code-owned separator glyph values with terminal-safe fallbacks.
-`ResetGridGlyphs()` clears all three overrides.
+`TableStyle.Glyphs` is a `TableGlyphs` value with `Horizontal`, `Vertical`, and
+`Cross` grid-line runes plus `SortAscending` and `SortDescending` sort-indicator
+runes. Each member is a validated one-cell rune resolved through the active
+theme, falling back to a terminal-safe code-owned default. A theme authors them
+under `styles.table.glyphs.*`; no bundled theme currently authors a `table`
+section, so every table draws the code-owned defaults until one does.
+
+The sorted column's header reserves one trailing cell inside its own padded
+content area for the direction indicator - `SortAscending` for
+`TableSortDirection.Ascending`, `SortDescending` for
+`TableSortDirection.Descending` - and clips its caption one cell short so the
+caption and the indicator never collide. Every column reserves that trailing
+cell uniformly, not only the currently sorted one, so moving the sort to a
+different column never changes any column's measured header width.
+`TableSortDirection.None` draws no indicator, and the reserved cell goes back to
+ordinary caption text.
 
 ## Layout and ownership
 

@@ -46,7 +46,8 @@ internal static class ControlGlyphs
     /// <summary>Gets structural separator and tab glyphs.</summary>
     public static SeparatorGlyphs Separators { get; } = new(
         Glyph('─', '-'), Glyph('│', '|'), Glyph('─', '-'), Glyph('─', '-'),
-        Glyph('│', '|'), Glyph('┼', '+'), Glyph('│', '|'), Glyph('─', '-'));
+        Glyph('│', '|'), Glyph('┼', '+'), Glyph('▲', '^'), Glyph('▼', 'v'),
+        Glyph('│', '|'), Glyph('─', '-'));
 
     /// <summary>Gets framework-authored text glyphs.</summary>
     public static TextGlyphs Text { get; } = new(Glyph('…', '.'));
