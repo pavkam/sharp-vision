@@ -92,6 +92,9 @@ public sealed class ProtocolRouter: IDisposable
         RouteMultiplexerInput(input);
     }
 
+    /// <summary>Gets the pending lone-Escape ambiguity deadline, or null when none is pending.</summary>
+    public DateTimeOffset? PendingEscapeDeadline => _decoder.PendingEscapeDeadline;
+
     /// <summary>Expires a pending lone Escape when its deadline elapsed.</summary>
     /// <returns>Whether an Escape key was emitted.</returns>
     public bool ExpireEscape() => _decoder.ExpireEscape();

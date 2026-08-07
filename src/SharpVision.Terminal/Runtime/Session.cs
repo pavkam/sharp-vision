@@ -647,6 +647,7 @@ public sealed class Session: IAsyncDisposable
         // that still borrows the rented buffer and observe every abandoned task.
         Task<int>? read = null;
         Task<Dimensions>? resize = null;
+        Task? escapeExpiry = null;
         var preferResize = false;
 
         // Capability publication is the startup barrier. Input may refine the
@@ -672,19 +673,25 @@ public sealed class Session: IAsyncDisposable
                 // always wins outright, and read/resize alternate when both are simultaneously
                 // ready, so neither can starve the other for more than one iteration.
                 var deadlineReady = deadline is not null && deadline.IsCompleted;
+                var escapeReady = escapeExpiry is not null && escapeExpiry.IsCompleted;
                 Task completed;
 
-                if (!deadlineReady && !read.IsCompleted && !resize.IsCompleted)
+                if (!deadlineReady && !escapeReady && !read.IsCompleted && !resize.IsCompleted)
                 {
-                    completed = deadline is null
-                        ? await Task.WhenAny(read, resize).ConfigureAwait(false)
-                        : await Task.WhenAny(read, resize, deadline).ConfigureAwait(false);
+                    completed = (deadline, escapeExpiry) switch
+                    {
+                        (null, null) => await Task.WhenAny(read, resize).ConfigureAwait(false),
+                        ({ } negotiation, null) => await Task.WhenAny(read, resize, negotiation).ConfigureAwait(false),
+                        (null, { } escape) => await Task.WhenAny(read, resize, escape).ConfigureAwait(false),
+                        var (negotiation, escape) => await Task.WhenAny(read, resize, negotiation!, escape!).ConfigureAwait(false)
+                    };
                 }
                 else
                 {
                     completed = deadlineReady switch
                     {
                         true => deadline!,
+                        false when escapeReady => escapeExpiry!,
                         false when read.IsCompleted && resize.IsCompleted => preferResize ? resize : read,
                         false when read.IsCompleted => read,
                         _ => resize
@@ -723,6 +730,22 @@ public sealed class Session: IAsyncDisposable
                         hasPendingResize = false;
                     }
 
+                    continue;
+                }
+
+                if (escapeExpiry is not null && ReferenceEquals(completed, escapeExpiry))
+                {
+                    await escapeExpiry.ConfigureAwait(false);
+
+                    // A timer callback may fire before the provider's wall clock reaches the
+                    // ambiguity deadline - the same slack the negotiation deadline tolerates
+                    // above. ExpireEscape then emits nothing and the pending deadline is simply
+                    // re-armed; when it does emit, the pending deadline is gone and the wake-up
+                    // is retired until the next lone Escape byte.
+                    _ = router.ExpireEscape();
+                    escapeExpiry = router.PendingEscapeDeadline is { } pendingEscape
+                        ? DelayUntilAsync(pendingEscape, linked.Token)
+                        : null;
                     continue;
                 }
 
@@ -786,6 +809,14 @@ public sealed class Session: IAsyncDisposable
 
                 router.Route(buffer.AsSpan(0, count));
 
+                // Routing may have begun, refined, or consumed an ambiguous lone Escape. Mirror
+                // the decoder's pending deadline into a wake-up so the Escape is emitted even
+                // when no further byte ever arrives - an Escape-to-dismiss keypress must not
+                // wait for the next keystroke to be delivered.
+                escapeExpiry = router.PendingEscapeDeadline is { } escapeDeadline
+                    ? DelayUntilAsync(escapeDeadline, linked.Token)
+                    : null;
+
                 Debug.Assert(ready || negotiator is not null, "Incomplete startup always owns a negotiator.");
 
                 if (!ready && negotiator!.Completed)
@@ -823,6 +854,7 @@ public sealed class Session: IAsyncDisposable
             // when a non-cooperative transport outlives the bounded shutdown budget.
             Observe(resize);
             Observe(deadline);
+            Observe(escapeExpiry);
 
             if (await DrainAsync(read).ConfigureAwait(false))
             {

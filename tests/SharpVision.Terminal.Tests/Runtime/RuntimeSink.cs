@@ -36,6 +36,10 @@ internal sealed class RuntimeSink: ISink
     internal List<string> Order { get; } = [];
 
     /// <summary>Gets completion for the first resize callback.</summary>
+    /// <summary>Completes when the first key stroke arrives.</summary>
+    internal TaskCompletionSource StrokeReceived { get; } =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     internal TaskCompletionSource ResizeReceived { get; } =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -70,7 +74,11 @@ internal sealed class RuntimeSink: ISink
     internal List<Exception> Faults { get; } = [];
 
     /// <inheritdoc/>
-    public void Input(in Stroke value) => Strokes.Add(value);
+    public void Input(in Stroke value)
+    {
+        Strokes.Add(value);
+        _ = StrokeReceived.TrySetResult();
+    }
 
     /// <inheritdoc/>
     public void Input(in TerminalText value)

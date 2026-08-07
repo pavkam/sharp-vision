@@ -156,6 +156,11 @@ public sealed class InputDecoder: IDisposable
         }
     }
 
+    /// <summary>Gets the pending lone-Escape ambiguity deadline, or null when no Escape is
+    /// pending. The read loop mirrors this into a wake-up so <see cref="ExpireEscape"/> runs
+    /// even when no further byte ever arrives.</summary>
+    public DateTimeOffset? PendingEscapeDeadline => _escapePending ? _escapeDeadline : null;
+
     /// <summary>Emits a pending lone Escape after its ambiguity deadline.</summary>
     /// <returns>Whether an Escape key was emitted.</returns>
     /// <exception cref="ObjectDisposedException">The decoder is disposed.</exception>

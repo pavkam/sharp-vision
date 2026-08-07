@@ -308,6 +308,46 @@ public sealed class SessionTests
         sink.Strokes.ShouldHaveSingleItem().Code.ShouldBe(Code.F63);
     }
 
+    /// <summary>Verifies a lone Escape is delivered at its ambiguity deadline without any
+    /// further input. The decoder held the pending Escape and its deadline, but nothing in the
+    /// read loop ever woke to expire it - the Escape only surfaced when the NEXT byte arrived,
+    /// so every Escape-to-dismiss interaction needed a second keypress in a real terminal.</summary>
+    [Fact]
+    public async Task RunAsync_WhenLoneEscapeAges_DeliversEscapeWithoutFurtherInputAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var clock = new ManualTimeProvider();
+        await using Session session = new(transport, resize, sink, TerminalOptions.Minimal, clock);
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await transport.FirstRead.Task.WaitAsync(
+            TimeSpan.FromSeconds(2),
+            TestContext.Current.CancellationToken);
+
+        // Act: one lone Escape byte, then only the clock moves. The wake-up is armed when the
+        // byte is routed; advancing past the ambiguity window afterwards fires it. Retry the
+        // advance until the stroke lands so the test cannot race the arming read.
+        transport.Input([0x1b]);
+
+        while (!sink.StrokeReceived.Task.IsCompleted)
+        {
+            clock.Advance(InputOptions.Default.EscapeTimeout);
+            _ = await Task.WhenAny(sink.StrokeReceived.Task, Task.Delay(50, TestContext.Current.CancellationToken));
+        }
+
+        await sink.StrokeReceived.Task.WaitAsync(
+            TimeSpan.FromSeconds(2),
+            TestContext.Current.CancellationToken);
+
+        // Assert: the Escape arrived with no second byte, then the session still shuts down
+        // cleanly.
+        sink.Strokes.ShouldHaveSingleItem().Code.ShouldBe(Code.Escape);
+        transport.Close();
+        await running.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies negotiation starts from the resolved profile rather than unrelated conservative defaults.</summary>
     [Fact]
     public async Task RunAsync_WhenNegotiating_PreservesResolvedProfileCapabilitiesAsync()
