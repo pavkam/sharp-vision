@@ -141,8 +141,11 @@ internal sealed class OverlayPane: CompositeControlBase
 
         // ClipToBounds affects hit testing — a pointer press outside the clipped
         // Overlay returns null; the unclipped Overlay still reports the child.
+        // Each child's explicit Width exceeds the box, mirroring the "Negative origin and
+        // clipping" specimen above, so the clipped Overlay actually clips and the unclipped one
+        // actually overflows instead of rendering identically.
         var clippedStatus = new Text("Hit: —");
-        var clippedChild = new Button { Text = "Visible", UseMnemonic = false };
+        var clippedChild = new Button { Text = "Overflowing button", UseMnemonic = false, Width = Length.Cells(24) };
         clippedChild.Click += (_, _) => clippedStatus.Content = "Hit: inside clipped";
         Overlay clipped = new()
         {
@@ -156,9 +159,11 @@ internal sealed class OverlayPane: CompositeControlBase
                 Color.Transparent,
                 SemanticDecoration.Border),
         };
+        Overlay.SetLeft(clippedChild, Length.Cells(2));
+        Overlay.SetTop(clippedChild, Length.Cells(0));
         clipped.Children.Add(clippedChild);
 
-        var unclippedChild = new Button { Text = "Visible", UseMnemonic = false };
+        var unclippedChild = new Button { Text = "Overflowing button", UseMnemonic = false, Width = Length.Cells(24) };
         unclippedChild.Click += (_, _) => clippedStatus.Content = "Hit: inside unclipped";
         Overlay unclipped = new()
         {
@@ -172,6 +177,8 @@ internal sealed class OverlayPane: CompositeControlBase
                 Color.Transparent,
                 SemanticDecoration.Border),
         };
+        Overlay.SetLeft(unclippedChild, Length.Cells(2));
+        Overlay.SetTop(unclippedChild, Length.Cells(0));
         unclipped.Children.Add(unclippedChild);
 
         var equalTies = new Overlay { Width = Length.Cells(30), Height = Length.Cells(4) };
@@ -317,7 +324,7 @@ internal sealed class OverlayPane: CompositeControlBase
                 "<info>ClipToBounds</info> controls hit testing beyond the Overlay boundary. When true, pointer input outside the bounds is ignored. When false, children remain interactive past the visual edge.",
                 new DocExample(
                     "Clipped and unclipped",
-                    "Both Overlays host a button. Click inside each to confirm hit testing. <info>ClipToBounds</info> also affects rendering of visual overflow like shadows.",
+                    "Both Overlays host a button wider than the box, so it visibly overflows the right edge. Click the visible portion of each to confirm hit testing. <info>ClipToBounds</info> also affects rendering of visual overflow like shadows.",
                     new DocColumn(
                         new DocRow(
                             new DocColumn(new Text("Clipped"), clipped),

@@ -47,6 +47,8 @@ public sealed class GallerySurfaceTests
             TestContext.Current.CancellationToken);
         var composite = OwnedTree.FindAll<Button>(page).Single(static button =>
             button.Text == "Com&posite: parent pattern");
+        var blockShadow = OwnedTree.FindAll<Button>(page).Single(static button =>
+            button.Text == "&Block: independent glyph");
 
         // Act
         var shadowCells = Enumerable
@@ -59,8 +61,23 @@ public sealed class GallerySurfaceTests
         var visibleShadow = shadowCells.Any(static cell =>
             cell.Text == "·" && cell.Style.Attributes == TerminalAttributes.Dim);
 
+        // composite.Bounds.Right/Bottom above fall in the DocColumn's outer margin, which the
+        // private inner Stack never painted even before the fix. The one-row spacing gap between
+        // the "Filled/Composite" and "Block/Flat" DocRows sits strictly inside the demo-row block
+        // instead, so it only shows the dotted backdrop when the wrapping DocRow's Face is
+        // actually forwarded to the Stack that renders it.
+        var elevatedRow = (composite.Parent?.Parent as DocRow).ShouldNotBeNull();
+        var depthRow = (blockShadow.Parent?.Parent as DocRow).ShouldNotBeNull();
+        elevatedRow.Bounds.Bottom.ShouldBeLessThan(depthRow.Bounds.Y);
+        var gapCells = Enumerable
+            .Range(elevatedRow.Bounds.X, elevatedRow.Bounds.Width)
+            .Select(x => surface.Cell(new Point(x, elevatedRow.Bounds.Bottom)))
+            .ToArray();
+        var preservedBackdropInGap = gapCells.Any(static cell => cell.Text == "·");
+
         // Assert
         visibleShadow.ShouldBeTrue();
+        preservedBackdropInGap.ShouldBeTrue();
     }
 
     /// <summary>Verifies MessageBox is presented with the other dialog examples.</summary>

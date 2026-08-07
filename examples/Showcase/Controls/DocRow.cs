@@ -6,6 +6,8 @@ namespace SharpVision.Showcase.Controls;
 /// <summary>Stacks children horizontally with standard showcase spacing.</summary>
 internal sealed class DocRow: CompositeControlBase
 {
+    private readonly Stack _row;
+
     /// <summary>Initializes a horizontal row of showcase specimens.</summary>
     /// <param name="children">The children in order.</param>
     /// <exception cref="ArgumentNullException"><paramref name="children"/> or one of its entries is null.</exception>
@@ -13,14 +15,27 @@ internal sealed class DocRow: CompositeControlBase
     {
         ArgumentNullException.ThrowIfNull(children);
 
-        var row = new Stack { Orientation = Orientation.Horizontal, Spacing = 2 };
+        _row = new Stack { Orientation = Orientation.Horizontal, Spacing = 2 };
 
         foreach (var child in children)
         {
             ArgumentNullException.ThrowIfNull(child);
-            row.Children.Add(child);
+            _row.Children.Add(child);
         }
 
-        InitializeContent(row);
+        InitializeContent(_row);
+    }
+
+    /// <summary>Gets or sets the complete local face, forwarded to the owned inner <see cref="Stack"/>
+    /// so the surface that actually paints matches this wrapper's appearance instead of the private
+    /// Stack's own opaque theme background.</summary>
+    internal new Face Face
+    {
+        get => base.Face;
+        set
+        {
+            base.Face = value;
+            _row.Face = value;
+        }
     }
 }

@@ -94,6 +94,12 @@ internal sealed class GroupBoxPane: CompositeControlBase
         var roundedGroup = new GroupBox
         {
             HeaderText = "&Rounded",
+            Border = new Border(
+                BorderSide.All,
+                BorderGlyphStyle.Rounded,
+                SemanticColor.ControlBorder,
+                Color.Transparent,
+                SemanticDecoration.Border),
             Content = new Stack
             {
                 Padding = new Thickness(1, 0),
@@ -112,6 +118,12 @@ internal sealed class GroupBoxPane: CompositeControlBase
         var lightGroup = new GroupBox
         {
             HeaderText = "L&ight",
+            Border = new Border(
+                BorderSide.All,
+                BorderGlyphStyle.Light,
+                SemanticColor.ControlBorder,
+                Color.Transparent,
+                SemanticDecoration.Border),
             Content = new Stack
             {
                 Padding = new Thickness(1, 0),
@@ -130,6 +142,12 @@ internal sealed class GroupBoxPane: CompositeControlBase
         var heavyGroup = new GroupBox
         {
             HeaderText = "&Heavy",
+            Border = new Border(
+                BorderSide.All,
+                BorderGlyphStyle.Heavy,
+                SemanticColor.ControlBorder,
+                Color.Transparent,
+                SemanticDecoration.Border),
             Content = new Stack
             {
                 Padding = new Thickness(1, 0),
@@ -150,6 +168,12 @@ internal sealed class GroupBoxPane: CompositeControlBase
         var asciiGroup = new GroupBox
         {
             HeaderText = "&ASCII",
+            Border = new Border(
+                BorderSide.All,
+                BorderGlyphStyle.Ascii,
+                SemanticColor.ControlBorder,
+                Color.Transparent,
+                SemanticDecoration.Border),
             Content = new Text("Fallback frame")
         };
         var tinyGroup = new GroupBox
@@ -191,14 +215,14 @@ internal sealed class GroupBoxPane: CompositeControlBase
             new DocSection(
                 "🗂️",
                 "Themed frames",
-                "GroupBox owns its frame and receives its border presentation from the active theme.",
+                "GroupBox exposes its own <info>Border</info> property, so an application can select a glyph family per instance instead of accepting the theme default.",
                 new DocExample(
                     "Framed groups",
-                    "Each GroupBox shares the theme's frame while keeping independent content and header placement.",
+                    "Rounded, Light, and Heavy each set an explicit local <info>Border</info> while keeping independent content and header placement.",
                     new DocRow(roundedGroup, lightGroup, heavyGroup)),
                 new DocExample(
                     "Untitled, Unicode, ASCII, and compact",
-                    "Edge specimens prove omitted titles, wide header cells, fallback glyphs, and a compact frame with visible content.",
+                    "Edge specimens prove omitted titles, wide header cells, an explicit ASCII glyph family, and a compact frame with visible content.",
                     new DocRow(untitledGroup, unicodeGroup, asciiGroup, tinyGroup))));
     }
 

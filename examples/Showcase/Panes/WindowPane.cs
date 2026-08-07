@@ -107,7 +107,9 @@ internal sealed class WindowPane: CompositeControlBase
         Place(reopenWindow, 2, 2);
         Place(closeWindow, 2, 5);
         Place(windowStatus, 2, 9);
-        Place(activationStatus, 2, 11);
+        // Row 11 is the dragSurface text's "Recent projects" line; rows 0-15 of that literal are
+        // occupied end to end, so activationStatus sits below the whole block with a clear row.
+        Place(activationStatus, 2, 17);
 
         var dragSurface = new Text(
             "Dashboard  Activity  Settings\n\n\n\n\n\n\n\n\n\n\n" +
@@ -182,16 +184,20 @@ internal sealed class WindowPane: CompositeControlBase
         Place(dialog, 14, 2);
         Place(openButton, 2, 2);
         Place(dialogStatus, 2, 5);
-        Place(workspaceAction, 2, 7);
-        Place(workspaceStatus, 20, 7);
+        // The dialog is Height.Auto: its Text plus the bordered DocRow of buttons computes to 7
+        // rows (2-8), so its buttons' own bottom border lands on row 8. workspaceAction is itself
+        // a bordered Button; row 10 leaves row 9 clear beneath the dialog before its own top
+        // border, and the stage below grows to keep the button's full 3-row frame in bounds.
+        Place(workspaceAction, 2, 10);
+        Place(workspaceStatus, 20, 10);
 
         var dialogSurface = Workspace("Application workspace\n\nReady");
         dialogSurface.Width = Length.Cells(62);
-        dialogSurface.Height = Length.Cells(12);
+        dialogSurface.Height = Length.Cells(15);
         var dialogStage = new Overlay
         {
             Width = Length.Cells(62),
-            Height = Length.Cells(12),
+            Height = Length.Cells(15),
             ClipToBounds = true,
             Children =
             {

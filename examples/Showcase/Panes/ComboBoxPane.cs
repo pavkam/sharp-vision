@@ -28,11 +28,22 @@ internal sealed class ComboBoxPane: CompositeControlBase
         ShowcasePaneHelpers.WireComboSelectionStatus(comboBox, density, "Selected");
         var stage = ShowcasePaneHelpers.ComboStage(30, 6, comboBox);
 
-        var borderless = new ComboBox
+        // PopupChrome overrides the owned drop-down's border and shadow independently of the
+        // closed field's own chrome, which ComboBox always owns and never exposes for override.
+        var customChrome = new ComboBox
         {
             Width = Length.Cells(28),
             Items = ["Compact", "Comfortable", "Spacious"],
-            SelectedIndex = 0
+            SelectedIndex = 0,
+            PopupChrome = new PopupChrome
+            {
+                Border = new Border(
+                    BorderSide.All,
+                    BorderGlyphStyle.Heavy,
+                    Color.Rgb(0x77, 0xaa, 0xff),
+                    Color.Transparent,
+                    TerminalAttributes.None)
+            }
         };
 
         // Enter commits the highlighted row; Escape dismisses without changing the value.
@@ -107,10 +118,10 @@ internal sealed class ComboBoxPane: CompositeControlBase
                 "Start here",
                 "Choose one compact value while keeping the full choice list available on demand.",
                 new DocExample(
-                    "Default and borderless fields",
-                    "The default field uses a light frame; the explicit override removes it. Both keep an opaque <info>Surface</info>. The open list joins the field directly and uses the field's lower edge instead of drawing a second line between them. Click, <reverse>Enter</reverse>, or <reverse>Space</reverse> opens the list; <reverse>Enter</reverse> <success>commits</success>, while <reverse>Escape</reverse> or outside input <warning>dismisses</warning> without changing the value.",
+                    "Default field and custom popup chrome",
+                    "ComboBox always owns the closed field's border; applications cannot remove or replace it. <info>PopupChrome</info> instead overrides the owned drop-down popup's border and shadow independently, without touching the field. Both keep an opaque <info>Surface</info>. The open list joins the field directly and uses the field's lower edge instead of drawing a second line between them. Click, <reverse>Enter</reverse>, or <reverse>Space</reverse> opens the list; <reverse>Enter</reverse> <success>commits</success>, while <reverse>Escape</reverse> or outside input <warning>dismisses</warning> without changing the value.",
                     new DocColumn(
-                        new Text("Default light border")
+                        new Text("Default field chrome")
                         {
                             Face = new Face(
                 SemanticColor.ControlText,
@@ -120,7 +131,8 @@ internal sealed class ComboBoxPane: CompositeControlBase
                 Color.Default)
                         },
                         stage,
-                        new Text("Explicit borderless override")
+                        density,
+                        new Text("Custom popup chrome")
                         {
                             Face = new Face(
                 SemanticColor.ControlText,
@@ -129,9 +141,8 @@ internal sealed class ComboBoxPane: CompositeControlBase
                 Underline.None,
                 Color.Default)
                         },
-                        borderless,
-                        density),
-                    "var density = new ComboBox\n{\n    Items = [\"Compact\", \"Comfortable\", \"Spacious\"],\n    SelectedIndex = 1,\n};")),
+                        customChrome),
+                    "combo.PopupChrome = new PopupChrome\n{\n    Border = new Border(BorderSide.All, BorderGlyphStyle.Heavy, accentColor, Color.Transparent, TerminalAttributes.None),\n};")),
             new DocSection(
                 "🔽",
                 "Commit versus dismiss",
