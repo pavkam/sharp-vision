@@ -17,15 +17,11 @@ internal sealed class LineChartPane: CompositeControlBase
     internal LineChartPane()
     {
         var model = new ChartShowcaseModel();
-        var cpu = new ChartSeries("CPU", [
-            new ChartDataPoint("09", 41),
-            new ChartDataPoint("10", 44),
-            new ChartDataPoint("11", 43),
-            new ChartDataPoint("12", 48)]);
+        var cpu = new ChartSeries("CPU", Wave(amplitude: 14, phase: 0, drift: 0.4, offset: 46));
         model.Add(cpu);
         var bound = new LineChart
         {
-            Width = Length.Cells(54),
+            Width = Length.Percent(100),
             Height = Length.Cells(11),
             LegendPlacement = ChartLegendPlacement.Bottom
         };
@@ -36,11 +32,7 @@ internal sealed class LineChartPane: CompositeControlBase
         {
             if (model.Series?.Count == 1)
             {
-                model.Add(new ChartSeries("Memory", [
-                    new ChartDataPoint("09", 35),
-                    new ChartDataPoint("10", 39),
-                    new ChartDataPoint("11", 42),
-                    new ChartDataPoint("12", 46)]));
+                model.Add(new ChartSeries("Memory", Wave(amplitude: 9, phase: 1.9, drift: 0.7, offset: 38)));
                 status.Content = "2 bound series · legend added";
             }
             else
@@ -102,5 +94,25 @@ internal sealed class LineChartPane: CompositeControlBase
                     "A right legend identifies the request and error lines while errors use the theme's semantic color.",
                     colored,
                     "errors.Color = new ControlColor(SemanticColor.Error);\nchart.LegendPlacement = ChartLegendPlacement.Right;"))));
+    }
+
+    // A smooth 24-point waveform: enough density that the half-cell segment rasterization reads
+    // as a curve rather than a connect-the-dots. Only every sixth point carries a label, so the
+    // category row shows clean hour marks instead of two dozen colliding ones.
+    private static ChartDataPoint[] Wave(double amplitude, double phase, double drift, double offset)
+    {
+        var points = new ChartDataPoint[24];
+
+        for (var index = 0; index < points.Length; index++)
+        {
+            var label = index % 6 == 0
+                ? FormattableString.Invariant($"{9 + (index / 6):00}")
+                : string.Empty;
+            points[index] = new ChartDataPoint(
+                label,
+                offset + (amplitude * Math.Sin((index * 0.48) + phase)) + (index * drift));
+        }
+
+        return points;
     }
 }

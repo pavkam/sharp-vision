@@ -14,38 +14,41 @@ internal sealed class AreaChartPane: CompositeControlBase
     /// <summary>Initializes the retained filled-trend page.</summary>
     internal AreaChartPane()
     {
-        var requests = new ChartSeries("Requests", [
-            new ChartDataPoint("A", 102), new ChartDataPoint("B", 108),
-            new ChartDataPoint("C", 105), new ChartDataPoint("D", 112)]);
-        var latency = new ChartSeries("Latency", [
-            new ChartDataPoint("A", 101), new ChartDataPoint("B", 104),
-            new ChartDataPoint("C", 107), new ChartDataPoint("D", 109)])
+        var requests = new ChartSeries("Requests", Wave(amplitude: 26, phase: 0.6, offset: 64));
+        var latency = new ChartSeries("Latency", Wave(amplitude: 10, phase: 2.6, offset: 24))
         {
             Color = new ControlColor(SemanticColor.Warning)
         };
         var shared = new AreaChart
         {
-            Width = Length.Cells(54),
+            Width = Length.Percent(100),
             Height = Length.Cells(10),
             Series = [requests, latency]
         };
-        var status = new Text("Latest requests: 112");
+        var status = new Text(
+            FormattableString.Invariant($"Latest requests: {requests.Points[^1].Value:0.#}"));
         var add = new Button { Text = "&Add data" };
         add.Click += (_, _) =>
         {
             requests.Points[^1].Value += 2;
-            status.Content = FormattableString.Invariant($"Latest requests: {requests.Points[^1].Value:G}");
+            status.Content = FormattableString.Invariant($"Latest requests: {requests.Points[^1].Value:0.#}");
         };
+
+        var deltas = new ChartDataPoint[16];
+
+        for (var index = 0; index < deltas.Length; index++)
+        {
+            deltas[index] = new ChartDataPoint(
+                index % 4 == 0 ? FormattableString.Invariant($"Q{(index / 4) + 1}") : string.Empty,
+                Math.Round(7.5 * Math.Sin((index * 0.85) + 0.4), 1));
+        }
 
         var signed = new AreaChart
         {
-            Width = Length.Cells(54),
+            Width = Length.Percent(100),
             Height = Length.Cells(9),
-            Series = [new ChartSeries("Delta", [
-                new ChartDataPoint("A", -3), new ChartDataPoint("B", 4),
-                new ChartDataPoint("C", -1), new ChartDataPoint("D", 8)])],
-            Scale = new ChartScale(-5, 10, includeZero: true),
-            ShowValueLabels = true
+            Series = [new ChartSeries("Delta", deltas)],
+            Scale = new ChartScale(-8, 8, includeZero: true)
         };
 
         InitializeContent(new DocPage(
@@ -62,8 +65,25 @@ internal sealed class AreaChartPane: CompositeControlBase
                     "var chart = new AreaChart { Series = [requests, latency] };\nrequests.Points[^1].Value += 2;"),
                 new DocExample(
                     "Signed delta",
-                    "An explicit -5..10 scale makes the zero baseline and signed fill direction predictable.",
+                    "An explicit -8..8 scale makes the zero baseline and signed fill direction predictable.",
                     signed,
-                    "chart.Scale = new ChartScale(-5, 10, includeZero: true);\nchart.ShowValueLabels = true;"))));
+                    "chart.Scale = new ChartScale(-8, 8, includeZero: true);"))));
+    }
+
+    // A 12-point waveform: sparse enough that the markers read as measurements, dense enough
+    // that the interpolated fractional fill reads as a continuous mountain silhouette. Only
+    // every third point is labeled to keep the category row clean.
+    private static ChartDataPoint[] Wave(double amplitude, double phase, double offset)
+    {
+        var points = new ChartDataPoint[12];
+
+        for (var index = 0; index < points.Length; index++)
+        {
+            points[index] = new ChartDataPoint(
+                index % 3 == 0 ? FormattableString.Invariant($"{9 + (index / 3):00}") : string.Empty,
+                offset + (amplitude * Math.Sin((index * 1.05) + phase)));
+        }
+
+        return points;
     }
 }
