@@ -617,6 +617,39 @@ public sealed class TextInputTests
         control.HorizontalOffset.ShouldBe(scrolled);
     }
 
+    /// <summary>Verifies an unfocused editor re-snaps a mid-cluster horizontal offset to the
+    /// nearest cluster start on relayout instead of merely clamping it into range. A wheel scroll
+    /// never cluster-aligns (ScrollBy/Move are plain arithmetic), so it can land the offset inside
+    /// a double-width glyph; without the unfocused path also re-aligning, that glyph's first cell
+    /// would stay scrolled off the left edge indefinitely, unlike the old unconditional chase
+    /// which self-healed this on every arrange. The snapped value staying above zero (rather than
+    /// resetting to 0) proves this is realignment, not a regression back to that unconditional
+    /// chase.</summary>
+    [Fact]
+    public void Layout_WhenUnfocusedWheelScrollLandsMidCluster_SnapsToClusterStartOnRelayout()
+    {
+        var control = new TextInput
+        {
+            Text = "日本語テキスト",
+            CaretIndex = 0,
+            Width = Length.Cells(4),
+            ScrollBars = ScrollBars.None
+        };
+        control.SetTheme(TestThemes.BorderlessInput);
+        new LayoutEngine().Layout(control, new Size(4, 1));
+
+        Route(control, Wheel(wheelX: 3, wheelY: 0), Events.Pointer);
+        control.Focused.ShouldBeFalse();
+        control.HorizontalOffset.ShouldBe(3);
+
+        // A genuine resize, not a same-size re-layout, so arrange actually reruns
+        // instead of being skipped as a no-op; the width stays 4, so this changes
+        // nothing about the clamp/align math itself.
+        new LayoutEngine().Layout(control, new Size(4, 2));
+
+        control.HorizontalOffset.ShouldBe(2);
+    }
+
     /// <summary>Verifies gaining focus forces one caret-reveal pass: an editor left unfocused
     /// with its caret past the viewport (and therefore never chased into view) scrolls the
     /// instant it receives focus, without waiting for a subsequent edit or layout pass.</summary>

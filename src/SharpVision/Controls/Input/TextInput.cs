@@ -1315,10 +1315,16 @@ public sealed class TextInput: ControlBase
         }
 
         // Same focus gate as the word-wrap branch above: chase the caret only while
-        // focused, otherwise just clamp. This is what lets an unfocused, never-
-        // chased field keep showing its value from the first character, and lets a
-        // blurred field keep whatever offset a wheel scroll (which stays focus-
-        // independent) last left it at.
+        // focused, otherwise just clamp and cluster-align, never chase. This is
+        // what lets an unfocused, never-chased field keep showing its value from
+        // the first character, and lets a blurred field keep whatever offset a
+        // wheel scroll (which stays focus-independent) last left it at. The
+        // unfocused branch still re-snaps to a cluster start below: a wheel scroll
+        // never cluster-aligns (ScrollBy/Move are plain arithmetic), and clamping
+        // alone can also land mid-cluster when content or the viewport shrinks, so
+        // without the snap a double-width glyph could sit half-scrolled off the
+        // left edge indefinitely instead of self-healing the way the old
+        // unconditional chase always did.
         if (Focused)
         {
             Position(_selection.Caret, out var x, out var caretY);
@@ -1330,7 +1336,11 @@ public sealed class TextInput: ControlBase
         }
         else
         {
-            HorizontalOffset = ClampOffset(HorizontalOffset, bounds.Width, _contentWidth);
+            Position(_selection.Caret, out _, out var caretY);
+
+            HorizontalOffset = AlignToClusterStart(
+                ClampOffset(HorizontalOffset, bounds.Width, _contentWidth),
+                caretY);
             VerticalOffset = ClampOffset(VerticalOffset, bounds.Height, _contentHeight);
         }
     }
