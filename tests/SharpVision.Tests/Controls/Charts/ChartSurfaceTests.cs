@@ -824,6 +824,71 @@ public sealed class ChartSurfaceTests
         surface.Cell(new Point(3, 0)).Text.ShouldBe("●");
     }
 
+    /// <summary>Verifies the area fill is continuous across the domain rather than a comb of
+    /// columns under the data points. The fill used to exist only where a point happened to land,
+    /// leaving every column between points empty.</summary>
+    [Fact]
+    public async Task Render_WhenAreaSpansColumnsBetweenPoints_FillsEveryColumnAsync()
+    {
+        // Arrange
+        var chart = new AreaChart
+        {
+            Series = [new ChartSeries("CPU", [
+                new ChartDataPoint("A", 1),
+                new ChartDataPoint("B", 2)])],
+            Scale = new ChartScale(0, 2, includeZero: false),
+            LegendPlacement = ChartLegendPlacement.Hidden,
+            ShowCategoryLabels = false
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(5, 2),
+            TestContext.Current.CancellationToken);
+
+        // Assert: every column carries fill in the bottom row - including the three columns
+        // between the two markers, which used to be blank.
+        for (var x = 0; x < 5; x++)
+        {
+            surface.Cell(new Point(x, 1)).Text.ShouldNotBe(" ", $"column {x} must be filled");
+        }
+    }
+
+    /// <summary>Verifies the glyph fill mode keeps the historical column-under-each-point fill
+    /// with the authored area glyph - including the blank columns between points, which are that
+    /// contract's observable shape.</summary>
+    [Fact]
+    public async Task Render_WhenAreaFillModeIsGlyph_KeepsAuthoredColumnFillAsync()
+    {
+        // Arrange
+        var chart = new AreaChart
+        {
+            Series = [new ChartSeries("CPU", [
+                new ChartDataPoint("A", 2),
+                new ChartDataPoint("B", 2)])],
+            Scale = new ChartScale(0, 2, includeZero: false),
+            LegendPlacement = ChartLegendPlacement.Hidden,
+            ShowCategoryLabels = false,
+            Style = ChartStyle.Default with
+            {
+                FillMode = ChartFillMode.Glyph,
+                Glyphs = ChartGlyphs.Default with { Area = new Rune('▒') }
+            }
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(5, 3),
+            TestContext.Current.CancellationToken);
+
+        // Assert: authored glyph below each marker column, blank between them.
+        surface.Cell(new Point(0, 1)).Text.ShouldBe("▒");
+        surface.Cell(new Point(4, 1)).Text.ShouldBe("▒");
+        surface.Cell(new Point(2, 1)).Text.ShouldBe(" ");
+    }
+
     private static IReadOnlyList<ChartSeries> CreateNamedSeries() => [
         new ChartSeries("A", [new ChartDataPoint("1", 1)]),
         new ChartSeries("B", [new ChartDataPoint("1", 2)])
