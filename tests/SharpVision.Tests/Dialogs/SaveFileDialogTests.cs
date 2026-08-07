@@ -322,11 +322,56 @@ public sealed class SaveFileDialogTests
         fileNameInput.Text.ShouldBe(string.Empty);
     }
 
-    /// <summary>Verifies invoking a file with the pointer updates the filename and attempts the save
+    /// <summary>Verifies a single pointer click on a file selects it, populates the filename, and
+    /// enables Save without completing the dialog - select-then-commit means one click only
+    /// proposes a filename, and the Save button (a keyboard Enter, or a second click) is still
+    /// required to commit it.</summary>
+    [Fact]
+    public async Task Selection_WhenFileIsClickedOnce_PopulatesFileNameWithoutCompletingAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "save-pointer-select"));
+        var existingPath = Path.Combine(directory, "existing.txt");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory, new FilePickerEntry("existing.txt", existingPath, false, false));
+        var dialog = new SaveFileDialog(
+            new SaveFileOptions { InitialDirectory = directory, ConfirmOverwrite = false },
+            source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(100, 40),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(static () => { }, "settle load");
+        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
+        var fileNameInput = OwnedTree.FindAll<TextInput>(dialog)
+            .First(static input => input.Placeholder == "File name");
+        var saveButton = OwnedTree.FindAll<Button>(dialog).Single(static button => button.IsDefault);
+
+        // Act
+        await surface.Pointer.ClickAsync(list, new Point(1, 0));
+
+        // Assert one click only selects and populates the filename
+        list.SelectedIndex.ShouldBe(0);
+        fileNameInput.Text.ShouldBe("existing.txt");
+        saveButton.Enabled.ShouldBeTrue();
+        dialog.HasSelectedResult.ShouldBeFalse();
+
+        // Act: the Save button commits the already-populated filename - a regression guard for the
+        // button path now that a pointer click alone no longer completes the dialog.
+        await surface.Pointer.ClickAsync(saveButton);
+
+        // Assert
+        dialog.HasSelectedResult.ShouldBeTrue();
+        var result = dialog.SelectedResult.ShouldNotBeNull();
+        result.Confirmed.ShouldBeTrue();
+        result.Path.ShouldBe(existingPath);
+    }
+
+    /// <summary>Verifies a double pointer click on a file updates the filename and attempts the save
     /// exactly like invoking it with the keyboard, instead of only updating the filename and leaving
     /// the dialog open.</summary>
     [Fact]
-    public async Task Selection_WhenFileIsInvokedWithPointer_AttemptsSaveAsync()
+    public async Task Selection_WhenFileIsDoubleClickedWithPointer_AttemptsSaveAsync()
     {
         // Arrange
         var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "save-pointer-accept"));
@@ -344,13 +389,8 @@ public sealed class SaveFileDialogTests
         var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
 
         // Act
-        await surface.UpdateAsync(
-            () =>
-            {
-                list.SelectedIndex = 0;
-                list.ActivateCurrent(ActivationCause.Pointer, null, Modifiers.None).ShouldBeTrue();
-            },
-            "invoke file with pointer");
+        await surface.Pointer.ClickAsync(list, new Point(1, 0));
+        await surface.Pointer.ClickAsync(list, new Point(1, 0));
 
         // Assert
         dialog.HasSelectedResult.ShouldBeTrue();

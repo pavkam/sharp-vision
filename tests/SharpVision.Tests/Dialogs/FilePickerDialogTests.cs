@@ -95,10 +95,49 @@ public sealed class FilePickerDialogTests
         OwnedTree.Find<TextInput>(dialog).ShouldNotBeNull().Text.ShouldBe(directory);
     }
 
-    /// <summary>Verifies invoking a file with the pointer accepts the dialog exactly like invoking it
+    /// <summary>Verifies a single pointer click on a file selects it and enables Open without
+    /// completing the dialog - select-then-commit means one click only proposes a choice, and the
+    /// Open button (a keyboard Enter, or a second click) is still required to commit it.</summary>
+    [Fact]
+    public async Task SelectionAndInvocation_WhenFileIsClickedOnce_SelectsAndEnablesOpenWithoutCompletingAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-pointer-select"));
+        var file = Path.Combine(directory, "notes.txt");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory, new FilePickerEntry("notes.txt", file, isDirectory: false, isHidden: false));
+        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(100, 40),
+            TestContext.Current.CancellationToken);
+        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
+        var openButton = OwnedTree.FindAll<Button>(dialog).Single(static button => button.IsDefault);
+
+        // Act
+        await surface.Pointer.ClickAsync(list, new Point(1, 0));
+
+        // Assert one click only selects
+        list.SelectedIndex.ShouldBe(0);
+        dialog.SelectedPaths.ShouldHaveSingleItem().ShouldBe(file);
+        openButton.Enabled.ShouldBeTrue();
+        dialog.HasSelectedResult.ShouldBeFalse();
+
+        // Act: the Open button commits the already-selected file - a regression guard for the
+        // button path now that a pointer click alone no longer completes the dialog.
+        await surface.Pointer.ClickAsync(openButton);
+
+        // Assert
+        dialog.HasSelectedResult.ShouldBeTrue();
+        var result = dialog.SelectedResult.ShouldNotBeNull();
+        result.Accepted.ShouldBeTrue();
+        result.Paths.ShouldHaveSingleItem().ShouldBe(file);
+    }
+
+    /// <summary>Verifies a double pointer click on a file accepts the dialog exactly like invoking it
     /// with the keyboard, instead of only updating the selection and leaving the dialog open.</summary>
     [Fact]
-    public async Task SelectionAndInvocation_WhenFileIsInvokedWithPointer_AcceptsAsync()
+    public async Task SelectionAndInvocation_WhenFileIsDoubleClickedWithPointer_AcceptsAsync()
     {
         // Arrange
         var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-pointer-accept"));
@@ -113,13 +152,8 @@ public sealed class FilePickerDialogTests
         var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
 
         // Act
-        await surface.UpdateAsync(
-            () =>
-            {
-                list.SelectedIndex = 0;
-                list.ActivateCurrent(ActivationCause.Pointer, null, Modifiers.None).ShouldBeTrue();
-            },
-            "invoke file with pointer");
+        await surface.Pointer.ClickAsync(list, new Point(1, 0));
+        await surface.Pointer.ClickAsync(list, new Point(1, 0));
 
         // Assert
         dialog.HasSelectedResult.ShouldBeTrue();
@@ -255,16 +289,55 @@ public sealed class FilePickerDialogTests
 
         // Assert
         dialog.SelectedPaths.ShouldHaveSingleItem().ShouldBe(file);
+
+        // Act: a single pointer click on the directory row selects it without navigating - the
+        // select-then-commit contract extended from files to directories.
+        await surface.Pointer.ClickAsync(list, new Point(1, 0));
+
+        // Assert: still in the same directory, only the row selected.
+        list.SelectedIndex.ShouldBe(0);
+        dialog.CurrentDirectory.ShouldBe(directory);
+        dialog.SelectedPaths.ShouldBeEmpty();
+
+        // Act: Enter still navigates the selected directory.
         await surface.UpdateAsync(
-            () =>
-            {
-                list.SelectedIndex = 0;
-                list.ActivateCurrent(ActivationCause.Keyboard, Code.Enter, Modifiers.None).ShouldBeTrue();
-            },
-            "invoke directory");
+            () => list.ActivateCurrent(ActivationCause.Keyboard, Code.Enter, Modifiers.None).ShouldBeTrue(),
+            "invoke directory with Enter");
         await surface.UpdateAsync(static () => { }, "settle child directory");
         dialog.CurrentDirectory.ShouldBe(child);
         dialog.SelectedPaths.ShouldBeEmpty();
+        list.Items.Count.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a double pointer click on a directory navigates into it, mirroring Enter's
+    /// commit behavior now that a single click only selects.</summary>
+    [Fact]
+    public async Task SelectionAndInvocation_WhenDirectoryIsDoubleClickedWithPointer_NavigatesAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-navigation-double-click"));
+        var child = Path.Combine(directory, "src");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(
+            directory,
+            new FilePickerEntry("src", child, isDirectory: true, isHidden: false));
+        source.AddDirectory(
+            child,
+            new FilePickerEntry("Child.cs", Path.Combine(child, "Child.cs"), isDirectory: false, isHidden: false));
+        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(80, 24),
+            TestContext.Current.CancellationToken);
+        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
+
+        // Act
+        await surface.Pointer.ClickAsync(list, new Point(1, 0));
+        await surface.Pointer.ClickAsync(list, new Point(1, 0));
+        await surface.UpdateAsync(static () => { }, "settle child directory");
+
+        // Assert
+        dialog.CurrentDirectory.ShouldBe(child);
         list.Items.Count.ShouldBe(1);
     }
 

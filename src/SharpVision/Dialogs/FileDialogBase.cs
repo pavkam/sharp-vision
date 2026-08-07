@@ -99,7 +99,8 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
             VerticalAlignment = VerticalAlignment.Stretch,
             MaxHeight = maxVisibleRows,
             SelectionMode = selectionMode,
-            ItemTemplate = CreateEntryContent
+            ItemTemplate = CreateEntryContent,
+            ItemActivation = ListItemActivation.DoubleClick
         };
         FileListSurface = new Dock
         {

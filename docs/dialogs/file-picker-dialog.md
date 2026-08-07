@@ -219,14 +219,17 @@ link cycles cannot create traversal cycles.
 - The bordered `↑` Button, and Backspace pressed in the ListView, navigate to
   the parent directory. The Button disables at a root.
 - Pressing Enter in the location input loads that text's canonical directory.
-- Invoking a directory with the keyboard or the primary pointer navigates into
-  it.
+- The ListView follows select-then-commit: a single primary pointer click on any
+  row - file or directory - only selects it. Committing a row takes Enter, the
+  Open Button, or a second pointer click (a double-click). Committing a
+  directory navigates into it; committing a file accepts the current file
+  selection.
 - ListView selection follows the existing single, Control-toggle, and
   Shift-range semantics. Directory rows can become current or selected visually,
   but `SelectedPaths` filters them out.
-- Invoking a file accepts the current file selection, whether the invocation
-  came from the pointer or from Enter. Open is enabled only while at least one
-  file is selected.
+- Committing a file accepts the current file selection, whether the commit came
+  from Enter, a double-click, or the Open Button. Open is enabled only while at
+  least one file is selected.
 - Changing the filter or the Show hidden toggle starts a replacement load. When
   it succeeds, the selection is remapped by canonical path: entries still
   present stay selected, while filtered or removed entries leave the selection.
@@ -287,8 +290,8 @@ The behavior above is verified end to end, so callers can rely on it:
   cancellation, stale completions, detach, and disposal are all handled without
   violating dispatcher affinity.
 - Single and multiple selection work as configured, directories never reach the
-  result, and parent, path, and Backspace navigation plus keyboard and pointer
-  invocation behave as described.
+  result, and parent, path, and Backspace navigation plus select-then-commit
+  keyboard and pointer invocation behave as described.
 - Open, Cancel, Escape, and frame close each complete the dialog. Modality
   isolates the background, Tab stays confined, focus is restored, and the host
   is cleaned up.

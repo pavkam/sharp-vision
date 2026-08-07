@@ -56,6 +56,10 @@ internal sealed class ListItem: ContentControl
     /// <summary>Gets the activating key, or null for pointer input.</summary>
     public Code? LastKey { get; private set; }
 
+    /// <summary>Gets the consecutive same-target press count captured from the activation
+    /// transition, or zero for key-driven activation.</summary>
+    internal int LastClickCount { get; private set; }
+
     /// <summary>Gets whether content is effectively available for navigation and activation.</summary>
     public bool Available => Content is { EffectiveIsEnabled: true, EffectiveIsVisible: true };
 
@@ -124,11 +128,13 @@ internal sealed class ListItem: ContentControl
         {
             LastModifiers = key.Stroke.Modifiers;
             LastKey = key.Stroke.Code;
+            LastClickCount = 0;
         }
         else if (eventArgs is PointerEventArgs { Pointer.Action: PointerAction.Press } pointer)
         {
             LastModifiers = pointer.Pointer.Modifiers;
             LastKey = null;
+            LastClickCount = pointer.ClickCount;
         }
 
         base.OnEvent(eventArgs);

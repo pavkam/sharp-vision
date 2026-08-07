@@ -215,6 +215,25 @@ public sealed class ListView: ItemsControl
         }
     } = ListSelectionMode.Single;
 
+    /// <summary>Gets or sets which pointer gesture raises <see cref="ItemInvoked"/>.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    public ListItemActivation ItemActivation
+    {
+        get;
+        set
+        {
+            if (!Enum.IsDefined(value))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The item activation mode is unknown.");
+            }
+
+            VerifyMutable();
+            _ = SetProperty(ref field, value, InvalidationImpact.None);
+        }
+    } = ListItemActivation.SingleClick;
+
     /// <summary>Gets the lowest selected index, or sets one exclusive index; -1 clears selection.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is less than -1 or outside Items.</exception>
     /// <exception cref="InvalidOperationException">A non-negative value is assigned in None mode.</exception>
@@ -1350,7 +1369,8 @@ public sealed class ListView: ItemsControl
 
         _ = ApplyInputSelection(item.Index, isSpaceToggle ? modifiers | Modifiers.Control : modifiers);
 
-        if (eventArgs.Cause == ActivationCause.Pointer)
+        if (eventArgs.Cause == ActivationCause.Pointer &&
+            (ItemActivation == ListItemActivation.SingleClick || item.LastClickCount >= 2))
         {
             ItemInvoked?.Invoke(this, new ItemInvokedEventArgs(item.Index, Items[item.Index], eventArgs.Cause));
         }

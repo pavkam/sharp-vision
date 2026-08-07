@@ -149,10 +149,13 @@ separator, file rows use `·`, and names are markup-escaped and ellipsized.
 - The parent Button, and Backspace pressed in the file list, navigate to the
   parent directory. Pressing Enter in the directory input loads that text's
   canonical path.
-- Invoking a directory navigates into it. Selecting a file copies its basename
-  into `FileName`; selecting a directory does not.
-- Invoking a file updates the filename and then attempts the Save, whether the
-  invocation came from the pointer or from the keyboard.
+- The file list follows select-then-commit: a single primary pointer click on
+  any row - file or directory - only selects it. Committing a row takes Enter,
+  the Save Button, or a second pointer click (a double-click). Committing a
+  directory navigates into it. Selecting a file copies its basename into
+  `FileName`; selecting a directory does not.
+- Committing a file updates the filename and then attempts the Save, whether the
+  commit came from Enter, a double-click, or the Save Button.
 - Typing a non-blank filename enables Save. Pressing Enter in the filename input
   and activating the default Save button run the same completion path.
 - The result path is `GetFullPath(Path.Combine(CurrentDirectory, trimmedName))`.
@@ -247,9 +250,9 @@ The behavior above is verified end to end, so callers can rely on it:
 
 - Options validate and are copied, cancelled and confirmed results keep their
   semantics, and the returned path is composed canonically.
-- Filename enablement and trimming, directory and file selection, keyboard and
-  pointer invocation, navigation, filtering, and hidden entries behave as
-  described above.
+- Filename enablement and trimming, directory and file selection,
+  select-then-commit keyboard and pointer invocation, navigation, filtering, and
+  hidden entries behave as described above.
 - Asynchronous loads replace each other cleanly, missing and denied directories
   stay recoverable, and detach, disposal, and cancellation tear the dialog down
   safely.

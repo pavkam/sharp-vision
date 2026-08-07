@@ -31,17 +31,18 @@ label cells.
 
 ## API
 
-| Member                                                 | Default                  | Purpose                                                          |
-| ------------------------------------------------------ | ------------------------ | ---------------------------------------------------------------- |
-| `Items`                                                | Empty snapshot           | Copies data items before realizing presentation controls.        |
-| `ItemTemplate`                                         | Invariant-culture `Text` | Creates one unique detached control per item.                    |
-| `RowHeight`                                            | `null`                   | Fixed per-row cell height that opts into windowed realization.   |
-| `SelectionMode`                                        | `Single`                 | Allows no selection, one selection, or multiple selections.      |
-| `SelectedIndex`, `SelectedItem`, `SelectedItems`       | `-1`, `null`, empty      | Read or change committed selection.                              |
-| `ActiveIndex`                                          | `-1`                     | Identify the keyboard-navigation row.                            |
-| `ScrollBars`, `ShowScrollBars`                         | Vertical automatic rails | Configure overflow visibility policy.                            |
-| `ScrollBarStyle`, `ActualScrollBarStyle`               | `null`, Theme style      | Override or inspect the complete generated-rail presentation.    |
-| `SelectionChanging`, `SelectionChanged`, `ItemInvoked` | No subscribers           | Cancel a proposal or observe committed selection and activation. |
+| Member                                                 | Default                  | Purpose                                                                   |
+| ------------------------------------------------------ | ------------------------ | ------------------------------------------------------------------------- |
+| `Items`                                                | Empty snapshot           | Copies data items before realizing presentation controls.                 |
+| `ItemTemplate`                                         | Invariant-culture `Text` | Creates one unique detached control per item.                             |
+| `RowHeight`                                            | `null`                   | Fixed per-row cell height that opts into windowed realization.            |
+| `SelectionMode`                                        | `Single`                 | Allows no selection, one selection, or multiple selections.               |
+| `ItemActivation`                                       | `SingleClick`            | Chooses whether one pointer click or a double-click raises `ItemInvoked`. |
+| `SelectedIndex`, `SelectedItem`, `SelectedItems`       | `-1`, `null`, empty      | Read or change committed selection.                                       |
+| `ActiveIndex`                                          | `-1`                     | Identify the keyboard-navigation row.                                     |
+| `ScrollBars`, `ShowScrollBars`                         | Vertical automatic rails | Configure overflow visibility policy.                                     |
+| `ScrollBarStyle`, `ActualScrollBarStyle`               | `null`, Theme style      | Override or inspect the complete generated-rail presentation.             |
+| `SelectionChanging`, `SelectionChanged`, `ItemInvoked` | No subscribers           | Cancel a proposal or observe committed selection and activation.          |
 
 ## Behavior
 
@@ -96,7 +97,16 @@ label cells.
   proposals even when the selected index set was already empty, and a reentrant
   change to None mode rejects any pending non-empty proposal.
 - `ItemInvoked` reports the index, the borrowed item, and the `ActivationCause`
-  for Enter or an eligible primary pointer invocation.
+  for Enter or an eligible primary pointer invocation. Every pointer activation
+  still applies selection; whether it also raises `ItemInvoked` depends on
+  `ItemActivation`.
+- `ItemActivation` selects which pointer gesture raises `ItemInvoked`. The
+  `SingleClick` default raises it from every pointer activation, matching
+  Enter's always-commits behavior. `DoubleClick` raises it only when the pointer
+  activation is itself a multi-click (a second primary press on the same row
+  within the terminal's multi-click window); a lone click still applies
+  selection without invoking. Keyboard activation always raises `ItemInvoked`
+  regardless of `ItemActivation`.
 
 ## Interaction and layout
 

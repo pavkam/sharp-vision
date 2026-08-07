@@ -3,6 +3,7 @@
 
 namespace SharpVision.Tests.Controls.Collections;
 
+using SharpVision.Tests.Input;
 
 /// <summary>Verifies ListView selection, focus, invocation, modifiers, scrolling, mutation, and cells through mounted surfaces.</summary>
 public sealed class ListViewSurfaceTests
@@ -616,6 +617,117 @@ public sealed class ListViewSurfaceTests
                              thre▲
                              e   ▼
                              """);
+    }
+
+    /// <summary>Verifies the SingleClick default still raises ItemInvoked from one pointer click.</summary>
+    [Fact]
+    public async Task Input_WhenItemActivationIsSingleClick_InvokesFromOneClickAsync()
+    {
+        // Arrange
+        List<ControlText> realized = [];
+        var invoked = new List<int>();
+        var list = new UiListView
+        {
+            ItemTemplate = item => Add(realized, new ControlText((string) item!)),
+            Items = ["One", "Two"],
+            ScrollBars = ScrollBars.None,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        list.ItemInvoked += (_, eventArgs) => invoked.Add(eventArgs.Index);
+        await using var surface = await ComponentSurface.MountAsync(
+            list,
+            new Size(8, 2),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.ClickAsync(realized[1].Parent.ShouldNotBeNull());
+
+        // Assert
+        list.ItemActivation.ShouldBe(ListItemActivation.SingleClick);
+        list.SelectedIndex.ShouldBe(1);
+        invoked.ShouldBe([1]);
+    }
+
+    /// <summary>Verifies DoubleClick activation selects on the first pointer click without raising
+    /// ItemInvoked, then raises it once a second click lands within the multi-click window.</summary>
+    [Fact]
+    public async Task Input_WhenItemActivationIsDoubleClick_SelectsThenInvokesOnSecondClickAsync()
+    {
+        // Arrange
+        List<ControlText> realized = [];
+        var invoked = new List<int>();
+        var clock = new ManualTimeProvider();
+        var list = new UiListView
+        {
+            ItemTemplate = item => Add(realized, new ControlText((string) item!)),
+            Items = ["One", "Two"],
+            ItemActivation = ListItemActivation.DoubleClick,
+            ScrollBars = ScrollBars.None,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        list.ItemInvoked += (_, eventArgs) => invoked.Add(eventArgs.Index);
+        await using var surface = await ComponentSurface.MountAsync(
+            list,
+            new Size(8, 2),
+            clock,
+            TestContext.Current.CancellationToken);
+        var row = realized[1].Parent.ShouldNotBeNull();
+
+        // Act first click
+        await surface.Pointer.ClickAsync(row);
+
+        // Assert first click selects without invoking
+        list.SelectedIndex.ShouldBe(1);
+        invoked.ShouldBeEmpty();
+
+        // Act second click within the multi-click window
+        await surface.Pointer.ClickAsync(row);
+
+        // Assert second click invokes
+        invoked.ShouldBe([1]);
+    }
+
+    /// <summary>Verifies DoubleClick activation still raises ItemInvoked from Enter, matching the
+    /// documented keyboard-always-commits contract.</summary>
+    [Fact]
+    public async Task Input_WhenItemActivationIsDoubleClick_EnterStillInvokesAsync()
+    {
+        // Arrange
+        List<ControlText> realized = [];
+        var invoked = new List<int>();
+        var list = new UiListView
+        {
+            ItemTemplate = item => Add(realized, new ControlText((string) item!)),
+            Items = ["One", "Two"],
+            ItemActivation = ListItemActivation.DoubleClick,
+            ScrollBars = ScrollBars.None,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        list.ItemInvoked += (_, eventArgs) => invoked.Add(eventArgs.Index);
+        await using var surface = await ComponentSurface.MountAsync(
+            list,
+            new Size(8, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        invoked.ShouldBe([1]);
+    }
+
+    /// <summary>Verifies ItemActivation rejects an undefined value.</summary>
+    [Fact]
+    public void ItemActivation_WhenSetToUndefinedValue_Throws()
+    {
+        var list = new UiListView();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => list.ItemActivation = (ListItemActivation) 99);
     }
 
     private static ControlText Add(List<ControlText> controls, ControlText control)
