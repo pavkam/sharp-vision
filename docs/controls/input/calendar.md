@@ -153,7 +153,10 @@ renders with an underline.
 Today's date renders with `TodayMarkerColor` as its foreground. The marker
 applies after adjacent-month muting and before hover, interval preview, the
 committed selection, and disabled/out-of-range state, so any of those override
-it - a selected today renders as selected, not as today.
+it - a selected today renders as selected, not as today. The marker reflects the
+date as of the control's last render and moves to the new date on the next
+redraw, so an idle Calendar keeps the previous day's marker across midnight
+until something repaints it.
 
 ## Keyboard and pointer input
 
