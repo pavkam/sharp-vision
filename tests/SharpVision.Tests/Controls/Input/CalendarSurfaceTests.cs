@@ -435,6 +435,37 @@ public sealed class CalendarSurfaceTests
             Project(ThemeColorHelper.SelectionForeground(ThemeCatalog.Dark)));
     }
 
+    /// <summary>Verifies an adjacent-month padding cell keeps the out-of-month muting even when it
+    /// is the current date: the today marker belongs to the month being viewed, so a padding cell
+    /// never advertises it.</summary>
+    [Fact]
+    public async Task Surface_WhenTodayFallsInAdjacentMonthPadding_KeepsOutOfMonthMutingAsync()
+    {
+        // Arrange - today is July 31 while August is displayed, so today renders only inside the
+        // leading week's padding cells.
+        var clock = new ManualTimeProvider();
+        clock.Advance(new DateTimeOffset(2026, 7, 31, 12, 0, 0, TimeSpan.Zero) - DateTimeOffset.UnixEpoch);
+        var today = DateOnly.FromDateTime(clock.GetLocalNow().DateTime);
+        var displayMonth = new DateOnly(2026, 8, 1);
+        var calendar = new UiCalendar
+        {
+            Culture = CultureInfo.InvariantCulture,
+            DisplayMonth = displayMonth
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            calendar,
+            new Size(32, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        // Assert - the padding cell matches its fellow out-of-month neighbor instead of carrying
+        // the marker foreground.
+        var cell = CellFor(today, displayMonth, calendar.FirstDayOfWeek);
+        var neighbor = CellFor(today.AddDays(-1), displayMonth, calendar.FirstDayOfWeek);
+        surface.Cell(cell).Style.Foreground.ShouldNotBe(Project(ThemeColorHelper.HoveredForeground(ThemeCatalog.Dark)));
+        surface.Cell(cell).Style.Foreground.ShouldBe(surface.Cell(neighbor).Style.Foreground);
+    }
+
     /// <summary>Resolves the absolute surface cell for one date inside a calendar's six-week grid,
     /// mirroring Calendar's own internal grid geometry (a four-cell-wide column inside a
     /// one-cell border plus one-cell horizontal padding, with the date grid beginning two rows

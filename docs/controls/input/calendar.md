@@ -151,12 +151,13 @@ just not overridable per instance in this pass. The focused active date still
 renders with an underline.
 
 Today's date renders with `TodayMarkerColor` as its foreground. The marker
-applies after adjacent-month muting and before hover, interval preview, the
-committed selection, and disabled/out-of-range state, so any of those override
-it - a selected today renders as selected, not as today. The marker reflects the
-date as of the control's last render and moves to the new date on the next
-redraw, so an idle Calendar keeps the previous day's marker across midnight
-until something repaints it.
+applies only inside the displayed month - an adjacent-month padding cell keeps
+its out-of-month muting even when it is today - and hover, interval preview, the
+committed selection, and disabled/out-of-range state all override it - a
+selected today renders as selected, not as today. The marker reflects the date
+as of the control's last render and moves to the new date on the next redraw, so
+an idle Calendar keeps the previous day's marker across midnight until something
+repaints it.
 
 ## Keyboard and pointer input
 

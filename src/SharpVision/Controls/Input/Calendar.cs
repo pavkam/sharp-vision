@@ -827,8 +827,11 @@ public sealed class Calendar: Control<CalendarStyle>
             style = style.WithForeground(ResolveColor(actualStyle.OutOfMonthDayColor));
         }
 
-        if (date == Today)
+        if (!adjacent && date == Today)
         {
+            // Adjacent-month padding cells keep their muted foreground even when they are today:
+            // the marker belongs to the month being viewed, and letting it overwrite the muting
+            // would make an out-of-month filler cell the most prominent date on the grid.
             style = style.WithForeground(ResolveColor(actualStyle.TodayMarkerColor));
         }
 
