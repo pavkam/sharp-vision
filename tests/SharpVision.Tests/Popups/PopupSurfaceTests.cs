@@ -566,4 +566,96 @@ public sealed class PopupSurfaceTests
         contextScope.Active.ShouldBeFalse();
         surface.Application.Modality.Active.ShouldBeNull();
     }
+
+    /// <summary>Verifies a bare Popup anchored to a foreign sibling re-resolves its placement
+    /// after that sibling reflows while open, rather than continuing to render at the anchor's
+    /// old position. A popup anchored to a foreign sibling must follow it when layout moves it -
+    /// this pins the tracking Popup itself now owns rather than relying on a family override.
+    /// A Stack (flow layout) is required to move the anchor without resizing the root: an Overlay
+    /// alone would not reproduce a reflow.</summary>
+    [Fact]
+    public async Task IsOpen_WhenAnchorReflowsWhileOpen_FollowsAnchorAsync()
+    {
+        var spacer = new Button
+        {
+            Text = string.Empty,
+            Width = Length.Cells(1),
+            Height = Length.Cells(4)
+        };
+        var anchor = new Button
+        {
+            Text = "Bottom",
+            Width = Length.Cells(10),
+            Height = Length.Cells(1)
+        };
+        var stack = new Stack
+        {
+            Orientation = Orientation.Vertical,
+            Width = Length.Cells(12),
+            Height = Length.Cells(8),
+            Children = { spacer, anchor }
+        };
+        var popup = new Popup { Anchor = anchor, Content = new ControlText("Menu") };
+        var root = new Overlay { Children = { stack, popup } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(12, 8),
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => popup.IsOpen = true, "open popup that fits below at initial anchor position");
+        var initialY = popup.SurfaceBounds.Y;
+
+        await surface.UpdateAsync(() => spacer.Height = Length.Cells(7), "reflow the anchor toward the bottom while open");
+
+        popup.SurfaceBounds.Y.ShouldNotBe(initialY);
+        popup.SurfaceBounds.Bottom.ShouldBeLessThanOrEqualTo(anchor.Bounds.Y);
+    }
+
+    /// <summary>Verifies TracksAnchorReflow gates the anchor-reflow response: false produces no
+    /// calls for a foreign anchor reflowing while open, and true (the default) produces exactly
+    /// one call per reflow. Pins both sides of the opt-out self-anchored composites rely on.</summary>
+    [Theory]
+    [InlineData(true, 1)]
+    [InlineData(false, 0)]
+    public async Task IsOpen_WhenAnchorReflowsWhileOpen_TracksAnchorReflowGatesCallCountAsync(
+        bool tracksAnchorReflow,
+        int expectedCalls)
+    {
+        var spacer = new Button
+        {
+            Text = string.Empty,
+            Width = Length.Cells(1),
+            Height = Length.Cells(4)
+        };
+        var anchor = new Button
+        {
+            Text = "Anchor",
+            Width = Length.Cells(10),
+            Height = Length.Cells(1)
+        };
+        var stack = new Stack
+        {
+            Orientation = Orientation.Vertical,
+            Width = Length.Cells(12),
+            Height = Length.Cells(8),
+            Children = { spacer, anchor }
+        };
+        var popup = new PopupAnchorReflowProbe
+        {
+            Anchor = anchor,
+            Content = new ControlText("Menu"),
+            TracksAnchorReflow = tracksAnchorReflow
+        };
+        var root = new Overlay { Children = { stack, popup } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(12, 8),
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => popup.IsOpen = true, "open popup that fits below at initial anchor position");
+
+        await surface.UpdateAsync(() => spacer.Height = Length.Cells(7), "reflow the anchor while open");
+
+        popup.AnchorReflowCalls.ShouldBe(expectedCalls);
+    }
 }

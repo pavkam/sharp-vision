@@ -78,7 +78,11 @@ public sealed class DateTimeInput: PressInteractionBase
             FocusOnOpen = false,
             ModalBehavior = PopupModalBehavior.None,
             TabNavigation = TabNavigation.None,
-            ConnectsToAnchor = true
+            ConnectsToAnchor = true,
+            // DateTimeInput re-arranges its own popup child from its own ArrangeOverride every
+            // pass (RootBounds(bounds) below), so base Popup's anchor-reflow tracking would be a
+            // redundant second placement pass reacting to the same self-owned anchor.
+            TracksAnchorReflow = false
         };
         _popup.Opened += OnPopupOpened;
         _popup.Closing += OnPopupClosing;

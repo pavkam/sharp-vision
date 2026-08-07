@@ -8,7 +8,6 @@ namespace SharpVision.Popups;
 public sealed class Flyout: Popup
 {
     private LightDismiss? _lightDismiss;
-    private ControlBase? _subscribedAnchor;
 
     /// <summary>Initializes a closed flyout with direct popup presentation and light-dismiss behavior.</summary>
     public Flyout()
@@ -65,6 +64,13 @@ public sealed class Flyout: Popup
         }
     }
 
+    /// <summary>Follows the anchor reflowing (a sibling growing above it, its own container
+    /// resizing it, and so on) by dismissing rather than repositioning — a Flyout's outside-press
+    /// light dismiss already assumes its bounds are fixed for the pointer geometry captured when
+    /// it opened, so a moved anchor closes it instead of chasing the new position.</summary>
+    /// <inheritdoc/>
+    internal override void OnAnchorReflow() => IsOpen = false;
+
     private void StartLightDismiss()
     {
         CloseOtherFlyouts();
@@ -75,29 +81,12 @@ public sealed class Flyout: Popup
             () => IsOpen,
             () => SurfaceBounds,
             () => IsOpen = false);
-        _subscribedAnchor = Anchor;
-
-        _subscribedAnchor?.BoundsChanged += OnAnchorBoundsChanged;
     }
 
     private void StopLightDismiss()
     {
-        _subscribedAnchor?.BoundsChanged -= OnAnchorBoundsChanged;
-        _subscribedAnchor = null;
-
         _lightDismiss?.Dispose();
         _lightDismiss = null;
-    }
-
-    private void OnAnchorBoundsChanged(object? sender, EventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-
-        if (IsOpen)
-        {
-            IsOpen = false;
-        }
     }
 
     private void CloseOtherFlyouts()

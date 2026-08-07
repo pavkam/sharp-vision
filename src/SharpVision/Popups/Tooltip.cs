@@ -233,6 +233,8 @@ public sealed class Tooltip: Popup
     /// <inheritdoc/>
     internal override void OnContentAvailable()
     {
+        base.OnContentAvailable();
+
         if (_attachedAnchor is not null)
         {
             LayoutPopup();
@@ -265,12 +267,6 @@ public sealed class Tooltip: Popup
         anchor.GotFocus += OnAnchorGotFocus;
         anchor.LostFocus += OnAnchorLostFocus;
         anchor.PointerPressed += OnAnchorPointerPressed;
-
-        // The anchor reflowing (a sibling growing above it, its own container resizing it,
-        // and so on) moves the point placement was resolved against without the tooltip's own
-        // Bounds ever changing, so this is the anchor-side half of keeping an open tooltip's
-        // placement current; OnAnchorBoundsChanged only acts while open.
-        anchor.BoundsChanged += OnAnchorBoundsChanged;
     }
 
     private void Detach(ControlBase anchor, bool clearOwnership)
@@ -283,7 +279,6 @@ public sealed class Tooltip: Popup
         anchor.GotFocus -= OnAnchorGotFocus;
         anchor.LostFocus -= OnAnchorLostFocus;
         anchor.PointerPressed -= OnAnchorPointerPressed;
-        anchor.BoundsChanged -= OnAnchorBoundsChanged;
 
         if (clearOwnership)
         {
@@ -335,17 +330,6 @@ public sealed class Tooltip: Popup
         _ = sender;
         _ = eventArgs;
         Hide();
-    }
-
-    private void OnAnchorBoundsChanged(object? sender, EventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-
-        if (IsOpen && _attachedAnchor is not null)
-        {
-            LayoutPopup();
-        }
     }
 
     #endregion

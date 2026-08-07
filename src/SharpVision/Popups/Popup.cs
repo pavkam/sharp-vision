@@ -105,6 +105,12 @@ public class Popup: ChromeAuthoringFloatingSurface
     /// <summary>Gets or sets whether placement flips and clamps inside the owning root.</summary>
     internal bool ConstrainToRoot { get; set; } = true;
 
+    /// <summary>Gets or sets whether this popup re-resolves placement when its foreign anchor
+    /// reflows while open. A self-anchored composite (a ComboBox drop-down, a submenu, and the
+    /// like) re-arranges its own popup child from its own ArrangeOverride every pass, so tracking
+    /// here would be redundant; those owners set this false and keep their existing behavior.</summary>
+    internal bool TracksAnchorReflow { get; set; } = true;
+
     /// <summary>Gets or sets whether opening skips the tree-wide sibling popup close.</summary>
     public bool SuppressCloseOtherPopups { get; init; }
 
@@ -130,6 +136,7 @@ public class Popup: ChromeAuthoringFloatingSurface
     private bool _isOpenTransitioning;
     private ControlBase? _availabilityAncestor;
     private ModalScope? _modalCallbackScope;
+    private ControlBase? _subscribedReflowAnchor;
 
     /// <summary>Gets or sets whether this Popup self-manages its modal scope on open.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -617,6 +624,10 @@ public class Popup: ChromeAuthoringFloatingSurface
         {
             ReconcilePresentationAvailability();
         }
+        else if (eventArgs.PropertyName == nameof(Anchor) && IsOpen)
+        {
+            SubscribeAnchorReflow();
+        }
     }
 
     private void ReconcilePresentationAvailability()
@@ -827,8 +838,67 @@ public class Popup: ChromeAuthoringFloatingSurface
     /// rolls back, and the earliest failure is rethrown.
     /// </remarks>
     /// <exception cref="Exception">Family-specific post-content setup fails.</exception>
-    internal virtual void OnContentAvailable()
+    internal virtual void OnContentAvailable() => SubscribeAnchorReflow();
+
+    /// <summary>Responds to the foreign anchor reflowing while this popup is open. The default
+    /// re-resolves placement against the anchor's new position, line-for-line what a Tooltip's
+    /// own layout pass already did before this tracking moved here. A family with different needs
+    /// (a Flyout dismissing instead of following) overrides this instead of subscribing itself.</summary>
+    /// <remarks>
+    /// InvalidateSelf here is scoped to this control rather than a full-tree Invalidate: only this
+    /// popup's own Measure/Arrange short-circuit needs bypassing (the anchor moved, not any of
+    /// this popup's own content), and the constraint/slot passed to Measure/Arrange below is the
+    /// synchronous follow-up InvalidateSelf's contract requires — leaving it pending, or invoking
+    /// it without immediately completing Measure/Arrange, strands the dirty bit until some
+    /// unrelated pass happens to visit this popup again.
+    /// </remarks>
+    internal virtual void OnAnchorReflow()
     {
+        var root = RootBounds(default);
+
+        if (root.Width == 0 || root.Height == 0)
+        {
+            return;
+        }
+
+        InvalidateSelf(Invalidation.Measure);
+        Measure(new Constraint(root.Width, root.Height));
+        Arrange(root, widthResolved: true, heightResolved: true);
+    }
+
+    /// <summary>Starts reacting to the current Anchor's own reflow while this popup is open, so a
+    /// foreign sibling growing, shrinking, or moving elsewhere re-resolves placement instead of
+    /// leaving it pinned to wherever the anchor was when the popup opened.</summary>
+    private void SubscribeAnchorReflow()
+    {
+        if (!TracksAnchorReflow || Anchor is not { } anchor || ReferenceEquals(_subscribedReflowAnchor, anchor))
+        {
+            return;
+        }
+
+        UnsubscribeAnchorReflow();
+        _subscribedReflowAnchor = anchor;
+        anchor.BoundsChanged += OnAnchorReflowBoundsChanged;
+    }
+
+    private void UnsubscribeAnchorReflow()
+    {
+        if (_subscribedReflowAnchor is { } anchor)
+        {
+            anchor.BoundsChanged -= OnAnchorReflowBoundsChanged;
+            _subscribedReflowAnchor = null;
+        }
+    }
+
+    private void OnAnchorReflowBoundsChanged(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+
+        if (IsOpen)
+        {
+            OnAnchorReflow();
+        }
     }
 
     private void CommitClosedState()
@@ -839,6 +909,8 @@ public class Popup: ChromeAuthoringFloatingSurface
 
     private void CollapseContent()
     {
+        UnsubscribeAnchorReflow();
+
         if (Content is { } child)
         {
             child.Visibility = Visibility.Collapsed;

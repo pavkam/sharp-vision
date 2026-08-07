@@ -67,7 +67,11 @@ public sealed class DateInput: PressInteractionBase
             FocusOnOpen = true,
             ModalBehavior = PopupModalBehavior.None,
             ConnectsToAnchor = true,
-            Placement = PopupPlacement.Below
+            Placement = PopupPlacement.Below,
+            // DateInput re-arranges its own popup child from its own ArrangeOverride every pass
+            // (RootBounds(bounds) below), so base Popup's anchor-reflow tracking would be a
+            // redundant second placement pass reacting to the same self-owned anchor.
+            TracksAnchorReflow = false
         };
         _popup.Opened += OnPopupOpened;
         _popup.Closing += OnPopupClosing;
