@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Input;
 
 /// <summary>Verifies modal-plane validation, ownership, stacking, and cleanup.</summary>
-public sealed class ModalityManagerTests
+public sealed partial class ModalityManagerTests
 {
     #region Construction and plane validation
 
