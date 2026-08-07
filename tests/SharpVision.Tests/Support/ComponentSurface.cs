@@ -224,9 +224,22 @@ internal sealed class ComponentSurface: IAsyncDisposable
             }
             catch (TimeoutException exception)
             {
-                var state = await application.Dispatcher.InvokeAsync(
-                    () => $"root={host.Pending}, mounted={control.Pending}",
-                    cancellationToken);
+                string state;
+
+                try
+                {
+                    // The diagnostic read must never outlive the failure it reports: if the mount
+                    // hung because the dispatcher itself is wedged, InvokeAsync would otherwise wait
+                    // forever and turn a bounded timeout into an unbounded one.
+                    state = await application.Dispatcher.InvokeAsync(
+                        () => $"root={host.Pending}, mounted={control.Pending}",
+                        cancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
+                }
+                catch (TimeoutException)
+                {
+                    state = "dispatcher unresponsive";
+                }
+
                 throw new TimeoutException(
                     $"Component mount did not settle ({state}). Latest surface:{Environment.NewLine}{terminal.Screen.CopyText()}",
                     exception);
