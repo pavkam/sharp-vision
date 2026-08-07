@@ -254,6 +254,46 @@ public sealed class AppearanceStatesTests
     private static ControlAppearance Fold(AppearanceStates states, VisualState state) =>
         states.ApplyStates(states.Normal, state);
 
+    /// <summary>Verifies the shared predicate classifies all four geometry members, which is what
+    /// makes the local-overlay path agree with the theme path rather than being strictly weaker.
+    ///
+    /// <para>"Does this need Measure, or only Render?" was answered in three places that did not
+    /// agree. The two theme-side predicates listed <c>Border.Sides</c>, <c>Shadow.Visible</c>, and
+    /// <c>Shadow.Offset</c>; the two local-overlay checks listed <c>Border.Sides</c> alone. So the
+    /// same footprint change requested Measure when a theme authored it and Render when application
+    /// code did - and <c>Shadow.Mode</c>, which selects between half-row and whole-cell shadow
+    /// arithmetic and so resizes the visual-overflow rectangle on its own, appeared in none of the
+    /// four.</para>
+    /// </summary>
+    /// <param name="overlay">The partial contribution under test.</param>
+    [Theory]
+    [MemberData(nameof(GeometryOverlays))]
+    public void ChangesChromeGeometry_WhenAnOverlayTouchesAGeometryMember_ReportsTrue(AppearanceOverlay overlay) =>
+        AppearanceStates.ChangesChromeGeometry(overlay).ShouldBeTrue();
+
+    /// <summary>The counter-cases: a purely cosmetic overlay, and an empty one, must stay Render.</summary>
+    [Fact]
+    public void ChangesChromeGeometry_WhenAnOverlayIsCosmetic_ReportsFalse()
+    {
+        AppearanceStates.ChangesChromeGeometry(AppearanceOverlay.Empty).ShouldBeFalse();
+        AppearanceStates.ChangesChromeGeometry(
+                new AppearanceOverlay(face: new FaceOverlay(foreground: Color.Rgb(1, 2, 3))))
+            .ShouldBeFalse();
+        AppearanceStates.ChangesChromeGeometry(
+                new AppearanceOverlay(shadow: new ShadowOverlay(foreground: Color.Rgb(1, 2, 3))))
+            .ShouldBeFalse();
+    }
+
+    /// <summary>Gets the four partial contributions that can move a control's footprint.</summary>
+    /// <returns>One overlay per geometry member.</returns>
+    public static TheoryData<AppearanceOverlay> GeometryOverlays() =>
+    [
+        new AppearanceOverlay(border: new BorderOverlay(sides: BorderSide.All)),
+        new AppearanceOverlay(shadow: new ShadowOverlay(isVisible: true)),
+        new AppearanceOverlay(shadow: new ShadowOverlay(offset: new Point(1, 1))),
+        new AppearanceOverlay(shadow: new ShadowOverlay(mode: ShadowMode.FractionalBlock))
+    ];
+
     private static ControlAppearance CreateAppearance() => new(
         new Face(
             SemanticColor.ControlText,
