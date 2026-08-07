@@ -11,7 +11,7 @@ using Support;
 
 /// <summary>Gates scalar binding allocation and feedback responsiveness.</summary>
 [Collection(PerformanceGroup.Name)]
-public sealed class BindingResponsivenessTests
+public sealed class BindingPerformanceTests
 {
     /// <summary>Verifies warmed direct notifications retain a bounded per-update allocation.</summary>
     [Fact]

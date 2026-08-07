@@ -10,7 +10,7 @@ using SharpVision.DataBinding;
 using Support;
 
 /// <summary>Verifies PropertyPathObserver handles concurrent PropertyChanged notifications safely.</summary>
-public sealed class PropertyPathObserverThreadingTests
+public sealed class PropertyPathObserverTests
 {
     /// <summary>Verifies concurrent PropertyChanged events from multiple threads do not corrupt the observer.</summary>
     [Fact]
@@ -96,5 +96,22 @@ public sealed class PropertyPathObserverThreadingTests
         });
 
         callbacks.ShouldBeGreaterThan(0);
+    }
+
+    /// <summary>Verifies observer disposal is idempotent and suppresses later callbacks.</summary>
+    [Fact]
+    public void Dispose_WhenObserverDisposedTwice_SuppressesNotifications()
+    {
+        Expression<Func<BindingModel, string?>> expression = source => source.Name;
+        var model = new BindingModel { Name = "Before" };
+        var path = PropertyPath.Create(expression, requireWritable: false);
+        var callbacks = 0;
+        var observer = new PropertyPathObserver(model, path, () => callbacks++);
+
+        observer.Dispose();
+        observer.Dispose();
+        model.Name = "After";
+
+        callbacks.ShouldBe(0);
     }
 }
