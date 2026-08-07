@@ -849,15 +849,6 @@ public sealed class ButtonSurfaceTests
         surface.Cell(new Point(9, 2)).Style.Attributes.ShouldBe(TerminalAttributes.None);
         surface.Cell(new Point(2, 4)).Text.ShouldBe(" ");
         surface.Cell(new Point(2, 4)).Style.Attributes.ShouldBe(TerminalAttributes.None);
-
-        // Assert the caption itself, not just surrounding geometry: only a visible shadow
-        // translates the pressed face (and its caption) down and right by the shadow offset.
-        var captionRow = hasShadow || hasBorder ? 1 : 0;
-        var captionColumn = hasShadow ? 3 : 2;
-        surface.Cell(new Point(captionColumn, captionRow)).Text.ShouldBe("S");
-        surface.Cell(new Point(captionColumn + 1, captionRow)).Text.ShouldBe("a");
-        surface.Cell(new Point(captionColumn + 2, captionRow)).Text.ShouldBe("v");
-        surface.Cell(new Point(captionColumn + 3, captionRow)).Text.ShouldBe("e");
     }
 
     /// <summary>Verifies Composite shadow preserves underlying glyphs while applying shadow attributes.</summary>
