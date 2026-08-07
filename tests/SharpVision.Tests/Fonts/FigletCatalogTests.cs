@@ -63,6 +63,47 @@ public sealed class FigletCatalogTests
         catalog.EmbeddedResourceReadCount.ShouldBe(1);
     }
 
+    /// <summary>Verifies a repeated load of the same name and limits reuses the first parsed
+    /// result instead of re-reading, re-hashing, and re-parsing the embedded resource - the cost
+    /// that made every FigletTextPane construction in the showcase re-hash and re-parse the same
+    /// handful of fonts on every sidebar click.</summary>
+    [Fact]
+    public void Load_WhenCalledTwiceWithTheSameNameAndLimits_ReusesTheFirstParsedInstance()
+    {
+        var catalog = FigletCatalog.CreateEmbedded();
+
+        var first = catalog.Load("standard");
+        catalog.EmbeddedResourceReadCount.ShouldBe(1);
+
+        var second = catalog.Load("standard");
+
+        second.ShouldBeSameAs(first);
+        catalog.EmbeddedResourceReadCount.ShouldBe(1);
+    }
+
+    /// <summary>Verifies different limits for the same name are cached independently, since a
+    /// stricter or looser limit can legitimately change parsing or rejection.</summary>
+    [Fact]
+    public void Load_WhenCalledWithDifferentLimitsForTheSameName_CachesEachLimitSeparately()
+    {
+        var catalog = FigletCatalog.CreateEmbedded();
+        var first = new FigletLimits(maxOutputChars: 1024 * 1024);
+        var second = new FigletLimits(maxOutputChars: 2 * 1024 * 1024);
+
+        var withFirstLimits = catalog.Load("standard", first);
+        catalog.EmbeddedResourceReadCount.ShouldBe(1);
+
+        var withSecondLimits = catalog.Load("standard", second);
+
+        catalog.EmbeddedResourceReadCount.ShouldBe(2);
+        withSecondLimits.ShouldNotBeSameAs(withFirstLimits);
+
+        var withFirstLimitsAgain = catalog.Load("standard", first);
+
+        withFirstLimitsAgain.ShouldBeSameAs(withFirstLimits);
+        catalog.EmbeddedResourceReadCount.ShouldBe(2);
+    }
+
     /// <summary>Verifies lookup is exact and path-like input cannot address archive entries.</summary>
     [Theory]
     [InlineData("Standard")]

@@ -27,7 +27,7 @@ help:
 	@echo "  make test          Run all tests with timeout protection"
 	@echo "  make test-ci       Run tests with CI reports"
 	@echo "  make test-tty      Run controlling-terminal-gated Unix console host tests (Linux/macOS only)"
-	@echo "  make run           Run the showcase"
+	@echo "  make run           Run the showcase in Release mode"
 	@echo "  make watch         Run the showcase in watch mode"
 	@echo "  make docs-samples  Compile every documentation C# sample"
 	@echo "  make lint          Check C#, Markdown, and documentation links"
@@ -59,7 +59,7 @@ build: restore
 	@echo "✅ Build complete."
 
 run:
-	@dotnet run --project $(SHOWCASE)
+	@dotnet run --project $(SHOWCASE) --configuration $${CONFIGURATION:-Release}
 
 test: build
 	@echo "🧪 Running tests..."

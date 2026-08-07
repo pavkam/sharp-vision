@@ -3,6 +3,7 @@
 
 namespace SharpVision.Fonts;
 
+using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -22,6 +23,7 @@ public sealed class FigletCatalog
 
     private readonly Dictionary<string, FigletFontInfo> _entries;
     private readonly Dictionary<string, Func<FigletCatalog, FigletLimits, FigletFont>> _loaders;
+    private readonly ConcurrentDictionary<(string Name, FigletLimits Limits), FigletFont> _cache = new();
     private int _embeddedResourceReadCount;
 
     private FigletCatalog(
@@ -210,11 +212,21 @@ public sealed class FigletCatalog
     /// <exception cref="KeyNotFoundException">The exact name is absent.</exception>
     /// <exception cref="InvalidDataException">The source bytes disagree with recorded provenance.</exception>
     /// <exception cref="FormatException">The selected entry is not a supported FIGfont.</exception>
+    /// <remarks>
+    /// The first call for a given name and limits pair reads, hashes, and parses the font; every
+    /// later call for that same pair on this instance returns the already-parsed, immutable
+    /// result instead of repeating that work. Different limits for the same name are cached
+    /// separately, since a stricter or looser limit can change parsing or rejection.
+    /// </remarks>
     public FigletFont Load(string name, FigletLimits limits)
     {
         ArgumentNullException.ThrowIfNull(name);
+
         return _loaders.TryGetValue(name, out var loader)
-            ? loader(this, limits)
+            ? _cache.GetOrAdd(
+                (name, limits),
+                static (key, state) => state.Loader(state.Catalog, key.Limits),
+                (Catalog: this, Loader: loader))
             : throw new KeyNotFoundException($"The FIGlet catalog does not contain '{name}'.");
     }
 
