@@ -1,0 +1,295 @@
+{
+  "name": "Catppuccin Latte",
+  "slug": "catppuccin-latte",
+  "colorScheme": "light",
+  "order": 21,
+  "author": "Catppuccin",
+  "license": "MIT",
+  "source": "https://github.com/catppuccin/catppuccin",
+  "palette": {
+    "base": "#eff1f5",
+    "surface0": "#ccd0da",
+    "surface2": "#acb0be",
+    "overlay0": "#9ca0b0",
+    "overlay1": "#8c8fa1",
+    "text": "#4c4f69",
+    "mauve": "#8839ef",
+    "blue": "#1e66f5",
+    "red": "#d20f39",
+    "yellow": "#df8e1d",
+    "green": "#40a02b"
+  },
+  "colors": {
+    "window": "base",
+    "windowSurface": "surface0",
+    "windowText": "text",
+    "surface": "surface0",
+    "surfaceText": "text",
+    "control": "surface0",
+    "controlText": "text",
+    "controlBorder": "overlay0",
+    "controlShadow": "overlay0",
+    "activeControl": "#bdc1cb",
+    "activeText": "text",
+    "activeBorder": "text",
+    "focusedControl": "#c2d0e9",
+    "focusedText": "mauve",
+    "focusedBorder": "mauve",
+    "pressedControl": "#d6d5cb",
+    "pressedText": "yellow",
+    "pressedBorder": "yellow",
+    "selectedControl": "surface2",
+    "selectedText": "text",
+    "disabledControl": "surface0",
+    "disabledText": "overlay1",
+    "disabledBorder": "overlay1",
+    "accent": "mauve",
+    "muted": "overlay1",
+    "hotkey": "yellow",
+    "error": "red",
+    "warning": "yellow",
+    "success": "green",
+    "info": "blue"
+  },
+  "attributes": {
+    "normalText": [],
+    "activeText": [],
+    "focusedText": "bold",
+    "pressedText": [],
+    "selectedText": [],
+    "disabledText": [],
+    "border": [],
+    "shadow": "dim",
+    "hotkey": "underline"
+  },
+  "styles": {
+    "control": {
+      "normal": {
+        "face": {
+          "foreground": "controlText",
+          "background": "control",
+          "attributes": "normalText"
+        },
+        "border": {
+          "sides": "none",
+          "glyphStyle": "rounded",
+          "foreground": "controlBorder",
+          "background": "control",
+          "attributes": "border"
+        },
+        "shadow": {
+          "visible": false,
+          "mode": "composite",
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "glyph": "▓",
+          "foreground": "controlShadow",
+          "background": "transparent",
+          "attributes": "shadow"
+        }
+      },
+      "pointerOver": {
+        "face": {
+          "foreground": "activeText",
+          "attributes": "activeText"
+        },
+        "border": {
+          "foreground": "activeBorder"
+        }
+      },
+      "focused": {
+        "face": {
+          "foreground": "focusedText",
+          "background": "focusedControl",
+          "attributes": "focusedText"
+        },
+        "border": {
+          "foreground": "focusedBorder"
+        }
+      },
+      "pressed": {
+        "face": {
+          "foreground": "pressedText",
+          "background": "pressedControl",
+          "attributes": "pressedText"
+        },
+        "border": {
+          "foreground": "pressedBorder"
+        }
+      },
+      "selected": {
+        "face": {
+          "foreground": "selectedText",
+          "background": "selectedControl",
+          "attributes": "selectedText"
+        }
+      },
+      "disabled": {
+        "face": {
+          "foreground": "disabledText",
+          "background": "disabledControl",
+          "attributes": "disabledText"
+        },
+        "border": {
+          "foreground": "disabledBorder"
+        }
+      }
+    },
+    "input": {
+      "normal": {
+        "face": {
+          "background": "surface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "heavy"
+        }
+      },
+      "pointerOver": {
+        "face": {
+          "background": "activeControl"
+        }
+      }
+    },
+    "container": {
+      "normal": {
+        "face": {
+          "background": "surface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "light"
+        }
+      }
+    },
+    "window": {
+      "normal": {
+        "face": {
+          "foreground": "windowText",
+          "background": "windowSurface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "paired"
+        },
+        "shadow": {
+          "visible": true,
+          "mode": "composite",
+          "offset": {
+            "x": 2,
+            "y": 1
+          }
+        }
+      }
+    },
+    "popup": {
+      "normal": {
+        "face": {
+          "foreground": "windowText",
+          "background": "window"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "rounded"
+        }
+      }
+    },
+    "tooltip": {
+      "normal": {
+        "face": {
+          "foreground": "windowText",
+          "background": "window"
+        },
+        "border": {
+          "sides": "none"
+        }
+      }
+    },
+    "scrollBar": {
+      "normal": {
+        "chrome": "full",
+        "fill": "line",
+        "glyphs": {
+          "verticalDecrement": "▲",
+          "verticalIncrement": "▼",
+          "horizontalDecrement": "◀",
+          "horizontalIncrement": "▶",
+          "blockTrack": "·",
+          "blockThumb": "●",
+          "horizontalLineTrack": "╌",
+          "horizontalLineThumb": "━",
+          "verticalLineTrack": "╎",
+          "verticalLineThumb": "┃"
+        }
+      }
+    },
+    "checkBox": {
+      "normal": {
+        "markStyle": "brackets",
+        "glyphs": {
+          "unchecked": "○",
+          "checked": "●",
+          "indeterminate": "◐"
+        }
+      }
+    },
+    "radioButton": {
+      "normal": {
+        "markStyle": "circle",
+        "glyphs": {
+          "unchecked": "○",
+          "checked": "●"
+        }
+      }
+    },
+    "button": {
+      "normal": {
+        "padding": {
+          "x": 2,
+          "y": 0
+        }
+      }
+    },
+    "chaseIndicator": {
+      "normal": {
+        "active": "◉",
+        "inactive": "·"
+      }
+    },
+    "slider": {
+      "normal": {
+        "fillColor": "accent",
+        "trackColor": "muted",
+        "thumbColor": "accent"
+      }
+    },
+    "progressBar": {
+      "normal": {
+        "fillColor": "accent",
+        "trackColor": "muted",
+        "indeterminateColor": "accent",
+        "glyphs": {
+          "fill": "●",
+          "track": "·",
+          "indeterminate": "◌"
+        }
+      }
+    },
+    "spinner": {
+      "normal": {
+        "frames": [
+          "⣿",
+          "⣷",
+          "⣯",
+          "⣟",
+          "⡿",
+          "⢿",
+          "⣻",
+          "⣽"
+        ]
+      }
+    }
+  }
+}

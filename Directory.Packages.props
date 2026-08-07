@@ -1,0 +1,23 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Derived, never a literal. SharpVision.FigletFonts consumes the core as a package rather
+         than a project reference, and NuGet resolves a floor range to the lowest satisfying
+         version across all sources - so a literal floor that falls behind OverallVersion silently
+         builds, packs, and consumer-tests the font package against whatever older core is on
+         nuget.org, while the freshly packed one in the bootstrap feed goes unused. The publish
+         workflow already hard-fails unless all three OverallVersions agree, so lockstep is not a
+         new constraint this introduces. -->
+    <PackageVersion Include="SharpVision" Version="[$(OverallVersion),)" />
+    <PackageVersion Include="JetBrains.Annotations" Version="2026.2.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
+    <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.0.6" />
+    <PackageVersion Include="Moq" Version="4.20.72" />
+    <PackageVersion Include="PublicApiGenerator" Version="11.5.4" />
+    <PackageVersion Include="Shouldly" Version="4.3.0" />
+    <PackageVersion Include="Verify.XunitV3" Version="31.27.0" />
+    <PackageVersion Include="xunit.v3" Version="3.2.2" />
+  </ItemGroup>
+</Project>

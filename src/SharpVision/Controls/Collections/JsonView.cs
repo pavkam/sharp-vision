@@ -1,0 +1,961 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Controls.Collections;
+
+using System.Text.Json;
+
+using Scrolling;
+
+using SharpVision.Terminal.Input;
+
+using LayoutStack = Layout.Stack;
+using TextAlignment = Text.Alignment;
+using TextLayout = Text.Layout;
+using TextLine = Text.Line;
+using TextOverflow = Text.Overflow;
+
+/// <summary>Displays JSON as a focusable hierarchical collection of properties and array entries.</summary>
+[PublicAPI]
+public sealed class JsonView: CompositeControl<JsonViewStyle>
+{
+    private JsonViewNode _root;
+    private List<JsonViewNode> _visibleNodes = [];
+    private List<JsonViewLine> _sourceLines = [];
+    private List<JsonViewLine> _lines = [];
+    private readonly JsonViewContent _content;
+    private readonly LayoutStack _stack;
+    private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
+    private JsonViewNode? _selectedNode;
+    private int? _projectionWidth;
+    private (Rune Collapsed, Rune Expanded)? _builtWithGlyphs;
+
+    /// <summary>Initializes an empty JSON view whose document is the JSON null value.</summary>
+    public JsonView() : base(JsonViewStyle.Definition)
+    {
+        _root = Parse("null");
+        _sourceLines = BuildLines(_root, Indent);
+        _lines = _sourceLines;
+        _content = new JsonViewContent(this);
+        _stack = new LayoutStack
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            ShowScrollBars = ShowScrollBars.WhenNeeded,
+            Children = { _content }
+        };
+        InitializeContent(_stack);
+        _scrollBarStyle = InitializePartStyle(
+            ScrollBarStyle.ForwardingDefinition,
+            nameof(ScrollBarStyle));
+        BindStyle(_scrollBarStyle, _stack, nameof(ScrollBarStyle));
+        Focusable = true;
+        TabStop = true;
+        TabNavigation = TabNavigation.None;
+        _ = AddHandler(Events.Key, OnKeyRouted);
+    }
+
+    /// <summary>Gets or sets the complete non-null JSON document text.</summary>
+    /// <remarks>The replacement is parsed completely before any observable state changes.</remarks>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="JsonException">The value is not one complete valid JSON document.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public string Json
+    {
+        get;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (field == value)
+            {
+                return;
+            }
+
+            var root = Parse(value);
+            var visibleNodes = CollectVisibleNodes(root);
+
+            VerifyMutable();
+            var previousPath = SelectedPath;
+            field = value;
+            _root = root;
+            _visibleNodes = visibleNodes;
+            _sourceLines = BuildLines(root, Indent);
+            _lines = _sourceLines;
+            _projectionWidth = null;
+            _stack.HorizontalOffset = 0;
+            _stack.VerticalOffset = 0;
+            CommitSelection(previousPath, visibleNodes.FirstOrDefault());
+            NotifyPropertyChanged(nameof(Json), InvalidationImpact.Measure);
+            _content.Invalidate(Invalidation.Measure);
+        }
+    } = "null";
+
+    /// <summary>Gets or sets the number of terminal cells reserved for each nesting level.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public int Indent
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+
+            if (SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                _sourceLines = BuildLines(_root, value);
+                _lines = _sourceLines;
+                _projectionWidth = null;
+                _content.Invalidate(Invalidation.Measure);
+            }
+        }
+    } = 2;
+
+    /// <summary>Gets the RFC 6901 JSON Pointer of the selected property or array entry.</summary>
+    public string? SelectedPath { get; private set; }
+
+    /// <summary>Raised after the selected property or array-entry pointer changes.</summary>
+    public event EventHandler<JsonViewSelectionChangedEventArgs>? SelectionChanged;
+
+    /// <summary>Gets or sets which overflow axes provide generated scrollbars.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown flags.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public ScrollBars ScrollBars
+    {
+        get => _stack.ScrollBars;
+        set
+        {
+            VerifyMutable();
+
+            if (_stack.ScrollBars == value)
+            {
+                return;
+            }
+
+            _stack.ScrollBars = value;
+            NotifyPropertyChanged(nameof(ScrollBars), InvalidationImpact.None);
+        }
+    }
+
+    /// <summary>Gets or sets when generated scrollbars are visible.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public ShowScrollBars ShowScrollBars
+    {
+        get => _stack.ShowScrollBars;
+        set
+        {
+            VerifyMutable();
+
+            if (_stack.ShowScrollBars == value)
+            {
+                return;
+            }
+
+            _stack.ShowScrollBars = value;
+            NotifyPropertyChanged(nameof(ShowScrollBars), InvalidationImpact.None);
+        }
+    }
+
+    /// <summary>Gets or sets the complete local style for generated scrollbars.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public ScrollBarStyle? ScrollBarStyle
+    {
+        get => _scrollBarStyle.Local;
+        set => _scrollBarStyle.Local = value;
+    }
+
+    /// <summary>Gets the resolved style applied to generated scrollbars.</summary>
+    public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
+
+    /// <summary>Raised after a generated scrolling viewport commits changed offsets.</summary>
+    public event EventHandler<ScrollChangedEventArgs>? ScrollChanged
+    {
+        add => _stack.ScrollChanged += value;
+        remove => _stack.ScrollChanged -= value;
+    }
+
+    /// <summary>Gets the committed content extent.</summary>
+    public Size Extent => _stack.Extent;
+
+    /// <summary>Gets the committed visible viewport extent.</summary>
+    public Size Viewport => _stack.Viewport;
+
+    /// <summary>Gets or sets the valid horizontal content offset.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public int HorizontalOffset
+    {
+        get => _stack.HorizontalOffset;
+        set => _stack.HorizontalOffset = value;
+    }
+
+    /// <summary>Gets or sets the valid vertical content offset.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public int VerticalOffset
+    {
+        get => _stack.VerticalOffset;
+        set => _stack.VerticalOffset = value;
+    }
+
+    /// <summary>Scrolls by signed cell deltas with saturation and endpoint clamping.</summary>
+    /// <param name="x">The requested horizontal delta.</param>
+    /// <param name="y">The requested vertical delta.</param>
+    /// <param name="cause">The defined input path.</param>
+    /// <returns>True when at least one offset changes.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public bool ScrollBy(int x, int y, ScrollCause cause = ScrollCause.Programmatic) =>
+        _stack.ScrollBy(x, y, cause);
+
+    /// <summary>Sets the disclosure state of one container entry.</summary>
+    /// <param name="path">The non-null RFC 6901 pointer of a non-root object or array entry.</param>
+    /// <param name="expanded">Whether descendants should be visible.</param>
+    /// <returns>True when the disclosure state changed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="path"/> is null.</exception>
+    /// <exception cref="ArgumentException">The path does not identify a container entry.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public bool SetExpanded(string path, bool expanded)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        var node = FindNode(path);
+
+        if (node is not { IsContainer: true, Parent: not null })
+        {
+            throw new ArgumentException("The path must identify an object or array entry.", nameof(path));
+        }
+
+        VerifyMutable();
+
+        if (node.Expanded == expanded)
+        {
+            return false;
+        }
+
+        node.Expanded = expanded;
+        RebuildProjection();
+        return true;
+    }
+
+    /// <summary>Expands every object and array entry.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public void ExpandAll() => SetAllExpanded(true);
+
+    /// <summary>Collapses every non-root object and array entry.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public void CollapseAll() => SetAllExpanded(false);
+
+    /// <summary>Gets the visible selectable-entry count used to prove disclosure projection invariants.</summary>
+    internal int VisibleEntryCount => _visibleNodes.Count;
+
+    /// <summary>Measures the current projected document for the private content surface.</summary>
+    /// <returns>The width-aware visual extent in terminal cells.</returns>
+    internal Size MeasureProjectedContent()
+    {
+        var width = 0;
+
+        foreach (var line in _lines)
+        {
+            width = Math.Max(width, MeasureCells(line.Text));
+        }
+
+        return new Size(width, _lines.Count);
+    }
+
+    /// <summary>Draws projected lines intersecting the private content surface clip.</summary>
+    /// <param name="canvas">The clipped semantic canvas.</param>
+    /// <param name="bounds">The content surface bounds.</param>
+    internal void RenderProjectedContent(TerminalCanvas canvas, Rect bounds)
+    {
+        var first = Math.Max(0, canvas.Bounds.Y - bounds.Y);
+        var last = Math.Min(_lines.Count, canvas.Bounds.Bottom - bounds.Y);
+        var actualStyle = ActualStyle;
+        var punctuation = ResolvedStyle.WithForeground(ResolveColor(actualStyle.PunctuationColor, Theme));
+        var disclosure = ResolvedStyle.WithForeground(ResolveColor(actualStyle.DisclosureColor, Theme));
+
+        for (var index = first; index < last; index++)
+        {
+            var line = _lines[index];
+            var x = bounds.X;
+            var y = bounds.Y + index;
+
+            DrawToken(canvas, line.Leading, line.Node is null ? punctuation : disclosure, ref x, y);
+
+            if (line.Node is { } node && line.Label.Length > 0)
+            {
+                var selected = ReferenceEquals(node, _selectedNode);
+                var labelStyle = selected
+                    ? WithColors(
+                        ResolvedStyle,
+                        ResolveColor(actualStyle.SelectedTextColor, Theme),
+                        ResolveColor(actualStyle.SelectedBackground, Theme))
+                    : ResolvedStyle.WithForeground(ResolveColor(
+                        node.IsArrayElement ? actualStyle.IndexColor : actualStyle.KeyColor,
+                        Theme));
+                DrawToken(
+                    canvas,
+                    line.Label,
+                    labelStyle,
+                    ref x,
+                    y,
+                    selected ? BackgroundMode.Opaque : BackgroundMode.Transparent);
+            }
+
+            DrawToken(canvas, line.Separator, punctuation, ref x, y);
+            var valueStyle = line.ValueKind is { } valueKind
+                ? ResolveValueStyle(valueKind, actualStyle, punctuation)
+                : punctuation;
+            DrawToken(canvas, line.Value, valueStyle, ref x, y);
+            DrawToken(canvas, line.Suffix, punctuation, ref x, y);
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnStyleChanged(JsonViewStyle previous, JsonViewStyle current)
+    {
+        base.OnStyleChanged(previous, current);
+        _content?.Invalidate(Invalidation.Render);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnRenderContent(TerminalCanvas canvas)
+    {
+        // The disclosure arrow is part of the measured line text, so a style that changes it has to
+        // rebuild the lines rather than just repaint them. Checked here rather than in
+        // OnStyleChanged because a theme swap reaches the resolved style without routing through
+        // it, and this is already the place the projection is revalidated against current state.
+        var glyphs = (ActualStyle.CollapsedGlyph, ActualStyle.ExpandedGlyph);
+
+        if (_builtWithGlyphs != glyphs)
+        {
+            _builtWithGlyphs = glyphs;
+            _sourceLines = BuildLines(_root, Indent);
+            _projectionWidth = 0;
+        }
+
+        var viewportWidth = _stack.Viewport.Width;
+
+        if (viewportWidth > 0 && _projectionWidth != viewportWidth)
+        {
+            _projectionWidth = viewportWidth;
+            _lines = BuildDisplayLines(_sourceLines, viewportWidth);
+            _content.Invalidate(Invalidation.Measure);
+        }
+
+        if (Bounds.Width > 0 && Bounds.Height > 0 && this.HasOpaqueFill(GetAppearanceState()))
+        {
+            canvas.Clear(Bounds, ResolvedStyle);
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnEvent(RoutedEventArgs eventArgs)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        base.OnEvent(eventArgs);
+
+        if (eventArgs.Handled || eventArgs is not PointerEventArgs
+            {
+                Pointer.Action: PointerAction.Press,
+                Pointer.Buttons: var buttons,
+                Pointer.Cells: { } cells
+            } || (buttons & Buttons.Primary) == 0 || !_content.Bounds.Contains(cells))
+        {
+            return;
+        }
+
+        var lineIndex = cells.Y - _content.Bounds.Y;
+
+        if (lineIndex < 0 || lineIndex >= _lines.Count || _lines[lineIndex].Node is not { } node)
+        {
+            return;
+        }
+
+        var line = _lines[lineIndex];
+        var x = cells.X - _content.Bounds.X;
+        var leadingWidth = MeasureCells(line.Leading);
+        var labelWidth = MeasureCells(line.Label);
+        var onLabel = x >= leadingWidth && x < leadingWidth + labelWidth;
+
+        // Leading is "{indentation}{glyph} ": one trailing gap cell after the disclosure glyph,
+        // whose own width varies with the active ambiguous-width policy ('▶'/'▼' are East Asian
+        // Ambiguous, so they occupy two cells under Ambiguous.Wide). Measuring the actual glyph
+        // instead of assuming a fixed two-cell "leadingWidth - 2" literal keeps every cell the
+        // glyph occupies clickable, not just its last one.
+        var disclosureGlyphWidth = node.IsContainer && node.Children.Count > 0
+            ? MeasureCells(DisclosureGlyph(node.Expanded).ToString())
+            : 0;
+        var onDisclosure = disclosureGlyphWidth > 0 &&
+                           x >= leadingWidth - 1 - disclosureGlyphWidth &&
+                           x < leadingWidth - 1;
+
+        if (!onLabel && !onDisclosure)
+        {
+            return;
+        }
+
+        CommitSelection(SelectedPath, node);
+        _ = Focus();
+
+        if (onDisclosure)
+        {
+            _ = SetExpanded(node.Path, !node.Expanded);
+        }
+
+        eventArgs.Handled = true;
+    }
+
+    /// <inheritdoc/>
+    protected override void OnUnavailable(ReleaseReason reason)
+    {
+        base.OnUnavailable(reason);
+
+        if (reason == ReleaseReason.Disposed)
+        {
+            SelectionChanged = null;
+        }
+    }
+
+    private static JsonViewNode Parse(string value)
+    {
+        using var document = JsonDocument.Parse(value);
+        return BuildNode(document.RootElement, string.Empty, null, null, false);
+    }
+
+    private static JsonViewNode BuildNode(
+        JsonElement element,
+        string path,
+        string? label,
+        JsonViewNode? parent,
+        bool isArrayElement)
+    {
+        var rawValue = element.ValueKind switch
+        {
+            JsonValueKind.Object => "{",
+            JsonValueKind.Array => "[",
+            JsonValueKind.String => element.GetRawText(),
+            JsonValueKind.Number => element.GetRawText(),
+            JsonValueKind.True => "true",
+            JsonValueKind.False => "false",
+            JsonValueKind.Null => "null",
+            JsonValueKind.Undefined => throw new JsonException("Undefined is not a JSON value."),
+            _ => throw new JsonException("The JSON value kind is unknown.")
+        };
+        var node = new JsonViewNode(path, label, element.ValueKind, rawValue, parent, isArrayElement);
+
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in element.EnumerateObject())
+            {
+                var childPath = $"{path}/{EscapePointerSegment(property.Name)}";
+                node.Children.Add(BuildNode(
+                    property.Value,
+                    childPath,
+                    JsonSerializer.Serialize(property.Name),
+                    node,
+                    false));
+            }
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            var index = 0;
+
+            foreach (var item in element.EnumerateArray())
+            {
+                node.Children.Add(BuildNode(item, $"{path}/{index}", $"[{index}]", node, true));
+                index++;
+            }
+        }
+
+        return node;
+    }
+
+    private static string EscapePointerSegment(string value) =>
+        value.Replace("~", "~0", StringComparison.Ordinal).Replace("/", "~1", StringComparison.Ordinal);
+
+    private static List<JsonViewNode> CollectVisibleNodes(JsonViewNode root)
+    {
+        var result = new List<JsonViewNode>();
+        AppendVisibleChildren(root, result);
+        return result;
+    }
+
+    private static void AppendVisibleChildren(JsonViewNode node, List<JsonViewNode> result)
+    {
+        foreach (var child in node.Children)
+        {
+            result.Add(child);
+
+            if (child.Expanded)
+            {
+                AppendVisibleChildren(child, result);
+            }
+        }
+    }
+
+    private List<JsonViewLine> BuildLines(JsonViewNode root, int indent)
+    {
+        var lines = new List<JsonViewLine>();
+
+        if (!root.IsContainer)
+        {
+            lines.Add(new JsonViewLine(
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                root.RawValue,
+                string.Empty,
+                root.Kind,
+                root));
+            return lines;
+        }
+
+        var open = root.Kind == JsonValueKind.Object ? "{" : "[";
+        var close = root.Kind == JsonValueKind.Object ? "}" : "]";
+
+        if (root.Children.Count == 0)
+        {
+            lines.Add(new JsonViewLine(
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                $"{open}{close}",
+                string.Empty,
+                null,
+                null));
+            return lines;
+        }
+
+        lines.Add(new JsonViewLine(string.Empty, string.Empty, string.Empty, open, string.Empty, null, null));
+        AppendChildLines(root, 0, indent, lines);
+        lines.Add(new JsonViewLine(string.Empty, string.Empty, string.Empty, close, string.Empty, null, null));
+        return lines;
+    }
+
+    private void AppendChildLines(
+        JsonViewNode parent,
+        int depth,
+        int indent,
+        List<JsonViewLine> lines)
+    {
+        for (var index = 0; index < parent.Children.Count; index++)
+        {
+            var node = parent.Children[index];
+            var comma = index + 1 < parent.Children.Count ? "," : string.Empty;
+            var indentation = new string(' ', depth * indent);
+            var label = node.Label ?? string.Empty;
+
+            if (!node.IsContainer || node.Children.Count == 0)
+            {
+                var value = node.IsContainer
+                    ? node.Kind == JsonValueKind.Object ? "{}" : "[]"
+                    : node.RawValue;
+                lines.Add(new JsonViewLine(
+                    $"{indentation}  ",
+                    label,
+                    ": ",
+                    value,
+                    comma,
+                    node.IsContainer ? null : node.Kind,
+                    node));
+                continue;
+            }
+
+            var open = node.Kind == JsonValueKind.Object ? "{" : "[";
+            var close = node.Kind == JsonValueKind.Object ? "}" : "]";
+
+            if (!node.Expanded)
+            {
+                lines.Add(new JsonViewLine(
+                    $"{indentation}{DisclosureGlyph(expanded: false)} ",
+                    label,
+                    ": ",
+                    $"{open}…{close}",
+                    comma,
+                    null,
+                    node));
+                continue;
+            }
+
+            lines.Add(new JsonViewLine(
+                $"{indentation}{DisclosureGlyph(expanded: true)} ",
+                label,
+                ": ",
+                open,
+                string.Empty,
+                null,
+                node));
+            AppendChildLines(node, depth + 1, indent, lines);
+            lines.Add(new JsonViewLine(
+                new string(' ', (depth + 1) * indent),
+                string.Empty,
+                string.Empty,
+                close,
+                comma,
+                null,
+                null));
+        }
+    }
+
+    private List<JsonViewLine> BuildDisplayLines(List<JsonViewLine> source, int width)
+    {
+        var result = new List<JsonViewLine>(source.Count);
+
+        foreach (var line in source)
+        {
+            if (line.ValueKind != JsonValueKind.String || MeasureCells(line.Text) <= width)
+            {
+                result.Add(line);
+                continue;
+            }
+
+            var prefixWidth = MeasureCells($"{line.Leading}{line.Label}{line.Separator}");
+            var suffixWidth = MeasureCells(line.Suffix);
+            var valueWidth = Math.Max(1, width - prefixWidth - suffixWidth);
+            var lineCount = TextLayout.Format(
+                line.Value,
+                valueWidth,
+                TextOverflow.Wrap,
+                TextAlignment.Start,
+                CellPolicy.AmbiguousWidth,
+                []);
+            var wrapped = new TextLine[lineCount];
+            _ = TextLayout.Format(
+                line.Value,
+                valueWidth,
+                TextOverflow.Wrap,
+                TextAlignment.Start,
+                CellPolicy.AmbiguousWidth,
+                wrapped);
+
+            for (var index = 0; index < wrapped.Length; index++)
+            {
+                var segment = wrapped[index];
+                var first = index == 0;
+                var last = index + 1 == wrapped.Length;
+                result.Add(new JsonViewLine(
+                    first ? line.Leading : new string(' ', prefixWidth),
+                    first ? line.Label : string.Empty,
+                    first ? line.Separator : string.Empty,
+                    line.Value[segment.Offset..(segment.Offset + segment.Length)],
+                    last ? line.Suffix : string.Empty,
+                    JsonValueKind.String,
+                    first ? line.Node : null));
+            }
+        }
+
+        return result;
+    }
+
+    private JsonViewNode? FindNode(string path)
+    {
+        var pending = new Stack<JsonViewNode>();
+        pending.Push(_root);
+
+        while (pending.Count > 0)
+        {
+            var node = pending.Pop();
+
+            if (node.Path == path)
+            {
+                return node;
+            }
+
+            for (var index = node.Children.Count - 1; index >= 0; index--)
+            {
+                pending.Push(node.Children[index]);
+            }
+        }
+
+        return null;
+    }
+
+    private void RebuildProjection()
+    {
+        _visibleNodes = CollectVisibleNodes(_root);
+        _sourceLines = BuildLines(_root, Indent);
+        _lines = _sourceLines;
+        _projectionWidth = null;
+        NormalizeSelection();
+        _content.Invalidate(Invalidation.Measure);
+        NotifyPropertyChanged(nameof(VisibleEntryCount), InvalidationImpact.Measure);
+    }
+
+    private void SetAllExpanded(bool expanded)
+    {
+        VerifyMutable();
+        var pending = new Stack<JsonViewNode>();
+        pending.Push(_root);
+        var changed = false;
+
+        while (pending.Count > 0)
+        {
+            var node = pending.Pop();
+
+            if (!ReferenceEquals(node, _root) && node.IsContainer && node.Expanded != expanded)
+            {
+                node.Expanded = expanded;
+                changed = true;
+            }
+
+            foreach (var child in node.Children)
+            {
+                pending.Push(child);
+            }
+        }
+
+        if (changed)
+        {
+            RebuildProjection();
+        }
+    }
+
+    private void CommitSelection(string? previousPath, JsonViewNode? node)
+    {
+        var previousNode = _selectedNode;
+        _selectedNode = node;
+        SelectedPath = node?.Path;
+
+        if (ReferenceEquals(previousNode, node) && previousPath == SelectedPath)
+        {
+            return;
+        }
+
+        NotifyPropertyChanged(nameof(SelectedPath), InvalidationImpact.Render);
+        _content.Invalidate(Invalidation.Render);
+        SelectionChanged?.Invoke(this, new JsonViewSelectionChangedEventArgs(previousPath, SelectedPath));
+    }
+
+    private void OnKeyRouted(object? sender, KeyEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.Phase != RoutingPhase.Bubble || eventArgs.Stroke.Action != KeyAction.Press)
+        {
+            return;
+        }
+
+        var code = eventArgs.Stroke.Code;
+
+        if (code == Code.Character && eventArgs.Stroke.Character == new Rune(' '))
+        {
+            code = Code.Enter;
+        }
+
+        if (code == Code.Up)
+        {
+            eventArgs.Handled = MoveSelection(-1);
+        }
+        else if (code == Code.Down)
+        {
+            eventArgs.Handled = MoveSelection(1);
+        }
+        else if (code == Code.Home)
+        {
+            eventArgs.Handled = SelectEndpoint(first: true);
+        }
+        else if (code == Code.End)
+        {
+            eventArgs.Handled = SelectEndpoint(first: false);
+        }
+        else if (code == Code.Left)
+        {
+            eventArgs.Handled = NavigateLeft();
+        }
+        else if (code == Code.Right)
+        {
+            eventArgs.Handled = NavigateRight();
+        }
+        else if (code == Code.Enter)
+        {
+            eventArgs.Handled = ToggleSelected();
+        }
+    }
+
+    private bool MoveSelection(int direction)
+    {
+        if (_visibleNodes.Count == 0)
+        {
+            return false;
+        }
+
+        var index = _selectedNode is null ? -1 : _visibleNodes.IndexOf(_selectedNode);
+        var target = Math.Clamp(index + direction, 0, _visibleNodes.Count - 1);
+        CommitSelection(SelectedPath, _visibleNodes[target]);
+        RevealSelection();
+        return true;
+    }
+
+    private bool SelectEndpoint(bool first)
+    {
+        if (_visibleNodes.Count == 0)
+        {
+            return false;
+        }
+
+        CommitSelection(SelectedPath, first ? _visibleNodes[0] : _visibleNodes[^1]);
+        RevealSelection();
+        return true;
+    }
+
+    private bool NavigateLeft()
+    {
+        if (_selectedNode is null)
+        {
+            return false;
+        }
+
+        if (_selectedNode is { IsContainer: true, Expanded: true, Children.Count: > 0 })
+        {
+            return SetExpanded(_selectedNode.Path, false);
+        }
+
+        var parent = _selectedNode.Parent;
+
+        if (parent is null || ReferenceEquals(parent, _root))
+        {
+            return false;
+        }
+
+        CommitSelection(SelectedPath, parent);
+        RevealSelection();
+        return true;
+    }
+
+    private bool NavigateRight()
+    {
+        if (_selectedNode is not { IsContainer: true, Children.Count: > 0 } selected)
+        {
+            return false;
+        }
+
+        if (!selected.Expanded)
+        {
+            return SetExpanded(selected.Path, true);
+        }
+
+        CommitSelection(SelectedPath, selected.Children[0]);
+        RevealSelection();
+        return true;
+    }
+
+    private bool ToggleSelected() =>
+        _selectedNode is { IsContainer: true, Children.Count: > 0 } selected &&
+        SetExpanded(selected.Path, !selected.Expanded);
+
+    private void NormalizeSelection()
+    {
+        if (_selectedNode is null || _visibleNodes.Contains(_selectedNode))
+        {
+            return;
+        }
+
+        var candidate = _selectedNode.Parent;
+
+        while (candidate is not null && !_visibleNodes.Contains(candidate))
+        {
+            candidate = candidate.Parent;
+        }
+
+        CommitSelection(SelectedPath, candidate ?? _visibleNodes.FirstOrDefault());
+    }
+
+    private void RevealSelection()
+    {
+        if (_selectedNode is null || _stack.Viewport.Height == 0)
+        {
+            return;
+        }
+
+        var lineIndex = _lines.FindIndex(line => ReferenceEquals(line.Node, _selectedNode));
+
+        Debug.Assert(lineIndex >= 0, "A visible selected JSON entry must own one projected line.");
+
+        if (lineIndex < 0)
+        {
+            return;
+        }
+
+        var line = _lines[lineIndex];
+        var labelStart = MeasureCells(line.Leading);
+        var labelWidth = MeasureCells(line.Label);
+
+        if (labelStart < _stack.HorizontalOffset)
+        {
+            _stack.HorizontalOffset = labelStart;
+        }
+        else if (labelStart + labelWidth > _stack.HorizontalOffset + _stack.Viewport.Width)
+        {
+            _stack.HorizontalOffset = Math.Min(
+                Math.Max(0, _stack.Extent.Width - _stack.Viewport.Width),
+                labelStart + labelWidth - _stack.Viewport.Width);
+        }
+
+        if (lineIndex < _stack.VerticalOffset)
+        {
+            _stack.VerticalOffset = lineIndex;
+        }
+        else if (lineIndex >= _stack.VerticalOffset + _stack.Viewport.Height)
+        {
+            _stack.VerticalOffset = lineIndex - _stack.Viewport.Height + 1;
+        }
+    }
+
+    private void DrawToken(
+        TerminalCanvas canvas,
+        ReadOnlySpan<char> value,
+        TerminalStyle style,
+        ref int x,
+        int y,
+        BackgroundMode background = BackgroundMode.Transparent)
+    {
+        if (value.Length == 0)
+        {
+            return;
+        }
+
+        _ = canvas.Draw(value, new Point(x, y), style, background: background);
+        x += MeasureCells(value);
+    }
+
+    private TerminalStyle ResolveValueStyle(
+        JsonValueKind kind,
+        JsonViewStyle style,
+        TerminalStyle punctuation) => kind switch
+        {
+            JsonValueKind.String => ResolvedStyle.WithForeground(ResolveColor(style.StringColor, Theme)),
+            JsonValueKind.Number => ResolvedStyle.WithForeground(ResolveColor(style.NumberColor, Theme)),
+            JsonValueKind.True or JsonValueKind.False => ResolvedStyle.WithForeground(ResolveColor(style.BooleanColor, Theme)),
+            JsonValueKind.Null => ResolvedStyle.WithForeground(ResolveColor(style.NullColor, Theme)),
+            JsonValueKind.Object or JsonValueKind.Array => punctuation,
+            JsonValueKind.Undefined => punctuation,
+            _ => throw new NotImplementedException()
+        };
+
+    private static TerminalStyle WithColors(TerminalStyle source, Color foreground, Color background) => new(
+        foreground,
+        background,
+        source.Attributes,
+        source.Hyperlink,
+        source.Underline,
+        source.UnderlineColor);
+    // The single source for all three copies - the two that build the measured line text and the
+    // one hit-testing measures to compute the clickable span. They were three literals that had to
+    // stay in lockstep by hand, and the glyph participates in layout, so a drift moved the
+    // clickable region away from the drawn arrow.
+    private Rune DisclosureGlyph(bool expanded) =>
+        expanded ? ActualStyle.ExpandedGlyph : ActualStyle.CollapsedGlyph;
+
+}

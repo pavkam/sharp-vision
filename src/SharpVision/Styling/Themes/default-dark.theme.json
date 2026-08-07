@@ -1,0 +1,199 @@
+{
+  "name": "Dark",
+  "slug": "default-dark",
+  "colorScheme": "dark",
+  "order": 0,
+  "author": "SharpVision",
+  "license": "MIT",
+  "source": "https://github.com/sharpvision/sharpvision",
+  "palette": {},
+  "colors": {
+    "window": "#000000",
+    "windowSurface": "#262626",
+    "windowText": "#ffffff",
+    "surface": "#262626",
+    "surfaceText": "#ffffff",
+    "control": "#262626",
+    "controlText": "#ffffff",
+    "controlBorder": "#585858",
+    "controlShadow": "#7f7f7f",
+    "activeControl": "#333333",
+    "activeText": "#ffffff",
+    "activeBorder": "#e5e5e5",
+    "focusedControl": "#1a2a3a",
+    "focusedText": "#00ffff",
+    "focusedBorder": "#00ffff",
+    "pressedControl": "#3a3a1a",
+    "pressedText": "#ffff00",
+    "pressedBorder": "#ffff00",
+    "selectedControl": "#0000ee",
+    "selectedText": "#ffffff",
+    "disabledControl": "#262626",
+    "disabledText": "#585858",
+    "disabledBorder": "#444444",
+    "accent": "#00ffff",
+    "muted": "#7f7f7f",
+    "hotkey": "#ffff00",
+    "error": "#ff0000",
+    "warning": "#ffff00",
+    "success": "#00ff00",
+    "info": "#5c5cff"
+  },
+  "attributes": {
+    "normalText": [],
+    "activeText": [],
+    "focusedText": "bold",
+    "pressedText": [],
+    "selectedText": [],
+    "disabledText": [],
+    "border": [],
+    "shadow": "dim",
+    "hotkey": "underline"
+  },
+  "styles": {
+    "control": {
+      "normal": {
+        "face": {
+          "foreground": "controlText",
+          "background": "control",
+          "attributes": "normalText"
+        },
+        "border": {
+          "sides": "none",
+          "glyphStyle": "rounded",
+          "foreground": "controlBorder",
+          "background": "control",
+          "attributes": "border"
+        },
+        "shadow": {
+          "visible": false,
+          "mode": "composite",
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "glyph": "▓",
+          "foreground": "controlShadow",
+          "background": "transparent",
+          "attributes": "shadow"
+        }
+      },
+      "pointerOver": {
+        "face": {
+          "foreground": "activeText",
+          "attributes": "activeText"
+        },
+        "border": {
+          "foreground": "activeBorder"
+        }
+      },
+      "focused": {
+        "face": {
+          "foreground": "focusedText",
+          "background": "focusedControl",
+          "attributes": "focusedText"
+        },
+        "border": {
+          "foreground": "focusedBorder"
+        }
+      },
+      "pressed": {
+        "face": {
+          "foreground": "pressedText",
+          "background": "pressedControl",
+          "attributes": "pressedText"
+        },
+        "border": {
+          "foreground": "pressedBorder"
+        }
+      },
+      "selected": {
+        "face": {
+          "foreground": "selectedText",
+          "background": "selectedControl",
+          "attributes": "selectedText"
+        }
+      },
+      "disabled": {
+        "face": {
+          "foreground": "disabledText",
+          "background": "disabledControl",
+          "attributes": "disabledText"
+        },
+        "border": {
+          "foreground": "disabledBorder"
+        }
+      }
+    },
+    "input": {
+      "normal": {
+        "face": {
+          "background": "surface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "heavy"
+        }
+      },
+      "pointerOver": {
+        "face": {
+          "background": "activeControl"
+        }
+      }
+    },
+    "container": {
+      "normal": {
+        "face": {
+          "background": "surface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "light"
+        }
+      }
+    },
+    "window": {
+      "normal": {
+        "face": {
+          "foreground": "windowText",
+          "background": "windowSurface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "paired"
+        },
+        "shadow": {
+          "visible": true,
+          "mode": "composite",
+          "offset": {
+            "x": 2,
+            "y": 1
+          }
+        }
+      }
+    },
+    "popup": {
+      "normal": {
+        "face": {
+          "foreground": "windowText",
+          "background": "window"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "rounded"
+        }
+      }
+    },
+    "tooltip": {
+      "normal": {
+        "face": {
+          "foreground": "windowText",
+          "background": "window"
+        },
+        "border": {
+          "sides": "none"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TieredCompilation>false</TieredCompilation>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage"/>
+    <PackageReference Include="Moq"/>
+    <PackageReference Include="Shouldly"/>
+    <PackageReference Include="xunit.v3"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SharpVision.Terminal\SharpVision.Terminal.csproj"/>
+    <ProjectReference Include="..\SharpVision.Terminal.Probe\SharpVision.Terminal.Probe.csproj"
+                      ReferenceOutputAssembly="false"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\extern\unicode\17.0.0\GraphemeBreakTest.txt"
+          Link="Unicode\Data\GraphemeBreakTest-17.0.0.txt"
+          CopyToOutputDirectory="PreserveNewest"/>
+  </ItemGroup>
+
+</Project>

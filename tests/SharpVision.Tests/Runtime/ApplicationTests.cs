@@ -1,0 +1,1172 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Tests.Runtime;
+
+using Input;
+
+using SharpVision.Tests.Controls;
+
+/// <summary>Verifies application startup, frame completion, suspension, and shutdown.</summary>
+public sealed class ApplicationTests
+{
+    /// <summary>Verifies Window activation is an empty read model before the control tree initializes.</summary>
+    [Fact]
+    public async Task ActiveWindow_WhenApplicationIsNotStarted_IsNullAsync()
+    {
+        await using FakeTerminal terminal = new();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+
+        application.ActiveWindow.ShouldBeNull();
+    }
+
+    /// <summary>Verifies shutdown clears application and Window activation before releasing the tree.</summary>
+    [Fact]
+    public async Task StopAsync_WhenWindowIsActive_ClearsActivationAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var window = new Window();
+        await using Application application = new(
+            window,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                var pointer = new Pointer(
+                    new Point(1, 1),
+                    pixels: null,
+                    Buttons.Primary,
+                    PointerAction.Press,
+                    wheelX: 0,
+                    wheelY: 0,
+                    Modifiers.None,
+                    isMotion: false,
+                    isCellPositionInferred: false);
+                application.Capture.Dispatch(pointer).ShouldBeSameAs(window);
+            },
+            TestContext.Current.CancellationToken);
+        application.ActiveWindow.ShouldBeSameAs(window);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        application.ActiveWindow.ShouldBeNull();
+        window.Active.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a cancellation landing after the session has gone live still stops and disposes
+    /// it, instead of leaking a fully-started session that StartAsync's own throw never observes.</summary>
+    [Fact]
+    public async Task StartAsync_WhenCancelledAfterSessionGoesLive_StopsSessionBeforeThrowingAsync()
+    {
+        await using BlockingResizeTerminal terminal = new();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        using var cancellation = new CancellationTokenSource();
+
+        var starting = application.StartAsync(cancellation.Token).AsTask();
+        await terminal.ResizeRequested.WaitAsync(TestContext.Current.CancellationToken);
+        cancellation.Cancel();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(async () => await starting);
+
+        // Without this fix, nothing ever calls StopAsync here, so Completion never
+        // completes and this wait would time out instead of observing a clean shutdown.
+        await Should.NotThrowAsync(async () => await application.Completion
+            .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+    }
+
+    /// <summary>Verifies RunAsync mirrors its later cancellation handling for a cancellation that lands
+    /// while StartAsync's own tail wait is pending, returning cleanly instead of leaking the session.</summary>
+    [Fact]
+    public async Task RunAsync_WhenCancelledAfterSessionGoesLive_ReturnsWithoutThrowingAsync()
+    {
+        await using BlockingResizeTerminal terminal = new();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        using var cancellation = new CancellationTokenSource();
+
+        var running = application.RunAsync(cancellation.Token);
+        await terminal.ResizeRequested.WaitAsync(TestContext.Current.CancellationToken);
+        cancellation.Cancel();
+
+        await running.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        // RunAsync returning without throwing is not by itself proof of a clean shutdown — the
+        // buggy StartAsync also returns to a caller that swallows its cancellation without ever
+        // calling StopAsync, leaving the session running unobserved. Completion must actually
+        // finish, not just be left pending forever.
+        await Should.NotThrowAsync(async () => await application.Completion
+            .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+    }
+
+    /// <summary>Verifies an off-dispatcher Theme assignment throws on the calling thread instead of
+    /// being silently marshaled - a deferred assignment previously surfaced its
+    /// ObjectDisposedException on the dispatcher thread instead, poisoning Failure and faulting an
+    /// unrelated StopAsync for whichever caller happened to be shutting the application down.</summary>
+    [Fact]
+    public async Task Theme_WhenAssignedOffDispatcher_ThrowsOnCallingThreadAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => Task.Run(() => application.Theme = ThemeCatalog.White));
+
+        application.Failure.ShouldBeNull();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        application.Failure.ShouldBeNull();
+    }
+
+    /// <summary>Verifies RefreshScreen forces a render pass - and the pending renderer-invalidation
+    /// flag that starts the next render from a clean baseline - even when nothing else invalidated
+    /// the tree, the supported recovery for external terminal corruption.</summary>
+    [Fact]
+    public async Task RefreshScreen_WhenNothingElseInvalidated_StillProducesAFrameAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.FrameRendered += (_, _) => rendered.TrySetResult();
+
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                application.Root.Pending.ShouldBe(Invalidation.None);
+                application.RefreshScreen();
+            },
+            TestContext.Current.CancellationToken);
+
+        await rendered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies RefreshScreen throws on the calling thread instead of silently deferring
+    /// when called off the dispatcher, matching every other public mutation seam.</summary>
+    [Fact]
+    public async Task RefreshScreen_WhenAccessedOffDispatcher_ThrowsOnCallingThreadAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => Task.Run(() => application.RefreshScreen()));
+
+        application.Failure.ShouldBeNull();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        application.Failure.ShouldBeNull();
+    }
+
+    /// <summary>Verifies Shutdown() drives the identical cooperative stop path as the ISink Closed()
+    /// callback, giving application code a discoverable, intention-named exit call.</summary>
+    [Fact]
+    public async Task Shutdown_WhenCalled_StopsTheApplicationLikeClosedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Shutdown();
+
+        await application.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a visual-only Theme change renders without the former unconditional root measure.</summary>
+    [Fact]
+    public async Task Theme_WhenOnlyResolvedColorsChange_DoesNotRemeasureRootAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var child = new StyledProbe();
+        var root = new Stack { Children = { child } };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var measurements = child.MeasureCalls;
+
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                application.Theme = ThemeCatalog.White;
+            },
+            TestContext.Current.CancellationToken);
+
+        child.MeasureCalls.ShouldBe(measurements);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies unsuitable profiles are rejected before UI mutation or resource ownership.</summary>
+    [Theory]
+    [InlineData(Suitability.Missing)]
+    [InlineData(Suitability.Generic)]
+    [InlineData(Suitability.Hardcopy)]
+    [InlineData(Suitability.Incomplete)]
+    [InlineData(Suitability.UnsupportedPadding)]
+    public void Constructor_WhenProfileIsUnsuitable_RejectsBeforeMutatingOrOwningResources(
+        Suitability suitability)
+    {
+        // Arrange
+        var root = new ProbeControl
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Bottom
+        };
+        var transport = new ConsoleApplicationTransport();
+        var resize = new ConsoleApplicationResizeSource();
+        var hostLease = new TrackingLease();
+        var options = new TerminalOptions
+        {
+            Profile = new TerminalProfile(
+                new Description("unsuitable", DescriptionOrigin.BuiltIn, suitability),
+                TerminalCapabilities.Conservative)
+        };
+
+        // Act
+        _ = Should.Throw<NotSupportedException>(() =>
+            new Application(root, transport, resize, options, hostLease));
+
+        // Assert
+        root.HorizontalAlignment.ShouldBe(HorizontalAlignment.Center);
+        root.VerticalAlignment.ShouldBe(VerticalAlignment.Bottom);
+        root.Dispatcher.ShouldBeNull();
+        root.Parent.ShouldBeNull();
+        root.OwningSlot.ShouldBeNull();
+        root.Disposed.ShouldBeFalse();
+        transport.Writes.ShouldBeEmpty();
+        transport.Disposals.ShouldBe(0);
+        resize.Disposals.ShouldBe(0);
+        hostLease.Disposals.ShouldBe(0);
+    }
+
+    /// <summary>Verifies one supplied clock drives dispatcher-owned application timers.</summary>
+    [Fact]
+    public async Task Constructor_WhenTimeProviderIsSupplied_PropagatesClockToDispatcherAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal,
+            timeProvider: clock);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var timer = await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                var value = new DispatcherTimer(
+                    application.Dispatcher,
+                    TimeSpan.FromMilliseconds(200));
+                value.Tick += (_, _) => _ = completed.TrySetResult();
+                value.Start();
+                return value;
+            },
+            TestContext.Current.CancellationToken);
+
+        // Act
+        clock.Advance(TimeSpan.FromMilliseconds(200));
+
+        // Assert
+        await completed.Task.WaitAsync(TestContext.Current.CancellationToken);
+        timer.Dispose();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies starting precedes modes and started follows layout, resize, and frame.</summary>
+    [Fact]
+    public async Task StartAsync_WhenFirstResizeArrives_UsesDocumentedOrderingAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        List<string> order = [];
+        var root = new ProbeControl
+        {
+            Measuring = _ => order.Add("layout"),
+            Rendering = _ => order.Add("control-frame")
+        };
+        await using Application application = new(
+            root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal with { AlternateScreen = true });
+        application.Starting += (_, _) => order.Add("starting");
+        terminal.Written += _ => order.Add("write");
+        application.Resize += (_, eventArgs) =>
+        {
+            root.Bounds.Width.ShouldBe(eventArgs.Dimensions.Cells.Width);
+            root.Bounds.Height.ShouldBe(eventArgs.Dimensions.Cells.Height);
+            order.Add("resize");
+        };
+        application.FrameRendered += (_, _) => order.Add("frame");
+        application.Started += (_, _) => order.Add("started");
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        order.IndexOf("starting").ShouldBeLessThan(order.IndexOf("write"));
+        order.IndexOf("layout").ShouldBeLessThan(order.IndexOf("resize"));
+        order.IndexOf("resize").ShouldBeLessThan(order.IndexOf("frame"));
+        order.IndexOf("frame").ShouldBeLessThan(order.IndexOf("started"));
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies frame callbacks and startup wait for transport flush completion.</summary>
+    [Fact]
+    public async Task StartAsync_WhenFlushIsPaused_DoesNotCommitFrameEarlyAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.PauseFlush();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        var rendered = false;
+        application.FrameRendered += (_, _) => rendered = true;
+
+        var starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+        rendered.ShouldBeFalse();
+        starting.IsCompleted.ShouldBeFalse();
+        terminal.ReleaseFlush();
+        await starting;
+
+        rendered.ShouldBeTrue();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies zero-cell startup commits suspended layout without a frame.</summary>
+    [Fact]
+    public async Task StartAsync_WhenSizeIsSuspended_StartsWithoutRenderingFrameAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(0, 0)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        var frames = 0;
+        application.FrameRendered += (_, _) => frames++;
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Size.ShouldBe(new Size(0, 0));
+        frames.ShouldBe(0);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies repeated stop raises lifecycle events once and restores modes.</summary>
+    [Fact]
+    public async Task StopAsync_WhenCalledRepeatedly_StopsAndCleansOnceAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal with { AlternateScreen = true });
+        var stopping = 0;
+        var stopped = 0;
+        application.Stopping += (_, _) => stopping++;
+        application.Stopped += (_, _) => stopped++;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        stopping.ShouldBe(1);
+        stopped.ShouldBe(1);
+        terminal.Writes.Count.ShouldBeGreaterThanOrEqualTo(3);
+    }
+
+    /// <summary>
+    /// Verifies an already-cancelled caller token ends only the caller's wait. The shutdown
+    /// request itself is irrevocable, so cleanup must still run to completion.
+    /// </summary>
+    [Fact]
+    public async Task StopAsync_WhenCallerTokenIsAlreadyCancelled_StillCompletesShutdownAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal with { AlternateScreen = true });
+        var stopping = 0;
+        var stopped = 0;
+        application.Stopping += (_, _) => stopping++;
+        application.Stopped += (_, _) => stopped++;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(async () =>
+            await application.StopAsync(cancelled.Token));
+
+        await application.Completion.WaitAsync(TestContext.Current.CancellationToken);
+        stopping.ShouldBe(1);
+        stopped.ShouldBe(1);
+        application.Completion.IsCompletedSuccessfully.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies cancelling the wait after the request was queued still completes shutdown, and
+    /// that a later uncancelled stop observes the same single lifecycle.
+    /// </summary>
+    [Fact]
+    public async Task StopAsync_WhenCallerStopsWaiting_CompletesShutdownExactlyOnceAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal with { AlternateScreen = true });
+        var stopping = 0;
+        var stopped = 0;
+        application.Stopping += (_, _) => stopping++;
+        application.Stopped += (_, _) => stopped++;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        using var cancellation = new CancellationTokenSource();
+
+        var stopRequest = application.StopAsync(cancellation.Token).AsTask();
+        await cancellation.CancelAsync();
+
+        try
+        {
+            await stopRequest;
+        }
+        catch (OperationCanceledException)
+        {
+            // The caller may or may not win the race against its own request; either way the
+            // application must still shut down exactly once.
+        }
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        stopping.ShouldBe(1);
+        stopped.ShouldBe(1);
+        application.Completion.IsCompletedSuccessfully.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies a Stopping handler that requests shutdown again cannot re-enter the cancellable
+    /// event. Dispatcher invocation runs inline on the dispatcher thread, so an unguarded nested
+    /// request recurses until the stack is exhausted.
+    /// </summary>
+    [Fact]
+    public async Task StopAsync_WhenRequestedFromStoppingHandler_RaisesStoppingOnceAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        var calls = 0;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        application.Stopping += OnStopping;
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        calls.ShouldBe(1);
+        application.Completion.IsCompletedSuccessfully.ShouldBeTrue();
+        return;
+
+        void OnStopping(object? sender, StoppingEventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            calls++;
+
+            // Bounded so a regression fails the assertion instead of exhausting the stack.
+            if (calls < 8)
+            {
+                _ = application.StopAsync().AsTask();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies a handler that cancels the request while also requesting shutdown again leaves the
+    /// application running: a nested unforced request cannot override the cancellation it saw.
+    /// </summary>
+    [Fact]
+    public async Task StopAsync_WhenHandlerCancelsAndRequestsAgain_LeavesApplicationRunningAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        var calls = 0;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        application.Stopping += OnStopping;
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        calls.ShouldBe(1);
+        application.Completion.IsCompleted.ShouldBeFalse();
+        application.Stopping -= OnStopping;
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        application.Completion.IsCompletedSuccessfully.ShouldBeTrue();
+        return;
+
+        void OnStopping(object? sender, StoppingEventArgs eventArgs)
+        {
+            _ = sender;
+            calls++;
+            eventArgs.Cancel = true;
+
+            if (calls < 8)
+            {
+                _ = application.StopAsync().AsTask();
+            }
+        }
+    }
+
+    /// <summary>Verifies an explicit stopping preview may cancel one request.</summary>
+    [Fact]
+    public async Task StopAsync_WhenPreviewCancels_LeavesApplicationRunningAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        application.Stopping += Cancel;
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        application.Completion.IsCompleted.ShouldBeFalse();
+        application.Stopping -= Cancel;
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        application.Completion.IsCompletedSuccessfully.ShouldBeTrue();
+        return;
+
+        static void Cancel(object? sender, StoppingEventArgs eventArgs)
+        {
+            _ = sender;
+            eventArgs.Cancel = true;
+        }
+    }
+
+    /// <summary>Verifies callback failure identity survives terminal cleanup.</summary>
+    [Fact]
+    public async Task StartAsync_WhenResizeHandlerThrows_PreservesPrimaryExceptionAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var cleanup = new IOException("cleanup");
+        terminal.FailWriteNumber = 2;
+        terminal.WriteFailure = cleanup;
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal with { AlternateScreen = true });
+        var failure = new InvalidOperationException("resize-handler");
+        application.Resize += (_, _) => throw failure;
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await application.StartAsync(TestContext.Current.CancellationToken));
+
+        thrown.ShouldBeSameAs(failure);
+        application.Failure.ShouldBeSameAs(failure);
+        application.LastCleanupException.ShouldBeSameAs(cleanup);
+        terminal.Writes.Count.ShouldBeGreaterThanOrEqualTo(2);
+    }
+
+    /// <summary>Verifies disposal before start still releases the owned root.</summary>
+    [Fact]
+    public async Task DisposeAsync_WhenNeverStarted_ReleasesOwnedResourcesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var root = new ProbeControl();
+        var application = new Application(
+            root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+
+        await application.DisposeAsync();
+
+        root.Disposed.ShouldBeTrue();
+        application.Completion.IsCompletedSuccessfully.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies hosted clipboard shortcuts copy, cut, paste, and retain normal edit history.</summary>
+    [Fact]
+    public async Task Input_WhenClipboardShortcutsTargetTextInputs_SharesApplicationBufferAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var first = new TextInput { Text = "cafe\u0301" };
+        var second = new TextInput();
+        var root = new Stack { Children = { first, second } };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            application.Focus.Focus(first).ShouldBeTrue();
+            first.Select(0, first.Text.Length);
+        }, TestContext.Current.CancellationToken);
+
+        await ShortcutAsync(application, 'c');
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(second).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        await ShortcutAsync(application, 'v');
+
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            second.Text.ShouldBe("cafe\u0301");
+            second.CanUndo.ShouldBeTrue();
+            second.Select(0, second.Text.Length);
+        }, TestContext.Current.CancellationToken);
+        await ShortcutAsync(application, 'x');
+
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            second.Text.ShouldBeEmpty();
+            second.CaretIndex.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                application.Focus.Focus(first).ShouldBeTrue();
+                first.CaretIndex = first.Text.Length;
+            },
+            TestContext.Current.CancellationToken);
+        await ShortcutAsync(application, 'v');
+
+        await application.Dispatcher.InvokeAsync(
+            () => first.Text.ShouldBe("cafe\u0301cafe\u0301"),
+            TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies password-suppressed copy and an empty initial buffer never disclose or mutate text.</summary>
+    [Fact]
+    public async Task Input_WhenClipboardHasNoPublishableText_PreservesBufferAndDocumentAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var source = new TextInput { Text = "safe" };
+        var password = new TextInput { Text = "secret", PasswordCharacter = new Rune('*') };
+        var target = new TextInput();
+        var root = new Stack { Children = { source, password, target } };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(target).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        await ShortcutAsync(application, 'v');
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            target.Text.ShouldBeEmpty();
+            application.Focus.Focus(source).ShouldBeTrue();
+            source.Select(0, source.Text.Length);
+        }, TestContext.Current.CancellationToken);
+        await ShortcutAsync(application, 'c');
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            application.Focus.Focus(password).ShouldBeTrue();
+            password.Select(0, password.Text.Length);
+        }, TestContext.Current.CancellationToken);
+        await ShortcutAsync(application, 'c');
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(target).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        await ShortcutAsync(application, 'v');
+
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            target.Text.ShouldBe("safe");
+            password.Text.ShouldBe("secret");
+        }, TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies earlier root preview handling suppresses clipboard work while handled observers still run.</summary>
+    [Fact]
+    public async Task Input_WhenEarlierRootPreviewHandlesClipboardShortcut_PreservesRoutedInterceptionAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var source = new TextInput { Text = "blocked" };
+        var target = new TextInput();
+        var root = new Stack { Children = { source, target } };
+        var intercepted = 0;
+        var observedHandled = 0;
+        _ = root.AddHandler(Events.Key, (_, eventArgs) =>
+        {
+            if (IsControlCharacter(eventArgs, 'c'))
+            {
+                intercepted++;
+                eventArgs.Handled = true;
+            }
+        });
+        _ = root.AddHandler(
+            Events.Key,
+            (_, eventArgs) =>
+            {
+                if (IsControlCharacter(eventArgs, 'c') && eventArgs.Handled)
+                {
+                    observedHandled++;
+                }
+            },
+            handledEventsToo: true);
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            application.Focus.Focus(source).ShouldBeTrue();
+            source.Select(0, source.Text.Length);
+        }, TestContext.Current.CancellationToken);
+
+        await ShortcutAsync(application, 'c');
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(target).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        await ShortcutAsync(application, 'v');
+
+        intercepted.ShouldBe(1);
+        observedHandled.ShouldBe(1);
+        target.Text.ShouldBeEmpty();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        return;
+
+        static bool IsControlCharacter(KeyEventArgs eventArgs, char character) =>
+            eventArgs.Phase == RoutingPhase.Preview &&
+            eventArgs.Stroke.Action == KeyAction.Press &&
+            eventArgs.Stroke.Code == Code.Character &&
+            eventArgs.Stroke.Character == new Rune(character) &&
+            (eventArgs.Stroke.Modifiers & ~(Modifiers.CapsLock | Modifiers.NumLock)) == Modifiers.Control;
+    }
+
+    /// <summary>Verifies a scope entered during root preview does not rewrite the initiating clipboard route.</summary>
+    [Fact]
+    public async Task Input_WhenScopeEntersDuringNonModalPreview_PreservesCapturedClipboardRouteAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var source = new TextInput { Text = "captured" };
+        var target = new TextInput();
+        var plane = new ProbeContainer();
+        var root = new Stack { Children = { source, target, plane } };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        ModalScope? scope = null;
+        _ = root.AddHandler(Events.Key, (_, eventArgs) =>
+        {
+            if (eventArgs.Phase == RoutingPhase.Preview &&
+                eventArgs.Stroke.Code == Code.Character &&
+                eventArgs.Stroke.Character == new Rune('c') &&
+                scope is null)
+            {
+                scope = application.Modality.Enter(plane);
+                application.Focus.Focus(source).ShouldBeFalse();
+                application.Focus.Focused.ShouldBeNull();
+            }
+        });
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var observedHandled = 0;
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            _ = root.AddHandler(
+                Events.Key,
+                (_, eventArgs) =>
+                {
+                    if (eventArgs.Phase == RoutingPhase.Preview &&
+                        eventArgs.Stroke.Character == new Rune('c') &&
+                        eventArgs.Handled)
+                    {
+                        observedHandled++;
+                    }
+                },
+                handledEventsToo: true);
+            application.Focus.Focus(source).ShouldBeTrue();
+            source.Select(0, source.Text.Length);
+        }, TestContext.Current.CancellationToken);
+
+        await ShortcutAsync(application, 'c');
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            _ = scope.ShouldNotBeNull();
+            scope.Dispose();
+            application.Focus.Focus(target).ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+        await ShortcutAsync(application, 'v');
+
+        observedHandled.ShouldBe(1);
+        target.Text.ShouldBe("captured");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies direct routes cannot borrow application clipboard behavior for an unfocused target.</summary>
+    [Fact]
+    public async Task Route_WhenClipboardTargetIsUnfocused_DoesNotHandleClipboardCommandsAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var focused = new TextInput { Text = "focused" };
+        var unfocused = new TextInput { Text = "unfocused" };
+        var root = new Stack { Children = { focused, unfocused } };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            application.Focus.Focus(focused).ShouldBeTrue();
+            unfocused.Select(0, unfocused.Text.Length);
+
+            foreach (var command in "cxv")
+            {
+                var stroke = new Stroke(
+                    Code.Character,
+                    new Rune(command),
+                    command,
+                    Modifiers.Control,
+                    KeyAction.Press);
+                var result = Router.Route(unfocused, Events.Key, new KeyEventArgs(stroke));
+
+                result.Handled.ShouldBeFalse();
+                application.Focus.Focused.ShouldBeSameAs(focused);
+                unfocused.Text.ShouldBe("unfocused");
+            }
+        }, TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a non-clipboard key still traverses one ordinary preview and bubble route.</summary>
+    [Fact]
+    public async Task Input_WhenOrdinaryKeyIsNotClipboardShortcut_RoutesOnceAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var root = new ProbeControl { Focusable = true };
+        var phases = new List<RoutingPhase>();
+        _ = root.AddHandler(Events.Key, (_, eventArgs) => phases.Add(eventArgs.Phase));
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(root).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        var stroke = new Stroke(
+            Code.Enter,
+            character: null,
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press);
+
+        application.Input(in stroke);
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+
+        phases.ShouldBe([RoutingPhase.Preview, RoutingPhase.Bubble]);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a clipboard shortcut suppresses its adjacent paired text record, so
+    /// Ctrl+C does not also type 'c' into the focused editor once the copy itself completes.
+    /// Before the fix, only the menu-shortcut and access-key paths armed suppression - a
+    /// preview-phase clipboard shortcut left the paired text record to route normally and land
+    /// as typed input.</summary>
+    [Fact]
+    public async Task Input_WhenClipboardShortcutConsumesTheStroke_SuppressesPairedTextAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var input = new TextInput { Text = "seed" };
+        await using Application application = new(input, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            application.Focus.Focus(input).ShouldBeTrue();
+            input.Select(0, input.Text.Length);
+        }, TestContext.Current.CancellationToken);
+        var stroke = new Stroke(Code.Character, new Rune('c'), nativeCode: 0, Modifiers.Control, KeyAction.Press);
+        var text = new TerminalText(new Rune('c'));
+
+        application.Input(in stroke);
+        application.Input(in text);
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+
+        input.Text.ShouldBe("seed");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an ordinary control default that sets Handled - not a shortcut or
+    /// access key - also suppresses the stroke's paired text record, so Ctrl+A selecting the
+    /// whole document does not then have its leaked paired 'a' replace the selection. Before
+    /// the fix, suppression only armed from the menu-shortcut and access-key paths, so any
+    /// other consume path - including every routed control default - let the paired text
+    /// record through to replace the just-made selection.</summary>
+    [Fact]
+    public async Task Input_WhenControlDefaultConsumesTheStroke_SuppressesPairedTextAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var input = new TextInput { Text = "AB" };
+        await using Application application = new(input, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(input).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        var stroke = new Stroke(Code.Character, new Rune('a'), nativeCode: 0, Modifiers.Control, KeyAction.Press);
+        var text = new TerminalText(new Rune('a'));
+
+        application.Input(in stroke);
+        application.Input(in text);
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+
+        input.Text.ShouldBe("AB");
+        input.SelectionStart.ShouldBe(0);
+        input.SelectionLength.ShouldBe(2);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a throwing Stopping handler still completes the cleanup chain - including
+    /// host-lease disposal - instead of leaving the request permanently stuck.</summary>
+    [Fact]
+    public async Task StopAsync_WhenStoppingHandlerThrows_StillCompletesCleanupAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var hostLease = new TrackingLease();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal,
+            hostLease);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var stoppingFailure = new InvalidOperationException("stopping-handler");
+        application.Stopping += (_, _) => throw stoppingFailure;
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await application.StopAsync(TestContext.Current.CancellationToken)
+                .AsTask()
+                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        thrown.ShouldBeSameAs(stoppingFailure);
+        application.Failure.ShouldBeSameAs(stoppingFailure);
+        hostLease.Disposals.ShouldBe(1);
+    }
+
+    /// <summary>Verifies an UnhandledException handler that itself throws does not skip
+    /// terminal-resource cleanup, and that the original failure - not the handler's own exception -
+    /// remains what Failure reports.</summary>
+    [Fact]
+    public async Task StartAsync_WhenUnhandledExceptionHandlerThrows_StillCompletesCleanupWithOriginalFailureAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var hostLease = new TrackingLease();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal,
+            hostLease);
+        var originalFailure = new NotSupportedException("resize-handler");
+        var handlerFailure = new InvalidOperationException("unhandled-handler");
+        application.Resize += (_, _) => throw originalFailure;
+        application.UnhandledException += (_, _) => throw handlerFailure;
+
+        var thrown = await Should.ThrowAsync<NotSupportedException>(async () =>
+            await application.StartAsync(TestContext.Current.CancellationToken)
+                .AsTask()
+                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        thrown.ShouldBeSameAs(originalFailure);
+        application.Failure.ShouldBeSameAs(originalFailure);
+        application.LastCleanupException.ShouldBeSameAs(handlerFailure);
+        hostLease.Disposals.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a throwing input handler does not permanently latch the drain loop's
+    /// wake flag: with UnhandledException marked handled, a later keystroke is still delivered
+    /// instead of the application silently going deaf while it keeps running.</summary>
+    [Fact]
+    public async Task Input_WhenHandlerThrowsAndUnhandledExceptionIsHandled_StillDeliversLaterInputAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var root = new ProbeControl { Focusable = true };
+        var deliveries = 0;
+        var shouldThrow = true;
+        _ = root.AddHandler(Events.Key, (_, eventArgs) =>
+        {
+            if (eventArgs.Phase != RoutingPhase.Bubble || eventArgs.Stroke.Code != Code.Character)
+            {
+                return;
+            }
+
+            deliveries++;
+
+            if (shouldThrow)
+            {
+                shouldThrow = false;
+                throw new InvalidOperationException("boom");
+            }
+        });
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        var unhandled = 0;
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            unhandled++;
+            eventArgs.Handled = true;
+        };
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(root).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+
+        await CharacterAsync(application, 'a');
+        await CharacterAsync(application, 'b');
+
+        unhandled.ShouldBe(1);
+        deliveries.ShouldBe(2);
+
+        // Handling UnhandledException lets the dispatcher continue but does not erase Failure
+        // (docs/architecture/error-handling.md), so StopAsync still surfaces it - the assertion
+        // that matters here is that the second keystroke was delivered at all.
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("boom");
+    }
+
+    /// <summary>Verifies a handledEventsToo bubble handler that detaches the focused control
+    /// during the same Tab route does not fault the application when the post-route traversal
+    /// command later runs against that now-stale anchor.</summary>
+    [Fact]
+    public async Task Input_WhenHandledEventsTooHandlerDetachesAnchorDuringTabRoute_DoesNotFaultAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var first = new Button { Text = "First" };
+        var second = new Button { Text = "Second" };
+        var root = new Stack { Children = { first, second } };
+        _ = root.AddHandler(
+            Events.Key,
+            (_, eventArgs) =>
+            {
+                if (eventArgs.Phase == RoutingPhase.Bubble &&
+                    eventArgs.Stroke.Code == Code.Tab &&
+                    eventArgs.Handled)
+                {
+                    _ = root.Children.Remove(first);
+                }
+            },
+            handledEventsToo: true);
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(first).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        var stroke = new Stroke(Code.Tab, character: null, nativeCode: 0, Modifiers.None, KeyAction.Press);
+
+        // Act
+        application.Input(in stroke);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert - no ArgumentException escaped Dispatch, and the application is still usable.
+        application.Failure.ShouldBeNull();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    private static async Task CharacterAsync(Application application, char character)
+    {
+        var stroke = new Stroke(
+            Code.Character,
+            new Rune(character),
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press);
+        application.Input(in stroke);
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+    }
+
+    private static async Task ShortcutAsync(Application application, char character)
+    {
+        var stroke = new Stroke(
+            Code.Character,
+            new Rune(character),
+            nativeCode: 0,
+            Modifiers.Control,
+            KeyAction.Press);
+        application.Input(in stroke);
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Never delivers input or a resize, so a session started against it stays live until
+    /// its lifetime token cancels — signaling exactly when the resize wait is first reached.</summary>
+    private sealed class BlockingResizeTerminal: ITransport, IResizeSource
+    {
+        private readonly TaskCompletionSource _resizeRequested =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        internal Task ResizeRequested => _resizeRequested.Task;
+
+        public async ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return 0;
+        }
+
+        public ValueTask WriteAsync(ReadOnlyMemory<byte> source, CancellationToken cancellationToken) =>
+            ValueTask.CompletedTask;
+
+        public ValueTask FlushAsync(CancellationToken cancellationToken) => ValueTask.CompletedTask;
+
+        public async ValueTask<Dimensions> ReadAsync(CancellationToken cancellationToken)
+        {
+            _ = _resizeRequested.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            throw new UnreachableException();
+        }
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+}

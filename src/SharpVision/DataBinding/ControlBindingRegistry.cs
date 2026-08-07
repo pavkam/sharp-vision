@@ -1,0 +1,83 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.DataBinding;
+
+/// <summary>Owns the live bindings registered against one retained control.</summary>
+internal sealed class ControlBindingRegistry
+{
+    private readonly List<Binding> _bindings = [];
+    private int _targetUpdateDepth;
+
+    /// <summary>Gets whether an items binding is committing coordinated target state.</summary>
+    public bool TargetUpdateActive => _targetUpdateDepth > 0;
+
+    /// <summary>Adds one binding after rejecting a duplicate target property.</summary>
+    public void Add(Binding binding)
+    {
+        ArgumentNullException.ThrowIfNull(binding);
+
+        if (_bindings.Any(candidate =>
+                string.Equals(
+                    candidate.TargetPropertyName,
+                    binding.TargetPropertyName,
+                    StringComparison.Ordinal)))
+        {
+            throw new ArgumentException(
+                $"The target property '{binding.TargetPropertyName}' already has a binding.",
+                nameof(binding));
+        }
+
+        _bindings.Add(binding);
+    }
+
+    /// <summary>Removes one identical binding after it releases subscriptions.</summary>
+    public void Remove(Binding binding)
+    {
+        ArgumentNullException.ThrowIfNull(binding);
+        _ = _bindings.Remove(binding);
+    }
+
+    /// <summary>Releases every binding while retaining the first cleanup failure.</summary>
+    public void DisposeAll()
+    {
+        Exception? failure = null;
+
+        for (var index = _bindings.Count - 1; index >= 0; index--)
+        {
+            try
+            {
+                _bindings[index].DisposeFromOwner();
+            }
+            catch (Exception exception)
+            {
+                failure ??= exception;
+            }
+        }
+
+        _bindings.Clear();
+
+        if (failure is not null)
+        {
+            throw failure;
+        }
+    }
+
+    /// <summary>Begins one coordinated target update.</summary>
+    public void EnterTargetUpdate() => _targetUpdateDepth++;
+
+    /// <summary>Ends one coordinated target update and refreshes selection after success.</summary>
+    public void ExitTargetUpdate(bool succeeded)
+    {
+        Debug.Assert(_targetUpdateDepth > 0, "A target update exits only after entry.");
+        _targetUpdateDepth--;
+
+        if (succeeded && _targetUpdateDepth == 0)
+        {
+            foreach (var binding in _bindings.ToArray())
+            {
+                binding.RefreshAfterItemsChanged();
+            }
+        }
+    }
+}

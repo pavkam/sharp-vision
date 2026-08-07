@@ -1,0 +1,1800 @@
+﻿[assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/pavkam/sharp-vision.git")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SharpVision.Terminal.Probe")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SharpVision.Terminal.Tests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SharpVision.Tests")]
+[assembly: System.Runtime.Versioning.TargetFramework(".NETCoreApp,Version=v10.0", FrameworkDisplayName=".NET 10.0")]
+namespace SharpVision.Terminal.Abstractions
+{
+    public interface ICapabilityResponseSink
+    {
+        void Response(SharpVision.Terminal.Xterm.CapabilityResponse value);
+    }
+    public interface IClipboardReplySink
+    {
+        void Response(in SharpVision.Terminal.Clipboard.ClipboardReply value);
+    }
+    public interface IInputSink
+    {
+        void Input(SharpVision.Terminal.Input.Paste value);
+        void Input(in SharpVision.Terminal.Input.Pointer value);
+        void Input(in SharpVision.Terminal.Input.Stroke value);
+        void Input(in SharpVision.Terminal.Input.TerminalFocus value);
+        void Input(in SharpVision.Terminal.Input.TerminalText value);
+        void Input(in SharpVision.Terminal.Protocols.Diagnostic value);
+    }
+    public interface IItermCapabilitiesResponseSink
+    {
+        void Response(SharpVision.Terminal.Xterm.ItermCapabilitiesResponse value);
+    }
+    public interface IKittyClipboardPacketSink
+    {
+        void Response(SharpVision.Terminal.Kitty.Clipboard.Packet value);
+    }
+    public interface IKittyGraphicsResponseSink
+    {
+        void Response(SharpVision.Terminal.Kitty.Graphics.KittyGraphicsResponse value);
+    }
+    public interface IMetricsResponseSink
+    {
+        void Response(in SharpVision.Terminal.Xterm.MetricsResponse value);
+    }
+    public interface IPaletteResponseSink
+    {
+        void Response(in SharpVision.Terminal.Xterm.PaletteResponse value);
+    }
+    public interface IProtocolSink : SharpVision.Terminal.Abstractions.IInputSink
+    {
+        void Response(in SharpVision.Terminal.Xterm.XtermCapabilitiesResponse value);
+        void Sequence(SharpVision.Terminal.Protocols.ProtocolSequence value);
+    }
+    public interface IResizeSource : System.IAsyncDisposable
+    {
+        System.Threading.Tasks.ValueTask<SharpVision.Terminal.Geometry.Dimensions> ReadAsync(System.Threading.CancellationToken cancellationToken);
+        bool TryReadCurrent(out SharpVision.Terminal.Geometry.Dimensions value);
+    }
+    public interface ISequenceSink
+    {
+        void Control(byte value);
+        void Csi(System.ReadOnlySpan<byte> parameters, System.ReadOnlySpan<byte> intermediates, byte final);
+        void Dcs(System.ReadOnlySpan<byte> parameters, System.ReadOnlySpan<byte> intermediates, byte final, System.ReadOnlySpan<byte> value, SharpVision.Terminal.Protocols.StringTerminator terminator);
+        void Escape(System.ReadOnlySpan<byte> intermediates, byte final);
+        void Report(in SharpVision.Terminal.Protocols.Diagnostic value);
+        void Sequence(SharpVision.Terminal.Protocols.SequenceKind kind, System.ReadOnlySpan<byte> value, SharpVision.Terminal.Protocols.StringTerminator terminator);
+        void Text(System.ReadOnlySpan<byte> value);
+    }
+    public interface ISink : SharpVision.Terminal.Abstractions.IInputSink, SharpVision.Terminal.Abstractions.IProtocolSink
+    {
+        void Closed();
+        void Fault(System.Exception exception);
+        void Profile(SharpVision.Terminal.Capabilities.TerminalCapabilities value);
+        void Resize(in SharpVision.Terminal.Geometry.Dimensions value);
+    }
+    public interface IStatusResponseSink
+    {
+        void Response(in SharpVision.Terminal.Xterm.StatusResponse value);
+    }
+    public interface ITransport : System.IAsyncDisposable
+    {
+        System.Threading.Tasks.ValueTask FlushAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.ValueTask<int> ReadAsync(System.Memory<byte> destination, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.ValueTask WriteAsync(System.ReadOnlyMemory<byte> source, System.Threading.CancellationToken cancellationToken);
+    }
+}
+namespace SharpVision.Terminal.Capabilities
+{
+    public static class CapabilityDetector
+    {
+        public static SharpVision.Terminal.Capabilities.TerminalCapabilities Detect(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment, SharpVision.Terminal.Capabilities.QueryResults? queries = null, SharpVision.Terminal.Capabilities.CapabilityOverrides? overrides = null) { }
+    }
+    public sealed class CapabilityOverrides : System.IEquatable<SharpVision.Terminal.Capabilities.CapabilityOverrides>
+    {
+        public CapabilityOverrides() { }
+        public SharpVision.Terminal.Unicode.Ambiguous? AmbiguousWidth { get; init; }
+        public bool? BracketedPaste { get; init; }
+        public bool? CellMouse { get; init; }
+        public SharpVision.Terminal.Capabilities.ColorDepth? ColorDepth { get; init; }
+        public bool? FocusReporting { get; init; }
+        public bool? ItermImages { get; init; }
+        public bool? KittyClipboard { get; init; }
+        public bool? KittyGraphics { get; init; }
+        public bool? KittyKeyboard { get; init; }
+        public bool? Osc52 { get; init; }
+        public bool? Overline { get; init; }
+        public bool? PixelMouse { get; init; }
+        public bool? Sixel { get; init; }
+        public bool? StyledUnderlines { get; init; }
+        public bool? SynchronizedOutput { get; init; }
+        public bool? UnderlineColor { get; init; }
+        public bool? XtermKeyboard { get; init; }
+    }
+    public enum CapabilitySupport
+    {
+        Unknown = 0,
+        Unsupported = 1,
+        Tentative = 2,
+        Supported = 3,
+    }
+    public enum ColorDepth
+    {
+        Monochrome = 0,
+        Basic16 = 1,
+        Indexed256 = 2,
+        TrueColor = 3,
+    }
+    public sealed class Description
+    {
+        public Description(string name, SharpVision.Terminal.Capabilities.DescriptionOrigin origin, SharpVision.Terminal.Capabilities.Suitability suitability, int? columns = default, int? lines = default, int? colors = default, bool automaticMargins = false, bool backColorErase = false, bool eatNewlineGlitch = false) { }
+        public bool AutomaticMargins { get; }
+        public bool BackColorErase { get; }
+        public int? Colors { get; }
+        public int? Columns { get; }
+        public bool EatNewlineGlitch { get; }
+        public int? Lines { get; }
+        public string Name { get; }
+        public SharpVision.Terminal.Capabilities.DescriptionOrigin Origin { get; }
+        public SharpVision.Terminal.Capabilities.Suitability Suitability { get; }
+    }
+    public readonly struct DescriptionDiagnostic : System.IEquatable<SharpVision.Terminal.Capabilities.DescriptionDiagnostic>
+    {
+        public string? Capability { get; }
+        public SharpVision.Terminal.Capabilities.DescriptionDiagnosticCode Code { get; }
+    }
+    public enum DescriptionDiagnosticCode
+    {
+        WrongType = 0,
+        InvalidProgram = 1,
+        UnsupportedPadding = 2,
+        MissingRequired = 3,
+        NativeFailure = 4,
+        CleanupFailure = 5,
+        TermcapLimit = 6,
+        ConflictingKey = 7,
+        MissingOrGeneric = 8,
+        EnvironmentLimit = 9,
+        AnsiFallback = 10,
+        DescriptionLimit = 11,
+        InvalidKey = 12,
+    }
+    public sealed class DescriptionLimits : System.IEquatable<SharpVision.Terminal.Capabilities.DescriptionLimits>
+    {
+        public DescriptionLimits() { }
+        public int MaxDescriptionKeyBindings { get; init; }
+        public int MaxDescriptionPathBytes { get; init; }
+        public int MaxDescriptionPathEntries { get; init; }
+        public int MaxDescriptionRgbComponentBits { get; init; }
+        public int MaxDescriptionSnapshotBytes { get; init; }
+        public int MaxTermcapVariableBytes { get; init; }
+        public int MaxTerminalNameBytes { get; init; }
+        public System.Collections.Generic.IReadOnlyList<string> NcursesLibraryNames { get; init; }
+        public static SharpVision.Terminal.Capabilities.DescriptionLimits Default { get; }
+    }
+    public enum DescriptionLoadStatus
+    {
+        Loaded = 0,
+        MissingOrGeneric = 1,
+        PlatformUnavailable = 2,
+        ProviderFailed = 3,
+    }
+    public enum DescriptionOrigin
+    {
+        BuiltIn = 0,
+        Database = 1,
+        Explicit = 2,
+    }
+    public sealed class DescriptionResult
+    {
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Capabilities.DescriptionDiagnostic> Diagnostics { get; }
+        public SharpVision.Terminal.Capabilities.TerminalProfile? Profile { get; }
+        public SharpVision.Terminal.Capabilities.DescriptionLoadStatus Status { get; }
+    }
+    public readonly struct Feature : System.IEquatable<SharpVision.Terminal.Capabilities.Feature>
+    {
+        public Feature(SharpVision.Terminal.Capabilities.CapabilitySupport state, SharpVision.Terminal.Capabilities.Origin origin) { }
+        public bool IsAuthoritative { get; }
+        public bool IsSupported { get; }
+        public SharpVision.Terminal.Capabilities.Origin Origin { get; }
+        public SharpVision.Terminal.Capabilities.CapabilitySupport State { get; }
+        public static SharpVision.Terminal.Capabilities.Feature Unknown { get; }
+        public void Deconstruct(out SharpVision.Terminal.Capabilities.CapabilitySupport state, out SharpVision.Terminal.Capabilities.Origin origin) { }
+    }
+    public sealed class NegotiationOptions
+    {
+        public NegotiationOptions(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment, SharpVision.Terminal.Capabilities.CapabilityOverrides? overrides = null, SharpVision.Terminal.Capabilities.QueryLimits? limits = null) { }
+        public NegotiationOptions(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment, SharpVision.Terminal.Capabilities.CapabilityOverrides? overrides, SharpVision.Terminal.Capabilities.QueryLimits? limits, SharpVision.Terminal.Multiplexing.MultiplexingPolicy? multiplexing) { }
+        public System.Collections.Generic.IReadOnlyDictionary<string, string?> Environment { get; }
+        public SharpVision.Terminal.Capabilities.QueryLimits Limits { get; }
+        public SharpVision.Terminal.Multiplexing.MultiplexingPolicy Multiplexing { get; }
+        public SharpVision.Terminal.Capabilities.CapabilityOverrides? Overrides { get; }
+    }
+    public sealed class Negotiator
+    {
+        public Negotiator(SharpVision.Terminal.Capabilities.NegotiationOptions options, System.TimeProvider? timeProvider = null) { }
+        public SharpVision.Terminal.Capabilities.TerminalCapabilities Capabilities { get; }
+        public System.DateTimeOffset Deadline { get; }
+        public bool IsComplete { get; }
+        public bool IsStarted { get; }
+        public SharpVision.Terminal.Protocols.Diagnostic? LastDiagnostic { get; }
+        public SharpVision.Terminal.Capabilities.QueryResults Results { get; }
+        public SharpVision.Terminal.Capabilities.QueryMatch Accept(SharpVision.Terminal.Kitty.Graphics.KittyGraphicsResponse response) { }
+        public SharpVision.Terminal.Capabilities.QueryMatch Accept(SharpVision.Terminal.Xterm.CapabilityResponse response) { }
+        public SharpVision.Terminal.Capabilities.QueryMatch Accept(SharpVision.Terminal.Xterm.ItermCapabilitiesResponse response) { }
+        public SharpVision.Terminal.Capabilities.QueryMatch Accept(in SharpVision.Terminal.Xterm.MetricsResponse response) { }
+        public SharpVision.Terminal.Capabilities.QueryMatch Accept(in SharpVision.Terminal.Xterm.PaletteResponse response) { }
+        public SharpVision.Terminal.Capabilities.QueryMatch Accept(in SharpVision.Terminal.Xterm.StatusResponse response) { }
+        public SharpVision.Terminal.Capabilities.QueryMatch Accept(in SharpVision.Terminal.Xterm.XtermCapabilitiesResponse response) { }
+        public bool Expire() { }
+        public void Start(System.Buffers.IBufferWriter<byte> destination) { }
+    }
+    public enum Origin
+    {
+        Default = 0,
+        Environment = 1,
+        Query = 2,
+        Override = 3,
+        Database = 4,
+    }
+    public readonly struct ProtocolSupport : System.IEquatable<SharpVision.Terminal.Capabilities.ProtocolSupport>
+    {
+        public ProtocolSupport(SharpVision.Terminal.Capabilities.TerminalProtocol protocol, SharpVision.Terminal.Capabilities.Feature feature) { }
+        public SharpVision.Terminal.Capabilities.Feature Feature { get; }
+        public SharpVision.Terminal.Capabilities.TerminalProtocol Protocol { get; }
+    }
+    public enum QueryKind
+    {
+        PrimaryAttributes = 0,
+        SecondaryAttributes = 1,
+        CursorPosition = 2,
+        PrivateMode = 3,
+        ForegroundColor = 4,
+        BackgroundColor = 5,
+        KittyClipboard = 6,
+        Keyboard = 7,
+        PaletteColor = 8,
+        WindowPixels = 9,
+        CellPixels = 10,
+        WindowCells = 11,
+        StatusString = 12,
+        CapabilityString = 13,
+        ModifyOtherKeys = 14,
+        KittyGraphics = 15,
+        ItermCapabilities = 16,
+    }
+    public sealed class QueryLimits : System.IEquatable<SharpVision.Terminal.Capabilities.QueryLimits>
+    {
+        public QueryLimits() { }
+        public int MaxCapabilityItems { get; init; }
+        public int MaxCapabilityValueBytes { get; init; }
+        public int MaxConcurrentQueries { get; init; }
+        public System.TimeSpan QueryTimeout { get; init; }
+        public static SharpVision.Terminal.Capabilities.QueryLimits Default { get; }
+    }
+    public enum QueryMatch
+    {
+        Matched = 0,
+        Duplicate = 1,
+        Late = 2,
+        Unknown = 3,
+    }
+    public sealed class QueryResults : System.IEquatable<SharpVision.Terminal.Capabilities.QueryResults>
+    {
+        public QueryResults() { }
+        public SharpVision.Terminal.Xterm.PaletteResponse? BackgroundColor { get; init; }
+        public bool? BracketedPaste { get; init; }
+        public SharpVision.Terminal.Xterm.CapabilityResponse? CapabilityString { get; init; }
+        public bool? CellMouse { get; init; }
+        public SharpVision.Terminal.Xterm.MetricsResponse? CellPixels { get; init; }
+        public bool? FocusReporting { get; init; }
+        public SharpVision.Terminal.Xterm.PaletteResponse? ForegroundColor { get; init; }
+        public bool? ItermImages { get; init; }
+        public bool? KittyClipboard { get; init; }
+        public bool? KittyGraphics { get; init; }
+        public bool? KittyKeyboard { get; init; }
+        public bool? Osc52 { get; init; }
+        public bool? Overline { get; init; }
+        public SharpVision.Terminal.Xterm.PaletteResponse? PaletteColor { get; init; }
+        public bool? PixelMouse { get; init; }
+        public bool? Sixel { get; init; }
+        public bool? StyledUnderlines { get; init; }
+        public bool? SynchronizedOutput { get; init; }
+        public bool? UnderlineColor { get; init; }
+        public SharpVision.Terminal.Xterm.MetricsResponse? WindowCells { get; init; }
+        public SharpVision.Terminal.Xterm.MetricsResponse? WindowPixels { get; init; }
+        public bool? XtermKeyboard { get; init; }
+    }
+    public readonly struct QueryToken : System.IEquatable<SharpVision.Terminal.Capabilities.QueryToken>
+    {
+        public QueryToken(long value) { }
+        public long Value { get; }
+        public void Deconstruct(out long value) { }
+    }
+    public sealed class QueryTracker
+    {
+        public QueryTracker(SharpVision.Terminal.Capabilities.QueryLimits? limits = null, System.TimeProvider? timeProvider = null) { }
+        public int ActiveCount { get; }
+        public SharpVision.Terminal.Protocols.Diagnostic? LastDiagnostic { get; }
+        public bool Cancel(SharpVision.Terminal.Capabilities.QueryToken token) { }
+        public int Expire() { }
+        public SharpVision.Terminal.Capabilities.QueryMatch Match(SharpVision.Terminal.Xterm.CapabilityResponse response) { }
+        public SharpVision.Terminal.Capabilities.QueryMatch Match(SharpVision.Terminal.Xterm.XtermCapabilitiesResponse response) { }
+        public SharpVision.Terminal.Capabilities.QueryMatch Match(in SharpVision.Terminal.Xterm.StatusResponse response) { }
+        public SharpVision.Terminal.Capabilities.QueryMatch Match(SharpVision.Terminal.Capabilities.QueryKind kind, string? id = null) { }
+        public bool TryRegister(SharpVision.Terminal.Xterm.CapabilityName name, out SharpVision.Terminal.Capabilities.QueryToken token) { }
+        public bool TryRegister(SharpVision.Terminal.Xterm.StatusName name, out SharpVision.Terminal.Capabilities.QueryToken token) { }
+        public bool TryRegister(SharpVision.Terminal.Capabilities.QueryKind kind, string? id, out SharpVision.Terminal.Capabilities.QueryToken token) { }
+    }
+    public enum Suitability
+    {
+        Usable = 0,
+        Missing = 1,
+        Generic = 2,
+        Hardcopy = 3,
+        Incomplete = 4,
+        UnsupportedPadding = 5,
+    }
+    public sealed class TerminalCapabilities : System.IEquatable<SharpVision.Terminal.Capabilities.TerminalCapabilities>
+    {
+        public TerminalCapabilities() { }
+        public SharpVision.Terminal.Unicode.Ambiguous AmbiguousWidth { get; init; }
+        public SharpVision.Terminal.Capabilities.Feature BracketedPaste { get; init; }
+        public SharpVision.Terminal.Capabilities.Feature CellMouse { get; init; }
+        public SharpVision.Terminal.Capabilities.ColorDepth ColorDepth { get; init; }
+        public SharpVision.Terminal.Capabilities.Origin ColorOrigin { get; init; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Capabilities.ProtocolSupport> Features { get; }
+        public SharpVision.Terminal.Capabilities.Feature FocusReporting { get; init; }
+        public SharpVision.Terminal.Capabilities.Feature ItermImages { get; init; }
+        public SharpVision.Terminal.Capabilities.Feature KittyClipboard { get; init; }
+        public SharpVision.Terminal.Capabilities.Feature KittyGraphics { get; init; }
+        public SharpVision.Terminal.Capabilities.Feature KittyKeyboard { get; init; }
+        public SharpVision.Terminal.Capabilities.Feature Osc52 { get; init; }
+        public SharpVision.Terminal.Capabilities.Feature Overline { get; init; }
+        public SharpVision.Terminal.Capabilities.Feature PixelMouse { get; init; }
+        public SharpVision.Terminal.Capabilities.Feature Sixel { get; init; }
+        public SharpVision.Terminal.Capabilities.Feature StyledUnderlines { get; init; }
+        public SharpVision.Terminal.Capabilities.Feature SynchronizedOutput { get; init; }
+        public SharpVision.Terminal.Capabilities.Feature UnderlineColor { get; init; }
+        public string UnicodeVersion { get; }
+        public SharpVision.Terminal.Capabilities.Feature XtermKeyboard { get; init; }
+        public static SharpVision.Terminal.Capabilities.TerminalCapabilities Conservative { get; }
+        public SharpVision.Terminal.Capabilities.Feature Support(SharpVision.Terminal.Capabilities.TerminalProtocol protocol) { }
+    }
+    public sealed class TerminalProfile
+    {
+        public TerminalProfile(SharpVision.Terminal.Capabilities.Description description, SharpVision.Terminal.Capabilities.TerminalCapabilities capabilities) { }
+        public SharpVision.Terminal.Capabilities.TerminalCapabilities Capabilities { get; }
+        public SharpVision.Terminal.Capabilities.Description Description { get; }
+        public bool IsAnsiCompatibility { get; }
+        public static SharpVision.Terminal.Capabilities.TerminalProfile Conservative { get; }
+        public SharpVision.Terminal.Terminfo.ProgramExpander CreateProgramExpander(SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
+        public SharpVision.Terminal.Capabilities.TerminalProfile WithCapabilities(SharpVision.Terminal.Capabilities.TerminalCapabilities capabilities) { }
+        public static SharpVision.Terminal.Capabilities.TerminalProfile CreateAnsi(SharpVision.Terminal.Capabilities.TerminalCapabilities capabilities) { }
+    }
+    public enum TerminalProtocol
+    {
+        SynchronizedOutput = 0,
+        FocusReporting = 1,
+        BracketedPaste = 2,
+        PixelMouse = 3,
+        CellMouse = 4,
+        KittyKeyboard = 5,
+        Osc52 = 6,
+        KittyClipboard = 7,
+        KittyGraphics = 8,
+        Sixel = 9,
+        ItermImages = 10,
+        StyledUnderlines = 11,
+        UnderlineColor = 12,
+        Overline = 13,
+        XtermKeyboard = 14,
+    }
+}
+namespace SharpVision.Terminal.Clipboard
+{
+    public readonly struct ClipboardReply : System.IEquatable<SharpVision.Terminal.Clipboard.ClipboardReply>
+    {
+        public System.ReadOnlyMemory<byte> Data { get; }
+        public SharpVision.Terminal.Clipboard.Selection Selection { get; }
+        public SharpVision.Terminal.Clipboard.ClipboardStatus Status { get; }
+    }
+    public enum ClipboardStatus
+    {
+        Success = 0,
+        Query = 1,
+        Unavailable = 2,
+        Denied = 3,
+        Malformed = 4,
+    }
+    public static class Osc52
+    {
+        public static SharpVision.Terminal.Clipboard.ClipboardReply Decode(System.ReadOnlySpan<byte> value, int maxBytes = 1048576) { }
+        public static void Query(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Clipboard.Selection selection) { }
+        public static void Write(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Clipboard.Selection selection, System.ReadOnlySpan<byte> text, int maxBytes = 1048576) { }
+    }
+    public enum Selection
+    {
+        Clipboard = 0,
+        Primary = 1,
+        Secondary = 2,
+        Select = 3,
+        Cut0 = 4,
+        Cut1 = 5,
+        Cut2 = 6,
+        Cut3 = 7,
+        Cut4 = 8,
+        Cut5 = 9,
+        Cut6 = 10,
+        Cut7 = 11,
+    }
+    public sealed class TransferLimits : System.IEquatable<SharpVision.Terminal.Clipboard.TransferLimits>
+    {
+        public TransferLimits() { }
+        public int MaxClipboardBytes { get; init; }
+        public int MaxMetadataBytes { get; init; }
+        public static SharpVision.Terminal.Clipboard.TransferLimits Default { get; }
+    }
+}
+namespace SharpVision.Terminal.Geometry
+{
+    public readonly struct CellMetrics : System.IEquatable<SharpVision.Terminal.Geometry.CellMetrics>
+    {
+        public CellMetrics(SharpVision.Terminal.Geometry.Size cells, SharpVision.Terminal.Geometry.Size pixels) { }
+        public CellMetrics(int width, int height) { }
+        public SharpVision.Terminal.Geometry.Size? Cells { get; }
+        public int Height { get; }
+        public SharpVision.Terminal.Geometry.Size? Pixels { get; }
+        public int Width { get; }
+        public bool TryMap(SharpVision.Terminal.Geometry.Point pixels, out SharpVision.Terminal.Geometry.Point cells) { }
+        public bool TryMapCells(SharpVision.Terminal.Geometry.Rect cells, out SharpVision.Terminal.Geometry.Rect pixels) { }
+        public bool TryMeasureCells(SharpVision.Terminal.Geometry.Size pixels, out SharpVision.Terminal.Geometry.Size cells) { }
+    }
+    public readonly struct Dimensions : System.IEquatable<SharpVision.Terminal.Geometry.Dimensions>
+    {
+        public Dimensions(SharpVision.Terminal.Geometry.Size cells, SharpVision.Terminal.Geometry.Size? pixels = default) { }
+        public SharpVision.Terminal.Geometry.CellMetrics? CellMetrics { get; }
+        public SharpVision.Terminal.Geometry.Size Cells { get; }
+        public bool IsSuspended { get; }
+        public SharpVision.Terminal.Geometry.Size? Pixels { get; }
+    }
+    [System.Diagnostics.DebuggerDisplay("({X}, {Y})")]
+    public readonly struct Point : System.IEquatable<SharpVision.Terminal.Geometry.Point>
+    {
+        public Point(int x, int y) { }
+        public int X { get; }
+        public int Y { get; }
+        public void Deconstruct(out int x, out int y) { }
+        public override string ToString() { }
+    }
+    [System.Diagnostics.DebuggerDisplay("({X}, {Y}, {Width}×{Height})")]
+    public readonly struct Rect : System.IEquatable<SharpVision.Terminal.Geometry.Rect>
+    {
+        public Rect(int x, int y, int width, int height) { }
+        public int Bottom { get; }
+        public int Height { get; }
+        public int Right { get; }
+        public int Width { get; }
+        public int X { get; }
+        public int Y { get; }
+        public bool Contains(SharpVision.Terminal.Geometry.Point point) { }
+        public SharpVision.Terminal.Geometry.Rect Intersect(SharpVision.Terminal.Geometry.Rect other) { }
+        public override string ToString() { }
+    }
+    [System.Diagnostics.DebuggerDisplay("{Width}×{Height}")]
+    public readonly struct Size : System.IEquatable<SharpVision.Terminal.Geometry.Size>
+    {
+        public Size(int width, int height) { }
+        public int Height { get; }
+        public int Width { get; }
+        public override string ToString() { }
+    }
+}
+namespace SharpVision.Terminal.Graphics
+{
+    public readonly struct GraphicsPlacementDiagnostic : System.IEquatable<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic>
+    {
+        public GraphicsPlacementDiagnostic(ulong ImageIdentity, SharpVision.Terminal.Graphics.GraphicsPlacementSkipReason Reason) { }
+        public ulong ImageIdentity { get; }
+        public SharpVision.Terminal.Graphics.GraphicsPlacementSkipReason Reason { get; }
+    }
+    public enum GraphicsPlacementSkipReason
+    {
+        FormatNotEncodable = 0,
+        ProtocolNotAuthorized = 1,
+        PlacementNotEncodable = 2,
+        OutputLimitExceeded = 3,
+    }
+    public enum ImageFormat
+    {
+        Rgba = 0,
+        Png = 1,
+    }
+    public sealed class ImageLimits
+    {
+        public ImageLimits(int maxDimension = 16384, int maxPixels = 67108864, int maxSourceBytes = 268435456) { }
+        public int MaxDimension { get; }
+        public int MaxPixels { get; }
+        public int MaxSourceBytes { get; }
+        public static SharpVision.Terminal.Graphics.ImageLimits Default { get; }
+    }
+    public sealed class ImageSource
+    {
+        public int ByteCount { get; }
+        public SharpVision.Terminal.Graphics.ImageFormat Format { get; }
+        public ulong Identity { get; }
+        public SharpVision.Terminal.Geometry.Size Size { get; }
+        public int CopyTo(System.Span<byte> destination) { }
+        public static SharpVision.Terminal.Graphics.ImageSource FromPng(System.ReadOnlySpan<byte> source, SharpVision.Terminal.Graphics.ImageLimits? limits = null) { }
+        public static SharpVision.Terminal.Graphics.ImageSource FromRgba(SharpVision.Terminal.Geometry.Size size, System.ReadOnlySpan<byte> source, SharpVision.Terminal.Graphics.ImageLimits? limits = null) { }
+    }
+    public readonly struct Placement : System.IEquatable<SharpVision.Terminal.Graphics.Placement>
+    {
+        public Placement(SharpVision.Terminal.Graphics.ImageSource image, SharpVision.Terminal.Geometry.Rect source, SharpVision.Terminal.Geometry.Rect destination, SharpVision.Terminal.Graphics.PlacementMode mode) { }
+        public SharpVision.Terminal.Geometry.Rect Destination { get; }
+        public SharpVision.Terminal.Graphics.ImageSource? Image { get; }
+        public ulong ImageIdentity { get; }
+        public bool IsEmpty { get; }
+        public SharpVision.Terminal.Graphics.PlacementMode Mode { get; }
+        public SharpVision.Terminal.Geometry.Rect Source { get; }
+        public static SharpVision.Terminal.Graphics.Placement Empty { get; }
+        public bool Equals(SharpVision.Terminal.Graphics.Placement other) { }
+        public override bool Equals(object? obj) { }
+        public override int GetHashCode() { }
+        public static bool operator !=(SharpVision.Terminal.Graphics.Placement left, SharpVision.Terminal.Graphics.Placement right) { }
+        public static bool operator ==(SharpVision.Terminal.Graphics.Placement left, SharpVision.Terminal.Graphics.Placement right) { }
+    }
+    public enum PlacementMode
+    {
+        Contain = 0,
+        Cover = 1,
+        Stretch = 2,
+    }
+}
+namespace SharpVision.Terminal.Input
+{
+    [System.Flags]
+    public enum Buttons
+    {
+        None = 0,
+        Primary = 1,
+        Middle = 2,
+        Secondary = 4,
+        Back = 8,
+        Forward = 16,
+    }
+    public enum Code
+    {
+        Unknown = 0,
+        Character = 1,
+        Escape = 2,
+        Enter = 3,
+        Tab = 4,
+        Backspace = 5,
+        Up = 6,
+        Down = 7,
+        Left = 8,
+        Right = 9,
+        Home = 10,
+        End = 11,
+        Insert = 12,
+        Delete = 13,
+        PageUp = 14,
+        PageDown = 15,
+        F1 = 16,
+        F2 = 17,
+        F3 = 18,
+        F4 = 19,
+        F5 = 20,
+        F6 = 21,
+        F7 = 22,
+        F8 = 23,
+        F9 = 24,
+        F10 = 25,
+        F11 = 26,
+        F12 = 27,
+        F13 = 28,
+        F14 = 29,
+        F15 = 30,
+        F16 = 31,
+        F17 = 32,
+        F18 = 33,
+        F19 = 34,
+        F20 = 35,
+        F21 = 36,
+        F22 = 37,
+        F23 = 38,
+        F24 = 39,
+        F25 = 40,
+        F26 = 41,
+        F27 = 42,
+        F28 = 43,
+        F29 = 44,
+        F30 = 45,
+        F31 = 46,
+        F32 = 47,
+        F33 = 48,
+        F34 = 49,
+        F35 = 50,
+        CapsLock = 51,
+        ScrollLock = 52,
+        NumLock = 53,
+        PrintScreen = 54,
+        Pause = 55,
+        Menu = 56,
+        Begin = 57,
+        F36 = 58,
+        F37 = 59,
+        F38 = 60,
+        F39 = 61,
+        F40 = 62,
+        F41 = 63,
+        F42 = 64,
+        F43 = 65,
+        F44 = 66,
+        F45 = 67,
+        F46 = 68,
+        F47 = 69,
+        F48 = 70,
+        F49 = 71,
+        F50 = 72,
+        F51 = 73,
+        F52 = 74,
+        F53 = 75,
+        F54 = 76,
+        F55 = 77,
+        F56 = 78,
+        F57 = 79,
+        F58 = 80,
+        F59 = 81,
+        F60 = 82,
+        F61 = 83,
+        F62 = 84,
+        F63 = 85,
+    }
+    public sealed class InputDecoder : System.IDisposable
+    {
+        public InputDecoder(SharpVision.Terminal.Abstractions.IInputSink sink, SharpVision.Terminal.Input.InputOptions? options = null, System.TimeProvider? timeProvider = null) { }
+        public void Complete() { }
+        public void Decode(System.ReadOnlySpan<byte> input) { }
+        public void Dispose() { }
+        public bool ExpireEscape() { }
+    }
+    public sealed class InputOptions : System.IEquatable<SharpVision.Terminal.Input.InputOptions>
+    {
+        public InputOptions() { }
+        public SharpVision.Terminal.Geometry.CellMetrics? CellMetrics { get; init; }
+        public System.TimeSpan EscapeTimeout { get; init; }
+        public SharpVision.Terminal.Kitty.KittyMetadataLimits KittyMetadataLimits { get; init; }
+        public int MaxPasteBytes { get; init; }
+        public SharpVision.Terminal.Protocols.ParserLimits ParserLimits { get; init; }
+        public bool PixelMouse { get; init; }
+        public SharpVision.Terminal.Terminfo.ProgramLimits ProgramLimits { get; init; }
+        public SharpVision.Terminal.Capabilities.QueryLimits QueryLimits { get; init; }
+        public SharpVision.Terminal.Clipboard.TransferLimits TransferLimits { get; init; }
+        public static SharpVision.Terminal.Input.InputOptions Default { get; }
+    }
+    public enum KeyAction
+    {
+        Press = 0,
+        Repeat = 1,
+        Release = 2,
+    }
+    [System.Flags]
+    public enum Modifiers
+    {
+        None = 0,
+        Shift = 1,
+        Alt = 2,
+        Control = 4,
+        Super = 8,
+        Hyper = 16,
+        Meta = 32,
+        CapsLock = 64,
+        NumLock = 128,
+    }
+    public readonly struct Paste
+    {
+        public Paste(System.ReadOnlySpan<byte> utf8) { }
+        public System.ReadOnlyMemory<byte> Utf8 { get; }
+    }
+    public readonly struct Pointer : System.IEquatable<SharpVision.Terminal.Input.Pointer>
+    {
+        public Pointer(SharpVision.Terminal.Geometry.Point? cells, SharpVision.Terminal.Geometry.Point? pixels, SharpVision.Terminal.Input.Buttons buttons, SharpVision.Terminal.Input.PointerAction action, int wheelX, int wheelY, SharpVision.Terminal.Input.Modifiers modifiers, bool isMotion, bool isCellPositionInferred) { }
+        public SharpVision.Terminal.Input.PointerAction Action { get; }
+        public SharpVision.Terminal.Input.Buttons Buttons { get; }
+        public SharpVision.Terminal.Geometry.Point? Cells { get; }
+        public bool IsCellPositionInferred { get; }
+        public bool IsMotion { get; }
+        public SharpVision.Terminal.Input.Modifiers Modifiers { get; }
+        public SharpVision.Terminal.Geometry.Point? Pixels { get; }
+        public int WheelX { get; }
+        public int WheelY { get; }
+    }
+    public enum PointerAction
+    {
+        Move = 0,
+        Press = 1,
+        Release = 2,
+        Wheel = 3,
+        Leave = 4,
+    }
+    public readonly struct Stroke : System.IEquatable<SharpVision.Terminal.Input.Stroke>
+    {
+        public Stroke(SharpVision.Terminal.Input.Code code, System.Text.Rune? character, int nativeCode, SharpVision.Terminal.Input.Modifiers modifiers, SharpVision.Terminal.Input.KeyAction action, System.Text.Rune? shifted = default, System.Text.Rune? baseLayout = default) { }
+        public SharpVision.Terminal.Input.KeyAction Action { get; }
+        public System.Text.Rune? BaseLayout { get; }
+        public System.Text.Rune? Character { get; }
+        public SharpVision.Terminal.Input.Code Code { get; }
+        public SharpVision.Terminal.Input.Modifiers Modifiers { get; }
+        public int NativeCode { get; }
+        public System.Text.Rune? Shifted { get; }
+    }
+    public readonly struct TerminalFocus : System.IEquatable<SharpVision.Terminal.Input.TerminalFocus>
+    {
+        public TerminalFocus(bool gained) { }
+        public bool Gained { get; }
+        public void Deconstruct(out bool gained) { }
+    }
+    public readonly struct TerminalText : System.IEquatable<SharpVision.Terminal.Input.TerminalText>
+    {
+        public TerminalText(System.Text.Rune value) { }
+        public System.Text.Rune Value { get; }
+        public void Deconstruct(out System.Text.Rune value) { }
+    }
+}
+namespace SharpVision.Terminal.Iterm
+{
+    public static class ItermWriter
+    {
+        public static void Write(SharpVision.Terminal.Graphics.ImageSource image, SharpVision.Terminal.Geometry.Size destinationCells, SharpVision.Terminal.Graphics.PlacementMode mode, System.Buffers.IBufferWriter<byte> destination, int maxSequenceBytes = 1048576, int maxOutputBytes = 268435456) { }
+    }
+}
+namespace SharpVision.Terminal.Kitty.Clipboard
+{
+    public enum AcceptResult
+    {
+        Accepted = 0,
+        Completed = 1,
+        Failed = 2,
+        Ignored = 3,
+    }
+    public enum KittyClipboardOperation
+    {
+        None = 0,
+        Read = 1,
+        Write = 2,
+        WriteData = 3,
+        WriteAlias = 4,
+    }
+    public sealed class KittyClipboardResult : System.IDisposable
+    {
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Kitty.Clipboard.MimeData> Items { get; }
+        public void Dispose() { }
+    }
+    public static class KittyClipboardWriter
+    {
+        public static void List(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Clipboard.Selection selection = 0, System.ReadOnlySpan<byte> id = default, System.ReadOnlySpan<byte> password = default, System.ReadOnlySpan<byte> name = default) { }
+        public static void PasteEvents(SharpVision.Terminal.Protocols.ProtocolWriter writer, bool enabled) { }
+        public static void QuerySupport(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void Read(SharpVision.Terminal.Protocols.ProtocolWriter writer, System.ReadOnlySpan<byte> mimeTypes, SharpVision.Terminal.Clipboard.Selection selection = 0, System.ReadOnlySpan<byte> id = default, System.ReadOnlySpan<byte> password = default, System.ReadOnlySpan<byte> name = default) { }
+        public static void WriteAlias(SharpVision.Terminal.Protocols.ProtocolWriter writer, System.ReadOnlySpan<byte> targetMime, System.ReadOnlySpan<byte> aliases) { }
+        public static void WriteData(SharpVision.Terminal.Protocols.ProtocolWriter writer, System.ReadOnlySpan<byte> mime, System.ReadOnlySpan<byte> data, int maxBytes = 16777216) { }
+        public static void WriteEnd(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void WriteStart(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Clipboard.Selection selection = 0, System.ReadOnlySpan<byte> id = default, System.ReadOnlySpan<byte> password = default, System.ReadOnlySpan<byte> name = default) { }
+    }
+    public sealed class MimeData
+    {
+        public System.ReadOnlyMemory<byte> Data { get; }
+        public string Mime { get; }
+    }
+    public sealed class Packet
+    {
+        public System.ReadOnlyMemory<byte> Data { get; }
+        public SharpVision.Terminal.Protocols.Diagnostic? Diagnostic { get; }
+        public bool HasPayload { get; }
+        public string? Id { get; }
+        public bool IsValid { get; }
+        public System.ReadOnlyMemory<byte> Mime { get; }
+        public System.ReadOnlyMemory<byte> Name { get; }
+        public SharpVision.Terminal.Kitty.Clipboard.KittyClipboardOperation Operation { get; }
+        public System.ReadOnlyMemory<byte> Password { get; }
+        public SharpVision.Terminal.Kitty.Clipboard.ReplyStatus ReplyStatus { get; }
+        public SharpVision.Terminal.Clipboard.Selection Selection { get; }
+        public System.Collections.Generic.IReadOnlyList<string> UnknownKeys { get; }
+        public override string ToString() { }
+        public static SharpVision.Terminal.Kitty.Clipboard.Packet Parse(System.ReadOnlySpan<byte> value, SharpVision.Terminal.Clipboard.TransferLimits? limits = null, bool decodePayload = true) { }
+    }
+    public enum ReplyStatus
+    {
+        None = 0,
+        Ok = 1,
+        Data = 2,
+        Done = 3,
+        Io = 4,
+        Invalid = 5,
+        Unavailable = 6,
+        Denied = 7,
+        Busy = 8,
+    }
+    public sealed class Transaction : System.IDisposable
+    {
+        public System.DateTimeOffset Deadline { get; }
+        public SharpVision.Terminal.Protocols.Diagnostic? Diagnostic { get; }
+        public SharpVision.Terminal.Kitty.Clipboard.ReplyStatus Failure { get; }
+        public SharpVision.Terminal.Kitty.Clipboard.KittyClipboardResult? Result { get; }
+        public SharpVision.Terminal.Kitty.Clipboard.TransactionState State { get; }
+        public SharpVision.Terminal.Kitty.Clipboard.AcceptResult Accept(SharpVision.Terminal.Kitty.Clipboard.Packet packet) { }
+        public void Cancel() { }
+        public bool CheckTimeout() { }
+        public void Dispose() { }
+        public override string ToString() { }
+        public static SharpVision.Terminal.Kitty.Clipboard.Transaction Read(SharpVision.Terminal.Clipboard.TransferLimits? limits = null, string? id = null, bool listOnly = false, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Capabilities.QueryLimits? queryLimits = null) { }
+        public static SharpVision.Terminal.Kitty.Clipboard.Transaction Write(SharpVision.Terminal.Clipboard.TransferLimits? limits = null, string? id = null, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Capabilities.QueryLimits? queryLimits = null) { }
+    }
+    public enum TransactionState
+    {
+        Created = 0,
+        Accepted = 1,
+        Receiving = 2,
+        Completed = 3,
+        Failed = 4,
+        Cancelled = 5,
+        TimedOut = 6,
+        Disposed = 7,
+    }
+}
+namespace SharpVision.Terminal.Kitty.Graphics
+{
+    public sealed class Command
+    {
+        public SharpVision.Terminal.Kitty.Graphics.GraphicsAction Action { get; }
+        public SharpVision.Terminal.Kitty.Graphics.Compression Compression { get; }
+        public bool DeleteData { get; }
+        public SharpVision.Terminal.Geometry.Size Destination { get; }
+        public bool DoNotMoveCursor { get; }
+        public SharpVision.Terminal.Kitty.Graphics.KittyGraphicsFormat Format { get; }
+        public uint ImageId { get; }
+        public SharpVision.Terminal.Kitty.Graphics.KittyGraphicsMedium Medium { get; }
+        public bool More { get; }
+        public SharpVision.Terminal.Geometry.Size PixelSize { get; }
+        public uint PlacementId { get; }
+        public int Quiet { get; }
+        public SharpVision.Terminal.Geometry.Rect Source { get; }
+        public int ZIndex { get; }
+        public static SharpVision.Terminal.Kitty.Graphics.Command DeleteImage(uint imageId, int quiet = 2) { }
+        public static SharpVision.Terminal.Kitty.Graphics.Command DeletePlacement(uint imageId, uint placementId, int quiet = 2) { }
+        public static SharpVision.Terminal.Kitty.Graphics.Command Place(uint imageId, uint placementId, SharpVision.Terminal.Geometry.Rect source, SharpVision.Terminal.Geometry.Size destination, int zIndex = 0, int quiet = 2, bool doNotMoveCursor = true) { }
+        public static SharpVision.Terminal.Kitty.Graphics.Command Query(uint imageId) { }
+        public static SharpVision.Terminal.Kitty.Graphics.Command Transmit(uint imageId, SharpVision.Terminal.Geometry.Size pixelSize, SharpVision.Terminal.Kitty.Graphics.KittyGraphicsFormat format, int quiet = 2, SharpVision.Terminal.Kitty.Graphics.KittyGraphicsMedium medium = 0, SharpVision.Terminal.Kitty.Graphics.Compression compression = 0) { }
+    }
+    public enum Compression
+    {
+        None = 0,
+        Zlib = 1,
+    }
+    public enum GraphicsAction
+    {
+        Query = 0,
+        Transmit = 1,
+        Place = 2,
+        Delete = 3,
+    }
+    public enum KittyGraphicsFormat
+    {
+        Rgb = 24,
+        Rgba = 32,
+        Png = 100,
+    }
+    public enum KittyGraphicsMedium
+    {
+        Direct = 0,
+        File = 1,
+        TemporaryFile = 2,
+        SharedMemory = 3,
+    }
+    public sealed class KittyGraphicsResponse
+    {
+        public SharpVision.Terminal.Protocols.Diagnostic? Diagnostic { get; }
+        public uint ImageId { get; }
+        public bool IsSuccess { get; }
+        public bool IsValid { get; }
+        public string? Message { get; }
+        public uint PlacementId { get; }
+        public override string ToString() { }
+        public static SharpVision.Terminal.Kitty.Graphics.KittyGraphicsResponse Parse(System.ReadOnlySpan<byte> value, SharpVision.Terminal.Kitty.KittyMetadataLimits? limits = null) { }
+    }
+    public static class KittyGraphicsWriter
+    {
+        public static void Write(SharpVision.Terminal.Kitty.Graphics.Command command, System.ReadOnlySpan<byte> payload, System.Buffers.IBufferWriter<byte> destination) { }
+        public static void WriteEncoded(SharpVision.Terminal.Kitty.Graphics.Command command, System.ReadOnlySpan<byte> encodedPayload, System.Buffers.IBufferWriter<byte> destination) { }
+        public static void WriteTransmission(SharpVision.Terminal.Kitty.Graphics.Command command, System.ReadOnlySpan<byte> payload, System.Buffers.IBufferWriter<byte> destination, int maxPayloadBytes = 268435456) { }
+    }
+    public sealed class Transaction
+    {
+        public Transaction(uint imageId) { }
+        public SharpVision.Terminal.Kitty.Graphics.KittyGraphicsResponse? Response { get; }
+        public SharpVision.Terminal.Capabilities.QueryMatch Accept(SharpVision.Terminal.Kitty.Graphics.KittyGraphicsResponse response) { }
+    }
+}
+namespace SharpVision.Terminal.Kitty.Keyboard
+{
+    [System.Flags]
+    public enum Enhancement
+    {
+        None = 0,
+        Disambiguate = 1,
+        EventTypes = 2,
+        AlternateKeys = 4,
+        AllKeys = 8,
+        AssociatedText = 16,
+    }
+    public enum EnhancementMode
+    {
+        Replace = 1,
+        Set = 2,
+        Clear = 3,
+    }
+    public static class KittyKeyboard
+    {
+        public static void Pop(SharpVision.Terminal.Protocols.ProtocolWriter writer, int count = 1) { }
+        public static void Push(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Kitty.Keyboard.Enhancement flags) { }
+        public static void Query(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void Set(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Kitty.Keyboard.Enhancement flags, SharpVision.Terminal.Kitty.Keyboard.EnhancementMode mode) { }
+    }
+}
+namespace SharpVision.Terminal.Kitty
+{
+    public sealed class KittyMetadataLimits : System.IEquatable<SharpVision.Terminal.Kitty.KittyMetadataLimits>
+    {
+        public KittyMetadataLimits() { }
+        public int MaxMetadataBytes { get; init; }
+        public static SharpVision.Terminal.Kitty.KittyMetadataLimits Default { get; }
+    }
+}
+namespace SharpVision.Terminal.Multiplexing
+{
+    public static class GnuScreenWriter
+    {
+        public static bool TryUnwrap(System.ReadOnlySpan<byte> envelope, System.Buffers.IBufferWriter<byte> destination) { }
+        public static void WritePassthrough(System.Buffers.IBufferWriter<byte> destination, System.ReadOnlySpan<byte> sequence) { }
+    }
+    public enum MultiplexerKind
+    {
+        None = 0,
+        Tmux = 1,
+        Screen = 2,
+    }
+    public sealed class MultiplexerRoute
+    {
+        public MultiplexerRoute(SharpVision.Terminal.Multiplexing.MultiplexingPolicy policy) { }
+        public SharpVision.Terminal.Multiplexing.MultiplexingPolicy Policy { get; }
+        public bool TryUnwrapReply(System.ReadOnlySpan<byte> envelope, out System.ReadOnlyMemory<byte> reply) { }
+    }
+    [System.Flags]
+    public enum MultiplexingOperation
+    {
+        None = 0,
+        CapabilityQueries = 1,
+        Clipboard = 2,
+        Graphics = 4,
+    }
+    public sealed class MultiplexingPolicy
+    {
+        public MultiplexingPolicy(System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Multiplexing.MultiplexerKind> layers, SharpVision.Terminal.Capabilities.TerminalProfile? outerProfile, SharpVision.Terminal.Multiplexing.PassthroughMode passthrough = 0, bool paneVisible = true, SharpVision.Terminal.Multiplexing.MultiplexingOperation approvedOperations = 0, int maxDepth = 4, int maxEnvelopeBytes = 1048576) { }
+        public SharpVision.Terminal.Multiplexing.MultiplexingOperation ApprovedOperations { get; }
+        public bool IsActive { get; }
+        public SharpVision.Terminal.Multiplexing.MultiplexerKind Kind { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Multiplexing.MultiplexerKind> Layers { get; }
+        public int MaxDepth { get; }
+        public int MaxEnvelopeBytes { get; }
+        public SharpVision.Terminal.Capabilities.TerminalProfile? OuterProfile { get; }
+        public bool PaneVisible { get; }
+        public SharpVision.Terminal.Multiplexing.PassthroughMode Passthrough { get; }
+        public bool Allows(SharpVision.Terminal.Multiplexing.MultiplexingOperation operation) { }
+        public static SharpVision.Terminal.Multiplexing.MultiplexingPolicy Detect(System.Collections.Generic.IReadOnlyDictionary<string, string?> environment) { }
+    }
+    public enum PassthroughMode
+    {
+        Disabled = 0,
+        Visible = 1,
+        All = 2,
+    }
+    public static class TmuxWriter
+    {
+        public static bool TryUnwrap(System.ReadOnlySpan<byte> payload, System.Buffers.IBufferWriter<byte> destination) { }
+        public static bool TryUnwrapEnvelope(System.ReadOnlySpan<byte> envelope, System.Buffers.IBufferWriter<byte> destination) { }
+        public static void WritePassthrough(System.Buffers.IBufferWriter<byte> destination, System.ReadOnlySpan<byte> sequence) { }
+    }
+}
+namespace SharpVision.Terminal.Protocols
+{
+    public enum BasicColor
+    {
+        Black = 0,
+        Red = 1,
+        Green = 2,
+        Yellow = 3,
+        Blue = 4,
+        Magenta = 5,
+        Cyan = 6,
+        White = 7,
+        BrightBlack = 8,
+        BrightRed = 9,
+        BrightGreen = 10,
+        BrightYellow = 11,
+        BrightBlue = 12,
+        BrightMagenta = 13,
+        BrightCyan = 14,
+        BrightWhite = 15,
+    }
+    [System.Diagnostics.DebuggerDisplay("{ToString()}")]
+    public readonly struct Color : System.IEquatable<SharpVision.Terminal.Protocols.Color>
+    {
+        public byte Blue { get; }
+        public byte Green { get; }
+        public bool IsDefault { get; }
+        public bool IsRgb { get; }
+        public bool IsTransparent { get; }
+        public byte Red { get; }
+        public static SharpVision.Terminal.Protocols.Color Default { get; }
+        public static SharpVision.Terminal.Protocols.Color Transparent { get; }
+        public override string ToString() { }
+        public static SharpVision.Terminal.Protocols.Color FromHex(string value) { }
+        public static SharpVision.Terminal.Protocols.Color Rgb(int red, int green, int blue) { }
+        public static bool TryFromHex(string value, out SharpVision.Terminal.Protocols.Color color) { }
+        public static bool TryFromName(string? value, out SharpVision.Terminal.Protocols.Color color) { }
+    }
+    public static class Csi
+    {
+        public static void DeleteCharacters(SharpVision.Terminal.Protocols.ProtocolWriter writer, int count = 1) { }
+        public static void DeleteLines(SharpVision.Terminal.Protocols.ProtocolWriter writer, int count = 1) { }
+        public static void EraseDisplay(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Protocols.EraseArea area) { }
+        public static void EraseLine(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Protocols.EraseArea area) { }
+        public static void InsertCharacters(SharpVision.Terminal.Protocols.ProtocolWriter writer, int count = 1) { }
+        public static void InsertLines(SharpVision.Terminal.Protocols.ProtocolWriter writer, int count = 1) { }
+        public static void Move(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Protocols.Movement direction, int count = 1) { }
+        public static void Position(SharpVision.Terminal.Protocols.ProtocolWriter writer, int row, int column) { }
+        public static void PrimaryDeviceAttributes(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void QueryPrivateMode(SharpVision.Terminal.Protocols.ProtocolWriter writer, int mode) { }
+        public static void ReportCellPixels(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void ReportCursorPosition(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void ReportWindowCells(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void ReportWindowPixels(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void RestoreCursor(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void SaveCursor(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void ScrollDown(SharpVision.Terminal.Protocols.ProtocolWriter writer, int count = 1) { }
+        public static void ScrollUp(SharpVision.Terminal.Protocols.ProtocolWriter writer, int count = 1) { }
+        public static void SecondaryDeviceAttributes(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+    }
+    public readonly struct Diagnostic : System.IEquatable<SharpVision.Terminal.Protocols.Diagnostic>
+    {
+        public Diagnostic(SharpVision.Terminal.Protocols.DiagnosticCode code, SharpVision.Terminal.Protocols.SequenceKind kind, long offset, long discardedBytes) { }
+        public SharpVision.Terminal.Protocols.DiagnosticCode Code { get; }
+        public long DiscardedBytes { get; }
+        public SharpVision.Terminal.Protocols.SequenceKind Kind { get; }
+        public long Offset { get; }
+        public override string ToString() { }
+    }
+    public enum DiagnosticCode
+    {
+        Malformed = 0,
+        Cancelled = 1,
+        Truncated = 2,
+        ParameterLimit = 3,
+        IntermediateLimit = 4,
+        StringLimit = 5,
+        InvalidBase64 = 6,
+        InvalidMetadata = 7,
+        UnexpectedPacket = 8,
+        DuplicateResponse = 9,
+        LateResponse = 10,
+        QueryLimit = 11,
+        Unsupported = 12,
+    }
+    public enum EraseArea
+    {
+        After = 0,
+        Before = 1,
+        All = 2,
+        Scrollback = 3,
+    }
+    public enum MouseCoordinates
+    {
+        Default = 0,
+        Utf8 = 1005,
+        Sgr = 1006,
+        Urxvt = 1015,
+        Pixel = 1016,
+    }
+    public enum MouseTracking
+    {
+        X10 = 9,
+        Press = 1000,
+        Drag = 1002,
+        Any = 1003,
+    }
+    public enum Movement
+    {
+        Up = 0,
+        Down = 1,
+        Forward = 2,
+        Back = 3,
+    }
+    public static class Osc
+    {
+        public static void CloseHyperlink(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void IconAndTitle(SharpVision.Terminal.Protocols.ProtocolWriter writer, System.ReadOnlySpan<byte> title) { }
+        public static void OpenHyperlink(SharpVision.Terminal.Protocols.ProtocolWriter writer, System.ReadOnlySpan<byte> uri, System.ReadOnlySpan<byte> id = default) { }
+        public static void QueryBackground(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void QueryForeground(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void QueryItermCapabilities(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void QueryPalette(SharpVision.Terminal.Protocols.ProtocolWriter writer, int index) { }
+        public static void Title(SharpVision.Terminal.Protocols.ProtocolWriter writer, System.ReadOnlySpan<byte> title) { }
+    }
+    public enum ParameterSeparator
+    {
+        None = 0,
+        Semicolon = 1,
+        Colon = 2,
+    }
+    public enum ParameterStatus
+    {
+        End = 0,
+        Default = 1,
+        Value = 2,
+        Invalid = 3,
+        Overflow = 4,
+        Limit = 5,
+    }
+    public ref struct Parameters
+    {
+        public Parameters(System.ReadOnlySpan<byte> input, int maxCount = 32, int maxValue = 65535) { }
+        public byte PrivateMarker { get; }
+        public SharpVision.Terminal.Protocols.ParameterStatus Read(out int value, out SharpVision.Terminal.Protocols.ParameterSeparator separator) { }
+    }
+    public sealed class ParserLimits : System.IEquatable<SharpVision.Terminal.Protocols.ParserLimits>
+    {
+        public ParserLimits() { }
+        public bool AcceptBellTerminatedOsc { get; init; }
+        public bool AcceptEightBitControls { get; init; }
+        public int MaxIntermediateBytes { get; init; }
+        public int MaxParameterBytes { get; init; }
+        public int MaxStringBytes { get; init; }
+        public static SharpVision.Terminal.Protocols.ParserLimits Default { get; }
+    }
+    public static class ProtocolModes
+    {
+        public static void AlternateScreen(SharpVision.Terminal.Protocols.ProtocolWriter writer, bool enabled) { }
+        public static void BracketedPaste(SharpVision.Terminal.Protocols.ProtocolWriter writer, bool enabled) { }
+        public static void ClipboardPasteEvents(SharpVision.Terminal.Protocols.ProtocolWriter writer, bool enabled) { }
+        public static void CursorVisible(SharpVision.Terminal.Protocols.ProtocolWriter writer, bool visible) { }
+        public static void FocusReporting(SharpVision.Terminal.Protocols.ProtocolWriter writer, bool enabled) { }
+        public static void Mouse(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Protocols.MouseTracking tracking, SharpVision.Terminal.Protocols.MouseCoordinates coordinates, bool enabled) { }
+        public static void SetPrivate(SharpVision.Terminal.Protocols.ProtocolWriter writer, int mode, bool enabled) { }
+        public static void SynchronizedOutput(SharpVision.Terminal.Protocols.ProtocolWriter writer, bool enabled) { }
+    }
+    public sealed class ProtocolParser : System.IDisposable
+    {
+        public ProtocolParser(SharpVision.Terminal.Protocols.ParserLimits? limits = null) { }
+        public bool IsGround { get; }
+        public long Offset { get; }
+        public void Complete<TSink>(ref TSink sink)
+            where TSink : SharpVision.Terminal.Abstractions.ISequenceSink { }
+        public void Dispose() { }
+        public void Parse<TSink>(System.ReadOnlySpan<byte> input, ref TSink sink)
+            where TSink : SharpVision.Terminal.Abstractions.ISequenceSink { }
+        public void Reset() { }
+    }
+    public sealed class ProtocolRouter : System.IDisposable
+    {
+        public ProtocolRouter(SharpVision.Terminal.Abstractions.IProtocolSink sink, SharpVision.Terminal.Input.InputOptions? options = null, System.TimeProvider? timeProvider = null) { }
+        public void Complete() { }
+        public void Dispose() { }
+        public bool ExpireEscape() { }
+        public void Route(System.ReadOnlySpan<byte> input) { }
+    }
+    public sealed class ProtocolSequence
+    {
+        public byte Final { get; }
+        public System.ReadOnlyMemory<byte> Intermediates { get; }
+        public SharpVision.Terminal.Protocols.SequenceKind Kind { get; }
+        public System.ReadOnlyMemory<byte> Parameters { get; }
+        public System.ReadOnlyMemory<byte> Payload { get; }
+        public SharpVision.Terminal.Protocols.StringTerminator Terminator { get; }
+    }
+    public readonly struct ProtocolWriter
+    {
+        public ProtocolWriter(System.Buffers.IBufferWriter<byte> destination) { }
+        public void Command(SharpVision.Terminal.Protocols.SequenceKind kind, System.ReadOnlySpan<byte> payload) { }
+        public void Csi(System.ReadOnlySpan<byte> parameters, System.ReadOnlySpan<byte> intermediates, byte final) { }
+        public void Dcs(System.ReadOnlySpan<byte> parameters, System.ReadOnlySpan<byte> intermediates, byte final, System.ReadOnlySpan<byte> payload) { }
+        public void Escape(System.ReadOnlySpan<byte> intermediates, byte final) { }
+        public void Osc(int selector, System.ReadOnlySpan<byte> payload) { }
+    }
+    public enum Rendition
+    {
+        Reset = 0,
+        Bold = 1,
+        Dim = 2,
+        Italic = 3,
+        Underline = 4,
+        SlowBlink = 5,
+        RapidBlink = 6,
+        Reverse = 7,
+        Hidden = 8,
+        Strike = 9,
+        NormalIntensity = 22,
+        NotItalic = 23,
+        NotUnderline = 24,
+        NotBlink = 25,
+        NotReverse = 27,
+        NotHidden = 28,
+        NotStrike = 29,
+        Overline = 53,
+        NotOverline = 55,
+    }
+    public enum SequenceKind
+    {
+        None = 0,
+        Escape = 1,
+        Csi = 2,
+        Osc = 3,
+        Dcs = 4,
+        Apc = 5,
+        Pm = 6,
+        Sos = 7,
+    }
+    public static class Sgr
+    {
+        public static void Apply(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Protocols.Rendition rendition) { }
+        public static void Apply(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Protocols.Underline underline) { }
+        public static void Background(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Protocols.BasicColor color) { }
+        public static void Background(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Protocols.Color color) { }
+        public static void Foreground(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Protocols.BasicColor color) { }
+        public static void Foreground(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Protocols.Color color) { }
+        public static void Reset(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void UnderlineColor(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Protocols.Color color) { }
+    }
+    public enum StringTerminator
+    {
+        Bell = 0,
+        EscapeBackslash = 1,
+        EightBit = 2,
+    }
+    public enum Underline
+    {
+        None = 0,
+        Straight = 1,
+        Paired = 2,
+        Curly = 3,
+        Dotted = 4,
+        Dashed = 5,
+    }
+}
+namespace SharpVision.Terminal.Rendering
+{
+    public enum BackgroundMode
+    {
+        Opaque = 0,
+        Transparent = 1,
+    }
+    public readonly struct CellInfo : System.IEquatable<SharpVision.Terminal.Rendering.CellInfo>
+    {
+        public CellInfo(SharpVision.Terminal.Rendering.CellStyle style, int width, bool isContinuation, SharpVision.Terminal.Geometry.Point lead) { }
+        public bool IsContinuation { get; }
+        public SharpVision.Terminal.Geometry.Point Lead { get; }
+        public SharpVision.Terminal.Rendering.CellStyle Style { get; }
+        public int Width { get; }
+        public static SharpVision.Terminal.Rendering.CellInfo Blank { get; }
+        public void Deconstruct(out SharpVision.Terminal.Rendering.CellStyle style, out int width, out bool isContinuation, out SharpVision.Terminal.Geometry.Point lead) { }
+    }
+    [System.Diagnostics.DebuggerDisplay("{ToString()}")]
+    public readonly struct CellStyle : System.IEquatable<SharpVision.Terminal.Rendering.CellStyle>
+    {
+        public CellStyle(SharpVision.Terminal.Protocols.Color foreground = default, SharpVision.Terminal.Protocols.Color background = default, SharpVision.Terminal.Rendering.TerminalAttributes attributes = 0, string? hyperlink = null, SharpVision.Terminal.Protocols.Underline underline = 0, SharpVision.Terminal.Protocols.Color underlineColor = default) { }
+        public SharpVision.Terminal.Rendering.TerminalAttributes Attributes { get; }
+        public SharpVision.Terminal.Protocols.Color Background { get; }
+        public SharpVision.Terminal.Protocols.Color Foreground { get; }
+        public string? Hyperlink { get; }
+        public SharpVision.Terminal.Protocols.Underline Underline { get; }
+        public SharpVision.Terminal.Protocols.Color UnderlineColor { get; }
+        public static SharpVision.Terminal.Rendering.CellStyle Default { get; }
+        public override string ToString() { }
+        public SharpVision.Terminal.Rendering.CellStyle WithForeground(SharpVision.Terminal.Protocols.Color foreground) { }
+    }
+    [System.Diagnostics.DebuggerDisplay("{ToString()}")]
+    public readonly struct Cursor : System.IEquatable<SharpVision.Terminal.Rendering.Cursor>
+    {
+        public Cursor(SharpVision.Terminal.Geometry.Point position, bool visible) { }
+        public Cursor(SharpVision.Terminal.Geometry.Point position, bool visible, SharpVision.Terminal.Rendering.CursorShape shape) { }
+        public SharpVision.Terminal.Geometry.Point Position { get; }
+        public SharpVision.Terminal.Rendering.CursorShape Shape { get; }
+        public bool Visible { get; }
+        public void Deconstruct(out SharpVision.Terminal.Geometry.Point position, out bool visible) { }
+        public void Deconstruct(out SharpVision.Terminal.Geometry.Point position, out bool visible, out SharpVision.Terminal.Rendering.CursorShape shape) { }
+        public override string ToString() { }
+    }
+    public enum CursorShape
+    {
+        Block = 0,
+        Underline = 1,
+        Bar = 2,
+    }
+    public static class Damage
+    {
+        public static SharpVision.Terminal.Rendering.DamageEnumerable Enumerate(SharpVision.Terminal.Rendering.Frame? front, SharpVision.Terminal.Rendering.Frame back, bool full = false) { }
+        public static bool PlacementsChanged(SharpVision.Terminal.Rendering.Frame? front, SharpVision.Terminal.Rendering.Frame back, bool full = false) { }
+    }
+    public readonly ref struct DamageEnumerable
+    {
+        public SharpVision.Terminal.Rendering.DamageEnumerator GetEnumerator() { }
+    }
+    public ref struct DamageEnumerator
+    {
+        public SharpVision.Terminal.Rendering.DamageSpan Current { get; }
+        public bool MoveNext() { }
+    }
+    [System.Diagnostics.DebuggerDisplay("{ToString()}")]
+    public readonly struct DamageSpan : System.IEquatable<SharpVision.Terminal.Rendering.DamageSpan>
+    {
+        public DamageSpan(int row, int start, int length) { }
+        public int Length { get; }
+        public int Row { get; }
+        public int Start { get; }
+        public override string ToString() { }
+    }
+    public readonly struct DrawResult : System.IEquatable<SharpVision.Terminal.Rendering.DrawResult>
+    {
+        public DrawResult(SharpVision.Terminal.Geometry.Point final, int graphemes, int cells, int clipped, int replaced) { }
+        public int Cells { get; }
+        public int Clipped { get; }
+        public SharpVision.Terminal.Geometry.Point Final { get; }
+        public int Graphemes { get; }
+        public int Replaced { get; }
+        public void Deconstruct(out SharpVision.Terminal.Geometry.Point final, out int graphemes, out int cells, out int clipped, out int replaced) { }
+    }
+    public enum Edge
+    {
+        Clip = 0,
+        Wrap = 1,
+        Replace = 2,
+    }
+    public readonly struct EncodeResult : System.IEquatable<SharpVision.Terminal.Rendering.EncodeResult>
+    {
+        public EncodeResult(int spans, bool full) { }
+        public bool Full { get; }
+        public int Spans { get; }
+        public void Deconstruct(out int spans, out bool full) { }
+    }
+    [System.Diagnostics.DebuggerDisplay("{ToString()}")]
+    public sealed class Frame : System.IDisposable
+    {
+        public Frame(SharpVision.Terminal.Geometry.Size size, int maxTextBytes = 16777216, SharpVision.Terminal.Unicode.Ambiguous ambiguousWidth = 0) { }
+        public SharpVision.Terminal.Unicode.Ambiguous AmbiguousWidth { get; }
+        public SharpVision.Terminal.Rendering.TerminalCanvas Canvas { get; }
+        public SharpVision.Terminal.Rendering.Cursor Cursor { get; }
+        public int MaxPlacements { get; }
+        public int MaxTextBytes { get; }
+        public int PlacementCount { get; }
+        public SharpVision.Terminal.Geometry.Size Size { get; }
+        public void Clear(SharpVision.Terminal.Rendering.CellStyle style = default) { }
+        public int CopyGrapheme(SharpVision.Terminal.Geometry.Point point, System.Span<byte> destination) { }
+        public void Dispose() { }
+        public SharpVision.Terminal.Rendering.CellInfo GetCell(SharpVision.Terminal.Geometry.Point point) { }
+        public int GetGraphemeByteCount(SharpVision.Terminal.Geometry.Point point) { }
+        public SharpVision.Terminal.Graphics.Placement GetPlacement(int index) { }
+        public void SetCursor(SharpVision.Terminal.Geometry.Point position, bool visible) { }
+        public void SetCursor(SharpVision.Terminal.Geometry.Point position, bool visible, SharpVision.Terminal.Rendering.CursorShape shape) { }
+        public override string ToString() { }
+    }
+    public static class FrameEncoder
+    {
+        public static SharpVision.Terminal.Rendering.EncodeResult Encode(SharpVision.Terminal.Rendering.Frame? front, SharpVision.Terminal.Rendering.Frame back, System.Buffers.IBufferWriter<byte> destination, SharpVision.Terminal.Capabilities.TerminalCapabilities capabilities, bool full = false, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
+        public static SharpVision.Terminal.Rendering.EncodeResult Encode(SharpVision.Terminal.Rendering.Frame? front, SharpVision.Terminal.Rendering.Frame back, System.Buffers.IBufferWriter<byte> destination, SharpVision.Terminal.Capabilities.TerminalProfile profile, bool full = false, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
+    }
+    [System.Flags]
+    public enum LineConnections
+    {
+        None = 0,
+        Up = 1,
+        Right = 2,
+        Down = 4,
+        Left = 8,
+    }
+    public enum LinePattern
+    {
+        Solid = 0,
+        DoubleDash = 1,
+        TripleDash = 2,
+        QuadrupleDash = 3,
+    }
+    public readonly struct LineStyle : System.IEquatable<SharpVision.Terminal.Rendering.LineStyle>
+    {
+        public LineStyle(SharpVision.Terminal.Rendering.LineWeight weight, SharpVision.Terminal.Rendering.LinePattern pattern = 0, bool rounded = false, bool ascii = false) { }
+        public bool HasRoundedCorners { get; }
+        public bool IsAscii { get; }
+        public SharpVision.Terminal.Rendering.LinePattern Pattern { get; }
+        public SharpVision.Terminal.Rendering.LineWeight Weight { get; }
+        public static SharpVision.Terminal.Rendering.LineStyle Ascii { get; }
+        public static SharpVision.Terminal.Rendering.LineStyle Heavy { get; }
+        public static SharpVision.Terminal.Rendering.LineStyle Light { get; }
+        public static SharpVision.Terminal.Rendering.LineStyle Paired { get; }
+        public static SharpVision.Terminal.Rendering.LineStyle Rounded { get; }
+    }
+    public enum LineWeight
+    {
+        Light = 0,
+        Heavy = 1,
+        Paired = 2,
+    }
+    [System.Flags]
+    public enum Quadrants
+    {
+        None = 0,
+        UpperLeft = 1,
+        UpperRight = 2,
+        LowerLeft = 4,
+        LowerRight = 8,
+        Upper = 3,
+        Lower = 12,
+        All = 15,
+    }
+    public readonly struct RenderMetrics : System.IEquatable<SharpVision.Terminal.Rendering.RenderMetrics>
+    {
+        public RenderMetrics(int bytes, int writes, int spans, bool full, System.TimeSpan elapsed) { }
+        public RenderMetrics(int bytes, int writes, int spans, bool full, System.TimeSpan elapsed, System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic> graphicsDiagnostics) { }
+        public int Bytes { get; }
+        public System.TimeSpan Elapsed { get; }
+        public bool Full { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic> GraphicsDiagnostics { get; }
+        public int Spans { get; }
+        public int Writes { get; }
+        public void Deconstruct(out int bytes, out int writes, out int spans, out bool full, out System.TimeSpan elapsed) { }
+        public void Deconstruct(out int bytes, out int writes, out int spans, out bool full, out System.TimeSpan elapsed, out System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic> graphicsDiagnostics) { }
+    }
+    public sealed class Renderer : System.IDisposable
+    {
+        public Renderer(int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
+        public Renderer(SharpVision.Terminal.Capabilities.TerminalCapabilities capabilities, SharpVision.Terminal.Multiplexing.MultiplexerRoute? route = null, int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
+        public System.Exception? LastCleanupException { get; }
+        public bool AttachCommittedFrame(SharpVision.Terminal.Rendering.Frame back) { }
+        public void Dispose() { }
+        public void Invalidate() { }
+        public System.Threading.Tasks.ValueTask<SharpVision.Terminal.Rendering.RenderMetrics> RenderAsync(SharpVision.Terminal.Rendering.Frame back, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Capabilities.TerminalCapabilities capabilities, System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask<SharpVision.Terminal.Rendering.RenderMetrics> RenderAsync(SharpVision.Terminal.Rendering.Frame back, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Capabilities.TerminalProfile profile, System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask<SharpVision.Terminal.Rendering.RenderMetrics> RenderAsync(SharpVision.Terminal.Rendering.Frame back, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Capabilities.TerminalProfile profile, SharpVision.Terminal.Geometry.CellMetrics? cellMetrics, System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask ShutdownAsync(SharpVision.Terminal.Abstractions.ITransport transport, System.Threading.CancellationToken cancellationToken = default) { }
+    }
+    public enum Shade
+    {
+        Light = 0,
+        Medium = 1,
+        Dark = 2,
+        Solid = 3,
+    }
+    [System.Flags]
+    public enum TerminalAttributes
+    {
+        None = 0,
+        Bold = 1,
+        Dim = 2,
+        Italic = 4,
+        Underline = 8,
+        Blink = 16,
+        Reverse = 32,
+        Hidden = 64,
+        Strike = 128,
+        RapidBlink = 256,
+        Overline = 512,
+    }
+    public readonly struct TerminalCanvas
+    {
+        public SharpVision.Terminal.Geometry.Rect Bounds { get; }
+        public bool HasPreviousFrame { get; }
+        public void ApplyForeground(SharpVision.Terminal.Geometry.Rect region, System.Func<SharpVision.Terminal.Geometry.Point, SharpVision.Terminal.Protocols.Color> selector) { }
+        public void ApplyStyle(SharpVision.Terminal.Geometry.Rect region, SharpVision.Terminal.Rendering.CellStyle style, SharpVision.Terminal.Rendering.BackgroundMode background = 0) { }
+        public void Clear(SharpVision.Terminal.Geometry.Rect region, SharpVision.Terminal.Rendering.CellStyle style = default) { }
+        public SharpVision.Terminal.Rendering.TerminalCanvas Clip(SharpVision.Terminal.Geometry.Rect clip) { }
+        public void CopyFromPrevious(SharpVision.Terminal.Geometry.Rect region) { }
+        public SharpVision.Terminal.Rendering.DrawResult Draw(System.ReadOnlySpan<char> value, SharpVision.Terminal.Geometry.Point origin, SharpVision.Terminal.Rendering.CellStyle style = default, SharpVision.Terminal.Rendering.Edge edge = 0, SharpVision.Terminal.Rendering.BackgroundMode background = 0) { }
+        public void DrawBox(SharpVision.Terminal.Geometry.Rect bounds, SharpVision.Terminal.Rendering.LineStyle line, SharpVision.Terminal.Rendering.CellStyle style = default) { }
+        public void DrawCircle(SharpVision.Terminal.Geometry.Point center, int radius, System.Text.Rune value, SharpVision.Terminal.Rendering.CellStyle style = default) { }
+        public void DrawEllipse(SharpVision.Terminal.Geometry.Rect bounds, System.Text.Rune value, SharpVision.Terminal.Rendering.CellStyle style = default) { }
+        public void DrawHorizontalLine(SharpVision.Terminal.Geometry.Point origin, int length, SharpVision.Terminal.Rendering.LineStyle line, SharpVision.Terminal.Rendering.CellStyle style = default) { }
+        public void DrawImage(SharpVision.Terminal.Graphics.ImageSource image, SharpVision.Terminal.Geometry.Rect destination, SharpVision.Terminal.Graphics.PlacementMode mode) { }
+        public void DrawLine(SharpVision.Terminal.Geometry.Point start, SharpVision.Terminal.Geometry.Point end, System.Text.Rune value, SharpVision.Terminal.Rendering.CellStyle style = default) { }
+        public void DrawLineCell(SharpVision.Terminal.Geometry.Point point, SharpVision.Terminal.Rendering.LineConnections connections, SharpVision.Terminal.Rendering.LineStyle line, SharpVision.Terminal.Rendering.CellStyle style = default) { }
+        public void DrawQuadrants(SharpVision.Terminal.Geometry.Point point, SharpVision.Terminal.Rendering.Quadrants quadrants, SharpVision.Terminal.Rendering.CellStyle style = default) { }
+        public void DrawRune(System.Text.Rune value, SharpVision.Terminal.Geometry.Point origin, SharpVision.Terminal.Rendering.CellStyle style = default, SharpVision.Terminal.Rendering.BackgroundMode background = 0) { }
+        public void DrawVerticalLine(SharpVision.Terminal.Geometry.Point origin, int length, SharpVision.Terminal.Rendering.LineStyle line, SharpVision.Terminal.Rendering.CellStyle style = default) { }
+        public void DrawWithForeground(SharpVision.Terminal.Geometry.Rect region, System.Action<SharpVision.Terminal.Rendering.TerminalCanvas> draw, System.Func<SharpVision.Terminal.Geometry.Point, SharpVision.Terminal.Protocols.Color> selector) { }
+        public void Fill(SharpVision.Terminal.Geometry.Rect region, System.Text.Rune value, SharpVision.Terminal.Rendering.CellStyle style = default) { }
+        public void FillShade(SharpVision.Terminal.Geometry.Rect region, SharpVision.Terminal.Rendering.Shade shade, SharpVision.Terminal.Rendering.CellStyle style = default) { }
+        public void SetCursor(SharpVision.Terminal.Geometry.Point position, bool visible) { }
+        public void SetCursor(SharpVision.Terminal.Geometry.Point position, bool visible, SharpVision.Terminal.Rendering.CursorShape shape) { }
+    }
+    public static class TerminalPalette
+    {
+        public static SharpVision.Terminal.Protocols.Color Project(SharpVision.Terminal.Protocols.Color source, SharpVision.Terminal.Capabilities.ColorDepth depth) { }
+    }
+}
+namespace SharpVision.Terminal.Runtime
+{
+    public sealed class ConsoleConnection : System.IAsyncDisposable
+    {
+        public ConsoleConnection(SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Abstractions.IResizeSource resize, System.IDisposable restore) { }
+        public SharpVision.Terminal.Abstractions.IResizeSource Resize { get; }
+        public SharpVision.Terminal.Abstractions.ITransport Transport { get; }
+        public System.Threading.Tasks.ValueTask DisposeAsync() { }
+        public SharpVision.Terminal.Capabilities.DescriptionResult ResolveDescription(SharpVision.Terminal.Capabilities.TerminalProfile? explicitProfile = null, bool allowAnsiFallback = false, SharpVision.Terminal.Capabilities.DescriptionLimits? limits = null, SharpVision.Terminal.Protocols.ParserLimits? parserLimits = null) { }
+        public SharpVision.Terminal.Capabilities.TerminalProfile? ResolveProfile(SharpVision.Terminal.Capabilities.TerminalProfile? explicitProfile = null, bool allowAnsiFallback = false) { }
+    }
+    public static class ConsoleHost
+    {
+        public static SharpVision.Terminal.Runtime.IConsoleHost Default { get; }
+        public static bool IsInteractive { get; }
+        public static SharpVision.Terminal.Runtime.ConsoleConnection Open(SharpVision.Terminal.Runtime.ConsoleHostOptions options) { }
+    }
+    public sealed class ConsoleHostOptions : System.IEquatable<SharpVision.Terminal.Runtime.ConsoleHostOptions>
+    {
+        public ConsoleHostOptions() { }
+        public bool CaptureControlKeys { get; init; }
+        public System.TimeSpan ResizeInterval { get; init; }
+    }
+    public sealed class ConsoleResizeSource : SharpVision.Terminal.Abstractions.IResizeSource, System.IAsyncDisposable
+    {
+        public ConsoleResizeSource(System.TimeSpan interval, System.TimeProvider? timeProvider = null) { }
+        public System.Threading.Tasks.ValueTask DisposeAsync() { }
+        public System.Threading.Tasks.ValueTask<SharpVision.Terminal.Geometry.Dimensions> ReadAsync(System.Threading.CancellationToken cancellationToken) { }
+        public bool TryReadCurrent(out SharpVision.Terminal.Geometry.Dimensions value) { }
+    }
+    public interface IConsoleHost
+    {
+        bool IsInteractive { get; }
+        SharpVision.Terminal.Runtime.ConsoleConnection Open(SharpVision.Terminal.Runtime.ConsoleHostOptions options);
+    }
+    [System.Diagnostics.DebuggerDisplay("Session {_options}")]
+    public sealed class Session : System.IAsyncDisposable
+    {
+        public Session(SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Abstractions.IResizeSource resize, SharpVision.Terminal.Abstractions.ISink sink, SharpVision.Terminal.Runtime.TerminalOptions? options = null, System.TimeProvider? timeProvider = null) { }
+        public System.Exception? LastCleanupException { get; }
+        public System.Threading.Tasks.ValueTask DisposeAsync() { }
+        public System.Threading.Tasks.ValueTask RunAsync(System.Threading.CancellationToken cancellationToken) { }
+    }
+    public sealed class StreamTransport : SharpVision.Terminal.Abstractions.ITransport, System.IAsyncDisposable
+    {
+        public StreamTransport(System.IO.Stream input, System.IO.Stream output, bool leaveOpen = false) { }
+        public StreamTransport(System.IO.Stream input, System.IO.Stream output, bool leaveInputOpen, bool leaveOutputOpen) { }
+        public System.Threading.Tasks.ValueTask DisposeAsync() { }
+        public System.Threading.Tasks.ValueTask FlushAsync(System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask<int> ReadAsync(System.Memory<byte> destination, System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask WriteAsync(System.ReadOnlyMemory<byte> source, System.Threading.CancellationToken cancellationToken) { }
+    }
+    public sealed class TerminalOptions : System.IEquatable<SharpVision.Terminal.Runtime.TerminalOptions>
+    {
+        public TerminalOptions() { }
+        public bool AlternateScreen { get; init; }
+        public SharpVision.Terminal.Capabilities.TerminalCapabilities Capabilities { get; init; }
+        public System.TimeSpan CleanupTimeout { get; init; }
+        public SharpVision.Terminal.Protocols.MouseCoordinates Coordinates { get; init; }
+        public bool Focus { get; init; }
+        public bool HideCursor { get; init; }
+        public SharpVision.Terminal.Input.InputOptions Input { get; init; }
+        public SharpVision.Terminal.Kitty.Keyboard.Enhancement? Keyboard { get; init; }
+        public int? ModifyOtherKeys { get; init; }
+        public SharpVision.Terminal.Multiplexing.MultiplexingPolicy? Multiplexing { get; init; }
+        public SharpVision.Terminal.Capabilities.NegotiationOptions? Negotiation { get; init; }
+        public bool Paste { get; init; }
+        public SharpVision.Terminal.Capabilities.TerminalProfile Profile { get; init; }
+        public int ReadBufferSize { get; init; }
+        public SharpVision.Terminal.Protocols.MouseTracking? Tracking { get; init; }
+        public static SharpVision.Terminal.Runtime.TerminalOptions Minimal { get; }
+    }
+    [System.Runtime.Versioning.SupportedOSPlatform("linux")]
+    [System.Runtime.Versioning.SupportedOSPlatform("macos")]
+    public sealed class UnixResizeSource : SharpVision.Terminal.Abstractions.IResizeSource, System.IAsyncDisposable
+    {
+        public UnixResizeSource(int fileDescriptor) { }
+        public System.Threading.Tasks.ValueTask DisposeAsync() { }
+        public System.Threading.Tasks.ValueTask<SharpVision.Terminal.Geometry.Dimensions> ReadAsync(System.Threading.CancellationToken cancellationToken) { }
+        public bool TryReadCurrent(out SharpVision.Terminal.Geometry.Dimensions value) { }
+    }
+}
+namespace SharpVision.Terminal.Sixel
+{
+    public static class SixelWriter
+    {
+        public static void Write(SharpVision.Terminal.Graphics.ImageSource image, SharpVision.Terminal.Geometry.Rect source, SharpVision.Terminal.Geometry.Size destinationPixels, SharpVision.Terminal.Graphics.PlacementMode mode, System.Buffers.IBufferWriter<byte> destination, int maxOutputBytes = 268435456) { }
+    }
+}
+namespace SharpVision.Terminal.Terminfo
+{
+    public sealed class ProgramExpander
+    {
+        public bool AppliesTo(SharpVision.Terminal.Capabilities.TerminalProfile profile) { }
+        public bool Has(string name) { }
+        public bool HasPair(string prefixName, string suffixName) { }
+        public bool TryExpandPair(string enableName, string disableName, out System.ReadOnlyMemory<byte> enable, out System.ReadOnlyMemory<byte> disable) { }
+        public bool TryWrite(string name, System.ReadOnlySpan<int> parameters, System.Buffers.IBufferWriter<byte> destination) { }
+    }
+    public sealed class ProgramLimits : System.IEquatable<SharpVision.Terminal.Terminfo.ProgramLimits>
+    {
+        public ProgramLimits() { }
+        public int MaxProgramBytes { get; init; }
+        public int MaxProgramOperations { get; init; }
+        public int MaxProgramOutputBytes { get; init; }
+        public int MaxProgramStackDepth { get; init; }
+        public int MaxStringParameterBytes { get; init; }
+        public static SharpVision.Terminal.Terminfo.ProgramLimits Default { get; }
+    }
+}
+namespace SharpVision.Terminal.Unicode
+{
+    public enum Ambiguous
+    {
+        Narrow = 0,
+        Wide = 1,
+    }
+    public enum CellWidth
+    {
+        Control = 0,
+        Narrow = 1,
+        Wide = 2,
+    }
+    [System.Diagnostics.DebuggerDisplay("{ToString()}")]
+    public readonly struct Grapheme : System.IEquatable<SharpVision.Terminal.Unicode.Grapheme>
+    {
+        public Grapheme(int offset, int length, bool hasInvalidData) { }
+        public bool HasInvalidData { get; }
+        public int Length { get; }
+        public int Offset { get; }
+        public void Deconstruct(out int offset, out int length, out bool hasInvalidData) { }
+        public override string ToString() { }
+    }
+    public readonly ref struct GraphemeEnumerable
+    {
+        public SharpVision.Terminal.Unicode.GraphemeEnumerator GetEnumerator() { }
+    }
+    public ref struct GraphemeEnumerator
+    {
+        public SharpVision.Terminal.Unicode.Grapheme Current { get; }
+        public bool MoveNext() { }
+    }
+    public static class Graphemes
+    {
+        public static SharpVision.Terminal.Unicode.GraphemeEnumerable Enumerate(System.ReadOnlySpan<char> value) { }
+    }
+    public readonly struct Measurement : System.IEquatable<SharpVision.Terminal.Unicode.Measurement>
+    {
+        public Measurement(int cells, int graphemes, int controls) { }
+        public int Cells { get; }
+        public int Controls { get; }
+        public int Graphemes { get; }
+        public void Deconstruct(out int cells, out int graphemes, out int controls) { }
+    }
+    public enum Presentation
+    {
+        Replacement = 0,
+    }
+    public static class UnicodeInfo
+    {
+        public const int GraphemeRevision = 47;
+        public const string Version = "17.0.0";
+        public const int WidthRevision = 44;
+    }
+    public sealed class UnicodePolicy : System.IEquatable<SharpVision.Terminal.Unicode.UnicodePolicy>
+    {
+        public UnicodePolicy(SharpVision.Terminal.Unicode.Ambiguous ambiguousWidth = 0, SharpVision.Terminal.Unicode.Presentation orphanPresentation = 0) { }
+        public SharpVision.Terminal.Unicode.Ambiguous AmbiguousWidth { get; }
+        public SharpVision.Terminal.Unicode.Presentation OrphanPresentation { get; }
+        public string UnicodeVersion { get; }
+        public static SharpVision.Terminal.Unicode.UnicodePolicy Default { get; }
+    }
+    public static class Width
+    {
+        public static SharpVision.Terminal.Unicode.Measurement Measure(System.ReadOnlySpan<char> value, SharpVision.Terminal.Unicode.Ambiguous ambiguous = 0) { }
+    }
+}
+namespace SharpVision.Terminal.Xterm
+{
+    public enum CapabilityName
+    {
+        Colors = 0,
+        TerminalName = 1,
+        DirectColor = 2,
+        Backspace = 3,
+        Enter = 4,
+        Up = 5,
+        Down = 6,
+        Left = 7,
+        Right = 8,
+        Home = 9,
+        End = 10,
+    }
+    public sealed class CapabilityResponse
+    {
+        public bool IsValid { get; }
+        public System.Collections.Generic.IReadOnlyDictionary<SharpVision.Terminal.Xterm.CapabilityName, System.ReadOnlyMemory<byte>> Items { get; }
+    }
+    public sealed class ItermCapabilitiesResponse
+    {
+        public bool HasFileCode { get; }
+    }
+    public readonly struct MetricsResponse : System.IEquatable<SharpVision.Terminal.Xterm.MetricsResponse>
+    {
+        public MetricsResponse(SharpVision.Terminal.Xterm.ResponseKind kind, SharpVision.Terminal.Geometry.Size size) { }
+        public bool IsEmpty { get; }
+        public SharpVision.Terminal.Xterm.ResponseKind Kind { get; }
+        public SharpVision.Terminal.Geometry.Size Size { get; }
+    }
+    public readonly struct PaletteResponse : System.IEquatable<SharpVision.Terminal.Xterm.PaletteResponse>
+    {
+        public PaletteResponse(SharpVision.Terminal.Xterm.ResponseKind kind, int? index, ushort red, ushort green, ushort blue) { }
+        public ushort Blue { get; }
+        public ushort Green { get; }
+        public int? Index { get; }
+        public bool IsEmpty { get; }
+        public SharpVision.Terminal.Xterm.ResponseKind Kind { get; }
+        public ushort Red { get; }
+    }
+    public enum ResponseKind
+    {
+        None = 0,
+        PrimaryAttributes = 1,
+        SecondaryAttributes = 2,
+        CursorPosition = 3,
+        PrivateMode = 4,
+        ForegroundColor = 5,
+        BackgroundColor = 6,
+        Keyboard = 7,
+        PaletteColor = 8,
+        WindowPixels = 9,
+        CellPixels = 10,
+        WindowCells = 11,
+        ModifyOtherKeys = 12,
+    }
+    public enum StatusName
+    {
+        Unknown = 0,
+        Rendition = 1,
+        CursorStyle = 2,
+        VerticalMargins = 3,
+        HorizontalMargins = 4,
+        ModifyOtherKeys = 5,
+        FormatOtherKeys = 6,
+    }
+    public readonly struct StatusResponse
+    {
+        public StatusResponse(SharpVision.Terminal.Xterm.StatusName name, bool isValid, System.ReadOnlySpan<byte> value) { }
+        public bool IsEmpty { get; }
+        public bool IsValid { get; }
+        public SharpVision.Terminal.Xterm.StatusName Name { get; }
+        public System.ReadOnlyMemory<byte> Value { get; }
+    }
+    public readonly struct XtermCapabilitiesResponse : System.IEquatable<SharpVision.Terminal.Xterm.XtermCapabilitiesResponse>
+    {
+        public bool IsSupported { get; }
+        public SharpVision.Terminal.Xterm.ResponseKind Kind { get; }
+        public System.ReadOnlyMemory<int> Values { get; }
+    }
+    public static class XtermDecrqss
+    {
+        public static void Query(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Xterm.StatusName name) { }
+        public static bool TryParse(System.ReadOnlySpan<byte> parameters, System.ReadOnlySpan<byte> intermediates, byte final, System.ReadOnlySpan<byte> payload, out SharpVision.Terminal.Xterm.StatusResponse response) { }
+    }
+    public static class XtermGetCap
+    {
+        public static void Query(SharpVision.Terminal.Protocols.ProtocolWriter writer, System.ReadOnlySpan<SharpVision.Terminal.Xterm.CapabilityName> names) { }
+        public static bool TryParse(System.ReadOnlySpan<byte> parameters, System.ReadOnlySpan<byte> intermediates, byte final, System.ReadOnlySpan<byte> payload, SharpVision.Terminal.Capabilities.QueryLimits? limits, out SharpVision.Terminal.Xterm.CapabilityResponse? response) { }
+    }
+    public static class XtermModifyOtherKeys
+    {
+        public static void Query(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void Restore(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void Set(SharpVision.Terminal.Protocols.ProtocolWriter writer, int level) { }
+    }
+    public static class XtermResponses
+    {
+        public static bool TryCsi(System.ReadOnlySpan<byte> parameters, System.ReadOnlySpan<byte> intermediates, byte final, out SharpVision.Terminal.Xterm.XtermCapabilitiesResponse response) { }
+        public static bool TryMetricsCsi(System.ReadOnlySpan<byte> parameters, System.ReadOnlySpan<byte> intermediates, byte final, out SharpVision.Terminal.Xterm.MetricsResponse response) { }
+        public static bool TryOsc(System.ReadOnlySpan<byte> value, out SharpVision.Terminal.Xterm.PaletteResponse response) { }
+        public static bool TryOscItermCapabilities(System.ReadOnlySpan<byte> value, out SharpVision.Terminal.Xterm.ItermCapabilitiesResponse response) { }
+    }
+}

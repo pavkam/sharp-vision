@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <IsPackable>true</IsPackable>
+    <DebugType>portable</DebugType>
+    <PackageId>SharpVision.Terminal</PackageId>
+    <Title>SharpVision.Terminal</Title>
+    <PackageTags>terminal;protocols;unicode;rendering;console;ansi;vt</PackageTags>
+    <Description>Low-level .NET 10 terminal foundation with incremental protocol parsing, capability detection, Unicode cell geometry, input decoding, frame buffers, damage tracking, and deterministic output.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>SharpVision.Terminal 0.9.0-alpha.1 prerelease. See https://github.com/pavkam/sharp-vision/blob/main/docs/protocols/coverage-matrix.md for the implemented protocol surface and fallback behavior.</PackageReleaseNotes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/"/>
+    <None Include="../../media/logo.png" Pack="true" PackagePath="icon.png"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations" />
+  </ItemGroup>
+
+</Project>

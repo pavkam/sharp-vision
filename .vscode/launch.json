@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "SharpVision Showcase",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/examples/Showcase/bin/Debug/net10.0/SharpVision.Showcase.dll",
+      "cwd": "${workspaceFolder}/examples/Showcase",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": ".NET Attach",
+      "type": "coreclr",
+      "request": "attach"
+    }
+  ]
+}

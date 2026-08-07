@@ -1,0 +1,298 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Dialogs;
+
+using Controls.Collections;
+
+using SharpVision.Controls.Input;
+using SharpVision.Controls.Layout;
+
+/// <summary>Provides a responsive modal surface for choosing one or more existing local files.</summary>
+/// <remarks>
+/// The retained dialog enumerates one directory away from the dispatcher and commits only the newest
+/// result on the owning dispatcher. Directories are navigation targets and never appear in accepted paths.
+/// </remarks>
+[PublicAPI]
+public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>
+{
+    private const int _nonListWindowRows = 19;
+
+    private readonly Button _openButton;
+    private readonly StyleSlot<ButtonStyle> _openButtonStyle;
+    private readonly StyleSlot<FilePickerDialogStyle> _style;
+
+    #region Construction and state
+
+    /// <summary>Initializes a file picker with default options.</summary>
+    public FilePickerDialog()
+        : this(options: null)
+    {
+    }
+
+    /// <summary>Initializes a file picker from an owned snapshot of optional configuration.</summary>
+    /// <param name="options">Optional configuration; null selects defaults.</param>
+    /// <exception cref="ArgumentException">The initial directory path or active filter is invalid.</exception>
+    public FilePickerDialog(FilePickerOptions? options)
+        : this(options, new SystemFilePickerFileSystem())
+    {
+    }
+
+    /// <summary>Initializes a file picker over a deterministic filesystem source.</summary>
+    /// <param name="options">Optional configuration; null selects defaults.</param>
+    /// <param name="fileSystem">The non-null canonical path and enumeration source.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="fileSystem"/> is null.</exception>
+    /// <exception cref="ArgumentException">The initial directory path or active filter is invalid.</exception>
+    internal FilePickerDialog(FilePickerOptions? options, IFilePickerFileSystem fileSystem)
+        : base(
+            fileSystem,
+            (options = (options ?? new FilePickerOptions()).Copy()).Title,
+            options.InitialDirectory,
+            options.ShowHidden,
+            options.FilterIndex,
+            options.MaxVisibleRows,
+            _nonListWindowRows,
+            options.Filters,
+            options.AllowMultiple ? ListSelectionMode.Multiple : ListSelectionMode.Single,
+            FilePickerResult.Cancelled)
+    {
+        _style = InitializeStyle(FilePickerDialogStyle.Definition);
+        _openButton = new Button
+        {
+            Text = OpenText,
+            IsDefault = true,
+            Enabled = false
+        };
+        Initialize();
+        _openButtonStyle = InitializePartStyle(
+            ButtonStyle.ForwardingDefinition,
+            nameof(OpenButtonStyle));
+        BindStyle(_openButtonStyle, _openButton);
+        Style = options.Style;
+        CancelButtonStyle = options.CancelButtonStyle;
+        ShowHiddenCheckBoxStyle = options.ShowHiddenCheckBoxStyle;
+        FileListScrollBarStyle = options.FileListScrollBarStyle;
+        FilterScrollBarStyle = options.FilterScrollBarStyle;
+        OpenButtonStyle = options.OpenButtonStyle;
+        ParentDirectoryText = options.ParentDirectoryText;
+        DirectoryPlaceholder = options.DirectoryPlaceholder;
+        ShowHiddenText = options.ShowHiddenText;
+        CancelText = options.CancelText;
+        OpenText = options.OpenText;
+    }
+
+    /// <summary>Gets the selected canonical file paths in stable display order.</summary>
+    public IReadOnlyList<string> SelectedPaths { get; private set; } = Array.AsReadOnly<string>([]);
+
+    /// <summary>Gets or sets the complete local aggregate presentation, or null to let the active
+    /// Theme's own "filePickerDialog" section (or its Window fallback) own the frame and structural
+    /// geometry.</summary>
+    /// <exception cref="InvalidOperationException">The attached dialog is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
+    public FilePickerDialogStyle? Style
+    {
+        get => _style.Local;
+        set => _style.Local = value;
+    }
+
+    /// <summary>Gets the resolved complete aggregate presentation.</summary>
+    public FilePickerDialogStyle ActualStyle => _style.Actual;
+
+    /// <summary>Gets or sets the complete local presentation applied to the Open Button, or null to
+    /// let it use its own semantic input profile.</summary>
+    /// <exception cref="InvalidOperationException">The attached dialog is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
+    public ButtonStyle? OpenButtonStyle
+    {
+        get => _openButtonStyle.Local;
+        set => _openButtonStyle.Local = value;
+    }
+
+    /// <summary>Gets the resolved Open Button style.</summary>
+    public ButtonStyle ActualOpenButtonStyle => _openButtonStyle.Actual;
+
+    /// <summary>Gets or sets the non-null caption for the Open action.</summary>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached dialog is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
+    public string OpenText
+    {
+        get;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                _openButton.Text = value;
+            }
+        }
+    } = "&Open";
+
+    /// <summary>Gets or sets the non-null selected-file-count formatter used to build the status text
+    /// while at least one file is selected.</summary>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached dialog is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
+    public Func<int, string> SelectionFormat
+    {
+        get;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            _ = SetProperty(ref field, value, InvalidationImpact.None);
+        }
+    } = DefaultSelectionFormat;
+
+    #endregion
+
+    private protected override FileDialogStyle ResolveDialogStyle() => ActualStyle;
+
+    private static string DefaultSelectionFormat(int count) => $"{count} {(count == 1 ? "file" : "files")} selected";
+
+    #region Presentation
+
+    /// <summary>Shows a temporary modal file picker owned by one attached control.</summary>
+    /// <param name="owner">The attached control whose Screen or container hosts the dialog.</param>
+    /// <param name="options">Optional copied picker configuration.</param>
+    /// <param name="cancellationToken">Cancels the returned task and tears down the presentation.</param>
+    /// <returns>A task completing with accepted canonical paths or a cancelled semantic result.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="owner"/> is null.</exception>
+    /// <exception cref="ArgumentException">The owner is detached or has no presentation host.</exception>
+    /// <exception cref="InvalidOperationException">The call is made off the owner's dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> is already cancelled.</exception>
+    public static Task<FilePickerResult> ShowAsync(
+        ControlBase owner,
+        FilePickerOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        ObjectDisposedException.ThrowIf(owner.Disposed, owner);
+        cancellationToken.ThrowIfCancellationRequested();
+        var dispatcher = owner.Dispatcher ??
+            throw new ArgumentException("The file-picker owner must be attached.", nameof(owner));
+        dispatcher.VerifyAccess();
+        var host = FindHost(owner) ??
+            throw new ArgumentException("The file-picker owner must have a presentation host.", nameof(owner));
+        var dialog = new FilePickerDialog(options);
+        host.Add(dialog);
+
+        try
+        {
+            return dialog.PresentAsync(host, dialog.GetModalFocusTarget(), cancellationToken);
+        }
+        catch
+        {
+            _ = host.Remove(dialog);
+            dialog.Dispose();
+            throw;
+        }
+    }
+
+    #endregion
+
+    #region Composition
+
+    /// <inheritdoc/>
+    protected override Grid CreateContent()
+    {
+        var location = CreateLocationBar();
+        var listArea = CreateFileListArea();
+
+        var hidden = new Overlay
+        {
+            Children = { HiddenToggle }
+        };
+
+        var footer = CreateFooter(_openButton);
+
+        var root = new Grid
+        {
+            RowSpacing = 1,
+            Padding = new Thickness(left: 1, top: 1, right: 1, bottom: 0),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        root.Columns.Add(Track.Star(1, minimum: 8));
+        root.Rows.Add(Track.Auto(minimum: 3));
+        root.Rows.Add(Track.Star(1, minimum: Math.Min(8, FileListSurface.MaxHeight.Add(3))));
+        root.Rows.Add(Track.Auto(minimum: 1));
+        root.Rows.Add(Track.Auto());
+        Grid.SetRow(listArea, 1);
+        Grid.SetRow(hidden, 2);
+        Grid.SetRow(footer, 3);
+        root.Children.Add(location);
+        root.Children.Add(listArea);
+        root.Children.Add(hidden);
+        root.Children.Add(footer);
+        return root;
+    }
+
+    /// <inheritdoc/>
+    protected override void WireAcceptInteraction() =>
+        _openButton.Click += OnOpenClicked;
+
+    #endregion
+
+    #region Interaction
+
+    /// <inheritdoc/>
+    protected override ControlBase GetModalFocusTarget() => PathInput;
+
+    /// <inheritdoc/>
+    protected override ControlBase GetInitialLoadFocusTarget() => FileList;
+
+    /// <inheritdoc/>
+    protected override void OnListSelectionChanged() => PublishSelection();
+
+    /// <inheritdoc/>
+    private protected override void OnFileItemInvoked(FilePickerEntry entry, ActivationCause cause)
+    {
+        _ = cause;
+        CompleteAccepted();
+    }
+
+    private void CompleteAccepted()
+    {
+        if (SelectedPaths.Count > 0)
+        {
+            _ = Complete(FilePickerResult.Accept(SelectedPaths));
+        }
+    }
+
+    private void OnOpenClicked(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+        CompleteAccepted();
+    }
+
+    private void PublishSelection()
+    {
+        SelectedPaths = Array.AsReadOnly(
+            FileList.SelectedItems
+                .OfType<FilePickerEntry>()
+                .Where(static entry => !entry.Directory)
+                .Select(static entry => entry.FullPath)
+                .ToArray());
+        _openButton.Enabled = SelectedPaths.Count > 0;
+        SetStatus(SelectedPaths.Count == 0
+            ? SnapshotStatus
+            : SelectionFormat(SelectedPaths.Count));
+        NotifyPropertyChanged(nameof(SelectedPaths), InvalidationImpact.None);
+    }
+
+    #endregion
+
+    #region Loading lifecycle
+
+    /// <inheritdoc/>
+    private protected override void OnLoadCommitted(FilePickerEntry[] entries)
+    {
+        _ = entries;
+        PublishSelection();
+    }
+
+    #endregion
+}

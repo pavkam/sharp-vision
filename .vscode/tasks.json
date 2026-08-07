@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/SharpVision.slnx",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary;ForceNoAlign"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "test",
+        "--solution",
+        "${workspaceFolder}/SharpVision.slnx",
+        "--minimum-expected-tests",
+        "3"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "watch showcase",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "watch",
+        "--project",
+        "${workspaceFolder}/examples/Showcase/SharpVision.Showcase.csproj",
+        "run"
+      ],
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}

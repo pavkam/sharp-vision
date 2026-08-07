@@ -1,0 +1,68 @@
+# ChaseIndicator
+
+## Overview
+
+`ChaseIndicator` animates one or two highlighted glyphs along a bounded
+horizontal or vertical track, leaving a fading trail behind the head. It is a
+pure display control: it owns no children and takes no part in focus or pointer
+hit testing.
+
+## API
+
+| Member                                    | Default              | Description                                                  |
+| ----------------------------------------- | -------------------- | ------------------------------------------------------------ |
+| `Style`                                   | `null`               | Optional complete developer-authored `ChaseIndicatorStyle`.  |
+| `ActualStyle`                             | Theme chase          | The resolved style; always present.                          |
+| `Circle`, `Diamond`, `Square`, directions | Presets              | Complete preset styles built on active/inactive glyph pairs. |
+| `Movement`                                | `Bounce`             | Selects the bounce, wrapping, or center-spread sequence.     |
+| `Length`, `Spacing`, `TrailLength`        | `5`, `0`, `2`        | Track geometry and how much history the trail retains.       |
+| `FadeDuration`, `Interval`, `Playing`     | 400 ms, 200 ms, true | Animation timing and playback.                               |
+
+A `ChaseIndicatorStyle` holds the validated one-cell active/inactive glyph pair
+and the `HeadColor`, `TrailColor`, and `TrackColor` foregrounds for each
+animated part, alongside its inherited `Face`/`Border`/`Shadow`. Each color
+accepts either a concrete `Color` or a `SemanticColor` role and defaults to
+`Accent`, `Muted`, and `Muted` respectively when not overridden. A `with`
+expression creates a validated member-wise copy of any preset. A theme document
+may additionally author a `styles.chaseIndicator` section restyling
+`active`/`inactive` (one-character strings) and any of the three colors ahead of
+the code-owned defaults, falling back to the `control` style section for
+everything else, whenever no local `Style` is assigned (see
+[themes.md](../../concepts/themes.md#style-types)). Assigning `Style` replaces
+the entire Theme-owned presentation, and assigning `null` restores it. If the
+active cell-width policy is wide and a configured glyph becomes ambiguous, the
+control falls back to a role-appropriate one-cell ASCII head and a `.` track
+glyph.
+
+Changing the effective glyph pair resets the animation phase. Appearance-only
+Theme changes repaint without losing the phase. Changing `Movement` or `Length`
+also resets the phase, while spacing, trail, timing, and color changes preserve
+it. The trail history never grows beyond `min(TrailLength, Length - 1)` entries.
+
+## Example
+
+![The ChaseIndicator control rendered in the live showcase](../../images/controls/chase-indicator.png)
+
+```csharp
+var indicator = new ChaseIndicator
+{
+    Movement = ChaseMovement.Spread,
+    Style = ChaseIndicatorStyle.Diamond with { HeadColor = Color.Rgb(90, 247, 142) },
+    Length = 21,
+    TrailLength = 5
+};
+```
+
+## Expected behavior
+
+Callers can rely on the documented behavior end to end: every movement sequence
+advances as described; style values are validated and resolved with the
+documented local-over-Theme precedence, and replacing the Theme takes effect
+immediately; phase resets exactly when the glyph pair, movement, or length
+changes and survives appearance-only changes; trail history stays within its
+bound; trail colors fade by RGB interpolation and degrade correctly against
+terminal-default colors; both orientations, spacing, and clipping render as
+specified, with the wide-policy ASCII fallback applied when needed; the
+animation timer starts and stops with attachment and playback, pauses while the
+control is not visible, and the rendered output matches exact consecutive
+screens.

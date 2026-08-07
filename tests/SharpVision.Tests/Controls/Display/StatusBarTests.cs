@@ -1,0 +1,346 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Tests.Controls.Display;
+
+/// <summary>Verifies StatusBar item ownership, alignment, validation, and layout contracts.</summary>
+public sealed class StatusBarTests
+{
+    /// <summary>Verifies the conventional one-row passive strip and item defaults.</summary>
+    [ComponentUnitEvidence(typeof(StatusBar))]
+    [ComponentUnitEvidence(typeof(StatusBarItem))]
+    [Fact]
+    public void Constructor_WhenCreated_UsesDocumentedDefaults()
+    {
+        // Arrange and act
+        using var bar = new StatusBar();
+        using var item = new StatusBarItem();
+
+        // Assert
+        bar.Items.ShouldBeEmpty();
+        bar.Spacing.ShouldBe(1);
+        bar.Height.ShouldBe(Length.Cells(1));
+        bar.HorizontalAlignment.ShouldBe(HorizontalAlignment.Stretch);
+        bar.Face.Background.ShouldBe(SemanticColor.Control);
+        bar.CanFocus.ShouldBeFalse();
+        item.Alignment.ShouldBe(StatusBarItemAlignment.Left);
+        item.LeftSeparator.ShouldBeNull();
+        item.RightSeparator.ShouldBeNull();
+        item.CanFocus.ShouldBeFalse();
+        StatusBarSeparatorGlyphs.Whitespace.ShouldBe(new Rune(' '));
+        StatusBarSeparatorGlyphs.Bar.ShouldBe(new Rune('│'));
+        StatusBarSeparatorGlyphs.Bullet.ShouldBe(new Rune('•'));
+        StatusBarSeparatorGlyphs.Chevron.ShouldBe(new Rune('›'));
+        StatusBarSeparatorGlyphs.Diamond.ShouldBe(new Rune('◆'));
+    }
+
+    /// <summary>Verifies typed ownership rejects invalid reuse and permits detached reuse after removal.</summary>
+    [Fact]
+    public void Items_WhenMutated_EnforcesSingleParentOwnership()
+    {
+        // Arrange
+        using var first = new StatusBar();
+        using var second = new StatusBar();
+        using var item = Item("Ready");
+
+        // Act and assert
+        first.Items.Add(item);
+        first.Items.ShouldBe([item]);
+        _ = Should.Throw<ArgumentException>(() => first.Items.Add(item));
+        _ = Should.Throw<ArgumentException>(() => second.Items.Add(item));
+        first.Items.Remove(item).ShouldBeTrue();
+        second.Items.Add(item);
+        second.Items.ShouldBe([item]);
+    }
+
+    /// <summary>Verifies invalid alignment and spacing fail before observable state changes.</summary>
+    [Fact]
+    public void Setters_WhenValuesAreInvalid_ThrowBeforeMutation()
+    {
+        // Arrange
+        using var bar = new StatusBar();
+        using var item = new StatusBarItem();
+
+        // Act
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => bar.Spacing = -1);
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => item.Alignment = (StatusBarItemAlignment) 99);
+
+        // Assert
+        bar.Spacing.ShouldBe(1);
+        item.Alignment.ShouldBe(StatusBarItemAlignment.Left);
+    }
+
+    /// <summary>Verifies separators reject controls and wide glyphs before changing valid values.</summary>
+    [Fact]
+    public void Separators_WhenGlyphIsNotOnePrintableCell_ThrowBeforeMutation()
+    {
+        // Arrange
+        using var item = new StatusBarItem
+        {
+            ShowLeftSeparator = true,
+            ShowRightSeparator = true,
+            LeftSeparator = StatusBarSeparatorGlyphs.Bar,
+            RightSeparator = StatusBarSeparatorGlyphs.Chevron
+        };
+
+        // Act
+        _ = Should.Throw<ArgumentException>(() => item.LeftSeparator = new Rune('界'));
+        _ = Should.Throw<ArgumentException>(() => item.RightSeparator = new Rune('\n'));
+
+        // Assert
+        item.LeftSeparator.ShouldBe(StatusBarSeparatorGlyphs.Bar);
+        item.RightSeparator.ShouldBe(StatusBarSeparatorGlyphs.Chevron);
+    }
+
+    /// <summary>Verifies separator cells enlarge the item and inset its retained content.</summary>
+    [Fact]
+    public void Arrange_WhenItemHasBothSeparators_ReservesOneCellOnEachSide()
+    {
+        // Arrange
+        using var bar = new StatusBar();
+        var content = new ControlText("Ready");
+        var item = new StatusBarItem
+        {
+            ShowLeftSeparator = true,
+            ShowRightSeparator = true,
+            LeftSeparator = StatusBarSeparatorGlyphs.Bar,
+            RightSeparator = StatusBarSeparatorGlyphs.Chevron,
+            Content = content
+        };
+        bar.Items.Add(item);
+
+        // Act
+        new LayoutEngine().Layout(bar, new Size(12, 1));
+
+        // Assert
+        item.DesiredSize.ShouldBe(new Size(7, 1));
+        item.Bounds.ShouldBe(new Rect(0, 0, 7, 1));
+        content.Bounds.ShouldBe(new Rect(1, 0, 5, 1));
+    }
+
+    /// <summary>Verifies left and right groups preserve order and anchor to their respective edges.</summary>
+    [Fact]
+    public void Arrange_WhenItemsUseBothAlignments_AnchorsOrderedGroupsToEdges()
+    {
+        // Arrange
+        using var bar = new StatusBar { Spacing = 1 };
+        var ready = Item("Ready");
+        var branch = Item("main");
+        var encoding = Item("UTF-8", StatusBarItemAlignment.Right);
+        var position = Item("Ln 1", StatusBarItemAlignment.Right);
+        bar.Items.Add(ready);
+        bar.Items.Add(encoding);
+        bar.Items.Add(branch);
+        bar.Items.Add(position);
+
+        // Act
+        new LayoutEngine().Layout(bar, new Size(24, 1));
+
+        // Assert
+        ready.Bounds.ShouldBe(new Rect(0, 0, 5, 1));
+        branch.Bounds.ShouldBe(new Rect(6, 0, 4, 1));
+        encoding.Bounds.ShouldBe(new Rect(14, 0, 5, 1));
+        position.Bounds.ShouldBe(new Rect(20, 0, 4, 1));
+    }
+
+    /// <summary>Verifies trailing status survives first while leading status yields in a tiny viewport.</summary>
+    [Fact]
+    public void Arrange_WhenWidthIsTight_PreservesTrailingEdgeBeforeLeadingItems()
+    {
+        // Arrange
+        using var bar = new StatusBar { Spacing = 1 };
+        var message = Item("Saving document");
+        var encoding = Item("UTF-8", StatusBarItemAlignment.Right);
+        var position = Item("Ln 42", StatusBarItemAlignment.Right);
+        bar.Items.Add(message);
+        bar.Items.Add(encoding);
+        bar.Items.Add(position);
+
+        // Act
+        new LayoutEngine().Layout(bar, new Size(9, 1));
+
+        // Assert
+        message.Bounds.Width.ShouldBe(0);
+        encoding.Bounds.ShouldBe(new Rect(0, 0, 3, 1));
+        position.Bounds.ShouldBe(new Rect(4, 0, 5, 1));
+        position.Bounds.Right.ShouldBe(bar.Bounds.Right);
+    }
+
+    /// <summary>Verifies changing alignment invalidates layout and moves the retained item.</summary>
+    [Fact]
+    public void Alignment_WhenChanged_RepositionsTheOwnedItem()
+    {
+        // Arrange
+        using var bar = new StatusBar();
+        var item = Item("Ready");
+        bar.Items.Add(item);
+        var engine = new LayoutEngine();
+        engine.Layout(bar, new Size(12, 1));
+        item.Bounds.X.ShouldBe(0);
+
+        // Act
+        item.Alignment = StatusBarItemAlignment.Right;
+        engine.Layout(bar, new Size(12, 1));
+
+        // Assert
+        item.Bounds.ShouldBe(new Rect(7, 0, 5, 1));
+    }
+
+    /// <summary>Verifies Insert places an item at the requested position without disturbing existing order.</summary>
+    [Fact]
+    public void Insert_WhenCalled_PlacesItemAtRequestedPosition()
+    {
+        using var bar = new StatusBar();
+        var first = Item("First");
+        var second = Item("Second");
+        bar.Items.Add(first);
+        bar.Items.Add(second);
+        var inserted = Item("Inserted");
+
+        bar.Items.Insert(1, inserted);
+
+        bar.Items.ShouldBe([first, inserted, second]);
+    }
+
+    /// <summary>Verifies an out-of-range insertion index throws before mutating the collection.</summary>
+    [Fact]
+    public void Insert_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        using var bar = new StatusBar();
+        var item = Item("First");
+        bar.Items.Add(item);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => bar.Items.Insert(2, Item("New")));
+
+        bar.Items.ShouldBe([item]);
+    }
+
+    /// <summary>Verifies RemoveAt detaches the item at a position without disposing it.</summary>
+    [Fact]
+    public void RemoveAt_WhenCalled_DetachesItemWithoutDisposal()
+    {
+        using var bar = new StatusBar();
+        var first = Item("First");
+        var second = Item("Second");
+        bar.Items.Add(first);
+        bar.Items.Add(second);
+
+        bar.Items.RemoveAt(0);
+
+        bar.Items.ShouldBe([second]);
+        first.Disposed.ShouldBeFalse();
+        first.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies an out-of-range removal index throws before mutating the collection.</summary>
+    [Fact]
+    public void RemoveAt_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        using var bar = new StatusBar();
+        var item = Item("First");
+        bar.Items.Add(item);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => bar.Items.RemoveAt(1));
+
+        bar.Items.ShouldBe([item]);
+    }
+
+    /// <summary>Verifies the indexer replaces one item at a position, detaching the old one without disposal.</summary>
+    [Fact]
+    public void Indexer_WhenAssigned_ReplacesItemAtPositionWithoutDisposingOld()
+    {
+        using var bar = new StatusBar();
+        var first = Item("First");
+        var second = Item("Second");
+        bar.Items.Add(first);
+        bar.Items.Add(second);
+        var replacement = Item("Replacement");
+
+        bar.Items[0] = replacement;
+
+        bar.Items.ShouldBe([replacement, second]);
+        first.Disposed.ShouldBeFalse();
+        first.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies assigning null through the indexer throws.</summary>
+    [Fact]
+    public void Indexer_WhenAssignedNull_Throws()
+    {
+        using var bar = new StatusBar();
+        bar.Items.Add(Item("First"));
+
+        _ = Should.Throw<ArgumentNullException>(() => bar.Items[0] = null!);
+    }
+
+    /// <summary>Verifies Move repositions an owned item while preserving its identity.</summary>
+    [Fact]
+    public void Move_WhenCalled_RepositionsItemPreservingIdentity()
+    {
+        using var bar = new StatusBar();
+        var first = Item("First");
+        var second = Item("Second");
+        var third = Item("Third");
+        bar.Items.Add(first);
+        bar.Items.Add(second);
+        bar.Items.Add(third);
+
+        bar.Items.Move(0, 2);
+
+        bar.Items.ShouldBe([second, third, first]);
+    }
+
+    /// <summary>Verifies an out-of-range move index throws before mutating the collection.</summary>
+    [Fact]
+    public void Move_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        using var bar = new StatusBar();
+        var first = Item("First");
+        var second = Item("Second");
+        bar.Items.Add(first);
+        bar.Items.Add(second);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => bar.Items.Move(0, 2));
+
+        bar.Items.ShouldBe([first, second]);
+    }
+
+    /// <summary>Verifies IndexOf reports the current position of an owned item and -1 for a foreign item.</summary>
+    [Fact]
+    public void IndexOf_WhenItemIsOwnedOrForeign_ReportsPositionOrNegativeOne()
+    {
+        using var bar = new StatusBar();
+        var first = Item("First");
+        var second = Item("Second");
+        bar.Items.Add(first);
+        bar.Items.Add(second);
+        using var foreign = Item("Foreign");
+
+        bar.Items.IndexOf(second).ShouldBe(1);
+        bar.Items.IndexOf(foreign).ShouldBe(-1);
+    }
+
+    /// <summary>Verifies disposed collection mutations reject Insert, RemoveAt, indexer assignment, and Move.</summary>
+    [Fact]
+    public void Items_WhenOwnerIsDisposed_RejectsInsertRemoveAtIndexerAndMove()
+    {
+        var bar = new StatusBar();
+        bar.Items.Add(Item("First"));
+        bar.Items.Add(Item("Second"));
+        bar.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => bar.Items.Insert(0, Item("New")));
+        _ = Should.Throw<ObjectDisposedException>(() => bar.Items.RemoveAt(0));
+        _ = Should.Throw<ObjectDisposedException>(() => bar.Items[0] = Item("New"));
+        _ = Should.Throw<ObjectDisposedException>(() => bar.Items.Move(0, 1));
+    }
+
+    private static StatusBarItem Item(
+        string content,
+        StatusBarItemAlignment alignment = StatusBarItemAlignment.Left) => new()
+        {
+            Alignment = alignment,
+            Content = new ControlText(content)
+        };
+}

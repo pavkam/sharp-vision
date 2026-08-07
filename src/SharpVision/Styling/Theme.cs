@@ -1,0 +1,1095 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Styling;
+
+using System.Collections.Concurrent;
+using System.Collections.Immutable;
+using System.Collections.ObjectModel;
+using System.Reflection;
+using System.Runtime.ExceptionServices;
+using System.Text.Json;
+
+/// <summary>Represents immutable global semantic values, appearance states, and provenance after freezing.</summary>
+[PublicAPI]
+public sealed class Theme
+{
+    private readonly Dictionary<string, Color> _palette;
+    private readonly Color[] _colors = new Color[Enum.GetValues<SemanticColor>().Length];
+    private readonly TerminalAttributes[] _attributes =
+        new TerminalAttributes[Enum.GetValues<SemanticDecoration>().Length];
+    private Dictionary<string, JsonElement> _styleSections = [];
+
+    /// <summary>Initializes an unfrozen theme and copies its optional named palette.</summary>
+    /// <param name="palette">Optional named concrete colors.</param>
+    /// <param name="name">The display name.</param>
+    /// <param name="slug">The stable catalog slug.</param>
+    /// <param name="colorScheme">The intended light or dark color scheme.</param>
+    /// <param name="author">The attribution author.</param>
+    /// <param name="license">The palette license identifier.</param>
+    /// <param name="source">The palette source URL.</param>
+    /// <exception cref="ArgumentNullException">Required identity or provenance metadata is null.</exception>
+    /// <exception cref="ArgumentException">Required metadata is blank or a palette value is transparent.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="colorScheme"/> is undefined.</exception>
+    public Theme(
+        IReadOnlyDictionary<string, Color>? palette = null,
+        string name = "Custom",
+        string slug = "custom",
+        ColorScheme colorScheme = ColorScheme.Dark,
+        string author = "SharpVision contributors",
+        string license = "MIT",
+        string source = "https://github.com/sharpvision/sharpvision")
+    {
+        name = RequireMetadata(name, nameof(name));
+        slug = RequireMetadata(slug, nameof(slug));
+        author = RequireMetadata(author, nameof(author));
+        license = RequireMetadata(license, nameof(license));
+        source = RequireMetadata(source, nameof(source));
+
+        if (!Enum.IsDefined(colorScheme))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(colorScheme),
+                colorScheme,
+                "The theme color scheme is unknown.");
+        }
+
+        _palette = palette is null
+            ? []
+            : new Dictionary<string, Color>(palette, StringComparer.Ordinal);
+
+        foreach (var entry in _palette)
+        {
+            ValidateConcrete(entry.Value, nameof(palette));
+        }
+
+        Palette = new ReadOnlyDictionary<string, Color>(_palette);
+        Name = name;
+        Slug = slug;
+        ColorScheme = colorScheme;
+        Author = author;
+        License = license;
+        Source = source;
+    }
+
+    private static string RequireMetadata(string value, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(value, parameterName);
+
+        return string.IsNullOrWhiteSpace(value)
+            ? throw new ArgumentException("Theme metadata must not be blank.", parameterName)
+            : value;
+    }
+
+    /// <summary>Gets the human-readable theme name shown in theme pickers and diagnostics (e.g. "Tokyo Night Storm").</summary>
+    public string Name { get; }
+
+    /// <summary>Gets the URL-safe identifier used for theme file names and programmatic lookup (e.g. "tokyo-night-storm").</summary>
+    public string Slug { get; }
+
+    /// <summary>Gets whether this theme targets dark or light terminal backgrounds.</summary>
+    public ColorScheme ColorScheme { get; }
+
+    /// <summary>Gets the theme author's name or handle for attribution in theme catalogs.</summary>
+    public string Author { get; }
+
+    /// <summary>Gets the SPDX license identifier governing redistribution of the theme's color palette (e.g. "MIT").</summary>
+    public string License { get; }
+
+    /// <summary>Gets the upstream URL where the original color palette is maintained.</summary>
+    public string Source { get; }
+
+    /// <summary>Gets whether mutation has been disabled.</summary>
+    public bool Frozen { get; private set; }
+
+    /// <summary>Gets the retained immutable named concrete palette.</summary>
+    public IReadOnlyDictionary<string, Color> Palette { get; }
+
+    /// <summary>Gets the passive base-control semantic appearance.</summary>
+    public AppearanceStates Control => GetStyleSet(ControlStyle.Default).ToAppearanceStates();
+
+    /// <summary>Gets the editable or selectable input semantic appearance.</summary>
+    public AppearanceStates Input => GetStyleSet(InputStyle.Default).ToAppearanceStates();
+
+    /// <summary>Gets the framed grouping or collection semantic appearance.</summary>
+    public AppearanceStates Container => GetStyleSet(ContainerStyle.Default).ToAppearanceStates();
+
+    /// <summary>Gets the top-level window semantic appearance.</summary>
+    public AppearanceStates Window => GetWindowStyleSet().ToAppearanceStates();
+
+    /// <summary>Gets the transient popup semantic appearance.</summary>
+    public AppearanceStates Popup => GetStyleSet(PopupStyle.Default).ToAppearanceStates();
+
+    /// <summary>Gets the passive, non-interactive hint semantic appearance.</summary>
+    public AppearanceStates Tooltip => GetStyleSet(TooltipStyle.Default).ToAppearanceStates();
+
+    /// <summary>Resolves one known global color to a concrete terminal color.</summary>
+    /// <param name="color">The known semantic color.</param>
+    /// <returns>The configured concrete terminal color.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="color"/> is unknown.</exception>
+    public Color ResolveColor(SemanticColor color) => Enum.IsDefined(color)
+        ? _colors[(int) color]
+        : throw new ArgumentOutOfRangeException(nameof(color), color, "The theme color is unknown.");
+
+    /// <summary>Resolves one known global semantic decoration to concrete terminal attributes.</summary>
+    /// <param name="decoration">The known semantic decoration.</param>
+    /// <returns>The configured complete terminal attributes.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="decoration"/> is unknown.</exception>
+    public TerminalAttributes ResolveAttributes(SemanticDecoration decoration) => Enum.IsDefined(decoration)
+        ? _attributes[(int) decoration]
+        : throw new ArgumentOutOfRangeException(
+            nameof(decoration),
+            decoration,
+            "The theme decoration is unknown.");
+
+    internal void SetColor(SemanticColor color, Color value)
+    {
+        if (Frozen)
+        {
+            throw new InvalidOperationException("A frozen theme cannot be changed.");
+        }
+
+        ValidateConcrete(value, nameof(value));
+        _colors[(int) color] = value;
+    }
+
+    internal void SetAttributes(SemanticDecoration decoration, TerminalAttributes value)
+    {
+        if (Frozen)
+        {
+            throw new InvalidOperationException("A frozen theme cannot be changed.");
+        }
+
+        ((TerminalAttributes?) value).Validate(null, null);
+        _attributes[(int) decoration] = value;
+    }
+
+    internal void SetStyleSections(Dictionary<string, JsonElement> sections)
+    {
+        if (Frozen)
+        {
+            throw new InvalidOperationException("A frozen theme cannot be changed.");
+        }
+
+        _styleSections = sections;
+    }
+
+    /// <summary>Gets the raw "styles" document this theme was parsed from, keyed by top-level
+    /// section name - the same source <see cref="SetStyleSections"/> installs, exposed read-only
+    /// so a derived scenario theme can replicate another theme's complete style customization.</summary>
+    internal IReadOnlyDictionary<string, JsonElement> StyleSections => _styleSections;
+
+    // Mirrors ThemeCatalog.ResolveColorValue/ResolveColor exactly, but reads this Theme's own public
+    // Palette instead of the private dictionary the eager document parse builds - a registrable
+    // section's color members are resolved lazily, long after that parse-time dictionary is gone.
+    internal ControlColor ResolveSectionColor(string value, string context)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        return string.Equals(value, "transparent", StringComparison.OrdinalIgnoreCase)
+            ? Color.Transparent
+            : string.Equals(value, "default", StringComparison.OrdinalIgnoreCase)
+                ? Color.Default
+                : Enum.TryParse<SemanticColor>(value, ignoreCase: true, out var semantic) && Enum.IsDefined(semantic)
+                    ? semantic
+                    : value.StartsWith('#')
+                        ? Color.TryFromHex(value, out var literal)
+                            ? literal
+                            : throw new InvalidDataException($"Theme '{Slug}' {context} has invalid color '{value}'.")
+                        : Palette.TryGetValue(value, out var paletteColor)
+                            ? paletteColor
+                            : throw new InvalidDataException(
+                                $"Theme '{Slug}' {context} references unknown palette key '{value}'.");
+    }
+
+    // Shared by every registrable style section's glyph members - previously
+    // hand-copied verbatim into six controls' own ParseGlyph helpers.
+    internal Rune? ParseSectionGlyph(string? value, string context)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        var enumerator = value.EnumerateRunes();
+
+        if (!enumerator.MoveNext())
+        {
+            throw new InvalidDataException($"Theme '{Slug}' {context} must contain one Rune.");
+        }
+
+        var result = enumerator.Current;
+
+        if (enumerator.MoveNext())
+        {
+            throw new InvalidDataException($"Theme '{Slug}' {context} must contain one Rune.");
+        }
+
+        // Counting Runes is only half of what themes.md promises: it also states a value measuring
+        // wider than one cell is rejected the same way a hand-authored glyph is. Measuring here
+        // means the theme slug and the dotted styles.* path are still in hand; the alternative is
+        // the same rejection arriving from inside the render loop with neither.
+        try
+        {
+            return result.ValidateSingleCell(nameof(value));
+        }
+        catch (ArgumentException error)
+        {
+            throw new InvalidDataException($"Theme '{Slug}' {context} must be one cell wide.", error);
+        }
+    }
+
+    // Shared by every registrable style section's named-enum members -
+    // previously hand-copied verbatim into four controls' own ParseMarkStyle/ParseChrome/
+    // ParseFill helpers.
+    internal TEnum? ParseSectionEnum<TEnum>(string? value, string context) where TEnum : struct, Enum =>
+        value is null
+            ? null
+            : Enum.TryParse<TEnum>(value, ignoreCase: true, out var result) && IsRepresentable(result)
+                ? result
+                : throw new InvalidDataException($"Theme '{Slug}' {context} has unknown value '{value}'.");
+
+    /// <summary>Reports whether one parsed enum value is expressible in its type.</summary>
+    /// <remarks>
+    /// <see cref="Enum.IsDefined{TEnum}(TEnum)"/> is false for any <c>[Flags]</c> combination that is
+    /// not itself a declared member, which made <c>"top, bottom"</c> - a well-formed, type-legal
+    /// <see cref="BorderSide"/> value that every other layer accepts - fail with a message asserting
+    /// it was unknown. A flags value is instead checked for bits outside the declared set, exactly
+    /// as <c>Border</c>'s and <c>BorderOverlay</c>'s own constructors do. Plain enums keep the strict
+    /// membership test.
+    /// </remarks>
+    /// <typeparam name="TEnum">The parsed enum type.</typeparam>
+    /// <param name="value">The parsed value.</param>
+    /// <returns>Whether the value is representable.</returns>
+    private static bool IsRepresentable<TEnum>(TEnum value)
+        where TEnum : struct, Enum
+    {
+        if (!typeof(TEnum).IsDefined(typeof(FlagsAttribute), inherit: false))
+        {
+            return Enum.IsDefined(value);
+        }
+
+        var declared = 0UL;
+
+        foreach (var member in Enum.GetValues<TEnum>())
+        {
+            declared |= Convert.ToUInt64(member, CultureInfo.InvariantCulture);
+        }
+
+        var bits = Convert.ToUInt64(value, CultureInfo.InvariantCulture);
+        return (bits & ~declared) == 0;
+    }
+
+    private static readonly MethodInfo _parseSectionEnumDefinition =
+        typeof(Theme).GetMethod(nameof(ParseSectionEnum), BindingFlags.NonPublic | BindingFlags.Instance)!;
+    private static readonly ConcurrentDictionary<Type, MethodInfo> _parseSectionEnumMethods = new();
+
+    /// <summary>Patches a fragment's properties from a JSON overrides object, recursing into any
+    /// property whose type is itself a fragment and replacing every other (leaf) property
+    /// outright - the reflective mechanism every control style's JSON section resolves through,
+    /// replacing the six/four-way hand-copied glyph/enum parsers already unified
+    /// into <see cref="ParseSectionGlyph"/>/<see cref="ParseSectionEnum{TEnum}"/> above, which this
+    /// now calls as its leaf dispatch for those two member kinds.</summary>
+    /// <param name="current">The fragment instance overrides are patched onto. Cloned before any
+    /// property is written, so the original instance is never mutated.</param>
+    /// <param name="overrides">The JSON object's own decoded member set.</param>
+    /// <param name="context">The dotted path so far, for diagnostics (e.g. "styles.button.normal").</param>
+    /// <returns>A new, patched fragment instance of the same runtime type as <paramref name="current"/>.</returns>
+    /// <exception cref="InvalidDataException">
+    /// An override key does not map to any public property, or a value does not convert to its
+    /// property's type.
+    /// </exception>
+    internal object Overlay(object current, Dictionary<string, JsonElement> overrides, string context)
+    {
+        var patched = ((IAppearanceFragment) current).Clone();
+        var type = patched.GetType();
+
+        foreach (var (key, value) in overrides)
+        {
+            var property = ThemeStyleFragment.ResolveProperty(type, key)
+                ?? throw new InvalidDataException($"Theme '{Slug}' '{context}.{key}' is not a known property.");
+
+            object? updated;
+
+            try
+            {
+                updated = typeof(IAppearanceFragment).IsAssignableFrom(property.PropertyType)
+                    ? Overlay(
+                        property.GetValue(patched)!,
+                        value.Deserialize<Dictionary<string, JsonElement>>(ThemeCatalog.JsonOptions)
+                            ?? throw new InvalidDataException($"Theme '{Slug}' '{context}.{key}' must be an object."),
+                        $"{context}.{key}")
+                    : ConvertLeaf(property.PropertyType, value, $"{context}.{key}");
+
+                // Inside the try, not below it. A validating init accessor - separator's glyphs,
+                // spinner's frames, window's close chrome, every ControlColor paint channel - is
+                // reached through reflection, which wraps whatever it throws in
+                // TargetInvocationException, so the write is exactly where a labelled failure is
+                // most likely and was the one step outside the handler.
+                property.SetValue(patched, updated);
+            }
+            catch (Exception error) when (error is JsonException or InvalidCastException or FormatException
+                or ArgumentException or TargetInvocationException)
+            {
+                // Every failure inside the merge - wrong JSON shape, unconvertible leaf value, a
+                // member rejecting the value it was handed - surfaces as the same source-labelled
+                // InvalidDataException every other theme parsing failure does today, never a raw
+                // reflection or conversion exception. The accessor's own exception is unwrapped so
+                // the inner cause names the real problem rather than "an exception was thrown by
+                // the target of an invocation", the same unwrapping ConvertLeaf's enum branch
+                // already does.
+                throw new InvalidDataException(
+                    $"Theme '{Slug}' '{context}.{key}' is invalid.",
+                    error is TargetInvocationException { InnerException: { } inner } ? inner : error);
+            }
+        }
+
+        // Every per-member check has already run inside its own init accessor above. What is left
+        // is the invariants that span members - Face's attribute/underline conflict - which no
+        // accessor can enforce while the rest of the fragment is still half-written.
+        try
+        {
+            patched.Validate();
+        }
+        catch (ArgumentException error)
+        {
+            throw new InvalidDataException($"Theme '{Slug}' '{context}' is invalid.", error);
+        }
+
+        return patched;
+    }
+
+    // Dispatches purely on the target property's declared type. ControlColor and Rune route through
+    // the same theme-aware parsers every registrable style section already uses; an enum invokes
+    // the generic ParseSectionEnum<TEnum> via a per-type-cached MethodInfo, since the concrete
+    // TEnum is only known at this point as a runtime Type; everything else (primitives, and any
+    // other JSON-convertible leaf shape such as Thickness or Point) deserializes directly through
+    // the shared, depth-limited JsonSerializerOptions.
+    private object? ConvertLeaf(Type propertyType, JsonElement value, string context)
+    {
+        // A nullable leaf is a real style shape, not an oversight: TableStyle's three part colors
+        // use null to mean "inherit the control's own resolved face", which no fixed ControlColor
+        // can express and which also gates whether the header row is filled at all. Without this
+        // the member would fall through to plain JSON deserialization and silently mis-convert.
+        if (Nullable.GetUnderlyingType(propertyType) is { } underlying)
+        {
+            return value.ValueKind == JsonValueKind.Null ? null : ConvertLeaf(underlying, value, context);
+        }
+
+        if (propertyType == typeof(ControlColor))
+        {
+            return ResolveSectionColor(RequireString(value, context), context);
+        }
+
+        if (propertyType == typeof(Rune))
+        {
+            return ParseSectionGlyph(RequireString(value, context), context)
+                ?? throw new InvalidDataException($"Theme '{Slug}' '{context}' must contain one Rune.");
+        }
+
+        if (propertyType == typeof(ControlDecoration))
+        {
+            return ResolveSectionDecoration(value, context);
+        }
+
+        if (propertyType == typeof(BorderGlyphStyle))
+        {
+            return ResolveSectionBorderGlyphStyle(value, context);
+        }
+
+        if (propertyType == typeof(ImmutableArray<Rune>))
+        {
+            return ResolveSectionGlyphSequence(value, context);
+        }
+
+        if (propertyType == typeof(Thickness))
+        {
+            return ResolveSectionThickness(value, context);
+        }
+
+        if (propertyType == typeof(Point))
+        {
+            return ResolveSectionPoint(value, context);
+        }
+
+        if (propertyType.IsEnum)
+        {
+            var method = _parseSectionEnumMethods.GetOrAdd(
+                propertyType,
+                static (type, definition) => definition.MakeGenericMethod(type),
+                _parseSectionEnumDefinition);
+
+            try
+            {
+                return method.Invoke(this, [RequireString(value, context), context])
+                    ?? throw new InvalidDataException($"Theme '{Slug}' '{context}' has an unknown value.");
+            }
+            catch (TargetInvocationException error) when (error.InnerException is not null)
+            {
+                // Invoke wraps whatever the invoked method threw - here always the
+                // InvalidDataException ParseSectionEnum<TEnum> already raises for an unknown
+                // value - so unwrap it instead of letting the wrapper reach the catch below,
+                // which does not recognize TargetInvocationException as one of the exception
+                // kinds it already normalizes.
+                ExceptionDispatchInfo.Throw(error.InnerException);
+                throw; // Unreachable; ExceptionDispatchInfo.Throw always throws.
+            }
+        }
+
+        return value.Deserialize(propertyType, ThemeCatalog.JsonOptions)
+            ?? throw new InvalidDataException($"Theme '{Slug}' '{context}' must not be null.");
+    }
+
+    private string RequireString(JsonElement value, string context) =>
+        value.ValueKind == JsonValueKind.String
+            ? value.GetString()!
+            : throw new InvalidDataException($"Theme '{Slug}' '{context}' must be a string.");
+
+    // Mirrors ThemeCatalog.ParseAttributes exactly, via the shared ConvertLeaf unification: a string
+    // first tries a semantic SemanticDecoration name, then falls back to one literal named
+    // attribute; an array combines one or more literal named attributes.
+    internal ControlDecoration ResolveSectionDecoration(JsonElement value, string context)
+    {
+        if (value.ValueKind == JsonValueKind.String)
+        {
+            var name = value.GetString()!;
+            return Enum.TryParse<SemanticDecoration>(name, ignoreCase: true, out var semantic) && Enum.IsDefined(semantic)
+                ? semantic
+                : ThemeCatalog.ResolveAttributeName(name, Slug, context);
+        }
+
+        if (value.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidDataException($"Theme '{Slug}' '{context}' must be a string or array.");
+        }
+
+        var result = TerminalAttributes.None;
+        foreach (var item in value.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.String)
+            {
+                throw new InvalidDataException($"Theme '{Slug}' '{context}' must contain strings.");
+            }
+
+            result |= ThemeCatalog.ResolveAttributeName(item.GetString()!, Slug, context);
+        }
+
+        return result;
+    }
+
+    // Mirrors ThemeCatalog.ResolveOptionalBorderGlyphStyle exactly: a string names one of the ten
+    // standard box-drawing families, an eight-element array of one-Rune strings defines a custom
+    // glyph set corner-then-edge, matching BorderGlyphStyle's own constructor order.
+    internal BorderGlyphStyle ResolveSectionBorderGlyphStyle(JsonElement value, string context)
+    {
+        if (value.ValueKind == JsonValueKind.String)
+        {
+            var name = value.GetString()!;
+            return name.ToLowerInvariant() switch
+            {
+                "light" => BorderGlyphStyle.Light,
+                "heavy" => BorderGlyphStyle.Heavy,
+                "paired" => BorderGlyphStyle.Paired,
+                "rounded" => BorderGlyphStyle.Rounded,
+                "ascii" => BorderGlyphStyle.Ascii,
+                "solid" => BorderGlyphStyle.Solid,
+                "halfblock" => BorderGlyphStyle.HalfBlock,
+                "lightshade" => BorderGlyphStyle.LightShade,
+                "mediumshade" => BorderGlyphStyle.MediumShade,
+                "darkshade" => BorderGlyphStyle.DarkShade,
+                _ => throw new InvalidDataException($"Theme '{Slug}' '{context}' has unknown glyph style '{name}'.")
+            };
+        }
+
+        if (value.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidDataException($"Theme '{Slug}' '{context}' must be a string or an eight-Rune array.");
+        }
+
+        var runes = new Rune[8];
+        var index = 0;
+        foreach (var item in value.EnumerateArray())
+        {
+            if (index >= runes.Length || item.ValueKind != JsonValueKind.String)
+            {
+                throw new InvalidDataException(
+                    $"Theme '{Slug}' '{context}' array must contain exactly eight one-Rune strings.");
+            }
+
+            runes[index] = ParseSectionGlyph(item.GetString(), $"{context}[{index}]")!.Value;
+            index++;
+        }
+
+        return index != runes.Length
+            ? throw new InvalidDataException($"Theme '{Slug}' '{context}' array must contain exactly eight Runes.")
+            : new BorderGlyphStyle(runes[0], runes[1], runes[2], runes[3], runes[4], runes[5], runes[6], runes[7]);
+    }
+
+    // Backs SpinnerStyle.Frames - the one property in the codebase typed as a Rune sequence
+    // rather than a single Rune. The bound below intentionally mirrors
+    // SpinnerStyle.MaximumFrameCount (Styling cannot reference Controls.Display, so this is kept
+    // in sync by convention, not by a shared constant).
+    private const int _maximumGlyphSequenceLength = 256;
+
+    internal ImmutableArray<Rune> ResolveSectionGlyphSequence(JsonElement value, string context)
+    {
+        if (value.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidDataException($"Theme '{Slug}' '{context}' must be an array.");
+        }
+
+        var builder = ImmutableArray.CreateBuilder<Rune>();
+        foreach (var item in value.EnumerateArray())
+        {
+            if (builder.Count == _maximumGlyphSequenceLength)
+            {
+                throw new InvalidDataException(
+                    $"Theme '{Slug}' '{context}' cannot contain more than {_maximumGlyphSequenceLength} entries.");
+            }
+
+            builder.Add(ParseSectionGlyph(RequireString(item, context), context)!.Value);
+        }
+
+        return builder.Count == 0
+            ? throw new InvalidDataException($"Theme '{Slug}' '{context}' must contain at least one entry.")
+            : builder.ToImmutable();
+    }
+
+    // Thickness has no public parameterless constructor with settable properties (Left/Top/Right/
+    // Bottom are get-only), so the generic reflective JsonSerializer.Deserialize fallback silently
+    // produces an all-zero value instead of erroring - a dedicated leaf conversion is required, the
+    // same way ControlColor/Rune/ControlDecoration/BorderGlyphStyle/ImmutableArray<Rune> already are.
+    internal Thickness ResolveSectionThickness(JsonElement value, string context)
+    {
+        if (value.ValueKind != JsonValueKind.Object ||
+            !value.TryGetProperty("x", out var x) ||
+            !value.TryGetProperty("y", out var y) ||
+            x.ValueKind != JsonValueKind.Number ||
+            y.ValueKind != JsonValueKind.Number)
+        {
+            throw new InvalidDataException($"Theme '{Slug}' '{context}' must be an object with numeric 'x' and 'y'.");
+        }
+
+        var horizontal = x.GetInt32();
+        var vertical = y.GetInt32();
+
+        return horizontal < 0 || vertical < 0
+            ? throw new InvalidDataException($"Theme '{Slug}' '{context}' must not be negative.")
+            : new Thickness(horizontal, vertical);
+    }
+
+    // Point has the same reflective-deserialization pitfall as Thickness above (an explicit
+    // constructor alongside the struct's implicit parameterless one), but unlike Thickness its X/Y
+    // are signed and a negative offset is legitimate (e.g. a shadow drawn up-and-left), so no
+    // negative-value rejection here.
+    internal Point ResolveSectionPoint(JsonElement value, string context) =>
+        value.ValueKind != JsonValueKind.Object ||
+        !value.TryGetProperty("x", out var x) ||
+        !value.TryGetProperty("y", out var y) ||
+        x.ValueKind != JsonValueKind.Number ||
+        y.ValueKind != JsonValueKind.Number
+            ? throw new InvalidDataException($"Theme '{Slug}' '{context}' must be an object with numeric 'x' and 'y'.")
+            : new Point(x.GetInt32(), y.GetInt32());
+
+    private static readonly string[] _visualStateJsonNames =
+    [
+        "normal", "pointerOver", "focusWithin", "focused", "current", "selected", "checked",
+        "indeterminate", "pressed", "disabled"
+    ];
+
+    private readonly ConcurrentDictionary<string, Dictionary<string, Dictionary<string, JsonElement>>?> _rawStyleSections = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<(Type, string), object> _styleSets = new();
+
+    // Raw per-state JSON override dictionaries for one styles.* key, with no code-owned default
+    // baked in and no fallback awareness - the primitive both GetStyleSet (root types) and a leaf
+    // control's own fallback-aware Appearance resolution patch onto their own,
+    // differently-sourced base value. Memoized: the same (theme, key) pair is read at least twice
+    // per CommitStyle/GetStyleThemeImpact call (previous and current resolved style).
+    internal Dictionary<string, Dictionary<string, JsonElement>>? GetRawStyleSection(string key)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+
+        return _rawStyleSections.GetOrAdd(key, static (sectionKey, theme) => theme.ReadRawStyleSection(sectionKey), this);
+    }
+
+    private Dictionary<string, Dictionary<string, JsonElement>>? ReadRawStyleSection(string key)
+    {
+        if (!_styleSections.TryGetValue(key, out var element))
+        {
+            return null;
+        }
+
+        var byState = element.Deserialize<Dictionary<string, JsonElement>>(ThemeCatalog.JsonOptions)
+            ?? throw new InvalidDataException($"Theme '{Slug}' 'styles.{key}' must be an object.");
+
+        var result = new Dictionary<string, Dictionary<string, JsonElement>>(StringComparer.Ordinal);
+        foreach (var (state, value) in byState)
+        {
+            if (!Array.Exists(_visualStateJsonNames, name => string.Equals(name, state, StringComparison.Ordinal)))
+            {
+                throw new InvalidDataException($"Theme '{Slug}' 'styles.{key}' has unknown state '{state}'.");
+            }
+
+            result[state] = value.Deserialize<Dictionary<string, JsonElement>>(ThemeCatalog.JsonOptions)
+                ?? throw new InvalidDataException($"Theme '{Slug}' 'styles.{key}.{state}' must be an object.");
+        }
+
+        return result;
+    }
+
+    /// <summary>Resolves one root well-known style's complete per-state set: this style's own
+    /// <paramref name="codeOwnedDefault"/> patched by this theme's own "normal" override (if any),
+    /// then each other state patched onto that resolved Normal - a self-contained root with no
+    /// cross-type fallback - a root never inherits another type's theme customization. Memoized
+    /// per (theme, TStyle, key).</summary>
+    /// <summary>Resolves one root well-known style's complete per-state set from the section
+    /// <typeparamref name="TStyle"/> itself owns (see <see cref="StyleKey"/>), so no caller
+    /// repeats the key as a literal.</summary>
+    /// <typeparam name="TStyle">The style type that owns the section.</typeparam>
+    /// <param name="codeOwnedDefault">The code-owned default this type falls back to.</param>
+    /// <returns>The complete per-state set.</returns>
+    internal StyleStates<TStyle> GetStyleSet<TStyle>(TStyle codeOwnedDefault)
+        where TStyle : ControlStyle => GetStyleSet(StyleKey.Of<TStyle>(), codeOwnedDefault);
+
+    internal StyleStates<TStyle> GetStyleSet<TStyle>(string key, TStyle codeOwnedDefault)
+        where TStyle : ControlStyle
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        ArgumentNullException.ThrowIfNull(codeOwnedDefault);
+
+        return (StyleStates<TStyle>) _styleSets.GetOrAdd(
+            (typeof(TStyle), key),
+            static (_, state) => state.theme.BuildRootStyleSet(state.key, state.codeOwnedDefault),
+            (theme: this, key, codeOwnedDefault));
+    }
+
+    // Only these five well-known style keys cascade unset members from "control"'s own resolved
+    // set, exactly mirroring the prior ThemeCatalog.BuildProfile(key, definition, inherited:
+    // control, ...) behavior every bundled theme document's "input"/"container"/"window"/"popup"/
+    // "tooltip" JSON already assumes (most of those sections only ever author a border-sides/
+    // glyphStyle delta, relying on inheriting "control"'s face/border colors for everything else).
+    // "control" itself and every other key (a leaf control's
+    // own key, or a synthetic/test key with no special meaning) are terminal roots with no
+    // inheritance - GetStyleSet's generic contract for an arbitrary key must stay a pure
+    // codeOwnedDefault-plus-own-JSON resolution, independent of which specific key is passed.
+    private static readonly HashSet<string> _controlInheritingKeys =
+        new(StringComparer.Ordinal) { "input", "container", "window", "popup", "tooltip" };
+
+    // Of those five, only "input" also inherits "control"'s per-STATE deltas. "control"'s
+    // pointerOver/focused/pressed sections describe how an *interactive control* answers the
+    // pointer and the keyboard; the other four styles are passive chrome and deliberately do not
+    // answer either. That is an asserted contract, not an accident - a container must ignore hover
+    // (CuratedThemesTests.EveryTheme_WhenPointerIsOver_PreservesPassiveSurfaces,
+    // GroupBoxSurfaceTests.Pointer_WhenContentIsHovered_PreservesPassiveSurfaceAsync), and a Window
+    // must answer activation alone, keeping its normal face while it contains focus
+    // (CuratedThemesTests.EveryTheme_WhenWindowContainsFocus_UsesOnlyActiveBorder,
+    // WindowSurfaceTests.Theme_WhenWindowHoveredAndActivated_RespondsOnlyToActivationAsync).
+    // Cascading states into them tints every panel and window border on hover.
+    private static readonly HashSet<string> _controlStateInheritingKeys =
+        new(StringComparer.Ordinal) { "input" };
+
+    private StyleStates<TStyle> BuildRootStyleSet<TStyle>(string key, TStyle codeOwnedDefault)
+        where TStyle : ControlStyle
+    {
+        var raw = GetRawStyleSection(key);
+
+        var authored = new Dictionary<string, IReadOnlySet<string>>(StringComparer.Ordinal);
+
+        if (!_controlInheritingKeys.Contains(key))
+        {
+            var rootNormal = ResolveRawState(raw, "normal", codeOwnedDefault, key) ?? codeOwnedDefault;
+
+            return new StyleStates<TStyle>
+            {
+                Normal = rootNormal,
+                PointerOver = ResolveRawState(raw, "pointerOver", rootNormal, key, authored),
+                FocusWithin = ResolveRawState(raw, "focusWithin", rootNormal, key, authored),
+                Focused = ResolveRawState(raw, "focused", rootNormal, key, authored),
+                Current = ResolveRawState(raw, "current", rootNormal, key, authored),
+                Selected = ResolveRawState(raw, "selected", rootNormal, key, authored),
+                Checked = ResolveRawState(raw, "checked", rootNormal, key, authored),
+                Indeterminate = ResolveRawState(raw, "indeterminate", rootNormal, key, authored),
+                Pressed = ResolveRawState(raw, "pressed", rootNormal, key, authored),
+                Disabled = ResolveRawState(raw, "disabled", rootNormal, key, authored),
+                Authored = authored
+            };
+        }
+
+        // Every state, Normal included, cascades "control"'s DELTA rather than its whole resolved
+        // value - what the theme changed about "control", applied onto this style's own code-owned
+        // default, with this style's own JSON winning on top.
+        //
+        // Normal used to copy Face/Border/Shadow wholesale, guarded only by "this theme has no
+        // control section at all". A theme that authored styles.control and omitted styles.input -
+        // entirely legal, since no styles.* key is required - therefore had InputStyle's Heavy/All
+        // border replaced by ControlStyle.Default's borderless one, ContainerStyle's Light border
+        // dropped, and WindowStyle's Paired border and composite shadow dropped. Since Sides
+        // reserves layout space, adding one control section silently moved measured widths
+        // application-wide. The escape hatch - re-author border on every sibling you want to keep -
+        // is what all fifteen bundled themes do, which is why it never bit in-tree and also why it
+        // looks like ordinary redundancy rather than a load-bearing workaround. It now is
+        // redundant.
+        //
+        // Cascading the delta was already the rule for every non-Normal state, for the same reason
+        // stated the other way round: copying Border wholesale into a state replaces this style's
+        // own Sides/GlyphStyle (input's Heavy All, popup's Rounded All) with "control"'s borderless
+        // Rounded None, moving measured widths by whole cells and shifting popup and submenu
+        // layout. That was tried and reverted twice before. The two branches now agree.
+        //
+        // Cascading nothing is not an option either: a state neither this style nor its leaf
+        // authored would resolve to a bare copy of Normal, silently discarding the
+        // focused/pressed/hover/disabled colors "control" really does author - a focused TextInput
+        // keeping controlText, a hovered Button keeping controlBorder, a disabled CheckBox never
+        // muting.
+        //
+        // Still gated on this theme having authored a "control" section: a programmatically
+        // constructed Theme that never went through ThemeCatalog.Parse has nothing real to cascade.
+        var controlRoot = GetRawStyleSection("control") is null ? null : GetStyleSet(ControlStyle.Default);
+        var normalBase = controlRoot is null
+            ? codeOwnedDefault
+            : Cascade(
+                codeOwnedDefault,
+                StyleStatesExtensions.Diff(
+                    ControlStyle.Default,
+                    controlRoot.Normal,
+                    controlRoot.AuthoredFor("normal")));
+        var normal = ResolveRawState(raw, "normal", normalBase, key, authored) ?? normalBase;
+        var controlSet = _controlStateInheritingKeys.Contains(key) ? controlRoot : null;
+
+        // Patches "control"'s contribution for one state onto this style's resolved Normal, then lets
+        // this style's own JSON for that state win on top. Returns null (meaning "no such state",
+        // which the appearance-states fold resolves as Normal) only when neither side says anything.
+        TStyle? InheritState(string stateName, Func<StyleStates<ControlStyle>, ControlStyle?> select)
+        {
+            var controlState = controlSet is null ? null : select(controlSet);
+            var basis = normal;
+
+            if (controlState is not null)
+            {
+                // "control"'s own provenance travels with its delta. Without it the cascade drops
+                // exactly what the leaf's own diff would - a member "control" authored back to its
+                // own Normal - one level earlier and just as silently.
+                var delta = StyleStatesExtensions.Diff(
+                    controlSet!.Normal,
+                    controlState,
+                    controlSet.AuthoredFor(stateName));
+                basis = Cascade(normal, delta);
+
+                if (controlSet.AuthoredFor(stateName) is { Count: > 0 } inherited)
+                {
+                    authored[stateName] = inherited;
+                }
+            }
+
+            return ResolveRawState(raw, stateName, basis, key, authored) ??
+                (controlState is null ? null : basis);
+        }
+
+        return new StyleStates<TStyle>
+        {
+            Normal = normal,
+            PointerOver = InheritState("pointerOver", static s => s.PointerOver),
+            FocusWithin = InheritState("focusWithin", static s => s.FocusWithin),
+            Focused = InheritState("focused", static s => s.Focused),
+            Current = InheritState("current", static s => s.Current),
+            Selected = InheritState("selected", static s => s.Selected),
+            Checked = InheritState("checked", static s => s.Checked),
+            Indeterminate = InheritState("indeterminate", static s => s.Indeterminate),
+            Pressed = InheritState("pressed", static s => s.Pressed),
+            Disabled = InheritState("disabled", static s => s.Disabled),
+            Authored = authored
+        };
+    }
+
+    // Applies one partial contribution onto a style's own Face/Border/Shadow, leaving every other
+    // member - padding, glyph families, mark styles - exactly as the style already had it. That is
+    // the whole difference between cascading a delta and copying a value: the latter also carries
+    // across chrome the source never meant to speak for.
+    private static TStyle Cascade<TStyle>(TStyle style, AppearanceOverlay delta)
+        where TStyle : ControlStyle
+    {
+        var patched = new ControlAppearance(style.Face, style.Border, style.Shadow).Apply(delta);
+        return style with { Face = patched.Face, Border = patched.Border, Shadow = patched.Shadow };
+    }
+
+    private TStyle? ResolveRawState<TStyle>(
+        Dictionary<string, Dictionary<string, JsonElement>>? raw,
+        string state,
+        TStyle basis,
+        string key,
+        Dictionary<string, IReadOnlySet<string>>? authored = null)
+        where TStyle : ControlStyle
+    {
+        if (raw?.TryGetValue(state, out var overrides) != true)
+        {
+            return null;
+        }
+
+        // Recorded before the overlay runs, from the JSON alone. Afterwards the information is
+        // gone: patching onto the resolved Normal makes a member written back to Normal's value
+        // indistinguishable from one never written, and StyleStatesExtensions.Diff needs to tell
+        // those apart to keep an earlier state from winning a member this one claimed.
+        if (authored is not null)
+        {
+            var members = CollectAuthoredChrome(typeof(TStyle), overrides!);
+
+            if (members.Count > 0)
+            {
+                // Unioned, never replaced. A cascading key records what "control" authored for this
+                // state before calling here, and this style's own JSON adds to that rather than
+                // standing in for it.
+                authored[state] = authored.TryGetValue(state, out var inherited)
+                    ? new HashSet<string>(inherited.Union(members), StringComparer.Ordinal)
+                    : members;
+            }
+        }
+
+        return (TStyle) Overlay(basis, overrides!, $"styles.{key}.{state}");
+    }
+
+    // One level deep is exactly right: Face/Border/Shadow are the only fragment-typed members of
+    // ControlStyle, and they are also the only members the per-state overlay carries at all.
+    private static HashSet<string> CollectAuthoredChrome(
+        Type styleType,
+        Dictionary<string, JsonElement> overrides)
+    {
+        var members = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var (key, value) in overrides)
+        {
+            if (ThemeStyleFragment.ResolveProperty(styleType, key) is not { } fragment ||
+                !typeof(IAppearanceFragment).IsAssignableFrom(fragment.PropertyType) ||
+                value.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            foreach (var member in value.EnumerateObject())
+            {
+                if (ThemeStyleFragment.ResolveProperty(fragment.PropertyType, member.Name) is { } resolved)
+                {
+                    _ = members.Add($"{fragment.Name}.{resolved.Name}");
+                }
+            }
+        }
+
+        return members;
+    }
+
+    /// <summary>Resolves a self-contained root style's complete appearance set, honouring a local
+    /// style as the Normal appearance while keeping this key's own theme-authored per-state
+    /// contributions on top of it.</summary>
+    /// <remarks>
+    /// The root factory used to build its appearance from the theme alone, discarding the resolved
+    /// style it was handed. Since <c>StyleSlot</c> passes <c>Resolve(LocalValue, theme)</c> into
+    /// that slot and installs the definition as the primary style, a control using a root
+    /// definition reported the assigned local value from <c>ActualStyle</c> while every rendered
+    /// cell still came from the theme - and because the appearance objects were identical either
+    /// way, a local <c>BorderSide</c> change contributed no impact and scheduled no measure. The
+    /// one-hop fallback factory never had this problem, which is why it went unnoticed: no
+    /// in-repo control uses the root factory as its primary slot.
+    /// </remarks>
+    /// <typeparam name="TStyle">The concrete themeable style type.</typeparam>
+    /// <param name="resolvedNormal">The resolved style - the local value when one is assigned.</param>
+    /// <param name="key">This style type's own <c>styles.*</c> key.</param>
+    /// <param name="codeOwnedDefault">The code-owned default this type falls back to.</param>
+    /// <returns>The complete appearance set.</returns>
+    internal AppearanceStates BuildRootStates<TStyle>(TStyle resolvedNormal, string key, TStyle codeOwnedDefault)
+        where TStyle : ControlStyle
+    {
+        var set = GetStyleSet(key, codeOwnedDefault);
+        var states = set.ToAppearanceStates();
+
+        // The per-state overlays are the THEME's deltas, computed against the theme's own Normal,
+        // and they stay that way - a local style replaces the resting appearance, not the theme's
+        // opinion about how this type reacts to hover, focus, or being disabled. Only Normal is
+        // rebased. When no local style is assigned the two are the same value and this is a no-op.
+        return ReferenceEquals(set.Normal, resolvedNormal)
+            ? states
+            : new AppearanceStates(
+                new ControlAppearance(resolvedNormal.Face, resolvedNormal.Border, resolvedNormal.Shadow),
+                states.PointerOver,
+                states.FocusWithin,
+                states.Focused,
+                states.Current,
+                states.Selected,
+                states.Checked,
+                states.Indeterminate,
+                states.Pressed,
+                states.Disabled);
+    }
+
+    /// <summary>Resolves one leaf control style's complete per-state set against its declared
+    /// one-hop fallback: a state this control's own key authors patches onto
+    /// <paramref name="resolvedNormal"/> directly; an unauthored state instead borrows the
+    /// fallback type's own resolved per-state DELTA (not its whole resolved value) and re-applies
+    /// just that delta onto <paramref name="resolvedNormal"/> - preserving whatever
+    /// <paramref name="resolvedNormal"/> itself already carries (a locally-assigned style's own
+    /// Face/Border/Shadow customization, and every structural member like Padding, which
+    /// <paramref name="complete"/> only ever completes from the fallback and would otherwise
+    /// silently discard for every non-Normal state. The delta is isolated by
+    /// running <paramref name="complete"/> twice (once against the fallback's Normal, once against
+    /// its per-state contribution) and value-diffing the two results, so any type-specific
+    /// per-state special-casing <paramref name="complete"/> itself performs (e.g. RadioButton's
+    /// Checked-state accent color) still participates in the delta exactly as before. Converted to
+    /// a <see cref="AppearanceStates"/> so the unchanged <see cref="AppearanceResolver"/>/
+    /// <see cref="AppearanceStates.ApplyStates"/> fold logic can consume a leaf control's style exactly
+    /// as it consumes one of the six well-known base types.</summary>
+    internal AppearanceStates BuildFallbackAwareStates<TStyle, TFallback>(
+        TStyle resolvedNormal,
+        string key,
+        Func<Theme, StyleStates<TFallback>> fallbackTo,
+        Func<TFallback, VisualState, TStyle> complete)
+        where TStyle : ControlStyle
+        where TFallback : ControlStyle
+    {
+        var fallbackSet = fallbackTo(this);
+        var raw = GetRawStyleSection(key);
+        var completedFallbackNormal = complete(fallbackSet.Normal, VisualState.Normal);
+        var authored = new Dictionary<string, IReadOnlySet<string>>(StringComparer.Ordinal);
+
+        TStyle ResolveState(VisualState state, string stateName, Func<StyleStates<TFallback>, TFallback?> fallbackSelector)
+        {
+            // The fallback's contribution is computed FIRST and always, then this control's own JSON
+            // for the state layers on top of it.
+            //
+            // This branch used to return early whenever the control's own key authored the state at
+            // all, so `input.disabled` muting the text and `button.disabled` recolouring the border
+            // gave a Button with the muted border and its NORMAL foreground - and deleting the
+            // button block restored the muted foreground, which is the opposite of what a narrowing
+            // override should do and reads as though the fix were the cause. The root cascade in
+            // BuildRootStyleSet has always layered; these two branches of the same cascade simply
+            // disagreed, and the documented one is this one.
+            //
+            // A state the fallback set leaves unpopulated must STILL run `complete` for that state.
+            // `complete` is the only place a style type can express a per-state code-owned default
+            // (today just RadioButton's Checked accent foreground), and returning resolvedNormal
+            // early here made that branch dead code whenever neither the control's own key nor its
+            // fallback authored the state - which is the common case, since no bundled theme
+            // authors "input.checked".
+            //
+            // Completing from the fallback's Normal leaves every other style type byte-identical:
+            // RadioButtonStyle.Complete is the only implementation that reads its state parameter,
+            // so for all the others complete(Normal, state) equals completedFallbackNormal and the
+            // diff comes out empty, yielding resolvedNormal exactly as before.
+            var completedFallbackState = complete(fallbackSelector(fallbackSet) ?? fallbackSet.Normal, state);
+            var inheritedMembers = fallbackSet.AuthoredFor(stateName);
+            var delta = StyleStatesExtensions.Diff(
+                completedFallbackNormal,
+                completedFallbackState,
+                inheritedMembers);
+            var basis = Cascade(resolvedNormal, delta);
+
+            if (inheritedMembers is { Count: > 0 })
+            {
+                authored[stateName] = inheritedMembers;
+            }
+
+            if (raw?.TryGetValue(stateName, out var overrides) != true)
+            {
+                return basis;
+            }
+
+            var members = CollectAuthoredChrome(typeof(TStyle), overrides!);
+
+            if (members.Count > 0)
+            {
+                authored[stateName] = inheritedMembers is { Count: > 0 }
+                    ? new HashSet<string>(inheritedMembers.Union(members), StringComparer.Ordinal)
+                    : members;
+            }
+
+            return (TStyle) Overlay(basis, overrides!, $"styles.{key}.{stateName}");
+        }
+
+        var set = new StyleStates<TStyle>
+        {
+            Normal = resolvedNormal,
+            PointerOver = ResolveState(VisualState.PointerOver, "pointerOver", static s => s.PointerOver),
+            FocusWithin = ResolveState(VisualState.FocusWithin, "focusWithin", static s => s.FocusWithin),
+            Focused = ResolveState(VisualState.Focused, "focused", static s => s.Focused),
+            Current = ResolveState(VisualState.Current, "current", static s => s.Current),
+            Selected = ResolveState(VisualState.Selected, "selected", static s => s.Selected),
+            Checked = ResolveState(VisualState.Checked, "checked", static s => s.Checked),
+            Indeterminate = ResolveState(VisualState.Indeterminate, "indeterminate", static s => s.Indeterminate),
+            Pressed = ResolveState(VisualState.Pressed, "pressed", static s => s.Pressed),
+            Disabled = ResolveState(VisualState.Disabled, "disabled", static s => s.Disabled),
+            Authored = authored
+        };
+
+        return set.ToAppearanceStates();
+    }
+
+    // An active Window's border has always distinguished itself from an inactive one, but no
+    // bundled or custom theme has ever authored styles.window.focusWithin - unlike every other
+    // per-state slot (which simply falls back to Normal when unauthored), so this one code-owned
+    // default is preserved here as a shared primitive, rather than duplicated between this Theme's
+    // own Window property and Window.GetDefaultAppearanceStates (both need it identically).
+    // A theme JSON that DOES author "window.focusWithin" still wins
+    // outright - this only fills in when the raw section is entirely absent.
+    internal StyleStates<WindowStyle> GetWindowStyleSet()
+    {
+        var styleSet = GetStyleSet(WindowStyle.Default);
+        return styleSet.FocusWithin is not null
+            ? styleSet
+            : new StyleStates<WindowStyle>
+            {
+                Normal = styleSet.Normal,
+                PointerOver = styleSet.PointerOver,
+                FocusWithin = styleSet.Normal with
+                {
+                    Border = styleSet.Normal.Border with { Foreground = SemanticColor.ActiveBorder }
+                },
+                Focused = styleSet.Focused,
+                Current = styleSet.Current,
+                Selected = styleSet.Selected,
+                Checked = styleSet.Checked,
+                Indeterminate = styleSet.Indeterminate,
+                Pressed = styleSet.Pressed,
+                Disabled = styleSet.Disabled,
+                Authored = styleSet.Authored
+            };
+    }
+
+    internal Color Resolve(ControlColor value) => value.IsLiteral
+        ? value.Literal
+        : ResolveColor(value.SemanticColor);
+
+    internal TerminalAttributes Resolve(ControlDecoration value) => value.IsLiteral
+        ? value.Literal
+        : ResolveAttributes(value.SemanticDecoration);
+
+    // These six are named shortcuts onto ResolveColor, not a second color table. A theme used to
+    // author them twice - once under "colors" and again under a parallel "status" section - a
+    // duplication that was collapsed when SemanticColor subsumed the retired StatusColor enum.
+
+    /// <summary>Gets the error color.</summary>
+    public Color Error => ResolveColor(SemanticColor.Error);
+
+    /// <summary>Gets the warning color.</summary>
+    public Color Warning => ResolveColor(SemanticColor.Warning);
+
+    /// <summary>Gets the success color.</summary>
+    public Color Success => ResolveColor(SemanticColor.Success);
+
+    /// <summary>Gets the info color.</summary>
+    public Color Info => ResolveColor(SemanticColor.Info);
+
+    /// <summary>Gets the muted color.</summary>
+    public Color Muted => ResolveColor(SemanticColor.Muted);
+
+    /// <summary>Gets the hotkey/access-key color.</summary>
+    public Color Hotkey => ResolveColor(SemanticColor.Hotkey);
+
+    /// <summary>Prevents further mutation.</summary>
+    public void Freeze() => Frozen = true;
+
+    private static void ValidateConcrete(Color color, string parameterName)
+    {
+        if (color.IsTransparent)
+        {
+            throw new ArgumentException("A theme color must be a concrete terminal color.", parameterName);
+        }
+    }
+
+}

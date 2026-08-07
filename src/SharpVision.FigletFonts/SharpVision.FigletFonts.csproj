@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="SharpVision"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources/Fonts/*.flf">
+      <LogicalName>SharpVision.FigletFonts.Resources.Fonts.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources/fonts.manifest.json" LogicalName="SharpVision.FigletFonts.Resources.fonts.manifest.json"/>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <RootNamespace>SharpVision</RootNamespace>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <DebugType>portable</DebugType>
+    <PackageId>SharpVision.FigletFonts</PackageId>
+    <Title>SharpVision FIGlet Fonts</Title>
+    <PackageTags>terminal;terminal-ui;tui;console;figlet;figfont;font</PackageTags>
+    <Description>Optional audited BSD and MIT FIGlet font catalog for SharpVision.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>SharpVision.FigletFonts 0.9.0-alpha.1 prerelease with individually embedded, audited BSD and MIT FIGlet fonts.</PackageReleaseNotes>
+    <RestoreAdditionalProjectSources>$(MSBuildThisFileDirectory)..\..\artifacts\bootstrap-packages;$(RestoreAdditionalProjectSources)</RestoreAdditionalProjectSources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/"/>
+    <None Include="THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/"/>
+    <None Include="Licenses/*.txt" Pack="true" PackagePath="licenses/"/>
+    <None Include="../../media/logo.png" Pack="true" PackagePath="icon.png"/>
+  </ItemGroup>
+
+</Project>

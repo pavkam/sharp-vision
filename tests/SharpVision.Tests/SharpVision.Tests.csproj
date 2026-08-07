@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <TieredCompilation>false</TieredCompilation>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage"/>
+    <PackageReference Include="Moq"/>
+    <PackageReference Include="Shouldly"/>
+    <PackageReference Include="xunit.v3"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\examples\Snake\Snake.csproj"/>
+    <ProjectReference Include="..\..\examples\TextEditor\TextEditor.csproj"/>
+    <ProjectReference Include="..\..\examples\Showcase\SharpVision.Showcase.csproj"/>
+    <ProjectReference Include="..\..\src\SharpVision.FigletFonts\SharpVision.FigletFonts.csproj"/>
+    <ProjectReference Include="..\..\src\SharpVision\SharpVision.csproj"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Compatibility/PackageConsumers/**/*.cs"/>
+    <None Include="Compatibility/PackageConsumers/**/*"/>
+  </ItemGroup>
+
+</Project>

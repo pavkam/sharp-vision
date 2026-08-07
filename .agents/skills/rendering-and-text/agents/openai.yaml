@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rendering and Text"
+  short_description: "Own cells, Unicode, images, and frame output"
+  default_prompt: "Use $rendering-and-text to implement or review SharpVision rendering, Unicode, image, or text-layout behavior."

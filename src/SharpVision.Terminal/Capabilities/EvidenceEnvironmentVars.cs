@@ -1,0 +1,37 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Terminal.Capabilities;
+
+/// <summary>
+/// Names the environment variables passive detection and active negotiation read, so
+/// <see cref="EnvironmentSnapshot"/>'s allowlist and every reader agree by construction
+/// rather than by review.
+/// </summary>
+internal static class EvidenceEnvironmentVars
+{
+    /// <summary>The terminal type identifier.</summary>
+    public const string Term = "TERM";
+
+    /// <summary>The color-capability hint some terminals set independently of TERM.</summary>
+    public const string ColorTerm = "COLORTERM";
+
+    /// <summary>The terminal application's own self-identification.</summary>
+    public const string TermProgram = "TERM_PROGRAM";
+
+    /// <summary>
+    /// The terminal application's self-reported version, used only to narrow (never grant)
+    /// iTerm2 multipart-image evidence below the iTerm2 3.5 introduction of the multipart
+    /// protocol — see <c>QueryEvidenceAdapter</c>.
+    /// </summary>
+    public const string TermProgramVersion = "TERM_PROGRAM_VERSION";
+
+    /// <summary>Presence indicates an active tmux session.</summary>
+    public const string Tmux = "TMUX";
+
+    /// <summary>Presence indicates a remote SSH session (connection details).</summary>
+    public const string SshConnection = "SSH_CONNECTION";
+
+    /// <summary>Presence indicates a remote SSH session (allocated tty path).</summary>
+    public const string SshTty = "SSH_TTY";
+}

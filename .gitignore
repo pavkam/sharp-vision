@@ -1,0 +1,35 @@
+.worktrees/
+
+# User and IDE state
+.DS_Store
+.idea/
+.vs/
+*.suo
+*.user
+*.DotSettings.user
+
+# .NET build and test output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+TestResults/
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+coverage*.info
+*.received.*
+*.received/
+
+# Node tooling
+node_modules/
+
+# Logs and temporary files
+*.log
+*.tmp
+
+# Local planning and scratch artifacts
+.superpowers/
+docs/superpowers/

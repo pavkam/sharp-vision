@@ -1,0 +1,1319 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Tests.Menus;
+
+/// <summary>Verifies typed menu ownership, selection navigation, check states, and cells.</summary>
+public sealed class MenuTests
+{
+    /// <summary>Verifies menus begin with a useful minimum while retaining inherited width configuration.</summary>
+    [Fact]
+    public void Constructor_WhenCreated_UsesConfigurableTenCellMinimumWidth()
+    {
+        // Arrange and act
+        var menu = new Menu();
+
+        // Assert default and validation-before-mutation
+        menu.MinWidth.ShouldBe(10);
+        menu.MaxWidth.ShouldBe(int.MaxValue);
+        _ = Should.Throw<ArgumentException>(() => menu.MaxWidth = 9);
+        menu.MaxWidth.ShouldBe(int.MaxValue);
+
+        // Act and assert direct inherited configuration
+        menu.MinWidth = 0;
+        menu.MaxWidth = 24;
+        menu.MinWidth.ShouldBe(0);
+        menu.MaxWidth.ShouldBe(24);
+    }
+
+    /// <summary>Verifies typed collection ownership selects the first available item and renders compact shared-width rows.</summary>
+    [ComponentUnitEvidence(typeof(Menu))]
+    [ComponentUnitEvidence(typeof(MenuItem))]
+    [ComponentUnitEvidence(typeof(MenuSeparator))]
+    [Fact]
+    public void Items_WhenAdded_UseTypedOwnershipSelectionAndVerticalCells()
+    {
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        menu.Items.Add(new MenuItem { Text = "Open" });
+        menu.Items.Add(
+            new MenuItem { Text = "Pinned", Kind = MenuItemKind.Check, IsChecked = true });
+        menu.Items.Add(new MenuSeparator());
+        var first = menu.Items[0];
+        var second = menu.Items[1];
+        var separator = menu.Items[2];
+        var size = new Size(12, 3);
+        new LayoutEngine().Layout(menu, size);
+        using Frame frame = new(size);
+
+        menu.Render(frame.Canvas);
+
+        menu.Items.Count.ShouldBe(3);
+        menu.SelectedIndex.ShouldBe(0);
+        menu.SelectedItem.ShouldBeSameAs(first);
+        menu.Spacing.ShouldBe(0);
+        first.Bounds.ShouldBe(new Rect(0, 0, menu.Bounds.Width, 1));
+        second.Bounds.ShouldBe(new Rect(0, 1, menu.Bounds.Width, 1));
+        separator.Bounds.ShouldBe(new Rect(0, 2, menu.Bounds.Width, 1));
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("O");
+        FrameOracle.Get(frame, new Point(0, 1)).ShouldBe("[");
+        FrameOracle.Get(frame, new Point(menu.Bounds.Right - 1, 2)).ShouldBe("─");
+    }
+
+    /// <summary>Verifies SelectedItem mirrors SelectedIndex and reports the selected item identity.</summary>
+    [Fact]
+    public void SelectedItem_WhenSet_UpdatesSelectedIndexAndReportsIdentity()
+    {
+        var first = new MenuItem { Text = "First" };
+        var second = new MenuItem { Text = "Second" };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+
+        menu.SelectedItem = second;
+
+        menu.SelectedIndex.ShouldBe(1);
+        menu.SelectedItem.ShouldBeSameAs(second);
+
+        menu.SelectedIndex = 0;
+
+        menu.SelectedItem.ShouldBeSameAs(first);
+    }
+
+    /// <summary>Verifies setting SelectedItem to null clears selection, matching SelectedIndex = -1.</summary>
+    [Fact]
+    public void SelectedItem_WhenSetToNull_ClearsSelection()
+    {
+        var menu = new Menu();
+        menu.Items.Add(new MenuItem { Text = "First" });
+
+        menu.SelectedItem = null;
+
+        menu.SelectedIndex.ShouldBe(-1);
+        menu.SelectedItem.ShouldBeNull();
+    }
+
+    /// <summary>Verifies setting SelectedItem to an item this menu does not own clears selection.</summary>
+    [Fact]
+    public void SelectedItem_WhenItemIsNotOwned_ClearsSelection()
+    {
+        var menu = new Menu();
+        menu.Items.Add(new MenuItem { Text = "First" });
+        var foreign = new MenuItem { Text = "Foreign" };
+
+        menu.SelectedItem = foreign;
+
+        menu.SelectedIndex.ShouldBe(-1);
+        menu.SelectedItem.ShouldBeNull();
+    }
+
+    /// <summary>Verifies a value below -1 is rejected instead of being silently stored, matching
+    /// the sibling TabControl/ListView/ComboBox.SelectedIndex setters.</summary>
+    [Fact]
+    public void SelectedIndex_WhenValueIsBelowNegativeOne_ThrowsArgumentOutOfRangeException()
+    {
+        var menu = new Menu();
+        menu.Items.Add(new MenuItem { Text = "First" });
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => menu.SelectedIndex = -5);
+
+        menu.SelectedIndex.ShouldBe(0);
+    }
+
+    /// <summary>Verifies too-low, too-high, and separator-target indexes are each rejected and the
+    /// committed selection survives every one of them, matching TabControl's equivalent contract.</summary>
+    [Fact]
+    public void SelectedIndex_WhenTargetIsInvalid_PreservesSelectionBeforeThrowing()
+    {
+        var first = new MenuItem { Text = "First" };
+        var separator = new MenuSeparator();
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(separator);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => menu.SelectedIndex = -2);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => menu.SelectedIndex = 2);
+        _ = Should.Throw<ArgumentException>(() => menu.SelectedIndex = 1);
+
+        menu.SelectedIndex.ShouldBe(0);
+        menu.SelectedItem.ShouldBeSameAs(first);
+    }
+
+    /// <summary>
+    /// Verifies a backward directional key (Up in a vertical menu) from an explicitly cleared
+    /// selection (<c>SelectedIndex = -1</c>) wraps to the last item, symmetric with how a forward
+    /// directional key from the same cleared state selects the first item (index 0). Both
+    /// directions conceptually navigate from "no current item," so both must land on a boundary
+    /// item, not have the backward direction land one item short of the end.
+    /// </summary>
+    [Fact]
+    public async Task Dispatch_WhenBackwardKeyArrivesFromClearedSelection_SelectsLastItemAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            menu.Items.Add(new MenuItem { Text = "First" });
+            menu.Items.Add(new MenuItem { Text = "Second" });
+            menu.Items.Add(new MenuItem { Text = "Third" });
+            menu.Attach(dispatcher);
+            using FocusManager focus = new(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            menu.SelectedIndex = -1;
+
+            _ = Router.Route(menu, Events.Key, new KeyEventArgs(new Stroke(
+                Code.Up,
+                default,
+                nativeCode: 0,
+                Modifiers.None,
+                KeyAction.Press)));
+
+            menu.SelectedIndex.ShouldBe(2);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies directional keys skip separators while focus remains on the menu owner.</summary>
+    [Fact]
+    public async Task Dispatch_WhenDirectionalKeyArrives_SkipsSeparatorAndFocusesNextItemAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var first = new MenuItem { Text = "First" };
+            var separator = new MenuSeparator();
+            var second = new MenuItem { Text = "Second" };
+            menu.Items.Add(first);
+            menu.Items.Add(separator);
+            menu.Items.Add(second);
+            menu.Attach(dispatcher);
+            using FocusManager focus = new(menu);
+            focus.Focus(menu).ShouldBeTrue();
+
+            _ = Router.Route(menu, Events.Key, new KeyEventArgs(new Stroke(
+                Code.Down,
+                default,
+                nativeCode: 0,
+                Modifiers.None,
+                KeyAction.Press)));
+
+            menu.SelectedIndex.ShouldBe(2);
+            focus.Focused.ShouldBeSameAs(menu);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies check and named radio items commit state before menu-level invocation reporting.</summary>
+    [Fact]
+    public void PerformInvoke_WhenCheckAndRadioItemsActivate_CommitsStateBeforeEvent()
+    {
+        var menu = new Menu();
+        var check = new MenuItem { Text = "Auto save", Kind = MenuItemKind.Check };
+        var first = new MenuItem
+        {
+            Text = "Small",
+            Kind = MenuItemKind.Radio,
+            GroupName = "size",
+            IsChecked = true
+        };
+        var second = new MenuItem
+        {
+            Text = "Large",
+            Kind = MenuItemKind.Radio,
+            GroupName = "size"
+        };
+        List<string> observed = [];
+        menu.Items.Add(check);
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        menu.ItemInvoked += (_, eventArgs) =>
+            observed.Add($"{eventArgs.Item.Text}:{eventArgs.Item.IsChecked}");
+
+        check.PerformInvoke();
+        second.PerformInvoke();
+
+        check.IsChecked.ShouldBeTrue();
+        first.IsChecked.ShouldBeFalse();
+        second.IsChecked.ShouldBeTrue();
+        observed.ShouldBe(["Auto save:True", "Large:True"]);
+    }
+
+    /// <summary>Verifies radio property observers see a complete group commit.</summary>
+    [Fact]
+    public void IsChecked_WhenRadioSelectionChanges_StagesEveryFieldBeforePropertyNotifications()
+    {
+        var menu = new Menu();
+        var first = new MenuItem { Kind = MenuItemKind.Radio, GroupName = "size", IsChecked = true };
+        var second = new MenuItem { Kind = MenuItemKind.Radio, GroupName = "size" };
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        var observed = false;
+        first.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(MenuItem.IsChecked))
+            {
+                first.IsChecked.ShouldBeFalse();
+                second.IsChecked.ShouldBeTrue();
+                observed = true;
+            }
+        };
+
+        second.IsChecked = true;
+
+        observed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies an item reports its invocation before the owning menu forwards it.</summary>
+    [Fact]
+    public void PerformInvoke_WhenItemActivates_RaisesItemBeforeMenuNotification()
+    {
+        var menu = new Menu();
+        var item = new MenuItem();
+        List<string> order = [];
+        menu.Items.Add(item);
+        item.Invoked += (_, _) => order.Add("item");
+        menu.ItemInvoked += (_, _) => order.Add("menu");
+
+        item.PerformInvoke();
+
+        order.ShouldBe(["item", "menu"]);
+    }
+
+    /// <summary>Verifies the bound command runs after Invoked and after the menu's own
+    /// notification.</summary>
+    [Fact]
+    public void PerformInvoke_WhenCommandCanExecute_RunsAfterMenuNotification()
+    {
+        var menu = new Menu();
+        var item = new MenuItem();
+        List<string> order = [];
+        var command = new ProbeCommand { Executing = _ => order.Add("command") };
+        item.Command = command;
+        menu.Items.Add(item);
+        item.Invoked += (_, _) => order.Add("item");
+        menu.ItemInvoked += (_, _) => order.Add("menu");
+
+        item.PerformInvoke();
+
+        order.ShouldBe(["item", "menu", "command"]);
+    }
+
+    /// <summary>Verifies an item with an open submenu toggles it instead of invoking, so neither
+    /// Invoked nor the bound command ever fires.</summary>
+    [Fact]
+    public void PerformInvoke_WhenItemHasSubmenu_TogglesSubmenuWithoutInvokingOrExecutingCommand()
+    {
+        var submenu = new Menu();
+        submenu.Items.Add(new MenuItem());
+        var command = new ProbeCommand();
+        var item = new MenuItem { Submenu = submenu, Command = command };
+        var invoked = 0;
+        item.Invoked += (_, _) => invoked++;
+
+        item.PerformInvoke();
+
+        invoked.ShouldBe(0);
+        command.Executions.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a separator is never focusable, hit-testable, selectable, or invokable.</summary>
+    [Fact]
+    public async Task MenuSeparator_WhenUsed_RemainsNonInteractiveAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu();
+            var item = new MenuItem { Text = "Open" };
+            var separator = new MenuSeparator();
+            menu.Items.Add(item);
+            menu.Items.Add(separator);
+            new LayoutEngine().Layout(menu, new Size(12, 1));
+            menu.Attach(dispatcher);
+            using FocusManager focus = new(menu);
+
+            separator.CanFocus.ShouldBeFalse();
+            separator.HitTest(new Point(separator.Bounds.X, separator.Bounds.Y)).ShouldBeNull();
+            focus.Focus(separator).ShouldBeFalse();
+            _ = Should.Throw<ArgumentException>(() => menu.SelectedIndex = 1);
+            menu.SelectedIndex.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Tab and Shift+Tab move menu selection while private items remain outside traversal.</summary>
+    [Fact]
+    public async Task Dispatch_WhenTabPressed_MovesSelectionWithoutLeavingMenuAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var a = new MenuItem { Text = "A" };
+            var b = new MenuItem { Text = "B" };
+            var c = new MenuItem { Text = "C" };
+            var outside = new ProbeControl { Focusable = true };
+            menu.Items.Add(a);
+            menu.Items.Add(b);
+            menu.Items.Add(c);
+            root.Children.Add(menu);
+            root.Children.Add(outside);
+            root.Attach(dispatcher);
+            using FocusManager focus = new(root);
+            focus.Focus(menu).ShouldBeTrue();
+            var next = Router.Route(menu, Events.Key, Tab());
+
+            next.Handled.ShouldBeTrue();
+            next.Command.ShouldBe(PostRouteCommand.None);
+            menu.SelectedIndex.ShouldBe(1);
+            focus.Focused.ShouldBeSameAs(menu);
+
+            var previous = Router.Route(menu, Events.Key, Tab(Modifiers.Shift));
+
+            previous.Handled.ShouldBeTrue();
+            previous.Command.ShouldBe(PostRouteCommand.None);
+            menu.SelectedIndex.ShouldBe(0);
+            focus.Focused.ShouldBeSameAs(menu);
+            outside.Focused.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Enter invokes the selected private item through the menu focus owner.</summary>
+    [Fact]
+    public async Task Dispatch_WhenEnterIsPressed_InvokesSelectedItemWithKeyboardCauseAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            // Arrange
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var first = new MenuItem { Text = "First" };
+            var second = new MenuItem { Text = "Second" };
+            menu.Items.Add(first);
+            menu.Items.Add(second);
+            menu.SelectedIndex = 1;
+            menu.Attach(dispatcher);
+            using var focus = new FocusManager(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            var invocations = new List<(MenuItem Item, ActivationCause Cause)>();
+            menu.ItemInvoked += (_, eventArgs) => invocations.Add((eventArgs.Item, eventArgs.Cause));
+
+            // Act
+            var result = Router.Route(menu, Events.Key, Key(Code.Enter));
+
+            // Assert
+            result.Handled.ShouldBeTrue();
+            invocations.ShouldBe([(second, ActivationCause.Keyboard)]);
+            focus.Focused.ShouldBeSameAs(menu);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Space holds and then invokes the selected private item exactly once.</summary>
+    [Fact]
+    public async Task Dispatch_WhenSpaceCompletes_InvokesSelectedItemOnceAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            // Arrange
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var item = new MenuItem { Text = "Run" };
+            menu.Items.Add(item);
+            menu.Attach(dispatcher);
+            using var focus = new FocusManager(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            var invocations = new List<ActivationCause>();
+            item.Invoked += (_, eventArgs) => invocations.Add(eventArgs.Cause);
+
+            // Act and assert held state
+            var press = Router.Route(menu, Events.Key, Space(KeyAction.Press));
+            press.Handled.ShouldBeTrue();
+            item.Pressed.ShouldBeTrue();
+            invocations.ShouldBeEmpty();
+
+            // Act and assert completion
+            var release = Router.Route(menu, Events.Key, Space(KeyAction.Release));
+            release.Handled.ShouldBeTrue();
+            item.Pressed.ShouldBeFalse();
+            invocations.ShouldBe([ActivationCause.Keyboard]);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies disposing the currently space-pressed item directly clears the held
+    /// reference so the next Space release does not crash with ObjectDisposedException.</summary>
+    [Fact]
+    public async Task Dispatch_WhenSpacePressedItemDisposedDirectly_ReleaseDoesNotThrowAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var item = new MenuItem { Text = "Run" };
+            menu.Items.Add(item);
+            menu.Attach(dispatcher);
+            using var focus = new FocusManager(menu);
+            focus.Focus(menu).ShouldBeTrue();
+
+            var press = Router.Route(menu, Events.Key, Space(KeyAction.Press));
+            press.Handled.ShouldBeTrue();
+
+            item.Dispose();
+
+            _ = Should.NotThrow(() => Router.Route(menu, Events.Key, Space(KeyAction.Release)));
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies private menu items reject external focus.</summary>
+    [Fact]
+    public async Task Focus_WhenMenuItemReceivesExternalFocus_SyncsSelectedIndexAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var a = new MenuItem { Text = "A" };
+            var b = new MenuItem { Text = "B" };
+            var c = new MenuItem { Text = "C" };
+            menu.Items.Add(a);
+            menu.Items.Add(b);
+            menu.Items.Add(c);
+            menu.Attach(dispatcher);
+            using FocusManager focus = new(menu);
+            focus.Focus(c).ShouldBeFalse();
+            menu.SelectedIndex.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies arrow navigation wraps current selection while focus remains on the menu.</summary>
+    [Fact]
+    public async Task Dispatch_WhenArrowAfterExternalFocus_NavigatesFromFocusedItemAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var a = new MenuItem { Text = "A" };
+            var b = new MenuItem { Text = "B" };
+            var c = new MenuItem { Text = "C" };
+            menu.Items.Add(a);
+            menu.Items.Add(b);
+            menu.Items.Add(c);
+            menu.Attach(dispatcher);
+            using FocusManager focus = new(menu);
+            menu.SelectedIndex = 2;
+            focus.Focus(menu).ShouldBeTrue();
+
+            _ = Router.Route(menu, Events.Key, new KeyEventArgs(new Stroke(
+                Code.Down,
+                default,
+                nativeCode: 0,
+                Modifiers.None,
+                KeyAction.Press)));
+
+            menu.SelectedIndex.ShouldBe(0);
+            focus.Focused.ShouldBeSameAs(menu);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies submenu popup presentation follows the owning menu orientation.</summary>
+    [Fact]
+    public void PerformInvoke_WhenSubmenuOpens_UsesAttachedMenuSurfaceAndDirectionalPlacement()
+    {
+        // Arrange horizontal menu
+        var horizontalSubmenu = new Menu { Orientation = Orientation.Vertical };
+        horizontalSubmenu.Items.Add(new MenuItem { Text = "Open" });
+        var horizontalItem = new MenuItem { Text = "File", Submenu = horizontalSubmenu };
+        var horizontal = new Menu
+        {
+            Orientation = Orientation.Horizontal,
+            Height = Length.Cells(1),
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        horizontal.Items.Add(horizontalItem);
+        var horizontalRoot = new Overlay { Children = { horizontal } };
+        var engine = new LayoutEngine();
+        engine.Layout(horizontalRoot, new Size(30, 10));
+
+        // Act horizontal
+        horizontalItem.PerformInvoke();
+        engine.Layout(horizontalRoot, new Size(30, 10));
+        var horizontalPopup = OwnedTree.Find<Popup>(horizontalItem).ShouldNotBeNull();
+
+        // Assert horizontal
+        horizontalPopup.Placement.ShouldBe(PopupPlacement.Below);
+        horizontalPopup.SurfaceBounds.Y.ShouldBe(horizontalItem.Bounds.Bottom);
+        horizontalPopup.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Rounded);
+        horizontalPopup.Face.Background.ShouldBe(SemanticColor.Window);
+
+        // Arrange vertical menu
+        var verticalSubmenu = new Menu { Orientation = Orientation.Vertical };
+        verticalSubmenu.Items.Add(new MenuItem { Text = "Recent" });
+        var verticalItem = new MenuItem { Text = "Open", Submenu = verticalSubmenu };
+        var vertical = new Menu { Orientation = Orientation.Vertical, Width = Length.Cells(8) };
+        vertical.Items.Add(verticalItem);
+        var verticalRoot = new Overlay { Children = { vertical } };
+        engine.Layout(verticalRoot, new Size(30, 10));
+
+        // Act vertical
+        verticalItem.PerformInvoke();
+        engine.Layout(verticalRoot, new Size(30, 10));
+        var verticalPopup = OwnedTree.Find<Popup>(verticalItem).ShouldNotBeNull();
+
+        // Assert vertical
+        verticalPopup.Placement.ShouldBe(PopupPlacement.Right);
+        verticalPopup.SurfaceBounds.X.ShouldBe(verticalItem.Bounds.Right);
+    }
+
+    /// <summary>Verifies a MenuItem submenu popup pins no presentation, so it resolves the same
+    /// theme-role chrome as a standalone ContextMenu popup instead of a divergent local override.</summary>
+    [Fact]
+    public void Submenu_WhenOpened_RendersIdenticalChromeToContextMenu()
+    {
+        var submenu = new Menu { Orientation = Orientation.Vertical };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var item = new MenuItem { Text = "File", Submenu = submenu };
+        var owner = new Menu { Orientation = Orientation.Horizontal };
+        owner.Items.Add(item);
+        _ = new Overlay { Children = { owner } };
+        item.PerformInvoke();
+        var submenuPopup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
+
+        var contextMenu = new ContextMenu();
+        contextMenu.Items.Add(new MenuItem { Text = "Open" });
+        var contextMenuPopup = (Popup) contextMenu.Presentation;
+
+        submenuPopup.Border.GlyphStyle.ShouldBe(contextMenuPopup.Border.GlyphStyle);
+        submenuPopup.Border.Sides.ShouldBe(contextMenuPopup.Border.Sides);
+        submenuPopup.Face.Background.ShouldBe(contextMenuPopup.Face.Background);
+    }
+
+    /// <summary>Verifies SubmenuChrome applies to an already-open submenu's popup without leaking
+    /// the private Popup itself.</summary>
+    [Fact]
+    public void SubmenuStyle_WhenSetOnAnOpenSubmenu_AppliesToItsPopup()
+    {
+        var border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
+        var submenu = new Menu { Orientation = Orientation.Vertical };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var item = new MenuItem { Text = "File", Submenu = submenu };
+        var owner = new Menu { Orientation = Orientation.Horizontal };
+        owner.Items.Add(item);
+        _ = new Overlay { Children = { owner } };
+        item.PerformInvoke();
+        var submenuPopup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
+
+        item.SubmenuChrome = new PopupChrome { Border = border };
+
+        submenuPopup.Border.ShouldBe(border);
+    }
+
+    /// <summary>Verifies SubmenuChrome set before a submenu is ever assigned still applies once the
+    /// popup is created for it.</summary>
+    [Fact]
+    public void SubmenuStyle_WhenSetBeforeSubmenuIsAssigned_AppliesToTheCreatedPopup()
+    {
+        var border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
+        var item = new MenuItem { Text = "File", SubmenuChrome = new PopupChrome { Border = border } };
+
+        var submenu = new Menu { Orientation = Orientation.Vertical };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        item.Submenu = submenu;
+
+        var submenuPopup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
+        submenuPopup.Border.ShouldBe(border);
+    }
+
+    /// <summary>Verifies SubmenuChrome survives a Submenu reassignment, which recreates the popup.</summary>
+    [Fact]
+    public void SubmenuStyle_WhenSubmenuIsReassigned_StillAppliesToTheNewPopup()
+    {
+        var border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
+        var first = new Menu { Orientation = Orientation.Vertical };
+        first.Items.Add(new MenuItem { Text = "First" });
+        var item = new MenuItem { Text = "File", Submenu = first, SubmenuChrome = new PopupChrome { Border = border } };
+
+        var second = new Menu { Orientation = Orientation.Vertical };
+        second.Items.Add(new MenuItem { Text = "Second" });
+        item.Submenu = second;
+
+        var submenuPopup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
+        submenuPopup.Border.ShouldBe(border);
+    }
+
+    /// <summary>Verifies ResetSubmenuChrome returns an open submenu's popup to its PopupChrome
+    /// appearance, matching an item that never authored a local override.</summary>
+    [Fact]
+    public void ResetSubmenuStyle_WhenPopupHasLocalOverride_ReturnsToThemeAppearance()
+    {
+        var submenu = new Menu { Orientation = Orientation.Vertical };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var item = new MenuItem { Text = "File", Submenu = submenu };
+        var owner = new Menu { Orientation = Orientation.Horizontal };
+        owner.Items.Add(item);
+        _ = new Overlay { Children = { owner } };
+        item.PerformInvoke();
+        var submenuPopup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
+        var themeRoleBorder = submenuPopup.Border;
+        item.SubmenuChrome = new PopupChrome
+        {
+            Border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None)
+        };
+
+        item.ResetSubmenuChrome();
+
+        item.SubmenuChrome.ShouldBe(default);
+        submenuPopup.Border.ShouldBe(themeRoleBorder);
+    }
+
+    /// <summary>Verifies SubmenuChrome round-trips on a standalone item with no submenu, and has no
+    /// popup to apply to until one exists.</summary>
+    [Fact]
+    public void SubmenuStyle_WhenNoSubmenuExists_RoundTripsWithoutThrowing()
+    {
+        var border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
+        var item = new MenuItem { Text = "File", SubmenuChrome = new PopupChrome { Border = border } };
+
+        item.SubmenuChrome.ShouldBe(new PopupChrome { Border = border });
+        OwnedTree.Find<Popup>(item).ShouldBeNull();
+    }
+
+    /// <summary>Verifies replacing a standalone item's submenu detaches the previous menu without
+    /// disposing it, while the framework-owned popup that hosted it is disposed.</summary>
+    [Fact]
+    public void Submenu_WhenReplacedOnStandaloneItem_DetachesPreviousMenuWithoutDisposingIt()
+    {
+        // Arrange
+        var previous = new Menu { Orientation = Orientation.Vertical };
+        previous.Items.Add(new MenuItem { Text = "First" });
+        var item = new MenuItem { Text = "File", Submenu = previous };
+        var previousPopup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
+        var replacement = new Menu { Orientation = Orientation.Vertical };
+        replacement.Items.Add(new MenuItem { Text = "Second" });
+
+        // Act
+        item.Submenu = replacement;
+
+        // Assert the previous menu survives detached, while its framework popup is disposed
+        previous.Disposed.ShouldBeFalse();
+        previousPopup.Disposed.ShouldBeTrue();
+        item.Submenu.ShouldBeSameAs(replacement);
+
+        // Assert the detached menu can still be mutated and reassigned elsewhere
+        previous.Items.Add(new MenuItem { Text = "Reused" });
+        var other = new MenuItem { Text = "Edit", Submenu = previous };
+        other.Submenu.ShouldBeSameAs(previous);
+    }
+
+    /// <summary>Verifies clearing a standalone item's submenu detaches the previous menu without
+    /// disposing it, while the framework-owned popup that hosted it is disposed.</summary>
+    [Fact]
+    public void Submenu_WhenClearedOnStandaloneItem_DetachesPreviousMenuWithoutDisposingIt()
+    {
+        // Arrange
+        var previous = new Menu { Orientation = Orientation.Vertical };
+        previous.Items.Add(new MenuItem { Text = "First" });
+        var item = new MenuItem { Text = "File", Submenu = previous };
+        var previousPopup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
+
+        // Act
+        item.Submenu = null;
+
+        // Assert
+        previous.Disposed.ShouldBeFalse();
+        previousPopup.Disposed.ShouldBeTrue();
+        item.Submenu.ShouldBeNull();
+    }
+
+    /// <summary>Verifies assigning a menu already hosted as another item's submenu throws and
+    /// leaves the target item's own submenu and popup untouched.</summary>
+    [Fact]
+    public void Submenu_WhenAlreadyHostedByAnotherItem_ThrowsAndLeavesTargetItemUnchanged()
+    {
+        // Arrange
+        var shared = new Menu { Orientation = Orientation.Vertical };
+        shared.Items.Add(new MenuItem { Text = "Shared" });
+        var owner = new MenuItem { Text = "File", Submenu = shared };
+        var existing = new Menu { Orientation = Orientation.Vertical };
+        existing.Items.Add(new MenuItem { Text = "Existing" });
+        var target = new MenuItem { Text = "Edit", Submenu = existing };
+        var targetPopup = OwnedTree.Find<Popup>(target).ShouldNotBeNull();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentException>(() => target.Submenu = shared);
+
+        // Assert target's own submenu and popup stay exactly as they were
+        target.Submenu.ShouldBeSameAs(existing);
+        OwnedTree.Find<Popup>(target).ShouldBeSameAs(targetPopup);
+        targetPopup.Disposed.ShouldBeFalse();
+
+        // Assert owner's submenu is untouched by the rejected assignment
+        owner.Submenu.ShouldBeSameAs(shared);
+    }
+
+    /// <summary>Verifies Shortcut derives ShortcutText's display text when no explicit text is set.</summary>
+    [Fact]
+    public void ShortcutText_WhenShortcutIsSetAndTextIsNot_DerivesDisplayText()
+    {
+        var item = new MenuItem { Shortcut = new KeyGesture(Code.Character, Modifiers.Control, new Rune('s')) };
+
+        item.ShortcutText.ShouldBe("Ctrl+S");
+    }
+
+    /// <summary>Verifies an explicit ShortcutText assignment always wins over Shortcut's derived text.</summary>
+    [Fact]
+    public void ShortcutText_WhenExplicitlyAssigned_WinsOverShortcut()
+    {
+        var item = new MenuItem
+        {
+            Shortcut = new KeyGesture(Code.Character, Modifiers.Control, new Rune('s')),
+            ShortcutText = "Custom"
+        };
+
+        item.ShortcutText.ShouldBe("Custom");
+
+        item.Shortcut = new KeyGesture(Code.F5);
+
+        item.ShortcutText.ShouldBe("Custom");
+    }
+
+    /// <summary>Verifies clearing Shortcut with no explicit text leaves ShortcutText null.</summary>
+    [Fact]
+    public void ShortcutText_WhenShortcutIsClearedAndTextIsUnset_IsNull()
+    {
+        var item = new MenuItem { Shortcut = new KeyGesture(Code.F5) };
+        item.ShortcutText.ShouldBe("F5");
+
+        item.Shortcut = null;
+
+        item.ShortcutText.ShouldBeNull();
+    }
+
+    /// <summary>Verifies ShortcutText's derived text is memoized once on assignment, not recomputed per read.</summary>
+    [Fact]
+    public void ShortcutText_WhenReadRepeatedlyAfterShortcutIsSet_ReusesTheSameDerivedStringInstance()
+    {
+        var item = new MenuItem { Shortcut = new KeyGesture(Code.Character, Modifiers.Control, new Rune('s')) };
+
+        var first = item.ShortcutText;
+        var second = item.ShortcutText;
+
+        ReferenceEquals(first, second).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies every vertical row shares one trailing shortcut edge.</summary>
+    [Fact]
+    public void Render_WhenVerticalItemsHaveDifferentShortcuts_RightAlignsEveryHint()
+    {
+        // Arrange
+        var labelOnly = new MenuItem { Text = "Open Recent" };
+        var shortHint = new MenuItem { Text = "Run", ShortcutText = "F5" };
+        var longHint = new MenuItem { Text = "Save", ShortcutText = "Ctrl+S" };
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        menu.Items.Add(labelOnly);
+        menu.Items.Add(shortHint);
+        menu.Items.Add(longHint);
+        var size = new Size(30, 3);
+        new LayoutEngine().Layout(menu, size);
+        using Frame frame = new(size);
+
+        // Act
+        menu.Render(frame.Canvas);
+
+        // Assert
+        menu.DesiredSize.Width.ShouldBe(19);
+        labelOnly.Bounds.Width.ShouldBe(19);
+        shortHint.Bounds.Right.ShouldBe(longHint.Bounds.Right);
+        FrameOracle.Get(frame, new Point(11, 0)).ShouldBeEmpty();
+        FrameOracle.Get(frame, new Point(12, 0)).ShouldBeEmpty();
+        FrameOracle.Get(frame, new Point(shortHint.Bounds.Right - 2, 1)).ShouldBe("F");
+        FrameOracle.Get(frame, new Point(longHint.Bounds.Right - 6, 2)).ShouldBe("C");
+        FrameOracle.Get(frame, new Point(shortHint.Bounds.Right - 1, 1)).ShouldBe("5");
+        FrameOracle.Get(frame, new Point(longHint.Bounds.Right - 1, 2)).ShouldBe("S");
+    }
+
+    private static KeyEventArgs Key(Code code) => new(new Stroke(
+        code,
+        default,
+        nativeCode: 0,
+        Modifiers.None,
+        KeyAction.Press));
+
+    private static KeyEventArgs Space(KeyAction action) => new(new Stroke(
+        Code.Character,
+        new Rune(' '),
+        nativeCode: 0,
+        Modifiers.None,
+        action));
+
+    private static KeyEventArgs Tab(Modifiers modifiers = Modifiers.None) => new(new Stroke(
+        Code.Tab,
+        default,
+        nativeCode: 0,
+        modifiers,
+        KeyAction.Press));
+
+    /// <summary>Verifies changing a checked item to command clears checked state before observers.</summary>
+    [Fact]
+    public void Kind_WhenCheckedItemBecomesCommand_StagesUncheckedStateBeforeNotification()
+    {
+        var item = new MenuItem { Kind = MenuItemKind.Check, IsChecked = true };
+        var observed = false;
+        item.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(MenuItem.Kind))
+            {
+                item.Kind.ShouldBe(MenuItemKind.Command);
+                item.IsChecked.ShouldBeFalse();
+                observed = true;
+            }
+        };
+
+        item.Kind = MenuItemKind.Command;
+
+        observed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies moving a checked radio item resolves its destination before GroupName publication.</summary>
+    [Fact]
+    public void GroupName_WhenCheckedRadioMoves_ResolvesDestinationBeforePropertyNotification()
+    {
+        var menu = new Menu();
+        var first = new MenuItem { Kind = MenuItemKind.Radio, GroupName = "a", IsChecked = true };
+        var second = new MenuItem { Kind = MenuItemKind.Radio, GroupName = "b", IsChecked = true };
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        var observed = false;
+        first.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(MenuItem.GroupName))
+            {
+                first.IsChecked.ShouldBeTrue();
+                second.IsChecked.ShouldBeFalse();
+                observed = true;
+            }
+        };
+
+        first.GroupName = "b";
+
+        observed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a rejected insertion leaves the candidate's Focusable and TabStop unchanged.</summary>
+    [Fact]
+    public void Items_WhenMenuItemInsertionFails_LeavesCandidateFocusableAndTabStopUnchanged()
+    {
+        var menu = new Menu();
+        var item = new MenuItem { Text = "Open" };
+        item.Dispose();
+
+        // A disposed candidate fails insertion before any of this menu's
+        // private presentation policy applies.
+        _ = Should.Throw<ObjectDisposedException>(() => menu.Items.Add(item));
+
+        item.Focusable.ShouldBeTrue();
+        item.TabStop.ShouldBeTrue();
+        menu.ItemCount.ShouldBe(0);
+    }
+
+    /// <summary>Verifies disposing an item before the selected index publishes SelectedItem, since
+    /// the slot SelectedIndex still points at now holds a different sibling that shifted into it -
+    /// not just SelectedIndex's own untouched numeric value. Before this fix, disposing
+    /// an owned item directly repaired nothing but a visual repaint: SelectedItem's identity moved
+    /// silently, with no notification a data-bound consumer could observe.</summary>
+    [Fact]
+    public void Dispose_WhenItemBeforeSelectedIndexIsDisposedDirectly_NotifiesSelectedItemIdentityChange()
+    {
+        var a = new MenuItem { Text = "A" };
+        var b = new MenuItem { Text = "B" };
+        var c = new MenuItem { Text = "C" };
+        var menu = new Menu();
+        menu.Items.Add(a);
+        menu.Items.Add(b);
+        menu.Items.Add(c);
+        menu.SelectedIndex = 1;
+        var notifications = new List<string>();
+        menu.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName!);
+
+        a.Dispose();
+
+        menu.SelectedIndex.ShouldBe(1);
+        menu.SelectedItem.ShouldBeSameAs(c);
+        notifications.ShouldContain(nameof(Menu.SelectedItem));
+    }
+
+    /// <summary>Verifies disposing an item before the selected index, where the reclaimed slot
+    /// now holds a MenuSeparator rather than a MenuItem, still publishes SelectedItem - the
+    /// MenuItem pattern the visual-cursor repair alone uses would otherwise skip a separator
+    /// entirely, leaving neither a notification nor a visible cursor.</summary>
+    [Fact]
+    public void Dispose_WhenReclaimedSelectedSlotHoldsASeparator_StillNotifiesSelectedItem()
+    {
+        var a = new MenuItem { Text = "A" };
+        var b = new MenuItem { Text = "B" };
+        var separator = new MenuSeparator();
+        var menu = new Menu();
+        menu.Items.Add(a);
+        menu.Items.Add(b);
+        menu.Items.Add(separator);
+        menu.SelectedIndex = 1;
+        var notifications = new List<string>();
+        menu.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName!);
+
+        a.Dispose();
+
+        menu.SelectedIndex.ShouldBe(1);
+        menu.SelectedItem.ShouldBeNull();
+        notifications.ShouldContain(nameof(Menu.SelectedItem));
+    }
+
+    /// <summary>Verifies an authored Width survives attachment: only Height is a semantic requirement
+    /// (menu rows are exactly one cell tall), so Width must never be clobbered to Auto.</summary>
+    [Fact]
+    public void Items_WhenMenuItemIsAdded_NeverMutatesAuthoredWidth()
+    {
+        var menu = new Menu();
+        var item = new MenuItem
+        {
+            Text = "Open",
+            Width = Length.Cells(30)
+        };
+
+        menu.Items.Add(item);
+
+        item.Width.ShouldBe(Length.Cells(30));
+        item.Height.ShouldBe(Length.Cells(1));
+    }
+
+    /// <summary>Verifies removal restores the item's authored Focusable, TabStop, Width, and Height.</summary>
+    [Fact]
+    public void Items_WhenMenuItemIsRemoved_RestoresAuthoredWidthHeightFocusableAndTabStop()
+    {
+        var menu = new Menu();
+        var item = new MenuItem
+        {
+            Text = "Open",
+            Width = Length.Cells(30),
+            Height = Length.Cells(3),
+            Focusable = false,
+            TabStop = false
+        };
+        menu.Items.Add(item);
+
+        _ = menu.Items.Remove(item);
+
+        item.Width.ShouldBe(Length.Cells(30));
+        item.Height.ShouldBe(Length.Cells(3));
+        item.Focusable.ShouldBeFalse();
+        item.TabStop.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies inserting before the selected entry shifts SelectedIndex without changing selection.</summary>
+    [Fact]
+    public void Insert_WhenIndexPrecedesSelection_ShiftsSelectedIndexPreservingIdentity()
+    {
+        var first = new MenuItem { Text = "First" };
+        var second = new MenuItem { Text = "Second" };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        menu.SelectedIndex = 1;
+        var inserted = new MenuItem { Text = "Inserted" };
+
+        menu.Items.Insert(0, inserted);
+
+        menu.SelectedIndex.ShouldBe(2);
+        menu.SelectedItem.ShouldBeSameAs(second);
+        menu.Items.ShouldBe([inserted, first, second]);
+    }
+
+    /// <summary>Verifies Insert accepts a typed MenuSeparator at a position.</summary>
+    [Fact]
+    public void Insert_WhenGivenSeparator_PlacesItAtRequestedPosition()
+    {
+        var first = new MenuItem { Text = "First" };
+        var second = new MenuItem { Text = "Second" };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        var separator = new MenuSeparator();
+
+        menu.Items.Insert(1, separator);
+
+        menu.Items.ShouldBe([first, separator, second]);
+    }
+
+    /// <summary>Verifies an out-of-range insertion index throws before mutating the collection.</summary>
+    [Fact]
+    public void Insert_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var menu = new Menu();
+        var item = new MenuItem { Text = "First" };
+        menu.Items.Add(item);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => menu.Items.Insert(2, new MenuItem { Text = "New" }));
+
+        menu.Items.ShouldBe([item]);
+    }
+
+    /// <summary>Verifies RemoveAt detaches the entry at a position and repairs selection to the
+    /// entry that slid into the vacated slot - the immediate successor, not the first entry in
+    /// the menu. A 3-entry fixture cannot distinguish "successor" from "wrap to front" since they
+    /// coincide at that size, so this uses four.</summary>
+    [Fact]
+    public void RemoveAt_WhenSelectedEntryIsRemoved_RepairsSelectionToNearestAvailable()
+    {
+        var first = new MenuItem { Text = "First" };
+        var selected = new MenuItem { Text = "Selected" };
+        var successor = new MenuItem { Text = "Successor" };
+        var fourth = new MenuItem { Text = "Fourth" };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(selected);
+        menu.Items.Add(successor);
+        menu.Items.Add(fourth);
+        menu.SelectedIndex = 1;
+
+        menu.Items.RemoveAt(1);
+
+        menu.Items.ShouldBe([first, successor, fourth]);
+        menu.SelectedItem.ShouldBeSameAs(successor);
+    }
+
+    /// <summary>Verifies removing the last entry while it is selected falls back to the nearest
+    /// predecessor instead of wrapping to the first entry in the menu.</summary>
+    [Fact]
+    public void RemoveAt_WhenSelectedEntryIsLastAndRemoved_FallsBackToNearestPredecessor()
+    {
+        var first = new MenuItem { Text = "First" };
+        var predecessor = new MenuItem { Text = "Predecessor" };
+        var selected = new MenuItem { Text = "Selected" };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(predecessor);
+        menu.Items.Add(selected);
+        menu.SelectedIndex = 2;
+
+        menu.Items.RemoveAt(2);
+
+        menu.Items.ShouldBe([first, predecessor]);
+        menu.SelectedItem.ShouldBeSameAs(predecessor);
+    }
+
+    /// <summary>Verifies removing an entry after the selected one leaves the selection's identity
+    /// and index untouched - the removal has nothing to do with the selection.</summary>
+    [Fact]
+    public void RemoveAt_WhenEntryAfterSelectionIsRemoved_LeavesSelectionUntouched()
+    {
+        var first = new MenuItem { Text = "First" };
+        var selected = new MenuItem { Text = "Selected" };
+        var third = new MenuItem { Text = "Third" };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(selected);
+        menu.Items.Add(third);
+        menu.SelectedIndex = 1;
+
+        menu.Items.RemoveAt(2);
+
+        menu.Items.ShouldBe([first, selected]);
+        menu.SelectedIndex.ShouldBe(1);
+        menu.SelectedItem.ShouldBeSameAs(selected);
+    }
+
+    /// <summary>Verifies removing an entry before the selected one preserves the selection's
+    /// identity, silently shifting only its numeric index - mirroring InsertItem's symmetric
+    /// case.</summary>
+    [Fact]
+    public void RemoveAt_WhenEntryBeforeSelectionIsRemoved_PreservesIdentityAndShiftsIndex()
+    {
+        var first = new MenuItem { Text = "First" };
+        var selected = new MenuItem { Text = "Selected" };
+        var third = new MenuItem { Text = "Third" };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(selected);
+        menu.Items.Add(third);
+        menu.SelectedIndex = 1;
+
+        menu.Items.RemoveAt(0);
+
+        menu.Items.ShouldBe([selected, third]);
+        menu.SelectedIndex.ShouldBe(0);
+        menu.SelectedItem.ShouldBeSameAs(selected);
+    }
+
+    /// <summary>Verifies removing a MenuSeparator - which can never be selected - never moves the
+    /// highlight, the cleanest demonstration that the repair must key off what is selected rather
+    /// than the removed index alone.</summary>
+    [Fact]
+    public void Remove_WhenSeparatorIsRemoved_NeverMovesSelection()
+    {
+        var first = new MenuItem { Text = "First" };
+        var second = new MenuItem { Text = "Second" };
+        var separator = new MenuSeparator();
+        var third = new MenuItem { Text = "Third" };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        menu.Items.Add(separator);
+        menu.Items.Add(third);
+        menu.SelectedIndex = 1;
+
+        _ = menu.Items.Remove(separator);
+
+        menu.Items.ShouldBe([first, second, third]);
+        menu.SelectedIndex.ShouldBe(1);
+        menu.SelectedItem.ShouldBeSameAs(second);
+    }
+
+    /// <summary>Verifies an out-of-range removal index throws before mutating the collection.</summary>
+    [Fact]
+    public void RemoveAt_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var menu = new Menu();
+        var item = new MenuItem { Text = "First" };
+        menu.Items.Add(item);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => menu.Items.RemoveAt(1));
+
+        menu.Items.ShouldBe([item]);
+    }
+
+    /// <summary>Verifies the indexer replaces the selected entry, detaching the old one without disposal.</summary>
+    [Fact]
+    public void Indexer_WhenSelectedEntryIsReplaced_DetachesOldWithoutDisposalAndSelectsReplacement()
+    {
+        var first = new MenuItem { Text = "First" };
+        var second = new MenuItem { Text = "Second" };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        menu.SelectedIndex = 0;
+        var replacement = new MenuItem { Text = "Replacement" };
+
+        menu.Items[0] = replacement;
+
+        menu.Items.ShouldBe([replacement, second]);
+        menu.SelectedItem.ShouldBeSameAs(replacement);
+        first.Disposed.ShouldBeFalse();
+        first.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies the indexer rejects a replacement that is not a MenuItem or MenuSeparator.</summary>
+    [Fact]
+    public void Indexer_WhenReplacementIsNotAnEntry_ThrowsAndLeavesCollectionUnchanged()
+    {
+        var menu = new Menu();
+        var item = new MenuItem { Text = "First" };
+        menu.Items.Add(item);
+
+        _ = Should.Throw<InvalidOperationException>(() => menu.Items[0] = new Button());
+
+        menu.Items.ShouldBe([item]);
+    }
+
+    /// <summary>Verifies assigning null through the indexer throws.</summary>
+    [Fact]
+    public void Indexer_WhenAssignedNull_Throws()
+    {
+        var menu = new Menu();
+        menu.Items.Add(new MenuItem { Text = "First" });
+
+        _ = Should.Throw<ArgumentNullException>(() => menu.Items[0] = null!);
+    }
+
+    /// <summary>Verifies Move repositions an owned entry while preserving the selected item's identity.</summary>
+    [Fact]
+    public void Move_WhenSelectedEntryMoves_PreservesIdentityAndUpdatesSelectedIndex()
+    {
+        var first = new MenuItem { Text = "First" };
+        var selected = new MenuItem { Text = "Selected" };
+        var third = new MenuItem { Text = "Third" };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(selected);
+        menu.Items.Add(third);
+        menu.SelectedIndex = 1;
+
+        menu.Items.Move(1, 2);
+
+        menu.Items.ShouldBe([first, third, selected]);
+        menu.SelectedIndex.ShouldBe(2);
+        menu.SelectedItem.ShouldBeSameAs(selected);
+    }
+
+    /// <summary>Verifies an out-of-range move index throws before mutating the collection.</summary>
+    [Fact]
+    public void Move_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var first = new MenuItem { Text = "First" };
+        var second = new MenuItem { Text = "Second" };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => menu.Items.Move(0, 2));
+
+        menu.Items.ShouldBe([first, second]);
+    }
+
+    /// <summary>Verifies IndexOf reports the current position of an owned entry and -1 for a foreign one.</summary>
+    [Fact]
+    public void IndexOf_WhenItemIsOwnedOrForeign_ReportsPositionOrNegativeOne()
+    {
+        var first = new MenuItem { Text = "First" };
+        var second = new MenuItem { Text = "Second" };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        var foreign = new MenuItem { Text = "Foreign" };
+
+        menu.Items.IndexOf(second).ShouldBe(1);
+        menu.Items.IndexOf(foreign).ShouldBe(-1);
+    }
+
+    /// <summary>Verifies disposed collection mutations reject Insert, RemoveAt, indexer assignment, and Move.</summary>
+    [Fact]
+    public void Items_WhenOwnerIsDisposed_RejectsInsertRemoveAtIndexerAndMove()
+    {
+        var menu = new Menu();
+        menu.Items.Add(new MenuItem { Text = "First" });
+        menu.Items.Add(new MenuItem { Text = "Second" });
+        menu.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(
+            () => menu.Items.Insert(0, new MenuItem { Text = "New" }));
+        _ = Should.Throw<ObjectDisposedException>(() => menu.Items.RemoveAt(0));
+        _ = Should.Throw<ObjectDisposedException>(
+            () => menu.Items[0] = new MenuItem { Text = "New" });
+        _ = Should.Throw<ObjectDisposedException>(() => menu.Items.Move(0, 1));
+    }
+
+    /// <summary>Verifies Clear and Remove on a disposed menu throw ObjectDisposedException like
+    /// every other documented mutator, instead of Clear throwing InvalidOperationException from
+    /// deep inside ItemsControl (the item presentation host is unavailable once disposed) and
+    /// Remove doing the same - both skipped the VerifyMutable check every other mutator in this
+    /// same test already exercises.</summary>
+    [Fact]
+    public void Items_WhenOwnerIsDisposed_RejectsClearAndRemove()
+    {
+        var first = new MenuItem { Text = "First" };
+        var separator = new MenuSeparator();
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(separator);
+        menu.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(menu.Items.Clear);
+        _ = Should.Throw<ObjectDisposedException>(() => menu.Items.Remove(first));
+        _ = Should.Throw<ObjectDisposedException>(() => menu.Items.Remove(separator));
+    }
+}

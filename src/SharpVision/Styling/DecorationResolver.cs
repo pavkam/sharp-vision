@@ -1,0 +1,58 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Styling;
+
+/// <summary>Validates one complete optional inline-decoration proposal before mutation.</summary>
+internal static class DecorationResolver
+{
+    /// <summary>Resolves optional decoration overlays against one inherited semantic style.</summary>
+    /// <param name="inherited">The complete inherited semantic style.</param>
+    /// <param name="attributes">The optional complete attribute override.</param>
+    /// <param name="underline">The optional typed underline override.</param>
+    /// <param name="underlineColor">The optional underline-color override.</param>
+    /// <returns>The validated, conflict-free semantic decoration fields.</returns>
+    public static (TerminalAttributes Attributes, Underline Underline, Color UnderlineColor) Resolve(
+        TerminalStyle inherited,
+        TerminalAttributes? attributes = null,
+        Underline? underline = null,
+        Color? underlineColor = null)
+    {
+        var resolvedAttributes = attributes ?? inherited.Attributes;
+        var resolvedUnderline = underline ?? inherited.Underline;
+
+        if (underline.HasValue)
+        {
+            resolvedAttributes &= ~TerminalAttributes.Underline;
+        }
+        else if ((resolvedAttributes & TerminalAttributes.Underline) != 0)
+        {
+            resolvedUnderline = Underline.None;
+        }
+
+        var resolvedColor = underlineColor ?? inherited.UnderlineColor;
+
+        if ((resolvedAttributes & TerminalAttributes.Underline) == 0 &&
+            resolvedUnderline == Underline.None)
+        {
+            resolvedColor = Color.Default;
+        }
+
+        return (resolvedAttributes, resolvedUnderline, resolvedColor);
+    }
+
+    extension(TerminalAttributes? attributes)
+    {
+        /// <summary>Validates optional attributes, underline variant, and underline color together.</summary>
+        /// <param name="underline">The optional typed underline variant.</param>
+        /// <param name="underlineColor">The optional semantic underline color.</param>
+        /// <exception cref="ArgumentException">The decoration fields conflict.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">An enum or flag value is unknown.</exception>
+        public void Validate(
+            Underline? underline,
+            Color? underlineColor) => _ = new TerminalStyle(
+            attributes: attributes ?? TerminalAttributes.None,
+            underline: underline ?? Underline.None,
+            underlineColor: underlineColor ?? Color.Default);
+    }
+}
