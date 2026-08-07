@@ -3,16 +3,8 @@
 
 namespace SharpVision.Tests.Compatibility;
 
-/// <summary>Serializes every packed-NuGet-package consumer test against unrelated test activity.
-/// Each member packs src/SharpVision(.Terminal)/*.csproj straight from the checked-out source
-/// tree - the packed nupkg lands in a per-run temporary directory, but the intermediate MSBuild
-/// obj/bin the pack step reads from and writes into is the ordinary shared one under src/, since
-/// pack is not given an isolated BaseIntermediateOutputPath. FigletFontsPackedPackageConsumerTests
-/// packs those same two projects without --no-build, so it recompiles them into that shared
-/// location; PackedPackageConsumerTests packs them with --no-build, so it only reads whatever is
-/// currently there. Left in separate xUnit collections, those two classes are free to run
-/// concurrently under the default full-suite parallelism, letting one test's in-flight rebuild
-/// race the other's read of the same DLL and nuspec files.</summary>
+/// <summary>Serializes packed-NuGet-package consumer tests against unrelated test activity, since
+/// they rebuild and read the shared src bin/obj outputs and must not overlap.</summary>
 [CollectionDefinition(Name, DisableParallelization = true)]
 public sealed class PackedPackageGroup
 {
