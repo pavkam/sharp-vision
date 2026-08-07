@@ -658,4 +658,44 @@ public sealed class PopupSurfaceTests
 
         popup.AnchorReflowCalls.ShouldBe(expectedCalls);
     }
+
+    /// <summary>Verifies clearing Anchor while a popup is open drops its reflow subscription
+    /// instead of leaking it - the old anchor reflowing afterward must not still trigger a
+    /// response, since this popup no longer considers that control its anchor.</summary>
+    [Fact]
+    public async Task Anchor_WhenClearedWhileOpen_StopsRespondingToThePreviousAnchorsReflowAsync()
+    {
+        var spacer = new Button
+        {
+            Text = string.Empty,
+            Width = Length.Cells(1),
+            Height = Length.Cells(4)
+        };
+        var anchor = new Button
+        {
+            Text = "Anchor",
+            Width = Length.Cells(10),
+            Height = Length.Cells(1)
+        };
+        var stack = new Stack
+        {
+            Orientation = Orientation.Vertical,
+            Width = Length.Cells(12),
+            Height = Length.Cells(8),
+            Children = { spacer, anchor }
+        };
+        var popup = new PopupAnchorReflowProbe { Anchor = anchor, Content = new ControlText("Menu") };
+        var root = new Overlay { Children = { stack, popup } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(12, 8),
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => popup.IsOpen = true, "open popup anchored to the reflowing sibling");
+        await surface.UpdateAsync(() => popup.Anchor = null, "clear the anchor while still open");
+
+        await surface.UpdateAsync(() => spacer.Height = Length.Cells(7), "reflow the former anchor while open");
+
+        popup.AnchorReflowCalls.ShouldBe(0);
+    }
 }

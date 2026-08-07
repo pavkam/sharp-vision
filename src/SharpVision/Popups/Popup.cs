@@ -109,6 +109,13 @@ public class Popup: ChromeAuthoringFloatingSurface
     /// reflows while open. A self-anchored composite (a ComboBox drop-down, a submenu, and the
     /// like) re-arranges its own popup child from its own ArrangeOverride every pass, so tracking
     /// here would be redundant; those owners set this false and keep their existing behavior.</summary>
+    /// <remarks>
+    /// Consulted only when a reflow subscription is (re)established - on content becoming
+    /// available while opening, and on Anchor changing while already open. Set this before the
+    /// popup first opens; every in-repo owner does so from its constructor. Toggling it while a
+    /// subscription is already live does not retroactively detach or attach one - the change only
+    /// takes effect the next time subscription is reconsidered.
+    /// </remarks>
     internal bool TracksAnchorReflow { get; set; } = true;
 
     /// <summary>Gets or sets whether opening skips the tree-wide sibling popup close.</summary>
@@ -871,7 +878,16 @@ public class Popup: ChromeAuthoringFloatingSurface
     /// leaving it pinned to wherever the anchor was when the popup opened.</summary>
     private void SubscribeAnchorReflow()
     {
-        if (!TracksAnchorReflow || Anchor is not { } anchor || ReferenceEquals(_subscribedReflowAnchor, anchor))
+        // Anchor cleared while open (or tracking turned off) must still drop a live
+        // subscription - falling through to the reference-equality check below would leave
+        // this popup reacting to a control it no longer considers its anchor.
+        if (!TracksAnchorReflow || Anchor is not { } anchor)
+        {
+            UnsubscribeAnchorReflow();
+            return;
+        }
+
+        if (ReferenceEquals(_subscribedReflowAnchor, anchor))
         {
             return;
         }
@@ -895,7 +911,12 @@ public class Popup: ChromeAuthoringFloatingSurface
         _ = sender;
         _ = eventArgs;
 
-        if (IsOpen)
+        // A reflow reaching here while an open-state transition is still in flight (an Opened
+        // handler that itself grows the anchor synchronously) is harmlessly covered by the
+        // initial placement Arrange that follows opening - responding here too would reenter
+        // family logic (Flyout's IsOpen = false) in the middle of the very IsOpen = true call
+        // that is still on the stack, which SetOpen's reentrancy guard rejects.
+        if (IsOpen && !_isOpenTransitioning)
         {
             OnAnchorReflow();
         }

@@ -692,6 +692,28 @@ public sealed class PopupTests
         content.Visibility.ShouldBe(Visibility.Collapsed);
     }
 
+    /// <summary>Verifies an anchor reflow landing while this popup's own opening transition is
+    /// still on the call stack - subscription is live by the time OnContentAvailable runs, and a
+    /// family whose response dismisses (Flyout's policy) would otherwise try to reenter the still
+    /// -active IsOpen = true call - does not reenter or throw. The internal subscription must gate
+    /// on the transition itself rather than relying on every response staying reentry-safe.</summary>
+    [Fact]
+    public void IsOpen_WhenAnchorReflowsDuringOwnOpeningTransition_DoesNotReenterOrThrow()
+    {
+        var anchor = new ProbeControl(new Size(6, 1));
+        anchor.Arrange(new Rect(0, 0, 6, 1), widthResolved: true, heightResolved: true);
+        var popup = new PopupAnchorReflowReentrancyProbe
+        {
+            Anchor = anchor,
+            Content = new ProbeControl(new Size(4, 2)),
+            ReflowAnchorDuringOpenTo = new Rect(0, 5, 6, 1)
+        };
+
+        _ = Should.NotThrow(() => popup.IsOpen = true);
+
+        popup.IsOpen.ShouldBeTrue();
+    }
+
     /// <summary>Verifies closing completes the inherited collapsed-child layout transactions.</summary>
     [Fact]
     public void Layout_WhenOpenPopupCloses_ClearsContentGeometryWithoutInvokingOverrides()

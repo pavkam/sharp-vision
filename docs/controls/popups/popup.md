@@ -52,6 +52,13 @@ through intrinsic promotion.
 - `Anchor` and `Placement` define the position. `Below`, `Above`, `Right`, and
   `Left` use the anchored edge, and when the preferred side does not fit, the
   popup flips to the natural opposite side before clamping.
+- An open popup follows its `Anchor` when a foreign sibling's own layout moves
+  it - a preceding sibling growing, a container resizing it, and so on - not
+  just when the popup's own root resizes. The base response re-resolves
+  placement, the same flip-and-clamp logic a root resize already runs; `Tooltip`
+  uses that default, while `Flyout` overrides it to dismiss instead of chasing
+  the anchor's new position, matching light dismiss's assumption that its
+  captured bounds stay valid only for a stationary anchor.
 - `ModalBehavior` accepts only `Auto` or `None`. During opening, or during a
   later attachment and availability reconciliation, `Auto` enters the default
   dismissing scope and `None` leaves modality to the logical owner. Changing the

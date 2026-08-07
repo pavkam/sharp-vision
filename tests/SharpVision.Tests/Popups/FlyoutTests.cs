@@ -332,4 +332,44 @@ public sealed class FlyoutTests
 
         flyout.IsOpen.ShouldBeFalse();
     }
+
+    /// <summary>Verifies clearing Anchor while a flyout is open drops its reflow subscription
+    /// instead of leaking it - the former anchor reflowing afterward must not spuriously dismiss
+    /// a flyout that no longer considers that control its anchor.</summary>
+    [Fact]
+    public async Task IsOpen_WhenAnchorClearedThenPreviousAnchorReflows_StaysOpenAsync()
+    {
+        var spacer = new Button
+        {
+            Text = string.Empty,
+            Width = Length.Cells(1),
+            Height = Length.Cells(4)
+        };
+        var anchor = new Button
+        {
+            Text = "Anchor",
+            Width = Length.Cells(10),
+            Height = Length.Cells(1)
+        };
+        var stack = new Stack
+        {
+            Orientation = Orientation.Vertical,
+            Width = Length.Cells(12),
+            Height = Length.Cells(8),
+            Children = { spacer, anchor }
+        };
+        var flyout = new Flyout { Anchor = anchor, Content = new ControlText("Action") };
+        var root = new Overlay { Children = { stack, flyout } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(12, 8),
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => flyout.IsOpen = true, "open flyout anchored inside the reflowing stack");
+        await surface.UpdateAsync(() => flyout.Anchor = null, "clear the anchor while still open");
+
+        await surface.UpdateAsync(() => spacer.Height = Length.Cells(7), "reflow the former anchor while open");
+
+        flyout.IsOpen.ShouldBeTrue();
+    }
 }
