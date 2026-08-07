@@ -7,6 +7,23 @@ Arrange/Act/Assert layout, and use names of the form
 `MethodName_WhenThis_ThatIsExpected`. Every new behavior starts with a focused
 test that has been observed failing for the intended reason.
 
+Test classes are named `<Type>Tests` for the type they exercise, declared under
+`src/` or `examples/`. The `SurfaceTests`, `PerformanceTests`, `ConsumerTests`,
+and `CompatibilityTests` suffixes identify an evidence tier — mounted-terminal
+rendered-cell proof, an allocation-perf gate, a packed-package consumer proof,
+and a public-contract/ABI freeze, respectively — not a different subject; a
+class covering multiple subjects at once belongs on the suite-level allow-list
+defined inside
+[`scripts/validate-test-class-naming.mjs`](../../scripts/validate-test-class-naming.mjs)
+instead of inventing a new suffix. Classes that predate the rule are tracked in
+a baseline that may only shrink, so a rename never has to happen all at once,
+but a new test class must comply immediately. Some of these grandfathered
+classes still split one type's coverage across several `<Type><Aspect>Tests`
+classes, as named in [controls integration](controls-integration.md#overview);
+that split is baseline-tracked pending per-area consolidation, not a pattern to
+copy. `npm run lint:test-names` enforces the rule and reports both new
+violations and baseline entries that no longer reproduce.
+
 ## Proof levels
 
 1. Pure unit tests prove validation, state transitions, algorithms, and exact

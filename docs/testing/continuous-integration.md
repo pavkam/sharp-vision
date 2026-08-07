@@ -17,12 +17,13 @@ Linting is a job, not a step. It inspects sources, Markdown, and links, none of
 which vary by operating system, so running it inside the composite action meant
 paying for it once per platform and paying for it serially ahead of the tests it
 cannot affect. As its own job it costs about as much wall-clock time as the test
-phase and now overlaps it entirely. `make lint` is exactly four commands:
+phase and now overlaps it entirely. `make lint` is exactly five commands:
 `dotnet format --verify-no-changes`, `prettier --check`, `markdownlint-cli2`,
-and the local-link validator. A lint failure still cannot suppress the build,
-test, coverage, or compatibility-snapshot results, because those run in
-different jobs that neither wait for it nor observe it; and publication still
-cannot happen while lint is failing, because the push job needs both gates.
+the local-link validator, and the test-class naming validator. A lint failure
+still cannot suppress the build, test, coverage, or compatibility-snapshot
+results, because those run in different jobs that neither wait for it nor
+observe it; and publication still cannot happen while lint is failing, because
+the push job needs both gates.
 
 The shared composite action runs the Release build, the tests with coverage,
 coverage-report generation, and artifact publication, in that order. Tests run

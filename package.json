@@ -14,6 +14,7 @@
     "lint:docs-samples": "node scripts/validate-doc-samples.mjs",
     "lint:markdown": "markdownlint-cli2 \"**/*.md\" \"#artifacts\" \"#node_modules\" \"#.worktrees\" \"#.superpowers\"",
     "lint:links": "node scripts/validate-doc-links.mjs",
+    "lint:test-names": "node scripts/validate-test-class-naming.mjs",
     "refresh:unicode": "node scripts/generate-unicode-data.mjs --refresh",
     "test:docs": "node --test scripts/*.test.mjs"
   },
