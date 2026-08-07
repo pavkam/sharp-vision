@@ -35,9 +35,14 @@ transfer, no keyboard navigation, no Escape handling, and no hit testing. These
 are constructor defaults on the underlying Popup surface, not enforced
 invariants — the corresponding properties remain settable. Once available, the
 Tooltip measures and arranges itself against the anchor's root, so the first
-open frame already has committed content geometry. Placement, edge flipping,
-root clamping, elevation, lifecycle, and ownership otherwise follow Popup and
-the [floating-surface contract](../../concepts/floating-surfaces.md#overview).
+open frame already has committed content geometry. Because the Tooltip lives in
+its anchor's owned popup-layer slot rather than as a normal tree child, it is
+not swept up in the anchor's own layout passes; instead it re-resolves its own
+placement directly whenever the anchor's text or content changes, the anchor
+reflows, or the surface it is presented on resizes while still open. Placement,
+edge flipping, root clamping, elevation, lifecycle, and ownership otherwise
+follow Popup and the
+[floating-surface contract](../../concepts/floating-surfaces.md#overview).
 
 Appearance does not follow Popup. Tooltip resolves the dedicated `TooltipStyle`
 (`styles.tooltip`) instead of inheriting `PopupStyle`'s framed appearance, so a

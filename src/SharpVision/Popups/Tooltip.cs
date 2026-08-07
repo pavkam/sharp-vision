@@ -16,6 +16,7 @@ public sealed class Tooltip: Popup
     private DispatcherTimer? _hideTimer;
     private ControlBase? _attachedAnchor;
     private DisplayText? _textContent;
+    private ControlBase? _layoutRoot;
 
     /// <summary>Initializes a closed passive tooltip with default delays.</summary>
     public Tooltip()
@@ -26,6 +27,15 @@ public sealed class Tooltip: Popup
         CloseOnEscape = false;
         HitTestVisible = false;
         Focusable = false;
+
+        // A Tooltip is never a normal tree member of its anchor - it lives in the anchor's
+        // Popup-layer owned slot, which the framework's cascading Measure/Arrange walk never
+        // visits (unlike ComboBox/DateInput/MenuItem, which re-arrange their own popup child
+        // from their own ArrangeOverride every pass). LayoutPopup below is therefore the only
+        // place this placement is ever resolved; Closed lets go of the relayout subscriptions
+        // taken out in OnContentAvailable so a closed tooltip does not keep reacting to a
+        // surface it is no longer presenting on.
+        Closed += OnSurfaceClosed;
     }
 
     /// <summary>Gets the passive, non-interactive hint role, distinct from Popup's framed
@@ -156,7 +166,18 @@ public sealed class Tooltip: Popup
             {
                 _textContent ??= new DisplayText();
                 _textContent.Content = value ?? string.Empty;
+
+                // Content already referencing _textContent makes this a same-reference,
+                // no-op assignment that never raises OnContentChanged - the desired height
+                // this text now needs (it may have grown or shrunk) would otherwise never
+                // be re-resolved against the anchor while the tooltip is open.
+                var contentUnchanged = ReferenceEquals(Content, _textContent);
                 Content = _textContent;
+
+                if (contentUnchanged && IsOpen && _attachedAnchor is not null)
+                {
+                    LayoutPopup();
+                }
             }
         }
     }
@@ -198,14 +219,24 @@ public sealed class Tooltip: Popup
         {
             _textContent = null;
         }
+
+        // SetContent may swap in taller or shorter rich content while the tooltip is already
+        // open (the Text setter above handles same-reference mutation; this handles the Content
+        // reference itself changing), so the resolved placement must be re-run against the new
+        // desired size rather than the one measured when it last opened.
+        if (IsOpen && _attachedAnchor is not null)
+        {
+            LayoutPopup();
+        }
     }
 
     /// <inheritdoc/>
     internal override void OnContentAvailable()
     {
-        if (_attachedAnchor is { } anchor)
+        if (_attachedAnchor is not null)
         {
-            LayoutPopup(anchor);
+            LayoutPopup();
+            SubscribeSurfaceRelayout();
         }
     }
 
@@ -234,6 +265,12 @@ public sealed class Tooltip: Popup
         anchor.GotFocus += OnAnchorGotFocus;
         anchor.LostFocus += OnAnchorLostFocus;
         anchor.PointerPressed += OnAnchorPointerPressed;
+
+        // The anchor reflowing (a sibling growing above it, its own container resizing it,
+        // and so on) moves the point placement was resolved against without the tooltip's own
+        // Bounds ever changing, so this is the anchor-side half of keeping an open tooltip's
+        // placement current; OnAnchorBoundsChanged only acts while open.
+        anchor.BoundsChanged += OnAnchorBoundsChanged;
     }
 
     private void Detach(ControlBase anchor, bool clearOwnership)
@@ -246,6 +283,7 @@ public sealed class Tooltip: Popup
         anchor.GotFocus -= OnAnchorGotFocus;
         anchor.LostFocus -= OnAnchorLostFocus;
         anchor.PointerPressed -= OnAnchorPointerPressed;
+        anchor.BoundsChanged -= OnAnchorBoundsChanged;
 
         if (clearOwnership)
         {
@@ -299,6 +337,17 @@ public sealed class Tooltip: Popup
         Hide();
     }
 
+    private void OnAnchorBoundsChanged(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+
+        if (IsOpen && _attachedAnchor is not null)
+        {
+            LayoutPopup();
+        }
+    }
+
     #endregion
 
     #region Show and hide
@@ -325,16 +374,9 @@ public sealed class Tooltip: Popup
         }
     }
 
-    private void LayoutPopup(ControlBase anchor)
+    private void LayoutPopup()
     {
-        var root = anchor;
-
-        while (root.Parent is { } parent)
-        {
-            root = parent;
-        }
-
-        var rootBounds = root.Bounds;
+        var rootBounds = RootBounds(default);
 
         if (rootBounds.Width == 0 || rootBounds.Height == 0)
         {
@@ -343,6 +385,55 @@ public sealed class Tooltip: Popup
 
         Measure(new Constraint(rootBounds.Width, rootBounds.Height));
         Arrange(rootBounds, widthResolved: true, heightResolved: true);
+    }
+
+    /// <summary>Starts reacting to the presented surface re-laying out while this tooltip is
+    /// open, so a resize or an anchor reflow that happens after opening re-resolves placement
+    /// instead of leaving it pinned to the geometry that was current when it opened.</summary>
+    private void SubscribeSurfaceRelayout()
+    {
+        ControlBase root = this;
+
+        while (root.Parent is { } parent)
+        {
+            root = parent;
+        }
+
+        if (ReferenceEquals(root, _layoutRoot))
+        {
+            return;
+        }
+
+        UnsubscribeSurfaceRelayout();
+        _layoutRoot = root;
+        root.BoundsChanged += OnSurfaceBoundsChanged;
+    }
+
+    private void UnsubscribeSurfaceRelayout()
+    {
+        if (_layoutRoot is { } root)
+        {
+            root.BoundsChanged -= OnSurfaceBoundsChanged;
+            _layoutRoot = null;
+        }
+    }
+
+    private void OnSurfaceBoundsChanged(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+
+        if (IsOpen && _attachedAnchor is not null)
+        {
+            LayoutPopup();
+        }
+    }
+
+    private void OnSurfaceClosed(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+        UnsubscribeSurfaceRelayout();
     }
 
     /// <summary>Gets the show timer's current Tick subscriber count for duplicate-subscription
@@ -436,10 +527,14 @@ public sealed class Tooltip: Popup
         // reused) would silently re-present the tooltip with no actual
         // hover/focus interaction from the user. Popup's own OnDetached
         // already force-closes an already-open popup; this only needs to
-        // additionally stop a timer that hasn't fired yet.
+        // additionally stop a timer that hasn't fired yet. Popup's force-close on this path
+        // also bypasses the public Closed event (it commits closed state directly rather than
+        // running the normal CloseSurface sequence), so OnSurfaceClosed's cleanup would never
+        // run here; drop the surface relayout subscription directly instead of leaking it.
         CancelShowTimer();
         CancelHideTimer();
         base.OnDetached();
+        UnsubscribeSurfaceRelayout();
     }
 
     /// <inheritdoc/>

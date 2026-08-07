@@ -317,4 +317,161 @@ public sealed class TooltipTests
         using var anchor = new ProbeControl(new Size(6, 1));
         Tooltip.GetTooltip(anchor).ShouldBeNull();
     }
+
+    /// <summary>Verifies a multi-line tooltip anchored near the bottom row flips fully above its
+    /// anchor instead of overflowing the surface below it, mirroring
+    /// <c>PopupSurfaceTests.Render_WhenNoSpaceBelowAnchor_FlipsPopupToAboveAsync</c> for the
+    /// attached-tooltip hosting path.</summary>
+    [Fact]
+    public async Task IsOpen_WhenAnchoredNearBottomWithMultilineContent_FlipsAboveAnchorAsync()
+    {
+        // Arrange — anchor sits on the bottom row, leaving no room below for a two-line tooltip.
+        var anchor = new Button
+        {
+            Text = "Bottom",
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(10),
+            Height = Length.Cells(1)
+        };
+        Overlay.SetTop(anchor, Length.Cells(7));
+        Tooltip.SetText(anchor, "First line\nSecond line");
+        var tooltip = Tooltip.GetTooltip(anchor).ShouldNotBeNull();
+        var root = new Overlay
+        {
+            Width = Length.Cells(12),
+            Height = Length.Cells(8),
+            Children = { anchor }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(12, 8),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.UpdateAsync(() => tooltip.IsOpen = true, "open Tooltip near bottom");
+
+        // Assert — the tooltip should flip above the anchor, not render below/over the footer.
+        tooltip.IsOpen.ShouldBeTrue();
+        tooltip.SurfaceBounds.Height.ShouldBeGreaterThan(1);
+        tooltip.SurfaceBounds.Bottom.ShouldBeLessThanOrEqualTo(anchor.Bounds.Y);
+    }
+
+    /// <summary>Verifies growing an open tooltip's text past the room left below its anchor
+    /// re-resolves placement instead of leaving it pinned to the smaller bounds measured when
+    /// it first opened. Tooltip.LayoutPopup only ever runs from OnContentAvailable at open time;
+    /// SetText mutating the shared text child in place afterward raises no Content-changed
+    /// notification the framework's normal layout walk would ever observe.</summary>
+    [Fact]
+    public async Task Text_WhenChangedWhileOpenGrowsPastBottom_RecomputesFlipAsync()
+    {
+        var anchor = new Button
+        {
+            Text = "Bottom",
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(10),
+            Height = Length.Cells(1)
+        };
+        Overlay.SetTop(anchor, Length.Cells(6));
+        Tooltip.SetText(anchor, "One");
+        var tooltip = Tooltip.GetTooltip(anchor).ShouldNotBeNull();
+        var root = new Overlay
+        {
+            Width = Length.Cells(12),
+            Height = Length.Cells(8),
+            Children = { anchor }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(12, 8),
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => tooltip.IsOpen = true, "open Tooltip with content that still fits below");
+        tooltip.SurfaceBounds.Bottom.ShouldBeLessThanOrEqualTo(8);
+
+        await surface.UpdateAsync(() => tooltip.Text = "One\nTwo", "grow Tooltip content while open");
+
+        tooltip.SurfaceBounds.Height.ShouldBeGreaterThan(1);
+        tooltip.SurfaceBounds.Bottom.ShouldBeLessThanOrEqualTo(anchor.Bounds.Y);
+    }
+
+    /// <summary>Verifies an open tooltip re-resolves placement after the surface it is presented
+    /// on shrinks, rather than continuing to render past the new bottom edge. Because a Tooltip
+    /// lives in its anchor's Popup-layer owned slot rather than as a normal tree child, the
+    /// framework's cascading resize-driven Measure/Arrange walk never reaches it the way it
+    /// reaches a ComboBox or DateInput's own popup child.</summary>
+    [Fact]
+    public async Task IsOpen_WhenSurfaceShrinksWhileOpenNearBottom_RecomputesFlipAsync()
+    {
+        var anchor = new Button
+        {
+            Text = "Bottom",
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(10),
+            Height = Length.Cells(1)
+        };
+        Overlay.SetTop(anchor, Length.Cells(6));
+        Tooltip.SetText(anchor, "One");
+        var tooltip = Tooltip.GetTooltip(anchor).ShouldNotBeNull();
+        var root = new Overlay
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Children = { anchor }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(12, 8),
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => tooltip.IsOpen = true, "open tooltip that fits below at initial size");
+        tooltip.SurfaceBounds.Bottom.ShouldBeLessThanOrEqualTo(8);
+
+        await surface.ResizeAsync(new Size(12, 7));
+
+        tooltip.SurfaceBounds.Bottom.ShouldBeLessThanOrEqualTo(anchor.Bounds.Y);
+    }
+
+    /// <summary>Verifies an open tooltip re-resolves placement after its anchor reflows to a new
+    /// position (a preceding sibling growing above it), rather than continuing to render at the
+    /// anchor's old location. Distinct from the resize path above: here the mounted root's own
+    /// Bounds never change, only the anchor's.</summary>
+    [Fact]
+    public async Task IsOpen_WhenAnchorReflowsPastBottomWhileOpen_RecomputesFlipAsync()
+    {
+        var spacer = new Button
+        {
+            Text = string.Empty,
+            Width = Length.Cells(1),
+            Height = Length.Cells(4)
+        };
+        var anchor = new Button
+        {
+            Text = "Bottom",
+            Width = Length.Cells(10),
+            Height = Length.Cells(1)
+        };
+        Tooltip.SetText(anchor, "One");
+        var tooltip = Tooltip.GetTooltip(anchor).ShouldNotBeNull();
+        var root = new Stack
+        {
+            Orientation = Orientation.Vertical,
+            Width = Length.Cells(12),
+            Height = Length.Cells(8),
+            Children = { spacer, anchor }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(12, 8),
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => tooltip.IsOpen = true, "open tooltip that fits below at initial anchor position");
+        tooltip.SurfaceBounds.Bottom.ShouldBeLessThanOrEqualTo(8);
+
+        await surface.UpdateAsync(() => spacer.Height = Length.Cells(7), "reflow the anchor toward the bottom while open");
+
+        tooltip.SurfaceBounds.Bottom.ShouldBeLessThanOrEqualTo(anchor.Bounds.Y);
+    }
 }
