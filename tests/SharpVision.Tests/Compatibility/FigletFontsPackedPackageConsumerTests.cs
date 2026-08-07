@@ -9,6 +9,7 @@ using System.Reflection.PortableExecutable;
 using System.Xml.Linq;
 
 /// <summary>Verifies the optional FIGlet catalog through only packed NuGet dependencies.</summary>
+[Collection(PackedPackageGroup.Name)]
 public sealed class FigletFontsPackedPackageConsumerTests
 {
     /// <summary>Verifies the package graph, embedded-resource boundary, and external rendering path.</summary>
@@ -62,15 +63,20 @@ public sealed class FigletFontsPackedPackageConsumerTests
             var coreResources = ReadManifestResources(corePackage, "SharpVision.dll");
             var fontResources = ReadManifestResources(fontPackage, "SharpVision.FigletFonts.dll");
 
-            coreResources.ShouldNotContain(name => name.Contains("FigletFonts", StringComparison.Ordinal));
-            coreResources.ShouldNotContain(name => name.EndsWith(".flf", StringComparison.Ordinal));
-            coreResources.ShouldNotContain(name => name.EndsWith("fonts.zip", StringComparison.Ordinal));
-            fontResources.Count(name => name.EndsWith(".flf", StringComparison.Ordinal)).ShouldBe(19);
-            fontResources.ShouldContain("SharpVision.FigletFonts.Resources.fonts.manifest.json");
-            fontResources.ShouldNotContain(name => name.EndsWith(".zip", StringComparison.Ordinal));
-            ReadPackageEntries(fontPackage).ShouldContain("THIRD-PARTY-NOTICES.md");
-            ReadPackageEntries(fontPackage).ShouldContain("licenses/BSD-3-Clause.txt");
-            ReadPackageEntries(fontPackage).ShouldContain("licenses/MIT.txt");
+            var coreResourceDump = $"actual SharpVision.dll manifest resources: [{string.Join(", ", coreResources)}]";
+            var fontResourceDump = $"actual SharpVision.FigletFonts.dll manifest resources: [{string.Join(", ", fontResources)}]";
+            coreResources.ShouldNotContain(name => name.Contains("FigletFonts", StringComparison.Ordinal), coreResourceDump);
+            coreResources.ShouldNotContain(name => name.EndsWith(".flf", StringComparison.Ordinal), coreResourceDump);
+            coreResources.ShouldNotContain(name => name.EndsWith("fonts.zip", StringComparison.Ordinal), coreResourceDump);
+            fontResources.Count(name => name.EndsWith(".flf", StringComparison.Ordinal)).ShouldBe(19, fontResourceDump);
+            fontResources.ShouldContain("SharpVision.FigletFonts.Resources.fonts.manifest.json", fontResourceDump);
+            fontResources.ShouldNotContain(name => name.EndsWith(".zip", StringComparison.Ordinal), fontResourceDump);
+
+            var fontPackageEntries = ReadPackageEntries(fontPackage);
+            var fontPackageEntryDump = $"actual {Path.GetFileName(fontPackage)} entries: [{string.Join(", ", fontPackageEntries)}]";
+            fontPackageEntries.ShouldContain("THIRD-PARTY-NOTICES.md", fontPackageEntryDump);
+            fontPackageEntries.ShouldContain("licenses/BSD-3-Clause.txt", fontPackageEntryDump);
+            fontPackageEntries.ShouldContain("licenses/MIT.txt", fontPackageEntryDump);
             // Derived from the core package actually being tested, not a literal and not the font
             // package's own version - SharpVision.FigletFonts versions and publishes
             // independently of SharpVision, so the two numbers are not expected to match. As a

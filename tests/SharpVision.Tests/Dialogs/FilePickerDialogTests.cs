@@ -672,10 +672,24 @@ public sealed class FilePickerDialogTests
         await surface.UpdateAsync(
             () => pending = FilePickerDialog.ShowAsync(opener, new FilePickerOptions { OpenButtonStyle = style }),
             "show file picker with an explicit Open Button style");
-        var dialog = OwnedTree.Find<FilePickerDialog>(surface.Application.Root).ShouldNotBeNull();
+        var presentedDialogs = OwnedTree.FindAll<FilePickerDialog>(surface.Application.Root);
+        var dialog = presentedDialogs.ShouldHaveSingleItem(
+            $"ShowAsync should have presented exactly one FilePickerDialog under the mounted root; " +
+            $"found {presentedDialogs.Count}. Full owned tree under the root: " +
+            $"[{string.Join(", ", OwnedTree.FindAll<ControlBase>(surface.Application.Root).Select(static control => control.GetType().Name))}]");
 
-        // Assert
-        dialog.ActualOpenButtonStyle.ShouldBe(style);
+        // Assert: OpenButtonStyle is a Local-only forwarding slot (StyleDefinitions.Part resolves
+        // local ?? fallback(theme)), so a non-null local value like this test's style always wins
+        // over the ambient Theme - this assertion should be unaffected by any other test's theme
+        // or ambient state, and the diagnostic below records what actually resolved if that ever
+        // stops being true.
+        dialog.ActualOpenButtonStyle.ShouldBe(
+            style,
+            $"expected the presented dialog to resolve OpenButtonStyle from ShowAsync's options rather than " +
+            $"an ambient default. Local OpenButtonStyle was " +
+            $"{(dialog.OpenButtonStyle is null ? "null" : dialog.OpenButtonStyle.ToString())}; " +
+            $"resolved ActualOpenButtonStyle was {dialog.ActualOpenButtonStyle}; " +
+            $"expected style was {style}.");
 
         // Cancel to complete the pending task and let the surface tear down cleanly.
         await surface.Keyboard.PressAsync(Code.Escape);

@@ -4,6 +4,7 @@
 namespace SharpVision.Tests.Compatibility;
 
 /// <summary>Verifies public derivation contracts through the packed package without friend access.</summary>
+[Collection(PackedPackageGroup.Name)]
 public sealed class PackedPackageConsumerTests
 {
     /// <summary>Verifies an external package consumer can run a derived surface through its protected lifecycle.</summary>
