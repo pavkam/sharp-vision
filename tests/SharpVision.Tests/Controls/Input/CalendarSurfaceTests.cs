@@ -466,6 +466,36 @@ public sealed class CalendarSurfaceTests
         surface.Cell(cell).Style.Foreground.ShouldBe(surface.Cell(neighbor).Style.Foreground);
     }
 
+    /// <summary>Verifies assigning DisplayMonth alone, with no Selection ever set, seeds the active
+    /// date into the assigned month so the first arrow-key move stays there instead of snapping the
+    /// display back to today. Mounted under a fake clock parked at the Unix epoch - far from the
+    /// assigned month - so a regression that lets the first keyboard move re-seed the active date
+    /// from EnsureSeeded's today would repage the display away from July 2026.</summary>
+    [Fact]
+    public async Task Surface_WhenDisplayMonthAloneIsAssignedAndArrowKeyPressed_StaysInAssignedMonthAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var calendar = new UiCalendar
+        {
+            Culture = CultureInfo.InvariantCulture,
+            DisplayMonth = new DateOnly(2026, 7, 1)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            calendar,
+            new Size(32, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        // Assert
+        calendar.ActiveDate.ShouldBe(new DateOnly(2026, 7, 2));
+        calendar.DisplayMonth.ShouldBe(new DateOnly(2026, 7, 1));
+    }
+
     /// <summary>Resolves the absolute surface cell for one date inside a calendar's six-week grid,
     /// mirroring Calendar's own internal grid geometry (a four-cell-wide column inside a
     /// one-cell border plus one-cell horizontal padding, with the date grid beginning two rows

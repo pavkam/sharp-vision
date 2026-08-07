@@ -308,7 +308,9 @@ public sealed class Calendar: Control<CalendarStyle>
         return true;
     }
 
-    /// <summary>Gets or sets the displayed Gregorian month; supplied dates normalize to day one.</summary>
+    /// <summary>Gets or sets the displayed Gregorian month; supplied dates normalize to day one and,
+    /// when the active date has not yet been established, seed the active date into the assigned
+    /// month.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public DateOnly DisplayMonth
@@ -318,7 +320,17 @@ public sealed class Calendar: Control<CalendarStyle>
             EnsureSeeded();
             return _displayMonth!.Value;
         }
-        set => _ = SetProperty(ref _displayMonth, StartOfMonth(value), InvalidationImpact.Render);
+        set
+        {
+            var normalized = StartOfMonth(value);
+            _ = SetProperty(ref _displayMonth, normalized, InvalidationImpact.Render);
+
+            // An unseeded active date has no cursor position of its own to preserve, so seed it
+            // into the assigned month here rather than letting EnsureSeeded resolve it to today
+            // on first read - otherwise the first keyboard move would repage DisplayMonth back to
+            // today's month, discarding this assignment.
+            _activeDate ??= normalized;
+        }
     }
 
     #endregion
@@ -1083,7 +1095,8 @@ public sealed class Calendar: Control<CalendarStyle>
     }
 
     /// <summary>Latches ActiveDate and DisplayMonth to today on first read, from one shared clock
-    /// sample, without overwriting either field an earlier explicit assignment already set.</summary>
+    /// sample, without overwriting either field an earlier explicit assignment already set. The
+    /// DisplayMonth setter can pre-seed the active date before this ever runs.</summary>
     private void EnsureSeeded()
     {
         if (_activeDate.HasValue && _displayMonth.HasValue)

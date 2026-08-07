@@ -878,6 +878,37 @@ public sealed class CalendarTests
         calendar.ActiveDate.ShouldBe(selected);
     }
 
+    /// <summary>Verifies assigning DisplayMonth before ActiveDate is ever established seeds the
+    /// active date into the assigned month, rather than leaving it to resolve to today on first
+    /// read.</summary>
+    [Fact]
+    public void DisplayMonth_WhenAssignedBeforeActiveDateIsEstablished_SeedsActiveDateIntoAssignedMonth()
+    {
+        // Arrange and Act
+        using var calendar = new UiCalendar { DisplayMonth = new DateOnly(2026, 1, 1) };
+
+        // Assert
+        calendar.ActiveDate.ShouldBe(new DateOnly(2026, 1, 1));
+    }
+
+    /// <summary>Verifies reassigning DisplayMonth after the active date is already established
+    /// only browses the display, leaving the active date untouched.</summary>
+    [Fact]
+    public void DisplayMonth_WhenReassignedAfterActiveDateIsEstablished_DoesNotMoveActiveDate()
+    {
+        // Arrange
+        var active = new DateOnly(2026, 8, 4);
+        using var calendar = new UiCalendar { Selection = new DateInterval(active, active) };
+        calendar.Selection = null;
+
+        // Act
+        calendar.DisplayMonth = new DateOnly(2020, 1, 1);
+
+        // Assert
+        calendar.ActiveDate.ShouldBe(active);
+        calendar.DisplayMonth.ShouldBe(new DateOnly(2020, 1, 1));
+    }
+
     #endregion
 
     #region Helpers

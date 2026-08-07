@@ -56,15 +56,15 @@ a fresh anchor.
 
 ## Dates, bounds, and culture
 
-| Member           | Default                          | Purpose                                              |
-| ---------------- | -------------------------------- | ---------------------------------------------------- |
-| `DisplayMonth`   | first day of current local month | Chooses the rendered month; assigned dates normalize |
-| `ActiveDate`     | current local date               | Reports the keyboard cursor                          |
-| `MinimumDate`    | `DateOnly.MinValue`              | Sets the inclusive lower selection bound             |
-| `MaximumDate`    | `DateOnly.MaxValue`              | Sets the inclusive upper selection bound             |
-| `Culture`        | current Gregorian culture        | Supplies month text, weekday names, and week start   |
-| `FirstDayOfWeek` | culture default                  | Overrides the first weekday column                   |
-| `BlockedDates`   | empty                            | Owns normalized unavailable inclusive ranges         |
+| Member           | Default                          | Purpose                                                                                        |
+| ---------------- | -------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `DisplayMonth`   | first day of current local month | Chooses the rendered month; assigned dates normalize to day one and seed an unset `ActiveDate` |
+| `ActiveDate`     | current local date               | Reports the keyboard cursor                                                                    |
+| `MinimumDate`    | `DateOnly.MinValue`              | Sets the inclusive lower selection bound                                                       |
+| `MaximumDate`    | `DateOnly.MaxValue`              | Sets the inclusive upper selection bound                                                       |
+| `Culture`        | current Gregorian culture        | Supplies month text, weekday names, and week start                                             |
+| `FirstDayOfWeek` | culture default                  | Overrides the first weekday column                                                             |
+| `BlockedDates`   | empty                            | Owns normalized unavailable inclusive ranges                                                   |
 
 `ActiveDate` and `DisplayMonth` resolve to the local date on first read rather
 than at construction, so a calendar mounted under a dispatcher with its own
@@ -73,6 +73,13 @@ midnight. `Culture` must use an active `GregorianCalendar`, because mixing
 another calendar system's month labels with `DateOnly` day geometry would
 display false dates. Changing the culture rerenders the localized month and
 weekday text without changing the selection.
+
+Assigning `DisplayMonth` before `ActiveDate` is ever read, assigned, or
+established by a committed selection also seeds the active date to the first day
+of the assigned month, so keyboard navigation starts in the month the caller
+pointed the display at. Once the active date is established, later
+`DisplayMonth` assignments only browse the display, the same as header and wheel
+navigation.
 
 `FirstDayOfWeek` overrides the culture's first weekday without changing the
 selected date. `GoToToday()` moves `ActiveDate` and `DisplayMonth` to the
