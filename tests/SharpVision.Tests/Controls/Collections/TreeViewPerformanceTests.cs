@@ -16,7 +16,7 @@ using SharpVision.Tests.Performance;
 /// previous implementation had.
 /// </remarks>
 [Collection(PerformanceGroup.Name)]
-public sealed class TreeViewScalingTests
+public sealed class TreeViewPerformanceTests
 {
     /// <summary>Depth for paths that walk the hierarchy without materializing visual children.</summary>
     private const int _deep = 20_000;

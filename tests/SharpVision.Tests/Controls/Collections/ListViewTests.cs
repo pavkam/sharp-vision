@@ -725,4 +725,534 @@ public sealed class ListViewTests
         modifiers,
         isMotion: false,
         isCellPositionInferred: false);
+
+    /// <summary>Verifies inserting at the end appends one item and realizes one control.</summary>
+    [Fact]
+    public void InsertItem_WhenAppended_AddsOneItemAndControl()
+    {
+        var control = Create("A", "B");
+
+        control.InsertItem(2, "C");
+
+        control.Items.ShouldBe(new object?[] { "A", "B", "C" });
+    }
+
+    /// <summary>Verifies inserting at the beginning shifts existing items.</summary>
+    [Fact]
+    public void InsertItem_WhenPrepended_ShiftsExistingItems()
+    {
+        var control = Create("B", "C");
+
+        control.InsertItem(0, "A");
+
+        control.Items.ShouldBe(new object?[] { "A", "B", "C" });
+    }
+
+    /// <summary>Verifies inserting in the middle maintains correct ordering.</summary>
+    [Fact]
+    public void InsertItem_WhenInsertedInMiddle_MaintainsOrdering()
+    {
+        var control = Create("A", "C");
+
+        control.InsertItem(1, "B");
+
+        control.Items.ShouldBe(new object?[] { "A", "B", "C" });
+    }
+
+    /// <summary>Verifies inserting shifts the selected index when it follows the insertion point.</summary>
+    [Fact]
+    public void InsertItem_WhenSelectionFollowsInsertionPoint_ShiftsSelectedIndex()
+    {
+        var control = Create("A", "B", "C");
+        control.SelectedIndex = 1;
+
+        control.InsertItem(0, "Z");
+
+        control.SelectedIndex.ShouldBe(2);
+        control.Items[control.SelectedIndex].ShouldBe("B");
+    }
+
+    /// <summary>Verifies inserting before the active index shifts it correctly.</summary>
+    [Fact]
+    public void InsertItem_WhenActiveIndexFollowsInsertionPoint_ShiftsActiveIndex()
+    {
+        var control = Create("A", "B", "C");
+        control.SelectedIndex = 2;
+
+        control.InsertItem(0, "Z");
+
+        control.ActiveIndex.ShouldBe(3);
+    }
+
+    /// <summary>Verifies inserting before the active row reports the shifted active index.</summary>
+    [Fact]
+    public void InsertItem_WhenActiveIndexShifts_NotifiesActiveIndexObservers()
+    {
+        var control = Create("A", "B", "C");
+        control.SelectedIndex = 2;
+        List<string?> notifications = [];
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        control.InsertItem(0, "Z");
+
+        control.ActiveIndex.ShouldBe(3);
+        notifications.Count(name => name == nameof(UiListView.ActiveIndex)).ShouldBe(1);
+    }
+
+    /// <summary>Verifies shifting selection indexes notifies selected properties without raising a selection event.</summary>
+    [Fact]
+    public void InsertItem_WhenSelectionFollowsInsertionPoint_NotifiesSelectedPropertyObservers()
+    {
+        var control = Create("A", "B", "C");
+        control.SelectedIndex = 2;
+        List<string?> notifications = [];
+        var selectionChanged = 0;
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+        control.SelectionChanged += (_, _) => selectionChanged++;
+
+        control.InsertItem(0, "Z");
+
+        control.SelectedIndex.ShouldBe(3);
+        control.SelectedItem.ShouldBe("C");
+        control.SelectedItems.ShouldBe(new object?[] { "C" });
+        notifications.ShouldContain(nameof(UiListView.ActiveIndex));
+        notifications.ShouldContain(nameof(UiListView.SelectedIndex));
+        notifications.ShouldContain(nameof(UiListView.SelectedItem));
+        notifications.ShouldContain(nameof(UiListView.SelectedItems));
+        selectionChanged.ShouldBe(0);
+    }
+
+    /// <summary>Verifies inserting after the selection does not shift it.</summary>
+    [Fact]
+    public void InsertItem_WhenInsertedAfterSelection_PreservesSelectedIndex()
+    {
+        var control = Create("A", "B");
+        control.SelectedIndex = 0;
+
+        control.InsertItem(2, "C");
+
+        control.SelectedIndex.ShouldBe(0);
+        control.Items[control.SelectedIndex].ShouldBe("A");
+    }
+
+    /// <summary>Verifies inserting into an empty list produces one item.</summary>
+    [Fact]
+    public void InsertItem_WhenListIsEmpty_ProducesOneItem()
+    {
+        var control = Create();
+
+        control.InsertItem(0, "A");
+
+        control.Items.ShouldBe(new object?[] { "A" });
+    }
+
+    /// <summary>Verifies removing the last item produces an empty list.</summary>
+    [Fact]
+    public void RemoveItem_WhenSingleItemRemoved_ProducesEmptyList()
+    {
+        var control = Create("A");
+
+        control.RemoveItem(0);
+
+        control.Items.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies removing the first item shifts remaining items down.</summary>
+    [Fact]
+    public void RemoveItem_WhenFirstItemRemoved_ShiftsRemainingItems()
+    {
+        var control = Create("A", "B", "C");
+
+        control.RemoveItem(0);
+
+        control.Items.ShouldBe(new object?[] { "B", "C" });
+    }
+
+    /// <summary>Verifies removing a middle item preserves surrounding items.</summary>
+    [Fact]
+    public void RemoveItem_WhenMiddleItemRemoved_PreservesSurroundingItems()
+    {
+        var control = Create("A", "B", "C");
+
+        control.RemoveItem(1);
+
+        control.Items.ShouldBe(new object?[] { "A", "C" });
+    }
+
+    /// <summary>Verifies removing a selected item clears the selection.</summary>
+    [Fact]
+    public void RemoveItem_WhenSelectedItemRemoved_ClearsSelection()
+    {
+        var control = Create("A", "B", "C");
+        control.SelectedIndex = 1;
+
+        control.RemoveItem(1);
+
+        control.SelectedIndex.ShouldBe(-1);
+    }
+
+    /// <summary>Verifies removing the active row never leaves a disabled row active.</summary>
+    [Fact]
+    public void RemoveItem_WhenNextActiveRowIsDisabled_FallsBackToNoActiveRow()
+    {
+        List<ControlText> realized = [];
+        var control = new UiListView
+        {
+            ItemTemplate = item =>
+            {
+                var label = new ControlText((string) item!);
+
+                if (Equals(item, "B"))
+                {
+                    label.Enabled = false;
+                }
+
+                realized.Add(label);
+                return label;
+            },
+            Items = ["A", "B"],
+            SelectedIndex = 0
+        };
+
+        control.RemoveItem(0);
+
+        control.ActiveIndex.ShouldBe(-1);
+        realized[1].EffectiveIsEnabled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies removing before the selection shifts the selected index down.</summary>
+    [Fact]
+    public void RemoveItem_WhenRemovedBeforeSelection_ShiftsSelectedIndex()
+    {
+        var control = Create("A", "B", "C");
+        control.SelectedIndex = 2;
+
+        control.RemoveItem(0);
+
+        control.SelectedIndex.ShouldBe(1);
+        control.Items[control.SelectedIndex].ShouldBe("C");
+    }
+
+    /// <summary>Verifies removing one of shifted multiple selections reports the stable removed occurrence.</summary>
+    [Fact]
+    public void RemoveItem_WhenSelectedItemsShift_ReportsStableSelectionDelta()
+    {
+        var control = Create("A", "B", "C");
+        control.SelectionMode = ListSelectionMode.Multiple;
+        _ = control.SetSelected(1, true);
+        _ = control.SetSelected(2, true);
+        ListSelectionChangedEventArgs? changed = null;
+        control.SelectionChanged += (_, eventArgs) => changed = eventArgs;
+
+        control.RemoveItem(1);
+
+        _ = changed.ShouldNotBeNull();
+        changed.RemovedIndexes.ToArray().ShouldBe([1]);
+        changed.AddedIndexes.ToArray().ShouldBeEmpty();
+        control.SelectedItems.ShouldBe(new object?[] { "C" });
+    }
+
+    /// <summary>Verifies removing after the selection preserves it.</summary>
+    [Fact]
+    public void RemoveItem_WhenRemovedAfterSelection_PreservesSelectedIndex()
+    {
+        var control = Create("A", "B", "C");
+        control.SelectedIndex = 0;
+
+        control.RemoveItem(2);
+
+        control.SelectedIndex.ShouldBe(0);
+        control.Items[control.SelectedIndex].ShouldBe("A");
+    }
+
+    /// <summary>Verifies replacing an item swaps the value and realized control.</summary>
+    [Fact]
+    public void ReplaceItem_WhenCalled_SwapsItemValue()
+    {
+        var control = Create("A", "B", "C");
+
+        control.ReplaceItem(1, "X");
+
+        control.Items.ShouldBe(new object?[] { "A", "X", "C" });
+    }
+
+    /// <summary>Verifies replacing a selected item with an equal value preserves the selection.</summary>
+    [Fact]
+    public void ReplaceItem_WhenSelectedItemIsEqual_PreservesSelection()
+    {
+        var control = Create("A", "B", "C");
+        control.SelectedIndex = 1;
+
+        control.ReplaceItem(1, "B");
+
+        control.SelectedIndex.ShouldBe(1);
+        control.Items[control.SelectedIndex].ShouldBe("B");
+    }
+
+    /// <summary>Verifies replacing one selected item with an unequal value narrows selection and keeps the active row valid.</summary>
+    [Fact]
+    public void ReplaceItem_WhenSelectedItemIsUnequal_ClearsOnlyReplacedSelection()
+    {
+        var control = Create("A", "B", "C");
+        control.SelectionMode = ListSelectionMode.Multiple;
+        _ = control.SetSelected(1, true);
+        _ = control.SetSelected(2, true);
+
+        control.ReplaceItem(1, "X");
+
+        control.SelectedItems.ShouldBe(new object?[] { "C" });
+        control.SelectedIndex.ShouldBe(2);
+        control.ActiveIndex.ShouldBe(2);
+        control.Items[control.ActiveIndex].ShouldBe("C");
+    }
+
+    /// <summary>Verifies replacing the active row with a disabled row selects the nearest available fallback.</summary>
+    [Fact]
+    public void ReplaceItem_WhenReplacementIsDisabled_FallsBackToAvailableActiveIndex()
+    {
+        List<ControlText> realized = [];
+        var control = new UiListView
+        {
+            ItemTemplate = item =>
+            {
+                var text = new ControlText((string) item!);
+
+                if (Equals(item, "Disabled"))
+                {
+                    text.Enabled = false;
+                }
+
+                realized.Add(text);
+                return text;
+            },
+            Items = ["A", "B"],
+            SelectedIndex = 1
+        };
+
+        control.ReplaceItem(1, "Disabled");
+
+        control.ActiveIndex.ShouldBe(0);
+        control.Items[control.ActiveIndex].ShouldBe("A");
+        realized[^1].EffectiveIsEnabled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies multiple sequential inserts produce the correct final state.</summary>
+    [Fact]
+    public void InsertItem_WhenMultipleSequentialInserts_ProducesCorrectState()
+    {
+        var control = Create();
+
+        control.InsertItem(0, "C");
+        control.InsertItem(0, "A");
+        control.InsertItem(1, "B");
+
+        control.Items.ShouldBe(new object?[] { "A", "B", "C" });
+    }
+
+    /// <summary>Verifies interleaved insert and remove produces correct state.</summary>
+    [Fact]
+    public void InsertAndRemove_WhenInterleaved_ProducesCorrectState()
+    {
+        var control = Create("A", "B", "C");
+
+        control.InsertItem(1, "X");
+        control.RemoveItem(3);
+        control.InsertItem(3, "D");
+
+        control.Items.ShouldBe(new object?[] { "A", "X", "B", "D" });
+    }
+
+    /// <summary>Verifies removing the last item when it is active clamps the active index.</summary>
+    [Fact]
+    public void RemoveItem_WhenLastItemIsActive_ClampsActiveIndex()
+    {
+        var control = Create("A", "B");
+        control.SelectedIndex = 1;
+
+        control.RemoveItem(1);
+
+        control.ActiveIndex.ShouldBeLessThan(control.Items.Count);
+    }
+
+    /// <summary>Verifies multiple selections shift correctly on insert in Multiple mode.</summary>
+    [Fact]
+    public void InsertItem_WhenMultipleSelectionMode_ShiftsAllSelectedIndices()
+    {
+        var control = Create("A", "B", "C", "D");
+        control.SelectionMode = ListSelectionMode.Multiple;
+        _ = control.SetSelected(1, true);
+        _ = control.SetSelected(3, true);
+
+        control.InsertItem(0, "Z");
+
+        control.SelectedItems.ShouldBe(new object?[] { "B", "D" });
+    }
+
+    private const int _corpusSeed = 0x4C15757A;
+
+    /// <summary>Verifies 40 independently seeded randomized cases of mixed operations never
+    /// desynchronize a virtualized ListView from its eager twin.</summary>
+    [Fact]
+    public void Mutate_WhenOperationsAreRandomized_MatchesEagerRealization()
+    {
+        var corpus = new Random(_corpusSeed);
+
+        for (var caseIndex = 0; caseIndex < 40; caseIndex++)
+        {
+            RunCase(caseIndex, corpus.Next());
+        }
+    }
+
+    private static void RunCase(int caseIndex, int caseSeed)
+    {
+        var random = new Random(caseSeed);
+        var itemCount = random.Next(10, 120);
+        var items = Enumerable.Range(0, itemCount).Select(value => (object?) $"Item {value:D4}").ToArray();
+
+        // Stretched to the full given size on both axes so Bounds never depends on content width -
+        // eager reports the widest realized row's natural width while virtualized reports only its
+        // currently realized subset's width (see the Extent.Width note below), an accepted
+        // difference that is otherwise indistinguishable from a real desynchronization once it
+        // changes which cell a render comparison is even looking at.
+        var eager = new UiListView
+        {
+            SelectionMode = ListSelectionMode.Multiple,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Items = items
+        };
+        var virtualized = new UiListView
+        {
+            SelectionMode = ListSelectionMode.Multiple,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            RowHeight = 1,
+            Items = items
+        };
+
+        var size = new Size(random.Next(6, 20), random.Next(2, 12));
+        var engine = new LayoutEngine();
+        engine.Layout(eager, size);
+        engine.Layout(virtualized, size);
+        AssertEquivalent(engine, eager, virtualized, size, caseIndex, caseSeed, step: -1);
+
+        for (var step = 0; step < 120; step++)
+        {
+            switch (random.Next(7))
+            {
+                case 0:
+                    {
+                        var delta = random.Next(-10, 11);
+                        _ = eager.ScrollBy(0, delta);
+                        _ = virtualized.ScrollBy(0, delta);
+                        break;
+                    }
+                case 1 when eager.Items.Count > 0:
+                    {
+                        var index = random.Next(eager.Items.Count);
+                        var selected = random.Next(2) == 0;
+                        _ = eager.SetSelected(index, selected);
+                        _ = virtualized.SetSelected(index, selected);
+                        break;
+                    }
+                case 2:
+                    {
+                        var code = RandomNavigationKey(random);
+                        _ = eager.MoveCurrent(code);
+                        _ = virtualized.MoveCurrent(code);
+                        break;
+                    }
+                case 3:
+                    {
+                        size = new Size(random.Next(6, 20), random.Next(2, 12));
+                        engine.Layout(eager, size);
+                        engine.Layout(virtualized, size);
+                        break;
+                    }
+                case 4:
+                    {
+                        var index = random.Next(eager.Items.Count + 1);
+                        var value = (object?) $"New {step:D3}";
+                        eager.InsertItem(index, value);
+                        virtualized.InsertItem(index, value);
+                        break;
+                    }
+                case 5 when eager.Items.Count > 0:
+                    {
+                        var index = random.Next(eager.Items.Count);
+                        eager.RemoveItem(index);
+                        virtualized.RemoveItem(index);
+                        break;
+                    }
+                case 6 when eager.Items.Count > 0:
+                    {
+                        var index = random.Next(eager.Items.Count);
+                        var value = (object?) $"Replaced {step:D3}";
+                        eager.ReplaceItem(index, value);
+                        virtualized.ReplaceItem(index, value);
+                        break;
+                    }
+                default:
+                    break;
+            }
+
+            AssertEquivalent(engine, eager, virtualized, size, caseIndex, caseSeed, step);
+        }
+    }
+
+    private static Code RandomNavigationKey(Random random) => random.Next(6) switch
+    {
+        0 => Code.Up,
+        1 => Code.Down,
+        2 => Code.Home,
+        3 => Code.End,
+        4 => Code.PageUp,
+        _ => Code.PageDown
+    };
+
+    private static void AssertEquivalent(
+        LayoutEngine engine,
+        UiListView eager,
+        UiListView virtualized,
+        Size size,
+        int caseIndex,
+        int caseSeed,
+        int step)
+    {
+        var context = $"corpus {_corpusSeed:X}, case {caseIndex} (seed {caseSeed:X}), step {step}";
+
+        // A structural mutation (insert/remove/replace) never implicitly re-runs layout for
+        // either mode - eager's own newly built row is left unmeasured and unarranged exactly the
+        // same way a virtualized row would be without Rewindow's direct-arrange bridge. Settling
+        // layout first, before every assertion below, matches how a real render loop always
+        // measures and arranges before every frame; it is not a parity target of realization mode
+        // itself, and asserting state before this could observe a transient pre-settle snapshot
+        // that the very next layout pass would still change.
+        engine.Layout(eager, size);
+        engine.Layout(virtualized, size);
+
+        virtualized.Items.ShouldBe(eager.Items, context);
+        virtualized.SelectedIndex.ShouldBe(eager.SelectedIndex, context);
+        virtualized.ActiveIndex.ShouldBe(eager.ActiveIndex, context);
+        virtualized.SelectedItems.ShouldBe(eager.SelectedItems, context);
+
+        // Extent.Width is not a parity target: eager reports the widest realized row's natural
+        // content width, while virtualized reports the incoming constraint width directly so
+        // width never depends on which rows happen to be realized. Neither value
+        // matters functionally, since ListView never enables horizontal scrolling by default.
+        virtualized.Extent.Height.ShouldBe(eager.Extent.Height, context);
+        virtualized.VerticalOffset.ShouldBe(eager.VerticalOffset, context);
+
+        using var eagerFrame = new Frame(new Size(eager.Bounds.Width, eager.Bounds.Height));
+        using var virtualizedFrame = new Frame(new Size(virtualized.Bounds.Width, virtualized.Bounds.Height));
+        eager.Render(eagerFrame.Canvas);
+        virtualized.Render(virtualizedFrame.Canvas);
+
+        for (var y = 0; y < eager.Bounds.Height; y++)
+        {
+            for (var x = 0; x < eager.Bounds.Width; x++)
+            {
+                var point = new Point(x, y);
+                FrameOracle.Get(virtualizedFrame, point).ShouldBe(FrameOracle.Get(eagerFrame, point), $"{context}, cell ({x},{y})");
+            }
+        }
+    }
 }

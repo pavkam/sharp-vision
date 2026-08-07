@@ -188,7 +188,7 @@ public sealed class ComponentSurfaceCoverageTests
             ComponentBehavior.PointerActivation |
             ComponentBehavior.KeyboardActivation |
             ComponentBehavior.Composition) },
-        { typeof(TabControl), Requirement<TabBehaviorSurfaceTests>(
+        { typeof(TabControl), Requirement<TabControlSurfaceTests>(
             _interactive |
             ComponentBehavior.Directional |
             ComponentBehavior.PressReleaseExcluded |
@@ -199,7 +199,7 @@ public sealed class ComponentSurfaceCoverageTests
             ComponentBehavior.UnavailableCleanup |
             ComponentBehavior.Composition) },
         { typeof(TabItem),
-            Requirement<TabBehaviorSurfaceTests>(_passive | ComponentBehavior.Hover | ComponentBehavior.Composition) },
+            Requirement<TabControlSurfaceTests>(_passive | ComponentBehavior.Hover | ComponentBehavior.Composition) },
         { typeof(NavigationView), Requirement<NavigationViewSurfaceTests>(
             _interactive |
             ComponentBehavior.Directional |

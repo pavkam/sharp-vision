@@ -984,4 +984,511 @@ public sealed class TreeViewTests
 
         _ = Should.Throw<ArgumentException>(() => item.Header = header);
     }
+
+    /// <summary>
+    /// Verifies a tree defaults to the same bracket mark a standalone CheckBox uses, so the two
+    /// controls no longer disagree about what an unconfigured check mark looks like.
+    /// </summary>
+    [Fact]
+    public void ActualCheckMark_WhenUnassigned_IsTheBracketFamily()
+    {
+        var tree = new TreeView();
+        var item = new TreeViewItem { Header = "a", Checkable = true };
+        tree.Items.Add(item);
+
+        tree.CheckMark.ShouldBeNull();
+        item.CheckMark.ShouldBeNull();
+        tree.ActualCheckMark.ShouldBe(CheckMark.Brackets);
+        item.ActualCheckMark.ShouldBe(CheckMark.Brackets);
+        item.ActualCheckMark.Width.ShouldBe(3);
+        default(CheckMark).ShouldBe(CheckMark.Brackets);
+    }
+
+    /// <summary>Verifies precedence runs local item, then owning tree, then library default.</summary>
+    [Fact]
+    public void ActualCheckMark_WhenTreeAndItemBothAssign_PrefersTheItem()
+    {
+        var tree = new TreeView { CheckMark = CheckMark.Tick };
+        var inherited = new TreeViewItem { Header = "a", Checkable = true };
+        var overridden = new TreeViewItem { Header = "b", Checkable = true, CheckMark = CheckMark.Brackets };
+        tree.Items.Add(inherited);
+        tree.Items.Add(overridden);
+
+        inherited.ActualCheckMark.ShouldBe(CheckMark.Tick);
+        overridden.ActualCheckMark.ShouldBe(CheckMark.Brackets);
+
+        overridden.CheckMark = null;
+
+        overridden.ActualCheckMark.ShouldBe(CheckMark.Tick);
+    }
+
+    /// <summary>Verifies a detached item still resolves the library default.</summary>
+    [Fact]
+    public void ActualCheckMark_WhenItemIsDetached_ResolvesTheLibraryDefault()
+    {
+        var item = new TreeViewItem { Header = "a", Checkable = true };
+
+        item.ActualCheckMark.ShouldBe(CheckMark.Brackets);
+    }
+
+    /// <summary>Verifies a width change invalidates measure while a glyph change does not.</summary>
+    [Fact]
+    public void CheckMark_WhenWidthChanges_InvalidatesMeasure()
+    {
+        var tree = new TreeView();
+        var item = new TreeViewItem { Header = "a", Checkable = true };
+        tree.Items.Add(item);
+        List<string?> changed = [];
+        item.PropertyChanged += (_, eventArgs) => changed.Add(eventArgs.PropertyName);
+
+        item.CheckMark = CheckMark.Brackets;
+
+        changed.ShouldContain(nameof(TreeViewItem.CheckMark));
+        item.Pending.ShouldNotBe(Invalidation.None);
+        item.ActualCheckMark.Width.ShouldBe(3);
+    }
+
+    /// <summary>Verifies assigning the same mark publishes nothing.</summary>
+    [Fact]
+    public void CheckMark_WhenUnchanged_RaisesNothing()
+    {
+        var item = new TreeViewItem { Header = "a", Checkable = true, CheckMark = CheckMark.Tick };
+        List<string?> changed = [];
+        item.PropertyChanged += (_, eventArgs) => changed.Add(eventArgs.PropertyName);
+
+        item.CheckMark = CheckMark.Tick;
+
+        changed.ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Verifies the glyph projection publishes a notification, which the previous glyph-only
+    /// surface never did because it bypassed the standard mutation path.
+    /// </summary>
+    [Fact]
+    public void CheckGlyphs_WhenAssigned_RaisesPropertyChangedAndKeepsTheMarkLayout()
+    {
+        var item = new TreeViewItem { Header = "a", Checkable = true, CheckMark = CheckMark.Brackets };
+        List<string?> changed = [];
+        item.PropertyChanged += (_, eventArgs) => changed.Add(eventArgs.PropertyName);
+        var glyphs = new CheckBoxGlyphs(new Rune('.'), new Rune('x'), new Rune('-'));
+
+        item.CheckGlyphs = glyphs;
+
+        changed.ShouldContain(nameof(TreeViewItem.CheckGlyphs));
+        item.CheckGlyphs.ShouldBe(glyphs);
+
+        // The projection replaces glyphs only; the three-cell bracket layout survives.
+        item.ActualCheckMark.MarkStyle.ShouldBe(CheckBoxMarkStyle.Brackets);
+        item.ActualCheckMark.Width.ShouldBe(3);
+    }
+
+    /// <summary>Verifies the glyph projection reports the resolved glyphs rather than a local copy.</summary>
+    [Fact]
+    public void CheckGlyphs_WhenTreeSuppliesTheMark_ReportsTheResolvedGlyphs()
+    {
+        var tree = new TreeView { CheckMark = CheckMark.Tick };
+        var item = new TreeViewItem { Header = "a", Checkable = true };
+        tree.Items.Add(item);
+
+        item.CheckGlyphs.ShouldBe(CheckMark.Tick.Glyphs);
+    }
+
+    /// <summary>Verifies an invalid glyph is rejected before any state changes.</summary>
+    [Fact]
+    public void CheckGlyphs_WhenGlyphIsNotOneCell_Throws()
+    {
+        var item = new TreeViewItem { Header = "a", Checkable = true };
+
+        _ = Should.Throw<ArgumentException>(
+            () => item.CheckGlyphs = new CheckBoxGlyphs(new Rune('\u4f60'), new Rune('x'), new Rune('-')));
+        item.ActualCheckMark.ShouldBe(CheckMark.Brackets);
+    }
+
+    /// <summary>Verifies an undefined mark family is rejected by the shared value type.</summary>
+    [Fact]
+    public void CheckMark_WhenMarkStyleIsUndefined_Throws() =>
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => new CheckMark((CheckBoxMarkStyle) 42, CheckBoxGlyphs.Default));
+
+    /// <summary>
+    /// Verifies the measured width matches what the row actually draws for every mark family and
+    /// for a non-checkable row, which previously disagreed by one cell.
+    /// </summary>
+    /// <param name="checkable">Whether the row draws a mark.</param>
+    /// <param name="reserved">The expected gap plus mark reservation in cells.</param>
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 4)]
+    public void MeasureOverride_WhenRowIsMeasured_MatchesTheRenderedLayout(bool checkable, int reserved)
+    {
+        var tree = new TreeView();
+        var item = new TreeViewItem { Header = "abc", Checkable = checkable };
+        tree.Items.Add(item);
+
+        item.Measure(new Constraint(80, 1));
+
+        // indent(0) + disclosure(1) + [gap(1) + mark] + leading space(1) + header(3)
+        item.DesiredSize.Width.ShouldBe(1 + reserved + 1 + 3);
+    }
+
+    /// <summary>Verifies a pointer press lands on the disclosure glyph or the check mark at
+    /// exactly the columns OnRenderContent draws them at, matching the hit-zone arithmetic in
+    /// OnEvent cell-for-cell against the render arithmetic rather than merely against the total
+    /// measured width (see MeasureOverride_WhenRowIsMeasured_MatchesTheRenderedLayout above).
+    /// </summary>
+    [Fact]
+    public void OnEvent_WhenPressedAtRenderedGlyphColumns_TogglesExpansionAndCheckState()
+    {
+        var tree = new TreeView { Bounds = new Rect(0, 0, 20, 3) };
+        var item = new TreeViewItem { Header = "abc", Checkable = true };
+        item.Children.Add(new TreeViewItem { Header = "child" });
+        tree.Items.Add(item);
+        new LayoutEngine().Layout(tree, new Size(20, 3));
+
+        // Column layout: [disclosure][gap][check mark (3 cells)][leading space]header
+        var glyphX = item.ContentBounds.X;
+        var checkX = glyphX + 1 + 1;
+
+        item.Expanded.ShouldBeTrue();
+        _ = Press(item, glyphX);
+        item.Expanded.ShouldBeFalse();
+
+        _ = Press(item, checkX + 2);
+        item.IsChecked.ShouldBe(true);
+
+        return;
+
+        static RouteResult Press(TreeViewItem target, int x) =>
+            Router.Route(
+                target,
+                Events.Pointer,
+                new PointerEventArgs(new Pointer(
+                    new Point(x, target.Bounds.Y),
+                    pixels: null,
+                    Buttons.Primary,
+                    PointerAction.Press,
+                    wheelX: 0,
+                    wheelY: 0,
+                    Modifiers.None,
+                    isMotion: false,
+                    isCellPositionInferred: false)));
+    }
+
+    /// <summary>Verifies a one-cell family reserves correspondingly less than the bracket default.</summary>
+    [Fact]
+    public void MeasureOverride_WhenMarkIsOneCell_ReservesTwoFewerCells()
+    {
+        var tree = new TreeView { CheckMark = CheckMark.Tick };
+        var item = new TreeViewItem { Header = "abc", Checkable = true };
+        tree.Items.Add(item);
+
+        item.Measure(new Constraint(80, 1));
+
+        // indent(0) + disclosure(1) + gap(1) + mark(1) + leading space(1) + header(3)
+        item.DesiredSize.Width.ShouldBe(1 + 1 + 1 + 1 + 3);
+    }
+
+    /// <summary>Verifies adding one item to a multiple selection reports only that addition.</summary>
+    [Fact]
+    public void SetSelected_WhenAddingToMultipleSelection_ReportsOnlyTheAddition()
+    {
+        var tree = Build(out var first, out var second, out _);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        _ = tree.SetSelected(first, true);
+        TreeViewSelectionChangedEventArgs? observed = null;
+        tree.SelectionChanged += (_, eventArgs) => observed = eventArgs;
+
+        var changed = tree.SetSelected(second, true);
+
+        changed.ShouldBeTrue();
+        tree.SelectedItems.ShouldBe([first, second]);
+        _ = observed.ShouldNotBeNull();
+        observed.AddedItems.ShouldBe([second]);
+        observed.RemovedItems.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies removing one item reports only that removal and keeps the rest selected.</summary>
+    [Fact]
+    public void SetSelected_WhenRemovingFromMultipleSelection_ReportsOnlyTheRemoval()
+    {
+        var tree = Build(out var first, out var second, out _);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        _ = tree.SetSelected(first, true);
+        _ = tree.SetSelected(second, true);
+        TreeViewSelectionChangedEventArgs? observed = null;
+        tree.SelectionChanged += (_, eventArgs) => observed = eventArgs;
+
+        var changed = tree.SetSelected(first, false);
+
+        changed.ShouldBeTrue();
+        tree.SelectedItems.ShouldBe([second]);
+        _ = observed.ShouldNotBeNull();
+        observed.AddedItems.ShouldBeEmpty();
+        observed.RemovedItems.ShouldBe([first]);
+    }
+
+    /// <summary>Verifies a redundant request commits nothing and raises no event.</summary>
+    [Fact]
+    public void SetSelected_WhenAlreadyInRequestedState_ReportsNoChange()
+    {
+        var tree = Build(out var first, out _, out _);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        _ = tree.SetSelected(first, true);
+        var raised = 0;
+        tree.SelectionChanged += (_, _) => raised++;
+
+        var changed = tree.SetSelected(first, true);
+
+        changed.ShouldBeFalse();
+        raised.ShouldBe(0);
+    }
+
+    /// <summary>Verifies single mode replaces the selection, matching what input does.</summary>
+    [Fact]
+    public void SetSelected_WhenModeIsSingle_ReplacesSelectionAndReportsBothSides()
+    {
+        var tree = Build(out var first, out var second, out _);
+        _ = tree.SetSelected(first, true);
+        TreeViewSelectionChangedEventArgs? observed = null;
+        tree.SelectionChanged += (_, eventArgs) => observed = eventArgs;
+
+        _ = tree.SetSelected(second, true);
+
+        tree.SelectedItems.ShouldBe([second]);
+        _ = observed.ShouldNotBeNull();
+        observed.AddedItems.ShouldBe([second]);
+        observed.RemovedItems.ShouldBe([first]);
+        observed.PreviousItem.ShouldBeSameAs(first);
+        observed.CurrentItem.ShouldBeSameAs(second);
+    }
+
+    /// <summary>Verifies selecting under a mode that forbids it is rejected, not silently ignored.</summary>
+    [Fact]
+    public void SetSelected_WhenModeIsNone_RejectsSelection()
+    {
+        var tree = Build(out var first, out _, out _);
+        tree.SelectionMode = TreeSelectionMode.None;
+
+        _ = Should.Throw<InvalidOperationException>(() => tree.SetSelected(first, true));
+
+        // Deselection stays permitted, so cleanup never has to inspect the mode first.
+        tree.SetSelected(first, false).ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a disabled item cannot be selected and reports no change.</summary>
+    [Fact]
+    public void SetSelected_WhenItemIsDisabled_ReportsNoChange()
+    {
+        var tree = Build(out var first, out _, out _);
+        first.Enabled = false;
+
+        tree.SetSelected(first, true).ShouldBeFalse();
+        tree.SelectedItems.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies an existing selection survives a rebuild while an ancestor is disabled -
+    /// EffectiveIsEnabled walked the whole ancestor chain, so a disabled ancestor wiped every
+    /// realized item's selection on the very next rebuild even though nothing about the item
+    /// itself changed.</summary>
+    [Fact]
+    public void CommitSelection_WhenAncestorIsDisabledOnRebuild_RetainsExistingSelection()
+    {
+        var tree = Build(out var first, out _, out _);
+        var host = new Stack();
+        host.Children.Add(tree);
+        _ = tree.SetSelected(first, true);
+
+        host.Enabled = false;
+        tree.Items.Add(new TreeViewItem { Header = "third" });
+
+        tree.SelectedItems.ShouldBe([first]);
+    }
+
+    /// <summary>Verifies collapsing an unrelated branch never erases selection, matching the
+    /// control's own "collapsing a branch does not erase state" comment - even while an ancestor
+    /// is disabled, which previously wiped every realized item's selection on this exact
+    /// trigger.</summary>
+    [Fact]
+    public void CommitSelection_WhenCollapsingUnrelatedBranchUnderDisabledAncestor_RetainsSelection()
+    {
+        var tree = Build(out var first, out var second, out _);
+        var host = new Stack();
+        host.Children.Add(tree);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        _ = tree.SetSelected(second, true);
+
+        host.Enabled = false;
+        first.Expanded = false;
+
+        tree.SelectedItems.ShouldBe([second]);
+    }
+
+    /// <summary>Verifies a foreign item is rejected before any mutation.</summary>
+    [Fact]
+    public void SetSelected_WhenItemIsNotOwned_Throws()
+    {
+        var tree = Build(out _, out _, out _);
+
+        _ = Should.Throw<ArgumentNullException>(() => tree.SetSelected(null!, true));
+        _ = Should.Throw<ArgumentException>(
+            () => tree.SetSelected(new TreeViewItem { Header = "foreign" }, true));
+    }
+
+    /// <summary>Verifies select-all reports every item it added rather than only the first.</summary>
+    [Fact]
+    public void SelectAll_WhenMultipleSelection_ReportsEveryAddedItem()
+    {
+        var tree = Build(out var first, out var second, out var child);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        TreeViewSelectionChangedEventArgs? observed = null;
+        tree.SelectionChanged += (_, eventArgs) => observed = eventArgs;
+
+        tree.SelectAll();
+
+        _ = observed.ShouldNotBeNull();
+        observed.AddedItems.ShouldBe([first, child, second]);
+        observed.RemovedItems.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies narrowing the mode reports the items it deselected.</summary>
+    [Fact]
+    public void SelectionMode_WhenNarrowed_ReportsRemovedItems()
+    {
+        var tree = Build(out var first, out var second, out var child);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        tree.SelectAll();
+        TreeViewSelectionChangedEventArgs? observed = null;
+        tree.SelectionChanged += (_, eventArgs) => observed = eventArgs;
+
+        tree.SelectionMode = TreeSelectionMode.Single;
+
+        _ = observed.ShouldNotBeNull();
+        observed.AddedItems.ShouldBeEmpty();
+        observed.RemovedItems.ShouldBe([child, second]);
+        tree.SelectedItems.ShouldBe([first]);
+    }
+
+    /// <summary>Verifies structural removal reports the detached item as deselected.</summary>
+    [Fact]
+    public void Remove_WhenSelectedItemIsDetached_ReportsItAsRemoved()
+    {
+        var tree = Build(out var first, out var second, out _);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        _ = tree.SetSelected(first, true);
+        _ = tree.SetSelected(second, true);
+        TreeViewSelectionChangedEventArgs? observed = null;
+        tree.SelectionChanged += (_, eventArgs) => observed = eventArgs;
+
+        _ = tree.Items.Remove(second);
+
+        _ = observed.ShouldNotBeNull();
+        observed.RemovedItems.ShouldBe([second]);
+        tree.SelectedItems.ShouldBe([first]);
+    }
+
+
+    /// <summary>
+    /// Verifies a cancelled proposal precedes no commit and leaves the previous selection intact,
+    /// matching the ListView transaction contract.
+    /// </summary>
+    [Fact]
+    public void SetSelected_WhenChangingIsCancelled_PreservesState()
+    {
+        var tree = Build(out var first, out var second, out _);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        List<string> order = [];
+        tree.SelectionChanging += (_, eventArgs) =>
+        {
+            order.Add($"changing:{Names(eventArgs.AddedItems)}:{Names(eventArgs.RemovedItems)}");
+            eventArgs.Cancel = eventArgs.AddedItems.Any(item => ReferenceEquals(item, second));
+        };
+        tree.SelectionChanged += (_, eventArgs) =>
+            order.Add($"changed:{Names(eventArgs.AddedItems)}:{Names(eventArgs.RemovedItems)}");
+
+        var accepted = tree.SetSelected(first, true);
+        var refused = tree.SetSelected(second, true);
+
+        accepted.ShouldBeTrue();
+        refused.ShouldBeFalse();
+        tree.SelectedItems.ShouldBe([first]);
+        order.ShouldBe([
+            "changing:first:",
+            "changed:first:",
+            "changing:second:"
+        ]);
+    }
+
+    /// <summary>
+    /// Verifies a handler that changes the selection itself abandons the proposal it was shown,
+    /// so a stale delta is never committed on top of the handler's own decision.
+    /// </summary>
+    [Fact]
+    public void SetSelected_WhenHandlerReentersAndChangesSelection_AbandonsTheProposal()
+    {
+        var tree = Build(out var first, out var second, out _);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        var reentered = false;
+        tree.SelectionChanging += (_, _) =>
+        {
+            if (reentered)
+            {
+                return;
+            }
+
+            reentered = true;
+            _ = tree.SetSelected(first, true);
+        };
+
+        var accepted = tree.SetSelected(second, true);
+
+        accepted.ShouldBeFalse();
+        tree.SelectedItems.ShouldBe([first]);
+    }
+
+    /// <summary>Verifies normalization the control performs on its own behalf is not cancellable.</summary>
+    [Fact]
+    public void SelectionMode_WhenNarrowed_IgnoresCancellation()
+    {
+        var tree = Build(out var first, out _, out _);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        tree.SelectAll();
+        tree.SelectionChanging += (_, eventArgs) => eventArgs.Cancel = true;
+
+        tree.SelectionMode = TreeSelectionMode.Single;
+
+        // Honouring the cancel would leave several items selected under Single mode.
+        tree.SelectedItems.ShouldBe([first]);
+    }
+
+    /// <summary>Verifies structural repair is not cancellable either.</summary>
+    [Fact]
+    public void Remove_WhenSelectedItemIsDetached_IgnoresCancellation()
+    {
+        var tree = Build(out var first, out var second, out _);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        _ = tree.SetSelected(first, true);
+        _ = tree.SetSelected(second, true);
+        tree.SelectionChanging += (_, eventArgs) => eventArgs.Cancel = true;
+
+        _ = tree.Items.Remove(second);
+
+        tree.SelectedItems.ShouldBe([first]);
+    }
+
+    private static string Names(IReadOnlyList<TreeViewItem> items) =>
+        string.Join(',', items.Select(static item => item.Header));
+
+    private static TreeView Build(out TreeViewItem first, out TreeViewItem second, out TreeViewItem child)
+    {
+        var tree = new TreeView();
+        first = new TreeViewItem { Header = "first", Expanded = true };
+        child = new TreeViewItem { Header = "child" };
+        second = new TreeViewItem { Header = "second" };
+        first.Children.Add(child);
+        tree.Items.Add(first);
+        tree.Items.Add(second);
+
+        return tree;
+    }
 }
