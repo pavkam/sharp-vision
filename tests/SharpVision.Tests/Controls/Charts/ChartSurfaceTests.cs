@@ -889,6 +889,60 @@ public sealed class ChartSurfaceTests
         surface.Cell(new Point(2, 1)).Text.ShouldBe(" ");
     }
 
+    /// <summary>Verifies sparkline columns rasterize through the canvas fractional bar - the
+    /// renderer used to hardcode a private copy of the lower-block table the canvas owns.</summary>
+    [Fact]
+    public async Task Render_WhenSparklineValuesLandMidCell_DrawsExactEighthBlocksAsync()
+    {
+        // Arrange
+        var chart = new Sparkline
+        {
+            Series = [new ChartSeries("Load", [
+                new ChartDataPoint("A", 1),
+                new ChartDataPoint("B", 4),
+                new ChartDataPoint("C", 8)])],
+            Scale = new ChartScale(0, 8, includeZero: false)
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(3, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("▁▄█");
+    }
+
+    /// <summary>Verifies the glyph fill mode rounds each sparkline column to whole cells of the
+    /// authored bar glyph instead of mixing authored cells with built-in eighth caps.</summary>
+    [Fact]
+    public async Task Render_WhenSparklineFillModeIsGlyph_RoundsToWholeAuthoredCellsAsync()
+    {
+        // Arrange
+        var chart = new Sparkline
+        {
+            Series = [new ChartSeries("Load", [
+                new ChartDataPoint("A", 1),
+                new ChartDataPoint("B", 8)])],
+            Scale = new ChartScale(0, 8, includeZero: false),
+            Style = ChartStyle.Default with
+            {
+                FillMode = ChartFillMode.Glyph,
+                Glyphs = ChartGlyphs.Default with { Bar = new Rune('▓') }
+            }
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(2, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert: one eighth rounds to zero cells; a full value fills the cell with the glyph.
+        surface.ShouldRender(" ▓");
+    }
+
     private static IReadOnlyList<ChartSeries> CreateNamedSeries() => [
         new ChartSeries("A", [new ChartDataPoint("1", 1)]),
         new ChartSeries("B", [new ChartDataPoint("1", 2)])

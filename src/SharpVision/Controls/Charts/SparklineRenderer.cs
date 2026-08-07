@@ -3,16 +3,14 @@
 
 namespace SharpVision.Controls.Charts;
 
-/// <summary>Renders one compact series with eight-level lower block glyphs.</summary>
+/// <summary>Renders one compact series with eighth-cell column resolution.</summary>
 internal static class SparklineRenderer
 {
-    private static readonly Rune[] _levels =
-    [
-        new Rune(' '), new Rune('▁'), new Rune('▂'), new Rune('▃'), new Rune('▄'),
-        new Rune('▅'), new Rune('▆'), new Rune('▇'), new Rune('█')
-    ];
-
     /// <summary>Renders the most recent points that fit within the chart bounds.</summary>
+    /// <remarks>The eighth-block rasterization lives in the canvas <c>DrawBar</c> primitive; this
+    /// renderer used to hardcode a private copy of the lower-block table the canvas now owns. The
+    /// glyph fill mode instead rounds each column to whole cells of the style's own bar glyph,
+    /// exactly as authored.</remarks>
     internal static void Render(IChartControl chart, TerminalCanvas canvas, TerminalStyle inheritedStyle)
     {
         var context = ChartRenderer.CreateContext(chart, canvas, inheritedStyle);
@@ -23,6 +21,7 @@ internal static class SparklineRenderer
             return;
         }
 
+        var fractional = chart.ActualStyle.FillMode == ChartFillMode.Fractional;
         var series = chart.Series[0];
         var visible = Math.Min(series.Points.Count, plot.Width);
         var first = series.Points.Count - visible;
@@ -35,25 +34,22 @@ internal static class SparklineRenderer
                 0,
                 1);
             var eighths = (int) Math.Round(ratio * plot.Height * 8, MidpointRounding.AwayFromZero);
-            var fullCells = eighths / 8;
-            var remainder = eighths % 8;
             var x = plot.X + index;
             var style = ChartRenderer.ResolveSeriesStyle(context, series, point, seriesIndex: 0);
 
-            for (var row = 0; row < fullCells && row < plot.Height; row++)
+            if (fractional)
+            {
+                canvas.DrawBar(new Point(x, plot.Bottom - 1), BarDirection.Up, eighths, style);
+                continue;
+            }
+
+            var cells = (int) Math.Round(eighths / 8.0, MidpointRounding.AwayFromZero);
+
+            for (var row = 0; row < cells && row < plot.Height; row++)
             {
                 canvas.DrawRune(
                     context.Chart.ActualStyle.Glyphs.Bar,
                     new Point(x, plot.Bottom - 1 - row),
-                    style,
-                    BackgroundMode.Transparent);
-            }
-
-            if (remainder > 0 && fullCells < plot.Height)
-            {
-                canvas.DrawRune(
-                    _levels[remainder],
-                    new Point(x, plot.Bottom - 1 - fullCells),
                     style,
                     BackgroundMode.Transparent);
             }
