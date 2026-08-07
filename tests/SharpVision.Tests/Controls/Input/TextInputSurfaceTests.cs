@@ -597,4 +597,46 @@ public sealed class TextInputSurfaceTests
                              """);
         surface.ShouldHaveCursor(new Point(3, 2), visible: true);
     }
+
+    /// <summary>Verifies an auto-sized editor (no explicit Width) reserves a cell for the
+    /// end-of-text caret so arrange-time caret-reveal never scrolls the leading character out of
+    /// view — without the reservation, a viewport that exactly matches the content width scrolls
+    /// column 0 away the moment the caret sits at the end of the text.</summary>
+    [Fact]
+    public async Task Render_WhenAutoSizedEditorHasShortText_KeepsLeadingCharacterInViewAsync()
+    {
+        // Arrange
+        var input = new TextInput { Text = "1.0" };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(6, 1),
+            TestThemes.BorderlessInput,
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        input.HorizontalOffset.ShouldBe(0);
+        surface.ShouldRender("1.0");
+    }
+
+    /// <summary>Verifies a single-character auto-sized editor renders that character instead of a
+    /// blank cell, the most visible symptom of an unreserved caret cell.</summary>
+    [Fact]
+    public async Task Render_WhenAutoSizedEditorHasOneCharacter_RendersItInsteadOfBlankAsync()
+    {
+        // Arrange
+        var input = new TextInput { Text = "X" };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(4, 1),
+            TestThemes.BorderlessInput,
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        input.HorizontalOffset.ShouldBe(0);
+        surface.ShouldRender("X");
+    }
 }

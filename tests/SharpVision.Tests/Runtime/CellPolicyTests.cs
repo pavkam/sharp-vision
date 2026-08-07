@@ -79,7 +79,10 @@ public sealed class CellPolicyTests
 
             // Assert
             text.DesiredSize.Width.ShouldBe(2);
-            input.DesiredSize.Width.ShouldBe(2);
+
+            // One more than text's width: the editor reserves an extra cell beyond the
+            // ambiguous-wide "·" for the end-of-text caret.
+            input.DesiredSize.Width.ShouldBe(3);
         }, TestContext.Current.CancellationToken);
     }
 

@@ -535,6 +535,40 @@ public sealed class TableSurfaceTests
         table.Editing.ShouldBeTrue();
     }
 
+    /// <summary>Verifies an Auto column holding an auto-sized TextInput renders the cell's leading
+    /// character instead of scrolling it out of view, mirroring the Showcase behavior table's bare
+    /// "1.0" and "Stable" cells where the column's automatic width tracks the editor's own
+    /// unreserved desired width.</summary>
+    [Fact]
+    public async Task Render_WhenAutoColumnHoldsAutoSizedTextInput_RendersLeadingCharacterAsync()
+    {
+        // Arrange
+        var editor = new TextInput { Text = "1.0" };
+        var table = new Table
+        {
+            ShowHeader = false,
+            ShowGridLines = false,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(new TableRow([editor]));
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(8, 1),
+            TestThemes.BorderlessInput,
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        editor.HorizontalOffset.ShouldBe(0);
+        var origin = new Point(editor.Bounds.X, editor.Bounds.Y);
+        surface.Cell(origin).Text.ShouldBe("1");
+        surface.Cell(new Point(origin.X + 1, origin.Y)).Text.ShouldBe(".");
+        surface.Cell(new Point(origin.X + 2, origin.Y)).Text.ShouldBe("0");
+    }
+
     /// <summary>Verifies PageDown/PageUp move the active row and mark the record handled, so it
     /// does not escape to page the enclosing scrollable container out from under the still-focused
     /// table.</summary>

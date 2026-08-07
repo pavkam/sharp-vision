@@ -481,7 +481,10 @@ public sealed class TextInput: ControlBase
         }
 
         MeasureText(out _contentWidth, out _contentHeight);
-        return new Size(Math.Max(1, _contentWidth), Math.Max(1, _contentHeight));
+
+        // Reserve one extra cell beyond the text for the end-of-text caret; without
+        // it, arrange-time caret-reveal scrolls column 0 out of view for auto-sized inputs.
+        return new Size(Math.Max(1, _contentWidth + 1), Math.Max(1, _contentHeight));
     }
 
     /// <inheritdoc/>
