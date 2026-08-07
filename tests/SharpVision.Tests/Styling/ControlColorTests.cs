@@ -3,8 +3,8 @@
 
 namespace SharpVision.Tests.Styling;
 
-/// <summary>Verifies literal and semantic theme-value authoring.</summary>
-public sealed class ThemeValueTests
+/// <summary>Verifies literal and semantic ControlColor authoring.</summary>
+public sealed class ControlColorTests
 {
     /// <summary>Verifies a concrete terminal color remains a literal value.</summary>
     [Fact]
@@ -24,16 +24,6 @@ public sealed class ThemeValueTests
 
         value.Semantic.ShouldBeTrue();
         value.SemanticColor.ShouldBe(SemanticColor.ActiveText);
-    }
-
-    /// <summary>Verifies a known theme attribute remains a semantic reference.</summary>
-    [Fact]
-    public void ControlDecoration_WhenAssignedSemanticDecoration_PreservesSemanticReference()
-    {
-        ControlDecoration value = SemanticDecoration.FocusedText;
-
-        value.Semantic.ShouldBeTrue();
-        value.SemanticDecoration.ShouldBe(SemanticDecoration.FocusedText);
     }
 
     /// <summary>Verifies zero-initialized semantic values remain concrete terminal defaults.</summary>
