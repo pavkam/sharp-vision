@@ -1342,6 +1342,33 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         Parent?.Invalidate(value);
     }
 
+    /// <summary>Marks this control's own dirty phases - and every phase <see cref="Invalidate(Invalidation)"/>
+    /// would also expand them into - without notifying <see cref="Parent"/> or touching
+    /// <see cref="SwallowedArrangeChildren"/>.</summary>
+    /// <remarks>
+    /// For a caller that already knows it is about to <see cref="Measure"/> and/or
+    /// <see cref="Arrange(Rect, bool, bool)"/> this exact control synchronously afterward, and only
+    /// needs to bypass those methods' own unchanged-constraint/slot short-circuit rather than
+    /// schedule a fresh ancestor layout pass. <see cref="Invalidate(Invalidation)"/> would do both:
+    /// it walks up through <paramref name="value"/>'s dependents on <em>every</em> control from here
+    /// to <see cref="Parent"/>'s root, which is the correct behavior for a control whose own state
+    /// changed, but far more than a control that merely needs its own next layout call to actually
+    /// run. Bypassing <see cref="Invalidate(Invalidation)"/> entirely - rather than reusing it and
+    /// suppressing propagation afterward - also means this never registers with a currently
+    /// arranging <see cref="Parent"/>'s <see cref="SwallowedArrangeChildren"/> self-heal list: that
+    /// list exists to recover a propagation this same method already declines to make, so adding to
+    /// it here would just make the self-heal finally block re-propagate on this control's behalf,
+    /// defeating the point.
+    ///
+    /// The caller owns the contract this leaves unenforced: <see cref="Pending"/> is set exactly as
+    /// if <see cref="Invalidate(Invalidation)"/> ran, so the very next <see cref="Measure"/>/
+    /// <see cref="Arrange(Rect, bool, bool)"/> call clears it in the ordinary way - but if the
+    /// caller never makes that call, the bits strand: nothing else clears them, and nothing else
+    /// ever notified an ancestor a fresh layout pass is owed.
+    /// </remarks>
+    /// <param name="value">The earliest dirty phase.</param>
+    internal void InvalidateSelf(Invalidation value) => Pending |= Expand(value);
+
     /// <summary>Requests the earliest UI phase affected by derived control state.</summary>
     /// <param name="impact">The validated earliest affected phase.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>

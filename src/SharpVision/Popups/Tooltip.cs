@@ -390,8 +390,12 @@ public sealed class Tooltip: Popup
         // short-circuit on an unchanged constraint/slot when nothing is already marked dirty, and
         // this tooltip's own subtree has nothing dirty - only its foreign anchor moved - so
         // without this, the calls below would silently no-op and leave placement pinned to
-        // wherever the anchor used to be.
-        Invalidate(Invalidation.Measure);
+        // wherever the anchor used to be. Self-scoped rather than a plain Invalidate: only this
+        // control's own short-circuit needs bypassing, and the two calls immediately below are
+        // that synchronous follow-up InvalidateSelf's own contract requires - a full Invalidate
+        // would additionally walk the dirty phase up through every ancestor to the root, forcing
+        // an unrelated full-tree render pass to fix what is really a two-cell local reposition.
+        InvalidateSelf(Invalidation.Measure);
         Measure(new Constraint(rootBounds.Width, rootBounds.Height));
         Arrange(rootBounds, widthResolved: true, heightResolved: true);
     }
