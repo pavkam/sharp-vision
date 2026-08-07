@@ -103,10 +103,11 @@ these infrastructure namespaces:
 in `SharpVision`. It owns `FigletCatalog`, `FigletFontInfo`, the curated
 manifest, third-party notices, and 19 independent embedded FIGfont resources. It
 references `SharpVision` only through the NuGet dependency `SharpVision` at the
-version being built, derived from `OverallVersion` rather than pinned as a
-literal; it has no project reference to the UI project. The reverse dependency
-is forbidden, so installing `SharpVision` never brings the catalog or its assets
-into an application.
+core's own version being built, derived from `SharpVisionVersion` rather than
+pinned as a literal; it has no project reference to the UI project. The two
+packages publish independently and are not expected to share a version number.
+The reverse dependency is forbidden, so installing `SharpVision` never brings
+the catalog or its assets into an application.
 
 The UI project ships the complete
 [control catalog](../controls/index.md#control-catalog): layout panels, text and

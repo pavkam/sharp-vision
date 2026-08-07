@@ -91,40 +91,51 @@ that discovers zero — or unexpectedly few — tests fails instead of passing
 vacuously.
 
 The public API project participates in the solution-wide build and test gates.
-Its [versioned approval workflow](correctness-model.md#public-api-compatibility)
-requires an intentional package-version change, plus review of all three library
-surfaces, before a compatibility change can go green.
+Its [approval workflow](correctness-model.md#public-api-compatibility) requires
+review of the affected library's own surface before a compatibility change can
+go green; it does not require a version change on its own, and a change to one
+library's surface never requires touching the other two.
 
 `make restore` first packs the current `SharpVision.Terminal` and `SharpVision`
 projects into an ignored local bootstrap feed. It then restores the full
 solution into an isolated repository cache using that feed and nuget.org. This
 lets `SharpVision.FigletFonts` exercise its real `SharpVision` PackageReference
 before the current version is published and prevents a stale global NuGet cache
-from masking package changes. The floor is derived from `OverallVersion` rather
-than written as a literal, because NuGet resolves a floor range to the lowest
-satisfying version across every source: a literal that fell behind would be
-satisfied by an older core on nuget.org, and the bootstrap feed would go unused.
+from masking package changes. The floor is derived from `SharpVisionVersion`
+rather than written as a literal, because NuGet resolves a floor range to the
+lowest satisfying version across every source: a literal that fell behind would
+be satisfied by an older core on nuget.org, and the bootstrap feed would go
+unused.
 
 ## Package publication
 
+`SharpVision.Terminal`, `SharpVision`, and `SharpVision.FigletFonts` each own an
+independent version (`SharpVisionTerminalVersion`, `SharpVisionVersion`, and
+`SharpVisionFigletFontsVersion` in `Directory.Build.props`) and publish on their
+own schedule; none of the three needs to move in lockstep with the others; only
+`SharpVision.FigletFonts`'s dependency on `SharpVision` ties two of their
+numbers together (see below).
+
 The `sharpvision-publish.yml` workflow runs the same build-and-test action and
-then reads `OverallVersion` from all three production projects. Publication
-accepts a three-part semantic version with an optional prerelease suffix and
-fails if the projects disagree.
+then reads each project's own `Version` independently. Publication accepts a
+three-part semantic version with an optional prerelease suffix for each package;
+the three packages are never required to agree.
 
 The workflow independently checks whether `SharpVision.Terminal`, `SharpVision`,
-and `SharpVision.FigletFonts` already exist at that version. It always packs and
-validates exactly three main packages and three symbol packages, then publishes
-each missing package with its symbols in dependency order: Terminal, UI, then
-the optional font catalog. An existing UI package cannot suppress a missing
-Terminal or FigletFonts package. A main package that already exists is not
-rebuilt or republished under the immutable version.
+and `SharpVision.FigletFonts` already exist at their own respective version. It
+always packs and validates exactly three main packages and three symbol
+packages, then publishes each missing package with its symbols in dependency
+order: Terminal, UI, then the optional font catalog. An existing UI package
+cannot suppress a missing Terminal or FigletFonts package. A main package that
+already exists is not rebuilt or republished under the immutable version.
 
-`SharpVision.FigletFonts` emits a minimum dependency on the `SharpVision`
-version being built, and NuGet serializes that open-ended range as that bare
-minimum version in the `.nuspec`. The packed-consumer test asserts the packed
-dependency equals the packed font-package version, so a floor that drifted away
-from the core it ships beside fails there rather than shipping.
+`SharpVision.FigletFonts` emits a minimum dependency on the `SharpVision` core's
+own version (`SharpVisionVersion`), not on its own version - the two packages
+publish independently and are not expected to share a version number. NuGet
+serializes that open-ended range as that bare minimum version in the `.nuspec`.
+The packed-consumer test asserts the packed dependency equals the packed core
+package's own version, so a floor that drifted away from the core it ships
+beside fails there rather than shipping.
 
 That test restores the two packed artifacts from the local feed; nuget.org stays
 in its generated `NuGet.config` because the packed nuspecs depend on

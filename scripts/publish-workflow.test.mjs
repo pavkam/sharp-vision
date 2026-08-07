@@ -4,6 +4,12 @@ import test from "node:test";
 
 const workflowPath = new URL("../.github/workflows/sharpvision-publish.yml", import.meta.url);
 
+const expectedFilesVersionVariable = {
+  "SharpVision.Terminal": "TERMINAL_VERSION",
+  SharpVision: "UI_VERSION",
+  "SharpVision.FigletFonts": "FONTS_VERSION",
+};
+
 test("publishWorkflow_WhenPackagesAreMissing_PublishesEveryDependencyInOrder", async () => {
   const workflow = await readFile(workflowPath, "utf8");
 
@@ -13,8 +19,11 @@ test("publishWorkflow_WhenPackagesAreMissing_PublishesEveryDependencyInOrder", a
       workflow,
       new RegExp(`dotnet pack src/${packageId.replace("SharpVision.", "SharpVision.")}/${packageId}\\.csproj`, "u"),
     );
-    assert.match(workflow, new RegExp(`${packageId}\\.\\$VERSION\\.nupkg`, "u"));
-    assert.match(workflow, new RegExp(`${packageId}\\.\\$VERSION\\.snupkg`, "u"));
+
+    const versionVariable = expectedFilesVersionVariable[packageId];
+
+    assert.match(workflow, new RegExp(`${packageId}\\.\\$${versionVariable}\\.nupkg`, "u"));
+    assert.match(workflow, new RegExp(`${packageId}\\.\\$${versionVariable}\\.snupkg`, "u"));
   }
 
   const terminalPush = workflow.indexOf(
@@ -41,4 +50,31 @@ test("publishWorkflow_WhenOnePackageExists_TracksEveryPackageIndependently", asy
   assert.match(workflow, /terminal_deployed == 'no'/u);
   assert.match(workflow, /ui_deployed == 'no'/u);
   assert.match(workflow, /fonts_deployed == 'no'/u);
+});
+
+test("publishWorkflow_WhenPackagesHaveDifferentVersions_ReadsAndPublishesEachIndependently", async () => {
+  const workflow = await readFile(workflowPath, "utf8");
+
+  // Each package's own Version property, read independently - there is no cross-project
+  // agreement check. Reintroducing one would block publishing SharpVision.Terminal, SharpVision,
+  // and SharpVision.FigletFonts on their own separate schedules, which is the entire point of
+  // each owning an independent version property in Directory.Build.props.
+  assert.match(
+    workflow,
+    /terminal_version="\$\(dotnet msbuild src\/SharpVision\.Terminal\/SharpVision\.Terminal\.csproj -getProperty:Version/u,
+  );
+  assert.match(
+    workflow,
+    /ui_version="\$\(dotnet msbuild src\/SharpVision\/SharpVision\.csproj -getProperty:Version/u,
+  );
+  assert.match(
+    workflow,
+    /fonts_version="\$\(dotnet msbuild src\/SharpVision\.FigletFonts\/SharpVision\.FigletFonts\.csproj -getProperty:Version/u,
+  );
+  assert.doesNotMatch(workflow, /disagree/u);
+  assert.doesNotMatch(workflow, /OverallVersion/u);
+
+  assert.match(workflow, /echo "terminal_version=\$terminal_version" >> "\$GITHUB_OUTPUT"/u);
+  assert.match(workflow, /echo "ui_version=\$ui_version" >> "\$GITHUB_OUTPUT"/u);
+  assert.match(workflow, /echo "fonts_version=\$fonts_version" >> "\$GITHUB_OUTPUT"/u);
 });

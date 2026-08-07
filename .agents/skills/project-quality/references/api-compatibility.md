@@ -30,9 +30,12 @@ review, assembly selection, or breaking-change evidence.
 3. Snapshot the three bundled libraries: `SharpVision.Terminal`, `SharpVision`,
    and `SharpVision.FigletFonts`.
 4. Decide, from the diff, whether the change is the kind that warrants bumping
-   `OverallVersion` in `Directory.Build.props` before or alongside accepting the
-   new baseline - this gate is the maintainer's own signal for that decision,
-   not an automated release gate keyed to the version number.
+   that assembly's own version property (`SharpVisionTerminalVersion`,
+   `SharpVisionVersion`, or `SharpVisionFigletFontsVersion`) in
+   `Directory.Build.props` before or alongside accepting the new baseline - this
+   gate is the maintainer's own signal for that decision, not an automated
+   release gate keyed to a shared version number. A signature change in one
+   library never requires bumping the other two.
 5. Accept a baseline manually after review by overwriting the `.verified.txt`
    file with its paired `.received.txt` file; CI never rewrites verified files.
 

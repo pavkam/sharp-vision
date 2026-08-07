@@ -30,10 +30,11 @@
 
     <!-- Non-empty was the only thing checked here, so a stale but present string passed every
          gate: the notes drifted across four version bumps while every published listing carried
-         them. The publish workflow only cross-checks that the three projects agree on
-         OverallVersion, which stale notes also satisfy. Requiring the version to appear in the
-         text is what actually ties the two together. -->
-    <Error Condition="!$(PackageReleaseNotes.Contains('$(OverallVersion)'))"
-           Text="PackageReleaseNotes for $(MSBuildProjectName) must name the current version '$(OverallVersion)'; it currently reads '$(PackageReleaseNotes)'."/>
+         them. $(Version) already resolves to this specific project's own package version (see
+         Directory.Build.props), so requiring it to appear in the text ties the two together per
+         package - each of the three libraries can move independently without this check
+         requiring the others to agree. -->
+    <Error Condition="!$(PackageReleaseNotes.Contains('$(Version)'))"
+           Text="PackageReleaseNotes for $(MSBuildProjectName) must name the current version '$(Version)'; it currently reads '$(PackageReleaseNotes)'."/>
   </Target>
 </Project>

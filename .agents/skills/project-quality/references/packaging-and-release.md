@@ -14,7 +14,10 @@ release notes, tags, NuGet publication, workflow permissions, or release gates.
 
 ## Code map
 
-- Version and package defaults: `Directory.Build.props`
+- Version and package defaults: `Directory.Build.props` - each library owns an
+  independent version property (`SharpVisionTerminalVersion`,
+  `SharpVisionVersion`, `SharpVisionFigletFontsVersion`); they are not required
+  to agree
 - Library metadata: `src/SharpVision/SharpVision.csproj`,
   `src/SharpVision.Terminal/SharpVision.Terminal.csproj`, and
   `src/SharpVision.FigletFonts/SharpVision.FigletFonts.csproj`
@@ -38,6 +41,11 @@ release notes, tags, NuGet publication, workflow permissions, or release gates.
 - Publish `SharpVision.Terminal`, then `SharpVision`, then
   `SharpVision.FigletFonts`; an existing package must not suppress either
   missing sibling.
+- The three libraries do not need to agree on a version; never reintroduce a
+  check that requires them to. Only `SharpVision.FigletFonts`'s own dependency
+  floor on `SharpVision` (`Directory.Packages.props`) ties two of their numbers
+  together, and it must always reference `SharpVisionVersion` specifically, not
+  a shared/overall version property.
 - `SharpVision.FigletFonts` restores `SharpVision` from the ignored bootstrap
   feed so its production project never needs a project reference.
 - Project references can see repository internals and do not prove package

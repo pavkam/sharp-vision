@@ -5,12 +5,13 @@
   <ItemGroup>
     <!-- Derived, never a literal. SharpVision.FigletFonts consumes the core as a package rather
          than a project reference, and NuGet resolves a floor range to the lowest satisfying
-         version across all sources - so a literal floor that falls behind OverallVersion silently
-         builds, packs, and consumer-tests the font package against whatever older core is on
-         nuget.org, while the freshly packed one in the bootstrap feed goes unused. The publish
-         workflow already hard-fails unless all three OverallVersions agree, so lockstep is not a
-         new constraint this introduces. -->
-    <PackageVersion Include="SharpVision" Version="[$(OverallVersion),)" />
+         version across all sources - so a literal floor that falls behind SharpVisionVersion
+         silently builds, packs, and consumer-tests the font package against whatever older core
+         is on nuget.org, while the freshly packed one in the bootstrap feed goes unused.
+         SharpVision.Terminal and SharpVision.FigletFonts each publish under their own,
+         independent version (see Directory.Build.props); only this one floor - the dependency
+         FigletFonts actually consumes - needs to track SharpVision's own version. -->
+    <PackageVersion Include="SharpVision" Version="[$(SharpVisionVersion),)" />
     <PackageVersion Include="JetBrains.Annotations" Version="2026.2.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
     <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.0.6" />

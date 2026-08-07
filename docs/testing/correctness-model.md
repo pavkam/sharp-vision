@@ -72,9 +72,13 @@ baseline tied to a released version number.
 
 A changed public signature fails this gate. That failure is the maintainer's own
 signal to decide, from the diff, whether the change is significant enough to
-warrant bumping `OverallVersion` in `Directory.Build.props` - the gate does not
+warrant bumping that assembly's own version property
+(`SharpVisionTerminalVersion`, `SharpVisionVersion`, or
+`SharpVisionFigletFontsVersion`) in `Directory.Build.props` - the gate does not
 make that decision automatically, and accepting a new baseline does not by
-itself require a version bump.
+itself require a version bump. Each of the three libraries versions and
+publishes independently, so a signature change in one assembly never requires
+bumping the other two.
 
 Reviewing and accepting a changed baseline requires:
 
@@ -83,7 +87,8 @@ Reviewing and accepting a changed baseline requires:
    visibility change - not an accidental one.
 3. Overwrite the paired `.verified.txt` file with the `.received.txt` content to
    accept it.
-4. If the change warrants one, update `OverallVersion` in the same change.
+4. If the change warrants one, update that assembly's own version property in
+   the same change.
 
 Never accept a received file without reviewing its signature changes: generated
 snapshots are approval artifacts, not disposable test output.

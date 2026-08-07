@@ -57,6 +57,7 @@ public sealed class FigletFontsPackedPackageConsumerTests
 
             var corePackage = MainPackage(packageRoot, "SharpVision");
             var fontPackage = MainPackage(packageRoot, "SharpVision.FigletFonts");
+            var coreVersion = PackageVersion(corePackage, "SharpVision");
             var version = PackageVersion(fontPackage, "SharpVision.FigletFonts");
             var coreResources = ReadManifestResources(corePackage, "SharpVision.dll");
             var fontResources = ReadManifestResources(fontPackage, "SharpVision.FigletFonts.dll");
@@ -70,15 +71,17 @@ public sealed class FigletFontsPackedPackageConsumerTests
             ReadPackageEntries(fontPackage).ShouldContain("THIRD-PARTY-NOTICES.md");
             ReadPackageEntries(fontPackage).ShouldContain("licenses/BSD-3-Clause.txt");
             ReadPackageEntries(fontPackage).ShouldContain("licenses/MIT.txt");
-            // Derived from the package being tested, not a literal. As a literal this asserted
-            // whatever the floor happened to say, so it could never detect the floor falling
-            // behind the core it ships beside - which is exactly what had happened: the packed
-            // font package declared a dependency on a one-release-old core, and every other
-            // assertion here was evidence about that older core rather than the one being
-            // published.
+            // Derived from the core package actually being tested, not a literal and not the font
+            // package's own version - SharpVision.FigletFonts versions and publishes
+            // independently of SharpVision, so the two numbers are not expected to match. As a
+            // literal this asserted whatever the floor happened to say, so it could never detect
+            // the floor falling behind the core it ships beside - which is exactly what had
+            // happened: the packed font package declared a dependency on a one-release-old core,
+            // and every other assertion here was evidence about that older core rather than the
+            // one being published.
             ReadSharpVisionDependency(fontPackage).ShouldBe(
-                version,
-                "the packed font package must depend on the core version it ships beside");
+                coreVersion,
+                "the packed font package must depend on the SharpVision core version it ships beside");
 
             var nugetConfigPath = Path.Combine(consumerRoot, "NuGet.config");
             await File.WriteAllTextAsync(
