@@ -706,6 +706,51 @@ public sealed class RendererTests
         _ = Should.Throw<ObjectDisposedException>(renderer.Invalidate);
     }
 
+    /// <summary>Verifies a written frame's Elapsed telemetry reflects the injected clock rather
+    /// than the wall-clock Stopwatch, so a reversion to <c>Stopwatch.GetTimestamp()</c>/
+    /// <c>Stopwatch.GetElapsedTime()</c> at either call site fails this test.</summary>
+    [Fact]
+    public async Task RenderAsync_WhenTimeProviderIsInjected_ReportsProviderAdvancedElapsedForWrittenFrameAsync()
+    {
+        var provider = new ManualTimeProvider { AdvanceOnRead = TimeSpan.FromMilliseconds(250) };
+        using Renderer renderer = new(timeProvider: provider);
+        await using FakeTransport transport = new();
+        using var frame = Create("ab");
+
+        var result = await renderer.RenderAsync(
+            frame,
+            transport,
+            TerminalCapabilities.Conservative,
+            TestContext.Current.CancellationToken);
+
+        result.Elapsed.ShouldBe(TimeSpan.FromMilliseconds(250));
+    }
+
+    /// <summary>Verifies an identical no-op frame's Elapsed telemetry - the early-return path that
+    /// never reaches transport I/O - also reflects the injected clock.</summary>
+    [Fact]
+    public async Task RenderAsync_WhenTimeProviderIsInjected_ReportsProviderAdvancedElapsedForNoOpFrameAsync()
+    {
+        var provider = new ManualTimeProvider { AdvanceOnRead = TimeSpan.FromMilliseconds(250) };
+        using Renderer renderer = new(timeProvider: provider);
+        await using FakeTransport transport = new();
+        using var frame = Create("ab");
+        _ = await renderer.RenderAsync(
+            frame,
+            transport,
+            TerminalCapabilities.Conservative,
+            TestContext.Current.CancellationToken);
+
+        var result = await renderer.RenderAsync(
+            frame,
+            transport,
+            TerminalCapabilities.Conservative,
+            TestContext.Current.CancellationToken);
+
+        result.Writes.ShouldBe(0);
+        result.Elapsed.ShouldBe(TimeSpan.FromMilliseconds(250));
+    }
+
     private static Frame Create(string value)
     {
         var frame = new Frame(new Size(value.Length, 1));

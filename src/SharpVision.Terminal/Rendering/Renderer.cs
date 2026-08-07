@@ -306,7 +306,7 @@ public sealed class Renderer: IDisposable
         GraphicsBackendResult backendResult = default;
         var backendPrepared = false;
         var synchronized = profile.Capabilities.SynchronizedOutput.Authoritative;
-        var started = Stopwatch.GetTimestamp();
+        var started = _timeProvider.GetTimestamp();
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -409,7 +409,7 @@ public sealed class Renderer: IDisposable
                     0,
                     encoded.Spans,
                     encoded.Full,
-                    Stopwatch.GetElapsedTime(started),
+                    _timeProvider.GetElapsedTime(started),
                     LastGraphicsDiagnostics));
             }
 
@@ -613,7 +613,7 @@ public sealed class Renderer: IDisposable
                 1,
                 encoded.Spans,
                 encoded.Full,
-                Stopwatch.GetElapsedTime(started),
+                _timeProvider.GetElapsedTime(started),
                 LastGraphicsDiagnostics);
         }
         catch (Exception exception)
