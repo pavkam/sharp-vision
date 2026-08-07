@@ -58,12 +58,14 @@ public sealed class ControlStyleTests
         PopupStyle.Default.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Rounded);
     }
 
-    /// <summary>Verifies TooltipStyle's default is deliberately borderless - the same
-    /// intentional asymmetry documented for the tooltip style, preserved here.</summary>
+    /// <summary>Verifies TooltipStyle's default is a plain square all-side border with no
+    /// shadow - framed for visual containment like Popup, but with the square glyph style that
+    /// keeps it visually distinct from Popup's rounded frame.</summary>
     [Fact]
-    public void ThemeTooltipStyle_Default_IsBorderlessWithNoShadow()
+    public void ThemeTooltipStyle_Default_IsSquareAllSideBorderWithNoShadow()
     {
-        TooltipStyle.Default.Border.Sides.ShouldBe(BorderSide.None);
+        TooltipStyle.Default.Border.Sides.ShouldBe(BorderSide.All);
+        TooltipStyle.Default.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Light);
         TooltipStyle.Default.Shadow.Visible.ShouldBeFalse();
     }
 
@@ -121,6 +123,8 @@ public sealed class ControlStyleTests
         ContainerStyle.Default.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Light);
         WindowStyle.Default.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Paired);
         PopupStyle.Default.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Rounded);
+        TooltipStyle.Default.Border.Sides.ShouldBe(BorderSide.All);
+        TooltipStyle.Default.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Light);
     }
 
     /// <summary>Verifies a transparent control actually inherits its parent's ambient face, the

@@ -203,7 +203,8 @@
           "background": "window"
         },
         "border": {
-          "sides": "none"
+          "sides": "all",
+          "glyphStyle": "light"
         }
       }
     },

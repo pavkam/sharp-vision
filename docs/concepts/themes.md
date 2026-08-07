@@ -188,9 +188,11 @@ dialog remains visually distinct from the plane beneath it without requiring a
 local style. The bundled values follow each palette's existing raised-surface
 tier.
 
-`popup` and `tooltip` continue to use the `window`/`windowText` pair. Popup is
-framed with a rounded border, while Tooltip is deliberately borderless and reads
-as a quiet transient label rather than an interactive drop-down or menu.
+`popup` and `tooltip` continue to use the `window`/`windowText` pair, and both
+are framed with an all-side border for visual containment over whatever sits
+beneath them. Popup uses a rounded border; Tooltip uses the plain square glyph
+style instead, so a passive hint still reads as visually distinct from an
+interactive drop-down or menu even though both are now framed.
 
 A fractional state object holds optional `face`, `border`, and `shadow` objects
 whose members match the corresponding type's own public properties (reflectively
@@ -396,7 +398,7 @@ are public and require no internal access; see
     "tooltip": {
       "normal": {
         "face": { "foreground": "windowText", "background": "window" },
-        "border": { "sides": "none" }
+        "border": { "sides": "all", "glyphStyle": "light" }
       }
     },
     "button": {

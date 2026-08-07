@@ -45,13 +45,16 @@ follow Popup and the
 [floating-surface contract](../../concepts/floating-surfaces.md#overview).
 
 Appearance does not follow Popup. Tooltip resolves the dedicated `TooltipStyle`
-(`styles.tooltip`) instead of inheriting `PopupStyle`'s framed appearance, so a
-hint is visually distinct from an interactive drop-down or menu rather than
-sharing their rounded border. Both still share the `window`/`windowText`
-[floating-tier colors](../../concepts/themes.md#style-types), but `TooltipStyle`
-is deliberately borderless with no shadow, reading as a quiet transient label.
-Like every style-conforming control, this is theme-authorable — a theme's
-`styles.tooltip` entry overrides the default.
+(`styles.tooltip`) instead of inheriting `PopupStyle` directly, so a hint stays
+visually distinct from an interactive drop-down or menu even though both are
+framed. Both share the `window`/`windowText`
+[floating-tier colors](../../concepts/themes.md#style-types) and an all-side
+border, but `TooltipStyle` draws that border with the plain square glyph style
+rather than Popup's rounded one, and carries no shadow. The frame keeps a
+tooltip legible when it floats over occupied content instead of blending into
+whatever text or controls sit underneath it. Like every style-conforming
+control, this is theme-authorable — a theme's `styles.tooltip` entry overrides
+the default.
 
 ## Example
 
@@ -76,9 +79,10 @@ Tooltip.SetText(
   immediately.
 - The passive policy holds: the tooltip takes no focus, handles no keyboard
   input, enters no modal scope, and is never a pointer target.
-- The default appearance resolves `TooltipStyle` — borderless and shadowless, on
-  the `window`/`windowText` colors — rather than Popup's framed border, and a
-  theme's `styles.tooltip` entry can still override it.
+- The default appearance resolves `TooltipStyle` — a plain square all-side
+  border with no shadow, on the `window`/`windowText` colors — visually distinct
+  from Popup's rounded frame, and a theme's `styles.tooltip` entry can still
+  override it.
 - The first open frame has committed geometry and renders its text, the
   lifecycle cleans up as documented, and disposal leaves no retained anchor or
   timer subscriptions.

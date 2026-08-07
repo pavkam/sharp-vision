@@ -30,17 +30,19 @@ public sealed class TooltipTests
         tooltip.Focusable.ShouldBeFalse();
     }
 
-    /// <summary>Verifies a Tooltip resolves the dedicated, borderless Tooltip role rather than
-    /// inheriting Popup's framed appearance, so a passive hint is visually distinct from an
-    /// interactive drop-down or menu.</summary>
+    /// <summary>Verifies a Tooltip resolves the dedicated Tooltip role, framed on the same window
+    /// plane as Popup but with a plain square border rather than Popup's rounded frame, so a
+    /// passive hint stays visually contained while remaining distinct from an interactive
+    /// drop-down or menu.</summary>
     [Fact]
-    public void Constructor_WhenCreated_UsesBorderlessTooltipStyle()
+    public void Constructor_WhenCreated_UsesSquareFramedTooltipStyle()
     {
         using var tooltip = new Tooltip();
 
         tooltip.Face.Background.ShouldBe(SemanticColor.Window);
         tooltip.Face.Foreground.ShouldBe(SemanticColor.WindowText);
-        tooltip.Border.Sides.ShouldBe(BorderSide.None);
+        tooltip.Border.Sides.ShouldBe(BorderSide.All);
+        tooltip.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Light);
     }
 
     /// <summary>Verifies Tooltip is the Popup surface instead of owning a private Popup proxy.</summary>
@@ -182,6 +184,77 @@ public sealed class TooltipTests
 
         tooltip.IsOpen.ShouldBeFalse();
         tooltip.SurfaceBounds.ShouldBe(default);
+    }
+
+    /// <summary>Verifies an open tooltip visually contains itself over already-occupied backdrop
+    /// content: its perimeter renders the square border glyphs rather than leaving the backdrop's
+    /// text showing through, and its interior shows the tooltip's own content rather than the
+    /// backdrop underneath. A borderless tooltip floating over busy content used to blend directly
+    /// into whatever was already there; the frame is what keeps it legible.</summary>
+    [Fact]
+    public async Task Pointer_WhenShownOverOccupiedCells_RendersContainedFrameAsync()
+    {
+        const int surfaceWidth = 24;
+        const int surfaceHeight = 10;
+        var backdropLine = new string('#', surfaceWidth);
+        var backdrop = new ControlText(string.Join('\n', Enumerable.Repeat(backdropLine, surfaceHeight)))
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+
+        var anchor = new Button
+        {
+            Text = "Anchor",
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(8),
+            Height = Length.Cells(3)
+        };
+        Overlay.SetTop(anchor, Length.Cells(1));
+        Overlay.SetLeft(anchor, Length.Cells(2));
+        Tooltip.SetText(anchor, "First line\nSecond line");
+        var tooltip = Tooltip.GetTooltip(anchor).ShouldNotBeNull();
+        tooltip.ShowDelay = TimeSpan.FromMilliseconds(10);
+
+        var root = new Overlay
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Children = { backdrop, anchor }
+        };
+        var clock = new ManualTimeProvider();
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(surfaceWidth, surfaceHeight),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        await surface.Pointer.MoveToAsync(anchor);
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(10), "show Tooltip over occupied backdrop cells");
+
+        tooltip.IsOpen.ShouldBeTrue();
+        var bounds = tooltip.SurfaceBounds;
+        bounds.Width.ShouldBeGreaterThan(2);
+        bounds.Height.ShouldBeGreaterThan(2);
+
+        // The frame's four corners and two sampled edges render the square glyphs, not the '#'
+        // backdrop that would otherwise show through a borderless tooltip.
+        surface.Cell(new Point(bounds.X, bounds.Y)).Text.ShouldBe("┌");
+        surface.Cell(new Point(bounds.Right - 1, bounds.Y)).Text.ShouldBe("┐");
+        surface.Cell(new Point(bounds.X, bounds.Bottom - 1)).Text.ShouldBe("└");
+        surface.Cell(new Point(bounds.Right - 1, bounds.Bottom - 1)).Text.ShouldBe("┘");
+        surface.Cell(new Point(bounds.X + 1, bounds.Y)).Text.ShouldBe("─");
+        surface.Cell(new Point(bounds.X, bounds.Y + 1)).Text.ShouldBe("│");
+
+        // The interior shows the tooltip's own content, never the backdrop underneath it.
+        surface.Cell(new Point(bounds.X + 1, bounds.Y + 1)).Text.ShouldBe("F");
+        surface.Cell(new Point(bounds.X + 1, bounds.Y + 1)).Text.ShouldNotBe("#");
+
+        // Just outside the frame - to its right, on a row below the anchor - the backdrop is
+        // untouched, showing containment does not bleed past the border.
+        bounds.Right.ShouldBeLessThan(surfaceWidth);
+        surface.Cell(new Point(bounds.Right, bounds.Y + 1)).Text.ShouldBe("#");
     }
 
     /// <summary>Verifies a pending show timer does not fire after its anchor detaches (e.g. a

@@ -228,11 +228,12 @@ public sealed class CuratedThemesTests
         }
     }
 
-    /// <summary>Verifies every bundled Tooltip profile is deliberately borderless, unlike every
-    /// other role, so a passive hint reads as a quiet transient label rather than a framed Popup
-    /// or menu.</summary>
+    /// <summary>Verifies every bundled Tooltip profile is framed with a plain square all-side
+    /// border on the same window plane Popup uses, so a passive hint stays visually contained
+    /// over busy content while remaining distinct from Popup's rounded frame by glyph style
+    /// alone.</summary>
     [Fact]
-    public void EveryTheme_WhenTooltipIsNormal_IsBorderlessOnTheWindowPlane()
+    public void EveryTheme_WhenTooltipIsNormal_IsSquareFramedOnTheWindowPlane()
     {
         foreach (var slug in ThemeCatalog.Slugs)
         {
@@ -245,8 +246,14 @@ public sealed class CuratedThemesTests
             tooltipFace.Foreground.SemanticColor.ShouldBe(SemanticColor.WindowText, $"{slug} tooltip foreground must use WindowText");
 
             theme.Tooltip.Normal.Border.Sides.ShouldBe(
-                BorderSide.None,
-                $"{slug} tooltip must stay borderless, distinct from Popup's framed border");
+                BorderSide.All,
+                $"{slug} tooltip must be framed on every side for visual containment");
+            theme.Tooltip.Normal.Border.GlyphStyle.ShouldBe(
+                BorderGlyphStyle.Light,
+                $"{slug} tooltip must use the plain square glyph style");
+            theme.Tooltip.Normal.Border.GlyphStyle.ShouldNotBe(
+                theme.Popup.Normal.Border.GlyphStyle,
+                $"{slug} tooltip's square border must stay distinct from Popup's rounded frame");
         }
     }
 

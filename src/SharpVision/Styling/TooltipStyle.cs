@@ -5,10 +5,10 @@ namespace SharpVision.Styling;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines the well-known passive, non-interactive hint appearance - deliberately
-/// borderless, unlike every other style except the base <see cref="ControlStyle"/> itself, so
-/// a transient hint is visually distinct from <see cref="PopupStyle"/>'s rounded frame - one
-/// of the sibling styles <see cref="ControlStyle"/> generalizes.</summary>
+/// <summary>Defines the well-known passive, non-interactive hint appearance - framed with a
+/// plain square all-side border so the hint stays visually contained when it floats over busy
+/// content, while remaining distinct from <see cref="PopupStyle"/>'s rounded frame by glyph
+/// style alone - one of the sibling styles <see cref="ControlStyle"/> generalizes.</summary>
 [PublicAPI]
 public record TooltipStyle: ControlStyle
 {
@@ -18,6 +18,9 @@ public record TooltipStyle: ControlStyle
     {
     }
 
-    /// <summary>Gets the default tooltip appearance: no border, no shadow.</summary>
-    public static new TooltipStyle Default { get; } = new(DefaultFace, NoBorder, NoShadow);
+    /// <summary>Gets the default tooltip appearance: a plain square all-side border, no shadow.</summary>
+    public static new TooltipStyle Default { get; } = new(
+        DefaultFace,
+        new Border(BorderSide.All, BorderGlyphStyle.Light, Color.Default, Color.Transparent, TerminalAttributes.None),
+        NoShadow);
 }
