@@ -67,6 +67,49 @@ public sealed class FlyoutTests
         OwnedTree.FindAll<Popup>(flyout).Single().ShouldBeSameAs(flyout);
     }
 
+    /// <summary>Verifies a Button hosted as flyout content shows its own hovered appearance -
+    /// both PointerOver and the rendered face/border - once the pointer moves over it while the
+    /// flyout is open, matching an ordinary page-hosted Button.</summary>
+    [Fact]
+    public async Task Pointer_WhenMovedOverFlyoutHostedButton_ShowsHoveredAppearanceAsync()
+    {
+        // Arrange
+        var anchor = new Button
+        {
+            Text = "Anchor",
+            Width = Length.Cells(8),
+            Height = Length.Cells(3)
+        };
+        var action = new Button
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(8),
+            Height = Length.Cells(3),
+            Text = "Save"
+        };
+        var flyout = new Flyout { Anchor = anchor, Content = action, FocusOnOpen = false };
+        var root = new Overlay { Children = { anchor, flyout } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(18, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => flyout.IsOpen = true, "open Flyout");
+
+        // Act
+        await surface.Pointer.MoveToAsync(action);
+
+        // Assert
+        action.PointerOver.ShouldBeTrue();
+        surface.ShouldHaveState(action, VisualState.PointerOver);
+        var borderColor = TerminalPalette.Project(ThemeColorHelper.HoveredBorder(ThemeCatalog.Dark), ColorDepth.Basic16);
+        var hoveredForeground = TerminalPalette.Project(ThemeColorHelper.HoveredForeground(ThemeCatalog.Dark), ColorDepth.Basic16);
+        var origin = new Point(action.Bounds.X, action.Bounds.Y);
+        surface.Cell(origin).Style.Foreground.ShouldBe(borderColor);
+        var content = new Point(action.Bounds.X + 2, action.Bounds.Y + 1);
+        surface.Cell(content).Style.Foreground.ShouldBe(hoveredForeground);
+    }
+
     /// <summary>Verifies opening a flyout does not raise Closing or Closed events.</summary>
     [Fact]
     public void IsOpen_WhenSetTrue_RaisesNoEventsBeforeClose()

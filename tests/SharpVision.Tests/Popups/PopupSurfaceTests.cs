@@ -157,6 +157,47 @@ public sealed class PopupSurfaceTests
         popup.HitTest(bottomShadow).ShouldBeNull();
     }
 
+    /// <summary>Verifies a Button hosted as popup content shows its own hovered appearance -
+    /// both PointerOver and the rendered face/border - once the pointer moves over it while the
+    /// popup is open, matching an ordinary page-hosted Button.</summary>
+    [Fact]
+    public async Task Pointer_WhenMovedOverPopupHostedButton_ShowsHoveredAppearanceAsync()
+    {
+        // Arrange
+        var anchor = new Button
+        {
+            Text = "Anchor",
+            Width = Length.Cells(8),
+            Height = Length.Cells(3)
+        };
+        var action = new Button
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(8),
+            Height = Length.Cells(3),
+            Text = "Save"
+        };
+        var popup = new Popup { Anchor = anchor, Content = action };
+        var root = new Overlay { Children = { anchor, popup } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(18, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => popup.IsOpen = true, "open Popup");
+
+        // Act - opening the Popup already transferred focus to its sole eligible descendant, so
+        // hovering compounds onto that Focused state exactly as it does for a page-hosted focused
+        // Button.
+        await surface.Pointer.MoveToAsync(action);
+
+        // Assert
+        action.PointerOver.ShouldBeTrue();
+        surface.ShouldHaveState(action, VisualState.PointerOver | VisualState.Focused);
+        var origin = new Point(action.Bounds.X, action.Bounds.Y);
+        surface.Cell(origin).Style.Foreground.ShouldBe(ReferenceColors.Get(14));
+    }
+
     /// <summary>Verifies open popup composition, descendant hover, focus transfer, and Escape closure.</summary>
     [ComponentBehaviorEvidence(
         typeof(Popup),
