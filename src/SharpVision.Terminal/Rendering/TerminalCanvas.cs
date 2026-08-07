@@ -806,8 +806,12 @@ public readonly struct TerminalCanvas
     /// <param name="patternStep">The zero-based pattern step the segment continues from, letting
     /// a polyline's dash phase stay continuous across chained calls.</param>
     /// <param name="style">The semantic cell style.</param>
-    /// <returns>The pattern step immediately after the segment's final point, for a chained call
-    /// that continues the same polyline.</returns>
+    /// <returns>The pattern step used to draw the segment's final point. When continuing a
+    /// polyline from this segment's endpoint, pass the returned value as the next segment's
+    /// <paramref name="patternStep"/>; the shared vertex is re-evaluated at the same step - an
+    /// idempotent redraw, since an on step redraws the same quadrant and an off step stays
+    /// skipped - and the following point then advances the phase by exactly one step, exactly as
+    /// if the whole polyline had been drawn by one continuous call.</returns>
     /// <remarks>
     /// Half-cell coordinates double both axes: cell (0, 0) covers half-cell columns 0-1 and rows
     /// 0-1. Traversal uses integer Bresenham geometry over that doubled grid, and every plotted
@@ -855,12 +859,12 @@ public readonly struct TerminalCanvas
                     style);
             }
 
-            step++;
-
             if (x == end.X && y == end.Y)
             {
                 return step;
             }
+
+            step++;
 
             var doubled = 2 * error;
 

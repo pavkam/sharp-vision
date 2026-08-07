@@ -825,6 +825,50 @@ public sealed class ChartSurfaceTests
         surface.Cell(new Point(3, 0)).Text.ShouldBe("●");
     }
 
+    /// <summary>Verifies a dash phase stays continuous across both interior joints of a
+    /// three-point series - the case that used to drift, because each joint's shared vertex was
+    /// evaluated at two different steps (once as the ending point of one segment, once as the
+    /// starting point of the next) instead of once. A flat three-point series with equal values
+    /// forces every point onto the same half-cell row, reducing the plot to the exact same
+    /// horizontal Bresenham walk <c>TripleDash</c> draws in one continuous call across 8 cells -
+    /// "▀.▀.▀.▀." - split here into two chained segments joined at half-cell x = 8.</summary>
+    [Fact]
+    public async Task Render_WhenSeriesHasThreePointsAndPattern_KeepsContinuousPhaseAcrossBothJointsAsync()
+    {
+        // Arrange
+        var chart = new LineChart
+        {
+            Series = [new ChartSeries("CPU", [
+                new ChartDataPoint("A", 5),
+                new ChartDataPoint("B", 5),
+                new ChartDataPoint("C", 5)])
+            {
+                LinePattern = LinePattern.TripleDash
+            }],
+            Scale = new ChartScale(0, 10, includeZero: false),
+            LegendPlacement = ChartLegendPlacement.Hidden,
+            ShowCategoryLabels = false
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(8, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert: markers sit at half-cell x = 0, 8, and 15 (cells 0, 4, and 7) and overwrite
+        // whatever the line drew there; every other cell is the line's own TripleDash output
+        // (blank cells render as a literal space), unbroken across both joints.
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("●");
+        surface.Cell(new Point(1, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(2, 0)).Text.ShouldBe("▀");
+        surface.Cell(new Point(3, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(4, 0)).Text.ShouldBe("●");
+        surface.Cell(new Point(5, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(6, 0)).Text.ShouldBe("▀");
+        surface.Cell(new Point(7, 0)).Text.ShouldBe("●");
+    }
+
     /// <summary>Verifies the glyph line mode keeps whole-cell segments drawn with the style's own
     /// line glyph exactly - the contract a theme that replaces the glyph relies on.</summary>
     [Fact]

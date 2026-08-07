@@ -127,18 +127,20 @@ public sealed class QuadrantLinePatternTests
 
     #region Phase continuation
 
-    /// <summary>Verifies chaining two segments through the returned pattern step reproduces
-    /// exactly the same cells as drawing the whole polyline in one call, so a multi-segment
-    /// series keeps a continuous dash phase across the joint instead of restarting it.</summary>
+    /// <summary>Verifies chaining two segments that share a joint vertex - passing the first
+    /// segment's returned step as the second segment's <c>patternStep</c>, exactly as
+    /// <c>LineChartRenderer</c> does across a series polyline - reproduces exactly the same cells
+    /// as drawing the whole polyline in one call. The shared vertex is redrawn (idempotently) by
+    /// both calls at the same step, so the phase neither skips nor double-counts it.</summary>
     [Fact]
-    public void DrawQuadrantLine_WhenChainedThroughReturnedStep_MatchesOneContinuousCall()
+    public void DrawQuadrantLine_WhenChainedThroughSharedVertex_MatchesOneContinuousCallHorizontally()
     {
         using Frame whole = new(new Size(8, 1));
         using Frame chained = new(new Size(8, 1));
 
         _ = whole.Canvas.DrawQuadrantLine(new Point(0, 0), new Point(15, 0), LinePattern.TripleDash, 0);
 
-        var step = chained.Canvas.DrawQuadrantLine(new Point(0, 0), new Point(7, 0), LinePattern.TripleDash, 0);
+        var step = chained.Canvas.DrawQuadrantLine(new Point(0, 0), new Point(8, 0), LinePattern.TripleDash, 0);
         _ = chained.Canvas.DrawQuadrantLine(new Point(8, 0), new Point(15, 0), LinePattern.TripleDash, step);
 
         for (var x = 0; x < 8; x++)
@@ -147,16 +149,44 @@ public sealed class QuadrantLinePatternTests
         }
     }
 
-    /// <summary>Verifies the returned step advances by exactly one past the segment's final
-    /// point, regardless of pattern, so a caller can chain calls without recomputing geometry.</summary>
+    /// <summary>The same shared-vertex chaining guarantee along a sloped segment, where every
+    /// Bresenham iteration moves both coordinates and the "paired quadrant" merge behavior makes
+    /// a double-counted or skipped joint step especially easy to miss.</summary>
     [Fact]
-    public void DrawQuadrantLine_WhenSegmentCompletes_ReturnsStepPastTheFinalPoint()
+    public void DrawQuadrantLine_WhenChainedThroughSharedVertex_MatchesOneContinuousCallDiagonally()
+    {
+        using Frame whole = new(new Size(8, 8));
+        using Frame chained = new(new Size(8, 8));
+
+        _ = whole.Canvas.DrawQuadrantLine(new Point(0, 0), new Point(15, 15), LinePattern.DoubleDash, 0);
+
+        var step = chained.Canvas.DrawQuadrantLine(new Point(0, 0), new Point(8, 8), LinePattern.DoubleDash, 0);
+        _ = chained.Canvas.DrawQuadrantLine(new Point(8, 8), new Point(15, 15), LinePattern.DoubleDash, step);
+
+        for (var y = 0; y < 8; y++)
+        {
+            for (var x = 0; x < 8; x++)
+            {
+                FrameTests.GetText(chained, new Point(x, y)).ShouldBe(FrameTests.GetText(whole, new Point(x, y)), $"cell ({x}, {y})");
+            }
+        }
+    }
+
+    /// <summary>Verifies the returned step is the step used to draw the segment's final point -
+    /// not one past it - so a zero-length segment (start equal to end) returns its
+    /// <c>patternStep</c> unchanged, and re-passing the returned value to a chained call
+    /// re-evaluates the shared vertex rather than skipping past it.</summary>
+    [Fact]
+    public void DrawQuadrantLine_WhenSegmentCompletes_ReturnsTheFinalPointsOwnStep()
     {
         using Frame frame = new(new Size(4, 1));
+        using Frame zeroLength = new(new Size(1, 1));
 
         var step = frame.Canvas.DrawQuadrantLine(new Point(0, 0), new Point(7, 0), LinePattern.Solid, 5);
+        var zeroLengthStep = zeroLength.Canvas.DrawQuadrantLine(new Point(0, 0), new Point(0, 0), LinePattern.Solid, 3);
 
-        step.ShouldBe(13);
+        step.ShouldBe(12, "8 points from step 5 land on steps 5..12; the endpoint's own step is 12");
+        zeroLengthStep.ShouldBe(3, "a zero-length segment only ever visits its single point's own step");
     }
 
     #endregion
