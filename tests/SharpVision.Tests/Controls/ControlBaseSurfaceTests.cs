@@ -3,8 +3,9 @@
 
 namespace SharpVision.Tests.Controls;
 
-/// <summary>Verifies convenience CLR events on the base ControlBase class.</summary>
-public sealed class ControlEventTests
+/// <summary>Verifies convenience CLR events on the base ControlBase class through a mounted
+/// ComponentSurface, exercising ControlBase's routed-event plumbing.</summary>
+public sealed class ControlBaseSurfaceTests
 {
     /// <summary>Verifies PointerPressed fires when a primary press arrives.</summary>
     [Fact]
@@ -160,53 +161,5 @@ public sealed class ControlEventTests
 
         // Assert
         fired.ShouldBeGreaterThanOrEqualTo(1);
-    }
-
-    /// <summary>Verifies IsEnabledChanged fires when Enabled changes.</summary>
-    [Fact]
-    public void IsEnabledChanged_WhenDisabled_Fires()
-    {
-        // Arrange
-        var fired = 0;
-        var control = new ProbeControl();
-        control.IsEnabledChanged += (_, _) => fired++;
-
-        // Act
-        control.Enabled = false;
-
-        // Assert
-        fired.ShouldBe(1);
-    }
-
-    /// <summary>Verifies VisibilityChanged fires when Visibility changes.</summary>
-    [Fact]
-    public void VisibilityChanged_WhenCollapsed_Fires()
-    {
-        // Arrange
-        var fired = 0;
-        var control = new ProbeControl();
-        control.VisibilityChanged += (_, _) => fired++;
-
-        // Act
-        control.Visibility = Visibility.Collapsed;
-
-        // Assert
-        fired.ShouldBe(1);
-    }
-
-    /// <summary>Verifies ParentChanged fires when added to a container.</summary>
-    [Fact]
-    public void ParentChanged_WhenAddedToContainer_Fires()
-    {
-        // Arrange
-        var fired = 0;
-        var child = new ProbeControl();
-        child.ParentChanged += (_, _) => fired++;
-
-        // Act
-        _ = new Stack { Children = { child } };
-
-        // Assert
-        fired.ShouldBe(1);
     }
 }

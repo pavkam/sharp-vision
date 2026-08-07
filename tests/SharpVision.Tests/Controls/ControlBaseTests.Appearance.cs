@@ -6,7 +6,7 @@ namespace SharpVision.Tests.Controls;
 using SharpVision.Tests.Styling;
 
 /// <summary>Verifies complete local appearance values and resolved theme ownership.</summary>
-public sealed class ControlCompositeAppearanceTests
+public sealed partial class ControlBaseTests
 {
     /// <summary>Verifies every failing prospective style delegate preserves all observable state.</summary>
     /// <param name="failure">Selects resolver, comparer, appearance, or invalid-impact failure.</param>
@@ -823,4 +823,475 @@ public sealed class ControlCompositeAppearanceTests
     private static Theme ThemeWithControlStateOverride(string stateOverrideJson) =>
         ThemeCatalog.Parse(ThemeJson.Create(
             controlExtra: stateOverrideJson.Length == 0 ? "" : $", {stateOverrideJson}"));
+
+    /// <summary>The regression the <c>CommitStyle</c> half exists to pin: a control whose active
+    /// state masks its own Normal change still has to schedule a frame for the descendants that
+    /// inherit that Normal.
+    ///
+    /// <para>The report frames this with a disabled Button, which is not quite right - a Pressable's
+    /// ambient face is its ACTIVE state, so a pinned disabled overlay means its caption genuinely
+    /// sees no change. The defect needs a control whose ambient face is its Normal while its own
+    /// impact is computed from the masked active state, which is what this probe is.</para>
+    /// </summary>
+    [Fact]
+    public void Style_WhenTheActiveStateMasksTheNormalChange_StillRenderInvalidatesDescendants()
+    {
+        using var owner = new StyledProbeContainer();
+        var child = new ProbeControl();
+        owner.Children.Add(child);
+        owner.Author(
+            VisualState.Disabled,
+            new AppearanceOverlay(face: new FaceOverlay(foreground: Color.Rgb(200, 200, 200))));
+        owner.Enabled = false;
+        owner.Clear(Invalidation.All);
+        child.Clear(Invalidation.All);
+
+        owner.Style = owner.ActualStyle with
+        {
+            Face = owner.ActualStyle.Face with { Foreground = Color.Rgb(1, 2, 3) }
+        };
+
+        (owner.Pending & Invalidation.Render).ShouldBe(
+            Invalidation.Render,
+            "the subtree walk starts at the control itself, whose own ambient face moved");
+        ((child.Pending & Invalidation.Render) != 0).ShouldBeTrue(
+            "the child inherits the changed Normal even though the owner's disabled face is pinned");
+    }
+
+    /// <summary>Verifies the same for a plainly-visible change, so the fix is not specific to the
+    /// masking case that made it detectable.</summary>
+    [Fact]
+    public void Style_WhenTheNormalFaceChanges_RenderInvalidatesEveryDescendant()
+    {
+        using var owner = new StyledProbeContainer();
+        var child = new ProbeControl();
+        owner.Children.Add(child);
+        owner.Clear(Invalidation.All);
+        child.Clear(Invalidation.All);
+
+        owner.Style = owner.ActualStyle with
+        {
+            Face = owner.ActualStyle.Face with { Foreground = Color.Rgb(4, 5, 6) }
+        };
+
+        ((child.Pending & Invalidation.Render) != 0).ShouldBeTrue();
+    }
+
+    /// <summary>The counter-case that keeps the cheap path alive: a style change that leaves the
+    /// Normal face alone must not render-invalidate the whole subtree. This is the common case, and
+    /// the subtree walk is deliberately unconditional once entered.</summary>
+    [Fact]
+    public void Style_WhenOnlyPaddingChanges_DoesNotRenderInvalidateDescendants()
+    {
+        using var owner = new StyledProbeContainer();
+        var child = new ProbeControl();
+        owner.Children.Add(child);
+        owner.Clear(Invalidation.All);
+        child.Clear(Invalidation.All);
+
+        owner.Style = owner.ActualStyle with { Padding = new Thickness(3, 1) };
+
+        ((child.Pending & Invalidation.Render) != 0).ShouldBeFalse();
+    }
+
+    /// <summary>The counter-case the two pre-existing rationale-bearing tests already state for the
+    /// self-only path, restated for the subtree walk: two authored faces that RESOLVE identically
+    /// must not invalidate. Comparing the raw values would render-invalidate a whole subtree for a
+    /// semantic reference replaced by the literal its theme maps it to.</summary>
+    [Fact]
+    public void Style_WhenTheNewFaceResolvesIdentically_DoesNotRenderInvalidateDescendants()
+    {
+        using var owner = new StyledProbeContainer();
+        var child = new ProbeControl();
+        owner.Children.Add(child);
+        owner.SetTheme(ThemeCatalog.Dark);
+        owner.Style = owner.ActualStyle with
+        {
+            Face = owner.ActualStyle.Face with { Foreground = SemanticColor.ControlText }
+        };
+        owner.Clear(Invalidation.All);
+        child.Clear(Invalidation.All);
+
+        owner.Style = owner.ActualStyle with
+        {
+            Face = owner.ActualStyle.Face with
+            {
+                Foreground = ThemeCatalog.Dark.ResolveColor(SemanticColor.ControlText)
+            }
+        };
+
+        ((child.Pending & Invalidation.Render) != 0).ShouldBeFalse();
+    }
+
+    /// <summary>The regression the <c>SetAppearance</c> half exists to pin. A Pressable's ambient
+    /// face is its ACTIVE state, so a per-state overlay is folded into the face its caption
+    /// inherits - and clearing only the button left the caption holding a resolved appearance built
+    /// from the previous overlay.</summary>
+    [Fact]
+    public void SetAppearance_WhenTheControlsAmbientFaceIsItsActiveState_RenderInvalidatesDescendants()
+    {
+        using var owner = new AppearanceProbeContainer();
+        var child = new ProbeControl();
+        owner.Children.Add(child);
+        owner.Clear(Invalidation.All);
+        child.Clear(Invalidation.All);
+
+        owner.Author(
+            VisualState.PointerOver,
+            new AppearanceOverlay(face: new FaceOverlay(foreground: SemanticColor.Accent)));
+
+        ((child.Pending & Invalidation.Render) != 0).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies removing that overlay is treated identically - the state it described is
+    /// just as gone from the ambient face as it was newly present.</summary>
+    [Fact]
+    public void SetAppearance_WhenAnOverlayIsRemoved_RenderInvalidatesDescendants()
+    {
+        using var owner = new AppearanceProbeContainer();
+        var child = new ProbeControl();
+        owner.Children.Add(child);
+        owner.Author(
+            VisualState.PointerOver,
+            new AppearanceOverlay(face: new FaceOverlay(foreground: SemanticColor.Accent)));
+        owner.Clear(Invalidation.All);
+        child.Clear(Invalidation.All);
+
+        owner.Author(VisualState.PointerOver, null);
+
+        ((child.Pending & Invalidation.Render) != 0).ShouldBeTrue();
+    }
+
+    /// <summary>The counter-case for that half: a control whose ambient face is its Normal keeps the
+    /// cheap self-only clear, since no per-state overlay of its can reach a descendant.</summary>
+    [Fact]
+    public void SetAppearance_WhenTheControlsAmbientFaceIsNormal_DoesNotRenderInvalidateDescendants()
+    {
+        using var container = new NormalAmbientProbeContainer();
+        var child = new ProbeControl();
+        container.Children.Add(child);
+        container.Clear(Invalidation.All);
+        child.Clear(Invalidation.All);
+
+        container.Author(
+            VisualState.PointerOver,
+            new AppearanceOverlay(face: new FaceOverlay(foreground: SemanticColor.Accent)));
+
+        ((child.Pending & Invalidation.Render) != 0).ShouldBeFalse();
+    }
+
+    // Both concrete controls whose ambient face is their active state - Button, via PressableBase,
+    // and ListItem - are sealed, so the flag is set here directly instead. That keeps these two
+    // tests on the branch being changed rather than on which controls happen to set the flag, which
+    // PressableBase and ListItem already assert for themselves.
+
+    /// <summary>A container with its own primary style slot, so <c>CommitStyle</c> runs on a
+    /// control that actually has descendants. The library controls that own a style slot are either
+    /// sealed or Pressables, whose ambient face is their active state.</summary>
+    private sealed class StyledProbeContainer: Container
+    {
+        private readonly StyleSlot<ButtonStyle> _style;
+
+        internal StyledProbeContainer() => _style = InitializeStyle(ButtonStyle.Definition);
+
+        internal ButtonStyle? Style
+        {
+            get => _style.Local;
+            set => _style.Local = value;
+        }
+
+        internal ButtonStyle ActualStyle => _style.Actual;
+
+        internal void Author(VisualState state, AppearanceOverlay? appearance) =>
+            SetAppearance(state, appearance);
+
+        protected override Size MeasureOverride(Constraint constraint)
+        {
+            _ = constraint;
+            return default;
+        }
+
+        protected override void ArrangeOverride(Rect bounds) => _ = bounds;
+    }
+
+    /// <summary>Republishes the protected authoring seam on a control whose ambient face is its
+    /// active state.</summary>
+    private sealed class AppearanceProbeContainer: Container
+    {
+        internal override bool StateAffectsAmbientAppearance => true;
+
+        internal void Author(VisualState state, AppearanceOverlay? appearance) =>
+            SetAppearance(state, appearance);
+
+        protected override Size MeasureOverride(Constraint constraint)
+        {
+            _ = constraint;
+            return default;
+        }
+
+        protected override void ArrangeOverride(Rect bounds) => _ = bounds;
+    }
+
+    /// <summary>The same seam on a control whose ambient face is its Normal.</summary>
+    private sealed class NormalAmbientProbeContainer: Container
+    {
+        internal void Author(VisualState state, AppearanceOverlay? appearance) =>
+            SetAppearance(state, appearance);
+
+        protected override Size MeasureOverride(Constraint constraint)
+        {
+            _ = constraint;
+            return default;
+        }
+
+        protected override void ArrangeOverride(Rect bounds) => _ = bounds;
+    }
+
+    /// <summary>Verifies a style-owned border change remeasures the complete common box model.</summary>
+    [Fact]
+    public void Measure_WhenStyleOwnedBorderSidesChange_RecomputesReservedContentInset()
+    {
+        var control = new StyledProbe
+        {
+            Style = new ButtonStyle(
+                AppearanceTestValues.Face(),
+                AppearanceTestValues.Border(BorderSide.None),
+                AppearanceTestValues.Shadow(visible: false),
+                ButtonStyle.Standard.Padding),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        new LayoutEngine().Layout(control, new Size(20, 10));
+
+        control.Style = new ButtonStyle(
+            AppearanceTestValues.Face(),
+            AppearanceTestValues.Border(BorderSide.All),
+            AppearanceTestValues.Shadow(visible: false),
+            ButtonStyle.Standard.Padding);
+        new LayoutEngine().Layout(control, new Size(20, 10));
+
+        control.ContentBounds.ShouldBe(new Rect(1, 1, 18, 8));
+        control.MeasureCalls.ShouldBe(2);
+    }
+
+    /// <summary>Verifies a complete border reserves one cell on every content edge.</summary>
+    [Fact]
+    public void Arrange_WhenContainerHasBorder_InsetsChildByBorder()
+    {
+        var child = StretchingChild();
+        var container = StretchingContainer(child);
+        container.Border = AppearanceTestValues.Border(BorderSide.All);
+
+        new LayoutEngine().Layout(container, new Size(20, 10));
+
+        child.Bounds.ShouldBe(new Rect(1, 1, 18, 8));
+    }
+
+    /// <summary>Verifies border and padding reserve distinct, ordered content insets.</summary>
+    [Fact]
+    public void Arrange_WhenBorderAndPaddingAreSet_InsetsChildByBoth()
+    {
+        var child = StretchingChild();
+        var container = StretchingContainer(child);
+        container.Border = AppearanceTestValues.Border(BorderSide.All);
+        container.Padding = new Thickness(1);
+
+        new LayoutEngine().Layout(container, new Size(20, 10));
+
+        child.Bounds.ShouldBe(new Rect(2, 2, 16, 6));
+    }
+
+    /// <summary>Verifies a complete border contributes both physical edges to desired size.</summary>
+    [Fact]
+    public void Measure_WhenContainerHasBorder_DesiredSizeIncludesBorder()
+    {
+        var child = new ProbeControl(new Size(4, 2));
+        var container = new LayoutProbe { Border = AppearanceTestValues.Border(BorderSide.All) };
+        container.Children.Add(child);
+
+        container.Measure(new Constraint(null, null));
+
+        container.DesiredSize.ShouldBe(new Size(6, 4));
+    }
+
+    /// <summary>Verifies the zero-border default preserves the complete arranged slot.</summary>
+    [Fact]
+    public void Arrange_WhenNoBorder_LeavesChildAtFullSlot()
+    {
+        var child = StretchingChild();
+        var container = StretchingContainer(child);
+
+        new LayoutEngine().Layout(container, new Size(20, 10));
+
+        child.Bounds.ShouldBe(new Rect(0, 0, 20, 10));
+    }
+
+    /// <summary>Verifies partial physical edges reserve only their active cells.</summary>
+    [Fact]
+    public void Arrange_WhenBorderEdgesArePartial_ReservesOnlyActiveEdges()
+    {
+        var child = StretchingChild();
+        var container = StretchingContainer(child);
+        container.Border = AppearanceTestValues.Border(BorderSide.Left | BorderSide.Top);
+
+        new LayoutEngine().Layout(container, new Size(20, 10));
+
+        child.Bounds.ShouldBe(new Rect(1, 1, 19, 9));
+    }
+
+    /// <summary>Verifies combined geometric insets saturate before constraint subtraction.</summary>
+    [Fact]
+    public void Measure_WhenCombinedInsetExceedsInteger_SaturatesWithoutThrowing()
+    {
+        var child = new ProbeControl();
+        var container = new LayoutProbe
+        {
+            Padding = new Thickness(int.MaxValue - 1, 0, 0, 0),
+            Border = AppearanceTestValues.Border(BorderSide.Left | BorderSide.Right)
+        };
+        container.Children.Add(child);
+
+        Should.NotThrow(() => container.Measure(new Constraint(10, 10)));
+
+        child.MeasureConstraints.ShouldHaveSingleItem()
+            .ShouldBe(new Constraint(0, 10));
+    }
+
+    private static ProbeControl StretchingChild() => new()
+    {
+        HorizontalAlignment = HorizontalAlignment.Stretch,
+        VerticalAlignment = VerticalAlignment.Stretch
+    };
+
+    private static LayoutProbe StretchingContainer(ControlBase child)
+    {
+        var container = new LayoutProbe
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        container.Children.Add(child);
+        return container;
+    }
+
+    /// <summary>Verifies repeated reads share one cached resolution until the theme changes.</summary>
+    [Fact]
+    public void ActualFace_WhenReadRepeatedly_UsesStateCacheUntilThemeChanges()
+    {
+        var control = new ProbeControl();
+        control.SetTheme(ThemeCatalog.Dark);
+
+        _ = control.ActualFace;
+        _ = control.ActualFace;
+
+        control.UncachedAppearanceResolutionCount.ShouldBe(1);
+
+        control.SetTheme(ThemeCatalog.White);
+        _ = control.ActualFace;
+
+        control.UncachedAppearanceResolutionCount.ShouldBe(2);
+    }
+
+    /// <summary>Verifies exact visual-state flag sets occupy independent cache entries.</summary>
+    [Fact]
+    public void GetActualFace_WhenStatesDiffer_CachesEachExactState()
+    {
+        var control = new ProbeControl();
+        control.SetTheme(ThemeCatalog.Dark);
+
+        _ = control.GetActualFace(VisualState.Normal);
+        _ = control.GetActualFace(VisualState.PointerOver);
+        _ = control.GetActualFace(VisualState.PointerOver);
+
+        control.UncachedAppearanceResolutionCount.ShouldBe(2);
+    }
+
+    /// <summary>Verifies the sparse cache grows past its small inline capacity and still resolves
+    /// every distinct state exactly once — the cache starts at 4 slots rather than the full
+    /// 512-combination VisualState space.</summary>
+    [Fact]
+    public void GetActualFace_WhenMoreStatesThanInlineCapacityAreUsed_StillCachesEachExactly()
+    {
+        var control = new ProbeControl();
+        control.SetTheme(ThemeCatalog.Dark);
+        VisualState[] states =
+        [
+            VisualState.Normal,
+            VisualState.PointerOver,
+            VisualState.Focused,
+            VisualState.Selected,
+            VisualState.Checked,
+            VisualState.Pressed,
+            VisualState.Disabled
+        ];
+
+        foreach (var state in states)
+        {
+            _ = control.GetActualFace(state);
+        }
+
+        control.UncachedAppearanceResolutionCount.ShouldBe(states.Length);
+
+        foreach (var state in states)
+        {
+            _ = control.GetActualFace(state);
+        }
+
+        control.UncachedAppearanceResolutionCount.ShouldBe(states.Length);
+    }
+
+    /// <summary>Verifies changing a local state set clears previously resolved entries.</summary>
+    [Fact]
+    public void SetAppearance_WhenCacheExists_ClearsResolvedEntries()
+    {
+        var control = new ProbeControl();
+        control.SetTheme(ThemeCatalog.Dark);
+        _ = control.ActualBorder;
+
+        control.SetStateAppearance(
+            VisualState.PointerOver,
+            new AppearanceOverlay(border: new BorderOverlay(foreground: Color.Rgb(1, 2, 3))));
+        _ = control.ActualBorder;
+
+        control.UncachedAppearanceResolutionCount.ShouldBe(2);
+    }
+
+    /// <summary>Verifies a complete developer face remains authoritative over ambient inheritance,
+    /// regardless of its own transparency — unlike Normal or a state overlay, a LocalFace is a
+    /// complete override commonly authored with its own foreground and a left-default transparent
+    /// background (e.g. FigletText, Spinner), so it keeps opting out of inheritance entirely.</summary>
+    [Fact]
+    public void ActualFace_WhenLocalTransparentFaceIsSet_PreservesDeveloperForeground()
+    {
+        var parent = new ProbeContainer
+        {
+            Face = AppearanceTestValues.Face(foreground: Color.Rgb(1, 2, 3))
+        };
+        var child = new ProbeControl
+        {
+            Face = AppearanceTestValues.Face(foreground: Color.Rgb(4, 5, 6))
+        };
+        parent.Children.Add(child);
+        parent.SetTheme(ThemeCatalog.Dark);
+
+        child.ActualFace.Foreground.Literal.ShouldBe(Color.Rgb(4, 5, 6));
+    }
+
+    /// <summary>Verifies a partial developer state face is applied after ambient inheritance.</summary>
+    [Fact]
+    public void GetActualFace_WhenLocalStateFaceIsSet_PreservesDeveloperForeground()
+    {
+        var parent = new ProbeContainer
+        {
+            Face = AppearanceTestValues.Face(foreground: Color.Rgb(1, 2, 3))
+        };
+        var child = new ProbeControl();
+        child.SetStateAppearance(
+            VisualState.PointerOver,
+            new AppearanceOverlay(face: new FaceOverlay(foreground: Color.Rgb(4, 5, 6))));
+        parent.Children.Add(child);
+        parent.SetTheme(ThemeCatalog.Dark);
+
+        child.GetActualFace(VisualState.PointerOver).Foreground.Literal.ShouldBe(Color.Rgb(4, 5, 6));
+    }
 }

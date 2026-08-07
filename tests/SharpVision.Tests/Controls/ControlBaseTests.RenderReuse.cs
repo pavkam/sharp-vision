@@ -30,7 +30,7 @@ using GraphicsImage = Terminal.Graphics.ImageSource;
 /// non-reuse render - see the correctness note above <c>Control.CanReuseCleanRender</c>). The
 /// adversarial popup cases below lock that invariant in.
 /// </summary>
-public sealed class RenderCleanSubtreeReuseTests
+public sealed partial class ControlBaseTests
 {
     /// <summary>Verifies a clean sibling's render extension point is skipped while a dirty
     /// sibling still renders, and both produce correct final cell content.</summary>
@@ -877,5 +877,53 @@ public sealed class RenderCleanSubtreeReuseTests
         }
 
         return value.ToString();
+    }
+
+    /// <summary>Verifies IsEnabledChanged fires when Enabled changes.</summary>
+    [Fact]
+    public void IsEnabledChanged_WhenDisabled_Fires()
+    {
+        // Arrange
+        var fired = 0;
+        var control = new ProbeControl();
+        control.IsEnabledChanged += (_, _) => fired++;
+
+        // Act
+        control.Enabled = false;
+
+        // Assert
+        fired.ShouldBe(1);
+    }
+
+    /// <summary>Verifies VisibilityChanged fires when Visibility changes.</summary>
+    [Fact]
+    public void VisibilityChanged_WhenCollapsed_Fires()
+    {
+        // Arrange
+        var fired = 0;
+        var control = new ProbeControl();
+        control.VisibilityChanged += (_, _) => fired++;
+
+        // Act
+        control.Visibility = Visibility.Collapsed;
+
+        // Assert
+        fired.ShouldBe(1);
+    }
+
+    /// <summary>Verifies ParentChanged fires when added to a container.</summary>
+    [Fact]
+    public void ParentChanged_WhenAddedToContainer_Fires()
+    {
+        // Arrange
+        var fired = 0;
+        var child = new ProbeControl();
+        child.ParentChanged += (_, _) => fired++;
+
+        // Act
+        _ = new Stack { Children = { child } };
+
+        // Assert
+        fired.ShouldBe(1);
     }
 }
