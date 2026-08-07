@@ -110,12 +110,14 @@ public sealed class UnicodeGeometryTests
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(10, 4), new Size(101, 31)));
         List<Point?> hits = [];
+        var pointerHit = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var root = new ProbePressable { Width = Length.Cells(10), Height = Length.Cells(4) };
         _ = root.AddHandler(Events.Pointer, (_, eventArgs) =>
         {
             if (eventArgs is PointerEventArgs pointer)
             {
                 hits.Add(pointer.LocalCells);
+                _ = pointerHit.TrySetResult();
             }
         });
         await using Application application = new(
@@ -137,26 +139,11 @@ public sealed class UnicodeGeometryTests
 
         // Act
         terminal.QueueInput("\u001b[<0;100;30M"u8);
-        await WaitForPointerHitAsync(hits);
+        await pointerHit.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         // Assert
         hits.ShouldContain(new Point(9, 3));
         hits.ShouldNotContain(new Point(0, 0));
         await application.StopAsync(TestContext.Current.CancellationToken);
-    }
-
-    private static async Task WaitForPointerHitAsync(List<Point?> hits)
-    {
-        for (var attempt = 0; attempt < 100; attempt++)
-        {
-            if (hits.Count > 0)
-            {
-                return;
-            }
-
-            await Task.Delay(10, TestContext.Current.CancellationToken);
-        }
-
-        throw new TimeoutException("Pointer routing did not deliver a mapped cell.");
     }
 }

@@ -29,7 +29,7 @@ public sealed class FilePickerDialogSurfaceTests
         // GetModalFocusTarget(); apply it explicitly so this test reproduces the
         // same initial-focus sequence a real caller's PresentAsync would produce.
         await surface.UpdateAsync(() => surface.Application.Focus.Focus(path).ShouldBeTrue(), "focus path input");
-        await WaitUntilAsync(surface, () => !dialog.Loading);
+        await DialogWait.UntilAsync(surface, dialog, () => !dialog.Loading);
         var window = OwnedTree.Find<Window>(dialog).ShouldNotBeNull();
         var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
         var listSurface = list.Parent.ShouldBeOfType<Dock>();
@@ -116,7 +116,7 @@ public sealed class FilePickerDialogSurfaceTests
             dialog,
             new Size(76, 33),
             TestContext.Current.CancellationToken);
-        await WaitUntilAsync(surface, () => !dialog.Loading);
+        await DialogWait.UntilAsync(surface, dialog, () => !dialog.Loading);
         var window = OwnedTree.Find<Window>(dialog).ShouldNotBeNull();
         var open = OwnedTree.FindAll<Button>(dialog).Single(static button => button.Text == "&Open");
         var cancel = OwnedTree.FindAll<Button>(dialog).Single(static button => button.Text == "&Cancel");
@@ -156,7 +156,7 @@ public sealed class FilePickerDialogSurfaceTests
             dialog,
             new Size(76, 33),
             TestContext.Current.CancellationToken);
-        await WaitUntilAsync(surface, () => !dialog.Loading);
+        await DialogWait.UntilAsync(surface, dialog, () => !dialog.Loading);
         var window = OwnedTree.Find<Window>(dialog).ShouldNotBeNull();
         var initial = window.Bounds;
         var start = new Point(window.Bounds.Width - 10, 0);
@@ -196,7 +196,7 @@ public sealed class FilePickerDialogSurfaceTests
             dialog,
             new Size(100, 60),
             TestContext.Current.CancellationToken);
-        await WaitUntilAsync(surface, () => !dialog.Loading);
+        await DialogWait.UntilAsync(surface, dialog, () => !dialog.Loading);
         var window = OwnedTree.Find<Window>(dialog).ShouldNotBeNull();
         var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
         var listSurface = list.Parent.ShouldBeOfType<Dock>();
@@ -235,7 +235,7 @@ public sealed class FilePickerDialogSurfaceTests
             dialog,
             new Size(120, 40),
             TestContext.Current.CancellationToken);
-        await WaitUntilAsync(surface, () => !dialog.Loading);
+        await DialogWait.UntilAsync(surface, dialog, () => !dialog.Loading);
         var window = OwnedTree.Find<Window>(dialog).ShouldNotBeNull();
         var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
         var listSurface = list.Parent.ShouldBeOfType<Dock>();
@@ -315,7 +315,7 @@ public sealed class FilePickerDialogSurfaceTests
                     }),
                 "show file picker");
             var dialog = OwnedTree.Find<FilePickerDialog>(surface.Application.Root).ShouldNotBeNull();
-            await WaitUntilAsync(surface, () => !dialog.Loading);
+            await DialogWait.UntilAsync(surface, dialog, () => !dialog.Loading);
             var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
             await surface.UpdateAsync(
                 () =>
@@ -532,22 +532,6 @@ public sealed class FilePickerDialogSurfaceTests
         var path = Path.Combine(Path.GetTempPath(), $"sharp-vision-picker-surface-{Guid.NewGuid():N}");
         _ = Directory.CreateDirectory(path);
         return path;
-    }
-
-    private static async Task WaitUntilAsync(ComponentSurface surface, Func<bool> predicate)
-    {
-        for (var attempt = 0; attempt < 100; attempt++)
-        {
-            if (await surface.Application.Dispatcher.InvokeAsync(predicate, TestContext.Current.CancellationToken))
-            {
-                return;
-            }
-
-            await Task.Delay(TimeSpan.FromMilliseconds(5), TestContext.Current.CancellationToken);
-        }
-
-        (await surface.Application.Dispatcher.InvokeAsync(predicate, TestContext.Current.CancellationToken))
-            .ShouldBeTrue("the file-picker operation should settle within 500ms");
     }
 
     private static List<T> FindAll<T>(ControlBase root) where T : ControlBase

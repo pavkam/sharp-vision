@@ -61,6 +61,11 @@ public sealed class ApplicationRenderCompletionRaceTests
         }
     }
 
+    // IsRendering has no change notification of its own - it is not the completion of a
+    // deliberate step this test drives, but the eventually-consistent outcome of the race under
+    // test: whether the in-flight flag latches back down once a render whose completion could not
+    // be posted back to the disposed dispatcher still retires it. Polling the flag itself is
+    // therefore the only available signal; there is nothing else to subscribe to or await.
     private static async Task WaitForAsync(Func<bool> condition, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;

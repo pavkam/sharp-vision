@@ -72,7 +72,7 @@ public sealed class TerminalServicesTests
         application.Terminal.TitleSupported.ShouldBeFalse();
         application.Terminal.Bell.Ring();
         application.Terminal.SetTitle("ignored");
-        await Task.Delay(50, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
 
         terminal.Writes.Count.ShouldBe(before);
         await application.StopAsync(TestContext.Current.CancellationToken);
@@ -128,7 +128,7 @@ public sealed class TerminalServicesTests
         var before = terminal.Writes.Count;
 
         _ = Should.Throw<ArgumentException>(() => application.Terminal.SetTitle(title));
-        await Task.Delay(50, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
 
         terminal.Writes.Count.ShouldBe(before);
         await application.StopAsync(TestContext.Current.CancellationToken);
@@ -173,7 +173,7 @@ public sealed class TerminalServicesTests
 
         application.Terminal.TitleSupported.ShouldBeFalse();
         application.Terminal.SetTitle("ignored");
-        await Task.Delay(50, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
 
         terminal.Writes.Count.ShouldBe(before);
         await application.StopAsync(TestContext.Current.CancellationToken);
@@ -199,7 +199,7 @@ public sealed class TerminalServicesTests
 
         application.Terminal.Bell.Supported.ShouldBeFalse();
         Should.NotThrow(application.Terminal.Bell.Ring);
-        await Task.Delay(50, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
 
         terminal.Writes.Count.ShouldBe(before);
         await application.StopAsync(TestContext.Current.CancellationToken);
@@ -235,7 +235,7 @@ public sealed class TerminalServicesTests
         application.Terminal.Clipboard.Supported.ShouldBeFalse();
         application.Terminal.Clipboard.Write("blocked");
         application.Terminal.Clipboard.Request();
-        await Task.Delay(50, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
 
         terminal.Writes.Count.ShouldBe(before);
         await application.StopAsync(TestContext.Current.CancellationToken);
@@ -256,13 +256,25 @@ public sealed class TerminalServicesTests
             Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported }
         };
         List<string> written = [];
-        terminal.Written += memory => written.Add(Encoding.ASCII.GetString(memory.Span));
+        var complete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += memory =>
+        {
+            written.Add(Encoding.ASCII.GetString(memory.Span));
+            var joined = string.Concat(written);
+
+            if (joined.Contains("]5522;type=write:id=sv1\\", StringComparison.Ordinal) &&
+                joined.Contains("type=wdata:mime=dGV4dC9wbGFpbg==;aGVsbG8=", StringComparison.Ordinal) &&
+                joined.Contains("]5522;type=wdata\\", StringComparison.Ordinal))
+            {
+                _ = complete.TrySetResult();
+            }
+        };
         await using Application application = new(new ProbeControl(), terminal, terminal, options);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
         application.Terminal.Clipboard.Supported.ShouldBeTrue();
         application.Terminal.Clipboard.Write("hello");
-        await Task.Delay(80, TestContext.Current.CancellationToken);
+        await complete.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         var joined = string.Concat(written);
         joined.ShouldContain("]5522;type=write:id=sv1\\");
@@ -286,13 +298,25 @@ public sealed class TerminalServicesTests
             Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported, Osc52 = supported }
         };
         List<string> written = [];
-        terminal.Written += memory => written.Add(Encoding.ASCII.GetString(memory.Span));
+        var complete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += memory =>
+        {
+            written.Add(Encoding.ASCII.GetString(memory.Span));
+            var joined = string.Concat(written);
+
+            if (joined.Contains("]5522;type=write:id=sv1\\", StringComparison.Ordinal) &&
+                joined.Contains("type=wdata:mime=dGV4dC9wbGFpbg==;aGVsbG8=", StringComparison.Ordinal) &&
+                joined.Contains("]5522;type=wdata\\", StringComparison.Ordinal))
+            {
+                _ = complete.TrySetResult();
+            }
+        };
         await using Application application = new(new ProbeControl(), terminal, terminal, options);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
         application.Terminal.Clipboard.Supported.ShouldBeTrue();
         application.Terminal.Clipboard.Write("hello");
-        await Task.Delay(80, TestContext.Current.CancellationToken);
+        await complete.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         var joined = string.Concat(written);
         joined.ShouldContain("]5522;");
@@ -319,7 +343,9 @@ public sealed class TerminalServicesTests
         await application.StartAsync(TestContext.Current.CancellationToken);
 
         application.Terminal.Clipboard.Write("hello");
-        await Task.Delay(30, TestContext.Current.CancellationToken);
+        // The Kitty id is assigned inside the posted callback, so a dispatcher round-trip is
+        // needed before the reply below can carry a matching id.
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
         terminal.QueueInput("]5522;type=write:status=DONE:id=sv1\\"u8);
 
         var args = await reply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
@@ -352,7 +378,9 @@ public sealed class TerminalServicesTests
         await application.StartAsync(TestContext.Current.CancellationToken);
 
         application.Terminal.Clipboard.Request();
-        await Task.Delay(30, TestContext.Current.CancellationToken);
+        // The Kitty id is assigned inside the posted callback, so a dispatcher round-trip is
+        // needed before the reply below can carry a matching id.
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
         terminal.QueueInput("]5522;type=read:status=OK:id=sv1\\"u8);
         terminal.QueueInput(
             "]5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==:id=sv1;aGVsbG8=\\"u8);
@@ -384,7 +412,9 @@ public sealed class TerminalServicesTests
         await application.StartAsync(TestContext.Current.CancellationToken);
 
         application.Terminal.Clipboard.Request();
-        await Task.Delay(30, TestContext.Current.CancellationToken);
+        // The Kitty id is assigned inside the posted callback, so a dispatcher round-trip is
+        // needed before the reply below can carry a matching id.
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
         terminal.QueueInput("]5522;type=read:status=EPERM:id=sv1\\"u8);
 
         var args = await reply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
@@ -453,23 +483,43 @@ public sealed class TerminalServicesTests
             Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported }
         };
         List<KittyClipboardReplyEventArgs> replies = [];
+        var reply = new TaskCompletionSource<KittyClipboardReplyEventArgs>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
         await using Application application = new(new ProbeControl(), terminal, terminal, options);
-        application.Terminal.Clipboard.KittyClipboardReplyReceived += (_, args) => replies.Add(args);
+        application.Terminal.Clipboard.KittyClipboardReplyReceived += (_, args) =>
+        {
+            replies.Add(args);
+            _ = reply.TrySetResult(args);
+        };
         await application.StartAsync(TestContext.Current.CancellationToken);
 
+        // The Kitty id is assigned inside the posted callback, so each Request() below must
+        // round-trip the dispatcher before the next one is issued, or both could still be waiting
+        // to claim an id when the second call runs and end up racing for the same one.
         application.Terminal.Clipboard.Request();
-        await Task.Delay(30, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
         application.Terminal.Clipboard.Request();
-        await Task.Delay(30, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
 
-        // A late reply for the superseded first request (id sv1) must not complete anything.
+        // A late reply for the superseded first request (id sv1) must not complete anything. Wait
+        // for the transport to actually hand the bytes to the input reader, then round-trip the
+        // dispatcher so any (absent) resulting completion has had a chance to run before asserting.
+        var sv1Read = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.InputRead += bytes =>
+        {
+            if (bytes.Span.IndexOf("id=sv1"u8) >= 0)
+            {
+                _ = sv1Read.TrySetResult();
+            }
+        };
         terminal.QueueInput("]5522;type=read:status=OK:id=sv1\\"u8);
-        await Task.Delay(50, TestContext.Current.CancellationToken);
+        await sv1Read.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
         replies.ShouldBeEmpty();
 
         // The reply for the still-active second request (id sv2) completes it normally.
         terminal.QueueInput("]5522;type=read:status=EIO:id=sv2\\"u8);
-        await Task.Delay(50, TestContext.Current.CancellationToken);
+        _ = await reply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         var completed = replies.ShouldHaveSingleItem();
         completed.Failure.ShouldBe(KittyClipboardReplyStatus.Io);
@@ -503,7 +553,9 @@ public sealed class TerminalServicesTests
         await application.StartAsync(TestContext.Current.CancellationToken);
 
         application.Terminal.Clipboard.Request();
-        await Task.Delay(30, TestContext.Current.CancellationToken);
+        // The pending OSC 52 request is armed inside the posted callback, so a dispatcher
+        // round-trip is needed before the reply below is recognized.
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
         terminal.QueueInput("]52;c;aGVsbG8=\\"u8);
 
         var args = await reply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
@@ -610,7 +662,9 @@ public sealed class TerminalServicesTests
         await application.StartAsync(TestContext.Current.CancellationToken);
 
         application.Terminal.Clipboard.Request(ClipboardSelection.Clipboard);
-        await Task.Delay(30, TestContext.Current.CancellationToken);
+        // The pending OSC 52 request is armed inside the posted callback, so a dispatcher
+        // round-trip is needed before the reply below is recognized.
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
         terminal.QueueInput("]52;p;cHJpbWFyeQ==\\"u8);
 
         var args = await reply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
@@ -649,7 +703,9 @@ public sealed class TerminalServicesTests
         await application.StartAsync(TestContext.Current.CancellationToken);
 
         application.Terminal.Clipboard.Request(ClipboardSelection.Primary);
-        await Task.Delay(30, TestContext.Current.CancellationToken);
+        // The pending OSC 52 request is armed inside the posted callback, so a dispatcher
+        // round-trip is needed before the reply below is recognized.
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
         terminal.QueueInput("]52;p;cHJpbWFyeQ==\\"u8);
 
         var args = await reply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
@@ -670,6 +726,8 @@ public sealed class TerminalServicesTests
             Capabilities = TerminalCapabilities.Conservative with { Osc52 = supported }
         };
         List<KittyClipboardReplyEventArgs> replies = [];
+        var reply = new TaskCompletionSource<KittyClipboardReplyEventArgs>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
         var clock = new ManualTimeProvider();
         await using Application application = new(
             new ProbeControl(),
@@ -677,26 +735,22 @@ public sealed class TerminalServicesTests
             terminal,
             options,
             timeProvider: clock);
-        application.Terminal.Clipboard.KittyClipboardReplyReceived += (_, args) => replies.Add(args);
+        application.Terminal.Clipboard.KittyClipboardReplyReceived += (_, args) =>
+        {
+            replies.Add(args);
+            _ = reply.TrySetResult(args);
+        };
         await application.StartAsync(TestContext.Current.CancellationToken);
 
         application.Terminal.Clipboard.Request();
         await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
-        terminal.QueueInput("]52;c;aGVsbG8=\\"u8);
-        await WaitForAsync(() => replies.Count == 1);
+        terminal.QueueInput("]52;c;aGVsbG8=\\"u8);
+        _ = await reply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         clock.Advance(QueryLimits.Default.QueryTimeout * 2);
         await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
 
         replies.Count.ShouldBe(1, "a completed request must not also time out");
         await application.StopAsync(TestContext.Current.CancellationToken);
-    }
-
-    private static async Task WaitForAsync(Func<bool> condition)
-    {
-        for (var attempt = 0; attempt < 200 && !condition(); attempt++)
-        {
-            await Task.Delay(25, TestContext.Current.CancellationToken);
-        }
     }
 
     /// <summary>
@@ -755,7 +809,7 @@ public sealed class TerminalServicesTests
 
         application.Terminal.Clipboard.Supported.ShouldBeFalse();
         application.Terminal.Clipboard.Write("hello");
-        await Task.Delay(50, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
 
         terminal.Writes.Count.ShouldBe(before);
         await application.StopAsync(TestContext.Current.CancellationToken);
@@ -776,14 +830,25 @@ public sealed class TerminalServicesTests
             Capabilities = TerminalCapabilities.Conservative with { Osc52 = supported }
         };
         List<string> written = [];
-        terminal.Written += memory => written.Add(Encoding.ASCII.GetString(memory.Span));
+        var complete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += memory =>
+        {
+            written.Add(Encoding.ASCII.GetString(memory.Span));
+            var joined = string.Concat(written);
+
+            if (joined.Contains("52;c;aGVsbG8=", StringComparison.Ordinal) &&
+                joined.Contains("52;c;?", StringComparison.Ordinal))
+            {
+                _ = complete.TrySetResult();
+            }
+        };
         await using Application application = new(new ProbeControl(), terminal, terminal, options);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
         application.Terminal.Clipboard.Supported.ShouldBeTrue();
         application.Terminal.Clipboard.Write("hello");
         application.Terminal.Clipboard.Request();
-        await Task.Delay(80, TestContext.Current.CancellationToken);
+        await complete.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         // Out-of-band posts may be coalesced into a single transport write.
         var joined = string.Concat(written);

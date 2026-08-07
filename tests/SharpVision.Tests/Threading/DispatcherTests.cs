@@ -331,7 +331,9 @@ public sealed class DispatcherTests
         var tcs = new TaskCompletionSource<int>();
         dispatcher.Post(async () =>
         {
-            await Task.Delay(10);
+            // Forces an asynchronous resumption - only await proves the continuation returns
+            // through SynchronizationContext.Post rather than running synchronously inline.
+            await Task.Yield();
             tcs.SetResult(Environment.CurrentManagedThreadId);
         });
         var resumedThreadId = await tcs.Task;

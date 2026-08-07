@@ -441,7 +441,7 @@ public sealed class FilePickerDialogTests
 
         // Act
         await surface.UpdateAsync(() => hidden.IsChecked = true, "request failing reload");
-        await WaitUntilAsync(surface, () => !dialog.Loading);
+        await DialogWait.UntilAsync(surface, dialog, () => !dialog.Loading);
 
         // Assert
         dialog.CurrentDirectory.ShouldBe(directory);
@@ -516,7 +516,7 @@ public sealed class FilePickerDialogTests
         await surface.UpdateAsync(() => hidden.IsChecked = true, "start deferred reload");
         dialog.Loading.ShouldBeTrue();
         await surface.UpdateAsync(() => filter.SelectedIndex = 1, "replace deferred reload");
-        await WaitUntilAsync(surface, () => !dialog.Loading);
+        await DialogWait.UntilAsync(surface, dialog, () => !dialog.Loading);
         _ = stale.TrySetResult([new FilePickerEntry("Stale.cs", stalePath, false, false)]);
         await surface.UpdateAsync(static () => { }, "deliver stale completion");
 
@@ -773,21 +773,5 @@ public sealed class FilePickerDialogTests
         await surface.UpdateAsync(() => list.SelectedIndex = 0, "select one entry");
 
         dialog.Status.ShouldBe("1 elegido(s)");
-    }
-
-    private static async Task WaitUntilAsync(ComponentSurface surface, Func<bool> predicate)
-    {
-        for (var attempt = 0; attempt < 100; attempt++)
-        {
-            if (await surface.Application.Dispatcher.InvokeAsync(predicate, TestContext.Current.CancellationToken))
-            {
-                return;
-            }
-
-            await Task.Delay(TimeSpan.FromMilliseconds(5), TestContext.Current.CancellationToken);
-        }
-
-        (await surface.Application.Dispatcher.InvokeAsync(predicate, TestContext.Current.CancellationToken))
-            .ShouldBeTrue("the deterministic file-picker operation should settle within 500ms");
     }
 }

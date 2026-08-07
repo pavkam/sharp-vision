@@ -112,6 +112,9 @@ internal sealed class SessionTransport: ITransport
             StallNextWrite = false;
             // Bounded rather than infinite: a stall that outlives its caller's budget expires it, but
             // a stall that lands outside cleanup must still complete rather than deadlock the test.
+            // The bounded cousin of the Task.Delay(Timeout.InfiniteTimeSpan, ct) idiom used to model
+            // a hang elsewhere - real wall-clock time either way, since this fake transport reads no
+            // TimeProvider and a manual clock could not make it resume.
             return new ValueTask(Task.Delay(TimeSpan.FromSeconds(2), cancellationToken));
         }
 

@@ -136,7 +136,11 @@ public sealed class DispatcherShutdownContractTests
             reached.Set();
 
             // Spin until DisposeAsync has actually set the stopping flag, so the hold below is
-            // provably taken during shutdown rather than racing it.
+            // provably taken during shutdown rather than racing it. This runs synchronously inside
+            // the dispatcher's own posted callback - the one thread capable of observing the flag
+            // flip is busy spinning here, so there is no dispatcher-owned signal (event, TCS, or
+            // otherwise) it could instead await without deadlocking itself. The cross-thread flag
+            // set by DisposeAsync is the only other side, and polling it is the only option left.
             while (!IsStopping(dispatcher))
             {
                 Thread.Sleep(1);
@@ -174,6 +178,8 @@ public sealed class DispatcherShutdownContractTests
         {
             reached.Set();
 
+            // Same spin as above, and for the same reason: this callback is itself the only thread
+            // that could observe a signal here, so it cannot wait on one without deadlocking itself.
             while (!IsStopping(dispatcher))
             {
                 Thread.Sleep(1);
@@ -205,24 +211,16 @@ public sealed class DispatcherShutdownContractTests
             .GetField("_stopping", BindingFlags.Instance | BindingFlags.NonPublic)!
             .GetValue(dispatcher)!;
 
-    // A stopped dispatcher refuses every Post, which is a far more reliable barrier than a timer:
-    // it proves the run loop has actually exited rather than merely that time has passed.
+    // The run loop's own completion signal, reached the same way IsStopping reaches the flag
+    // above: there is no public way to observe a bare Dispatcher's shutdown, so this reflects out
+    // the private TaskCompletionSource the run loop itself settles when it exits, rather than
+    // polling Post for the ObjectDisposedException that means the same thing.
     private static async Task WaitForStopAsync(Dispatcher dispatcher)
     {
-        for (var attempt = 0; attempt < 400; attempt++)
-        {
-            try
-            {
-                dispatcher.Post(static () => { });
-            }
-            catch (ObjectDisposedException)
-            {
-                return;
-            }
+        var stopped = (TaskCompletionSource) typeof(Dispatcher)
+            .GetField("_stopped", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(dispatcher)!;
 
-            await Task.Delay(25, TestContext.Current.CancellationToken);
-        }
-
-        throw new InvalidOperationException("The dispatcher never stopped.");
+        await stopped.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
     }
 }

@@ -187,21 +187,30 @@ public sealed class LifecycleTransitionIsolationTests
         var control = new ProbeControl();
         await using Application application = new(control, terminal, terminal, TerminalOptions.Minimal);
         var frames = 0;
+        int? threshold = null;
+        var exceededThreshold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.UnhandledException += (_, eventArgs) => eventArgs.Handled = true;
         application.FrameRendered += (_, _) =>
         {
             frames++;
+
+            if (threshold is { } value && frames > value)
+            {
+                _ = exceededThreshold.TrySetResult();
+            }
+
             throw new InvalidOperationException("frame-boom");
         };
 
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
         await application.StartAsync(timeout.Token);
         var afterStart = frames;
+        threshold = afterStart;
 
         await application.Dispatcher.InvokeAsync(
             () => control.Invalidate(Invalidation.Render),
             TestContext.Current.CancellationToken);
-        await WaitForAsync(() => frames > afterStart);
+        await exceededThreshold.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         frames.ShouldBeGreaterThan(afterStart, "the pump behind a throwing handler must still run");
         _ = await Should.ThrowAsync<InvalidOperationException>(
@@ -255,13 +264,5 @@ public sealed class LifecycleTransitionIsolationTests
 
         order.IndexOf("frame").ShouldBeLessThan(order.IndexOf("started"));
         await application.StopAsync(TestContext.Current.CancellationToken);
-    }
-
-    private static async Task WaitForAsync(Func<bool> condition)
-    {
-        for (var attempt = 0; attempt < 200 && !condition(); attempt++)
-        {
-            await Task.Delay(25, TestContext.Current.CancellationToken);
-        }
     }
 }

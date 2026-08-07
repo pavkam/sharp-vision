@@ -471,7 +471,7 @@ public sealed class SaveFileDialogTests
                     }),
                 "show save dialog");
             var dialog = OwnedTree.Find<SaveFileDialog>(surface.Application.Root).ShouldNotBeNull();
-            await WaitUntilAsync(surface, () => !dialog.Loading);
+            await DialogWait.UntilAsync(surface, dialog, () => !dialog.Loading);
             await surface.Keyboard.PressAsync(Code.Enter);
 
             // Assert
@@ -514,7 +514,7 @@ public sealed class SaveFileDialogTests
                     }),
                 "show save dialog");
             var dialog = OwnedTree.Find<SaveFileDialog>(surface.Application.Root).ShouldNotBeNull();
-            await WaitUntilAsync(surface, () => !dialog.Loading);
+            await DialogWait.UntilAsync(surface, dialog, () => !dialog.Loading);
             await surface.Keyboard.PressAsync(Code.Escape);
 
             // Assert
@@ -560,7 +560,7 @@ public sealed class SaveFileDialogTests
                     }),
                 "show save dialog");
             var dialog = OwnedTree.Find<SaveFileDialog>(surface.Application.Root).ShouldNotBeNull();
-            await WaitUntilAsync(surface, () => !dialog.Loading);
+            await DialogWait.UntilAsync(surface, dialog, () => !dialog.Loading);
             await surface.Keyboard.PressAsync(Code.Enter);
 
             // Assert
@@ -612,11 +612,13 @@ public sealed class SaveFileDialogTests
                     }),
                 "show save dialog");
             var dialog = OwnedTree.Find<SaveFileDialog>(surface.Application.Root).ShouldNotBeNull();
-            await WaitUntilAsync(surface, () => !dialog.Loading);
+            await DialogWait.UntilAsync(surface, dialog, () => !dialog.Loading);
             await surface.Keyboard.PressAsync(Code.Enter);
 
             // Assert: the dialog stays open instead of completing with a directory as the result.
-            await Task.Delay(50, TestContext.Current.CancellationToken);
+            await surface.Application.Dispatcher.InvokeAsync(
+                static () => { },
+                TestContext.Current.CancellationToken);
             pending!.IsCompleted.ShouldBeFalse();
             dialog.Disposed.ShouldBeFalse();
         }
@@ -658,7 +660,7 @@ public sealed class SaveFileDialogTests
                     }),
                 "show save dialog");
             var dialog = OwnedTree.Find<SaveFileDialog>(surface.Application.Root).ShouldNotBeNull();
-            await WaitUntilAsync(surface, () => !dialog.Loading);
+            await DialogWait.UntilAsync(surface, dialog, () => !dialog.Loading);
 
             // Trigger save — this should show a MessageBox confirmation since the file exists.
             await surface.Keyboard.PressAsync(Code.Enter);
@@ -795,7 +797,7 @@ public sealed class SaveFileDialogTests
                     }),
                 "show save dialog with an explicit Save Button style");
             var dialog = OwnedTree.Find<SaveFileDialog>(surface.Application.Root).ShouldNotBeNull();
-            await WaitUntilAsync(surface, () => !dialog.Loading);
+            await DialogWait.UntilAsync(surface, dialog, () => !dialog.Loading);
 
             // Trigger save — this should show a MessageBox confirmation since the file exists.
             await surface.Keyboard.PressAsync(Code.Enter);
@@ -913,7 +915,7 @@ public sealed class SaveFileDialogTests
                     }),
                 "show save dialog with explicit overwrite configuration");
             var dialog = OwnedTree.Find<SaveFileDialog>(surface.Application.Root).ShouldNotBeNull();
-            await WaitUntilAsync(surface, () => !dialog.Loading);
+            await DialogWait.UntilAsync(surface, dialog, () => !dialog.Loading);
             await surface.UpdateAsync(
                 () => dialog.OverwriteMessageFormat = static name => $"¿Reemplazar '{name}'?",
                 "customize the overwrite message formatter");
@@ -938,21 +940,5 @@ public sealed class SaveFileDialogTests
         {
             Directory.Delete(directory, recursive: true);
         }
-    }
-
-    private static async Task WaitUntilAsync(ComponentSurface surface, Func<bool> predicate)
-    {
-        for (var attempt = 0; attempt < 100; attempt++)
-        {
-            if (await surface.Application.Dispatcher.InvokeAsync(predicate, TestContext.Current.CancellationToken))
-            {
-                return;
-            }
-
-            await Task.Delay(TimeSpan.FromMilliseconds(5), TestContext.Current.CancellationToken);
-        }
-
-        (await surface.Application.Dispatcher.InvokeAsync(predicate, TestContext.Current.CancellationToken))
-            .ShouldBeTrue("the save-file dialog operation should settle within 500ms");
     }
 }

@@ -29,10 +29,26 @@ public sealed class OrderingTests
         List<Size> sizes = [];
         application.Resize += (_, eventArgs) => sizes.Add(eventArgs.Dimensions.Cells);
 
+        // The dispatcher is blocked in the posted callback above, so coalescing happens in the
+        // resize-reading loop rather than on the dispatcher; wait for all three queued resizes to
+        // actually be dequeued before releasing the block, or the assertion below could observe
+        // fewer than three still sitting in the channel.
+        var resizesRead = 0;
+        var allResizesRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.ResizeRead += dimensions =>
+        {
+            _ = dimensions;
+
+            if (Interlocked.Increment(ref resizesRead) == 3)
+            {
+                _ = allResizesRead.TrySetResult();
+            }
+        };
+
         terminal.QueueResize(new Dimensions(new Size(20, 5)));
         terminal.QueueResize(new Dimensions(new Size(30, 6)));
         terminal.QueueResize(new Dimensions(new Size(40, 7)));
-        await Task.Delay(20, TestContext.Current.CancellationToken);
+        await allResizesRead.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         release.Set();
         await application.Dispatcher.InvokeAsync(
             static () => { },

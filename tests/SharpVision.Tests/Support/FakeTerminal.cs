@@ -21,6 +21,9 @@ internal sealed class FakeTerminal: ITransport, IResizeSource
     /// <summary>Raised after one queued input block is copied into the session buffer.</summary>
     internal event Action<ReadOnlyMemory<byte>>? InputRead;
 
+    /// <summary>Raised after one queued resize record is dequeued.</summary>
+    internal event Action<Dimensions>? ResizeRead;
+
     /// <summary>Raised after one transport flush completes.</summary>
     internal event Action? Flushed;
 
@@ -126,8 +129,12 @@ internal sealed class FakeTerminal: ITransport, IResizeSource
     }
 
     /// <inheritdoc/>
-    public async ValueTask<Dimensions> ReadAsync(CancellationToken cancellationToken) =>
-        await _resize.Reader.ReadAsync(cancellationToken);
+    public async ValueTask<Dimensions> ReadAsync(CancellationToken cancellationToken)
+    {
+        var value = await _resize.Reader.ReadAsync(cancellationToken);
+        ResizeRead?.Invoke(value);
+        return value;
+    }
 
     /// <inheritdoc/>
     public ValueTask DisposeAsync()
