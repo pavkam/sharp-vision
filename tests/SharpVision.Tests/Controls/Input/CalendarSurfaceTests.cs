@@ -5,6 +5,8 @@ namespace SharpVision.Tests.Controls.Input;
 
 using System.Text.Json;
 
+using SharpVision.Tests.Input;
+
 
 /// <summary>Proves Calendar behavior through mounted terminal input and semantic output.</summary>
 public sealed class CalendarSurfaceTests
@@ -359,6 +361,93 @@ public sealed class CalendarSurfaceTests
 
         // Assert out-of-month-day foreground (28 July preceding the displayed month, first grid cell)
         surface.Cell(new Point(2, 3)).Style.Foreground.ShouldBe(Project(Color.Rgb(30, 30, 200)));
+    }
+
+    /// <summary>Verifies GoToToday under a mounted fake clock moves to that clock's date rather
+    /// than the real system clock, proving the call site reads the dispatcher's TimeProvider - the
+    /// assertion would fail against the real system date if the call site reverted to
+    /// <c>TimeProvider.System</c>.</summary>
+    [Fact]
+    public async Task Surface_WhenGoToTodayIsCalledUnderFakeClock_MovesToFakeDateAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var calendar = new UiCalendar
+        {
+            DisplayMonth = new DateOnly(2000, 1, 1),
+            Selection = null
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            calendar,
+            new Size(32, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+        var expected = DateOnly.FromDateTime(clock.GetLocalNow().DateTime);
+
+        // Act
+        var moved = false;
+        await surface.UpdateAsync(() => moved = calendar.GoToToday(), "go to today under fake clock");
+
+        // Assert
+        moved.ShouldBeTrue();
+        calendar.ActiveDate.ShouldBe(expected);
+        calendar.DisplayMonth.ShouldBe(new DateOnly(expected.Year, expected.Month, 1));
+    }
+
+    /// <summary>Verifies today's cell renders with TodayMarkerColor while a neighboring cell does
+    /// not, and that a committed selection covering today overrides the marker so a selected today
+    /// still reads as selected. The calendar is mounted under a fake clock so the "today" under
+    /// test is deterministic rather than depending on the real wall-clock date.</summary>
+    [Fact]
+    public async Task Surface_WhenTodayIsRendered_AppliesTodayMarkerUnlessSelectedAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var today = DateOnly.FromDateTime(clock.GetLocalNow().DateTime);
+        var displayMonth = new DateOnly(today.Year, today.Month, 1);
+        var neighbor = today.Day > 1 ? today.AddDays(-1) : today.AddDays(1);
+        var calendar = new UiCalendar
+        {
+            Culture = CultureInfo.InvariantCulture,
+            DisplayMonth = displayMonth,
+            Selection = null
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            calendar,
+            new Size(32, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+        var todayCell = CellFor(today, displayMonth, calendar.FirstDayOfWeek);
+        var neighborCell = CellFor(neighbor, displayMonth, calendar.FirstDayOfWeek);
+        var todayColor = Project(ThemeColorHelper.HoveredForeground(ThemeCatalog.Dark));
+
+        // Assert unselected today carries the marker while its neighbor does not
+        surface.Cell(todayCell).Style.Foreground.ShouldBe(todayColor);
+        surface.Cell(neighborCell).Style.Foreground.ShouldNotBe(todayColor);
+
+        // Act — select today
+        await surface.UpdateAsync(
+            () => calendar.Selection = new DateInterval(today, today),
+            "select today");
+
+        // Assert a selected today reads as selected, not as today
+        surface.Cell(todayCell).Style.Foreground.ShouldBe(
+            Project(ThemeColorHelper.SelectionForeground(ThemeCatalog.Dark)));
+    }
+
+    /// <summary>Resolves the absolute surface cell for one date inside a calendar's six-week grid,
+    /// mirroring Calendar's own internal grid geometry (a four-cell-wide column inside a
+    /// one-cell border plus one-cell horizontal padding, with the date grid beginning two rows
+    /// below the content top).</summary>
+    private static Point CellFor(DateOnly date, DateOnly displayMonth, DayOfWeek firstDayOfWeek)
+    {
+        var first = (int) firstDayOfWeek;
+        var offset = ((int) displayMonth.DayOfWeek - first + 7) % 7;
+        var firstDayNumber = displayMonth.DayNumber - offset;
+        var index = date.DayNumber - firstDayNumber;
+        var row = index / 7;
+        var column = index % 7;
+        return new Point(2 + (column * 4), 3 + row);
     }
 
     private static Color Project(Color color) =>

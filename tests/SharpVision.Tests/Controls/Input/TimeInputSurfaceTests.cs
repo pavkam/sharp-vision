@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
+using SharpVision.Tests.Input;
+
 /// <summary>Proves TimeInput appearance and interaction through mounted terminal surfaces.</summary>
 public sealed class TimeInputSurfaceTests
 {
@@ -265,5 +267,50 @@ public sealed class TimeInputSurfaceTests
         // Assert — hour resets to 0 in 24h mode
         _ = input.Value.ShouldNotBeNull();
         input.Value.Value.Hour.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a TimeInput constructed without an explicit Value seeds its lazily
+    /// resolved default from the dispatcher's own clock once mounted, instead of a clock latched
+    /// at construction - proving the control observes a fake TimeProvider it is mounted under.</summary>
+    [Fact]
+    public async Task Surface_WhenMountedUnderFakeClock_SeedsValueFromFakeClockAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var input = new TimeInput();
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(12, 3),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        var expected = TimeOnly.FromDateTime(clock.GetLocalNow().DateTime);
+        input.Value.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies a TimeInput constructed with AllowNull disabled before mounting still
+    /// seeds its lazily resolved default from the dispatcher's fake clock, instead of eagerly
+    /// latching the construction-time wall clock the moment AllowNull is set to false in an
+    /// object initializer, which runs before the control is attached to any dispatcher.</summary>
+    [Fact]
+    public async Task Surface_WhenAllowNullIsDisabledBeforeMountingUnderFakeClock_SeedsValueFromFakeClockAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var input = new TimeInput { AllowNull = false };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(12, 3),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        var expected = TimeOnly.FromDateTime(clock.GetLocalNow().DateTime);
+        input.Value.ShouldBe(expected);
     }
 }

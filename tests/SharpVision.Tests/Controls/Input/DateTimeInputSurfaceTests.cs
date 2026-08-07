@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
+using SharpVision.Tests.Input;
+
 /// <summary>Proves DateTimeInput appearance and interaction through mounted terminal surfaces.</summary>
 public sealed class DateTimeInputSurfaceTests
 {
@@ -375,5 +377,85 @@ public sealed class DateTimeInputSurfaceTests
         // Assert — minute decrements (last segment in 24h without seconds)
         _ = input.Value.ShouldNotBeNull();
         input.Value.Value.Minute.ShouldBe(29);
+    }
+
+    /// <summary>Verifies a DateTimeInput constructed without an explicit Value seeds its lazily
+    /// resolved default from the dispatcher's own clock once mounted, instead of a clock latched
+    /// at construction - proving the control observes a fake TimeProvider it is mounted under.</summary>
+    [Fact]
+    public async Task Surface_WhenMountedUnderFakeClock_SeedsValueFromFakeClockAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var input = new DateTimeInput();
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(24, 3),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        var expected = clock.GetLocalNow().DateTime;
+        input.Value.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies a DateTimeInput constructed with AllowNull disabled before mounting still
+    /// seeds its lazily resolved default from the dispatcher's fake clock, instead of eagerly
+    /// latching the construction-time wall clock the moment AllowNull is set to false in an
+    /// object initializer, which runs before the control is attached to any dispatcher.</summary>
+    [Fact]
+    public async Task Surface_WhenAllowNullIsDisabledBeforeMountingUnderFakeClock_SeedsValueFromFakeClockAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var input = new DateTimeInput { AllowNull = false };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(24, 3),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        var expected = clock.GetLocalNow().DateTime;
+        input.Value.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies a programmatic Value change while the Calendar popup is already open
+    /// commits exactly once and leaves the popup open, instead of the push into the owned
+    /// Calendar's Selection re-entering OnCalendarSelectionChanged as if it were a user pick -
+    /// which would both commit a second time and set Opened = false out from under the caller.
+    /// Sibling DateInput guards this same reentrancy with a _synchronizingCalendar flag; this
+    /// proves DateTimeInput's equivalent guard covers the same hazard on every programmatic push,
+    /// not just the lazy seeding path.</summary>
+    [Fact]
+    public async Task Value_WhenChangedWhilePopupIsOpen_CommitsOnceAndKeepsPopupOpenAsync()
+    {
+        // Arrange
+        var input = new DateTimeInput { Value = new DateTime(2026, 1, 1, 8, 0, 0) };
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+        var calendar = OwnedTree.Find<UiCalendar>(input).ShouldNotBeNull();
+        await surface.UpdateAsync(() => input.Opened = true, "open the Calendar popup");
+        calendar.Selection.ShouldBe(new DateInterval(new DateOnly(2026, 1, 1), new DateOnly(2026, 1, 1)));
+        var changeCount = 0;
+        input.ValueChanged += (_, _) => changeCount++;
+
+        // Act — change Value, while the popup remains open, to a date the calendar does not
+        // already show selected.
+        await surface.UpdateAsync(
+            () => input.Value = new DateTime(2026, 6, 15, 9, 30, 0),
+            "change value while open");
+
+        // Assert
+        changeCount.ShouldBe(1);
+        input.Opened.ShouldBeTrue();
+        calendar.Selection.ShouldBe(new DateInterval(new DateOnly(2026, 6, 15), new DateOnly(2026, 6, 15)));
     }
 }

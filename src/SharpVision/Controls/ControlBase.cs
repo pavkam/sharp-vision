@@ -46,6 +46,9 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <summary>Gets the owning dispatcher while attached.</summary>
     public Dispatcher? Dispatcher { get; private set; }
 
+    /// <summary>Gets the attached dispatcher's clock, or the system clock while detached.</summary>
+    private protected TimeProvider TimeProvider => Dispatcher?.TimeProvider ?? TimeProvider.System;
+
     /// <summary>Gets the immutable Unicode cell policy inherited from the root.</summary>
     protected internal UnicodePolicy CellPolicy { get; private set; } = UnicodePolicy.Default;
 

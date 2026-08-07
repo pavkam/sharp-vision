@@ -35,6 +35,7 @@ public sealed class DateInput: PressInteractionBase
     private readonly PopupModalTracker _modalTracker;
     private readonly SegmentFieldBehavior _segments;
     private DateOnly? _value;
+    private bool _seeded;
     private bool _synchronizingCalendar;
     private CultureInfo _culture;
 
@@ -46,7 +47,12 @@ public sealed class DateInput: PressInteractionBase
         _culture = CultureInfo.CurrentCulture.DateTimeFormat.Calendar is GregorianCalendar
             ? CultureInfo.CurrentCulture
             : CultureInfo.InvariantCulture;
-        _value = DateOnly.FromDateTime(TimeProvider.System.GetLocalNow().DateTime);
+
+        // Value resolves the current local date lazily, on first read, rather than here: a
+        // control constructed off-dispatcher and then mounted under a dispatcher with its own
+        // TimeProvider must observe that dispatcher's clock instead of latching the clock that
+        // happened to be current at construction. The owned Calendar starts with no selection to
+        // match; EnsureSeeded pushes the resolved value into it once seeding actually happens.
         _calendar = new Calendar
         {
             TabStop = false,
@@ -100,10 +106,15 @@ public sealed class DateInput: PressInteractionBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public DateOnly? Value
     {
-        get => _value;
+        get
+        {
+            EnsureSeeded();
+            return _value;
+        }
         set
         {
             VerifyMutable();
+            _seeded = true;
 
             if (!value.HasValue && !AllowNull)
             {
@@ -140,9 +151,15 @@ public sealed class DateInput: PressInteractionBase
         get;
         set
         {
-            if (SetProperty(ref field, value, InvalidationImpact.None) && !value && _value is null)
+            // The eager re-seed only runs once seeding has already happened: resolving "now"
+            // here for a not-yet-seeded control would latch whatever clock is current at this
+            // call (often the construction-time wall clock, before a dispatcher with its own
+            // TimeProvider is attached) instead of the correct one. Leaving _value untouched
+            // when unseeded is safe - EnsureSeeded resolves a non-null value from the right
+            // clock before Value (or any other observer) can ever read _value as null.
+            if (SetProperty(ref field, value, InvalidationImpact.None) && !value && _seeded && _value is null)
             {
-                Value = ClampDate(DateOnly.FromDateTime(TimeProvider.System.GetLocalNow().DateTime));
+                Value = ClampDate(DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime));
             }
         }
     } = true;
@@ -361,6 +378,7 @@ public sealed class DateInput: PressInteractionBase
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
+        EnsureSeeded();
         _ = MeasureChild(_popup, new Constraint(constraint.Width, DropDownHeight.Add(1)));
         var width = MeasureCells(FormatValue()).Add(2);
         return new Size(width, 1);
@@ -378,6 +396,7 @@ public sealed class DateInput: PressInteractionBase
             return;
         }
 
+        EnsureSeeded();
         var content = ContentBounds;
         var style = ResolvedStyle;
         var textAreaWidth = Math.Max(0, content.Width - 2);
@@ -421,6 +440,8 @@ public sealed class DateInput: PressInteractionBase
     /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
+        EnsureSeeded();
+
         if (!EffectiveIsEnabled || !EffectiveIsVisible)
         {
             base.OnEvent(eventArgs);
@@ -619,6 +640,7 @@ public sealed class DateInput: PressInteractionBase
 
     private void OpenDropDown()
     {
+        EnsureSeeded();
         SyncCalendar();
         _popup.IsOpen = true;
         _modalTracker.Enter(this);
@@ -950,6 +972,23 @@ public sealed class DateInput: PressInteractionBase
         {
             _synchronizingCalendar = false;
         }
+    }
+
+    /// <summary>Latches Value to the current local date on first read, so a control mounted under
+    /// a dispatcher observes that dispatcher's clock instead of the clock current at
+    /// construction, and pushes the newly resolved value into the owned Calendar. A value already
+    /// committed - including an explicit null under <see cref="AllowNull"/> - is left
+    /// untouched.</summary>
+    private void EnsureSeeded()
+    {
+        if (_seeded)
+        {
+            return;
+        }
+
+        _seeded = true;
+        _value = ClampDate(DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime));
+        SyncCalendar();
     }
 
     private DateOnly ClampDate(DateOnly date) =>

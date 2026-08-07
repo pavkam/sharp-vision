@@ -46,7 +46,7 @@ public sealed record CalendarStyle: InputStyle
     /// <param name="border">The complete normal border.</param>
     /// <param name="shadow">The complete normal shadow.</param>
     /// <param name="selectedDayColor">The non-transparent foreground for a date inside the committed selection.</param>
-    /// <param name="todayMarkerColor">The non-transparent foreground for the hovered date or a pending interval preview.</param>
+    /// <param name="todayMarkerColor">The non-transparent foreground for today's date, and for the hovered date or a pending interval preview.</param>
     /// <param name="outOfMonthDayColor">The non-transparent foreground for a date outside the displayed month.</param>
     /// <param name="weekdayHeaderColor">The non-transparent foreground for the abbreviated weekday row.</param>
     /// <param name="disabledDayColor">The non-transparent foreground for a blocked, out-of-range, or disabled date.</param>
@@ -119,7 +119,8 @@ public sealed record CalendarStyle: InputStyle
         }
     }
 
-    /// <summary>Gets the foreground for the hovered date or a pending interval preview.</summary>
+    /// <summary>Gets the foreground for today's date, and for the hovered date or a pending
+    /// interval preview.</summary>
     /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
     public required ControlColor TodayMarkerColor
     {

@@ -49,6 +49,8 @@ public sealed class DateTimeInput: PressInteractionBase
     private readonly SegmentFieldBehavior _segments;
 
     private DateTime? _value;
+    private bool _seeded;
+    private bool _synchronizingCalendar;
     private CultureInfo _culture;
 
     #region Construction and properties
@@ -56,7 +58,12 @@ public sealed class DateTimeInput: PressInteractionBase
     /// <summary>Initializes a focusable date-time input at the current local date and time with a light field border and a connected calendar popup.</summary>
     public DateTimeInput()
     {
-        _value = TimeProvider.System.GetLocalNow().DateTime;
+        // Value resolves the current local date and time lazily, on first read, rather than
+        // here: a control constructed off-dispatcher and then mounted under a dispatcher with its
+        // own TimeProvider must observe that dispatcher's clock instead of latching the clock
+        // that happened to be current at construction. The owned Calendar starts with no
+        // selection to match; EnsureSeeded pushes the resolved value into it once seeding
+        // actually happens.
         _culture = CultureInfo.InvariantCulture;
         _calendar = new Calendar
         {
@@ -81,13 +88,6 @@ public sealed class DateTimeInput: PressInteractionBase
         // Register event handler after _popup is created to avoid NullReferenceException
         // when setting _calendar.Selection fires SelectionChanged → Opened accessor.
         _calendar.SelectionChanged += OnCalendarSelectionChanged;
-
-        if (_value.HasValue)
-        {
-            _calendar.Selection = new DateInterval(
-                DateOnly.FromDateTime(_value.Value),
-                DateOnly.FromDateTime(_value.Value));
-        }
 
         _popupSlot = RegisterOwnedSlot(
             new OwnedControlOptions(
@@ -122,7 +122,11 @@ public sealed class DateTimeInput: PressInteractionBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public DateTime? Value
     {
-        get => _value;
+        get
+        {
+            EnsureSeeded();
+            return _value;
+        }
         set => Commit(value);
     }
 
@@ -134,9 +138,15 @@ public sealed class DateTimeInput: PressInteractionBase
         get;
         set
         {
-            if (SetProperty(ref field, value, InvalidationImpact.None) && !value && _value is null)
+            // The eager re-seed only runs once seeding has already happened: resolving "now"
+            // here for a not-yet-seeded control would latch whatever clock is current at this
+            // call (often the construction-time wall clock, before a dispatcher with its own
+            // TimeProvider is attached) instead of the correct one. Leaving _value untouched
+            // when unseeded is safe - EnsureSeeded resolves a non-null value from the right
+            // clock before Value (or any other observer) can ever read _value as null.
+            if (SetProperty(ref field, value, InvalidationImpact.None) && !value && _seeded && _value is null)
             {
-                _ = Commit(ClampToRange(TimeProvider.System.GetLocalNow().DateTime));
+                _ = Commit(ClampToRange(TimeProvider.GetLocalNow().DateTime));
             }
         }
     } = true;
@@ -437,6 +447,7 @@ public sealed class DateTimeInput: PressInteractionBase
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
+        EnsureSeeded();
         _ = MeasureChild(_popup, new Constraint(constraint.Width, DropDownHeight));
         var width = _fieldBorderWidth;
 
@@ -462,6 +473,7 @@ public sealed class DateTimeInput: PressInteractionBase
             return;
         }
 
+        EnsureSeeded();
         var style = ResolvedStyle;
         var highlight = new TerminalStyle(
             style.Foreground,
@@ -497,6 +509,8 @@ public sealed class DateTimeInput: PressInteractionBase
     /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
+        EnsureSeeded();
+
         if (!EffectiveIsEnabled || !EffectiveIsVisible)
         {
             base.OnEvent(eventArgs);
@@ -731,7 +745,7 @@ public sealed class DateTimeInput: PressInteractionBase
     {
         if (!_value.HasValue)
         {
-            _ = Commit(ClampToRange(TimeProvider.System.GetLocalNow().DateTime));
+            _ = Commit(ClampToRange(TimeProvider.GetLocalNow().DateTime));
 
             if (!_value.HasValue)
             {
@@ -780,7 +794,7 @@ public sealed class DateTimeInput: PressInteractionBase
     {
         if (!_value.HasValue)
         {
-            return Commit(ClampToRange(TimeProvider.System.GetLocalNow().DateTime));
+            return Commit(ClampToRange(TimeProvider.GetLocalNow().DateTime));
         }
 
         var dt = _value.Value;
@@ -852,6 +866,7 @@ public sealed class DateTimeInput: PressInteractionBase
 
     private bool Commit(DateTime? requested)
     {
+        EnsureSeeded();
         var previous = _value;
         var clamped = requested.HasValue
             ? ClampToRange(requested.Value)
@@ -864,12 +879,29 @@ public sealed class DateTimeInput: PressInteractionBase
 
         if (clamped.HasValue)
         {
-            var date = DateOnly.FromDateTime(clamped.Value);
-            _calendar.Selection = new DateInterval(date, date);
+            PushCalendarSelection(DateOnly.FromDateTime(clamped.Value));
         }
 
         ValueChanged?.Invoke(this, new DateTimeInputValueChangedEventArgs(previous, clamped));
         return true;
+    }
+
+    /// <summary>Latches Value to the current local date and time on first read, so a control
+    /// mounted under a dispatcher observes that dispatcher's clock instead of the clock current
+    /// at construction, and pushes the newly resolved value into the owned Calendar. A value
+    /// already committed - including an explicit null under <see cref="AllowNull"/> - is left
+    /// untouched.</summary>
+    private void EnsureSeeded()
+    {
+        if (_seeded)
+        {
+            return;
+        }
+
+        _seeded = true;
+        var now = ClampToRange(TimeProvider.GetLocalNow().DateTime);
+        _value = now;
+        PushCalendarSelection(DateOnly.FromDateTime(now));
     }
 
     private DateTime ClampToRange(DateTime dateTime) =>
@@ -896,6 +928,27 @@ public sealed class DateTimeInput: PressInteractionBase
             : DateOnly.MaxValue;
     }
 
+    /// <summary>Pushes a date into the owned Calendar's selection under a re-entrancy guard.</summary>
+    /// <remarks>
+    /// Guards against OnCalendarSelectionChanged treating this programmatic push as a user pick:
+    /// without it, setting _calendar.Selection below re-enters through the SelectionChanged
+    /// event and triggers a redundant Commit plus Opened = false, converging today only by
+    /// incidental value equality. Mirrors DateInput's SyncCalendar guard.
+    /// </remarks>
+    private void PushCalendarSelection(DateOnly date)
+    {
+        _synchronizingCalendar = true;
+
+        try
+        {
+            _calendar.Selection = new DateInterval(date, date);
+        }
+        finally
+        {
+            _synchronizingCalendar = false;
+        }
+    }
+
     #endregion
 
     #region Drop-down coordination
@@ -913,11 +966,13 @@ public sealed class DateTimeInput: PressInteractionBase
 
     private void OpenDropDown()
     {
+        EnsureSeeded();
+
         if (_value.HasValue)
         {
             var date = DateOnly.FromDateTime(_value.Value);
             _calendar.DisplayMonth = new DateOnly(date.Year, date.Month, 1);
-            _calendar.Selection = new DateInterval(date, date);
+            PushCalendarSelection(date);
         }
 
         _popup.IsOpen = true;
@@ -935,6 +990,11 @@ public sealed class DateTimeInput: PressInteractionBase
     private void OnCalendarSelectionChanged(object? sender, CalendarSelectionChangedEventArgs eventArgs)
     {
         _ = sender;
+
+        if (_synchronizingCalendar)
+        {
+            return;
+        }
 
         if (eventArgs.Selection is not { } interval)
         {

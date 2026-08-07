@@ -66,11 +66,13 @@ a fresh anchor.
 | `FirstDayOfWeek` | culture default                  | Overrides the first weekday column                   |
 | `BlockedDates`   | empty                            | Owns normalized unavailable inclusive ranges         |
 
-The parameterless constructor captures the local date and culture once; the
-control does not advance itself at midnight. `Culture` must use an active
-`GregorianCalendar`, because mixing another calendar system's month labels with
-`DateOnly` day geometry would display false dates. Changing the culture
-rerenders the localized month and weekday text without changing the selection.
+`ActiveDate` and `DisplayMonth` resolve to the local date on first read rather
+than at construction, so a calendar mounted under a dispatcher with its own
+clock observes that clock; once resolved, the control does not advance itself at
+midnight. `Culture` must use an active `GregorianCalendar`, because mixing
+another calendar system's month labels with `DateOnly` day geometry would
+display false dates. Changing the culture rerenders the localized month and
+weekday text without changing the selection.
 
 `FirstDayOfWeek` overrides the culture's first weekday without changing the
 selected date. `GoToToday()` moves `ActiveDate` and `DisplayMonth` to the
@@ -105,10 +107,10 @@ visible text, and it is parsed before it replaces any existing state. Rendering
 clips at complete grapheme boundaries, never draws half of a wide cluster, and
 never changes the grid geometry.
 
-Calendar state takes precedence over authored markup. Adjacent-month muting,
-hover and interval preview, the committed selection, blocked and out-of-range
-state, and the focused active indicator are applied after authored faces, so a
-marked blocked date cannot use markup to appear available.
+Calendar state takes precedence over authored markup. Adjacent-month muting, the
+today marker, hover and interval preview, the committed selection, blocked and
+out-of-range state, and the focused active indicator are applied after authored
+faces, so a marked blocked date cannot use markup to appear available.
 
 ## Layout and visual states
 
@@ -126,20 +128,20 @@ navigates to its month. Smaller explicit bounds clip safely, and zero content
 draws nothing.
 
 A `CalendarStyle` holds five `ControlColor` day-grid foregrounds —
-`SelectedDayColor`, `TodayMarkerColor` (the hovered date and pending interval
-preview), `OutOfMonthDayColor`, `WeekdayHeaderColor`, and `DisabledDayColor` —
-plus the `ContentInset` `Thickness` and a complete appearance profile. Each
-color accepts either a concrete `Color` or a `SemanticColor` role and defaults
-to `SelectedText`, `ActiveText`, `Muted`, `Muted`, and `DisabledText`
-respectively. `NavigationColor`, `ActiveDayBackground`, `SelectedDayBackground`,
-and `DisabledDayBackground` own the remaining semantic paint channels.
-`ContentInset` defaults to one horizontal cell and is consumed directly by the
-calendar; it does not overwrite the caller's independent `Padding` value. A
-`with` expression creates a validated member-wise copy of
-`CalendarStyle.Default` or of any resolved style. Theme JSON remains
-semantic-only. Assigning `Style` replaces the entire Theme-owned day-grid
-foreground and inset presentation, and assigning `null` restores it; restyling
-`ContentInset` remeasures the control.
+`SelectedDayColor`, `TodayMarkerColor` (today's date, and also the hovered date
+and pending interval preview), `OutOfMonthDayColor`, `WeekdayHeaderColor`, and
+`DisabledDayColor` — plus the `ContentInset` `Thickness` and a complete
+appearance profile. Each color accepts either a concrete `Color` or a
+`SemanticColor` role and defaults to `SelectedText`, `ActiveText`, `Muted`,
+`Muted`, and `DisabledText` respectively. `NavigationColor`,
+`ActiveDayBackground`, `SelectedDayBackground`, and `DisabledDayBackground` own
+the remaining semantic paint channels. `ContentInset` defaults to one horizontal
+cell and is consumed directly by the calendar; it does not overwrite the
+caller's independent `Padding` value. A `with` expression creates a validated
+member-wise copy of `CalendarStyle.Default` or of any resolved style. Theme JSON
+remains semantic-only. Assigning `Style` replaces the entire Theme-owned
+day-grid foreground and inset presentation, and assigning `null` restores it;
+restyling `ContentInset` remeasures the control.
 
 The selected, hovered/preview, and disabled day-cell backgrounds, and the header
 arrow foreground, still resolve directly against the active Theme's
@@ -147,6 +149,11 @@ arrow foreground, still resolve directly against the active Theme's
 than through `CalendarStyle` — they remain themeable through a custom `Theme`,
 just not overridable per instance in this pass. The focused active date still
 renders with an underline.
+
+Today's date renders with `TodayMarkerColor` as its foreground. The marker
+applies after adjacent-month muting and before hover, interval preview, the
+committed selection, and disabled/out-of-range state, so any of those override
+it - a selected today renders as selected, not as today.
 
 ## Keyboard and pointer input
 

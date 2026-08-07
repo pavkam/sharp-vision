@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
+using SharpVision.Tests.Input;
+
 /// <summary>Proves DateInput appearance and interaction through mounted terminal surfaces.</summary>
 public sealed class DateInputSurfaceTests
 {
@@ -517,5 +519,50 @@ public sealed class DateInputSurfaceTests
         // Assert — month resets to 1
         _ = input.Value.ShouldNotBeNull();
         input.Value.Value.Month.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a DateInput constructed without an explicit Value seeds its lazily
+    /// resolved default from the dispatcher's own clock once mounted, instead of a clock latched
+    /// at construction - proving the control observes a fake TimeProvider it is mounted under.</summary>
+    [Fact]
+    public async Task Surface_WhenMountedUnderFakeClock_SeedsValueFromFakeClockAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var input = new DateInput();
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(20, 3),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        var expected = DateOnly.FromDateTime(clock.GetLocalNow().DateTime);
+        input.Value.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies a DateInput constructed with AllowNull disabled before mounting still
+    /// seeds its lazily resolved default from the dispatcher's fake clock, instead of eagerly
+    /// latching the construction-time wall clock the moment AllowNull is set to false in an
+    /// object initializer, which runs before the control is attached to any dispatcher.</summary>
+    [Fact]
+    public async Task Surface_WhenAllowNullIsDisabledBeforeMountingUnderFakeClock_SeedsValueFromFakeClockAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var input = new DateInput { AllowNull = false };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(20, 3),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        var expected = DateOnly.FromDateTime(clock.GetLocalNow().DateTime);
+        input.Value.ShouldBe(expected);
     }
 }

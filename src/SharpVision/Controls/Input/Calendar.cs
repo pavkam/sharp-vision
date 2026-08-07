@@ -10,6 +10,7 @@ using SharpVision.Terminal.Input;
 public sealed class Calendar: Control<CalendarStyle>
 {
     private Color ResolveColor(ControlColor value) => ResolveColor(value, Theme);
+    private DateOnly Today => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime);
     private const TerminalAttributes _blinkAttributes =
         TerminalAttributes.Blink | TerminalAttributes.RapidBlink;
     private const int _cellWidth = 4;
@@ -23,9 +24,9 @@ public sealed class Calendar: Control<CalendarStyle>
     private const int _contentWidth = _cellWidth * _columnCount;
     private const int _weekCount = 6;
 
-    private DateOnly _activeDate;
+    private DateOnly? _activeDate;
     private CultureInfo _culture;
-    private DateOnly _displayMonth;
+    private DateOnly? _displayMonth;
     private DateOnly? _hoveredDate;
     private DateOnly? _intervalAnchor;
     private readonly Dictionary<DateOnly, CalendarDateMarkup> _markup = [];
@@ -37,13 +38,14 @@ public sealed class Calendar: Control<CalendarStyle>
     /// <summary>Initializes a focusable calendar at the current local date.</summary>
     public Calendar() : base(CalendarStyle.Definition)
     {
-        var today = DateOnly.FromDateTime(TimeProvider.System.GetLocalNow().DateTime);
-        _activeDate = today;
+        // ActiveDate and DisplayMonth resolve "today" lazily, on first read, rather than here:
+        // a calendar constructed off-dispatcher and then mounted under a dispatcher with its own
+        // TimeProvider must observe that dispatcher's clock instead of latching the clock that
+        // happened to be current at construction.
         _culture = CultureInfo.CurrentCulture.DateTimeFormat.Calendar is GregorianCalendar
             ? CultureInfo.CurrentCulture
             : CultureInfo.InvariantCulture;
         _firstDayOfWeek = _culture.DateTimeFormat.FirstDayOfWeek;
-        _displayMonth = StartOfMonth(today);
         BlockedDates = new CalendarBlockedDateCollection(this);
         Focusable = true;
         TabStop = true;
@@ -189,7 +191,14 @@ public sealed class Calendar: Control<CalendarStyle>
     public bool ClearSelection() => CommitSelection(null);
 
     /// <summary>Gets the current keyboard-navigation date.</summary>
-    public DateOnly ActiveDate => _activeDate;
+    public DateOnly ActiveDate
+    {
+        get
+        {
+            EnsureSeeded();
+            return _activeDate!.Value;
+        }
+    }
 
     /// <summary>Gets the pending first interval endpoint, or null.</summary>
     internal DateOnly? IntervalAnchor => _intervalAnchor;
@@ -288,7 +297,7 @@ public sealed class Calendar: Control<CalendarStyle>
     public bool GoToToday()
     {
         VerifyMutable();
-        var today = DateOnly.FromDateTime(TimeProvider.System.GetLocalNow().DateTime);
+        var today = Today;
         if (today < MinimumDate || today > MaximumDate || BlockedDates.Contains(today))
         {
             return false;
@@ -304,7 +313,11 @@ public sealed class Calendar: Control<CalendarStyle>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public DateOnly DisplayMonth
     {
-        get => _displayMonth;
+        get
+        {
+            EnsureSeeded();
+            return _displayMonth!.Value;
+        }
         set => _ = SetProperty(ref _displayMonth, StartOfMonth(value), InvalidationImpact.Render);
     }
 
@@ -814,6 +827,11 @@ public sealed class Calendar: Control<CalendarStyle>
             style = style.WithForeground(ResolveColor(actualStyle.OutOfMonthDayColor));
         }
 
+        if (date == Today)
+        {
+            style = style.WithForeground(ResolveColor(actualStyle.TodayMarkerColor));
+        }
+
         if (_hoveredDate == date)
         {
             style = WithColors(
@@ -1059,6 +1077,20 @@ public sealed class Calendar: Control<CalendarStyle>
                 }
             }
         }
+    }
+
+    /// <summary>Latches ActiveDate and DisplayMonth to today on first read, from one shared clock
+    /// sample, without overwriting either field an earlier explicit assignment already set.</summary>
+    private void EnsureSeeded()
+    {
+        if (_activeDate.HasValue && _displayMonth.HasValue)
+        {
+            return;
+        }
+
+        var today = Today;
+        _activeDate ??= today;
+        _displayMonth ??= StartOfMonth(today);
     }
 
     private static DateOnly StartOfMonth(DateOnly date) => new(date.Year, date.Month, 1);

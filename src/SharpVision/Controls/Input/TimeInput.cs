@@ -39,6 +39,7 @@ public sealed class TimeInput: ControlBase
 
     private readonly SegmentFieldBehavior _segments;
     private TimeOnly? _value;
+    private bool _seeded;
     private CultureInfo _culture;
 
     #region Construction and properties
@@ -46,7 +47,10 @@ public sealed class TimeInput: ControlBase
     /// <summary>Initializes a focusable time input at the current local time with a light field border.</summary>
     public TimeInput()
     {
-        _value = TimeOnly.FromDateTime(TimeProvider.System.GetLocalNow().DateTime);
+        // Value resolves the current local time lazily, on first read, rather than here: a
+        // control constructed off-dispatcher and then mounted under a dispatcher with its own
+        // TimeProvider must observe that dispatcher's clock instead of latching the clock that
+        // happened to be current at construction.
         _culture = CultureInfo.InvariantCulture;
         _segments = new SegmentFieldBehavior(
             BuildSegments,
@@ -67,7 +71,11 @@ public sealed class TimeInput: ControlBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public TimeOnly? Value
     {
-        get => _value;
+        get
+        {
+            EnsureSeeded();
+            return _value;
+        }
         set => Commit(value);
     }
 
@@ -79,9 +87,15 @@ public sealed class TimeInput: ControlBase
         get;
         set
         {
-            if (SetProperty(ref field, value, InvalidationImpact.None) && !value && _value is null)
+            // The eager re-seed only runs once seeding has already happened: resolving "now"
+            // here for a not-yet-seeded control would latch whatever clock is current at this
+            // call (often the construction-time wall clock, before a dispatcher with its own
+            // TimeProvider is attached) instead of the correct one. Leaving _value untouched
+            // when unseeded is safe - EnsureSeeded resolves a non-null value from the right
+            // clock before Value (or any other observer) can ever read _value as null.
+            if (SetProperty(ref field, value, InvalidationImpact.None) && !value && _seeded && _value is null)
             {
-                _ = Commit(ClampToRange(TimeOnly.FromDateTime(TimeProvider.System.GetLocalNow().DateTime)));
+                _ = Commit(ClampToRange(TimeOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime)));
             }
         }
     } = true;
@@ -263,6 +277,7 @@ public sealed class TimeInput: ControlBase
     protected override Size MeasureOverride(Constraint constraint)
     {
         _ = constraint;
+        EnsureSeeded();
         var width = 0;
 
         foreach (var segment in BuildSegments())
@@ -281,6 +296,7 @@ public sealed class TimeInput: ControlBase
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
+        EnsureSeeded();
 
         if (!EffectiveIsEnabled || !EffectiveIsVisible)
         {
@@ -472,7 +488,7 @@ public sealed class TimeInput: ControlBase
     {
         if (!_value.HasValue)
         {
-            return Commit(ClampToRange(TimeOnly.FromDateTime(TimeProvider.System.GetLocalNow().DateTime)));
+            return Commit(ClampToRange(TimeOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime)));
         }
 
         var time = _value.Value;
@@ -534,6 +550,7 @@ public sealed class TimeInput: ControlBase
 
     private bool Commit(TimeOnly? requested)
     {
+        EnsureSeeded();
         var previous = _value;
         var clamped = requested.HasValue
             ? ClampToRange(requested.Value)
@@ -546,6 +563,21 @@ public sealed class TimeInput: ControlBase
 
         ValueChanged?.Invoke(this, new TimeInputValueChangedEventArgs(previous, clamped));
         return true;
+    }
+
+    /// <summary>Latches Value to the current local time on first read, so a control mounted under
+    /// a dispatcher observes that dispatcher's clock instead of the clock current at
+    /// construction. A value already committed - including an explicit null under
+    /// <see cref="AllowNull"/> - is left untouched.</summary>
+    private void EnsureSeeded()
+    {
+        if (_seeded)
+        {
+            return;
+        }
+
+        _seeded = true;
+        _value = ClampToRange(TimeOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime));
     }
 
     private TimeOnly ClampToRange(TimeOnly time) =>
@@ -575,6 +607,7 @@ public sealed class TimeInput: ControlBase
             return;
         }
 
+        EnsureSeeded();
         var style = ResolvedStyle;
         var highlight = SegmentHighlightStyle(style);
         var canHighlight = Focused && _value.HasValue;

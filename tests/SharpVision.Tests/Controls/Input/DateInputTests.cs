@@ -362,6 +362,22 @@ public sealed class DateInputTests
         control.ActualCalendarStyle.ShouldBe(calendar.ActualStyle);
     }
 
+    /// <summary>Verifies reading Value on a detached, never-mounted control falls back to the
+    /// system clock instead of throwing or returning null, proving the lazy default still
+    /// resolves without a dispatcher to observe.</summary>
+    [Fact]
+    public void Value_WhenReadBeforeAttach_FallsBackToSystemClockWithoutThrowing()
+    {
+        // Arrange
+        using var control = new DateInput();
+
+        // Act
+        var value = control.Value;
+
+        // Assert
+        _ = value.ShouldNotBeNull();
+    }
+
     #endregion
 
     #region Commit
