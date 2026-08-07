@@ -150,4 +150,130 @@ public sealed class ProgramsTests
         ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
         ["clear"] = new DescriptionProgram("\u001b[2J"u8)
     };
+
+    #region Lifecycle-pair expansion (Lease)
+
+    /// <summary>Verifies exact lease byte ownership and empty-command validation.</summary>
+    [Fact]
+    public void Constructor_WhenLeaseCommandsAreInvalid_ThrowsOrOwnsBytes()
+    {
+        // Arrange
+        var enable = "on"u8.ToArray();
+        var disable = "off"u8.ToArray();
+
+        // Act
+        var lease = new Lease(enable, disable);
+        enable[0] = (byte) 'x';
+        disable[0] = (byte) 'x';
+
+        // Assert
+        Encoding.ASCII.GetString(lease.Enable.Span).ShouldBe("on");
+        Encoding.ASCII.GetString(lease.Disable.Span).ShouldBe("off");
+        _ = Should.Throw<ArgumentException>(() => new Lease([], "off"u8));
+        _ = Should.Throw<ArgumentException>(() => new Lease("on"u8, []));
+    }
+
+    /// <summary>Verifies lifecycle-pair expansion validates names and its session interpreter.</summary>
+    [Fact]
+    public void TryExpandPair_WhenArgumentIsInvalid_Throws()
+    {
+        // Arrange
+        var programs = new Programs(KeypadPrograms());
+        var interpreter = new Interpreter(ProgramLimits.Default);
+
+        // Act / Assert
+        _ = Should.Throw<ArgumentException>(() =>
+            programs.TryExpandPair("", "rmkx", interpreter, out _, out _));
+        _ = Should.Throw<ArgumentException>(() =>
+            programs.TryExpandPair("smkx", " ", interpreter, out _, out _));
+        _ = Should.Throw<ArgumentNullException>(() =>
+            programs.TryExpandPair("smkx", "rmkx", null!, out _, out _));
+    }
+
+    /// <summary>Verifies every unavailable pair result clears both returned byte snapshots.</summary>
+    [Fact]
+    public void TryExpandPair_WhenPairIsUnavailable_ReturnsEmptyOutputs()
+    {
+        // Arrange
+        var programs = new Programs(new Dictionary<string, DescriptionProgram>
+        {
+            ["smkx"] = new DescriptionProgram("one-sided"u8)
+        });
+        var interpreter = new Interpreter(ProgramLimits.Default);
+
+        // Act
+        var expanded = programs.TryExpandPair(
+            "smkx",
+            "rmkx",
+            interpreter,
+            out var enable,
+            out var disable);
+
+        // Assert
+        expanded.ShouldBeFalse();
+        enable.IsEmpty.ShouldBeTrue();
+        disable.IsEmpty.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies successful pair expansion returns exact independently owned memories.</summary>
+    [Fact]
+    public void TryExpandPair_WhenProgramsAreValid_ReturnsIndependentExactOutputs()
+    {
+        // Arrange
+        var programs = new Programs(KeypadPrograms());
+        var interpreter = new Interpreter(ProgramLimits.Default);
+
+        // Act
+        var expanded = programs.TryExpandPair(
+            "smkx",
+            "rmkx",
+            interpreter,
+            out var enable,
+            out var disable);
+
+        // Assert
+        expanded.ShouldBeTrue();
+        Encoding.ASCII.GetString(enable.Span).ShouldBe("keys-in");
+        Encoding.ASCII.GetString(disable.Span).ShouldBe("keys-out");
+        MemoryMarshal.TryGetArray(enable, out var enableSegment).ShouldBeTrue();
+        MemoryMarshal.TryGetArray(disable, out var disableSegment).ShouldBeTrue();
+        enableSegment.Array.ShouldNotBeSameAs(disableSegment.Array);
+    }
+
+    /// <summary>Verifies mixed compiled/intrinsic pairs reject without changing interpreter statics.</summary>
+    [Fact]
+    public void TryExpandPair_WhenProgramKindsAreMixed_ReturnsEmptyAndPreservesStaticState()
+    {
+        // Arrange
+        var programs = new Programs(new Dictionary<string, DescriptionProgram>
+        {
+            ["smcup"] = new DescriptionProgram("%{42}%PAenter"u8),
+            ["rmcup"] = DescriptionProgram.Intrinsic
+        });
+        var interpreter = new Interpreter(ProgramLimits.Default);
+        var readStatic = new ArrayBufferWriter<byte>();
+
+        // Act
+        var expanded = programs.TryExpandPair(
+            "smcup",
+            "rmcup",
+            interpreter,
+            out var enable,
+            out var disable);
+        interpreter.Write(new DescriptionProgram("%gA%d"u8), [], readStatic);
+
+        // Assert
+        expanded.ShouldBeFalse();
+        enable.IsEmpty.ShouldBeTrue();
+        disable.IsEmpty.ShouldBeTrue();
+        Encoding.ASCII.GetString(readStatic.WrittenSpan).ShouldBe("0");
+    }
+
+    private static Dictionary<string, DescriptionProgram> KeypadPrograms() => new(StringComparer.Ordinal)
+    {
+        ["smkx"] = new DescriptionProgram("keys-in"u8),
+        ["rmkx"] = new DescriptionProgram("keys-out"u8)
+    };
+
+    #endregion
 }
