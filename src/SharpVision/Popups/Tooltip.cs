@@ -383,6 +383,15 @@ public sealed class Tooltip: Popup
             return;
         }
 
+        // Forced rather than left to Measure/Arrange's own dirty-phase check: an anchor reflow
+        // (OnAnchorBoundsChanged) moves the point placement was resolved against without ever
+        // changing rootBounds itself, so the constraint/slot passed below is byte-for-byte the
+        // same one already recorded from the tooltip's last layout pass. Measure and Arrange both
+        // short-circuit on an unchanged constraint/slot when nothing is already marked dirty, and
+        // this tooltip's own subtree has nothing dirty - only its foreign anchor moved - so
+        // without this, the calls below would silently no-op and leave placement pinned to
+        // wherever the anchor used to be.
+        Invalidate(Invalidation.Measure);
         Measure(new Constraint(rootBounds.Width, rootBounds.Height));
         Arrange(rootBounds, widthResolved: true, heightResolved: true);
     }
