@@ -821,4 +821,194 @@ public sealed class PointerTests
         Modifiers.None,
         isMotion: action == PointerAction.Move,
         isCellPositionInferred: false);
+
+    /// <summary>Verifies a wheel scroll that moves content under a pointer left stationary at the
+    /// wheeled cell repaints hover onto the control now at that cell, not the one that used to be
+    /// there.</summary>
+    [Fact]
+    public async Task PointerOverFace_WhenWheelScrollMovesContentUnderTheCursor_RepaintsTheNewlyHoveredControlAsync()
+    {
+        // Arrange
+        var stack = new Stack
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Never,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var buttons = new Button[4];
+
+        for (var index = 0; index < buttons.Length; index++)
+        {
+            buttons[index] = new Button(index.ToString(CultureInfo.InvariantCulture))
+            {
+                Height = Length.Cells(1),
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+            stack.Children.Add(buttons[index]);
+        }
+
+        await using var surface = await ComponentSurface.MountAsync(
+            stack,
+            new Size(4, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(stack, new Point(0, 0));
+        surface.ShouldHaveState(buttons[0], VisualState.PointerOver);
+
+        // Act - wheel down at the same cell the pointer already occupies
+        await surface.Pointer.WheelAsync(stack, new Point(0, 0), wheelY: -1);
+
+        // Assert - the button now under the stationary cell is hovered, not the stale one
+        stack.VerticalOffset.ShouldBe(1);
+        surface.ShouldHaveState(buttons[0], VisualState.Normal);
+        surface.ShouldHaveState(buttons[1], VisualState.PointerOver);
+    }
+
+    /// <summary>Verifies a terminal resize that removes the row at the pointer's cell clears hover
+    /// instead of leaving it pointing at a control no longer under the cursor.</summary>
+    [Fact]
+    public async Task Hovered_WhenTerminalResizesUnderThePointer_ClearsWhenNoControlRemainsAtTheCellAsync()
+    {
+        // Arrange
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(4, 2), new Size(40, 20)));
+        var spacer = new ProbeControl { Height = Length.Cells(1) };
+        var button = new Button("Go") { Height = Length.Cells(1), Width = Length.Cells(4) };
+        var root = new Stack
+        {
+            VerticalAlignment = VerticalAlignment.Top,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Children = { spacer, button }
+        };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        terminal.QueueInput(Encoding.ASCII.GetBytes("[<35;1;2M"));
+        await WaitUntilAsync(
+            () => ReferenceEquals(application.Capture.Hovered, button),
+            application,
+            "initial hover",
+            TestContext.Current.CancellationToken);
+
+        // Act - shrink the terminal so the row the pointer sits on no longer exists
+        terminal.QueueResize(new Dimensions(new Size(4, 1), new Size(40, 10)));
+        await WaitUntilAsync(
+            () => application.Capture.Hovered is null,
+            application,
+            "hover clears after resize",
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        await application.Dispatcher.InvokeAsync(
+            () => application.Capture.Hovered.ShouldBeNull(),
+            TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    private static async Task WaitUntilAsync(
+        Func<bool> predicate,
+        Application application,
+        string operation,
+        CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; attempt < 10_000; attempt++)
+        {
+            if (await application.Dispatcher.InvokeAsync(predicate, cancellationToken))
+            {
+                return;
+            }
+
+            await Task.Yield();
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        (await application.Dispatcher.InvokeAsync(predicate, cancellationToken))
+            .ShouldBeTrue($"Timed out waiting for {operation}.");
+    }
+
+    /// <summary>Verifies the direct target and its ancestors receive distinct pointer state.</summary>
+    [Fact]
+    public async Task Dispatch_WhenPointerHitsChild_SetsDirectAndAncestorPointerStateAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl { Bounds = new Rect(2, 2, 8, 4) };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var capture = new PointerManager(root);
+
+            _ = capture.Dispatch(new Pointer(new Point(3, 3), null, Buttons.None, PointerAction.Move, 0, 0,
+                Modifiers.None, true, false));
+
+            root.PointerOver.ShouldBeTrue();
+            root.PointerDirectlyOver.ShouldBeFalse();
+            child.PointerOver.ShouldBeTrue();
+            child.PointerDirectlyOver.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies capture transfer clears the former owner before publishing its direct loss event.</summary>
+    [Fact]
+    public async Task Capture_WhenTransferred_PublishesFormerOwnerLossAfterStateClearsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var first = new ProbeControl { Bounds = new Rect(0, 0, 5, 5) };
+            var second = new ProbeControl { Bounds = new Rect(6, 0, 5, 5) };
+            root.Children.Add(first);
+            root.Children.Add(second);
+            root.Attach(dispatcher);
+            using var pointer = new PointerManager(root);
+            PointerCaptureLossReason? reason = null;
+            var ownerWasClear = false;
+            first.LostPointerCapture += (_, eventArgs) =>
+            {
+                reason = eventArgs.Reason;
+                ownerWasClear = !first.HasPointerCapture && !second.HasPointerCapture;
+            };
+
+            first.CaptureProbePointer().ShouldBeTrue();
+            second.CaptureProbePointer().ShouldBeTrue();
+
+            reason.ShouldBe(PointerCaptureLossReason.Transferred);
+            ownerWasClear.ShouldBeTrue();
+            second.HasPointerCapture.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies sibling movement does not publish a spurious exit and re-entry on their shared ancestor.</summary>
+    [Fact]
+    public async Task Dispatch_WhenPointerMovesBetweenSiblings_PreservesSharedAncestorPointerStateAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var first = new ProbeControl { Bounds = new Rect(0, 0, 5, 5) };
+            var second = new ProbeControl { Bounds = new Rect(6, 0, 5, 5) };
+            root.Children.Add(first);
+            root.Children.Add(second);
+            root.Attach(dispatcher);
+            using var pointer = new PointerManager(root);
+            var entered = 0;
+            var exited = 0;
+            root.PointerEntered += (_, _) => entered++;
+            root.PointerExited += (_, _) => exited++;
+
+            _ = pointer.Dispatch(new Pointer(new Point(1, 1), null, Buttons.None, PointerAction.Move, 0, 0,
+                Modifiers.None, true, false));
+            _ = pointer.Dispatch(new Pointer(new Point(7, 1), null, Buttons.None, PointerAction.Move, 0, 0,
+                Modifiers.None, true, false));
+
+            entered.ShouldBe(1);
+            exited.ShouldBe(0);
+            root.PointerOver.ShouldBeTrue();
+            first.PointerOver.ShouldBeFalse();
+            second.PointerOver.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
 }

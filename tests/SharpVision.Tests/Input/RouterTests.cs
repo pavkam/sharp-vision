@@ -5,7 +5,7 @@ namespace SharpVision.Tests.Input;
 
 
 /// <summary>Verifies typed preview/bubble dispatch over stable route snapshots.</summary>
-public sealed class RoutingTests
+public sealed class RouterTests
 {
     /// <summary>Verifies preview, bubble, source state, payload, and default ordering.</summary>
     [Fact]

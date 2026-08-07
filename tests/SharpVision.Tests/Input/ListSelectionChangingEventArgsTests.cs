@@ -3,24 +3,14 @@
 
 namespace SharpVision.Tests.Input;
 
-/// <summary>Proves list selection event data publishes deterministic sorted deltas.</summary>
-public sealed class ListSelectionEventArgsTests
+/// <summary>Proves proposed-selection event data publishes deterministic sorted deltas.</summary>
+public sealed class ListSelectionChangingEventArgsTests
 {
     /// <summary>Verifies proposed selection indexes are normalized before handlers observe them.</summary>
     [Fact]
     public void ChangingConstructor_WhenIndexesAreUnsorted_PublishesSortedSnapshots()
     {
         var eventArgs = new ListSelectionChangingEventArgs([3, 1, 2], [5, 4]);
-
-        eventArgs.AddedIndexes.ToArray().ShouldBe([1, 2, 3]);
-        eventArgs.RemovedIndexes.ToArray().ShouldBe([4, 5]);
-    }
-
-    /// <summary>Verifies committed selection indexes are normalized before handlers observe them.</summary>
-    [Fact]
-    public void ChangedConstructor_WhenIndexesAreUnsorted_PublishesSortedSnapshots()
-    {
-        var eventArgs = new ListSelectionChangedEventArgs([3, 1, 2], [5, 4]);
 
         eventArgs.AddedIndexes.ToArray().ShouldBe([1, 2, 3]);
         eventArgs.RemovedIndexes.ToArray().ShouldBe([4, 5]);
