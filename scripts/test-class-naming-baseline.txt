@@ -153,7 +153,6 @@ tests/SharpVision.Tests/Styling/ThemeStyleSectionTests.cs#ThemeStyleSectionTests
 tests/SharpVision.Tests/Styling/ThemeValueTests.cs#ThemeValueTests
 tests/SharpVision.Tests/Support/ComponentSurfaceCoverageTests.cs#ComponentSurfaceCoverageTests
 tests/SharpVision.Tests/Support/ComponentUnitCoverageTests.cs#ComponentUnitCoverageTests
-tests/SharpVision.Tests/Surfaces/FloatingSurfaceTests.cs#FloatingSurfaceTests
 tests/SharpVision.Tests/Text/RandomizedEditTests.cs#RandomizedEditTests
 tests/SharpVision.Tests/Text/RandomizedLayoutTests.cs#RandomizedLayoutTests
 tests/SharpVision.Tests/Text/RandomizedMarkupTests.cs#RandomizedMarkupTests
