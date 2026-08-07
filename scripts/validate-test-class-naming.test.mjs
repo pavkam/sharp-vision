@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   SUITE_LEVEL_ALLOW_LIST,
+  candidateBases,
   computeViolations,
   discoverSubjectTypes,
   discoverTestClasses,
@@ -47,6 +48,16 @@ test("stripLongestSuffix_WhenNameHasEvidenceTierSuffix_StripsLongestFirst", () =
   assert.equal(stripLongestSuffix("WidgetConsumerTests"), "Widget");
   assert.equal(stripLongestSuffix("WidgetCompatibilityTests"), "Widget");
   assert.equal(stripLongestSuffix("WidgetTests"), "Widget");
+});
+
+test("candidateBases_WhenNameHasEvidenceTierSuffix_AlsoOffersTheBareTestsInterpretation", () => {
+  // A subject type can itself end in a suffix word (FloatingSurface), so both the tier-specific
+  // strip and the bare "Tests" strip must be offered as candidates, not just the tier-specific one.
+  assert.deepEqual(candidateBases("WidgetSurfaceTests"), ["Widget", "WidgetSurface"]);
+  assert.deepEqual(candidateBases("WidgetPerformanceTests"), ["Widget", "WidgetPerformance"]);
+  assert.deepEqual(candidateBases("WidgetConsumerTests"), ["Widget", "WidgetConsumer"]);
+  assert.deepEqual(candidateBases("WidgetCompatibilityTests"), ["Widget", "WidgetCompatibility"]);
+  assert.deepEqual(candidateBases("WidgetTests"), ["Widget"]);
 });
 
 test("findFilesWithExtension_WhenDirectoryHasIgnoredSubdirectories_SkipsThem", async () => {
@@ -174,6 +185,52 @@ test("computeViolations_WhenClassNamesSubjectType_Passes", async () => {
   }
 });
 
+test("computeViolations_WhenSubjectNameItselfEndsInASuffixWord_PassesViaTheBareTestsInterpretation", async () => {
+  const root = await makeFixtureRoot();
+
+  try {
+    // Regression coverage: FloatingSurface is a real subject type under src/ whose own name ends in
+    // "Surface". Stripping the tier-specific "SurfaceTests" suffix from FloatingSurfaceTests yields
+    // "Floating", which matches nothing; only the bare "Tests" strip ("FloatingSurface") matches the
+    // subject. computeViolations must try every candidate, not just the most tier-specific one.
+    await writeSource(
+      root,
+      "src/FloatingSurface.cs",
+      "namespace SharpVision.Surfaces;\n\npublic abstract class FloatingSurface<TStyle>: object\n{\n}\n",
+    );
+    await writeSource(
+      root,
+      "tests/Surfaces/FloatingSurfaceTests.cs",
+      testClassFile("FloatingSurfaceTests"),
+    );
+
+    assert.deepEqual(candidateBases("FloatingSurfaceTests"), ["Floating", "FloatingSurface"]);
+
+    const violations = await computeViolations(root);
+
+    assert.deepEqual(violations, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("computeViolations_WhenTierSpecificCandidateMatchesDirectly_StillPasses", async () => {
+  const root = await makeFixtureRoot();
+
+  try {
+    // A genuine evidence-tier class (subject "Widget", not "WidgetSurface") must still pass via its
+    // tier-specific candidate, alongside the FloatingSurface-style bare-Tests fallback above.
+    await writeSource(root, "src/Widget.cs", "namespace SharpVision;\n\npublic sealed class Widget\n{\n}\n");
+    await writeSource(root, "tests/Widgets/WidgetSurfaceTests.cs", testClassFile("WidgetSurfaceTests"));
+
+    const violations = await computeViolations(root);
+
+    assert.deepEqual(violations, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("computeViolations_WhenClassNamesAnEnumSubject_Passes", async () => {
   const root = await makeFixtureRoot();
 
@@ -238,6 +295,25 @@ test("computeViolations_WhenClassNamesNoSubjectType_Fails", async () => {
       /as FooBarBaz \(checked Tests\/SurfaceTests\/PerformanceTests\/ConsumerTests\/CompatibilityTests suffixes\)/,
     );
     assert.match(message, /suite-level allow-list or scripts\/test-class-naming-baseline\.txt\.$/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("computeViolations_WhenNeitherCandidateMatchesASubjectType_FailsAndListsBothInTheMessage", async () => {
+  const root = await makeFixtureRoot();
+
+  try {
+    // Neither "Widget" nor "WidgetSurface" is declared under src/, so both interpretations of
+    // WidgetSurfaceTests fail and the message names both, joined with "or".
+    await writeSource(root, "tests/Widgets/WidgetSurfaceTests.cs", testClassFile("WidgetSurfaceTests"));
+
+    const violations = await computeViolations(root);
+
+    assert.equal(violations.length, 1);
+
+    const message = formatViolation(violations[0]);
+    assert.match(message, /as Widget or WidgetSurface \(checked/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

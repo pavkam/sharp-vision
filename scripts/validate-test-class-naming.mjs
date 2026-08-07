@@ -17,10 +17,14 @@ const ignoredDirectories = new Set([
   "obj",
 ]);
 
-// Evidence-tier suffixes first, generic "Tests" last: every evidence-tier suffix itself ends in
-// "Tests", so checking the bare suffix first would strip only "Tests" and misplace the evidence-
-// tier qualifier inside the reported base name. The four evidence-tier suffixes are mutually
-// exclusive by construction, so their relative order does not matter; only "Tests" must be last.
+// Evidence-tier suffixes first, generic "Tests" last. Every evidence-tier suffix itself ends in
+// "Tests", so a class carrying one (e.g. "FooSurfaceTests") always matches two suffixes here: the
+// tier-specific one and the bare one. Both candidate bases are tried against the subject-type set
+// (see candidateBases()) because the subject itself can end in a suffix word, e.g. FloatingSurface
+// -- stripping only the tier suffix from "FloatingSurfaceTests" leaves "Floating", which is not a
+// type, while stripping the bare "Tests" leaves "FloatingSurface", which is. This list's order only
+// picks which candidate stripLongestSuffix() reports as "primary" for display; it does not affect
+// which classes pass, since every suffix that matches is tried.
 const evidenceTierSuffixes = [
   "SurfaceTests",
   "PerformanceTests",
@@ -181,19 +185,37 @@ export async function discoverTestClasses(root) {
 }
 
 /**
- * Strips the longest matching evidence-tier suffix from a test class name.
+ * Computes every candidate base name for a test class name: one per evidence-tier suffix (including
+ * the bare "Tests" suffix) that the class name ends with. A class passes if ANY candidate matches a
+ * declared subject type, because the subject type itself may end in a suffix word (e.g.
+ * `FloatingSurface`, whose test class `FloatingSurfaceTests` must not be judged only against the
+ * "Floating" interpretation produced by stripping "SurfaceTests").
  *
  * @param {string} className The test class name; always ends in "Tests" by discovery construction.
- * @returns {string} The base name the class must match against a declared subject type.
+ * @returns {string[]} Candidate base names, most tier-specific first; always at least one entry,
+ * since "Tests" itself is always a matching suffix.
  */
-export function stripLongestSuffix(className) {
+export function candidateBases(className) {
+  const bases = [];
+
   for (const suffix of evidenceTierSuffixes) {
     if (className.endsWith(suffix)) {
-      return className.slice(0, -suffix.length);
+      bases.push(className.slice(0, -suffix.length));
     }
   }
 
-  return className;
+  return bases;
+}
+
+/**
+ * Reports the most tier-specific candidate base name, for display purposes only. Pass/fail
+ * decisions use every candidate from {@link candidateBases}, not just this one.
+ *
+ * @param {string} className The test class name; always ends in "Tests" by discovery construction.
+ * @returns {string} The primary base name to show in a violation message.
+ */
+export function stripLongestSuffix(className) {
+  return candidateBases(className)[0];
 }
 
 function baselineKey(entry) {
@@ -207,20 +229,22 @@ function baselineKey(entry) {
  * @returns {string} The violation message.
  */
 export function formatViolation(entry) {
-  const base = stripLongestSuffix(entry.className);
+  const bases = candidateBases(entry.className);
+  const basesText = bases.join(" or ");
 
   return (
     `${entry.file}:${entry.line} ${entry.className} does not name a type under src/ or ` +
     "examples/ as " +
-    `${base} (checked Tests/SurfaceTests/PerformanceTests/ConsumerTests/CompatibilityTests ` +
+    `${basesText} (checked Tests/SurfaceTests/PerformanceTests/ConsumerTests/CompatibilityTests ` +
     "suffixes), and is not in the suite-level allow-list or " +
     "scripts/test-class-naming-baseline.txt."
   );
 }
 
 /**
- * Computes every discovered test class that fails both the subject-type match and the suite-level
- * allow-list, independent of the baseline. This is the set the baseline ratchet is drawn from.
+ * Computes every discovered test class that fails every candidate subject-type interpretation (see
+ * {@link candidateBases}) and the suite-level allow-list, independent of the baseline. This is the
+ * set the baseline ratchet is drawn from.
  *
  * @param {string} root The repository root.
  * @returns {Promise<{file: string, line: number, className: string}[]>} Unbaselined violations.
@@ -233,7 +257,7 @@ export async function computeViolations(root) {
   const violations = [];
 
   for (const entry of testClasses) {
-    if (subjectTypes.has(stripLongestSuffix(entry.className))) {
+    if (candidateBases(entry.className).some((base) => subjectTypes.has(base))) {
       continue;
     }
 
