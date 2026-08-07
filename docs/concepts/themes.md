@@ -83,7 +83,7 @@ so on). Six sibling types generalize the common presentations, as an open set
 any control can extend - `ControlStyle` itself (the passive base and universal
 fallback), `InputStyle`, `ContainerStyle`, `WindowStyle`, `PopupStyle`, and
 `TooltipStyle`. Each has its own `static Default` baking in a distinct
-code-owned border (none, heavy, light, paired, rounded, and none again,
+code-owned border (none, heavy, light, paired, rounded, and light again,
 respectively) and, for `Window` only, a visible composite shadow. A control with
 nothing to add beyond one of these six uses that type directly - there is no
 requirement to declare a new type per control.
@@ -190,9 +190,9 @@ tier.
 
 `popup` and `tooltip` continue to use the `window`/`windowText` pair, and both
 are framed with an all-side border for visual containment over whatever sits
-beneath them. Popup uses a rounded border; Tooltip uses the plain square glyph
-style instead, so a passive hint still reads as visually distinct from an
-interactive drop-down or menu even though both are now framed.
+beneath them. Popup uses a rounded border; Tooltip uses the light glyph style
+instead, so a passive hint still reads as visually distinct from an interactive
+drop-down or menu even though both are now framed.
 
 A fractional state object holds optional `face`, `border`, and `shadow` objects
 whose members match the corresponding type's own public properties (reflectively

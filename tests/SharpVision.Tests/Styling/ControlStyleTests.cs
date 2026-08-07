@@ -58,11 +58,11 @@ public sealed class ControlStyleTests
         PopupStyle.Default.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Rounded);
     }
 
-    /// <summary>Verifies TooltipStyle's default is a plain square all-side border with no
-    /// shadow - framed for visual containment like Popup, but with the square glyph style that
-    /// keeps it visually distinct from Popup's rounded frame.</summary>
+    /// <summary>Verifies TooltipStyle's default is a light all-side border with no shadow -
+    /// framed for visual containment like Popup, but with the light glyph style that keeps it
+    /// visually distinct from Popup's rounded frame.</summary>
     [Fact]
-    public void ThemeTooltipStyle_Default_IsSquareAllSideBorderWithNoShadow()
+    public void ThemeTooltipStyle_Default_IsLightAllSideBorderWithNoShadow()
     {
         TooltipStyle.Default.Border.Sides.ShouldBe(BorderSide.All);
         TooltipStyle.Default.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Light);

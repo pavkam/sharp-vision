@@ -228,12 +228,11 @@ public sealed class CuratedThemesTests
         }
     }
 
-    /// <summary>Verifies every bundled Tooltip profile is framed with a plain square all-side
-    /// border on the same window plane Popup uses, so a passive hint stays visually contained
-    /// over busy content while remaining distinct from Popup's rounded frame by glyph style
-    /// alone.</summary>
+    /// <summary>Verifies every bundled Tooltip profile is framed with a light all-side border
+    /// on the same window plane Popup uses, so a passive hint stays visually contained over busy
+    /// content while remaining distinct from Popup's rounded frame by glyph style alone.</summary>
     [Fact]
-    public void EveryTheme_WhenTooltipIsNormal_IsSquareFramedOnTheWindowPlane()
+    public void EveryTheme_WhenTooltipIsNormal_IsLightFramedOnTheWindowPlane()
     {
         foreach (var slug in ThemeCatalog.Slugs)
         {
@@ -250,10 +249,10 @@ public sealed class CuratedThemesTests
                 $"{slug} tooltip must be framed on every side for visual containment");
             theme.Tooltip.Normal.Border.GlyphStyle.ShouldBe(
                 BorderGlyphStyle.Light,
-                $"{slug} tooltip must use the plain square glyph style");
+                $"{slug} tooltip must use the light glyph style");
             theme.Tooltip.Normal.Border.GlyphStyle.ShouldNotBe(
                 theme.Popup.Normal.Border.GlyphStyle,
-                $"{slug} tooltip's square border must stay distinct from Popup's rounded frame");
+                $"{slug} tooltip's light border must stay distinct from Popup's rounded frame");
         }
     }
 

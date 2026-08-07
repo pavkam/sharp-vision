@@ -31,11 +31,11 @@ public sealed class TooltipTests
     }
 
     /// <summary>Verifies a Tooltip resolves the dedicated Tooltip role, framed on the same window
-    /// plane as Popup but with a plain square border rather than Popup's rounded frame, so a
-    /// passive hint stays visually contained while remaining distinct from an interactive
-    /// drop-down or menu.</summary>
+    /// plane as Popup but with a light border rather than Popup's rounded frame, so a passive
+    /// hint stays visually contained while remaining distinct from an interactive drop-down or
+    /// menu.</summary>
     [Fact]
-    public void Constructor_WhenCreated_UsesSquareFramedTooltipStyle()
+    public void Constructor_WhenCreated_UsesLightFramedTooltipStyle()
     {
         using var tooltip = new Tooltip();
 
@@ -187,7 +187,7 @@ public sealed class TooltipTests
     }
 
     /// <summary>Verifies an open tooltip visually contains itself over already-occupied backdrop
-    /// content: its perimeter renders the square border glyphs rather than leaving the backdrop's
+    /// content: its perimeter renders the light border glyphs rather than leaving the backdrop's
     /// text showing through, and its interior shows the tooltip's own content rather than the
     /// backdrop underneath. A borderless tooltip floating over busy content used to blend directly
     /// into whatever was already there; the frame is what keeps it legible.</summary>
@@ -238,7 +238,7 @@ public sealed class TooltipTests
         bounds.Width.ShouldBeGreaterThan(2);
         bounds.Height.ShouldBeGreaterThan(2);
 
-        // The frame's four corners and two sampled edges render the square glyphs, not the '#'
+        // The frame's four corners and two sampled edges render the light glyphs, not the '#'
         // backdrop that would otherwise show through a borderless tooltip.
         surface.Cell(new Point(bounds.X, bounds.Y)).Text.ShouldBe("┌");
         surface.Cell(new Point(bounds.Right - 1, bounds.Y)).Text.ShouldBe("┐");
