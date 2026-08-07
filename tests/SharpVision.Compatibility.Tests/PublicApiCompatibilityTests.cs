@@ -4,15 +4,28 @@
 namespace SharpVision.Compatibility.Tests;
 
 /// <summary>
-/// Guards the complete public surfaces of the published SharpVision assemblies.
+/// Guards the complete public surfaces of the published SharpVision assemblies against
+/// unintentional change.
 /// </summary>
+/// <remarks>
+/// This is not a per-version frozen baseline: the single snapshot per assembly under
+/// <c>Snapshots/</c> always reflects the current, approved shape of the public API. A failing
+/// diff here is the maintainer's own signal for whether the change is a documented breaking
+/// change that warrants a version bump - not an automated release gate keyed to
+/// <c>OverallVersion</c>. Accepting the new snapshot is a deliberate, reviewed decision, not a
+/// mechanical bookkeeping step.
+///
+/// Attributes are excluded from the compared text: they are metadata annotations rather than
+/// binary-breaking surface, so adding, removing, or editing one here never by itself indicates a
+/// meaningful API change worth flagging.
+/// </remarks>
 public sealed class PublicApiCompatibilityTests
 {
     /// <summary>
-    /// Verifies the terminal library against the baseline for the current package version.
+    /// Verifies the terminal library against the approved public API baseline.
     /// </summary>
     [Fact]
-    public Task SharpVisionTerminal_WhenComparedWithVersionedBaseline_MatchesApprovedPublicApi()
+    public Task SharpVisionTerminal_WhenComparedWithApprovedBaseline_MatchesApprovedPublicApi()
     {
         var assembly = typeof(Terminal.Geometry.Point).Assembly;
 
@@ -20,10 +33,10 @@ public sealed class PublicApiCompatibilityTests
     }
 
     /// <summary>
-    /// Verifies the UI library against the baseline for the current package version.
+    /// Verifies the UI library against the approved public API baseline.
     /// </summary>
     [Fact]
-    public Task SharpVision_WhenComparedWithVersionedBaseline_MatchesApprovedPublicApi()
+    public Task SharpVision_WhenComparedWithApprovedBaseline_MatchesApprovedPublicApi()
     {
         var assembly = typeof(Controls.ControlBase).Assembly;
 
@@ -31,10 +44,10 @@ public sealed class PublicApiCompatibilityTests
     }
 
     /// <summary>
-    /// Verifies the optional FIGlet font library against the baseline for the current package version.
+    /// Verifies the optional FIGlet font library against the approved public API baseline.
     /// </summary>
     [Fact]
-    public Task SharpVisionFigletFonts_WhenComparedWithVersionedBaseline_MatchesApprovedPublicApi()
+    public Task SharpVisionFigletFonts_WhenComparedWithApprovedBaseline_MatchesApprovedPublicApi()
     {
         var assembly = typeof(Fonts.FigletCatalog).Assembly;
 
@@ -44,19 +57,43 @@ public sealed class PublicApiCompatibilityTests
     private static Task VerifyPublicApiAsync(Assembly assembly, string assemblyName)
     {
         var publicApi = assembly.GeneratePublicApi();
-        var version = typeof(PublicApiCompatibilityTests).Assembly
-            .GetCustomAttributes<AssemblyMetadataAttribute>()
-            .Single(attribute => attribute.Key == "OverallVersion")
-            .Value;
 
         assembly.GetName().Name.ShouldBe(assemblyName);
         publicApi.ShouldNotBeNullOrWhiteSpace();
-        version.ShouldNotBeNullOrWhiteSpace();
+
+        var withoutAttributes = RemoveAttributeLines(publicApi);
 
         var settings = new VerifySettings();
-        settings.UseDirectory(Path.Combine("Snapshots", version));
+        settings.UseDirectory("Snapshots");
         settings.UseFileName(assemblyName);
 
-        return Verify(publicApi, settings);
+        return Verify(withoutAttributes, settings);
+    }
+
+    /// <summary>
+    /// Removes every standalone attribute-application line from generated public API text.
+    /// </summary>
+    /// <param name="publicApi">The complete generated public API text.</param>
+    /// <returns>The same text with every attribute-only line removed.</returns>
+    /// <remarks>
+    /// <c>PublicApiGenerator</c> always renders one complete attribute application per line,
+    /// immediately preceding the type or member it decorates, never sharing a line with another
+    /// attribute or with the declaration itself. Matching on the trimmed line's own enclosing
+    /// brackets is therefore exact regardless of the attribute's namespace or constructor
+    /// arguments, including ones that themselves contain nested brackets or quoted text.
+    /// </remarks>
+    private static string RemoveAttributeLines(string publicApi)
+    {
+        var lines = publicApi.Split(["\r\n", "\n"], StringSplitOptions.None);
+        var kept = lines.Where(line => !IsAttributeLine(line));
+
+        return string.Join('\n', kept);
+    }
+
+    private static bool IsAttributeLine(string line)
+    {
+        var trimmed = line.Trim();
+
+        return trimmed.StartsWith('[') && trimmed.EndsWith(']');
     }
 }

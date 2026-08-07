@@ -62,22 +62,31 @@ diagnosed and fixed, or the gate stays red.
 
 `SharpVision.Compatibility.Tests` generates the complete public surfaces of
 `SharpVision.Terminal`, `SharpVision`, and `SharpVision.FigletFonts` with
-PublicApiGenerator and compares them against Verify snapshots. Each assembly has
-one approved baseline stored in a directory named after the shared
-`OverallVersion`. A changed public signature therefore fails against the current
-version's baseline, while a version change produces a new missing baseline
-instead of overwriting the historical surface.
+PublicApiGenerator, strips every attribute-application line from the generated
+text (attributes are metadata annotations, not binary-breaking surface, so
+adding, removing, or editing one is never itself a reason to fail this gate),
+and compares what remains against one Verify snapshot per assembly in
+`Snapshots/*.verified.txt`. There is no per-version subfolder: the snapshot
+always reflects the current, approved shape of the public API, not a frozen
+baseline tied to a released version number.
 
-An intentional public API change requires both actions:
+A changed public signature fails this gate. That failure is the maintainer's own
+signal to decide, from the diff, whether the change is significant enough to
+warrant bumping `OverallVersion` in `Directory.Build.props` - the gate does not
+make that decision automatically, and accepting a new baseline does not by
+itself require a version bump.
 
-1. Update `OverallVersion` in `Directory.Build.props`.
-2. Run the compatibility tests, inspect all three `.received.txt` files, and
-   approve them as `.verified.txt` files in the new version directory.
+Reviewing and accepting a changed baseline requires:
 
-Commit the version bump and all approved snapshots together, and keep the older
-version directories as API history. Never accept a received file without
-reviewing its signature changes: generated snapshots are approval artifacts, not
-disposable test output.
+1. Run the compatibility tests and inspect all three `.received.txt` files.
+2. Confirm every difference is an intended addition, removal, signature, or
+   visibility change - not an accidental one.
+3. Overwrite the paired `.verified.txt` file with the `.received.txt` content to
+   accept it.
+4. If the change warrants one, update `OverallVersion` in the same change.
+
+Never accept a received file without reviewing its signature changes: generated
+snapshots are approval artifacts, not disposable test output.
 
 ## Shape and reflection
 

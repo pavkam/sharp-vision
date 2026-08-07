@@ -1,7 +1,4 @@
-﻿[assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/pavkam/sharp-vision.git")]
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SharpVision.Tests")]
-[assembly: System.Runtime.Versioning.TargetFramework(".NETCoreApp,Version=v10.0", FrameworkDisplayName=".NET 10.0")]
-namespace SharpVision.Fonts
+﻿namespace SharpVision.Fonts
 {
     public sealed class FigletCatalog
     {

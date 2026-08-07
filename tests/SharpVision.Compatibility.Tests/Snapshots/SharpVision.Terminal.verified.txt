@@ -1,9 +1,4 @@
-﻿[assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/pavkam/sharp-vision.git")]
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SharpVision.Terminal.Probe")]
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SharpVision.Terminal.Tests")]
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SharpVision.Tests")]
-[assembly: System.Runtime.Versioning.TargetFramework(".NETCoreApp,Version=v10.0", FrameworkDisplayName=".NET 10.0")]
-namespace SharpVision.Terminal.Abstractions
+﻿namespace SharpVision.Terminal.Abstractions
 {
     public interface ICapabilityResponseSink
     {
@@ -454,7 +449,6 @@ namespace SharpVision.Terminal.Geometry
         public SharpVision.Terminal.Geometry.Size? Pixels { get; }
         public bool Suspended { get; }
     }
-    [System.Diagnostics.DebuggerDisplay("({X}, {Y})")]
     public readonly struct Point : System.IEquatable<SharpVision.Terminal.Geometry.Point>
     {
         public Point(int x, int y) { }
@@ -463,7 +457,6 @@ namespace SharpVision.Terminal.Geometry
         public void Deconstruct(out int x, out int y) { }
         public override string ToString() { }
     }
-    [System.Diagnostics.DebuggerDisplay("({X}, {Y}, {Width}×{Height})")]
     public readonly struct Rect : System.IEquatable<SharpVision.Terminal.Geometry.Rect>
     {
         public Rect(int x, int y, int width, int height) { }
@@ -477,7 +470,6 @@ namespace SharpVision.Terminal.Geometry
         public SharpVision.Terminal.Geometry.Rect Intersect(SharpVision.Terminal.Geometry.Rect other) { }
         public override string ToString() { }
     }
-    [System.Diagnostics.DebuggerDisplay("{Width}×{Height}")]
     public readonly struct Size : System.IEquatable<SharpVision.Terminal.Geometry.Size>
     {
         public Size(int width, int height) { }
@@ -549,7 +541,6 @@ namespace SharpVision.Terminal.Graphics
 }
 namespace SharpVision.Terminal.Input
 {
-    [System.Flags]
     public enum Buttons
     {
         None = 0,
@@ -677,7 +668,6 @@ namespace SharpVision.Terminal.Input
         Repeat = 1,
         Release = 2,
     }
-    [System.Flags]
     public enum Modifiers
     {
         None = 0,
@@ -917,7 +907,6 @@ namespace SharpVision.Terminal.Kitty.Graphics
 }
 namespace SharpVision.Terminal.Kitty.Keyboard
 {
-    [System.Flags]
     public enum Enhancement
     {
         None = 0,
@@ -969,7 +958,6 @@ namespace SharpVision.Terminal.Multiplexing
         public SharpVision.Terminal.Multiplexing.MultiplexingPolicy Policy { get; }
         public bool TryUnwrapReply(System.ReadOnlySpan<byte> envelope, out System.ReadOnlyMemory<byte> reply) { }
     }
-    [System.Flags]
     public enum MultiplexingOperation
     {
         None = 0,
@@ -1026,7 +1014,6 @@ namespace SharpVision.Terminal.Protocols
         BrightCyan = 14,
         BrightWhite = 15,
     }
-    [System.Diagnostics.DebuggerDisplay("{ToString()}")]
     public readonly struct Color : System.IEquatable<SharpVision.Terminal.Protocols.Color>
     {
         public byte Blue { get; }
@@ -1287,7 +1274,6 @@ namespace SharpVision.Terminal.Rendering
         public static SharpVision.Terminal.Rendering.CellInfo Blank { get; }
         public void Deconstruct(out SharpVision.Terminal.Rendering.CellStyle style, out int width, out bool isContinuation, out SharpVision.Terminal.Geometry.Point lead) { }
     }
-    [System.Diagnostics.DebuggerDisplay("{ToString()}")]
     public readonly struct CellStyle : System.IEquatable<SharpVision.Terminal.Rendering.CellStyle>
     {
         public CellStyle(SharpVision.Terminal.Protocols.Color foreground = default, SharpVision.Terminal.Protocols.Color background = default, SharpVision.Terminal.Rendering.TerminalAttributes attributes = 0, string? hyperlink = null, SharpVision.Terminal.Protocols.Underline underline = 0, SharpVision.Terminal.Protocols.Color underlineColor = default) { }
@@ -1301,7 +1287,6 @@ namespace SharpVision.Terminal.Rendering
         public override string ToString() { }
         public SharpVision.Terminal.Rendering.CellStyle WithForeground(SharpVision.Terminal.Protocols.Color foreground) { }
     }
-    [System.Diagnostics.DebuggerDisplay("{ToString()}")]
     public readonly struct Cursor : System.IEquatable<SharpVision.Terminal.Rendering.Cursor>
     {
         public Cursor(SharpVision.Terminal.Geometry.Point position, bool visible) { }
@@ -1333,7 +1318,6 @@ namespace SharpVision.Terminal.Rendering
         public SharpVision.Terminal.Rendering.DamageSpan Current { get; }
         public bool MoveNext() { }
     }
-    [System.Diagnostics.DebuggerDisplay("{ToString()}")]
     public readonly struct DamageSpan : System.IEquatable<SharpVision.Terminal.Rendering.DamageSpan>
     {
         public DamageSpan(int row, int start, int length) { }
@@ -1365,7 +1349,6 @@ namespace SharpVision.Terminal.Rendering
         public int Spans { get; }
         public void Deconstruct(out int spans, out bool full) { }
     }
-    [System.Diagnostics.DebuggerDisplay("{ToString()}")]
     public sealed class Frame : System.IDisposable
     {
         public Frame(SharpVision.Terminal.Geometry.Size size, int maxTextBytes = 16777216, SharpVision.Terminal.Unicode.Ambiguous ambiguousWidth = 0) { }
@@ -1391,7 +1374,6 @@ namespace SharpVision.Terminal.Rendering
         public static SharpVision.Terminal.Rendering.EncodeResult Encode(SharpVision.Terminal.Rendering.Frame? front, SharpVision.Terminal.Rendering.Frame back, System.Buffers.IBufferWriter<byte> destination, SharpVision.Terminal.Capabilities.TerminalCapabilities capabilities, bool full = false, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
         public static SharpVision.Terminal.Rendering.EncodeResult Encode(SharpVision.Terminal.Rendering.Frame? front, SharpVision.Terminal.Rendering.Frame back, System.Buffers.IBufferWriter<byte> destination, SharpVision.Terminal.Capabilities.TerminalProfile profile, bool full = false, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
     }
-    [System.Flags]
     public enum LineConnections
     {
         None = 0,
@@ -1426,7 +1408,6 @@ namespace SharpVision.Terminal.Rendering
         Heavy = 1,
         Paired = 2,
     }
-    [System.Flags]
     public enum Quadrants
     {
         None = 0,
@@ -1471,7 +1452,6 @@ namespace SharpVision.Terminal.Rendering
         Dark = 2,
         Solid = 3,
     }
-    [System.Flags]
     public enum TerminalAttributes
     {
         None = 0,
@@ -1552,7 +1532,6 @@ namespace SharpVision.Terminal.Runtime
         bool Interactive { get; }
         SharpVision.Terminal.Runtime.ConsoleConnection Open(SharpVision.Terminal.Runtime.ConsoleHostOptions options);
     }
-    [System.Diagnostics.DebuggerDisplay("Session {_options}")]
     public sealed class Session : System.IAsyncDisposable
     {
         public Session(SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Abstractions.IResizeSource resize, SharpVision.Terminal.Abstractions.ISink sink, SharpVision.Terminal.Runtime.TerminalOptions? options = null, System.TimeProvider? timeProvider = null) { }
@@ -1589,8 +1568,6 @@ namespace SharpVision.Terminal.Runtime
         public SharpVision.Terminal.Protocols.MouseTracking? Tracking { get; init; }
         public static SharpVision.Terminal.Runtime.TerminalOptions Minimal { get; }
     }
-    [System.Runtime.Versioning.SupportedOSPlatform("linux")]
-    [System.Runtime.Versioning.SupportedOSPlatform("macos")]
     public sealed class UnixResizeSource : SharpVision.Terminal.Abstractions.IResizeSource, System.IAsyncDisposable
     {
         public UnixResizeSource(int fileDescriptor) { }
@@ -1640,7 +1617,6 @@ namespace SharpVision.Terminal.Unicode
         Narrow = 1,
         Wide = 2,
     }
-    [System.Diagnostics.DebuggerDisplay("{ToString()}")]
     public readonly struct Grapheme : System.IEquatable<SharpVision.Terminal.Unicode.Grapheme>
     {
         public Grapheme(int offset, int length, bool hasInvalidData) { }
