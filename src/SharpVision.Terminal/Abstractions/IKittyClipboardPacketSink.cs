@@ -12,5 +12,5 @@ public interface IKittyClipboardPacketSink
 {
     /// <summary>Receives one decoded Kitty OSC 5522 clipboard packet.</summary>
     /// <param name="value">The non-null owned clipboard packet.</param>
-    public void Response(Kitty.Clipboard.Packet value);
+    public void Response(Kitty.Clipboard.KittyClipboardPacket value);
 }

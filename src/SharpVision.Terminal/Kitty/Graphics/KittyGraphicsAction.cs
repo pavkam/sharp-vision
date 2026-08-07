@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Kitty.Graphics;
 
 /// <summary>Identifies the bounded Kitty graphics actions implemented by SharpVision.</summary>
 [PublicAPI]
-public enum GraphicsAction
+public enum KittyGraphicsAction
 {
     /// <summary>Queries support without storing image data.</summary>
     Query,

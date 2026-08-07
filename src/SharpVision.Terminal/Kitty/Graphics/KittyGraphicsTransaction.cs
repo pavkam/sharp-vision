@@ -7,14 +7,14 @@ using Capabilities;
 
 /// <summary>Correlates exactly one Kitty graphics response and rejects identifier reuse.</summary>
 [PublicAPI]
-public sealed class Transaction
+public sealed class KittyGraphicsTransaction
 {
     private readonly uint _imageId;
 
     /// <summary>Initializes one nonzero image correlation.</summary>
     /// <param name="imageId">The nonzero renderer-owned query identifier.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="imageId"/> is zero.</exception>
-    public Transaction(uint imageId)
+    public KittyGraphicsTransaction(uint imageId)
     {
         if (imageId == 0)
         {

@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Kitty.Keyboard;
 
 /// <summary>Identifies how a direct Kitty enhancement command applies flags.</summary>
 [PublicAPI]
-public enum EnhancementMode
+public enum KittyKeyboardEnhancementMode
 {
     /// <summary>Replace all flags with the supplied set.</summary>
     Replace = 1,

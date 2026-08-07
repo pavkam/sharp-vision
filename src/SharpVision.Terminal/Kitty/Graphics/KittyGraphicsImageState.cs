@@ -6,10 +6,10 @@ namespace SharpVision.Terminal.Kitty.Graphics;
 using SharpVision.Terminal.Graphics;
 
 /// <summary>Retains one semantic image and its renderer-owned protocol identifier.</summary>
-internal readonly struct ImageState
+internal readonly struct KittyGraphicsImageState
 {
     /// <summary>Initializes one retained image state.</summary>
-    public ImageState(ImageSource image, uint id)
+    public KittyGraphicsImageState(ImageSource image, uint id)
     {
         ArgumentNullException.ThrowIfNull(image);
         ArgumentOutOfRangeException.ThrowIfZero(id);

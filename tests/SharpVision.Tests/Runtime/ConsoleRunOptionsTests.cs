@@ -33,7 +33,7 @@ public sealed class ConsoleRunOptionsTests
     public void KeyboardEnhancement_WhenValueHasUnknownBits_ThrowsArgumentOutOfRangeException()
     {
         var exception = Should.Throw<ArgumentOutOfRangeException>(() =>
-            new ConsoleRunOptions { KeyboardEnhancement = (Enhancement) 64 });
+            new ConsoleRunOptions { KeyboardEnhancement = (KittyKeyboardEnhancement) 64 });
 
         exception.ParamName.ShouldBe("value");
     }
@@ -43,7 +43,7 @@ public sealed class ConsoleRunOptionsTests
     public void KeyboardEnhancement_WhenAssociatedTextIsSetWithoutAllKeys_ThrowsArgumentException()
     {
         var exception = Should.Throw<ArgumentException>(() =>
-            new ConsoleRunOptions { KeyboardEnhancement = Enhancement.AssociatedText });
+            new ConsoleRunOptions { KeyboardEnhancement = KittyKeyboardEnhancement.AssociatedText });
 
         exception.ShouldNotBeOfType<ArgumentOutOfRangeException>();
         exception.ParamName.ShouldBe("value");
@@ -54,9 +54,9 @@ public sealed class ConsoleRunOptionsTests
     public void KeyboardEnhancement_WhenAssociatedTextIsPairedWithAllKeys_DoesNotThrow()
     {
         var options = Should.NotThrow(() =>
-            new ConsoleRunOptions { KeyboardEnhancement = Enhancement.AllKeys | Enhancement.AssociatedText });
+            new ConsoleRunOptions { KeyboardEnhancement = KittyKeyboardEnhancement.AllKeys | KittyKeyboardEnhancement.AssociatedText });
 
-        options.KeyboardEnhancement.ShouldBe(Enhancement.AllKeys | Enhancement.AssociatedText);
+        options.KeyboardEnhancement.ShouldBe(KittyKeyboardEnhancement.AllKeys | KittyKeyboardEnhancement.AssociatedText);
     }
 
     /// <summary>Verifies disabling keyboard enhancement entirely remains accepted.</summary>

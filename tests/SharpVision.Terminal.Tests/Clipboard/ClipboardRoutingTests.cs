@@ -74,7 +74,7 @@ public sealed class ClipboardRoutingTests
         var packet = sink.KittyClipboardPackets.ShouldHaveSingleItem();
         packet.Valid.ShouldBeTrue();
         packet.Operation.ShouldBe(KittyClipboardOperation.Read);
-        packet.ReplyStatus.ShouldBe(ReplyStatus.Ok);
+        packet.ReplyStatus.ShouldBe(KittyClipboardReplyStatus.Ok);
         packet.Id.ShouldBe("req-1");
         sink.ClipboardReplies.ShouldBeEmpty();
         sink.Responses.ShouldBeEmpty();
@@ -117,18 +117,18 @@ public sealed class ClipboardRoutingTests
     {
         var sink = new RecordingProtocolSink();
         using var router = new ProtocolRouter(sink);
-        using var transaction = Transaction.Read(id: "bound");
+        using var transaction = KittyClipboardTransaction.Read(id: "bound");
 
         // A malformed packet with a different, recoverable id is unrelated wire noise.
         router.Route("]5522;type=read:status=EIO:id=unrelated\\"u8);
 
         var unrelated = sink.KittyClipboardPackets.ShouldHaveSingleItem();
-        transaction.Accept(unrelated).ShouldBe(AcceptResult.Ignored);
-        transaction.State.ShouldBe(TransactionState.Created);
+        transaction.Accept(unrelated).ShouldBe(KittyClipboardAcceptResult.Ignored);
+        transaction.State.ShouldBe(KittyClipboardTransactionState.Created);
 
         router.Route("]5522;type=read:status=OK:id=bound\\"u8);
         var bound = sink.KittyClipboardPackets[1];
-        transaction.Accept(bound).ShouldBe(AcceptResult.Accepted);
-        transaction.State.ShouldBe(TransactionState.Accepted);
+        transaction.Accept(bound).ShouldBe(KittyClipboardAcceptResult.Accepted);
+        transaction.State.ShouldBe(KittyClipboardTransactionState.Accepted);
     }
 }

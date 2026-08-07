@@ -7,15 +7,15 @@ Primary source:
 accessed 2026-07-20. A command is APC `ESC _ G`, comma-separated control data,
 an optional semicolon plus Base64 data, and ST `ESC \`.
 
-`Kitty.Graphics.Command` and `Kitty.Graphics.KittyGraphicsWriter` provide the
-typed direct-data surface. Image identifiers and placement identifiers are
-canonical nonzero unsigned 32-bit decimal values: leading zeroes, signs, and
-overflow are rejected. The official direct RGB query uses `f=24`; transmission
-accepts only RGBA `f=32` and PNG `f=100`. RGB transmission and zlib compression
-are explicit unsupported values. File, temporary-file, and shared-memory media
-are rejected before output because they depend on filesystem paths and
-externally managed lifetimes that SharpVision does not trust. Animation and
-Unicode placeholder presentation are out of scope.
+`Kitty.Graphics.KittyGraphicsCommand` and `Kitty.Graphics.KittyGraphicsWriter`
+provide the typed direct-data surface. Image identifiers and placement
+identifiers are canonical nonzero unsigned 32-bit decimal values: leading
+zeroes, signs, and overflow are rejected. The official direct RGB query uses
+`f=24`; transmission accepts only RGBA `f=32` and PNG `f=100`. RGB transmission
+and zlib compression are explicit unsupported values. File, temporary-file, and
+shared-memory media are rejected before output because they depend on filesystem
+paths and externally managed lifetimes that SharpVision does not trust.
+Animation and Unicode placeholder presentation are out of scope.
 
 ## Supported features
 

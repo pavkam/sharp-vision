@@ -134,7 +134,7 @@ internal static class ProtocolSinkDispatch
         }
 
         /// <summary>Dispatches one decoded Kitty OSC 5522 clipboard packet.</summary>
-        public void Dispatch(Kitty.Clipboard.Packet value)
+        public void Dispatch(Kitty.Clipboard.KittyClipboardPacket value)
         {
             ArgumentNullException.ThrowIfNull(value);
 

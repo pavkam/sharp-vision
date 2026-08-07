@@ -22,7 +22,7 @@ public sealed class KittyClipboardReplyEventArgs: EventArgs
     /// <param name="selection">The selection the operation targeted.</param>
     /// <param name="kittyResult">The owned successful Kitty OSC 5522 MIME result, or null.</param>
     /// <param name="text">The owned successful OSC 52 UTF-8 text reply, or null.</param>
-    /// <param name="failure">The terminal-reported Kitty failure status, or <see cref="ReplyStatus.None"/>.</param>
+    /// <param name="failure">The terminal-reported Kitty failure status, or <see cref="KittyClipboardReplyStatus.None"/>.</param>
     /// <param name="diagnostic">The redacted local protocol diagnostic, or null.</param>
     /// <exception cref="ArgumentException">
     /// <paramref name="kittyResult"/> and <paramref name="text"/> are both present.
@@ -34,7 +34,7 @@ public sealed class KittyClipboardReplyEventArgs: EventArgs
         Selection selection,
         KittyClipboardResult? kittyResult,
         ReadOnlyMemory<byte>? text,
-        ReplyStatus failure,
+        KittyClipboardReplyStatus failure,
         Diagnostic? diagnostic)
     {
         if (!Enum.IsDefined(selection))
@@ -77,10 +77,10 @@ public sealed class KittyClipboardReplyEventArgs: EventArgs
     public ReadOnlyMemory<byte>? Text { get; }
 
     /// <summary>
-    /// Gets the terminal-reported Kitty failure status, or <see cref="ReplyStatus.None"/> for an
+    /// Gets the terminal-reported Kitty failure status, or <see cref="KittyClipboardReplyStatus.None"/> for an
     /// OSC 52 outcome, a success, or a local timeout/cancellation/malformed reply.
     /// </summary>
-    public ReplyStatus Failure { get; }
+    public KittyClipboardReplyStatus Failure { get; }
 
     /// <summary>Gets the redacted local protocol diagnostic for a structural failure, or null.</summary>
     public Diagnostic? Diagnostic { get; }

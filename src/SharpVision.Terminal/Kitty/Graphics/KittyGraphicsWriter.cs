@@ -24,7 +24,7 @@ public static class KittyGraphicsWriter
     /// <exception cref="ArgumentNullException">A reference is null.</exception>
     /// <exception cref="ArgumentException">Payload shape does not match the command.</exception>
     public static void Write(
-        Command command,
+        KittyGraphicsCommand command,
         ReadOnlySpan<byte> payload,
         IBufferWriter<byte> destination)
     {
@@ -52,14 +52,14 @@ public static class KittyGraphicsWriter
     /// or does not match the command's required raw shape.
     /// </exception>
     public static void WriteEncoded(
-        Command command,
+        KittyGraphicsCommand command,
         ReadOnlySpan<byte> encodedPayload,
         IBufferWriter<byte> destination)
     {
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(destination);
 
-        if (command.Action is not GraphicsAction.Query and not GraphicsAction.Transmit ||
+        if (command.Action is not KittyGraphicsAction.Query and not KittyGraphicsAction.Transmit ||
             encodedPayload.Length > _encodedChunkBytes ||
             !encodedPayload.IsCanonicalBase64())
         {
@@ -93,7 +93,7 @@ public static class KittyGraphicsWriter
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxPayloadBytes"/> is not positive.</exception>
     /// <exception cref="ArgumentException">Payload size or structure is invalid.</exception>
     public static void WriteTransmission(
-        Command command,
+        KittyGraphicsCommand command,
         ReadOnlySpan<byte> payload,
         IBufferWriter<byte> destination,
         int maxPayloadBytes = _defaultMaxPayloadBytes)
@@ -102,7 +102,7 @@ public static class KittyGraphicsWriter
         ArgumentNullException.ThrowIfNull(destination);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxPayloadBytes);
 
-        if (command.Action is not GraphicsAction.Transmit and not GraphicsAction.Query)
+        if (command.Action is not KittyGraphicsAction.Transmit and not KittyGraphicsAction.Query)
         {
             throw new ArgumentException("Only query and transmit actions carry direct data.", nameof(command));
         }
@@ -131,7 +131,7 @@ public static class KittyGraphicsWriter
             var encodedLength = Encode(payload.Slice(offset, length), encoded);
             var chunk = first
                 ? command.WithMore(more)
-                : Command.Continuation(more, command.Quiet);
+                : KittyGraphicsCommand.Continuation(more, command.Quiet);
             WriteEncodedCore(chunk, encoded[..encodedLength], destination);
             offset += length;
             first = false;
@@ -205,11 +205,11 @@ public static class KittyGraphicsWriter
         return position;
     }
 
-    private static int BuildMetadata(Command command, Span<byte> destination)
+    private static int BuildMetadata(KittyGraphicsCommand command, Span<byte> destination)
     {
         var position = 0;
 
-        if (command.Action == GraphicsAction.Query)
+        if (command.Action == KittyGraphicsAction.Query)
         {
             position = AppendField(destination, position, (byte) 'i', command.ImageId);
             position = AppendField(destination, position, (byte) 's', command.PixelSize.Width);
@@ -219,7 +219,7 @@ public static class KittyGraphicsWriter
             return AppendField(destination, position, (byte) 'f', (int) command.Format);
         }
 
-        if (command.Action == GraphicsAction.Transmit && command.ImageId == 0)
+        if (command.Action == KittyGraphicsAction.Transmit && command.ImageId == 0)
         {
             position = AppendField(destination, position, (byte) 'm', command.More ? 1 : 0);
 
@@ -228,7 +228,7 @@ public static class KittyGraphicsWriter
                 : AppendField(destination, position, (byte) 'q', command.Quiet);
         }
 
-        if (command.Action == GraphicsAction.Transmit)
+        if (command.Action == KittyGraphicsAction.Transmit)
         {
             position = AppendLiteralField(destination, position, (byte) 'a', (byte) 't');
             position = AppendField(destination, position, (byte) 'f', (int) command.Format);
@@ -242,7 +242,7 @@ public static class KittyGraphicsWriter
 
             position = AppendField(destination, position, (byte) 'i', command.ImageId);
 
-            if (command.Compression == Compression.Zlib)
+            if (command.Compression == KittyGraphicsCompression.Zlib)
             {
                 position = AppendLiteralField(destination, position, (byte) 'o', (byte) 'z');
             }
@@ -257,7 +257,7 @@ public static class KittyGraphicsWriter
                 : AppendField(destination, position, (byte) 'q', command.Quiet);
         }
 
-        if (command.Action == GraphicsAction.Place)
+        if (command.Action == KittyGraphicsAction.Place)
         {
             position = AppendLiteralField(destination, position, (byte) 'a', (byte) 'p');
             position = AppendField(destination, position, (byte) 'i', command.ImageId);
@@ -326,9 +326,9 @@ public static class KittyGraphicsWriter
             "input bytes.");
     }
 
-    private static void ValidatePayload(Command command, ReadOnlySpan<byte> payload)
+    private static void ValidatePayload(KittyGraphicsCommand command, ReadOnlySpan<byte> payload)
     {
-        if (command.Action is GraphicsAction.Place or GraphicsAction.Delete)
+        if (command.Action is KittyGraphicsAction.Place or KittyGraphicsAction.Delete)
         {
             if (!payload.IsEmpty)
             {
@@ -360,7 +360,7 @@ public static class KittyGraphicsWriter
     }
 
     private static void WriteEncodedCore(
-        Command command,
+        KittyGraphicsCommand command,
         ReadOnlySpan<byte> encodedPayload,
         IBufferWriter<byte> destination)
     {

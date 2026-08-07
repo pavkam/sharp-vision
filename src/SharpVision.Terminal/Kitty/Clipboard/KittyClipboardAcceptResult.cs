@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Kitty.Clipboard;
 
 /// <summary>Describes how one packet affected a Kitty clipboard transaction.</summary>
 [PublicAPI]
-public enum AcceptResult
+public enum KittyClipboardAcceptResult
 {
     /// <summary>The matching packet advanced the transaction.</summary>
     Accepted,

@@ -11,12 +11,12 @@ using Terminal.Runtime;
 [PublicAPI]
 public sealed record ConsoleRunOptions
 {
-    private const Enhancement _allEnhancements =
-        Enhancement.Disambiguate |
-        Enhancement.EventTypes |
-        Enhancement.AlternateKeys |
-        Enhancement.AllKeys |
-        Enhancement.AssociatedText;
+    private const KittyKeyboardEnhancement _allEnhancements =
+        KittyKeyboardEnhancement.Disambiguate |
+        KittyKeyboardEnhancement.EventTypes |
+        KittyKeyboardEnhancement.AlternateKeys |
+        KittyKeyboardEnhancement.AllKeys |
+        KittyKeyboardEnhancement.AssociatedText;
 
     /// <summary>Gets the theme published to the tree, or null for <see cref="ThemeCatalog.Dark"/>.</summary>
     public Theme? Theme { get; init; }
@@ -69,7 +69,7 @@ public sealed record ConsoleRunOptions
     /// <summary>Gets the Kitty keyboard flags to push when supported, or null to disable.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown bits.</exception>
     /// <exception cref="ArgumentException">Associated text is set without all-key reporting.</exception>
-    public Enhancement? KeyboardEnhancement
+    public KittyKeyboardEnhancement? KeyboardEnhancement
     {
         get;
         init
@@ -82,7 +82,7 @@ public sealed record ConsoleRunOptions
                         nameof(value), value, "The keyboard enhancement flags contain unknown bits.");
                 }
 
-                if ((flags & Enhancement.AssociatedText) != 0 && (flags & Enhancement.AllKeys) == 0)
+                if ((flags & KittyKeyboardEnhancement.AssociatedText) != 0 && (flags & KittyKeyboardEnhancement.AllKeys) == 0)
                 {
                     throw new ArgumentException("Associated text requires all-key reporting.", nameof(value));
                 }
@@ -90,7 +90,7 @@ public sealed record ConsoleRunOptions
 
             field = value;
         }
-    } = Enhancement.Disambiguate | Enhancement.EventTypes;
+    } = KittyKeyboardEnhancement.Disambiguate | KittyKeyboardEnhancement.EventTypes;
 
     /// <summary>
     /// Gets a complete explicit terminal profile, or null to use compatibility

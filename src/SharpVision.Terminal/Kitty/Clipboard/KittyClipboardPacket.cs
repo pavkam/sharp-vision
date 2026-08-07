@@ -9,14 +9,14 @@ using SharpVision.Terminal.Clipboard;
 /// Represents an immutable, redaction-safe Kitty OSC 5522 packet.
 /// </summary>
 [PublicAPI]
-public sealed class Packet
+public sealed class KittyClipboardPacket
 {
     #region Construction and properties
 
-    private Packet(
+    private KittyClipboardPacket(
         bool isValid,
         KittyClipboardOperation operation,
-        ReplyStatus replyStatus,
+        KittyClipboardReplyStatus replyStatus,
         Selection selection,
         string? id,
         ReadOnlyMemory<byte> mime,
@@ -27,7 +27,7 @@ public sealed class Packet
         string[] unknownKeys,
         Diagnostic? diagnostic)
     {
-        Debug.Assert(unknownKeys is not null, "Packet construction always owns a non-null unknown-key array.");
+        Debug.Assert(unknownKeys is not null, "KittyClipboardPacket construction always owns a non-null unknown-key array.");
         Debug.Assert(isValid == (diagnostic is null), "Exactly invalid packets carry a structural diagnostic.");
 
         Valid = isValid;
@@ -51,7 +51,7 @@ public sealed class Packet
     public KittyClipboardOperation Operation { get; }
 
     /// <summary>Gets the typed response status.</summary>
-    public ReplyStatus ReplyStatus { get; }
+    public KittyClipboardReplyStatus ReplyStatus { get; }
 
     /// <summary>Gets the clipboard or primary selection.</summary>
     public Selection Selection { get; }
@@ -96,7 +96,7 @@ public sealed class Packet
     /// Whether to decode the Base64 payload into owned memory.
     /// </param>
     /// <returns>A valid typed packet or a redacted diagnostic packet.</returns>
-    public static Packet Parse(
+    public static KittyClipboardPacket Parse(
         ReadOnlySpan<byte> value,
         TransferLimits? limits = null,
         bool decodePayload = true)
@@ -120,7 +120,7 @@ public sealed class Packet
         }
 
         var operation = KittyClipboardOperation.None;
-        var replyStatus = ReplyStatus.None;
+        var replyStatus = KittyClipboardReplyStatus.None;
         var selection = Selection.Clipboard;
         string? id = null;
         byte[] mime = [];
@@ -256,7 +256,7 @@ public sealed class Packet
             return Invalid(DiagnosticCode.InvalidBase64, value.Length, id);
         }
 
-        return new Packet(
+        return new KittyClipboardPacket(
             isValid: true,
             operation,
             replyStatus,
@@ -285,12 +285,12 @@ public sealed class Packet
             ? "none"
             : string.Join(',', UnknownKeys);
 
-        return $"Packet valid={Valid} operation={Operation} status={ReplyStatus} " +
+        return $"KittyClipboardPacket valid={Valid} operation={Operation} status={ReplyStatus} " +
                $"selection={Selection} id={(Id is null ? "none" : "set")} " +
                $"mimeBytes={Mime.Length} payloadBytes={Data.Length} unknown={unknown}";
     }
 
-    private static Packet Invalid(DiagnosticCode code, int discarded, string? id = null)
+    private static KittyClipboardPacket Invalid(DiagnosticCode code, int discarded, string? id = null)
     {
         Debug.Assert(Enum.IsDefined(code), "Invalid packets require a defined diagnostic code.");
         Debug.Assert(discarded >= 0, "Discarded packet byte counts are non-negative.");
@@ -299,13 +299,13 @@ public sealed class Packet
 
         // The id field is order-independent on the wire, so a later structural
         // failure can still carry an already-parsed, already-validated id. An
-        // ID-bound Transaction uses this to ignore unrelated malformed
+        // ID-bound KittyClipboardTransaction uses this to ignore unrelated malformed
         // traffic instead of failing on every stray packet; a failure whose id
         // could not be recovered before the error correctly stays unattributed.
-        return new Packet(
+        return new KittyClipboardPacket(
             isValid: false,
             KittyClipboardOperation.None,
-            ReplyStatus.None,
+            KittyClipboardReplyStatus.None,
             Selection.Clipboard,
             id,
             ReadOnlyMemory<byte>.Empty,
@@ -428,22 +428,22 @@ public sealed class Packet
 
     private static bool TryParseStatus(
         ReadOnlySpan<byte> value,
-        out ReplyStatus status)
+        out KittyClipboardReplyStatus status)
     {
         status = value switch
         {
-            _ when value.SequenceEqual("OK"u8) => ReplyStatus.Ok,
-            _ when value.SequenceEqual("DATA"u8) => ReplyStatus.Data,
-            _ when value.SequenceEqual("DONE"u8) => ReplyStatus.Done,
-            _ when value.SequenceEqual("EIO"u8) => ReplyStatus.Io,
-            _ when value.SequenceEqual("EINVAL"u8) => ReplyStatus.Invalid,
-            _ when value.SequenceEqual("ENOSYS"u8) => ReplyStatus.Unavailable,
-            _ when value.SequenceEqual("EPERM"u8) => ReplyStatus.Denied,
-            _ when value.SequenceEqual("EBUSY"u8) => ReplyStatus.Busy,
-            _ => ReplyStatus.None
+            _ when value.SequenceEqual("OK"u8) => KittyClipboardReplyStatus.Ok,
+            _ when value.SequenceEqual("DATA"u8) => KittyClipboardReplyStatus.Data,
+            _ when value.SequenceEqual("DONE"u8) => KittyClipboardReplyStatus.Done,
+            _ when value.SequenceEqual("EIO"u8) => KittyClipboardReplyStatus.Io,
+            _ when value.SequenceEqual("EINVAL"u8) => KittyClipboardReplyStatus.Invalid,
+            _ when value.SequenceEqual("ENOSYS"u8) => KittyClipboardReplyStatus.Unavailable,
+            _ when value.SequenceEqual("EPERM"u8) => KittyClipboardReplyStatus.Denied,
+            _ when value.SequenceEqual("EBUSY"u8) => KittyClipboardReplyStatus.Busy,
+            _ => KittyClipboardReplyStatus.None
         };
 
-        return status != ReplyStatus.None;
+        return status != KittyClipboardReplyStatus.None;
     }
 
     #endregion

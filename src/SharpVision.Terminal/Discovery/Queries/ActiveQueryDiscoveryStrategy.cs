@@ -371,7 +371,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
         {
             Span<byte> queryPixel = [0, 0, 0];
             Kitty.Graphics.KittyGraphicsWriter.Write(
-                Kitty.Graphics.Command.Query(31),
+                Kitty.Graphics.KittyGraphicsCommand.Query(31),
                 queryPixel,
                 queryBatch);
         }

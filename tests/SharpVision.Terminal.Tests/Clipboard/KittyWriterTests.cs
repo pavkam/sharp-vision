@@ -105,8 +105,8 @@ public sealed class KittyWriterTests
         using ProtocolParser parser = new();
         var sink = new RecordingSink();
         parser.Parse(destination.WrittenSpan, ref sink);
-        Packet[] packets =
-            [.. sink.Observations.Select(static observation => Packet.Parse(observation.First))];
+        KittyClipboardPacket[] packets =
+            [.. sink.Observations.Select(static observation => KittyClipboardPacket.Parse(observation.First))];
 
         packets.Length.ShouldBe(Math.Max(1, (size + 4095) / 4096));
         packets.ShouldAllBe(static packet => packet.Valid);

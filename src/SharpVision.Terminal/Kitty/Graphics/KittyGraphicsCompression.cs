@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Kitty.Graphics;
 
 /// <summary>Identifies Kitty compression metadata, including recognized unsupported values.</summary>
 [PublicAPI]
-public enum Compression
+public enum KittyGraphicsCompression
 {
     /// <summary>Source bytes are transmitted without compression.</summary>
     None,

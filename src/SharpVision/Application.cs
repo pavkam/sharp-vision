@@ -566,7 +566,7 @@ public sealed class Application:
 
     /// <inheritdoc/>
     /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
-    public void Response(Terminal.Kitty.Clipboard.Packet value)
+    public void Response(Terminal.Kitty.Clipboard.KittyClipboardPacket value)
     {
         ArgumentNullException.ThrowIfNull(value);
         Enqueue(Record.From(value));

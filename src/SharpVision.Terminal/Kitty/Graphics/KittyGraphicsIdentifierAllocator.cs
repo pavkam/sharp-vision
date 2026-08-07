@@ -4,7 +4,7 @@
 namespace SharpVision.Terminal.Kitty.Graphics;
 
 /// <summary>Owns a finite process-local set of nonzero protocol identifiers.</summary>
-internal sealed class IdentifierAllocator
+internal sealed class KittyGraphicsIdentifierAllocator
 {
     private readonly bool[] _active;
     private int _cursor = 1;
@@ -12,7 +12,7 @@ internal sealed class IdentifierAllocator
     /// <summary>Initializes a finite identifier range from one through capacity.</summary>
     /// <param name="capacity">The positive maximum simultaneously active identifier.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is not positive.</exception>
-    public IdentifierAllocator(int capacity)
+    public KittyGraphicsIdentifierAllocator(int capacity)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(capacity);
         _active = new bool[checked(capacity + 1)];

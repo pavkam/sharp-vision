@@ -19,7 +19,7 @@ public sealed class KittyClipboardReplyEventArgsTests
             Selection.Clipboard,
             kittyResult,
             new byte[] { 1 },
-            ReplyStatus.None,
+            KittyClipboardReplyStatus.None,
             null);
 
         action.ShouldThrow<ArgumentException>().ParamName.ShouldBe("text");
@@ -35,7 +35,7 @@ public sealed class KittyClipboardReplyEventArgsTests
             selection,
             null,
             null,
-            ReplyStatus.None,
+            KittyClipboardReplyStatus.None,
             null);
 
         action.ShouldThrow<ArgumentOutOfRangeException>().ParamName.ShouldBe("selection");
@@ -45,7 +45,7 @@ public sealed class KittyClipboardReplyEventArgsTests
     [Fact]
     public void Constructor_WhenFailureIsUndefined_Throws()
     {
-        var failure = (ReplyStatus) int.MaxValue;
+        var failure = (KittyClipboardReplyStatus) int.MaxValue;
 
         var action = () => new KittyClipboardReplyEventArgs(
             Selection.Clipboard,
@@ -66,7 +66,7 @@ public sealed class KittyClipboardReplyEventArgsTests
             Selection.Clipboard,
             null,
             text,
-            ReplyStatus.None,
+            KittyClipboardReplyStatus.None,
             null);
 
         text[0] = 9;

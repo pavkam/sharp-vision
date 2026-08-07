@@ -217,7 +217,7 @@ public sealed class ResponseTests
     [Fact]
     public void Accept_WhenCorrelationIsReused_ReportsDuplicateWithoutReplacingResult()
     {
-        var transaction = new Transaction(31);
+        var transaction = new KittyGraphicsTransaction(31);
         var matching = KittyGraphicsResponse.Parse("Gi=31;OK"u8);
         var other = KittyGraphicsResponse.Parse("Gi=32;OK"u8);
 

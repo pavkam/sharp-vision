@@ -37,7 +37,7 @@ public sealed class ClipboardIntegrationTests
 
         for (var split = 0; split <= response.Length; split++)
         {
-            using var transaction = Transaction.Read(id: "req-1");
+            using var transaction = KittyClipboardTransaction.Read(id: "req-1");
             using ProtocolParser parser = new();
             var sink = new TransactionSink(transaction);
 
@@ -45,7 +45,7 @@ public sealed class ClipboardIntegrationTests
             parser.Parse(response.AsSpan(split), ref sink);
 
             transaction.State.ShouldBe(
-                TransactionState.Completed,
+                KittyClipboardTransactionState.Completed,
                 $"Response failed at split {split}.");
             var result = transaction.Result.ShouldNotBeNull();
             result.Items.ShouldHaveSingleItem().Data.ToArray().ShouldBe([0, 1, 2, 255]);
@@ -59,21 +59,21 @@ public sealed class ClipboardIntegrationTests
     [Fact]
     public void Read_WhenPermissionFails_DoesNotPoisonNextTransaction()
     {
-        using var denied = Transaction.Read();
-        denied.Accept(Packet.Parse("5522;type=read:status=EPERM"u8)).ShouldBe(
-            AcceptResult.Failed);
+        using var denied = KittyClipboardTransaction.Read();
+        denied.Accept(KittyClipboardPacket.Parse("5522;type=read:status=EPERM"u8)).ShouldBe(
+            KittyClipboardAcceptResult.Failed);
 
-        using var malformed = Transaction.Read();
-        malformed.Accept(Packet.Parse("5522;type=read;***"u8)).ShouldBe(
-            AcceptResult.Failed);
+        using var malformed = KittyClipboardTransaction.Read();
+        malformed.Accept(KittyClipboardPacket.Parse("5522;type=read;***"u8)).ShouldBe(
+            KittyClipboardAcceptResult.Failed);
 
-        using var next = Transaction.Read();
-        _ = next.Accept(Packet.Parse("5522;type=read:status=OK"u8));
-        _ = next.Accept(Packet.Parse("5522;type=read:status=DONE"u8));
+        using var next = KittyClipboardTransaction.Read();
+        _ = next.Accept(KittyClipboardPacket.Parse("5522;type=read:status=OK"u8));
+        _ = next.Accept(KittyClipboardPacket.Parse("5522;type=read:status=DONE"u8));
 
-        denied.Failure.ShouldBe(ReplyStatus.Denied);
+        denied.Failure.ShouldBe(KittyClipboardReplyStatus.Denied);
         malformed.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.InvalidBase64);
-        next.State.ShouldBe(TransactionState.Completed);
+        next.State.ShouldBe(KittyClipboardTransactionState.Completed);
     }
 
     /// <summary>
@@ -95,7 +95,7 @@ public sealed class ClipboardIntegrationTests
         packet.Data.ToArray().ShouldBe("text/plain text/utf8"u8.ToArray());
     }
 
-    private static Packet[] ParsePackets(ReadOnlySpan<byte> input)
+    private static KittyClipboardPacket[] ParsePackets(ReadOnlySpan<byte> input)
     {
         using ProtocolParser parser = new();
         var sink = new RecordingSink();
@@ -103,7 +103,7 @@ public sealed class ClipboardIntegrationTests
 
         return
         [
-            .. sink.Observations.Select(static observation => Packet.Parse(observation.First))
+            .. sink.Observations.Select(static observation => KittyClipboardPacket.Parse(observation.First))
         ];
     }
 }

@@ -48,7 +48,7 @@
         public void Input(in SharpVision.Terminal.Protocols.Diagnostic value) { }
         public void Profile(SharpVision.Terminal.Capabilities.TerminalCapabilities value) { }
         public void RefreshScreen() { }
-        public void Response(SharpVision.Terminal.Kitty.Clipboard.Packet value) { }
+        public void Response(SharpVision.Terminal.Kitty.Clipboard.KittyClipboardPacket value) { }
         public void Response(SharpVision.Terminal.Xterm.CapabilityResponse value) { }
         public void Response(in SharpVision.Terminal.Clipboard.ClipboardReply value) { }
         public void Response(in SharpVision.Terminal.Xterm.MetricsResponse value) { }
@@ -93,7 +93,7 @@
         public SharpVision.ConsoleApplicationBuilder UseColorDepth(SharpVision.Terminal.Capabilities.ColorDepth depth) { }
         public SharpVision.ConsoleApplicationBuilder UseEnvironmentSizeOverrides(bool enabled = true) { }
         public SharpVision.ConsoleApplicationBuilder UseFocusReporting(bool enabled = true) { }
-        public SharpVision.ConsoleApplicationBuilder UseKeyboardEnhancement(SharpVision.Terminal.Kitty.Keyboard.Enhancement? enhancement) { }
+        public SharpVision.ConsoleApplicationBuilder UseKeyboardEnhancement(SharpVision.Terminal.Kitty.Keyboard.KittyKeyboardEnhancement? enhancement) { }
         public SharpVision.ConsoleApplicationBuilder UseMouse(SharpVision.Terminal.Protocols.MouseTracking tracking = 1003, SharpVision.Terminal.Protocols.MouseCoordinates coordinates = 1006) { }
         public SharpVision.ConsoleApplicationBuilder UseNegotiation(SharpVision.Terminal.Capabilities.NegotiationOptions negotiation) { }
         public SharpVision.ConsoleApplicationBuilder UseTerminalProfile(SharpVision.Terminal.Capabilities.TerminalProfile profile) { }
@@ -116,7 +116,7 @@
         public System.TimeSpan CleanupTimeout { get; init; }
         public SharpVision.Terminal.Capabilities.ColorDepth? ColorDepth { get; init; }
         public bool FocusReporting { get; init; }
-        public SharpVision.Terminal.Kitty.Keyboard.Enhancement? KeyboardEnhancement { get; init; }
+        public SharpVision.Terminal.Kitty.Keyboard.KittyKeyboardEnhancement? KeyboardEnhancement { get; init; }
         public SharpVision.Terminal.Protocols.MouseCoordinates MouseCoordinates { get; init; }
         public SharpVision.Terminal.Protocols.MouseTracking? MouseTracking { get; init; }
         public SharpVision.Terminal.Capabilities.NegotiationOptions? Negotiation { get; init; }
@@ -179,9 +179,9 @@
     }
     public sealed class KittyClipboardReplyEventArgs : System.EventArgs
     {
-        public KittyClipboardReplyEventArgs(SharpVision.Terminal.Clipboard.Selection selection, SharpVision.Terminal.Kitty.Clipboard.KittyClipboardResult? kittyResult, System.ReadOnlyMemory<byte>? text, SharpVision.Terminal.Kitty.Clipboard.ReplyStatus failure, SharpVision.Terminal.Protocols.Diagnostic? diagnostic) { }
+        public KittyClipboardReplyEventArgs(SharpVision.Terminal.Clipboard.Selection selection, SharpVision.Terminal.Kitty.Clipboard.KittyClipboardResult? kittyResult, System.ReadOnlyMemory<byte>? text, SharpVision.Terminal.Kitty.Clipboard.KittyClipboardReplyStatus failure, SharpVision.Terminal.Protocols.Diagnostic? diagnostic) { }
         public SharpVision.Terminal.Protocols.Diagnostic? Diagnostic { get; }
-        public SharpVision.Terminal.Kitty.Clipboard.ReplyStatus Failure { get; }
+        public SharpVision.Terminal.Kitty.Clipboard.KittyClipboardReplyStatus Failure { get; }
         public SharpVision.Terminal.Kitty.Clipboard.KittyClipboardResult? KittyResult { get; }
         public SharpVision.Terminal.Clipboard.Selection Selection { get; }
         public bool Succeeded { get; }

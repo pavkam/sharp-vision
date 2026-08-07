@@ -18,7 +18,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, ID
     private readonly Application _application;
     private readonly Lock _programGate = new();
     private ProgramExpander? _expander;
-    private Transaction? _kittyTransaction;
+    private KittyClipboardTransaction? _kittyTransaction;
     private DispatcherTimer? _kittyTimeoutTimer;
     private Selection _kittyTransactionSelection;
     private int _kittyIdSequence;
@@ -256,12 +256,12 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, ID
         var selection = reply.Selection;
 
         var eventArgs = reply.Status == ClipboardStatus.Success
-            ? new KittyClipboardReplyEventArgs(selection, null, reply.Data, ReplyStatus.None, null)
+            ? new KittyClipboardReplyEventArgs(selection, null, reply.Data, KittyClipboardReplyStatus.None, null)
             : new KittyClipboardReplyEventArgs(
                 selection,
                 null,
                 null,
-                ReplyStatus.None,
+                KittyClipboardReplyStatus.None,
                 new Diagnostic(DiagnosticCode.Malformed, SequenceKind.Osc, offset: 0, discardedBytes: 0));
 
         KittyClipboardReplyReceived?.Invoke(this, eventArgs);
@@ -269,7 +269,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, ID
 
     /// <summary>Feeds a decoded Kitty OSC 5522 packet to the live transaction, if any.</summary>
     /// <param name="packet">The non-null owned decoded packet.</param>
-    internal void ReceiveKittyClipboardPacket(Packet packet)
+    internal void ReceiveKittyClipboardPacket(KittyClipboardPacket packet)
     {
         _application.Dispatcher.VerifyAccess();
 
@@ -280,7 +280,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, ID
 
         var result = transaction.Accept(packet);
 
-        if (result is AcceptResult.Completed or AcceptResult.Failed)
+        if (result is KittyClipboardAcceptResult.Completed or KittyClipboardAcceptResult.Failed)
         {
             CompleteKittyTransaction(transaction);
         }
@@ -289,7 +289,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, ID
     private void PerformKittyWrite(byte[] text, Selection selection)
     {
         var id = NextKittyId();
-        var transaction = Transaction.Write(id: id, timeProvider: _application.Dispatcher.TimeProvider);
+        var transaction = KittyClipboardTransaction.Write(id: id, timeProvider: _application.Dispatcher.TimeProvider);
         StartKittyTransaction(transaction, selection);
 
         var destination = new ArrayBufferWriter<byte>(text.Length + 64);
@@ -304,7 +304,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, ID
     private void PerformKittyRead(Selection selection)
     {
         var id = NextKittyId();
-        var transaction = Transaction.Read(id: id, timeProvider: _application.Dispatcher.TimeProvider);
+        var transaction = KittyClipboardTransaction.Read(id: id, timeProvider: _application.Dispatcher.TimeProvider);
         StartKittyTransaction(transaction, selection);
 
         var destination = new ArrayBufferWriter<byte>(64);
@@ -320,7 +320,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, ID
         return string.Create(CultureInfo.InvariantCulture, $"sv{_kittyIdSequence}");
     }
 
-    private void StartKittyTransaction(Transaction transaction, Selection selection)
+    private void StartKittyTransaction(KittyClipboardTransaction transaction, Selection selection)
     {
         CancelPendingKittyTransaction();
         _kittyTransaction = transaction;
@@ -383,7 +383,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, ID
         // so a consumer distinguishes "no answer" from a terminal-reported failure.
         KittyClipboardReplyReceived?.Invoke(
             this,
-            new KittyClipboardReplyEventArgs(selection, null, null, ReplyStatus.None, null));
+            new KittyClipboardReplyEventArgs(selection, null, null, KittyClipboardReplyStatus.None, null));
     }
 
     private void CancelPendingOsc52Request()
@@ -409,7 +409,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, ID
         _kittyTransaction = null;
     }
 
-    private void ScheduleKittyTimeout(Transaction transaction)
+    private void ScheduleKittyTimeout(KittyClipboardTransaction transaction)
     {
         var remaining = transaction.Deadline - _application.Dispatcher.TimeProvider.GetUtcNow();
 
@@ -424,7 +424,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, ID
         timer.Start();
     }
 
-    private void OnKittyTimeout(Transaction transaction)
+    private void OnKittyTimeout(KittyClipboardTransaction transaction)
     {
         if (!ReferenceEquals(transaction, _kittyTransaction))
         {
@@ -435,7 +435,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, ID
         CompleteKittyTransaction(transaction);
     }
 
-    private void CompleteKittyTransaction(Transaction transaction)
+    private void CompleteKittyTransaction(KittyClipboardTransaction transaction)
     {
         if (!ReferenceEquals(transaction, _kittyTransaction))
         {
@@ -449,17 +449,17 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, ID
 
         switch (transaction.State)
         {
-            case TransactionState.Completed:
+            case KittyClipboardTransactionState.Completed:
                 KittyClipboardReplyReceived?.Invoke(
                     this,
                     new KittyClipboardReplyEventArgs(
                         selection,
                         transaction.Result,
                         null,
-                        ReplyStatus.None,
+                        KittyClipboardReplyStatus.None,
                         null));
                 break;
-            case TransactionState.Failed:
+            case KittyClipboardTransactionState.Failed:
                 KittyClipboardReplyReceived?.Invoke(
                     this,
                     new KittyClipboardReplyEventArgs(
@@ -469,16 +469,16 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, ID
                         transaction.Failure,
                         transaction.Diagnostic));
                 break;
-            case TransactionState.TimedOut:
+            case KittyClipboardTransactionState.TimedOut:
                 KittyClipboardReplyReceived?.Invoke(
                     this,
-                    new KittyClipboardReplyEventArgs(selection, null, null, ReplyStatus.None, null));
+                    new KittyClipboardReplyEventArgs(selection, null, null, KittyClipboardReplyStatus.None, null));
                 break;
-            case TransactionState.Created:
-            case TransactionState.Accepted:
-            case TransactionState.Receiving:
-            case TransactionState.Cancelled:
-            case TransactionState.Disposed:
+            case KittyClipboardTransactionState.Created:
+            case KittyClipboardTransactionState.Accepted:
+            case KittyClipboardTransactionState.Receiving:
+            case KittyClipboardTransactionState.Cancelled:
+            case KittyClipboardTransactionState.Disposed:
                 // Cancelled locally (superseded) reaches here only through defensive symmetry;
                 // CancelPendingKittyTransaction never calls this method for that case, and the
                 // remaining states are unreachable once Accept or CheckTimeout returned terminal.

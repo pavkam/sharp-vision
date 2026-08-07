@@ -9,7 +9,7 @@ using SharpVision.Terminal.Input;
 using TerminalClipboardReply = ClipboardReply;
 using TerminalDiagnostic = Diagnostic;
 using TerminalFocus = Terminal.Input.TerminalFocus;
-using TerminalKittyClipboardPacket = Terminal.Kitty.Clipboard.Packet;
+using TerminalKittyClipboardPacket = Terminal.Kitty.Clipboard.KittyClipboardPacket;
 
 /// <summary>Stores one copied terminal input queue value without borrowed memory.</summary>
 internal readonly record struct Record

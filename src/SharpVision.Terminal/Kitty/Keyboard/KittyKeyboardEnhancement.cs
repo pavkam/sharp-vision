@@ -6,7 +6,7 @@ namespace SharpVision.Terminal.Kitty.Keyboard;
 /// <summary>Identifies Kitty progressive keyboard enhancements.</summary>
 [Flags]
 [PublicAPI]
-public enum Enhancement
+public enum KittyKeyboardEnhancement
 {
     /// <summary>No progressive enhancement.</summary>
     None = 0,

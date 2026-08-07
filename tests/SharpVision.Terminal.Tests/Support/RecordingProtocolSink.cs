@@ -56,7 +56,7 @@ internal sealed class RecordingProtocolSink:
     internal List<ClipboardReply> ClipboardReplies { get; } = [];
 
     /// <summary>Gets recognized Kitty OSC 5522 clipboard packets in delivery order.</summary>
-    internal List<Kitty.Clipboard.Packet> KittyClipboardPackets { get; } = [];
+    internal List<Kitty.Clipboard.KittyClipboardPacket> KittyClipboardPackets { get; } = [];
 
     /// <summary>Gets owned terminal strings in delivery order.</summary>
     internal List<ProtocolSequence> Sequences { get; } = [];
@@ -156,7 +156,7 @@ internal sealed class RecordingProtocolSink:
     }
 
     /// <inheritdoc/>
-    public void Response(Kitty.Clipboard.Packet value)
+    public void Response(Kitty.Clipboard.KittyClipboardPacket value)
     {
         KittyClipboardPackets.Add(value);
         Order.Add("kitty-clipboard-packet");

@@ -6,10 +6,10 @@ namespace SharpVision.Terminal.Kitty.Graphics;
 using SharpVision.Terminal.Graphics;
 
 /// <summary>Retains one semantic placement and its exact image-placement identity pair.</summary>
-internal readonly struct PlacementState
+internal readonly struct KittyGraphicsPlacementState
 {
     /// <summary>Initializes one retained placement state.</summary>
-    public PlacementState(Placement placement, uint imageId, uint placementId)
+    public KittyGraphicsPlacementState(Placement placement, uint imageId, uint placementId)
     {
         if (placement.IsEmpty)
         {

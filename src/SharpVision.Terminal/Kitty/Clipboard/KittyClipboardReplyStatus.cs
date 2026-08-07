@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Kitty.Clipboard;
 
 /// <summary>Identifies a Kitty OSC 5522 response status.</summary>
 [PublicAPI]
-public enum ReplyStatus
+public enum KittyClipboardReplyStatus
 {
     /// <summary>The packet has no response status.</summary>
     None,

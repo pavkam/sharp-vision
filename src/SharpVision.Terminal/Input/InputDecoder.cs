@@ -29,7 +29,7 @@ public sealed class InputDecoder: IDisposable
     private DateTimeOffset _escapeDeadline;
     private readonly CellMetricsResolver _cellMetricsResolver;
     private readonly MouseDecoder _mouseDecoder;
-    private readonly Kitty.Keyboard.KeyDecoder _kittyKeyDecoder;
+    private readonly Kitty.Keyboard.KittyKeyDecoder _kittyKeyDecoder;
     private Modifiers _nextTextModifiers;
     private long _skippedBytes;
     private bool _completed;
@@ -65,7 +65,7 @@ public sealed class InputDecoder: IDisposable
             _options.PixelMouse,
             _options.MouseCoordinates == MouseCoordinates.Utf8,
             Report);
-        _kittyKeyDecoder = new Kitty.Keyboard.KeyDecoder(_sink, Report);
+        _kittyKeyDecoder = new Kitty.Keyboard.KittyKeyDecoder(_sink, Report);
         _utf8 = new Utf8TextAccumulator(rune => EmitText(rune));
         _csiHandlers =
         [
@@ -997,7 +997,7 @@ public sealed class InputDecoder: IDisposable
 
         if (_protocolSink is { } kittyClipboardSink)
         {
-            kittyClipboardSink.Dispatch(Kitty.Clipboard.Packet.Parse(value, _options.TransferLimits));
+            kittyClipboardSink.Dispatch(Kitty.Clipboard.KittyClipboardPacket.Parse(value, _options.TransferLimits));
         }
         else
         {
@@ -1211,9 +1211,9 @@ public sealed class InputDecoder: IDisposable
         var hasSubParameter = keycode.IndexOf((byte) ':') >= 0;
 
         return !hasSubParameter && (semicolon < 0
-            ? Kitty.Keyboard.KeyDecoder.TryDecimal(keycode, allowEmpty: true, out _)
-            : Kitty.Keyboard.KeyDecoder.TryDecimal(keycode, allowEmpty: true, out _)
-              && Kitty.Keyboard.KeyDecoder.TryReadModifiers(parameters[(semicolon + 1)..], out modifiers, out action));
+            ? Kitty.Keyboard.KittyKeyDecoder.TryDecimal(keycode, allowEmpty: true, out _)
+            : Kitty.Keyboard.KittyKeyDecoder.TryDecimal(keycode, allowEmpty: true, out _)
+              && Kitty.Keyboard.KittyKeyDecoder.TryReadModifiers(parameters[(semicolon + 1)..], out modifiers, out action));
     }
 
     private void BeginPaste() => _pasteAccumulator.Begin();

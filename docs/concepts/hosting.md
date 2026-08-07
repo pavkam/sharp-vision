@@ -41,7 +41,7 @@ await ConsoleApplication.RunAsync(new Gallery(), b => b
 // Fluent builder, ASP.NET style.
 await ConsoleApplication.CreateBuilder(new Gallery())
     .UseAlternateScreen()
-    .UseKeyboardEnhancement(Enhancement.Disambiguate | Enhancement.EventTypes)
+    .UseKeyboardEnhancement(KittyKeyboardEnhancement.Disambiguate | KittyKeyboardEnhancement.EventTypes)
     .RunAsync();
 ```
 
@@ -106,37 +106,38 @@ for each bounded property. `ConsoleApplicationBuilder` exposes one fluent setter
 per property (each returning `this`) plus a `ConfigureOptions` escape hatch that
 replaces the accumulated options wholesale.
 
-| Property                      | Type                  | Default                                                       |
-| ----------------------------- | --------------------- | ------------------------------------------------------------- |
-| `Theme`                       | `Theme?`              | `null` (resolves to `ThemeCatalog.Dark` via `ResolveTheme()`) |
-| `AlternateScreen`             | `bool`                | `true`                                                        |
-| `ShowCursor`                  | `bool`                | `false`                                                       |
-| `MouseTracking`               | `MouseTracking?`      | `MouseTracking.Any`; `null` disables mouse input              |
-| `MouseCoordinates`            | `MouseCoordinates`    | `MouseCoordinates.Sgr`                                        |
-| `BracketedPaste`              | `bool`                | `true`                                                        |
-| `FocusReporting`              | `bool`                | `true`                                                        |
-| `KeyboardEnhancement`         | `Enhancement?`        | `Enhancement.Disambiguate \| Enhancement.EventTypes`          |
-| `Profile`                     | `TerminalProfile?`    | `null` (resolve from the platform connection)                 |
-| `Capabilities`                | `Capabilities?`       | `null` (detect and negotiate at startup)                      |
-| `ColorDepth`                  | `ColorDepth?`         | `null` (use the detected depth)                               |
-| `Negotiation`                 | `NegotiationOptions?` | `null` (default startup negotiation from the environment)     |
-| `CleanupTimeout`              | `TimeSpan`            | `1` second                                                    |
-| `ReadBufferSize`              | `int`                 | `16 * 1024` (16 KiB)                                          |
-| `ResizeInterval`              | `TimeSpan`            | `100` ms                                                      |
-| `TreatControlCAsInput`        | `bool`                | `false`                                                       |
-| `UseEnvironmentSizeOverrides` | `bool`                | `false`                                                       |
-| `RedirectedMessage`           | `string?`             | `null`                                                        |
-| `UnsupportedTerminalMessage`  | `string?`             | `null`                                                        |
+| Property                      | Type                        | Default                                                                        |
+| ----------------------------- | --------------------------- | ------------------------------------------------------------------------------ |
+| `Theme`                       | `Theme?`                    | `null` (resolves to `ThemeCatalog.Dark` via `ResolveTheme()`)                  |
+| `AlternateScreen`             | `bool`                      | `true`                                                                         |
+| `ShowCursor`                  | `bool`                      | `false`                                                                        |
+| `MouseTracking`               | `MouseTracking?`            | `MouseTracking.Any`; `null` disables mouse input                               |
+| `MouseCoordinates`            | `MouseCoordinates`          | `MouseCoordinates.Sgr`                                                         |
+| `BracketedPaste`              | `bool`                      | `true`                                                                         |
+| `FocusReporting`              | `bool`                      | `true`                                                                         |
+| `KeyboardEnhancement`         | `KittyKeyboardEnhancement?` | `KittyKeyboardEnhancement.Disambiguate \| KittyKeyboardEnhancement.EventTypes` |
+| `Profile`                     | `TerminalProfile?`          | `null` (resolve from the platform connection)                                  |
+| `Capabilities`                | `Capabilities?`             | `null` (detect and negotiate at startup)                                       |
+| `ColorDepth`                  | `ColorDepth?`               | `null` (use the detected depth)                                                |
+| `Negotiation`                 | `NegotiationOptions?`       | `null` (default startup negotiation from the environment)                      |
+| `CleanupTimeout`              | `TimeSpan`                  | `1` second                                                                     |
+| `ReadBufferSize`              | `int`                       | `16 * 1024` (16 KiB)                                                           |
+| `ResizeInterval`              | `TimeSpan`                  | `100` ms                                                                       |
+| `TreatControlCAsInput`        | `bool`                      | `false`                                                                        |
+| `UseEnvironmentSizeOverrides` | `bool`                      | `false`                                                                        |
+| `RedirectedMessage`           | `string?`                   | `null`                                                                         |
+| `UnsupportedTerminalMessage`  | `string?`                   | `null`                                                                         |
 
 Every timeout and interval must be positive and finite, `ReadBufferSize` must be
 positive, `MouseTracking`, `ColorDepth`, and `MouseCoordinates` must be defined
-enum values, and `KeyboardEnhancement` may contain only defined `Enhancement`
-bits. Each of those violations throws `ArgumentOutOfRangeException` from the
-`init` accessor before any state changes. `KeyboardEnhancement` additionally
-rejects `Enhancement.AssociatedText` set without `Enhancement.AllKeys`, and that
-case throws `ArgumentException` instead - associated-text reporting is
-meaningless without all-key reporting, so this is a cross-flag consistency rule
-rather than an out-of-range value.
+enum values, and `KeyboardEnhancement` may contain only defined
+`KittyKeyboardEnhancement` bits. Each of those violations throws
+`ArgumentOutOfRangeException` from the `init` accessor before any state changes.
+`KeyboardEnhancement` additionally rejects
+`KittyKeyboardEnhancement.AssociatedText` set without
+`KittyKeyboardEnhancement.AllKeys`, and that case throws `ArgumentException`
+instead - associated-text reporting is meaningless without all-key reporting, so
+this is a cross-flag consistency rule rather than an out-of-range value.
 
 `CleanupTimeout` bounds two distinct shutdown steps. It caps the reverse
 terminal-mode restoration writes, and it caps the drain that waits for an

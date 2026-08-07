@@ -13,7 +13,7 @@ using Input;
 /// <see cref="TryDecimal(ReadOnlySpan{byte}, bool, out int)"/> and <see cref="TryReadModifiers"/> also back <c>InputDecoder</c>'s xterm
 /// modifyOtherKeys CSI parsing, which reuses the same Kitty-originated modifier encoding.
 /// </remarks>
-internal sealed class KeyDecoder
+internal sealed class KittyKeyDecoder
 {
     private const int _maxAssociatedText = 32;
 
@@ -23,7 +23,7 @@ internal sealed class KeyDecoder
     /// <summary>Initializes a Kitty key decoder sharing its host's sink and diagnostics.</summary>
     /// <param name="sink">The non-null event sink strokes and associated text are emitted to.</param>
     /// <param name="report">The non-null host diagnostic-reporting delegate.</param>
-    public KeyDecoder(IInputSink sink, Action<DiagnosticCode, SequenceKind> report)
+    public KittyKeyDecoder(IInputSink sink, Action<DiagnosticCode, SequenceKind> report)
     {
         _sink = sink;
         _report = report;

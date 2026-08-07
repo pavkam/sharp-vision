@@ -7,12 +7,12 @@ namespace SharpVision.Terminal.Kitty.Keyboard;
 [PublicAPI]
 public static class KittyKeyboard
 {
-    private const Enhancement _all =
-        Enhancement.Disambiguate |
-        Enhancement.EventTypes |
-        Enhancement.AlternateKeys |
-        Enhancement.AllKeys |
-        Enhancement.AssociatedText;
+    private const KittyKeyboardEnhancement _all =
+        KittyKeyboardEnhancement.Disambiguate |
+        KittyKeyboardEnhancement.EventTypes |
+        KittyKeyboardEnhancement.AlternateKeys |
+        KittyKeyboardEnhancement.AllKeys |
+        KittyKeyboardEnhancement.AssociatedText;
 
     /// <summary>Queries the current progressive enhancement flags.</summary>
     /// <param name="writer">The validated protocol writer.</param>
@@ -23,7 +23,7 @@ public static class KittyKeyboard
     /// <param name="flags">The flags to push.</param>
     /// <exception cref="ArgumentOutOfRangeException">Unknown flags are present.</exception>
     /// <exception cref="ArgumentException">Associated text lacks all-key reporting.</exception>
-    public static void Push(ProtocolWriter writer, Enhancement flags)
+    public static void Push(ProtocolWriter writer, KittyKeyboardEnhancement flags)
     {
         Validate(flags);
         Span<byte> parameters = stackalloc byte[12];
@@ -60,7 +60,7 @@ public static class KittyKeyboard
     /// <param name="mode">The replace, set, or clear operation.</param>
     /// <exception cref="ArgumentOutOfRangeException">Flags or mode are unknown.</exception>
     /// <exception cref="ArgumentException">Associated text lacks all-key reporting.</exception>
-    public static void Set(ProtocolWriter writer, Enhancement flags, EnhancementMode mode)
+    public static void Set(ProtocolWriter writer, KittyKeyboardEnhancement flags, KittyKeyboardEnhancementMode mode)
     {
         Validate(flags);
 
@@ -81,15 +81,15 @@ public static class KittyKeyboard
         writer.Csi(parameters[..position], [], (byte) 'u');
     }
 
-    private static void Validate(Enhancement flags)
+    private static void Validate(KittyKeyboardEnhancement flags)
     {
         if ((flags & ~_all) != 0)
         {
             throw new ArgumentOutOfRangeException(nameof(flags), flags, "Unknown enhancement flags are set.");
         }
 
-        if ((flags & Enhancement.AssociatedText) != 0 &&
-            (flags & Enhancement.AllKeys) == 0)
+        if ((flags & KittyKeyboardEnhancement.AssociatedText) != 0 &&
+            (flags & KittyKeyboardEnhancement.AllKeys) == 0)
         {
             throw new ArgumentException(
                 "Associated text requires all-key reporting.",

@@ -140,7 +140,7 @@ public sealed class ConsoleApplicationBuilder
     /// <summary>Sets the Kitty keyboard enhancement flags, or null to disable.</summary>
     /// <param name="enhancement">The enhancement flags, or null to disable.</param>
     /// <returns>This builder.</returns>
-    public ConsoleApplicationBuilder UseKeyboardEnhancement(Enhancement? enhancement)
+    public ConsoleApplicationBuilder UseKeyboardEnhancement(KittyKeyboardEnhancement? enhancement)
     {
         Options = Options with { KeyboardEnhancement = enhancement };
         return this;

@@ -5,14 +5,14 @@ namespace SharpVision.Terminal.Kitty.Clipboard;
 
 /// <summary>Contains one owned MIME value in a completed clipboard result.</summary>
 [PublicAPI]
-public sealed class MimeData
+public sealed class KittyClipboardMimeData
 {
     private readonly byte[] _data;
 
     /// <summary>Initializes owned MIME data transferred from a transaction.</summary>
     /// <param name="mime">The UTF-8 MIME type.</param>
     /// <param name="data">The owned data buffer.</param>
-    internal MimeData(string mime, byte[] data)
+    internal KittyClipboardMimeData(string mime, byte[] data)
     {
         Mime = mime;
         _data = data;

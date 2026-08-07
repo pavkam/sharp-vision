@@ -8,7 +8,7 @@ using Kitty.Clipboard;
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Clipboard;
 
-using ClipboardPacket = Kitty.Clipboard.Packet;
+using ClipboardPacket = Kitty.Clipboard.KittyClipboardPacket;
 
 /// <summary>
 /// Verifies bounded Kitty clipboard transaction state machines.
@@ -21,23 +21,23 @@ public sealed class KittyTransactionTests
     [Fact]
     public void Accept_WhenReadPacketsAreOrdered_CompletesWithMimeData()
     {
-        using var transaction = Transaction.Read(id: "req-1");
+        using var transaction = KittyClipboardTransaction.Read(id: "req-1");
 
         transaction.Accept(Packet("5522;type=read:status=OK:id=req-1")).ShouldBe(
-            AcceptResult.Accepted);
+            KittyClipboardAcceptResult.Accepted);
         transaction.Accept(
                 Packet("5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==:id=req-1;aGVs"))
-            .ShouldBe(AcceptResult.Accepted);
+            .ShouldBe(KittyClipboardAcceptResult.Accepted);
         transaction.Accept(
                 Packet("5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==:id=req-1;bG8="))
-            .ShouldBe(AcceptResult.Accepted);
+            .ShouldBe(KittyClipboardAcceptResult.Accepted);
         transaction.Accept(Packet("5522;type=read:status=DONE:id=req-1")).ShouldBe(
-            AcceptResult.Completed);
+            KittyClipboardAcceptResult.Completed);
         transaction.Accept(
                 Packet("5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==:id=req-1;eA=="))
-            .ShouldBe(AcceptResult.Ignored);
+            .ShouldBe(KittyClipboardAcceptResult.Ignored);
 
-        transaction.State.ShouldBe(TransactionState.Completed);
+        transaction.State.ShouldBe(KittyClipboardTransactionState.Completed);
         var result = transaction.Result.ShouldNotBeNull();
         result.Items.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
             item => item.Mime.ShouldBe("text/plain"),
@@ -51,12 +51,12 @@ public sealed class KittyTransactionTests
     [Fact]
     public void Accept_WhenMimeListResponseIsOrdered_CompletesWithListData()
     {
-        using var transaction = Transaction.Read(listOnly: true);
+        using var transaction = KittyClipboardTransaction.Read(listOnly: true);
         _ = transaction.Accept(Packet("5522;type=read:status=OK"));
         _ = transaction.Accept(Packet("5522;type=read:status=DATA;dGV4dC9wbGFpbg=="));
 
         transaction.Accept(Packet("5522;type=read:status=DONE")).ShouldBe(
-            AcceptResult.Completed);
+            KittyClipboardAcceptResult.Completed);
 
         var result = transaction.Result.ShouldNotBeNull();
         result.Items.ShouldHaveSingleItem().Data.ToArray().ShouldBe("text/plain"u8.ToArray());
@@ -69,13 +69,13 @@ public sealed class KittyTransactionTests
     [Fact]
     public void Accept_WhenWriteReturnsDone_Completes()
     {
-        using var transaction = Transaction.Write(id: "write-1");
+        using var transaction = KittyClipboardTransaction.Write(id: "write-1");
 
         var result = transaction.Accept(
             Packet("5522;type=write:status=DONE:id=write-1"));
 
-        result.ShouldBe(AcceptResult.Completed);
-        transaction.State.ShouldBe(TransactionState.Completed);
+        result.ShouldBe(KittyClipboardAcceptResult.Completed);
+        transaction.State.ShouldBe(KittyClipboardTransactionState.Completed);
         _ = transaction.Result.ShouldNotBeNull();
     }
 
@@ -91,13 +91,13 @@ public sealed class KittyTransactionTests
     [InlineData("EBUSY")]
     public void Accept_WhenTerminalReturnsError_Fails(string status)
     {
-        using var transaction = Transaction.Read();
+        using var transaction = KittyClipboardTransaction.Read();
         var packet = Packet($"5522;type=read:status={status}");
 
-        transaction.Accept(packet).ShouldBe(AcceptResult.Failed);
+        transaction.Accept(packet).ShouldBe(KittyClipboardAcceptResult.Failed);
 
-        transaction.State.ShouldBe(TransactionState.Failed);
-        transaction.Failure.ShouldNotBe(ReplyStatus.None);
+        transaction.State.ShouldBe(KittyClipboardTransactionState.Failed);
+        transaction.Failure.ShouldNotBe(KittyClipboardReplyStatus.None);
     }
 
     /// <summary>
@@ -121,7 +121,7 @@ public sealed class KittyTransactionTests
         string? third,
         string? fourth)
     {
-        using var transaction = Transaction.Read();
+        using var transaction = KittyClipboardTransaction.Read();
 
         foreach (var packet in new[] { first, second, third, fourth })
         {
@@ -131,7 +131,7 @@ public sealed class KittyTransactionTests
             }
         }
 
-        transaction.State.ShouldBe(TransactionState.Failed);
+        transaction.State.ShouldBe(KittyClipboardTransactionState.Failed);
         transaction.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.UnexpectedPacket);
     }
 
@@ -143,11 +143,11 @@ public sealed class KittyTransactionTests
     [InlineData("5522;type=read:status=OK:id=other")]
     public void Accept_WhenCorrelationDoesNotMatch_IgnoresPacket(string wire)
     {
-        using var transaction = Transaction.Read(id: "req-1");
+        using var transaction = KittyClipboardTransaction.Read(id: "req-1");
 
-        transaction.Accept(Packet(wire)).ShouldBe(AcceptResult.Ignored);
+        transaction.Accept(Packet(wire)).ShouldBe(KittyClipboardAcceptResult.Ignored);
 
-        transaction.State.ShouldBe(TransactionState.Created);
+        transaction.State.ShouldBe(KittyClipboardTransactionState.Created);
     }
 
     /// <summary>
@@ -157,15 +157,15 @@ public sealed class KittyTransactionTests
     public void Accept_WhenPacketOrDataIsInvalid_FailsAndClearsBuffers()
     {
         var limits = TransferLimits.Default with { MaxClipboardBytes = 1 };
-        using var malformed = Transaction.Read(limits);
-        using var oversized = Transaction.Read(limits);
+        using var malformed = KittyClipboardTransaction.Read(limits);
+        using var oversized = KittyClipboardTransaction.Read(limits);
 
         malformed.Accept(ClipboardPacket.Parse("5522;type=read;***"u8)).ShouldBe(
-            AcceptResult.Failed);
+            KittyClipboardAcceptResult.Failed);
         _ = oversized.Accept(Packet("5522;type=read:status=OK"));
         oversized.Accept(
                 Packet("5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==;YWI="))
-            .ShouldBe(AcceptResult.Failed);
+            .ShouldBe(KittyClipboardAcceptResult.Failed);
 
         malformed.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.InvalidBase64);
         oversized.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.StringLimit);
@@ -179,14 +179,14 @@ public sealed class KittyTransactionTests
     [Fact]
     public void Accept_WhenInvalidPacketCarriesDifferentId_IgnoresPacket()
     {
-        using var transaction = Transaction.Read(id: "req-1");
+        using var transaction = KittyClipboardTransaction.Read(id: "req-1");
 
         // id= parses before the later unknown-type failure, so the packet is
         // attributed to "other" and must not be treated as ours.
         transaction.Accept(ClipboardPacket.Parse("5522;id=other:type=***"u8)).ShouldBe(
-            AcceptResult.Ignored);
+            KittyClipboardAcceptResult.Ignored);
 
-        transaction.State.ShouldBe(TransactionState.Created);
+        transaction.State.ShouldBe(KittyClipboardTransactionState.Created);
     }
 
     /// <summary>
@@ -196,12 +196,12 @@ public sealed class KittyTransactionTests
     [Fact]
     public void Accept_WhenInvalidPacketCarriesMatchingId_Fails()
     {
-        using var transaction = Transaction.Read(id: "req-1");
+        using var transaction = KittyClipboardTransaction.Read(id: "req-1");
 
         transaction.Accept(ClipboardPacket.Parse("5522;id=req-1:type=***"u8)).ShouldBe(
-            AcceptResult.Failed);
+            KittyClipboardAcceptResult.Failed);
 
-        transaction.State.ShouldBe(TransactionState.Failed);
+        transaction.State.ShouldBe(KittyClipboardTransactionState.Failed);
     }
 
     /// <summary>
@@ -212,13 +212,13 @@ public sealed class KittyTransactionTests
     [Fact]
     public void Accept_WhenInvalidPacketHasNoAttributableId_IgnoresIdBoundTransaction()
     {
-        using var transaction = Transaction.Read(id: "req-1");
+        using var transaction = KittyClipboardTransaction.Read(id: "req-1");
 
         // Fails at the "5522;" prefix check, before any metadata is parsed.
         transaction.Accept(ClipboardPacket.Parse("not-kitty"u8)).ShouldBe(
-            AcceptResult.Ignored);
+            KittyClipboardAcceptResult.Ignored);
 
-        transaction.State.ShouldBe(TransactionState.Created);
+        transaction.State.ShouldBe(KittyClipboardTransactionState.Created);
     }
 
     /// <summary>
@@ -228,16 +228,16 @@ public sealed class KittyTransactionTests
     [Fact]
     public void Accept_WhenUnrelatedMalformedTrafficInterleaves_CompletesMatchingStream()
     {
-        using var transaction = Transaction.Read(id: "req-1");
+        using var transaction = KittyClipboardTransaction.Read(id: "req-1");
 
         transaction.Accept(Packet("5522;type=read:status=OK:id=req-1")).ShouldBe(
-            AcceptResult.Accepted);
+            KittyClipboardAcceptResult.Accepted);
         transaction.Accept(ClipboardPacket.Parse("5522;id=other:type=***"u8)).ShouldBe(
-            AcceptResult.Ignored);
+            KittyClipboardAcceptResult.Ignored);
         transaction.Accept(Packet("5522;type=read:status=DONE:id=req-1")).ShouldBe(
-            AcceptResult.Completed);
+            KittyClipboardAcceptResult.Completed);
 
-        transaction.State.ShouldBe(TransactionState.Completed);
+        transaction.State.ShouldBe(KittyClipboardTransactionState.Completed);
         transaction.Result!.Dispose();
     }
 
@@ -248,13 +248,13 @@ public sealed class KittyTransactionTests
     public void Accept_WhenDataChunkExceeds4096Bytes_Fails()
     {
         var encoded = Convert.ToBase64String(new byte[4_097]);
-        using var transaction = Transaction.Read();
+        using var transaction = KittyClipboardTransaction.Read();
         _ = transaction.Accept(Packet("5522;type=read:status=OK"));
 
         var result = transaction.Accept(Packet(
             $"5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==;{encoded}"));
 
-        result.ShouldBe(AcceptResult.Failed);
+        result.ShouldBe(KittyClipboardAcceptResult.Failed);
         transaction.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.StringLimit);
     }
 
@@ -264,13 +264,13 @@ public sealed class KittyTransactionTests
     [Fact]
     public void Cancel_WhenActive_CancelsAndIgnoresLatePackets()
     {
-        using var transaction = Transaction.Read();
+        using var transaction = KittyClipboardTransaction.Read();
 
         transaction.Cancel();
 
-        transaction.State.ShouldBe(TransactionState.Cancelled);
+        transaction.State.ShouldBe(KittyClipboardTransactionState.Cancelled);
         transaction.Accept(Packet("5522;type=read:status=OK")).ShouldBe(
-            AcceptResult.Ignored);
+            KittyClipboardAcceptResult.Ignored);
     }
 
     /// <summary>
@@ -281,14 +281,14 @@ public sealed class KittyTransactionTests
     {
         var clock = new ManualTimeProvider();
         var queryLimits = QueryLimits.Default with { QueryTimeout = TimeSpan.FromSeconds(2) };
-        using var transaction = Transaction.Read(timeProvider: clock, queryLimits: queryLimits);
+        using var transaction = KittyClipboardTransaction.Read(timeProvider: clock, queryLimits: queryLimits);
 
         clock.Advance(TimeSpan.FromSeconds(2));
 
         transaction.CheckTimeout().ShouldBeTrue();
-        transaction.State.ShouldBe(TransactionState.TimedOut);
+        transaction.State.ShouldBe(KittyClipboardTransactionState.TimedOut);
         transaction.Accept(Packet("5522;type=read:status=OK")).ShouldBe(
-            AcceptResult.Ignored);
+            KittyClipboardAcceptResult.Ignored);
     }
 
     /// <summary>
@@ -297,7 +297,7 @@ public sealed class KittyTransactionTests
     [Fact]
     public void Dispose_WhenResultOwnsData_ClearsData()
     {
-        using var transaction = Transaction.Read();
+        using var transaction = KittyClipboardTransaction.Read();
         _ = transaction.Accept(Packet("5522;type=read:status=OK"));
         _ = transaction.Accept(
             Packet("5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==;c2VjcmV0"));
@@ -317,7 +317,7 @@ public sealed class KittyTransactionTests
     [Fact]
     public void Dispose_WhenItemsViewIsMutated_ClearsTransferredData()
     {
-        using var transaction = Transaction.Read();
+        using var transaction = KittyClipboardTransaction.Read();
         _ = transaction.Accept(Packet("5522;type=read:status=OK"));
         _ = transaction.Accept(
             Packet("5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==;c2VjcmV0"));
@@ -325,9 +325,9 @@ public sealed class KittyTransactionTests
         var result = transaction.Result.ShouldNotBeNull();
         var item = result.Items.ShouldHaveSingleItem();
 
-        if (result.Items is MimeData[] mutableItems)
+        if (result.Items is KittyClipboardMimeData[] mutableItems)
         {
-            mutableItems[0] = new MimeData("application/decoy", [1]);
+            mutableItems[0] = new KittyClipboardMimeData("application/decoy", [1]);
         }
 
         result.Dispose();

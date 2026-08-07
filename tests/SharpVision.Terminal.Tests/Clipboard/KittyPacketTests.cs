@@ -18,12 +18,12 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenDataReplyIsValid_ReturnsTypedPacket()
     {
-        var packet = Packet.Parse(
+        var packet = KittyClipboardPacket.Parse(
             "5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==:id=req-1;AAEC"u8);
 
         packet.Valid.ShouldBeTrue();
         packet.Operation.ShouldBe(KittyClipboardOperation.Read);
-        packet.ReplyStatus.ShouldBe(ReplyStatus.Data);
+        packet.ReplyStatus.ShouldBe(KittyClipboardReplyStatus.Data);
         packet.Selection.ShouldBe(Selection.Clipboard);
         packet.Id.ShouldBe("req-1");
         packet.Mime.ToArray().ShouldBe("text/plain"u8.ToArray());
@@ -37,21 +37,21 @@ public sealed class KittyPacketTests
     /// <param name="wire">The wire status.</param>
     /// <param name="expected">The typed status.</param>
     [Theory]
-    [InlineData("OK", ReplyStatus.Ok)]
-    [InlineData("DATA", ReplyStatus.Data)]
-    [InlineData("DONE", ReplyStatus.Done)]
-    [InlineData("EIO", ReplyStatus.Io)]
-    [InlineData("EINVAL", ReplyStatus.Invalid)]
-    [InlineData("ENOSYS", ReplyStatus.Unavailable)]
-    [InlineData("EPERM", ReplyStatus.Denied)]
-    [InlineData("EBUSY", ReplyStatus.Busy)]
+    [InlineData("OK", KittyClipboardReplyStatus.Ok)]
+    [InlineData("DATA", KittyClipboardReplyStatus.Data)]
+    [InlineData("DONE", KittyClipboardReplyStatus.Done)]
+    [InlineData("EIO", KittyClipboardReplyStatus.Io)]
+    [InlineData("EINVAL", KittyClipboardReplyStatus.Invalid)]
+    [InlineData("ENOSYS", KittyClipboardReplyStatus.Unavailable)]
+    [InlineData("EPERM", KittyClipboardReplyStatus.Denied)]
+    [InlineData("EBUSY", KittyClipboardReplyStatus.Busy)]
     public void Parse_WhenStatusIsKnown_ReturnsTypedStatus(
         string wire,
-        ReplyStatus expected)
+        KittyClipboardReplyStatus expected)
     {
         var input = Encoding.ASCII.GetBytes($"5522;type=write:status={wire}");
 
-        var packet = Packet.Parse(input);
+        var packet = KittyClipboardPacket.Parse(input);
 
         packet.Valid.ShouldBeTrue();
         packet.ReplyStatus.ShouldBe(expected);
@@ -63,7 +63,7 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenCredentialsAreValid_DecodesButRedactsText()
     {
-        var packet = Packet.Parse(
+        var packet = KittyClipboardPacket.Parse(
             "5522;type=read:pw=cGFzc3dvcmQ=:name=ZnJpZW5kbHk=;Lg=="u8);
 
         packet.Valid.ShouldBeTrue();
@@ -80,7 +80,7 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenMetadataKeyIsUnknown_PreservesKeyName()
     {
-        var packet = Packet.Parse("5522;type=read:future=secret;Lg=="u8);
+        var packet = KittyClipboardPacket.Parse("5522;type=read:future=secret;Lg=="u8);
 
         packet.Valid.ShouldBeTrue();
         packet.UnknownKeys.ShouldBe(["future"]);
@@ -92,7 +92,7 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenConsumerAttemptsUnknownKeyArrayMutation_PreservesPacketSnapshot()
     {
-        var packet = Packet.Parse("5522;type=read:future=secret;Lg=="u8);
+        var packet = KittyClipboardPacket.Parse("5522;type=read:future=secret;Lg=="u8);
 
         if (packet.UnknownKeys is string[] mutableKeys)
         {
@@ -109,7 +109,7 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenPayloadDecodeIsDisabled_PreservesPresenceOnly()
     {
-        var packet = Packet.Parse(
+        var packet = KittyClipboardPacket.Parse(
             "5522;type=wdata:mime=dGV4dC9wbGFpbg==;AAEC"u8,
             decodePayload: false);
 
@@ -125,7 +125,7 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenPayloadHasNonZeroPadBitsAndDecodeIsDisabled_ReturnsInvalidBase64()
     {
-        var packet = Packet.Parse("5522;type=wdata;AR=="u8, decodePayload: false);
+        var packet = KittyClipboardPacket.Parse("5522;type=wdata;AR=="u8, decodePayload: false);
 
         packet.Valid.ShouldBeFalse();
         packet.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.InvalidBase64);
@@ -141,7 +141,7 @@ public sealed class KittyPacketTests
     {
         var limits = TransferLimits.Default with { MaxClipboardBytes = 1 };
 
-        var packet = Packet.Parse(
+        var packet = KittyClipboardPacket.Parse(
             "5522;type=wdata;AAEC"u8,
             limits,
             decodePayload: false);
@@ -161,7 +161,7 @@ public sealed class KittyPacketTests
     {
         var limits = TransferLimits.Default with { MaxClipboardBytes = 3 };
 
-        var packet = Packet.Parse("5522;type=wdata;AAEC"u8, limits, decodePayload);
+        var packet = KittyClipboardPacket.Parse("5522;type=wdata;AAEC"u8, limits, decodePayload);
 
         packet.Valid.ShouldBeTrue();
     }
@@ -179,8 +179,8 @@ public sealed class KittyPacketTests
     {
         var bytes = Encoding.ASCII.GetBytes(input);
 
-        var decoded = Packet.Parse(bytes, decodePayload: true);
-        var validatedOnly = Packet.Parse(bytes, decodePayload: false);
+        var decoded = KittyClipboardPacket.Parse(bytes, decodePayload: true);
+        var validatedOnly = KittyClipboardPacket.Parse(bytes, decodePayload: false);
 
         validatedOnly.Valid.ShouldBe(decoded.Valid);
     }
@@ -202,7 +202,7 @@ public sealed class KittyPacketTests
     [InlineData("5522;type=read:pw=/w==", DiagnosticCode.InvalidMetadata)]
     public void Parse_WhenPacketIsMalformed_ReturnsDiagnostic(string input, DiagnosticCode code)
     {
-        var packet = Packet.Parse(Encoding.ASCII.GetBytes(input));
+        var packet = KittyClipboardPacket.Parse(Encoding.ASCII.GetBytes(input));
 
         packet.Valid.ShouldBeFalse();
         packet.Diagnostic!.Value.Code.ShouldBe(code);
@@ -218,7 +218,7 @@ public sealed class KittyPacketTests
     {
         var limits = TransferLimits.Default with { MaxMetadataBytes = 8 };
 
-        var packet = Packet.Parse("5522;type=read:id=abc"u8, limits);
+        var packet = KittyClipboardPacket.Parse("5522;type=read:id=abc"u8, limits);
 
         packet.Valid.ShouldBeFalse();
         packet.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.InvalidMetadata);

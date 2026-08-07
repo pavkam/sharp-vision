@@ -15,7 +15,7 @@ using SharpVision.Terminal.Clipboard;
 /// <see cref="Result"/>, which the caller must dispose.
 /// </remarks>
 [PublicAPI]
-public sealed class Transaction: IDisposable
+public sealed class KittyClipboardTransaction: IDisposable
 {
     private const int _chunkBytes = 4_096;
 
@@ -30,7 +30,7 @@ public sealed class Transaction: IDisposable
     private string? _currentMime;
     private int _totalBytes;
 
-    private Transaction(
+    private KittyClipboardTransaction(
         KittyClipboardOperation operation,
         TransferLimits? limits,
         string? id,
@@ -63,7 +63,7 @@ public sealed class Transaction: IDisposable
     }
 
     /// <summary>Gets the current lifecycle state.</summary>
-    public TransactionState State { get; private set; }
+    public KittyClipboardTransactionState State { get; private set; }
 
     /// <summary>Gets the immutable deadline calculated at construction.</summary>
     public DateTimeOffset Deadline { get; }
@@ -72,7 +72,7 @@ public sealed class Transaction: IDisposable
     public KittyClipboardResult? Result { get; private set; }
 
     /// <summary>Gets a terminal error status after failure.</summary>
-    public ReplyStatus Failure { get; private set; }
+    public KittyClipboardReplyStatus Failure { get; private set; }
 
     /// <summary>Gets a redacted local protocol diagnostic after failure.</summary>
     public Diagnostic? Diagnostic { get; private set; }
@@ -85,7 +85,7 @@ public sealed class Transaction: IDisposable
     /// <param name="queryLimits">Optional immutable query limits bounding the transaction deadline.</param>
     /// <returns>The new read transaction.</returns>
     /// <exception cref="ArgumentException"><paramref name="id"/> is invalid.</exception>
-    public static Transaction Read(
+    public static KittyClipboardTransaction Read(
         TransferLimits? limits = null,
         string? id = null,
         bool listOnly = false,
@@ -100,7 +100,7 @@ public sealed class Transaction: IDisposable
     /// <param name="queryLimits">Optional immutable query limits bounding the transaction deadline.</param>
     /// <returns>The new write transaction.</returns>
     /// <exception cref="ArgumentException"><paramref name="id"/> is invalid.</exception>
-    public static Transaction Write(
+    public static KittyClipboardTransaction Write(
         TransferLimits? limits = null,
         string? id = null,
         TimeProvider? timeProvider = null,
@@ -112,19 +112,19 @@ public sealed class Transaction: IDisposable
     /// <returns>How the packet affected the transaction.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="packet"/> is null.</exception>
     /// <exception cref="ObjectDisposedException">The transaction is disposed.</exception>
-    public AcceptResult Accept(Packet packet)
+    public KittyClipboardAcceptResult Accept(KittyClipboardPacket packet)
     {
-        ObjectDisposedException.ThrowIf(State == TransactionState.Disposed, this);
+        ObjectDisposedException.ThrowIf(State == KittyClipboardTransactionState.Disposed, this);
         ArgumentNullException.ThrowIfNull(packet);
 
         if (IsTerminal)
         {
-            return AcceptResult.Ignored;
+            return KittyClipboardAcceptResult.Ignored;
         }
 
         if (CheckTimeout())
         {
-            return AcceptResult.Ignored;
+            return KittyClipboardAcceptResult.Ignored;
         }
 
         // Correlation is checked before validity so that unrelated malformed
@@ -134,7 +134,7 @@ public sealed class Transaction: IDisposable
         // bound transaction and is ignored rather than treated as ours.
         if (!string.Equals(_id, packet.Id, StringComparison.Ordinal))
         {
-            return AcceptResult.Ignored;
+            return KittyClipboardAcceptResult.Ignored;
         }
 
         if (!packet.Valid)
@@ -162,7 +162,7 @@ public sealed class Transaction: IDisposable
     /// <exception cref="ObjectDisposedException">The transaction is disposed.</exception>
     public void Cancel()
     {
-        ObjectDisposedException.ThrowIf(State == TransactionState.Disposed, this);
+        ObjectDisposedException.ThrowIf(State == KittyClipboardTransactionState.Disposed, this);
 
         if (IsTerminal)
         {
@@ -170,7 +170,7 @@ public sealed class Transaction: IDisposable
         }
 
         ClearBuilders();
-        State = TransactionState.Cancelled;
+        State = KittyClipboardTransactionState.Cancelled;
     }
 
     /// <summary>Checks the injected clock and times out an expired transaction.</summary>
@@ -178,7 +178,7 @@ public sealed class Transaction: IDisposable
     /// <exception cref="ObjectDisposedException">The transaction is disposed.</exception>
     public bool CheckTimeout()
     {
-        ObjectDisposedException.ThrowIf(State == TransactionState.Disposed, this);
+        ObjectDisposedException.ThrowIf(State == KittyClipboardTransactionState.Disposed, this);
 
         if (IsTerminal || _timeProvider.GetUtcNow() < Deadline)
         {
@@ -186,35 +186,35 @@ public sealed class Transaction: IDisposable
         }
 
         ClearBuilders();
-        State = TransactionState.TimedOut;
+        State = KittyClipboardTransactionState.TimedOut;
         return true;
     }
 
     /// <summary>Clears temporary data and makes further use invalid.</summary>
     public void Dispose()
     {
-        if (State == TransactionState.Disposed)
+        if (State == KittyClipboardTransactionState.Disposed)
         {
             return;
         }
 
         ClearBuilders();
-        State = TransactionState.Disposed;
+        State = KittyClipboardTransactionState.Disposed;
     }
 
     /// <summary>Returns a structural description without ID, MIME, or data.</summary>
     /// <returns>A redacted transaction description.</returns>
     public override string ToString() =>
-        $"Transaction operation={_operation} state={State} bytes={_totalBytes}";
+        $"KittyClipboardTransaction operation={_operation} state={State} bytes={_totalBytes}";
 
     private bool IsTerminal => State is
-        TransactionState.Completed or
-        TransactionState.Failed or
-        TransactionState.Cancelled or
-        TransactionState.TimedOut or
-        TransactionState.Disposed;
+        KittyClipboardTransactionState.Completed or
+        KittyClipboardTransactionState.Failed or
+        KittyClipboardTransactionState.Cancelled or
+        KittyClipboardTransactionState.TimedOut or
+        KittyClipboardTransactionState.Disposed;
 
-    private AcceptResult AcceptData(Packet packet)
+    private KittyClipboardAcceptResult AcceptData(KittyClipboardPacket packet)
     {
         if (packet.Data.Length > _chunkBytes)
         {
@@ -270,36 +270,36 @@ public sealed class Transaction: IDisposable
         builder.Append(packet.Data.Span);
         _currentMime = mime;
         _totalBytes += packet.Data.Length;
-        State = TransactionState.Receiving;
+        State = KittyClipboardTransactionState.Receiving;
 
-        return AcceptResult.Accepted;
+        return KittyClipboardAcceptResult.Accepted;
     }
 
-    private AcceptResult AcceptRead(Packet packet)
+    private KittyClipboardAcceptResult AcceptRead(KittyClipboardPacket packet)
     {
-        if (packet.ReplyStatus == ReplyStatus.Ok)
+        if (packet.ReplyStatus == KittyClipboardReplyStatus.Ok)
         {
-            if (State != TransactionState.Created)
+            if (State != KittyClipboardTransactionState.Created)
             {
                 return Fail(Unexpected());
             }
 
-            State = TransactionState.Accepted;
-            return AcceptResult.Accepted;
+            State = KittyClipboardTransactionState.Accepted;
+            return KittyClipboardAcceptResult.Accepted;
         }
 
-        return packet.ReplyStatus == ReplyStatus.Data
-            ? State is TransactionState.Accepted or TransactionState.Receiving
+        return packet.ReplyStatus == KittyClipboardReplyStatus.Data
+            ? State is KittyClipboardTransactionState.Accepted or KittyClipboardTransactionState.Receiving
                 ? AcceptData(packet)
                 : Fail(Unexpected())
-            : packet.ReplyStatus == ReplyStatus.Done &&
-              State is TransactionState.Accepted or TransactionState.Receiving
+            : packet.ReplyStatus == KittyClipboardReplyStatus.Done &&
+              State is KittyClipboardTransactionState.Accepted or KittyClipboardTransactionState.Receiving
                 ? Complete()
                 : Fail(Unexpected());
     }
 
-    private AcceptResult AcceptWrite(Packet packet) =>
-        packet.ReplyStatus == ReplyStatus.Done && State == TransactionState.Created
+    private KittyClipboardAcceptResult AcceptWrite(KittyClipboardPacket packet) =>
+        packet.ReplyStatus == KittyClipboardReplyStatus.Done && State == KittyClipboardTransactionState.Created
             ? Complete()
             : Fail(Unexpected());
 
@@ -317,40 +317,40 @@ public sealed class Transaction: IDisposable
         _totalBytes = 0;
     }
 
-    private AcceptResult Complete()
+    private KittyClipboardAcceptResult Complete()
     {
         Debug.Assert(!IsTerminal, "Only an active transaction can complete.");
 
-        var items = new MimeData[_mimeOrder.Count];
+        var items = new KittyClipboardMimeData[_mimeOrder.Count];
 
         for (var index = 0; index < _mimeOrder.Count; index++)
         {
             var mime = _mimeOrder[index];
-            items[index] = new MimeData(mime, _builders[mime].ToArray());
+            items[index] = new KittyClipboardMimeData(mime, _builders[mime].ToArray());
         }
 
         ClearBuilders();
         Result = new KittyClipboardResult(items);
-        State = TransactionState.Completed;
+        State = KittyClipboardTransactionState.Completed;
 
-        return AcceptResult.Completed;
+        return KittyClipboardAcceptResult.Completed;
     }
 
-    private AcceptResult Fail(Diagnostic diagnostic)
+    private KittyClipboardAcceptResult Fail(Diagnostic diagnostic)
     {
         ClearBuilders();
         Diagnostic = diagnostic;
-        State = TransactionState.Failed;
+        State = KittyClipboardTransactionState.Failed;
 
-        return AcceptResult.Failed;
+        return KittyClipboardAcceptResult.Failed;
     }
 
-    private static bool IsError(ReplyStatus status) => status is
-        ReplyStatus.Io or
-        ReplyStatus.Invalid or
-        ReplyStatus.Unavailable or
-        ReplyStatus.Denied or
-        ReplyStatus.Busy;
+    private static bool IsError(KittyClipboardReplyStatus status) => status is
+        KittyClipboardReplyStatus.Io or
+        KittyClipboardReplyStatus.Invalid or
+        KittyClipboardReplyStatus.Unavailable or
+        KittyClipboardReplyStatus.Denied or
+        KittyClipboardReplyStatus.Busy;
 
 
     private static Diagnostic Unexpected() =>

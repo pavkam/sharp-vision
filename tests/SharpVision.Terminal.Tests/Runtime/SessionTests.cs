@@ -80,7 +80,7 @@ public sealed class SessionTests
             Focus = true,
             Paste = true,
             Tracking = MouseTracking.Press,
-            Keyboard = Enhancement.Disambiguate | Enhancement.EventTypes,
+            Keyboard = KittyKeyboardEnhancement.Disambiguate | KittyKeyboardEnhancement.EventTypes,
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>(),
                 overrides: null,
@@ -581,7 +581,7 @@ public sealed class SessionTests
             Focus = true,
             Paste = true,
             Tracking = MouseTracking.Press,
-            Keyboard = Enhancement.Disambiguate | Enhancement.EventTypes,
+            Keyboard = KittyKeyboardEnhancement.Disambiguate | KittyKeyboardEnhancement.EventTypes,
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>(),
                 limits: QueryLimits.Default with { MaxConcurrentQueries = 8 })
@@ -1140,7 +1140,7 @@ public sealed class SessionTests
         var options = TerminalOptions.Minimal with
         {
             Capabilities = capabilities,
-            Keyboard = Enhancement.Disambiguate,
+            Keyboard = KittyKeyboardEnhancement.Disambiguate,
             ModifyOtherKeys = 2
         };
         transport.Close();
@@ -1167,7 +1167,7 @@ public sealed class SessionTests
         var options = TerminalOptions.Minimal with
         {
             Capabilities = capabilities,
-            Keyboard = Enhancement.Disambiguate,
+            Keyboard = KittyKeyboardEnhancement.Disambiguate,
             ModifyOtherKeys = 2
         };
         transport.Close();

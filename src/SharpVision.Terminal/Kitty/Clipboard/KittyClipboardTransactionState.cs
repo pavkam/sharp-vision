@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Kitty.Clipboard;
 
 /// <summary>Identifies the lifecycle state of a Kitty clipboard transaction.</summary>
 [PublicAPI]
-public enum TransactionState
+public enum KittyClipboardTransactionState
 {
     /// <summary>The request has been created but no response was accepted.</summary>
     Created,

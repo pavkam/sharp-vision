@@ -5,15 +5,15 @@ namespace SharpVision.Terminal.Kitty.Graphics;
 
 /// <summary>Owns one validated protocol-safe Kitty graphics command description.</summary>
 [PublicAPI]
-public sealed class Command
+public sealed class KittyGraphicsCommand
 {
     #region Construction and state
 
-    private Command(
-        GraphicsAction action,
+    private KittyGraphicsCommand(
+        KittyGraphicsAction action,
         KittyGraphicsMedium medium,
         KittyGraphicsFormat format,
-        Compression compression,
+        KittyGraphicsCompression compression,
         uint imageId,
         uint placementId,
         Size pixelSize,
@@ -42,7 +42,7 @@ public sealed class Command
     }
 
     /// <summary>Gets the typed action.</summary>
-    public GraphicsAction Action { get; }
+    public KittyGraphicsAction Action { get; }
 
     /// <summary>Gets the direct-only transmission medium.</summary>
     public KittyGraphicsMedium Medium { get; }
@@ -50,8 +50,8 @@ public sealed class Command
     /// <summary>Gets the image source format.</summary>
     public KittyGraphicsFormat Format { get; }
 
-    /// <summary>Gets transmission compression, which is currently always <see cref="Compression.None"/>.</summary>
-    public Compression Compression { get; }
+    /// <summary>Gets transmission compression, which is currently always <see cref="KittyGraphicsCompression.None"/>.</summary>
+    public KittyGraphicsCompression Compression { get; }
 
     /// <summary>Gets the nonzero renderer-owned image identifier.</summary>
     public uint ImageId { get; }
@@ -91,14 +91,14 @@ public sealed class Command
     /// <param name="imageId">The nonzero correlation identifier.</param>
     /// <returns>A validated query command.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="imageId"/> is zero.</exception>
-    public static Command Query(uint imageId)
+    public static KittyGraphicsCommand Query(uint imageId)
     {
         RequireId(imageId, nameof(imageId));
-        return new Command(
-            GraphicsAction.Query,
+        return new KittyGraphicsCommand(
+            KittyGraphicsAction.Query,
             KittyGraphicsMedium.Direct,
             KittyGraphicsFormat.Rgb,
-            Compression.None,
+            KittyGraphicsCompression.None,
             imageId,
             0,
             new Size(1, 1),
@@ -116,16 +116,16 @@ public sealed class Command
     /// <param name="quiet">Response suppression mode zero, one, or two.</param>
     /// <returns>A validated exact-placement delete command.</returns>
     /// <exception cref="ArgumentOutOfRangeException">An identifier is zero or <paramref name="quiet"/> is invalid.</exception>
-    public static Command DeletePlacement(uint imageId, uint placementId, int quiet = 2)
+    public static KittyGraphicsCommand DeletePlacement(uint imageId, uint placementId, int quiet = 2)
     {
         RequireId(imageId, nameof(imageId));
         RequireId(placementId, nameof(placementId));
         ValidateQuiet(quiet);
-        return new Command(
-            GraphicsAction.Delete,
+        return new KittyGraphicsCommand(
+            KittyGraphicsAction.Delete,
             KittyGraphicsMedium.Direct,
             KittyGraphicsFormat.Rgba,
-            Compression.None,
+            KittyGraphicsCompression.None,
             imageId,
             placementId,
             default,
@@ -147,13 +147,13 @@ public sealed class Command
     /// <returns>A validated transmission command.</returns>
     /// <exception cref="ArgumentOutOfRangeException">An identifier, dimension, enum, or quiet value is invalid.</exception>
     /// <exception cref="NotSupportedException">The format, medium, or compression is unsupported.</exception>
-    public static Command Transmit(
+    public static KittyGraphicsCommand Transmit(
         uint imageId,
         Size pixelSize,
         KittyGraphicsFormat format,
         int quiet = 2,
         KittyGraphicsMedium medium = KittyGraphicsMedium.Direct,
-        Compression compression = Compression.None)
+        KittyGraphicsCompression compression = KittyGraphicsCompression.None)
     {
         RequireId(imageId, nameof(imageId));
         ValidateSize(pixelSize, nameof(pixelSize));
@@ -165,12 +165,12 @@ public sealed class Command
             ? throw new ArgumentOutOfRangeException(nameof(medium), medium, "The Kitty medium is unknown.")
             : format == KittyGraphicsFormat.Rgb
             ? throw new NotSupportedException("RGB is supported only by the Kitty capability query.")
-            : compression != Compression.None
+            : compression != KittyGraphicsCompression.None
             ? throw new NotSupportedException("Compressed Kitty transmission is not supported.")
             : medium != KittyGraphicsMedium.Direct
             ? throw new NotSupportedException("Only direct Kitty graphics transmission is supported.")
-            : new Command(
-            GraphicsAction.Transmit,
+            : new KittyGraphicsCommand(
+            KittyGraphicsAction.Transmit,
             medium,
             format,
             compression,
@@ -195,7 +195,7 @@ public sealed class Command
     /// <param name="doNotMoveCursor">Whether to emit <c>C=1</c>.</param>
     /// <returns>A validated placement command.</returns>
     /// <exception cref="ArgumentOutOfRangeException">An identifier, rectangle, dimension, or quiet value is invalid.</exception>
-    public static Command Place(
+    public static KittyGraphicsCommand Place(
         uint imageId,
         uint placementId,
         Rect source,
@@ -209,11 +209,11 @@ public sealed class Command
         ValidateRect(source, nameof(source));
         ValidateSize(destination, nameof(destination));
         ValidateQuiet(quiet);
-        return new Command(
-            GraphicsAction.Place,
+        return new KittyGraphicsCommand(
+            KittyGraphicsAction.Place,
             KittyGraphicsMedium.Direct,
             KittyGraphicsFormat.Rgba,
-            Compression.None,
+            KittyGraphicsCompression.None,
             imageId,
             placementId,
             default,
@@ -230,15 +230,15 @@ public sealed class Command
     /// <param name="quiet">Response suppression mode zero, one, or two.</param>
     /// <returns>A validated delete command.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="imageId"/> is zero or <paramref name="quiet"/> is invalid.</exception>
-    public static Command DeleteImage(uint imageId, int quiet = 2)
+    public static KittyGraphicsCommand DeleteImage(uint imageId, int quiet = 2)
     {
         RequireId(imageId, nameof(imageId));
         ValidateQuiet(quiet);
-        return new Command(
-            GraphicsAction.Delete,
+        return new KittyGraphicsCommand(
+            KittyGraphicsAction.Delete,
             KittyGraphicsMedium.Direct,
             KittyGraphicsFormat.Rgba,
-            Compression.None,
+            KittyGraphicsCompression.None,
             imageId,
             0,
             default,
@@ -252,7 +252,7 @@ public sealed class Command
     }
 
     /// <summary>Creates the first transmission chunk with an exact continuation flag.</summary>
-    internal Command WithMore(bool more) => new(
+    internal KittyGraphicsCommand WithMore(bool more) => new(
         Action,
         Medium,
         Format,
@@ -269,11 +269,11 @@ public sealed class Command
         DeleteData);
 
     /// <summary>Creates a metadata-minimal continuation chunk.</summary>
-    internal static Command Continuation(bool more, int quiet) => new(
-        GraphicsAction.Transmit,
+    internal static KittyGraphicsCommand Continuation(bool more, int quiet) => new(
+        KittyGraphicsAction.Transmit,
         KittyGraphicsMedium.Direct,
         KittyGraphicsFormat.Rgba,
-        Compression.None,
+        KittyGraphicsCompression.None,
         0,
         0,
         default,
@@ -296,7 +296,7 @@ public sealed class Command
         }
     }
 
-    private static void ValidateCompression(Compression value)
+    private static void ValidateCompression(KittyGraphicsCompression value)
     {
         if (!Enum.IsDefined(value))
         {

@@ -15,7 +15,7 @@ public sealed class OptionsTests
     public void Keyboard_WhenValueHasUnknownBits_ThrowsArgumentOutOfRangeException()
     {
         var exception = Should.Throw<ArgumentOutOfRangeException>(() =>
-            new TerminalOptions { Keyboard = (Enhancement) 64 });
+            new TerminalOptions { Keyboard = (KittyKeyboardEnhancement) 64 });
 
         exception.ParamName.ShouldBe("value");
     }
@@ -25,7 +25,7 @@ public sealed class OptionsTests
     public void Keyboard_WhenAssociatedTextIsSetWithoutAllKeys_ThrowsArgumentException()
     {
         var exception = Should.Throw<ArgumentException>(() =>
-            new TerminalOptions { Keyboard = Enhancement.AssociatedText });
+            new TerminalOptions { Keyboard = KittyKeyboardEnhancement.AssociatedText });
 
         exception.ShouldNotBeOfType<ArgumentOutOfRangeException>();
         exception.ParamName.ShouldBe("value");
@@ -36,9 +36,9 @@ public sealed class OptionsTests
     public void Keyboard_WhenAssociatedTextIsPairedWithAllKeys_DoesNotThrow()
     {
         var options = Should.NotThrow(() =>
-            new TerminalOptions { Keyboard = Enhancement.AllKeys | Enhancement.AssociatedText });
+            new TerminalOptions { Keyboard = KittyKeyboardEnhancement.AllKeys | KittyKeyboardEnhancement.AssociatedText });
 
-        options.Keyboard.ShouldBe(Enhancement.AllKeys | Enhancement.AssociatedText);
+        options.Keyboard.ShouldBe(KittyKeyboardEnhancement.AllKeys | KittyKeyboardEnhancement.AssociatedText);
     }
 
     /// <summary>Verifies disabling the keyboard lease entirely remains accepted.</summary>

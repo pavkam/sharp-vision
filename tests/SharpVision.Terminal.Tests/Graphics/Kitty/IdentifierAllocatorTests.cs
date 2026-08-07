@@ -12,7 +12,7 @@ public sealed class IdentifierAllocatorTests
     [Fact]
     public void Rent_WhenIdentifiersAreReleased_ReusesOnlyInactiveValues()
     {
-        var allocator = new IdentifierAllocator(2);
+        var allocator = new KittyGraphicsIdentifierAllocator(2);
 
         var first = allocator.Rent();
         var second = allocator.Rent();
@@ -31,7 +31,7 @@ public sealed class IdentifierAllocatorTests
     [InlineData(3U)]
     public void Return_WhenIdentifierIsNotActive_RejectsIt(uint value)
     {
-        var allocator = new IdentifierAllocator(2);
+        var allocator = new KittyGraphicsIdentifierAllocator(2);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => allocator.Return(value));
     }

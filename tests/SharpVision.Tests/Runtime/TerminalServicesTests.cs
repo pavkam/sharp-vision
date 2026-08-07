@@ -328,7 +328,7 @@ public sealed class TerminalServicesTests
         result.Items.ShouldBeEmpty();
         result.Dispose();
         args.Text.ShouldBeNull();
-        args.Failure.ShouldBe(ReplyStatus.None);
+        args.Failure.ShouldBe(KittyClipboardReplyStatus.None);
         args.Diagnostic.ShouldBeNull();
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
@@ -389,7 +389,7 @@ public sealed class TerminalServicesTests
 
         var args = await reply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         args.Succeeded.ShouldBeFalse();
-        args.Failure.ShouldBe(ReplyStatus.Denied);
+        args.Failure.ShouldBe(KittyClipboardReplyStatus.Denied);
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
@@ -433,7 +433,7 @@ public sealed class TerminalServicesTests
 
         var args = await reply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         args.Succeeded.ShouldBeFalse();
-        args.Failure.ShouldBe(ReplyStatus.None);
+        args.Failure.ShouldBe(KittyClipboardReplyStatus.None);
         args.Diagnostic.ShouldBeNull();
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
@@ -472,7 +472,7 @@ public sealed class TerminalServicesTests
         await Task.Delay(50, TestContext.Current.CancellationToken);
 
         var completed = replies.ShouldHaveSingleItem();
-        completed.Failure.ShouldBe(ReplyStatus.Io);
+        completed.Failure.ShouldBe(KittyClipboardReplyStatus.Io);
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
@@ -565,7 +565,7 @@ public sealed class TerminalServicesTests
         // The same shape the Kitty TimedOut arm reports: no data, no terminal-reported failure.
         var args = await reply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         args.Succeeded.ShouldBeFalse();
-        args.Failure.ShouldBe(ReplyStatus.None);
+        args.Failure.ShouldBe(KittyClipboardReplyStatus.None);
         args.Diagnostic.ShouldBeNull();
         args.Selection.ShouldBe(ClipboardSelection.Clipboard);
         await application.StopAsync(TestContext.Current.CancellationToken);

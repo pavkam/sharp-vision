@@ -25,17 +25,18 @@ enforce documented ordering, total-size, metadata-size, timeout, and concurrency
 limits. Invalid Base64 or ordering aborts only that transaction and preserves
 outer parsing.
 
-`Kitty.Clipboard.Packet` validates colon-separated metadata, all documented
-statuses, Base64 MIME/password/name values, optional primary location, and
-correlation IDs. Unknown metadata remains observable by key name only. The
-packet publishes those names as an immutable snapshot.
+`Kitty.Clipboard.KittyClipboardPacket` validates colon-separated metadata, all
+documented statuses, Base64 MIME/password/name values, optional primary
+location, and correlation IDs. Unknown metadata remains observable by key name
+only. The packet publishes those names as an immutable snapshot.
 `Kitty.Clipboard.KittyClipboardWriter` emits read/list/write/data/alias/end
-packets, DECRQM, and paste-mode controls. `Kitty.Clipboard.Transaction` enforces
-`OK -> DATA* -> DONE` reads, write `DONE`, one MIME type at a time, 4096-byte
-chunks, total-size limits, cancellation, and fake-clock deadlines. Successful
-data transfers into an owned `Kitty.Clipboard.KittyClipboardResult` whose
-immutable item collection cannot be rewritten by consumers and whose disposal
-clears every transferred data buffer.
+packets, DECRQM, and paste-mode controls.
+`Kitty.Clipboard.KittyClipboardTransaction` enforces `OK -> DATA* -> DONE`
+reads, write `DONE`, one MIME type at a time, 4096-byte chunks, total-size
+limits, cancellation, and fake-clock deadlines. Successful data transfers into
+an owned `Kitty.Clipboard.KittyClipboardResult` whose immutable item collection
+cannot be rewritten by consumers and whose disposal clears every transferred
+data buffer.
 
 Correlation is checked before validity. A transaction bound to an `id` ignores
 any packet whose `id` does not match its own — malformed or well-formed,
@@ -52,12 +53,12 @@ correlation. `Application.Terminal.Clipboard` performs Kitty-preferred
 selection: `Write` and `Request` use Kitty OSC 5522 when it is authoritatively
 proven, fall back to OSC 52 text when only that is proven, and stay byte-quiet
 when neither is. Inbound OSC 52 and OSC 5522 replies route through the decoder
-into `TerminalServices`, which owns the `Transaction` lifecycle (correlation,
-deadline, cancellation) and reports every outcome through the single
-`IClipboard.KittyClipboardReplyReceived` event. That covers every `Request`,
-whichever protocol served it, and a `Write` served by OSC 5522. An OSC 52
-`Write` is fire-and-forget - the protocol defines no acknowledgement for a
-write, so no transaction is opened and no event is raised.
+into `TerminalServices`, which owns the `KittyClipboardTransaction` lifecycle
+(correlation, deadline, cancellation) and reports every outcome through the
+single `IClipboard.KittyClipboardReplyReceived` event. That covers every
+`Request`, whichever protocol served it, and a `Write` served by OSC 5522. An
+OSC 52 `Write` is fire-and-forget - the protocol defines no acknowledgement for
+a write, so no transaction is opened and no event is raised.
 
 Unsolicited/proactive Kitty paste events (mode 5522 also lets a terminal push
 clipboard changes without a request) remain intentionally out of scope: no
