@@ -89,6 +89,32 @@ public sealed class CheckBoxSurfaceTests
         surface.ShouldHaveFocus(null);
     }
 
+    /// <summary>Verifies a press-only terminal's Space toggles immediately. Legacy input never
+    /// delivers a key release, so the old arm-on-press/complete-on-release Space latched forever
+    /// and never activated outside the Kitty keyboard protocol; the press itself completes when
+    /// releases are not expected.</summary>
+    [Fact]
+    public async Task Keyboard_WhenLegacySpaceHasNoRelease_TogglesOnThePressAsync()
+    {
+        // Arrange
+        List<ActivationCause> causes = [];
+        var checkBox = new CheckBox { Text = "Option" };
+        checkBox.Checked += (_, eventArgs) => causes.Add(eventArgs.Cause);
+        await using var surface = await ComponentSurface.MountAsync(
+            checkBox,
+            new Size(10, 1),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act: a bare UTF-8 space - the only thing a press-only terminal ever sends.
+        await surface.Keyboard.TypeAsync(" ");
+
+        // Assert
+        checkBox.IsChecked.ShouldBe(true);
+        causes.ShouldBe([ActivationCause.Keyboard]);
+        surface.ShouldRender("[✓] Option");
+    }
+
     /// <summary>Verifies complete Space actions reach checked and indeterminate states with keyboard cause.</summary>
     [ComponentBehaviorEvidence(
         typeof(CheckBox),

@@ -32,7 +32,8 @@ internal sealed class ListItem: ContentControl
             () => HasPointerCapture,
             ReleasePointerCapture,
             SetPressed,
-            Activate);
+            Activate,
+            () => Capabilities.KittyKeyboard.Authoritative);
         HorizontalAlignment = HorizontalAlignment.Stretch;
         Focusable = false;
         TabStop = false;

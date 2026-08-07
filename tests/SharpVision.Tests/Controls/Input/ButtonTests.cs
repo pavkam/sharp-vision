@@ -167,6 +167,7 @@ public sealed class ButtonTests
             Text = "Hi"
         };
         new LayoutEngine().Layout(button, new Size(10, 5));
+        button.SetCapabilities(TestCapabilities.WithKeyReleases);
         _ = Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
             Code.Character,
             new Rune(' '),
@@ -311,6 +312,7 @@ public sealed class ButtonTests
         new LayoutEngine().Layout(button, new Size(10, 6));
         var released = content.Bounds;
 
+        button.SetCapabilities(TestCapabilities.WithKeyReleases);
         _ = Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
             Code.Character,
             new Rune(' '),
@@ -345,6 +347,7 @@ public sealed class ButtonTests
         var released = content.Bounds;
 
         // Act
+        button.SetCapabilities(TestCapabilities.WithKeyReleases);
         _ = Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
             Code.Character,
             new Rune(' '),
@@ -418,6 +421,7 @@ public sealed class ButtonTests
         using Frame released = new(size);
         button.Render(released.Canvas);
 
+        button.SetCapabilities(TestCapabilities.WithKeyReleases);
         _ = Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
             Code.Character,
             new Rune(' '),
@@ -449,6 +453,7 @@ public sealed class ButtonTests
         button.Measure(new Constraint(6, 3));
         button.Arrange(new Rect(5, 0, 6, 3));
 
+        button.SetCapabilities(TestCapabilities.WithKeyReleases);
         _ = Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
             Code.Character,
             new Rune(' '),
@@ -540,6 +545,7 @@ public sealed class ButtonTests
         var size = new Size(10, 6);
         new LayoutEngine().Layout(button, size);
 
+        button.SetCapabilities(TestCapabilities.WithKeyReleases);
         _ = Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
             Code.Character,
             new Rune(' '),

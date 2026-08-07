@@ -83,6 +83,10 @@ public sealed class ComponentSurfaceTests
             new Size(10, 1),
             TestContext.Current.CancellationToken);
         await surface.Keyboard.PressAsync(Code.Tab);
+        // Hold-then-release semantics require a terminal that reports releases.
+        await surface.UpdateAsync(
+            () => checkBox.SetCapabilities(TestCapabilities.WithKeyReleases),
+            "declare key-release reporting");
 
         // Act and assert held state
         await surface.Keyboard.PressCharacterAsync(new Rune(' '));

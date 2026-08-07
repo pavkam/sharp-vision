@@ -87,7 +87,8 @@ public sealed class DateInput: ControlBase
             () => HasPointerCapture,
             ReleasePointerCapture,
             SetPressed,
-            Activate);
+            Activate,
+            () => Capabilities.KittyKeyboard.Authoritative);
         _segments = new SegmentFieldBehavior(
             BuildSegments,
             ApplySegmentDigit,

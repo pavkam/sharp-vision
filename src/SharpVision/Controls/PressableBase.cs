@@ -36,7 +36,8 @@ public abstract class PressableBase: ControlBase
             () => HasPointerCapture,
             ReleasePointerCapture,
             SetPressed,
-            Activate);
+            Activate,
+            () => Capabilities.KittyKeyboard.Authoritative);
         Focusable = true;
         TabStop = true;
     }

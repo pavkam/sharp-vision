@@ -11,6 +11,7 @@ public sealed class PressableTests
     public void Dispatch_WhenKeyboardActivates_UsesExactTransitionAndCause()
     {
         var control = new ProbePressable();
+        control.SetCapabilities(TestCapabilities.WithKeyReleases);
 
         Key(control, Code.Character, new Rune(' '), KeyAction.Press);
         control.Pressed.ShouldBeTrue();
@@ -94,6 +95,8 @@ public sealed class PressableTests
             root.Attach(dispatcher);
             using FocusManager focus = new(root);
             using PointerManager capture = new(root);
+            // Held-Space state only exists under a release-reporting terminal.
+            control.SetCapabilities(TestCapabilities.WithKeyReleases);
             focus.Focus(control).ShouldBeTrue();
             Key(control, Code.Character, new Rune(' '), KeyAction.Press);
 

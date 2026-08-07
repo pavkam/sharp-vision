@@ -109,7 +109,8 @@ public sealed class DateTimeInput: ControlBase
             () => HasPointerCapture,
             ReleasePointerCapture,
             SetPressed,
-            Activate);
+            Activate,
+            () => Capabilities.KittyKeyboard.Authoritative);
         _segments = new SegmentFieldBehavior(
             BuildSegments,
             ApplyDigitValue,

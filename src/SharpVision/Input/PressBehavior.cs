@@ -18,6 +18,7 @@ internal sealed class PressBehavior
     private readonly Action _releasePointerCapture;
     private readonly Action<bool> _setPressed;
     private readonly Action<ActivationCause> _activate;
+    private readonly Func<bool> _keyReleasesExpected;
     private bool _pointerHeld;
     private bool _spaceHeld;
 
@@ -30,7 +31,8 @@ internal sealed class PressBehavior
         Func<bool> hasPointerCapture,
         Action releasePointerCapture,
         Action<bool> setPressed,
-        Action<ActivationCause> activate)
+        Action<ActivationCause> activate,
+        Func<bool> keyReleasesExpected)
     {
         ArgumentNullException.ThrowIfNull(bounds);
         ArgumentNullException.ThrowIfNull(isAvailable);
@@ -41,6 +43,7 @@ internal sealed class PressBehavior
         ArgumentNullException.ThrowIfNull(releasePointerCapture);
         ArgumentNullException.ThrowIfNull(setPressed);
         ArgumentNullException.ThrowIfNull(activate);
+        ArgumentNullException.ThrowIfNull(keyReleasesExpected);
         _bounds = bounds;
         _isAvailable = isAvailable;
         _canCompleteSpace = canCompleteSpace;
@@ -50,6 +53,7 @@ internal sealed class PressBehavior
         _releasePointerCapture = releasePointerCapture;
         _setPressed = setPressed;
         _activate = activate;
+        _keyReleasesExpected = keyReleasesExpected;
     }
 
     public void Handle(RoutedEventArgs eventArgs)
@@ -102,6 +106,22 @@ internal sealed class PressBehavior
             eventArgs.Handled = true;
             if (stroke.Action == KeyAction.Press && !_spaceHeld)
             {
+                if (!_keyReleasesExpected())
+                {
+                    // A press-only terminal never delivers the completing release, so arming the
+                    // held state here left Space permanently latched and never activating.
+                    // Behave like Enter instead: one pressed-frame pulse and an immediate
+                    // completed activation on the press itself.
+                    _setPressed(true);
+                    if (_canCompleteSpace())
+                    {
+                        _activate(ActivationCause.Keyboard);
+                    }
+
+                    _setPressed(false);
+                    return;
+                }
+
                 _spaceHeld = true;
                 _setPressed(true);
             }

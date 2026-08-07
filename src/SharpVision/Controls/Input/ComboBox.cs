@@ -82,7 +82,8 @@ public sealed class ComboBox: ControlBase
             () => HasPointerCapture,
             ReleasePointerCapture,
             SetPressed,
-            Activate);
+            Activate,
+            () => Capabilities.KittyKeyboard.Authoritative);
         Focusable = true;
         TabStop = true;
         TabNavigation = TabNavigation.None;
