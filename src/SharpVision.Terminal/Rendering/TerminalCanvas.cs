@@ -734,6 +734,111 @@ public readonly struct TerminalCanvas
         DrawRune(quadrants.Resolve(_frame.AmbiguousWidth), point, style);
     }
 
+    /// <summary>Draws a fractional block bar in eighth-cell resolution.</summary>
+    /// <param name="origin">The absolute baseline cell the bar grows from.</param>
+    /// <param name="direction">The growth direction.</param>
+    /// <param name="eighths">The non-negative bar extent in eighths of a cell.</param>
+    /// <param name="style">The semantic cell style.</param>
+    /// <remarks>
+    /// Complete cells use the solid block; the final partial cell uses the matching eighth-block
+    /// glyph. Bars growing <see cref="BarDirection.Up"/> or <see cref="BarDirection.Right"/>
+    /// resolve the partial cell exactly, because Block Elements defines every lower and left
+    /// eighth; bars growing down or left snap it to the nearest half cell, the finest glyph that
+    /// direction has. Under a wide Ambiguous policy every cell degrades to the portable solid
+    /// fallback and the extent rounds to whole cells.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="direction"/> is unknown, or
+    /// <paramref name="eighths"/> is negative.</exception>
+    /// <exception cref="InvalidOperationException">The finite frame arena would be exceeded.</exception>
+    /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
+    public void DrawBar(Point origin, BarDirection direction, int eighths, CellStyle style = default)
+    {
+        if (!Enum.IsDefined(direction))
+        {
+            throw new ArgumentOutOfRangeException(nameof(direction), direction, "The direction is unknown.");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegative(eighths);
+        _frame.ThrowIfDisposed();
+
+        var solid = Shade.Solid.Resolve(_frame.AmbiguousWidth);
+        var cap = direction.ResolveCap(eighths % 8, _frame.AmbiguousWidth);
+        var cells = eighths / 8;
+        var (stepX, stepY) = direction switch
+        {
+            BarDirection.Up => (0, -1),
+            BarDirection.Down => (0, 1),
+            BarDirection.Left => (-1, 0),
+            BarDirection.Right or _ => (1, 0)
+        };
+
+        for (var index = 0; index < cells; index++)
+        {
+            DrawRune(solid, new Point(origin.X + (stepX * index), origin.Y + (stepY * index)), style);
+        }
+
+        if (cap.Value != ' ')
+        {
+            DrawRune(cap, new Point(origin.X + (stepX * cells), origin.Y + (stepY * cells)), style);
+        }
+    }
+
+    /// <summary>Draws and merges a line between two inclusive half-cell coordinates.</summary>
+    /// <param name="start">The first point, in half-cell coordinates.</param>
+    /// <param name="end">The final point, in half-cell coordinates.</param>
+    /// <param name="style">The semantic cell style.</param>
+    /// <remarks>
+    /// Half-cell coordinates double both axes: cell (0, 0) covers half-cell columns 0-1 and rows
+    /// 0-1. Traversal uses integer Bresenham geometry over that doubled grid, and every plotted
+    /// point merges one quadrant into its cell exactly like <see cref="DrawQuadrants"/>, so
+    /// crossing and touching lines accumulate into the connected quadrant glyphs instead of
+    /// overwriting one another.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The finite frame arena would be exceeded.</exception>
+    /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
+    public void DrawQuadrantLine(Point start, Point end, CellStyle style = default)
+    {
+        _frame.ThrowIfDisposed();
+
+        var deltaX = Math.Abs(end.X - start.X);
+        var deltaY = -Math.Abs(end.Y - start.Y);
+        var signX = start.X < end.X ? 1 : -1;
+        var signY = start.Y < end.Y ? 1 : -1;
+        var error = deltaX + deltaY;
+        var (x, y) = (start.X, start.Y);
+
+        while (true)
+        {
+            // Arithmetic shift and masking floor negative halves consistently, so an off-frame
+            // segment clips per cell instead of folding onto cell zero.
+            DrawQuadrants(
+                new Point(x >> 1, y >> 1),
+                (y & 1) == 0
+                    ? (x & 1) == 0 ? Quadrants.UpperLeft : Quadrants.UpperRight
+                    : (x & 1) == 0 ? Quadrants.LowerLeft : Quadrants.LowerRight,
+                style);
+
+            if (x == end.X && y == end.Y)
+            {
+                return;
+            }
+
+            var doubled = 2 * error;
+
+            if (doubled >= deltaY)
+            {
+                error += deltaY;
+                x += signX;
+            }
+
+            if (doubled <= deltaX)
+            {
+                error += deltaX;
+                y += signY;
+            }
+        }
+    }
+
     #endregion
 
     /// <summary>Draws borrowed UTF-16 text as complete semantic graphemes.</summary>

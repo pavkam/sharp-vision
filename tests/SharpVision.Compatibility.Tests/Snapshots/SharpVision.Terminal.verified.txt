@@ -1264,6 +1264,13 @@ namespace SharpVision.Terminal.Rendering
         Opaque = 0,
         Transparent = 1,
     }
+    public enum BarDirection
+    {
+        Up = 0,
+        Down = 1,
+        Left = 2,
+        Right = 3,
+    }
     public readonly struct CellInfo : System.IEquatable<SharpVision.Terminal.Rendering.CellInfo>
     {
         public CellInfo(SharpVision.Terminal.Rendering.CellStyle style, int width, bool isContinuation, SharpVision.Terminal.Geometry.Point lead) { }
@@ -1476,6 +1483,7 @@ namespace SharpVision.Terminal.Rendering
         public SharpVision.Terminal.Rendering.TerminalCanvas Clip(SharpVision.Terminal.Geometry.Rect clip) { }
         public void CopyFromPrevious(SharpVision.Terminal.Geometry.Rect region) { }
         public SharpVision.Terminal.Rendering.DrawResult Draw(System.ReadOnlySpan<char> value, SharpVision.Terminal.Geometry.Point origin, SharpVision.Terminal.Rendering.CellStyle style = default, SharpVision.Terminal.Rendering.Edge edge = 0, SharpVision.Terminal.Rendering.BackgroundMode background = 0) { }
+        public void DrawBar(SharpVision.Terminal.Geometry.Point origin, SharpVision.Terminal.Rendering.BarDirection direction, int eighths, SharpVision.Terminal.Rendering.CellStyle style = default) { }
         public void DrawBox(SharpVision.Terminal.Geometry.Rect bounds, SharpVision.Terminal.Rendering.LineStyle line, SharpVision.Terminal.Rendering.CellStyle style = default) { }
         public void DrawCircle(SharpVision.Terminal.Geometry.Point center, int radius, System.Text.Rune value, SharpVision.Terminal.Rendering.CellStyle style = default) { }
         public void DrawEllipse(SharpVision.Terminal.Geometry.Rect bounds, System.Text.Rune value, SharpVision.Terminal.Rendering.CellStyle style = default) { }
@@ -1483,6 +1491,7 @@ namespace SharpVision.Terminal.Rendering
         public void DrawImage(SharpVision.Terminal.Graphics.ImageSource image, SharpVision.Terminal.Geometry.Rect destination, SharpVision.Terminal.Graphics.PlacementMode mode) { }
         public void DrawLine(SharpVision.Terminal.Geometry.Point start, SharpVision.Terminal.Geometry.Point end, System.Text.Rune value, SharpVision.Terminal.Rendering.CellStyle style = default) { }
         public void DrawLineCell(SharpVision.Terminal.Geometry.Point point, SharpVision.Terminal.Rendering.LineConnections connections, SharpVision.Terminal.Rendering.LineStyle line, SharpVision.Terminal.Rendering.CellStyle style = default) { }
+        public void DrawQuadrantLine(SharpVision.Terminal.Geometry.Point start, SharpVision.Terminal.Geometry.Point end, SharpVision.Terminal.Rendering.CellStyle style = default) { }
         public void DrawQuadrants(SharpVision.Terminal.Geometry.Point point, SharpVision.Terminal.Rendering.Quadrants quadrants, SharpVision.Terminal.Rendering.CellStyle style = default) { }
         public void DrawRune(System.Text.Rune value, SharpVision.Terminal.Geometry.Point origin, SharpVision.Terminal.Rendering.CellStyle style = default, SharpVision.Terminal.Rendering.BackgroundMode background = 0) { }
         public void DrawVerticalLine(SharpVision.Terminal.Geometry.Point origin, int length, SharpVision.Terminal.Rendering.LineStyle line, SharpVision.Terminal.Rendering.CellStyle style = default) { }
