@@ -46,7 +46,6 @@ internal static class BarChartRenderer
     {
         var range = context.Range;
         var zero = BoundaryX(range, 0, plot);
-        var slots = categoryCount * context.Chart.Series.Count;
 
         if (zero > plot.X && zero < plot.Right)
         {
@@ -59,18 +58,19 @@ internal static class BarChartRenderer
 
         for (var category = 0; category < categoryCount; category++)
         {
+            var band = CategoryBand(category, categoryCount, plot.Y, plot.Height);
+
             for (var seriesIndex = 0; seriesIndex < context.Chart.Series.Count; seriesIndex++)
             {
                 var series = context.Chart.Series[seriesIndex];
 
-                if (category >= series.Points.Count)
+                if (category >= series.Points.Count || seriesIndex >= band.Length)
                 {
                     continue;
                 }
 
                 var point = series.Points[category];
-                var slot = (category * context.Chart.Series.Count) + seriesIndex;
-                var y = CenterSlot(slot, slots, plot.Y, plot.Height);
+                var y = PlaceInBand(band, seriesIndex, context.Chart.Series.Count);
                 var value = BoundaryX(range, point.Value, plot);
                 var left = Math.Min(zero, value);
                 var right = Math.Max(zero, value);
@@ -97,22 +97,22 @@ internal static class BarChartRenderer
     {
         var range = context.Range;
         var zero = BoundaryY(range, 0, plot);
-        var slots = categoryCount * context.Chart.Series.Count;
 
         for (var category = 0; category < categoryCount; category++)
         {
+            var band = CategoryBand(category, categoryCount, plot.X, plot.Width);
+
             for (var seriesIndex = 0; seriesIndex < context.Chart.Series.Count; seriesIndex++)
             {
                 var series = context.Chart.Series[seriesIndex];
 
-                if (category >= series.Points.Count)
+                if (category >= series.Points.Count || seriesIndex >= band.Length)
                 {
                     continue;
                 }
 
                 var point = series.Points[category];
-                var slot = (category * context.Chart.Series.Count) + seriesIndex;
-                var x = CenterSlot(slot, slots, plot.X, plot.Width);
+                var x = PlaceInBand(band, seriesIndex, context.Chart.Series.Count);
                 var value = BoundaryY(range, point.Value, plot);
                 var top = Math.Min(zero, value);
                 var bottom = Math.Max(zero, value);
@@ -161,7 +161,14 @@ internal static class BarChartRenderer
 
                 for (var index = 0; index < count; index++)
                 {
-                    var y = CenterSlot(index, count, plot.Y, plot.Height);
+                    var band = CategoryBand(index, count, plot.Y, plot.Height);
+
+                    if (band.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    var y = band.Start + (band.Length / 2);
                     _ = canvas.Clip(new Rect(plot.X, y, labelWidth, 1)).Draw(
                         context.Chart.Series[0].Points[index].Label.AsSpan(),
                         new Point(plot.X, y),
@@ -185,7 +192,14 @@ internal static class BarChartRenderer
 
             for (var index = 0; index < count; index++)
             {
-                var x = CenterSlot(index, count, plot.X, plot.Width);
+                var band = CategoryBand(index, count, plot.X, plot.Width);
+
+                if (band.Length == 0)
+                {
+                    continue;
+                }
+
+                var x = band.Start + (band.Length / 2);
                 ChartRenderer.RenderCenteredLabel(
                     context,
                     canvas,
@@ -227,6 +241,25 @@ internal static class BarChartRenderer
         extent <= 1
             ? origin
             : origin + Math.Min(extent - 1, ((slot * 2) + 1) * extent / (slotCount * 2));
+
+    // Each category owns a contiguous, disjoint cell band, so one category's bars can never land
+    // on another's rows or columns and a category label always sits inside its own group. The old
+    // global slot spread mapped two adjacent slots to one cell whenever the plot was shorter than
+    // the slot count, and the later series then silently overdrew the earlier one - with the
+    // labels placed independently, the label could end up naming a bar from a different group.
+    private static (int Start, int Length) CategoryBand(int category, int categoryCount, int origin, int extent)
+    {
+        var start = origin + (category * extent / categoryCount);
+        var end = origin + ((category + 1) * extent / categoryCount);
+        return (start, end - start);
+    }
+
+    // Within a roomy band the series keep the historical centered spread; within a squeezed band
+    // they pack adjacently and the caller drops the series past the band instead of overdrawing.
+    private static int PlaceInBand((int Start, int Length) band, int seriesIndex, int seriesCount) =>
+        band.Length >= seriesCount
+            ? band.Start + CenterSlot(seriesIndex, seriesCount, 0, band.Length)
+            : band.Start + seriesIndex;
 
     private static int BoundaryX(ChartScaleRange range, double value, Rect plot)
     {

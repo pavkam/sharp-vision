@@ -490,6 +490,96 @@ public sealed class ChartSurfaceTests
         surface.Cell(new Point(11, 2)).Text.ShouldBe("0");
     }
 
+    /// <summary>Verifies a squeezed grouped horizontal chart drops a trailing bar instead of
+    /// overdrawing a neighbour. Six slots in a five-row plot used to map two adjacent slots onto
+    /// one row through the global slot spread, and the later series silently painted over the
+    /// earlier one - a bar vanished with no signal, and the independently placed category label
+    /// could end up naming a row owned by a different group. Categories now own disjoint bands:
+    /// the first category's band is one row, so its first series wins that row and its second is
+    /// dropped, while the roomier bands keep both series on their own rows.</summary>
+    [Fact]
+    public async Task Render_WhenGroupedRowsExceedPlotHeight_DropsInsteadOfOverdrawingAsync()
+    {
+        // Arrange
+        var first = ReferenceColors.Get(1);
+        var second = ReferenceColors.Get(2);
+        var chart = new HorizontalBarChart
+        {
+            Series = [
+                new ChartSeries("Current", [
+                    new ChartDataPoint("N", 4),
+                    new ChartDataPoint("S", 4),
+                    new ChartDataPoint("W", 4)]) { Color = first },
+                new ChartSeries("Target", [
+                    new ChartDataPoint("N", 2),
+                    new ChartDataPoint("S", 2),
+                    new ChartDataPoint("W", 2)]) { Color = second }],
+            ShowCategoryLabels = false,
+            LegendPlacement = ChartLegendPlacement.Hidden
+        };
+
+        // Act: three categories x two series = six slots in a five-row plot.
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(4, 5),
+            TestContext.Current.CancellationToken);
+
+        // Assert: bands are rows [0], [1-2], [3-4]; the squeezed first band keeps its first
+        // series full-width, and every other row belongs to exactly the expected series.
+        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(first);
+        surface.Cell(new Point(3, 0)).Style.Foreground.ShouldBe(first);
+        surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(first);
+        surface.Cell(new Point(3, 1)).Style.Foreground.ShouldBe(first);
+        surface.Cell(new Point(0, 2)).Style.Foreground.ShouldBe(second);
+        surface.Cell(new Point(0, 3)).Style.Foreground.ShouldBe(first);
+        surface.Cell(new Point(0, 4)).Style.Foreground.ShouldBe(second);
+
+        // The dropped second series of the squeezed category must not resurface anywhere: the
+        // short second-series bar is two cells, so column 3 is empty on second-series rows.
+        surface.Cell(new Point(3, 2)).Text.ShouldBe(" ");
+        surface.Cell(new Point(3, 4)).Text.ShouldBe(" ");
+    }
+
+    /// <summary>The vertical twin of the squeezed-group guarantee: columns come from disjoint
+    /// category bands, so a later series can never paint over another column.</summary>
+    [Fact]
+    public async Task Render_WhenGroupedColumnsExceedPlotWidth_DropsInsteadOfOverdrawingAsync()
+    {
+        // Arrange
+        var first = ReferenceColors.Get(1);
+        var second = ReferenceColors.Get(2);
+        var chart = new VerticalBarChart
+        {
+            Series = [
+                new ChartSeries("Current", [
+                    new ChartDataPoint("N", 4),
+                    new ChartDataPoint("S", 4),
+                    new ChartDataPoint("W", 4)]) { Color = first },
+                new ChartSeries("Target", [
+                    new ChartDataPoint("N", 2),
+                    new ChartDataPoint("S", 2),
+                    new ChartDataPoint("W", 2)]) { Color = second }],
+            ShowCategoryLabels = false,
+            LegendPlacement = ChartLegendPlacement.Hidden
+        };
+
+        // Act: six slots in a five-column plot.
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(5, 4),
+            TestContext.Current.CancellationToken);
+
+        // Assert: bands are columns [0], [1-2], [3-4]; full-height first series, half-height
+        // second, and the squeezed first category keeps only its first series.
+        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(first);
+        surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(first);
+        surface.Cell(new Point(2, 2)).Style.Foreground.ShouldBe(second);
+        surface.Cell(new Point(3, 0)).Style.Foreground.ShouldBe(first);
+        surface.Cell(new Point(4, 2)).Style.Foreground.ShouldBe(second);
+        surface.Cell(new Point(2, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(4, 0)).Text.ShouldBe(" ");
+    }
+
     private static IReadOnlyList<ChartSeries> CreateNamedSeries() => [
         new ChartSeries("A", [new ChartDataPoint("1", 1)]),
         new ChartSeries("B", [new ChartDataPoint("1", 2)])
