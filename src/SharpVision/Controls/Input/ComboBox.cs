@@ -17,9 +17,11 @@ using SharpVision.Terminal.Input;
 [PublicAPI]
 public sealed class ComboBox: PressInteractionBase
 {
-    // A field has one content row, two border columns, and one indicator cell.
+    // A field has one content row; its content reserves a separator gap plus the
+    // indicator cell after the label. The border is not part of content: measure
+    // resolution adds the border inset on top of the content size returned here.
     private const int _fieldContentHeight = 1;
-    private const int _fieldBorderWidth = 2;
+    private const int _indicatorReservedWidth = 2;
     private const int _indicatorWidth = 1;
     private const int _popupConnectingFrameHeight = 1;
     private const int _defaultDropDownHeight = 8;
@@ -360,11 +362,10 @@ public sealed class ComboBox: PressInteractionBase
     #region Input, layout, and rendering
 
     /// <inheritdoc/>
-    /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
         _ = MeasureChild(_popup, new Constraint(constraint.Width, DropDownHeight.Add(_popupConnectingFrameHeight)));
-        var width = MeasureCells(SelectedText()).Add(_fieldBorderWidth);
+        var width = MeasureCells(SelectedText()).Add(_indicatorReservedWidth);
         return new Size(width, _fieldContentHeight);
     }
 
@@ -398,7 +399,7 @@ public sealed class ComboBox: PressInteractionBase
 
         var content = ContentBounds;
         var style = ResolvedStyle;
-        var label = canvas.Clip(new Rect(content.X, content.Y, Math.Max(0, content.Width - _fieldBorderWidth), _fieldContentHeight));
+        var label = canvas.Clip(new Rect(content.X, content.Y, Math.Max(0, content.Width - _indicatorReservedWidth), _fieldContentHeight));
         _ = label.Draw(
             SelectedText().AsSpan(),
             new Point(content.X, content.Y),
