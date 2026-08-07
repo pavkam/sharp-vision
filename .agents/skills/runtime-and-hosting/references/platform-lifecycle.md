@@ -21,7 +21,7 @@ cleanup exception behavior.
 - Transport abstractions: `src/SharpVision.Terminal/Abstractions/`
 - Tests: `tests/SharpVision.Terminal.Tests/Runtime/` and `Transport/`
 - Application host-lease tests:
-  `tests/SharpVision.Tests/Runtime/ApplicationHostLeaseTests.cs`
+  `tests/SharpVision.Tests/Runtime/ApplicationTests.cs`
 
 ## Ownership order
 

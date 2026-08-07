@@ -127,7 +127,7 @@ probes using synthetic `test.*` keys.
 ## Focused verification
 
 ```bash
-dotnet test --project tests/SharpVision.Tests --filter-class "*ControlCompositeAppearanceTests" --minimum-expected-tests 1 --timeout 60s
+dotnet test --project tests/SharpVision.Tests --filter-class "*ControlBaseTests" --minimum-expected-tests 1 --timeout 60s
 ```
 
 ```bash

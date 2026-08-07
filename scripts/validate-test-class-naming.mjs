@@ -65,6 +65,34 @@ export const SUITE_LEVEL_ALLOW_LIST = new Set([
   "IntrinsicBorderSurfaceTests", // cross-cutting shared surface/box-model/border contract spanning many controls
   "BoxModelSurfaceTests", // cross-cutting shared surface/box-model/border contract spanning many controls
   "ComponentSurfaceTests", // cross-cutting shared surface/box-model/border contract spanning many controls
+  "ActualScrollBarStyleThemeTests", // ActualScrollBarStyle proxy contract across the Container family plus TreeView/NavigationView re-declarations
+  "AmbiguousWidthControlTests", // one-cell rendering under Ambiguous.Wide across five unrelated control/style types
+  "CodeOwnedGlyphRenderingTests", // code-owned default glyphs survive theme swaps across five controls
+  "GeneratedScrollBarStyleTests", // TreeView/NavigationView scrollbar proxy-forwarding parity, spans two test areas
+  "ComponentRoleTests", // reflection-based architectural contract across the control catalog
+  "SelectionParityTests", // six-control selection parity; no shared selection interface exists
+  "DropDownGlyphThemingTests", // drop-down glyph anti-drift contract across InputStyle and three picker controls
+  "BuiltInControlStyleTests", // theme-to-control style-profile mapping across the built-in control set
+  "CuratedThemesTests", // whole-catalog invariants across every bundled theme
+  "StrandedGlyphThemingTests", // stranded-glyph regression suite spanning a dozen control styles
+  "StyleInvariantEnforcementTests", // one invariant held identically across many style value types and three mutation doors
+  "StyleSectionRegistryTests", // assembly-wide styles.* section registry sweep
+  "RandomizedLayoutTests", // whole-infrastructure fuzz spanning ownership, focus, capture, pointer, and render
+  "ConsoleHostingConsumerTests", // console-hosting public-surface accessibility across five unrelated types
+  "DataBindingConsumerTests", // public binding surface proven across five control types without friend access
+  "FigletFontsPackedPackageConsumerTests", // whole-package pack plus external-consumer build proof
+  "ComponentSurfaceCoverageTests", // whole-catalog mounted-behavior classification inventory
+  "ComponentUnitCoverageTests", // whole-catalog unit-fixture coverage inventory
+  "DisplayPanelTests", // composed multi-control layout, damage, and byte-exact render proof
+  "InteractiveControlTests", // eight-control family fixture for cross-control event ordering
+  "TerminalInputTests", // raw terminal bytes fanned across five event kinds to final output
+  "UnicodeGeometryTests", // ambiguous-width agreement across six text-consuming controls
+  "CapabilityNegotiationTests", // negotiated-profile-before-first-frame ordering across TerminalProfile and Application
+  "CellPolicyTests", // one immutable policy propagated from Application through ControlBase to the whole tree
+  "ControlCapabilitiesTests", // capability cascade from Application resize through ControlBase inheritance
+  "PostRouteAnchorMutationTests", // post-route anchor-staleness contract spanning Router, FocusManager, and Application
+  "ProtocolRoutingTests", // protocol responses traversing Session, Application, and Dispatcher
+  "InteractivePerformanceTests", // representative interactive-tree allocation gate spanning four controls
 ]);
 
 /**

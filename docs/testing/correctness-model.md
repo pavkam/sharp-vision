@@ -21,8 +21,13 @@ but a new test class must comply immediately. Some of these grandfathered
 classes still split one type's coverage across several `<Type><Aspect>Tests`
 classes, as named in [controls integration](controls-integration.md#overview);
 that split is baseline-tracked pending per-area consolidation, not a pattern to
-copy. `npm run lint:test-names` enforces the rule and reports both new
-violations and baseline entries that no longer reproduce.
+copy. A large `<Type>Tests` class may be declared `partial` and split across
+`<Type>Tests.cs` plus aspect-named `<Type>Tests.<Aspect>.cs` files — mirroring
+the partial-file convention production types such as `ControlBase` already use —
+so consolidation never forces one unreadably large file; every file declares the
+same class, keeping the subject findable by name. `npm run lint:test-names`
+enforces the rule and reports both new violations and baseline entries that no
+longer reproduce.
 
 ## Proof levels
 

@@ -22,7 +22,8 @@ release notes, tags, NuGet publication, workflow permissions, or release gates.
   `src/SharpVision.Terminal/SharpVision.Terminal.csproj`, and
   `src/SharpVision.FigletFonts/SharpVision.FigletFonts.csproj`
 - Packed consumer proof:
-  `tests/SharpVision.Tests/Compatibility/PackedPackageConsumerTests.cs`
+  `tests/SharpVision.Tests/Compatibility/FloatingSurfaceConsumerTests.cs` and
+  `DialogConsumerTests.cs`
 - External specimen: `tests/SharpVision.Tests/Compatibility/PackageConsumers/`
 - Publish workflow: `.github/workflows/sharpvision-publish.yml`
 
@@ -56,6 +57,6 @@ release notes, tags, NuGet publication, workflow permissions, or release gates.
 
 ```bash
 dotnet test --project tests/SharpVision.Tests \
-  --filter-class "*PackedPackageConsumerTests" \
+  --filter-class "*FloatingSurfaceConsumerTests;*DialogConsumerTests" \
   --minimum-expected-tests 1 --timeout 180s
 ```

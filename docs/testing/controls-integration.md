@@ -67,22 +67,21 @@ invalidation, and exception recovery. Private draw-call recordings supplement
 these semantic oracles; they never replace them.
 
 Intrinsic chrome proof lives on the common `ControlBase` surface rather than on
-wrapper-control suites. `ControlBorderReservationTests`,
-`ContainerAutoSizeTests`, and `ContainerScrollGeometryTests` cover base
+wrapper-control suites. `ControlBaseTests` and `ContainerTests` cover base
 border-before-padding reservation, saturated combined insets, shrink wrapping,
-and scrollbar containment. `IntrinsicBorderTests` and `IntrinsicShadowTests`
-cover validation before mutation, partial edges, exact glyphs and cells,
-composite and block shadows, wide-grapheme styling, signed and extreme offsets,
-layout-neutral visual overflow, hit testing, transitive nesting, per-sibling
-clip isolation, unclipped intermediates, explicit hard boundaries, and caller
-canvas clipping. Curated-theme and mounted-showcase proof additionally requires
-composite shadow cells to differ from the application background at Basic16
-depth. `ContainerScrollGeometryTests` proves shadows neither change extent nor
-escape the viewport. Mounted Button and Popup tests exercise the same paths
-through retained layout and popup promotion. `ButtonTests` requires immediate
-and post-layout pressed content parity, including translated faces outside the
-arranged hit bounds, while `TextInputTests` proves the editor, caret, and
-private rails stay inset exactly once.
+and scrollbar containment. `BorderTests` and `ShadowTests` cover validation
+before mutation, partial edges, exact glyphs and cells, composite and block
+shadows, wide-grapheme styling, signed and extreme offsets, layout-neutral
+visual overflow, hit testing, transitive nesting, per-sibling clip isolation,
+unclipped intermediates, explicit hard boundaries, and caller canvas clipping.
+Curated-theme and mounted-showcase proof additionally requires composite shadow
+cells to differ from the application background at Basic16 depth.
+`ContainerTests` proves shadows neither change extent nor escape the viewport.
+Mounted Button and Popup tests exercise the same paths through retained layout
+and popup promotion. `ButtonTests` requires immediate and post-layout pressed
+content parity, including translated faces outside the arranged hit bounds,
+while `TextInputTests` proves the editor, caret, and private rails stay inset
+exactly once.
 
 ## End-to-end path
 
@@ -92,17 +91,17 @@ invalidation, layout, cell drawing, frame diff, encoder, and the captured output
 bytes. Intermediate typed boundaries are asserted only when they are public
 contracts; the final bytes and virtual screen are always mandatory.
 
-`ModalityIntegrationTests` applies that complete path to the
+`ModalityManagerTests` applies that complete path to the
 [modal interaction contract](../concepts/modality.md#expected-behavior). One
 real Application receives UTF-8 text, bracketed paste, Tab, terminal-focus
 reports, SGR movement, primary press and release, wheel input, and a pixel-aware
 resize. The test requires only in-plane routes while the modal is active,
 physical outside coordinates without background hover, exactly one dismiss
 callback, no replay to the exposed Button, a fresh post-dismissal input route,
-the final semantic cells, and the emitted UTF-8 bytes.
-`ApplicationModalityTests` separately proves first-resize service publication,
-resize identity, raw record targeting, and shutdown unwind when callbacks fail.
-Its clipboard cases drive modal Control+C, Control+X, and Control+V through the
+the final semantic cells, and the emitted UTF-8 bytes. `ApplicationTests`
+separately proves first-resize service publication, resize identity, raw record
+targeting, and shutdown unwind when callbacks fail. `ModalityManagerTests`'
+clipboard cases drive modal Control+C, Control+X, and Control+V through the
 application, require the same handled arguments to reach only `handledEventsToo`
 preview observers inside the captured plane, and mutate both the target ancestry
 and the scope state during the edit to prove the current route stays stable.
@@ -192,7 +191,7 @@ focus-within, and transitive capture and focus cleanup.
 paste, and Kitty keyboard sequences through `Session`. It asserts focused route
 payloads, pixel-to-cell inference, owned paste bytes, repeat action, control
 mutation, completed frame callbacks, and the final UTF-8 bytes written by the
-renderer transport. `ResizeRenderTests` proves zero-cell suspension resumes with
+renderer transport. `ApplicationTests` proves zero-cell suspension resumes with
 committed layout before its first positive frame.
 
 `DisplayPanelTests` composes Grid, Dock, Stack, Overlay, Text, and a distinct
@@ -205,13 +204,13 @@ output followed each mutation.
 
 `ImageSurfaceTests` mounts the public passive Image control under unsupported
 capabilities and requires the complete semantic shade plus the alternate-text
-fallback. `ApplicationGraphicsTests` sends an exact pixel-dimensioned resize
-through the real Application and requires public Image fallback bytes before
-sixel output with the same exact metrics. Separate Kitty cases require remote
-delete then flush before transport disposal and prove that a cleanup write
-failure cannot skip Session disposal. Image control tests cover later Window and
-Popup occlusion; the runnable Image showcase is mounted at narrow, normal, and
-wide widths and validates real RGBA and PNG sources, all stretch modes, forced
+fallback. `ApplicationTests` sends an exact pixel-dimensioned resize through the
+real Application and requires public Image fallback bytes before sixel output
+with the same exact metrics. Separate Kitty cases require remote delete then
+flush before transport disposal and prove that a cleanup write failure cannot
+skip Session disposal. Image control tests cover later Window and Popup
+occlusion; the runnable Image showcase is mounted at narrow, normal, and wide
+widths and validates real RGBA and PNG sources, all stretch modes, forced
 fallback, and later semantic overlap badges. Its forced fallback stays
 source-backed; the later overlay makes its placement ineffective. The mounted
 status test publishes changed Application capabilities and requires the
@@ -240,7 +239,7 @@ focused active date, a pending interval, committed selection, disabled dates,
 and authored markup. The exported behavior and shared box-model catalogs require
 the same fixture before `Calendar` is accepted.
 
-`ScrollingTests` first sends 20 raw SGR wheel reports into nested hidden-bar
+`ContainerTests` first sends 20 raw SGR wheel reports into nested hidden-bar
 Stacks with intrinsic `AutoScroll` and proves exact inner consumption, the
 outward remainder, and resize clamping. A second application uses automatic bars
 on both nested axes, inferred pixel coordinates, and wide Unicode content. It

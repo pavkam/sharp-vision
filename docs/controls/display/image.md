@@ -88,13 +88,13 @@ from; it does not guess which backend the host selected.
 dispatcher affinity, borrowed ownership, measurement over uniform and uneven
 metrics, zero-size behavior, the complete fallback paint, placement modes and
 provenance, and Window/Popup occlusion. `ImageSurfaceTests` shows the mounted
-unsupported-terminal fallback. `ApplicationGraphicsTests` drives public RGBA and
-PNG Images through exact resize metrics down to final cells, sixel, Kitty, and
-explicit iTerm2 3.5 multipart bytes, demonstrating that the fallback paints
-before graphics, that a paused Kitty flush commits before profile revocation
-removes it, that a three-layer fallback blocks overlapping lower Kitty output,
-and that delete/flush completes before the borrowed transport is disposed even
-when cleanup fails. The Image showcase surface suite mounts narrow, normal, and
-wide layouts, validates its real PNG chunk CRCs and zlib scan stream,
-demonstrates that the source-backed forced fallback is occluded, and keeps the
-live inherited evidence up to date.
+unsupported-terminal fallback. `ApplicationTests`' graphics cases drive public
+RGBA and PNG Images through exact resize metrics down to final cells, sixel,
+Kitty, and explicit iTerm2 3.5 multipart bytes, demonstrating that the fallback
+paints before graphics, that a paused Kitty flush commits before profile
+revocation removes it, that a three-layer fallback blocks overlapping lower
+Kitty output, and that delete/flush completes before the borrowed transport is
+disposed even when cleanup fails. The Image showcase surface suite mounts
+narrow, normal, and wide layouts, validates its real PNG chunk CRCs and zlib
+scan stream, demonstrates that the source-backed forced fallback is occluded,
+and keeps the live inherited evidence up to date.

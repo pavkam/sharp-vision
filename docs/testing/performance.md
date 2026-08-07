@@ -59,11 +59,13 @@ local and ordinary CI machines.
 
 ## UI infrastructure gates
 
-`InfrastructurePerformanceTests` warms and samples unchanged box layout, reused
-80×24 semantic control rendering, and stable depth-20 routed events. The minimum
-of its five measured windows must allocate zero managed bytes. A separate
-1,000-operation dispatcher post/drain run allows at most 256 bytes per post for
-the bounded work object and records completion throughput.
+`LayoutEnginePerformanceTests` warms and samples unchanged box layout,
+`ResolvedAppearancePerformanceTests` reused 80×24 semantic control rendering,
+and `RouterPerformanceTests` stable depth-20 routed events. The minimum of five
+measured windows must allocate zero managed bytes in each. A separate
+1,000-operation dispatcher post/drain run in `DispatcherPerformanceTests` allows
+at most 256 bytes per post for the bounded work object and records completion
+throughput.
 
 Reports include the .NET runtime, OS, process architecture, elapsed time, and
 iteration count. Only the deterministic allocation budgets gate local and
@@ -77,11 +79,13 @@ measured 200-frame windows, at least one must be allocation-free after warm-up.
 Both test projects disable tiered compilation, so the gate consistently measures
 fully optimized steady-state code instead of background JIT promotion timing.
 
-TextInput replacement and captured ScrollBar dragging each run 1,000 public
-operations under finite per-operation allocation budgets, and 1,000 nested wheel
-commands repeatedly consume deltas through both scrollable ancestors under a
-finite routed-command budget. Replacing 1,000 ListView items must release every
-detached generated control, and 1,000 unchanged layout passes must allocate
+TextInput replacement (`TextInputPerformanceTests`) and captured ScrollBar
+dragging (`ScrollBarPerformanceTests`) each run 1,000 public operations under
+finite per-operation allocation budgets, and `RouterPerformanceTests`' 1,000
+nested wheel commands repeatedly consume deltas through both scrollable
+ancestors under a finite routed-command budget. `ListViewPerformanceTests`
+requires replacing 1,000 items to release every detached generated control, and
+`LayoutEnginePerformanceTests`' 1,000 unchanged layout passes must allocate
 exactly zero managed bytes. Timings remain diagnostic; allocation and
 retained-memory assertions are mandatory.
 

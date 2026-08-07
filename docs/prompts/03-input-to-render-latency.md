@@ -41,8 +41,9 @@ Use these contracts and owners:
   interactive controls such as `TextInput`, `ListView`, `TreeView`, `Table`,
   `ScrollBar`, and temporal inputs
 - runtime/input/integration/performance tests, especially `TerminalInputTests`,
-  routed input tests, deterministic dispatcher tests, and
-  `InteractivePerformanceTests`
+  routed input tests, deterministic dispatcher tests, and the
+  `SharpVision.Tests.Performance` gates (`InteractivePerformanceTests`,
+  `RouterPerformanceTests`, `DispatcherPerformanceTests`)
 
 One dispatcher orders mutation, input delivery, timers, layout, render, and
 callbacks. Routes snapshot ancestry; modality/capture constrain targeting;
