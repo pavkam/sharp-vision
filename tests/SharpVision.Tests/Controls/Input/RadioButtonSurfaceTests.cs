@@ -130,7 +130,10 @@ public sealed class RadioButtonSurfaceTests
                              (•) 界
                              """);
         surface.Cell(new Point(0, 2)).Style.Foreground.ShouldBe(ReferenceColors.Get(14));
-        surface.Cell(new Point(4, 2)).Style.Foreground.ShouldBe(ReferenceColors.Get(15));
+
+        // The transparent caption inherits the ambient checked face, which authors the accent.
+        surface.Cell(new Point(4, 2)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(ThemeColorHelper.Accent(ThemeCatalog.Dark), ColorDepth.Basic16));
 
         // Act and assert wrapping
         await surface.Keyboard.PressAsync(Code.Down);
@@ -170,7 +173,9 @@ public sealed class RadioButtonSurfaceTests
         initialMark.ShouldBe(ReferenceColors.Get(14));
         var initialContent = surface.Cell(new Point(4, 0)).Style.Foreground;
         initialContent.IsRgb.ShouldBeTrue();
-        initialContent.ShouldBe(ReferenceColors.Get(15));
+
+        // The selected caption inherits the ambient checked face's accent foreground.
+        initialContent.ShouldBe(TerminalPalette.Project(ThemeColorHelper.Accent(ThemeCatalog.Dark), ColorDepth.Basic16));
 
         // Act hover and held press
         await surface.Pointer.MoveToAsync(second);
@@ -226,7 +231,9 @@ public sealed class RadioButtonSurfaceTests
         selectedMark.ShouldBe(ReferenceColors.Get(14));
         var selectedContent = surface.Cell(new Point(4, 0)).Style.Foreground;
         selectedContent.IsRgb.ShouldBeTrue();
-        selectedContent.ShouldBe(ReferenceColors.Get(15));
+
+        // The selected caption inherits the ambient checked face's accent foreground.
+        selectedContent.ShouldBe(TerminalPalette.Project(ThemeColorHelper.Accent(ThemeCatalog.Dark), ColorDepth.Basic16));
 
         // Act
         await surface.UpdateAsync(() => radio.Enabled = false, "disable selected RadioButton");
@@ -243,10 +250,11 @@ public sealed class RadioButtonSurfaceTests
         content.IsRgb.ShouldBeTrue();
         content.ShouldBe(expectedDisabledFg);
 
-        // Act and assert restored availability
+        // Act and assert restored availability, including the caption's inherited checked accent
         await surface.UpdateAsync(() => radio.Enabled = true, "re-enable selected RadioButton");
         surface.Cell(default).Style.Foreground.ShouldBe(ReferenceColors.Get(14));
-        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(ReferenceColors.Get(15));
+        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(ThemeColorHelper.Accent(ThemeCatalog.Dark), ColorDepth.Basic16));
     }
 
     private static RadioButton Radio(

@@ -66,9 +66,10 @@ public sealed class GroupBoxSurfaceTests
         mnemonic.Style.Attributes.ShouldBe(TerminalAttributes.Underline);
     }
 
-    /// <summary>Verifies the built-in dark theme paints a visible frame over a transparent group surface.</summary>
+    /// <summary>Verifies the built-in dark theme paints a visible frame and fills the interior with
+    /// the group's own themed opaque surface.</summary>
     [Fact]
-    public void Render_WhenDefaultDarkThemeIsApplied_UsesBorderOnlyTransparentSurface()
+    public void Render_WhenDefaultDarkThemeIsApplied_FillsFrameInteriorWithThemedSurface()
     {
         // Arrange
         var group = new GroupBox
@@ -91,7 +92,12 @@ public sealed class GroupBoxSurfaceTests
         frame.GetCell(default).Style.Foreground.ShouldBe(borderColor);
         group.GetResolvedAppearance(VisualState.Normal).BackgroundMode.ShouldBe(BackgroundMode.Opaque);
         frame.GetCell(default).Style.Background.ShouldNotBe(Color.Default);
-        frame.GetCell(new Point(8, 1)).Style.Background.ShouldBe(Color.Default);
+
+        // The interior carries the group's own authored opaque surface fill. The stretched Text
+        // content no longer scrubs it: Text never paints its own background, so the cells the
+        // caption does not cover keep the fill the opaque group cleared them with.
+        frame.GetCell(new Point(8, 1)).Style.Background
+            .ShouldBe(ThemeCatalog.Dark.ResolveColor(SemanticColor.Surface));
     }
 
     /// <summary>Verifies a mounted GroupBox observes descendant hover without taking focus or press state.</summary>
@@ -331,8 +337,10 @@ public sealed class GroupBoxSurfaceTests
         surface.Cell(default).Style.Foreground.IsRgb.ShouldBeTrue();
         surface.Cell(default).Style.Foreground.ShouldNotBe(ReferenceColors.Get(2));
         surface.Cell(new Point(2, 0)).Style.Foreground.ShouldBe(surface.Cell(default).Style.Foreground);
-        // Content text resolves its own foreground through the theme pipeline independently.
-        surface.Cell(new Point(1, 1)).Style.Foreground.ShouldBe(ReferenceColors.Get(15));
+        // The transparent content text inherits the group's ambient face, so the locally
+        // assigned foreground reaches it while the frame and header stay theme-owned above.
+        surface.Cell(new Point(1, 1)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(ReferenceColors.Get(2), ColorDepth.Basic16));
     }
 
     /// <summary>Verifies a non-text header renders through the ordinary owned-control pipeline, proving the

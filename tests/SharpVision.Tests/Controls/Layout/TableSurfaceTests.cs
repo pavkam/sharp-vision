@@ -82,10 +82,14 @@ public sealed class TableSurfaceTests
             TerminalPalette.Project(theme.ResolveColor(SemanticColor.ControlBorder), ColorDepth.Basic16));
     }
 
-    /// <summary>Verifies mounted Table hover, focus, tab, and directional behavior.</summary>
+    /// <summary>Verifies mounted Table hover, focus, tab, and directional behavior: the passive
+    /// hover cue is a foreground change only, so the fill stays put while the hovered foreground
+    /// reaches the table's cells. The cue was invisible for years in the default themes because
+    /// they mapped ActiveText onto ControlText; the themes that kept them distinct always
+    /// brightened on hover, which is the behavior pinned here.</summary>
     [ComponentBehaviorEvidence(typeof(Table), ComponentBehavior.Hover)]
     [Fact]
-    public async Task Input_WhenMountedTableIsHovered_PreservesGridAppearanceAsync()
+    public async Task Input_WhenMountedTableIsHovered_ChangesForegroundWithoutFillingAsync()
     {
         // Arrange
         var table = new Table
@@ -101,7 +105,7 @@ public sealed class TableSurfaceTests
             new Size(9, 3),
             TestContext.Current.CancellationToken);
         var gridPoint = new Point(4, 1);
-        var before = surface.Cell(gridPoint).Style.Foreground;
+        var beforeBackground = surface.Cell(gridPoint).Style.Background;
 
         // Act
         await surface.Pointer.MoveToAsync(table);
@@ -110,7 +114,9 @@ public sealed class TableSurfaceTests
         table.PointerOver.ShouldBeTrue();
         table.CanFocus.ShouldBeTrue();
         table.Focused.ShouldBeFalse();
-        surface.Cell(gridPoint).Style.Foreground.ShouldBe(before);
+        surface.Cell(gridPoint).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(ThemeColorHelper.HoveredForeground(ThemeCatalog.Dark), ColorDepth.Basic16));
+        surface.Cell(gridPoint).Style.Background.ShouldBe(beforeBackground);
     }
 
     /// <summary>Verifies row removal and reinsertion reflows clickable cells and clears abandoned rows.</summary>

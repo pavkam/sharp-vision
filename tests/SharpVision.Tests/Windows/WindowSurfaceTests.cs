@@ -258,7 +258,7 @@ public sealed class WindowSurfaceTests
             TestContext.Current.CancellationToken);
         var theme = window.Theme.ShouldNotBeNull();
         var normal = ThemeColorHelper.Accent(theme);
-        var hovered = ThemeColorHelper.HoveredForeground(theme);
+        var hovered = TerminalPalette.Project(ThemeColorHelper.HoveredForeground(theme), ColorDepth.Basic16);
         var pressed = ThemeColorHelper.PressedForeground(theme);
         var frame = surface.Cell(new Point(3, 0)).Style.Foreground;
         var background = surface.Cell(new Point(4, 0)).Style.Background;

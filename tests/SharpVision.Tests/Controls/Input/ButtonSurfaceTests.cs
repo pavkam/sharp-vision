@@ -562,7 +562,8 @@ public sealed class ButtonSurfaceTests
         button.CanFocus.ShouldBeFalse();
         var borderColor = TerminalPalette.Project(ThemeColorHelper.HoveredBorder(ThemeCatalog.Dark), ColorDepth.Basic16);
         surface.Cell(default).Style.Foreground.ShouldBe(borderColor);
-        surface.Cell(new Point(2, 1)).Style.Foreground.ShouldBe(ReferenceColors.Get(15));
+        surface.Cell(new Point(2, 1)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(ThemeColorHelper.HoveredForeground(ThemeCatalog.Dark), ColorDepth.Basic16));
     }
 
     /// <summary>Verifies a held default Button changes semantic paint without translating its border.</summary>
@@ -606,7 +607,10 @@ public sealed class ButtonSurfaceTests
         var pressedBorder = TerminalPalette.Project(ThemeColorHelper.PressedBorder(ThemeCatalog.Dark), ColorDepth.Basic16);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(pressedBorder);
         surface.Cell(new Point(2, 1)).Text.ShouldBe("S");
-        surface.Cell(new Point(2, 1)).Style.Foreground.ShouldBe(ReferenceColors.Get(15));
+        // Held-with-pointer composes PointerOver, whose foreground cue the pressed state
+        // does not re-author, so the caption carries the hovered foreground.
+        surface.Cell(new Point(2, 1)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(ThemeColorHelper.HoveredForeground(ThemeCatalog.Dark), ColorDepth.Basic16));
         surface.Cell(new Point(8, 1)).Style.Attributes.ShouldNotBe(TerminalAttributes.Dim);
         surface.Cell(new Point(9, 2)).Style.Attributes.ShouldBe(TerminalAttributes.None);
         surface.Cell(new Point(2, 4)).Style.Attributes.ShouldBe(TerminalAttributes.None);
@@ -663,8 +667,13 @@ public sealed class ButtonSurfaceTests
                              """);
         var focusedBorder = TerminalPalette.Project(ThemeColorHelper.FocusedBorder(ThemeCatalog.Dark), ColorDepth.Basic16);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(focusedBorder);
-        surface.Cell(new Point(2, 1)).Style.Foreground.ShouldBe(ReferenceColors.Get(15));
-        surface.Cell(new Point(2, 1)).Style.Background.ShouldBe(ReferenceColors.Get(0));
+
+        // The caption's transparent Text child inherits the button's ambient focused face, so the
+        // cell carries the input set's focused foreground and background.
+        surface.Cell(new Point(2, 1)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(ThemeColorHelper.FocusedForeground(ThemeCatalog.Dark), ColorDepth.Basic16));
+        surface.Cell(new Point(2, 1)).Style.Background.ShouldBe(
+            TerminalPalette.Project(ThemeColorHelper.FocusedBackground(ThemeCatalog.Dark), ColorDepth.Basic16));
     }
 
     /// <summary>Verifies the click shorthand emits move, press, and release and settles activation.</summary>

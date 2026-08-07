@@ -3,7 +3,16 @@
 
 namespace SharpVision.Controls.Layout;
 
+using DisplayText = Display.Text;
+
 /// <summary>Displays a collapsible section with a focusable header toggle and optional content.</summary>
+/// <remarks>
+/// A plain <see cref="DisplayText"/> header (the common case, materialized by
+/// <see cref="HeaderedContentControl.HeaderText"/>) is excluded from the ordinary descendant render
+/// pass and painted by the expander itself with its own state-resolved style, so the caption shows
+/// the same hover, focus, and disabled cues as the disclosure glyph; any other header control
+/// paints itself with its own resolved style.
+/// </remarks>
 [PublicAPI]
 public sealed class Expander: HeaderedContentControl
 {
@@ -188,6 +197,32 @@ public sealed class Expander: HeaderedContentControl
             new Point(content.X, content.Y),
             s,
             background);
+
+        if (Header is DisplayText text && content.Width > _headerChromeWidthCells)
+        {
+            var caption = canvas.Clip(HeaderBounds);
+            _ = text.Content.Draw(
+                caption,
+                new Point(content.X + _headerChromeWidthCells, content.Y),
+                s,
+                background,
+                CellPolicy.AmbiguousWidth,
+                UseMnemonic,
+                EffectiveIsEnabled ? Theme?.Hotkey ?? Color.Default : null);
+        }
+    }
+
+    /// <summary>Renders only non-caption children through the ordinary descendant pass; a
+    /// <see cref="DisplayText"/> header paints from <see cref="OnRenderContent"/> instead, with the
+    /// expander's own state-resolved style.</summary>
+    internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip)
+    {
+        if (Header is { } header && header is not DisplayText)
+        {
+            header.Render(canvas, contentClip);
+        }
+
+        Content?.Render(canvas, contentClip);
     }
 
     /// <inheritdoc/>
@@ -239,9 +274,14 @@ public sealed class Expander: HeaderedContentControl
         }
     }
 
+    // The caption child is hit-test visible, so pointer cells over the label target the header
+    // control rather than the expander itself; both count as hovering the header row.
+    private bool IsPointerOverHeaderTarget =>
+        PointerDirectlyOver || Header is { PointerDirectlyOver: true };
+
     private void UpdateHeaderPointerOver(PointerEventArgs eventArgs)
     {
-        var value = PointerDirectlyOver &&
+        var value = IsPointerOverHeaderTarget &&
                     eventArgs.Pointer.Cells is { } cells &&
                     HeaderBounds.Contains(cells);
 
@@ -270,7 +310,7 @@ public sealed class Expander: HeaderedContentControl
     internal override VisualState GetAppearanceState()
     {
         var state = base.GetAppearanceState();
-        return _isHeaderPointerOver && PointerDirectlyOver
+        return _isHeaderPointerOver && IsPointerOverHeaderTarget
             ? state
             : state & ~VisualState.PointerOver;
     }

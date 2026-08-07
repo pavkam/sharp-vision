@@ -33,8 +33,11 @@ public sealed class TabControlPointerTests
         // Assert
         tabs.GetResolvedAppearance(tabs.GetAppearanceState()).BackgroundMode.ShouldBe(BackgroundMode.Opaque);
         first.GetResolvedAppearance(first.GetAppearanceState()).BackgroundMode.ShouldBe(BackgroundMode.Opaque);
+
+        // The page's Text content never paints its own background; the opaque page fill below
+        // comes from the TabItem itself, verified against the rendered page cell further down.
         first.Content.ShouldNotBeNull().GetResolvedAppearance(first.Content.GetAppearanceState()).BackgroundMode
-            .ShouldBe(BackgroundMode.Opaque);
+            .ShouldBe(BackgroundMode.Transparent);
         surface.Cell(new Point(1, 0)).Style.Background.IsRgb.ShouldBeTrue();
         surface.Cell(new Point(11, 0)).Style.Background.IsRgb.ShouldBeTrue();
         surface.Cell(new Point(0, 2)).Style.Background.ShouldBe(ReferenceColors.Get(0));
@@ -66,7 +69,7 @@ public sealed class TabControlPointerTests
             TestContext.Current.CancellationToken);
         var theme = tabs.Theme.ShouldNotBeNull();
         var selection = ThemeColorHelper.SelectionBackground(theme);
-        var hoveredForeground = ThemeColorHelper.HoveredForeground(theme);
+        var hoveredForeground = TerminalPalette.Project(ThemeColorHelper.HoveredForeground(theme), ColorDepth.Basic16);
         var inactiveForeground = ThemeColorHelper.InactiveForeground(theme);
         var containingBackground = ReferenceColors.Get(0);
 

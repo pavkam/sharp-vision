@@ -28,8 +28,12 @@ public sealed class HyperlinkButtonSurfaceTests
 
 
                              """);
-        var normalForeground = TerminalPalette.Project(ThemeColorHelper.Foreground(ThemeCatalog.Dark), ColorDepth.Basic16);
+        // The link's normal-state overlay authors the accent foreground and a straight accent
+        // underline, and the transparent caption inherits that ambient face.
+        var normalForeground = TerminalPalette.Project(ThemeColorHelper.Accent(ThemeCatalog.Dark), ColorDepth.Basic16);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(normalForeground);
+        (surface.Cell(new Point(0, 0)).Style.Attributes & TerminalAttributes.Underline)
+            .ShouldBe(TerminalAttributes.Underline);
         surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(ReferenceColors.Get(0));
 
         // Act — hover
@@ -70,7 +74,10 @@ public sealed class HyperlinkButtonSurfaceTests
         surface.ShouldHaveState(link, VisualState.Focused);
         link.Focused.ShouldBeTrue();
         clicks.ShouldBe(0);
-        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(ReferenceColors.Get(15));
+
+        // The transparent caption inherits the link's ambient focused face foreground.
+        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(ThemeColorHelper.FocusedForeground(ThemeCatalog.Dark), ColorDepth.Basic16));
     }
 
     /// <summary>Verifies pointer press shows pressed state and disable cleans up.</summary>
@@ -99,7 +106,9 @@ public sealed class HyperlinkButtonSurfaceTests
 
         // Assert
         surface.ShouldHaveState(link, VisualState.PointerOver | VisualState.Focused | VisualState.Pressed);
-        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(ReferenceColors.Get(15));
+        // Held-with-pointer composes PointerOver, whose foreground cue survives the press.
+        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(ThemeColorHelper.HoveredForeground(ThemeCatalog.Dark), ColorDepth.Basic16));
 
         // Act — disable while held
         await surface.UpdateAsync(() => link.Enabled = false, "disable held HyperlinkButton");

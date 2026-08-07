@@ -18,7 +18,7 @@
     "controlBorder": "#7f7f7f",
     "controlShadow": "#7f7f7f",
     "activeControl": "#bbbbbb",
-    "activeText": "#000000",
+    "activeText": "#000080",
     "activeBorder": "#000000",
     "focusedControl": "#ffffff",
     "focusedText": "#0000ee",

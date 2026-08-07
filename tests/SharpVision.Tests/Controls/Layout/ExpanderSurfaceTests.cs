@@ -203,8 +203,11 @@ public sealed class ExpanderSurfaceTests
             new Size(12, 4),
             TestContext.Current.CancellationToken);
         var theme = expander.Theme.ShouldNotBeNull();
-        var normal = ThemeColorHelper.InactiveForeground(theme);
-        var hovered = ThemeColorHelper.HoveredForeground(theme);
+
+        // Rendered cells carry the mounted surface's Basic16 palette depth, so theme-resolved
+        // expectations are projected before comparison.
+        var normal = TerminalPalette.Project(ThemeColorHelper.InactiveForeground(theme), ColorDepth.Basic16);
+        var hovered = TerminalPalette.Project(ThemeColorHelper.HoveredForeground(theme), ColorDepth.Basic16);
         surface.Cell(new Point(3, 0)).Style.Foreground.ShouldBe(normal);
 
         // Act over the retained body child
@@ -219,10 +222,20 @@ public sealed class ExpanderSurfaceTests
         // Act over the directly rendered header
         await surface.Pointer.MoveToAsync(expander, new Point(1, 0));
 
-        // Assert header appearance
+        // Assert header appearance without leaking the cue into the body subtree
         expander.PointerDirectlyOver.ShouldBeTrue();
         body.PointerOver.ShouldBeFalse();
         surface.Cell(new Point(3, 0)).Style.Foreground.ShouldBe(hovered);
+        surface.Cell(new Point(2, 1)).Style.Foreground.ShouldBe(normal);
+
+        // Act over a caption cell, which targets the hit-test-visible header child
+        await surface.Pointer.MoveToAsync(expander, new Point(3, 0));
+
+        // Assert the caption itself remains a header hover target
+        expander.PointerDirectlyOver.ShouldBeFalse();
+        expander.PointerOver.ShouldBeTrue();
+        surface.Cell(new Point(3, 0)).Style.Foreground.ShouldBe(hovered);
+        surface.Cell(new Point(2, 1)).Style.Foreground.ShouldBe(normal);
     }
 
     /// <summary>Verifies disabled input refuses toggles and collapsed replacement appears only after expansion.</summary>

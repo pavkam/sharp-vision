@@ -365,6 +365,55 @@ public sealed class CuratedThemesTests
         }
     }
 
+    /// <summary>Verifies interaction and selection fills survive projection to the indexed
+    /// 256-color palette. Truecolor distinctness is not enough: a terminal without truecolor -
+    /// tmux by default, among others - renders the projected index, and gruvbox-light's normal,
+    /// hovered, focused, and selected surfaces all projected to one cube entry, so clicking a
+    /// list row or hovering an input produced literally identical cells. Verified live before
+    /// this guard existed; most bundled themes collided on at least one state.</summary>
+    [Fact]
+    public void EveryTheme_KeepsFillFeedbackAtIndexed256Depth()
+    {
+        var flat = new List<string>();
+
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+            var states = theme.GetStyleSet(InputStyle.Default).ToAppearanceStates();
+            var normal = TerminalPalette.Project(Resolve(states, VisualState.Normal, theme), ColorDepth.Indexed256);
+
+            foreach (var state in new[] { VisualState.PointerOver, VisualState.Focused, VisualState.Pressed })
+            {
+                if (TerminalPalette.Project(Resolve(states, state, theme), ColorDepth.Indexed256) == normal)
+                {
+                    flat.Add($"{slug} projects the same input fill for {state} as for Normal at 256 colors");
+                }
+            }
+
+            var selected = TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), ColorDepth.Indexed256);
+            var surface = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Surface), ColorDepth.Indexed256);
+
+            if (selected == surface)
+            {
+                flat.Add($"{slug} projects SelectedControl onto Surface at 256 colors");
+            }
+
+            // Passive surfaces hover with a foreground change only (the fill deliberately stays
+            // put), so a theme mapping ActiveText onto ControlText erases hover entirely for
+            // tables, trees, and every other control that falls back to the "control" set.
+            // Twelve themes did exactly that.
+            var activeText = TerminalPalette.Project(theme.ResolveColor(SemanticColor.ActiveText), ColorDepth.Indexed256);
+            var controlText = TerminalPalette.Project(theme.ResolveColor(SemanticColor.ControlText), ColorDepth.Indexed256);
+
+            if (activeText == controlText)
+            {
+                flat.Add($"{slug} projects ActiveText onto ControlText at 256 colors");
+            }
+        }
+
+        flat.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies every bundled theme keeps Accent and Info distinguishable. Four themes
     /// mapped both to one color, which made every surface pairing the two - most visibly a chart
     /// whose first series falls back to Accent while the second authors Info - monochrome, with

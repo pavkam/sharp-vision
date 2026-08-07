@@ -31,7 +31,7 @@ public sealed class NavigationViewSurfaceTests
         item.GetResolvedAppearance(item.GetAppearanceState()).BackgroundMode.ShouldBe(BackgroundMode.Opaque);
         surface.Cell(itemOrigin).Style.Background.ShouldBe(viewBackground);
         surface.Cell(itemOrigin).Style.Foreground.ShouldBe(
-            ThemeColorHelper.HoveredForeground(theme));
+            TerminalPalette.Project(ThemeColorHelper.HoveredForeground(theme), ColorDepth.Basic16));
     }
 
     /// <summary>Verifies header, main, group, separators, footer, indentation, and Unicode draw exact borderless cells.</summary>

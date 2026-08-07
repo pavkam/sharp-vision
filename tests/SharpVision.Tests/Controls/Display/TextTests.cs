@@ -24,7 +24,10 @@ public sealed class TextTests
         value.TextAlignment.ShouldBe(Alignment.Start);
         value.AmbiguousWidth.ShouldBe(Ambiguous.Narrow);
         value.Face.Foreground.ShouldBe(SemanticColor.ControlText);
-        value.Face.Background.ShouldBe(SemanticColor.Control);
+
+        // Text never paints its own background; the code-owned default stays transparent so a
+        // caption can inherit a state-ambient parent's face instead of masking it.
+        value.Face.Background.ShouldBe(Color.Transparent);
         value.Face.Attributes.ShouldBe(SemanticDecoration.NormalText);
         value.Lines.Length.ShouldBe(0);
         value.CanFocus.ShouldBeFalse();

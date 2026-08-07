@@ -107,7 +107,13 @@ public sealed class ListViewSurfaceTests
         target.GetResolvedAppearance(target.GetAppearanceState()).BackgroundMode.ShouldBe(BackgroundMode.Opaque);
         var targetOrigin = new Point(target.Bounds.X, target.Bounds.Y);
         surface.Cell(targetOrigin).Style.Background.ShouldBe(listBackground);
-        surface.Cell(targetOrigin).Style.Foreground.ShouldBe(hoveredForeground);
+        surface.Cell(targetOrigin).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(hoveredForeground, ColorDepth.Basic16));
+
+        // Pin the mechanism, not just the pixels: the templated caption is transparent, so it
+        // inherits the hovered item's state-ambient face rather than resolving its own normal.
+        realized[1].ActualFace.Foreground.Literal.ShouldBe(
+            theme.ResolveColor(SemanticColor.ActiveText));
     }
 
     /// <summary>Verifies a disabled realized item remains visible but cannot select or invoke.</summary>

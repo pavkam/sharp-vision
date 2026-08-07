@@ -24,8 +24,22 @@ public sealed record TextStyle: ControlStyle
         Complete,
         Compare);
 
+    // Text never paints its own background - lines draw with BackgroundMode.Transparent, and
+    // there is no body fill - so adopting the fallback's opaque background here was an
+    // incoherent claim with a real cost: every bundled theme authors an opaque
+    // "styles.control.normal.face.background", and copying it wholesale closed the
+    // ambient-inheritance transparency gate for every themed Text. A caption hosted under a
+    // state-ambient parent (a hovered list row, a focused pressable) then kept its own normal
+    // foreground instead of inheriting the parent's state face, which erased the hover and
+    // focus foreground cues wherever the pointer path did not reach the caption itself. The
+    // code-owned transparent background is the per-state completion default; a theme that
+    // genuinely wants an opaque Text background can still author "styles.text.normal.face.background".
     private static TextStyle Complete(ControlStyle control, VisualState state) =>
-        new(control.Face, control.Border, control.Shadow, ControlGlyphs.Text.Ellipsis.Value);
+        new(
+            control.Face with { Background = Color.Transparent },
+            control.Border,
+            control.Shadow,
+            ControlGlyphs.Text.Ellipsis.Value);
 
     /// <summary>Initializes a complete text presentation.</summary>
     /// <param name="face">The complete normal face.</param>

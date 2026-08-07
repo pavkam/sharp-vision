@@ -51,7 +51,7 @@ public sealed class CheckBoxSurfaceTests
             checkBox,
             new Size(10, 1),
             TestContext.Current.CancellationToken);
-        var hoveredForeground = ThemeColorHelper.HoveredForeground(ThemeCatalog.Dark);
+        var hoveredForeground = TerminalPalette.Project(ThemeColorHelper.HoveredForeground(ThemeCatalog.Dark), ColorDepth.Basic16);
         var focusedForeground = ThemeColorHelper.FocusedForeground(ThemeCatalog.Dark);
 
         // Act and assert hover
@@ -72,7 +72,8 @@ public sealed class CheckBoxSurfaceTests
         cause.ShouldBe(ActivationCause.Pointer);
         surface.ShouldHaveState(checkBox, VisualState.PointerOver | VisualState.Focused);
         surface.ShouldRender("[✓] Choice");
-        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(ReferenceColors.Get(15));
+        // The pointer is still over the released control, so the caption keeps the hovered cue.
+        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(hoveredForeground);
         surface.Cell(new Point(4, 0)).Style.Background.ShouldBe(ReferenceColors.Get(0));
 
         // Act unavailable while another activation is held
@@ -126,7 +127,10 @@ public sealed class CheckBoxSurfaceTests
         surface.ShouldRender("[─] Option");
         surface.Cell(default).Style.Foreground.ShouldBe(focusedForeground);
         surface.Cell(default).Style.Background.ShouldBe(ReferenceColors.Get(0));
-        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(ReferenceColors.Get(15));
+
+        // The transparent caption inherits the ambient focused face, matching the mark's cue.
+        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(focusedForeground, ColorDepth.Basic16));
         surface.Cell(new Point(4, 0)).Style.Background.ShouldBe(ReferenceColors.Get(0));
     }
 

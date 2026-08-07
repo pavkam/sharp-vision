@@ -11,9 +11,12 @@ theme's expanded or collapsed disclosure glyph, followed by `Header` arranged
 into the remaining width.
 
 The Expander itself owns focus, hover, and press for the header row, and keeps
-the disclosure glyph and the focus-highlighted row background as its own chrome;
-`Header` is an ordinary owned control arranged beside the glyph, so it paints
-with its own resolved style. Its pointer rectangle is the first non-empty row of
+the disclosure glyph and the focus-highlighted row background as its own chrome.
+A plain `Text` header — the `HeaderText` common case — is painted by the
+Expander with its own state-resolved style, so the caption carries the same
+hover, focus, and disabled cues as the glyph; any other header control is an
+ordinary owned control arranged beside the glyph that paints with its own
+resolved style. Its pointer rectangle is the first non-empty row of
 `ContentBounds`, after any caller-supplied border and padding are deflated. The
 caller's content remains the one ordinary owned child.
 
