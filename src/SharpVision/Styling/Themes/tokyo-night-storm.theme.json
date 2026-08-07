@@ -50,7 +50,7 @@
     "error": "red",
     "warning": "yellow",
     "success": "green",
-    "info": "blue"
+    "info": "cyan"
   },
   "attributes": {
     "normalText": [],

@@ -37,7 +37,7 @@
     "error": "#cd0000",
     "warning": "#cdcd00",
     "success": "#00cd00",
-    "info": "#0000ee"
+    "info": "#008080"
   },
   "attributes": {
     "normalText": [],

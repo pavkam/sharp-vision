@@ -365,6 +365,24 @@ public sealed class CuratedThemesTests
         }
     }
 
+    /// <summary>Verifies every bundled theme keeps Accent and Info distinguishable. Four themes
+    /// mapped both to one color, which made every surface pairing the two - most visibly a chart
+    /// whose first series falls back to Accent while the second authors Info - monochrome, with
+    /// two identical legend markers and no way to tell the series apart. Compared on the RESOLVED
+    /// colors, so a theme cannot collide them through two palette names for one value.</summary>
+    [Fact]
+    public void EveryTheme_ResolvesDistinctAccentAndInfoColors()
+    {
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+
+            theme.ResolveColor(SemanticColor.Accent).ShouldNotBe(
+                theme.ResolveColor(SemanticColor.Info),
+                $"{slug} must keep Accent and Info distinguishable");
+        }
+    }
+
     /// <summary>Verifies editor themes resolve their accent to an absolute RGB color.</summary>
     [Fact]
     public void EditorThemes_UseRgbAccents()

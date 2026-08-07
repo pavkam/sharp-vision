@@ -11,6 +11,7 @@
     "fg": "#c0caf5",
     "comment": "#565f89",
     "blue": "#7aa2f7",
+    "cyan": "#7dcfff",
     "red": "#f7768e",
     "green": "#9ece6a",
     "yellow": "#e0af68",
@@ -47,7 +48,7 @@
     "error": "red",
     "warning": "yellow",
     "success": "green",
-    "info": "blue"
+    "info": "cyan"
   },
   "attributes": {
     "normalText": [],
