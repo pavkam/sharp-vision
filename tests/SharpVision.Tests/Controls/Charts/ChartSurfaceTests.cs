@@ -580,6 +580,186 @@ public sealed class ChartSurfaceTests
         surface.Cell(new Point(4, 0)).Text.ShouldBe(" ");
     }
 
+    /// <summary>Verifies a vertical bar ends on an eighth-cell boundary instead of rounding to a
+    /// whole cell: 3 of 8 in a one-cell plot is the exact three-eighths block.</summary>
+    [Fact]
+    public async Task Render_WhenVerticalValueLandsMidCell_DrawsTheExactEighthBlockAsync()
+    {
+        // Arrange
+        var chart = new VerticalBarChart
+        {
+            Series = [new ChartSeries("CPU", [new ChartDataPoint("Now", 3)])],
+            Scale = new ChartScale(0, 8, includeZero: false),
+            ShowCategoryLabels = false
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(1, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("▃");
+    }
+
+    /// <summary>Verifies the fractional cap sits on top of full cells in a taller plot: 1.25 of 2
+    /// across two rows is one full cell and a quarter-cell cap.</summary>
+    [Fact]
+    public async Task Render_WhenVerticalValueSpansCells_CapsTheTopCellFractionallyAsync()
+    {
+        // Arrange
+        var chart = new VerticalBarChart
+        {
+            Series = [new ChartSeries("CPU", [new ChartDataPoint("Now", 1.25)])],
+            Scale = new ChartScale(0, 2, includeZero: false),
+            ShowCategoryLabels = false
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(1, 2),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("""
+                             ▂
+                             █
+                             """);
+    }
+
+    /// <summary>The same for a horizontal bar, whose cap uses the left-eighth family: 5 of 8 in a
+    /// one-cell plot is the exact five-eighths block.</summary>
+    [Fact]
+    public async Task Render_WhenHorizontalValueLandsMidCell_DrawsTheExactEighthBlockAsync()
+    {
+        // Arrange
+        var chart = new HorizontalBarChart
+        {
+            Series = [new ChartSeries("CPU", [new ChartDataPoint("Now", 5)])],
+            Scale = new ChartScale(0, 8, includeZero: false),
+            ShowCategoryLabels = false
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(1, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("▋");
+    }
+
+    /// <summary>Verifies bars fill their category band instead of occupying one centered column:
+    /// two categories over eight columns give each a three-cell bar and a one-cell gutter.</summary>
+    [Fact]
+    public async Task Render_WhenTheBandIsWide_FillsItWithAThickBarAsync()
+    {
+        // Arrange
+        var chart = new VerticalBarChart
+        {
+            Series = [new ChartSeries("CPU", [
+                new ChartDataPoint("A", 2),
+                new ChartDataPoint("B", 2)])],
+            Scale = new ChartScale(0, 2, includeZero: false),
+            ShowCategoryLabels = false
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(8, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert: bands are columns [0-3] and [4-7]; each keeps its final cell as a gutter.
+        surface.ShouldRender("███ ███ ");
+    }
+
+    /// <summary>Verifies the glyph fill mode keeps the historical one-cell lanes and whole-cell
+    /// rounding, drawing the authored bar glyph exactly - the contract a theme that replaces the
+    /// glyph relies on.</summary>
+    [Fact]
+    public async Task Render_WhenFillModeIsGlyph_KeepsTheAuthoredGlyphAndThinLanesAsync()
+    {
+        // Arrange
+        var chart = new VerticalBarChart
+        {
+            Series = [new ChartSeries("CPU", [new ChartDataPoint("A", 2)])],
+            Scale = new ChartScale(0, 2, includeZero: false),
+            ShowCategoryLabels = false,
+            Style = ChartStyle.Default with
+            {
+                FillMode = ChartFillMode.Glyph,
+                Glyphs = ChartGlyphs.Default with { Bar = new Rune('▓') }
+            }
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(3, 2),
+            TestContext.Current.CancellationToken);
+
+        // Assert: one centered single-cell lane, full cells only.
+        surface.ShouldRender("""
+                             ▓
+                             ▓
+                             """.Replace("▓", " ▓ ", StringComparison.Ordinal));
+    }
+
+    /// <summary>Verifies a negative vertical bar grows down from the zero baseline and snaps its
+    /// cap to the half cell - the finest glyph the upper block family defines.</summary>
+    [Fact]
+    public async Task Render_WhenTheValueIsNegative_GrowsDownFromTheBaselineAsync()
+    {
+        // Arrange
+        var chart = new VerticalBarChart
+        {
+            Series = [new ChartSeries("CPU", [new ChartDataPoint("A", -1.5)])],
+            Scale = new ChartScale(-2, 2, includeZero: true),
+            ShowCategoryLabels = false
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(1, 4),
+            TestContext.Current.CancellationToken);
+
+        // Assert: zero sits between rows 1 and 2; 1.5 of 2 is one full cell then a half cap.
+        surface.Cell(new Point(0, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 1)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 2)).Text.ShouldBe("█");
+        surface.Cell(new Point(0, 3)).Text.ShouldBe("▀");
+    }
+
+    /// <summary>Verifies a bar reaching the plot edge keeps its value label by drawing it over
+    /// the bar's tail. It used to vanish entirely, hiding exactly the extreme value a reader
+    /// most wants to know.</summary>
+    [Fact]
+    public async Task Render_WhenTheBarReachesThePlotEdge_ClampsTheValueLabelInsideAsync()
+    {
+        // Arrange
+        var chart = new HorizontalBarChart
+        {
+            Series = [new ChartSeries("CPU", [new ChartDataPoint("Now", 8)])],
+            Scale = new ChartScale(0, 8, includeZero: false),
+            ShowCategoryLabels = false,
+            ShowValueLabels = true
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(6, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("█████8");
+    }
+
     private static IReadOnlyList<ChartSeries> CreateNamedSeries() => [
         new ChartSeries("A", [new ChartDataPoint("1", 1)]),
         new ChartSeries("B", [new ChartDataPoint("1", 2)])

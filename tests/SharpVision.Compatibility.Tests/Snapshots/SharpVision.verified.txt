@@ -263,6 +263,11 @@ namespace SharpVision.Controls.Charts
         protected override void InsertItem(int index, SharpVision.Controls.Charts.ChartDataPoint item) { }
         protected override void SetItem(int index, SharpVision.Controls.Charts.ChartDataPoint item) { }
     }
+    public enum ChartFillMode
+    {
+        Fractional = 0,
+        Glyph = 1,
+    }
     public readonly struct ChartGlyphs : System.IEquatable<SharpVision.Controls.Charts.ChartGlyphs>
     {
         public ChartGlyphs(System.Text.Rune bar, System.Text.Rune point, System.Text.Rune line, System.Text.Rune area, System.Text.Rune legendMarker, System.Text.Rune verticalAxis, System.Text.Rune horizontalAxis) { }
@@ -283,6 +288,11 @@ namespace SharpVision.Controls.Charts
         Bottom = 3,
         Left = 4,
         Right = 5,
+    }
+    public enum ChartLineMode
+    {
+        Quadrant = 0,
+        Glyph = 1,
     }
     public readonly struct ChartScale : System.IEquatable<SharpVision.Controls.Charts.ChartScale>
     {
@@ -310,8 +320,10 @@ namespace SharpVision.Controls.Charts
     {
         public ChartStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Styling.ControlColor axisColor, SharpVision.Styling.ControlColor labelColor, SharpVision.Styling.ControlColor primaryColor, SharpVision.Styling.ControlColor secondaryColor, SharpVision.Styling.ControlColor tertiaryColor, SharpVision.Controls.Charts.ChartGlyphs glyphs) { }
         public required SharpVision.Styling.ControlColor AxisColor { get; init; }
+        public SharpVision.Controls.Charts.ChartFillMode FillMode { get; init; }
         public required SharpVision.Controls.Charts.ChartGlyphs Glyphs { get; init; }
         public required SharpVision.Styling.ControlColor LabelColor { get; init; }
+        public SharpVision.Controls.Charts.ChartLineMode LineMode { get; init; }
         public required SharpVision.Styling.ControlColor PrimaryColor { get; init; }
         public required SharpVision.Styling.ControlColor SecondaryColor { get; init; }
         public required SharpVision.Styling.ControlColor TertiaryColor { get; init; }

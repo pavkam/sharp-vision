@@ -130,6 +130,38 @@ public sealed record ChartStyle: ControlStyle
         init;
     }
 
+    /// <summary>Gets how bar and area extents rasterize into cells.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The replacement value is unknown.</exception>
+    public ChartFillMode FillMode
+    {
+        get;
+        init
+        {
+            if (!Enum.IsDefined(value))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The fill mode is unknown.");
+            }
+
+            field = value;
+        }
+    } = ChartFillMode.Fractional;
+
+    /// <summary>Gets how line-series segments rasterize into cells.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The replacement value is unknown.</exception>
+    public ChartLineMode LineMode
+    {
+        get;
+        init
+        {
+            if (!Enum.IsDefined(value))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The line mode is unknown.");
+            }
+
+            field = value;
+        }
+    } = ChartLineMode.Quadrant;
+
     /// <summary>Gets one deterministic fallback series foreground by zero-based index.</summary>
     internal ControlColor GetSeriesColor(int index) => Math.Abs(index % 3) switch
     {

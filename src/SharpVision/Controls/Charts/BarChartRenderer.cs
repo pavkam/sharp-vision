@@ -46,6 +46,7 @@ internal static class BarChartRenderer
     {
         var range = context.Range;
         var zero = BoundaryX(range, 0, plot);
+        var fractional = context.Chart.ActualStyle.FillMode == ChartFillMode.Fractional;
 
         if (zero > plot.X && zero < plot.Right)
         {
@@ -59,6 +60,7 @@ internal static class BarChartRenderer
         for (var category = 0; category < categoryCount; category++)
         {
             var band = CategoryBand(category, categoryCount, plot.Y, plot.Height);
+            var thickness = LaneThickness(band, context.Chart.Series.Count, fractional);
 
             for (var seriesIndex = 0; seriesIndex < context.Chart.Series.Count; seriesIndex++)
             {
@@ -70,10 +72,42 @@ internal static class BarChartRenderer
                 }
 
                 var point = series.Points[category];
-                var y = PlaceInBand(band, seriesIndex, context.Chart.Series.Count);
+                var style = ChartRenderer.ResolveSeriesStyle(context, series, point, seriesIndex);
                 var value = BoundaryX(range, point.Value, plot);
                 var left = Math.Min(zero, value);
                 var right = Math.Max(zero, value);
+
+                if (fractional)
+                {
+                    var eighths = ExtentEighths(range, point.Value, plot.Width, zero - plot.X);
+                    var lane = band.Start + (seriesIndex * thickness);
+
+                    for (var row = lane; row < lane + thickness && row < band.Start + band.Length; row++)
+                    {
+                        if (point.Value >= 0)
+                        {
+                            canvas.DrawBar(new Point(zero, row), BarDirection.Right, eighths, style);
+                        }
+                        else
+                        {
+                            canvas.DrawBar(new Point(zero - 1, row), BarDirection.Left, eighths, style);
+                        }
+                    }
+
+                    left = point.Value >= 0 ? zero : zero - ((eighths + 7) / 8);
+                    right = point.Value >= 0 ? zero + ((eighths + 7) / 8) : zero;
+                    RenderHorizontalValueLabel(
+                        context,
+                        canvas,
+                        point,
+                        left,
+                        right,
+                        Math.Min(lane + (thickness / 2), band.Start + band.Length - 1),
+                        plot);
+                    continue;
+                }
+
+                var y = PlaceInBand(band, seriesIndex, context.Chart.Series.Count);
 
                 if (right > left)
                 {
@@ -81,7 +115,7 @@ internal static class BarChartRenderer
                         new Point(left, y),
                         new Point(right - 1, y),
                         context.Chart.ActualStyle.Glyphs.Bar,
-                        ChartRenderer.ResolveSeriesStyle(context, series, point, seriesIndex));
+                        style);
                 }
 
                 RenderHorizontalValueLabel(context, canvas, point, left, right, y, plot);
@@ -97,10 +131,12 @@ internal static class BarChartRenderer
     {
         var range = context.Range;
         var zero = BoundaryY(range, 0, plot);
+        var fractional = context.Chart.ActualStyle.FillMode == ChartFillMode.Fractional;
 
         for (var category = 0; category < categoryCount; category++)
         {
             var band = CategoryBand(category, categoryCount, plot.X, plot.Width);
+            var thickness = LaneThickness(band, context.Chart.Series.Count, fractional);
 
             for (var seriesIndex = 0; seriesIndex < context.Chart.Series.Count; seriesIndex++)
             {
@@ -112,9 +148,38 @@ internal static class BarChartRenderer
                 }
 
                 var point = series.Points[category];
-                var x = PlaceInBand(band, seriesIndex, context.Chart.Series.Count);
+                var style = ChartRenderer.ResolveSeriesStyle(context, series, point, seriesIndex);
                 var value = BoundaryY(range, point.Value, plot);
                 var top = Math.Min(zero, value);
+
+                if (fractional)
+                {
+                    var eighths = ExtentEighths(range, point.Value, plot.Height, plot.Bottom - zero);
+                    var lane = band.Start + (seriesIndex * thickness);
+
+                    for (var column = lane; column < lane + thickness && column < band.Start + band.Length; column++)
+                    {
+                        if (point.Value >= 0)
+                        {
+                            canvas.DrawBar(new Point(column, zero - 1), BarDirection.Up, eighths, style);
+                        }
+                        else
+                        {
+                            canvas.DrawBar(new Point(column, zero), BarDirection.Down, eighths, style);
+                        }
+                    }
+
+                    top = point.Value >= 0 ? zero - ((eighths + 7) / 8) : zero;
+                    RenderValueLabel(
+                        context,
+                        canvas,
+                        point,
+                        new Point(Math.Min(lane + (thickness / 2), band.Start + band.Length - 1), Math.Max(plot.Y, top - 1)),
+                        plot);
+                    continue;
+                }
+
+                var x = PlaceInBand(band, seriesIndex, context.Chart.Series.Count);
                 var bottom = Math.Max(zero, value);
 
                 if (bottom > top)
@@ -123,12 +188,38 @@ internal static class BarChartRenderer
                         new Point(x, top),
                         new Point(x, bottom - 1),
                         context.Chart.ActualStyle.Glyphs.Bar,
-                        ChartRenderer.ResolveSeriesStyle(context, series, point, seriesIndex));
+                        style);
                 }
 
                 RenderValueLabel(context, canvas, point, new Point(x, Math.Max(plot.Y, top - 1)), plot);
             }
         }
+    }
+
+    // A fractional bar's extent from the whole-cell zero boundary every bar in the plot shares.
+    // Anchoring at the rounded boundary rather than the exact zero ratio keeps every bar and the
+    // drawn axis rule consistent with one another; the sub-cell precision all goes to the value
+    // end, which is the end a reader compares.
+    private static int ExtentEighths(ChartScaleRange range, double value, int extent, int zeroCells)
+    {
+        var ratio = Math.Clamp((value - range.Minimum) / (range.Maximum - range.Minimum), 0, 1);
+        var valueEighths = (int) Math.Round(ratio * extent * 8, MidpointRounding.AwayFromZero);
+        return Math.Abs(valueEighths - (zeroCells * 8));
+    }
+
+    // Fractional bars fill their band instead of occupying one centered cell: the series divide
+    // the band evenly, and a band wide enough to afford it keeps its final cell as a gutter so
+    // adjacent categories stay visually separate. The glyph mode keeps the historical one-cell
+    // lanes, whose geometry existing themes and tests rely on.
+    private static int LaneThickness((int Start, int Length) band, int seriesCount, bool fractional)
+    {
+        if (!fractional)
+        {
+            return 1;
+        }
+
+        var usable = band.Length >= 3 ? band.Length - 1 : band.Length;
+        return Math.Max(1, usable / Math.Max(1, seriesCount));
     }
 
     private static Rect ReserveLabels(
@@ -309,12 +400,19 @@ internal static class BarChartRenderer
 
         var value = point.Value.ToString("G", CultureInfo.InvariantCulture);
         var width = context.Chart.Control.MeasureCells(value.AsSpan());
-        var x = point.Value < 0 ? left - width - 1 : right + 1;
 
-        if (width == 0 || x < plot.X || x + width > plot.Right)
+        if (width == 0 || width > plot.Width)
         {
             return;
         }
+
+        // Preferred placement is one blank cell beyond the bar; a bar reaching the plot edge used
+        // to lose its label entirely, which hid exactly the extreme value a reader most wants.
+        // Clamping draws the label over the bar's tail instead.
+        var x = Math.Clamp(
+            point.Value < 0 ? left - width - 1 : right + 1,
+            plot.X,
+            plot.Right - width);
 
         _ = canvas.Clip(plot).Draw(
             value.AsSpan(),
