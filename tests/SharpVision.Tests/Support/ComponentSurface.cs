@@ -217,7 +217,19 @@ internal sealed class ComponentSurface: IAsyncDisposable
                 await application.Dispatcher.InvokeAsync(
                     () => application.Focus.Focus(host).ShouldBeTrue(),
                     cancellationToken);
-                await idle.Task.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken);
+
+                // The Idle event fires the instant the dispatcher queue drains, with no debounce,
+                // so this timeout only ever backstops a genuine hang - it never bounds a passing run.
+                await idle.Task.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken);
+            }
+            catch (TimeoutException exception)
+            {
+                var state = await application.Dispatcher.InvokeAsync(
+                    () => $"root={host.Pending}, mounted={control.Pending}",
+                    cancellationToken);
+                throw new TimeoutException(
+                    $"Component mount did not settle ({state}). Latest surface:{Environment.NewLine}{terminal.Screen.CopyText()}",
+                    exception);
             }
             finally
             {
