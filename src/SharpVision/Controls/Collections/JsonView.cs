@@ -819,7 +819,16 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
 
         if (_selectedNode is { IsContainer: true, Expanded: true, Children.Count: > 0 })
         {
-            return SetExpanded(_selectedNode.Path, false);
+            if (!SetExpanded(_selectedNode.Path, false))
+            {
+                return false;
+            }
+
+            // Collapsing removes every projected line below the selection, so a viewport that
+            // was scrolled into the removed range would otherwise keep an offset past the
+            // selected row - every other navigation path reveals, and so must this one.
+            RevealSelection();
+            return true;
         }
 
         var parent = _selectedNode.Parent;
@@ -851,9 +860,19 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
         return true;
     }
 
-    private bool ToggleSelected() =>
-        _selectedNode is { IsContainer: true, Children.Count: > 0 } selected &&
-        SetExpanded(selected.Path, !selected.Expanded);
+    private bool ToggleSelected()
+    {
+        if (_selectedNode is not { IsContainer: true, Children.Count: > 0 } selected ||
+            !SetExpanded(selected.Path, !selected.Expanded))
+        {
+            return false;
+        }
+
+        // Same reveal as NavigateLeft's collapse branch: a collapse can strand the viewport
+        // below the selected row.
+        RevealSelection();
+        return true;
+    }
 
     private void NormalizeSelection()
     {

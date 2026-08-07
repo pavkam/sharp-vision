@@ -292,4 +292,53 @@ public sealed class JsonViewSurfaceTests
         view.Focused.ShouldBeFalse();
         surface.ShouldHaveFocus(null);
     }
+
+    /// <summary>Verifies a keyboard collapse reveals the selection like every other navigation
+    /// path. Collapsing removes every projected line below the selected container, so a viewport
+    /// scrolled into the removed range kept an offset past the selected row - the selection
+    /// stayed live but nowhere on screen until the next arrow key snapped it back.</summary>
+    [Fact]
+    public async Task Keyboard_WhenScrolledAwayAndSelectionCollapses_RevealsTheSelectedRowAsync()
+    {
+        // Arrange: a collapsible first section plus a long tail, so the document still overflows
+        // the viewport after the collapse and the scroll container cannot mask a stale offset by
+        // clamping it away.
+        var view = new JsonView
+        {
+            Json = /*lang=json,strict*/ """
+                   {
+                     "metrics": { "a": 1, "b": 2, "c": 3, "d": 4, "e": 5, "f": 6 },
+                     "tail": { "p": 1, "q": 2, "r": 3, "s": 4, "t": 5, "u": 6 }
+                   }
+                   """,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 5),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Home);
+        view.SelectedPath.ShouldBe("/metrics");
+
+        // Act: scroll the selected container out of the viewport, then collapse it.
+        await surface.UpdateAsync(() => view.VerticalOffset = 8, "scroll away from the selection");
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert: still selected, still collapsed, and back on screen.
+        view.SelectedPath.ShouldBe("/metrics");
+        view.VerticalOffset.ShouldBeLessThanOrEqualTo(1);
+
+        // Act: the same guarantee for the Left-arrow collapse.
+        await surface.Keyboard.PressAsync(Code.Enter);
+        view.SelectedPath.ShouldBe("/metrics");
+        await surface.UpdateAsync(() => view.VerticalOffset = 8, "scroll away again");
+        await surface.Keyboard.PressAsync(Code.Left);
+
+        // Assert
+        view.SelectedPath.ShouldBe("/metrics");
+        view.VerticalOffset.ShouldBeLessThanOrEqualTo(1);
+    }
 }
