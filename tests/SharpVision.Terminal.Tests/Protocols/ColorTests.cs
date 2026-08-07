@@ -34,6 +34,18 @@ public sealed class ColorTests
         black.Blue.ShouldBe((byte) 0);
     }
 
+    /// <summary>Verifies a concrete RGB color preserves every channel.</summary>
+    [Fact]
+    public void Color_WhenConcrete_PreservesValue()
+    {
+        var color = Color.Rgb(10, 20, 30);
+
+        color.IsRgb.ShouldBeTrue();
+        color.Red.ShouldBe((byte) 10);
+        color.Green.ShouldBe((byte) 20);
+        color.Blue.ShouldBe((byte) 30);
+    }
+
     /// <summary>Verifies callers use behavioral color queries instead of a representation enum.</summary>
     [Fact]
     public void PublicSurface_WhenInspected_DoesNotExposeKindProperty() =>
