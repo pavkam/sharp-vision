@@ -8,7 +8,7 @@ using System.Text;
 using SharpVision.Fonts;
 
 /// <summary>Verifies FigletRenderer's horizontal smushing rules, including hardblank collisions.</summary>
-public sealed class FigletRendererSmushingTests
+public sealed class FigletRendererTests
 {
     /// <summary>
     /// Verifies universal horizontal smushing (the <see cref="FigletLayout.HorizontalSmushing"/>
