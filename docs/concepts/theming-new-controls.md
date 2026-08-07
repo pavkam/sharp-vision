@@ -168,6 +168,40 @@ the SharpVision assembly. A self-contained root (as above) is the supported path
 for a control outside the assembly; it does not lose theme responsiveness, it
 just does not automatically follow another type's restyle.
 
+## What goes wrong
+
+Three mistakes account for most of the time lost giving a control its own typed
+style. All three compile, and the first two also pass a test that looks like it
+covers them.
+
+**Structural members do not travel on the appearance path.** A control's
+resolved `AppearanceStates` - what `GetDefaultAppearanceStates` returns, and
+what `Theme.Control`, `Theme.Input`, and their four siblings expose - carries
+each state's `Face`, `Border`, and `Shadow`, and nothing else. Every other
+member a style declares (a glyph family, a padding, an extra semantic color) is
+dropped on the way. Those members reach the screen only if the render code reads
+them off `ActualStyle` - the way `Text` resolves `ActualStyle.EllipsisGlyph`
+inside its own render pass rather than expecting the appearance states to carry
+it.
+
+A control that only overrides the appearance hook has no `ActualStyle` to read,
+so a style type with members beyond face, border, and shadow needs a real style
+slot - `InitializeStyle` - and not just the hook.
+
+**A style-layer assertion does not prove the control uses the style.** A test
+that resolves the definition and asserts on the resolved value passes whether or
+not the render code ever reads it: revert a call site to a hardcoded glyph and
+the test stays green. The assertion that separates the two is one on the
+rendered cell. Apply the theme, render, and read the cell back.
+
+**Choosing a fallback type is a layout decision, not a color one.**
+`ContainerStyle` is the intuitive parent for anything box-shaped, but its
+default border encloses all four sides, and enabled border sides reserve layout
+through the base box model. Falling back to it rather than `ControlStyle`
+therefore changes the control's measured size by a cell per edge, before any
+theme is involved. Pick the fallback whose default geometry matches the control,
+then its colors.
+
 ## Rendering and proof
 
 Controls render through the canvas and never emit terminal bytes. Reusable
