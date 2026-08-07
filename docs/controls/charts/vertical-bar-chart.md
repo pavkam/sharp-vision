@@ -24,5 +24,10 @@ var chart = new VerticalBarChart
 ## Expected behavior
 
 Categories consume horizontal bands and multiple series remain visually distinct
-through explicit or palette colors. Category labels yield before the plot
+through explicit or palette colors. By default (`ChartStyle.FillMode` of
+`Fractional`) the series divide each band into bars as thick as the band
+affords, keeping a one-cell gutter between categories when there is room, and a
+bar's height ends on an eighth-cell boundary rasterized from the shared zero
+baseline. A style with `ChartFillMode.Glyph` keeps one-cell bars of the style's
+own bar glyph rounded to whole cells. Category labels yield before the plot
 becomes empty, and bars always stay inside arranged bounds.

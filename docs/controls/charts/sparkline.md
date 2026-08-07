@@ -23,7 +23,9 @@ var sparkline = new Sparkline
 
 ## Expected behavior
 
-The most recent points that fit are rendered. Eight fractional levels provide
-sub-cell vertical resolution, taller bounds use full cells beneath the fraction,
-and empty data leaves the content clear. Resize and deep value changes repaint
-without replacing the series.
+The most recent points that fit are rendered. Columns rasterize through the
+canvas fractional-bar primitive: eight fractional levels provide sub-cell
+vertical resolution, and taller bounds use full cells beneath the fraction. A
+style with `ChartFillMode.Glyph` rounds each column to whole cells of the
+style's own bar glyph instead. Empty data leaves the content clear. Resize and
+deep value changes repaint without replacing the series.
