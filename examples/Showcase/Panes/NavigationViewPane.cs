@@ -16,12 +16,13 @@ internal sealed class NavigationViewPane: CompositeControlBase
 
     private static DocPage CreateContent()
     {
-        var status = new Text("Selected: Dashboard");
+        var status = new Text("Selected: none");
         var basic = new NavigationView { Header = "&MY APP", Width = Length.Cells(24), Height = Length.Cells(12) };
         basic.Items.Add(new NavigationViewItem { Text = "&界 Dashboard" });
         basic.Items.Add(new NavigationViewItem { Text = "&Reports", Glyph = "📈" });
         basic.Items.Add(new NavigationViewItem { Text = "&Settings", Glyph = "⚙", Enabled = false });
-        basic.SelectionChanged += (_, _) => status.Content = $"Selected: {basic.SelectedItem?.Text ?? "none"}";
+        basic.SelectionChanged += (_, _) =>
+            status.Content = $"Selected: {DocCaption.PlainCaption(basic.SelectedItem?.Text ?? "none")}";
 
         var grouped = new NavigationView { Header = "&PROJECT", Width = Length.Cells(24), Height = Length.Cells(16) };
         var core = new NavigationViewGroup { Header = "&Core" };

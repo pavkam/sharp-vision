@@ -45,7 +45,7 @@ internal sealed class TabControlPane: CompositeControlBase
             Content = new Text("SharpVision v1.0") { Padding = new Thickness(1) }
         });
         tabs.SelectionChanged += (_, _) =>
-            status.Content = $"Selected: {(tabs.SelectedIndex >= 0 ? tabs.Items[tabs.SelectedIndex].Header : "none")}";
+            status.Content = $"Selected: {(tabs.SelectedIndex >= 0 ? DocCaption.PlainCaption(tabs.Items[tabs.SelectedIndex].HeaderText ?? string.Empty) : "none")}";
 
         var dynStatus = new Text("Tabs: 2");
         var dyn = new TabControl { Width = Length.Cells(50), Height = Length.Cells(6) };
