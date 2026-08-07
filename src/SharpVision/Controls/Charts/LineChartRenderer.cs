@@ -17,33 +17,44 @@ internal static class LineChartRenderer
             return;
         }
 
+        var quadrant = chart.ActualStyle.LineMode == ChartLineMode.Quadrant;
+
         for (var seriesIndex = 0; seriesIndex < chart.Series.Count; seriesIndex++)
         {
             var series = chart.Series[seriesIndex];
             Point? previous = null;
+            Point? previousHalf = null;
 
             for (var pointIndex = 0; pointIndex < series.Points.Count; pointIndex++)
             {
                 var point = series.Points[pointIndex];
-                var current = new Point(
-                    ChartRenderer.MapX(pointIndex, series.Points.Count, plot),
-                    ChartRenderer.MapY(context.Range, point.Value, plot));
+                var half = ChartRenderer.MapHalf(context.Range, pointIndex, series.Points.Count, point.Value, plot);
+                var current = new Point(half.X >> 1, half.Y >> 1);
                 var style = ChartRenderer.ResolveSeriesStyle(context, series, point, seriesIndex);
 
-                if (previous is { } start)
+                if (quadrant)
+                {
+                    if (previousHalf is { } startHalf)
+                    {
+                        canvas.DrawQuadrantLine(startHalf, half, style);
+                    }
+                }
+                else if (previous is { } start)
                 {
                     canvas.DrawLine(start, current, chart.ActualStyle.Glyphs.Line, style);
                 }
 
                 previous = current;
+                previousHalf = half;
             }
 
+            // Markers draw after every segment of the series so a point stays visible where
+            // segments meet, whichever rasterization drew them.
             for (var pointIndex = 0; pointIndex < series.Points.Count; pointIndex++)
             {
                 var point = series.Points[pointIndex];
-                var current = new Point(
-                    ChartRenderer.MapX(pointIndex, series.Points.Count, plot),
-                    ChartRenderer.MapY(context.Range, point.Value, plot));
+                var half = ChartRenderer.MapHalf(context.Range, pointIndex, series.Points.Count, point.Value, plot);
+                var current = new Point(half.X >> 1, half.Y >> 1);
                 canvas.DrawRune(
                     chart.ActualStyle.Glyphs.Point,
                     current,

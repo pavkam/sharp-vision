@@ -760,6 +760,70 @@ public sealed class ChartSurfaceTests
         surface.ShouldRender("█████8");
     }
 
+    /// <summary>Verifies line segments rasterize through half-cell quadrants, so a slope descends
+    /// in half-row steps drawn with half-block glyphs instead of one whole-cell glyph per column.</summary>
+    [Fact]
+    public async Task Render_WhenLineModeIsQuadrant_RasterizesSegmentsInHalfCellsAsync()
+    {
+        // Arrange
+        var chart = new LineChart
+        {
+            Series = [new ChartSeries("CPU", [
+                new ChartDataPoint("A", 0),
+                new ChartDataPoint("B", 2)])],
+            Scale = new ChartScale(0, 2, includeZero: false),
+            LegendPlacement = ChartLegendPlacement.Hidden,
+            ShowCategoryLabels = false
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(4, 2),
+            TestContext.Current.CancellationToken);
+
+        // Assert: the half-cell Bresenham walk from (0,3) to (7,0) pairs into Lower and Upper
+        // half blocks on alternating cells; the two marker cells overwrite their line cells.
+        surface.Cell(new Point(0, 1)).Text.ShouldBe("●");
+        surface.Cell(new Point(1, 1)).Text.ShouldBe("▀");
+        surface.Cell(new Point(2, 0)).Text.ShouldBe("▄");
+        surface.Cell(new Point(3, 0)).Text.ShouldBe("●");
+    }
+
+    /// <summary>Verifies the glyph line mode keeps whole-cell segments drawn with the style's own
+    /// line glyph exactly - the contract a theme that replaces the glyph relies on.</summary>
+    [Fact]
+    public async Task Render_WhenLineModeIsGlyph_DrawsTheAuthoredGlyphPerCellAsync()
+    {
+        // Arrange
+        var chart = new LineChart
+        {
+            Series = [new ChartSeries("CPU", [
+                new ChartDataPoint("A", 0),
+                new ChartDataPoint("B", 2)])],
+            Scale = new ChartScale(0, 2, includeZero: false),
+            LegendPlacement = ChartLegendPlacement.Hidden,
+            ShowCategoryLabels = false,
+            Style = ChartStyle.Default with
+            {
+                LineMode = ChartLineMode.Glyph,
+                Glyphs = ChartGlyphs.Default with { Line = new Rune('+') }
+            }
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(4, 2),
+            TestContext.Current.CancellationToken);
+
+        // Assert: whole-cell Bresenham between the marker cells, in the authored glyph.
+        surface.Cell(new Point(1, 1)).Text.ShouldBe("+");
+        surface.Cell(new Point(2, 0)).Text.ShouldBe("+");
+        surface.Cell(new Point(0, 1)).Text.ShouldBe("●");
+        surface.Cell(new Point(3, 0)).Text.ShouldBe("●");
+    }
+
     private static IReadOnlyList<ChartSeries> CreateNamedSeries() => [
         new ChartSeries("A", [new ChartDataPoint("1", 1)]),
         new ChartSeries("B", [new ChartDataPoint("1", 2)])

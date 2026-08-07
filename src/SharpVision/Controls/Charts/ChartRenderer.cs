@@ -49,6 +49,25 @@ internal static class ChartRenderer
                 MidpointRounding.AwayFromZero);
     }
 
+    /// <summary>Maps one ordered point to inclusive half-cell coordinates, doubling both axes'
+    /// resolution for the quadrant rasterizer. The extrema land on the same cells MapX and MapY
+    /// choose, so markers and labels agree with the drawn line.</summary>
+    internal static Point MapHalf(ChartScaleRange range, int index, int count, double value, Rect plot)
+    {
+        var x = plot.Width <= 1 || count <= 1
+            ? plot.X * 2
+            : (plot.X * 2) + (int) Math.Round(
+                (double) index / (count - 1) * ((plot.Width * 2) - 1),
+                MidpointRounding.AwayFromZero);
+        var ratio = Math.Clamp((value - range.Minimum) / (range.Maximum - range.Minimum), 0, 1);
+        var y = plot.Height <= 1
+            ? plot.Y * 2
+            : (plot.Bottom * 2) - 1 - (int) Math.Round(
+                ratio * ((plot.Height * 2) - 1),
+                MidpointRounding.AwayFromZero);
+        return new Point(x, y);
+    }
+
     /// <summary>Creates a terminal style using the resolved authored series color.</summary>
     internal static TerminalStyle ResolveSeriesStyle(
         ChartRenderContext context,
