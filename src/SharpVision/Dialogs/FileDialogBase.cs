@@ -100,7 +100,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
             MaxHeight = maxVisibleRows,
             SelectionMode = selectionMode,
             ItemTemplate = CreateEntryContent,
-            ItemActivation = ListItemActivation.DoubleClick
+            ItemInvocation = ListItemInvocation.DoubleClick
         };
         FileListSurface = new Dock
         {

@@ -621,7 +621,7 @@ public sealed class ListViewSurfaceTests
 
     /// <summary>Verifies the SingleClick default still raises ItemInvoked from one pointer click.</summary>
     [Fact]
-    public async Task Input_WhenItemActivationIsSingleClick_InvokesFromOneClickAsync()
+    public async Task Input_WhenItemInvocationIsSingleClick_InvokesFromOneClickAsync()
     {
         // Arrange
         List<ControlText> realized = [];
@@ -644,15 +644,15 @@ public sealed class ListViewSurfaceTests
         await surface.Pointer.ClickAsync(realized[1].Parent.ShouldNotBeNull());
 
         // Assert
-        list.ItemActivation.ShouldBe(ListItemActivation.SingleClick);
+        list.ItemInvocation.ShouldBe(ListItemInvocation.SingleClick);
         list.SelectedIndex.ShouldBe(1);
         invoked.ShouldBe([1]);
     }
 
-    /// <summary>Verifies DoubleClick activation selects on the first pointer click without raising
+    /// <summary>Verifies DoubleClick invocation selects on the first pointer click without raising
     /// ItemInvoked, then raises it once a second click lands within the multi-click window.</summary>
     [Fact]
-    public async Task Input_WhenItemActivationIsDoubleClick_SelectsThenInvokesOnSecondClickAsync()
+    public async Task Input_WhenItemInvocationIsDoubleClick_SelectsThenInvokesOnSecondClickAsync()
     {
         // Arrange
         List<ControlText> realized = [];
@@ -662,7 +662,7 @@ public sealed class ListViewSurfaceTests
         {
             ItemTemplate = item => Add(realized, new ControlText((string) item!)),
             Items = ["One", "Two"],
-            ItemActivation = ListItemActivation.DoubleClick,
+            ItemInvocation = ListItemInvocation.DoubleClick,
             ScrollBars = ScrollBars.None,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
@@ -689,10 +689,10 @@ public sealed class ListViewSurfaceTests
         invoked.ShouldBe([1]);
     }
 
-    /// <summary>Verifies DoubleClick activation still raises ItemInvoked from Enter, matching the
-    /// documented keyboard-always-commits contract.</summary>
+    /// <summary>Verifies DoubleClick invocation still raises ItemInvoked from Enter, matching the
+    /// documented Enter-always-commits contract.</summary>
     [Fact]
-    public async Task Input_WhenItemActivationIsDoubleClick_EnterStillInvokesAsync()
+    public async Task Input_WhenItemInvocationIsDoubleClick_EnterStillInvokesAsync()
     {
         // Arrange
         List<ControlText> realized = [];
@@ -701,7 +701,7 @@ public sealed class ListViewSurfaceTests
         {
             ItemTemplate = item => Add(realized, new ControlText((string) item!)),
             Items = ["One", "Two"],
-            ItemActivation = ListItemActivation.DoubleClick,
+            ItemInvocation = ListItemInvocation.DoubleClick,
             ScrollBars = ScrollBars.None,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
@@ -721,13 +721,58 @@ public sealed class ListViewSurfaceTests
         invoked.ShouldBe([1]);
     }
 
-    /// <summary>Verifies ItemActivation rejects an undefined value.</summary>
+    /// <summary>Verifies a DoubleClick, Multiple-selection ListView does not raise ItemInvoked from
+    /// two rapid Control-held clicks on the same row - PointerManager's click-count chain tracks
+    /// target, cell, and buttons only, never modifiers, so two rapid Control-clicks reach the same
+    /// multi-click count a plain double-click would, even though the user only meant to toggle
+    /// selection twice. A plain double-click on the same row still invokes.</summary>
     [Fact]
-    public void ItemActivation_WhenSetToUndefinedValue_Throws()
+    public async Task Input_WhenItemInvocationIsDoubleClickAndMultipleSelectionModifierClicksRepeat_SuppressesInvokeAsync()
     {
-        var list = new UiListView();
+        // Arrange
+        List<ControlText> realized = [];
+        var invoked = new List<int>();
+        var clock = new ManualTimeProvider();
+        var list = new UiListView
+        {
+            ItemTemplate = item => Add(realized, new ControlText((string) item!)),
+            Items = ["One", "Two"],
+            SelectionMode = ListSelectionMode.Multiple,
+            ItemInvocation = ListItemInvocation.DoubleClick,
+            ScrollBars = ScrollBars.None,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        list.ItemInvoked += (_, eventArgs) => invoked.Add(eventArgs.Index);
+        await using var surface = await ComponentSurface.MountAsync(
+            list,
+            new Size(8, 2),
+            clock,
+            TestContext.Current.CancellationToken);
+        var row = realized[1].Parent.ShouldNotBeNull();
 
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => list.ItemActivation = (ListItemActivation) 99);
+        // Act first Control-held click
+        await surface.Pointer.ClickAsync(row, Modifiers.Control);
+
+        // Assert first click toggles selection on
+        list.SelectedItems.ShouldBe(new object?[] { "Two" });
+        invoked.ShouldBeEmpty();
+
+        // Act second Control-held click within the multi-click window
+        await surface.Pointer.ClickAsync(row, Modifiers.Control);
+
+        // Assert second click toggles selection back off, without invoking despite reaching a
+        // multi-click count
+        list.SelectedItems.ShouldBeEmpty();
+        invoked.ShouldBeEmpty();
+
+        // Act a plain double-click, once the modified chain above has expired, still invokes
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(600), "break the multi-click chain");
+        await surface.Pointer.ClickAsync(row);
+        await surface.Pointer.ClickAsync(row);
+
+        // Assert
+        invoked.ShouldBe([1]);
     }
 
     private static ControlText Add(List<ControlText> controls, ControlText control)

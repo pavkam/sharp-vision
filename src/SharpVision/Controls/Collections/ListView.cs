@@ -216,23 +216,29 @@ public sealed class ListView: ItemsControl
     } = ListSelectionMode.Single;
 
     /// <summary>Gets or sets which pointer gesture raises <see cref="ItemInvoked"/>.</summary>
+    /// <remarks>
+    /// In <see cref="ListItemInvocation.DoubleClick"/> mode, a multi-click held with Control or
+    /// Shift only toggles or extends selection - matching those modifiers' own selection-gesture
+    /// semantics - and never raises <see cref="ItemInvoked"/>, even once the click count reaches a
+    /// multi-click. A plain (unmodified) double-click still raises it.
+    /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
-    public ListItemActivation ItemActivation
+    public ListItemInvocation ItemInvocation
     {
         get;
         set
         {
             if (!Enum.IsDefined(value))
             {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The item activation mode is unknown.");
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The item invocation mode is unknown.");
             }
 
             VerifyMutable();
             _ = SetProperty(ref field, value, InvalidationImpact.None);
         }
-    } = ListItemActivation.SingleClick;
+    } = ListItemInvocation.SingleClick;
 
     /// <summary>Gets the lowest selected index, or sets one exclusive index; -1 clears selection.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is less than -1 or outside Items.</exception>
@@ -1369,8 +1375,15 @@ public sealed class ListView: ItemsControl
 
         _ = ApplyInputSelection(item.Index, isSpaceToggle ? modifiers | Modifiers.Control : modifiers);
 
+        // A multi-click held with Control or Shift is a selection gesture (toggle or range-extend),
+        // not a commit - PointerManager's click-count chain tracks target, cell, and buttons only,
+        // never modifiers, so two rapid modified clicks on the same row still reach a multi-click
+        // count even though the user never intended to invoke.
+        var modifierHeld = (modifiers & (Modifiers.Control | Modifiers.Shift)) != 0;
+
         if (eventArgs.Cause == ActivationCause.Pointer &&
-            (ItemActivation == ListItemActivation.SingleClick || item.LastClickCount >= 2))
+            (ItemInvocation == ListItemInvocation.SingleClick ||
+                (item.LastClickCount >= 2 && !modifierHeld)))
         {
             ItemInvoked?.Invoke(this, new ItemInvokedEventArgs(item.Index, Items[item.Index], eventArgs.Cause));
         }

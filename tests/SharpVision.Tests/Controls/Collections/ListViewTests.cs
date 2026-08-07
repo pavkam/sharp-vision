@@ -669,6 +669,16 @@ public sealed class ListViewTests
         control.RowHeight.ShouldBeNull();
     }
 
+    /// <summary>Verifies ItemInvocation rejects an undefined value.</summary>
+    [Fact]
+    public void ItemInvocation_WhenSetToUndefinedValue_ThrowsArgumentOutOfRangeException()
+    {
+        var control = Create("A", "B", "C");
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.ItemInvocation = (ListItemInvocation) 99);
+        control.ItemInvocation.ShouldBe(ListItemInvocation.SingleClick);
+    }
+
     /// <summary>Verifies BringIntoView(index) scrolls minimally to reveal an item below the
     /// viewport, addressed by position rather than a realized private control.</summary>
     [Fact]

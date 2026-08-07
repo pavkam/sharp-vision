@@ -37,7 +37,7 @@ label cells.
 | `ItemTemplate`                                         | Invariant-culture `Text` | Creates one unique detached control per item.                             |
 | `RowHeight`                                            | `null`                   | Fixed per-row cell height that opts into windowed realization.            |
 | `SelectionMode`                                        | `Single`                 | Allows no selection, one selection, or multiple selections.               |
-| `ItemActivation`                                       | `SingleClick`            | Chooses whether one pointer click or a double-click raises `ItemInvoked`. |
+| `ItemInvocation`                                       | `SingleClick`            | Chooses whether one pointer click or a double-click raises `ItemInvoked`. |
 | `SelectedIndex`, `SelectedItem`, `SelectedItems`       | `-1`, `null`, empty      | Read or change committed selection.                                       |
 | `ActiveIndex`                                          | `-1`                     | Identify the keyboard-navigation row.                                     |
 | `ScrollBars`, `ShowScrollBars`                         | Vertical automatic rails | Configure overflow visibility policy.                                     |
@@ -99,14 +99,18 @@ label cells.
 - `ItemInvoked` reports the index, the borrowed item, and the `ActivationCause`
   for Enter or an eligible primary pointer invocation. Every pointer activation
   still applies selection; whether it also raises `ItemInvoked` depends on
-  `ItemActivation`.
-- `ItemActivation` selects which pointer gesture raises `ItemInvoked`. The
+  `ItemInvocation`.
+- `ItemInvocation` selects which pointer gesture raises `ItemInvoked`. The
   `SingleClick` default raises it from every pointer activation, matching
   Enter's always-commits behavior. `DoubleClick` raises it only when the pointer
-  activation is itself a multi-click (a second primary press on the same row
-  within the terminal's multi-click window); a lone click still applies
-  selection without invoking. Keyboard activation always raises `ItemInvoked`
-  regardless of `ItemActivation`.
+  activation is itself a plain (unmodified) multi-click (a second primary press
+  on the same row within the terminal's multi-click window); a lone click still
+  applies selection without invoking. A multi-click held with Control or Shift
+  is a selection gesture - toggling or extending the selection like any other
+  modified click - and never raises `ItemInvoked`, even once its click count
+  reaches a multi-click. Enter always raises `ItemInvoked` regardless of
+  `ItemInvocation`; Space, a keyboard activation that only changes selection
+  (see below), does not.
 
 ## Interaction and layout
 
@@ -126,11 +130,12 @@ into view) on demand. Every successful move uses the composed `BringIntoView`
 path.
 
 Space follows press-and-release activation and changes the selection; Enter
-invokes without changing it. A primary pointer release selects and invokes. In
-Multiple mode, Control toggles one index, Shift selects the inclusive range from
-the stable anchor while skipping unavailable rows, and an unmodified activation
-replaces the selection. In Single mode activation replaces the sole selection,
-and None mode still permits navigation and invocation.
+invokes without changing it. A primary pointer release selects and, subject to
+`ItemInvocation`, invokes. In Multiple mode, Control toggles one index, Shift
+selects the inclusive range from the stable anchor while skipping unavailable
+rows, and an unmodified activation replaces the selection. In Single mode
+activation replaces the sole selection, and None mode still permits navigation
+and invocation.
 
 Pointer hit testing targets the pressable item wrapper rather than letting its
 display child swallow the activation. Capture, focus loss, disable, detach, and
