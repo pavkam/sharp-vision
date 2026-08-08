@@ -47,10 +47,7 @@ public static class SixelWriter
 
         ValidateSource(image, source);
 
-        if (!Enum.IsDefined(mode))
-        {
-            throw new ArgumentOutOfRangeException(nameof(mode), mode, "The placement mode is unknown.");
-        }
+        mode.ValidateDefined(nameof(mode), "The placement mode is unknown.");
 
         ImageLimits.Default.Validate(destinationPixels, sourceBytes: 0);
 

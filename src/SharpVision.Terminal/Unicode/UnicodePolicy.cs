@@ -15,21 +15,9 @@ public sealed record UnicodePolicy
         Ambiguous ambiguousWidth = Ambiguous.Narrow,
         Presentation orphanPresentation = Presentation.Replacement)
     {
-        if (!Enum.IsDefined(ambiguousWidth))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(ambiguousWidth),
-                ambiguousWidth,
-                "The ambiguous-width policy is unknown.");
-        }
+        ambiguousWidth.ValidateDefined(nameof(ambiguousWidth), "The ambiguous-width policy is unknown.");
 
-        if (!Enum.IsDefined(orphanPresentation))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(orphanPresentation),
-                orphanPresentation,
-                "The orphan presentation policy is unknown.");
-        }
+        orphanPresentation.ValidateDefined(nameof(orphanPresentation), "The orphan presentation policy is unknown.");
 
         AmbiguousWidth = ambiguousWidth;
         OrphanPresentation = orphanPresentation;

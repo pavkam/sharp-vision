@@ -532,10 +532,7 @@ public sealed class QueryTracker
 
     private static void Validate(QueryKind kind, string? id)
     {
-        if (!Enum.IsDefined(kind))
-        {
-            throw new ArgumentOutOfRangeException(nameof(kind), kind, "The query kind is unknown.");
-        }
+        kind.ValidateDefined(nameof(kind), "The query kind is unknown.");
 
         if (kind is QueryKind.StatusString or QueryKind.CapabilityString)
         {
@@ -578,13 +575,8 @@ public sealed class QueryTracker
         }
     }
 
-    private static void Validate(CapabilityName name)
-    {
-        if (!Enum.IsDefined(name))
-        {
-            throw new ArgumentOutOfRangeException(nameof(name), name, "The capability name is undefined.");
-        }
-    }
+    private static void Validate(CapabilityName name) =>
+        name.ValidateDefined(nameof(name), "The capability name is undefined.");
 
     private static string StatusId(StatusName name) => name switch
     {

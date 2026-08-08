@@ -152,10 +152,7 @@ public abstract class Container: ControlBase
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The auto-size mode is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The auto-size mode is unknown.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
@@ -389,7 +386,7 @@ public abstract class Container: ControlBase
         get;
         set
         {
-            value.ValidateDefined();
+            value.ValidateDefined(nameof(value), "The enum value is unknown.");
 
             if (!SetProperty(ref field, value, InvalidationImpact.Measure))
             {
@@ -417,7 +414,7 @@ public abstract class Container: ControlBase
         get;
         set
         {
-            value.ValidateDefined();
+            value.ValidateDefined(nameof(value), "The enum value is unknown.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     } = ScrollBarVisibility.Auto;
@@ -431,7 +428,7 @@ public abstract class Container: ControlBase
         get;
         set
         {
-            value.ValidateDefined();
+            value.ValidateDefined(nameof(value), "The enum value is unknown.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     } = ScrollBarVisibility.Auto;
@@ -528,7 +525,7 @@ public abstract class Container: ControlBase
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
     public bool ScrollBy(int x, int y, ScrollCause cause = ScrollCause.Programmatic)
     {
-        cause.ValidateDefined();
+        cause.ValidateDefined(nameof(cause), "The enum value is unknown.");
         VerifyMutable();
         return Apply(HorizontalOffset.Add(x), VerticalOffset.Add(y), cause);
     }

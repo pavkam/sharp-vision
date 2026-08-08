@@ -26,10 +26,7 @@ public readonly record struct ControlColor
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="semanticColor"/> is unknown.</exception>
     public ControlColor(SemanticColor semanticColor)
     {
-        if (!Enum.IsDefined(semanticColor))
-        {
-            throw new ArgumentOutOfRangeException(nameof(semanticColor), semanticColor, "The theme color is unknown.");
-        }
+        semanticColor.ValidateDefined(nameof(semanticColor), "The theme color is unknown.");
 
         LiteralValue = default;
         SemanticValue = semanticColor;

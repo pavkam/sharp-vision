@@ -514,10 +514,7 @@ public static class BindingExtensions
         ArgumentNullException.ThrowIfNull(sourceProperty);
         ArgumentNullException.ThrowIfNull(convert);
 
-        if (!Enum.IsDefined(mode))
-        {
-            throw new ArgumentOutOfRangeException(nameof(mode), mode, "The binding mode is unknown.");
-        }
+        mode.ValidateDefined(nameof(mode), "The binding mode is unknown.");
 
         if (mode is BindingMode.TwoWay or BindingMode.OneWayToSource)
         {

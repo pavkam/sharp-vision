@@ -83,9 +83,9 @@ public sealed class ChartSeries: INotifyPropertyChanged
         get;
         set
         {
-            if (value is { } pattern && !Enum.IsDefined(pattern))
+            if (value is { } pattern)
             {
-                throw new ArgumentOutOfRangeException(nameof(value), pattern, "The line pattern is unknown.");
+                pattern.ValidateDefined(nameof(value), "The line pattern is unknown.");
             }
 
             if (field == value)

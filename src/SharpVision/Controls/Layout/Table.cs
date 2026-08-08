@@ -61,7 +61,7 @@ public sealed class Table: ItemsControl
         get;
         set
         {
-            value.ValidateDefined();
+            value.ValidateDefined(nameof(value), "The enum value is unknown.");
 
             if (field == value)
             {
@@ -554,7 +554,7 @@ public sealed class Table: ItemsControl
     public void SetSort(int columnIndex, TableSortDirection direction)
     {
         VerifyMutable();
-        direction.ValidateDefined();
+        direction.ValidateDefined(nameof(direction), "The enum value is unknown.");
 
         if (direction == TableSortDirection.None)
         {

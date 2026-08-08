@@ -58,10 +58,7 @@ public readonly record struct CellStyle
                 "The style contains an unknown attribute flag.");
         }
 
-        if (!Enum.IsDefined(underline))
-        {
-            throw new ArgumentOutOfRangeException(nameof(underline), underline, "The underline style is unknown.");
-        }
+        underline.ValidateDefined(nameof(underline), "The underline style is unknown.");
 
         if ((attributes & TerminalAttributes.Underline) != 0 && underline != Underline.None)
         {

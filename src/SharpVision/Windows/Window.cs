@@ -143,13 +143,7 @@ public partial class Window: ChromeAuthoringFloatingSurface, IOverlayPositionCon
 
         try
         {
-            if (!Enum.IsDefined(outsideInteraction))
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(outsideInteraction),
-                    outsideInteraction,
-                    "The outside-interaction policy is unknown.");
-            }
+            outsideInteraction.ValidateDefined(nameof(outsideInteraction), "The outside-interaction policy is unknown.");
 
             if (HasActiveSurfaceModal)
             {
@@ -219,10 +213,7 @@ public partial class Window: ChromeAuthoringFloatingSurface, IOverlayPositionCon
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The close placement is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The close placement is unknown.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Render);
         }
@@ -255,10 +246,7 @@ public partial class Window: ChromeAuthoringFloatingSurface, IOverlayPositionCon
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The title placement is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The title placement is unknown.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Render);
         }

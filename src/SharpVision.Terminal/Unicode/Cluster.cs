@@ -13,10 +13,7 @@ internal readonly record struct Cluster
     /// <exception cref="ArgumentException">A contextual control requests replacement.</exception>
     public Cluster(CellWidth width, bool requiresReplacement)
     {
-        if (!Enum.IsDefined(width))
-        {
-            throw new ArgumentOutOfRangeException(nameof(width), width, "The cluster width is unknown.");
-        }
+        width.ValidateDefined(nameof(width), "The cluster width is unknown.");
 
         if (width == CellWidth.Control && requiresReplacement)
         {

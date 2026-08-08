@@ -46,13 +46,7 @@ public sealed class Theme
         license = RequireMetadata(license, nameof(license));
         source = RequireMetadata(source, nameof(source));
 
-        if (!Enum.IsDefined(colorScheme))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(colorScheme),
-                colorScheme,
-                "The theme color scheme is unknown.");
-        }
+        colorScheme.ValidateDefined(nameof(colorScheme), "The theme color scheme is unknown.");
 
         _palette = palette is null
             ? []
@@ -127,20 +121,21 @@ public sealed class Theme
     /// <param name="color">The known semantic color.</param>
     /// <returns>The configured concrete terminal color.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="color"/> is unknown.</exception>
-    public Color ResolveColor(SemanticColor color) => Enum.IsDefined(color)
-        ? _colors[(int) color]
-        : throw new ArgumentOutOfRangeException(nameof(color), color, "The theme color is unknown.");
+    public Color ResolveColor(SemanticColor color)
+    {
+        color.ValidateDefined(nameof(color), "The theme color is unknown.");
+        return _colors[(int) color];
+    }
 
     /// <summary>Resolves one known global semantic decoration to concrete terminal attributes.</summary>
     /// <param name="decoration">The known semantic decoration.</param>
     /// <returns>The configured complete terminal attributes.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="decoration"/> is unknown.</exception>
-    public TerminalAttributes ResolveAttributes(SemanticDecoration decoration) => Enum.IsDefined(decoration)
-        ? _attributes[(int) decoration]
-        : throw new ArgumentOutOfRangeException(
-            nameof(decoration),
-            decoration,
-            "The theme decoration is unknown.");
+    public TerminalAttributes ResolveAttributes(SemanticDecoration decoration)
+    {
+        decoration.ValidateDefined(nameof(decoration), "The theme decoration is unknown.");
+        return _attributes[(int) decoration];
+    }
 
     internal void SetColor(SemanticColor color, Color value)
     {

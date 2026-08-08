@@ -19,15 +19,9 @@ public readonly record struct Feature
     /// </exception>
     public Feature(CapabilitySupport state, Origin origin)
     {
-        if (!Enum.IsDefined(state))
-        {
-            throw new ArgumentOutOfRangeException(nameof(state), state, "The support state is unknown.");
-        }
+        state.ValidateDefined(nameof(state), "The support state is unknown.");
 
-        if (!Enum.IsDefined(origin))
-        {
-            throw new ArgumentOutOfRangeException(nameof(origin), origin, "The evidence origin is unknown.");
-        }
+        origin.ValidateDefined(nameof(origin), "The evidence origin is unknown.");
 
         State = state;
         Origin = origin;

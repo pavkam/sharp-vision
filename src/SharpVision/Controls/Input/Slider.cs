@@ -133,10 +133,7 @@ public sealed class Slider: Control<SliderStyle>
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The orientation is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The orientation is unknown.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }

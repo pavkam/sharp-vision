@@ -24,10 +24,7 @@ public sealed class ScrollChangedEventArgs: EventArgs
         Validate(previousOffset, nameof(previousOffset));
         Validate(offset, nameof(offset));
 
-        if (!Enum.IsDefined(cause))
-        {
-            throw new ArgumentOutOfRangeException(nameof(cause), cause, "The scroll cause is unknown.");
-        }
+        cause.ValidateDefined(nameof(cause), "The scroll cause is unknown.");
 
         PreviousOffset = previousOffset;
         Offset = offset;

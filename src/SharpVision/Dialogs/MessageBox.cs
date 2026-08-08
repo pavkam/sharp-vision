@@ -51,10 +51,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>
         ArgumentNullException.ThrowIfNull(message);
         ArgumentNullException.ThrowIfNull(title);
 
-        if (!Enum.IsDefined(buttons))
-        {
-            throw new ArgumentOutOfRangeException(nameof(buttons), buttons, "The message-box buttons are unknown.");
-        }
+        buttons.ValidateDefined(nameof(buttons), "The message-box buttons are unknown.");
 
         _style = InitializeStyle(MessageBoxStyle.Definition);
         Message = message;

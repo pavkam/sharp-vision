@@ -236,10 +236,7 @@ public sealed class MenuItem: PressableBase
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The menu item kind is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The menu item kind is unknown.");
 
             VerifyMutable();
 

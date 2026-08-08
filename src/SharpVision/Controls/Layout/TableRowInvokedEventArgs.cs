@@ -16,10 +16,7 @@ public sealed class TableRowInvokedEventArgs: EventArgs
     {
         ArgumentNullException.ThrowIfNull(row);
         ArgumentOutOfRangeException.ThrowIfNegative(rowIndex);
-        if (!Enum.IsDefined(cause))
-        {
-            throw new ArgumentOutOfRangeException(nameof(cause), cause, "The activation cause is unknown.");
-        }
+        cause.ValidateDefined(nameof(cause), "The activation cause is unknown.");
 
         Row = row;
         RowIndex = rowIndex;

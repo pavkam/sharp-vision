@@ -277,10 +277,7 @@ public sealed class TextInput: ControlBase
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The cursor shape is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The cursor shape is unknown.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Render);
         }
@@ -317,11 +314,7 @@ public sealed class TextInput: ControlBase
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value,
-                    "The scrollbar visibility policy is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The scrollbar visibility policy is unknown.");
 
             if (SetProperty(ref field, value, InvalidationImpact.Arrange))
             {

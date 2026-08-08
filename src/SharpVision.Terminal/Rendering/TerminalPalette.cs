@@ -18,10 +18,7 @@ public static class TerminalPalette
     {
         ValidateConcrete(source);
 
-        if (!Enum.IsDefined(depth))
-        {
-            throw new ArgumentOutOfRangeException(nameof(depth), depth, "The color depth is unknown.");
-        }
+        depth.ValidateDefined(nameof(depth), "The color depth is unknown.");
 
         if (source.IsDefault || depth == ColorDepth.Monochrome)
         {

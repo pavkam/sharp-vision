@@ -42,10 +42,7 @@ public static class ItermWriter
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxOutputBytes);
         ValidateSequenceLimit(maxSequenceBytes);
 
-        if (!Enum.IsDefined(mode))
-        {
-            throw new ArgumentOutOfRangeException(nameof(mode), mode, "The placement mode is unknown.");
-        }
+        mode.ValidateDefined(nameof(mode), "The placement mode is unknown.");
 
         if (image.Format != ImageFormat.Png)
         {

@@ -13,10 +13,7 @@ public readonly record struct ProtocolSupport
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="protocol"/> is unknown.</exception>
     public ProtocolSupport(TerminalProtocol protocol, Feature feature)
     {
-        if (!Enum.IsDefined(protocol))
-        {
-            throw new ArgumentOutOfRangeException(nameof(protocol), protocol, "The terminal protocol is unknown.");
-        }
+        protocol.ValidateDefined(nameof(protocol), "The terminal protocol is unknown.");
 
         Protocol = protocol;
         Feature = feature;

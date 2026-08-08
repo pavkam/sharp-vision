@@ -1005,10 +1005,7 @@ public sealed class FocusManager: IDisposable
     {
         VerifyAccess();
 
-        if (!Enum.IsDefined(reason))
-        {
-            throw new ArgumentOutOfRangeException(nameof(reason), reason, "The focus reason is unknown.");
-        }
+        reason.ValidateDefined(nameof(reason), "The focus reason is unknown.");
 
         ValidateMembership(control);
     }

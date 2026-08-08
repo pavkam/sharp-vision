@@ -23,15 +23,9 @@ public readonly record struct LineStyle
         bool rounded = false,
         bool ascii = false)
     {
-        if (!Enum.IsDefined(weight))
-        {
-            throw new ArgumentOutOfRangeException(nameof(weight), weight, "The line weight is unknown.");
-        }
+        weight.ValidateDefined(nameof(weight), "The line weight is unknown.");
 
-        if (!Enum.IsDefined(pattern))
-        {
-            throw new ArgumentOutOfRangeException(nameof(pattern), pattern, "The line pattern is unknown.");
-        }
+        pattern.ValidateDefined(nameof(pattern), "The line pattern is unknown.");
 
         if (rounded && (weight != LineWeight.Light || pattern != LinePattern.Solid))
         {

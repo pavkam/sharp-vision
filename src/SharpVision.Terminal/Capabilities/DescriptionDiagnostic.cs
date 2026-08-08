@@ -13,10 +13,7 @@ public readonly record struct DescriptionDiagnostic
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="code"/> is undefined.</exception>
     internal DescriptionDiagnostic(DescriptionDiagnosticCode code, string? capability = null)
     {
-        if (!Enum.IsDefined(code))
-        {
-            throw new ArgumentOutOfRangeException(nameof(code), code, "The description diagnostic code is unknown.");
-        }
+        code.ValidateDefined(nameof(code), "The description diagnostic code is unknown.");
 
         Code = code;
         Capability = capability;

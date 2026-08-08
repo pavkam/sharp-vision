@@ -64,10 +64,7 @@ public static class KittyKeyboard
     {
         Validate(flags);
 
-        if (!Enum.IsDefined(mode))
-        {
-            throw new ArgumentOutOfRangeException(nameof(mode), mode, "The enhancement mode is unknown.");
-        }
+        mode.ValidateDefined(nameof(mode), "The enhancement mode is unknown.");
 
         Span<byte> parameters = stackalloc byte[16];
         parameters[0] = (byte) '=';

@@ -72,10 +72,7 @@ public sealed partial class Button: Pressable<ButtonStyle>
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The button text alignment is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The button text alignment is unknown.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Arrange);
         }

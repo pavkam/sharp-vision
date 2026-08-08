@@ -79,21 +79,9 @@ public static class ProtocolModes
         MouseCoordinates coordinates,
         bool enabled)
     {
-        if (!Enum.IsDefined(tracking))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(tracking),
-                tracking,
-                "The mouse tracking mode is unknown.");
-        }
+        tracking.ValidateDefined(nameof(tracking), "The mouse tracking mode is unknown.");
 
-        if (!Enum.IsDefined(coordinates))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(coordinates),
-                coordinates,
-                "The mouse coordinate mode is unknown.");
-        }
+        coordinates.ValidateDefined(nameof(coordinates), "The mouse coordinate mode is unknown.");
 
         if (enabled)
         {

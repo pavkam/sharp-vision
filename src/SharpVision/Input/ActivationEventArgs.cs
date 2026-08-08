@@ -15,7 +15,9 @@ public sealed class ActivationEventArgs: EventArgs
     /// <summary>Gets the activation input path.</summary>
     public ActivationCause Cause { get; }
 
-    private static ActivationCause Validate(ActivationCause value) => Enum.IsDefined(value)
-        ? value
-        : throw new ArgumentOutOfRangeException(nameof(value), value, "The activation cause is unknown.");
+    private static ActivationCause Validate(ActivationCause value)
+    {
+        value.ValidateDefined(nameof(value), "The activation cause is unknown.");
+        return value;
+    }
 }

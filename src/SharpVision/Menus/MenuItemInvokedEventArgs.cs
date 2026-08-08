@@ -16,10 +16,7 @@ public sealed class MenuItemInvokedEventArgs: EventArgs
     {
         ArgumentNullException.ThrowIfNull(item);
 
-        if (!Enum.IsDefined(cause))
-        {
-            throw new ArgumentOutOfRangeException(nameof(cause), cause, "The activation cause is unknown.");
-        }
+        cause.ValidateDefined(nameof(cause), "The activation cause is unknown.");
 
         Item = item;
         Cause = cause;

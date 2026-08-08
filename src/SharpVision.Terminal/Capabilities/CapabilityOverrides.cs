@@ -14,12 +14,9 @@ public sealed record CapabilityOverrides
         get;
         init
         {
-            if (value.HasValue && !Enum.IsDefined(value.Value))
+            if (value.HasValue)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(value),
-                    value,
-                    "The color depth is unknown.");
+                value.Value.ValidateDefined(nameof(value), "The color depth is unknown.");
             }
 
             field = value;
@@ -33,12 +30,9 @@ public sealed record CapabilityOverrides
         get;
         init
         {
-            if (value.HasValue && !Enum.IsDefined(value.Value))
+            if (value.HasValue)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(value),
-                    value,
-                    "The ambiguous-width policy is unknown.");
+                value.Value.ValidateDefined(nameof(value), "The ambiguous-width policy is unknown.");
             }
 
             field = value;

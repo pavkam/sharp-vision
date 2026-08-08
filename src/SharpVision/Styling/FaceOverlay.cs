@@ -33,9 +33,9 @@ public readonly record struct FaceOverlay
             ControlColor.ValidatePaint(underlineColorValue, nameof(underlineColor));
         }
 
-        if (underline is { } underlineValue && !Enum.IsDefined(underlineValue))
+        if (underline is { } underlineValue)
         {
-            throw new ArgumentOutOfRangeException(nameof(underline), underline, "The underline style is unknown.");
+            underlineValue.ValidateDefined(nameof(underline), "The underline style is unknown.");
         }
 
         Foreground = foreground;

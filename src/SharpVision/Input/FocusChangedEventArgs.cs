@@ -22,10 +22,7 @@ public sealed class FocusChangedEventArgs: EventArgs
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="reason"/> is undefined.</exception>
     public FocusChangedEventArgs(ControlBase? previous, ControlBase? current, FocusReason reason)
     {
-        if (!Enum.IsDefined(reason))
-        {
-            throw new ArgumentOutOfRangeException(nameof(reason), reason, "The focus reason is unknown.");
-        }
+        reason.ValidateDefined(nameof(reason), "The focus reason is unknown.");
 
         Previous = previous;
         Current = current;

@@ -39,21 +39,9 @@ public sealed class Description
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-        if (!Enum.IsDefined(origin))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(origin),
-                origin,
-                "The description origin is unknown.");
-        }
+        origin.ValidateDefined(nameof(origin), "The description origin is unknown.");
 
-        if (!Enum.IsDefined(suitability))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(suitability),
-                suitability,
-                "The suitability result is unknown.");
-        }
+        suitability.ValidateDefined(nameof(suitability), "The suitability result is unknown.");
 
         ValidatePositive(columns, nameof(columns));
         ValidatePositive(lines, nameof(lines));

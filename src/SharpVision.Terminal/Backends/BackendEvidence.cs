@@ -14,15 +14,9 @@ internal readonly record struct BackendEvidence
     /// </exception>
     public BackendEvidence(TerminalBackendKind kind, BackendEvidenceOrigin origin)
     {
-        if (!Enum.IsDefined(kind))
-        {
-            throw new ArgumentOutOfRangeException(nameof(kind), kind, "The terminal backend kind is unknown.");
-        }
+        kind.ValidateDefined(nameof(kind), "The terminal backend kind is unknown.");
 
-        if (!Enum.IsDefined(origin))
-        {
-            throw new ArgumentOutOfRangeException(nameof(origin), origin, "The backend evidence origin is unknown.");
-        }
+        origin.ValidateDefined(nameof(origin), "The backend evidence origin is unknown.");
 
         Kind = kind;
         Origin = origin;

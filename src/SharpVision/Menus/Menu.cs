@@ -70,10 +70,7 @@ public sealed class Menu: ItemsControl
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The menu orientation is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The menu orientation is unknown.");
 
             if (SetProperty(ref field, value, InvalidationImpact.Measure))
             {

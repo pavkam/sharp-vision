@@ -24,10 +24,7 @@ internal sealed class WindowsVtKeySpec
     {
         ArgumentException.ThrowIfNullOrEmpty(sequence);
 
-        if (!Enum.IsDefined(code))
-        {
-            throw new ArgumentOutOfRangeException(nameof(code), code, "The logical key code is unknown.");
-        }
+        code.ValidateDefined(nameof(code), "The logical key code is unknown.");
 
         if ((modifiers & ~_allModifiers) != 0)
         {

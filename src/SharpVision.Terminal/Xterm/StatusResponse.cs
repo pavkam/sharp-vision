@@ -21,10 +21,7 @@ public readonly struct StatusResponse
     /// </exception>
     public StatusResponse(StatusName name, bool isValid, ReadOnlySpan<byte> value)
     {
-        if (!Enum.IsDefined(name))
-        {
-            throw new ArgumentOutOfRangeException(nameof(name), name, "The status name is unknown.");
-        }
+        name.ValidateDefined(nameof(name), "The status name is unknown.");
 
         if (!isValid)
         {

@@ -37,15 +37,9 @@ public sealed class KittyClipboardReplyEventArgs: EventArgs
         KittyClipboardReplyStatus failure,
         Diagnostic? diagnostic)
     {
-        if (!Enum.IsDefined(selection))
-        {
-            throw new ArgumentOutOfRangeException(nameof(selection), selection, "The clipboard selection is unknown.");
-        }
+        selection.ValidateDefined(nameof(selection), "The clipboard selection is unknown.");
 
-        if (!Enum.IsDefined(failure))
-        {
-            throw new ArgumentOutOfRangeException(nameof(failure), failure, "The Kitty reply status is unknown.");
-        }
+        failure.ValidateDefined(nameof(failure), "The Kitty reply status is unknown.");
 
         if (kittyResult is not null && text.HasValue)
         {

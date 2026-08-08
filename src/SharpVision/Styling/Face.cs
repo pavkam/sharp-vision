@@ -31,10 +31,7 @@ public readonly record struct Face: IAppearanceFragment
         ControlColor.ValidatePaint(foreground, nameof(foreground));
         ControlColor.ValidatePaint(underlineColor, nameof(underlineColor));
 
-        if (!Enum.IsDefined(underline))
-        {
-            throw new ArgumentOutOfRangeException(nameof(underline), underline, "The underline style is unknown.");
-        }
+        underline.ValidateDefined(nameof(underline), "The underline style is unknown.");
 
         Foreground = foreground;
         Background = background;

@@ -217,12 +217,9 @@ public sealed class ConsoleConnection: IAsyncDisposable
                 "A deterministic terminal name requires a description loader.");
         }
 
-        if (descriptionPlatform is { } platform && !Enum.IsDefined(platform))
+        if (descriptionPlatform is { } platform)
         {
-            throw new ArgumentOutOfRangeException(
-                nameof(descriptionPlatform),
-                descriptionPlatform,
-                "The description platform is unknown.");
+            platform.ValidateDefined(nameof(descriptionPlatform), "The description platform is unknown.");
         }
 
         if (outputFileDescriptor is < 0)

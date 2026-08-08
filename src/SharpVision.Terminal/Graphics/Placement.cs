@@ -52,10 +52,7 @@ public readonly struct Placement: IEquatable<Placement>
     {
         ArgumentNullException.ThrowIfNull(image);
 
-        if (!Enum.IsDefined(mode))
-        {
-            throw new ArgumentOutOfRangeException(nameof(mode), mode, "The placement mode is unknown.");
-        }
+        mode.ValidateDefined(nameof(mode), "The placement mode is unknown.");
 
         if (source.X < 0 ||
             source.Y < 0 ||

@@ -54,10 +54,7 @@ public sealed class Image: ControlBase
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The image stretch mode is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The image stretch mode is unknown.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Render);
         }

@@ -231,11 +231,6 @@ internal static class RadioGroupCoordinator
         "Style",
         "IDE0051:Remove unused private members",
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
-    private static void Validate(ActivationCause cause)
-    {
-        if (!Enum.IsDefined(cause))
-        {
-            throw new ArgumentOutOfRangeException(nameof(cause), cause, "The activation cause is unknown.");
-        }
-    }
+    private static void Validate(ActivationCause cause) =>
+        cause.ValidateDefined(nameof(cause), "The activation cause is unknown.");
 }

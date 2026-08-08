@@ -412,10 +412,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The tab navigation mode is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The tab navigation mode is unknown.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.None);
         }
@@ -1084,13 +1081,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     {
         ArgumentNullException.ThrowIfNull(child);
 
-        if (!Enum.IsDefined(resolvedAxes))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(resolvedAxes),
-                resolvedAxes,
-                "The resolved axes contain an unknown flag.");
-        }
+        resolvedAxes.ValidateDefined(nameof(resolvedAxes), "The resolved axes contain an unknown flag.");
 
         EnsureDirectOwnedChild(child);
         child.Arrange(
@@ -2907,16 +2898,8 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         }
     }
 
-    private static void ValidateImpact(InvalidationImpact impact)
-    {
-        if (!Enum.IsDefined(impact))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(impact),
-                impact,
-                "The change impact is unknown.");
-        }
-    }
+    private static void ValidateImpact(InvalidationImpact impact) =>
+        impact.ValidateDefined(nameof(impact), "The change impact is unknown.");
 
     internal void InvalidateDescendants(Invalidation value) =>
         VisitChildren(child =>

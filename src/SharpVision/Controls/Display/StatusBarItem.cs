@@ -33,10 +33,7 @@ public sealed class StatusBarItem: ContentControl
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The status-bar alignment is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The status-bar alignment is unknown.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }

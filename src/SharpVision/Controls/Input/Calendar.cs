@@ -139,10 +139,7 @@ public sealed class Calendar: Control<CalendarStyle>
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The selection mode is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The selection mode is unknown.");
 
             if (SetProperty(ref field, value, InvalidationImpact.Render))
             {
@@ -275,10 +272,7 @@ public sealed class Calendar: Control<CalendarStyle>
         get => _firstDayOfWeek;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The weekday is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The weekday is unknown.");
 
             _ = SetProperty(ref _firstDayOfWeek, value, InvalidationImpact.Render);
         }

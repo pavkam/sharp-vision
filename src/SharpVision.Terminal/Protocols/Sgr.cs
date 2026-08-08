@@ -84,10 +84,7 @@ public static class Sgr
     /// </exception>
     public static void Apply(ProtocolWriter writer, Underline underline)
     {
-        if (!Enum.IsDefined(underline))
-        {
-            throw new ArgumentOutOfRangeException(nameof(underline), underline, "The underline style is unknown.");
-        }
+        underline.ValidateDefined(nameof(underline), "The underline style is unknown.");
 
         Span<byte> parameters = [(byte) '4', (byte) ':', (byte) ('0' + (int) underline)];
         writer.Csi(parameters, [], (byte) 'm');
@@ -149,10 +146,7 @@ public static class Sgr
 
     private static void WriteBasicColor(ProtocolWriter writer, BasicColor color, bool foreground)
     {
-        if (!Enum.IsDefined(color))
-        {
-            throw new ArgumentOutOfRangeException(nameof(color), color, "The basic color is unknown.");
-        }
+        color.ValidateDefined(nameof(color), "The basic color is unknown.");
 
         var index = (int) color;
         var value = index < 8

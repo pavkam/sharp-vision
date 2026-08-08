@@ -38,10 +38,7 @@ internal sealed class DescriptionRequest
         ArgumentException.ThrowIfNullOrWhiteSpace(terminalName);
         ArgumentNullException.ThrowIfNull(limits);
 
-        if (!Enum.IsDefined(platform))
-        {
-            throw new ArgumentOutOfRangeException(nameof(platform), platform, "The description platform is unknown.");
-        }
+        platform.ValidateDefined(nameof(platform), "The description platform is unknown.");
 
         if (windowsVirtualTerminal && platform != DescriptionPlatform.Windows)
         {

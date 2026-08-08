@@ -137,10 +137,7 @@ public sealed record ChartStyle: ControlStyle
         get;
         init
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The fill mode is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The fill mode is unknown.");
 
             field = value;
         }
@@ -153,10 +150,7 @@ public sealed record ChartStyle: ControlStyle
         get;
         init
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The line mode is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The line mode is unknown.");
 
             field = value;
         }
@@ -170,10 +164,7 @@ public sealed record ChartStyle: ControlStyle
         get;
         init
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The line pattern is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The line pattern is unknown.");
 
             field = value;
         }

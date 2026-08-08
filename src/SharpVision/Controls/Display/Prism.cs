@@ -109,10 +109,7 @@ public sealed class Prism: ContentControl
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The Prism direction is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The Prism direction is unknown.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Render);
         }

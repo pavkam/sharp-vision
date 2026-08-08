@@ -14,10 +14,7 @@ public sealed class CheckChangedEventArgs: EventArgs
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
     public CheckChangedEventArgs(bool? previous, bool? current, ActivationCause cause)
     {
-        if (!Enum.IsDefined(cause))
-        {
-            throw new ArgumentOutOfRangeException(nameof(cause), cause, "The activation cause is unknown.");
-        }
+        cause.ValidateDefined(nameof(cause), "The activation cause is unknown.");
 
         Previous = previous;
         Current = current;

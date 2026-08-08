@@ -42,10 +42,7 @@ public sealed class MultiplexingPolicy
     {
         ArgumentNullException.ThrowIfNull(layers);
 
-        if (!Enum.IsDefined(passthrough))
-        {
-            throw new ArgumentOutOfRangeException(nameof(passthrough), passthrough, "The passthrough mode is unknown.");
-        }
+        passthrough.ValidateDefined(nameof(passthrough), "The passthrough mode is unknown.");
 
         if ((approvedOperations & ~_allOperations) != 0)
         {

@@ -1,9 +1,9 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Controls;
+namespace SharpVision.Terminal;
 
-/// <summary>Validates enum values accepted by control contracts.</summary>
+/// <summary>Validates enum values accepted by terminal contracts.</summary>
 internal static class EnumValidation
 {
     extension<T>(T value) where T : struct, Enum

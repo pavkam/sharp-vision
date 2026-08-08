@@ -15,12 +15,9 @@ public readonly record struct FigletOptions
     /// <exception cref="ArgumentOutOfRangeException">An enum value contains unknown data.</exception>
     public FigletOptions(FigletDirection? direction = null, FigletLayout? layout = null)
     {
-        if (direction.HasValue && !Enum.IsDefined(direction.Value))
+        if (direction.HasValue)
         {
-            throw new ArgumentOutOfRangeException(
-                nameof(direction),
-                direction,
-                "The FIG-let direction is unknown.");
+            direction.Value.ValidateDefined(nameof(direction), "The FIG-let direction is unknown.");
         }
 
         if (layout.HasValue && (layout.Value & ~_all) != 0)

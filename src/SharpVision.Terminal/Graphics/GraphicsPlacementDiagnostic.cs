@@ -19,10 +19,7 @@ public readonly record struct GraphicsPlacementDiagnostic
     {
         ArgumentOutOfRangeException.ThrowIfZero(ImageIdentity);
 
-        if (!Enum.IsDefined(Reason))
-        {
-            throw new ArgumentOutOfRangeException(nameof(Reason), Reason, "The skip reason is undefined.");
-        }
+        Reason.ValidateDefined(nameof(Reason), "The skip reason is undefined.");
 
         this.ImageIdentity = ImageIdentity;
         this.Reason = Reason;

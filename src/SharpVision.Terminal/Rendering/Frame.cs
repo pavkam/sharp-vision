@@ -56,13 +56,7 @@ public sealed class Frame: IDisposable
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxTextBytes);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxPlacements);
 
-        if (!Enum.IsDefined(ambiguousWidth))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(ambiguousWidth),
-                ambiguousWidth,
-                "The ambiguous-width policy is unknown.");
-        }
+        ambiguousWidth.ValidateDefined(nameof(ambiguousWidth), "The ambiguous-width policy is unknown.");
 
         var cellCount = checked(size.Width * size.Height);
         var cells = ArrayPool<Cell>.Shared.Rent(Math.Max(1, cellCount));
@@ -243,10 +237,7 @@ public sealed class Frame: IDisposable
     {
         ThrowIfDisposed();
 
-        if (!Enum.IsDefined(shape))
-        {
-            throw new ArgumentOutOfRangeException(nameof(shape), shape, "The cursor shape is unknown.");
-        }
+        shape.ValidateDefined(nameof(shape), "The cursor shape is unknown.");
 
         var suspended = Size.Width == 0 || Size.Height == 0;
 

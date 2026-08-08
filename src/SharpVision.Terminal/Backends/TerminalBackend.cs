@@ -17,10 +17,7 @@ internal abstract class TerminalBackend
     /// <exception cref="ArgumentException"><paramref name="name"/> is blank or consists only of whitespace.</exception>
     protected TerminalBackend(TerminalBackendKind kind, string name)
     {
-        if (!Enum.IsDefined(kind))
-        {
-            throw new ArgumentOutOfRangeException(nameof(kind), kind, "The terminal backend kind is unknown.");
-        }
+        kind.ValidateDefined(nameof(kind), "The terminal backend kind is unknown.");
 
         if (string.IsNullOrWhiteSpace(name))
         {

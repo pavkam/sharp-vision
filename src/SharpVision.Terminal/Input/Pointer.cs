@@ -75,13 +75,7 @@ public readonly record struct Pointer
                 "The pointer button set contains unknown flags.");
         }
 
-        if (!Enum.IsDefined(action))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(action),
-                action,
-                "The pointer action is unknown.");
-        }
+        action.ValidateDefined(nameof(action), "The pointer action is unknown.");
 
         if ((modifiers & ~_allModifiers) != 0)
         {

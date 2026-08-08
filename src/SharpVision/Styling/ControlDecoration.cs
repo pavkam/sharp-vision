@@ -28,13 +28,7 @@ public readonly record struct ControlDecoration
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="semanticDecoration"/> is unknown.</exception>
     public ControlDecoration(SemanticDecoration semanticDecoration)
     {
-        if (!Enum.IsDefined(semanticDecoration))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(semanticDecoration),
-                semanticDecoration,
-                "The theme attribute is unknown.");
-        }
+        semanticDecoration.ValidateDefined(nameof(semanticDecoration), "The theme attribute is unknown.");
 
         LiteralValue = default;
         ThemeDecorationValue = semanticDecoration;

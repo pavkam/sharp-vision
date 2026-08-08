@@ -159,14 +159,6 @@ public static class Width
         (>= 0xf0000 and <= 0xffffd) or
         (>= 0x100000 and <= 0x10fffd);
 
-    private static void Validate(Ambiguous value)
-    {
-        if (!Enum.IsDefined(value))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(value),
-                value,
-                "The ambiguous-width policy is unknown.");
-        }
-    }
+    private static void Validate(Ambiguous value) =>
+        value.ValidateDefined(nameof(value), "The ambiguous-width policy is unknown.");
 }

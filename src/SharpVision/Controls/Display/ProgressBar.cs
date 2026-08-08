@@ -121,10 +121,7 @@ public sealed class ProgressBar: Control<ProgressBarStyle>
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The progress bar orientation is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The progress bar orientation is unknown.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }

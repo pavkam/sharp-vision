@@ -27,9 +27,9 @@ public readonly record struct ShadowOverlay
         ControlColor? background = null,
         ControlDecoration? attributes = null)
     {
-        if (mode is { } modeValue && !Enum.IsDefined(modeValue))
+        if (mode is { } modeValue)
         {
-            throw new ArgumentOutOfRangeException(nameof(mode), mode, "The shadow mode is unknown.");
+            modeValue.ValidateDefined(nameof(mode), "The shadow mode is unknown.");
         }
 
         if (glyph is { } glyphValue)

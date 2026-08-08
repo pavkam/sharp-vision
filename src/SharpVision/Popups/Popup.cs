@@ -86,10 +86,7 @@ public class Popup: ChromeAuthoringFloatingSurface
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The popup placement is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The popup placement is unknown.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Arrange);
         }
@@ -154,13 +151,7 @@ public class Popup: ChromeAuthoringFloatingSurface
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(value),
-                    value,
-                    "The popup modal behavior is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The popup modal behavior is unknown.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.None);
         }
@@ -264,13 +255,7 @@ public class Popup: ChromeAuthoringFloatingSurface
 
         try
         {
-            if (!Enum.IsDefined(outsideInteraction))
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(outsideInteraction),
-                    outsideInteraction,
-                    "The outside-interaction policy is unknown.");
-            }
+            outsideInteraction.ValidateDefined(nameof(outsideInteraction), "The outside-interaction policy is unknown.");
 
             if (_isOpenTransitioning)
             {

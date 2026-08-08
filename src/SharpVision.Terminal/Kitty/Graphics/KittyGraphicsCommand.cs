@@ -296,21 +296,11 @@ public sealed class KittyGraphicsCommand
         }
     }
 
-    private static void ValidateCompression(KittyGraphicsCompression value)
-    {
-        if (!Enum.IsDefined(value))
-        {
-            throw new ArgumentOutOfRangeException(nameof(value), value, "The compression kind is unknown.");
-        }
-    }
+    private static void ValidateCompression(KittyGraphicsCompression value) =>
+        value.ValidateDefined(nameof(value), "The compression kind is unknown.");
 
-    private static void ValidateFormat(KittyGraphicsFormat value)
-    {
-        if (!Enum.IsDefined(value))
-        {
-            throw new ArgumentOutOfRangeException(nameof(value), value, "The image format is unknown.");
-        }
-    }
+    private static void ValidateFormat(KittyGraphicsFormat value) =>
+        value.ValidateDefined(nameof(value), "The image format is unknown.");
 
     private static void ValidateQuiet(int value)
     {

@@ -31,10 +31,7 @@ public readonly record struct Shadow: IAppearanceFragment
         // the doors a constructor cannot see - a `with` expression and the theme overlay's
         // reflective write - but it only ever knows the value as "value", which for a constructor
         // taking several channels of the same type identifies nothing.
-        if (!Enum.IsDefined(mode))
-        {
-            throw new ArgumentOutOfRangeException(nameof(mode), mode, "The shadow mode is unknown.");
-        }
+        mode.ValidateDefined(nameof(mode), "The shadow mode is unknown.");
 
         ControlColor.ValidatePaint(foreground, nameof(foreground));
 

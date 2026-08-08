@@ -19,10 +19,7 @@ public sealed class ScrollEventArgs: EventArgs
         ArgumentOutOfRangeException.ThrowIfNegative(previousValue);
         ArgumentOutOfRangeException.ThrowIfNegative(value);
 
-        if (!Enum.IsDefined(cause))
-        {
-            throw new ArgumentOutOfRangeException(nameof(cause), cause, "The scroll cause is unknown.");
-        }
+        cause.ValidateDefined(nameof(cause), "The scroll cause is unknown.");
 
         PreviousValue = previousValue;
         Value = value;

@@ -37,25 +37,16 @@ internal readonly record struct OwnedControlOptions
         string? partKey,
         InvalidationImpact impact)
     {
-        if (!Enum.IsDefined(role))
-        {
-            throw new ArgumentOutOfRangeException(nameof(role), role, "The ownership role is unknown.");
-        }
+        role.ValidateDefined(nameof(role), "The ownership role is unknown.");
 
-        if (!Enum.IsDefined(layer))
-        {
-            throw new ArgumentOutOfRangeException(nameof(layer), layer, "The ownership layer is unknown.");
-        }
+        layer.ValidateDefined(nameof(layer), "The ownership layer is unknown.");
 
         if (partKey is not null && string.IsNullOrWhiteSpace(partKey))
         {
             throw new ArgumentException("The part key must contain non-whitespace text.", nameof(partKey));
         }
 
-        if (!Enum.IsDefined(impact))
-        {
-            throw new ArgumentOutOfRangeException(nameof(impact), impact, "The change impact is unknown.");
-        }
+        impact.ValidateDefined(nameof(impact), "The change impact is unknown.");
 
         Role = role;
         Layer = layer;

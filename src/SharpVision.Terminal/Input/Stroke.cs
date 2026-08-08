@@ -30,15 +30,9 @@ public readonly record struct Stroke
         Rune? shifted = null,
         Rune? baseLayout = null)
     {
-        if (!Enum.IsDefined(code))
-        {
-            throw new ArgumentOutOfRangeException(nameof(code), code, "The logical code is unknown.");
-        }
+        code.ValidateDefined(nameof(code), "The logical code is unknown.");
 
-        if (!Enum.IsDefined(action))
-        {
-            throw new ArgumentOutOfRangeException(nameof(action), action, "The key action is unknown.");
-        }
+        action.ValidateDefined(nameof(action), "The key action is unknown.");
 
         if ((modifiers & ~_allModifiers) != 0)
         {

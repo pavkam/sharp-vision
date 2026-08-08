@@ -17,7 +17,7 @@ public sealed class TableSortChangedEventArgs: EventArgs
     public TableSortChangedEventArgs(int columnIndex, TableSortDirection direction)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(columnIndex, -1);
-        direction.ValidateDefined();
+        direction.ValidateDefined(nameof(direction), "The enum value is unknown.");
 
         if (columnIndex == -1 != (direction == TableSortDirection.None))
         {

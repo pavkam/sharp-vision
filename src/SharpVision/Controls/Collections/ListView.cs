@@ -183,10 +183,7 @@ public sealed class ListView: ItemsControl
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The selection mode is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The selection mode is unknown.");
 
             VerifyMutable();
 
@@ -230,10 +227,7 @@ public sealed class ListView: ItemsControl
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The item invocation mode is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The item invocation mode is unknown.");
 
             VerifyMutable();
             _ = SetProperty(ref field, value, InvalidationImpact.None);

@@ -34,9 +34,9 @@ public sealed record ConsoleRunOptions
         get;
         init
         {
-            if (value.HasValue && !Enum.IsDefined(value.Value))
+            if (value.HasValue)
             {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The mouse tracking level is unknown.");
+                value.Value.ValidateDefined(nameof(value), "The mouse tracking level is unknown.");
             }
 
             field = value;
@@ -50,11 +50,7 @@ public sealed record ConsoleRunOptions
         get;
         init
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value,
-                    "The mouse coordinate encoding is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The mouse coordinate encoding is unknown.");
 
             field = value;
         }
@@ -111,9 +107,9 @@ public sealed record ConsoleRunOptions
         get;
         init
         {
-            if (value.HasValue && !Enum.IsDefined(value.Value))
+            if (value.HasValue)
             {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The color depth is unknown.");
+                value.Value.ValidateDefined(nameof(value), "The color depth is unknown.");
             }
 
             field = value;

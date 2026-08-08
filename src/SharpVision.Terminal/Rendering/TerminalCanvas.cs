@@ -97,10 +97,7 @@ public readonly struct TerminalCanvas
     {
         ArgumentNullException.ThrowIfNull(image);
 
-        if (!Enum.IsDefined(mode))
-        {
-            throw new ArgumentOutOfRangeException(nameof(mode), mode, "The placement mode is unknown.");
-        }
+        mode.ValidateDefined(nameof(mode), "The placement mode is unknown.");
 
         _frame.ThrowIfDisposed();
         var visible = _clip.Intersect(destination).Intersect(_frame.Bounds);
@@ -342,10 +339,7 @@ public readonly struct TerminalCanvas
     {
         _frame.ThrowIfDisposed();
 
-        if (!Enum.IsDefined(background))
-        {
-            throw new ArgumentOutOfRangeException(nameof(background), background, "The background mode is unknown.");
-        }
+        background.ValidateDefined(nameof(background), "The background mode is unknown.");
 
         var target = _clip.Intersect(region).Intersect(_frame.Bounds);
 
@@ -688,10 +682,7 @@ public readonly struct TerminalCanvas
     /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
     public void FillShade(Rect region, Shade shade, CellStyle style = default)
     {
-        if (!Enum.IsDefined(shade))
-        {
-            throw new ArgumentOutOfRangeException(nameof(shade), shade, "The shade is unknown.");
-        }
+        shade.ValidateDefined(nameof(shade), "The shade is unknown.");
 
         Fill(region, shade.Resolve(_frame.AmbiguousWidth), style);
     }
@@ -753,10 +744,7 @@ public readonly struct TerminalCanvas
     /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
     public void DrawBar(Point origin, BarDirection direction, int eighths, CellStyle style = default)
     {
-        if (!Enum.IsDefined(direction))
-        {
-            throw new ArgumentOutOfRangeException(nameof(direction), direction, "The direction is unknown.");
-        }
+        direction.ValidateDefined(nameof(direction), "The direction is unknown.");
 
         ArgumentOutOfRangeException.ThrowIfNegative(eighths);
         _frame.ThrowIfDisposed();
@@ -829,10 +817,7 @@ public readonly struct TerminalCanvas
     /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
     public int DrawQuadrantLine(Point start, Point end, LinePattern pattern, int patternStep, CellStyle style = default)
     {
-        if (!Enum.IsDefined(pattern))
-        {
-            throw new ArgumentOutOfRangeException(nameof(pattern), pattern, "The line pattern is unknown.");
-        }
+        pattern.ValidateDefined(nameof(pattern), "The line pattern is unknown.");
 
         ArgumentOutOfRangeException.ThrowIfNegative(patternStep);
         _frame.ThrowIfDisposed();
@@ -903,15 +888,9 @@ public readonly struct TerminalCanvas
     {
         _frame.ThrowIfDisposed();
 
-        if (!Enum.IsDefined(edge))
-        {
-            throw new ArgumentOutOfRangeException(nameof(edge), edge, "The edge policy is unknown.");
-        }
+        edge.ValidateDefined(nameof(edge), "The edge policy is unknown.");
 
-        if (!Enum.IsDefined(background))
-        {
-            throw new ArgumentOutOfRangeException(nameof(background), background, "The background mode is unknown.");
-        }
+        background.ValidateDefined(nameof(background), "The background mode is unknown.");
 
         var preflight = Process(value, origin, style, edge, background, write: false, out var bytes);
         _frame.EnsureAppendable(bytes);

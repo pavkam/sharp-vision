@@ -41,9 +41,9 @@ public static class Layout
         Span<Line> destination)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(width);
-        Validate(overflow);
-        Validate(alignment);
-        Validate(ambiguous);
+        overflow.ValidateDefined(nameof(overflow), "The enum value is unknown.");
+        alignment.ValidateDefined(nameof(alignment), "The enum value is unknown.");
+        ambiguous.ValidateDefined(nameof(ambiguous), "The enum value is unknown.");
         var count = 0;
         var start = 0;
 
@@ -353,13 +353,5 @@ public static class Layout
         var moved = enumerator.MoveNext();
         Debug.Assert(moved, "A non-empty source suffix must contain one grapheme.");
         return enumerator.Current;
-    }
-
-    private static void Validate<T>(T value) where T : struct, Enum
-    {
-        if (!Enum.IsDefined(value))
-        {
-            throw new ArgumentOutOfRangeException(nameof(value), value, "The enum value is unknown.");
-        }
     }
 }

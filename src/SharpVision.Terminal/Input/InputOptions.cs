@@ -129,13 +129,7 @@ public sealed record InputOptions
         get;
         init
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(value),
-                    value,
-                    "The mouse coordinate encoding is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The mouse coordinate encoding is unknown.");
 
             field = value;
         }

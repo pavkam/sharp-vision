@@ -24,10 +24,7 @@ public sealed class Separator: Control<SeparatorStyle>
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value));
-            }
+            value.ValidateDefined();
 
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }

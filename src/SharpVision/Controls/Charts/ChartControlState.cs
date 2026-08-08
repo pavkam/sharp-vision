@@ -54,10 +54,7 @@ internal sealed class ChartControlState: IDisposable
         get => _legendPlacement;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The chart legend placement is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The chart legend placement is unknown.");
 
             Set(ref _legendPlacement, value, InvalidationImpact.Measure, nameof(LegendPlacement));
         }

@@ -22,10 +22,7 @@ public readonly record struct Cursor
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="shape"/> is unknown.</exception>
     public Cursor(Point position, bool visible, CursorShape shape)
     {
-        if (!Enum.IsDefined(shape))
-        {
-            throw new ArgumentOutOfRangeException(nameof(shape), shape, "The cursor shape is unknown.");
-        }
+        shape.ValidateDefined(nameof(shape), "The cursor shape is unknown.");
 
         Position = position;
         Visible = visible;

@@ -23,13 +23,7 @@ public sealed class Event<TArgs>: IEvent where TArgs : RoutedEventArgs
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-        if (!Enum.IsDefined(strategy))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(strategy),
-                strategy,
-                "The routing strategy is unknown.");
-        }
+        strategy.ValidateDefined(nameof(strategy), "The routing strategy is unknown.");
 
         Name = name;
         Strategy = strategy;

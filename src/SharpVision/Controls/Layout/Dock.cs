@@ -56,10 +56,7 @@ public sealed class Dock: ChromeAuthoringContainer
     {
         ArgumentNullException.ThrowIfNull(control);
 
-        if (!Enum.IsDefined(value))
-        {
-            throw new ArgumentOutOfRangeException(nameof(value), value, "The dock side is unknown.");
-        }
+        value.ValidateDefined(nameof(value), "The dock side is unknown.");
 
         control.VerifyMutable();
         var placement = _placements.GetOrCreateValue(control);

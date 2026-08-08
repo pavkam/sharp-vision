@@ -283,13 +283,7 @@ public abstract class FloatingSurfaceBase: ContentControl
     {
         VerifyMutable();
 
-        if (!Enum.IsDefined(outsideInteraction))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(outsideInteraction),
-                outsideInteraction,
-                "The outside-interaction policy is unknown.");
-        }
+        outsideInteraction.ValidateDefined(nameof(outsideInteraction), "The outside-interaction policy is unknown.");
 
         if (_isClosing)
         {

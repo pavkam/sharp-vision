@@ -16,10 +16,7 @@ public sealed class ItemInvokedEventArgs: EventArgs
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
 
-        if (!Enum.IsDefined(cause))
-        {
-            throw new ArgumentOutOfRangeException(nameof(cause), cause, "The activation cause is unknown.");
-        }
+        cause.ValidateDefined(nameof(cause), "The activation cause is unknown.");
 
         Index = index;
         Item = item;

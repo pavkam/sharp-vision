@@ -48,13 +48,7 @@ public sealed class ChaseIndicator: Control<ChaseIndicatorStyle>
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(value),
-                    value,
-                    "The chase movement is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The chase movement is unknown.");
 
             VerifyMutable();
 
@@ -103,13 +97,7 @@ public sealed class ChaseIndicator: Control<ChaseIndicatorStyle>
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(value),
-                    value,
-                    "The chase indicator orientation is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The chase indicator orientation is unknown.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }

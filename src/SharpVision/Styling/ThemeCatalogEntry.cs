@@ -26,13 +26,7 @@ public sealed class ThemeCatalogEntry
         ArgumentException.ThrowIfNullOrWhiteSpace(license);
         ArgumentException.ThrowIfNullOrWhiteSpace(source);
 
-        if (!Enum.IsDefined(colorScheme))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(colorScheme),
-                colorScheme,
-                "The theme catalog color scheme is unknown.");
-        }
+        colorScheme.ValidateDefined(nameof(colorScheme), "The theme catalog color scheme is unknown.");
 
         Name = name;
         Slug = slug;

@@ -12,10 +12,7 @@ public sealed class PointerCaptureLostEventArgs: EventArgs
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="reason"/> is unknown.</exception>
     public PointerCaptureLostEventArgs(PointerCaptureLossReason reason)
     {
-        if (!Enum.IsDefined(reason))
-        {
-            throw new ArgumentOutOfRangeException(nameof(reason), reason, "The capture-loss reason is unknown.");
-        }
+        reason.ValidateDefined(nameof(reason), "The capture-loss reason is unknown.");
 
         Reason = reason;
     }

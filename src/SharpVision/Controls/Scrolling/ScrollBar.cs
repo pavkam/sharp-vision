@@ -151,7 +151,7 @@ public sealed class ScrollBar: Control<ScrollBarStyle>
         get;
         set
         {
-            value.ValidateDefined();
+            value.ValidateDefined(nameof(value), "The enum value is unknown.");
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     }
@@ -165,7 +165,7 @@ public sealed class ScrollBar: Control<ScrollBarStyle>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public bool ScrollBy(int delta, ScrollCause cause = ScrollCause.Programmatic)
     {
-        cause.ValidateDefined();
+        cause.ValidateDefined(nameof(cause), "The enum value is unknown.");
         VerifyMutable();
         var range = CurrentRange();
         return Commit(range.Move(delta), cause);

@@ -19,13 +19,7 @@ public sealed record TerminalCapabilities
         get;
         init
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(value),
-                    value,
-                    "The color depth is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The color depth is unknown.");
 
             field = value;
         }
@@ -38,13 +32,7 @@ public sealed record TerminalCapabilities
         get;
         init
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(value),
-                    value,
-                    "The color-depth evidence origin is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The color-depth evidence origin is unknown.");
 
             field = value;
         }
@@ -60,13 +48,7 @@ public sealed record TerminalCapabilities
         get;
         init
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(value),
-                    value,
-                    "The ambiguous-width policy is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The ambiguous-width policy is unknown.");
 
             field = value;
         }

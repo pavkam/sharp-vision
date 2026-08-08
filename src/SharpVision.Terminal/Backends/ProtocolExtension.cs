@@ -11,10 +11,7 @@ internal readonly record struct ProtocolExtension
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="kind"/> is unknown.</exception>
     public ProtocolExtension(ProtocolExtensionKind kind)
     {
-        if (!Enum.IsDefined(kind))
-        {
-            throw new ArgumentOutOfRangeException(nameof(kind), kind, "The protocol extension kind is unknown.");
-        }
+        kind.ValidateDefined(nameof(kind), "The protocol extension kind is unknown.");
 
         Kind = kind;
     }

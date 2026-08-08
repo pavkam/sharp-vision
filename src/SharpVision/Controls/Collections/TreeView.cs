@@ -177,10 +177,7 @@ public sealed class TreeView: CompositeControlBase
         get;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The selection mode is unknown.");
-            }
+            value.ValidateDefined(nameof(value), "The selection mode is unknown.");
 
             VerifyMutable();
 
