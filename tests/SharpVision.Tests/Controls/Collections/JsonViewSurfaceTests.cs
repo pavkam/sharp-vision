@@ -295,6 +295,38 @@ public sealed class JsonViewSurfaceTests
         view.SelectedPath.ShouldBe("/key0");
     }
 
+    /// <summary>Verifies a configured PageOverlap retains that much context on PageDown instead of
+    /// jumping the full viewport height, matching Table, ListView, TreeView, and NavigationView's
+    /// overlap-aware paging.</summary>
+    [Fact]
+    public async Task Keyboard_WhenPageDownWithConfiguredPageOverlap_LandsOverlapAwareAsync()
+    {
+        // Arrange
+        var properties = string.Join(',', Enumerable.Range(0, 20).Select(index => $"\"key{index}\":{index}"));
+        var view = new JsonView
+        {
+            Json = $"{{{properties}}}",
+            Height = Length.Cells(6),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            ShowScrollBars = ShowScrollBars.Never,
+            PageOverlap = 2
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 8),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        view.SelectedPath.ShouldBe("/key0");
+        var expectedIndex = view.Viewport.Height - view.PageOverlap;
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.PageDown);
+
+        // Assert - the overlap-reduced step lands earlier than the overlap=0 case above would.
+        view.SelectedPath.ShouldBe($"/key{expectedIndex}");
+    }
+
     /// <summary>
     /// Verifies a click on the disclosure glyph's first cell toggles expansion under
     /// <see cref="Ambiguous.Wide"/>, where the glyph ('▶'/'▼', both East Asian Ambiguous-width)
