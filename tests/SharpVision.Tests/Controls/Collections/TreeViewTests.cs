@@ -514,6 +514,60 @@ public sealed class TreeViewTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an incidental Control modifier on Enter still applies selection but does
+    /// not raise ItemInvoked - only the invocation is gated, not the selection carve-out.</summary>
+    [Fact]
+    public async Task Dispatch_WhenEnterHasControlModifier_SelectsButDoesNotInvokeAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var tree = new TreeView();
+            var a = new TreeViewItem { Header = "A" };
+            tree.Items.Add(a);
+            tree.Attach(dispatcher);
+            using FocusManager focus = new(tree);
+            focus.Focus(tree).ShouldBeTrue();
+            List<string> invoked = [];
+            tree.ItemInvoked += (_, eventArgs) => invoked.Add(eventArgs.Item.Header);
+
+            var enter = new KeyEventArgs(new Stroke(
+                Code.Enter, default, nativeCode: 0, Modifiers.Control, KeyAction.Press));
+            _ = Router.Route(tree, Events.Key, enter);
+
+            enter.Handled.ShouldBeTrue();
+            tree.SelectedItem.ShouldBeSameAs(a);
+            invoked.ShouldBeEmpty();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Shift-held Enter (a common terminal chord) still invokes.</summary>
+    [Fact]
+    public async Task Dispatch_WhenEnterHasShiftModifier_StillInvokesAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var tree = new TreeView();
+            var a = new TreeViewItem { Header = "A" };
+            tree.Items.Add(a);
+            tree.Attach(dispatcher);
+            using FocusManager focus = new(tree);
+            focus.Focus(tree).ShouldBeTrue();
+            List<string> invoked = [];
+            tree.ItemInvoked += (_, eventArgs) => invoked.Add(eventArgs.Item.Header);
+
+            var enter = new KeyEventArgs(new Stroke(
+                Code.Enter, default, nativeCode: 0, Modifiers.Shift, KeyAction.Press));
+            _ = Router.Route(tree, Events.Key, enter);
+
+            enter.Handled.ShouldBeTrue();
+            invoked.ShouldBe(["A"]);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies Left arrow collapses an expanded parent or navigates to the parent item.</summary>
     [Fact]
     public async Task Dispatch_WhenLeftKeyPressed_CollapsesOrNavigatesToParentAsync()

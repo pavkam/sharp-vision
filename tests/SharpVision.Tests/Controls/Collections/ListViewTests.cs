@@ -447,6 +447,53 @@ public sealed class ListViewTests
         invoked.ShouldBe([2]);
     }
 
+    /// <summary>Verifies an incidental Control modifier on Enter still moves the active item but
+    /// does not raise ItemInvoked - only the invocation is gated, not selection tracking.</summary>
+    [Fact]
+    public async Task Dispatch_WhenEnterHasControlModifier_MovesActiveItemButDoesNotInvokeAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var control = Create("A", "B", "C");
+        List<int> invoked = [];
+        control.ItemInvoked += (_, eventArgs) => invoked.Add(eventArgs.Index);
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            control.Attach(dispatcher);
+            using FocusManager focus = new(control);
+            focus.Focus(control).ShouldBeTrue();
+            Key(control, Code.Down);
+
+            var press = KeyWithModifiers(control, Code.Enter, Modifiers.Control);
+
+            press.Handled.ShouldBeTrue();
+            control.ActiveIndex.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
+
+        invoked.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies Shift-held Enter (a common terminal chord) still invokes.</summary>
+    [Fact]
+    public async Task Dispatch_WhenEnterHasShiftModifier_StillInvokesAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var control = Create("A", "B", "C");
+        List<int> invoked = [];
+        control.ItemInvoked += (_, eventArgs) => invoked.Add(eventArgs.Index);
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            control.Attach(dispatcher);
+            using FocusManager focus = new(control);
+            focus.Focus(control).ShouldBeTrue();
+
+            _ = KeyWithModifiers(control, Code.Enter, Modifiers.Shift);
+        }, TestContext.Current.CancellationToken);
+
+        invoked.ShouldBe([0]);
+    }
+
     /// <summary>Verifies pointer modifiers toggle and range-select in multiple mode.</summary>
     [Fact]
     public async Task Dispatch_WhenPointerUsesModifiers_AppliesToggleAndRangeSelectionAsync()
@@ -550,6 +597,13 @@ public sealed class ListViewTests
                 nativeCode: 0,
                 Modifiers.None,
                 KeyAction.Press)));
+
+    private static KeyEventArgs KeyWithModifiers(ControlBase target, Code code, Modifiers modifiers)
+    {
+        var eventArgs = new KeyEventArgs(new Stroke(code, character: null, nativeCode: 0, modifiers, KeyAction.Press));
+        _ = Router.Route(target, Events.Key, eventArgs);
+        return eventArgs;
+    }
 
     private static void Space(ControlBase target)
     {

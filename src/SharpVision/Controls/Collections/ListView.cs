@@ -1364,7 +1364,13 @@ public sealed class ListView: ItemsControl
 
         if (item.LastKey == Code.Enter)
         {
-            ItemInvoked?.Invoke(this, new ItemInvokedEventArgs(item.Index, Items[item.Index], eventArgs.Cause));
+            // An incidental modifier still applies the current-item tracking above, but does not
+            // commit an invocation the user did not intend.
+            if (item.LastModifiers.IsActivationEligible())
+            {
+                ItemInvoked?.Invoke(this, new ItemInvokedEventArgs(item.Index, Items[item.Index], eventArgs.Cause));
+            }
+
             return;
         }
 

@@ -692,7 +692,14 @@ public sealed class TreeView: CompositeControlBase
         {
             item.ActivateFromOwner(ActivationCause.Keyboard);
             _ = ApplyInputSelection(item, modifiers);
-            ItemInvoked?.Invoke(this, new TreeViewItemInvokedEventArgs(item, ActivationCause.Keyboard));
+
+            // An incidental modifier still applies selection above, but does not commit an
+            // invocation the user did not intend.
+            if (modifiers.IsActivationEligible())
+            {
+                ItemInvoked?.Invoke(this, new TreeViewItemInvokedEventArgs(item, ActivationCause.Keyboard));
+            }
+
             return true;
         }
 
@@ -983,7 +990,14 @@ public sealed class TreeView: CompositeControlBase
 
     private void OnItemInvoked(object? sender, ActivationEventArgs eventArgs)
     {
-        _ = eventArgs;
+        // Keyboard activation reaches this bridge through ActivateFromOwner, which exists to
+        // raise the item's own public Invoked event - ActivateCurrent already applies selection
+        // and raises ItemInvoked itself, with the live stroke's modifiers, so repeating that here
+        // would both double the invocation and use this item's stale last-pointer modifiers.
+        if (eventArgs.Cause == ActivationCause.Keyboard)
+        {
+            return;
+        }
 
         if (sender is TreeViewItem item)
         {
