@@ -23,9 +23,10 @@ classDiagram
     ChromeAuthoringFloatingSurface <|-- Popup
     Popup <|-- Flyout
     Popup <|-- Tooltip
-    PressableBase <|-- Button
-    PressableBase <|-- CheckBox
-    PressableBase <|-- RadioButton
+    PressableBase <|-- Pressable~TStyle~
+    Pressable~TStyle~ <|-- Button
+    Pressable~TStyle~ <|-- CheckBox
+    Pressable~TStyle~ <|-- RadioButton
     PressableBase <|-- HyperlinkButton
     HeaderedContentControl <|-- GroupBox
     HeaderedContentControl <|-- Expander
