@@ -13,6 +13,8 @@ an explicit `ChartScale` when comparisons require fixed bounds.
 
 ## Example
 
+![The LineChart control rendered in the live showcase](../../images/controls/line-chart.png)
+
 ```csharp
 var chart = new LineChart
 {

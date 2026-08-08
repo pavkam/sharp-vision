@@ -55,6 +55,7 @@ public sealed class Gallery: Screen
         ("Collections", JsonViewPane.Title, static () => new JsonViewPane()),
         ("Collections", ListViewPane.Title, static () => new ListViewPane()),
         ("Navigation", MenuPane.Title, static () => new MenuPane()),
+        ("Navigation", MenuItemPane.Title, static () => new MenuItemPane()),
         ("Navigation", NavigationViewPane.Title, static () => new NavigationViewPane()),
         ("Layout", OverlayPane.Title, static () => new OverlayPane()),
         ("Windows", PopupPane.Title, static () => new PopupPane()),

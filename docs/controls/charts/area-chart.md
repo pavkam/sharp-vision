@@ -12,6 +12,8 @@ automatic scale as `LineChart`.
 
 ## Example
 
+![The AreaChart control rendered in the live showcase](../../images/controls/area-chart.png)
+
 ```csharp
 var chart = new AreaChart
 {

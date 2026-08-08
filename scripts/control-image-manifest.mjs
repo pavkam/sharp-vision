@@ -50,6 +50,11 @@ export const controls = [
     { doc: "collections/tab-control", page: "TabControl" },
     { doc: "collections/tree-view", page: "TreeView" },
     { doc: "layout/table", page: "Table" },
+    { doc: "charts/horizontal-bar-chart", page: "HorizontalBarChart" },
+    { doc: "charts/vertical-bar-chart", page: "VerticalBarChart" },
+    { doc: "charts/line-chart", page: "LineChart" },
+    { doc: "charts/area-chart", page: "AreaChart" },
+    { doc: "charts/sparkline", page: "Sparkline" },
     {
         doc: "menus/menu",
         page: "Menu",
@@ -57,6 +62,11 @@ export const controls = [
             {},
             { name: "open", popup: true, actions: [{ click: "File" }] },
         ],
+    },
+    {
+        doc: "menus/menu-item",
+        page: "MenuItem",
+        states: [{ actions: [{ click: "More options" }] }],
     },
     { doc: "menus/context-menu", page: "ContextMenu" },
     { doc: "navigation/navigation-view", page: "NavigationView" },

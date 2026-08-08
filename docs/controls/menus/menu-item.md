@@ -152,6 +152,8 @@ and `MenuSeparator`; it has no arbitrary `Add(Control)` entry point.
 
 ## Example
 
+![The MenuItem and MenuSeparator controls rendered in the live showcase](../../images/controls/menu-item.png)
+
 ```csharp
 menu.Items.Add(new MenuItem { Text = "Open" });
 menu.Items.Add(new MenuSeparator());

@@ -13,6 +13,8 @@ no legend, category-label, or value-label properties.
 
 ## Example
 
+![The Sparkline control rendered in the live showcase](../../images/controls/sparkline.png)
+
 ```csharp
 var sparkline = new Sparkline
 {

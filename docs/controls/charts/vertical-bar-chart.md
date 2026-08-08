@@ -13,6 +13,8 @@ visible category labels, and hidden value labels.
 
 ## Example
 
+![The VerticalBarChart control rendered in the live showcase](../../images/controls/vertical-bar-chart.png)
+
 ```csharp
 var chart = new VerticalBarChart
 {

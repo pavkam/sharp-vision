@@ -101,6 +101,7 @@ lint: restore docs-samples
 	@npm run lint:markdown
 	@npm run lint:links
 	@npm run lint:doc-content
+	@npm run lint:control-images
 	@npm run lint:test-names
 	@echo "✅ All lint checks passed."
 

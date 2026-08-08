@@ -16,6 +16,8 @@ value labels default hidden.
 
 ## Example
 
+![The HorizontalBarChart control rendered in the live showcase](../../images/controls/horizontal-bar-chart.png)
+
 ```csharp
 var chart = new HorizontalBarChart
 {

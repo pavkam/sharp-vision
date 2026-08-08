@@ -10,6 +10,7 @@
     "format": "prettier --write \"**/*.md\"",
     "format:check": "prettier --check \"**/*.md\"",
     "generate:unicode": "node scripts/generate-unicode-data.mjs",
+    "lint:control-images": "node scripts/validate-control-image-coverage.mjs",
     "lint:doc-content": "node scripts/validate-doc-content.mjs",
     "lint:docs-samples": "node scripts/validate-doc-samples.mjs",
     "lint:markdown": "markdownlint-cli2 \"**/*.md\" \"#artifacts\" \"#node_modules\" \"#.worktrees\" \"#.superpowers\"",
