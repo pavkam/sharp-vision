@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Input;
 
 /// <summary>Verifies focus remains confined to, traverses within, and restores across modal planes.</summary>
-public sealed class ModalityFocusTests
+public sealed partial class ModalityManagerTests
 {
     #region Targeting, traversal, and entry
 

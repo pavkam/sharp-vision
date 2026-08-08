@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Input;
 
 /// <summary>Verifies modal pointer targeting, state isolation, capture, and outside dismissal.</summary>
-public sealed class ModalityPointerTests
+public sealed partial class ModalityManagerTests
 {
     #region Targeting and outside interaction
 

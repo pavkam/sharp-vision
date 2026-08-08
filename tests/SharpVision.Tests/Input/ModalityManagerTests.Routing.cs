@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Input;
 
 /// <summary>Verifies routed input respects stable modal-plane boundaries.</summary>
-public sealed class ModalityRoutingTests
+public sealed partial class ModalityManagerTests
 {
     /// <summary>Verifies preview, bubble, and defaults remain inside the matching primary plane root.</summary>
     [Fact]

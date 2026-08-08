@@ -2,10 +2,6 @@ tests/SharpVision.Terminal.Tests/Capabilities/NcursesProviderTests.cs#NcursesPro
 tests/SharpVision.Terminal.Tests/Clipboard/ClipboardIntegrationTests.cs#ClipboardIntegrationTests
 tests/SharpVision.Terminal.Tests/Runtime/WindowsConsoleHostConPtyTests.cs#WindowsConsoleHostConPtyTests
 tests/SharpVision.Terminal.Tests/Transport/PseudoterminalTests.cs#PseudoterminalTests
-tests/SharpVision.Tests/Input/ModalityFocusTests.cs#ModalityFocusTests
-tests/SharpVision.Tests/Input/ModalityPointerTests.cs#ModalityPointerTests
-tests/SharpVision.Tests/Input/ModalityRoutingTests.cs#ModalityRoutingTests
-tests/SharpVision.Tests/Input/RandomizedModalityTests.cs#RandomizedModalityTests
 tests/SharpVision.Tests/Layout/PrimitiveTests.cs#PrimitiveTests
 tests/SharpVision.Tests/Runtime/LifecycleTransitionIsolationTests.cs#LifecycleTransitionIsolationTests
 tests/SharpVision.Tests/Runtime/OrderingTests.cs#OrderingTests

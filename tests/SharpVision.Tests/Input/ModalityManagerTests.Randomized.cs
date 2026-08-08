@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Input;
 
 /// <summary>Proves modal state isolation with fixed-seed valid lifetime and interaction sequences.</summary>
-public sealed class RandomizedModalityTests
+public sealed partial class ModalityManagerTests
 {
     private const int _caseCount = 16;
     private const int _maximumScopes = 6;
