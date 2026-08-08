@@ -490,9 +490,10 @@ public sealed class Theme
         return result;
     }
 
-    // Mirrors ThemeCatalog.ResolveOptionalBorderGlyphStyle exactly: a string names one of the ten
-    // standard box-drawing families, an eight-element array of one-Rune strings defines a custom
-    // glyph set corner-then-edge, matching BorderGlyphStyle's own constructor order.
+    // Resolves a string or eight-element array border glyph style, structured like the
+    // section-color and section-attribute resolvers above: a string names one of the ten
+    // standard box-drawing families; an eight-element array of one-Rune strings defines a
+    // custom glyph set corner-then-edge, matching BorderGlyphStyle's own constructor order.
     internal BorderGlyphStyle ResolveSectionBorderGlyphStyle(JsonElement value, string context)
     {
         if (value.ValueKind == JsonValueKind.String)
