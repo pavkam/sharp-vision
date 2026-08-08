@@ -476,4 +476,42 @@ public sealed class DockTests
     private static ProbeControl HeightOnly(int height) => new() { Height = Length.Cells(height) };
 
     private static ProbeControl WidthOnly(int width) => new() { Width = Length.Cells(width) };
+
+    /// <summary>Verifies a Dock cascading Percent edges through three consumed sides resolves each
+    /// against the remaining space at the moment it is consumed, not the original total, for a
+    /// three-or-more-level cascade.</summary>
+    [Fact]
+    public void Dock_WhenThreePercentEdgesCascade_EachResolvesAgainstItsOwnRemainder()
+    {
+        var left = new ProbeControl(new Size(1, 1));
+        var top = new ProbeControl(new Size(1, 1));
+        var right = new ProbeControl(new Size(1, 1));
+        var fill = new ProbeControl(new Size(1, 1));
+        var dock = new Dock
+        {
+            LastChildFills = true,
+            Children = { left, top, right, fill }
+        };
+        Dock.SetSide(left, DockSide.Left);
+        Dock.SetSide(top, DockSide.Top);
+        Dock.SetSide(right, DockSide.Right);
+        left.Width = Length.Percent(50);
+        top.Height = Length.Percent(50);
+        right.Width = Length.Percent(50);
+
+        new LayoutEngine().Layout(dock, new Size(20, 20));
+
+        // left consumes 50% of the full 20-wide axis: 10, leaving [10, 20) horizontally.
+        left.Bounds.Width.ShouldBe(10);
+
+        // top consumes 50% of the full 20-tall axis: 10 (top/bottom docking uses the full width
+        // at the time it is consumed, but its own Percent is a vertical length resolving against
+        // the vertical axis, unaffected by left's horizontal consumption).
+        top.Bounds.Height.ShouldBe(10);
+
+        // right consumes 50% of its own remaining horizontal space at the time it is docked -
+        // the 10 cells left after `left` already consumed its own 50% - not 50% of the original
+        // 20, so right gets 5, not 10.
+        right.Bounds.Width.ShouldBe(5);
+    }
 }

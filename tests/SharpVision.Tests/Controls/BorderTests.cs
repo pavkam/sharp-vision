@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies intrinsic border layout, glyph validation, styling, and exact cells.</summary>
-public sealed class IntrinsicBorderTests
+public sealed class BorderTests
 {
     #region Contract
 

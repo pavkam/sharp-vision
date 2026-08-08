@@ -581,4 +581,40 @@ public sealed class StackTests
         popup.Measure(new Constraint(bounds.Width, bounds.Height));
         popup.Arrange(bounds, widthResolved: true, heightResolved: true);
     }
+
+    /// <summary>Verifies the identical declarative shape - three fixed-size children, one
+    /// percentage-sized child, no spacing - agrees on the resolved percentage base across Grid
+    /// (a single Star column split across rows) and Stack (the same tracks along its own
+    /// stacking axis) - a comparison that would have caught directly the case where Grid and
+    /// Stack once disagreed on what a Percent length resolves against.</summary>
+    [Fact]
+    public void Layout_WhenGridAndStackShareTheIdenticalTrackShape_ResolvePercentAgainstTheSameBase()
+    {
+        var stackFixed = new ProbeControl(new Size(4, 3));
+        var stackPercent = new ProbeControl(new Size(4, 1)) { Height = Length.Percent(50) };
+        var stack = new Panel
+        {
+            Spacing = 0,
+            Children = { stackFixed, stackPercent }
+        };
+
+        var gridFixed = new ProbeControl(new Size(4, 3));
+        var gridPercent = new ProbeControl(new Size(4, 1));
+        var grid = new Grid
+        {
+            RowSpacing = 0,
+            Rows = { Track.Cells(3), Track.Percent(50) },
+            Children = { gridFixed, gridPercent }
+        };
+        Grid.SetRow(gridPercent, 1);
+
+        new LayoutEngine().Layout(stack, new Size(4, 10));
+        new LayoutEngine().Layout(grid, new Size(4, 10));
+
+        // Both resolve the 50% track against the complete final axis (10), not the smaller
+        // remainder left after the fixed sibling (10 - 3 = 7): 50% of 10 is 5, not 3 or 4.
+        stackPercent.Bounds.Height.ShouldBe(5);
+        gridPercent.Bounds.Height.ShouldBe(5);
+        stackPercent.Bounds.Height.ShouldBe(gridPercent.Bounds.Height);
+    }
 }

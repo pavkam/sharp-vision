@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies intrinsic shadow validation, layout, overflow, clipping, and compositing.</summary>
-public sealed class IntrinsicShadowTests
+public sealed class ShadowTests
 {
     #region Contract
 

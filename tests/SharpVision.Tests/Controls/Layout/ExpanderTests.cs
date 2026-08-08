@@ -279,4 +279,51 @@ public sealed class ExpanderTests
         content.Bounds.X.ShouldBe(0);
         content.Bounds.Y.ShouldBe(1);
     }
+
+    /// <summary>Verifies an Expander's single content child always fills its slot regardless of
+    /// Width or alignment, matching Grid's own documented ResolvedAxes.Both contract - the same
+    /// gap that applies to Expander/GroupBox, which share ResolvedAxes.Both.</summary>
+    [Fact]
+    public void Expander_WhenContentSetsWidthAndAlignment_StillFillsTheContentSlot()
+    {
+        var content = new ProbeControl(new Size(2, 1))
+        {
+            Width = Length.Cells(3),
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+
+        // Expander itself defaults to Left/Top alignment, so as an unstretched root it would
+        // shrink-wrap to its own measured content width - which is itself influenced by
+        // content's explicit Width during measure, even though arrange's resolved axes ignore
+        // it - creating a circular illusion that Width "worked". Stretching Expander itself to
+        // the full given size removes that confound and isolates the arrange-time behavior.
+        var expander = new Expander
+        {
+            Expanded = true,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Content = content
+        };
+
+        new LayoutEngine().Layout(expander, new Size(10, 3));
+
+        content.Bounds.Width.ShouldBe(10 - expander.ActualStyle.ContentIndent);
+    }
+
+    /// <summary>Verifies MaxWidth on an Expander's content still caps the otherwise-filled slot,
+    /// mirroring Grid's own Width-ignored-but-MaxWidth-honored asymmetry exactly.</summary>
+    [Fact]
+    public void Expander_WhenContentSetsMaxWidth_CapsTheFilledContentSlot()
+    {
+        var content = new ProbeControl(new Size(2, 1)) { MaxWidth = 3 };
+        var expander = new Expander
+        {
+            Expanded = true,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Content = content
+        };
+
+        new LayoutEngine().Layout(expander, new Size(10, 3));
+
+        content.Bounds.Width.ShouldBe(3);
+    }
 }

@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Controls.Layout;
 
+using System.Reflection;
+
 /// <summary>Verifies GroupBox validation, measurement, content ownership, and intrinsic frame layout.</summary>
 public sealed class GroupBoxTests
 {
@@ -117,5 +119,158 @@ public sealed class GroupBoxTests
 
         FrameOracle.Get(frame, new Point(4, 2)).ShouldBe("│");
         FrameOracle.Get(frame, new Point(2, 3)).ShouldBe("─");
+    }
+
+    /// <summary>The regression this file exists to pin: the assignment the spec instructs must
+    /// compile and take effect.</summary>
+    [Fact]
+    public void Border_WhenAssignedLocally_IsAuthoritativeOverTheTheme()
+    {
+        var groupBox = new GroupBox { HeaderText = "Group" };
+        var themed = groupBox.ActualBorder;
+        var local = AppearanceTestValues.Border(BorderSide.All, BorderGlyphStyle.Heavy);
+
+        groupBox.Border = local;
+
+        groupBox.ActualBorder.GlyphStyle.ShouldBe(BorderGlyphStyle.Heavy);
+        groupBox.ActualBorder.GlyphStyle.ShouldNotBe(
+            themed.GlyphStyle,
+            "the local value must differ from the theme's, or this asserts nothing");
+    }
+
+    /// <summary>Verifies the shadow half of the same instruction.</summary>
+    [Fact]
+    public void Shadow_WhenAssignedLocally_IsAuthoritativeOverTheTheme()
+    {
+        var groupBox = new GroupBox { HeaderText = "Group" };
+
+        groupBox.ActualShadow.Visible.ShouldBeFalse("a container defaults to no shadow");
+        groupBox.Shadow = AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1));
+
+        groupBox.ActualShadow.Visible.ShouldBeTrue();
+        groupBox.ActualShadow.Offset.ShouldBe(new Point(1, 1));
+    }
+
+    /// <summary>Verifies the spec's other half - that a local value survives a theme replacement.
+    /// Authoring that silently reverted on the next theme swap would satisfy the assertions above
+    /// while breaking the documented contract.</summary>
+    [Fact]
+    public void Border_WhenThemeIsReplaced_KeepsTheLocalValue()
+    {
+        var groupBox = new GroupBox
+        {
+            HeaderText = "Group",
+            Border = AppearanceTestValues.Border(BorderSide.All, BorderGlyphStyle.Heavy)
+        };
+
+        groupBox.Theme.ShouldBeNull("an unmounted control inherits no theme");
+        groupBox.ActualBorder.GlyphStyle.ShouldBe(BorderGlyphStyle.Heavy);
+
+        // Same assertion under an explicitly resolved non-default theme.
+        var resolved = ThemeCatalog.White.GetStyleSet(ContainerStyle.Default).Normal.Border;
+        resolved.GlyphStyle.ShouldNotBe(BorderGlyphStyle.Heavy, "the probe style must not be the theme's");
+        groupBox.ActualBorder.GlyphStyle.ShouldBe(BorderGlyphStyle.Heavy);
+    }
+
+    /// <summary>Verifies Reset hands ownership back, so the widened surface is the full authoring
+    /// contract rather than a one-way door.</summary>
+    [Fact]
+    public void Reset_WhenLocalChromeWasAssigned_ReturnsOwnershipToTheTheme()
+    {
+        var groupBox = new GroupBox { HeaderText = "Group" };
+        var themed = groupBox.ActualBorder;
+
+        groupBox.Border = AppearanceTestValues.Border(BorderSide.All, BorderGlyphStyle.Heavy);
+        groupBox.ActualBorder.GlyphStyle.ShouldBe(BorderGlyphStyle.Heavy);
+
+        groupBox.ResetBorder();
+        groupBox.ActualBorder.GlyphStyle.ShouldBe(themed.GlyphStyle);
+
+        groupBox.Shadow = AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1));
+        groupBox.ActualShadow.Visible.ShouldBeTrue();
+
+        groupBox.ResetShadow();
+        groupBox.ActualShadow.Visible.ShouldBeFalse();
+    }
+
+    /// <summary>The counter-case that keeps the widening honest. It is deliberately on GroupBox and
+    /// not on the shared base, because the other headered types own their own presentation:
+    /// TabItem is a part of TabControl, and Expander paints no frame. Widening on
+    /// <c>HeaderedContentControl</c> would have leaked raw chrome authoring onto both - the same
+    /// mistake <c>ChromeAuthoringContainer</c> exists to avoid on <c>Container</c>.</summary>
+    [Theory]
+    [InlineData(typeof(TabItem))]
+    [InlineData(typeof(Expander))]
+    [InlineData(typeof(HeaderedContentControl))]
+    public void ChromeAuthoring_WhenTypeIsNotAFramedGroupBox_StaysNonPublic(Type type)
+    {
+        foreach (var name in new[] { "Border", "Shadow" })
+        {
+            var property = type.GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
+
+            property.ShouldBeNull($"{type.Name}.{name} must not be public chrome-authoring surface");
+        }
+    }
+
+    /// <summary>Verifies the widened members really are the inherited ones rather than a parallel
+    /// pair that only looks right - a shadowing property that did not write through would satisfy
+    /// every assertion above except what the renderer actually reads.</summary>
+    [Fact]
+    public void Border_WhenAssignedLocally_ReachesTheRenderedChrome()
+    {
+        var groupBox = new GroupBox
+        {
+            HeaderText = "Group",
+            Border = AppearanceTestValues.Border(BorderSide.All, BorderGlyphStyle.Heavy)
+        };
+
+        new LayoutEngine().Layout(groupBox, new Size(20, 6));
+
+        groupBox.ActualBorder.Sides.ShouldBe(BorderSide.All);
+        groupBox.ActualBorder.GlyphStyle.ShouldBe(BorderGlyphStyle.Heavy);
+    }
+
+    /// <summary>Verifies a GroupBox's single content child always fills its slot regardless of
+    /// Width or alignment, matching Grid's own documented ResolvedAxes.Both contract.</summary>
+    [Fact]
+    public void GroupBox_WhenContentSetsWidthAndAlignment_StillFillsTheContentSlot()
+    {
+        var content = new ProbeControl(new Size(2, 1))
+        {
+            Width = Length.Cells(3),
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+
+        // GroupBox itself defaults to Left/Top alignment, so as an unstretched root it would
+        // shrink-wrap to its own measured content width - itself influenced by content's
+        // explicit Width during measure - creating the same circular illusion Expander's own
+        // test above must avoid. Stretching GroupBox itself removes that confound.
+        var groupBox = new GroupBox
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Content = content
+        };
+
+        new LayoutEngine().Layout(groupBox, new Size(10, 3));
+
+        // The theme-resolved default border reserves one cell on each side (2 total); content
+        // fills the remaining 8 regardless of its own Width or alignment.
+        content.Bounds.Width.ShouldBe(8);
+    }
+
+    /// <summary>Verifies MaxWidth on a GroupBox's content still caps the otherwise-filled slot.</summary>
+    [Fact]
+    public void GroupBox_WhenContentSetsMaxWidth_CapsTheFilledContentSlot()
+    {
+        var content = new ProbeControl(new Size(2, 1)) { MaxWidth = 3 };
+        var groupBox = new GroupBox
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Content = content
+        };
+
+        new LayoutEngine().Layout(groupBox, new Size(10, 3));
+
+        content.Bounds.Width.ShouldBe(3);
     }
 }

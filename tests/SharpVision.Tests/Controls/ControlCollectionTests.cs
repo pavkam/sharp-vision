@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies one-parent ownership, attachment, mutation, and disposal.</summary>
-public sealed class TreeTests
+public sealed class ControlCollectionTests
 {
     /// <summary>Verifies detached children attach in collection order.</summary>
     [Fact]
