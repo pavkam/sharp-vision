@@ -607,6 +607,111 @@ public sealed class MenuTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a throwing Pressed subscriber on the space-pressed item during disposal still
+    /// surfaces the failure while completing base teardown and unsubscribing ItemInvoked - the
+    /// unwrapped SetPressed call used to exit OnUnavailable before either ran.</summary>
+    [Fact]
+    public async Task Dispose_WhenSpacePressedItemPressedSubscriberThrows_SurfacesFailureAndUnsubscribesItemInvokedAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var item = new MenuItem { Text = "Run" };
+            menu.Items.Add(item);
+            menu.Attach(dispatcher);
+            using var focus = new FocusManager(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            menu.ItemInvoked += (_, _) => { };
+
+            var press = Router.Route(menu, Events.Key, Space(KeyAction.Press));
+            press.Handled.ShouldBeTrue();
+            item.Pressed.ShouldBeTrue();
+
+            var expected = new InvalidOperationException("The pressed subscriber failed.");
+            item.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(ControlBase.Pressed))
+                {
+                    throw expected;
+                }
+            };
+
+            var exception = Should.Throw<InvalidOperationException>(menu.Dispose);
+
+            exception.ShouldBeSameAs(expected);
+            menu.Disposed.ShouldBeTrue();
+            var field = typeof(Menu).GetField(
+                nameof(Menu.ItemInvoked),
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            _ = field.ShouldNotBeNull();
+            field.GetValue(menu).ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a throwing Pressed subscriber on a nested menu's space-pressed item during a
+    /// non-dispose unavailability still surfaces the failure while the nested menu's own delegated
+    /// <c>sessionOwner.CloseChain</c> call still closes the whole chain - the unwrapped SetPressed call
+    /// used to exit OnUnavailable before that delegated close ran. The mutation targets a non-root
+    /// nested menu (not the top menu) so the closure can only come from this delegated call, not
+    /// incidentally from the modality root's own unavailable handling.</summary>
+    [Fact]
+    public async Task Visibility_WhenNestedMenuSpacePressedItemPressedSubscriberThrows_SurfacesFailureAndClosesChainAsync()
+    {
+        // Arrange
+        var nestedMenu = new Menu { Orientation = Orientation.Vertical };
+        var leaf = new MenuItem { Text = "Leaf" };
+        var other = new MenuItem { Text = "Other" };
+        nestedMenu.Items.Add(leaf);
+        nestedMenu.Items.Add(other);
+        var nested = new MenuItem { Text = "Nested", Submenu = nestedMenu };
+        var submenu = new Menu { Orientation = Orientation.Vertical };
+        submenu.Items.Add(nested);
+        var file = new MenuItem { Text = "File", Submenu = submenu };
+        var menu = new Menu { Orientation = Orientation.Horizontal };
+        menu.Items.Add(file);
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(40, 10),
+            TestContext.Current.CancellationToken);
+        var firstPopup = OwnedTree.Find<Popup>(file).ShouldNotBeNull();
+        var nestedPopup = OwnedTree.Find<Popup>(nested).ShouldNotBeNull();
+        await surface.Pointer.ClickAsync(file);
+        await surface.Pointer.MoveToAsync(nested);
+        var scope = surface.Application.Modality.Active.ShouldNotBeNull();
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                nestedMenu.SelectedIndex = 1;
+                Router.Route(nestedMenu, Events.Key, Space(KeyAction.Press)).Handled.ShouldBeTrue();
+            },
+            "arm space press on an item in the open nested menu");
+        other.Pressed.ShouldBeTrue();
+
+        var expected = new InvalidOperationException("The pressed subscriber failed.");
+        other.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ControlBase.Pressed))
+            {
+                throw expected;
+            }
+        };
+
+        // Act
+        await surface.UpdateAsync(
+            () => Should.Throw<InvalidOperationException>(
+                () => nestedMenu.Visibility = Visibility.Hidden).ShouldBeSameAs(expected),
+            "hide the open nested menu with a throwing pressed subscriber");
+
+        // Assert
+        firstPopup.IsOpen.ShouldBeFalse();
+        nestedPopup.IsOpen.ShouldBeFalse();
+        scope.Active.ShouldBeFalse();
+        surface.Application.Modality.Active.ShouldBeNull();
+    }
+
     /// <summary>Verifies private menu items reject external focus.</summary>
     [Fact]
     public async Task Focus_WhenMenuItemReceivesExternalFocus_SyncsSelectedIndexAsync()

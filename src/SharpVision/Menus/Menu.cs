@@ -710,7 +710,7 @@ public sealed class Menu: ItemsControl
 
         if (_spacePressedItem is { } item)
         {
-            item.SetPressed(false);
+            ExceptionAggregation.Capture(() => item.SetPressed(false), ref failure);
             _spacePressedItem = null;
         }
 
