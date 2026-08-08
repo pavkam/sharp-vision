@@ -651,7 +651,7 @@ public sealed class MultiplexerRouteTests
     /// completes negotiation immediately, exercising the real router wire path instead of calling
     /// the negotiator directly.</summary>
     [Fact]
-    public void Accept_WhenRoutedFenceCprArrives_RetiresOutstandingFamiliesBeforeDeadline()
+    public void Route_WhenFenceCprArrivesWrapped_RetiresOutstandingFamiliesBeforeDeadline()
     {
         var policy = ActivePolicy([MultiplexerKind.Tmux]);
         var route = new MultiplexerRoute(policy);
