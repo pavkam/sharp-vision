@@ -30,6 +30,8 @@ selection, or offsets change.
 | `ScrollBarStyle`                     | `null`           | Optional complete generated-scrollbar style.                         |
 | `Extent`, `Viewport`                 | layout-dependent | Read-only content and visible extents in terminal cells.             |
 | `HorizontalOffset`, `VerticalOffset` | `0`              | Current validated cell offsets.                                      |
+| `LineSize`                           | `1` cell         | Non-negative wheel-scroll increment.                                 |
+| `PageOverlap`                        | `0` cells        | Non-negative context retained by PageUp and PageDown.                |
 | `ScrollBy(x, y, cause)`              | —                | Applies signed cell deltas with endpoint clamping.                   |
 
 `JsonViewStyle` colors object keys, array indices, strings, numbers, booleans,
@@ -53,21 +55,25 @@ with `JsonException`; `Indent` rejects negative values.
 
 Navigation follows the visible depth-first projection:
 
-| Input             | Result                                                                 |
-| ----------------- | ---------------------------------------------------------------------- |
-| Up / Down         | Select the previous or next visible property or array index.           |
-| Home / End        | Select the first or last visible entry.                                |
-| Left              | Collapse the selected container, or select its nearest visible parent. |
-| Right             | Expand the selected container, or select its first visible child.      |
-| Enter / Space     | Toggle the selected non-empty container.                               |
-| Primary key click | Select that property or array index.                                   |
-| Disclosure click  | Select and toggle that container.                                      |
+| Input             | Result                                                                               |
+| ----------------- | ------------------------------------------------------------------------------------ |
+| Up / Down         | Select the previous or next visible property or array index.                         |
+| PageUp / PageDown | Select the entry as many lines away as fill the viewport height minus `PageOverlap`. |
+| Home / End        | Select the first or last visible entry.                                              |
+| Left              | Collapse the selected container, or select its nearest visible parent.               |
+| Right             | Expand the selected container, or select its first visible child.                    |
+| Enter / Space     | Toggle the selected non-empty container.                                             |
+| Primary key click | Select that property or array index.                                                 |
+| Disclosure click  | Select and toggle that container.                                                    |
 
 Selection highlights only the quoted key or `[index]` token. The value keeps its
 scalar type color, which avoids erasing syntax meaning as navigation moves.
 Every selection change minimally reveals its line through the vertical viewport.
 Wheel, scrollbar, and programmatic scrolling use the shared container scrolling
-contract.
+contract. `LineSize` scales the wheel's cell step; keyboard navigation always
+moves the selection by exactly one line regardless of this value. A word-wrapped
+value's continuation lines count toward the PageUp/PageDown page step the same
+as any other line, since the step is line-based rather than entry-based.
 
 ## Example
 

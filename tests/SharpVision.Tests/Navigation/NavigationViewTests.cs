@@ -31,6 +31,82 @@ public sealed class NavigationViewTests
         nav.Items.Count.ShouldBe(2);
     }
 
+    /// <summary>Verifies unchanged LineSize assignments do not raise duplicate public notifications.</summary>
+    [Fact]
+    public void LineSize_WhenValueIsUnchanged_DoesNotRaisePropertyChanged()
+    {
+        var nav = new NavigationView();
+        var notifications = 0;
+        nav.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(NavigationView.LineSize))
+            {
+                notifications++;
+            }
+        };
+
+        nav.LineSize = 3;
+        nav.LineSize = 3;
+
+        notifications.ShouldBe(1);
+    }
+
+    /// <summary>Verifies unchanged PageOverlap assignments do not raise duplicate public notifications.</summary>
+    [Fact]
+    public void PageOverlap_WhenValueIsUnchanged_DoesNotRaisePropertyChanged()
+    {
+        var nav = new NavigationView();
+        var notifications = 0;
+        nav.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(NavigationView.PageOverlap))
+            {
+                notifications++;
+            }
+        };
+
+        nav.PageOverlap = 3;
+        nav.PageOverlap = 3;
+
+        notifications.ShouldBe(1);
+    }
+
+    /// <summary>Verifies LineSize rejects a negative value.</summary>
+    [Fact]
+    public void LineSize_WhenNegative_ThrowsArgumentOutOfRangeException()
+    {
+        var nav = new NavigationView();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => nav.LineSize = -1);
+    }
+
+    /// <summary>Verifies PageOverlap rejects a negative value.</summary>
+    [Fact]
+    public void PageOverlap_WhenNegative_ThrowsArgumentOutOfRangeException()
+    {
+        var nav = new NavigationView();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => nav.PageOverlap = -1);
+    }
+
+    /// <summary>Verifies LineSize forwards to, and reads back from, the generated scroll container.</summary>
+    [Fact]
+    public void LineSize_WhenSet_ForwardsToScrollContainer()
+    {
+        var nav = new NavigationView { LineSize = 3 };
+
+        nav.LineSize.ShouldBe(3);
+    }
+
+    /// <summary>Verifies PageOverlap forwards to, and reads back from, the generated scroll container.</summary>
+    [Fact]
+    public void PageOverlap_WhenSet_ForwardsToScrollContainer()
+    {
+        var nav = new NavigationView { PageOverlap = 3 };
+
+        nav.PageOverlap.ShouldBe(3);
+    }
+
     /// <summary>Verifies PerformInvoke activates a standalone item through the same path as
     /// owner-driven activation, raising Invoked and then executing the bound command.</summary>
     [Fact]

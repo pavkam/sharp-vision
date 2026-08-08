@@ -207,6 +207,52 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
         set => _stack.VerticalOffset = value;
     }
 
+    /// <summary>Gets or sets the non-negative wheel-scroll increment in cells.</summary>
+    /// <remarks>
+    /// Keyboard navigation always moves the selection by exactly one line regardless of this
+    /// value - only the mouse wheel consults it.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public int LineSize
+    {
+        get => _stack.LineSize;
+        set
+        {
+            VerifyMutable();
+
+            if (_stack.LineSize == value)
+            {
+                return;
+            }
+
+            _stack.LineSize = value;
+            NotifyPropertyChanged(nameof(LineSize), InvalidationImpact.None);
+        }
+    }
+
+    /// <summary>Gets or sets the non-negative cells of context retained between page commands.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public int PageOverlap
+    {
+        get => _stack.PageOverlap;
+        set
+        {
+            VerifyMutable();
+
+            if (_stack.PageOverlap == value)
+            {
+                return;
+            }
+
+            _stack.PageOverlap = value;
+            NotifyPropertyChanged(nameof(PageOverlap), InvalidationImpact.None);
+        }
+    }
+
     /// <summary>Scrolls by signed cell deltas with saturation and endpoint clamping.</summary>
     /// <param name="x">The requested horizontal delta.</param>
     /// <param name="y">The requested vertical delta.</param>
@@ -844,6 +890,14 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
         {
             eventArgs.Handled = MoveSelection(1);
         }
+        else if (code == Code.PageUp)
+        {
+            eventArgs.Handled = MoveSelectionByPage(-1);
+        }
+        else if (code == Code.PageDown)
+        {
+            eventArgs.Handled = MoveSelectionByPage(1);
+        }
         else if (code == Code.Home)
         {
             eventArgs.Handled = SelectEndpoint(first: true);
@@ -878,6 +932,50 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
         CommitSelection(SelectedPath, _visibleNodes[target]);
         RevealSelection();
         return true;
+    }
+
+    // Pages the selection by lines rather than by visible-node count, so a word-wrapped value's
+    // continuation lines count toward the page step the same as any other line. The landing line
+    // is found the same way RevealSelection maps a node to its owning line; a page step can land
+    // on a continuation or closing-bracket line that owns no node, so the search continues in the
+    // paging direction until one is found, falling back to the opposite direction only if the
+    // document ends first.
+    private bool MoveSelectionByPage(int direction)
+    {
+        if (_visibleNodes.Count == 0)
+        {
+            return false;
+        }
+
+        var currentLineIndex = _selectedNode is null
+            ? -1
+            : _lines.FindIndex(line => ReferenceEquals(line.Node, _selectedNode));
+        var baseline = currentLineIndex < 0 ? (direction > 0 ? -1 : _lines.Count) : currentLineIndex;
+        var step = Math.Max(1, _stack.Viewport.Height - Math.Min(PageOverlap, _stack.Viewport.Height));
+        var targetLineIndex = Math.Clamp(baseline + (direction * step), 0, _lines.Count - 1);
+        var node = FindOwningNode(targetLineIndex, direction) ?? FindOwningNode(targetLineIndex, -direction);
+
+        if (node is null)
+        {
+            return false;
+        }
+
+        CommitSelection(SelectedPath, node);
+        RevealSelection();
+        return true;
+    }
+
+    private JsonViewNode? FindOwningNode(int lineIndex, int direction)
+    {
+        for (var index = lineIndex; index >= 0 && index < _lines.Count; index += direction)
+        {
+            if (_lines[index].Node is { } node)
+            {
+                return node;
+            }
+        }
+
+        return null;
     }
 
     private bool SelectEndpoint(bool first)

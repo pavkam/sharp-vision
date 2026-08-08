@@ -714,6 +714,8 @@ namespace SharpVision.Controls.Collections
         public int HorizontalOffset { get; set; }
         public int Indent { get; set; }
         public string Json { get; set; }
+        public int LineSize { get; set; }
+        public int PageOverlap { get; set; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
         public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
         public string? SelectedPath { get; }
@@ -881,6 +883,8 @@ namespace SharpVision.Controls.Collections
         public int HorizontalOffset { get; set; }
         public int Indent { get; set; }
         public SharpVision.Controls.Collections.TreeViewItemCollection Items { get; }
+        public int LineSize { get; set; }
+        public int PageOverlap { get; set; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
         public SharpVision.Controls.Collections.TreeViewItem? SelectedItem { get; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Collections.TreeViewItem> SelectedItems { get; }
@@ -2903,6 +2907,8 @@ namespace SharpVision.Navigation
         public string? Header { get; set; }
         public int HorizontalOffset { get; set; }
         public SharpVision.Navigation.NavigationViewEntryCollection Items { get; }
+        public int LineSize { get; set; }
+        public int PageOverlap { get; set; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
         public SharpVision.Navigation.NavigationViewItem? SelectedItem { get; }
         public int VerticalOffset { get; set; }

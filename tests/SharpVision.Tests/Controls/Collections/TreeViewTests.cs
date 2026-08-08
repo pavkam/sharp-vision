@@ -87,6 +87,82 @@ public sealed class TreeViewTests
         changed.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies unchanged LineSize assignments do not raise duplicate public notifications.</summary>
+    [Fact]
+    public void LineSize_WhenValueIsUnchanged_DoesNotRaisePropertyChanged()
+    {
+        var tree = new TreeView();
+        var notifications = 0;
+        tree.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(TreeView.LineSize))
+            {
+                notifications++;
+            }
+        };
+
+        tree.LineSize = 3;
+        tree.LineSize = 3;
+
+        notifications.ShouldBe(1);
+    }
+
+    /// <summary>Verifies unchanged PageOverlap assignments do not raise duplicate public notifications.</summary>
+    [Fact]
+    public void PageOverlap_WhenValueIsUnchanged_DoesNotRaisePropertyChanged()
+    {
+        var tree = new TreeView();
+        var notifications = 0;
+        tree.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(TreeView.PageOverlap))
+            {
+                notifications++;
+            }
+        };
+
+        tree.PageOverlap = 3;
+        tree.PageOverlap = 3;
+
+        notifications.ShouldBe(1);
+    }
+
+    /// <summary>Verifies LineSize rejects a negative value.</summary>
+    [Fact]
+    public void LineSize_WhenNegative_ThrowsArgumentOutOfRangeException()
+    {
+        var tree = new TreeView();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tree.LineSize = -1);
+    }
+
+    /// <summary>Verifies PageOverlap rejects a negative value.</summary>
+    [Fact]
+    public void PageOverlap_WhenNegative_ThrowsArgumentOutOfRangeException()
+    {
+        var tree = new TreeView();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tree.PageOverlap = -1);
+    }
+
+    /// <summary>Verifies LineSize forwards to, and reads back from, the generated scroll container.</summary>
+    [Fact]
+    public void LineSize_WhenSet_ForwardsToScrollContainer()
+    {
+        var tree = new TreeView { LineSize = 3 };
+
+        tree.LineSize.ShouldBe(3);
+    }
+
+    /// <summary>Verifies PageOverlap forwards to, and reads back from, the generated scroll container.</summary>
+    [Fact]
+    public void PageOverlap_WhenSet_ForwardsToScrollContainer()
+    {
+        var tree = new TreeView { PageOverlap = 3 };
+
+        tree.PageOverlap.ShouldBe(3);
+    }
+
     /// <summary>Verifies items are added through the typed collection.</summary>
     [ComponentUnitEvidence(typeof(TreeViewItem))]
     [Fact]

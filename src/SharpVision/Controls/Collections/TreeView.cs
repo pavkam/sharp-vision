@@ -92,6 +92,49 @@ public sealed class TreeView: CompositeControlBase
         set => _itemsStack.VerticalOffset = value;
     }
 
+    /// <summary>Gets or sets the non-negative wheel-scroll increment in cells forwarded to the
+    /// generated scroll container.</summary>
+    /// <remarks>
+    /// Keyboard navigation always moves by exactly one item regardless of this value - only the
+    /// mouse wheel consults it.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
+    public int LineSize
+    {
+        get => _itemsStack.LineSize;
+        set
+        {
+            var previous = _itemsStack.LineSize;
+            _itemsStack.LineSize = value;
+
+            if (previous != _itemsStack.LineSize)
+            {
+                NotifyPropertyChanged(nameof(LineSize), InvalidationImpact.None);
+            }
+        }
+    }
+
+    /// <summary>Gets or sets the non-negative cells of context retained between page commands.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
+    public int PageOverlap
+    {
+        get => _itemsStack.PageOverlap;
+        set
+        {
+            var previous = _itemsStack.PageOverlap;
+            _itemsStack.PageOverlap = value;
+
+            if (previous != _itemsStack.PageOverlap)
+            {
+                NotifyPropertyChanged(nameof(PageOverlap), InvalidationImpact.None);
+            }
+        }
+    }
+
     /// <summary>Scrolls the generated scroll container by signed cell deltas with saturation and
     /// endpoint clamping.</summary>
     /// <param name="x">The requested horizontal delta.</param>
@@ -1014,7 +1057,7 @@ public sealed class TreeView: CompositeControlBase
             index = direction > 0 ? -1 : visible.Count;
         }
 
-        var target = Math.Max(1, Viewport.Height);
+        var target = Math.Max(1, Viewport.Height - Math.Min(PageOverlap, Viewport.Height));
         var result = PagingStep.Accumulate(index, direction, visible.Count, target, i => visible[i].Bounds.Height, clamp: true);
 
         return visible[result];

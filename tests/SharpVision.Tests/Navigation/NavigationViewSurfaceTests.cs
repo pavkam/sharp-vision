@@ -476,6 +476,41 @@ public sealed class NavigationViewSurfaceTests
         view.SelectedItem.ShouldNotBeSameAs(items[0]);
     }
 
+    /// <summary>Verifies a configured PageOverlap retains that much context on PageDown instead of
+    /// jumping the full viewport height, matching Table and ListView's overlap-aware paging.</summary>
+    [Fact]
+    public async Task Input_WhenPageDownWithConfiguredPageOverlap_LandsOverlapAwareAsync()
+    {
+        // Arrange
+        var view = new NavigationView
+        {
+            Height = Length.Cells(6),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            PageOverlap = 2
+        };
+        List<NavigationViewItem> items = [.. Enumerable.Range(0, 12).Select(index => new NavigationViewItem { Text = $"Item {index}" })];
+
+        foreach (var item in items)
+        {
+            view.Items.Add(item);
+        }
+
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 8),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down);
+        view.SelectedItem.ShouldBeSameAs(items[0]);
+        var expectedIndex = view.Viewport.Height - view.PageOverlap;
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.PageDown);
+
+        // Assert - each entry is one cell tall, so the landing index equals the overlap-reduced step.
+        view.SelectedItem.ShouldBeSameAs(items[expectedIndex]);
+    }
+
     private static NavigationView CreateView(string? header, int width, bool useDefaultChrome = false)
     {
         var view = new NavigationView

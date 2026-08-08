@@ -192,6 +192,82 @@ public sealed class JsonViewTests
         changed.Count(name => name == nameof(JsonView.ShowScrollBars)).ShouldBe(1);
     }
 
+    /// <summary>Verifies unchanged LineSize assignments do not raise duplicate public notifications.</summary>
+    [Fact]
+    public void LineSize_WhenValueIsUnchanged_DoesNotRaisePropertyChanged()
+    {
+        var view = new JsonView();
+        var notifications = 0;
+        view.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(JsonView.LineSize))
+            {
+                notifications++;
+            }
+        };
+
+        view.LineSize = 3;
+        view.LineSize = 3;
+
+        notifications.ShouldBe(1);
+    }
+
+    /// <summary>Verifies unchanged PageOverlap assignments do not raise duplicate public notifications.</summary>
+    [Fact]
+    public void PageOverlap_WhenValueIsUnchanged_DoesNotRaisePropertyChanged()
+    {
+        var view = new JsonView();
+        var notifications = 0;
+        view.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(JsonView.PageOverlap))
+            {
+                notifications++;
+            }
+        };
+
+        view.PageOverlap = 3;
+        view.PageOverlap = 3;
+
+        notifications.ShouldBe(1);
+    }
+
+    /// <summary>Verifies LineSize rejects a negative value.</summary>
+    [Fact]
+    public void LineSize_WhenNegative_ThrowsArgumentOutOfRangeException()
+    {
+        var view = new JsonView();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => view.LineSize = -1);
+    }
+
+    /// <summary>Verifies PageOverlap rejects a negative value.</summary>
+    [Fact]
+    public void PageOverlap_WhenNegative_ThrowsArgumentOutOfRangeException()
+    {
+        var view = new JsonView();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => view.PageOverlap = -1);
+    }
+
+    /// <summary>Verifies LineSize forwards to, and reads back from, the composed viewport.</summary>
+    [Fact]
+    public void LineSize_WhenSet_ForwardsToComposedViewport()
+    {
+        var view = new JsonView { LineSize = 3 };
+
+        view.LineSize.ShouldBe(3);
+    }
+
+    /// <summary>Verifies PageOverlap forwards to, and reads back from, the composed viewport.</summary>
+    [Fact]
+    public void PageOverlap_WhenSet_ForwardsToComposedViewport()
+    {
+        var view = new JsonView { PageOverlap = 3 };
+
+        view.PageOverlap.ShouldBe(3);
+    }
+
     /// <summary>Verifies word-wrap happens during measure rather than render, so a single layout
     /// pass already reports the wrapped extent instead of leaving a stale unwrapped measurement
     /// for a follow-up pass to repair.</summary>

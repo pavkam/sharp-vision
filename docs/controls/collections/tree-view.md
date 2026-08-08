@@ -8,24 +8,26 @@ items.
 
 ## API
 
-| Member                         | Default                    | Description                                              |
-| ------------------------------ | -------------------------- | -------------------------------------------------------- |
-| `Items`                        | empty                      | Typed owned root-item collection.                        |
-| `SelectedItem`                 | `null`                     | First selected item in stable tree order.                |
-| `SelectedItems`                | empty                      | Read-only snapshot in stable tree order.                 |
-| `SelectionMode`                | `TreeSelectionMode.Single` | Allows no, one, or multiple selected items.              |
-| `Indent`                       | `2` cells                  | Non-negative horizontal extent per visible depth level.  |
-| `SetSelected(item, selected)`  | —                          | Adds or removes one item without replacing the rest.     |
-| `CheckMark`                    | `null`                     | Shared mark layout and glyphs; null resolves Brackets.   |
-| `ActualCheckMark`              | `Brackets`, read-only      | Reports the mark items render when they do not override. |
-| `ScrollBarStyle`               | `null`                     | Local generated-bar style; null leaves it to the Theme.  |
-| `ActualScrollBarStyle`         | `ThinBlock`, read-only     | Reports the style applied to the generated bar.          |
-| `SelectionChanged`             | no subscribers             | Raised after a committed selection change.               |
-| `ItemInvoked`                  | no subscribers             | Raised after pointer or keyboard activation.             |
-| `SelectItem(TreeViewItem)`     | —                          | Selects an item owned by this tree.                      |
-| `SelectAll()`                  | —                          | Selects every enabled item in multiple-selection mode.   |
-| `ClearSelection()`             | —                          | Clears the current selection.                            |
-| `ExpandAll()`, `CollapseAll()` | —                          | Changes expansion for the complete hierarchy.            |
+| Member                         | Default                    | Description                                               |
+| ------------------------------ | -------------------------- | --------------------------------------------------------- |
+| `Items`                        | empty                      | Typed owned root-item collection.                         |
+| `SelectedItem`                 | `null`                     | First selected item in stable tree order.                 |
+| `SelectedItems`                | empty                      | Read-only snapshot in stable tree order.                  |
+| `SelectionMode`                | `TreeSelectionMode.Single` | Allows no, one, or multiple selected items.               |
+| `Indent`                       | `2` cells                  | Non-negative horizontal extent per visible depth level.   |
+| `SetSelected(item, selected)`  | —                          | Adds or removes one item without replacing the rest.      |
+| `CheckMark`                    | `null`                     | Shared mark layout and glyphs; null resolves Brackets.    |
+| `ActualCheckMark`              | `Brackets`, read-only      | Reports the mark items render when they do not override.  |
+| `ScrollBarStyle`               | `null`                     | Local generated-bar style; null leaves it to the Theme.   |
+| `ActualScrollBarStyle`         | `ThinBlock`, read-only     | Reports the style applied to the generated bar.           |
+| `LineSize`                     | `1` cell                   | Non-negative wheel-scroll increment forwarded to the bar. |
+| `PageOverlap`                  | `0` cells                  | Non-negative context retained by PageUp and PageDown.     |
+| `SelectionChanged`             | no subscribers             | Raised after a committed selection change.                |
+| `ItemInvoked`                  | no subscribers             | Raised after pointer or keyboard activation.              |
+| `SelectItem(TreeViewItem)`     | —                          | Selects an item owned by this tree.                       |
+| `SelectAll()`                  | —                          | Selects every enabled item in multiple-selection mode.    |
+| `ClearSelection()`             | —                          | Clears the current selection.                             |
+| `ExpandAll()`, `CollapseAll()` | —                          | Changes expansion for the complete hierarchy.             |
 
 `SelectionMode` defaults to `Single`. `Multiple` supports Control toggles, Shift
 ranges over enabled visible items, `SelectAll`, `ClearSelection`, and Control+A.
@@ -72,7 +74,13 @@ refusing it would leave the control in a state its own configuration forbids.
 The generated scrollbar is configured through the nullable `ScrollBarStyle` and
 inspected through the resolved `ActualScrollBarStyle`. The control pins nothing
 on the bar it owns, so a null style leaves the choice to the active Theme and
-the library default.
+the library default. `LineSize` forwards the mouse wheel's cell step to the
+generated scroll container; keyboard Up and Down always move by exactly one item
+regardless of this value. `PageOverlap` forwards the cells of context kept
+between page commands: PageUp and PageDown advance by at least one item, and
+otherwise by as many items as fill the committed viewport height minus
+`PageOverlap`, accumulating each realized item's own height rather than treating
+the viewport's cell height as an item count.
 
 Each `TreeViewItem` preserves its inherited routed key and pointer events before
 applying row activation. A handler that consumes the event suppresses the

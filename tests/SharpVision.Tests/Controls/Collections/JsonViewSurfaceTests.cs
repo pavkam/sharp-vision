@@ -258,6 +258,43 @@ public sealed class JsonViewSurfaceTests
         surface.Cell(new Point(0, 1)).Text.ShouldBe("▶");
     }
 
+    /// <summary>Verifies PageDown and PageUp move the selection by one viewport's worth of lines
+    /// instead of by one entry, mirroring TreeView's selection-paging precedent rather than
+    /// Table's viewport-offset paging.</summary>
+    [Fact]
+    public async Task Keyboard_WhenPageDownThenPageUpIsPressed_MovesSelectionByOnePageAsync()
+    {
+        // Arrange
+        var properties = string.Join(',', Enumerable.Range(0, 20).Select(index => $"\"key{index}\":{index}"));
+        var view = new JsonView
+        {
+            Json = $"{{{properties}}}",
+            Height = Length.Cells(6),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            ShowScrollBars = ShowScrollBars.Never
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 8),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        view.SelectedPath.ShouldBe("/key0");
+        var expectedIndex = view.Viewport.Height;
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.PageDown);
+
+        // Assert - each top-level property is one line, so the landing index equals the page step.
+        view.SelectedPath.ShouldBe($"/key{expectedIndex}");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.PageUp);
+
+        // Assert
+        view.SelectedPath.ShouldBe("/key0");
+    }
+
     /// <summary>
     /// Verifies a click on the disclosure glyph's first cell toggles expansion under
     /// <see cref="Ambiguous.Wide"/>, where the glyph ('▶'/'▼', both East Asian Ambiguous-width)

@@ -33,6 +33,8 @@ become `SelectedItem`, and separators are skipped entirely.
 | `SelectionChanged`     | No subscribers         | Reports a committed selection change.                              |
 | `ScrollBarStyle`       | `null`                 | Local style for the generated bar; null resolves to `ThinLine`.    |
 | `ActualScrollBarStyle` | `ThinLine`, read-only  | Reports the style applied to the generated bar.                    |
+| `LineSize`             | `1` cell               | Non-negative wheel-scroll increment forwarded to the bar.          |
+| `PageOverlap`          | `0` cells              | Non-negative context retained by PageUp and PageDown.              |
 
 ## Behavior
 
@@ -51,14 +53,18 @@ become `SelectedItem`, and separators are skipped entirely.
 The view is the single sidebar tab stop (`TabNavigation.None`); item and group
 faces never receive keyboard focus themselves. Up and Down arrows move the
 current entry across the available group headers and items while skipping
-separators. PageUp and PageDown move by as many entries as fit the committed
-viewport height, and they are handled even when the cursor cannot move any
-further, so the key never escapes to page an enclosing scrollable container.
-Home and End move to the first or last available entry. The current entry
-scrolls into view automatically. Enter and Space toggle a current group or
-invoke a current item without transferring focus. When no entry is current,
-activation first establishes the first available entry and then applies its
-action.
+separators. PageUp and PageDown move by as many entries as fill the committed
+viewport height minus `PageOverlap`, and they are handled even when the cursor
+cannot move any further, so the key never escapes to page an enclosing
+scrollable container. Home and End move to the first or last available entry.
+The current entry scrolls into view automatically. Enter and Space toggle a
+current group or invoke a current item without transferring focus. When no entry
+is current, activation first establishes the first available entry and then
+applies its action.
+
+`LineSize` forwards the mouse wheel's cell step to the generated scroll
+container; keyboard Up and Down always move by exactly one entry regardless of
+this value.
 
 ## NavigationViewItem
 

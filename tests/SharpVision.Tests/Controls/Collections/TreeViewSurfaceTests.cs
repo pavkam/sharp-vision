@@ -352,6 +352,41 @@ public sealed class TreeViewSurfaceTests
         tree.SelectedItem.ShouldNotBeSameAs(items[0]);
     }
 
+    /// <summary>Verifies a configured PageOverlap retains that much context on PageDown instead of
+    /// jumping the full viewport height, matching Table and ListView's overlap-aware paging.</summary>
+    [Fact]
+    public async Task Input_WhenPageDownWithConfiguredPageOverlap_LandsOverlapAwareAsync()
+    {
+        // Arrange
+        var tree = new TreeView
+        {
+            Height = Length.Cells(6),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            PageOverlap = 2
+        };
+        List<TreeViewItem> items = [.. Enumerable.Range(0, 12).Select(index => new TreeViewItem { Header = $"Item {index}" })];
+
+        foreach (var item in items)
+        {
+            tree.Items.Add(item);
+        }
+
+        await using var surface = await ComponentSurface.MountAsync(
+            tree,
+            new Size(20, 8),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down);
+        tree.SelectedItem.ShouldBeSameAs(items[0]);
+        var expectedIndex = tree.Viewport.Height - tree.PageOverlap;
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.PageDown);
+
+        // Assert - each item is one cell tall, so the landing index equals the overlap-reduced step.
+        tree.SelectedItem.ShouldBeSameAs(items[expectedIndex]);
+    }
+
     private static TreeView CreateTree(int width)
     {
         var tree = new TreeView
