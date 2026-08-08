@@ -76,15 +76,22 @@ including a null target, activation is cleared. Focus flags and a Window's
 Detach, hide/collapse, disable, disposal, or disposal of the manager itself
 releases invalid focus deterministically.
 
-Disposing the `FocusManager` from inside `Changing`, a control focus-state
-callback, `Lost`, or `Gained` makes the manager unavailable immediately, stops
-the in-flight transition, and finishes physical focus and ownership cleanup
-before the enclosing request returns. Requests that were queued behind it
-complete as rejected, in their original order, and each completion observes only
-the failure attached to its own request. The enclosing rethrow preserves an
-earlier deferred failure over later focus callbacks or disposal cleanup. If a
-modal restoration is cancelled by this cleanup, it treats the disposed manager
-as a terminal no-focus state rather than attempting a new fallback request.
+A `Changing`, `Lost`, or `Gained` handler, or a control focus-state callback,
+may dispose the `FocusManager` while a focus request is still in flight. That
+disposal runs synchronously, in this order:
+
+- The manager becomes unavailable immediately, so no later step in the current
+  transition can restore focus.
+- Physical focus and ownership cleanup finish before the enclosing focus request
+  returns.
+- Requests that were queued behind the in-flight one complete as rejected, in
+  their original order; each completion observes only the failure attached to
+  its own request.
+- The enclosing rethrow preserves an earlier deferred failure over later focus
+  callbacks or disposal cleanup.
+- If disposal cancels a modal restoration in progress, that restoration treats
+  the disposed manager as a terminal no-focus state rather than attempting a new
+  fallback request.
 
 ## Hierarchical Tab navigation
 

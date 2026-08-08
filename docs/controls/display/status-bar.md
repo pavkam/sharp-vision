@@ -43,14 +43,21 @@ activation, focus, or keyboard behavior.
 `StatusBarItemAlignment.Right` and defaults to `Left`. An undefined value throws
 `ArgumentOutOfRangeException` before any state changes.
 
-`LeftSeparator` and `RightSeparator` are nullable `Rune` values rendered before
-and after the retained content. Null, the default, reserves no cell. A non-null
-value must be printable and exactly one cell wide under the default Unicode
-width policy; a control or wide glyph throws `ArgumentException` before any
-state changes. Each configured separator reserves exactly one cell in measure
-and arrange. Under a negotiated wide ambiguous-width policy, fixed separator
-chrome that no longer occupies one cell renders with the portable `|` fallback
-rather than overwriting an adjacent cell.
+Presence and appearance of each separator are separate, independently settable
+facts:
+
+| Member                                         | Type    | Default | Purpose                                                                                                                                                                                                      |
+| ---------------------------------------------- | ------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ShowLeftSeparator` / `ShowRightSeparator`     | `bool`  | `false` | Whether a separator is drawn on that side. Reserves exactly one cell in measure and arrange when `true`; reserves none when `false`.                                                                         |
+| `LeftSeparator` / `RightSeparator`             | `Rune?` | `null`  | An optional per-item glyph override for that side. Ignored unless the matching `Show*Separator` is `true`.                                                                                                   |
+| `ActualLeftSeparator` / `ActualRightSeparator` | `Rune`  | —       | The glyph actually drawn: the override above when one is assigned, otherwise the themed `StatusBarItemStyle.LeftSeparatorGlyph`/`RightSeparatorGlyph` (`│`, via `StatusBarSeparatorGlyphs.Bar`, by default). |
+
+A non-null `LeftSeparator` or `RightSeparator` value must be printable and
+exactly one cell wide under the default Unicode width policy; a control or wide
+glyph throws `ArgumentException` before any state changes, whether or not the
+matching `Show*Separator` is set. Under a negotiated wide ambiguous-width
+policy, fixed separator chrome that no longer occupies one cell renders with the
+portable `|` fallback rather than overwriting an adjacent cell.
 
 `StatusBarSeparatorGlyphs` supplies these predefined values:
 
@@ -105,9 +112,9 @@ contract.
 
 Within one item, the left separator receives the first available cell, the right
 separator receives the last distinct available cell, and retained content uses
-the cells between them. At a one-cell width with both separators configured,
-only the left separator renders; content and the right separator receive zero
-width.
+the cells between them. At a one-cell width with both `Show*Separator` flags
+set, only the left separator renders; content and the right separator receive
+zero width.
 
 Measure returns the sum of visible item outer widths plus spacing, with the
 maximum visible outer height; the arithmetic saturates at `int.MaxValue`.
@@ -127,12 +134,13 @@ status.Items.Add(new StatusBarItem
 status.Items.Add(new StatusBarItem
 {
     Alignment = StatusBarItemAlignment.Right,
-    LeftSeparator = StatusBarSeparatorGlyphs.Bar,
+    ShowLeftSeparator = true,
     Content = new Text("UTF-8")
 });
 status.Items.Add(new StatusBarItem
 {
     Alignment = StatusBarItemAlignment.Right,
+    ShowLeftSeparator = true,
     LeftSeparator = StatusBarSeparatorGlyphs.Bullet,
     Content = new Text("Ln 12, Col 8")
 });

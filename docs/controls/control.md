@@ -127,16 +127,18 @@ separate slots over the same registry and never appear in `Children`. Two slots
 may share the same role; membership and capacity are determined by slot
 identity, not role.
 
-The role vocabulary is container child, content, composition root, item visual,
-item host, and framework part. The foundation itself instantiates container
-children, item hosts, and private framework parts. The public
+The role vocabulary is container child, content, header, composition root, item
+visual, item host, and framework part. The foundation itself instantiates
+container children, item hosts, and private framework parts. The public
 [`ContentControl`](content-control.md#overview) instantiates the capacity-one
-content role, while [`CompositeControlBase`](composite-control.md#overview)
-instantiates the permanent capacity-one composition-root role. A slot also
-selects the normal or popup layer, hit-test and navigation participation, an
-optional stable part key, and the earliest invalidation impact. These policies
-are independent: excluding an edge from hit testing or navigation never excludes
-it from parentage, inherited context, lifecycle, or disposal.
+content role, `HeaderedContentControl` additionally instantiates the
+capacity-one header role, and
+[`CompositeControlBase`](composite-control.md#overview) instantiates the
+permanent capacity-one composition-root role. A slot also selects the normal or
+popup layer, hit-test and navigation participation, an optional stable part key,
+and the earliest invalidation impact. These policies are independent: excluding
+an edge from hit testing or navigation never excludes it from parentage,
+inherited context, lifecycle, or disposal.
 
 Cross-cutting traversal reads this registry directly rather than testing whether
 the owner is a `Container`. Stable tree order is slot registration order, then
@@ -152,50 +154,62 @@ inherited state, style scopes, lifecycle, focus and capture cleanup, radio-group
 discovery, and disposal follow every edge regardless of its interaction
 metadata.
 
-`Add`, indexed insert and replacement, `Remove`, `Clear`, and complete-slot
-replacement validate the entire proposed snapshot before changing any ownership.
-A control cannot have two parents, appear twice, be attached independently, or
-be inserted beneath one of its own descendants. When a batch fails, the old
-order, parent links, inherited context, focus, and pointer capture are all
-preserved.
+### Usage
 
-Adding a subtree below an attached owner attaches it recursively. Removing it
-detaches it recursively and clears its parent. Disposing an owner disposes every
-owned descendant, and repeated disposal is safe.
-
-Structural removal makes one deliberate exception to publication-after-commit.
-While the old tree is still coherent, guarded availability cleanup releases
-focus, clears capture before its cancellation hook runs, and then calls
-`OnUnavailable`; those callbacks still observe the old parent and inherited
-context, but the manager state is already clear. Root-manager disposal cleanup
-may follow `OnUnavailable` before the transaction commits slot membership,
-parent links, dispatcher, Unicode policy, theme, and manager context without
-further callbacks. Parent changes, theme changes, detach hooks, and attach hooks
-publish from the complete new tree. The transaction then requests its slot
-impact exactly once, before the slot notification, so a notification callback
-can consume current layout without leaving a redundant pass behind. Callback
-failures are remembered while the remaining publication and cleanup continue; a
-`finally` path still requests invalidation when an unexpected earlier failure
-bypasses normal publication, and the first failure is rethrown once the new tree
-is coherent. Tree mutation and disposal are rejected while any affected
-ownership transaction is still publishing.
-
-When a root owns focus or capture managers, that ownership propagates through
-every registered slot. Removal, inherited disable or hide, and disposal release
-manager state synchronously before parent or dispatcher references are cleared.
-Disposing a child directly removes it through its exact owning slot with
-`ReleaseReason.Disposed`, publishes the slot change, and never emits a second
-detached reason. Owner disposal continues across all slots after a descendant
-callback failure and disposes each remaining descendant once. The structural
-publication guard spans `OnDisposing`, the unavailable notification, the
-exact-slot unlink, and descendant cleanup; a disposal callback cannot switch to
-ordinary collection removal to publish `Detached`, and cannot bypass the exact
-slot.
+Most application code adds and removes children through a container's public
+collection, such as [`Container.Children`](container.md#children-and-ownership):
 
 ```csharp
 container.Children.Add(control);
 Debug.Assert(control.Parent == container);
+
+container.Children.Remove(control);
+Debug.Assert(control.Parent == null);
+
+container.Children.Clear();
+Debug.Assert(container.Children.Count == 0);
 ```
+
+Adding a subtree below an attached owner attaches it recursively; removing it
+detaches it recursively and clears its `Parent`. Disposing an owner disposes
+every owned descendant, and repeated disposal is safe.
+
+### Ordering and failure guarantees
+
+`Add`, indexed insert and replacement, `Remove`, `Clear`, and complete-slot
+replacement share the same commit discipline:
+
+| Guarantee                 | Detail                                                                                                                                                                                                                                                                                                                  |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Atomic validation         | The entire proposed change is validated before any ownership state changes. A control cannot have two parents, appear twice, be attached independently, or be inserted beneath one of its own descendants.                                                                                                              |
+| Rollback on failure       | When a batch fails validation, the old order, parent links, inherited context, focus, and pointer capture are all preserved unchanged.                                                                                                                                                                                  |
+| Reentrancy                | Tree mutation and disposal are rejected while any affected ownership transaction is still publishing.                                                                                                                                                                                                                   |
+| Focus/capture propagation | When a root owns focus or capture managers, that ownership propagates through every registered slot. Removal, inherited disable or hide, and disposal release manager state synchronously before parent or dispatcher references are cleared.                                                                           |
+| Disposal identity         | Disposing a child directly removes it through its exact owning slot with `ReleaseReason.Disposed`, publishes the slot change once, and never emits a second `Detached` notification. Owner disposal continues across all slots after a descendant callback failure and disposes each remaining descendant exactly once. |
+
+Structural removal makes one deliberate exception to publication-after-commit.
+Its order is:
+
+1. While the old tree is still coherent, guarded availability cleanup releases
+   focus and clears capture — running capture's cancellation hook first — then
+   calls `OnUnavailable`. Those callbacks still observe the old parent and
+   inherited context, even though the manager state is already clear.
+2. For root-manager disposal, this cleanup may run before the transaction
+   commits slot membership, parent links, dispatcher, Unicode policy, theme, and
+   manager context, with no further callbacks in between.
+3. Parent changes, theme changes, detach hooks, and attach hooks then publish
+   from the complete new tree.
+4. The transaction requests its slot invalidation impact exactly once, before
+   the slot-changed notification, so a notification callback can consume current
+   layout without leaving a redundant pass behind.
+
+Callback failures are remembered while the remaining publication and cleanup
+continue: a `finally` path still requests invalidation when an unexpected
+earlier failure bypasses normal publication, and the first failure is rethrown
+once the new tree is coherent. The structural publication guard spans
+`OnDisposing`, the unavailable notification, the exact-slot unlink, and
+descendant cleanup — a disposal callback cannot switch to ordinary collection
+removal to publish `Detached`, and cannot bypass the exact slot.
 
 ## Invalidation API
 
