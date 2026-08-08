@@ -23,7 +23,7 @@ using SharpVision.Popups;
 /// policy probably already covered it. It does - and these tests keep it that way, since the two
 /// mechanisms are independent and a regression in either would otherwise be invisible.</para>
 /// </summary>
-public sealed class LightDismissModalityTests
+public sealed class LightDismissTests
 {
     /// <summary>Verifies a context menu opened inside a presented modal dialog closes on a press
     /// landing outside it but inside the same plane - the only region reachable while the dialog is

@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Menus;
 
 /// <summary>Verifies shortcut text measurement, rendering position, and dim attributes on menu items.</summary>
-public sealed class MenuItemShortcutTests
+public sealed class MenuItemTests
 {
     /// <summary>Verifies the shortcut text renders right-aligned with dim attributes within the item bounds.</summary>
     [Fact]
