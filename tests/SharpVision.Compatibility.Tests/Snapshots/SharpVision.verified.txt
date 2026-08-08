@@ -2776,6 +2776,7 @@ namespace SharpVision.Menus
     public class ContextMenu : System.IDisposable
     {
         public ContextMenu() { }
+        public ContextMenu(SharpVision.Menus.Menu menu) { }
         public SharpVision.Menus.MenuEntryCollection Items { get; }
         public bool Opened { get; }
         public SharpVision.Popups.PopupChrome PopupChrome { get; set; }
