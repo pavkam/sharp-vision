@@ -607,9 +607,9 @@ public sealed class MenuTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies a throwing Pressed subscriber on the space-pressed item during disposal still
-    /// surfaces the failure while completing base teardown and unsubscribing ItemInvoked - the
-    /// unwrapped SetPressed call used to exit OnUnavailable before either ran.</summary>
+    /// <summary>Verifies a throwing Pressed subscriber on the space-pressed item cannot suppress the
+    /// ItemInvoked unsubscription during disposal; the failure is aggregated and rethrown once
+    /// cleanup completes.</summary>
     [Fact]
     public async Task Dispose_WhenSpacePressedItemPressedSubscriberThrows_SurfacesFailureAndUnsubscribesItemInvokedAsync()
     {
@@ -650,12 +650,10 @@ public sealed class MenuTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies a throwing Pressed subscriber on a nested menu's space-pressed item during a
-    /// non-dispose unavailability still surfaces the failure while the nested menu's own delegated
-    /// <c>sessionOwner.CloseChain</c> call still closes the whole chain - the unwrapped SetPressed call
-    /// used to exit OnUnavailable before that delegated close ran. The mutation targets a non-root
-    /// nested menu (not the top menu) so the closure can only come from this delegated call, not
-    /// incidentally from the modality root's own unavailable handling.</summary>
+    /// <summary>Verifies a throwing Pressed subscriber on a nested menu's space-pressed item cannot
+    /// suppress its delegated submenu-chain close; the failure is aggregated and rethrown once the
+    /// whole chain closes. The mutation targets a non-root nested menu, so closure can only come from
+    /// this delegated call, not the modality root's own unavailable handling.</summary>
     [Fact]
     public async Task Visibility_WhenNestedMenuSpacePressedItemPressedSubscriberThrows_SurfacesFailureAndClosesChainAsync()
     {
