@@ -154,7 +154,10 @@ internal sealed class PressBehavior
 
         if (stroke.Code == Code.Enter)
         {
-            if (stroke.Action == KeyAction.Press && !stroke.Modifiers.IsActivationEligible())
+            // The gate applies to the whole Enter pair, not just the activating press - an
+            // ancestor that saw the gated press bubble past it expects the paired release to
+            // bubble too, instead of being silently swallowed here.
+            if (!stroke.Modifiers.IsActivationEligible())
             {
                 return;
             }

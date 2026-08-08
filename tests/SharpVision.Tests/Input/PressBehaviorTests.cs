@@ -169,4 +169,39 @@ public sealed class PressBehaviorTests
         activations.ShouldBe([ActivationCause.Keyboard]);
         pressed.ShouldBe([true, false]);
     }
+
+    /// <summary>The gate covers Enter's paired release too, not just the activating press - an
+    /// ancestor that saw a gated Ctrl+Enter press bubble past it must see the paired release bubble
+    /// as well, instead of finding it silently swallowed here.</summary>
+    [Fact]
+    public void Handle_WhenEnterReleaseHasControl_LeavesUnhandled()
+    {
+        List<ActivationCause> activations = [];
+        List<bool> pressed = [];
+        var behavior = Create(releasesExpected: true, activations, pressed);
+
+        var release = Enter(KeyAction.Release, Modifiers.Control);
+        behavior.Handle(release);
+
+        release.Handled.ShouldBeFalse();
+        activations.ShouldBeEmpty();
+        pressed.ShouldBeEmpty();
+    }
+
+    /// <summary>An unmodified Enter release keeps its existing behavior: swallowed without
+    /// activating, since Enter already committed on the press.</summary>
+    [Fact]
+    public void Handle_WhenEnterReleaseHasNoModifiers_IsHandledWithoutActivating()
+    {
+        List<ActivationCause> activations = [];
+        List<bool> pressed = [];
+        var behavior = Create(releasesExpected: true, activations, pressed);
+
+        var release = Enter(KeyAction.Release);
+        behavior.Handle(release);
+
+        release.Handled.ShouldBeTrue();
+        activations.ShouldBeEmpty();
+        pressed.ShouldBeEmpty();
+    }
 }
