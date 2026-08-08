@@ -54,6 +54,27 @@ internal sealed class ContextMenuPane: CompositeControlBase
             ContextMenu = editMenu
         };
 
+        var builderStatus = new Text("Right-click a control to open its context menu.");
+        var builderMenu = new ContextMenu(
+            MenuBuilder.Vertical()
+                .Item("&Inspect")
+                .Item("&Run", shortcut: "F5")
+                .Item("&Debug", shortcut: "F9")
+                .Separator()
+                .Item("De&ploy", isEnabled: false)
+                .Build());
+        builderMenu.Opening += (_, _) =>
+            builderStatus.Content = "Context menu opened.";
+        builderMenu.Closed += (_, _) =>
+            builderStatus.Content = "Context menu closed.";
+        var builderTarget = new Button
+        {
+            Text = "&Builder-composed menu",
+            Width = Length.Cells(20),
+            Height = Length.Cells(3),
+            ContextMenu = builderMenu
+        };
+
         return new DocPage(
             Title,
             "<info>ContextMenu</info> displays a vertical menu at the pointer position on secondary (right) click. Any control supports it through the <info>ContextMenu</info> property. <info>TextInput</info> attaches one by default with clipboard and editing commands.",
@@ -80,6 +101,15 @@ internal sealed class ContextMenuPane: CompositeControlBase
                 new DocExample(
                     "A second control with its own menu",
                     "Right-click the button to see clipboard-style items distinct from the first example.",
-                    editTarget)));
+                    editTarget)),
+            new DocSection(
+                "🧰",
+                "Building a context menu with MenuBuilder",
+                "<info>ContextMenu</info> also accepts a menu built with <info>MenuBuilder</info>, composing the fluent builder API with the wrapper's popup, light dismiss, and Opening/Closing events.",
+                new DocExample(
+                    "Right-click target",
+                    "Right-click the button to see the context menu built through MenuBuilder. <reverse>Escape</reverse> or clicking outside dismisses it.",
+                    new DocColumn(builderTarget, builderStatus),
+                    "var menu = new ContextMenu(\n    MenuBuilder.Vertical()\n        .Item(\"&Inspect\")\n        .Item(\"&Run\", shortcut: \"F5\")\n        .Item(\"&Debug\", shortcut: \"F9\")\n        .Separator()\n        .Item(\"De&ploy\", isEnabled: false)\n        .Build());")));
     }
 }
