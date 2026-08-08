@@ -97,7 +97,7 @@ internal sealed class SeparatorPane: CompositeControlBase
                     "Between text items",
                     "Place a separator between two text controls in a Stack to create a visual break.",
                     new DocCard(betweenStack),
-                    "var stack = new Stack();\nstack.Children.Add(new Text(\"Above\"));\nstack.Children.Add(new Separator());\nstack.Children.Add(new Text(\"Below\"));")),
+                    "var stack = new Stack();\nstack.Children.Add(new Text(\"Above the separator\"));\nstack.Children.Add(new Separator());\nstack.Children.Add(new Text(\"Below the separator\"));")),
             new DocSection(
                 "➖",
                 "Vertical separator",

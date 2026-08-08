@@ -102,26 +102,21 @@ internal sealed class WindowPane: CompositeControlBase
                 }
             },
             handledEventsToo: true);
-        Place(draggable, 22, 3);
-        Place(activityWindow, 54, 12);
-        Place(reopenWindow, 2, 2);
-        Place(closeWindow, 2, 5);
-        Place(windowStatus, 2, 9);
-        // Row 11 is the dragSurface text's "Recent projects" line; rows 0-15 of that literal are
-        // occupied end to end, so activationStatus sits below the whole block with a clear row.
-        Place(activationStatus, 2, 17);
+        Place(draggable, 0, 1);
+        Place(activityWindow, 0, 16);
+        Place(reopenWindow, 25, 16);
+        Place(closeWindow, 25, 19);
+        Place(windowStatus, 25, 22);
+        Place(activationStatus, 0, 24);
 
         var dragSurface = new Text(
-            "Dashboard  Activity  Settings\n\n\n\n\n\n\n\n\n\n\n" +
-            "Recent projects\n" +
-            "  sharp-vision now\n" +
-            "  terminal-lab 8m\n\n" +
+            "Dashboard  Activity  Settings\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n" +
             "Drag title bars.")
         { HitTestVisible = false };
         var dragStage = new Overlay
         {
-            Width = Length.Cells(82),
-            Height = Length.Cells(22),
+            Width = Length.Cells(46),
+            Height = Length.Cells(30),
             ClipToBounds = true,
             Border = new Border(
                 BorderSide.All,
@@ -306,7 +301,7 @@ internal sealed class WindowPane: CompositeControlBase
                     "Five border families",
                     "Compare both close edges and Left, Center, and Right title placement without collisions.",
                     chromeCatalog,
-                    "window.BorderGlyphStyle = BorderGlyphStyle.Paired;\nwindow.ClosePlacement = WindowClosePlacement.Right;\nwindow.HeaderPlacement = WindowTitlePlacement.Center;")),
+                    "window.Border = new Border(\n    BorderSide.All,\n    BorderGlyphStyle.Paired,\n    SemanticColor.ControlBorder,\n    Color.Transparent,\n    SemanticDecoration.Border);\nwindow.ClosePlacement = WindowClosePlacement.Right;\nwindow.HeaderPlacement = WindowTitlePlacement.Center;")),
             new DocSection(
                 "◩",
                 "Shadow depth",

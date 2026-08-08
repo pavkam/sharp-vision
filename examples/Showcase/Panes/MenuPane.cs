@@ -243,7 +243,7 @@ internal sealed class MenuPane: CompositeControlBase
                     "Application menu bar",
                     "Click or press <reverse>Enter</reverse> on File, Edit, View, or Help, then hover another heading to switch without leaving the menu plane. <reverse>Tab</reverse> and arrows move selection; Open Recent extends the same plane to the right.",
                     new DocColumn(barFrame, barStatus),
-                    "var file = new MenuItem { Content = new Text(\"&File\") };\nvar fileMenu = new Menu\n{\n    Orientation = Orientation.Vertical,\n    MinWidth = 14,\n    MaxWidth = 24,\n};\nfileMenu.Items.Add(new MenuItem { Content = new Text(\"&New\") });\nfile.Submenu = fileMenu;")),
+                    "var file = new MenuItem { Text = \"&File\" };\nvar fileMenu = new Menu\n{\n    Orientation = Orientation.Vertical,\n    MinWidth = 14,\n    MaxWidth = 24,\n};\nfileMenu.Items.Add(new MenuItem { Text = \"&New\" });\nfile.Submenu = fileMenu;")),
             new DocSection(
                 "🧰",
                 "Building a menu with MenuBuilder",

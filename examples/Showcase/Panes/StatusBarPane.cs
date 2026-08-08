@@ -27,6 +27,6 @@ internal sealed class StatusBarPane: CompositeControlBase
                     "Live application status",
                     "Move the pointer across the editor to update <info>Mouse</info> coordinates. The leading Spinner advances independently; mixed Unicode separators divide trailing context, and the retained <info>CheckBox</info> toggles autosave status through ordinary input.",
                     workspace,
-                    "var status = new StatusBar();\nstatus.Items.Add(new StatusBarItem\n{\n    Content = new Stack\n    {\n        Orientation = Orientation.Horizontal,\n        Children = { new Spinner(), new Text(\"Indexing\") }\n    }\n});\nstatus.Items.Add(new StatusBarItem\n{\n    Alignment = StatusBarItemAlignment.Right,\n    ShowLeftSeparator = true,\n    Content = new CheckBox { Content = new Text(\"Autosave\") }\n});\nDock.SetSide(status, DockSide.Bottom);")));
+                    "var status = new StatusBar();\nstatus.Items.Add(new StatusBarItem\n{\n    Content = new Stack\n    {\n        Orientation = Orientation.Horizontal,\n        Children = { new Spinner(), new Text(\"Indexing\") }\n    }\n});\nstatus.Items.Add(new StatusBarItem\n{\n    Alignment = StatusBarItemAlignment.Right,\n    Content = new CheckBox { Text = \"Autosave\" }\n});\nstatus.Items.Add(new StatusBarItem\n{\n    Alignment = StatusBarItemAlignment.Right,\n    ShowLeftSeparator = true,\n    Content = pointerStatus\n});\nDock.SetSide(status, DockSide.Bottom);")));
     }
 }

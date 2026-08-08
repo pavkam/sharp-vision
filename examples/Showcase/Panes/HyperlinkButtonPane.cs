@@ -83,7 +83,7 @@ internal sealed class HyperlinkButtonPane: CompositeControlBase
                     "Disabled",
                     "The link is not focusable and does not respond to pointer or keyboard input.",
                     disabled,
-                    "var link = new HyperlinkButton(\"Unavailable\") { Enabled = false };")),
+                    "var link = new HyperlinkButton(\"&Unavailable link\") { Enabled = false };")),
             new DocSection(
                 "⚖️",
                 "Comparison",
@@ -92,6 +92,6 @@ internal sealed class HyperlinkButtonPane: CompositeControlBase
                     "Side by side",
                     "Both controls respond to the same input paths. HyperlinkButton uses accent-underlined text; Button uses bordered chrome.",
                     new DocColumn(new DocRow(linkVersion, buttonVersion), comparisonStatus),
-                    "var link = new HyperlinkButton(\"Navigate\");\nvar button = new Button(\"Navigate\");")));
+                    "var link = new HyperlinkButton(\"&Navigate\");\nvar button = new Button(\"Na&vigate\");")));
     }
 }

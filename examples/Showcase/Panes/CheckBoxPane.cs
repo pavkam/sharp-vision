@@ -139,7 +139,7 @@ internal sealed class CheckBoxPane: CompositeControlBase
                     "Live toggle",
                     "Use <reverse>Space</reverse>, <reverse>Enter</reverse>, or a primary click. The status reports both the <success>committed value</success> and activation cause.",
                     new DocColumn(live, status),
-                    "var option = new CheckBox { Content = new Text(\"Include metadata\") };")),
+                    "var option = new CheckBox { Text = \"Include metadata\" };")),
             new DocSection(
                 "☑️",
                 "Three-state policy",

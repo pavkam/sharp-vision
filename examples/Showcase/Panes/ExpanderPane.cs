@@ -62,7 +62,7 @@ internal sealed class ExpanderPane: CompositeControlBase
         return new DocPage(Title, "<info>Expander</info> displays a collapsible section with a focusable header toggle and optional content.",
             new DocSection("📂", "Basic expander", "Click the header or press <reverse>Enter</reverse>/<reverse>Space</reverse> to toggle.",
                 new DocExample("Settings section", "Toggle to show or hide.", new DocColumn(basic, status),
-                    "var exp = new Expander { Header = \"&Settings\" };"),
+                    "var exp = new Expander { HeaderText = \"&Settings\" };"),
                 new DocExample("Initially collapsed", "Set <info>Expanded</info> to <info>false</info>.", collapsed)),
             new DocSection("📂", "Nested expanders", "Expanders inside expanders.",
                 new DocExample("Two-level nesting", "Both toggle independently.", nested)),
@@ -117,7 +117,7 @@ internal sealed class ExpanderPane: CompositeControlBase
                             }
                         }
                     },
-                    "var expander = new Expander\n{\n    Header = \"&Settings\",\n    BorderGlyphStyle = BorderGlyphStyle.Rounded,\n};")));
+                    "var expander = new Expander\n{\n    HeaderText = \"&Settings\",\n    Padding = new Thickness(1, 0),\n};")));
     }
 
     private static ExpanderStyle PlusMinus => ExpanderStyle.Default with

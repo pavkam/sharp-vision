@@ -212,7 +212,7 @@ internal sealed class ButtonPane: CompositeControlBase
                     "Primary action",
                     "Hover for a subtle label accent; focus strengthens the frame. Press <reverse>Enter</reverse> or <reverse>Space</reverse>, or click it. The log identifies the <success>committed input path</success>.",
                     new DocColumn(primary, status),
-                    "var save = new Button { Content = new Text(\"&Save\") };\nsave.Click += (_, e) => status.Content = e.Cause.ToString();")),
+                    "var save = new Button { Text = \"&Save\" };\nsave.Click += (_, e) => status.Content = e.Cause.ToString();")),
             new DocSection(
                 "📎",
                 "Commands",
@@ -247,7 +247,7 @@ internal sealed class ButtonPane: CompositeControlBase
                     "Filled, composite, block, flat, and disabled",
                     "Filled uses a borderless opaque face and fractional block depth. Composite preserves and restyles the dotted surface behind it. Block uses one visible glyph. Flat removes depth.",
                     shadowStage,
-                    "var add = new Button { Style = ButtonStyle.Filled, Content = new Text(\"&Add\") };")),
+                    "var add = new Button { Style = ButtonStyle.Filled, Text = \"&Add\" };")),
             new DocSection(
                 "⚡",
                 "Programmatic use",

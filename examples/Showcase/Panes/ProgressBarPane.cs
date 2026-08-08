@@ -129,9 +129,9 @@ internal sealed class ProgressBarPane: CompositeControlBase
                 "Wire buttons to the <info>Value</info> property and observe the bar update in real time.",
                 new DocExample(
                     "Increment and reset",
-                    "Increase adds ten percent on each click. Reset returns the bar to zero.",
+                    "Increase adds one step on each click. Reset returns the bar to zero.",
                     new DocColumn(interactiveBar, new DocRow(increase, reset), interactiveStatus),
-                    "increase.Click += (_, _) =>\n{\n    bar.Value = Math.Min(100, bar.Value + 10);\n};")),
+                    "increase.Click += (_, _) =>\n{\n    bar.Value = Math.Min(10, bar.Value + 1);\n};")),
             new DocSection(
                 "🔬",
                 "Sub-cell resolution",

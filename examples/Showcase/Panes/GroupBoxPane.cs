@@ -195,7 +195,7 @@ internal sealed class GroupBoxPane: CompositeControlBase
                     "Settings checkboxes",
                     "Toggle any option and the status reflects the last changed setting.",
                     settingsGroup,
-                    "var group = new GroupBox\n{\n    Header = \"&Settings\",\n    Content = new Stack { ... },\n};")),
+                    "var group = new GroupBox\n{\n    HeaderText = \"&Settings\",\n    Content = new Stack { ... },\n};")),
             new DocSection(
                 "🗂️",
                 "Multiple groups",

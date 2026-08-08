@@ -115,7 +115,7 @@ internal sealed class GridPane: CompositeControlBase
                     "Fixed columns",
                     "Each column keeps exactly nine cells while spacing remains outside the track widths.",
                     fixedTracks,
-                    "grid.Columns.Add(Track.Cells(9));\ngrid.Columns.Add(Track.Star(1));"),
+                    "grid.Columns.Add(Track.Cells(9));\ngrid.Columns.Add(Track.Cells(9));\ngrid.Columns.Add(Track.Cells(9));"),
                 new DocExample(
                     "Auto and star allocation",
                     "The bordered regions make the allocation visible: Auto keeps its three-row intrinsic card, then 2* receives six rows and 1* receives three.",

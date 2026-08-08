@@ -120,7 +120,7 @@ internal sealed class ChaseIndicatorPane: CompositeControlBase
                             Color.Rgb(0x80, 0x20, 0x20),
                             Color.Rgb(0x30, 0x30, 0x30))
                     },
-                    "chase.Style = chase.Style.Value with { HeadColor = Color.Rgb(0xFF, 0x40, 0x40) };")),
+                    "chase.Style = ChaseIndicatorStyle.Default with { HeadColor = Color.Rgb(0xFF, 0x40, 0x40) };")),
             Doc.Section(
                 "⏱️",
                 "Playback",

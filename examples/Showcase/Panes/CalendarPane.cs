@@ -80,7 +80,7 @@ internal sealed class CalendarPane: CompositeControlBase
                 "Availability and events",
                 "The maintenance window cannot be selected; starred and dotted dates are authored rich faces, and disabled state wins over authored color.",
                 SpecialCalendar,
-                "calendar.BlockedDates.Block(new DateInterval(start, end));\ncalendar.SetMarkup(eventDate, \"<accent><b>19★</b></accent>\");")),
+                "calendar.BlockedDates.Block(new DateInterval(start, end));\ncalendar.SetMarkup(eventDate, \"<info><b>19★ </b></info>\");")),
         new DocSection(
             "⌨️",
             "Keyboard and pointer",

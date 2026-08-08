@@ -136,7 +136,7 @@ internal sealed class TabControlPane: CompositeControlBase
             new DocSection("📑", "Basic tabs", "Click headers, use <reverse>Left</reverse>/<reverse>Right</reverse>, or jump with <reverse>Home</reverse>/<reverse>End</reverse>.",
                 new DocExample("Settings panel", "Only the active header is highlighted; page content stays neutral.",
                     new DocColumn(tabs, status),
-                    "tabs.Items.Add(new TabItem { Header = \"&General\" });")),
+                    "tabs.Items.Add(new TabItem { HeaderText = \"&General\" });")),
             new DocSection("🔄", "Dynamic tabs", "Add and remove tabs at runtime.",
                 new DocExample("Add and remove", "Buttons modify the tab set.",
                     new DocColumn(dyn, new DocRow(addBtn, rmBtn, closeBtn), dynStatus))),
@@ -167,7 +167,7 @@ internal sealed class TabControlPane: CompositeControlBase
                             }
                         }
                     },
-                    "tabs.DividerColor = Color.Rgb(0x60, 0x60, 0x60);\ntabs.SelectionIndicatorColor = Color.Rgb(0x40, 0xC0, 0x40);")),
+                    "tabs.Style = TabControlStyle.Default with\n{\n    DividerColor = Color.Rgb(0x60, 0x60, 0x60),\n    SelectionIndicatorColor = Color.Rgb(0x40, 0xC0, 0x40)\n};")),
             new DocSection("🚫", "Disabled tabs", "A disabled <info>TabItem</info> remains visible but keyboard and pointer navigation skip it.",
                 new DocExample("Unavailable tab", "Use <reverse>Left</reverse>/<reverse>Right</reverse> arrows — the middle tab is skipped.",
                     disabledTabs)),
