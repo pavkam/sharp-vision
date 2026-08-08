@@ -224,7 +224,7 @@ public sealed class Menu: ItemsControl
             return;
         }
 
-        if (key.Stroke.Code == Code.Enter && ActivateSelected())
+        if (key.Stroke.Code == Code.Enter && key.Stroke.Modifiers.IsActivationEligible() && ActivateSelected())
         {
             eventArgs.Handled = true;
             return;
@@ -1458,19 +1458,32 @@ public sealed class Menu: ItemsControl
             return;
         }
 
-        eventArgs.Handled = true;
-
-        if (stroke.Action == KeyAction.Press && _spacePressedItem is null &&
-            _selectedIndex >= 0 && ItemAt(_selectedIndex) is MenuItem
+        if (stroke.Action == KeyAction.Press && _spacePressedItem is null)
+        {
+            // An incidental modifier must not silently arm the pressed frame - move the gate
+            // ahead of Handled so a modified Space still bubbles for a shortcut to see.
+            if (!stroke.Modifiers.IsActivationEligible())
             {
-                EffectiveIsEnabled: true, EffectiveIsVisible: true
-            } selected)
-        {
-            _spacePressedItem = selected;
-            selected.SetPressed(true);
+                return;
+            }
+
+            eventArgs.Handled = true;
+
+            if (_selectedIndex >= 0 && ItemAt(_selectedIndex) is MenuItem
+                {
+                    EffectiveIsEnabled: true, EffectiveIsVisible: true
+                } selected)
+            {
+                _spacePressedItem = selected;
+                selected.SetPressed(true);
+            }
+
+            return;
         }
-        else if (stroke.Action == KeyAction.Release && _spacePressedItem is { } held)
+
+        if (stroke.Action == KeyAction.Release && _spacePressedItem is { } held)
         {
+            eventArgs.Handled = true;
             _spacePressedItem = null;
             held.SetPressed(false);
 
@@ -1479,7 +1492,11 @@ public sealed class Menu: ItemsControl
             {
                 held.ActivateFromMenu(ActivationCause.Keyboard);
             }
+
+            return;
         }
+
+        eventArgs.Handled = true;
     }
 
     private void SelectPointerTarget(PointerEventArgs eventArgs)

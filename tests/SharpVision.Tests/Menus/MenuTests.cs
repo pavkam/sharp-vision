@@ -443,6 +443,114 @@ public sealed class MenuTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an incidental Control modifier on Enter does not invoke the selected item,
+    /// and leaves the stroke unhandled so a shortcut bound to the modified combination still sees it.</summary>
+    [Fact]
+    public async Task Dispatch_WhenEnterHasControlModifier_DoesNotInvokeAndLeavesUnhandledAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var item = new MenuItem { Text = "First" };
+            menu.Items.Add(item);
+            menu.SelectedIndex = 0;
+            menu.Attach(dispatcher);
+            using var focus = new FocusManager(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            var invocations = new List<(MenuItem Item, ActivationCause Cause)>();
+            menu.ItemInvoked += (_, eventArgs) => invocations.Add((eventArgs.Item, eventArgs.Cause));
+
+            var result = Router.Route(menu, Events.Key, Key(Code.Enter, Modifiers.Control));
+
+            result.Handled.ShouldBeFalse();
+            invocations.ShouldBeEmpty();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Shift-held Enter (a common terminal chord) still invokes.</summary>
+    [Fact]
+    public async Task Dispatch_WhenEnterHasShiftModifier_StillInvokesAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var item = new MenuItem { Text = "First" };
+            menu.Items.Add(item);
+            menu.SelectedIndex = 0;
+            menu.Attach(dispatcher);
+            using var focus = new FocusManager(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            var invocations = new List<(MenuItem Item, ActivationCause Cause)>();
+            menu.ItemInvoked += (_, eventArgs) => invocations.Add((eventArgs.Item, eventArgs.Cause));
+
+            var result = Router.Route(menu, Events.Key, Key(Code.Enter, Modifiers.Shift));
+
+            result.Handled.ShouldBeTrue();
+            invocations.ShouldBe([(item, ActivationCause.Keyboard)]);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an incidental Control modifier on the arming Space press does not latch the
+    /// pressed frame, and leaves the stroke unhandled so it bubbles.</summary>
+    [Fact]
+    public async Task Dispatch_WhenSpacePressHasControlModifier_DoesNotArmAndLeavesUnhandledAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var item = new MenuItem { Text = "Run" };
+            menu.Items.Add(item);
+            menu.Attach(dispatcher);
+            using var focus = new FocusManager(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            var invocations = new List<ActivationCause>();
+            item.Invoked += (_, eventArgs) => invocations.Add(eventArgs.Cause);
+
+            var press = Router.Route(menu, Events.Key, Space(KeyAction.Press, Modifiers.Control));
+
+            press.Handled.ShouldBeFalse();
+            item.Pressed.ShouldBeFalse();
+
+            var release = Router.Route(menu, Events.Key, Space(KeyAction.Release, Modifiers.Control));
+
+            invocations.ShouldBeEmpty();
+            _ = release;
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Shift-held Space still holds and invokes.</summary>
+    [Fact]
+    public async Task Dispatch_WhenSpaceHasShiftModifier_StillCompletesAndInvokesAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var item = new MenuItem { Text = "Run" };
+            menu.Items.Add(item);
+            menu.Attach(dispatcher);
+            using var focus = new FocusManager(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            var invocations = new List<ActivationCause>();
+            item.Invoked += (_, eventArgs) => invocations.Add(eventArgs.Cause);
+
+            var press = Router.Route(menu, Events.Key, Space(KeyAction.Press, Modifiers.Shift));
+            press.Handled.ShouldBeTrue();
+            item.Pressed.ShouldBeTrue();
+
+            var release = Router.Route(menu, Events.Key, Space(KeyAction.Release, Modifiers.Shift));
+            release.Handled.ShouldBeTrue();
+            invocations.ShouldBe([ActivationCause.Keyboard]);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies disposing the currently space-pressed item directly clears the held
     /// reference so the next Space release does not crash with ObjectDisposedException.</summary>
     [Fact]
@@ -838,18 +946,18 @@ public sealed class MenuTests
         FrameOracle.Get(frame, new Point(longHint.Bounds.Right - 1, 2)).ShouldBe("S");
     }
 
-    private static KeyEventArgs Key(Code code) => new(new Stroke(
+    private static KeyEventArgs Key(Code code, Modifiers modifiers = Modifiers.None) => new(new Stroke(
         code,
         default,
         nativeCode: 0,
-        Modifiers.None,
+        modifiers,
         KeyAction.Press));
 
-    private static KeyEventArgs Space(KeyAction action) => new(new Stroke(
+    private static KeyEventArgs Space(KeyAction action, Modifiers modifiers = Modifiers.None) => new(new Stroke(
         Code.Character,
         new Rune(' '),
         nativeCode: 0,
-        Modifiers.None,
+        modifiers,
         action));
 
     private static KeyEventArgs Tab(Modifiers modifiers = Modifiers.None) => new(new Stroke(
