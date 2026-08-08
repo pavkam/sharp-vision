@@ -539,6 +539,104 @@ public sealed class DockTests
         panel.DesiredSize.Width.ShouldBe(9);
     }
 
+    /// <summary>Verifies a single deferred Star's own-axis margin is reserved once by phase 1 and
+    /// not folded a second time into the seeded minimum total by phase 2.</summary>
+    [Fact]
+    public void Measure_WhenDeferredStarHasMarginOnVerticalAxis_CountsMarginOnce()
+    {
+        var panel = new Dock { LastChildFills = false };
+        var top = new ProbeControl { Height = Length.Star(1), MinHeight = 5, Margin = new Thickness(2) };
+        Dock.SetSide(top, DockSide.Top);
+        panel.Children.Add(top);
+
+        new LayoutEngine().Layout(panel, new Size(20, 20));
+
+        panel.DesiredSize.Height.ShouldBe(9);
+    }
+
+    /// <summary>Verifies the same single-margin accounting on the horizontal axis, mirroring the
+    /// vertical-axis regression.</summary>
+    [Fact]
+    public void Measure_WhenDeferredStarHasMarginOnHorizontalAxis_CountsMarginOnce()
+    {
+        var panel = new Dock { LastChildFills = false };
+        var left = new ProbeControl { Width = Length.Star(1), MinWidth = 5, Margin = new Thickness(2) };
+        Dock.SetSide(left, DockSide.Left);
+        panel.Children.Add(left);
+
+        new LayoutEngine().Layout(panel, new Size(20, 20));
+
+        panel.DesiredSize.Width.ShouldBe(9);
+    }
+
+    /// <summary>Verifies two deferred Star siblings with distinct non-zero margins each contribute
+    /// their own margin and minimum to the seeded total exactly once, so both sum rather than
+    /// either being lost or doubled.</summary>
+    [Fact]
+    public void Measure_WhenTwoDeferredStarSiblingsHaveDistinctMargins_SumsMarginsAndMinimumsOnce()
+    {
+        var panel = new Dock { LastChildFills = false };
+        var first = new ProbeControl { Height = Length.Star(1), MinHeight = 5, Margin = new Thickness(0, 2) };
+        var second = new ProbeControl { Height = Length.Star(1), MinHeight = 3, Margin = new Thickness(0, 1) };
+        Dock.SetSide(first, DockSide.Top);
+        Dock.SetSide(second, DockSide.Top);
+        panel.Children.Add(first);
+        panel.Children.Add(second);
+
+        new LayoutEngine().Layout(panel, new Size(20, 20));
+
+        panel.DesiredSize.Height.ShouldBe(14);
+    }
+
+    /// <summary>Negative control: verifies Spacing reserved ahead of a deferred Star is counted
+    /// exactly once through the seeded minimum total, unaffected by the margin fix.</summary>
+    [Fact]
+    public void Measure_WhenDeferredStarHasTrailingSpacing_CountsSpacingOnce()
+    {
+        var panel = new Dock { LastChildFills = false, Spacing = 3 };
+        var star = new ProbeControl { Height = Length.Star(1), MinHeight = 5 };
+        var trailing = HeightOnly(2);
+        Dock.SetSide(star, DockSide.Top);
+        Dock.SetSide(trailing, DockSide.Top);
+        panel.Children.Add(star);
+        panel.Children.Add(trailing);
+
+        new LayoutEngine().Layout(panel, new Size(20, 20));
+
+        panel.DesiredSize.Height.ShouldBe(10);
+    }
+
+    /// <summary>Negative control: verifies a LastChildFills Star participant never defers, so its
+    /// margin is only ever added once by the ordinary outer = desired + margin union, exactly as
+    /// any other participant's.</summary>
+    [Fact]
+    public void Measure_WhenLastChildFillsStarHasMargin_MeasuresAgainstFullSlotWithoutDeferral()
+    {
+        var panel = new Dock();
+        var fill = new ProbeControl(new Size(4, 3)) { Width = Length.Star(1), Margin = new Thickness(2) };
+        panel.Children.Add(fill);
+
+        new LayoutEngine().Layout(panel, new Size(20, 20));
+
+        panel.DesiredSize.ShouldBe(new Size(20, 7));
+    }
+
+    /// <summary>Negative control: verifies a Star on an unbounded axis falls through to the
+    /// intrinsic path instead of deferring, so its margin is added once by the ordinary
+    /// outer = desired + margin union.</summary>
+    [Fact]
+    public void Measure_WhenDeferredStarCandidateHasUnboundedAxis_FallsThroughToIntrinsicMarginOnce()
+    {
+        var panel = new Dock { LastChildFills = false };
+        var left = new ProbeControl(new Size(6, 2)) { Width = Length.Star(1), Margin = new Thickness(3) };
+        Dock.SetSide(left, DockSide.Left);
+        panel.Children.Add(left);
+
+        panel.Measure(new Constraint(null, 20));
+
+        panel.DesiredSize.Width.ShouldBe(12);
+    }
+
     private static ProbeControl HeightOnly(int height) => new() { Height = Length.Cells(height) };
 
     private static ProbeControl WidthOnly(int width) => new() { Width = Length.Cells(width) };

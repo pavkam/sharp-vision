@@ -263,19 +263,17 @@ public sealed class Dock: ChromeAuthoringContainer
                 ? new Constraint(ownAxis, entry.RemainingHeight)
                 : new Constraint(entry.RemainingWidth, ownAxis));
 
-            var minOuter = entry.Minimum.Add(entry.Margin);
-
             if (entry.Horizontal)
             {
                 var crossOuter = child.DesiredSize.Height.Add(child.Margin.Vertical);
-                widthMinimumTotal = widthMinimumTotal.Add(minOuter);
+                widthMinimumTotal = widthMinimumTotal.Add(entry.Minimum);
                 desiredWidth = Math.Max(desiredWidth, widthMinimumTotal);
                 desiredHeight = Math.Max(desiredHeight, entry.UsedHeight.Add(crossOuter));
             }
             else
             {
                 var crossOuter = child.DesiredSize.Width.Add(child.Margin.Horizontal);
-                heightMinimumTotal = heightMinimumTotal.Add(minOuter);
+                heightMinimumTotal = heightMinimumTotal.Add(entry.Minimum);
                 desiredHeight = Math.Max(desiredHeight, heightMinimumTotal);
                 desiredWidth = Math.Max(desiredWidth, entry.UsedWidth.Add(crossOuter));
             }
