@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Runtime;
 
 /// <summary>Verifies resize coalescing, input targeting, and application idleness.</summary>
-public sealed class OrderingTests
+public sealed partial class ApplicationTests
 {
     /// <summary>Verifies a blocked dispatcher observes only the newest resize in a storm.</summary>
     [Fact]

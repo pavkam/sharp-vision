@@ -15,7 +15,7 @@ using GraphicsImage = Terminal.Graphics.ImageSource;
 using MultiplexerKind = Terminal.Multiplexing.MultiplexerKind;
 
 /// <summary>Verifies application startup, frame completion, suspension, and shutdown.</summary>
-public sealed class ApplicationTests
+public sealed partial class ApplicationTests
 {
     /// <summary>Verifies Window activation is an empty read model before the control tree initializes.</summary>
     [Fact]

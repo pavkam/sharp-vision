@@ -18,7 +18,7 @@ namespace SharpVision.Tests.Runtime;
 /// next line - and because <c>MarkStarted</c> latches before it invokes, the startup completion
 /// source could be stranded with no second chance to settle it.</para>
 /// </summary>
-public sealed class LifecycleTransitionIsolationTests
+public sealed partial class ApplicationTests
 {
     /// <summary>The ordering regression this file exists to pin. A Starting handler that throws
     /// takes the terminal path without <c>BeginStopping</c>, and the host's guarded StopAsync must
