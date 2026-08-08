@@ -234,10 +234,11 @@ internal sealed class WindowPane: CompositeControlBase
         var chromeCatalog = new DocColumn(
             new DocRow(
                 FrameStage(light, 22, 9),
-                FrameStage(rounded, 22, 9),
-                FrameStage(heavy, 22, 9)),
+                FrameStage(rounded, 22, 9)),
             new DocRow(
-                FrameStage(paired, 22, 9),
+                FrameStage(heavy, 22, 9),
+                FrameStage(paired, 22, 9)),
+            new DocRow(
                 FrameStage(ascii, 22, 9)));
 
         // Shadow depth row: composite, block glyph, and flat elevation.
@@ -258,10 +259,12 @@ internal sealed class WindowPane: CompositeControlBase
             WindowTitlePlacement.Right,
             WindowClosePlacement.Left);
         flat.Shadow = HiddenShadow();
-        var shadowRow = new DocRow(
-            FrameStage(composite, 22, 9),
-            FrameStage(block, 22, 9),
-            FrameStage(flat, 22, 9));
+        var shadowRow = new DocColumn(
+            new DocRow(
+                FrameStage(composite, 22, 9),
+                FrameStage(block, 22, 9)),
+            new DocRow(
+                FrameStage(flat, 22, 9)));
 
         return new DocPage(
             Title,
