@@ -201,6 +201,8 @@ public sealed class Dock: ChromeAuthoringContainer
                 verticalStarIndices,
                 remainingWidth,
                 remainingHeight,
+                usedWidth,
+                usedHeight,
                 ref desiredWidth,
                 ref desiredHeight);
         }
@@ -215,14 +217,21 @@ public sealed class Dock: ChromeAuthoringContainer
     // A Star child's own-axis contribution to the dock's own DesiredSize is its declared
     // minimum, never its fair share - matching Tracks.ResolveCore's LengthKind.Star convention
     // of counting a Star track's minimum toward container sizing - so a Star never inflates an
-    // ancestor sized to fit this dock. Its cross-axis desired size participates normally,
-    // exactly as any other child's does.
+    // ancestor sized to fit this dock. Every deferred Star on the same axis stacks against the
+    // others there, exactly like any other sequential Dock child - its minimum is a reservation
+    // on top of what the axis already needed, not an independent claim evaluated in isolation -
+    // so the running total seeds from the final phase-1 used* and each Star's minimum adds to
+    // it in turn, mirroring the non-star used.Add(outer) prefix-sum below. Its cross-axis
+    // desired size still participates through the normal max-union, exactly as any other
+    // child's does.
     private void MeasureDeferredStars(
         List<DeferredStar> deferred,
         List<int>? horizontalStarIndices,
         List<int>? verticalStarIndices,
         int? finalRemainingWidth,
         int? finalRemainingHeight,
+        int usedWidth,
+        int usedHeight,
         ref int desiredWidth,
         ref int desiredHeight)
     {
@@ -241,6 +250,9 @@ public sealed class Dock: ChromeAuthoringContainer
             DistributeStarShares(verticalStarIndices, finalRemainingHeight!.Value, horizontal: false, heightBorders);
         }
 
+        var widthMinimumTotal = usedWidth;
+        var heightMinimumTotal = usedHeight;
+
         foreach (var entry in deferred)
         {
             var child = Children[entry.Index];
@@ -256,13 +268,15 @@ public sealed class Dock: ChromeAuthoringContainer
             if (entry.Horizontal)
             {
                 var crossOuter = child.DesiredSize.Height.Add(child.Margin.Vertical);
-                desiredWidth = Math.Max(desiredWidth, entry.UsedWidth.Add(minOuter));
+                widthMinimumTotal = widthMinimumTotal.Add(minOuter);
+                desiredWidth = Math.Max(desiredWidth, widthMinimumTotal);
                 desiredHeight = Math.Max(desiredHeight, entry.UsedHeight.Add(crossOuter));
             }
             else
             {
                 var crossOuter = child.DesiredSize.Width.Add(child.Margin.Horizontal);
-                desiredHeight = Math.Max(desiredHeight, entry.UsedHeight.Add(minOuter));
+                heightMinimumTotal = heightMinimumTotal.Add(minOuter);
+                desiredHeight = Math.Max(desiredHeight, heightMinimumTotal);
                 desiredWidth = Math.Max(desiredWidth, entry.UsedWidth.Add(crossOuter));
             }
         }

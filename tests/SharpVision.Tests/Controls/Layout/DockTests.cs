@@ -515,25 +515,28 @@ public sealed class DockTests
         spacer.Bounds.ShouldBe(new Rect(18, 0, 22, 1));
     }
 
-    /// <summary>Verifies two same-axis Star siblings each measure to their own fair share while
-    /// only their declared minimums - not those shares - feed the dock's own DesiredSize, so a
-    /// Star with no declared minimum never inflates an ancestor sized to fit this dock.</summary>
+    /// <summary>Verifies two same-axis Star siblings each measure to their own fair share, decoupled
+    /// from each other, while the dock's own DesiredSize unions their declared minimums by summing
+    /// them - matching Tracks.ResolveCore's total += convention for LengthKind.Star - rather than
+    /// taking just the larger one or either sibling's fair share. The cross axis keeps the normal
+    /// max-union instead of also summing.</summary>
     [Fact]
-    public void Measure_WhenTwoStarSiblingsShareAnAxis_EachStarReportsOnlyItsOwnMinimum()
+    public void Measure_WhenTwoStarSiblingsShareAnAxis_UnionsTheirDeclaredMinimums()
     {
         var panel = new Dock { LastChildFills = false };
-        var first = new ProbeControl { Height = Length.Star(1) };
-        var second = new ProbeControl { Height = Length.Star(1), MinHeight = 6 };
+        var first = new ProbeControl(new Size(4, 0)) { Height = Length.Star(1), MinHeight = 6 };
+        var second = new ProbeControl(new Size(9, 0)) { Height = Length.Star(1), MinHeight = 8 };
         Dock.SetSide(first, DockSide.Top);
         Dock.SetSide(second, DockSide.Top);
         panel.Children.Add(first);
         panel.Children.Add(second);
 
-        new LayoutEngine().Layout(panel, new Size(5, 20));
+        new LayoutEngine().Layout(panel, new Size(20, 20));
 
-        first.DesiredSize.Height.ShouldBe(7);
-        second.DesiredSize.Height.ShouldBe(13);
-        panel.DesiredSize.Height.ShouldBe(6);
+        first.DesiredSize.Height.ShouldBe(9);
+        second.DesiredSize.Height.ShouldBe(11);
+        panel.DesiredSize.Height.ShouldBe(14);
+        panel.DesiredSize.Width.ShouldBe(9);
     }
 
     private static ProbeControl HeightOnly(int height) => new() { Height = Length.Cells(height) };
