@@ -410,6 +410,24 @@ public sealed class ThemeTests
         border.GlyphStyle.ShouldBe(BorderGlyphStyle.Light);
     }
 
+    /// <summary>Verifies <c>control</c>'s own root "normal" state is tracked as authored the same
+    /// way every other state already is. <c>BuildRootStyleSet</c> resolved the root "normal" state
+    /// through the four-argument <c>ResolveRawState</c> overload, the only one of its ten calls that
+    /// omitted the <c>authored</c> dictionary - so <c>AuthoredFor("normal")</c> was always null for
+    /// "control", and the sibling cascade fell back to value-diffing, which drops a member the
+    /// author wrote back to a value <c>ControlStyle.Default</c> already has (border sides "none" is
+    /// both InputStyle's and Window's own code-owned default absent). Both siblings inherit
+    /// <c>control</c>'s heavy/all and paired/all borders by default, so this is the one shape where
+    /// the missing authored-tracking is observable.</summary>
+    [Fact]
+    public void GetStyleSet_WhenControlAuthorsBorderSidesEqualToItsCodeOwnedDefault_SiblingsStillCascadeIt()
+    {
+        var theme = ThemeCatalog.Parse(_colorsAndBorderOnlyTheme);
+
+        theme.GetStyleSet(InputStyle.Default).Normal.Border.Sides.ShouldBe(BorderSide.None);
+        theme.GetStyleSet(WindowStyle.Default).Normal.Border.Sides.ShouldBe(BorderSide.None);
+    }
+
     /// <summary>Verifies a root style honours an assigned local value as its resting appearance.
     /// The root factory discarded the resolved style when it built appearance, so a control using it
     /// as its primary slot reported the local value from <c>ActualStyle</c> while every rendered cell
@@ -462,7 +480,8 @@ public sealed class ThemeTests
     }
 
     // Authors control's colors and nothing else - no border, no shadow, and no sibling sections at
-    // all. That is the shape the whole Normal-cascade defect turns on, and no bundled theme has it.
+    // all. Exercises the cascade's ordinary shape: control authors real colors, and every sibling
+    // must inherit exactly what was authored while keeping its own code-owned chrome.
     [StringSyntax(StringSyntaxAttribute.Json)]
     private const string _colorsOnlyTheme = """
         { "name": "T", "slug": "t", "colorScheme": "dark", "order": 1,
@@ -487,6 +506,43 @@ public sealed class ThemeTests
           "styles": {
             "control": { "normal": {
               "face": { "foreground":"controlText", "background":"control", "attributes":"normalText" }
+            } }
+          } }
+        """;
+
+    // Same shape as _colorsOnlyTheme, plus control.normal.border authored explicitly with every
+    // member ConvertLeaf can express set to ControlStyle.NoBorder's own value (sides "none",
+    // foreground "default", background "transparent", no attributes) - GlyphStyle is left
+    // unauthored since no JSON spelling produces BorderGlyphStyle.Default, but it resolves to that
+    // value anyway because Overlay patches onto ControlStyle.Default, whose own Border already
+    // carries it. The resulting Border is therefore value-identical to ControlStyle.Default's -
+    // still no sibling sections at all, so only authored-tracking, not a value difference, can make
+    // a sibling cascade it.
+    [StringSyntax(StringSyntaxAttribute.Json)]
+    private const string _colorsAndBorderOnlyTheme = """
+        { "name": "T", "slug": "t", "colorScheme": "dark", "order": 1,
+          "author": "A", "license": "MIT", "source": "s",
+          "colors": {
+            "window":"#101010", "windowSurface":"#101010", "windowText":"#e0e0e0",
+            "surface":"#101010", "surfaceText":"#e0e0e0",
+            "control":"#101010", "controlText":"#e0e0e0",
+            "controlBorder":"#e0e0e0", "controlShadow":"#303030",
+            "activeControl":"#101010", "activeText":"#e0e0e0", "activeBorder":"#77aaff",
+            "focusedControl":"#101010", "focusedText":"#77aaff", "focusedBorder":"#77aaff",
+            "pressedControl":"#101010", "pressedText":"#77aaff", "pressedBorder":"#77aaff",
+            "selectedControl":"#77aaff", "selectedText":"#e0e0e0",
+            "disabledControl":"#101010", "disabledText":"#707070", "disabledBorder":"#606060",
+            "accent":"#77aaff", "muted":"#707070", "hotkey":"#77aaff",
+            "error":"#ff0000", "warning":"#ffff00", "success":"#00ff00", "info":"#0000ff"
+          },
+          "attributes": {
+            "normalText":[], "activeText":[], "focusedText":"bold", "pressedText":[],
+            "selectedText":[], "disabledText":[], "border":[], "shadow":"dim", "hotkey":"underline"
+          },
+          "styles": {
+            "control": { "normal": {
+              "face": { "foreground":"controlText", "background":"control", "attributes":"normalText" },
+              "border": { "sides":"none", "foreground":"default", "background":"transparent", "attributes":[] }
             } }
           } }
         """;

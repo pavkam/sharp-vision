@@ -697,7 +697,7 @@ public sealed class Theme
 
         if (!_controlInheritingKeys.Contains(key))
         {
-            var rootNormal = ResolveRawState(raw, "normal", codeOwnedDefault, key) ?? codeOwnedDefault;
+            var rootNormal = ResolveRawState(raw, "normal", codeOwnedDefault, key, authored) ?? codeOwnedDefault;
 
             return new StyleStates<TStyle>
             {
