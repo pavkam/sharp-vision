@@ -19,11 +19,7 @@ internal sealed class JsonViewContent: ControlBase
     }
 
     /// <inheritdoc/>
-    protected override Size MeasureOverride(Constraint constraint)
-    {
-        _ = constraint;
-        return _owner.MeasureProjectedContent();
-    }
+    protected override Size MeasureOverride(Constraint constraint) => _owner.MeasureAndWrap(constraint.Width);
 
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas) =>

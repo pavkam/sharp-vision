@@ -29,6 +29,7 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
     private JsonViewNode? _selectedNode;
     private int? _projectionWidth;
     private (Rune Collapsed, Rune Expanded)? _builtWithGlyphs;
+    private Constraint _lastMeasureConstraint;
 
     /// <summary>Initializes an empty JSON view whose document is the JSON null value.</summary>
     public JsonView() : base(JsonViewStyle.Definition)
@@ -274,6 +275,36 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
         return new Size(width, _lines.Count);
     }
 
+    /// <summary>Rewraps the projected document against a measure-time width constraint, then
+    /// measures the result.</summary>
+    /// <remarks>
+    /// Rebuilding is skipped when the requested width matches the cached projection width, since
+    /// a width-constrained host's measure probe runs twice per settled width and rewrapping on
+    /// both would be a redundant pass over every line. A null width leaves the current projection
+    /// untouched instead of falling back to the unwrapped source lines: the composed viewport
+    /// always measures its content unbounded on the horizontal axis (an axis it can scroll is
+    /// measured unbounded so it can report its natural extent - see <see cref="Container"/>'s
+    /// width-nulling for a scrollable horizontal axis), so a null width here is the routine
+    /// per-child probe of that mechanism, not a signal that this control's own host is genuinely
+    /// unconstrained. Discarding the projection on every one of those probes would make word-wrap
+    /// permanently unreachable for the default
+    /// <see cref="ScrollBars.Both"/> configuration; <see cref="ReconcileProjectionWidth"/> is what
+    /// actually keeps the projection matched to the real, scrollbar-reservation-aware width in
+    /// that configuration.
+    /// </remarks>
+    /// <param name="width">The available width in cells, or null when unconstrained.</param>
+    /// <returns>The width-aware visual extent in terminal cells.</returns>
+    internal Size MeasureAndWrap(int? width)
+    {
+        if (width is { } bounded && bounded > 0 && _projectionWidth != bounded)
+        {
+            _projectionWidth = bounded;
+            _lines = BuildDisplayLines(_sourceLines, bounded);
+        }
+
+        return MeasureProjectedContent();
+    }
+
     /// <summary>Draws projected lines intersecting the private content surface clip.</summary>
     /// <param name="canvas">The clipped semantic canvas.</param>
     /// <param name="bounds">The content surface bounds.</param>
@@ -323,6 +354,61 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
     }
 
     /// <inheritdoc/>
+    protected override Size MeasureOverride(Constraint constraint)
+    {
+        // Stashed for ReconcileProjectionWidth, which needs to remeasure the composed viewport
+        // with the exact same constraint this control itself received - not a constraint it could
+        // reconstruct from Bounds, since ReconcileProjectionWidth runs inside this control's own
+        // ArrangeOverride, before any later Measure call would refresh it.
+        _lastMeasureConstraint = constraint;
+        return base.MeasureOverride(constraint);
+    }
+
+    /// <inheritdoc/>
+    protected override void ArrangeOverride(Rect bounds)
+    {
+        base.ArrangeOverride(bounds);
+        ReconcileProjectionWidth(bounds);
+    }
+
+    /// <summary>Keeps the wrapped projection matched to the composed viewport's real,
+    /// scrollbar-reservation-aware width, entirely within the current layout transaction.</summary>
+    /// <remarks>
+    /// The composed viewport measures its content unbounded on the horizontal axis (see
+    /// <see cref="MeasureAndWrap"/>'s remarks), so the only place the real width - after a vertical
+    /// scrollbar has claimed its column - becomes known is here, once the arrange this override
+    /// delegated to has resolved it. Rewrapping can itself change the content's height enough to
+    /// flip whether a vertical scrollbar is needed at all, exactly the coupling
+    /// <see cref="Container"/>'s own two-probe scrollbar resolution exists to settle for a
+    /// non-scrolling-width axis; since that mechanism is a no-op for a horizontally-scrollable one,
+    /// this reproduces it by hand for as many rounds as it takes to settle, bounded defensively
+    /// against runaway growth. Remeasuring and rearranging the composed viewport now - rather than
+    /// merely invalidating it for a future pass - is what keeps <see cref="Extent"/> and
+    /// <see cref="Viewport"/> accurate after a single layout pass instead of one frame behind it.
+    /// </remarks>
+    /// <param name="bounds">The content-box bounds this control's own arrange resolved.</param>
+    private void ReconcileProjectionWidth(Rect bounds)
+    {
+        for (var attempt = 0; attempt < 4; attempt++)
+        {
+            var viewportWidth = _stack.Viewport.Width;
+
+            if (viewportWidth <= 0 || _projectionWidth == viewportWidth)
+            {
+                return;
+            }
+
+            _projectionWidth = viewportWidth;
+            _lines = BuildDisplayLines(_sourceLines, viewportWidth);
+
+            _stack.InvalidateSelf(Invalidation.Measure);
+            _content.InvalidateSelf(Invalidation.Measure);
+            _stack.Measure(_lastMeasureConstraint);
+            _stack.Arrange(bounds, widthResolved: true, heightResolved: true);
+        }
+    }
+
+    /// <inheritdoc/>
     protected override void OnStyleChanged(JsonViewStyle previous, JsonViewStyle current)
     {
         base.OnStyleChanged(previous, current);
@@ -342,15 +428,11 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
         {
             _builtWithGlyphs = glyphs;
             _sourceLines = BuildLines(_root, Indent);
-            _projectionWidth = 0;
-        }
 
-        var viewportWidth = _stack.Viewport.Width;
-
-        if (viewportWidth > 0 && _projectionWidth != viewportWidth)
-        {
-            _projectionWidth = viewportWidth;
-            _lines = BuildDisplayLines(_sourceLines, viewportWidth);
+            // The rebuilt source lines still need rewrapping against the current width, but that
+            // now only happens at measure time; forcing a mismatch here and invalidating Measure
+            // is what makes the next measure pass pick it up.
+            _projectionWidth = null;
             _content.Invalidate(Invalidation.Measure);
         }
 

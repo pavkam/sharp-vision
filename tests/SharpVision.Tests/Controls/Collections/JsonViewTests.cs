@@ -192,6 +192,26 @@ public sealed class JsonViewTests
         changed.Count(name => name == nameof(JsonView.ShowScrollBars)).ShouldBe(1);
     }
 
+    /// <summary>Verifies word-wrap happens during measure rather than render, so a single layout
+    /// pass already reports the wrapped extent instead of leaving a stale unwrapped measurement
+    /// for a follow-up pass to repair.</summary>
+    [Fact]
+    public void Layout_WhenStringExceedsViewport_WrapsWithinOneLayoutPass()
+    {
+        // Arrange
+        var view = new JsonView
+        {
+            Json = /*lang=json,strict*/ "{\"text\":\"alpha beta gamma\"}",
+            ShowScrollBars = ShowScrollBars.Never
+        };
+
+        // Act
+        new LayoutEngine().Layout(view, new Size(18, 6));
+
+        // Assert
+        view.Extent.Width.ShouldBeLessThanOrEqualTo(view.Viewport.Width);
+    }
+
     /// <summary>Verifies both overflow axes and generated scrollbar policy are reachable from JsonView.</summary>
     [Fact]
     public void ScrollBy_WhenDocumentExceedsViewport_MovesBothOffsets()

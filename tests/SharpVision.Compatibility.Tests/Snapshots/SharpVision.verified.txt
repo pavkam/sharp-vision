@@ -722,8 +722,10 @@ namespace SharpVision.Controls.Collections
         public SharpVision.Terminal.Geometry.Size Viewport { get; }
         public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         public event System.EventHandler<SharpVision.Controls.Collections.JsonViewSelectionChangedEventArgs>? SelectionChanged;
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public void CollapseAll() { }
         public void ExpandAll() { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnStyleChanged(SharpVision.Controls.Collections.JsonViewStyle previous, SharpVision.Controls.Collections.JsonViewStyle current) { }
