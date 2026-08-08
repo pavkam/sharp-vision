@@ -439,7 +439,7 @@ public sealed class ComboBox: PressInteractionBase
 
             if (stroke.Code == Code.Enter)
             {
-                eventArgs.Handled = _list.ActivateCurrent(ActivationCause.Keyboard, Code.Enter, Modifiers.None);
+                eventArgs.Handled = _list.ActivateCurrent(ActivationCause.Keyboard, Code.Enter, stroke.Modifiers);
                 return;
             }
 

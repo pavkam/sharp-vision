@@ -424,6 +424,53 @@ public sealed class ComboBoxTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an incidental Control modifier on Enter does not commit the highlighted
+    /// row - the drop-down stays open and the selection is unchanged.</summary>
+    [Fact]
+    public async Task Dispatch_WhenEnterHasControlModifier_DoesNotCommitSelectionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var box = new ComboBox { Items = ["Small", "Large"], SelectedIndex = 0 };
+            new LayoutEngine().Layout(box, new Size(12, 6));
+            box.Attach(dispatcher);
+            using FocusManager focus = new(box);
+            focus.Focus(box).ShouldBeTrue();
+
+            _ = Router.Route(box, Events.Key, Key(Code.Enter));
+            _ = Router.Route(box, Events.Key, Key(Code.Down));
+            _ = Router.Route(box, Events.Key, Key(Code.Enter, Modifiers.Control));
+
+            box.SelectedIndex.ShouldBe(0);
+            box.Opened.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Shift-held Enter (a common terminal chord) still commits the highlighted row.</summary>
+    [Fact]
+    public async Task Dispatch_WhenEnterHasShiftModifier_StillCommitsSelectionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var box = new ComboBox { Items = ["Small", "Large"], SelectedIndex = 0 };
+            new LayoutEngine().Layout(box, new Size(12, 6));
+            box.Attach(dispatcher);
+            using FocusManager focus = new(box);
+            focus.Focus(box).ShouldBeTrue();
+
+            _ = Router.Route(box, Events.Key, Key(Code.Enter));
+            _ = Router.Route(box, Events.Key, Key(Code.Down));
+            _ = Router.Route(box, Events.Key, Key(Code.Enter, Modifiers.Shift));
+
+            box.SelectedIndex.ShouldBe(1);
+            box.Opened.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies closing a drop-down returns focus to its visible field instead of its hidden ListView.</summary>
     [Fact]
     public async Task Dispatch_WhenEscapeClosesDropDown_ReturnsFocusToComboBoxAsync()
@@ -907,6 +954,13 @@ public sealed class ComboBoxTests
         default,
         nativeCode: 0,
         Modifiers.None,
+        KeyAction.Press));
+
+    private static KeyEventArgs Key(Code code, Modifiers modifiers) => new(new Stroke(
+        code,
+        default,
+        nativeCode: 0,
+        modifiers,
         KeyAction.Press));
 
     private static KeyEventArgs CharacterKey(char character) => CharacterKey(new Rune(character));
