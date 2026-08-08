@@ -45,7 +45,7 @@ public sealed class DateTimeInput: PressInteractionBase
     private readonly Calendar _calendar;
     private readonly Popup _popup;
     private readonly OwnedControlSlot _popupSlot;
-    private readonly PopupModalTracker _modalTracker;
+    private readonly PopupDropDownCoordinator _coordinator;
     private readonly SegmentFieldBehavior _segments;
 
     private DateTime? _value;
@@ -84,10 +84,25 @@ public sealed class DateTimeInput: PressInteractionBase
             // redundant second placement pass reacting to the same self-owned anchor.
             TracksAnchorReflow = false
         };
-        _popup.Opened += OnPopupOpened;
-        _popup.Closing += OnPopupClosing;
-        _popup.Closed += OnPopupClosed;
-        _modalTracker = new PopupModalTracker(_popup, () => Opened = false);
+        _coordinator = new PopupDropDownCoordinator(
+            this,
+            _popup,
+            _calendar,
+            RequestFocus,
+            () => NotifyPropertyChanged(nameof(Opened), InvalidationImpact.None),
+            () => DropDownOpened?.Invoke(this, EventArgs.Empty),
+            () => DropDownClosed?.Invoke(this, EventArgs.Empty),
+            beforeOpen: () =>
+            {
+                EnsureSeeded();
+
+                if (_value.HasValue)
+                {
+                    var date = DateOnly.FromDateTime(_value.Value);
+                    _calendar.DisplayMonth = new DateOnly(date.Year, date.Month, 1);
+                    PushCalendarSelection(date);
+                }
+            });
 
         // Register event handler after _popup is created to avoid NullReferenceException
         // when setting _calendar.Selection fires SelectionChanged → Opened accessor.
@@ -362,23 +377,8 @@ public sealed class DateTimeInput: PressInteractionBase
     /// <exception cref="Exception">A focus, scope, pointer-cleanup, or user callback fails after committed cleanup.</exception>
     public bool Opened
     {
-        get => _popup.IsOpen;
-        set
-        {
-            VerifyMutable();
-
-            if (_popup.IsOpen != value)
-            {
-                if (value)
-                {
-                    OpenDropDown();
-                }
-                else
-                {
-                    CloseDropDown();
-                }
-            }
-        }
+        get => _coordinator.IsOpen;
+        set => _coordinator.SetOpen(value);
     }
 
     /// <summary>Gets or sets the owned Calendar popup's border and shadow together.</summary>
@@ -591,11 +591,7 @@ public sealed class DateTimeInput: PressInteractionBase
     protected override void OnAttached()
     {
         base.OnAttached();
-
-        if (_popup.IsOpen)
-        {
-            _modalTracker.Enter(this);
-        }
+        _coordinator.OnOwnerAttached();
     }
 
     /// <inheritdoc/>
@@ -606,9 +602,7 @@ public sealed class DateTimeInput: PressInteractionBase
         if (reason == ReleaseReason.Disposed)
         {
             _calendar.SelectionChanged -= OnCalendarSelectionChanged;
-            _popup.Opened -= OnPopupOpened;
-            _popup.Closing -= OnPopupClosing;
-            _popup.Closed -= OnPopupClosed;
+            _coordinator.Detach();
             ValueChanged = null;
             DropDownOpened = null;
             DropDownClosed = null;
@@ -958,29 +952,6 @@ public sealed class DateTimeInput: PressInteractionBase
         Opened = !Opened;
     }
 
-    private void OpenDropDown()
-    {
-        EnsureSeeded();
-
-        if (_value.HasValue)
-        {
-            var date = DateOnly.FromDateTime(_value.Value);
-            _calendar.DisplayMonth = new DateOnly(date.Year, date.Month, 1);
-            PushCalendarSelection(date);
-        }
-
-        _popup.IsOpen = true;
-        _modalTracker.Enter(this);
-        DropDownOpened?.Invoke(this, EventArgs.Empty);
-    }
-
-    private void CloseDropDown()
-    {
-        _modalTracker.Exit();
-        _popup.IsOpen = false;
-        DropDownClosed?.Invoke(this, EventArgs.Empty);
-    }
-
     private void OnCalendarSelectionChanged(object? sender, CalendarSelectionChangedEventArgs eventArgs)
     {
         _ = sender;
@@ -1001,31 +972,6 @@ public sealed class DateTimeInput: PressInteractionBase
         var combined = selectedDate.ToDateTime(TimeOnly.FromTimeSpan(timePart), kind);
         _ = Commit(combined);
         Opened = false;
-    }
-
-    private void OnPopupOpened(object? sender, EventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-        NotifyPropertyChanged(nameof(Opened), InvalidationImpact.None);
-    }
-
-    private void OnPopupClosing(object? sender, EventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-
-        if (ContainsFocused(_calendar))
-        {
-            _ = RequestFocus();
-        }
-    }
-
-    private void OnPopupClosed(object? sender, EventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-        NotifyPropertyChanged(nameof(Opened), InvalidationImpact.None);
     }
 
     #endregion

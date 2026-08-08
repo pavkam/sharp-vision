@@ -28,7 +28,7 @@ public sealed class ComboBox: PressInteractionBase
     private readonly ListView _list;
     private readonly Popup _popup;
     private readonly OwnedControlSlot _popupSlot;
-    private readonly PopupModalTracker _modalTracker;
+    private readonly PopupDropDownCoordinator _coordinator;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private string _typeAhead = string.Empty;
     private int _selectedIndex = -1;
@@ -60,10 +60,15 @@ public sealed class ComboBox: PressInteractionBase
             // redundant second placement pass reacting to the same self-owned anchor.
             TracksAnchorReflow = false
         };
-        _popup.Opened += OnPopupOpened;
-        _popup.Closing += OnPopupClosing;
-        _popup.Closed += OnPopupClosed;
-        _modalTracker = new PopupModalTracker(_popup, () => Opened = false);
+        _coordinator = new PopupDropDownCoordinator(
+            this,
+            _popup,
+            _list,
+            RequestFocus,
+            () => NotifyPropertyChanged(nameof(Opened), InvalidationImpact.None),
+            () => DropDownOpened?.Invoke(this, EventArgs.Empty),
+            () => DropDownClosed?.Invoke(this, EventArgs.Empty),
+            beforeCloseFocusRestore: () => _typeAhead = string.Empty);
         _popupSlot = RegisterOwnedSlot(
             new OwnedControlOptions(
                 OwnedControlRole.FrameworkPart,
@@ -342,23 +347,8 @@ public sealed class ComboBox: PressInteractionBase
     /// <exception cref="Exception">A focus, scope, pointer-cleanup, or user callback fails after committed cleanup.</exception>
     public bool Opened
     {
-        get => _popup.IsOpen;
-        set
-        {
-            VerifyMutable();
-
-            if (_popup.IsOpen != value)
-            {
-                if (value)
-                {
-                    OpenDropDown();
-                }
-                else
-                {
-                    CloseDropDown();
-                }
-            }
-        }
+        get => _coordinator.IsOpen;
+        set => _coordinator.SetOpen(value);
     }
 
     #endregion
@@ -481,11 +471,7 @@ public sealed class ComboBox: PressInteractionBase
     protected override void OnAttached()
     {
         base.OnAttached();
-
-        if (_popup.IsOpen)
-        {
-            _modalTracker.Enter(this);
-        }
+        _coordinator.OnOwnerAttached();
     }
 
     /// <inheritdoc/>
@@ -497,9 +483,7 @@ public sealed class ComboBox: PressInteractionBase
         {
             _list.ItemInvoked -= OnItemInvoked;
             _list.SelectionChanged -= OnSelectionChanged;
-            _popup.Opened -= OnPopupOpened;
-            _popup.Closing -= OnPopupClosing;
-            _popup.Closed -= OnPopupClosed;
+            _coordinator.Detach();
             SelectionChanged = null;
             DropDownOpened = null;
             DropDownClosed = null;
@@ -515,20 +499,6 @@ public sealed class ComboBox: PressInteractionBase
     {
         _ = cause;
         Opened = !Opened;
-    }
-
-    private void OpenDropDown()
-    {
-        _popup.IsOpen = true;
-        _modalTracker.Enter(this);
-        DropDownOpened?.Invoke(this, EventArgs.Empty);
-    }
-
-    private void CloseDropDown()
-    {
-        _modalTracker.Exit();
-        _popup.IsOpen = false;
-        DropDownClosed?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnItemInvoked(object? sender, ItemInvokedEventArgs eventArgs)
@@ -555,32 +525,6 @@ public sealed class ComboBox: PressInteractionBase
             ref failure);
         ExceptionAggregation.Capture(() => SelectionChanged?.Invoke(this, eventArgs), ref failure);
         failure?.Throw();
-    }
-
-    private void OnPopupOpened(object? sender, EventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-        NotifyPropertyChanged(nameof(Opened), InvalidationImpact.None);
-    }
-
-    private void OnPopupClosing(object? sender, EventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-        _typeAhead = string.Empty;
-
-        if (ContainsFocused(_list))
-        {
-            _ = RequestFocus();
-        }
-    }
-
-    private void OnPopupClosed(object? sender, EventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-        NotifyPropertyChanged(nameof(Opened), InvalidationImpact.None);
     }
 
     #endregion
