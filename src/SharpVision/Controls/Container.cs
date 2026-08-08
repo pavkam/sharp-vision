@@ -458,7 +458,11 @@ public abstract class Container: ControlBase
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = SetProperty(ref field, value, InvalidationImpact.None);
+
+            if (SetProperty(ref field, value, InvalidationImpact.None))
+            {
+                Synchronize();
+            }
         }
     } = 1;
 
@@ -472,7 +476,11 @@ public abstract class Container: ControlBase
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = SetProperty(ref field, value, InvalidationImpact.None);
+
+            if (SetProperty(ref field, value, InvalidationImpact.None))
+            {
+                Synchronize();
+            }
         }
     }
 

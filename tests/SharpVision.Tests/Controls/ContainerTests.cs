@@ -427,15 +427,15 @@ public sealed class ContainerTests
     }
 
     /// <summary>
-    /// Verifies a generated bar's SmallChange catches up to a changed LineSize on the next layout
-    /// pass. LineSize's setter carries InvalidationImpact.None, so changing it alone does not
-    /// itself schedule a re-layout - and this layout engine short-circuits a same-size relayout
-    /// entirely (see Arrange's pending/slot check), so only a genuinely different size reaches
-    /// ArrangeOverlays -> Synchronize again, which is what actually copies the current LineSize
-    /// onto the generated bar.
+    /// Verifies a generated bar's SmallChange still reflects a changed LineSize after a
+    /// subsequent, genuinely different-size layout pass. LineSize's setter already pushes the new
+    /// value onto the generated bar immediately (see
+    /// LineSize_WhenChangedAfterLayout_UpdatesGeneratedBarSmallChangeWithoutRelayout); this test
+    /// pins that a later relayout - which independently resynchronizes the bar via
+    /// ArrangeOverlays -> Synchronize - reconfirms the same value instead of reverting it.
     /// </summary>
     [Fact]
-    public void Synchronize_WhenLineSizeChanges_UpdatesGeneratedBarSmallChangeOnNextLayout()
+    public void Synchronize_WhenLineSizeChangesAndRelayoutOccurs_ReconfirmsGeneratedBarSmallChange()
     {
         var container = new LayoutProbe
         {
@@ -452,6 +452,48 @@ public sealed class ContainerTests
         new LayoutEngine().Layout(container, new Size(4, 11));
 
         bar.SmallChange.ShouldBe(5);
+    }
+
+    /// <summary>Verifies a generated bar's SmallChange picks up a changed LineSize immediately, at
+    /// setter time, without requiring any subsequent Layout pass.</summary>
+    [Fact]
+    public void LineSize_WhenChangedAfterLayout_UpdatesGeneratedBarSmallChangeWithoutRelayout()
+    {
+        var container = new LayoutProbe
+        {
+            AutoScroll = true,
+            VerticalBarVisibility = ScrollBarVisibility.Always,
+            LineSize = 2
+        };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(container, new Size(4, 10));
+        var bar = container.HitTest(new Point(3, 4)).ShouldBeOfType<ScrollBar>();
+        bar.SmallChange.ShouldBe(2);
+
+        container.LineSize = 5;
+
+        bar.SmallChange.ShouldBe(5);
+    }
+
+    /// <summary>Verifies a generated bar's LargeChange picks up a changed PageOverlap immediately,
+    /// at setter time, without requiring any subsequent Layout pass.</summary>
+    [Fact]
+    public void PageOverlap_WhenChangedAfterLayout_UpdatesGeneratedBarLargeChangeWithoutRelayout()
+    {
+        var container = new LayoutProbe
+        {
+            AutoScroll = true,
+            VerticalBarVisibility = ScrollBarVisibility.Always,
+            PageOverlap = 1
+        };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(container, new Size(4, 10));
+        var bar = container.HitTest(new Point(3, 4)).ShouldBeOfType<ScrollBar>();
+        bar.LargeChange.ShouldBe(9); // Viewport.Height(10) - PageOverlap(1)
+
+        container.PageOverlap = 3;
+
+        bar.LargeChange.ShouldBe(7); // Viewport.Height(10) - PageOverlap(3)
     }
 
     /// <summary>Verifies scroll ancestry crosses a non-Container owner but selects only armed Container ancestors.</summary>
