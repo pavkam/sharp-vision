@@ -269,6 +269,69 @@ public sealed class ContextMenuTests
         ItemLabel(menu, 7).ShouldBe("Select All");
     }
 
+    /// <summary>Verifies the menu ctor overload adopts the given menu rather than building its own.</summary>
+    [Fact]
+    public void Constructor_WhenGivenMenu_AdoptsMenu()
+    {
+        var built = MenuBuilder.Vertical().Item("Test").Build();
+        using var menu = new ContextMenu(built);
+        menu.Opened.ShouldBeFalse();
+        menu.Menu.ShouldBeSameAs(built);
+    }
+
+    /// <summary>Verifies Items reflects the adopted menu's own items, live.</summary>
+    [Fact]
+    public void Constructor_WhenGivenMenu_ItemsReflectsAdoptedMenusItems()
+    {
+        var built = MenuBuilder.Vertical().Item("A").Item("B").Build();
+        using var menu = new ContextMenu(built);
+        menu.Items.Count.ShouldBe(built.Items.Count);
+        menu.Items[0].ShouldBeSameAs(built.Items[0]);
+
+        built.Items.Add(new MenuItem { Text = "C" });
+
+        menu.Items.Count.ShouldBe(3);
+    }
+
+    /// <summary>Verifies a null menu is rejected.</summary>
+    [Fact]
+    public void Constructor_WhenGivenNull_ThrowsArgumentNullException() =>
+        _ = Should.Throw<ArgumentNullException>(() => new ContextMenu(null!));
+
+    /// <summary>Verifies a menu already hosted as a submenu is rejected with the shared
+    /// ownership-tree message.</summary>
+    [Fact]
+    public void Constructor_WhenMenuAlreadyParented_ThrowsArgumentException()
+    {
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        using var owner = new MenuItem { Submenu = menu };
+
+        var exception = Should.Throw<ArgumentException>(() => new ContextMenu(menu));
+
+        exception.Message.ShouldStartWith("The control already belongs to a tree.");
+    }
+
+    /// <summary>Verifies adopting a disposed menu throws — the same rejection Popup.Content
+    /// applies to any disposed content control.</summary>
+    [Fact]
+    public void Constructor_WhenMenuIsDisposed_Throws()
+    {
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        menu.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => new ContextMenu(menu));
+    }
+
+    /// <summary>Verifies the constructor uses the adopted menu's orientation as given, matching
+    /// how <see cref="MenuItem.Submenu"/> never coerces its adopted menu.</summary>
+    [Fact]
+    public void Constructor_WhenGivenHorizontalMenu_DoesNotCoerceOrientation()
+    {
+        var built = MenuBuilder.Horizontal().Item("Test").Build();
+        using var menu = new ContextMenu(built);
+        menu.Menu.Orientation.ShouldBe(Orientation.Horizontal);
+    }
+
     private static string ItemLabel(ContextMenu menu, int index) =>
         ((MenuItem) menu.Items[index]).Text;
 }

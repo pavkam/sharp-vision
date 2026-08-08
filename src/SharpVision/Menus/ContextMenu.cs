@@ -13,10 +13,25 @@ public class ContextMenu: IDisposable
     private LightDismiss? _lightDismiss;
     private bool _isDisposed;
 
-    /// <summary>Initializes a closed context menu.</summary>
-    public ContextMenu()
+    /// <summary>Initializes a closed context menu with its own empty vertical menu.</summary>
+    public ContextMenu() : this(new Menu { Orientation = Orientation.Vertical })
     {
-        Menu = new Menu { Orientation = Orientation.Vertical };
+    }
+
+    /// <summary>Initializes a closed context menu that adopts an already-built menu.</summary>
+    /// <param name="menu">
+    /// The menu to present, typically composed with <see cref="MenuBuilder.Vertical()"/>. The
+    /// caller is responsible for building it vertical — this constructor uses the menu's
+    /// orientation as given rather than coercing it, matching how <see cref="MenuItem.Submenu"/>
+    /// adopts a menu.
+    /// </param>
+    /// <exception cref="ArgumentNullException"><paramref name="menu"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="menu"/> already belongs to a tree.</exception>
+    public ContextMenu(Menu menu)
+    {
+        ArgumentNullException.ThrowIfNull(menu);
+
+        Menu = menu;
         Menu.ItemInvoked += OnMenuItemInvoked;
         _popup = new Popup
         {

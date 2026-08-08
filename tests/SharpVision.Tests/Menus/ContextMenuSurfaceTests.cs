@@ -579,6 +579,37 @@ public sealed class ContextMenuSurfaceTests
         menu.Opened.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a ContextMenu built through MenuBuilder opens on right-click and closes
+    /// on item invocation, exercising the menu-adopting constructor end to end.</summary>
+    [Fact]
+    public async Task Pointer_WhenBuilderComposedMenuInvoked_ClosesTheMenuAsync()
+    {
+        var invoked = false;
+        var menu = new ContextMenu(
+            MenuBuilder.Vertical()
+                .Item("Inspect", onInvoke: () => invoked = true)
+                .Build());
+        var button = new Button
+        {
+            Text = "Target",
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            ContextMenu = menu
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            button, new Size(30, 10), TestContext.Current.CancellationToken);
+
+        await surface.Pointer.RightClickAsync(button);
+        menu.Opened.ShouldBeTrue();
+
+        var item = (MenuItem) menu.Items[0];
+        await surface.Pointer.ClickAsync(item);
+
+        invoked.ShouldBeTrue();
+        menu.Opened.ShouldBeFalse();
+    }
+
     /// <summary>Verifies Closed event fires after light dismiss.</summary>
     [Fact]
     public async Task Pointer_WhenClosedEventFires_ReportsClosedStateAsync()
