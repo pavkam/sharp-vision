@@ -10,8 +10,10 @@ controls never hide a second Window or Popup behind a forwarding wrapper.
 ```mermaid
 classDiagram
     ContentControl <|-- FloatingSurfaceBase
-    FloatingSurfaceBase <|-- Window
-    FloatingSurfaceBase <|-- Popup
+    FloatingSurfaceBase <|-- FloatingSurface~TStyle~
+    FloatingSurfaceBase <|-- ChromeAuthoringFloatingSurface
+    ChromeAuthoringFloatingSurface <|-- Window
+    ChromeAuthoringFloatingSurface <|-- Popup
     Window <|-- Dialog~TResult~
     Dialog~TResult~ <|-- FileDialogBase~TResult~
     Dialog~MessageBoxResult~ <|-- MessageBox
@@ -19,11 +21,15 @@ classDiagram
     Popup <|-- Tooltip
 ```
 
-`FloatingSurfaceBase` lives in `SharpVision.Surfaces`. `Window` and `Popup`
-derive from it in their feature namespaces. `Dialog<TResult>` derives from
-`Window`, and the file dialogs and `MessageBox` are direct dialog surfaces.
-`Flyout` and `Tooltip` derive from `Popup` and render their inherited popup
-surface directly. `FloatingSurface<TStyle>` adds the framework-owned primary
+`FloatingSurfaceBase` lives in `SharpVision.Surfaces`, alongside
+`ChromeAuthoringFloatingSurface`, which widens `FloatingSurfaceBase`'s protected
+`Border`/`Shadow` authoring surface to public for the two floating surfaces
+whose whole purpose is letting a caller author their own chrome directly:
+`Window` and `Popup`, each in its own feature namespace. `Dialog<TResult>`
+derives from `Window`, and the file dialogs and `MessageBox` are direct dialog
+surfaces. `Flyout` and `Tooltip` derive from `Popup` and render their inherited
+popup surface directly. `FloatingSurface<TStyle>` derives from
+`FloatingSurfaceBase` directly and adds the framework-owned primary
 `Style`/`ActualStyle` slot for externally defined typed surface families.
 
 ## Shared lifecycle
