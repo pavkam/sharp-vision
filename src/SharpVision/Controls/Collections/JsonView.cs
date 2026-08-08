@@ -429,6 +429,7 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
         // replaying at most one coalesced event afterward is what keeps a subscriber from ever
         // observing one of those transitional values.
         _suppressScrollChangedPassthrough = true;
+        ScrollChangedEventArgs? pending;
 
         try
         {
@@ -437,17 +438,17 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
         }
         finally
         {
+            // Captured and cleared here, inside the finally, rather than after the try/finally:
+            // an exception from either call above must not strand a pending event whose stale
+            // PreviousOffset would otherwise seed the next transaction's own merge.
             _suppressScrollChangedPassthrough = false;
+            pending = _pendingScrollChanged;
+            _pendingScrollChanged = null;
         }
 
-        if (_pendingScrollChanged is { } pending)
+        if (pending is { } settled && settled.PreviousOffset != settled.Offset)
         {
-            _pendingScrollChanged = null;
-
-            if (pending.PreviousOffset != pending.Offset)
-            {
-                ScrollChanged?.Invoke(this, pending);
-            }
+            ScrollChanged?.Invoke(this, settled);
         }
     }
 
@@ -515,6 +516,22 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
             _content.InvalidateSelf(Invalidation.Measure);
             _stack.Measure(_lastMeasureConstraint);
             _stack.Arrange(bounds, widthResolved: true, heightResolved: true);
+
+            // The composed viewport's own ScrollChanged only fires when this arrange's offset
+            // clamp actually moved, but Extent/Viewport can still change without one - an earlier
+            // iteration's fire must not leave a later, unclamped iteration's fresher geometry
+            // behind. Unconditionally re-stamping the pending event's Extent/Viewport after every
+            // arrange this loop performs is what keeps the eventually-replayed event's geometry
+            // always the final settled one, not whichever iteration happened to reclamp last.
+            if (_pendingScrollChanged is { } pending)
+            {
+                _pendingScrollChanged = new ScrollChangedEventArgs(
+                    pending.PreviousOffset,
+                    pending.Offset,
+                    _stack.Extent,
+                    _stack.Viewport,
+                    pending.Cause);
+            }
         }
     }
 

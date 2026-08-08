@@ -321,6 +321,78 @@ public sealed class JsonViewTests
         observed[0].Offset.ShouldBe(new Point(view.HorizontalOffset, view.VerticalOffset));
     }
 
+    /// <summary>Verifies the replayed ScrollChanged always carries the final settled Extent and
+    /// Viewport across many resize-while-scrolled shapes, not just the geometry captured by
+    /// whichever internal arrange happened to be the last one that actually reclamped the offset.
+    /// An earlier internal arrange can populate the pending event while a later one changes
+    /// Extent/Viewport further without needing another reclamp; that later geometry must still
+    /// win.</summary>
+    [Fact]
+    public void Layout_WhenResizedWhileScrolledAcrossManyShapes_AlwaysReplaysFinalGeometry()
+    {
+        // Arrange
+        var properties = string.Join(
+            ',',
+            Enumerable.Range(0, 25).Select(index => $"\"key{index}\":\"{new string('a', 60)} value {index}\""));
+        var random = new Random(20260808);
+
+        for (var trial = 0; trial < 60; trial++)
+        {
+            var view = new JsonView
+            {
+                Json = $"{{{properties}}}",
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+            var engine = new LayoutEngine();
+            var from = new Size(random.Next(8, 30), random.Next(4, 20));
+            var to = new Size(random.Next(8, 30), random.Next(4, 20));
+            engine.Layout(view, from);
+            _ = view.ScrollBy(int.MaxValue, int.MaxValue);
+            List<ScrollChangedEventArgs> observed = [];
+            view.ScrollChanged += (_, eventArgs) => observed.Add(eventArgs);
+
+            // Act
+            engine.Layout(view, to);
+
+            // Assert
+            foreach (var eventArgs in observed)
+            {
+                eventArgs.Extent.ShouldBe(view.Extent, $"trial {trial}: {from} -> {to}");
+                eventArgs.Viewport.ShouldBe(view.Viewport, $"trial {trial}: {from} -> {to}");
+            }
+        }
+    }
+
+    /// <summary>Verifies a settled transaction never strands a pending coalesced event for a later,
+    /// unrelated transaction to replay: after a resize-while-scrolled transaction has already fired
+    /// and cleared its one coalesced event, a following no-op layout pass (same size, no further
+    /// scrolling) raises nothing at all, rather than replaying stale state left behind.</summary>
+    [Fact]
+    public void Layout_WhenTransactionFollowsASettledOne_DoesNotReplayStaleState()
+    {
+        // Arrange
+        var properties = string.Join(
+            ',',
+            Enumerable.Range(0, 25).Select(index => $"\"key{index}\":\"{new string('a', 60)} value {index}\""));
+        var view = new JsonView
+        {
+            Json = $"{{{properties}}}",
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        var engine = new LayoutEngine();
+        engine.Layout(view, new Size(14, 10));
+        _ = view.ScrollBy(int.MaxValue, int.MaxValue);
+        engine.Layout(view, new Size(50, 10));
+        List<ScrollChangedEventArgs> observed = [];
+        view.ScrollChanged += (_, eventArgs) => observed.Add(eventArgs);
+
+        // Act - a no-op re-layout at the identical settled size, with no further scrolling.
+        engine.Layout(view, new Size(50, 10));
+
+        // Assert
+        observed.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies both overflow axes and generated scrollbar policy are reachable from JsonView.</summary>
     [Fact]
     public void ScrollBy_WhenDocumentExceedsViewport_MovesBothOffsets()
