@@ -114,16 +114,9 @@ public static class KittyClipboardWriter
         try
         {
             "type=wdata:mime="u8.CopyTo(metadata);
-            var mimeStatus = Base64.EncodeToUtf8(
-                mime,
+            _ = mime.EncodeBase64OrThrow(
                 metadata["type=wdata:mime="u8.Length..],
-                out _,
-                out var mimeWritten);
-
-            if (mimeStatus != OperationStatus.Done || mimeWritten != mimeLength)
-            {
-                throw new InvalidOperationException("Validated MIME metadata failed Base64 encoding.");
-            }
+                "Validated MIME metadata failed Base64 encoding.");
 
             if (data.IsEmpty)
             {
@@ -181,16 +174,9 @@ public static class KittyClipboardWriter
         try
         {
             "type=walias:mime="u8.CopyTo(metadata);
-            var status = Base64.EncodeToUtf8(
-                targetMime,
+            _ = targetMime.EncodeBase64OrThrow(
                 metadata["type=walias:mime="u8.Length..],
-                out _,
-                out var written);
-
-            if (status != OperationStatus.Done || written != mimeLength)
-            {
-                throw new InvalidOperationException("Validated MIME metadata failed Base64 encoding.");
-            }
+                "Validated MIME metadata failed Base64 encoding.");
 
             WritePacket(writer, metadata[..metadataLength], aliases, hasPayload: true);
         }
@@ -217,14 +203,8 @@ public static class KittyClipboardWriter
     public static void PasteEvents(ProtocolWriter writer, bool enabled) =>
         ProtocolModes.ClipboardPasteEvents(writer, enabled);
 
-    private static int AppendBase64(ReadOnlySpan<byte> value, Span<byte> destination)
-    {
-        var status = Base64.EncodeToUtf8(value, destination, out _, out var written);
-
-        return status == OperationStatus.Done
-            ? written
-            : throw new InvalidOperationException("Validated metadata failed Base64 encoding.");
-    }
+    private static int AppendBase64(ReadOnlySpan<byte> value, Span<byte> destination) =>
+        value.EncodeBase64OrThrow(destination, "Validated metadata failed Base64 encoding.");
 
     private static int AppendLiteral(ReadOnlySpan<byte> value, Span<byte> destination, int position)
     {

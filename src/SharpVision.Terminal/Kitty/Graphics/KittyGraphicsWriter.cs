@@ -302,14 +302,8 @@ public static class KittyGraphicsWriter
             : AppendField(destination, position, (byte) 'q', command.Quiet);
     }
 
-    private static int Encode(ReadOnlySpan<byte> payload, Span<byte> destination)
-    {
-        var status = Base64.EncodeToUtf8(payload, destination, out var consumed, out var written);
-
-        return status == OperationStatus.Done && consumed == payload.Length
-            ? written
-            : throw new InvalidOperationException("A bounded Kitty chunk failed Base64 encoding.");
-    }
+    private static int Encode(ReadOnlySpan<byte> payload, Span<byte> destination) =>
+        payload.EncodeBase64OrThrow(destination, "A bounded Kitty chunk failed Base64 encoding.");
 
     [Conditional("DEBUG")]
     private static void AssertRoundTripsToTheSameCanonicalForm(

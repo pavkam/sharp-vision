@@ -7,6 +7,8 @@ using Buffers;
 
 using Graphics;
 
+using SharpVision.Terminal.Clipboard;
+
 /// <summary>Writes canonical bounded iTerm2 3.5 multipart inline PNG images.</summary>
 [PublicAPI]
 public static class ItermWriter
@@ -251,16 +253,8 @@ public static class ItermWriter
                 var length = Math.Min(rawChunkBytes, source.Length - offset);
                 var sequenceStart = output.WrittenCount;
                 WriteBytes(output, "\u001b]1337;FilePart="u8);
-                var status = Base64.EncodeToUtf8(
-                    source.Slice(offset, length),
-                    rented,
-                    out var consumed,
-                    out var written);
-
-                if (status != OperationStatus.Done || consumed != length)
-                {
-                    throw new InvalidOperationException("Validated PNG bytes failed bounded Base64 encoding.");
-                }
+                var written = source.Slice(offset, length)
+                    .EncodeBase64OrThrow(rented, "Validated PNG bytes failed bounded Base64 encoding.");
 
                 WriteBytes(output, rented.AsSpan(0, written));
                 WriteBytes(output, "\u001b\\"u8);

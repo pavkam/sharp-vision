@@ -54,5 +54,33 @@ internal static class Base64Validation
 
             return true;
         }
+
+        /// <summary>
+        /// Base64-encodes the complete span into <paramref name="destination"/>, throwing
+        /// <paramref name="failureMessage"/> as an <see cref="InvalidOperationException"/> if the
+        /// destination is too small to hold the full encoding.
+        /// </summary>
+        /// <param name="destination">The buffer sized to hold the complete encoding.</param>
+        /// <param name="failureMessage">The exception message used if encoding does not complete.</param>
+        /// <returns>The number of bytes written to <paramref name="destination"/>.</returns>
+        /// <exception cref="InvalidOperationException">
+        /// The destination was too small to hold the complete encoding of a bounded, pre-validated
+        /// source span.
+        /// </exception>
+        /// <remarks>
+        /// Every call site bounds and validates its source before calling this helper, so encoding
+        /// is expected to always complete. The uniform <c>consumed == value.Length</c> check applies
+        /// even at call sites that previously checked only <see cref="OperationStatus.Done"/>: this is
+        /// a provable no-change, because <see cref="Base64.EncodeToUtf8"/> reports
+        /// <see cref="OperationStatus.Done"/> only once the entire source has been consumed.
+        /// </remarks>
+        public int EncodeBase64OrThrow(Span<byte> destination, string failureMessage)
+        {
+            var status = Base64.EncodeToUtf8(value, destination, out var consumed, out var written);
+
+            return status == OperationStatus.Done && consumed == value.Length
+                ? written
+                : throw new InvalidOperationException(failureMessage);
+        }
     }
 }

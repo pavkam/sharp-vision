@@ -72,16 +72,9 @@ public static class Osc52
         {
             payload[0] = identifier;
             payload[1] = (byte) ';';
-            var status = Base64.EncodeToUtf8(
-                text,
+            var written = text.EncodeBase64OrThrow(
                 payload[2..],
-                out var consumed,
-                out var written);
-
-            if (status != OperationStatus.Done || consumed != text.Length)
-            {
-                throw new InvalidOperationException("Validated clipboard bytes failed Base64 encoding.");
-            }
+                "Validated clipboard bytes failed Base64 encoding.");
 
             writer.Osc(52, payload[..(written + 2)]);
         }
