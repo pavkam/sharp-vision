@@ -192,6 +192,107 @@ public sealed class NavigationViewTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an incidental Control modifier on Enter does not select the current item,
+    /// and leaves the stroke unhandled so a shortcut bound to the modified combination still sees it.</summary>
+    [Fact]
+    public async Task Dispatch_WhenEnterHasControlModifier_DoesNotSelectAndLeavesUnhandledAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var nav = new NavigationView();
+            var a = new NavigationViewItem { Text = "A" };
+            nav.Items.Add(a);
+            nav.Attach(dispatcher);
+            using FocusManager focus = new(nav);
+            focus.Focus(nav).ShouldBeTrue();
+
+            var enter = new KeyEventArgs(new Stroke(
+                Code.Enter, default, nativeCode: 0, Modifiers.Control, KeyAction.Press));
+            _ = Router.Route(nav, Events.Key, enter);
+
+            enter.Handled.ShouldBeFalse();
+            nav.SelectedItem.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Shift-held Enter (a common terminal chord) still selects the current item.</summary>
+    [Fact]
+    public async Task Dispatch_WhenEnterHasShiftModifier_StillSelectsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var nav = new NavigationView();
+            var a = new NavigationViewItem { Text = "A" };
+            nav.Items.Add(a);
+            nav.Attach(dispatcher);
+            using FocusManager focus = new(nav);
+            focus.Focus(nav).ShouldBeTrue();
+
+            var enter = new KeyEventArgs(new Stroke(
+                Code.Enter, default, nativeCode: 0, Modifiers.Shift, KeyAction.Press));
+            _ = Router.Route(nav, Events.Key, enter);
+
+            enter.Handled.ShouldBeTrue();
+            nav.SelectedItem.ShouldBeSameAs(a);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an incidental Control modifier on Enter does not toggle a group's expanded
+    /// state through the group's own key handler.</summary>
+    [Fact]
+    public async Task Group_WhenEnterHasControlModifier_DoesNotToggleExpandedAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var nav = new NavigationView();
+            var group = new NavigationViewGroup { Header = "Settings" };
+            var sub = new NavigationViewItem { Text = "General" };
+            group.Items.Add(sub);
+            nav.Items.Add(group);
+            nav.Attach(dispatcher);
+            group.Expanded.ShouldBeTrue();
+
+            var enter = new KeyEventArgs(new Stroke(
+                Code.Enter, default, nativeCode: 0, Modifiers.Control, KeyAction.Press));
+            _ = Router.Route(group, Events.Key, enter);
+
+            enter.Handled.ShouldBeFalse();
+            group.Expanded.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Shift-held Enter (a common terminal chord) still toggles a group's expanded
+    /// state through the group's own key handler.</summary>
+    [Fact]
+    public async Task Group_WhenEnterHasShiftModifier_StillTogglesExpandedAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var nav = new NavigationView();
+            var group = new NavigationViewGroup { Header = "Settings" };
+            var sub = new NavigationViewItem { Text = "General" };
+            group.Items.Add(sub);
+            nav.Items.Add(group);
+            nav.Attach(dispatcher);
+            group.Expanded.ShouldBeTrue();
+
+            var enter = new KeyEventArgs(new Stroke(
+                Code.Enter, default, nativeCode: 0, Modifiers.Shift, KeyAction.Press));
+            _ = Router.Route(group, Events.Key, enter);
+
+            enter.Handled.ShouldBeTrue();
+            group.Expanded.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies collapsing a group hides its sub-items.</summary>
     [Fact]
     public async Task Group_WhenCollapsed_HidesSubItemsAsync()

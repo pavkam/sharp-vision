@@ -600,6 +600,11 @@ public sealed class NavigationView: CompositeControlBase
         if (eventArgs.Stroke.Code == Code.Enter ||
             (eventArgs.Stroke.Code == Code.Character && eventArgs.Stroke.Character == new Rune(' ')))
         {
+            if (!eventArgs.Stroke.Modifiers.IsActivationEligible())
+            {
+                return;
+            }
+
             eventArgs.Handled = ActivateCurrent();
             return;
         }

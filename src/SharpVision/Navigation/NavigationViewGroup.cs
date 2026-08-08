@@ -251,7 +251,10 @@ public sealed class NavigationViewGroup: ControlBase
             return;
         }
 
-        var keyboard = eventArgs is KeyEventArgs { Stroke: { Action: KeyAction.Press, Code: Code.Enter } };
+        var keyboard = eventArgs is KeyEventArgs
+        {
+            Stroke: { Action: KeyAction.Press, Code: Code.Enter, Modifiers: var enterModifiers }
+        } && enterModifiers.IsActivationEligible();
         var pointer = eventArgs is PointerEventArgs
         {
             Pointer.Action: PointerAction.Release,
