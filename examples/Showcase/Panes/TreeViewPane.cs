@@ -145,7 +145,7 @@ internal sealed class TreeViewPane: CompositeControlBase
         var tree = new TreeView
         {
             Width = Length.Cells(22),
-            Height = Length.Cells(5),
+            Height = Length.Cells(3),
             CheckMark = mark
         };
         var parent = new TreeViewItem("Group") { Checkable = true, Expanded = true };
