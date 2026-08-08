@@ -5,7 +5,9 @@
 `ContextMenu` shows a vertical menu at any cell position you choose and closes
 through light dismiss when the user interacts outside of it. Attach one to a
 control through `ControlBase.ContextMenu` so it opens on right-click, or open it
-yourself at an explicit position with `Show`.
+yourself at an explicit position with `Show`. Build the menu with `MenuItem`
+objects directly, or compose one with `MenuBuilder` and hand it to the
+`ContextMenu(Menu)` constructor.
 
 ## API
 
@@ -31,6 +33,14 @@ and the second control keeps whatever context menu it already had.
 
 ```csharp
 var contextMenu = new ContextMenu();
+```
+
+```csharp
+var contextMenu = new ContextMenu(
+    MenuBuilder.Vertical()
+        .Item("&Inspect")
+        .Item("&Run", shortcut: "F5")
+        .Build());
 ```
 
 ## Expected behavior
