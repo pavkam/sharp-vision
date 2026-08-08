@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Layout;
 
 /// <summary>Verifies deterministic border-box measure and arrange behavior.</summary>
-public sealed class BoxLayoutTests
+public sealed class LayoutEngineTests
 {
     /// <summary>Verifies percentages use the slot while margin remains external.</summary>
     [Fact]

@@ -159,4 +159,80 @@ public sealed class TrackTests
 
         result.ShouldBe([0]);
     }
+
+    /// <summary>Verifies factories preserve exact length and limit values.</summary>
+    [Fact]
+    public void Factory_WhenValuesAreValid_CreatesExactTrack()
+    {
+        Track.Auto(minimum: 1, maximum: 8).ShouldBe(new Track(Length.Auto, 1, 8));
+        Track.Cells(3).Length.ShouldBe(Length.Cells(3));
+        Track.Percent(25).Length.ShouldBe(Length.Percent(25));
+        Track.Star(2).Length.ShouldBe(Length.Star(2));
+    }
+
+    /// <summary>Verifies invalid limits fail before constructing a usable definition.</summary>
+    [Fact]
+    public void Constructor_WhenLimitsAreInvalid_ThrowsDocumentedException()
+    {
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new Track(Length.Auto, -1));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new Track(Length.Auto, 0, -1));
+        _ = Should.Throw<ArgumentException>(() => new Track(Length.Auto, 3, 2));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => Track.Cells(-1));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => Track.Percent(101));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => Track.Star(0));
+    }
+
+    /// <summary>Verifies 20,000 valid bounded sets are stable, exact, and clamped.</summary>
+    [Fact]
+    public void Resolve_WhenInputsAreRandomized_PreservesBoundedInvariants()
+    {
+        const int caseCount = 20_000;
+        var random = new Random(0x4A70);
+
+        for (var sample = 0; sample < caseCount; sample++)
+        {
+            var count = random.Next(1, 17);
+            var available = random.Next(0, 501);
+            var lengths = new Length[count];
+            var automatic = new int[count];
+            var minimum = new int[count];
+            var maximum = new int[count];
+            var first = new int[count];
+            var second = new int[count];
+            var minimumBudget = available;
+
+            for (var index = 0; index < count; index++)
+            {
+                lengths[index] = index == count - 1
+                    ? Length.Star(random.NextDouble() + 0.01)
+                    : NextLength(random);
+                automatic[index] = random.Next(0, 61);
+                minimum[index] = random.Next(0, Math.Min(8, minimumBudget) + 1);
+                minimumBudget -= minimum[index];
+                maximum[index] = index == count - 1
+                    ? int.MaxValue
+                    : random.Next(minimum[index], minimum[index] + 81);
+            }
+
+            Tracks.Resolve(available, lengths, automatic, minimum, maximum, first);
+            Tracks.Resolve(available, lengths, automatic, minimum, maximum, second);
+
+            second.ShouldBe(first);
+            first.Sum().ShouldBe(available);
+
+            for (var index = 0; index < count; index++)
+            {
+                first[index].ShouldBeGreaterThanOrEqualTo(minimum[index]);
+                first[index].ShouldBeLessThanOrEqualTo(maximum[index]);
+            }
+        }
+    }
+
+    private static Length NextLength(Random random) => random.Next(0, 4) switch
+    {
+        0 => Length.Auto,
+        1 => Length.Cells(random.Next(0, 101)),
+        2 => Length.Percent(random.NextDouble() * 100),
+        _ => Length.Star((random.NextDouble() * 4) + 0.01)
+    };
 }
