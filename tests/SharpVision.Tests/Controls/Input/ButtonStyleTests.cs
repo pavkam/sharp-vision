@@ -72,7 +72,7 @@ public sealed class ButtonStyleTests
     /// <summary>Verifies a theme's own "button" key cannot restyle Padding - a structural member -
     /// under any state but "normal". Padding is never read back from a per-state resolution
     /// (AppearanceOverlay carries only Face/Border/Shadow), so a theme authoring it under "pressed"
-    /// used to parse and validate the value and then silently discard it.</summary>
+    /// is rejected before the value is ever read rather than parsed and silently discarded.</summary>
     [Fact]
     public void Definition_WhenPaddingIsAuthoredUnderPressed_ThrowsNamingTheDottedPath()
     {

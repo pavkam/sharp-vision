@@ -6,7 +6,7 @@ namespace SharpVision.Tests.Layout;
 /// <summary>Verifies vertical alignment values remain stable public vocabulary.</summary>
 public sealed class VerticalAlignmentTests
 {
-    /// <summary>Verifies vertical alignment values remain stable public vocabulary.</summary>
+    /// <summary>Verifies the enum exposes exactly the four documented placement members.</summary>
     [Fact]
     public void Values_WhenEnumerated_ContainDocumentedMembers() =>
         Enum.GetValues<VerticalAlignment>()
