@@ -18,9 +18,12 @@ public readonly struct ChartScale: IEquatable<ChartScale>
         ValidateBound(minimum, nameof(minimum));
         ValidateBound(maximum, nameof(maximum));
 
-        if (minimum.HasValue && maximum.HasValue && minimum.Value >= maximum.Value)
+        if (minimum.HasValue && maximum.HasValue)
         {
-            throw new ArgumentException("The chart minimum must be lower than the chart maximum.", nameof(maximum));
+            minimum.Value.ThrowIfAtOrAboveMaximum(
+                maximum.Value,
+                nameof(maximum),
+                "The chart minimum must be lower than the chart maximum.");
         }
 
         Minimum = minimum;

@@ -457,12 +457,10 @@ public static class Tracks
                 ArgumentOutOfRangeException.ThrowIfNegative(minimum[index], nameof(minimum));
                 ArgumentOutOfRangeException.ThrowIfNegative(maximum[index], nameof(maximum));
 
-                if (maximum[index] < minimum[index])
-                {
-                    throw new ArgumentException(
-                        "A track maximum cannot be below its minimum.",
-                        nameof(maximum));
-                }
+                maximum[index].ThrowIfBelowMinimum(
+                    minimum[index],
+                    nameof(maximum),
+                    "A track maximum cannot be below its minimum.");
             }
         }
     }

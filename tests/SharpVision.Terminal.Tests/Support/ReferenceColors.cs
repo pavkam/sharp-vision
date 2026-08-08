@@ -4,6 +4,12 @@
 namespace SharpVision.Terminal.Tests.Support;
 
 /// <summary>Provides an independent xterm-compatible RGB oracle for received palette positions.</summary>
+/// <remarks>
+/// This is a mirrored copy of the equivalent class at
+/// <c>tests/SharpVision.Tests/Support/ReferenceColors.cs</c>, byte-identical apart from its
+/// namespace, because the two test assemblies do not share a common internals-visible
+/// project. Apply any behavioral change to both copies.
+/// </remarks>
 internal static class ReferenceColors
 {
     /// <summary>Returns the RGB value at one palette position.</summary>
