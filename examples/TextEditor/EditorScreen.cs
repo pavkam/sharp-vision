@@ -16,8 +16,7 @@ public sealed class EditorScreen: Screen
     private readonly Text _statusMessage;
     private readonly Text _fileNameLabel;
     private readonly FindReplaceDialog _findReplace;
-    private readonly Menu _contextMenu;
-    private readonly Popup _contextPopup;
+    private readonly ContextMenu _contextMenu;
     private string? _filePath;
     private string? _initialPath;
     private bool _dirty;
@@ -42,14 +41,8 @@ public sealed class EditorScreen: Screen
 
         _findReplace = new FindReplaceDialog(_editor);
 
-        _contextMenu = BuildContextMenu();
-        _contextMenu.ItemInvoked += OnContextMenuInvoked;
-        _contextPopup = new Popup
-        {
-            Anchor = _editor,
-            Content = _contextMenu,
-            Placement = PopupPlacement.Below
-        };
+        _contextMenu = new ContextMenu(BuildContextMenu());
+        _editor.ContextMenu = _contextMenu;
 
         var appMenu = MenuBuilder.Horizontal(spacing: 2)
             .Submenu("&File", file => file
@@ -140,7 +133,7 @@ public sealed class EditorScreen: Screen
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
-            Children = { layout, _contextPopup, _findReplace.Window }
+            Children = { layout, _findReplace.Window }
         };
         ControlOverlay.SetLeft(layout, Length.Cells(0));
         ControlOverlay.SetTop(layout, Length.Cells(0));
@@ -149,7 +142,6 @@ public sealed class EditorScreen: Screen
         InitializeContent(root);
 
         _ = AddHandler(Events.Key, OnGlobalKey);
-        _ = AddHandler(Events.Pointer, OnGlobalPointer);
     }
 
     /// <inheritdoc/>
@@ -198,7 +190,6 @@ public sealed class EditorScreen: Screen
     {
         _editor.SelectionChanged -= OnSelectionChanged;
         _editor.TextChanged -= OnTextChanged;
-        _contextMenu.ItemInvoked -= OnContextMenuInvoked;
     }
 
     #region File operations
@@ -434,24 +425,6 @@ public sealed class EditorScreen: Screen
         .Item("&Find", onInvoke: () => QueueEditorCommand(_findReplace.OpenFind))
         .Item("&Replace", onInvoke: () => QueueEditorCommand(_findReplace.OpenReplace))
         .Build();
-
-    private void OnContextMenuInvoked(object? sender, MenuItemInvokedEventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-        _contextPopup.IsOpen = false;
-    }
-
-    private void OnGlobalPointer(object? sender, PointerEventArgs e)
-    {
-        _ = sender;
-
-        if (e is { Handled: false, Pointer: { Action: PointerAction.Press, Buttons: Buttons.Secondary } })
-        {
-            _ = _contextPopup.OpenModal(initialFocus: _contextMenu);
-            e.Handled = true;
-        }
-    }
 
     #endregion
 

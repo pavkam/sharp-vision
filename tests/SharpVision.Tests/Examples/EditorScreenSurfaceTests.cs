@@ -295,9 +295,10 @@ public sealed class EditorScreenSurfaceTests
         surface.ShouldHaveFocus(editor);
     }
 
-    /// <summary>Verifies a secondary editor press opens the attached context Popup as a dismissing modal plane.</summary>
+    /// <summary>Verifies a secondary editor press opens the editor's attached ContextMenu, and
+    /// invoking an item runs the command and closes it through the wrapper's own light dismiss.</summary>
     [Fact]
-    public async Task Pointer_WhenEditorIsSecondaryPressed_OpensModalContextPopupAsync()
+    public async Task Pointer_WhenEditorIsSecondaryPressed_OpensContextMenuAsync()
     {
         // Arrange
         var screen = new TextEditor.EditorScreen();
@@ -306,29 +307,21 @@ public sealed class EditorScreenSurfaceTests
             new Size(90, 26),
             TestContext.Current.CancellationToken);
         var editor = Editor(screen);
-        var popup = FindAll<Popup>(screen).Single(candidate => ReferenceEquals(candidate.Anchor, editor));
-        var menu = popup.Content.ShouldBeOfType<Menu>();
-        var selectAll = FindItem(menu, "Select All");
-        var point = await surface.ResolvePointAsync(editor, new Point(1, 1));
+        var menu = editor.ContextMenu.ShouldNotBeNull();
+        var selectAll = FindItem(menu.Presentation, "Select All");
 
         // Act
-        await surface.SendAsync(
-            EncodePointer(button: 2, point, final: 'M'),
-            "press secondary pointer in TextEditor");
+        await surface.Pointer.RightClickAsync(editor, new Point(1, 1));
 
         // Assert
-        popup.IsOpen.ShouldBeTrue();
-        var scope = surface.Application.Modality.Active.ShouldNotBeNull();
-        scope.Root.ShouldBeSameAs(popup);
-        scope.OutsideInteraction.ShouldBe(OutsideInteraction.Dismiss);
+        menu.Opened.ShouldBeTrue();
 
         // Act command
         await surface.Pointer.ClickAsync(selectAll);
         await surface.UpdateAsync(static () => { }, "drain queued TextEditor context command");
 
         // Assert command
-        popup.IsOpen.ShouldBeFalse();
-        scope.Active.ShouldBeFalse();
+        menu.Opened.ShouldBeFalse();
         editor.SelectionLength.ShouldBe(editor.Text.Length);
         surface.Application.Modality.Active.ShouldBeNull();
         surface.ShouldHaveFocus(editor);
@@ -366,8 +359,4 @@ public sealed class EditorScreenSurfaceTests
             }
         }
     }
-
-    private static byte[] EncodePointer(int button, Point point, char final) =>
-        Encoding.ASCII.GetBytes(
-            FormattableString.Invariant($"\u001b[<{button};{point.X + 1};{point.Y + 1}{final}"));
 }
