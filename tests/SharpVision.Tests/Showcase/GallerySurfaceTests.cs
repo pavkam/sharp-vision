@@ -329,6 +329,54 @@ public sealed class GallerySurfaceTests
         }
     }
 
+    /// <summary>
+    /// Verifies the Window page's drag stage is never forced narrower than it asks to be at a
+    /// compact 80x24 terminal, and that its interactive windows stay fully inside it. The
+    /// generic mounted-size theory above only asserts the outer page fits the viewport; it
+    /// cannot catch an inner Overlay declared wider than its GroupBox/sidebar-narrowed content
+    /// column. A too-wide Overlay does not overflow visibly - Arrange silently clamps its Bounds
+    /// down to whatever the column offers - so the only observable symptom is that clamp firing
+    /// at all: the arranged width falls short of the requested one. DocPage's Hidden horizontal
+    /// scrollbar then means whatever got clamped away has no scroll path back into view.
+    /// </summary>
+    [Fact]
+    public async Task WindowPage_WhenMountedAtCompactSize_DragStageIsNotClampedNarrowerThanRequestedAsync()
+    {
+        // Arrange
+        var gallery = new Gallery();
+        await using var surface = await ComponentSurface.MountScreenAsync(
+            gallery,
+            new Size(80, 24),
+            TestContext.Current.CancellationToken);
+        var pageIndex = gallery.Pages
+            .Select(static (name, index) => (name, index))
+            .Single(static entry => entry.name == WindowPane.Title)
+            .index;
+        await surface.UpdateAsync(() => gallery.Select(pageIndex), "open Window showcase page");
+        var page = gallery.CurrentPage;
+
+        // Act: the drag stage is the only Overlay hosting both interactive windows at once.
+        var dragStage = OwnedTree.FindAll<Overlay>(page)
+            .Single(static overlay => overlay.Children.OfType<Window>().Count() == 2);
+        var dragStageWindows = dragStage.Children.OfType<Window>().ToArray();
+
+        // Assert: the requested cell width was actually honored, not silently squeezed down by
+        // the sidebar-narrowed content column - a squeeze is exactly what an unreachable,
+        // non-scrollable overflow looks like from the arranged tree.
+        dragStage.Width.Kind.ShouldBe(LengthKind.Cells);
+        dragStage.Bounds.Width.ShouldBe((int) dragStage.Width.Value);
+
+        dragStageWindows.Length.ShouldBe(2);
+
+        foreach (var window in dragStageWindows)
+        {
+            window.Bounds.X.ShouldBeGreaterThanOrEqualTo(dragStage.Bounds.X);
+            window.Bounds.Right.ShouldBeLessThanOrEqualTo(dragStage.Bounds.Right);
+        }
+
+        dragStage.Bounds.Right.ShouldBeLessThanOrEqualTo(page.Bounds.Right);
+    }
+
     /// <summary>Verifies every catalog page has a unique name and a defined sidebar group.</summary>
     [Fact]
     public void Catalog_WhenEnumerated_HasUniqueNamesAndKnownGroups()
