@@ -54,10 +54,10 @@ internal sealed class NavigationViewPane: CompositeControlBase
                 new DocExample("App sidebar with glyphs",
                     "Unicode labels, optional glyph prefixes, and unavailable entries share one route. The Settings entry is disabled — keyboard navigation skips it but it remains visible.",
                     new DocColumn(basic, status),
-                    "var nav = new NavigationView { Header = \"MY APP\" };\n" +
-                    "nav.Items.Add(new NavigationViewItem { Header = \"界 Dashboard\" });\n" +
-                    "nav.Items.Add(new NavigationViewItem { Header = \"Reports\", Glyph = \"📈\" });\n" +
-                    "nav.Items.Add(new NavigationViewItem { Header = \"&Settings\", Glyph = \"⚙\", Enabled = false });"),
+                    "var nav = new NavigationView { Header = \"&MY APP\" };\n" +
+                    "nav.Items.Add(new NavigationViewItem { Text = \"&界 Dashboard\" });\n" +
+                    "nav.Items.Add(new NavigationViewItem { Text = \"&Reports\", Glyph = \"📈\" });\n" +
+                    "nav.Items.Add(new NavigationViewItem { Text = \"&Settings\", Glyph = \"⚙\", Enabled = false });"),
                 new DocExample("Overflow navigation", "Eight destinations overflow the visible area and scroll automatically.",
                     overflow)),
             new DocSection("🧭", "Groups and separators",
