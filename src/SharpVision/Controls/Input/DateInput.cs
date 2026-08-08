@@ -247,10 +247,7 @@ public sealed class DateInput: PressInteractionBase
         get;
         set
         {
-            if (value > Maximum)
-            {
-                throw new ArgumentException("Minimum cannot exceed Maximum.", nameof(value));
-            }
+            value.ThrowIfAboveMaximum(Maximum, nameof(value), "Minimum cannot exceed Maximum.");
 
             if (SetProperty(ref field, value, InvalidationImpact.None))
             {
@@ -269,10 +266,7 @@ public sealed class DateInput: PressInteractionBase
         get;
         set
         {
-            if (value < Minimum)
-            {
-                throw new ArgumentException("Maximum cannot precede Minimum.", nameof(value));
-            }
+            value.ThrowIfBelowMinimum(Minimum, nameof(value), "Maximum cannot precede Minimum.");
 
             if (SetProperty(ref field, value, InvalidationImpact.None))
             {

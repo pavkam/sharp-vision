@@ -32,11 +32,7 @@ public sealed class ProgressBar: Control<ProgressBarStyle>
         set
         {
             ValidateFinite(value, nameof(value));
-
-            if (value >= Maximum)
-            {
-                throw new ArgumentException("Minimum must be below Maximum.", nameof(value));
-            }
+            value.ThrowIfAtOrAboveMaximum(Maximum, nameof(value), "Minimum must be below Maximum.");
 
             VerifyMutable();
             var clamped = Math.Max(_value, value);
@@ -67,11 +63,7 @@ public sealed class ProgressBar: Control<ProgressBarStyle>
         set
         {
             ValidateFinite(value, nameof(value));
-
-            if (value <= Minimum)
-            {
-                throw new ArgumentException("Maximum must be above Minimum.", nameof(value));
-            }
+            value.ThrowIfAtOrBelowMinimum(Minimum, nameof(value), "Maximum must be above Minimum.");
 
             VerifyMutable();
             var clamped = Math.Min(_value, value);

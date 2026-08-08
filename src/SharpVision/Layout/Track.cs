@@ -42,10 +42,7 @@ public readonly record struct Track
         ArgumentOutOfRangeException.ThrowIfNegative(minimum);
         ArgumentOutOfRangeException.ThrowIfNegative(maximum);
 
-        if (maximum < minimum)
-        {
-            throw new ArgumentException("A track maximum cannot be below its minimum.", nameof(maximum));
-        }
+        maximum.ThrowIfBelowMinimum(minimum, nameof(maximum), "A track maximum cannot be below its minimum.");
 
         Length = length;
         Minimum = minimum;

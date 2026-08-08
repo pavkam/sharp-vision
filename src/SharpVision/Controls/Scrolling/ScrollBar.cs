@@ -50,13 +50,10 @@ public sealed class ScrollBar: Control<ScrollBarStyle>
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-
-            if (value > Maximum || value > Value)
-            {
-                throw new ArgumentException(
-                    "Minimum cannot exceed Maximum or the current Value.",
-                    nameof(value));
-            }
+            value.ThrowIfAboveMaximum(
+                Math.Min(Maximum, Value),
+                nameof(value),
+                "Minimum cannot exceed Maximum or the current Value.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Render);
         }
@@ -73,13 +70,10 @@ public sealed class ScrollBar: Control<ScrollBarStyle>
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-
-            if (value < Minimum || value < Value)
-            {
-                throw new ArgumentException(
-                    "Maximum cannot be below Minimum or the current Value.",
-                    nameof(value));
-            }
+            value.ThrowIfBelowMinimum(
+                Math.Max(Minimum, Value),
+                nameof(value),
+                "Maximum cannot be below Minimum or the current Value.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Render);
         }

@@ -112,11 +112,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-
-            if (value > MaxWidth)
-            {
-                throw new ArgumentException("Minimum width cannot exceed maximum width.", nameof(value));
-            }
+            value.ThrowIfAboveMaximum(MaxWidth, nameof(value), "Minimum width cannot exceed maximum width.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
@@ -133,11 +129,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-
-            if (value > MaxHeight)
-            {
-                throw new ArgumentException("Minimum height cannot exceed maximum height.", nameof(value));
-            }
+            value.ThrowIfAboveMaximum(MaxHeight, nameof(value), "Minimum height cannot exceed maximum height.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
@@ -154,11 +146,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-
-            if (value < MinWidth)
-            {
-                throw new ArgumentException("Maximum width cannot be below minimum width.", nameof(value));
-            }
+            value.ThrowIfBelowMinimum(MinWidth, nameof(value), "Maximum width cannot be below minimum width.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
@@ -175,11 +163,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-
-            if (value < MinHeight)
-            {
-                throw new ArgumentException("Maximum height cannot be below minimum height.", nameof(value));
-            }
+            value.ThrowIfBelowMinimum(MinHeight, nameof(value), "Maximum height cannot be below minimum height.");
 
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }

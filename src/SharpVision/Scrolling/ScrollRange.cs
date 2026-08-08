@@ -20,10 +20,7 @@ public readonly record struct ScrollRange
         ArgumentOutOfRangeException.ThrowIfNegative(maximum);
         ArgumentOutOfRangeException.ThrowIfNegative(viewport);
 
-        if (maximum < minimum)
-        {
-            throw new ArgumentException("Maximum cannot be below minimum.", nameof(maximum));
-        }
+        maximum.ThrowIfBelowMinimum(minimum, nameof(maximum), "Maximum cannot be below minimum.");
 
         if (value < minimum || value > maximum)
         {

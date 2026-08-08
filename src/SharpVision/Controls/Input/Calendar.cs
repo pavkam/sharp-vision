@@ -215,10 +215,7 @@ public sealed class Calendar: Control<CalendarStyle>
         get;
         set
         {
-            if (value > MaximumDate)
-            {
-                throw new ArgumentException("MinimumDate cannot exceed MaximumDate.", nameof(value));
-            }
+            value.ThrowIfAboveMaximum(MaximumDate, nameof(value), "MinimumDate cannot exceed MaximumDate.");
 
             if (SetProperty(ref field, value, InvalidationImpact.Render))
             {
@@ -236,10 +233,7 @@ public sealed class Calendar: Control<CalendarStyle>
         get;
         set
         {
-            if (value < MinimumDate)
-            {
-                throw new ArgumentException("MaximumDate cannot precede MinimumDate.", nameof(value));
-            }
+            value.ThrowIfBelowMinimum(MinimumDate, nameof(value), "MaximumDate cannot precede MinimumDate.");
 
             if (SetProperty(ref field, value, InvalidationImpact.Render))
             {

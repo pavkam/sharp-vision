@@ -42,12 +42,7 @@ public sealed class Slider: Control<SliderStyle>
         get;
         set
         {
-            if (value > Maximum)
-            {
-                throw new ArgumentException(
-                    "Minimum cannot exceed Maximum.",
-                    nameof(value));
-            }
+            value.ThrowIfAboveMaximum(Maximum, nameof(value), "Minimum cannot exceed Maximum.");
 
             if (SetProperty(ref field, value, InvalidationImpact.Render))
             {
@@ -68,12 +63,7 @@ public sealed class Slider: Control<SliderStyle>
         get;
         set
         {
-            if (value < Minimum)
-            {
-                throw new ArgumentException(
-                    "Maximum cannot be below Minimum.",
-                    nameof(value));
-            }
+            value.ThrowIfBelowMinimum(Minimum, nameof(value), "Maximum cannot be below Minimum.");
 
             if (SetProperty(ref field, value, InvalidationImpact.Render))
             {

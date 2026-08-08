@@ -311,12 +311,7 @@ public sealed class DateTimeInput: PressInteractionBase
         set
         {
             VerifyMutable();
-
-            if (value > Maximum)
-            {
-                throw new ArgumentException(
-                    "Minimum cannot exceed Maximum.", nameof(value));
-            }
+            value.ThrowIfAboveMaximum(Maximum, nameof(value), "Minimum cannot exceed Maximum.");
 
             if (SetProperty(ref field, value, InvalidationImpact.Render))
             {
@@ -336,12 +331,7 @@ public sealed class DateTimeInput: PressInteractionBase
         set
         {
             VerifyMutable();
-
-            if (value < Minimum)
-            {
-                throw new ArgumentException(
-                    "Maximum cannot be less than Minimum.", nameof(value));
-            }
+            value.ThrowIfBelowMinimum(Minimum, nameof(value), "Maximum cannot be less than Minimum.");
 
             if (SetProperty(ref field, value, InvalidationImpact.Render))
             {
