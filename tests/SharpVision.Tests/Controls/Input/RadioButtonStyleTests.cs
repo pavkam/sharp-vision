@@ -97,6 +97,22 @@ public sealed class RadioButtonStyleTests
         resolved.MarkStyle.ShouldBe(RadioButtonMarkStyle.Circle);
     }
 
+    /// <summary>Verifies a theme's own "radioButton" key cannot restyle Glyphs - a structural,
+    /// nested-fragment member - under any state but "normal". The rejection fires on the "glyphs"
+    /// property itself, before recursing into its own Unchecked/Checked members, proving a
+    /// structural member nested inside a fragment is rejected the same way a flat one is.</summary>
+    [Fact]
+    public void Definition_WhenGlyphsIsAuthoredUnderChecked_ThrowsNamingTheDottedPath()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            extraStyles: """, "radioButton": { "checked": { "glyphs": { "unchecked": " ", "checked": "x" } } } """));
+
+        var exception = Should.Throw<InvalidDataException>(() =>
+            RadioButtonStyle.Definition.Appearance!(RadioButtonStyle.Definition.Resolve(null, theme), theme));
+
+        exception.Message.ShouldContain("styles.radioButton.checked.glyphs");
+    }
+
     /// <summary>Verifies a MarkWidth change (parentheses vs. one-cell family) is measure-affecting.</summary>
     [Fact]
     public void Definition_Compare_WhenMarkWidthChanges_IsMeasure()

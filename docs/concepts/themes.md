@@ -198,10 +198,15 @@ A fractional state object holds optional `face`, `border`, and `shadow` objects
 whose members match the corresponding type's own public properties (reflectively
 resolved, not a hand-maintained DTO shape): face colors and decorations; border
 sides, glyph style, colors, and attributes; shadow visibility, mode, offset,
-glyph, colors, and attributes. A style type with its own additional structural
-members (padding, mark style, a glyph family) exposes those the same way, at the
-top level of its state object alongside `face`/ `border`/`shadow` - see
-`button`'s `padding` and `radioButton`'s `glyphs` below.
+glyph, colors, and attributes.
+
+A style type's own additional structural members (padding, mark style, a glyph
+family) sit at the top level of its state object too - see `button`'s `padding`
+and `radioButton`'s `glyphs` below - but only under `normal`. Nothing but
+`face`/`border`/`shadow` is ever read back from another state: every per-state
+resolution completes a leaf's structural members from its resolved `normal`
+alone, so a theme authoring, say, `button.pressed.padding` is rejected rather
+than parsed, validated, and silently ignored.
 
 Colors and attributes inside a style section may be literal values or the JSON
 name of a global semantic value. Border glyph styles and shadow geometry are

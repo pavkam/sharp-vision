@@ -479,6 +479,35 @@ public sealed class ThemeTests
         states.Resolve(VisualState.Pressed).ShouldBe(set.ToAppearanceStates().Resolve(VisualState.Pressed));
     }
 
+    /// <summary>Verifies a structural (non-Face/Border/Shadow) member authored under a state other
+    /// than "normal" is rejected rather than parsed, validated, and silently discarded -
+    /// <see cref="AppearanceOverlay"/> carries only Face/Border/Shadow, so nothing downstream ever
+    /// reads it.</summary>
+    [Fact]
+    public void GetStyleSet_WhenAStructuralMemberIsAuthoredUnderANonNormalState_ThrowsNamingTheDottedPath()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            extraStyles: """, "test.structural": { "pressed": { "weight": 2 } } """));
+
+        var exception = Should.Throw<InvalidDataException>(() =>
+            theme.GetStyleSet("test.structural", StructuralDefault()));
+
+        exception.Message.ShouldContain("styles.test.structural.pressed.weight");
+    }
+
+    /// <summary>The counter-case: the same structural member authored under "normal" - the one
+    /// state every style type's own structural members are actually completed from - succeeds.</summary>
+    [Fact]
+    public void GetStyleSet_WhenAStructuralMemberIsAuthoredUnderNormal_Succeeds()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            extraStyles: """, "test.structural": { "normal": { "weight": 2 } } """));
+
+        var resolved = theme.GetStyleSet("test.structural", StructuralDefault());
+
+        resolved.Normal.Weight.ShouldBe(2);
+    }
+
     // Authors control's colors and nothing else - no border, no shadow, and no sibling sections at
     // all. Exercises the cascade's ordinary shape: control authors real colors, and every sibling
     // must inherit exactly what was authored while keeping its own code-owned chrome.
@@ -561,6 +590,22 @@ public sealed class ThemeTests
         public TestRootStyle(Face face, Border border, Shadow shadow) : base(face, border, shadow)
         {
         }
+    }
+
+    private static TestStructuralRootStyle StructuralDefault() =>
+        new(ControlStyle.DefaultFace, ControlStyle.NoBorder, ControlStyle.NoShadow, weight: 1);
+
+    // A root style with one structural (non-Face/Border/Shadow) member, the shape
+    // restrictToChrome exists to police: Weight is declared on this type, not on ControlStyle, so
+    // it is exactly the kind of member every state but "normal" must reject rather than silently
+    // resolve and discard.
+    private sealed record TestStructuralRootStyle: ControlStyle
+    {
+        [SetsRequiredMembers]
+        public TestStructuralRootStyle(Face face, Border border, Shadow shadow, int weight) : base(face, border, shadow) =>
+            Weight = weight;
+
+        public required int Weight { get; init; }
     }
 
     /// <summary>Verifies a leaf (non-fragment) property is replaced outright and the source
@@ -657,6 +702,43 @@ public sealed class ThemeTests
             "styles.acme.normal"));
 
         exception.Message.ShouldContain("styles.acme.normal.leaf.bogus");
+    }
+
+    /// <summary>Verifies a structural member is rejected under <c>restrictToChrome</c>, naming the
+    /// exact dotted path - the guard every non-"normal" per-state resolution path applies, since a
+    /// member other than Face/Border/Shadow written there is parsed, validated, and then never read
+    /// by anything.</summary>
+    [Fact]
+    public void Overlay_WhenRestrictedToChromeAndKeyIsNotFaceBorderOrShadow_ThrowsNamingTheExactPath()
+    {
+        var theme = CreateTheme();
+        var original = StructuralDefault();
+
+        var exception = Should.Throw<InvalidDataException>(() => theme.Overlay(
+            original,
+            ParseOverrides(/*lang=json,strict*/ """{"weight":2}"""),
+            "styles.acme.pressed",
+            restrictToChrome: true));
+
+        exception.Message.ShouldContain("styles.acme.pressed.weight");
+    }
+
+    /// <summary>The counter-case: Face/Border/Shadow - the only members every non-"normal" state is
+    /// ever read back from - are still admitted under <c>restrictToChrome</c>.</summary>
+    [Fact]
+    public void Overlay_WhenRestrictedToChromeAndKeyIsFaceBorderOrShadow_Succeeds()
+    {
+        var theme = CreateTheme();
+        var original = StructuralDefault();
+
+        var result = (TestStructuralRootStyle) theme.Overlay(
+            original,
+            ParseOverrides(/*lang=json,strict*/ """{"border":{"sides":"all"}}"""),
+            "styles.acme.pressed",
+            restrictToChrome: true);
+
+        result.Border.Sides.ShouldBe(BorderSide.All);
+        result.Weight.ShouldBe(1);
     }
 
     /// <summary>Verifies a scalar value where a fragment property expects an object surfaces as an

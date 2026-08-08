@@ -294,12 +294,24 @@ public sealed class Theme
     /// property is written, so the original instance is never mutated.</param>
     /// <param name="overrides">The JSON object's own decoded member set.</param>
     /// <param name="context">The dotted path so far, for diagnostics (e.g. "styles.button.normal").</param>
+    /// <param name="restrictToChrome">Whether only <c>Face</c>/<c>Border</c>/<c>Shadow</c> - the
+    /// three members every state besides <c>normal</c> is actually read back from - may be authored
+    /// at this level. A structural member (padding, mark style, a glyph family) is otherwise parsed,
+    /// validated, and then never read by anything: <see cref="AppearanceOverlay"/> carries only
+    /// Face/Border/Shadow, and every style resolution always completes its structural members from
+    /// <c>normal</c>. Recursing into an already-admitted Face/Border/Shadow fragment keeps this
+    /// false, since every member below that point is legitimate chrome regardless of state.</param>
     /// <returns>A new, patched fragment instance of the same runtime type as <paramref name="current"/>.</returns>
     /// <exception cref="InvalidDataException">
-    /// An override key does not map to any public property, or a value does not convert to its
-    /// property's type.
+    /// An override key does not map to any public property, a value does not convert to its
+    /// property's type, or <paramref name="restrictToChrome"/> is true and the key names a
+    /// structural member.
     /// </exception>
-    internal object Overlay(object current, Dictionary<string, JsonElement> overrides, string context)
+    internal object Overlay(
+        object current,
+        Dictionary<string, JsonElement> overrides,
+        string context,
+        bool restrictToChrome = false)
     {
         var patched = ((IAppearanceFragment) current).Clone();
         var type = patched.GetType();
@@ -308,6 +320,12 @@ public sealed class Theme
         {
             var property = ThemeStyleFragment.ResolveProperty(type, key)
                 ?? throw new InvalidDataException($"Theme '{Slug}' '{context}.{key}' is not a known property.");
+
+            if (restrictToChrome && property.DeclaringType != typeof(ControlStyle))
+            {
+                throw new InvalidDataException(
+                    $"Theme '{Slug}' '{context}.{key}' is a structural member and only takes effect under 'normal'.");
+            }
 
             object? updated;
 
@@ -844,7 +862,7 @@ public sealed class Theme
             }
         }
 
-        return (TStyle) Overlay(basis, overrides!, $"styles.{key}.{state}");
+        return (TStyle) Overlay(basis, overrides!, $"styles.{key}.{state}", restrictToChrome: state != "normal");
     }
 
     // One level deep is exactly right: Face/Border/Shadow are the only fragment-typed members of
@@ -999,7 +1017,7 @@ public sealed class Theme
                     : members;
             }
 
-            return (TStyle) Overlay(basis, overrides!, $"styles.{key}.{stateName}");
+            return (TStyle) Overlay(basis, overrides!, $"styles.{key}.{stateName}", restrictToChrome: true);
         }
 
         var set = new StyleStates<TStyle>
