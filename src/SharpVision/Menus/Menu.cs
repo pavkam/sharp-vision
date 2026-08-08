@@ -1428,13 +1428,30 @@ public sealed class Menu: ItemsControl
             return;
         }
 
-        if (stroke.Action == KeyAction.Release && _spacePressedItem is { } held)
+        if (stroke.Action == KeyAction.Release)
         {
+            if (_spacePressedItem is not { } held)
+            {
+                // The paired press never armed an item here - either it was gated by an
+                // incidental modifier, or it was never observed at all. A modifier-carrying
+                // release must bubble to match its gated press instead of being silently
+                // swallowed here; an eligible unmatched release keeps the consumed no-op
+                // behavior it has always had.
+                eventArgs.Handled = stroke.Modifiers.IsActivationEligible();
+                return;
+            }
+
+            // The armed hold always consumes its paired release, whether or not it goes on to
+            // activate. But an incidental modifier that appears only between press and release
+            // must not silently commit the activation the user did not intend - gate the
+            // activation on eligibility, mirroring the press-side gate, without un-consuming
+            // the stroke.
             eventArgs.Handled = true;
             _spacePressedItem = null;
             held.SetPressed(false);
 
-            if (held is { EffectiveIsEnabled: true, EffectiveIsVisible: true } &&
+            if (stroke.Modifiers.IsActivationEligible() &&
+                held is { EffectiveIsEnabled: true, EffectiveIsVisible: true } &&
                 _selectedIndex >= 0 && ReferenceEquals(ItemAt(_selectedIndex), held))
             {
                 held.ActivateFromMenu(ActivationCause.Keyboard);

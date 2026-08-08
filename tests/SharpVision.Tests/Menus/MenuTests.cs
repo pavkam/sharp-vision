@@ -519,8 +519,39 @@ public sealed class MenuTests
 
             var release = Router.Route(menu, Events.Key, Space(KeyAction.Release, Modifiers.Control));
 
+            release.Handled.ShouldBeFalse();
             invocations.ShouldBeEmpty();
-            _ = release;
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies the gate applies symmetrically to the release arm: an eligible press arms
+    /// the item, but an incidental Control modifier on the paired release must not invoke it - the
+    /// release still consumes the stroke and clears the pressed frame.</summary>
+    [Fact]
+    public async Task Dispatch_WhenSpaceReleaseHasControlModifierAfterEligiblePress_DoesNotInvokeAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var item = new MenuItem { Text = "Run" };
+            menu.Items.Add(item);
+            menu.Attach(dispatcher);
+            using var focus = new FocusManager(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            var invocations = new List<ActivationCause>();
+            item.Invoked += (_, eventArgs) => invocations.Add(eventArgs.Cause);
+
+            var press = Router.Route(menu, Events.Key, Space(KeyAction.Press));
+            press.Handled.ShouldBeTrue();
+            item.Pressed.ShouldBeTrue();
+
+            var release = Router.Route(menu, Events.Key, Space(KeyAction.Release, Modifiers.Control));
+
+            release.Handled.ShouldBeTrue();
+            item.Pressed.ShouldBeFalse();
+            invocations.ShouldBeEmpty();
         }, TestContext.Current.CancellationToken);
     }
 

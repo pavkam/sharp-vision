@@ -137,6 +137,50 @@ public sealed class PressBehaviorTests
         activations.ShouldBe([ActivationCause.Keyboard]);
     }
 
+    /// <summary>Space's gate applies symmetrically to the release arm too: an incidental Control
+    /// modifier that only rides the release must not commit the activation the eligible press
+    /// armed, even though the release still consumes the stroke and clears the pressed frame.</summary>
+    [Fact]
+    public void Handle_WhenSpaceReleaseHasControlAfterEligiblePress_IsHandledWithoutActivating()
+    {
+        List<ActivationCause> activations = [];
+        List<bool> pressed = [];
+        var behavior = Create(releasesExpected: true, activations, pressed);
+
+        var press = Space(KeyAction.Press);
+        behavior.Handle(press);
+        press.Handled.ShouldBeTrue();
+
+        var release = Space(KeyAction.Release, Modifiers.Control);
+        behavior.Handle(release);
+
+        release.Handled.ShouldBeTrue();
+        activations.ShouldBeEmpty();
+        pressed.ShouldBe([true, false]);
+    }
+
+    /// <summary>The gate covers Space's paired release too, not just the arming press - an
+    /// ancestor that saw a gated Ctrl+Space press bubble past it must see the paired release
+    /// bubble as well, instead of finding it silently swallowed here.</summary>
+    [Fact]
+    public void Handle_WhenSpacePressAndReleaseHaveControl_LeavesReleaseUnhandled()
+    {
+        List<ActivationCause> activations = [];
+        List<bool> pressed = [];
+        var behavior = Create(releasesExpected: true, activations, pressed);
+
+        var press = Space(KeyAction.Press, Modifiers.Control);
+        behavior.Handle(press);
+        press.Handled.ShouldBeFalse();
+
+        var release = Space(KeyAction.Release, Modifiers.Control);
+        behavior.Handle(release);
+
+        release.Handled.ShouldBeFalse();
+        activations.ShouldBeEmpty();
+        pressed.ShouldBeEmpty();
+    }
+
     /// <summary>An incidental Control modifier must not commit an Enter activation, and the press
     /// itself must stay unhandled so a Ctrl+Enter shortcut bound elsewhere still sees it.</summary>
     [Fact]

@@ -135,12 +135,29 @@ internal sealed class PressBehavior
                 return;
             }
 
-            if (stroke.Action == KeyAction.Release && _spaceHeld)
+            if (stroke.Action == KeyAction.Release)
             {
+                if (!_spaceHeld)
+                {
+                    // The paired press never armed this behavior - either it was gated by an
+                    // incidental modifier, or it was never observed here at all. A
+                    // modifier-carrying release must bubble to match its gated press the same
+                    // way the press itself did, instead of being silently swallowed here; an
+                    // eligible unmatched release keeps the consumed no-op behavior it has
+                    // always had.
+                    eventArgs.Handled = stroke.Modifiers.IsActivationEligible();
+                    return;
+                }
+
+                // The armed hold always consumes its paired release, whether or not it goes on
+                // to activate. But an incidental modifier that appears only between press and
+                // release must not silently commit the activation the user did not intend -
+                // gate the activation on eligibility, mirroring the press-side gate, without
+                // un-consuming the stroke.
                 eventArgs.Handled = true;
                 _spaceHeld = false;
                 _setPressed(false);
-                if (_canCompleteSpace())
+                if (stroke.Modifiers.IsActivationEligible() && _canCompleteSpace())
                 {
                     _activate(ActivationCause.Keyboard);
                 }

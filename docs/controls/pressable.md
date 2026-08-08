@@ -68,13 +68,18 @@ Space commits the pressed state on its first key press and ignores key repeats.
 The matching release activates the control when it is still focused, or when it
 is detached and therefore has no focus owner at all. Enter activates immediately
 on press. Both keys require no modifier beyond Shift (plus the lock keys, where
-the platform reports them); a stroke carrying Control, Alt, Super, Hyper, or
-Meta is left unhandled instead, so it bubbles to whatever shortcut or ambient
-handler expects it. A primary pointer press inside the arranged box requests
-focus and capture for the `PressableBase` itself, even when the owned caption
-child was the original hit target. Pointer motion updates the pressed state by
-containment: releasing inside the bounds activates once, and releasing outside
-cancels.
+the platform reports them) to be handled at all; a stroke carrying Control, Alt,
+Super, Hyper, or Meta is left unhandled instead, so it bubbles to whatever
+shortcut or ambient handler expects it. That gate is evaluated per stroke, not
+per gesture: once a Space press has armed the held state, its paired release
+always consumes the stroke the way the press did, but activates only if the
+release itself carries no disqualifying modifier - an incidental Control, Alt,
+Super, Hyper, or Meta that arrives between press and release cancels the pending
+activation instead of committing it. A primary pointer press inside the arranged
+box requests focus and capture for the `PressableBase` itself, even when the
+owned caption child was the original hit target. Pointer motion updates the
+pressed state by containment: releasing inside the bounds activates once, and
+releasing outside cancels.
 
 The rectangle used for that containment test is `InteractionBounds`, a
 `protected virtual` seam that defaults to `Bounds`. A derived control that
