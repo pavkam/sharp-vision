@@ -322,6 +322,48 @@ public sealed class DateInputTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an incidental Control modifier on Enter forwarded to the open popup's
+    /// calendar does not commit the active date, and leaves the stroke unhandled.</summary>
+    [Fact]
+    public void Dispatch_WhenOpenAndEnterHasControlModifier_DoesNotCommitAndLeavesUnhandled()
+    {
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 3, 15),
+            Culture = CultureInfo.InvariantCulture,
+            Opened = true
+        };
+
+        _ = Router.Route(control, Events.Key, KeyEvent(Code.Right));
+        var enter = KeyEvent(Code.Enter, Modifiers.Control);
+        _ = Router.Route(control, Events.Key, enter);
+
+        enter.Handled.ShouldBeFalse();
+        control.Value.ShouldBe(new DateOnly(2026, 3, 15));
+        control.Opened.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies Shift-held Enter (a common terminal chord) forwarded to the open popup's
+    /// calendar still commits the active date.</summary>
+    [Fact]
+    public void Dispatch_WhenOpenAndEnterHasShiftModifier_StillCommits()
+    {
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 3, 15),
+            Culture = CultureInfo.InvariantCulture,
+            Opened = true
+        };
+
+        _ = Router.Route(control, Events.Key, KeyEvent(Code.Right));
+        var enter = KeyEvent(Code.Enter, Modifiers.Shift);
+        _ = Router.Route(control, Events.Key, enter);
+
+        enter.Handled.ShouldBeTrue();
+        control.Value.ShouldBe(new DateOnly(2026, 3, 16));
+        control.Opened.ShouldBeFalse();
+    }
+
     /// <summary>Verifies PopupChrome applies to the owned Calendar popup without leaking it, and
     /// ResetPopupChrome returns it to the PopupChrome appearance.</summary>
     [Fact]
@@ -728,11 +770,11 @@ public sealed class DateInputTests
         return result.ToString();
     }
 
-    private static KeyEventArgs KeyEvent(Code code) => new(new Stroke(
+    private static KeyEventArgs KeyEvent(Code code, Modifiers modifiers = Modifiers.None) => new(new Stroke(
         code,
         default,
         nativeCode: 0,
-        Modifiers.None,
+        modifiers,
         KeyAction.Press));
 
     #endregion

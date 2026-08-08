@@ -271,6 +271,47 @@ public sealed class DateTimeInputTests
         observed.Value.ShouldBe(new DateTime(2026, 7, 19, 14, 30, 0));
     }
 
+    /// <summary>Verifies an incidental Control modifier on Enter forwarded to the open popup's
+    /// calendar does not commit the active date, and leaves the stroke unhandled.</summary>
+    [Fact]
+    public void Dispatch_WhenOpenAndEnterHasControlModifier_DoesNotCommitAndLeavesUnhandled()
+    {
+        using var control = new DateTimeInput
+        {
+            Value = new DateTime(2026, 7, 19, 14, 30, 0, DateTimeKind.Utc),
+            Opened = true
+        };
+
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        var enter = Key(Code.Enter, Modifiers.Control);
+        _ = Router.Route(control, Events.Key, enter);
+
+        enter.Handled.ShouldBeFalse();
+        control.Value.ShouldBe(new DateTime(2026, 7, 19, 14, 30, 0, DateTimeKind.Utc));
+        control.Opened.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies Shift-held Enter (a common terminal chord) forwarded to the open popup's
+    /// calendar still commits the active date.</summary>
+    [Fact]
+    public void Dispatch_WhenOpenAndEnterHasShiftModifier_StillCommits()
+    {
+        using var control = new DateTimeInput
+        {
+            Value = new DateTime(2026, 7, 19, 14, 30, 0, DateTimeKind.Utc),
+            Opened = true
+        };
+
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        var enter = Key(Code.Enter, Modifiers.Shift);
+        _ = Router.Route(control, Events.Key, enter);
+
+        enter.Handled.ShouldBeTrue();
+        _ = control.Value.ShouldNotBeNull();
+        control.Value.Value.Date.ShouldBe(new DateTime(2026, 7, 20));
+        control.Opened.ShouldBeFalse();
+    }
+
     /// <summary>Verifies selecting a date from the popup preserves the value's time-zone interpretation.</summary>
     [Fact]
     public void Popup_WhenDateIsSelected_PreservesDateTimeKind()
@@ -481,11 +522,11 @@ public sealed class DateTimeInputTests
         return result.ToString();
     }
 
-    private static KeyEventArgs Key(Code code) => new(new Stroke(
+    private static KeyEventArgs Key(Code code, Modifiers modifiers = Modifiers.None) => new(new Stroke(
         code,
         default,
         nativeCode: 0,
-        Modifiers.None,
+        modifiers,
         KeyAction.Press));
 
     private static KeyEventArgs CharacterKey(char character) => new(new Stroke(

@@ -29,6 +29,63 @@ public sealed class CalendarTests
         calendar.Selection.ShouldBe(new DateInterval(active, active));
     }
 
+    /// <summary>Verifies an incidental Control modifier on Space does not activate the active date,
+    /// and leaves the stroke unhandled so a shortcut bound to the modified combination still sees it.</summary>
+    [Fact]
+    public void Dispatch_WhenSpaceHasControlModifier_DoesNotActivateAndLeavesUnhandled()
+    {
+        var active = new DateOnly(2026, 7, 19);
+        using var calendar = new UiCalendar { Selection = new DateInterval(active, active) };
+        calendar.Selection = null;
+
+        var pressed = CharacterKey(calendar, new Rune(' '), KeyAction.Press, Modifiers.Control);
+
+        pressed.Handled.ShouldBeFalse();
+        calendar.Selection.ShouldBeNull();
+    }
+
+    /// <summary>Verifies Shift-held Space (a common terminal chord) still activates the active date.</summary>
+    [Fact]
+    public void Dispatch_WhenSpaceHasShiftModifier_StillActivates()
+    {
+        var active = new DateOnly(2026, 7, 19);
+        using var calendar = new UiCalendar { Selection = new DateInterval(active, active) };
+        calendar.Selection = null;
+
+        var pressed = CharacterKey(calendar, new Rune(' '), KeyAction.Press, Modifiers.Shift);
+
+        pressed.Handled.ShouldBeTrue();
+        calendar.Selection.ShouldBe(new DateInterval(active, active));
+    }
+
+    /// <summary>Verifies an incidental Control modifier on Enter does not activate the active date.</summary>
+    [Fact]
+    public void Dispatch_WhenEnterHasControlModifier_DoesNotActivateAndLeavesUnhandled()
+    {
+        var active = new DateOnly(2026, 7, 19);
+        using var calendar = new UiCalendar { Selection = new DateInterval(active, active) };
+        calendar.Selection = null;
+
+        var pressed = Key(calendar, Code.Enter, modifiers: Modifiers.Control);
+
+        pressed.Handled.ShouldBeFalse();
+        calendar.Selection.ShouldBeNull();
+    }
+
+    /// <summary>Verifies Shift-held Enter (a common terminal chord) still activates the active date.</summary>
+    [Fact]
+    public void Dispatch_WhenEnterHasShiftModifier_StillActivates()
+    {
+        var active = new DateOnly(2026, 7, 19);
+        using var calendar = new UiCalendar { Selection = new DateInterval(active, active) };
+        calendar.Selection = null;
+
+        var pressed = Key(calendar, Code.Enter, modifiers: Modifiers.Shift);
+
+        pressed.Handled.ShouldBeTrue();
+        calendar.Selection.ShouldBe(new DateInterval(active, active));
+    }
+
     /// <summary>Verifies keys outside the calendar command set remain available to routed input.</summary>
     [Fact]
     public void Dispatch_WhenKeyIsUnhandled_RaisesInheritedKeyDownWithoutConsumingIt()
@@ -929,25 +986,30 @@ public sealed class CalendarTests
     private static KeyEventArgs Key(
         UiCalendar calendar,
         Code code,
-        KeyAction action = KeyAction.Press)
+        KeyAction action = KeyAction.Press,
+        Modifiers modifiers = Modifiers.None)
     {
         var eventArgs = new KeyEventArgs(new Stroke(
             code,
             character: null,
             nativeCode: 0,
-            Modifiers.None,
+            modifiers,
             action));
         _ = Router.Route(calendar, Events.Key, eventArgs);
         return eventArgs;
     }
 
-    private static KeyEventArgs CharacterKey(UiCalendar calendar, Rune character, KeyAction action)
+    private static KeyEventArgs CharacterKey(
+        UiCalendar calendar,
+        Rune character,
+        KeyAction action,
+        Modifiers modifiers = Modifiers.None)
     {
         var eventArgs = new KeyEventArgs(new Stroke(
             Code.Character,
             character,
             nativeCode: 0,
-            Modifiers.None,
+            modifiers,
             action));
         _ = Router.Route(calendar, Events.Key, eventArgs);
         return eventArgs;
