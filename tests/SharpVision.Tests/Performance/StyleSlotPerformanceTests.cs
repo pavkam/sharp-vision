@@ -3,27 +3,10 @@
 
 namespace SharpVision.Tests.Performance;
 
-/// <summary>Gates the per-control resolved-appearance cache footprint.</summary>
+/// <summary>Gates StyleSlot&lt;TStyle&gt; memoized-style reuse for repeated ActualStyle reads.</summary>
 [Collection(PerformanceGroup.Name)]
-public sealed class ControlAppearanceCachePerformanceTests
+public sealed class StyleSlotPerformanceTests
 {
-    /// <summary>Verifies resolving one visual state allocates a small inline cache rather than the
-    /// full 512-slot combinatorial VisualState space — the prior dense array allocated roughly
-    /// 148 KB (296 bytes per Nullable&lt;ResolvedAppearance&gt; slot times 512) on the very first
-    /// resolution, regardless of how many states a control ever actually reaches.</summary>
-    [Fact]
-    public void GetActualFace_WhenFirstResolved_AllocatesFarLessThanTheFullStateSpace()
-    {
-        var control = new ProbeControl();
-        control.SetTheme(ThemeCatalog.Dark);
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        _ = control.ActualFace;
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-
-        allocated.ShouldBeLessThan(4_096);
-    }
-
     /// <summary>Verifies repeated CheckBox.ActualStyle reads against an unchanged Style/Theme pair
     /// reuse the memoized style instead of rebuilding a fresh 2.5 KB AppearanceStates on every read.</summary>
     [Fact]

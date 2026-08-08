@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Examples;
 
 /// <summary>Proves the Snake example composes its game glyphs with the board field.</summary>
-public sealed class SnakeSurfaceTests
+public sealed class SnakeBoardSurfaceTests
 {
     /// <summary>Verifies an apple preserves the background already painted for the soil cell.</summary>
     [Fact]

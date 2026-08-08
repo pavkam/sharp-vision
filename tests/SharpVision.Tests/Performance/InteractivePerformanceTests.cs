@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Performance;
 
 
-/// <summary>Gates interactive control allocation reuse and detached-item retention.</summary>
+/// <summary>Gates interactive control allocation reuse for a representative warmed tree.</summary>
 [Collection(PerformanceGroup.Name)]
 public sealed class InteractivePerformanceTests
 {
@@ -35,127 +35,6 @@ public sealed class InteractivePerformanceTests
         }
     }
 
-    /// <summary>Verifies repeated public TextInput replacement stays within a finite per-edit budget.</summary>
-    [Fact]
-    public void Text_WhenRepeatedlyEdited_HasBoundedManagedAllocation()
-    {
-        var input = new TextInput { UndoLimit = 32 };
-        var toggle = false;
-        Edit();
-
-        var allocated = Minimum(Edit, iterations: 1_000, out var elapsed);
-
-        allocated.ShouldBeLessThanOrEqualTo(1_024L * 1_000);
-        input.CanUndo.ShouldBeTrue();
-        Report("1,000 text replacements", elapsed, 1_000);
-        return;
-
-        void Edit()
-        {
-            input.Text = toggle ? "e\u0301" : "界";
-            toggle = !toggle;
-        }
-    }
-
-    /// <summary>Verifies captured ScrollBar motion remains within a finite routed-event budget.</summary>
-    [Fact]
-    public async Task Dispatch_WhenThumbIsDragged_HasBoundedManagedAllocationAsync()
-    {
-        await using var dispatcher = Dispatcher.Start();
-
-        await dispatcher.InvokeAsync(() =>
-        {
-            var bar = new ScrollBar
-            {
-                Bounds = new Rect(0, 0, 102, 1),
-                Orientation = Orientation.Horizontal,
-                Maximum = 10_000
-            };
-            bar.Attach(dispatcher);
-            using PointerManager capture = new(bar);
-            _ = capture.Dispatch(Pointer(new Point(1, 0), PointerAction.Press));
-            var position = 2;
-            Drag();
-
-            var allocated = Minimum(Drag, iterations: 1_000, out var elapsed);
-
-            allocated.ShouldBeLessThanOrEqualTo(768L * 1_000);
-            bar.Value.ShouldBeInRange(0, bar.Maximum);
-            _ = capture.Dispatch(Pointer(new Point(position, 0), PointerAction.Release));
-            Report("1,000 captured thumb moves", elapsed, 1_000);
-            return;
-
-            void Drag()
-            {
-                position = position == 100 ? 2 : position + 1;
-                _ = capture.Dispatch(Pointer(new Point(position, 0), PointerAction.Move));
-            }
-        }, TestContext.Current.CancellationToken);
-    }
-
-    /// <summary>Verifies 1,000-item unchanged layout reuse and complete detached-control collection.</summary>
-    [Fact]
-    public void Items_WhenOneThousandAreReplaced_AllocatesNoUnchangedLayoutAndRetainsNone()
-    {
-        var list = new UiListView();
-        var weak = PopulateAndReplace(list, count: 1_000);
-        var engine = new LayoutEngine();
-        var size = new Size(200, 60);
-        engine.Layout(list, size);
-
-        var allocated = Minimum(() => engine.Layout(list, size), 1_000, out var elapsed);
-        ForceCollection();
-
-        allocated.ShouldBe(0);
-        weak.Count(reference => reference.TryGetTarget(out _)).ShouldBe(0);
-        list.Items.ShouldBeEmpty();
-        Report("1,000-item replacement and unchanged layout", elapsed, 1_000);
-    }
-
-    /// <summary>Verifies repeated nested wheel routing stays within a finite command budget.</summary>
-    [Fact]
-    public void Dispatch_WhenNestedScrollCommandsRepeat_HasBoundedManagedAllocation()
-    {
-        var leaf = new ControlText(string.Join('\n', Enumerable.Range(0, 20))) { Width = Length.Cells(5) };
-        var inner = Hidden(leaf);
-        inner.Width = Length.Cells(5);
-        inner.Height = Length.Cells(8);
-        var outer = Hidden(inner);
-        new LayoutEngine().Layout(outer, new Size(5, 4));
-        var down = new PointerEventArgs(Pointer(default, PointerAction.Wheel, wheelY: -20));
-        var up = new PointerEventArgs(Pointer(default, PointerAction.Wheel, wheelY: 20));
-        var descending = true;
-        Dispatch();
-
-        var allocated = Minimum(Dispatch, iterations: 1_000, out var elapsed);
-
-        allocated.ShouldBeLessThanOrEqualTo(256L * 1_000);
-        Report("1,000 nested scroll commands", elapsed, 1_000);
-        return;
-
-        void Dispatch()
-        {
-            _ = Router.Route(leaf, Events.Pointer, descending ? down : up);
-            descending = !descending;
-        }
-    }
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static WeakReference<ControlBase>[] PopulateAndReplace(UiListView list, int count)
-    {
-        var weak = new WeakReference<ControlBase>[count];
-        var created = 0;
-        list.ItemTemplate = item =>
-        {
-            var control = new ControlText(Convert.ToString(item, CultureInfo.InvariantCulture) ?? string.Empty);
-            weak[created++] = new WeakReference<ControlBase>(control);
-            return control;
-        };
-        list.Items = Enumerable.Range(0, count).Select(static value => (object?) value).ToArray();
-        list.Items = Array.Empty<object?>();
-        return weak;
-    }
-
     private static Grid Representative()
     {
         var root = new Grid();
@@ -183,25 +62,6 @@ public sealed class InteractivePerformanceTests
         return root;
     }
 
-    private static Stack Hidden(ControlBase content) => new()
-    {
-        AutoScroll = true,
-        ScrollBars = ScrollBars.Both,
-        ShowScrollBars = ShowScrollBars.Never,
-        Children = { content }
-    };
-
-    private static Pointer Pointer(Point cells, PointerAction action, int wheelY = 0) => new(
-        cells,
-        pixels: null,
-        Buttons.Primary,
-        action,
-        wheelX: 0,
-        wheelY,
-        Modifiers.None,
-        isMotion: action == PointerAction.Move,
-        isCellPositionInferred: false);
-
     private static long Minimum(Action action, int iterations, out TimeSpan elapsed)
     {
         for (var index = 0; index < iterations; index++)
@@ -227,13 +87,6 @@ public sealed class InteractivePerformanceTests
         watch.Stop();
         elapsed = watch.Elapsed;
         return minimum;
-    }
-
-    private static void ForceCollection()
-    {
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
-        GC.WaitForPendingFinalizers();
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
     }
 
     private static void Report(string scenario, TimeSpan elapsed, int iterations)

@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Integration;
 
 /// <summary>Verifies pixel-only terminal input cannot fabricate control cells.</summary>
-public sealed class PixelPointerTests
+public sealed class PointerManagerTests
 {
     /// <summary>Verifies captured pixel-only release cancels without activation.</summary>
     [Fact]

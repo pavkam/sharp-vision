@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Examples;
 
 /// <summary>Proves the TextEditor example connects menus to attached presentations and commands.</summary>
-public sealed class TextEditorSurfaceTests
+public sealed class EditorScreenSurfaceTests
 {
     /// <summary>Verifies the example uses the public status control for document, position, and encoding context.</summary>
     [Fact]

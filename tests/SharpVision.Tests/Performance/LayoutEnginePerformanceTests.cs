@@ -3,10 +3,9 @@
 
 namespace SharpVision.Tests.Performance;
 
-
-/// <summary>Gates allocation reuse for representative and large display trees.</summary>
+/// <summary>Gates LayoutEngine allocation reuse for representative, large, and unchanged trees.</summary>
 [Collection(PerformanceGroup.Name)]
-public sealed class DisplayPanelPerformanceTests
+public sealed class LayoutEnginePerformanceTests
 {
     /// <summary>Verifies representative viewport trees reuse layout and render storage.</summary>
     [Theory]
@@ -65,6 +64,21 @@ public sealed class DisplayPanelPerformanceTests
             $"1,000-child layout: 1,000 iterations in {elapsed.TotalMilliseconds:F3} ms");
     }
 
+    /// <summary>Verifies unchanged box layout allocates no managed memory after warmup.</summary>
+    [Fact]
+    public void Layout_WhenConstraintAndStateAreUnchanged_AllocatesZeroBytes()
+    {
+        var engine = new LayoutEngine();
+        var control = new ProbeControl(new Size(20, 4));
+        var size = new Size(80, 24);
+        engine.Layout(control, size);
+
+        var (allocated, elapsed) = Measure(() => engine.Layout(control, size), 10_000);
+
+        allocated.ShouldBe(0);
+        Report("unchanged layout", elapsed, 50_000);
+    }
+
     private static long Minimum(Action action, int iterations, out TimeSpan elapsed)
     {
         for (var index = 0; index < iterations; index++)
@@ -115,5 +129,39 @@ public sealed class DisplayPanelPerformanceTests
 
         content.Children.Add(new ControlText("e\u0301 · 界 · 👩‍💻") { Overflow = Overflow.Wrap });
         return root;
+    }
+
+    private static (long Allocated, TimeSpan Elapsed) Measure(Action action, int iterations)
+    {
+        for (var index = 0; index < iterations; index++)
+        {
+            action();
+        }
+
+        var minimum = long.MaxValue;
+        var watch = Stopwatch.StartNew();
+
+        for (var sample = 0; sample < 5; sample++)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+
+            for (var index = 0; index < iterations; index++)
+            {
+                action();
+            }
+
+            minimum = Math.Min(minimum, GC.GetAllocatedBytesForCurrentThread() - before);
+        }
+
+        watch.Stop();
+        return (minimum, watch.Elapsed);
+    }
+
+    private static void Report(string scenario, TimeSpan elapsed, int iterations)
+    {
+        TestContext.Current.TestOutputHelper?.WriteLine(
+            $"{scenario}: {iterations} measured iterations in {elapsed.TotalMilliseconds:F3} ms; " +
+            $"{RuntimeInformation.FrameworkDescription}; {RuntimeInformation.ProcessArchitecture}; " +
+            RuntimeInformation.OSDescription);
     }
 }

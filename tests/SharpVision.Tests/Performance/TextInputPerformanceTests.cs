@@ -89,6 +89,63 @@ public sealed class TextInputPerformanceTests
     // covered by ordinary TextInputTests coverage; its complexity bound is documented on
     // VisualLineIndexAt itself and enforced by code review.
 
+    /// <summary>Verifies repeated public TextInput replacement stays within a finite per-edit budget.</summary>
+    [Fact]
+    public void Text_WhenRepeatedlyEdited_HasBoundedManagedAllocation()
+    {
+        var input = new TextInput { UndoLimit = 32 };
+        var toggle = false;
+        Edit();
+
+        var allocated = Minimum(Edit, iterations: 1_000, out var elapsed);
+
+        allocated.ShouldBeLessThanOrEqualTo(1_024L * 1_000);
+        input.CanUndo.ShouldBeTrue();
+        Report("1,000 text replacements", elapsed, 1_000);
+        return;
+
+        void Edit()
+        {
+            input.Text = toggle ? "e\u0301" : "界";
+            toggle = !toggle;
+        }
+    }
+
+    private static long Minimum(Action action, int iterations, out TimeSpan elapsed)
+    {
+        for (var index = 0; index < iterations; index++)
+        {
+            action();
+        }
+
+        var minimum = long.MaxValue;
+        var watch = Stopwatch.StartNew();
+
+        for (var sample = 0; sample < 5; sample++)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+
+            for (var index = 0; index < iterations; index++)
+            {
+                action();
+            }
+
+            minimum = Math.Min(minimum, GC.GetAllocatedBytesForCurrentThread() - before);
+        }
+
+        watch.Stop();
+        elapsed = watch.Elapsed;
+        return minimum;
+    }
+
+    private static void Report(string scenario, TimeSpan elapsed, int iterations)
+    {
+        TestContext.Current.TestOutputHelper?.WriteLine(
+            $"{scenario}: {iterations} iterations in {elapsed.TotalMilliseconds:F3} ms; " +
+            $"{RuntimeInformation.FrameworkDescription}; {RuntimeInformation.ProcessArchitecture}; " +
+            RuntimeInformation.OSDescription);
+    }
+
     private static void Key(TextInput control, Code code, Modifiers modifiers) =>
         Router.Route(
             control,
