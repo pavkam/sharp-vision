@@ -92,7 +92,7 @@ export const SUITE_LEVEL_ALLOW_LIST = new Set([
   "ControlCapabilitiesTests", // capability cascade from Application resize through ControlBase inheritance
   "PostRouteAnchorMutationTests", // post-route anchor-staleness contract spanning Router, FocusManager, and Application
   "ProtocolRoutingTests", // protocol responses traversing Session, Application, and Dispatcher
-  "InteractivePerformanceTests", // representative interactive-tree allocation gate spanning four controls
+  "InteractivePerformanceTests", // representative interactive-tree allocation gate spanning several composed controls
 ]);
 
 /**
