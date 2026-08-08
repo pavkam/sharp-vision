@@ -116,6 +116,34 @@ internal sealed class DockPane: CompositeControlBase
         constrained.Children.Add(trailing);
         constrained.Children.Add(Card("Fill", BorderGlyphStyle.Rounded));
 
+        // Star weights split the leftover axis space proportionally; 2* receives twice 1*'s share.
+        Dock starWeights = new() { Width = Length.Cells(45), Height = Length.Cells(4), LastChildFills = false };
+
+        var single = Card("1* = 15 cells", BorderGlyphStyle.Light);
+        single.Width = Length.Star(1);
+        Dock.SetSide(single, DockSide.Left);
+        starWeights.Children.Add(single);
+
+        var doubled = Card("2* = 30 cells", BorderGlyphStyle.Heavy);
+        doubled.Width = Length.Star(2);
+        Dock.SetSide(doubled, DockSide.Left);
+        starWeights.Children.Add(doubled);
+
+        // A MinWidth reservation comes out of the shared pool before the weighted split runs, so
+        // the reserving Star ends up wider than its unconstrained sibling instead of losing cells.
+        Dock starMinimum = new() { Width = Length.Cells(40), Height = Length.Cells(4), LastChildFills = false };
+
+        var reserving = Card("24 min + 8 share", BorderGlyphStyle.Light);
+        reserving.Width = Length.Star(1);
+        reserving.MinWidth = 24;
+        Dock.SetSide(reserving, DockSide.Left);
+        starMinimum.Children.Add(reserving);
+
+        var unconstrained = Card("8 cells", BorderGlyphStyle.Heavy);
+        unconstrained.Width = Length.Star(1);
+        Dock.SetSide(unconstrained, DockSide.Left);
+        starMinimum.Children.Add(unconstrained);
+
         return new DocPage(
             Title,
             "<info>Dock</info> consumes physical edges in child order and optionally gives the final child all remaining space through <info>LastChildFills</info>.",
@@ -167,7 +195,20 @@ internal sealed class DockPane: CompositeControlBase
                 new DocExample(
                     "Unclaimed remainder",
                     "The final top child takes only its requested extent; the rest of the panel stays empty.",
-                    noFill)));
+                    noFill)),
+            new DocSection(
+                "⚓",
+                "Proportional sharing",
+                "Star-length children share the axis space left after every other side has claimed its edge, splitting the remainder by weight instead of the first child claiming it all.",
+                new DocExample(
+                    "Weighted Star siblings",
+                    "The 2* card receives twice as many cells as the 1* card from the shared 45-cell width.",
+                    starWeights,
+                    "left.Width = Length.Star(1);\nright.Width = Length.Star(2);\nDock.SetSide(left, DockSide.Left);\nDock.SetSide(right, DockSide.Left);"),
+                new DocExample(
+                    "MinWidth reserved first",
+                    "The left card reserves its 24-cell minimum before the leftover 16 cells split evenly between both Star weights, ending up wider than its unconstrained sibling.",
+                    starMinimum)));
     }
 
     private static Dock Card(string label, BorderGlyphStyle glyphs) =>
