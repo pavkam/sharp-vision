@@ -75,4 +75,23 @@ internal static class RangeValidation
             }
         }
     }
+
+    extension<T>(T value) where T : IComparable<T>
+    {
+        /// <summary>Rejects a value that falls outside the given inclusive endpoints.</summary>
+        /// <param name="minimum">The inclusive lower endpoint.</param>
+        /// <param name="maximum">The inclusive upper endpoint.</param>
+        /// <param name="paramName">The validated parameter name.</param>
+        /// <param name="message">The exception message naming the specific endpoints.</param>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// <paramref name="value"/> is below <paramref name="minimum"/> or above <paramref name="maximum"/>.
+        /// </exception>
+        public void ThrowIfOutsideInclusiveRange(T minimum, T maximum, string paramName, string message)
+        {
+            if (value.CompareTo(minimum) < 0 || value.CompareTo(maximum) > 0)
+            {
+                throw new ArgumentOutOfRangeException(paramName, value, message);
+            }
+        }
+    }
 }

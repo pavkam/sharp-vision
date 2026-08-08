@@ -47,7 +47,12 @@ render-only.
 
 ## Behavior
 
-Range setters validate before mutating. `ScrollBy` saturates and clamps. A
+Range setters validate before mutating. `Minimum` and `Maximum` throw when the
+new endpoint would exclude the current `Value` (or invert the other endpoint),
+before any range state changes; `Value` itself is unaffected by a rejected
+endpoint change. This is deliberately unlike
+[`Slider`](../input/slider.md#behavior), whose endpoint setters instead commit
+and auto-clamp `Value` to the new endpoint. `ScrollBy` saturates and clamps. A
 vertical bar intrinsically measures `1×3` and a horizontal bar `3×1`; thin
 styles omit the directional buttons. The thumb length represents
 `viewport / (range + viewport)`, with a one-cell minimum whenever scrolling is

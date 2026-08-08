@@ -102,13 +102,7 @@ public sealed class ScrollBar: Control<ScrollBarStyle>
         get => _value;
         set
         {
-            if (value < Minimum || value > Maximum)
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(value),
-                    value,
-                    "Value must be inside the inclusive range.");
-            }
+            value.ThrowIfOutsideInclusiveRange(Minimum, Maximum, nameof(value), "Value must be inside the inclusive range.");
 
             _ = Commit(value, ScrollCause.Programmatic);
         }

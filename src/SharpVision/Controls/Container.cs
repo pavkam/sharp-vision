@@ -918,6 +918,9 @@ public abstract class Container: ControlBase
         Debug.Assert(maximum >= 0 && viewport >= 0, "Scrollbar geometry is non-negative.");
         Debug.Assert(value >= 0 && value <= maximum, "Scrollbar value is clamped before synchronization.");
 
+        // ScrollBar's Maximum setter throws rather than mutate when shrinking would leave the
+        // current Value outside the range, so Value is pre-clamped into the incoming maximum
+        // here before Maximum itself is assigned below.
         if (bar.Value > maximum)
         {
             bar.Value = maximum;

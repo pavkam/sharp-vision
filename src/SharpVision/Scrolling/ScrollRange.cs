@@ -22,13 +22,7 @@ public readonly record struct ScrollRange
 
         maximum.ThrowIfBelowMinimum(minimum, nameof(maximum), "Maximum cannot be below minimum.");
 
-        if (value < minimum || value > maximum)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(value),
-                value,
-                "The value must be inside the inclusive range.");
-        }
+        value.ThrowIfOutsideInclusiveRange(minimum, maximum, nameof(value), "The value must be inside the inclusive range.");
 
         Minimum = minimum;
         Maximum = maximum;
