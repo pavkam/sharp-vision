@@ -11,24 +11,25 @@ its specialized API.
 
 ```mermaid
 classDiagram
-    Control <|-- Container
-    Control <|-- ContentControl
-    Control <|-- CompositeControl
-    Control <|-- ItemsControl
-    Control <|-- Pressable
-    ContentControl <|-- FloatingSurface
+    ControlBase <|-- Container
+    ControlBase <|-- ContentControl
+    ControlBase <|-- CompositeControlBase
+    ControlBase <|-- ItemsControl
+    ControlBase <|-- PressableBase
+    ContentControl <|-- FloatingSurfaceBase
     ContentControl <|-- HeaderedContentControl
-    FloatingSurface <|-- Window
-    FloatingSurface <|-- Popup
+    FloatingSurfaceBase <|-- ChromeAuthoringFloatingSurface
+    ChromeAuthoringFloatingSurface <|-- Window
+    ChromeAuthoringFloatingSurface <|-- Popup
     Popup <|-- Flyout
     Popup <|-- Tooltip
-    Pressable <|-- Button
-    Pressable <|-- CheckBox
-    Pressable <|-- RadioButton
-    Pressable <|-- HyperlinkButton
+    PressableBase <|-- Button
+    PressableBase <|-- CheckBox
+    PressableBase <|-- RadioButton
+    PressableBase <|-- HyperlinkButton
     HeaderedContentControl <|-- GroupBox
     HeaderedContentControl <|-- Expander
-    CompositeControl <|-- Screen
+    CompositeControlBase <|-- Screen
     Container <|-- Stack
     Container <|-- Grid
     Container <|-- Dock

@@ -84,6 +84,7 @@ these infrastructure namespaces:
 | `SharpVision.Threading`            | Single-owner dispatcher, invocation, and idle transition.                      |
 | `SharpVision.Controls`             | Foundational mutable control tree, ownership, invalidation, and drawing.       |
 | `SharpVision.Controls.Display`     | Text, images, indicators, and passive presentation controls.                   |
+| `SharpVision.Controls.Charts`      | Reactive bar, line, area, and compact trend charts.                            |
 | `SharpVision.Controls.Input`       | Buttons, editors, pickers, calendars, and value controls.                      |
 | `SharpVision.Controls.Layout`      | Panels, overlays, structural chrome, and tables.                               |
 | `SharpVision.Controls.Collections` | Lists, tabs, trees, typed collections, and item realization.                   |
@@ -98,6 +99,9 @@ these infrastructure namespaces:
 | `SharpVision.Scrolling`            | Scroll axes, visibility, chrome, range/thumb math, and transition events.      |
 | `SharpVision.Input`                | Shared routed input, focus, hit testing, and pointer capture.                  |
 | `SharpVision.Styling`              | Shared style resources, chrome contracts, and visual-state resolution.         |
+| `SharpVision.DataBinding`          | Typed model bindings, property-path observation, and collection tracking.      |
+| `SharpVision.Fonts`                | FIG-font parsing, layout metadata, and glyph rendering for FIGlet text.        |
+| `SharpVision.Text`                 | Grapheme-safe text layout, wrapping, editing, and selection primitives.        |
 
 `SharpVision.FigletFonts` is an optional package over the public FIGlet engine
 in `SharpVision`. It owns `FigletCatalog`, `FigletFontInfo`, the curated
