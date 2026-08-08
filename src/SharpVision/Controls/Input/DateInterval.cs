@@ -13,10 +13,7 @@ public readonly record struct DateInterval
     /// <exception cref="ArgumentException"><paramref name="end"/> precedes <paramref name="start"/>.</exception>
     public DateInterval(DateOnly start, DateOnly end)
     {
-        if (end < start)
-        {
-            throw new ArgumentException("The interval end cannot precede its start.", nameof(end));
-        }
+        end.ThrowIfBelowMinimum(start, nameof(end), "The interval end cannot precede its start.");
 
         Start = start;
         End = end;
