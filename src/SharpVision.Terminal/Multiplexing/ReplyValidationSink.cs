@@ -49,7 +49,8 @@ internal sealed class ReplyValidationSink:
         if (value.Kind is ResponseKind.PrimaryAttributes or
             ResponseKind.SecondaryAttributes or
             ResponseKind.PrivateMode or
-            ResponseKind.Keyboard)
+            ResponseKind.Keyboard or
+            ResponseKind.CursorPosition)
         {
             _responses++;
         }

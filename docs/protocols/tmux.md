@@ -69,21 +69,21 @@ capability evidence is not reinterpreted through inner `TERM`, `TMUX`, or
 `TERM_PROGRAM` hints. Its complete typed batch crosses the selected route once.
 The bounded input seam recognizes only the configured outer prefix, retains at
 most the envelope limit across arbitrary fragmentation, peels each configured
-layer, and accepts only one complete recognized DA, mode, Kitty keyboard,
-metrics, palette, status, or capability reply. Trailing text, controls, raw
-strings, and concatenated replies reject the entire envelope before it reaches
-ordinary input. Accepted bytes are routed through `ProtocolRouter` before
-`QueryTracker` correlation. tmux routes admit typed CSI, OSC, and DCS replies.
-Screen-containing routes admit CSI only. A complete malformed route candidate
-produces one redacted diagnostic; oversized candidates discard through the full
-outer recovery boundary without leaking ST bytes as keys or text. Diagnostics
-and all later parser events retain raw transport byte offsets, including outer
-framing and repeated ESC expansion. Wrong-family replies remain typed and
-observable but cannot retire the originating query. If bounded route encoding
-fails atomically, negotiation publishes absent evidence immediately without a
-write, flush, active query, optional-mode lease, cleanup sequence, or deadline
-wait. Absent transmitted replies preserve conservative evidence at the original
-exclusive deadline.
+layer, and accepts only one complete recognized DA, mode, Kitty keyboard, cursor
+position, metrics, palette, status, or capability reply. Trailing text,
+controls, raw strings, and concatenated replies reject the entire envelope
+before it reaches ordinary input. Accepted bytes are routed through
+`ProtocolRouter` before `QueryTracker` correlation. tmux routes admit typed CSI,
+OSC, and DCS replies. Screen-containing routes admit CSI only. A complete
+malformed route candidate produces one redacted diagnostic; oversized candidates
+discard through the full outer recovery boundary without leaking ST bytes as
+keys or text. Diagnostics and all later parser events retain raw transport byte
+offsets, including outer framing and repeated ESC expansion. Wrong-family
+replies remain typed and observable but cannot retire the originating query. If
+bounded route encoding fails atomically, negotiation publishes absent evidence
+immediately without a write, flush, active query, optional-mode lease, cleanup
+sequence, or deadline wait. Absent transmitted replies preserve conservative
+evidence at the original exclusive deadline.
 
 [`TmuxWriter.WritePassthrough`](../../src/SharpVision.Terminal/Multiplexing/TmuxWriter.cs)
 implements the exact one-layer grammar. `TryUnwrap` validates parser-delivered

@@ -182,6 +182,7 @@ public sealed class MultiplexerRouteTests
     [InlineData("\u001bP1$r>4;2m\u001b\\")]
     [InlineData("\u001bP1+r524742=3234\u001b\\")]
     [InlineData("\u001bP1+r544e=787465726d\u001b\\")]
+    [InlineData("\u001b[1;1R")]
     public void TryUnwrapReply_WhenEnvelopeContainsExactlyOneTypedReply_Accepts(string reply)
     {
         var route = new MultiplexerRoute(ActivePolicy([MultiplexerKind.Tmux]));
@@ -198,7 +199,8 @@ public sealed class MultiplexerRouteTests
     [Theory]
     [InlineData("\u001b[?1;2cX")]
     [InlineData("\u001b[?1;2c\u001b[?3u")]
-    [InlineData("\u001b[1;1R")]
+    [InlineData("\u001b[1;1RX")]
+    [InlineData("\u001b[1;1R\u001b[?3u")]
     [InlineData("\u001b]10;rgb:0001/0002/0003\u001b\\X\u001b\\")]
     [InlineData("\u001bP1$r>4;2m\u001b\\X\u001b\\")]
     public void Route_WhenEnvelopeInjectsBeyondOneTypedReply_RejectsAtEverySplit(string reply)
@@ -645,6 +647,34 @@ public sealed class MultiplexerRouteTests
         negotiator.Capabilities.KittyGraphics.State.ShouldNotBe(CapabilitySupport.Supported);
     }
 
+    /// <summary>Verifies a routed fence CPR reply retires every still-outstanding family and
+    /// completes negotiation immediately, exercising the real router wire path instead of calling
+    /// the negotiator directly.</summary>
+    [Fact]
+    public void Accept_WhenRoutedFenceCprArrives_RetiresOutstandingFamiliesBeforeDeadline()
+    {
+        var policy = ActivePolicy([MultiplexerKind.Tmux]);
+        var route = new MultiplexerRoute(policy);
+        var options = new NegotiationOptions(
+            new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
+            overrides: null,
+            limits: QueryLimits.Default,
+            multiplexing: policy);
+        var negotiator = new Negotiator(options);
+        var destination = new ArrayBufferWriter<byte>();
+        negotiator.Start(destination, localCells: null, localPixels: null, route);
+
+        var sink = new NegotiationSink(new DiscardingSink(), negotiator);
+        using var router = new ProtocolRouter(sink, route: route);
+        var wrapped = new ArrayBufferWriter<byte>();
+        TmuxWriter.WritePassthrough(wrapped, "\u001b[1;1R"u8);
+
+        router.Route(wrapped.WrittenSpan);
+
+        negotiator.Completed.ShouldBeTrue();
+        negotiator.HasPendingWork.ShouldBeFalse();
+    }
+
     /// <summary>Creates one query-only explicit outer-terminal route.</summary>
     private static MultiplexingPolicy ActivePolicy(IReadOnlyList<MultiplexerKind> layers) => new(
         layers,
@@ -660,5 +690,54 @@ public sealed class MultiplexerRouteTests
     {
         XtermResponses.TryCsi(parameters, intermediates, final, out var response).ShouldBeTrue();
         return response;
+    }
+
+    /// <summary>Discards every negotiation-forwarded callback so only <see cref="Negotiator"/>
+    /// state is under test.</summary>
+    private sealed class DiscardingSink: ISink
+    {
+        public void Input(in Stroke value)
+        {
+        }
+
+        public void Input(in TerminalText value)
+        {
+        }
+
+        public void Input(in Pointer value)
+        {
+        }
+
+        public void Input(Paste value)
+        {
+        }
+
+        public void Input(in TerminalFocus value)
+        {
+        }
+
+        public void Input(in Diagnostic value)
+        {
+        }
+
+        public void Response(in XtermCapabilitiesResponse value)
+        {
+        }
+
+        public void Sequence(ProtocolSequence value)
+        {
+        }
+
+        public void Resize(in Dimensions value)
+        {
+        }
+
+        public void Closed()
+        {
+        }
+
+        public void Fault(Exception exception)
+        {
+        }
     }
 }
