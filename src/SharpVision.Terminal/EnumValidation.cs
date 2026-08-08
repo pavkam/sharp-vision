@@ -4,6 +4,12 @@
 namespace SharpVision.Terminal;
 
 /// <summary>Validates enum values accepted by terminal contracts.</summary>
+/// <remarks>
+/// This is a mirrored copy of the equivalent class at
+/// <c>src/SharpVision/Controls/EnumValidation.cs</c>, kept separate because this assembly
+/// cannot reference that internal type: the project dependency points the other way, from
+/// SharpVision to SharpVision.Terminal, not back. Apply any behavioral change to both copies.
+/// </remarks>
 internal static class EnumValidation
 {
     extension<T>(T value) where T : struct, Enum
