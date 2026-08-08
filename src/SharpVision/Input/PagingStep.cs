@@ -23,7 +23,8 @@ internal static class PagingStep
     /// <param name="extentAt">Returns the realized extent of the item at a given index; a negative
     /// result is treated as zero.</param>
     /// <param name="clamp">When true, an index that runs past either end is clamped into
-    /// <c>[0, count - 1]</c>; when false, it is returned as-is for the caller to resolve.</param>
+    /// <c>[0, count - 1]</c>, which requires <paramref name="count"/> to be at least one; when
+    /// false, it is returned as-is for the caller to resolve.</param>
     /// <returns>The resulting index.</returns>
     public static int Accumulate(int start, int direction, int count, int target, Func<int, int> extentAt, bool clamp)
     {
