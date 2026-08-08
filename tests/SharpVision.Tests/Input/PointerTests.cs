@@ -531,6 +531,62 @@ public sealed class PointerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a throwing capture hook cannot suppress the public loss event on explicit release.</summary>
+    [Fact]
+    public async Task Release_WhenCapturedHookThrows_PublishesLossDespiteFailureAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl
+            {
+                Bounds = new Rect(0, 0, 10, 10),
+                ThrowOnPointerCaptureCancellation = true
+            };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var manager = new PointerManager(root);
+            manager.Capture(child).ShouldBeTrue();
+            var cancellations = 0;
+            child.LostPointerCapture += (_, _) => cancellations++;
+
+            _ = Should.Throw<InvalidOperationException>(manager.Release);
+
+            manager.Captured.ShouldBeNull();
+            cancellations.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a throwing capture hook cannot suppress the public loss event on the protected release seam.</summary>
+    [Fact]
+    public async Task ReleasePointerCapture_WhenOwningControlHookThrows_PublishesLossDespiteFailureAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl
+            {
+                Bounds = new Rect(0, 0, 10, 10),
+                ThrowOnPointerCaptureCancellation = true
+            };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var manager = new PointerManager(root);
+            child.CaptureProbePointer().ShouldBeTrue();
+            var cancellations = 0;
+            child.LostPointerCapture += (_, _) => cancellations++;
+
+            _ = Should.Throw<InvalidOperationException>(child.ReleaseProbePointer);
+
+            manager.Captured.ShouldBeNull();
+            cancellations.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies disabled and hidden capture targets cancel with precise reasons.</summary>
     [Fact]
     public async Task Capture_WhenTargetDisablesOrHides_CancelsImmediatelyAsync()

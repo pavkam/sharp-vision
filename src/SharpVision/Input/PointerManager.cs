@@ -163,8 +163,14 @@ public sealed class PointerManager: IDisposable
         if (Captured is { } captured)
         {
             Captured = null;
-            captured.NotifyLostPointerCapture(PointerCaptureLossReason.Explicit);
-            captured.PublishLostPointerCapture(PointerCaptureLossReason.Explicit);
+            ExceptionDispatchInfo? failure = null;
+            CaptureFailure(
+                () => captured.NotifyLostPointerCapture(PointerCaptureLossReason.Explicit),
+                ref failure);
+            CaptureFailure(
+                () => captured.PublishLostPointerCapture(PointerCaptureLossReason.Explicit),
+                ref failure);
+            failure?.Throw();
         }
     }
 
@@ -182,8 +188,14 @@ public sealed class PointerManager: IDisposable
         if (ReferenceEquals(Captured, control))
         {
             Captured = null;
-            control.NotifyLostPointerCapture(PointerCaptureLossReason.Explicit);
-            control.PublishLostPointerCapture(PointerCaptureLossReason.Explicit);
+            ExceptionDispatchInfo? failure = null;
+            CaptureFailure(
+                () => control.NotifyLostPointerCapture(PointerCaptureLossReason.Explicit),
+                ref failure);
+            CaptureFailure(
+                () => control.PublishLostPointerCapture(PointerCaptureLossReason.Explicit),
+                ref failure);
+            failure?.Throw();
         }
     }
 
