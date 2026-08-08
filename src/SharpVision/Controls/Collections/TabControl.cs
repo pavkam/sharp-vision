@@ -292,7 +292,7 @@ public sealed class TabControl: ItemsControl
             NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure);
         }
 
-        if (_selectedIndex < 0 && FindEligible(0, 1) is var first and >= 0)
+        if (_selectedIndex < 0 && SingleSelectionIndex.FindLinear(0, 1, ItemControlCount, IsEligible) is var first and >= 0)
         {
             Select(first);
         }
@@ -348,7 +348,7 @@ public sealed class TabControl: ItemsControl
 
         if (wasSelected)
         {
-            var target = FindNearestEligible(Math.Min(idx, ItemControlCount - 1));
+            var target = SingleSelectionIndex.FindNearest(Math.Min(idx, ItemControlCount - 1), ItemControlCount, IsEligible);
             CommitSelectionAfterMutation(target, previousSelectedIndex, previousSelectedItem);
         }
         else
@@ -427,7 +427,7 @@ public sealed class TabControl: ItemsControl
         if (wasSelected)
         {
             _selectedIndex = -1;
-            var target = IsEligible(index) ? index : FindNearestEligible(index);
+            var target = IsEligible(index) ? index : SingleSelectionIndex.FindNearest(index, ItemControlCount, IsEligible);
             CommitSelection(target, previousSelectedIndex, previousSelectedItem);
         }
         else
@@ -699,65 +699,25 @@ public sealed class TabControl: ItemsControl
         }
     }
 
-    private int FindEligible(int start, int direction)
-    {
-        for (var index = start; index >= 0 && index < ItemControlCount; index += direction)
-        {
-            if (IsEligible(index))
-            {
-                return index;
-            }
-        }
-
-        return -1;
-    }
-
-    private int FindEligibleWrapped(int direction)
-    {
-        if (ItemControlCount == 0)
-        {
-            return -1;
-        }
-
-        var origin = _selectedIndex >= 0 ? _selectedIndex : direction > 0 ? -1 : 0;
-
-        for (var offset = 1; offset <= ItemControlCount; offset++)
-        {
-            var index = (origin + (direction * offset)) % ItemControlCount;
-
-            if (index < 0)
-            {
-                index += ItemControlCount;
-            }
-
-            if (IsEligible(index))
-            {
-                return index;
-            }
-        }
-
-        return -1;
-    }
-
     private bool TryNavigate(Code code)
     {
         var index = -1;
 
         if (code == Code.Left)
         {
-            index = FindEligibleWrapped(-1);
+            index = SingleSelectionIndex.FindWrapped(_selectedIndex, -1, ItemControlCount, IsEligible);
         }
         else if (code == Code.Right)
         {
-            index = FindEligibleWrapped(1);
+            index = SingleSelectionIndex.FindWrapped(_selectedIndex, 1, ItemControlCount, IsEligible);
         }
         else if (code == Code.Home)
         {
-            index = FindEligible(0, 1);
+            index = SingleSelectionIndex.FindLinear(0, 1, ItemControlCount, IsEligible);
         }
         else if (code == Code.End)
         {
-            index = FindEligible(ItemControlCount - 1, -1);
+            index = SingleSelectionIndex.FindLinear(ItemControlCount - 1, -1, ItemControlCount, IsEligible);
         }
 
         return TrySelect(index);
@@ -785,14 +745,8 @@ public sealed class TabControl: ItemsControl
 
     private void SelectNearest(int index)
     {
-        var target = FindNearestEligible(index);
+        var target = SingleSelectionIndex.FindNearest(index, ItemControlCount, IsEligible);
         Select(target);
-    }
-
-    private int FindNearestEligible(int index)
-    {
-        var successor = FindEligible(Math.Max(0, index), 1);
-        return successor >= 0 ? successor : FindEligible(Math.Min(index - 1, ItemControlCount - 1), -1);
     }
 
     private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
@@ -857,7 +811,7 @@ public sealed class TabControl: ItemsControl
         }
         else if (_selectedIndex < 0)
         {
-            var first = FindEligible(0, 1);
+            var first = SingleSelectionIndex.FindLinear(0, 1, ItemControlCount, IsEligible);
             if (first >= 0)
             {
                 Select(first);

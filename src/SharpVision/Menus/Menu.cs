@@ -131,8 +131,8 @@ public sealed class Menu: ItemsControl
     public MenuItem? SelectedItem
     {
         // A hard cast assumed the selected slot always holds a MenuItem, an invariant every
-        // ordinary selection path (Select, FindAvailable/FindNearestAvailable) upholds by
-        // construction - but a disposed sibling's slot can be reclaimed by a MenuSeparator
+        // ordinary selection path (Select, SingleSelectionIndex.FindWrapped/FindNearest) upholds
+        // by construction - but a disposed sibling's slot can be reclaimed by a MenuSeparator
         // through OnItemControlsChanged without going through any of them, which used to leave
         // this getter one read away from InvalidCastException instead of reporting the absence
         // of a selectable item.
@@ -206,11 +206,11 @@ public sealed class Menu: ItemsControl
         var previous = Orientation == Orientation.Horizontal ? Code.Left : Code.Up;
         var next = Orientation == Orientation.Horizontal ? Code.Right : Code.Down;
         var target = key.Stroke.Code == previous
-            ? FindAvailable(_selectedIndex, -1)
+            ? SingleSelectionIndex.FindWrapped(_selectedIndex, -1, ItemControlCount, Available)
             : key.Stroke.Code == next
-                ? FindAvailable(_selectedIndex, 1)
+                ? SingleSelectionIndex.FindWrapped(_selectedIndex, 1, ItemControlCount, Available)
                 : key.Stroke.Code == Code.Tab && (key.Stroke.Modifiers & ~Modifiers.Shift) == 0
-                    ? FindAvailable(_selectedIndex, (key.Stroke.Modifiers & Modifiers.Shift) == 0 ? 1 : -1)
+                    ? SingleSelectionIndex.FindWrapped(_selectedIndex, (key.Stroke.Modifiers & Modifiers.Shift) == 0 ? 1 : -1, ItemControlCount, Available)
                     : -1;
 
         if (target >= 0)
@@ -466,9 +466,9 @@ public sealed class Menu: ItemsControl
 
         // Mirrors InsertItem's symmetric case: a removal that does not touch the selected
         // entry must never change its identity. Only an actual removal of the selected entry
-        // itself needs FindAvailable repair; an entry before it shifts the index silently, and
-        // an entry after it - including a MenuSeparator, which can never be selected - leaves
-        // the selection untouched.
+        // itself needs SingleSelectionIndex.FindNearest repair; an entry before it shifts the
+        // index silently, and an entry after it - including a MenuSeparator, which can never be
+        // selected - leaves the selection untouched.
         if (index < _selectedIndex)
         {
             _selectedIndex--;
@@ -477,7 +477,7 @@ public sealed class Menu: ItemsControl
         }
         else if (index == _selectedIndex)
         {
-            Select(FindNearestAvailable(Math.Min(index, ItemControlCount - 1)), focus: false);
+            Select(SingleSelectionIndex.FindNearest(Math.Min(index, ItemControlCount - 1), ItemControlCount, Available), focus: false);
         }
 
         return true;
@@ -536,7 +536,7 @@ public sealed class Menu: ItemsControl
         if (wasSelected)
         {
             _selectedIndex = -1;
-            Select(item is MenuItem ? index : FindAvailable(index, 1), focus: false);
+            Select(item is MenuItem ? index : SingleSelectionIndex.FindWrapped(index, 1, ItemControlCount, Available), focus: false);
         }
 
         if (item is MenuItem { Kind: MenuItemKind.Radio, IsChecked: true } radio)
@@ -1369,56 +1369,6 @@ public sealed class Menu: ItemsControl
         {
             ((MenuItem) ItemAt(_selectedIndex)).CommitSelection(value);
         }
-    }
-
-    private int FindAvailable(int start, int direction)
-    {
-        if (ItemControlCount == 0)
-        {
-            return -1;
-        }
-
-        // A cleared selection (start < 0) has no current item to step away from in either
-        // direction. Stepping forward from it must land on the first item (index 0); by the same
-        // "conceptually just past either end" reasoning, stepping backward from it must land on
-        // the last item, not one item short of it. Rebasing the backward search to begin as if it
-        // were already positioned one past the end keeps both directions symmetric.
-        var origin = start >= 0 ? start : direction < 0 ? ItemControlCount : -1;
-
-        for (var offset = 1; offset <= ItemControlCount; offset++)
-        {
-            var index = (origin + (direction * offset) + ItemControlCount) % ItemControlCount;
-
-            if (Available(index))
-            {
-                return index;
-            }
-        }
-
-        return -1;
-    }
-
-    // Removal repair needs the entry that just slid into the vacated slot considered first, not
-    // skipped - unlike FindAvailable's navigation callers, which must always move off the current
-    // item. Mirrors TabControl.FindNearestEligible: an inclusive forward scan from start, falling
-    // back to the nearest predecessor, with no wraparound.
-    private int FindNearestAvailable(int start)
-    {
-        var successor = FindAvailableLinear(Math.Max(0, start), 1);
-        return successor >= 0 ? successor : FindAvailableLinear(Math.Min(start - 1, ItemControlCount - 1), -1);
-    }
-
-    private int FindAvailableLinear(int start, int direction)
-    {
-        for (var index = start; index >= 0 && index < ItemControlCount; index += direction)
-        {
-            if (Available(index))
-            {
-                return index;
-            }
-        }
-
-        return -1;
     }
 
     private bool Available(int index) =>
