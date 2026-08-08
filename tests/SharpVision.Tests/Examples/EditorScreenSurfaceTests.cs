@@ -309,6 +309,7 @@ public sealed class EditorScreenSurfaceTests
         var editor = Editor(screen);
         var menu = editor.ContextMenu.ShouldNotBeNull();
         var selectAll = FindItem(menu.Presentation, "Select All");
+        await surface.UpdateAsync(() => editor.Text = "Select all of this text", "type content for select all");
 
         // Act
         await surface.Pointer.RightClickAsync(editor, new Point(1, 1));
