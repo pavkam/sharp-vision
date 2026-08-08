@@ -16,8 +16,11 @@ using SharpVision.Terminal.Input;
 /// </summary>
 public sealed class PressBehaviorTests
 {
-    private static KeyEventArgs Space(KeyAction action) => new(
-        new Stroke(Code.Character, new Rune(' '), 0, Modifiers.None, action));
+    private static KeyEventArgs Space(KeyAction action, Modifiers modifiers = Modifiers.None) => new(
+        new Stroke(Code.Character, new Rune(' '), 0, modifiers, action));
+
+    private static KeyEventArgs Enter(KeyAction action, Modifiers modifiers = Modifiers.None) => new(
+        new Stroke(Code.Enter, character: null, 0, modifiers, action));
 
     private static PressBehavior Create(
         bool releasesExpected,
@@ -72,6 +75,97 @@ public sealed class PressBehaviorTests
         pressed.ShouldBe([true]);
 
         behavior.Handle(Space(KeyAction.Release));
+        activations.ShouldBe([ActivationCause.Keyboard]);
+        pressed.ShouldBe([true, false]);
+    }
+
+    /// <summary>An incidental Control modifier must not commit a held-Space activation, and the
+    /// press itself must stay unhandled so a Ctrl+Space shortcut bound elsewhere still sees it.</summary>
+    [Fact]
+    public void Handle_WhenReleasesAreExpectedAndSpacePressHasControl_DoesNotActivateAndLeavesUnhandled()
+    {
+        List<ActivationCause> activations = [];
+        List<bool> pressed = [];
+        var behavior = Create(releasesExpected: true, activations, pressed);
+
+        var press = Space(KeyAction.Press, Modifiers.Control);
+        behavior.Handle(press);
+
+        press.Handled.ShouldBeFalse();
+        pressed.ShouldBeEmpty();
+
+        behavior.Handle(Space(KeyAction.Release, Modifiers.Control));
+        activations.ShouldBeEmpty();
+    }
+
+    /// <summary>The press-only-terminal pulse path must gate the same as the held path, or a
+    /// press-only terminal leaks Ctrl+Space straight through to activation.</summary>
+    [Fact]
+    public void Handle_WhenReleasesAreNotExpectedAndSpacePressHasControl_DoesNotActivateAndLeavesUnhandled()
+    {
+        List<ActivationCause> activations = [];
+        List<bool> pressed = [];
+        var behavior = Create(releasesExpected: false, activations, pressed);
+
+        var press = Space(KeyAction.Press, Modifiers.Control);
+        behavior.Handle(press);
+
+        press.Handled.ShouldBeFalse();
+        activations.ShouldBeEmpty();
+        pressed.ShouldBeEmpty();
+    }
+
+    /// <summary>Shift rides along with plenty of ordinary Space presses (capitalized text, etc.)
+    /// and must not block activation.</summary>
+    [Fact]
+    public void Handle_WhenSpacePressHasShift_StillActivates()
+    {
+        List<ActivationCause> activations = [];
+        List<bool> pressed = [];
+        var behavior = Create(releasesExpected: true, activations, pressed);
+
+        var press = Space(KeyAction.Press, Modifiers.Shift);
+        behavior.Handle(press);
+
+        press.Handled.ShouldBeTrue();
+        pressed.ShouldBe([true]);
+
+        var release = Space(KeyAction.Release, Modifiers.Shift);
+        behavior.Handle(release);
+
+        release.Handled.ShouldBeTrue();
+        activations.ShouldBe([ActivationCause.Keyboard]);
+    }
+
+    /// <summary>An incidental Control modifier must not commit an Enter activation, and the press
+    /// itself must stay unhandled so a Ctrl+Enter shortcut bound elsewhere still sees it.</summary>
+    [Fact]
+    public void Handle_WhenEnterPressHasControl_DoesNotActivateAndLeavesUnhandled()
+    {
+        List<ActivationCause> activations = [];
+        List<bool> pressed = [];
+        var behavior = Create(releasesExpected: true, activations, pressed);
+
+        var press = Enter(KeyAction.Press, Modifiers.Control);
+        behavior.Handle(press);
+
+        press.Handled.ShouldBeFalse();
+        activations.ShouldBeEmpty();
+        pressed.ShouldBeEmpty();
+    }
+
+    /// <summary>Shift-held Enter (a common terminal chord) must still activate immediately.</summary>
+    [Fact]
+    public void Handle_WhenEnterPressHasShift_StillActivates()
+    {
+        List<ActivationCause> activations = [];
+        List<bool> pressed = [];
+        var behavior = Create(releasesExpected: true, activations, pressed);
+
+        var press = Enter(KeyAction.Press, Modifiers.Shift);
+        behavior.Handle(press);
+
+        press.Handled.ShouldBeTrue();
         activations.ShouldBe([ActivationCause.Keyboard]);
         pressed.ShouldBe([true, false]);
     }

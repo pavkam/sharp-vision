@@ -103,9 +103,17 @@ internal sealed class PressBehavior
         var space = stroke.Code == Code.Character && stroke.Character == new Rune(' ');
         if (space)
         {
-            eventArgs.Handled = true;
             if (stroke.Action == KeyAction.Press && !_spaceHeld)
             {
+                // An incidental modifier (Ctrl, Alt, Super, Hyper, Meta) rides the same key and
+                // must not silently commit an activation the user did not intend. Leave the
+                // stroke unhandled so a shortcut bound to the modified combination still sees it.
+                if (!stroke.Modifiers.IsActivationEligible())
+                {
+                    return;
+                }
+
+                eventArgs.Handled = true;
                 if (!_keyReleasesExpected())
                 {
                     // A press-only terminal never delivers the completing release, so arming the
@@ -124,22 +132,33 @@ internal sealed class PressBehavior
 
                 _spaceHeld = true;
                 _setPressed(true);
+                return;
             }
-            else if (stroke.Action == KeyAction.Release && _spaceHeld)
+
+            if (stroke.Action == KeyAction.Release && _spaceHeld)
             {
+                eventArgs.Handled = true;
                 _spaceHeld = false;
                 _setPressed(false);
                 if (_canCompleteSpace())
                 {
                     _activate(ActivationCause.Keyboard);
                 }
+
+                return;
             }
 
+            eventArgs.Handled = true;
             return;
         }
 
         if (stroke.Code == Code.Enter)
         {
+            if (stroke.Action == KeyAction.Press && !stroke.Modifiers.IsActivationEligible())
+            {
+                return;
+            }
+
             eventArgs.Handled = true;
             if (stroke.Action == KeyAction.Press)
             {
