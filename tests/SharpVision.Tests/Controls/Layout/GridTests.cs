@@ -872,6 +872,8 @@ public sealed class GridTests
             };
             collection.Add(track);
         }
+    }
+
     /// <summary>Verifies row and column collections are permanent and invalidate real mutations.</summary>
     [Fact]
     public void Definitions_WhenCollectionMutates_InvalidatesMeasureOncePerChange()
