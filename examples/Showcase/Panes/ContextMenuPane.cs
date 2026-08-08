@@ -40,18 +40,18 @@ internal sealed class ContextMenuPane: CompositeControlBase
             Width = Length.Cells(30)
         };
 
-        var directMenu = new ContextMenu();
-        directMenu.Items.Add(new MenuItem { Text = "Cu&t", ShortcutText = "Ctrl+X" });
-        directMenu.Items.Add(new MenuItem { Text = "&Copy", ShortcutText = "Ctrl+C" });
-        directMenu.Items.Add(new MenuItem { Text = "&Paste", ShortcutText = "Ctrl+V" });
-        directMenu.Items.Add(new MenuSeparator());
-        directMenu.Items.Add(new MenuItem { Text = "Select &All", ShortcutText = "Ctrl+A" });
-        var builderTarget = new Button
+        var editMenu = new ContextMenu();
+        editMenu.Items.Add(new MenuItem { Text = "Cu&t", ShortcutText = "Ctrl+X" });
+        editMenu.Items.Add(new MenuItem { Text = "&Copy", ShortcutText = "Ctrl+C" });
+        editMenu.Items.Add(new MenuItem { Text = "&Paste", ShortcutText = "Ctrl+V" });
+        editMenu.Items.Add(new MenuSeparator());
+        editMenu.Items.Add(new MenuItem { Text = "Select &All", ShortcutText = "Ctrl+A" });
+        var editTarget = new Button
         {
-            Text = "&Builder menu",
+            Text = "&Edit-style menu",
             Width = Length.Cells(20),
             Height = Length.Cells(3),
-            ContextMenu = directMenu
+            ContextMenu = editMenu
         };
 
         return new DocPage(
@@ -75,11 +75,11 @@ internal sealed class ContextMenuPane: CompositeControlBase
                     textInput)),
             new DocSection(
                 "🔨",
-                "Another context menu",
-                "Attach a second context menu to another control with different items.",
+                "Independent context menus",
+                "Each control carries its own <info>ContextMenu</info> instance, so a second control can offer entirely different items without the two menus interfering.",
                 new DocExample(
-                    "Directly constructed context menu",
-                    "Right-click the button to see clipboard-style items.",
-                    builderTarget)));
+                    "A second control with its own menu",
+                    "Right-click the button to see clipboard-style items distinct from the first example.",
+                    editTarget)));
     }
 }
