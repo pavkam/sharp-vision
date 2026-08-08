@@ -164,6 +164,49 @@ internal sealed class MenuPane: CompositeControlBase
             Children = { menuBar }
         };
 
+        // MenuBuilder demonstrates the fluent construction API as an alternative to composing
+        // Menu/MenuItem object graphs directly: Item, Check, Separator, Submenu, and Radio all
+        // chain off the same builder instance and report through per-item onInvoke callbacks.
+        var builderStatus = new Text("Select an entry to see the invoked action.");
+
+        var builderMenu = MenuBuilder.Vertical()
+            .Item("&Refresh", shortcut: "F5", onInvoke: () => builderStatus.Content = "Invoked: Refresh")
+            .Item("Re&name", onInvoke: () => builderStatus.Content = "Invoked: Rename")
+            .Check(
+                "Show &hidden files",
+                onInvoke: () => builderStatus.Content = "Invoked: Show hidden files")
+            .Separator()
+            .Submenu(
+                "&Sort by",
+                sortBy => sortBy
+                    .Radio(
+                        "&Name",
+                        groupName: "sort",
+                        isChecked: true,
+                        onInvoke: () => builderStatus.Content = "Invoked: Sort by Name")
+                    .Radio(
+                        "&Date",
+                        groupName: "sort",
+                        onInvoke: () => builderStatus.Content = "Invoked: Sort by Date")
+                    .Radio(
+                        "&Size",
+                        groupName: "sort",
+                        onInvoke: () => builderStatus.Content = "Invoked: Sort by Size"))
+            .Build();
+
+        var builderFrame = new Dock
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            AutoSize = true,
+            Border = new Border(
+                BorderSide.All,
+                BorderGlyphStyle.Rounded,
+                SemanticColor.ControlBorder,
+                Color.Transparent,
+                SemanticDecoration.Border),
+            Children = { builderMenu }
+        };
+
         // Standalone context menu with shortcuts and one disabled entry.
         var contextStatus = new Text("Use arrow keys to navigate. Enter or Space activates.");
 
@@ -201,6 +244,15 @@ internal sealed class MenuPane: CompositeControlBase
                     "Click or press <reverse>Enter</reverse> on File, Edit, View, or Help, then hover another heading to switch without leaving the menu plane. <reverse>Tab</reverse> and arrows move selection; Open Recent extends the same plane to the right.",
                     new DocColumn(barFrame, barStatus),
                     "var file = new MenuItem { Content = new Text(\"&File\") };\nvar fileMenu = new Menu\n{\n    Orientation = Orientation.Vertical,\n    MinWidth = 14,\n    MaxWidth = 24,\n};\nfileMenu.Items.Add(new MenuItem { Content = new Text(\"&New\") });\nfile.Submenu = fileMenu;")),
+            new DocSection(
+                "🧰",
+                "Building a menu with MenuBuilder",
+                "<info>MenuBuilder</info> composes a <info>Menu</info> fluently instead of assembling <info>MenuItem</info> objects and an <info>Items</info> collection by hand. <info>Item</info>, <info>Check</info>, and <info>Radio</info> each take an optional <info>onInvoke</info> callback, and <info>Submenu</info> nests a fresh builder for the popup that opens on activation.",
+                new DocExample(
+                    "Fluent builder chain",
+                    "Navigate with <reverse>Up</reverse>/<reverse>Down</reverse> arrows and <reverse>Enter</reverse> to invoke. <reverse>Right</reverse> opens Sort by; the three entries share one radio group.",
+                    new DocColumn(builderFrame, builderStatus),
+                    "var menu = MenuBuilder.Vertical()\n    .Item(\"&Refresh\", shortcut: \"F5\", onInvoke: Refresh)\n    .Item(\"Re&name\", onInvoke: Rename)\n    .Check(\"Show &hidden files\", onInvoke: ToggleHidden)\n    .Separator()\n    .Submenu(\"&Sort by\", sortBy => sortBy\n        .Radio(\"&Name\", groupName: \"sort\", isChecked: true, onInvoke: SortByName)\n        .Radio(\"&Date\", groupName: \"sort\", onInvoke: SortByDate)\n        .Radio(\"&Size\", groupName: \"sort\", onInvoke: SortBySize))\n    .Build();")),
             new DocSection(
                 "📑",
                 "Context menu",

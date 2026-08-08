@@ -138,7 +138,10 @@ dialog, and reports restoration after Deploy, Cancel, Escape, or frame close.
 The File/Edit/View/Help Menu specimen uses the ordinary retained submenu API:
 sibling switching and the nested Open Recent path remain one
 [menu plane](../concepts/modality.md#menu-planes), reported through public
-selection and invocation events rather than internal state.
+selection and invocation events rather than internal state. The same page also
+demonstrates `MenuBuilder`'s fluent chain — `Item`, `Check`, `Separator`, and a
+nested `Submenu` — composing an equivalent menu without an object graph
+assembled by hand.
 
 The FilePicker page launches the real `SharpVision.Dialogs.FilePickerDialog` and
 `SaveFileDialog` directly from its Buttons, without a decorative specimen
