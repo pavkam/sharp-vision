@@ -30,6 +30,8 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
     private int? _projectionWidth;
     private (Rune Collapsed, Rune Expanded)? _builtWithGlyphs;
     private Constraint _lastMeasureConstraint;
+    private bool _suppressScrollChangedPassthrough;
+    private ScrollChangedEventArgs? _pendingScrollChanged;
 
     /// <summary>Initializes an empty JSON view whose document is the JSON null value.</summary>
     public JsonView() : base(JsonViewStyle.Definition)
@@ -45,6 +47,7 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
             ShowScrollBars = ShowScrollBars.WhenNeeded,
             Children = { _content }
         };
+        _stack.ScrollChanged += OnStackScrollChanged;
         InitializeContent(_stack);
         _scrollBarStyle = InitializePartStyle(
             ScrollBarStyle.ForwardingDefinition,
@@ -175,11 +178,17 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
     public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
 
     /// <summary>Raised after a generated scrolling viewport commits changed offsets.</summary>
-    public event EventHandler<ScrollChangedEventArgs>? ScrollChanged
-    {
-        add => _stack.ScrollChanged += value;
-        remove => _stack.ScrollChanged -= value;
-    }
+    /// <remarks>
+    /// This is not a direct forward of the composed viewport's own event: a layout pass that needs
+    /// more than one internal arrange to settle the wrapped projection's width -
+    /// <see cref="ReconcileProjectionWidth"/> - coalesces every intermediate change that occurs
+    /// while it settles into the single event actually raised, so a subscriber only ever observes
+    /// the final settled offset, extent, and viewport for one layout pass, never a transient value
+    /// clamped against a since-superseded wrap. An offset change from any other cause - scrolling,
+    /// programmatic <see cref="ScrollBy"/>, a resize that does not need reconciling - is forwarded
+    /// exactly as it occurs, individually.
+    /// </remarks>
+    public event EventHandler<ScrollChangedEventArgs>? ScrollChanged;
 
     /// <summary>Gets the committed content extent.</summary>
     public Size Extent => _stack.Extent;
@@ -413,8 +422,60 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        base.ArrangeOverride(bounds);
-        ReconcileProjectionWidth(bounds);
+        // Every _stack.Arrange this method causes - the one base.ArrangeOverride below performs,
+        // and any additional one ReconcileProjectionWidth performs while settling the projection
+        // width - can independently fire the composed viewport's own ScrollChanged with a
+        // still-transitional Extent/Viewport. Suppressing the passthrough for the whole call and
+        // replaying at most one coalesced event afterward is what keeps a subscriber from ever
+        // observing one of those transitional values.
+        _suppressScrollChangedPassthrough = true;
+
+        try
+        {
+            base.ArrangeOverride(bounds);
+            ReconcileProjectionWidth(bounds);
+        }
+        finally
+        {
+            _suppressScrollChangedPassthrough = false;
+        }
+
+        if (_pendingScrollChanged is { } pending)
+        {
+            _pendingScrollChanged = null;
+
+            if (pending.PreviousOffset != pending.Offset)
+            {
+                ScrollChanged?.Invoke(this, pending);
+            }
+        }
+    }
+
+    /// <summary>Forwards the composed viewport's own scroll transitions, coalescing every one that
+    /// occurs while <see cref="ArrangeOverride"/> is settling the wrapped projection's width into
+    /// the single event that override replays once settled.</summary>
+    /// <param name="sender">The composed viewport; unused.</param>
+    /// <param name="e">The composed viewport's own committed transition.</param>
+    private void OnStackScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        _ = sender;
+
+        if (!_suppressScrollChangedPassthrough)
+        {
+            ScrollChanged?.Invoke(this, e);
+            return;
+        }
+
+        // Keep the earliest PreviousOffset seen this transaction - the offset before any of this
+        // arrange's internal reconcile passes ran - paired with the latest Offset/Extent/Viewport,
+        // so the eventually-replayed event reports the one meaningful transition: from where the
+        // subscriber last saw this control settle, to where it settles now.
+        _pendingScrollChanged = new ScrollChangedEventArgs(
+            _pendingScrollChanged?.PreviousOffset ?? e.PreviousOffset,
+            e.Offset,
+            e.Extent,
+            e.Viewport,
+            e.Cause);
     }
 
     /// <summary>Keeps the wrapped projection matched to the composed viewport's real,
@@ -428,9 +489,12 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
     /// <see cref="Container"/>'s own two-probe scrollbar resolution exists to settle for a
     /// non-scrolling-width axis; since that mechanism is a no-op for a horizontally-scrollable one,
     /// this reproduces it by hand for as many rounds as it takes to settle, bounded defensively
-    /// against runaway growth. Remeasuring and rearranging the composed viewport now - rather than
-    /// merely invalidating it for a future pass - is what keeps <see cref="Extent"/> and
+    /// against runaway growth. Remeasuring and rearranging the composed viewport synchronously -
+    /// instead of only invalidating it for a future pass - is what keeps <see cref="Extent"/> and
     /// <see cref="Viewport"/> accurate after a single layout pass instead of one frame behind it.
+    /// Every intermediate <see cref="ScrollChanged"/> raised by an internal arrange in this loop is
+    /// coalesced rather than passed through - see <see cref="OnStackScrollChanged"/> - so a
+    /// subscriber never observes an offset clamped against a since-superseded wrap.
     /// </remarks>
     /// <param name="bounds">The content-box bounds this control's own arrange resolved.</param>
     private void ReconcileProjectionWidth(Rect bounds)
@@ -475,9 +539,9 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
             _builtWithGlyphs = glyphs;
             _sourceLines = BuildLines(_root, Indent);
 
-            // The rebuilt source lines still need rewrapping against the current width, but that
-            // now only happens at measure time; forcing a mismatch here and invalidating Measure
-            // is what makes the next measure pass pick it up.
+            // The rebuilt source lines need rewrapping against the current width at measure time;
+            // forcing a mismatch here and invalidating Measure makes the next measure pass pick it
+            // up.
             _projectionWidth = null;
             _content.Invalidate(Invalidation.Measure);
         }

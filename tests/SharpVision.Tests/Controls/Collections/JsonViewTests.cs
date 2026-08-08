@@ -288,6 +288,39 @@ public sealed class JsonViewTests
         view.Extent.Width.ShouldBeLessThanOrEqualTo(view.Viewport.Width);
     }
 
+    /// <summary>Verifies a resize while scrolled raises exactly one ScrollChanged with the final
+    /// settled Extent and Viewport, not one per internal arrange ReconcileProjectionWidth performs
+    /// while resettling the wrapped projection to the new width - a subscriber must never observe
+    /// an intermediate offset clamped against a since-superseded wrap.</summary>
+    [Fact]
+    public void Layout_WhenResizedWiderWhileScrolled_RaisesScrollChangedOnceWithFinalGeometry()
+    {
+        // Arrange
+        var properties = string.Join(
+            ',',
+            Enumerable.Range(0, 25).Select(index => $"\"key{index}\":\"{new string('a', 60)} value {index}\""));
+        var view = new JsonView
+        {
+            Json = $"{{{properties}}}",
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        var engine = new LayoutEngine();
+        engine.Layout(view, new Size(14, 10));
+        _ = view.ScrollBy(int.MaxValue, int.MaxValue);
+        List<ScrollChangedEventArgs> observed = [];
+        view.ScrollChanged += (_, eventArgs) => observed.Add(eventArgs);
+
+        // Act - widening reflows every wrapped string onto fewer lines, shrinking Extent enough
+        // that the offset scrolled to the prior bottom-right corner no longer fits.
+        engine.Layout(view, new Size(50, 10));
+
+        // Assert
+        observed.Count.ShouldBe(1);
+        observed[0].Extent.ShouldBe(view.Extent);
+        observed[0].Viewport.ShouldBe(view.Viewport);
+        observed[0].Offset.ShouldBe(new Point(view.HorizontalOffset, view.VerticalOffset));
+    }
+
     /// <summary>Verifies both overflow axes and generated scrollbar policy are reachable from JsonView.</summary>
     [Fact]
     public void ScrollBy_WhenDocumentExceedsViewport_MovesBothOffsets()
