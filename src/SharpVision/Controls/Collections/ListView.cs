@@ -322,6 +322,32 @@ public sealed class ListView: ItemsControl
         set => _stack.VerticalOffset = value;
     }
 
+    /// <summary>Gets or sets the non-negative wheel-scroll increment in cells forwarded to the
+    /// composed viewport.</summary>
+    /// <remarks>
+    /// Keyboard navigation always moves by exactly one item regardless of <see cref="RowHeight"/>
+    /// or this value - only the mouse wheel consults it. Applications wanting the wheel to step by
+    /// whole rows with a windowed <see cref="RowHeight"/> can set <see cref="LineSize"/> to the row
+    /// height.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    public int LineSize
+    {
+        get => _stack.LineSize;
+        set
+        {
+            var previous = _stack.LineSize;
+            _stack.LineSize = value;
+
+            if (previous != _stack.LineSize)
+            {
+                NotifyPropertyChanged(nameof(LineSize), InvalidationImpact.None);
+            }
+        }
+    }
+
     /// <summary>Gets or sets the non-negative cells of context retained between page commands.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
@@ -329,7 +355,16 @@ public sealed class ListView: ItemsControl
     public int PageOverlap
     {
         get => _stack.PageOverlap;
-        set => _stack.PageOverlap = value;
+        set
+        {
+            var previous = _stack.PageOverlap;
+            _stack.PageOverlap = value;
+
+            if (previous != _stack.PageOverlap)
+            {
+                NotifyPropertyChanged(nameof(PageOverlap), InvalidationImpact.None);
+            }
+        }
     }
 
     /// <summary>Scrolls the composed scroll container by signed cell deltas with saturation and

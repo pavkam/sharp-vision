@@ -85,10 +85,11 @@ label cells.
   on. Keyboard navigation keeps it synchronized with the committed selection in
   Single and Multiple modes; None mode keeps active navigation without
   selection. `VerticalOffset` exposes the composed viewport offset.
-  `ScrollBars`, `ShowScrollBars`, `ScrollBarStyle`, and `PageOverlap` forward
-  the common overflow and paging policy to the owned viewport, so a ListView
-  scrolls with the same canonical rail and page behavior as any scrollable
-  `Container` rather than a private scrolling dialect.
+  `ScrollBars`, `ShowScrollBars`, `ScrollBarStyle`, `LineSize`, and
+  `PageOverlap` forward the common overflow, wheel, and paging policy to the
+  owned viewport, so a ListView scrolls with the same canonical rail and page
+  behavior as any scrollable `Container` rather than a private scrolling
+  dialect.
 - `SelectionChanging` receives owned, sorted added and removed index memories
   and may cancel the change before it commits. `SelectionChanged` reports the
   same committed delta after all selected views and visual states have updated.
@@ -128,6 +129,12 @@ becomes pure arithmetic against the fixed `RowHeight`, requiring no realized
 row. A navigation target outside the current window is realized (and scrolled
 into view) on demand. Every successful move uses the composed `BringIntoView`
 path.
+
+The mouse wheel scrolls the composed viewport by `LineSize` cells per notch (one
+by default); it never changes the active index. Keyboard Up and Down always move
+by exactly one item regardless of `RowHeight` or `LineSize`. An application
+wanting the wheel to step by whole rows in windowed mode can set `LineSize` to
+the same value as `RowHeight`.
 
 Space follows press-and-release activation and changes the selection; Enter
 invokes without changing it. A primary pointer release selects and, subject to

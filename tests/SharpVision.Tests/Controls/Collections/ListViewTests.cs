@@ -144,6 +144,46 @@ public sealed class ListViewTests
         notifications.ShouldBe(1);
     }
 
+    /// <summary>Verifies unchanged LineSize assignments do not raise duplicate public notifications.</summary>
+    [Fact]
+    public void LineSize_WhenValueIsUnchanged_DoesNotRaisePropertyChanged()
+    {
+        var control = new UiListView();
+        var notifications = 0;
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiListView.LineSize))
+            {
+                notifications++;
+            }
+        };
+
+        control.LineSize = 3;
+        control.LineSize = 3;
+
+        notifications.ShouldBe(1);
+    }
+
+    /// <summary>Verifies unchanged PageOverlap assignments do not raise duplicate public notifications.</summary>
+    [Fact]
+    public void PageOverlap_WhenValueIsUnchanged_DoesNotRaisePropertyChanged()
+    {
+        var control = new UiListView();
+        var notifications = 0;
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiListView.PageOverlap))
+            {
+                notifications++;
+            }
+        };
+
+        control.PageOverlap = 3;
+        control.PageOverlap = 3;
+
+        notifications.ShouldBe(1);
+    }
+
     /// <summary>Verifies failed item or template replacement leaves the complete old tree untouched.</summary>
     [Fact]
     public void ItemTemplate_WhenCandidateIsInvalid_PreservesItemsTemplateAndOwnership()
@@ -723,6 +763,26 @@ public sealed class ListViewTests
         control.RowHeight.ShouldBeNull();
     }
 
+    /// <summary>Verifies LineSize rejects a negative value.</summary>
+    [Fact]
+    public void LineSize_WhenNegative_ThrowsArgumentOutOfRangeException()
+    {
+        var control = Create("A", "B", "C");
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.LineSize = -1);
+    }
+
+    /// <summary>Verifies LineSize forwards to, and reads back from, the composed viewport.</summary>
+    [Fact]
+    public void LineSize_WhenSet_ForwardsToComposedViewport()
+    {
+        var control = Create("A", "B", "C");
+
+        control.LineSize = 3;
+
+        control.LineSize.ShouldBe(3);
+    }
+
     /// <summary>Verifies ItemInvocation rejects an undefined value.</summary>
     [Fact]
     public void ItemInvocation_WhenSetToUndefinedValue_ThrowsArgumentOutOfRangeException()
@@ -763,6 +823,47 @@ public sealed class ListViewTests
         _ = Should.Throw<ArgumentOutOfRangeException>(() => control.BringIntoView(3));
     }
 
+    /// <summary>Verifies the mouse wheel scrolls a windowed viewport by the configured LineSize,
+    /// not by one item - distinct from RowHeight, which stays at its own 3-cell fixture value.</summary>
+    [Fact]
+    public void Wheel_WhenLineSizeIsConfigured_ScrollsViewportByConfiguredCells()
+    {
+        var control = new UiListView
+        {
+            RowHeight = 3,
+            ItemTemplate = item => new ControlText(item?.ToString() ?? "null") { Height = Length.Cells(3) },
+            Items = Enumerable.Range(0, 20).Select(value => (object?) $"Item {value}").ToArray(),
+            LineSize = 3
+        };
+        new LayoutEngine().Layout(control, new Size(10, 6));
+        var target = control.HitTest(new Point(0, 0));
+        _ = target.ShouldNotBeNull();
+
+        _ = Router.Route(target, Events.Pointer, new PointerEventArgs(Wheel(wheelY: -1)));
+
+        control.VerticalOffset.ShouldBe(3);
+    }
+
+    /// <summary>Verifies the mouse wheel still scrolls a windowed viewport by exactly one cell when
+    /// LineSize keeps its default, pinning non-breakage of the pre-existing forwarding.</summary>
+    [Fact]
+    public void Wheel_WhenLineSizeIsDefault_ScrollsViewportByOneCell()
+    {
+        var control = new UiListView
+        {
+            RowHeight = 3,
+            ItemTemplate = item => new ControlText(item?.ToString() ?? "null") { Height = Length.Cells(3) },
+            Items = Enumerable.Range(0, 20).Select(value => (object?) $"Item {value}").ToArray()
+        };
+        new LayoutEngine().Layout(control, new Size(10, 6));
+        var target = control.HitTest(new Point(0, 0));
+        _ = target.ShouldNotBeNull();
+
+        _ = Router.Route(target, Events.Pointer, new PointerEventArgs(Wheel(wheelY: -1)));
+
+        control.VerticalOffset.ShouldBe(1);
+    }
+
     private static void Click(PointerManager capture, Point point, Modifiers modifiers)
     {
         _ = capture.Dispatch(Pointer(point, PointerAction.Press, modifiers));
@@ -777,6 +878,17 @@ public sealed class ListViewTests
         wheelX: 0,
         wheelY: 0,
         modifiers,
+        isMotion: false,
+        isCellPositionInferred: false);
+
+    private static Pointer Wheel(int wheelY) => new(
+        cells: default,
+        pixels: null,
+        Buttons.None,
+        PointerAction.Wheel,
+        wheelX: 0,
+        wheelY,
+        Modifiers.None,
         isMotion: false,
         isCellPositionInferred: false);
 
@@ -1288,10 +1400,11 @@ public sealed class ListViewTests
         virtualized.ActiveIndex.ShouldBe(eager.ActiveIndex, context);
         virtualized.SelectedItems.ShouldBe(eager.SelectedItems, context);
 
-        // Extent.Width is not a parity target: eager reports the widest realized row's natural
-        // content width, while virtualized reports the incoming constraint width directly so
-        // width never depends on which rows happen to be realized. Neither value
-        // matters functionally, since ListView never enables horizontal scrolling by default.
+        // Extent.Width is not a parity target: both modes report the widest currently realized
+        // row's natural content width, but virtualized only ever realizes a window of rows, so its
+        // reported width can jitter across a scroll depending on which rows happen to be realized
+        // at the moment it is read. Neither value matters functionally, since ListView never
+        // enables horizontal scrolling by default.
         virtualized.Extent.Height.ShouldBe(eager.Extent.Height, context);
         virtualized.VerticalOffset.ShouldBe(eager.VerticalOffset, context);
 
