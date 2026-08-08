@@ -7,6 +7,13 @@ using Input;
 
 using SharpVision.Tests.Controls;
 
+using Terminal.Capabilities;
+using Terminal.Graphics;
+using Terminal.Multiplexing;
+
+using GraphicsImage = Terminal.Graphics.ImageSource;
+using MultiplexerKind = Terminal.Multiplexing.MultiplexerKind;
+
 /// <summary>Verifies application startup, frame completion, suspension, and shutdown.</summary>
 public sealed class ApplicationTests
 {
@@ -1138,6 +1145,1711 @@ public sealed class ApplicationTests
         await application.Dispatcher.InvokeAsync(
             static () => { },
             TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a handled Alt key consumes its adjacent text record after activating the target.</summary>
+    [Fact]
+    public async Task Input_WhenAltKeyActivatesButton_SuppressesAdjacentMnemonicTextAsync()
+    {
+        // Arrange
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var input = new TextInput { Text = "seed" };
+        var button = new Button { Text = "&Name" };
+        var root = new Stack { Children = { input, button } };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        var clicks = 0;
+        button.Click += (_, eventArgs) =>
+        {
+            eventArgs.Cause.ShouldBe(ActivationCause.Keyboard);
+            clicks++;
+        };
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(input).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        var stroke = Alt('n');
+        var text = new TerminalText(new Rune('n'));
+
+        // Act
+        application.Input(in stroke);
+        application.Input(in text);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        clicks.ShouldBe(1);
+        input.Text.ShouldBe("seed");
+        application.Focus.Focused.ShouldBeSameAs(button);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an earlier preview handler can reserve Alt input, and that reservation
+    /// also suppresses the paired text record - not only the access-key and menu-shortcut paths.
+    /// A stroke consumed anywhere on or around its route, by any handler or control
+    /// default, never delivers its paired text; before that fix only the two named paths armed
+    /// suppression, so this same reservation left the paired 'n' to type into the focused
+    /// editor even though the stroke itself was already claimed.</summary>
+    [Fact]
+    public async Task Input_WhenPreviewHandlesAltKey_DoesNotInvokeAndSuppressesTextAsync()
+    {
+        // Arrange
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var input = new TextInput();
+        var button = new Button { Text = "&Name" };
+        var root = new Stack { Children = { input, button } };
+        _ = root.AddHandler(Events.Key, (_, eventArgs) =>
+        {
+            if (eventArgs.Phase == RoutingPhase.Preview && eventArgs.Stroke.Modifiers == Modifiers.Alt)
+            {
+                eventArgs.Handled = true;
+            }
+        });
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        var clicks = 0;
+        button.Click += (_, _) => clicks++;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(input).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        var stroke = Alt('n');
+        var text = new TerminalText(new Rune('n'));
+
+        // Act
+        application.Input(in stroke);
+        application.Input(in text);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        clicks.ShouldBe(0);
+        input.Text.ShouldBeEmpty();
+        application.Focus.Focused.ShouldBeSameAs(input);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a single consumed stroke suppresses more than one paired text record,
+    /// as Kitty associated text emits one record per colon-separated scalar for a single
+    /// stroke.</summary>
+    [Fact]
+    public async Task Input_WhenAltKeyPairsWithMultipleTextRecords_SuppressesAllOfThemAsync()
+    {
+        // Arrange
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var input = new TextInput { Text = "seed" };
+        var button = new Button { Text = "&Name" };
+        var root = new Stack { Children = { input, button } };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        var clicks = 0;
+        button.Click += (_, _) => clicks++;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(input).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        var stroke = Alt('n');
+        var first = new TerminalText(new Rune('n'));
+        var second = new TerminalText(new Rune('~'));
+
+        // Act
+        application.Input(in stroke);
+        application.Input(in first);
+        application.Input(in second);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        clicks.ShouldBe(1);
+        input.Text.ShouldBe("seed");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a concurrent, unrelated record (a diagnostic) landing between a
+    /// consumed stroke and its paired text record does not strand the suppression, since only a
+    /// new keystroke should reset it.</summary>
+    [Fact]
+    public async Task Input_WhenUnrelatedRecordInterleavesStrokeAndPairedText_StillSuppressesTextAsync()
+    {
+        // Arrange
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var input = new TextInput { Text = "seed" };
+        var button = new Button { Text = "&Name" };
+        var root = new Stack { Children = { input, button } };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        var clicks = 0;
+        button.Click += (_, _) => clicks++;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(input).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        var stroke = Alt('n');
+        var text = new TerminalText(new Rune('n'));
+        var diagnostic = new Diagnostic(DiagnosticCode.Malformed, SequenceKind.Csi, offset: 0, discardedBytes: 0);
+
+        // Act
+        application.Input(in stroke);
+        application.Input(in diagnostic);
+        application.Input(in text);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        clicks.ShouldBe(1);
+        input.Text.ShouldBe("seed");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    private static Stroke Alt(char value) =>
+        new(Code.Character, new Rune(value), nativeCode: 0, Modifiers.Alt, KeyAction.Press);
+
+    /// <summary>Gets every consume path the routing contract enumerates.</summary>
+    public static TheoryData<string> ConsumePaths =>
+        ["PreviewHandler", "BubbleHandler", "ControlDefault", "AncestorPreviewHandler"];
+
+    /// <summary>Verifies a Stroke consumed on each path leaves the focused editor's text
+    /// untouched, because the paired TerminalText record is suppressed. Without suppression the
+    /// character arrives as ordinary typing and replaces the selection the consuming handler just
+    /// made.</summary>
+    /// <param name="path">The consume path under test.</param>
+    [Theory]
+    [MemberData(nameof(ConsumePaths))]
+    public async Task Input_WhenStrokeIsConsumedOnAnyPath_SuppressesThePairedTextAsync(string path)
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var input = new TextInput { Text = "AB" };
+        var root = new Dock();
+        root.Children.Add(input);
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                application.Focus.Focus(input).ShouldBeTrue();
+                Arm(path, input, root);
+            },
+            TestContext.Current.CancellationToken);
+
+        var stroke = new Stroke(Code.Character, new Rune('a'), nativeCode: 0, Modifiers.Control, KeyAction.Press);
+        var text = new TerminalText(new Rune('a'));
+        application.Input(in stroke);
+        application.Input(in text);
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+
+        input.Text.ShouldBe("AB", $"the {path} consume path must suppress the paired text record");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>The counter-case that keeps the assertion above honest: an identical pair that
+    /// nobody consumes must still type. Without this, suppression that fired unconditionally -
+    /// swallowing every paired record - would satisfy every case above.</summary>
+    [Fact]
+    public async Task Input_WhenStrokeIsNotConsumed_StillDeliversThePairedTextAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var input = new TextInput { Text = "AB" };
+        await using Application application = new(input, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(input).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+
+        // No modifier, no handler, no control default claims this - it is ordinary typing.
+        var stroke = new Stroke(Code.Character, new Rune('c'), nativeCode: 0, Modifiers.None, KeyAction.Press);
+        var text = new TerminalText(new Rune('c'));
+        application.Input(in stroke);
+        application.Input(in text);
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+
+        input.Text.ShouldBe("ABc", "an unconsumed stroke must still deliver its paired text");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a consumed stroke suppresses <em>every</em> record of a multi-scalar
+    /// associated-text sequence, not just the first.
+    ///
+    /// <para>A <c>TerminalText</c> record carries exactly one <c>Rune</c>, so Kitty reports one
+    /// record per colon-separated scalar and a single grapheme can arrive as several
+    /// consecutive records. <c>Application.Dispatch</c> handles that with a latch cleared only by
+    /// the next Key record, so the whole run drops. The single-record table above cannot tell that
+    /// design apart from one that suppresses only the record immediately following the stroke -
+    /// which would deliver the base character's combining marks on their own and corrupt the
+    /// grapheme.</para>
+    /// </summary>
+    /// <param name="path">The consume path under test.</param>
+    [Theory]
+    [MemberData(nameof(ConsumePaths))]
+    public async Task Input_WhenStrokeIsConsumedOnAnyPath_SuppressesEveryPairedTextRecordAsync(string path)
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var input = new TextInput { Text = "AB" };
+        var root = new Dock();
+        root.Children.Add(input);
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                application.Focus.Focus(input).ShouldBeTrue();
+                Arm(path, input, root);
+            },
+            TestContext.Current.CancellationToken);
+
+        var stroke = new Stroke(Code.Character, new Rune('a'), nativeCode: 0, Modifiers.Control, KeyAction.Press);
+        application.Input(in stroke);
+        SendGrapheme(application);
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+
+        input.Text.ShouldBe("AB", $"the {path} consume path must suppress every paired text record");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>The counter-case for the multi-record run: unconsumed, all three records arrive and
+    /// compose the one grapheme they encode. Suppression that swallowed the tail unconditionally
+    /// would still satisfy the theory above.</summary>
+    [Fact]
+    public async Task Input_WhenStrokeIsNotConsumed_DeliversEveryPairedTextRecordAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var input = new TextInput { Text = "AB" };
+        await using Application application = new(input, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(input).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+
+        var stroke = new Stroke(Code.Character, new Rune('e'), nativeCode: 0, Modifiers.None, KeyAction.Press);
+        application.Input(in stroke);
+        SendGrapheme(application);
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+
+        input.Text.ShouldBe("AB" + _grapheme, "an unconsumed stroke must deliver its whole text run");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies the latch is armed per keystroke rather than left set: after a consumed
+    /// stroke swallows a multi-record run, the very next unconsumed stroke still types. A latch
+    /// that failed to clear would go permanently deaf, which is the failure mode a "suppress the
+    /// whole run" implementation risks.</summary>
+    [Fact]
+    public async Task Input_WhenAConsumedRunIsFollowedByAnUnconsumedStroke_ResumesTypingAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var input = new TextInput { Text = "AB" };
+        var root = new Dock();
+        root.Children.Add(input);
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                application.Focus.Focus(input).ShouldBeTrue();
+
+                // Consumes only Control-modified strokes, unlike the table's BubbleHandler arm which
+                // consumes every one - the second stroke below has to route unconsumed.
+                _ = input.AddHandler(Events.Key, static (_, eventArgs) =>
+                {
+                    if (eventArgs.Phase == RoutingPhase.Bubble &&
+                        eventArgs.Stroke.Modifiers == Modifiers.Control)
+                    {
+                        eventArgs.Handled = true;
+                    }
+                });
+            },
+            TestContext.Current.CancellationToken);
+
+        var consumed = new Stroke(Code.Character, new Rune('a'), nativeCode: 0, Modifiers.Control, KeyAction.Press);
+        application.Input(in consumed);
+        SendGrapheme(application);
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+        input.Text.ShouldBe("AB");
+
+        var free = new Stroke(Code.Character, new Rune('z'), nativeCode: 0, Modifiers.None, KeyAction.Press);
+        var freeText = new TerminalText(new Rune('z'));
+        application.Input(in free);
+        application.Input(in freeText);
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+
+        input.Text.ShouldBe("ABz", "a new keystroke must clear suppression left by the consumed run");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    // One grapheme, three scalars, three records - a base letter and two combining marks. Delivering
+    // any strict subset of these would leave orphaned marks in the buffer, so a partial suppression
+    // bug shows up as visibly wrong text rather than a count that happens to differ.
+    private const string _grapheme = "é̂";
+
+    private static void SendGrapheme(Application application)
+    {
+        foreach (var rune in _grapheme.EnumerateRunes())
+        {
+            var record = new TerminalText(rune);
+            application.Input(in record);
+        }
+    }
+
+    private static void Arm(string path, TextInput input, ControlBase root)
+    {
+        switch (path)
+        {
+            case "PreviewHandler":
+                _ = input.AddHandler(Events.Key, static (_, eventArgs) =>
+                {
+                    if (eventArgs.Phase == RoutingPhase.Preview)
+                    {
+                        eventArgs.Handled = true;
+                    }
+                });
+                break;
+
+            case "BubbleHandler":
+                _ = input.AddHandler(Events.Key, static (_, eventArgs) =>
+                {
+                    if (eventArgs.Phase == RoutingPhase.Bubble)
+                    {
+                        eventArgs.Handled = true;
+                    }
+                });
+                break;
+
+            case "AncestorPreviewHandler":
+                // Consumed before the event ever reaches the focused editor, which is the path a
+                // tunnelling shell handler takes.
+                _ = root.AddHandler(Events.Key, static (_, eventArgs) =>
+                {
+                    if (eventArgs.Phase == RoutingPhase.Preview)
+                    {
+                        eventArgs.Handled = true;
+                    }
+                });
+                break;
+
+            case "ControlDefault":
+                // TextInput's own Ctrl+A select-all default consumes the stroke.
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(path), path, "Unknown consume path.");
+        }
+    }
+
+    /// <summary>Verifies the public Image control emits its cell fallback before selected graphics.</summary>
+    [Fact]
+    public async Task StartAsync_WhenImageControlUsesSixel_RendersFallbackBeforeExactPlacementAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(2, 1), new Size(5, 3)));
+        var image = new Image
+        {
+            Source = Rgba(),
+            AlternateText = "AL",
+            Width = Length.Cells(2),
+            Height = Length.Cells(1)
+        };
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
+        {
+            Sixel = new Feature(CapabilitySupport.Supported, Origin.Override)
+        });
+        await using Application application = new(
+            image,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal with { Profile = profile });
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var bytes = Joined(terminal);
+        var fallback = bytes.AsSpan().IndexOf("AL"u8);
+        var graphics = bytes.AsSpan().IndexOf("\u001bP0;1;0q"u8);
+        fallback.ShouldBeGreaterThanOrEqualTo(0);
+        graphics.ShouldBeGreaterThan(fallback);
+        bytes.AsSpan().IndexOf("\"1;1;5;3"u8).ShouldBeGreaterThan(graphics);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a public PNG Image reaches explicit iTerm2 multipart after cell fallback.</summary>
+    [Fact]
+    public async Task StartAsync_WhenPngImageUsesIterm_RendersFallbackBeforeMultipartAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(2, 1)));
+        var image = new Image
+        {
+            Source = Png(),
+            AlternateText = "PN",
+            Width = Length.Cells(2),
+            Height = Length.Cells(1),
+            Stretch = ImageStretch.Contain
+        };
+        await using Application application = new(
+            image,
+            terminal,
+            terminal,
+            Options(iterm: true));
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var bytes = Joined(terminal);
+        var fallback = bytes.AsSpan().IndexOf("PN"u8);
+        var multipart = bytes.AsSpan().IndexOf("\u001b]1337;MultipartFile="u8);
+        fallback.ShouldBeGreaterThanOrEqualTo(0);
+        multipart.ShouldBeGreaterThan(fallback);
+        bytes.AsSpan().IndexOf("\u001b]1337;FileEnd"u8).ShouldBeGreaterThan(multipart);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        terminal.Disposals.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies a placement whose format has no encodable path on any enabled protocol pushes a
+    /// GraphicsDiagnostic event instead of leaving the degradation observable only through a
+    /// renderer the hosted Application never exposes.
+    /// </summary>
+    [Fact]
+    public async Task StartAsync_WhenImageFormatHasNoEncodablePath_RaisesGraphicsDiagnosticAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(2, 1), new Size(5, 3)));
+        var image = new Image
+        {
+            Source = Rgba(),
+            AlternateText = "PN",
+            Width = Length.Cells(2),
+            Height = Length.Cells(1)
+        };
+        await using Application application = new(
+            image,
+            terminal,
+            terminal,
+            Options(iterm: true));
+        var diagnosed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        GraphicsDiagnosticEventArgs? received = null;
+        application.GraphicsDiagnostic += OnGraphicsDiagnostic;
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await diagnosed.Task.WaitAsync(TestContext.Current.CancellationToken);
+        application.GraphicsDiagnostic -= OnGraphicsDiagnostic;
+
+        _ = received.ShouldNotBeNull();
+        var placement = received.Placements.ShouldHaveSingleItem();
+        placement.Reason.ShouldBe(GraphicsPlacementSkipReason.FormatNotEncodable);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        return;
+
+        void OnGraphicsDiagnostic(object? sender, GraphicsDiagnosticEventArgs eventArgs)
+        {
+            _ = sender;
+            received = eventArgs;
+            _ = diagnosed.TrySetResult();
+        }
+    }
+
+    /// <summary>
+    /// Verifies a clean frame - every placement encodes normally - never raises GraphicsDiagnostic
+    /// at all, matching how the other opportunistic terminal-diagnostic events on Application only
+    /// fire on an actual occurrence rather than every frame.
+    /// </summary>
+    [Fact]
+    public async Task StartAsync_WhenFrameHasNoSkippedPlacements_NeverRaisesGraphicsDiagnosticAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(2, 1), new Size(5, 3)));
+        var image = new Image
+        {
+            Source = Rgba(),
+            AlternateText = "AL",
+            Width = Length.Cells(2),
+            Height = Length.Cells(1)
+        };
+        await using Application application = new(
+            image,
+            terminal,
+            terminal,
+            Options(sixel: true));
+        var raised = false;
+        application.GraphicsDiagnostic += OnGraphicsDiagnostic;
+        var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.FrameRendered += OnFrameRendered;
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await rendered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        application.FrameRendered -= OnFrameRendered;
+        application.GraphicsDiagnostic -= OnGraphicsDiagnostic;
+
+        raised.ShouldBeFalse();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        return;
+
+        void OnGraphicsDiagnostic(object? sender, GraphicsDiagnosticEventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            raised = true;
+        }
+
+        void OnFrameRendered(object? sender, FrameRenderedEventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            _ = rendered.TrySetResult();
+        }
+    }
+
+    /// <summary>Verifies a resolved Kitty identity cannot promote tentative graphics capability evidence.</summary>
+    [Fact]
+    public async Task StartAsync_WhenKittyIdentityOnlyHasTentativeGraphics_PreservesCellFallbackAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(1, 1), new Size(2, 3)));
+        var options = TerminalOptions.Minimal with
+        {
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" },
+                limits: QueryLimits.Default with { QueryTimeout = TimeSpan.FromMilliseconds(100) })
+        };
+        await using Application application = new(
+            new Image { Source = Rgba(), AlternateText = "F" },
+            terminal,
+            terminal,
+            options);
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var bytes = Joined(terminal);
+        bytes.AsSpan().IndexOf("F"u8).ShouldBeGreaterThanOrEqualTo(0);
+        bytes.AsSpan().IndexOf("a=t,"u8).ShouldBe(-1);
+        bytes.AsSpan().IndexOf("\u001b]1337;MultipartFile="u8).ShouldBe(-1);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an occluded upper Image transitively blocks an overlapping lower Kitty placement.</summary>
+    [Fact]
+    public async Task StartAsync_WhenUpperImageFallsBack_BlocksOverlappingLowerKittyPlacementAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(3, 1), new Size(6, 3)));
+        var lower = new Image
+        {
+            Source = GraphicsImage.FromRgba(new Size(1, 1), [255, 0, 0, 255]),
+            AlternateText = "AA",
+            Width = Length.Cells(2),
+            Height = Length.Cells(1)
+        };
+        var upper = new Image
+        {
+            Source = GraphicsImage.FromRgba(new Size(1, 1), [0, 255, 0, 255]),
+            AlternateText = "BB",
+            Width = Length.Cells(2),
+            Height = Length.Cells(1)
+        };
+        var cover = new ControlText("X")
+        {
+            Width = Length.Cells(1),
+            Height = Length.Cells(1)
+        };
+        var root = new Overlay { Children = { lower, upper, cover } };
+        Overlay.SetLeft(upper, Length.Cells(1));
+        Overlay.SetLeft(cover, Length.Cells(2));
+        await using Application application = new(
+            root,
+            terminal,
+            terminal,
+            Options(kitty: true));
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var bytes = Joined(terminal);
+        bytes.AsSpan().IndexOf("ABX"u8).ShouldBeGreaterThanOrEqualTo(0);
+        bytes.AsSpan().IndexOf("a=t,"u8).ShouldBe(-1);
+        bytes.AsSpan().IndexOf("a=p,"u8).ShouldBe(-1);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies negotiated graphics selection waits for the profile barrier and receives live exact metrics.</summary>
+    [Fact]
+    public async Task StartAsync_WhenSixelIsNegotiated_SelectsBackendAfterBarrierWithLiveMetricsAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(2, 1), new Size(5, 3)));
+        var options = TerminalOptions.Minimal with
+        {
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?>(),
+                new CapabilityOverrides { Sixel = true })
+        };
+        var queried = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += value =>
+        {
+            if (value.Span.IndexOf("\u001b[c"u8) >= 0)
+            {
+                _ = queried.TrySetResult();
+            }
+        };
+        await using Application application = new(
+            new GraphicsProbeControl(Rgba()),
+            terminal,
+            terminal,
+            options);
+
+        var starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
+        await queried.Task.WaitAsync(TestContext.Current.CancellationToken);
+        Joined(terminal).AsSpan().IndexOf("\u001bP0;1;0q"u8).ShouldBe(-1);
+        terminal.QueueInput(NegotiationReplies());
+        await starting;
+
+        var bytes = Joined(terminal);
+        bytes.AsSpan().IndexOf("\u001bP0;1;0q"u8).ShouldBeGreaterThanOrEqualTo(0);
+        bytes.AsSpan().IndexOf("\"1;1;5;3"u8).ShouldBeGreaterThanOrEqualTo(0);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies detected multiplexer layers prevent unwrapped graphics when routing is unauthorized.</summary>
+    [Fact]
+    public async Task StartAsync_WhenLayeredRouteIsUnauthorized_PreservesCellFallbackWithoutDirectLeakAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(1, 1), new Size(2, 3)));
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative));
+        var options = TerminalOptions.Minimal with
+        {
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?>(),
+                new CapabilityOverrides { Sixel = true },
+                limits: null,
+                multiplexing: policy)
+        };
+        var queried = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += value =>
+        {
+            if (value.Span.IndexOf("\u001b[c"u8) >= 0)
+            {
+                _ = queried.TrySetResult();
+            }
+        };
+        await using Application application = new(
+            new GraphicsProbeControl(Rgba()),
+            terminal,
+            terminal,
+            options);
+
+        var starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
+        await queried.Task.WaitAsync(TestContext.Current.CancellationToken);
+        terminal.QueueInput(NegotiationReplies());
+        await starting;
+
+        var bytes = Joined(terminal);
+        bytes.AsSpan().IndexOf("\u001bP0;1;0q"u8).ShouldBe(-1);
+        bytes.AsSpan().IndexOf("\u001bPtmux;"u8).ShouldBe(-1);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a pinned profile - which suppresses startup negotiation entirely - still
+    /// routes graphics selection through an explicit Multiplexing policy carried independently of
+    /// Negotiation, so an unauthorized route cannot silently degrade into a direct leak just because
+    /// the host pinned capabilities to avoid probing.</summary>
+    [Fact]
+    public async Task StartAsync_WhenProfileIsPinnedWithUnauthorizedMultiplexing_PreservesCellFallbackWithoutDirectLeakAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(1, 1), new Size(2, 3)));
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative));
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
+        {
+            Sixel = new Feature(CapabilitySupport.Supported, Origin.Override)
+        });
+        var options = TerminalOptions.Minimal with
+        {
+            Profile = profile,
+            Multiplexing = policy
+        };
+        await using Application application = new(
+            new GraphicsProbeControl(Rgba()),
+            terminal,
+            terminal,
+            options);
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var bytes = Joined(terminal);
+        bytes.AsSpan().IndexOf("\u001bP0;1;0q"u8).ShouldBe(-1);
+        bytes.AsSpan().IndexOf("\u001bPtmux;"u8).ShouldBe(-1);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Kitty cleanup delete and flush complete before Session disposes transport.</summary>
+    [Fact]
+    public async Task StopAsync_WhenKittyStateExists_DeletesAndFlushesBeforeTransportDisposalAsync()
+    {
+        List<string> order = [];
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(1, 1), new Size(2, 3)));
+        terminal.Written += value =>
+        {
+            if (value.Span.IndexOf("a=d,d=I"u8) >= 0)
+            {
+                order.Add("delete");
+            }
+        };
+        terminal.Flushed += () =>
+        {
+            if (order.Contains("delete", StringComparer.Ordinal) &&
+                !order.Contains("flush", StringComparer.Ordinal))
+            {
+                order.Add("flush");
+            }
+        };
+        terminal.Disposed += () => order.Add("dispose");
+        await using Application application = new(
+            new GraphicsProbeControl(Rgba()),
+            terminal,
+            terminal,
+            Options(kitty: true));
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        order.ShouldBe(["delete", "flush", "dispose"]);
+    }
+
+    /// <summary>Verifies cleanup write failure remains diagnostic and cannot skip transport disposal.</summary>
+    [Fact]
+    public async Task StopAsync_WhenGraphicsCleanupFails_StillDisposesSessionTransportAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(1, 1), new Size(2, 3)));
+        await using Application application = new(
+            new GraphicsProbeControl(Rgba()),
+            terminal,
+            terminal,
+            Options(kitty: true));
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var failure = new IOException("graphics cleanup failed");
+        terminal.FailWriteNumber = terminal.Writes.Count + 1;
+        terminal.WriteFailure = failure;
+
+        _ = await Should.ThrowAsync<IOException>(async () =>
+            await application.StopAsync(TestContext.Current.CancellationToken));
+
+        terminal.Disposals.ShouldBe(1);
+        application.LastCleanupException.ShouldBeSameAs(failure);
+    }
+
+    /// <summary>Verifies a later profile revocation removes retained graphics without another upload.</summary>
+    [Fact]
+    public async Task Profile_WhenKittySupportIsRevoked_RemovesRemoteImageAndStopsGraphicsAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(1, 1), new Size(2, 3)));
+        await using Application application = new(
+            new Image { Source = Rgba(), AlternateText = "F" },
+            terminal,
+            terminal,
+            Options(kitty: true));
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var writeCount = terminal.Writes.Count;
+        var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.FrameRendered += OnFrameRendered;
+        var revoked = TerminalCapabilities.Conservative with
+        {
+            KittyGraphics = new Feature(CapabilitySupport.Unsupported, Origin.Override)
+        };
+
+        application.Profile(revoked);
+        await rendered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        application.FrameRendered -= OnFrameRendered;
+
+        var bytes = terminal.Writes.Skip(writeCount).SelectMany(static value => value).ToArray();
+        bytes.AsSpan().IndexOf("a=d,d=I"u8).ShouldBeGreaterThanOrEqualTo(0);
+        bytes.AsSpan().IndexOf("a=t,"u8).ShouldBe(-1);
+        bytes.AsSpan().IndexOf("a=p,"u8).ShouldBe(-1);
+        application.Capabilities.ShouldBeSameAs(revoked);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        return;
+
+        void OnFrameRendered(object? sender, FrameRenderedEventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            _ = rendered.TrySetResult();
+        }
+    }
+
+    /// <summary>Verifies profile revocation waits for an in-flight Kitty transaction to commit.</summary>
+    [Fact]
+    public async Task Profile_WhenKittyFlushIsPaused_CommitsThenRemovesOnNextFrameAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(1, 1), new Size(2, 3)));
+        var image = new Image { Source = Rgba(), AlternateText = "F" };
+        await using Application application = new(
+            image,
+            terminal,
+            terminal,
+            Options(kitty: true));
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var writeCount = terminal.Writes.Count;
+        terminal.PauseFlush();
+        var uploaded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var frameCount = 0;
+        terminal.Written += OnWritten;
+        application.FrameRendered += OnFrameRendered;
+
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                image.Source = GraphicsImage.FromRgba(new Size(1, 1), [0, 255, 0, 255]);
+            },
+            TestContext.Current.CancellationToken);
+        await uploaded.Task.WaitAsync(TestContext.Current.CancellationToken);
+        var revoked = TerminalCapabilities.Conservative with
+        {
+            KittyGraphics = new Feature(CapabilitySupport.Unsupported, Origin.Override)
+        };
+        application.Profile(revoked);
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+
+        application.Capabilities.ShouldBeSameAs(revoked);
+        terminal.ReleaseFlush();
+        await rendered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        terminal.Written -= OnWritten;
+        application.FrameRendered -= OnFrameRendered;
+
+        var bytes = terminal.Writes.Skip(writeCount).SelectMany(static value => value).ToArray();
+        var upload = bytes.AsSpan().IndexOf("a=t,"u8);
+        var removal = bytes.AsSpan().IndexOf("a=d,d=I"u8);
+        upload.ShouldBeGreaterThanOrEqualTo(0);
+        removal.ShouldBeGreaterThan(upload);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        terminal.Disposals.ShouldBe(1);
+        return;
+
+        void OnWritten(ReadOnlyMemory<byte> value)
+        {
+            if (value.Span.IndexOf("a=t,"u8) >= 0)
+            {
+                _ = uploaded.TrySetResult();
+            }
+        }
+
+        void OnFrameRendered(object? sender, FrameRenderedEventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            frameCount++;
+
+            if (frameCount == 2)
+            {
+                _ = rendered.TrySetResult();
+            }
+        }
+    }
+
+    /// <summary>Verifies a later profile revocation stops sixel and repairs the cell fallback.</summary>
+    [Fact]
+    public async Task Profile_WhenSixelSupportIsRevoked_StopsRasterOutputAndRepairsCellsAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(1, 1), new Size(2, 3)));
+        await using Application application = new(
+            new Image { Source = Rgba(), AlternateText = "F" },
+            terminal,
+            terminal,
+            Options(sixel: true));
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var writeCount = terminal.Writes.Count;
+        var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.FrameRendered += OnFrameRendered;
+        var revoked = TerminalCapabilities.Conservative with
+        {
+            Sixel = new Feature(CapabilitySupport.Unsupported, Origin.Override)
+        };
+
+        application.Profile(revoked);
+        await rendered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        application.FrameRendered -= OnFrameRendered;
+
+        var bytes = terminal.Writes.Skip(writeCount).SelectMany(static value => value).ToArray();
+        bytes.ShouldNotBeEmpty();
+        bytes.AsSpan().IndexOf("\u001bP0;1;0q"u8).ShouldBe(-1);
+        bytes.AsSpan().IndexOf("F"u8).ShouldBeGreaterThanOrEqualTo(0);
+        application.Capabilities.ShouldBeSameAs(revoked);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        return;
+
+        void OnFrameRendered(object? sender, FrameRenderedEventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            _ = rendered.TrySetResult();
+        }
+    }
+
+    private static TerminalOptions Options(
+        bool kitty = false,
+        bool sixel = false,
+        bool iterm = false) => TerminalOptions.Minimal with
+        {
+            Profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
+            {
+                KittyGraphics = new Feature(
+                kitty ? CapabilitySupport.Supported : CapabilitySupport.Unsupported,
+                Origin.Override),
+                Sixel = new Feature(
+                sixel ? CapabilitySupport.Supported : CapabilitySupport.Unsupported,
+                Origin.Override),
+                ItermImages = new Feature(
+                iterm ? CapabilitySupport.Supported : CapabilitySupport.Unsupported,
+                Origin.Override)
+            })
+        };
+
+    private static GraphicsImage Rgba() => GraphicsImage.FromRgba(
+        new Size(1, 1),
+        [255, 0, 0, 255]);
+
+    private static GraphicsImage Png() => GraphicsImage.FromPng(Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEUlEQVR4nGP4z8DA8B+MgBgAHfAD/dPQfSYAAAAASUVORK5CYII="));
+
+    private static byte[] NegotiationReplies() => Encoding.ASCII.GetBytes(
+        "\u001b[?1016;1$y\u001b[?1006;1$y\u001b[?2004;1$y" +
+        "\u001b[?1004;1$y\u001b[?2026;1$y\u001b[?3u\u001b[?1;2c");
+
+    private static byte[] Joined(FakeTerminal terminal) =>
+        [.. terminal.Writes.SelectMany(static value => value)];
+
+    /// <summary>Verifies disposal before start still disposes the owned host lease exactly once.</summary>
+    [Fact]
+    public async Task DisposeAsync_WhenNeverStarted_DisposesHostLeaseOnceAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var lease = new TrackingLease();
+        var application = new Application(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            options: null,
+            hostLease: lease);
+
+        await application.DisposeAsync();
+
+        lease.Disposals.ShouldBe(1);
+    }
+
+    /// <summary>Verifies the mnemonic focuses the declared target even when an unrelated control
+    /// sits between the label and its target in tab order — the exact scenario the default
+    /// next-tab-stop behavior gets wrong.</summary>
+    [Fact]
+    public async Task Input_WhenLabelHasAccessKeyTarget_FocusesTargetDespiteInterveningTabStopAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var unrelated = new TextInput { Text = "unrelated" };
+        var target = new TextInput { Text = "target" };
+        var label = new ControlText("&Name") { UseMnemonic = true };
+        var root = new Stack { Children = { label, unrelated, target } };
+        label.AccessKeyTarget = target;
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var stroke = Alt('n');
+
+        application.Input(in stroke);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        application.Focus.Focused.ShouldBeSameAs(target);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an unset target preserves the documented default: focus moves to the next
+    /// tab stop after the label.</summary>
+    [Fact]
+    public async Task Input_WhenLabelHasNoAccessKeyTarget_MovesToNextTabStopAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var next = new TextInput { Text = "next" };
+        var label = new ControlText("&Name") { UseMnemonic = true };
+        var root = new Stack { Children = { label, next } };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var stroke = Alt('n');
+
+        application.Input(in stroke);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        application.Focus.Focused.ShouldBeSameAs(next);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a disabled target declines the access key deterministically instead of
+    /// falling back to tab-stop traversal or throwing.</summary>
+    [Fact]
+    public async Task Input_WhenAccessKeyTargetIsDisabled_DeclinesWithoutChangingFocusAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var target = new TextInput { Text = "target", Enabled = false };
+        var next = new TextInput { Text = "next" };
+        var label = new ControlText("&Name") { UseMnemonic = true };
+        var root = new Stack { Children = { label, target, next } };
+        label.AccessKeyTarget = target;
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var stroke = Alt('n');
+
+        application.Input(in stroke);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        application.Focus.Focused.ShouldBeNull();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a target that does not belong to the same tree declines deterministically
+    /// rather than throwing.</summary>
+    [Fact]
+    public async Task Input_WhenAccessKeyTargetIsDetached_DeclinesWithoutThrowingAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var detachedTarget = new TextInput { Text = "detached" };
+        var label = new ControlText("&Name") { UseMnemonic = true };
+        var root = new Stack { Children = { label } };
+        label.AccessKeyTarget = detachedTarget;
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var stroke = Alt('n');
+
+        application.Input(in stroke);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        application.Focus.Focused.ShouldBeNull();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies posted bytes reach the transport while the application is running.</summary>
+    [Fact]
+    public async Task PostOutOfBand_WhenApplicationRunning_WritesBytesToTransportAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var bell = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += memory =>
+        {
+            if (memory.Span.IndexOf((byte) 0x07) >= 0)
+            {
+                _ = bell.TrySetResult();
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.PostOutOfBand(new byte[] { 0x07 });
+        await bell.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a render deferred behind an in-flight frame flush still lands once a
+    /// successful out-of-band write completes, without waiting for a separate dispatcher idle
+    /// tick. CompleteRender prefers draining the out-of-band queue over the deferred render
+    /// whenever both are pending, and PumpAfterWrite already re-checks that same deferred render
+    /// once the out-of-band write's own completion runs - this pins that existing chain so a
+    /// future change cannot silently reintroduce a stranding gap in the common, non-faulting
+    /// path.</summary>
+    [Fact]
+    public async Task FrameRendered_WhenOutOfBandWriteCompletesWhileRenderIsPending_RunsWithoutIdleTickAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var probe = new ProbeControl { Content = "a".AsMemory() };
+        await using Application application = new(probe, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        terminal.PauseFlush();
+
+        // Content actually changes each time - an invalidate alone can produce a zero-byte diff
+        // that the renderer never hands to the transport at all, which would never engage the
+        // paused flush this test relies on.
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                probe.Content = "b".AsMemory();
+                probe.InvalidateKernel(InvalidationImpact.Render);
+            },
+            TestContext.Current.CancellationToken);
+        await WaitForAsync(() => application.IsRendering, TimeSpan.FromSeconds(5));
+
+        // Only observed from here on: while the first frame's write holds the dispatcher pending,
+        // no idle transition can occur at all, so anything caught earlier would be the ordinary
+        // idle tick that started this very frame - not evidence of the recovery under test.
+        var idleFired = false;
+        void IdleHandler(object? sender, EventArgs eventArgs) => idleFired = true;
+        application.Dispatcher.Idle += IdleHandler;
+
+        var secondFrame = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var frames = 0;
+        application.FrameRendered += (_, _) =>
+        {
+            frames++;
+
+            if (frames == 2)
+            {
+                // Unsubscribed from inside the very handler that observes the target frame, still
+                // on the dispatcher thread and before this frame's own Dispatcher.Hold releases -
+                // the legitimate idle tick that follows full quiescence must not be mistaken for a
+                // stranding symptom.
+                application.Dispatcher.Idle -= IdleHandler;
+                _ = secondFrame.TrySetResult();
+            }
+        };
+
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                probe.Content = "c".AsMemory();
+                probe.InvalidateKernel(InvalidationImpact.Render);
+            },
+            TestContext.Current.CancellationToken);
+        application.PostOutOfBand(new byte[] { 0x07 });
+        terminal.ReleaseFlush();
+
+        await secondFrame.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        frames.ShouldBe(2);
+        idleFired.ShouldBeFalse();
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a render request pending behind an out-of-band write still lands once
+    /// that write faults and the failure is handled, without waiting for a separate dispatcher
+    /// idle tick. Before the fix, CompleteOutOfBand returned as soon as Report ran, skipping
+    /// PumpAfterWrite entirely on this path and leaving the deferred render stranded until an
+    /// unrelated invalidation or idle tick happened to notice it.</summary>
+    [Fact]
+    public async Task FrameRendered_WhenOutOfBandWriteFaultsAndFailureIsHandled_RunsWithoutIdleTickAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var probe = new ProbeControl();
+        await using Application application = new(probe, terminal, terminal, TerminalOptions.Minimal);
+        application.UnhandledException += (_, eventArgs) => eventArgs.Handled = true;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        // Targets the very next write - the out-of-band write triggered below is the only thing
+        // that writes anything between here and the assertion.
+        terminal.WriteFailure = new InvalidOperationException("Injected out-of-band write failure.");
+        terminal.FailWriteNumber = terminal.Writes.Count + 1;
+
+        var idleFired = false;
+        void IdleHandler(object? sender, EventArgs eventArgs) => idleFired = true;
+
+        var recovered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.FrameRendered += (_, _) =>
+        {
+            // Unsubscribed from inside this very handler, still on the dispatcher thread and
+            // before this frame's own Dispatcher.Hold releases - the legitimate idle tick that
+            // follows full quiescence must not be mistaken for a stranding symptom.
+            application.Dispatcher.Idle -= IdleHandler;
+            _ = recovered.TrySetResult();
+        };
+
+        // Subscribing to Idle inside the same dispatcher callback that requests the render and
+        // posts the out-of-band bytes leaves no gap in which an unrelated idle tick - e.g. the
+        // one that would ordinarily follow the first frame settling - could be mistaken for
+        // evidence one way or the other.
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                application.Dispatcher.Idle += IdleHandler;
+
+                // A content change (rather than a no-op invalidate) gives the deferred render an
+                // actual diff to transmit, so its recovery is also visible on the wire and not
+                // just through the FrameRendered event.
+                probe.Content = "recovered".AsMemory();
+                probe.InvalidateKernel(InvalidationImpact.Render);
+                application.PostOutOfBand(new byte[] { 0x07 });
+            },
+            TestContext.Current.CancellationToken);
+
+        await recovered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        idleFired.ShouldBeFalse();
+
+        // The handled failure is still the application's recorded Failure - by design, it
+        // resurfaces from StopAsync once the run completes, even though the run itself kept going
+        // and this deferred render still landed. That resurfacing is not what this test is about.
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+    }
+
+    // IsRendering has no change notification of its own, so a condition built on it cannot be
+    // awaited through an event or a completion source. Polling the flag is the only available
+    // signal; the wait stays real wall-clock by necessity, not oversight.
+    private static async Task WaitForAsync(Func<bool> condition, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+
+        while (!condition())
+        {
+            if (DateTime.UtcNow > deadline)
+            {
+                throw new TimeoutException("The awaited condition never became true.");
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(10));
+        }
+    }
+
+    /// <summary>Verifies the pointer snapshot is non-null and unobserved before any input.</summary>
+    [Fact]
+    public async Task Pointer_WhenConstructed_IsNonNullSnapshotAsync()
+    {
+        await using FakeTerminal terminal = new();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+
+        _ = application.Pointer.ShouldNotBeNull();
+        application.Pointer.Position.ShouldBeNull();
+        application.HasFocus.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies IsRendering returns to false after the dispatcher is disposed mid-render
+    /// and the paused transport flush later completes, instead of staying latched true forever.</summary>
+    [Fact]
+    public async Task IsRendering_WhenDispatcherIsDisposedWhileFlushIsPending_RetiresAfterFlushCompletesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.PauseFlush();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var application = new Application(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+
+        try
+        {
+            var starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
+
+            // Swallow the fault StartAsync will surface once the dispatcher beneath it disposes;
+            // the race under test is entirely about IsRendering's own bookkeeping, not startup
+            // completion.
+            _ = starting.ContinueWith(
+                static task => _ = task.Exception,
+                TestContext.Current.CancellationToken,
+                TaskContinuationOptions.OnlyOnFaulted,
+                TaskScheduler.Default);
+
+            await WaitForAsync(() => application.IsRendering, TimeSpan.FromSeconds(5));
+            application.IsRendering.ShouldBeTrue();
+
+            await application.Dispatcher.DisposeAsync();
+            terminal.ReleaseFlush();
+
+            await WaitForAsync(() => !application.IsRendering, TimeSpan.FromSeconds(5));
+
+            application.IsRendering.ShouldBeFalse();
+        }
+        finally
+        {
+            // The dispatcher was already disposed directly above to construct the race; a second,
+            // orderly Application.DisposeAsync would itself throw ObjectDisposedException trying to
+            // hop back onto it, which is expected and irrelevant to the assertion above.
+            try
+            {
+                await application.DisposeAsync();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+    }
+
+    /// <summary>Verifies a synchronous Prepare fault on the very first render surfaces through
+    /// StartAsync and Failure, and still disposes the transport, instead of leaving _rendering
+    /// permanently set and the shutdown drain awaiting an unobservable render task.</summary>
+    [Fact]
+    public async Task StartAsync_WhenRenderAsyncFaultsSynchronously_CompletesInsteadOfHangingAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(4, 2)));
+        var backend = new ThrowingGraphicsBackend();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        application.SeedRenderer(new Renderer(backend));
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StartAsync(TestContext.Current.CancellationToken));
+
+        thrown.ShouldBeSameAs(backend.Failure);
+        application.Failure.ShouldBeSameAs(backend.Failure);
+        terminal.Disposals.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a shortcut invokes its item without ever reaching Router.Route, so a
+    /// focused TextInput neither consumes the chord nor sees it as typed text.</summary>
+    [Fact]
+    public async Task Input_WhenShortcutMatchesWhileTextInputIsFocused_InvokesItemBeforeRoutingAsync()
+    {
+        // Arrange
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var input = new TextInput { Text = "seed" };
+        var menu = new Menu();
+        var gesture = new KeyGesture(Code.Character, Modifiers.Control, new Rune('s'));
+        var save = new MenuItem { Text = "Save", Shortcut = gesture };
+        menu.Items.Add(save);
+        var root = new Stack { Children = { input, menu } };
+        var routedKeyPresses = 0;
+        _ = root.AddHandler(Events.Key, (_, eventArgs) =>
+        {
+            if (eventArgs.Phase == RoutingPhase.Preview)
+            {
+                routedKeyPresses++;
+            }
+        });
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        ActivationCause? cause = null;
+        save.Invoked += (_, eventArgs) => cause = eventArgs.Cause;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(input).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        var stroke = new Stroke(Code.Character, new Rune('s'), nativeCode: 0, Modifiers.Control, KeyAction.Press);
+
+        // Act
+        application.Input(in stroke);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        cause.ShouldBe(ActivationCause.Keyboard);
+        routedKeyPresses.ShouldBe(0);
+        input.Text.ShouldBe("seed");
+        application.Focus.Focused.ShouldBeSameAs(input);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a modifier-less shortcut suppresses its adjacent paired text record, so
+    /// the chord fires its command without also typing the character into the focused editor.
+    /// Plain printable chords are the leaking case: the terminal reports a stroke and a text
+    /// record for the same keystroke, and only the access-key path suppressed the text record
+    /// before this fix.</summary>
+    [Fact]
+    public async Task Input_WhenPlainShortcutMatchesWhileTextInputIsFocused_SuppressesPairedTextAsync()
+    {
+        // Arrange
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var input = new TextInput { Text = "seed" };
+        var menu = new Menu();
+        var gesture = new KeyGesture(Code.Character, Modifiers.None, new Rune('q'));
+        var quit = new MenuItem { Text = "Quit", Shortcut = gesture };
+        menu.Items.Add(quit);
+        var root = new Stack { Children = { input, menu } };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        var invocations = 0;
+        quit.Invoked += (_, _) => invocations++;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(input).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        var stroke = new Stroke(Code.Character, new Rune('q'), nativeCode: 0, Modifiers.None, KeyAction.Press);
+        var text = new TerminalText(new Rune('q'));
+
+        // Act
+        application.Input(in stroke);
+        application.Input(in text);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        invocations.ShouldBe(1);
+        input.Text.ShouldBe("seed");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an unmatched key still reaches routed handling normally.</summary>
+    [Fact]
+    public async Task Input_WhenNoShortcutMatches_RoutesTheKeyNormallyAsync()
+    {
+        // Arrange
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var input = new TextInput();
+        var menu = new Menu();
+        var save = new MenuItem
+        {
+            Text = "Save",
+            Shortcut = new KeyGesture(Code.Character, Modifiers.Control, new Rune('s'))
+        };
+        menu.Items.Add(save);
+        var root = new Stack { Children = { input, menu } };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        var invocations = 0;
+        save.Invoked += (_, _) => invocations++;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(input).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        var stroke = new Stroke(Code.Character, new Rune('x'), nativeCode: 0, Modifiers.None, KeyAction.Press);
+        var text = new TerminalText(new Rune('x'));
+
+        // Act
+        application.Input(in stroke);
+        application.Input(in text);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        invocations.ShouldBe(0);
+        input.Text.ShouldBe("x");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies modality is unavailable until initial tree attachment and then inherited before callbacks.</summary>
+    [Fact]
+    public async Task Modality_WhenReadBeforeFirstResize_ThrowsInvalidOperationExceptionAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var root = new ProbeOwnedControl();
+        var observer = new OwnershipObserverControl();
+        root.AddPrimary(observer);
+        await using Application application = new(
+            root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        ModalityManager? observed = null;
+        observer.Attaching = control =>
+        {
+            observed = application.Modality;
+            control.InheritedModalityOwner.ShouldBeSameAs(observed);
+        };
+
+        _ = Should.Throw<InvalidOperationException>(() => application.Modality);
+
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        observed.ShouldBeSameAs(application.Modality);
+        application.Modality.Active.ShouldBeNull();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies application shutdown unwinds modality before pointer and focus without restoring saved focus.</summary>
+    [Fact]
+    public async Task Dispose_WhenApplicationStops_UnwindsWithoutRestoringFocusAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(12, 4)));
+        var root = new ProbeContainer();
+        var background = new OwnershipObserverControl { Focusable = true };
+        var plane = new ProbeContainer();
+        var initial = new ProbeControl { Focusable = true };
+        plane.Children.Add(initial);
+        root.Children.Add(background);
+        root.Children.Add(plane);
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        ModalScope? scope = null;
+        var backgroundRestorations = 0;
+        var exited = 0;
+
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            application.Focus.Focus(background).ShouldBeTrue();
+            scope = application.Modality.Enter(plane, initialFocus: initial);
+            application.Focus.Gained += (_, args) =>
+            {
+                if (ReferenceEquals(args.Current, background))
+                {
+                    backgroundRestorations++;
+                }
+            };
+            scope.Exited += (_, _) =>
+            {
+                exited++;
+                background.InheritedFocusOwner.ShouldBeSameAs(application.Focus);
+                background.InheritedCaptureOwner.ShouldBeSameAs(application.Capture);
+            };
+        }, TestContext.Current.CancellationToken);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        _ = scope.ShouldNotBeNull();
+        scope.Active.ShouldBeFalse();
+        exited.ShouldBe(1);
+        backgroundRestorations.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a throwing modal exit cannot skip pointer, focus, root, or application cleanup.</summary>
+    [Fact]
+    public async Task Dispose_WhenModalExitCallbackThrows_CompletesApplicationCleanupAndPreservesFailureAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(12, 4)));
+        var root = new ProbeContainer();
+        var plane = new ProbeContainer();
+        root.Children.Add(plane);
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        ModalScope? scope = null;
+        var expected = new InvalidOperationException("modal exit failed");
+
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            scope = application.Modality.Enter(plane);
+            scope.Exited += (_, _) => throw expected;
+        }, TestContext.Current.CancellationToken);
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await application.StopAsync(TestContext.Current.CancellationToken));
+
+        thrown.ShouldBeSameAs(expected);
+        application.Failure.ShouldBeSameAs(expected);
+        application.Completion.IsFaulted.ShouldBeTrue();
+        root.Disposed.ShouldBeTrue();
+        root.FocusOwner.ShouldBeNull();
+        root.CaptureOwner.ShouldBeNull();
+        root.ModalityOwner.ShouldBeNull();
+        _ = scope.ShouldNotBeNull();
+        scope.Active.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies resize preserves the exact modal services, active scope, and focused target.</summary>
+    [Fact]
+    public async Task Resize_WhenModalScopeIsActive_PreservesServiceScopeAndFocusIdentityAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(12, 4)));
+        var root = new ProbeContainer();
+        var background = new ProbeControl { Focusable = true };
+        var plane = new ProbeContainer();
+        var initial = new ProbeControl { Focusable = true };
+        plane.Children.Add(initial);
+        root.Children.Add(background);
+        root.Children.Add(plane);
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        ModalScope? scope = null;
+        var modality = application.Modality;
+        var focus = application.Focus;
+        var capture = application.Capture;
+        var resized = new TaskCompletionSource<(
+            Dimensions Dimensions,
+            ModalityManager Modality,
+            FocusManager Focus,
+            PointerManager Capture,
+            ModalScope? Active,
+            ControlBase? Focused,
+            Size Size,
+            Rect Bounds)>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            application.Focus.Focus(background).ShouldBeTrue();
+            scope = application.Modality.Enter(plane, initialFocus: initial);
+            application.Resize += (_, eventArgs) =>
+            {
+                try
+                {
+                    _ = resized.TrySetResult((
+                        eventArgs.Dimensions,
+                        application.Modality,
+                        application.Focus,
+                        application.Capture,
+                        application.Modality.Active,
+                        application.Focus.Focused,
+                        application.Size,
+                        root.Bounds));
+                }
+                catch (Exception exception)
+                {
+                    _ = resized.TrySetException(exception);
+                }
+            };
+        }, TestContext.Current.CancellationToken);
+
+        terminal.QueueResize(new Dimensions(new Size(20, 7), new Size(160, 112)));
+        var observed = await resized.Task.WaitAsync(
+            TimeSpan.FromSeconds(2),
+            TestContext.Current.CancellationToken);
+
+        observed.Dimensions.Cells.ShouldBe(new Size(20, 7));
+        observed.Modality.ShouldBeSameAs(modality);
+        observed.Focus.ShouldBeSameAs(focus);
+        observed.Capture.ShouldBeSameAs(capture);
+        observed.Active.ShouldBeSameAs(scope);
+        observed.Focused.ShouldBeSameAs(initial);
+        observed.Size.ShouldBe(new Size(20, 7));
+        observed.Bounds.ShouldBe(new Rect(0, 0, 20, 7));
+        application.Size.ShouldBe(new Size(20, 7));
+        application.Modality.ShouldBeSameAs(modality);
+        application.Modality.Active.ShouldBeSameAs(scope);
+        scope.ShouldNotBeNull().Active.ShouldBeTrue();
+        application.Focus.Focused.ShouldBeSameAs(initial);
+        root.Bounds.ShouldBe(new Rect(0, 0, 20, 7));
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a suspended host resumes with layout before its first positive frame.</summary>
+    [Fact]
+    public async Task Resize_WhenSuspendedHostBecomesPositive_LayoutsBeforeFrameAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(0, 0)));
+        var root = new ProbeControl();
+        await using Application application = new(
+            root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        List<string> order = [];
+        var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.Resize += (_, eventArgs) =>
+        {
+            root.Bounds.Width.ShouldBe(eventArgs.Dimensions.Cells.Width);
+            root.Bounds.Height.ShouldBe(eventArgs.Dimensions.Cells.Height);
+            order.Add("resize");
+        };
+        application.FrameRendered += (_, _) =>
+        {
+            order.Add("frame");
+            _ = rendered.TrySetResult();
+        };
+
+        terminal.QueueResize(new Dimensions(new Size(12, 5), new Size(96, 80)));
+        await rendered.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        application.Size.ShouldBe(new Size(12, 5));
+        order.ShouldBe(["resize", "frame"]);
+        terminal.Writes.ShouldNotBeEmpty();
+        await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
     /// <summary>Never delivers input or a resize, so a session started against it stays live until

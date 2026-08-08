@@ -14,7 +14,7 @@ using SharpVision.Runtime;
 /// all. It was never implemented rather than implemented and lost, so a consumer who called it got
 /// a silent no-op with no diagnostic.</para>
 /// </summary>
-public sealed class EnvironmentSizeOverrideTests
+public sealed class EnvironmentSizeResizeSourceTests
 {
     /// <summary>The core promise: the first observation carries the environment's size.</summary>
     [Fact]
