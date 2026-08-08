@@ -33,6 +33,10 @@ internal static class ChartRenderer
     internal static LinePattern ResolveSeriesPattern(ChartStyle style, ChartSeries series) =>
         series.LinePattern ?? style.LinePattern;
 
+    /// <summary>Maps a finite value to its clamped 0-1 position within a resolved range.</summary>
+    internal static double Ratio(ChartScaleRange range, double value) =>
+        Math.Clamp((value - range.Minimum) / (range.Maximum - range.Minimum), 0, 1);
+
     /// <summary>Maps a finite value to an inclusive vertical plot cell.</summary>
     internal static int MapY(ChartScaleRange range, double value, Rect plot)
     {
@@ -41,7 +45,7 @@ internal static class ChartRenderer
             return plot.Y;
         }
 
-        var ratio = Math.Clamp((value - range.Minimum) / (range.Maximum - range.Minimum), 0, 1);
+        var ratio = Ratio(range, value);
         return plot.Bottom - 1 - (int) Math.Round(ratio * (plot.Height - 1), MidpointRounding.AwayFromZero);
     }
 
@@ -65,7 +69,7 @@ internal static class ChartRenderer
             : (plot.X * 2) + (int) Math.Round(
                 (double) index / (count - 1) * ((plot.Width * 2) - 1),
                 MidpointRounding.AwayFromZero);
-        var ratio = Math.Clamp((value - range.Minimum) / (range.Maximum - range.Minimum), 0, 1);
+        var ratio = Ratio(range, value);
         var y = plot.Height <= 1
             ? plot.Y * 2
             : (plot.Bottom * 2) - 1 - (int) Math.Round(

@@ -29,10 +29,7 @@ internal static class SparklineRenderer
         for (var index = 0; index < visible; index++)
         {
             var point = series.Points[first + index];
-            var ratio = Math.Clamp(
-                (point.Value - context.Range.Minimum) / (context.Range.Maximum - context.Range.Minimum),
-                0,
-                1);
+            var ratio = ChartRenderer.Ratio(context.Range, point.Value);
             var eighths = (int) Math.Round(ratio * plot.Height * 8, MidpointRounding.AwayFromZero);
             var x = plot.X + index;
             var style = ChartRenderer.ResolveSeriesStyle(context, series, point, seriesIndex: 0);

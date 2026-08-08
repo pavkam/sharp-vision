@@ -67,7 +67,7 @@ internal static class AreaChartRenderer
         }
 
         var range = context.Range;
-        var zeroRatio = Math.Clamp((0 - range.Minimum) / (range.Maximum - range.Minimum), 0, 1);
+        var zeroRatio = ChartRenderer.Ratio(range, 0);
         var zeroCells = (int) Math.Round(zeroRatio * plot.Height, MidpointRounding.AwayFromZero);
         var halfX = new double[count];
         var values = new double[count];
@@ -107,7 +107,7 @@ internal static class AreaChartRenderer
                 value = values[segment] + ((values[segment + 1] - values[segment]) * ratio);
             }
 
-            var valueRatio = Math.Clamp((value - range.Minimum) / (range.Maximum - range.Minimum), 0, 1);
+            var valueRatio = ChartRenderer.Ratio(range, value);
             var valueEighths = (int) Math.Round(valueRatio * plot.Height * 8, MidpointRounding.AwayFromZero);
             var eighths = Math.Abs(valueEighths - (zeroCells * 8));
             var style = ChartRenderer.ResolveSeriesStyle(

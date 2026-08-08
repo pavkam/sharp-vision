@@ -202,7 +202,7 @@ internal static class BarChartRenderer
     // end, which is the end a reader compares.
     private static int ExtentEighths(ChartScaleRange range, double value, int extent, int zeroCells)
     {
-        var ratio = Math.Clamp((value - range.Minimum) / (range.Maximum - range.Minimum), 0, 1);
+        var ratio = ChartRenderer.Ratio(range, value);
         var valueEighths = (int) Math.Round(ratio * extent * 8, MidpointRounding.AwayFromZero);
         return Math.Abs(valueEighths - (zeroCells * 8));
     }
@@ -354,13 +354,13 @@ internal static class BarChartRenderer
 
     private static int BoundaryX(ChartScaleRange range, double value, Rect plot)
     {
-        var ratio = Math.Clamp((value - range.Minimum) / (range.Maximum - range.Minimum), 0, 1);
+        var ratio = ChartRenderer.Ratio(range, value);
         return plot.X + (int) Math.Round(ratio * plot.Width, MidpointRounding.AwayFromZero);
     }
 
     private static int BoundaryY(ChartScaleRange range, double value, Rect plot)
     {
-        var ratio = Math.Clamp((value - range.Minimum) / (range.Maximum - range.Minimum), 0, 1);
+        var ratio = ChartRenderer.Ratio(range, value);
         return plot.Bottom - (int) Math.Round(ratio * plot.Height, MidpointRounding.AwayFromZero);
     }
 
