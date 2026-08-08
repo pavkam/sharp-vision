@@ -1538,39 +1538,16 @@ public sealed class ListView: ItemsControl
     // In eager mode every realized row's arranged Bounds.Height is already available, so a page
     // step accumulates realized row heights from the current index until the sum reaches the
     // committed viewport height (minus the retained overlap), rather than applying a cell-space
-    // distance directly as an item-index delta. At least one step always happens
-    // because the loop advances before its first accumulated check. Once RowHeight is set every
-    // row is the same fixed height, so the same distance becomes pure arithmetic requiring no
-    // realized row at all.
+    // distance directly as an item-index delta. Once RowHeight is set every row is the same fixed
+    // height, so the same distance becomes pure arithmetic requiring no realized row at all. The
+    // returned index is raw and possibly out of range; FindEligible resolves it.
     private int StepPage(int start, int direction)
     {
         var target = Math.Max(1, Viewport.Height - Math.Min(PageOverlap, Viewport.Height));
 
-        if (RowHeight is int height)
-        {
-            return start + (direction * Math.Max(1, target / height));
-        }
-
-        var index = start;
-        var accumulated = 0;
-
-        while (true)
-        {
-            var next = index + direction;
-
-            if (next < 0 || next >= Items.Count)
-            {
-                return next;
-            }
-
-            index = next;
-            accumulated += Math.Max(0, ItemAt(index)?.Bounds.Height ?? 0);
-
-            if (accumulated >= target)
-            {
-                return index;
-            }
-        }
+        return RowHeight is int height
+            ? start + (direction * Math.Max(1, target / height))
+            : PagingStep.Accumulate(start, direction, Items.Count, target, index => ItemAt(index)?.Bounds.Height ?? 0, clamp: false);
     }
 
     /// <summary>Scans for the nearest eligible logical index without requiring it to be realized.</summary>

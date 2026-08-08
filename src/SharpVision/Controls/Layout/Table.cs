@@ -985,31 +985,12 @@ public sealed class Table: ItemsControl
 
     // Accumulates realized row heights from the current row until the sum reaches the committed
     // viewport height (minus PageOverlap), rather than treating the viewport's cell height as a
-    // row count, matching the same fix applied to ListView's identical shape. At least one step always
-    // happens because the loop advances before its first accumulated check.
+    // row count. A landing index that runs past either end is clamped into range.
     private int StepPageRow(int startIndex, int columnIndex, int direction)
     {
         var target = Math.Max(1, Viewport.Height - Math.Min(PageOverlap, Viewport.Height));
-        var index = startIndex;
-        var accumulated = 0;
 
-        while (true)
-        {
-            var next = index + direction;
-
-            if (next < 0 || next >= Rows.Count)
-            {
-                return Math.Clamp(next, 0, Rows.Count - 1);
-            }
-
-            index = next;
-            accumulated += Math.Max(0, Rows[index].Cells[columnIndex].Bounds.Height);
-
-            if (accumulated >= target)
-            {
-                return index;
-            }
-        }
+        return PagingStep.Accumulate(startIndex, direction, Rows.Count, target, index => Rows[index].Cells[columnIndex].Bounds.Height, clamp: true);
     }
 
     private bool MoveToEndpoint(bool first)

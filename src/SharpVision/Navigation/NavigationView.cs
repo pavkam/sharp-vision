@@ -756,8 +756,7 @@ public sealed class NavigationView: CompositeControlBase
 
     // Accumulates realized entry heights from the current position until the sum reaches the
     // committed viewport height, rather than treating the viewport's cell height as an entry
-    // count (the same defect already fixed for ListView's identical shape). At least one step always
-    // happens because the loop advances before its first accumulated check.
+    // count. A landing index that runs past either end is clamped into range.
     private ControlBase StepPage(List<ControlBase> entries, int direction)
     {
         var index = _navigator.Current is { } current ? entries.IndexOf(current) : -1;
@@ -768,25 +767,9 @@ public sealed class NavigationView: CompositeControlBase
         }
 
         var target = Math.Max(1, Viewport.Height);
-        var accumulated = 0;
+        var result = PagingStep.Accumulate(index, direction, entries.Count, target, i => entries[i].Bounds.Height, clamp: true);
 
-        while (true)
-        {
-            var next = index + direction;
-
-            if (next < 0 || next >= entries.Count)
-            {
-                return entries[Math.Clamp(next, 0, entries.Count - 1)];
-            }
-
-            index = next;
-            accumulated += Math.Max(0, entries[index].Bounds.Height);
-
-            if (accumulated >= target)
-            {
-                return entries[index];
-            }
-        }
+        return entries[result];
     }
 
     private List<ControlBase> CollectNavigableEntries()

@@ -993,8 +993,7 @@ public sealed class TreeView: CompositeControlBase
 
     // Accumulates realized item heights from the current position until the sum reaches the
     // committed viewport height, rather than treating the viewport's cell height as an item
-    // count (the same defect fixed for ListView's identical shape). At least one step always
-    // happens because the loop advances before its first accumulated check.
+    // count. A landing index that runs past either end is clamped into range.
     private ControlBase StepPage(List<ControlBase> visible, int direction)
     {
         var index = _navigator.Current is { } current ? visible.IndexOf(current) : -1;
@@ -1005,25 +1004,9 @@ public sealed class TreeView: CompositeControlBase
         }
 
         var target = Math.Max(1, Viewport.Height);
-        var accumulated = 0;
+        var result = PagingStep.Accumulate(index, direction, visible.Count, target, i => visible[i].Bounds.Height, clamp: true);
 
-        while (true)
-        {
-            var next = index + direction;
-
-            if (next < 0 || next >= visible.Count)
-            {
-                return visible[Math.Clamp(next, 0, visible.Count - 1)];
-            }
-
-            index = next;
-            accumulated += Math.Max(0, visible[index].Bounds.Height);
-
-            if (accumulated >= target)
-            {
-                return visible[index];
-            }
-        }
+        return visible[result];
     }
 
     private List<ControlBase> CollectVisibleItems()
