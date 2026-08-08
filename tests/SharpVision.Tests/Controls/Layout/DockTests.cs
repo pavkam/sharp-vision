@@ -473,6 +473,69 @@ public sealed class DockTests
         star.Bounds.Width.ShouldBe(50);
     }
 
+    /// <summary>Verifies an Auto-length sibling measured after a leading Star reports its own
+    /// intrinsic width instead of the zero size a Star that claimed the whole remaining axis
+    /// during measure would have frozen into its DesiredSize.</summary>
+    [Fact]
+    public void Measure_WhenAutoSiblingFollowsLeadingStar_ReportsItsOwnIntrinsicWidth()
+    {
+        var panel = new Dock { LastChildFills = false };
+        var spacer = new ProbeControl { Width = Length.Star(1) };
+        var label = new ProbeControl(new Size(18, 1));
+        Dock.SetSide(spacer, DockSide.Left);
+        Dock.SetSide(label, DockSide.Left);
+        panel.Children.Add(spacer);
+        panel.Children.Add(label);
+
+        new LayoutEngine().Layout(panel, new Size(40, 1));
+
+        label.DesiredSize.Width.ShouldBe(18);
+        label.Bounds.ShouldBe(new Rect(22, 0, 18, 1));
+        spacer.Bounds.Width.ShouldBe(22);
+    }
+
+    /// <summary>Verifies the same Auto/Star pair resolves identically regardless of which one is
+    /// declared first, matching the Star-precedes-Percent order independence already pinned for
+    /// explicit-length siblings.</summary>
+    [Fact]
+    public void Measure_WhenAutoSiblingPrecedesTrailingStar_MatchesReverseOrderResult()
+    {
+        var panel = new Dock { LastChildFills = false };
+        var label = new ProbeControl(new Size(18, 1));
+        var spacer = new ProbeControl { Width = Length.Star(1) };
+        Dock.SetSide(label, DockSide.Left);
+        Dock.SetSide(spacer, DockSide.Left);
+        panel.Children.Add(label);
+        panel.Children.Add(spacer);
+
+        new LayoutEngine().Layout(panel, new Size(40, 1));
+
+        label.DesiredSize.Width.ShouldBe(18);
+        label.Bounds.ShouldBe(new Rect(0, 0, 18, 1));
+        spacer.Bounds.ShouldBe(new Rect(18, 0, 22, 1));
+    }
+
+    /// <summary>Verifies two same-axis Star siblings each measure to their own fair share while
+    /// only their declared minimums - not those shares - feed the dock's own DesiredSize, so a
+    /// Star with no declared minimum never inflates an ancestor sized to fit this dock.</summary>
+    [Fact]
+    public void Measure_WhenTwoStarSiblingsShareAnAxis_EachStarReportsOnlyItsOwnMinimum()
+    {
+        var panel = new Dock { LastChildFills = false };
+        var first = new ProbeControl { Height = Length.Star(1) };
+        var second = new ProbeControl { Height = Length.Star(1), MinHeight = 6 };
+        Dock.SetSide(first, DockSide.Top);
+        Dock.SetSide(second, DockSide.Top);
+        panel.Children.Add(first);
+        panel.Children.Add(second);
+
+        new LayoutEngine().Layout(panel, new Size(5, 20));
+
+        first.DesiredSize.Height.ShouldBe(7);
+        second.DesiredSize.Height.ShouldBe(13);
+        panel.DesiredSize.Height.ShouldBe(6);
+    }
+
     private static ProbeControl HeightOnly(int height) => new() { Height = Length.Cells(height) };
 
     private static ProbeControl WidthOnly(int width) => new() { Width = Length.Cells(width) };

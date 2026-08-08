@@ -78,6 +78,14 @@ public sealed class Dock: ChromeAuthoringContainer
     }
 
     /// <inheritdoc/>
+    // Mirrors ResolveAxisBorders's two-phase shape so measure and arrange agree on what a Star
+    // child owns. Phase 1 walks children in declaration order exactly as before for every
+    // non-Star participant, preserving the tested cross-axis Percent/Cells cascade. A Star
+    // participant is instead deferred: only its margin (and trailing spacing) is reserved from
+    // its own axis, so it never eats a later sibling's budget the way a direct, whole-slot
+    // measure would. Phase 2 then splits each axis's true leftover across its deferred Star
+    // children with DistributeStarShares - the same weighted split ArrangeOverride uses - and
+    // measures each one against its fair share, not the slot it merely stood in front of.
     protected override Size MeasureOverride(Constraint constraint)
     {
         var remainingWidth = constraint.Width;
@@ -87,10 +95,66 @@ public sealed class Dock: ChromeAuthoringContainer
         var desiredWidth = 0;
         var desiredHeight = 0;
         var last = LastParticipant();
+        List<DeferredStar>? deferred = null;
+        List<int>? horizontalStarIndices = null;
+        List<int>? verticalStarIndices = null;
 
         for (var index = 0; index < Children.Count; index++)
         {
             var child = Children[index];
+            var horizontal = GetSide(child) is DockSide.Left or DockSide.Right;
+            var isFillParticipant = LastChildFills && index == last;
+
+            // A Star child only needs deferring when its own axis is bounded and it is not the
+            // LastChildFills participant - both cases already measure correctly today, since an
+            // unbounded slot falls back to the intrinsic path and the fill participant never
+            // competes for a distributed share in ResolveAxisBorders either.
+            var length = horizontal ? child.Width : child.Height;
+            var axisBounded = horizontal ? remainingWidth.HasValue : remainingHeight.HasValue;
+
+            if (child.Visibility != Visibility.Collapsed &&
+                !isFillParticipant &&
+                length.Kind == LengthKind.Star &&
+                axisBounded)
+            {
+                var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
+                var minimum = horizontal ? child.MinWidth : child.MinHeight;
+
+                (deferred ??= []).Add(new DeferredStar(
+                    index,
+                    horizontal,
+                    margin,
+                    minimum,
+                    remainingWidth,
+                    remainingHeight,
+                    usedWidth,
+                    usedHeight));
+
+                if (horizontal)
+                {
+                    (horizontalStarIndices ??= []).Add(index);
+                }
+                else
+                {
+                    (verticalStarIndices ??= []).Add(index);
+                }
+
+                var reserved = margin.Add(index == last ? 0 : Spacing);
+
+                if (horizontal)
+                {
+                    usedWidth = usedWidth.Add(reserved);
+                    remainingWidth = remainingWidth.Subtract(reserved);
+                }
+                else
+                {
+                    usedHeight = usedHeight.Add(reserved);
+                    remainingHeight = remainingHeight.Subtract(reserved);
+                }
+
+                continue;
+            }
+
             child.Measure(new Constraint(remainingWidth, remainingHeight));
 
             if (child.Visibility == Visibility.Collapsed)
@@ -108,14 +172,14 @@ public sealed class Dock: ChromeAuthoringContainer
 
             // The final participant keeps the remaining slot and does not consume
             // space during measure when LastChildFills is enabled.
-            if (LastChildFills && index == last)
+            if (isFillParticipant)
             {
                 continue;
             }
 
             var spacing = index == last ? 0 : Spacing;
 
-            if (GetSide(child) is DockSide.Left or DockSide.Right)
+            if (horizontal)
             {
                 var consumed = outerWidth.Add(spacing);
                 usedWidth = usedWidth.Add(consumed);
@@ -129,10 +193,94 @@ public sealed class Dock: ChromeAuthoringContainer
             }
         }
 
+        if (deferred is not null)
+        {
+            MeasureDeferredStars(
+                deferred,
+                horizontalStarIndices,
+                verticalStarIndices,
+                remainingWidth,
+                remainingHeight,
+                ref desiredWidth,
+                ref desiredHeight);
+        }
+
         return new Size(
             Math.Max(desiredWidth, usedWidth),
             Math.Max(desiredHeight, usedHeight));
     }
+
+    // Splits each axis's true leftover (the pool phase 1 left behind, post margin/spacing)
+    // across that axis's deferred Star children and measures each against its fair share.
+    // A Star child's own-axis contribution to the dock's own DesiredSize is its declared
+    // minimum, never its fair share - matching Tracks.ResolveCore's LengthKind.Star convention
+    // of counting a Star track's minimum toward container sizing - so a Star never inflates an
+    // ancestor sized to fit this dock. Its cross-axis desired size participates normally,
+    // exactly as any other child's does.
+    private void MeasureDeferredStars(
+        List<DeferredStar> deferred,
+        List<int>? horizontalStarIndices,
+        List<int>? verticalStarIndices,
+        int? finalRemainingWidth,
+        int? finalRemainingHeight,
+        ref int desiredWidth,
+        ref int desiredHeight)
+    {
+        int[]? widthBorders = null;
+        int[]? heightBorders = null;
+
+        if (horizontalStarIndices is not null)
+        {
+            widthBorders = new int[Children.Count];
+            DistributeStarShares(horizontalStarIndices, finalRemainingWidth!.Value, horizontal: true, widthBorders);
+        }
+
+        if (verticalStarIndices is not null)
+        {
+            heightBorders = new int[Children.Count];
+            DistributeStarShares(verticalStarIndices, finalRemainingHeight!.Value, horizontal: false, heightBorders);
+        }
+
+        foreach (var entry in deferred)
+        {
+            var child = Children[entry.Index];
+            var border = entry.Horizontal ? widthBorders![entry.Index] : heightBorders![entry.Index];
+            var ownAxis = border.Add(entry.Margin);
+
+            child.Measure(entry.Horizontal
+                ? new Constraint(ownAxis, entry.RemainingHeight)
+                : new Constraint(entry.RemainingWidth, ownAxis));
+
+            var minOuter = entry.Minimum.Add(entry.Margin);
+
+            if (entry.Horizontal)
+            {
+                var crossOuter = child.DesiredSize.Height.Add(child.Margin.Vertical);
+                desiredWidth = Math.Max(desiredWidth, entry.UsedWidth.Add(minOuter));
+                desiredHeight = Math.Max(desiredHeight, entry.UsedHeight.Add(crossOuter));
+            }
+            else
+            {
+                var crossOuter = child.DesiredSize.Width.Add(child.Margin.Horizontal);
+                desiredHeight = Math.Max(desiredHeight, entry.UsedHeight.Add(minOuter));
+                desiredWidth = Math.Max(desiredWidth, entry.UsedWidth.Add(crossOuter));
+            }
+        }
+    }
+
+    // Captures one Star child skipped during the phase-1 walk: its own-axis reservations
+    // (margin, minimum) plus a snapshot of both remaining budgets and both running union
+    // prefixes at the moment it was declared, so phase 2 can measure and fold it in as if it
+    // had never left its place in the sequence.
+    private readonly record struct DeferredStar(
+        int Index,
+        bool Horizontal,
+        int Margin,
+        int Minimum,
+        int? RemainingWidth,
+        int? RemainingHeight,
+        int UsedWidth,
+        int UsedHeight);
 
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)

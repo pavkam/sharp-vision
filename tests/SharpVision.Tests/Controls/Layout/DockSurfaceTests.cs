@@ -236,6 +236,43 @@ public sealed class DockSurfaceTests
         surface.Cell(new Point(0, 2)).Text.ShouldBe("F");
     }
 
+    /// <summary>Verifies a wrapped Text docked after a leading Star spacer stays visible instead
+    /// of measuring to a zero-width box, since the Star sibling no longer freezes the Auto
+    /// sibling's DesiredSize at zero during measure.</summary>
+    [Fact]
+    public async Task Render_WhenTextFollowsLeadingStarSpacer_RendersVisibleContentAsync()
+    {
+        // Arrange
+        var spacer = new ControlText { Width = Length.Star(1) };
+        var label = new ControlText("Hi");
+        Dock.SetSide(spacer, DockSide.Left);
+        Dock.SetSide(label, DockSide.Left);
+        var dock = new Dock
+        {
+            LastChildFills = false,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Children = { spacer, label }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            dock,
+            new Size(9, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert initial geometry gives the label its intrinsic width, not zero
+        label.Bounds.ShouldBe(new Rect(7, 0, 2, 1));
+        surface.Cell(new Point(7, 0)).Text.ShouldBe("H");
+        surface.Cell(new Point(8, 0)).Text.ShouldBe("i");
+
+        // Act resize to a genuinely different size to force arrange to rerun
+        await surface.ResizeAsync(new Size(12, 1));
+
+        // Assert the label still reports and renders its intrinsic width after reflow
+        label.Bounds.ShouldBe(new Rect(10, 0, 2, 1));
+        surface.Cell(new Point(10, 0)).Text.ShouldBe("H");
+        surface.Cell(new Point(11, 0)).Text.ShouldBe("i");
+    }
+
     /// <summary>Verifies collapsed children do not consume dock edge space.</summary>
     [Fact]
     public async Task Render_WhenDockChildIsCollapsed_DoesNotConsumeSpaceAsync()
