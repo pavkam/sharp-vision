@@ -18,6 +18,25 @@ const ignoredDirectories = new Set([
 const externalSchemes = /^(?:data|http|https|mailto|tel):/iu;
 const markdownLink = /!?\[[^\]]*\]\((?<target><[^>]+>|[^\s)]+)(?:\s+["'][^"']*["'])?\)/gu;
 
+// Backtick-quoted repo paths are the dominant citation style in skill reference docs, where
+// markdown-link syntax is rare. Only paths carrying a recognized file extension are literal
+// single-file citations; extensionless spans (`docs/controls/**`, `docs/superpowers`) are
+// deliberate directory or glob mentions and are never checked.
+const backtickPath = /`(?<path>(?:src|tests|docs|examples|scripts|\.agents)\/[^`\s]+)`/gu;
+const backtickPathExtensions = new Set([
+  "cs",
+  "csproj",
+  "md",
+  "mjs",
+  "json",
+  "props",
+  "targets",
+  "txt",
+  "yml",
+  "config",
+  "sh",
+]);
+
 function stripCodeFences(content) {
   var insideFence = false;
 
@@ -105,6 +124,13 @@ async function targetExists(path) {
   }
 }
 
+function hasRecognizedExtension(path) {
+  const match = /\.(?<extension>[A-Za-z0-9]+)$/u.exec(path);
+
+  return match?.groups?.extension !== undefined
+    && backtickPathExtensions.has(match.groups.extension.toLocaleLowerCase("en-US"));
+}
+
 /**
  * Validates every local Markdown file and section link below a directory.
  *
@@ -172,6 +198,18 @@ export async function validateMarkdownTree(root) {
 
         if (!anchors.has(fragment)) {
           errors.push(`${relative(absoluteRoot, sourcePath)}:${lineIndex + 1} ${target} targets a missing section`);
+        }
+      }
+
+      for (const match of line.matchAll(backtickPath)) {
+        const rawPath = match.groups?.path;
+
+        if (rawPath === undefined || rawPath.includes("*") || !hasRecognizedExtension(rawPath)) {
+          continue;
+        }
+
+        if (!(await targetExists(resolve(absoluteRoot, rawPath)))) {
+          errors.push(`${relative(absoluteRoot, sourcePath)}:${lineIndex + 1} \`${rawPath}\` targets a missing file`);
         }
       }
     }

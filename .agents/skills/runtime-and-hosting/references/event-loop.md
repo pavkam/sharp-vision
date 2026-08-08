@@ -16,7 +16,7 @@ resize, out-of-band writes, stop requests, shutdown, or run/dispose races.
 
 ## Code map
 
-- UI loop and ownership: `src/SharpVision/Runtime/Application.cs`
+- UI loop and ownership: `src/SharpVision/Application.cs`
 - Terminal Session loop: `src/SharpVision.Terminal/Runtime/Session.cs`
 - Tests: `tests/SharpVision.Tests/Runtime/` and terminal
   `Runtime/SessionTests.cs`

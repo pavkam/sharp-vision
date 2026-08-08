@@ -16,7 +16,7 @@ reentrancy, callback ordering, cancellation, or exception propagation.
 ## Code map
 
 - Dispatcher and timers: `src/SharpVision/Threading/`
-- Application integration: `src/SharpVision/Runtime/Application.cs`
+- Application integration: `src/SharpVision/Application.cs`
 - Tests: `tests/SharpVision.Tests/Threading/` and
   `Runtime/ApplicationTests.Ordering.cs`
 

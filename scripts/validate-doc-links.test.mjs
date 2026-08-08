@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -57,6 +57,57 @@ test("validateMarkdownTree_WhenLinkIsInsideCodeFence_IgnoresLink", async () => {
 
   try {
     await writeFile(join(root, "index.md"), "```md\n[Example](missing.md)\n```\n");
+
+    const errors = await validateMarkdownTree(root);
+
+    assert.deepEqual(errors, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("validateMarkdownTree_WhenBacktickPathIsStale_ReportsTarget", async () => {
+  const root = await mkdtemp(join(tmpdir(), "sharpvision-links-"));
+
+  try {
+    await writeFile(
+      join(root, "index.md"),
+      "Code map: `src/SharpVision/Runtime/Application.cs`\n",
+    );
+
+    const errors = await validateMarkdownTree(root);
+
+    assert.equal(errors.length, 1);
+    assert.match(
+      errors[0],
+      /index\.md.*src\/SharpVision\/Runtime\/Application\.cs.*missing file/i,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("validateMarkdownTree_WhenBacktickPathIsExtensionlessDirectory_IsNotFlagged", async () => {
+  const root = await mkdtemp(join(tmpdir(), "sharpvision-links-"));
+
+  try {
+    await writeFile(join(root, "index.md"), "Never recreate `docs/superpowers`.\n");
+
+    const errors = await validateMarkdownTree(root);
+
+    assert.deepEqual(errors, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("validateMarkdownTree_WhenBacktickPathExists_ReturnsNoErrors", async () => {
+  const root = await mkdtemp(join(tmpdir(), "sharpvision-links-"));
+
+  try {
+    await mkdir(join(root, "src", "SharpVision"), { recursive: true });
+    await writeFile(join(root, "src", "SharpVision", "Application.cs"), "");
+    await writeFile(join(root, "index.md"), "Code map: `src/SharpVision/Application.cs`\n");
 
     const errors = await validateMarkdownTree(root);
 

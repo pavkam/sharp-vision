@@ -16,7 +16,7 @@ portable host selection.
 
 ## Code map
 
-- Public application host: `src/SharpVision/Runtime/ConsoleApplication.cs`
+- Public application host: `src/SharpVision/ConsoleApplication.cs`
 - Builder and options: `src/SharpVision/Runtime/`
 - Portable terminal host: `src/SharpVision.Terminal/Runtime/ConsoleHost.cs`
 - Tests: UI `tests/SharpVision.Tests/Runtime/ConsoleApplication*`; terminal
