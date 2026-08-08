@@ -67,9 +67,12 @@ against `Text`. An accepted access key focuses the semantic owner and calls
 Space commits the pressed state on its first key press and ignores key repeats.
 The matching release activates the control when it is still focused, or when it
 is detached and therefore has no focus owner at all. Enter activates immediately
-on press. A primary pointer press inside the arranged box requests focus and
-capture for the `PressableBase` itself, even when the owned caption child was
-the original hit target. Pointer motion updates the pressed state by
+on press. Both keys require no modifier beyond Shift (plus the lock keys, where
+the platform reports them); a stroke carrying Control, Alt, Super, Hyper, or
+Meta is left unhandled instead, so it bubbles to whatever shortcut or ambient
+handler expects it. A primary pointer press inside the arranged box requests
+focus and capture for the `PressableBase` itself, even when the owned caption
+child was the original hit target. Pointer motion updates the pressed state by
 containment: releasing inside the bounds activates once, and releasing outside
 cancels.
 

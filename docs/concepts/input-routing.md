@@ -272,11 +272,14 @@ event. The fixed-seed hostile-byte suite caps paste and parser retention,
 injects an explicit recovery boundary, and requires a known trailing Rune to
 survive every case. [`PressableBase`](../controls/pressable.md#overview) is the
 public single-content activation role. Space holds pressed state until a
-matching release; Enter activates directly. A primary pointer press focuses and
-captures, movement updates the inside/outside pressed state, and a release
-inside the control activates once. Focus loss, capture cancellation, disable,
-hide, detach, and disposal clear all held state without activating. Completed
-activations carry a validated `ActivationCause` of Keyboard, Pointer, or
-Programmatic. The transient state machine is one internal composed behavior that
-the direct-`ControlBase` `ComboBox` also uses; sharing the interaction does not
-dictate public inheritance.
+matching release; Enter activates directly. Every keyboard activation site
+across the library gates the same way: a stroke carrying a modifier beyond Shift
+(and the lock keys, where reported) is left unhandled and bubbles instead of
+activating. A primary pointer press focuses and captures, movement updates the
+inside/outside pressed state, and a release inside the control activates once.
+Focus loss, capture cancellation, disable, hide, detach, and disposal clear all
+held state without activating. Completed activations carry a validated
+`ActivationCause` of Keyboard, Pointer, or Programmatic. The transient state
+machine is one internal composed behavior that the direct-`ControlBase`
+`ComboBox` also uses; sharing the interaction does not dictate public
+inheritance.

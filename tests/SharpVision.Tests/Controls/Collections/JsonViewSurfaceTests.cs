@@ -208,6 +208,56 @@ public sealed class JsonViewSurfaceTests
         surface.Cell(new Point(0, 5)).Text.ShouldBe("▶");
     }
 
+    /// <summary>Verifies an incidental Control modifier on Enter does not toggle the selected
+    /// container's disclosure, and leaves the stroke unhandled.</summary>
+    [Fact]
+    public async Task Keyboard_WhenEnterHasControlModifier_DoesNotToggleAndLeavesUnhandledAsync()
+    {
+        // Arrange
+        var view = new JsonView { Json = /*lang=json,strict*/ "{\"branch\":{\"child\":2}}", Indent = 0 };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(24, 4),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.Cell(new Point(0, 1)).Text.ShouldBe("▼");
+
+        // Act
+        var enter = new KeyEventArgs(new Stroke(
+            Code.Enter, default, nativeCode: 0, Modifiers.Control, KeyAction.Press));
+        await surface.UpdateAsync(() => _ = Router.Route(view, Events.Key, enter), "press Ctrl+Enter");
+
+        // Assert
+        enter.Handled.ShouldBeFalse();
+        surface.Cell(new Point(0, 1)).Text.ShouldBe("▼");
+    }
+
+    /// <summary>Verifies Shift-held Enter (a common terminal chord) still toggles the selected
+    /// container's disclosure.</summary>
+    [Fact]
+    public async Task Keyboard_WhenEnterHasShiftModifier_StillTogglesAsync()
+    {
+        // Arrange
+        var view = new JsonView { Json = /*lang=json,strict*/ "{\"branch\":{\"child\":2}}", Indent = 0 };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(24, 4),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.Cell(new Point(0, 1)).Text.ShouldBe("▼");
+
+        // Act
+        var enter = new KeyEventArgs(new Stroke(
+            Code.Enter, default, nativeCode: 0, Modifiers.Shift, KeyAction.Press));
+        await surface.UpdateAsync(() => _ = Router.Route(view, Events.Key, enter), "press Shift+Enter");
+
+        // Assert
+        enter.Handled.ShouldBeTrue();
+        surface.Cell(new Point(0, 1)).Text.ShouldBe("▶");
+    }
+
     /// <summary>
     /// Verifies a click on the disclosure glyph's first cell toggles expansion under
     /// <see cref="Ambiguous.Wide"/>, where the glyph ('▶'/'▼', both East Asian Ambiguous-width)

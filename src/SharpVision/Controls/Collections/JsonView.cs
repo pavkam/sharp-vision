@@ -780,7 +780,7 @@ public sealed class JsonView: CompositeControl<JsonViewStyle>
         }
         else if (code == Code.Enter)
         {
-            eventArgs.Handled = ToggleSelected();
+            eventArgs.Handled = eventArgs.Stroke.Modifiers.IsActivationEligible() && ToggleSelected();
         }
     }
 
