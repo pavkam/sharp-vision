@@ -362,6 +362,98 @@ public sealed class ContainerTests
         container.VerticalOffset.ShouldBe(1);
     }
 
+    /// <summary>Verifies a generated vertical scrollbar's SmallChange mirrors the owning
+    /// container's LineSize instead of being left at the ScrollBar's own default.</summary>
+    [Fact]
+    public void Synchronize_WhenBarsAreGenerated_SetsSmallChangeToLineSize()
+    {
+        var container = new LayoutProbe
+        {
+            AutoScroll = true,
+            VerticalBarVisibility = ScrollBarVisibility.Always,
+            LineSize = 3
+        };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+
+        new LayoutEngine().Layout(container, new Size(4, 10));
+
+        var bar = container.HitTest(new Point(3, 4)).ShouldBeOfType<ScrollBar>();
+        bar.SmallChange.ShouldBe(3);
+    }
+
+    /// <summary>Verifies a generated vertical scrollbar's LargeChange mirrors the same page-step
+    /// computation (viewport extent minus PageOverlap) already used for keyboard PageUp/PageDown,
+    /// rather than the raw viewport extent - so a scrollbar-driven page click keeps the same
+    /// overlap as the keyboard equivalent.</summary>
+    [Fact]
+    public void Synchronize_WhenBarsAreGenerated_SetsLargeChangeToPageStepOfViewport()
+    {
+        var container = new LayoutProbe
+        {
+            AutoScroll = true,
+            VerticalBarVisibility = ScrollBarVisibility.Always,
+            PageOverlap = 1
+        };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+
+        new LayoutEngine().Layout(container, new Size(4, 10));
+
+        var bar = container.HitTest(new Point(3, 4)).ShouldBeOfType<ScrollBar>();
+        bar.LargeChange.ShouldBe(9); // Viewport.Height(10) - PageOverlap(1)
+    }
+
+    /// <summary>
+    /// Verifies a generated vertical scrollbar's LargeChange is clamped to at least one cell when
+    /// PageOverlap is configured at or above the viewport extent, mirroring the clamp already
+    /// verified for keyboard PageUp/PageDown in
+    /// Key_WhenPageOverlapIsAtLeastTheViewportExtent_StillAdvancesByAtLeastOneCell above - a
+    /// scrollbar-driven page click must not silently become a no-op either.
+    /// </summary>
+    [Fact]
+    public void Synchronize_WhenPageOverlapExceedsViewport_ClampsGeneratedBarLargeChangeToAtLeastOneCell()
+    {
+        var container = new LayoutProbe
+        {
+            AutoScroll = true,
+            VerticalBarVisibility = ScrollBarVisibility.Always,
+            PageOverlap = 100
+        };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+
+        new LayoutEngine().Layout(container, new Size(4, 10));
+
+        var bar = container.HitTest(new Point(3, 4)).ShouldBeOfType<ScrollBar>();
+        bar.LargeChange.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies a generated bar's SmallChange catches up to a changed LineSize on the next layout
+    /// pass. LineSize's setter carries InvalidationImpact.None, so changing it alone does not
+    /// itself schedule a re-layout - and this layout engine short-circuits a same-size relayout
+    /// entirely (see Arrange's pending/slot check), so only a genuinely different size reaches
+    /// ArrangeOverlays -> Synchronize again, which is what actually copies the current LineSize
+    /// onto the generated bar.
+    /// </summary>
+    [Fact]
+    public void Synchronize_WhenLineSizeChanges_UpdatesGeneratedBarSmallChangeOnNextLayout()
+    {
+        var container = new LayoutProbe
+        {
+            AutoScroll = true,
+            VerticalBarVisibility = ScrollBarVisibility.Always,
+            LineSize = 2
+        };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(container, new Size(4, 10));
+        var bar = container.HitTest(new Point(3, 4)).ShouldBeOfType<ScrollBar>();
+        bar.SmallChange.ShouldBe(2);
+
+        container.LineSize = 5;
+        new LayoutEngine().Layout(container, new Size(4, 11));
+
+        bar.SmallChange.ShouldBe(5);
+    }
+
     /// <summary>Verifies scroll ancestry crosses a non-Container owner but selects only armed Container ancestors.</summary>
     [Fact]
     public void Wheel_WhenNonContainerBridgesArmedContainers_PropagatesToActualContainer()

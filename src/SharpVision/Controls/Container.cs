@@ -907,7 +907,7 @@ public abstract class Container: ControlBase
         }
     }
 
-    private static void Configure(ScrollBar bar, int maximum, int viewport, int value)
+    private void Configure(ScrollBar bar, int maximum, int viewport, int value)
     {
         Debug.Assert(bar is not null, "Scrollbar configuration requires an owned bar.");
         Debug.Assert(maximum >= 0 && viewport >= 0, "Scrollbar geometry is non-negative.");
@@ -920,7 +920,8 @@ public abstract class Container: ControlBase
 
         bar.Maximum = maximum;
         bar.ViewportSize = viewport;
-        bar.LargeChange = viewport;
+        bar.SmallChange = LineSize;
+        bar.LargeChange = PageStep(viewport);
         bar.Value = value;
     }
 
