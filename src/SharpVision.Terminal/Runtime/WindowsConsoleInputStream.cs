@@ -22,10 +22,13 @@ internal sealed class WindowsConsoleInputStream: Stream
     private readonly nint _handle;
 
     /// <summary>Initializes the wrapper over the raw console input stream and its native handle.</summary>
-    /// <param name="inner">The stream returned by <see cref="Console.OpenStandardInput()"/>.</param>
+    /// <param name="inner">The non-null stream returned by <see cref="Console.OpenStandardInput()"/>.</param>
     /// <param name="handle">The same stream's underlying native console input handle.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="inner"/> is null.</exception>
     public WindowsConsoleInputStream(Stream inner, nint handle)
     {
+        ArgumentNullException.ThrowIfNull(inner);
+
         _inner = inner;
         _handle = handle;
     }
