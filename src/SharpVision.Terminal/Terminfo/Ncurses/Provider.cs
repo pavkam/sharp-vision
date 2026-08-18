@@ -643,7 +643,12 @@ internal sealed class Provider: IDescriptionProvider
         totalBits = 0;
         var fields = 0;
 
-        while (!value.IsEmpty)
+        // A loop keyed on "value is not yet empty" cannot see a trailing separator: once the
+        // last real field is consumed, slicing past its separator leaves an empty span and the
+        // loop simply stops, silently accepting "8/8/8/" as if it were "8/8/8". Looping
+        // unconditionally and breaking only when no further separator remains forces a dangling
+        // separator to surface as one more (empty, unparsable) field instead.
+        while (true)
         {
             var separator = value.IndexOf((byte) '/');
             var field = separator < 0 ? value : value[..separator];
@@ -658,7 +663,13 @@ internal sealed class Provider: IDescriptionProvider
 
             totalBits = checked(totalBits + bits);
             fields++;
-            value = separator < 0 ? [] : value[(separator + 1)..];
+
+            if (separator < 0)
+            {
+                break;
+            }
+
+            value = value[(separator + 1)..];
         }
 
         return fields == 3;
