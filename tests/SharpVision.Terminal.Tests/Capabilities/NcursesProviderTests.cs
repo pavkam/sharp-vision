@@ -590,6 +590,7 @@ public sealed class NcursesProviderTests
     [InlineData(8, -1, "x/1/1")]
     [InlineData(8, -1, "1/1")]
     [InlineData(8, -1, "63/63/63")]
+    [InlineData(16_777_216, -1, "8/8/8/")]
     public void Load_WhenRgbDescriptorIsInvalid_DiagnosesIt(int colors, int number, string? text)
     {
         var native = ReadyNative();
