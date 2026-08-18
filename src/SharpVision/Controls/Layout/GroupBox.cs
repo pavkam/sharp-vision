@@ -116,7 +116,12 @@ public sealed class GroupBox: HeaderedContentControl
             ResolveBorderGlyphs(actualBorder.GlyphStyle),
             border,
             bg);
-        if (Header is { } header && Bounds.Width > 3)
+        // A Hidden or Collapsed header renders no caption at all, matching the plain dashed border a
+        // missing Header already draws and the zero width MeasureOverride already reports for a
+        // Collapsed header - the ordinary Render(TerminalCanvas) gate every other header control
+        // gets already gives this behavior for a rich header rendered through the owned pipeline
+        // below; a DisplayText header instead paints directly here and needs the same check.
+        if (Header is { EffectiveIsVisible: true } header && Bounds.Width > 3)
         {
             var title = canvas.Clip(new Rect(Bounds.X + 1, Bounds.Y, Bounds.Width - 2, 1));
             var start = title.Draw(

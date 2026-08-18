@@ -15,9 +15,13 @@ A plain `Text` header — the `HeaderText` common case — is painted by the
 Expander with its own state-resolved style, so the caption carries the same
 hover, focus, and disabled cues as the glyph; any other header control is an
 ordinary owned control arranged beside the glyph that paints with its own
-resolved style. Its pointer rectangle is the first non-empty row of
-`ContentBounds`, after any caller-supplied border and padding are deflated. The
-caller's content remains the one ordinary owned child.
+resolved style. A `Header` set to `Visibility.Hidden` or `Visibility.Collapsed`
+paints no caption at all, leaving only the disclosure glyph — matching the
+ordinary `Visibility` gate every other owned control's own render pass already
+respects, and the zero header width `MeasureOverride` already reports once
+collapsed. Its pointer rectangle is the first non-empty row of `ContentBounds`,
+after any caller-supplied border and padding are deflated. The caller's content
+remains the one ordinary owned child.
 
 By default the control has no border and a transparent background; the
 disclosure glyph, the header, and the content indentation supply the structural
