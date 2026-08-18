@@ -46,4 +46,34 @@ public sealed class RectTests
 
         result.ShouldBe(new Rect(5, 5, 5, 5));
     }
+
+    /// <summary>
+    /// Verifies intersecting a rect whose right edge saturates against itself is the identity:
+    /// the shared region must equal the original rect exactly. Combining two already-saturated
+    /// <see cref="Rect.Right"/> values with a second int-range subtraction throws away up to
+    /// <see cref="Rect.X"/> units of otherwise-representable width, so a naive implementation
+    /// under-reports the intersection even though no true overflow of the final result occurs.
+    /// </summary>
+    [Fact]
+    public void Intersect_WhenRectSaturatesAndIntersectsItself_ReturnsSameRect()
+    {
+        var rect = new Rect(5, 0, int.MaxValue, 1);
+
+        var result = rect.Intersect(rect);
+
+        result.ShouldBe(rect);
+    }
+
+    /// <summary>
+    /// Verifies a point at the representable coordinate maximum is still contained when the
+    /// rect's true (unrepresentable) right edge lies beyond it, instead of being excluded by the
+    /// saturated exclusive bound.
+    /// </summary>
+    [Fact]
+    public void Contains_WhenTrueRightEdgeOverflowsPastMaxValue_ContainsMaxValueCoordinate()
+    {
+        var rect = new Rect(5, 0, int.MaxValue, 1);
+
+        rect.Contains(new Point(int.MaxValue, 0)).ShouldBeTrue();
+    }
 }
