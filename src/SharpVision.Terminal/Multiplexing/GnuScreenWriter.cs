@@ -11,8 +11,8 @@ namespace SharpVision.Terminal.Multiplexing;
 [PublicAPI]
 public static class GnuScreenWriter
 {
-    private static ReadOnlySpan<byte> Header => "P"u8;
-    private static ReadOnlySpan<byte> Terminator => "\\"u8;
+    private static ReadOnlySpan<byte> Header => "\u001bP"u8;
+    private static ReadOnlySpan<byte> Terminator => "\u001b\\"u8;
 
     /// <summary>Writes one borrowed terminal sequence through one GNU screen DCS envelope.</summary>
     /// <param name="destination">The non-null synchronously consumed byte destination.</param>
