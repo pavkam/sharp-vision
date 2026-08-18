@@ -89,18 +89,11 @@ internal sealed class SystemFilePickerFileSystem: IFilePickerFileSystem
             entries.Add(new FilePickerEntry(info.Name, info.FullName, isDirectory, isHidden));
         }
 
-        entries.Sort(Compare);
+        // Sorted through the same shared comparer every other snapshot consumer uses (rather than
+        // a hand-rolled duplicate of its directory-first, case-insensitive-then-ordinal rule), so a
+        // future change to that ordering cannot silently drift between the two call sites the way
+        // FilePickerEntry's own identity once drifted from this comparer's tie-break.
+        entries.Sort(FilePickerEntryComparer.Instance);
         return [.. entries];
-    }
-
-    private static int Compare(FilePickerEntry left, FilePickerEntry right)
-    {
-        if (left.IsDirectory != right.IsDirectory)
-        {
-            return left.IsDirectory ? -1 : 1;
-        }
-
-        var insensitive = StringComparer.OrdinalIgnoreCase.Compare(left.Name, right.Name);
-        return insensitive != 0 ? insensitive : StringComparer.Ordinal.Compare(left.Name, right.Name);
     }
 }
