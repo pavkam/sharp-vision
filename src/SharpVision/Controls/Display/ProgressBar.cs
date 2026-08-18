@@ -51,7 +51,13 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
             VerifyMutable();
             var clamped = Math.Max(_value, value);
 
-            if (Math.Abs(field - value) < float.Epsilon && Math.Abs(_value - clamped) < float.Epsilon)
+            // Exact equality, not a tolerance: Minimum and Value are the same double both before
+            // and after this comparison runs, so there is no accumulated floating-point error to
+            // absorb. A tolerance-based skip here previously misread any two distinct doubles
+            // whose difference underflows a fixed absolute epsilon - true for every representable
+            // pair near zero, including the ordinary values this range control targets - as "no
+            // change," silently discarding a real assignment instead of committing it.
+            if (field == value && _value == clamped)
             {
                 return;
             }
@@ -82,7 +88,10 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
             VerifyMutable();
             var clamped = Math.Min(_value, value);
 
-            if (Math.Abs(field - value) < float.Epsilon && Math.Abs(_value - clamped) < float.Epsilon)
+            // See the identical comment on Minimum's setter: exact equality is correct here for
+            // the same reason - no floating-point error accumulates between these two reads of
+            // the same double, so a tolerance only risks discarding a real, distinct assignment.
+            if (field == value && _value == clamped)
             {
                 return;
             }

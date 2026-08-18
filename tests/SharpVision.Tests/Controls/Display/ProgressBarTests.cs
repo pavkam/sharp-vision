@@ -65,6 +65,45 @@ public sealed class ProgressBarTests
         properties.ShouldBe([nameof(ProgressBar.Minimum), nameof(ProgressBar.Value)]);
     }
 
+    /// <summary>Verifies a Minimum assignment far smaller in magnitude than <see
+    /// cref="float.Epsilon"/> - the tolerance the no-op guard compares against, even though
+    /// <see cref="ProgressBar.Minimum"/> and <see cref="ProgressBar.Value"/> are <see
+    /// cref="double"/> - still commits, instead of the guard misreading two distinct doubles as
+    /// equal and silently discarding the assignment.</summary>
+    [Fact]
+    public void Minimum_WhenAssignedValueSmallerThanFloatEpsilon_Commits()
+    {
+        // Arrange
+        var bar = new ProgressBar();
+        bar.Minimum.ShouldBe(0);
+
+        // Act
+        bar.Minimum = 1e-300;
+
+        // Assert
+        bar.Minimum.ShouldBe(1e-300);
+        bar.Value.ShouldBe(1e-300);
+    }
+
+    /// <summary>Verifies a Maximum reassignment to a distinct value less than <see
+    /// cref="float.Epsilon"/> away from the current Maximum - the tolerance the no-op guard
+    /// compares against, even though <see cref="ProgressBar.Maximum"/> is a <see cref="double"/>
+    /// - still commits, instead of the guard misreading two distinct doubles as equal and
+    /// silently discarding the assignment.</summary>
+    [Fact]
+    public void Maximum_WhenReassignedValueWithinFloatEpsilonOfCurrent_Commits()
+    {
+        // Arrange
+        var bar = new ProgressBar { Maximum = 1e-300 };
+        bar.Maximum.ShouldBe(1e-300);
+
+        // Act
+        bar.Maximum = 2e-300;
+
+        // Assert
+        bar.Maximum.ShouldBe(2e-300);
+    }
+
     /// <summary>Verifies lowering the maximum clamps before ordered property notifications.</summary>
     [Fact]
     public void Maximum_WhenLoweredBelowValue_ClampsBeforeNotifications()
