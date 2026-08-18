@@ -286,15 +286,15 @@ programs.
 The strategy snapshots caller-supplied environment values and fills one bounded
 startup batch in priority order:
 
-| Priority | Query family                               | When it is included                                                   |
-| -------: | ------------------------------------------ | --------------------------------------------------------------------- |
-|        1 | Kitty keyboard status                      | Support is unknown and at least two query slots exist.                |
-|        2 | Primary device attributes (DA1)            | Always.                                                               |
-|        3 | Secondary device attributes (DA2)          | Capacity remains.                                                     |
-|        4 | Private modes 2026, 1004, 2004, 1006, 1016 | The corresponding feature is unknown or tentative.                    |
-|        5 | Geometry                                   | Local host geometry is incomplete.                                    |
-|        6 | Palette and default colors                 | Capacity remains; results remain diagnostic or caller-consumed facts. |
-|        7 | Finite xterm refinements                   | An xterm-like hint exists and stronger evidence has not settled it.   |
+| Priority | Query family                                     | When it is included                                                   |
+| -------: | ------------------------------------------------ | --------------------------------------------------------------------- |
+|        1 | Kitty keyboard status                            | Support is unknown and at least two query slots exist.                |
+|        2 | Primary device attributes (DA1)                  | Always.                                                               |
+|        3 | Secondary device attributes (DA2)                | Capacity remains.                                                     |
+|        4 | Private modes 2026, 1004, 2004, 1006, 1016, 5522 | The corresponding feature is unknown or tentative.                    |
+|        5 | Geometry                                         | Local host geometry is incomplete.                                    |
+|        6 | Palette and default colors                       | Capacity remains; results remain diagnostic or caller-consumed facts. |
+|        7 | Finite xterm refinements                         | An xterm-like hint exists and stronger evidence has not settled it.   |
 
 Definitive database evidence and explicit overrides suppress redundant feature
 probes. The
