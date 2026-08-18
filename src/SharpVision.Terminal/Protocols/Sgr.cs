@@ -34,7 +34,7 @@ public static class Sgr
     /// <summary>Applies a foreground color.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="color">The validated color.</param>
-    /// <exception cref="ArgumentOutOfRangeException">
+    /// <exception cref="ArgumentException">
     /// <paramref name="color"/> has an unknown representation.
     /// </exception>
     public static void Foreground(ProtocolWriter writer, Color color) =>
@@ -43,7 +43,7 @@ public static class Sgr
     /// <summary>Applies a background color.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="color">The validated color.</param>
-    /// <exception cref="ArgumentOutOfRangeException">
+    /// <exception cref="ArgumentException">
     /// <paramref name="color"/> has an unknown representation.
     /// </exception>
     public static void Background(ProtocolWriter writer, Color color) =>
@@ -52,7 +52,7 @@ public static class Sgr
     /// <summary>Applies or resets the underline color.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="color">The default or RGB underline color.</param>
-    /// <exception cref="ArgumentOutOfRangeException">
+    /// <exception cref="ArgumentException">
     /// <paramref name="color"/> has an unknown representation.
     /// </exception>
     public static void UnderlineColor(ProtocolWriter writer, Color color) =>

@@ -24,6 +24,11 @@ public readonly record struct XtermCapabilitiesResponse
     /// <summary>Gets owned response values in the documented family-specific order.</summary>
     public ReadOnlyMemory<int> Values { get; }
 
-    /// <summary>Gets whether a private mode state 1 or 2 proves support.</summary>
+    /// <summary>
+    /// Gets whether a DECRPM private mode state of set, reset, or permanently
+    /// set (1, 2, or 3) proves the mode is recognized and usable. A
+    /// permanently reset state (4) reports as unsupported because the
+    /// terminal can never enable that mode.
+    /// </summary>
     public bool Supported { get; }
 }
