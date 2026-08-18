@@ -1,0 +1,1072 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Controls.Input;
+
+using Popups;
+
+using SharpVision.Terminal.Input;
+
+/// <summary>Combines date and time editing in one bordered field control with an optional calendar popup.</summary>
+/// <remarks>
+/// The control displays a formatted <see cref="DateTime"/> value with date segments (month, day, year)
+/// followed by time segments (hour, minute, optionally second, optionally AM/PM).
+/// Date segments open a <see cref="Calendar"/> popup on activation; time segments edit inline.
+/// Up/Down arrows increment or decrement the focused segment. Left/Right arrows navigate between segments.
+/// Typing digits replaces the segment value. Delete clears the value to null when <see cref="AllowNull"/> is set.
+/// Alt+Down opens the calendar popup from any segment.
+/// </remarks>
+[PublicAPI]
+public sealed class DateTimeInput: InputBase
+{
+    /// <inheritdoc/>
+    protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
+        (theme ?? ThemeCatalog.Dark).GetStyleSet(InputStyle.Default).ToAppearanceStates();
+
+    // Terminal field geometry: one content row and two border columns. The indicator cell is
+    // InputBase.DropDownIndicatorWidth.
+    private const int _fieldContentHeight = 1;
+    private const int _fieldBorderWidth = 2;
+    private const int _defaultDropDownHeight = 10;
+
+    private static readonly IReadOnlyDictionary<char, TemporalSegmentKind> _tokenKinds =
+        new Dictionary<char, TemporalSegmentKind>
+        {
+            ['M'] = TemporalSegmentKind.Month,
+            ['d'] = TemporalSegmentKind.Day,
+            ['y'] = TemporalSegmentKind.Year,
+            ['H'] = TemporalSegmentKind.Hour,
+            ['h'] = TemporalSegmentKind.Hour,
+            ['m'] = TemporalSegmentKind.Minute,
+            ['s'] = TemporalSegmentKind.Second,
+            ['t'] = TemporalSegmentKind.AmPmDesignator
+        };
+
+    private readonly Calendar _calendar;
+    private readonly Popup _popup;
+    private readonly SegmentFieldBehavior _segments;
+
+    private DateTime? _value;
+    private bool _seeded;
+    private bool _synchronizingCalendar;
+    private CultureInfo _culture;
+
+    #region Construction and properties
+
+    /// <summary>Initializes a focusable date-time input at the current local date and time with a light field border and a connected calendar popup.</summary>
+    public DateTimeInput()
+    {
+        // Value resolves the current local date and time lazily, on first read, rather than
+        // here: a control constructed off-dispatcher and then mounted under a dispatcher with its
+        // own TimeProvider must observe that dispatcher's clock instead of latching the clock
+        // that happened to be current at construction. The owned Calendar starts with no
+        // selection to match; EnsureSeeded pushes the resolved value into it once seeding
+        // actually happens.
+        _culture = CultureInfo.InvariantCulture;
+        _calendar = new Calendar
+        {
+            SelectionMode = CalendarSelectionMode.Select,
+            IsTabStop = false
+        };
+
+        _popup = EnablePopup(
+            _calendar,
+            focusOnOpen: true,
+            beforeOpen: () =>
+            {
+                EnsureSeeded();
+
+                if (_value.HasValue)
+                {
+                    var date = DateOnly.FromDateTime(_value.Value);
+                    _calendar.DisplayMonth = new DateOnly(date.Year, date.Month, 1);
+                    PushCalendarSelection(date);
+                }
+            });
+        EnablePressActivation();
+
+        // Register event handler after _popup is created to avoid NullReferenceException
+        // when setting _calendar.Selection fires SelectionChanged → IsOpen accessor.
+        _calendar.SelectionChanged += OnCalendarSelectionChanged;
+
+        _segments = EnableSegmentEditing(
+            BuildSegments,
+            ApplyDigitValue,
+            IncrementSegmentValue,
+            ClearSegmentValue);
+        TabNavigation = TabNavigation.None;
+    }
+
+    /// <summary>Raised after a committed value transition.</summary>
+    public event EventHandler<DateTimeInputValueChangedEventArgs>? ValueChanged;
+
+    /// <summary>Raised after the Calendar popup opens.</summary>
+    public event EventHandler? DropDownOpened;
+
+    /// <summary>Raised after the Calendar popup closes.</summary>
+    public event EventHandler? DropDownClosed;
+
+    /// <summary>Gets or sets the current date-time value, or null when cleared.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public DateTime? Value
+    {
+        get
+        {
+            EnsureSeeded();
+            return _value;
+        }
+        set => Commit(value);
+    }
+
+    /// <summary>Gets or sets whether the value may be cleared to null. Default is true.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public bool AllowNull
+    {
+        get;
+        set
+        {
+            // The eager re-seed only runs once seeding has already happened: resolving "now"
+            // here for a not-yet-seeded control would latch whatever clock is current at this
+            // call (often the construction-time wall clock, before a dispatcher with its own
+            // TimeProvider is attached) instead of the correct one. Leaving _value untouched
+            // when unseeded is safe - EnsureSeeded resolves a non-null value from the right
+            // clock before Value (or any other observer) can ever read _value as null.
+            if (SetProperty(ref field, value, InvalidationImpact.None) && !value && _seeded && _value is null)
+            {
+                _ = Commit(ClampToRange(TimeProvider.GetLocalNow().DateTime));
+            }
+        }
+    } = true;
+
+    /// <summary>
+    /// Gets or sets the Gregorian culture applied to both the popup <see cref="Calendar"/>'s month
+    /// and day names and the typed field's own segment order, separators, and AM/PM designator
+    /// text. Default is <see cref="CultureInfo.InvariantCulture"/>, so out-of-the-box rendering
+    /// never depends on the host operating system's locale; set this explicitly to localize the
+    /// field.
+    /// </summary>
+    /// <remarks>
+    /// The date portion of the typed field derives its segment order, widths, and separators from
+    /// <see cref="DateTimeFormatInfo.ShortDatePattern"/> the same way <see cref="DateInput.Culture"/>
+    /// does - for example a German culture renders day before month with a period separator. The
+    /// time portion keeps the fixed hour/minute/[second]/[AM-PM] structure <see cref="Use24HourFormat"/>
+    /// and <see cref="ShowSeconds"/> already select, localizing only its separator, AM/PM designator
+    /// text, and digit glyphs. Set <see cref="Format"/> to override the combined pattern entirely.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="ArgumentException">The culture's active calendar is not Gregorian, or a non-null <see cref="Format"/> cannot be rendered by a <see cref="DateTime"/> under this culture.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public CultureInfo Culture
+    {
+        get => _culture;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (value.DateTimeFormat.Calendar is not GregorianCalendar)
+            {
+                throw new ArgumentException(
+                    "DateTimeInput requires a Gregorian display culture.", nameof(value));
+            }
+
+            if (Format is { } format)
+            {
+                TemporalFormatValidation.Validate(
+                    format, value, nameof(value), "DateTime", static (f, c) => DateTime.MinValue.ToString(f, c));
+            }
+
+            if (SetProperty(ref _culture, value, InvalidationImpact.Measure))
+            {
+                _calendar.Culture = value;
+                _segments.ClampActiveSegment();
+                _segments.ResetDigitBuffer();
+            }
+        }
+    }
+
+    /// <summary>Gets or sets whether a 24-hour clock is displayed. Default is true.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public bool Use24HourFormat
+    {
+        get;
+        set
+        {
+            if (SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                _segments.ClampActiveSegment();
+                _segments.ResetDigitBuffer();
+            }
+        }
+    } = true;
+
+    /// <summary>Gets or sets whether the seconds segment is displayed. Default is false.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public bool ShowSeconds
+    {
+        get;
+        set
+        {
+            if (SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                _segments.ClampActiveSegment();
+                _segments.ResetDigitBuffer();
+            }
+        }
+    }
+
+    /// <summary>Gets or sets a custom combined date-time format pattern, or null to derive the
+    /// pattern from <see cref="Culture"/>'s <see cref="DateTimeFormatInfo.ShortDatePattern"/> plus
+    /// <see cref="Use24HourFormat"/> and <see cref="ShowSeconds"/>. Default is null.</summary>
+    /// <remarks>
+    /// When set, the pattern's own token runs - not <see cref="Culture"/>'s date pattern or
+    /// <see cref="Use24HourFormat"/>/<see cref="ShowSeconds"/> - determine the segment order and
+    /// count; pair a 12-hour <c>h</c>/<c>hh</c> hour token with a <c>t</c>/<c>tt</c> AM/PM
+    /// designator token for correct 12-hour clamping, since a 12-hour hour token without a
+    /// designator token is treated as a 24-hour segment for editing purposes.
+    /// </remarks>
+    /// <exception cref="ArgumentException">The value is empty, or cannot be rendered by a <see cref="DateTime"/> under <see cref="Culture"/>.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public string? Format
+    {
+        get;
+        set
+        {
+            if (value is not null)
+            {
+                ArgumentException.ThrowIfNullOrEmpty(value);
+                TemporalFormatValidation.Validate(
+                    value, _culture, nameof(value), "DateTime", static (f, c) => DateTime.MinValue.ToString(f, c));
+            }
+
+            if (SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                _segments.ClampActiveSegment();
+                _segments.ResetDigitBuffer();
+            }
+        }
+    }
+
+    /// <summary>Gets or sets the increment used when the minute segment is adjusted.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is zero, negative, or not a whole minute.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public TimeSpan TimeStep
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNotAPositiveWholeMinuteStep(value, nameof(value));
+
+            _ = SetProperty(ref field, value, InvalidationImpact.None);
+        }
+    } = TimeSpan.FromMinutes(1);
+
+    /// <summary>Gets or sets the inclusive lower bound for the value. Default is <see cref="DateTime.MinValue"/>.</summary>
+    /// <exception cref="ArgumentException">The minimum exceeds <see cref="Maximum"/>.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public DateTime Minimum
+    {
+        get;
+        set
+        {
+            VerifyMutable();
+            ArgumentException.ThrowIfAboveMaximum(value, Maximum, nameof(value), "Minimum cannot exceed Maximum.");
+
+            if (SetProperty(ref field, value, InvalidationImpact.Render))
+            {
+                SyncCalendarBounds();
+                ClampCurrentValue();
+            }
+        }
+    } = DateTime.MinValue;
+
+    /// <summary>Gets or sets the inclusive upper bound for the value. Default is <see cref="DateTime.MaxValue"/>.</summary>
+    /// <exception cref="ArgumentException">The maximum is below <see cref="Minimum"/>.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public DateTime Maximum
+    {
+        get;
+        set
+        {
+            VerifyMutable();
+            ArgumentException.ThrowIfBelowMinimum(value, Minimum, nameof(value), "Maximum cannot be less than Minimum.");
+
+            if (SetProperty(ref field, value, InvalidationImpact.Render))
+            {
+                SyncCalendarBounds();
+                ClampCurrentValue();
+            }
+        }
+    } = DateTime.MaxValue;
+
+    /// <summary>Gets or sets the maximum visible calendar height in terminal cells.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is zero or negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public int DropDownHeight
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
+            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+        }
+    } = _defaultDropDownHeight;
+
+    /// <summary>Gets or sets the owned Calendar popup's border and shadow together.</summary>
+    /// <remarks>
+    /// A component left null keeps the popup on its own <see cref="PopupChrome"/> role
+    /// appearance for that part.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public PopupChrome PopupChrome
+    {
+        get => _popup.Style;
+        set
+        {
+            VerifyMutable();
+
+            if (_popup.Style == value)
+            {
+                return;
+            }
+
+            _popup.Style = value;
+            NotifyPropertyChanged(nameof(PopupChrome), InvalidationImpact.None);
+        }
+    }
+
+    /// <summary>Returns the Calendar popup's border and shadow to <see cref="PopupChrome"/> ownership.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public void ResetPopupChrome() => PopupChrome = default;
+
+    /// <summary>Gets or sets the complete local style of the owned Calendar, or null to use its own
+    /// role-normal presentation.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public CalendarStyle? CalendarStyle
+    {
+        get => _calendar.Style;
+        set
+        {
+            VerifyMutable();
+
+            if (_calendar.Style == value)
+            {
+                return;
+            }
+
+            _calendar.Style = value;
+            NotifyPropertyChanged(nameof(CalendarStyle), InvalidationImpact.None);
+        }
+    }
+
+    /// <summary>Gets the resolved presentation of the owned Calendar.</summary>
+    public CalendarStyle ActualCalendarStyle => _calendar.ActualStyle;
+
+    /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved inside the
+    /// field box and strictly inboard of the drop-down indicator.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Affix? StartAffix
+    {
+        get;
+        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
+    }
+
+    /// <summary>Gets or sets the optional trailing edge-pinned decoration, reserved inside the
+    /// field box and strictly inboard of the drop-down indicator.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Affix? EndAffix
+    {
+        get;
+        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
+    }
+
+    #endregion
+
+    #region Input, layout, and rendering
+
+    /// <inheritdoc/>
+    protected override Size MeasureOverride(Constraint constraint)
+    {
+        EnsureSeeded();
+        _ = MeasureChild(_popup, new Constraint(constraint.Width, DropDownHeight));
+        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
+        var width = _fieldBorderWidth + affixes.StartCells + affixes.EndCells;
+
+        foreach (var segment in BuildSegments())
+        {
+            width += MeasureCells(segment.Text);
+        }
+
+        return new Size(width, _fieldContentHeight);
+    }
+
+    /// <inheritdoc/>
+    protected override void ArrangeOverride(Rect bounds) =>
+        ArrangeChild(_popup, RootBounds(bounds), ResolvedAxes.Both);
+
+    /// <summary>Resolves the box editable segment text is drawn into: the content box with the
+    /// drop-down indicator's own reserved columns (<see cref="_fieldBorderWidth"/>) subtracted
+    /// first, then deflated for any active <see cref="StartAffix"/>/<see cref="EndAffix"/> -
+    /// keeping both affixes strictly inboard of the indicator, and never overlapping it.</summary>
+    private Rect ResolveTextBox()
+    {
+        var content = ContentBounds;
+        var fieldBox = new Rect(
+            content.X,
+            content.Y,
+            Math.Max(0, content.Width - _fieldBorderWidth),
+            _fieldContentHeight);
+        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
+        return DeflateForAffixes(fieldBox, affixes);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnRenderContent(TerminalCanvas canvas)
+    {
+        var content = ContentBounds;
+
+        if (content.Width == 0 || content.Height == 0)
+        {
+            return;
+        }
+
+        EnsureSeeded();
+        var style = ResolvedStyle;
+        var highlight = new TerminalStyle(
+            style.Foreground,
+            style.Background,
+            style.Attributes | TerminalAttributes.Reverse);
+        var canHighlight = IsFocused && !IsOpen;
+        var fieldBox = new Rect(
+            content.X,
+            content.Y,
+            Math.Max(0, content.Width - _fieldBorderWidth),
+            _fieldContentHeight);
+        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
+        RenderAffixes(canvas, fieldBox, affixes, StartAffix, EndAffix, style);
+        var textBox = DeflateForAffixes(fieldBox, affixes);
+        var textCanvas = canvas.Clip(textBox);
+        var x = textBox.X;
+        var editableIndex = -1;
+
+        foreach (var segment in BuildSegments())
+        {
+            if (segment.IsEditable)
+            {
+                editableIndex++;
+            }
+
+            var segmentStyle = canHighlight && segment.IsEditable && editableIndex == _segments.ActiveSegment
+                ? highlight
+                : style;
+            _ = textCanvas.Draw(segment.Text.AsSpan(), new Point(x, textBox.Y), segmentStyle, background: BackgroundMode.Transparent);
+            x += MeasureCells(segment.Text);
+        }
+
+        DrawDropDownIndicator(canvas, content, style);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnEvent(RoutedEventArgs eventArgs)
+    {
+        EnsureSeeded();
+
+        if (!EffectiveIsEnabled || !EffectiveIsVisible)
+        {
+            base.OnEvent(eventArgs);
+            return;
+        }
+
+        if (IsOpen && eventArgs is KeyEventArgs { Stroke: { Action: KeyAction.Press } stroke })
+        {
+            if (stroke.Code == Code.Escape)
+            {
+                IsOpen = false;
+                eventArgs.IsHandled = true;
+                return;
+            }
+
+            if (stroke.Code == Code.Tab)
+            {
+                IsOpen = false;
+                return;
+            }
+
+            if (stroke.Code is Code.Up or Code.Down or Code.Left or Code.Right
+                or Code.PageUp or Code.PageDown or Code.Home or Code.End)
+            {
+                _calendar.InvokeDefault(eventArgs);
+                return;
+            }
+
+            if (stroke.Code == Code.Enter ||
+                (stroke.Code == Code.Character && stroke.Character == new Rune(' ')))
+            {
+                _calendar.InvokeDefault(eventArgs);
+                return;
+            }
+
+            return;
+        }
+
+        if (eventArgs is KeyEventArgs key && !IsOpen)
+        {
+            HandleKey(key);
+
+            if (key.IsHandled)
+            {
+                return;
+            }
+        }
+
+        if (eventArgs is PointerEventArgs pointer && !IsOpen)
+        {
+            HandlePointer(pointer);
+
+            if (pointer.IsHandled)
+            {
+                return;
+            }
+        }
+
+        if (!eventArgs.IsHandled)
+        {
+            HandlePressActivation(eventArgs);
+        }
+
+        if (!eventArgs.IsHandled)
+        {
+            base.OnEvent(eventArgs);
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnFocusChanged(bool focused)
+    {
+        base.OnFocusChanged(focused);
+
+        if (!focused)
+        {
+            _segments.ResetDigitBuffer();
+        }
+
+        Invalidate(InvalidationImpact.Render);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnUnavailable(ReleaseReason reason)
+    {
+        base.OnUnavailable(reason);
+
+        if (reason == ReleaseReason.Disposed)
+        {
+            _calendar.SelectionChanged -= OnCalendarSelectionChanged;
+            ValueChanged = null;
+            DropDownOpened = null;
+            DropDownClosed = null;
+        }
+    }
+
+    #endregion
+
+    #region Keyboard input
+
+    private void HandleKey(KeyEventArgs eventArgs)
+    {
+        var stroke = eventArgs.Stroke;
+
+        if (stroke.Action is not (KeyAction.Press or KeyAction.Repeat))
+        {
+            return;
+        }
+
+        if (stroke.Code == Code.Down && (stroke.Modifiers & Modifiers.Alt) != 0)
+        {
+            IsOpen = true;
+            eventArgs.IsHandled = true;
+            return;
+        }
+
+        if (TryGetStepDelta(eventArgs, out var delta))
+        {
+            if (_segments.Increment(delta))
+            {
+                eventArgs.IsHandled = true;
+            }
+
+            return;
+        }
+
+#pragma warning disable IDE0072 // Unknown or unsupported keys intentionally remain unhandled.
+        var handled = stroke.Code switch
+        {
+            Code.Left => _segments.MoveSegment(-1, wrap: true),
+            Code.Right => _segments.MoveSegment(1, wrap: true),
+            Code.Home => _segments.MoveToEdge(first: true),
+            Code.End => _segments.MoveToEdge(first: false),
+            Code.Delete => ClearValue(),
+            Code.Backspace => _segments.ClearActiveSegment(),
+            Code.Character when stroke.Character is { } ch && IsDigit(ch) => _segments.TypeDigit(ch.Value - '0'),
+            Code.Character when stroke.Character is { } ch && IsAmPmToggle(ch) => ToggleAmPm(),
+            _ => false
+        };
+#pragma warning restore IDE0072
+
+        if (handled)
+        {
+            eventArgs.IsHandled = true;
+        }
+    }
+
+    private void HandlePointer(PointerEventArgs eventArgs) =>
+        TemporalSegmentClassification.HandlePointer(
+            eventArgs,
+            ResolveTextBox(),
+            CellPolicy.AmbiguousWidth,
+            _segments,
+            IsFocused,
+            RequestFocus);
+
+    private bool ToggleAmPm() =>
+        TemporalSegmentClassification.ToggleAmPm(BuildSegments, () => _value.HasValue, _segments);
+
+    /// <summary>Gets whether the current layout - whether derived from <see cref="Use24HourFormat"/>
+    /// or overridden by <see cref="Format"/> - includes an AM/PM designator segment, used as the
+    /// effective 12-versus-24-hour policy for editing the hour segment.</summary>
+    private bool HasAmPmDesignator => TemporalSegmentClassification.HasAmPmDesignator(BuildSegments);
+
+    private bool ApplyDigitValue(TemporalSegmentKind kind, int value)
+    {
+        if (!_value.HasValue)
+        {
+            _ = Commit(ClampToRange(TimeProvider.GetLocalNow().DateTime));
+
+            if (!_value.HasValue)
+            {
+                return false;
+            }
+        }
+
+        var dt = _value.Value;
+        var hasAmPm = HasAmPmDesignator;
+
+        try
+        {
+#pragma warning disable IDE0072 // AmPmDesignator never reaches this callback: its digit capacity is zero.
+            var result = kind switch
+            {
+                TemporalSegmentKind.Month => ReplaceMonth(dt, Math.Clamp(value, 1, 12)),
+                TemporalSegmentKind.Day => ReplaceDay(dt, Math.Clamp(value, 1,
+                    DateTime.DaysInMonth(dt.Year, dt.Month))),
+                TemporalSegmentKind.Year => ReplaceYear(dt, Math.Clamp(value, 1, 9999)),
+                TemporalSegmentKind.Hour when hasAmPm =>
+                    dt.Date.Add(new TimeSpan(
+                        To24Hour(TemporalClockArithmetic.ClampHour(value, hasAmPmDesignator: true), dt.Hour >= 12),
+                        dt.Minute, dt.Second)),
+                TemporalSegmentKind.Hour =>
+                    dt.Date.Add(new TimeSpan(
+                        TemporalClockArithmetic.ClampHour(value, hasAmPmDesignator: false), dt.Minute, dt.Second)),
+                TemporalSegmentKind.Minute =>
+                    dt.Date.Add(new TimeSpan(
+                        dt.Hour, TemporalClockArithmetic.ClampMinuteOrSecond(value), dt.Second)),
+                TemporalSegmentKind.Second =>
+                    dt.Date.Add(new TimeSpan(
+                        dt.Hour, dt.Minute, TemporalClockArithmetic.ClampMinuteOrSecond(value))),
+                _ => dt
+            };
+#pragma warning restore IDE0072
+
+            return Commit(result);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
+    }
+
+    private bool IncrementSegmentValue(TemporalSegmentKind kind, int delta)
+    {
+        if (!_value.HasValue)
+        {
+            return Commit(ClampToRange(TimeProvider.GetLocalNow().DateTime));
+        }
+
+        var dt = _value.Value;
+
+        // Every case below is only reached for a kind the current layout actually contains
+        // (the engine dispatches by the active segment's own kind), so no additional
+        // Use24HourFormat/ShowSeconds guard is needed here.
+#pragma warning disable IDE0072 // Every calendar/clock kind is individually handled or intentionally falls through.
+        var result = kind switch
+        {
+            TemporalSegmentKind.Month => SafeAddMonths(dt, delta),
+            TemporalSegmentKind.Day => SafeAddDays(dt, delta),
+            TemporalSegmentKind.Year => SafeAddYears(dt, delta),
+            TemporalSegmentKind.Hour => SafeAddTicks(dt, TimeSpan.TicksPerHour * delta),
+            TemporalSegmentKind.Minute => SafeAddTicks(dt, TimeStep.Ticks * delta),
+            TemporalSegmentKind.Second => SafeAddTicks(dt, TimeSpan.TicksPerSecond * delta),
+            TemporalSegmentKind.AmPmDesignator => dt.AddHours(dt.Hour < 12 ? 12 : -12),
+            _ => dt
+        };
+#pragma warning restore IDE0072
+
+        return Commit(result);
+    }
+
+    private bool ClearSegmentValue(TemporalSegmentKind kind)
+    {
+        if (!_value.HasValue)
+        {
+            return false;
+        }
+
+        var dt = _value.Value;
+
+        try
+        {
+#pragma warning disable IDE0072 // AmPmDesignator is intentionally a no-op here.
+            var result = kind switch
+            {
+                TemporalSegmentKind.Month => ReplaceMonth(dt, 1),
+                TemporalSegmentKind.Day => ReplaceDay(dt, 1),
+                TemporalSegmentKind.Year => ReplaceYear(dt, 1),
+                TemporalSegmentKind.Hour => dt.Date.Add(new TimeSpan(0, dt.Minute, dt.Second)),
+                TemporalSegmentKind.Minute => dt.Date.Add(new TimeSpan(dt.Hour, 0, dt.Second)),
+                TemporalSegmentKind.Second => dt.Date.Add(new TimeSpan(dt.Hour, dt.Minute, 0)),
+                _ => dt
+            };
+#pragma warning restore IDE0072
+
+            return Commit(result);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
+    }
+
+    private bool ClearValue() =>
+        AllowNull && _value.HasValue && Commit(null);
+
+    private static bool IsDigit(Rune character) => TemporalSegmentClassification.IsDigit(character);
+
+    private static bool IsAmPmToggle(Rune character) => TemporalSegmentClassification.IsAmPmToggle(character);
+
+    #endregion
+
+    #region Commit and validation
+
+    private bool Commit(DateTime? requested)
+    {
+        EnsureSeeded();
+        var previous = _value;
+        var clamped = requested.HasValue
+            ? ClampToRange(requested.Value)
+            : AllowNull ? null : _value;
+
+        if (!SetProperty(ref _value, clamped, InvalidationImpact.Render, nameof(Value)))
+        {
+            return false;
+        }
+
+        if (clamped.HasValue)
+        {
+            PushCalendarSelection(DateOnly.FromDateTime(clamped.Value));
+        }
+
+        ValueChanged?.Invoke(this, new DateTimeInputValueChangedEventArgs(previous, clamped));
+        return true;
+    }
+
+    /// <summary>Latches Value to the current local date and time on first read, so a control
+    /// mounted under a dispatcher observes that dispatcher's clock instead of the clock current
+    /// at construction, and pushes the newly resolved value into the owned Calendar. A value
+    /// already committed - including an explicit null under <see cref="AllowNull"/> - is left
+    /// untouched.</summary>
+    private void EnsureSeeded()
+    {
+        if (_seeded)
+        {
+            return;
+        }
+
+        _seeded = true;
+        var now = ClampToRange(TimeProvider.GetLocalNow().DateTime);
+        _value = now;
+        PushCalendarSelection(DateOnly.FromDateTime(now));
+    }
+
+    private DateTime ClampToRange(DateTime dateTime) => dateTime.Clamp(Minimum, Maximum);
+
+    private void ClampCurrentValue()
+    {
+        if (_value.HasValue)
+        {
+            _ = Commit(ClampToRange(_value.Value));
+        }
+    }
+
+    private void SyncCalendarBounds()
+    {
+        _calendar.MinimumDate = Minimum > DateTime.MinValue
+            ? DateOnly.FromDateTime(Minimum)
+            : DateOnly.MinValue;
+
+        _calendar.MaximumDate = Maximum < DateTime.MaxValue
+            ? DateOnly.FromDateTime(Maximum)
+            : DateOnly.MaxValue;
+    }
+
+    /// <summary>Pushes a date into the owned Calendar's selection under a re-entrancy guard.</summary>
+    /// <remarks>
+    /// Guards against OnCalendarSelectionChanged treating this programmatic push as a user pick:
+    /// without it, setting _calendar.Selection below re-enters through the SelectionChanged
+    /// event and triggers a redundant Commit plus IsOpen = false, converging today only by
+    /// incidental value equality. Mirrors DateInput's SyncCalendar guard.
+    /// </remarks>
+    private void PushCalendarSelection(DateOnly date)
+    {
+        _synchronizingCalendar = true;
+
+        try
+        {
+            _calendar.Selection = new DateInterval(date, date);
+        }
+        finally
+        {
+            _synchronizingCalendar = false;
+        }
+    }
+
+    #endregion
+
+    #region Drop-down coordination
+
+    /// <inheritdoc/>
+    protected override void Activate(ActivationCause cause)
+    {
+        if (cause == ActivationCause.Keyboard)
+        {
+            return;
+        }
+
+        IsOpen = !IsOpen;
+    }
+
+    private void OnCalendarSelectionChanged(object? sender, CalendarSelectionChangedEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (_synchronizingCalendar)
+        {
+            return;
+        }
+
+        if (eventArgs.Selection is not { } interval)
+        {
+            return;
+        }
+
+        var selectedDate = interval.Start;
+        var timePart = _value?.TimeOfDay ?? TimeSpan.Zero;
+        var kind = _value?.Kind ?? DateTimeKind.Unspecified;
+        var combined = selectedDate.ToDateTime(TimeOnly.FromTimeSpan(timePart), kind);
+        _ = Commit(combined);
+        IsOpen = false;
+    }
+
+    /// <inheritdoc/>
+    protected override void OnDropDownOpened() => DropDownOpened?.Invoke(this, EventArgs.Empty);
+
+    /// <inheritdoc/>
+    protected override void OnDropDownClosed() => DropDownClosed?.Invoke(this, EventArgs.Empty);
+
+    #endregion
+
+    #region Rendering
+
+    private string ResolveDateTimePattern() => Format ?? BuildDefaultDateTimePattern();
+
+    private string BuildDefaultDateTimePattern()
+    {
+        var datePattern = _culture.DateTimeFormat.ShortDatePattern;
+        var timePattern = new StringBuilder(Use24HourFormat ? "HH" : "hh").Append(':').Append("mm");
+
+        if (ShowSeconds)
+        {
+            _ = timePattern.Append(':').Append("ss");
+        }
+
+        if (!Use24HourFormat)
+        {
+            _ = timePattern.Append(' ').Append("tt");
+        }
+
+        return $"{datePattern} {timePattern}";
+    }
+
+    private SegmentDescriptor[] BuildSegments()
+    {
+        var pattern = ResolveDateTimePattern();
+        var tokens = TemporalPatternSegmenter.ParseTokens(pattern, _tokenKinds, _culture);
+        var hasAmPm = false;
+
+        foreach (var token in tokens)
+        {
+            if (token.Kind == TemporalSegmentKind.AmPmDesignator)
+            {
+                hasAmPm = true;
+                break;
+            }
+        }
+
+        IReadOnlyList<string> text;
+
+        if (_value is { } dt)
+        {
+            text = TemporalPatternSegmenter.FormatSegments(
+                pattern,
+                tokens,
+                _tokenKinds,
+                format => dt.ToString(format, _culture));
+        }
+        else
+        {
+            var placeholder = new string[tokens.Count];
+
+            for (var index = 0; index < tokens.Count; index++)
+            {
+                var token = tokens[index];
+#pragma warning disable IDE0072 // Every non-literal kind is intentionally a two-character placeholder except Year.
+                placeholder[index] = token.Kind switch
+                {
+                    null => token.LiteralText,
+                    TemporalSegmentKind.Year when token.RunLength >= 4 => "----",
+                    _ => "--"
+                };
+#pragma warning restore IDE0072
+            }
+
+            text = placeholder;
+        }
+
+        var descriptors = new SegmentDescriptor[tokens.Count];
+
+        for (var index = 0; index < tokens.Count; index++)
+        {
+            var token = tokens[index];
+
+            descriptors[index] = token.Kind is not { } kind
+                ? new SegmentDescriptor(text[index])
+                : new SegmentDescriptor(
+                    text[index],
+                    kind,
+                    kind == TemporalSegmentKind.AmPmDesignator ? 0
+                        : kind == TemporalSegmentKind.Year && token.RunLength >= 4 ? 4
+                        : 2,
+                    MaxValueFor(kind, hasAmPm));
+        }
+
+        return descriptors;
+    }
+
+#pragma warning disable IDE0072 // Every segment kind is individually handled.
+    private static int MaxValueFor(TemporalSegmentKind kind, bool hasAmPm) =>
+        kind switch
+        {
+            TemporalSegmentKind.Month => 12,
+            TemporalSegmentKind.Day => 31,
+            TemporalSegmentKind.Year => 9999,
+            TemporalSegmentKind.Hour => hasAmPm ? 12 : 23,
+            TemporalSegmentKind.Minute or TemporalSegmentKind.Second => 59,
+            _ => 0
+        };
+#pragma warning restore IDE0072
+
+    #endregion
+
+    #region Date arithmetic helpers
+
+    private static DateTime ReplaceMonth(DateTime dt, int month)
+    {
+        var (year, resolvedMonth, day) = TemporalCalendarArithmetic.ReplaceMonth(dt.Year, dt.Day, month);
+        return new DateTime(year, resolvedMonth, day, dt.Hour, dt.Minute, dt.Second, dt.Kind);
+    }
+
+    // Every call site already pre-clamps day to DateTime.DaysInMonth(dt.Year, dt.Month) - the
+    // same year and month this clamp itself recomputes - so the clamp below never actually
+    // fires. Kept as a thin adapter, rather than inlined at each call site, purely for symmetry
+    // with ReplaceMonth/ReplaceYear above.
+    private static DateTime ReplaceDay(DateTime dt, int day)
+    {
+        var (year, month, clampedDay) = TemporalCalendarArithmetic.ClampDayOfMonth(dt.Year, dt.Month, day);
+        return new DateTime(year, month, clampedDay, dt.Hour, dt.Minute, dt.Second, dt.Kind);
+    }
+
+    private static DateTime ReplaceYear(DateTime dt, int year)
+    {
+        var (clampedYear, month, day) = TemporalCalendarArithmetic.ReplaceYear(dt.Month, dt.Day, year);
+        return new DateTime(clampedYear, month, day, dt.Hour, dt.Minute, dt.Second, dt.Kind);
+    }
+
+    private static DateTime SafeAddMonths(DateTime dt, int delta)
+    {
+        try
+        {
+            return dt.AddMonths(delta);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return dt;
+        }
+    }
+
+    private static DateTime SafeAddDays(DateTime dt, int delta)
+    {
+        try
+        {
+            return dt.AddDays(delta);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return dt;
+        }
+    }
+
+    private static DateTime SafeAddYears(DateTime dt, int delta)
+    {
+        var year = dt.Year + delta;
+        return year is < 1 or > 9999 ? dt : ReplaceYear(dt, year);
+    }
+
+    private static DateTime SafeAddTicks(DateTime dateTime, long ticks)
+    {
+        try
+        {
+            return dateTime.AddTicks(ticks);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return dateTime;
+        }
+    }
+
+    private static int To24Hour(int hour12, bool isPm) => TemporalSegmentClassification.To24Hour(hour12, isPm);
+
+    #endregion
+
+}

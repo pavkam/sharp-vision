@@ -1,0 +1,40 @@
+{
+  "cSpell.words": [
+    "accessibilities",
+    "backpressures",
+    "cellwise",
+    "codepoint",
+    "codepoints",
+    "ECMA",
+    "grapheme",
+    "graphemes",
+    "Hardblank",
+    "hardblanks",
+    "headerless",
+    "Inlines",
+    "iTerm",
+    "markdownlint",
+    "prefilter",
+    "preflights",
+    "Pressable",
+    "pseudoterminal",
+    "reentrancy",
+    "Shouldly",
+    "sixel",
+    "Smush",
+    "Smushes",
+    "smushing",
+    "supersets",
+    "Supersmush",
+    "tmux",
+    "viewports",
+    "xterm"
+  ],
+  "dotnet.defaultSolution": "SharpVision.slnx",
+  "snyk.advanced.autoSelectOrganization": true,
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.wordWrap": "on"
+  }
+}

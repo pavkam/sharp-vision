@@ -1,0 +1,95 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Terminal.Multiplexing;
+
+using Input;
+
+using Protocols;
+
+using Xterm;
+
+/// <summary>Validates that an unwrapped envelope contains exactly one recognized typed reply.</summary>
+internal sealed class ReplyValidationSink:
+    IProtocolSink,
+    IPaletteResponseSink,
+    IMetricsResponseSink,
+    IStatusResponseSink,
+    ICapabilityResponseSink,
+    IKittyGraphicsResponseSink,
+    IItermCapabilitiesResponseSink
+{
+    private int _responses;
+    private bool Invalid { get; set; }
+
+    /// <summary>Gets whether decoding produced exactly one typed reply and no other event.</summary>
+    public bool Valid => !Invalid && _responses == 1;
+
+    /// <inheritdoc/>
+    public void Input(in Stroke value) => Invalid = true;
+
+    /// <inheritdoc/>
+    public void Input(in TerminalText value) => Invalid = true;
+
+    /// <inheritdoc/>
+    public void Input(in Pointer value) => Invalid = true;
+
+    /// <inheritdoc/>
+    public void Input(Paste value) => Invalid = true;
+
+    /// <inheritdoc/>
+    public void Input(in TerminalFocus value) => Invalid = true;
+
+    /// <inheritdoc/>
+    public void Input(in Diagnostic value) => Invalid = true;
+
+    /// <inheritdoc/>
+    public void Response(in XtermCapabilitiesResponse value)
+    {
+        if (value.Kind is ResponseKind.PrimaryAttributes or
+            ResponseKind.SecondaryAttributes or
+            ResponseKind.PrivateMode or
+            ResponseKind.Keyboard or
+            ResponseKind.CursorPosition)
+        {
+            _responses++;
+        }
+        else
+        {
+            Invalid = true;
+        }
+    }
+
+    /// <inheritdoc/>
+    public void Response(in PaletteResponse value) => _responses++;
+
+    /// <inheritdoc/>
+    public void Response(in MetricsResponse value) => _responses++;
+
+    /// <inheritdoc/>
+    public void Response(in StatusResponse value) => _responses++;
+
+    /// <inheritdoc/>
+    public void Response(CapabilityResponse value) => _responses++;
+
+    /// <inheritdoc/>
+    public void Response(ItermCapabilitiesResponse value) => _responses++;
+
+    /// <inheritdoc/>
+    public void Response(Kitty.Graphics.KittyGraphicsResponse value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        if (value.Valid)
+        {
+            _responses++;
+        }
+        else
+        {
+            Invalid = true;
+        }
+    }
+
+    /// <inheritdoc/>
+    public void Sequence(ProtocolSequence value) => Invalid = true;
+}

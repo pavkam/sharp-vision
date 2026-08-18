@@ -1,0 +1,86 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision;
+
+using Terminal.Kitty.Clipboard;
+
+/// <summary>
+/// Provides one dispatcher-affine completed clipboard request/write outcome, for either protocol
+/// the facade may have used.
+/// </summary>
+/// <remarks>
+/// Exactly one of <see cref="KittyResult"/> or <see cref="Text"/> is non-null on success. Both are
+/// null on failure or timeout, in which case <see cref="Failure"/> and/or
+/// <see cref="Diagnostic"/> describe the outcome. <see cref="KittyResult"/> must be disposed by the
+/// handler once its owned MIME data is no longer needed. A transaction locally superseded by a
+/// newer <see cref="IClipboard.Write"/> or <see cref="IClipboard.Request"/> on the same selection
+/// is silently abandoned instead: no instance of this type is ever raised for it.
+/// </remarks>
+[PublicAPI]
+public sealed class KittyClipboardReplyEventArgs: EventArgs
+{
+    /// <summary>Initializes a completed clipboard operation outcome.</summary>
+    /// <param name="selection">The selection the operation targeted.</param>
+    /// <param name="kittyResult">The owned successful Kitty OSC 5522 MIME result, or null.</param>
+    /// <param name="text">The owned successful OSC 52 UTF-8 text reply, or null.</param>
+    /// <param name="failure">The terminal-reported Kitty failure status, or <see cref="KittyClipboardReplyStatus.None"/>.</param>
+    /// <param name="diagnostic">The redacted local protocol diagnostic, or null.</param>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="kittyResult"/> and <paramref name="text"/> are both present.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="selection"/> or <paramref name="failure"/> is undefined.
+    /// </exception>
+    public KittyClipboardReplyEventArgs(
+        Selection selection,
+        KittyClipboardResult? kittyResult,
+        ReadOnlyMemory<byte>? text,
+        KittyClipboardReplyStatus failure,
+        Diagnostic? diagnostic)
+    {
+        ArgumentOutOfRangeException.ThrowIfNotDefined(selection, nameof(selection), "The clipboard selection is unknown.");
+
+        ArgumentOutOfRangeException.ThrowIfNotDefined(failure, nameof(failure), "The Kitty reply status is unknown.");
+
+        if (kittyResult is not null && text.HasValue)
+        {
+            throw new ArgumentException("A clipboard reply cannot contain both Kitty and OSC 52 payloads.", nameof(text));
+        }
+
+        Selection = selection;
+        KittyResult = kittyResult;
+        Text = text.HasValue
+            ? text.Value.ToArray()
+            : (ReadOnlyMemory<byte>?) null;
+        Failure = failure;
+        Diagnostic = diagnostic;
+    }
+
+    /// <summary>Gets the selection the completed operation targeted.</summary>
+    public Selection Selection { get; }
+
+    /// <summary>
+    /// Gets the owned successful Kitty OSC 5522 MIME result, or null when the completed operation
+    /// used OSC 52 or did not succeed.
+    /// </summary>
+    public KittyClipboardResult? KittyResult { get; }
+
+    /// <summary>
+    /// Gets the owned successful OSC 52 UTF-8 text reply, or null when the completed operation used
+    /// Kitty OSC 5522 or did not succeed.
+    /// </summary>
+    public ReadOnlyMemory<byte>? Text { get; }
+
+    /// <summary>
+    /// Gets the terminal-reported Kitty failure status, or <see cref="KittyClipboardReplyStatus.None"/> for an
+    /// OSC 52 outcome, a success, or a local timeout/cancellation/malformed reply.
+    /// </summary>
+    public KittyClipboardReplyStatus Failure { get; }
+
+    /// <summary>Gets the redacted local protocol diagnostic for a structural failure, or null.</summary>
+    public Diagnostic? Diagnostic { get; }
+
+    /// <summary>Gets whether the operation transferred a usable result.</summary>
+    public bool IsSucceeded => KittyResult is not null || Text is not null;
+}

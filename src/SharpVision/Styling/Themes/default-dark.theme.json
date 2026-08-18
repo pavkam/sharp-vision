@@ -1,0 +1,215 @@
+{
+  "name": "Dark",
+  "slug": "default-dark",
+  "colorScheme": "dark",
+  "order": 0,
+  "author": "SharpVision",
+  "license": "MIT",
+  "source": "https://github.com/sharpvision/sharpvision",
+  "palette": {
+    "black": "#000000",
+    "charcoal": "#262626",
+    "white": "#ffffff",
+    "slateGray": "#585858",
+    "steelGray": "#7f7f7f",
+    "graphite": "#333333",
+    "paleCyan": "#b3ecff",
+    "lightGray": "#e5e5e5",
+    "midnightBlue": "#0a2f54",
+    "cyan": "#00ffff",
+    "darkOlive": "#3a3a1a",
+    "yellow": "#ffff00",
+    "royalBlue": "#0000ee",
+    "ash": "#444444",
+    "red": "#ff0000",
+    "lime": "#00ff00",
+    "periwinkle": "#5c5cff"
+  },
+  "colors": {
+    "window": "black",
+    "windowSurface": "charcoal",
+    "windowText": "white",
+    "surface": "charcoal",
+    "surfaceText": "white",
+    "control": "charcoal",
+    "controlText": "white",
+    "controlBorder": "slateGray",
+    "controlShadow": "steelGray",
+    "activeControl": "graphite",
+    "activeText": "paleCyan",
+    "activeBorder": "lightGray",
+    "focusedControl": "charcoal",
+    "focusedText": "white",
+    "focusedBorder": "lightGray",
+    "pressedControl": "darkOlive",
+    "pressedText": "yellow",
+    "pressedBorder": "yellow",
+    "selectedControl": "royalBlue",
+    "selectedText": "white",
+    "disabledControl": "charcoal",
+    "disabledText": "slateGray",
+    "disabledBorder": "ash",
+    "accent": "cyan",
+    "muted": "steelGray",
+    "hotkey": "yellow",
+    "error": "red",
+    "warning": "yellow",
+    "success": "lime",
+    "info": "periwinkle"
+  },
+  "attributes": {
+    "normalText": [],
+    "activeText": [],
+    "focusedText": "bold",
+    "pressedText": [],
+    "selectedText": [],
+    "disabledText": [],
+    "border": [],
+    "shadow": "dim",
+    "hotkey": "underline"
+  },
+  "styles": {
+    "control": {
+      "normal": {
+        "face": {
+          "foreground": "controlText",
+          "background": "control",
+          "attributes": "normalText"
+        },
+        "border": {
+          "sides": "none",
+          "glyphStyle": "rounded",
+          "foreground": "controlBorder",
+          "background": "control",
+          "attributes": "border"
+        },
+        "shadow": {
+          "visible": false,
+          "mode": "composite",
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "glyph": "▓",
+          "foreground": "controlShadow",
+          "background": "transparent",
+          "attributes": "shadow"
+        }
+      },
+      "disabled": {
+        "face": {
+          "foreground": "disabledText",
+          "background": "disabledControl",
+          "attributes": "disabledText"
+        },
+        "border": {
+          "foreground": "disabledBorder"
+        }
+      }
+    },
+    "input": {
+      "normal": {
+        "affixGap": 1,
+        "face": {
+          "background": "surface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "heavy"
+        }
+      },
+      "pointerOver": {
+        "face": {
+          "foreground": "activeText",
+          "attributes": "activeText",
+          "background": "activeControl"
+        },
+        "border": {
+          "foreground": "activeBorder"
+        }
+      },
+      "focused": {
+        "face": {
+          "foreground": "focusedText",
+          "background": "focusedControl",
+          "attributes": "focusedText"
+        },
+        "border": {
+          "foreground": "focusedBorder"
+        }
+      },
+      "pressed": {
+        "face": {
+          "foreground": "pressedText",
+          "background": "pressedControl",
+          "attributes": "pressedText"
+        },
+        "border": {
+          "foreground": "pressedBorder"
+        }
+      },
+      "selected": {
+        "face": {
+          "foreground": "selectedText",
+          "background": "selectedControl",
+          "attributes": "selectedText"
+        }
+      }
+    },
+    "container": {
+      "normal": {
+        "face": {
+          "background": "surface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "light"
+        }
+      }
+    },
+    "window": {
+      "normal": {
+        "face": {
+          "foreground": "windowText",
+          "background": "windowSurface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "paired"
+        },
+        "shadow": {
+          "visible": true,
+          "mode": "composite",
+          "offset": {
+            "x": 2,
+            "y": 1
+          }
+        }
+      }
+    },
+    "popup": {
+      "normal": {
+        "face": {
+          "foreground": "windowText",
+          "background": "window"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "rounded"
+        }
+      }
+    },
+    "tooltip": {
+      "normal": {
+        "face": {
+          "foreground": "windowText",
+          "background": "window"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "light"
+        }
+      }
+    }
+  }
+}

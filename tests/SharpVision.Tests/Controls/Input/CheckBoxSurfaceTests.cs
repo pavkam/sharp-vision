@@ -1,0 +1,373 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Tests.Controls.Input;
+
+/// <summary>Verifies CheckBox states and activation through a mounted terminal surface.</summary>
+public sealed class CheckBoxSurfaceTests
+{
+    /// <summary>Verifies the unchecked bracket mark and wide label retain exact cell ownership.</summary>
+    [Fact]
+    public async Task Render_WhenUncheckedUnicodeContentIsMounted_ShowsExactNormalCellsAsync()
+    {
+        // Arrange
+        var checkBox = new CheckBox { Text = "界" };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            checkBox,
+            new Size(6, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        checkBox.IsChecked.ShouldBe(false);
+        surface.ShouldHaveState(checkBox, VisualState.Normal);
+        surface.ShouldRender("[ ] 界");
+        surface.Cell(default).Style.Foreground.ShouldBe(ReferenceColors.Get(15));
+        var wide = surface.Cell(new Point(4, 0));
+        wide.Text.ShouldBe("界");
+        wide.Width.ShouldBe(2);
+        surface.Cell(new Point(5, 0)).Continuation.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies hover, held press, release, focus, and pointer activation compose correctly.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(CheckBox),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.Focus |
+        ComponentBehavior.PressRelease |
+        ComponentBehavior.Activation |
+        ComponentBehavior.PointerActivation |
+        ComponentBehavior.UnavailableCleanup |
+        ComponentBehavior.Disabled)]
+    [Fact]
+    public async Task Pointer_WhenCheckBoxIsClicked_ComposesStatesAndTogglesWithPointerCauseAsync()
+    {
+        // Arrange
+        ActivationCause? cause = null;
+        var checkBox = new CheckBox { Text = "Choice" };
+        checkBox.Checked += (_, eventArgs) => cause = eventArgs.Cause;
+        await using var surface = await ComponentSurface.MountAsync(
+            checkBox,
+            new Size(10, 1),
+            TestContext.Current.CancellationToken);
+        var hoveredForeground = TerminalPalette.Project(ThemeColorHelper.HoveredForeground(ThemeCatalog.Dark), ColorDepth.Basic16);
+        var focusedForeground = TerminalPalette.Project(
+            ThemeColorHelper.FocusedForeground(ThemeCatalog.Dark),
+            ColorDepth.Basic16);
+
+        // Act and assert hover
+        await surface.Pointer.MoveToAsync(checkBox);
+        surface.ShouldHaveState(checkBox, VisualState.IsPointerOver);
+        surface.Cell(default).Style.Foreground.ShouldBe(hoveredForeground);
+        surface.Cell(default).Style.Background.ShouldBe(ReferenceColors.Get(0));
+
+        // Act and assert held press
+        await surface.Pointer.PressAsync();
+        checkBox.IsChecked.ShouldBe(false);
+        surface.ShouldHaveState(checkBox, VisualState.IsPointerOver | VisualState.Focused | VisualState.Pressed);
+        surface.ShouldRender("[ ] Choice");
+
+        // Act and assert release
+        await surface.Pointer.ReleaseAsync();
+        checkBox.IsChecked.ShouldBe(true);
+        cause.ShouldBe(ActivationCause.Pointer);
+        surface.ShouldHaveState(checkBox, VisualState.IsPointerOver | VisualState.Focused);
+        surface.ShouldRender("[✓] Choice");
+        // Focus follows PointerOver in the visual-state order, so the released caption carries
+        // the focused cue while the pointer remains over the control.
+        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(focusedForeground);
+        surface.Cell(new Point(4, 0)).Style.Background.ShouldBe(ReferenceColors.Get(0));
+
+        // Act unavailable while another activation is held
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveCapture(checkBox);
+        await surface.UpdateAsync(() => checkBox.IsEnabled = false, "disable held CheckBox");
+
+        // Assert cleanup without another toggle
+        checkBox.IsChecked.ShouldBe(true);
+        checkBox.IsPressed.ShouldBeFalse();
+        checkBox.IsFocused.ShouldBeFalse();
+        surface.ShouldHaveCapture(null);
+        surface.ShouldHaveFocus(null);
+        surface.ShouldHaveState(checkBox, VisualState.Disabled);
+    }
+
+    /// <summary>Verifies a press-only terminal's Space toggles immediately. Legacy input never
+    /// delivers a key release, so the old arm-on-press/complete-on-release Space latched forever
+    /// and never activated outside the Kitty keyboard protocol; the press itself completes when
+    /// releases are not expected.</summary>
+    [Fact]
+    public async Task Keyboard_WhenLegacySpaceHasNoRelease_TogglesOnThePressAsync()
+    {
+        // Arrange
+        List<ActivationCause> causes = [];
+        var checkBox = new CheckBox { Text = "Option" };
+        checkBox.Checked += (_, eventArgs) => causes.Add(eventArgs.Cause);
+        await using var surface = await ComponentSurface.MountAsync(
+            checkBox,
+            new Size(10, 1),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act: a bare UTF-8 space - the only thing a press-only terminal ever sends.
+        await surface.Keyboard.TypeAsync(" ");
+
+        // Assert
+        checkBox.IsChecked.ShouldBe(true);
+        causes.ShouldBe([ActivationCause.Keyboard]);
+        surface.ShouldRender("[✓] Option");
+    }
+
+    /// <summary>Verifies complete Space actions reach checked and indeterminate states with keyboard cause.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(CheckBox),
+        ComponentBehavior.Tab |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.KeyboardActivation)]
+    [Fact]
+    public async Task Keyboard_WhenThreeStateCheckBoxCompletesSpace_CyclesThroughIntendedStatesAsync()
+    {
+        // Arrange
+        List<ActivationCause> causes = [];
+        var checkBox = new CheckBox { Text = "Option", ThreeState = true };
+        checkBox.StateChanged += (_, eventArgs) => causes.Add(eventArgs.Cause);
+        await using var surface = await ComponentSurface.MountAsync(
+            checkBox,
+            new Size(10, 1),
+            TestContext.Current.CancellationToken);
+        var focusedForeground = ThemeColorHelper.FocusedForeground(ThemeCatalog.Dark);
+
+        // Act and assert focus
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveState(checkBox, VisualState.Focused);
+        surface.ShouldRender("[ ] Option");
+
+        await surface.Keyboard.PressAsync(Code.Right);
+        checkBox.IsChecked.ShouldBe(false);
+
+        // Act
+        await surface.Keyboard.CompleteCharacterAsync(new Rune(' '));
+        await surface.Keyboard.CompleteCharacterAsync(new Rune(' '));
+
+        // Assert
+        checkBox.IsChecked.ShouldBeNull();
+        causes.ShouldBe([ActivationCause.Keyboard, ActivationCause.Keyboard]);
+        surface.ShouldHaveState(checkBox, VisualState.Focused);
+        surface.ShouldRender("[─] Option");
+        surface.Cell(default).Style.Foreground.ShouldBe(focusedForeground);
+        surface.Cell(default).Style.Background.ShouldBe(ReferenceColors.Get(0));
+
+        // The transparent caption inherits the ambient focused face, matching the mark's cue.
+        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(focusedForeground, ColorDepth.Basic16));
+        surface.Cell(new Point(4, 0)).Style.Background.ShouldBe(ReferenceColors.Get(0));
+    }
+
+    /// <summary>Verifies disabled checked state refuses keyboard and pointer activation.</summary>
+    [Fact]
+    public async Task Input_WhenCheckedCheckBoxIsDisabled_PreservesValueAndMutedAppearanceAsync()
+    {
+        // Arrange
+        var changes = 0;
+        var checkBox = new CheckBox { Text = "Disabled", IsChecked = true };
+        checkBox.StateChanged += (_, _) => changes++;
+        await using var surface = await ComponentSurface.MountAsync(
+            checkBox,
+            new Size(12, 1),
+            TestContext.Current.CancellationToken);
+
+        var selectedContent = surface.Cell(new Point(4, 0)).Style.Foreground;
+        selectedContent.IsRgb.ShouldBeTrue();
+        selectedContent.ShouldBe(ReferenceColors.Get(15));
+
+        // Act
+        await surface.UpdateAsync(() => checkBox.IsEnabled = false, "disable checked CheckBox");
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Pointer.ClickAsync(checkBox);
+
+        // Assert
+        checkBox.IsChecked.ShouldBe(true);
+        checkBox.IsFocused.ShouldBeFalse();
+        changes.ShouldBe(0);
+        surface.ShouldHaveState(checkBox, VisualState.Disabled);
+        surface.ShouldRender("[✓] Disabled");
+        var expectedDisabledFg = TerminalPalette.Project(ThemeColorHelper.DisabledForeground(ThemeCatalog.Dark), ColorDepth.Basic16);
+        var foreground = surface.Cell(default).Style.Foreground;
+        foreground.IsRgb.ShouldBeTrue();
+        foreground.ShouldBe(expectedDisabledFg);
+        var contentForeground = surface.Cell(new Point(4, 0)).Style.Foreground;
+        contentForeground.IsRgb.ShouldBeTrue();
+        contentForeground.ShouldBe(expectedDisabledFg);
+
+        // Act and assert restored availability
+        await surface.UpdateAsync(() => checkBox.IsEnabled = true, "re-enable checked CheckBox");
+        surface.Cell(default).Style.Foreground.ShouldBe(ReferenceColors.Get(15));
+        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(ReferenceColors.Get(15));
+
+        // Assert normal interaction resumes
+        surface.ShouldHaveState(checkBox, VisualState.Normal);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(checkBox);
+        await surface.Pointer.ClickAsync(checkBox);
+        checkBox.IsChecked.ShouldBe(false);
+        changes.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a CheckBox inherits disabled state from an ancestor and keeps stable
+    /// geometry across a genuine resize while disabled, matching an independently-mounted enabled
+    /// instance arranged at the same size.</summary>
+    [Fact]
+    public async Task Input_WhenAncestorDisablesCheckBoxAndResized_InheritsStateAndPreservesGeometryAsync()
+    {
+        // Arrange a CheckBox disabled only through its ancestor
+        var checkBox = new CheckBox
+        {
+            Text = "Choice",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var overlay = new Overlay
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Children = { checkBox }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            overlay,
+            new Size(10, 1),
+            TestContext.Current.CancellationToken);
+
+        // Act disable the ancestor, not the CheckBox itself
+        await surface.UpdateAsync(() => overlay.IsEnabled = false, "disable CheckBox's ancestor");
+
+        // Assert the disabled state is inherited
+        checkBox.EffectiveIsEnabled.ShouldBeFalse();
+        surface.ShouldHaveState(checkBox, VisualState.Disabled);
+
+        // Act resize to a genuinely different size while disabled
+        await surface.ResizeAsync(new Size(20, 3));
+
+        // Assert geometry matches an independently-mounted enabled instance at the same size
+        var reference = new CheckBox
+        {
+            Text = "Choice",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        await using var referenceSurface = await ComponentSurface.MountAsync(
+            reference,
+            new Size(20, 3),
+            TestContext.Current.CancellationToken);
+
+        checkBox.Bounds.ShouldBe(reference.Bounds);
+        checkBox.DesiredSize.ShouldBe(reference.DesiredSize);
+    }
+
+    /// <summary>Verifies tiny bounds clip the mark without emitting content outside the control.</summary>
+    [Fact]
+    public async Task Render_WhenCheckBoxIsTwoCellsWide_ClipsMarkAndContentAsync()
+    {
+        // Arrange
+        var checkBox = new CheckBox { Text = "Hidden" };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            checkBox,
+            new Size(2, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("[ ");
+
+        // Act and assert expanded surface
+        await surface.ResizeAsync(new Size(10, 1));
+        surface.ShouldRender("[ ] Hidden");
+    }
+
+    /// <summary>Verifies both affixes reserve their own cell column, the start affix drawn before
+    /// the mark and the end affix drawn after the caption, matching the documented layout.</summary>
+    [Fact]
+    public async Task Render_WhenCheckBoxHasBothAffixes_PinsThemBesideTheMarkAndCaptionAsync()
+    {
+        // Arrange
+        var checkBox = new CheckBox
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            Text = "Go",
+            StartAffix = new Affix(">"),
+            EndAffix = new Affix("<")
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            checkBox,
+            new Size(10, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("> [ ] Go <");
+    }
+
+    /// <summary>Verifies a same-width content swap invalidates rendering only, and the mounted
+    /// surface reflects the new glyph without a remeasure - the exact grading an animated affix
+    /// (a spinner swapping frames) depends on.</summary>
+    [Fact]
+    public async Task StartAffix_WhenContentChangesAtTheSameResolvedWidth_UpdatesRenderOnlyAsync()
+    {
+        // Arrange
+        var checkBox = new CheckBox
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            Text = "Go",
+            StartAffix = new Affix("|")
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            checkBox,
+            new Size(10, 1),
+            TestContext.Current.CancellationToken);
+        surface.Cell(default).Text.ShouldBe("|");
+        var impact = Invalidation.None;
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                checkBox.Clear(Invalidation.All);
+                checkBox.StartAffix = new Affix("/");
+                impact = checkBox.Pending;
+            },
+            "swap start affix content at the same resolved width");
+
+        // Assert
+        impact.ShouldBe(Invalidation.Render);
+        surface.Cell(default).Text.ShouldBe("/");
+    }
+
+    /// <summary>Verifies Padding shifts the mark and caption together against the deflated
+    /// content box, matching the box-model contract - only the whole-Bounds body fill is
+    /// allowed to paint across the raw border box, everything else must respect padding
+    /// deflation.</summary>
+    [Fact]
+    public async Task Render_WhenPaddingIsSet_ShiftsMarkByPaddingLeftAsync()
+    {
+        // Arrange
+        var checkBox = new CheckBox("x") { Padding = new Thickness(2, 0, 0, 0) };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            checkBox,
+            new Size(8, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("  [ ] x");
+    }
+}

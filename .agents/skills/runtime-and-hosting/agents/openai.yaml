@@ -1,0 +1,4 @@
+interface:
+  display_name: "Runtime and Hosting"
+  short_description: "Own dispatch, hosting, event order, and cleanup"
+  default_prompt: "Use $runtime-and-hosting to implement or review SharpVision runtime, hosting, or lifecycle behavior."

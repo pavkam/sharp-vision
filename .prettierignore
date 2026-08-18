@@ -1,0 +1,7 @@
+.codex/skills/**/SKILL.md
+.claude/
+.worktrees/
+artifacts/
+bin/
+node_modules/
+obj/

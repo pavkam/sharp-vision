@@ -1,0 +1,31 @@
+name: Feature proposal
+description: Propose a scoped capability or material improvement.
+title: "[Feature]: "
+labels:
+  - "kind: feature"
+  - "state: needs triage"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Start with the problem. A proposed API is welcome, but it should follow from a concrete use case.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Who is affected and what cannot be done today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed direction
+      description: Describe the behavior, constraints, and any API shape you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: true

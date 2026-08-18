@@ -1,0 +1,51 @@
+name: Bug report
+description: Report a reproducible problem in SharpVision.
+title: "[Bug]: "
+labels:
+  - "kind: bug"
+  - "state: needs triage"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve SharpVision. A minimal reproduction and terminal details make terminal bugs vastly easier to diagnose.
+  - type: input
+    id: version
+    attributes:
+      label: SharpVision version
+      description: Include the NuGet package version or the commit SHA.
+      placeholder: 0.5.0-alpha.1
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, terminal emulator, shell, and .NET SDK version.
+      placeholder: macOS 15, iTerm2 3.5, zsh, .NET SDK 10.0.x
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include the smallest program and exact steps that show the problem.
+      placeholder: |
+        1. Run ...
+        2. Press ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include screenshots, recordings, or terminal output when useful.
+    validations:
+      required: true

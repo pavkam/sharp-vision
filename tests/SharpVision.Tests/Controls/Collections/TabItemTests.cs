@@ -1,0 +1,82 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Tests.Controls.Collections;
+
+/// <summary>Verifies TabItem header validation and content ownership.</summary>
+public sealed class TabItemTests
+{
+    /// <summary>Verifies a new page rejects invalid header text before mutation.</summary>
+    [ComponentUnitEvidence(typeof(TabItem))]
+    [Fact]
+    public void Properties_WhenCreatedOrAssignedInvalidHeader_PreserveDefaults()
+    {
+        var item = new TabItem();
+
+        item.HeaderText.ShouldBe(string.Empty);
+        item.Content.ShouldBeNull();
+
+        _ = Should.Throw<ArgumentNullException>(() => item.HeaderText = null!);
+
+        item.HeaderText.ShouldBe(string.Empty);
+    }
+
+    /// <summary>Verifies direct and owning-TabControl-inherited IsEnabled changes flip a TabItem's
+    /// EffectiveIsEnabled without disturbing its own IsEnabled property, and re-enabling restores it.</summary>
+    [ComponentUnitEvidence(typeof(TabItem), ComponentBehavior.Disabled)]
+    [Fact]
+    public void Enabled_WhenToggledDirectlyOrByOwningTabControl_UpdatesEffectiveEnabled()
+    {
+        var item = new TabItem { HeaderText = "Page", IsEnabled = false };
+
+        item.EffectiveIsEnabled.ShouldBeFalse();
+
+        item.IsEnabled = true;
+
+        item.EffectiveIsEnabled.ShouldBeTrue();
+
+        var tabs = new TabControl();
+        tabs.Items.Add(item);
+
+        tabs.IsEnabled = false;
+
+        item.IsEnabled.ShouldBeTrue();
+        item.EffectiveIsEnabled.ShouldBeFalse();
+
+        tabs.IsEnabled = true;
+
+        item.EffectiveIsEnabled.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies caller content replacement transfers ownership.</summary>
+    [Fact]
+    public void Content_WhenReplaced_TransfersOnlyCallerContentOwnership()
+    {
+        var first = new ControlText("First");
+        var second = new ControlText("Second");
+        var item = new TabItem { HeaderText = "Page", Content = first };
+
+        item.Content = second;
+
+        first.Parent.ShouldBeNull();
+        second.Parent.ShouldBeSameAs(item);
+    }
+
+    /// <summary>Verifies TabItem derives directly from ContentControl and exposes no owned Header slot.</summary>
+    /// <remarks>
+    /// Before this control stopped deriving from <c>HeaderedContentControl</c>, a caller-assigned
+    /// focusable <c>Header</c> was retained and attached but never arranged by any layout pass - yet
+    /// remained reachable by Tab navigation, since focus eligibility only checks
+    /// <see cref="ControlBase.Visibility"/>, <see cref="ControlBase.IsEnabled"/>, disposal, and
+    /// navigation participation, never committed geometry. There is now no <c>Header</c> property to
+    /// assign a control to in the first place, so that unreachable-but-focusable state can no longer
+    /// occur.
+    /// </remarks>
+    [Fact]
+    public void Type_WhenInspected_DerivesFromContentControlWithNoHeaderSlot()
+    {
+        typeof(TabItem).BaseType.ShouldBe(typeof(ContentControl));
+        typeof(HeaderedContentControl).IsAssignableFrom(typeof(TabItem)).ShouldBeFalse();
+        typeof(TabItem).GetProperty("Header").ShouldBeNull();
+    }
+}

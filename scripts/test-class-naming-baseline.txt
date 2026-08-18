@@ -1,0 +1,4 @@
+tests/SharpVision.Terminal.Tests/Capabilities/NcursesProviderTests.cs#NcursesProviderTests
+tests/SharpVision.Terminal.Tests/Clipboard/ClipboardIntegrationTests.cs#ClipboardIntegrationTests
+tests/SharpVision.Terminal.Tests/Runtime/WindowsConsoleHostConPtyTests.cs#WindowsConsoleHostConPtyTests
+tests/SharpVision.Terminal.Tests/Transport/PseudoterminalTests.cs#PseudoterminalTests

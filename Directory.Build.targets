@@ -1,0 +1,40 @@
+<Project>
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <!-- Test names intentionally use MethodName_WhenThis_ThatIsExpected. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+
+  <Target Name="ValidateNuGetPackageMetadata"
+          BeforeTargets="GenerateNuspec"
+          Condition="'$(IsPackable)' == 'true'">
+    <ItemGroup>
+      <_RequiredNuGetMetadata Include="PackageId" Value="$(PackageId)"/>
+      <_RequiredNuGetMetadata Include="PackageVersion" Value="$(PackageVersion)"/>
+      <_RequiredNuGetMetadata Include="Title" Value="$(Title)"/>
+      <_RequiredNuGetMetadata Include="Authors" Value="$(Authors)"/>
+      <_RequiredNuGetMetadata Include="Description" Value="$(Description)"/>
+      <_RequiredNuGetMetadata Include="PackageTags" Value="$(PackageTags)"/>
+      <_RequiredNuGetMetadata Include="PackageLicenseExpression" Value="$(PackageLicenseExpression)"/>
+      <_RequiredNuGetMetadata Include="PackageProjectUrl" Value="$(PackageProjectUrl)"/>
+      <_RequiredNuGetMetadata Include="RepositoryUrl" Value="$(RepositoryUrl)"/>
+      <_RequiredNuGetMetadata Include="RepositoryType" Value="$(RepositoryType)"/>
+      <_RequiredNuGetMetadata Include="PackageIcon" Value="$(PackageIcon)"/>
+      <_RequiredNuGetMetadata Include="PackageReadmeFile" Value="$(PackageReadmeFile)"/>
+      <_RequiredNuGetMetadata Include="PackageReleaseNotes" Value="$(PackageReleaseNotes)"/>
+      <_RequiredNuGetMetadata Include="Copyright" Value="$(Copyright)"/>
+      <_RequiredNuGetMetadata Include="PackageRequireLicenseAcceptance" Value="$(PackageRequireLicenseAcceptance)"/>
+    </ItemGroup>
+
+    <Error Condition="'%(_RequiredNuGetMetadata.Value)' == ''"
+           Text="NuGet package metadata '%(_RequiredNuGetMetadata.Identity)' must be set for $(MSBuildProjectName)."/>
+
+    <!-- Non-empty was the only thing checked here, so a stale but present string passed every
+         gate: the notes drifted across four version bumps while every published listing carried
+         them. $(Version) already resolves to this specific project's own package version (see
+         Directory.Build.props), so requiring it to appear in the text ties the two together per
+         package - each of the three libraries can move independently without this check
+         requiring the others to agree. -->
+    <Error Condition="!$(PackageReleaseNotes.Contains('$(Version)'))"
+           Text="PackageReleaseNotes for $(MSBuildProjectName) must name the current version '$(Version)'; it currently reads '$(PackageReleaseNotes)'."/>
+  </Target>
+</Project>

@@ -1,0 +1,179 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Controls.Layout;
+
+using System.Diagnostics.CodeAnalysis;
+
+/// <summary>Defines one complete immutable tabular presentation. This style's own "table" theme key
+/// falls back to <see cref="ControlStyle"/>'s "control" key for anything it does not author
+/// itself.
+///
+/// <para>Falls back to "control" rather than "container" despite a table being container-shaped:
+/// <c>Table</c> takes <c>ControlBase</c>'s borderless default today, and <c>ContainerStyle</c>'s
+/// light border reserves a cell on every edge, which would change every table's measured size.</para>
+/// </summary>
+[PublicAPI]
+public sealed record TableStyle: ControlStyle
+{
+    /// <summary>Gets the primary table-style definition. A theme's own "table" key can restyle the
+    /// grid glyphs, the three part colors, and the cell padding directly. Falls back through
+    /// <see cref="Theme.GetFocusableControlStyleSet"/> rather than the bare "control" key so a
+    /// directly focused Table gets a visible cue instead of none at all - Table is a focus target
+    /// in its own right, unlike a merely passive panel. Deliberately narrower than
+    /// <see cref="Theme.GetInteractiveControlStyleSet"/>: Table's own hover and per-row/cell
+    /// selection are already handled more specifically by its cells, so only Focused/FocusWithin
+    /// are rebased here, leaving hover and press exactly as the passive "control" key resolves
+    /// them (unchanged).</summary>
+    internal static StyleDefinition<TableStyle> Definition { get; } = StyleDefinitions.Control(
+        static theme => theme.GetFocusableControlStyleSet(),
+        Complete,
+        static (previous, previousTheme, current, currentTheme) =>
+            previous.CellPadding != current.CellPadding
+                ? InvalidationImpact.Measure
+                : previous != current ||
+                  Resolved(previous.HeaderForeground, previousTheme) != Resolved(current.HeaderForeground, currentTheme) ||
+                  Resolved(previous.HeaderBackground, previousTheme) != Resolved(current.HeaderBackground, currentTheme) ||
+                  Resolved(previous.GridLineColor, previousTheme) != Resolved(current.GridLineColor, currentTheme) ||
+                  Resolved(previous.PlaceholderForeground, previousTheme) !=
+                  Resolved(current.PlaceholderForeground, currentTheme) ||
+                  Resolved(previous.PlaceholderErrorForeground, previousTheme) !=
+                  Resolved(current.PlaceholderErrorForeground, currentTheme)
+                    ? InvalidationImpact.Render
+                    : InvalidationImpact.None);
+
+    private static TableStyle Complete(ControlStyle control, VisualState state) =>
+        new(
+            control.Face,
+            control.Border,
+            control.Shadow,
+            TableGlyphs.Default,
+            default,
+            SemanticColor.Muted,
+            SemanticColor.Error);
+
+    /// <summary>Initializes a complete tabular presentation.</summary>
+    /// <param name="face">The complete normal face.</param>
+    /// <param name="border">The complete normal border.</param>
+    /// <param name="shadow">The complete normal shadow.</param>
+    /// <param name="glyphs">The complete grid-line glyph family.</param>
+    /// <param name="cellPadding">The padding applied to every header and data cell.</param>
+    /// <param name="placeholderForeground">The non-transparent pending-placeholder-row foreground.</param>
+    /// <param name="placeholderErrorForeground">The non-transparent failed-placeholder-row foreground.</param>
+    /// <exception cref="ArgumentException">A configured placeholder color is transparent.</exception>
+    [SetsRequiredMembers]
+    public TableStyle(
+        Face face,
+        Border border,
+        Shadow shadow,
+        TableGlyphs glyphs,
+        Thickness cellPadding,
+        ControlColor placeholderForeground,
+        ControlColor placeholderErrorForeground)
+        : base(face, border, shadow)
+    {
+        Glyphs = glyphs;
+        CellPadding = cellPadding;
+        PlaceholderForeground = placeholderForeground;
+        PlaceholderErrorForeground = placeholderErrorForeground;
+    }
+
+    /// <summary>Gets the standard tabular presentation.</summary>
+    public static new TableStyle Default => Complete(ControlStyle.Default, VisualState.Normal);
+
+    /// <summary>Gets the complete grid-line glyph family.</summary>
+    public required TableGlyphs Glyphs { get; init; }
+
+    /// <summary>Gets the padding applied to every header and data cell.</summary>
+    public required Thickness CellPadding { get; init; }
+
+    /// <summary>Gets the header-text foreground, or <see langword="null"/> to inherit the table's own
+    /// resolved face.</summary>
+    /// <remarks>
+    /// Nullable on purpose, unlike <c>TabControlStyle</c>'s required part colors. Null here is not
+    /// "unset, so pick a semantic default" - it means "use whatever the table's own resolved
+    /// foreground is", which no fixed <see cref="ControlColor"/> can express because it follows the
+    /// face through every state and theme.
+    /// </remarks>
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public ControlColor? HeaderForeground
+    {
+        get;
+        init
+        {
+            if (value is { } color)
+            {
+                ControlColor.ValidatePaint(color, nameof(value));
+            }
+
+            field = value;
+        }
+    }
+
+    /// <summary>Gets the header-row background, or <see langword="null"/> to inherit the table's own
+    /// resolved face.</summary>
+    /// <remarks>
+    /// The null case carries a second meaning the others do not: an unset header background also
+    /// means the header row is not filled at all unless the table itself paints an opaque fill, so
+    /// collapsing this to a required member would paint a header band on every table.
+    /// </remarks>
+    public ControlColor? HeaderBackground { get; init; }
+
+    /// <summary>Gets the grid-line color, or <see langword="null"/> to inherit the table's own
+    /// resolved face.</summary>
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public ControlColor? GridLineColor
+    {
+        get;
+        init
+        {
+            if (value is { } color)
+            {
+                ControlColor.ValidatePaint(color, nameof(value));
+            }
+
+            field = value;
+        }
+    }
+
+    /// <summary>Gets the pending-placeholder-row foreground.</summary>
+    /// <remarks>
+    /// Required rather than nullable, unlike <see cref="HeaderForeground"/> and
+    /// <see cref="GridLineColor"/>: the placeholder skeleton is a synthetic status indicator with no
+    /// "inherit the table's own resolved face" meaning to fall back to, the same reasoning
+    /// <c>TreeViewStyle.LoadingColor</c> already applies to its own status row.
+    /// </remarks>
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public required ControlColor PlaceholderForeground
+    {
+        get;
+        init
+        {
+            ControlColor.ValidatePaint(value, nameof(value));
+            field = value;
+        }
+    }
+
+    /// <summary>Gets the failed-placeholder-row foreground.</summary>
+    /// <remarks>
+    /// Required rather than nullable, unlike <see cref="HeaderForeground"/> and
+    /// <see cref="GridLineColor"/>: the placeholder skeleton is a synthetic status indicator with no
+    /// "inherit the table's own resolved face" meaning to fall back to, the same reasoning
+    /// <c>TreeViewStyle.FailedColor</c> already applies to its own status row.
+    /// </remarks>
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public required ControlColor PlaceholderErrorForeground
+    {
+        get;
+        init
+        {
+            ControlColor.ValidatePaint(value, nameof(value));
+            field = value;
+        }
+    }
+
+    // A null part color stays distinct from every resolved one, so "inherit the face" and "paint
+    // this exact color" never compare equal just because a theme maps them to the same literal.
+    private static Color? Resolved(ControlColor? value, Theme? theme) =>
+        value is { } color ? ControlBase.ResolveColor(color, theme) : null;
+}

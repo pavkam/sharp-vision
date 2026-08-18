@@ -1,0 +1,310 @@
+name: 📦 Publish SharpVision
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  checks: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  NUGET_SOURCE: https://api.nuget.org/v3/index.json
+
+jobs:
+  # Runs beside build-and-test rather than inside it. Publication still cannot happen unless this
+  # passes, because the push job needs both, but a lint failure no longer delays the test results
+  # and a slow lint no longer extends the publication path.
+  lint:
+    name: 🔍 Lint and documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ☁️ Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: ⚙️ Set up repository
+        uses: ./.github/actions/setup
+
+      - name: 🔍 Lint and documentation checks
+        shell: bash
+        run: make lint
+
+  build-and-test:
+    name: 🧪 Build, test, and pack
+    runs-on: ubuntu-latest
+    outputs:
+      terminal_version: ${{ steps.package-versions.outputs.terminal_version }}
+      ui_version: ${{ steps.package-versions.outputs.ui_version }}
+      fonts_version: ${{ steps.package-versions.outputs.fonts_version }}
+      terminal_deployed: ${{ steps.published-versions.outputs.terminal_deployed }}
+      ui_deployed: ${{ steps.published-versions.outputs.ui_deployed }}
+      fonts_deployed: ${{ steps.published-versions.outputs.fonts_deployed }}
+
+    steps:
+      - name: ☁️ Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: ⚙️ Set up repository
+        uses: ./.github/actions/setup
+
+      - name: ⏯️ Build and test
+        uses: ./.github/actions/build-and-test
+
+      - name: 🔖 Read package versions
+        id: package-versions
+        shell: bash
+        run: |
+          terminal_version="$(dotnet msbuild src/SharpVision.Terminal/SharpVision.Terminal.csproj -getProperty:Version | tail -n 1)"
+          ui_version="$(dotnet msbuild src/SharpVision/SharpVision.csproj -getProperty:Version | tail -n 1)"
+          fonts_version="$(dotnet msbuild src/SharpVision.FigletFonts/SharpVision.FigletFonts.csproj -getProperty:Version | tail -n 1)"
+
+          semver_pattern='^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'
+
+          for entry in "SharpVision.Terminal:$terminal_version" "SharpVision:$ui_version" "SharpVision.FigletFonts:$fonts_version"; do
+            name="${entry%%:*}"
+            version="${entry#*:}"
+
+            if [[ ! "$version" =~ $semver_pattern ]]; then
+              echo "$name version is not a valid semver string: $version" >&2
+              exit 1
+            fi
+          done
+
+          echo "terminal_version=$terminal_version" >> "$GITHUB_OUTPUT"
+          echo "ui_version=$ui_version" >> "$GITHUB_OUTPUT"
+          echo "fonts_version=$fonts_version" >> "$GITHUB_OUTPUT"
+
+      - name: 🔎 Check if package is already published
+        id: published-versions
+        shell: bash
+        env:
+          TERMINAL_VERSION: ${{ steps.package-versions.outputs.terminal_version }}
+          UI_VERSION: ${{ steps.package-versions.outputs.ui_version }}
+          FONTS_VERSION: ${{ steps.package-versions.outputs.fonts_version }}
+        run: |
+          check_package() {
+            local output_name="$1"
+            local package_id="$2"
+            local version="$3"
+            local normalized_id="${package_id,,}"
+            local package_url="https://api.nuget.org/v3-flatcontainer/$normalized_id/$version/$normalized_id.$version.nupkg"
+            local status
+            status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$package_url")"
+
+            case "$status" in
+              200)
+                echo "$output_name=yes" >> "$GITHUB_OUTPUT"
+                echo "$package_id $version is already published."
+                ;;
+              404)
+                echo "$output_name=no" >> "$GITHUB_OUTPUT"
+                echo "$package_id $version is not published yet."
+                ;;
+              *)
+                echo "Unexpected NuGet response for $package_id: HTTP $status" >&2
+                exit 1
+                ;;
+            esac
+          }
+
+          check_package terminal_deployed SharpVision.Terminal "$TERMINAL_VERSION"
+          check_package ui_deployed SharpVision "$UI_VERSION"
+          check_package fonts_deployed SharpVision.FigletFonts "$FONTS_VERSION"
+
+      - name: 📦 Pack SharpVision packages
+        shell: bash
+        env:
+          TERMINAL_VERSION: ${{ steps.package-versions.outputs.terminal_version }}
+          UI_VERSION: ${{ steps.package-versions.outputs.ui_version }}
+          FONTS_VERSION: ${{ steps.package-versions.outputs.fonts_version }}
+        run: |
+          rm -rf artifacts/package
+          mkdir -p artifacts/package
+
+          dotnet pack src/SharpVision.Terminal/SharpVision.Terminal.csproj \
+            --configuration Release \
+            --no-build \
+            --no-restore \
+            --output artifacts/package
+
+          dotnet pack src/SharpVision/SharpVision.csproj \
+            --configuration Release \
+            --no-build \
+            --no-restore \
+            --output artifacts/package
+
+          dotnet pack src/SharpVision.FigletFonts/SharpVision.FigletFonts.csproj \
+            --configuration Release \
+            --no-build \
+            --no-restore \
+            --output artifacts/package
+
+          expected_files=(
+            "SharpVision.$UI_VERSION.nupkg"
+            "SharpVision.$UI_VERSION.snupkg"
+            "SharpVision.FigletFonts.$FONTS_VERSION.nupkg"
+            "SharpVision.FigletFonts.$FONTS_VERSION.snupkg"
+            "SharpVision.Terminal.$TERMINAL_VERSION.nupkg"
+            "SharpVision.Terminal.$TERMINAL_VERSION.snupkg"
+          )
+          mapfile -t expected_sorted < <(printf '%s\n' "${expected_files[@]}" | sort)
+          mapfile -t package_files < <(find artifacts/package -maxdepth 1 -type f -printf '%f\n' | sort)
+
+          if [[ "${package_files[*]}" != "${expected_sorted[*]}" ]]; then
+            echo "Unexpected package output. Exactly three packages and their symbols are expected:" >&2
+            printf '  %s\n' "${package_files[@]}" >&2
+            exit 1
+          fi
+
+          echo "Verified package output: ${package_files[*]}"
+
+      - name: 📤 Upload packages
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nuget-packages
+          path: artifacts/package
+          if-no-files-found: error
+
+  # Needs both gates, so a lint or test failure still prevents publication exactly as before. It
+  # pushes the artifacts the previous job already produced instead of rebuilding them.
+  publish:
+    name: 🚀 Publish packages
+    needs: [lint, build-and-test]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⚙️ Set up .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: 📥 Download packages
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: nuget-packages
+          path: artifacts/package
+
+      - name: 🚀 Publish SharpVision.Terminal package
+        if: ${{ needs.build-and-test.outputs.terminal_deployed == 'no' }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_ORG_API_KEY }}
+          VERSION: ${{ needs.build-and-test.outputs.terminal_version }}
+        run: >-
+          dotnet nuget push "artifacts/package/SharpVision.Terminal.${VERSION}.nupkg"
+          --api-key "$NUGET_API_KEY"
+          --source "$NUGET_SOURCE"
+          --skip-duplicate
+
+      - name: 🚀 Publish SharpVision.Terminal symbols
+        if: ${{ needs.build-and-test.outputs.terminal_deployed == 'no' }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_ORG_API_KEY }}
+          VERSION: ${{ needs.build-and-test.outputs.terminal_version }}
+        run: >-
+          dotnet nuget push "artifacts/package/SharpVision.Terminal.${VERSION}.snupkg"
+          --api-key "$NUGET_API_KEY"
+          --source "$NUGET_SOURCE"
+          --skip-duplicate
+
+      - name: 🚀 Publish SharpVision package
+        if: ${{ needs.build-and-test.outputs.ui_deployed == 'no' }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_ORG_API_KEY }}
+          VERSION: ${{ needs.build-and-test.outputs.ui_version }}
+        run: >-
+          dotnet nuget push "artifacts/package/SharpVision.${VERSION}.nupkg"
+          --api-key "$NUGET_API_KEY"
+          --source "$NUGET_SOURCE"
+          --skip-duplicate
+
+      - name: 🚀 Publish SharpVision symbols
+        if: ${{ needs.build-and-test.outputs.ui_deployed == 'no' }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_ORG_API_KEY }}
+          VERSION: ${{ needs.build-and-test.outputs.ui_version }}
+        run: >-
+          dotnet nuget push "artifacts/package/SharpVision.${VERSION}.snupkg"
+          --api-key "$NUGET_API_KEY"
+          --source "$NUGET_SOURCE"
+          --skip-duplicate
+
+      - name: 🚀 Publish SharpVision.FigletFonts package
+        if: ${{ needs.build-and-test.outputs.fonts_deployed == 'no' }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_ORG_API_KEY }}
+          VERSION: ${{ needs.build-and-test.outputs.fonts_version }}
+        run: >-
+          dotnet nuget push "artifacts/package/SharpVision.FigletFonts.${VERSION}.nupkg"
+          --api-key "$NUGET_API_KEY"
+          --source "$NUGET_SOURCE"
+          --skip-duplicate
+
+      - name: 🚀 Publish SharpVision.FigletFonts symbols
+        if: ${{ needs.build-and-test.outputs.fonts_deployed == 'no' }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_ORG_API_KEY }}
+          VERSION: ${{ needs.build-and-test.outputs.fonts_version }}
+        run: >-
+          dotnet nuget push "artifacts/package/SharpVision.FigletFonts.${VERSION}.snupkg"
+          --api-key "$NUGET_API_KEY"
+          --source "$NUGET_SOURCE"
+          --skip-duplicate
+
+  summary:
+    name: ✔️ Generate publish summary
+    needs: [lint, build-and-test, publish]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📝 Write summary
+        shell: bash
+        run: |
+          if [[ "${{ needs.publish.result }}" == "success" ]]; then
+            if [[ "${{ needs.build-and-test.outputs.terminal_deployed }}" == "no" ]]; then
+              terminal_status="✅ Published"
+            else
+              terminal_status="✅ Already published"
+            fi
+
+            if [[ "${{ needs.build-and-test.outputs.ui_deployed }}" == "no" ]]; then
+              ui_status="✅ Published"
+            else
+              ui_status="✅ Already published"
+            fi
+
+            if [[ "${{ needs.build-and-test.outputs.fonts_deployed }}" == "no" ]]; then
+              fonts_status="✅ Published"
+            else
+              fonts_status="✅ Already published"
+            fi
+
+            {
+              echo "## NuGet packages"
+              echo
+              echo "| Package | Status | Version |"
+              echo "| --- | --- | --- |"
+              echo "| SharpVision.Terminal | $terminal_status | ${{ needs.build-and-test.outputs.terminal_version }} |"
+              echo "| SharpVision | $ui_status | ${{ needs.build-and-test.outputs.ui_version }} |"
+              echo "| SharpVision.FigletFonts | $fonts_status | ${{ needs.build-and-test.outputs.fonts_version }} |"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "## ❌ Publish failed"
+              echo
+              echo "| Gate | Result |"
+              echo "| --- | --- |"
+              echo "| Lint and documentation | ${{ needs.lint.result }} |"
+              echo "| Build, test, and pack | ${{ needs.build-and-test.result }} |"
+              echo "| Publish packages | ${{ needs.publish.result }} |"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

@@ -1,0 +1,88 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Showcase.Panes;
+
+using Text = SharpVision.Controls.Display.Text;
+
+/// <summary>Documents the NavigationView with sidebar items, groups, overflow scrolling, and footer.</summary>
+internal sealed class NavigationViewPane: CompositeControlBase
+{
+    /// <summary>Initializes the retained NavigationView showcase content.</summary>
+    internal NavigationViewPane() => InitializeContent(CreateContent());
+
+    /// <summary>The exact catalog/page name.</summary>
+    internal const string Title = "NavigationView";
+
+    private static DocPage CreateContent()
+    {
+        var status = new Text("Selected: none");
+        var basic = new NavigationView { Header = "&MY APP", Width = Length.Cells(24), Height = Length.Cells(4) };
+        basic.Items.Add(new NavigationViewItem { Text = "&界 Dashboard" });
+        basic.Items.Add(new NavigationViewItem { Text = "&Reports", Glyph = "📈" });
+        basic.Items.Add(new NavigationViewItem { Text = "&Settings", Glyph = "⚙", IsEnabled = false });
+        basic.SelectionChanged += (_, _) =>
+            status.Content = $"Selected: {DocCaption.PlainCaption(basic.SelectedItem?.Text ?? "none")}";
+
+        var grouped = new NavigationView { Header = "&PROJECT", Width = Length.Cells(24), Height = Length.Cells(8) };
+        var core = new NavigationViewGroup { Header = "&Core" };
+        core.Items.Add(new NavigationViewItem { Text = "Mo&dels" });
+        core.Items.Add(new NavigationViewItem { Text = "&Services" });
+        var tests = new NavigationViewGroup { Header = "&Tests" };
+        tests.Items.Add(new NavigationViewItem { Text = "&Unit" });
+        tests.Items.Add(new NavigationViewItem { Text = "&Integration" });
+        grouped.Items.Add(core);
+        grouped.Items.Add(new NavigationViewSeparator());
+        grouped.Items.Add(tests);
+
+        var footer = new NavigationView { Header = "S&ETTINGS", Width = Length.Cells(24), Height = Length.Cells(10) };
+        footer.Items.Add(new NavigationViewItem { Text = "&General" });
+        footer.Items.Add(new NavigationViewItem { Text = "&Appearance" });
+        footer.FooterItems.Add(new NavigationViewSeparator());
+        footer.FooterItems.Add(new NavigationViewItem { Text = "A&bout" });
+
+        var overflow = new NavigationView { Header = "&LONG", Width = Length.Cells(24), Height = Length.Cells(8) };
+        for (var index = 1; index <= 8; index++)
+        {
+            overflow.Items.Add(new NavigationViewItem { Text = $"Destination &{index}" });
+        }
+
+        // EndAffix reserves a fixed cell for an application-owned unread-count badge.
+        var badgeStatus = new Text("Selected: none");
+        var badges = new NavigationView { Header = "&INBOX", Width = Length.Cells(24), Height = Length.Cells(8) };
+        badges.Items.Add(new NavigationViewItem
+        {
+            Text = "&Unread",
+            EndAffix = new Affix("●", "*", SemanticColor.Error)
+        });
+        badges.Items.Add(new NavigationViewItem { Text = "&Archive" });
+        badges.SelectionChanged += (_, _) =>
+            badgeStatus.Content = $"Selected: {DocCaption.PlainCaption(badges.SelectedItem?.Text ?? "none")}";
+
+        return new DocPage(Title,
+            "<info>NavigationView</info> provides sidebar navigation with typed items, collapsible groups, and a pinned footer.",
+            new DocSection("🧭", "Basic sidebar",
+                "The quiet background recedes while <reverse>Up</reverse>/<reverse>Down</reverse> moves the current entry and the sidebar retains focus.",
+                new DocExample("App sidebar with glyphs",
+                    "Unicode labels, optional glyph prefixes, and unavailable entries share one route. The Settings entry is disabled — keyboard navigation skips it but it remains visible.",
+                    new DocColumn(basic, status),
+                    "var nav = new NavigationView { Header = \"&MY APP\" };\n" +
+                    "nav.Items.Add(new NavigationViewItem { Text = \"&界 Dashboard\" });\n" +
+                    "nav.Items.Add(new NavigationViewItem { Text = \"&Reports\", Glyph = \"📈\" });\n" +
+                    "nav.Items.Add(new NavigationViewItem { Text = \"&Settings\", Glyph = \"⚙\", IsEnabled = false });"),
+                new DocExample("Overflow navigation", "Eight destinations overflow the visible area and scroll automatically.",
+                    overflow)),
+            new DocSection("🧭", "Groups and separators",
+                "Group headers participate in keyboard navigation without becoming selected items.",
+                new DocExample("Project browser", "Use <reverse>Up</reverse>/<reverse>Down</reverse> to reach a group header; <reverse>Enter</reverse> or <reverse>Space</reverse> toggles it.",
+                    grouped)),
+            new DocSection("📌", "Footer items", "Items added to <info>FooterItems</info> remain anchored below the scrollable main region, useful for persistent destinations like About or Settings.",
+                new DocExample("Settings with footer", "The About item stays visible at the bottom edge regardless of the main item count.", footer)),
+            new DocSection("🔔", "Affixes",
+                "<info>StartAffix</info> and <info>EndAffix</info> reserve a fixed cell beside an item's text for application-owned, data-driven decoration that a theme never authors.",
+                new DocExample("Unread-count badge",
+                    "The badge dot sits in its own reserved cell after the label and never shares space with the caption.",
+                    new DocColumn(badges, badgeStatus),
+                    "nav.Items.Add(new NavigationViewItem\n{\n    Text = \"&Unread\",\n    EndAffix = new Affix(\"●\", \"*\", SemanticColor.Error)\n});")));
+    }
+}

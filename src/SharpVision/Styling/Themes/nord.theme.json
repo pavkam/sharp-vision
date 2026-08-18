@@ -1,0 +1,291 @@
+{
+  "name": "Nord",
+  "slug": "nord",
+  "colorScheme": "dark",
+  "order": 50,
+  "author": "Sven Greb",
+  "license": "MIT",
+  "source": "https://github.com/nordtheme/nord",
+  "palette": {
+    "nord0": "#2e3440",
+    "nord1": "#3b4252",
+    "nord2": "#434c5e",
+    "nord3": "#4c566a",
+    "nord4": "#d8dee9",
+    "nord6": "#eceff4",
+    "nord8": "#88c0d0",
+    "nord10": "#5e81ac",
+    "nord11": "#bf616a",
+    "nord13": "#ebcb8b",
+    "nord14": "#a3be8c",
+    "nord16": "#243674",
+    "nord17": "#645d2a"
+  },
+  "colors": {
+    "window": "nord0",
+    "windowSurface": "nord1",
+    "windowText": "nord4",
+    "surface": "nord1",
+    "surfaceText": "nord4",
+    "control": "nord1",
+    "controlText": "nord4",
+    "controlBorder": "nord3",
+    "controlShadow": "nord3",
+    "activeControl": "nord2",
+    "activeText": "nord6",
+    "activeBorder": "nord6",
+    "focusedControl": "nord1",
+    "focusedText": "nord4",
+    "focusedBorder": "nord6",
+    "pressedControl": "nord17",
+    "pressedText": "nord13",
+    "pressedBorder": "nord13",
+    "selectedControl": "nord2",
+    "selectedText": "nord6",
+    "disabledControl": "nord1",
+    "disabledText": "nord3",
+    "disabledBorder": "nord3",
+    "accent": "nord8",
+    "muted": "nord3",
+    "hotkey": "nord13",
+    "error": "nord11",
+    "warning": "nord13",
+    "success": "nord14",
+    "info": "nord10"
+  },
+  "attributes": {
+    "normalText": [],
+    "activeText": [],
+    "focusedText": "bold",
+    "pressedText": [],
+    "selectedText": [],
+    "disabledText": [],
+    "border": [],
+    "shadow": "dim",
+    "hotkey": "underline"
+  },
+  "styles": {
+    "control": {
+      "normal": {
+        "face": {
+          "foreground": "controlText",
+          "background": "control",
+          "attributes": "normalText"
+        },
+        "border": {
+          "sides": "none",
+          "glyphStyle": "rounded",
+          "foreground": "controlBorder",
+          "background": "control",
+          "attributes": "border"
+        },
+        "shadow": {
+          "visible": false,
+          "mode": "composite",
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "glyph": "▓",
+          "foreground": "controlShadow",
+          "background": "transparent",
+          "attributes": "shadow"
+        }
+      },
+      "disabled": {
+        "face": {
+          "foreground": "disabledText",
+          "background": "disabledControl",
+          "attributes": "disabledText"
+        },
+        "border": {
+          "foreground": "disabledBorder"
+        }
+      }
+    },
+    "input": {
+      "normal": {
+        "affixGap": 1,
+        "face": {
+          "background": "surface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "heavy"
+        }
+      },
+      "pointerOver": {
+        "face": {
+          "foreground": "activeText",
+          "attributes": "activeText",
+          "background": "activeControl"
+        },
+        "border": {
+          "foreground": "activeBorder"
+        }
+      },
+      "focused": {
+        "face": {
+          "foreground": "focusedText",
+          "background": "focusedControl",
+          "attributes": "focusedText"
+        },
+        "border": {
+          "foreground": "focusedBorder"
+        }
+      },
+      "pressed": {
+        "face": {
+          "foreground": "pressedText",
+          "background": "pressedControl",
+          "attributes": "pressedText"
+        },
+        "border": {
+          "foreground": "pressedBorder"
+        }
+      },
+      "selected": {
+        "face": {
+          "foreground": "selectedText",
+          "background": "selectedControl",
+          "attributes": "selectedText"
+        }
+      }
+    },
+    "container": {
+      "normal": {
+        "face": {
+          "background": "surface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "light"
+        }
+      }
+    },
+    "window": {
+      "normal": {
+        "face": {
+          "foreground": "windowText",
+          "background": "windowSurface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "paired"
+        },
+        "shadow": {
+          "visible": true,
+          "mode": "composite",
+          "offset": {
+            "x": 2,
+            "y": 1
+          }
+        }
+      }
+    },
+    "popup": {
+      "normal": {
+        "face": {
+          "foreground": "windowText",
+          "background": "window"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "rounded"
+        }
+      }
+    },
+    "tooltip": {
+      "normal": {
+        "face": {
+          "foreground": "windowText",
+          "background": "window"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "light"
+        }
+      }
+    },
+    "scrollBar": {
+      "normal": {
+        "chrome": "thin",
+        "fill": "line",
+        "glyphs": {
+          "verticalDecrement": "▲",
+          "verticalIncrement": "▼",
+          "horizontalDecrement": "◀",
+          "horizontalIncrement": "▶",
+          "blockTrack": "·",
+          "blockThumb": "━",
+          "horizontalLineTrack": "─",
+          "horizontalLineThumb": "━",
+          "verticalLineTrack": "│",
+          "verticalLineThumb": "┃"
+        }
+      }
+    },
+    "checkBox": {
+      "normal": {
+        "markStyle": "brackets",
+        "glyphs": {
+          "unchecked": "☐",
+          "checked": "☑",
+          "indeterminate": "▪"
+        }
+      }
+    },
+    "radioButton": {
+      "normal": {
+        "markStyle": "circle",
+        "glyphs": {
+          "unchecked": "○",
+          "checked": "●"
+        }
+      }
+    },
+    "button": {
+      "normal": {
+        "padding": {
+          "x": 1,
+          "y": 0
+        }
+      }
+    },
+    "chaseIndicator": {
+      "normal": {
+        "active": "━",
+        "inactive": "─"
+      }
+    },
+    "slider": {
+      "normal": {
+        "fillColor": "accent",
+        "trackColor": "muted",
+        "thumbColor": "accent"
+      }
+    },
+    "progressBar": {
+      "normal": {
+        "fillColor": "accent",
+        "trackColor": "muted",
+        "indeterminateColor": "info",
+        "glyphs": {
+          "fill": "━",
+          "track": "─",
+          "indeterminate": "┈"
+        }
+      }
+    },
+    "spinner": {
+      "normal": {
+        "frames": [
+          "-",
+          "\\",
+          "|",
+          "/"
+        ]
+      }
+    }
+  }
+}

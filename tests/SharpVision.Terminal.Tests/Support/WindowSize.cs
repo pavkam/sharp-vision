@@ -1,0 +1,21 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Terminal.Tests.Support;
+
+/// <summary>Mirrors the native Unix pseudoterminal window-size structure.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct WindowSize
+{
+    /// <summary>Gets or sets terminal rows.</summary>
+    internal ushort Rows;
+
+    /// <summary>Gets or sets terminal columns.</summary>
+    internal ushort Columns;
+
+    /// <summary>Gets or sets optional pixel width.</summary>
+    internal ushort PixelWidth;
+
+    /// <summary>Gets or sets optional pixel height.</summary>
+    internal ushort PixelHeight;
+}

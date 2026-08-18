@@ -1,0 +1,27 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Controls.Collections;
+
+/// <summary>Provides the private measured and clipped render surface for one JsonView.</summary>
+internal sealed class JsonViewContent: ControlBase
+{
+    private readonly JsonView _owner;
+
+    /// <summary>Initializes a non-focusable render surface for the owning view.</summary>
+    /// <param name="owner">The non-null owning view.</param>
+    internal JsonViewContent(JsonView owner)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        _owner = owner;
+        IsFocusable = false;
+        IsTabStop = false;
+    }
+
+    /// <inheritdoc/>
+    protected override Size MeasureOverride(Constraint constraint) => _owner.MeasureAndWrap(constraint.Width);
+
+    /// <inheritdoc/>
+    protected override void OnRenderContent(TerminalCanvas canvas) =>
+        _owner.RenderProjectedContent(canvas, ContentBounds);
+}

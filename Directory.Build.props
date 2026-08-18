@@ -1,0 +1,67 @@
+<Project>
+  <PropertyGroup>
+    <!-- Each published library owns its own version and can be released independently of the
+         other two - SharpVision.Terminal, SharpVision, and SharpVision.FigletFonts do not need to
+         move in lockstep. These three properties are the single source of truth for their
+         respective package's version; every other version-derived property below selects the
+         matching one by project name. -->
+    <SharpVisionTerminalVersion>0.10.0-beta.1</SharpVisionTerminalVersion>
+    <SharpVisionVersion>0.10.0-beta.1</SharpVisionVersion>
+    <SharpVisionFigletFontsVersion>0.10.0-beta.1</SharpVisionFigletFontsVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'SharpVision.Terminal'">
+    <Version>$(SharpVisionTerminalVersion)</Version>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'SharpVision'">
+    <Version>$(SharpVisionVersion)</Version>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'SharpVision.FigletFonts'">
+    <Version>$(SharpVisionFigletFontsVersion)</Version>
+  </PropertyGroup>
+
+  <!-- Every other project (tests, examples, the showcase) is unpackaged and unpublished, so it
+       gets an ordinary default version rather than borrowing one of the three package versions
+       above; none of them ship, so this number is never externally observed. -->
+  <PropertyGroup Condition="'$(Version)' == ''">
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageVersion>$(Version)</PackageVersion>
+    <AssemblyVersion>$([System.Text.RegularExpressions.Regex]::Replace('$(Version)', '-.*$', '')).0</AssemblyVersion>
+    <FileVersion>$([System.Text.RegularExpressions.Regex]::Replace('$(Version)', '-.*$', '')).0</FileVersion>
+
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <DebugType>embedded</DebugType>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <Authors>SharpVision contributors</Authors>
+    <Company>SharpVision</Company>
+    <Product>SharpVision</Product>
+    <Description>High-performance terminal protocols and user interface toolkit for .NET.</Description>
+    <Copyright>Copyright (c) SharpVision contributors.</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/pavkam/sharp-vision</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/pavkam/sharp-vision.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageIcon>icon.png</PackageIcon>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true' Or '$(OutputType)' == 'Exe'">
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>

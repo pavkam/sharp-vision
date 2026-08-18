@@ -1,0 +1,297 @@
+{
+  "name": "Tokyo Night",
+  "slug": "tokyo-night",
+  "colorScheme": "dark",
+  "order": 10,
+  "author": "Folke Lemaitre",
+  "license": "MIT",
+  "source": "https://github.com/folke/tokyonight.nvim",
+  "palette": {
+    "bg": "#1a1b26",
+    "fg": "#c0caf5",
+    "comment": "#565f89",
+    "blue": "#7aa2f7",
+    "cyan": "#7dcfff",
+    "red": "#f7768e",
+    "green": "#9ece6a",
+    "yellow": "#e0af68",
+    "magenta": "#bb9af7",
+    "selection": "#283457",
+    "bg-dark": "#16161e",
+    "charcoal": "#23232b",
+    "frost": "#e4e9ff",
+    "midnight": "#030c3a",
+    "olive": "#443500"
+  },
+  "colors": {
+    "window": "bg",
+    "windowSurface": "bg-dark",
+    "windowText": "fg",
+    "surface": "bg-dark",
+    "surfaceText": "fg",
+    "control": "bg-dark",
+    "controlText": "fg",
+    "controlBorder": "comment",
+    "controlShadow": "comment",
+    "activeControl": "charcoal",
+    "activeText": "frost",
+    "activeBorder": "fg",
+    "focusedControl": "bg-dark",
+    "focusedText": "fg",
+    "focusedBorder": "fg",
+    "pressedControl": "olive",
+    "pressedText": "yellow",
+    "pressedBorder": "yellow",
+    "selectedControl": "selection",
+    "selectedText": "fg",
+    "disabledControl": "bg-dark",
+    "disabledText": "comment",
+    "disabledBorder": "comment",
+    "accent": "blue",
+    "muted": "comment",
+    "hotkey": "yellow",
+    "error": "red",
+    "warning": "yellow",
+    "success": "green",
+    "info": "cyan"
+  },
+  "attributes": {
+    "normalText": [],
+    "activeText": [],
+    "focusedText": "bold",
+    "pressedText": [],
+    "selectedText": [],
+    "disabledText": [],
+    "border": [],
+    "shadow": "dim",
+    "hotkey": "underline"
+  },
+  "styles": {
+    "control": {
+      "normal": {
+        "face": {
+          "foreground": "controlText",
+          "background": "control",
+          "attributes": "normalText"
+        },
+        "border": {
+          "sides": "none",
+          "glyphStyle": "rounded",
+          "foreground": "controlBorder",
+          "background": "control",
+          "attributes": "border"
+        },
+        "shadow": {
+          "visible": false,
+          "mode": "composite",
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "glyph": "▓",
+          "foreground": "controlShadow",
+          "background": "transparent",
+          "attributes": "shadow"
+        }
+      },
+      "disabled": {
+        "face": {
+          "foreground": "disabledText",
+          "background": "disabledControl",
+          "attributes": "disabledText"
+        },
+        "border": {
+          "foreground": "disabledBorder"
+        }
+      }
+    },
+    "input": {
+      "normal": {
+        "affixGap": 1,
+        "face": {
+          "background": "surface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "heavy"
+        }
+      },
+      "pointerOver": {
+        "face": {
+          "foreground": "activeText",
+          "attributes": "activeText",
+          "background": "activeControl"
+        },
+        "border": {
+          "foreground": "activeBorder"
+        }
+      },
+      "focused": {
+        "face": {
+          "foreground": "focusedText",
+          "background": "focusedControl",
+          "attributes": "focusedText"
+        },
+        "border": {
+          "foreground": "focusedBorder"
+        }
+      },
+      "pressed": {
+        "face": {
+          "foreground": "pressedText",
+          "background": "pressedControl",
+          "attributes": "pressedText"
+        },
+        "border": {
+          "foreground": "pressedBorder"
+        }
+      },
+      "selected": {
+        "face": {
+          "foreground": "selectedText",
+          "background": "selectedControl",
+          "attributes": "selectedText"
+        }
+      }
+    },
+    "container": {
+      "normal": {
+        "face": {
+          "background": "surface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "light"
+        }
+      }
+    },
+    "window": {
+      "normal": {
+        "face": {
+          "foreground": "windowText",
+          "background": "windowSurface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "paired"
+        },
+        "shadow": {
+          "visible": true,
+          "mode": "composite",
+          "offset": {
+            "x": 2,
+            "y": 1
+          }
+        }
+      }
+    },
+    "popup": {
+      "normal": {
+        "face": {
+          "foreground": "windowText",
+          "background": "window"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "rounded"
+        }
+      }
+    },
+    "tooltip": {
+      "normal": {
+        "face": {
+          "foreground": "windowText",
+          "background": "window"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "light"
+        }
+      }
+    },
+    "scrollBar": {
+      "normal": {
+        "chrome": "full",
+        "fill": "block",
+        "glyphs": {
+          "verticalDecrement": "▲",
+          "verticalIncrement": "▼",
+          "horizontalDecrement": "◀",
+          "horizontalIncrement": "▶",
+          "blockTrack": "▒",
+          "blockThumb": "▓",
+          "horizontalLineTrack": "═",
+          "horizontalLineThumb": "━",
+          "verticalLineTrack": "║",
+          "verticalLineThumb": "┃"
+        }
+      }
+    },
+    "checkBox": {
+      "normal": {
+        "markStyle": "square",
+        "glyphs": {
+          "unchecked": "☐",
+          "checked": "☑",
+          "indeterminate": "▪"
+        }
+      }
+    },
+    "radioButton": {
+      "normal": {
+        "markStyle": "circle",
+        "glyphs": {
+          "unchecked": "○",
+          "checked": "◉"
+        }
+      }
+    },
+    "button": {
+      "normal": {
+        "padding": {
+          "x": 2,
+          "y": 0
+        }
+      }
+    },
+    "chaseIndicator": {
+      "normal": {
+        "active": "▓",
+        "inactive": "░"
+      }
+    },
+    "slider": {
+      "normal": {
+        "fillColor": "accent",
+        "trackColor": "muted",
+        "thumbColor": "accent"
+      }
+    },
+    "progressBar": {
+      "normal": {
+        "fillColor": "accent",
+        "trackColor": "muted",
+        "indeterminateColor": "info",
+        "glyphs": {
+          "fill": "▓",
+          "track": "░",
+          "indeterminate": "▒"
+        }
+      }
+    },
+    "spinner": {
+      "normal": {
+        "frames": [
+          "⣿",
+          "⣷",
+          "⣯",
+          "⣟",
+          "⡿",
+          "⢿",
+          "⣻",
+          "⣽"
+        ]
+      }
+    }
+  }
+}

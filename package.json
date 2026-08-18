@@ -1,0 +1,30 @@
+{
+  "name": "sharpvision-docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Documentation quality tooling for SharpVision.",
+  "scripts": {
+    "capture:controls": "node scripts/capture-control-images.mjs",
+    "check:unicode": "node scripts/generate-unicode-data.mjs --check",
+    "check:figlet": "node scripts/audit-figlet-fonts.mjs --source src/SharpVision.FigletFonts/Resources/Fonts --output src/SharpVision.FigletFonts/Resources/fonts.manifest.json --check",
+    "format": "prettier --write \"**/*.md\"",
+    "format:check": "prettier --check \"**/*.md\"",
+    "generate:unicode": "node scripts/generate-unicode-data.mjs",
+    "lint:control-doc-structure": "node scripts/validate-control-doc-structure.mjs",
+    "lint:control-images": "node scripts/validate-control-image-coverage.mjs",
+    "lint:doc-content": "node scripts/validate-doc-content.mjs",
+    "lint:docs-samples": "node scripts/validate-doc-samples.mjs",
+    "lint:markdown": "markdownlint-cli2 \"**/*.md\" \"#artifacts\" \"#node_modules\" \"#.worktrees\" \"#.claude\" \"#.superpowers\"",
+    "lint:links": "node scripts/validate-doc-links.mjs",
+    "lint:test-names": "node scripts/validate-test-class-naming.mjs",
+    "refresh:unicode": "node scripts/generate-unicode-data.mjs --refresh",
+    "test:docs": "node --test scripts/*.test.mjs"
+  },
+  "devDependencies": {
+    "markdownlint-cli2": "0.23.2",
+    "prettier": "3.9.5"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

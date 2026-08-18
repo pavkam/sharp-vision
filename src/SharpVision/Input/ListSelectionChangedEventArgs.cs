@@ -1,0 +1,46 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Input;
+
+/// <summary>Reports one committed ListView selection delta.</summary>
+[PublicAPI]
+public sealed class ListSelectionChangedEventArgs: EventArgs
+{
+    /// <summary>Initializes owned sorted added and removed index snapshots.</summary>
+    /// <param name="addedIndexes">The non-negative committed additions.</param>
+    /// <param name="removedIndexes">The non-negative committed removals.</param>
+    /// <exception cref="ArgumentOutOfRangeException">An index is negative.</exception>
+    public ListSelectionChangedEventArgs(
+        ReadOnlySpan<int> addedIndexes,
+        ReadOnlySpan<int> removedIndexes)
+    {
+        AddedIndexes = Snapshot(addedIndexes, nameof(addedIndexes));
+        RemovedIndexes = Snapshot(removedIndexes, nameof(removedIndexes));
+    }
+
+    /// <summary>Gets the owned sorted committed additions.</summary>
+    public ReadOnlyMemory<int> AddedIndexes { get; }
+
+    /// <summary>Gets the owned sorted committed removals.</summary>
+    public ReadOnlyMemory<int> RemovedIndexes { get; }
+
+    private static void Validate(ReadOnlySpan<int> values, string name)
+    {
+        foreach (var value in values)
+        {
+            if (value < 0)
+            {
+                throw new ArgumentOutOfRangeException(name, value, "Selection indexes cannot be negative.");
+            }
+        }
+    }
+
+    private static int[] Snapshot(ReadOnlySpan<int> values, string name)
+    {
+        Validate(values, name);
+        var snapshot = values.ToArray();
+        Array.Sort(snapshot);
+        return snapshot;
+    }
+}

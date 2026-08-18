@@ -1,0 +1,136 @@
+name: 🧪 Verify pull request
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  checks: write
+  contents: read
+  issues: read
+  pull-requests: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  TESTINGPLATFORM_TELEMETRY_OPTOUT: 1
+
+jobs:
+  # Linting inspects sources, Markdown, and links, none of which vary by operating system, so it
+  # runs once here rather than three times inside the platform legs. Running it as its own job also
+  # takes it off the critical path: it costs about as long as the test phase it used to precede.
+  lint:
+    name: 🔍 Lint and documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ☁️ Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: ⚙️ Set up repository
+        uses: ./.github/actions/setup
+
+      - name: 🔍 Lint and documentation checks
+        shell: bash
+        run: make lint
+
+  verify-linux:
+    name: 🧪 Verify on Linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ☁️ Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: ⚙️ Set up repository
+        uses: ./.github/actions/setup
+
+      - name: ⏯️ Build and test
+        uses: ./.github/actions/build-and-test
+
+  verify-windows:
+    name: 🧪 Verify on Windows
+    runs-on: windows-latest
+
+    steps:
+      - name: ☁️ Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: ⚙️ Set up repository
+        uses: ./.github/actions/setup
+
+      - name: ⏯️ Build and test
+        uses: ./.github/actions/build-and-test
+
+  verify-macos:
+    name: 🧪 Verify on macOS
+    runs-on: macos-latest
+
+    steps:
+      - name: ☁️ Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: ⚙️ Set up repository
+        uses: ./.github/actions/setup
+
+      - name: ⏯️ Build and test
+        uses: ./.github/actions/build-and-test
+
+  summary:
+    name: ✔️ Generate verification summary
+    needs: [lint, verify-linux, verify-windows, verify-macos]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📝 Write summary
+        shell: bash
+        run: |
+          declare -A results=(
+            [Linux]="${{ needs.verify-linux.result }}"
+            [Windows]="${{ needs.verify-windows.result }}"
+            [macOS]="${{ needs.verify-macos.result }}"
+          )
+
+          passed=0
+          {
+            echo "## 🧪 Verification summary"
+            echo
+            echo "| Platform | Status |"
+            echo "| --- | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for platform in Linux Windows macOS; do
+            result="${results[$platform]}"
+
+            if [[ "$result" == "success" ]]; then
+              icon="✅ Passed"
+              passed=$((passed + 1))
+            else
+              icon="❌ ${result^}"
+            fi
+
+            echo "| $platform | $icon |" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+          lint="${{ needs.lint.result }}"
+
+          if [[ "$lint" == "success" ]]; then
+            echo "| Lint and documentation | ✅ Passed |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "| Lint and documentation | ❌ ${lint^} |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$passed" -eq 3 && "$lint" == "success" ]]; then
+            echo "✅ All platforms and the lint gate passed." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "❌ $passed of 3 platforms passed and lint reported \`$lint\`. Check the failing job logs for details." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
