@@ -222,6 +222,15 @@ internal static class ChartRenderer
     // end, which is the end a reader compares.
     internal static int ExtentEighths(ChartScaleRange range, double value, int extent, int zeroCells)
     {
+        // A value of exactly zero shares the identical ratio used to compute zeroCells itself.
+        // Recomputing that same ratio at eighth-cell resolution and comparing it against
+        // zeroCells' independently-rounded whole-cell resolution can disagree by a few eighths,
+        // fabricating a visible stub bar for a value that must render with no extent at all.
+        if (value == 0)
+        {
+            return 0;
+        }
+
         var ratio = Ratio(range, value);
         var valueEighths = (int) Math.Round(ratio * extent * 8, MidpointRounding.AwayFromZero);
         return Math.Abs(valueEighths - (zeroCells * 8));
