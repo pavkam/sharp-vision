@@ -19,7 +19,9 @@ internal sealed class NegotiationSink:
     IStatusResponseSink,
     ICapabilityResponseSink,
     IKittyGraphicsResponseSink,
-    IItermCapabilitiesResponseSink
+    IItermCapabilitiesResponseSink,
+    IClipboardReplySink,
+    IKittyClipboardPacketSink
 {
     private readonly ISink _destination;
     private readonly Negotiator _negotiator;
@@ -102,6 +104,24 @@ internal sealed class NegotiationSink:
         _ = _negotiator.Accept(value);
         _destination.Dispatch(value);
     }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Negotiation has no interest in clipboard replies - <see cref="Negotiator"/> exposes no
+    /// <c>Accept</c> overload for them - so this exists solely to keep this sink transparent to
+    /// <see cref="IClipboardReplySink"/>. Without it, wrapping a destination that implements the
+    /// optional interface in this sink would make the dispatch site's <c>is IClipboardReplySink</c>
+    /// check fail against this sink instead, silently downgrading every OSC 52 reply to the
+    /// generic unsupported diagnostic regardless of what the destination actually supports.
+    /// </remarks>
+    public void Response(in Clipboard.ClipboardReply value) => _destination.Dispatch(in value);
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Kept for the same reason as <see cref="Response(in Clipboard.ClipboardReply)"/>, for the
+    /// Kitty OSC 5522 clipboard family instead of OSC 52.
+    /// </remarks>
+    public void Response(Kitty.Clipboard.KittyClipboardPacket value) => _destination.Dispatch(value);
 
     /// <inheritdoc/>
     public void Sequence(ProtocolSequence value) => _destination.Sequence(value);
