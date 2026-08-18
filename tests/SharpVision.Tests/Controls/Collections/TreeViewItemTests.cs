@@ -97,6 +97,37 @@ public sealed class TreeViewItemTests
         item.Pending.ShouldBe(Invalidation.None);
     }
 
+    /// <summary>Verifies IsExpanded rejects a disposed item without committing the requested value
+    /// first. AGENTS.md requires every setter to validate before changing observable state, and
+    /// this setter wrote its backing field directly ahead of the ObjectDisposedException check
+    /// embedded in the subsequent NotifyPropertyChanged call.</summary>
+    [Fact]
+    public void IsExpanded_WhenItemIsDisposed_ThrowsObjectDisposedExceptionWithoutMutatingState()
+    {
+        var item = new TreeViewItem("Row") { IsExpanded = true };
+        item.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => item.IsExpanded = false);
+
+        item.IsExpanded.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies ChildSource rejects a disposed item without first cancelling pending
+    /// loads, evicting loader-owned children, or committing the new source - the setter validated
+    /// nothing about dispatcher access or disposal before mutating state.</summary>
+    [Fact]
+    public void ChildSource_WhenItemIsDisposed_ThrowsObjectDisposedExceptionWithoutMutatingState()
+    {
+        var item = new TreeViewItem("Row");
+        item.Dispose();
+        var source = new FakeTreeViewChildSource();
+
+        _ = Should.Throw<ObjectDisposedException>(() => item.ChildSource = source);
+
+        item.ChildSource.ShouldBeNull();
+        item.ChildState.ShouldBe(TreeViewChildState.Leaf);
+    }
+
     /// <summary>Verifies OnAttached propagates InvalidOperationException instead of swallowing it
     /// when attaching an already-expanded, unloaded item while the owning dispatcher's bounded
     /// queue is full, matching the same recipe
