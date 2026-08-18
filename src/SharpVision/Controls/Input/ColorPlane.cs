@@ -187,197 +187,37 @@ internal sealed class ColorPlane: ControlBase
             return;
         }
 
-        if (eventArgs.Stroke.Code is not (Code.Left or Code.Right or Code.Up or Code.Down
-            or Code.Home or Code.End))
-        {
-            return;
-        }
-
         var saturation = Saturation;
         var value = Value;
+        var code = eventArgs.Stroke.Code;
 
-        switch (eventArgs.Stroke.Code)
+        if (code == Code.Left)
         {
-            case Code.Left:
-                saturation -= 0.01;
-                break;
-            case Code.Right:
-                saturation += 0.01;
-                break;
-            case Code.Up:
-                value += 0.01;
-                break;
-            case Code.Down:
-                value -= 0.01;
-                break;
-            case Code.Home:
-                saturation = 0;
-                break;
-            case Code.End:
-                saturation = 1;
-                break;
-            case Code.Unknown:
-                break;
-            case Code.Character:
-                break;
-            case Code.Escape:
-                break;
-            case Code.Enter:
-                break;
-            case Code.Tab:
-                break;
-            case Code.Backspace:
-                break;
-            case Code.Insert:
-                break;
-            case Code.Delete:
-                break;
-            case Code.PageUp:
-                break;
-            case Code.PageDown:
-                break;
-            case Code.Begin:
-                break;
-            case Code.F1:
-                break;
-            case Code.F2:
-                break;
-            case Code.F3:
-                break;
-            case Code.F4:
-                break;
-            case Code.F5:
-                break;
-            case Code.F6:
-                break;
-            case Code.F7:
-                break;
-            case Code.F8:
-                break;
-            case Code.F9:
-                break;
-            case Code.F10:
-                break;
-            case Code.F11:
-                break;
-            case Code.F12:
-                break;
-            case Code.F13:
-                break;
-            case Code.F14:
-                break;
-            case Code.F15:
-                break;
-            case Code.F16:
-                break;
-            case Code.F17:
-                break;
-            case Code.F18:
-                break;
-            case Code.F19:
-                break;
-            case Code.F20:
-                break;
-            case Code.F21:
-                break;
-            case Code.F22:
-                break;
-            case Code.F23:
-                break;
-            case Code.F24:
-                break;
-            case Code.F25:
-                break;
-            case Code.F26:
-                break;
-            case Code.F27:
-                break;
-            case Code.F28:
-                break;
-            case Code.F29:
-                break;
-            case Code.F30:
-                break;
-            case Code.F31:
-                break;
-            case Code.F32:
-                break;
-            case Code.F33:
-                break;
-            case Code.F34:
-                break;
-            case Code.F35:
-                break;
-            case Code.F36:
-                break;
-            case Code.F37:
-                break;
-            case Code.F38:
-                break;
-            case Code.F39:
-                break;
-            case Code.F40:
-                break;
-            case Code.F41:
-                break;
-            case Code.F42:
-                break;
-            case Code.F43:
-                break;
-            case Code.F44:
-                break;
-            case Code.F45:
-                break;
-            case Code.F46:
-                break;
-            case Code.F47:
-                break;
-            case Code.F48:
-                break;
-            case Code.F49:
-                break;
-            case Code.F50:
-                break;
-            case Code.F51:
-                break;
-            case Code.F52:
-                break;
-            case Code.F53:
-                break;
-            case Code.F54:
-                break;
-            case Code.F55:
-                break;
-            case Code.F56:
-                break;
-            case Code.F57:
-                break;
-            case Code.F58:
-                break;
-            case Code.F59:
-                break;
-            case Code.F60:
-                break;
-            case Code.F61:
-                break;
-            case Code.F62:
-                break;
-            case Code.F63:
-                break;
-            case Code.CapsLock:
-                break;
-            case Code.ScrollLock:
-                break;
-            case Code.NumLock:
-                break;
-            case Code.PrintScreen:
-                break;
-            case Code.Pause:
-                break;
-            case Code.Menu:
-                break;
-            default:
-                return;
+            saturation -= 0.01;
+        }
+        else if (code == Code.Right)
+        {
+            saturation += 0.01;
+        }
+        else if (code == Code.Up)
+        {
+            value += 0.01;
+        }
+        else if (code == Code.Down)
+        {
+            value -= 0.01;
+        }
+        else if (code == Code.Home)
+        {
+            saturation = 0;
+        }
+        else if (code == Code.End)
+        {
+            saturation = 1;
+        }
+        else
+        {
+            return;
         }
 
         _ = Commit(Math.Clamp(saturation, 0, 1), Math.Clamp(value, 0, 1));
