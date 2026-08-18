@@ -70,6 +70,38 @@ public sealed class ExpanderSurfaceTests
         expander.Header.ShouldBeOfType<ProbeControl>().Bounds.ShouldBe(new Rect(2, 0, 1, 1));
     }
 
+    /// <summary>Verifies a collapsed text header omits its caption after the disclosure glyph, matching
+    /// the plain glyph-only row a non-text header renders through the ordinary
+    /// <see cref="ControlBase.Render(TerminalCanvas)"/> gate - and matching what <see cref="Expander"/>'s
+    /// own measure pass already assumes by reporting zero header width once collapsed.</summary>
+    [Fact]
+    public async Task Render_WhenHeaderIsCollapsed_OmitsCaptionAfterDisclosureGlyphAsync()
+    {
+        // Arrange
+        var expander = new Expander
+        {
+            HeaderText = "Hidden",
+            Content = new ControlText("Body"),
+            Width = Length.Cells(12),
+            Height = Length.Cells(4)
+        };
+        expander.Header!.Visibility = Visibility.Collapsed;
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            expander,
+            new Size(12, 4),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("""
+                             ▼
+                               Body
+
+
+                             """);
+    }
+
     /// <summary>Verifies expanded and collapsed states draw exact header/content cells and remove stale rows.</summary>
     [Fact]
     public async Task UpdateAsync_WhenExpansionChanges_DrawsExactStateAndClearsContentAsync()

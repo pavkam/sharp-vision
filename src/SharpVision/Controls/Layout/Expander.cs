@@ -202,7 +202,12 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
             s,
             background);
 
-        if (Header is DisplayText text && content.Width > HeaderChromeWidth)
+        // A Hidden or Collapsed header renders no caption at all, matching the disclosure-glyph-only
+        // row a missing Header already draws and the zero width MeasureOverride already reports for
+        // a Collapsed header - the ordinary Render(TerminalCanvas) gate every other header control
+        // gets already gives this behavior for a rich header rendered through the owned pipeline in
+        // RenderChildren; a DisplayText header instead paints directly here and needs the same check.
+        if (Header is { EffectiveIsVisible: true } and DisplayText text && content.Width > HeaderChromeWidth)
         {
             var caption = canvas.Clip(HeaderBounds);
             _ = text.Content.Draw(
