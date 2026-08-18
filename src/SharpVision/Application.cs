@@ -563,10 +563,28 @@ public sealed class Application:
     public void Response(in TerminalResponse value) => Enqueue(Record.From(value));
 
     /// <inheritdoc/>
-    public void Response(in PaletteResponse value) => Enqueue(Record.From(value));
+    /// <exception cref="ArgumentException"><paramref name="value"/> is empty.</exception>
+    public void Response(in PaletteResponse value)
+    {
+        if (value.IsEmpty)
+        {
+            throw new ArgumentException("The response cannot be empty.", nameof(value));
+        }
+
+        Enqueue(Record.From(value));
+    }
 
     /// <inheritdoc/>
-    public void Response(in MetricsResponse value) => Enqueue(Record.From(value));
+    /// <exception cref="ArgumentException"><paramref name="value"/> is empty.</exception>
+    public void Response(in MetricsResponse value)
+    {
+        if (value.IsEmpty)
+        {
+            throw new ArgumentException("The response cannot be empty.", nameof(value));
+        }
+
+        Enqueue(Record.From(value));
+    }
 
     /// <inheritdoc/>
     /// <exception cref="ArgumentException"><paramref name="value"/> is empty.</exception>
