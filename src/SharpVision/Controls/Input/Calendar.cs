@@ -374,7 +374,8 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
 
         if (SelectionMode == CalendarSelectionMode.Select)
         {
-            // CommitSelection sets ActiveDate to interval.Start (== date) at :954.
+            // CommitSelection itself moves ActiveDate to the committed interval's Start
+            // (== date here), so no separate SetActiveDate call is needed on this path.
             return CommitSelection(new DateInterval(date, date));
         }
 
