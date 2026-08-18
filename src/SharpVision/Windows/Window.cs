@@ -259,7 +259,6 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     #region Layout and rendering
 
     /// <inheritdoc/>
-    /// <inheritdoc/>
     protected override Rect VisualBounds
     {
         get

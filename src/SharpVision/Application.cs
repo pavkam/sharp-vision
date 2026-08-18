@@ -563,10 +563,28 @@ public sealed class Application:
     public void Response(in TerminalResponse value) => Enqueue(Record.From(value));
 
     /// <inheritdoc/>
-    public void Response(in PaletteResponse value) => Enqueue(Record.From(value));
+    /// <exception cref="ArgumentException"><paramref name="value"/> is empty.</exception>
+    public void Response(in PaletteResponse value)
+    {
+        if (value.IsEmpty)
+        {
+            throw new ArgumentException("The response cannot be empty.", nameof(value));
+        }
+
+        Enqueue(Record.From(value));
+    }
 
     /// <inheritdoc/>
-    public void Response(in MetricsResponse value) => Enqueue(Record.From(value));
+    /// <exception cref="ArgumentException"><paramref name="value"/> is empty.</exception>
+    public void Response(in MetricsResponse value)
+    {
+        if (value.IsEmpty)
+        {
+            throw new ArgumentException("The response cannot be empty.", nameof(value));
+        }
+
+        Enqueue(Record.From(value));
+    }
 
     /// <inheritdoc/>
     /// <exception cref="ArgumentException"><paramref name="value"/> is empty.</exception>
@@ -1679,22 +1697,77 @@ public sealed class Application:
             failure = exception;
         }
 
+        PostCompletionOrReportFault(
+            () => CompleteRender(frame, hold, completion, metrics, failure),
+            () =>
+            {
+                // CompleteRender never ran, so its usual `IsRendering = false` never happened
+                // either. Leaving `IsRendering` true would wedge ObserveSessionAsync's shutdown
+                // drain loop (`do { await _renderTask; } while (IsRendering);`) in an infinite
+                // spin, since `_renderTask` (== `completion.Task`) is about to complete below.
+                IsRendering = false;
+                frame.Dispose();
+                hold.Dispose();
+                _ = completion.TrySetResult();
+            });
+    }
+
+    /// <summary>
+    /// Posts <paramref name="action"/> as the completion for one background render or
+    /// out-of-band write; a full bounded queue (<see cref="InvalidOperationException"/>) is
+    /// bridged into the dispatcher's own callback-failure path by re-posting a callback that
+    /// rethrows the caught exception, so a failure originating off the dispatcher thread is
+    /// reported through <see cref="Dispatcher.UnhandledException"/> exactly like one thrown by a
+    /// callback already running on it - the same bridge <c>TreeViewItem.RunLoadAsync</c> and
+    /// <c>FileDialogBase.ObserveLoadAsync</c> use for their own fire-and-forget completion posts.
+    /// Unlike those callers, <paramref name="action"/> here always retires resources the pending
+    /// <c>_renderTask</c> shutdown drain (<see cref="ObserveSessionAsync"/>) is waiting on, so a
+    /// second full queue on the bridging retry - or a disposed dispatcher at either attempt -
+    /// still runs <paramref name="retire"/> on this (background) thread instead of leaving the
+    /// retirement itself dropped along with the fault.
+    /// </summary>
+    /// <param name="action">The completion callback to post.</param>
+    /// <param name="retire">Runs synchronously, on this thread, when <paramref name="action"/>
+    /// never gets to run because both post attempts failed.</param>
+    private void PostCompletionOrReportFault(Action action, Action retire)
+    {
         try
         {
-            Dispatcher.Post(() => CompleteRender(frame, hold, completion, metrics, failure));
+            Dispatcher.Post(action);
+            return;
         }
-        catch
+        catch (ObjectDisposedException)
         {
-            // CompleteRender never ran, so its usual `IsRendering = false` never happened either.
-            // Leaving `IsRendering` true would wedge ObserveSessionAsync's shutdown drain loop
-            // (`do { await _renderTask; } while (IsRendering);`) in an infinite spin, since
-            // `_renderTask` (== `completion.Task`) is about to complete below.
-            IsRendering = false;
-            frame.Dispose();
-            hold.Dispose();
-            _ = completion.TrySetResult();
         }
+        catch (InvalidOperationException exception)
+        {
+            PostRetryHookForTests?.Invoke();
+
+            try
+            {
+                Dispatcher.Post(() => throw exception);
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+
+        retire();
     }
+
+    /// <summary>
+    /// Test-only synchronization seam. When set, invoked once by
+    /// <see cref="PostCompletionOrReportFault"/> immediately after a first
+    /// <see cref="Dispatcher.Post(Action)"/> attempt is rejected for a full queue, but before the
+    /// bridging retry attempt - letting a test deterministically free the queue slot the retry
+    /// needs in the otherwise nanosecond-wide window between the two attempts, rather than racing
+    /// a genuine drain. Instance-scoped, like the analogous seams on <c>TreeViewItem</c> and
+    /// <c>FileDialogBase</c>.
+    /// </summary>
+    internal Action? PostRetryHookForTests { get; set; }
 
     private async Task ObserveSessionAsync()
     {
@@ -1892,19 +1965,17 @@ public sealed class Application:
             failure = exception;
         }
 
-        try
-        {
-            Dispatcher.Post(() => CompleteOutOfBand(hold, completion, failure));
-        }
-        catch
-        {
-            // CompleteOutOfBand never ran, so its usual `IsRendering = false` never happened
-            // either. Leaving `IsRendering` true would wedge ObserveSessionAsync's shutdown drain
-            // loop the same way an equivalent failure in ObserveRenderAsync would.
-            IsRendering = false;
-            hold.Dispose();
-            _ = completion.TrySetResult();
-        }
+        PostCompletionOrReportFault(
+            () => CompleteOutOfBand(hold, completion, failure),
+            () =>
+            {
+                // CompleteOutOfBand never ran, so its usual `IsRendering = false` never happened
+                // either. Leaving `IsRendering` true would wedge ObserveSessionAsync's shutdown
+                // drain loop the same way an equivalent failure in ObserveRenderAsync would.
+                IsRendering = false;
+                hold.Dispose();
+                _ = completion.TrySetResult();
+            });
     }
 
     private void CompleteOutOfBand(IDisposable hold, TaskCompletionSource completion, Exception? failure)
