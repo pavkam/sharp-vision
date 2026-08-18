@@ -108,11 +108,15 @@ public sealed class TreeViewItem: ControlBase
     /// <see cref="ChildState"/> is <see cref="TreeViewChildState.Loading"/> cancels that request and
     /// restores the state it had before the request started.
     /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
     public bool IsExpanded
     {
         get;
         set
         {
+            VerifyMutable();
+
             if (field == value)
             {
                 return;
@@ -318,13 +322,16 @@ public sealed class TreeViewItem: ControlBase
     /// </remarks>
     /// <exception cref="InvalidOperationException">
     /// The value is non-null and <see cref="Children"/> already holds items the caller authored
-    /// directly rather than a prior load committed.
+    /// directly rather than a prior load committed, or the attached item is mutated off-dispatcher.
     /// </exception>
+    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
     public ITreeViewChildSource? ChildSource
     {
         get;
         set
         {
+            VerifyMutable();
+
             if (ReferenceEquals(field, value))
             {
                 return;
