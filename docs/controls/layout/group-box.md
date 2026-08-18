@@ -41,12 +41,17 @@ shadow; local values stay authoritative when the Theme is replaced.
 
 `Header` is any owned control drawn into the top border, with one leading and
 one trailing space around it, keeping the top corners intact and clipping only
-within that interior span. `HeaderText` is the plain-text convenience: it
-materializes or mutates an owned `Text` caption and is the common case for a
-simple title. A plain `Text` header (the one `HeaderText` materializes) always
-paints with the frame's own theme-owned border style, so the title reads as part
-of the frame even when a local `Face` is assigned to the group. Any other header
-control paints with its own resolved style instead.
+within that interior span. A `Header` set to `Visibility.Hidden` or
+`Visibility.Collapsed` paints no caption and reserves no leading/trailing space,
+leaving a continuous border — matching the ordinary `Visibility` gate every
+other owned control's own render pass already respects, and the zero header
+width `MeasureOverride` already reports once collapsed. `HeaderText` is the
+plain-text convenience: it materializes or mutates an owned `Text` caption and
+is the common case for a simple title. A plain `Text` header (the one
+`HeaderText` materializes) always paints with the frame's own theme-owned border
+style, so the title reads as part of the frame even when a local `Face` is
+assigned to the group. Any other header control paints with its own resolved
+style instead.
 
 `Content` is the single owned child, arranged inside the one-cell border inset.
 To hold several children, use a [`Stack`](stack.md#overview),

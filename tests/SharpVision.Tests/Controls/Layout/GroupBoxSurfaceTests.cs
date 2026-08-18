@@ -436,6 +436,37 @@ public sealed class GroupBoxSurfaceTests
         clicked.ShouldBe(2);
     }
 
+    /// <summary>Verifies a collapsed text header omits its caption from the rendered top border, matching
+    /// the plain border a non-text header renders through the ordinary <see cref="ControlBase.Render(TerminalCanvas)"/>
+    /// gate - and matching what <see cref="GroupBox"/>'s own measure pass already assumes by reporting
+    /// zero header width once collapsed.</summary>
+    [Fact]
+    public async Task Render_WhenHeaderIsCollapsed_OmitsCaptionFromBorderAsync()
+    {
+        // Arrange
+        var group = new GroupBox
+        {
+            HeaderText = "Hidden",
+            Content = new ControlText("Body"),
+            Width = Length.Cells(12),
+            Height = Length.Cells(3)
+        };
+        group.Header!.Visibility = Visibility.Collapsed;
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            group,
+            new Size(12, 3),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("""
+                             ┌──────────┐
+                             │Body      │
+                             └──────────┘
+                             """);
+    }
+
     /// <summary>Verifies a non-text header renders through the ordinary owned-control pipeline, proving the
     /// header ownership role hosts arbitrary rich content rather than only a text caption.</summary>
     [Fact]
