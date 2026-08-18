@@ -29,4 +29,21 @@ public sealed class ChartRendererTests
         // Assert
         eighths.ShouldBe(expected);
     }
+
+    /// <summary>Verifies a zero-value bar always has zero extent, even when the shared zero
+    /// boundary's whole-cell rounding and the value's own eighth-cell rounding of the identical
+    /// zero ratio would otherwise disagree and fabricate a visible stub.</summary>
+    [Fact]
+    public void ExtentEighths_WhenValueIsZero_ReturnsZero()
+    {
+        // Arrange
+        var range = new ChartScaleRange(-1, 6);
+        var zeroCells = (int) Math.Round((0.0 - (-1.0)) / (6.0 - (-1.0)) * 10, MidpointRounding.AwayFromZero);
+
+        // Act
+        var eighths = ChartRenderer.ExtentEighths(range, 0, 10, zeroCells);
+
+        // Assert
+        eighths.ShouldBe(0);
+    }
 }
