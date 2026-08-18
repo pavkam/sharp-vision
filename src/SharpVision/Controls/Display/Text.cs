@@ -266,10 +266,17 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
 
         if (_cachedWidth != width)
         {
-            // The text fits in both the previous and new widths without
-            // wrapping or truncation: lines are identical, only alignment
-            // within the available width may change.
-            if (width >= _measuredMaxCells && _cachedWidth > _measuredMaxCells)
+            // The text fits in both the previous and new widths without truncation: lines are
+            // identical, only alignment within the available width may change. This equivalence
+            // only holds for an overflow policy whose FormatUnwrapped path always emits exactly
+            // one line per paragraph no matter the width - Overflow.Wrap and WrapAnywhere can
+            // split one paragraph into several lines, and _measuredMaxCells only ever records the
+            // longest INDIVIDUAL already-wrapped line, not the paragraph's true unwrapped extent.
+            // A widened arrange slot that still exceeds every existing line's own cell count would
+            // then wrongly compare as "already fits" and skip the reformat that should have
+            // merged those wrapped lines back together.
+            if (Overflow is not (Overflow.Wrap or Overflow.WrapAnywhere) &&
+                width >= _measuredMaxCells && _cachedWidth > _measuredMaxCells)
             {
                 Align(width);
                 _cachedWidth = width;

@@ -104,6 +104,35 @@ public sealed class TextTests
         text.Lines.Span[0].Leading.ShouldBe(2);
     }
 
+    /// <summary>Verifies an arrange-only widening of a word-wrapped control reflows its wrapped
+    /// lines back together instead of reusing a stale multi-line split. The skip-reformat
+    /// optimization in EnsureLayout only compares the new width against the longest
+    /// already-wrapped line, not the content's true unwrapped extent - a wrapped line that
+    /// happened to leave slack under the previous width let a still-insufficient new width pass
+    /// that check and keep the stale split even though the complete text now fits on one line.
+    /// Mirrors <see cref="EnsureLayout_WhenArrangeWidthExceedsMeasuredContent_SkipsReformat"/>'s
+    /// measure-once/arrange-wider shape, which is exactly how a parent panel (for example a Grid
+    /// track) can hand a child a final slot wider than what it was measured against.</summary>
+    [Fact]
+    public void EnsureLayout_WhenWrappedArrangeWidensToFit_MergesLines()
+    {
+        var text = new ControlText("aa bbbb")
+        {
+            Overflow = Overflow.Wrap,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+
+        text.Measure(new Constraint(width: 6, height: 2));
+        text.Arrange(new Rect(0, 0, 6, 2));
+
+        text.Lines.Length.ShouldBe(2);
+
+        text.Arrange(new Rect(0, 0, 7, 1));
+
+        text.Lines.Length.ShouldBe(1);
+        text.Lines.Span[0].Cells.ShouldBe(7);
+    }
+
     /// <summary>Verifies multiline and ellipsis output occupy exact semantic cells.</summary>
     [Fact]
     public void Render_WhenContentIsTrimmedAndMultiline_WritesExpectedCells()
