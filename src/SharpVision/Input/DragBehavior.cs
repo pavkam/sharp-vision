@@ -14,6 +14,7 @@ internal sealed class DragBehavior
     private readonly Action _releaseCapture;
     private readonly Action<bool> _setPressed;
 
+    /// <exception cref="ArgumentNullException">A delegate argument is null.</exception>
     public DragBehavior(
         Func<Rect> contentBounds,
         Func<bool> isAvailable,
@@ -23,6 +24,13 @@ internal sealed class DragBehavior
         Action releaseCapture,
         Action<bool> setPressed)
     {
+        ArgumentNullException.ThrowIfNull(contentBounds);
+        ArgumentNullException.ThrowIfNull(isAvailable);
+        ArgumentNullException.ThrowIfNull(requestFocus);
+        ArgumentNullException.ThrowIfNull(capturePointer);
+        ArgumentNullException.ThrowIfNull(hasCapture);
+        ArgumentNullException.ThrowIfNull(releaseCapture);
+        ArgumentNullException.ThrowIfNull(setPressed);
         _contentBounds = contentBounds;
         _isAvailable = isAvailable;
         _requestFocus = requestFocus;

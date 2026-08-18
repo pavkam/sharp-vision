@@ -28,6 +28,36 @@ public sealed class DragBehaviorTests
         () => _captured = false,
         pressed => _pressed = pressed);
 
+    /// <summary>Verifies the constructor rejects a null contentBounds delegate.</summary>
+    [Fact]
+    public void Constructor_WhenContentBoundsIsNull_ThrowsArgumentNullException()
+    {
+        // Arrange & Act & Assert
+        _ = Should.Throw<ArgumentNullException>(() => new DragBehavior(
+            null!,
+            () => true,
+            () => true,
+            () => true,
+            () => true,
+            () => { },
+            _ => { }));
+    }
+
+    /// <summary>Verifies the constructor rejects a null setPressed delegate.</summary>
+    [Fact]
+    public void Constructor_WhenSetPressedIsNull_ThrowsArgumentNullException()
+    {
+        // Arrange & Act & Assert
+        _ = Should.Throw<ArgumentNullException>(() => new DragBehavior(
+            () => _bounds,
+            () => true,
+            () => true,
+            () => true,
+            () => true,
+            () => { },
+            null!));
+    }
+
     /// <summary>Verifies a press inside bounds starts the drag.</summary>
     [Fact]
     public void TryStart_WhenInsideBounds_StartsDrag()
