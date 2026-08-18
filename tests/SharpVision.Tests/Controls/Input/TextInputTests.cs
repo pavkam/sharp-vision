@@ -71,6 +71,19 @@ public sealed class TextInputTests
         control.CursorShape.ShouldBe(CursorShape.Block);
     }
 
+    /// <summary>Verifies Select throws the documented ArgumentOutOfRangeException - not an
+    /// unchecked OverflowException - when start plus length overflows a 32-bit integer, matching
+    /// the "range overflows" case its own XML documentation promises.</summary>
+    [Fact]
+    public void Select_WhenStartPlusLengthOverflows_ThrowsArgumentOutOfRangeException()
+    {
+        // Arrange
+        var control = new TextInput();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.Select(int.MaxValue, 1));
+    }
+
     /// <summary>Verifies cursor-shape mutation requests only a new semantic render.</summary>
     [Fact]
     public void CursorShape_WhenChanged_InvalidatesRenderOnly()

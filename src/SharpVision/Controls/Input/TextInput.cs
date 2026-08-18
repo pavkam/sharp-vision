@@ -411,8 +411,15 @@ public sealed class TextInput: ControlBase
     {
         ArgumentOutOfRangeException.ThrowIfNegative(start);
         ArgumentOutOfRangeException.ThrowIfNegative(length);
-        var end = checked(start + length);
-        SetSelection(new Selection(start, end));
+
+        var sum = (long) start + length;
+
+        if (sum > int.MaxValue)
+        {
+            throw new ArgumentOutOfRangeException(nameof(length), length, "The selection range overflows.");
+        }
+
+        SetSelection(new Selection(start, (int) sum));
     }
 
     /// <summary>Copies selected text unless password policy suppresses source disclosure.</summary>
