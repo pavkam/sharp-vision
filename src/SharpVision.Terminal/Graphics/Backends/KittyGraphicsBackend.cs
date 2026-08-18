@@ -168,9 +168,10 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
         // Same reasoning as retiringImageIds, for placement identifiers. This mirrors the
         // position/identity matching the main loop below performs to decide whether a placement
-        // is retained in place (the effectiveIndex comparison at line ~193) — it must stay in
-        // exact sync with that check, since it exists only to learn, before the loop runs, which
-        // old placement identifiers the loop will NOT retain and can therefore offer for transfer.
+        // is retained in place (the effectiveIndex comparison against _placements later in this
+        // method) — it must stay in exact sync with that check, since it exists only to learn,
+        // before the loop runs, which old placement identifiers the loop will NOT retain and can
+        // therefore offer for transfer.
         var retainedPlacementIds = new HashSet<uint>();
         var neededEffectiveIndex = 0;
 
@@ -337,9 +338,10 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                 }
 
                 // Transferring the placement identifier only means the number is reused by a new
-                // (image, placement) pair above (see the transfer branch near line ~203); the old
-                // pair itself is not that new pair unless retained already matched, so its image
-                // still needs the explicit delete or it stays rendered as a ghost.
+                // (image, placement) pair above (see the retiringPlacementIds.TryDequeue transfer
+                // branch earlier in this method); the old pair itself is not that new pair unless
+                // retained already matched, so its image still needs the explicit delete or it
+                // stays rendered as a ghost.
                 if (images.ContainsKey(previous.Placement.ImageIdentity))
                 {
                     KittyGraphicsWriter.Write(
