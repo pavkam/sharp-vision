@@ -64,9 +64,11 @@ public readonly record struct Face: IAppearanceFragment
     public Underline Underline
     {
         get;
-        init => field = Enum.IsDefined(value)
-            ? value
-            : throw new ArgumentOutOfRangeException(nameof(value), value, "The underline style is unknown.");
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The underline style is unknown.");
+            field = value;
+        }
     }
 
     /// <summary>Gets the underline color.</summary>

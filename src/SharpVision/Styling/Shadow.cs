@@ -58,9 +58,11 @@ public readonly record struct Shadow: IAppearanceFragment
     public ShadowMode Mode
     {
         get;
-        init => field = Enum.IsDefined(value)
-            ? value
-            : throw new ArgumentOutOfRangeException(nameof(value), value, "The shadow mode is unknown.");
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The shadow mode is unknown.");
+            field = value;
+        }
     }
 
     /// <summary>Gets the signed shadow translation.</summary>
