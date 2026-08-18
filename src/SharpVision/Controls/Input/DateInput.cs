@@ -105,7 +105,12 @@ public sealed class DateInput: InputBase
         set
         {
             VerifyMutable();
-            _seeded = true;
+
+            // Resolves any not-yet-seeded value from the correct clock before evaluating the
+            // AllowNull rejection below - marking the control seeded without ever assigning a
+            // real value would otherwise leave _value latched at null despite AllowNull being
+            // false, the moment a caller assigns null before ever reading Value.
+            EnsureSeeded();
 
             if (!value.HasValue && !AllowNull)
             {

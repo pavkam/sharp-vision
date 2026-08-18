@@ -40,6 +40,23 @@ public sealed class DateInputTests
         _ = control.Value.ShouldNotBeNull();
     }
 
+    /// <summary>Verifies assigning null on a never-yet-read control with AllowNull already disabled
+    /// still resolves to a real seeded date instead of latching null: the setter's early return
+    /// must not mark the control seeded without ever assigning a real value, or a later read
+    /// observes null despite AllowNull being false.</summary>
+    [Fact]
+    public void Value_WhenNullIsAssignedBeforeFirstReadAndAllowNullIsAlreadyFalse_ResolvesToSeededDate()
+    {
+        // Arrange
+        using var control = new DateInput { AllowNull = false };
+
+        // Act
+        control.Value = null;
+
+        // Assert
+        _ = control.Value.ShouldNotBeNull();
+    }
+
     /// <summary>Verifies assigning null preserves the committed date when null values are disabled.</summary>
     [Fact]
     public void Value_WhenNullIsAssignedAndAllowNullIsFalse_PreservesValue()
