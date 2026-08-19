@@ -5,6 +5,7 @@ namespace SharpVision.Terminal.Graphics.Backends;
 
 using Capabilities;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
 
 /// <summary>Selects one renderer backend from authoritative evidence and route policy.</summary>
 internal static class GraphicsBackendSelector
@@ -20,6 +21,7 @@ internal static class GraphicsBackendSelector
     /// <returns>An owned backend, or null when no safe protocol is proven.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxPreparedBytes"/> is not positive.</exception>
+    [MustDisposeResource]
     public static IGraphicsBackend? Create(
         TerminalCapabilities capabilities,
         MultiplexerRoute? route = null,
@@ -50,6 +52,7 @@ internal static class GraphicsBackendSelector
     /// <param name="feature">The current immutable feature evidence.</param>
     /// <param name="allowQuery">Whether correlated query evidence may authorize this protocol.</param>
     /// <returns>True only when support and origin authorize output.</returns>
+    [Pure]
     public static bool Authoritative(Feature feature, bool allowQuery) =>
         feature.State == CapabilitySupport.Supported &&
         (feature.Origin == Origin.Override || (allowQuery && feature.Origin == Origin.Query));

@@ -37,6 +37,7 @@ public sealed class ImageSource
     /// <returns>An independently owned immutable image.</returns>
     /// <exception cref="ArgumentOutOfRangeException">Dimensions, pixels, or bytes exceed policy.</exception>
     /// <exception cref="ArgumentException"><paramref name="source"/> is not exactly four bytes per pixel.</exception>
+    [Pure]
     public static ImageSource FromRgba(Size size, ReadOnlySpan<byte> source, ImageLimits? limits = null)
     {
         var policy = limits ?? ImageLimits.Default;
@@ -56,6 +57,7 @@ public sealed class ImageSource
     /// <returns>An independently owned immutable image.</returns>
     /// <exception cref="ArgumentException">The PNG container or IHDR fields are invalid.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Dimensions, pixels, or bytes exceed policy.</exception>
+    [Pure]
     public static ImageSource FromPng(ReadOnlySpan<byte> source, ImageLimits? limits = null)
     {
         var policy = limits ?? ImageLimits.Default;
@@ -83,6 +85,7 @@ public sealed class ImageSource
     /// <param name="size">The already-validated positive dimensions in pixels.</param>
     /// <param name="rgba">Exactly four bytes per pixel in RGBA order.</param>
     /// <returns>An independently owned immutable RGBA image.</returns>
+    [Pure]
     internal static ImageSource FromDecodedRgba(Size size, ReadOnlySpan<byte> rgba) =>
         new(size, ImageFormat.Rgba, rgba);
 

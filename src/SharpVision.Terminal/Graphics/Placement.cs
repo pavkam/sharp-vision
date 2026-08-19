@@ -112,6 +112,7 @@ public readonly struct Placement: IEquatable<Placement>
     /// <summary>Returns the same public placement semantics with frame-local paint provenance.</summary>
     /// <param name="paintRevision">The frame mutation revision immediately before image paint.</param>
     /// <returns>A placement whose public equality and hash remain unchanged.</returns>
+    [Pure]
     internal Placement WithPaintRevision(ulong paintRevision) => new(
         Image!,
         Source,
