@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Input;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>
 /// Decodes SGR and legacy X10 mouse-report CSI sequences into <see cref="Pointer"/> values,
 /// extracted from <see cref="InputDecoder"/> as one of its four self-contained protocol decoders.
@@ -85,6 +87,7 @@ internal sealed class MouseDecoder
     /// <summary>Consumes as many pending X10 coordinate bytes as available from borrowed text.</summary>
     /// <param name="value">The borrowed text bytes.</param>
     /// <returns>The number of bytes consumed from the start of <paramref name="value"/>.</returns>
+    [MustUseReturnValue]
     public int ConsumeX10(ReadOnlySpan<byte> value)
     {
         var consumed = 0;

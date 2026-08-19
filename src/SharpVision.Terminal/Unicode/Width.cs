@@ -16,6 +16,7 @@ public static class Width
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="ambiguous"/> is unknown.
     /// </exception>
+    [Pure]
     public static Measurement Measure(
         ReadOnlySpan<char> value,
         Ambiguous ambiguous = Ambiguous.Narrow)
@@ -51,6 +52,7 @@ public static class Width
     /// <param name="ambiguous">The validated ambiguous-width policy.</param>
     /// <param name="hasInvalidData">Whether the cluster contains replacement input.</param>
     /// <returns>The cluster width.</returns>
+    [Pure]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static CellWidth GetCluster(
         ReadOnlySpan<char> value,
@@ -63,6 +65,7 @@ public static class Width
     /// <param name="ambiguous">The validated ambiguous-width policy.</param>
     /// <param name="hasInvalidData">Whether the cluster contains replacement input.</param>
     /// <returns>The cluster width and safe presentation classification.</returns>
+    [Pure]
     internal static Cluster AnalyzeCluster(
         ReadOnlySpan<char> value,
         Ambiguous ambiguous,
@@ -149,10 +152,12 @@ public static class Width
         return new Cluster(width, requiresReplacement: false);
     }
 
+    [Pure]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsKeycapBase(int scalar) => scalar is
         (>= '0' and <= '9') or '#' or '*';
 
+    [Pure]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsPrivateUse(int scalar) => scalar is
         (>= 0xe000 and <= 0xf8ff) or

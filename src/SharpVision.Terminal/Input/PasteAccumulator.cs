@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Input;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>
 /// Owns buffered bytes and end-marker matching for one in-progress bracketed paste, extracted
 /// from <see cref="InputDecoder"/> as one of its four self-contained protocol decoders.
@@ -55,6 +57,7 @@ internal sealed class PasteAccumulator: IDisposable
     /// arrives so a marker byte sequence that turns out incomplete is appended as data.</summary>
     /// <param name="value">The next raw input byte.</param>
     /// <returns>True once the terminating marker completes; the caller finishes the paste.</returns>
+    [MustUseReturnValue]
     public bool Process(byte value)
     {
         while (true)

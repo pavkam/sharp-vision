@@ -7,6 +7,8 @@ using Protocols;
 
 using Xterm;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>
 /// Incrementally decodes UTF-8 and legacy VT keyboard input into stable values.
 /// </summary>
@@ -15,6 +17,7 @@ using Xterm;
 /// borrowed only for each synchronous call; emitted values retain none of them.
 /// </remarks>
 [PublicAPI]
+[MustDisposeResource]
 public sealed class InputDecoder: IDisposable
 {
     private readonly IInputSink _sink;
