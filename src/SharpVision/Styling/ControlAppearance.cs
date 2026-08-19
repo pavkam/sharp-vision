@@ -29,6 +29,7 @@ public readonly record struct ControlAppearance
     /// <summary>Applies a partial appearance contribution.</summary>
     /// <param name="set">The later member-wise contribution.</param>
     /// <returns>The composed complete appearance.</returns>
+    [Pure]
     public ControlAppearance Apply(AppearanceOverlay set) => new(
         set.Face?.Apply(Face) ?? Face,
         set.Border?.Apply(Border) ?? Border,

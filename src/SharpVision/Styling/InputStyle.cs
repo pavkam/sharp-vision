@@ -5,6 +5,8 @@ namespace SharpVision.Styling;
 
 using System.Diagnostics.CodeAnalysis;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Defines the well-known editable-or-selectable input appearance - a heavy all-side
 /// border by default - one of the sibling styles <see cref="ControlStyle"/> generalizes.</summary>
 [PublicAPI]
@@ -52,6 +54,7 @@ public record InputStyle: ControlStyle
     /// code-owned default.
     /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">The replacement value is outside 0-4.</exception>
+    [ValueRange(0, 4)]
     public int AffixGap
     {
         get;

@@ -75,6 +75,7 @@ public readonly record struct ShadowOverlay
     /// <summary>Applies this contribution to a complete shadow.</summary>
     /// <param name="shadow">The earlier complete shadow.</param>
     /// <returns>The composed complete shadow.</returns>
+    [Pure]
     public Shadow Apply(Shadow shadow) => new(
         IsVisible ?? shadow.IsVisible,
         Mode ?? shadow.Mode,
@@ -87,6 +88,7 @@ public readonly record struct ShadowOverlay
     /// <summary>Overlays a later partial contribution over this contribution.</summary>
     /// <param name="later">The later contribution whose supplied members win.</param>
     /// <returns>The combined partial contribution.</returns>
+    [Pure]
     public ShadowOverlay Overlay(ShadowOverlay later) => new(
         later.IsVisible ?? IsVisible,
         later.Mode ?? Mode,

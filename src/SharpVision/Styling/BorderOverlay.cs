@@ -64,6 +64,7 @@ public readonly record struct BorderOverlay
     /// <summary>Applies this contribution to a complete border.</summary>
     /// <param name="border">The earlier complete border.</param>
     /// <returns>The composed complete border.</returns>
+    [Pure]
     public Border Apply(Border border) => new(
         Sides ?? border.Sides,
         GlyphStyle ?? border.GlyphStyle,
@@ -74,6 +75,7 @@ public readonly record struct BorderOverlay
     /// <summary>Overlays a later partial contribution over this contribution.</summary>
     /// <param name="later">The later contribution whose supplied members win.</param>
     /// <returns>The combined partial contribution.</returns>
+    [Pure]
     public BorderOverlay Overlay(BorderOverlay later) => new(
         later.Sides ?? Sides,
         later.GlyphStyle ?? GlyphStyle,

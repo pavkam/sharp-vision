@@ -28,6 +28,7 @@ internal static class StyleStatesExtensions
     /// <typeparam name="TStyle">The concrete themeable style type.</typeparam>
     /// <param name="set">The complete per-state resolution to adapt.</param>
     /// <returns>The equivalent Normal-plus-nine-overlays appearance set.</returns>
+    [Pure]
     internal static AppearanceStates ToAppearanceStates<TStyle>(this StyleStates<TStyle> set)
         where TStyle : ControlStyle
     {
@@ -51,6 +52,7 @@ internal static class StyleStatesExtensions
     /// <param name="set">The set carrying the provenance.</param>
     /// <param name="state">The JSON state name.</param>
     /// <returns>The authored property paths, or null.</returns>
+    [Pure]
     internal static IReadOnlySet<string>? AuthoredFor<TStyle>(this StyleStates<TStyle> set, string state)
         where TStyle : ControlStyle =>
         set.Authored?.TryGetValue(state, out var members) == true ? members : null;
@@ -68,6 +70,7 @@ internal static class StyleStatesExtensions
     /// the two sides being diffed are both code-completed values with no JSON provenance to carry.
     /// </param>
     /// <returns>The partial delta.</returns>
+    [Pure]
     internal static AppearanceOverlay Diff(
         ControlStyle normal,
         ControlStyle? state,

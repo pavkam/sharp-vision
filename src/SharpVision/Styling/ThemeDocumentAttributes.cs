@@ -46,6 +46,7 @@ internal sealed class ThemeDocumentAttributes
     public JsonElement? Hotkey { get; set; }
 
     /// <summary>Gets one authored value by semantic name.</summary>
+    [Pure]
     internal JsonElement? Get(SemanticDecoration decoration) => decoration switch
     {
         SemanticDecoration.NormalText => NormalText,

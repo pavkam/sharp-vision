@@ -74,6 +74,7 @@ public readonly record struct AppearanceStatesOverlay
     /// <summary>Combines a later partial overlay onto this one.</summary>
     /// <param name="later">The later overlay whose supplied members win.</param>
     /// <returns>The combined partial overlay.</returns>
+    [Pure]
     public AppearanceStatesOverlay Overlay(AppearanceStatesOverlay later) => new(
         Overlay(Normal, later.Normal),
         Overlay(IsPointerOver, later.IsPointerOver),

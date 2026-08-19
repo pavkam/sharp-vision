@@ -130,6 +130,7 @@ internal sealed class ThemeDocumentColors
     public string? Info { get; set; }
 
     /// <summary>Gets one authored value by semantic name.</summary>
+    [Pure]
     internal string? Get(SemanticColor color) => color switch
     {
         SemanticColor.Window => Window,

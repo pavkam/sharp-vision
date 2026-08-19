@@ -12,6 +12,7 @@ internal static class CellGlyphResolver
         /// <param name="fallback">A printable Rune that occupies one cell under every policy.</param>
         /// <param name="ambiguousWidth">The inherited East Asian Ambiguous width policy.</param>
         /// <returns>The Rune safe to draw into one physical control cell.</returns>
+        [Pure]
         public Rune Resolve(Rune fallback, Ambiguous ambiguousWidth)
         {
             Span<char> valueBuffer = stackalloc char[2];
@@ -37,6 +38,7 @@ internal static class CellGlyphResolver
         /// <param name="parameterName">The public parameter name for diagnostics.</param>
         /// <returns>The validated Rune.</returns>
         /// <exception cref="ArgumentException">The rune is not printable or not one cell wide.</exception>
+        [Pure]
         public Rune ValidateSingleCell(string parameterName) =>
             value.ValidateSingleCell(parameterName, Ambiguous.Narrow);
 
@@ -46,6 +48,7 @@ internal static class CellGlyphResolver
         /// <param name="ambiguousWidth">The width policy to validate against.</param>
         /// <returns>The validated Rune.</returns>
         /// <exception cref="ArgumentException">The rune is not printable or not one cell wide.</exception>
+        [Pure]
         public Rune ValidateSingleCell(string parameterName, Ambiguous ambiguousWidth)
         {
             Span<char> buffer = stackalloc char[2];

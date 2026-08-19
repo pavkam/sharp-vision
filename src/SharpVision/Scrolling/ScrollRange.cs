@@ -3,6 +3,8 @@
 
 namespace SharpVision.Scrolling;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Defines one immutable validated integer scroll range.</summary>
 [PublicAPI]
 public readonly record struct ScrollRange
@@ -31,28 +33,37 @@ public readonly record struct ScrollRange
     }
 
     /// <summary>Gets the inclusive lower endpoint.</summary>
+    [NonNegativeValue]
     public int Minimum { get; }
 
     /// <summary>Gets the inclusive upper endpoint.</summary>
+    [NonNegativeValue]
     public int Maximum { get; }
 
     /// <summary>Gets the current value.</summary>
+    [NonNegativeValue]
     public int Value { get; }
 
     /// <summary>Gets the visible extent.</summary>
+    [NonNegativeValue]
     public int Viewport { get; }
 
     /// <summary>Gets the non-negative endpoint distance.</summary>
+    [NonNegativeValue]
     public int Span => Maximum - Minimum;
 
     /// <summary>Clamps any integer value to the inclusive endpoints.</summary>
     /// <param name="value">The candidate value.</param>
     /// <returns>The contained value.</returns>
+    [Pure]
+    [NonNegativeValue]
     public int Clamp(int value) => Math.Clamp(value, Minimum, Maximum);
 
     /// <summary>Adds a signed delta with saturation and endpoint clamping.</summary>
     /// <param name="delta">The signed requested change.</param>
     /// <returns>The contained resulting value.</returns>
+    [Pure]
+    [NonNegativeValue]
     public int Move(int delta)
     {
         var value = (long) Value + delta;
