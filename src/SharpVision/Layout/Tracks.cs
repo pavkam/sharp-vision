@@ -18,6 +18,7 @@ public static class Tracks
     /// <paramref name="available"/> or an intrinsic request is negative.
     /// </exception>
     /// <exception cref="ArgumentException">The input lengths differ.</exception>
+    [Pure]
     public static int[] Resolve(
         int? available,
         ReadOnlySpan<Length> lengths,
@@ -219,18 +220,22 @@ public static class Tracks
         }
     }
 
+    [Pure]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int Clamp(int value, ReadOnlySpan<int> minimum, ReadOnlySpan<int> maximum, int index) =>
         Math.Clamp(value, MinimumAt(minimum, index), MaximumAt(maximum, index));
 
+    [Pure]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int MaximumAt(ReadOnlySpan<int> maximum, int index) =>
         maximum.IsEmpty ? int.MaxValue : maximum[index];
 
+    [Pure]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int MinimumAt(ReadOnlySpan<int> minimum, int index) =>
         minimum.IsEmpty ? 0 : minimum[index];
 
+    [Pure]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int RoundPercent(int available, double percent)
     {
@@ -241,6 +246,7 @@ public static class Tracks
         return value >= int.MaxValue ? int.MaxValue : (int) value;
     }
 
+    [Pure]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int RoundRatio(int value, int numerator, int denominator)
     {
@@ -251,6 +257,7 @@ public static class Tracks
         return (int) ((((long) value * numerator) + (denominator / 2L)) / denominator);
     }
 
+    [Pure]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int RoundWeighted(int value, double cumulative, double total)
     {

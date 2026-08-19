@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Layout;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Describes one committed Table sort transition.</summary>
 public sealed class TableSortChangedEventArgs: EventArgs
 {
@@ -29,6 +31,7 @@ public sealed class TableSortChangedEventArgs: EventArgs
     }
 
     /// <summary>Gets the committed column index, or -1 when sorting is reset.</summary>
+    [ValueRange(-1, int.MaxValue)]
     public int ColumnIndex { get; }
 
     /// <summary>Gets the committed sort direction.</summary>

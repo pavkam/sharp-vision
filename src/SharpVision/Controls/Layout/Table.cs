@@ -7,7 +7,9 @@ using SharpVision.Controls.Display;
 using SharpVision.Controls.Input;
 using SharpVision.Controls.Scrolling;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 using TerminalInput = Terminal.Input;
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
 
 /// <summary>Arranges typed rows and columns into a terminal-safe table with optional headers and grid lines.</summary>
 [PublicAPI]
@@ -128,6 +130,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     public TableRow? ActiveRow { get; private set; }
 
     /// <summary>Gets the active zero-based cell column, or -1 when no cell is active.</summary>
+    [ValueRange(-1, int.MaxValue)]
     public int ActiveColumnIndex { get; private set; } = -1;
 
     /// <summary>Gets the active cell reference, or null when navigation has no active cell.</summary>
@@ -139,6 +142,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     public bool IsEditing => _edit is not null;
 
     /// <summary>Gets the current sorted column, or -1 when sorting is reset.</summary>
+    [ValueRange(-1, int.MaxValue)]
     public int SortColumnIndex { get; private set; } = -1;
 
     /// <summary>Gets the current sort direction.</summary>
@@ -181,6 +185,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
+    [NonNegativeValue]
     public int RowSpacing
     {
         get;
@@ -195,6 +200,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
+    [NonNegativeValue]
     public int ColumnSpacing
     {
         get;
@@ -281,6 +287,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
+    [NonNegativeValue]
     public int LineSize
     {
         get => _presenter.LineSize;
@@ -300,6 +307,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
+    [NonNegativeValue]
     public int PageOverlap
     {
         get => _presenter.PageOverlap;
@@ -319,6 +327,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
     /// <exception cref="InvalidOperationException">The attached table is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
+    [NonNegativeValue]
     public int HorizontalOffset
     {
         get => _presenter.HorizontalOffset;
@@ -329,6 +338,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
     /// <exception cref="InvalidOperationException">The attached table is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
+    [NonNegativeValue]
     public int VerticalOffset
     {
         get => _presenter.VerticalOffset;
@@ -402,7 +412,10 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="columnIndex"/> is outside the row.</exception>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    public void SelectCell(TableRow row, int columnIndex, TerminalInput.Modifiers modifiers = TerminalInput.Modifiers.None)
+    public void SelectCell(
+        TableRow row,
+        [NonNegativeValue] int columnIndex,
+        TerminalInput.Modifiers modifiers = TerminalInput.Modifiers.None)
     {
         ArgumentNullException.ThrowIfNull(row);
         RequireNotProgressive("SelectCell is unavailable while the table is progressive; use SelectIndex or SelectKey instead.");
@@ -434,6 +447,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         CommitSelection([], next);
     }
 
+    [Pure]
     private TableCellReference? FindFirstSelectedCell()
     {
         foreach (var row in Rows)
@@ -524,7 +538,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     /// <exception cref="ArgumentOutOfRangeException">The column index is outside the collection.</exception>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    public void SortBy(int columnIndex)
+    public void SortBy([NonNegativeValue] int columnIndex)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(columnIndex);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual((uint) columnIndex, (uint) Columns.Count);
@@ -650,7 +664,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     /// <exception cref="ArgumentOutOfRangeException">The column index is outside the row.</exception>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    public bool BeginEdit(TableRow row, int columnIndex)
+    public bool BeginEdit(TableRow row, [NonNegativeValue] int columnIndex)
     {
         ArgumentNullException.ThrowIfNull(row);
 
@@ -723,6 +737,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
 
     /// <summary>Returns selected rows or cells as deterministic tab-separated clipboard text.</summary>
     /// <returns>Owned text with rows separated by LF, or an empty string when nothing is selected.</returns>
+    [Pure]
     public string CopySelection()
     {
         if (IsProgressive)
@@ -752,6 +767,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
 
     // CopySelection is a synchronous read of already-realized state - it never fetches an
     // unloaded selected key, it simply skips it, so the call can never block the dispatcher.
+    [Pure]
     private string CopyProgressiveSelection()
     {
         if (Progressive is not { } controller)
@@ -883,6 +899,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     /// <summary>Gets the active progressive navigation index, or -1 while not progressive or when
     /// nothing is active - the same neutral-default pattern <see cref="Rows"/> and
     /// <see cref="SelectedRows"/> already follow rather than throwing on a mode mismatch.</summary>
+    [ValueRange(-1, int.MaxValue)]
     public int ActiveIndex => Progressive?.ActiveIndex ?? -1;
 
     /// <summary>Gets the active progressive navigation key, or null while not progressive or when
@@ -906,7 +923,10 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     /// mutated off-dispatcher or without an attached dispatcher.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    public void SetDataSource<T>(ITableDataSource<T> source, TableRowTemplate<T> rowTemplate, int rowHeight)
+    public void SetDataSource<T>(
+        ITableDataSource<T> source,
+        TableRowTemplate<T> rowTemplate,
+        [ValueRange(1, int.MaxValue)] int rowHeight)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(rowTemplate);
@@ -1393,6 +1413,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         }
     }
 
+    [Pure]
     private int StepPageRows()
     {
         var stride = (Progressive?.RowHeight ?? 1) + _presenter.RowGap;
@@ -1410,6 +1431,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         return _rowIndexCache.TryGetValue(row, out var index) ? index : -1;
     }
 
+    [Pure]
     private Dictionary<TableRow, int> BuildRowIndexCache()
     {
         var cache = new Dictionary<TableRow, int>(Rows.Count);
@@ -1488,6 +1510,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     // Accumulates realized row heights from the current row until the sum reaches the committed
     // viewport height (minus PageOverlap), rather than treating the viewport's cell height as a
     // row count. A landing index that runs past either end is clamped into range.
+    [Pure]
     private int StepPageRow(int startIndex, int columnIndex, int direction)
     {
         var target = PagingStep.TargetExtent(Viewport.Height, PageOverlap);
@@ -1542,7 +1565,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         return true;
     }
 
-    private void SetActive(TableRow row, int columnIndex)
+    private void SetActive(TableRow row, [NonNegativeValue] int columnIndex)
     {
         VerifyOwned(row);
         ArgumentOutOfRangeException.ThrowIfNegative(columnIndex);
@@ -1813,6 +1836,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         }
     }
 
+    [Pure]
     private static string CellText(ControlBase cell) => cell switch
     {
         Text text => text.Content,
@@ -1829,6 +1853,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         return Columns[columnIndex].SortKey?.Invoke(cell) ?? CellText(cell);
     }
 
+    [Pure]
     private static int CompareKeys(object? left, object? right)
     {
         if (ReferenceEquals(left, right))
@@ -1951,7 +1976,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
 
     /// <summary>Validates a candidate column count against every owned row.</summary>
     /// <param name="count">The candidate count.</param>
-    internal void ValidateColumnCount(int count)
+    internal void ValidateColumnCount([NonNegativeValue] int count)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(count);
         VerifyMutable();
@@ -2260,6 +2285,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     #endregion
     // Only the primary glyph is themable; the ASCII repair value stays code-owned, which is the
     // split theming-new-controls.md asks for.
+    [Pure]
     private Rune ResolveGridGlyph(ControlGlyph themed) =>
         themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
 

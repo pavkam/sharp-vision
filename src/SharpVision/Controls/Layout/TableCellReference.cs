@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Layout;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Identifies one cell by its stable row identity and zero-based column index.</summary>
 public readonly record struct TableCellReference
 {
@@ -23,6 +25,7 @@ public readonly record struct TableCellReference
     public TableRow Row { get; }
 
     /// <summary>Gets the zero-based referenced column index.</summary>
+    [NonNegativeValue]
     public int ColumnIndex { get; }
 
     /// <summary>Gets the retained cell control at this reference.</summary>

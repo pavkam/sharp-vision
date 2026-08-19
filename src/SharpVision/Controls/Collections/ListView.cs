@@ -12,6 +12,10 @@ using SharpVision.Terminal.Input;
 using DisplayText = Display.Text;
 using GenericList = List<object?>;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Defines a focusable fully realized item selection control with scrolling.</summary>
 [SuppressMessage(
     "Naming",
@@ -238,6 +242,7 @@ public sealed class ListView: ItemsControl
     /// <exception cref="ArgumentOutOfRangeException">The value is less than -1 or outside Items.</exception>
     /// <exception cref="InvalidOperationException">A non-negative value is assigned in None mode.</exception>
     /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    [ValueRange(-1, int.MaxValue)]
     public int SelectedIndex
     {
         get => _selection.Count == 0 ? -1 : _selection.Min();
@@ -282,6 +287,7 @@ public sealed class ListView: ItemsControl
     public IReadOnlyList<object?> SelectedItems => _selectedView;
 
     /// <summary>Gets the active navigation and keyboard-selection index, or -1 when no item is active.</summary>
+    [ValueRange(-1, int.MaxValue)]
     public int ActiveIndex { get; private set; } = -1;
 
     /// <summary>Raised after the composed scroll container's offset commits.</summary>
@@ -306,6 +312,7 @@ public sealed class ListView: ItemsControl
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
     /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    [NonNegativeValue]
     public int HorizontalOffset
     {
         get => _stack.HorizontalOffset;
@@ -316,6 +323,7 @@ public sealed class ListView: ItemsControl
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
     /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    [NonNegativeValue]
     public int VerticalOffset
     {
         get => _stack.VerticalOffset;
@@ -333,6 +341,7 @@ public sealed class ListView: ItemsControl
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    [NonNegativeValue]
     public int LineSize
     {
         get => _stack.LineSize;
@@ -352,6 +361,7 @@ public sealed class ListView: ItemsControl
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    [NonNegativeValue]
     public int PageOverlap
     {
         get => _stack.PageOverlap;
@@ -548,6 +558,7 @@ public sealed class ListView: ItemsControl
     private static ControlBase DefaultTemplate(object? item) =>
         new DisplayText(Convert.ToString(item, CultureInfo.InvariantCulture) ?? string.Empty);
 
+    [Pure]
     private static object?[] Copy(IReadOnlyList<object?> values)
     {
         Debug.Assert(values is not null, "ListView copy requires a non-null source.");
@@ -562,6 +573,7 @@ public sealed class ListView: ItemsControl
         return result;
     }
 
+    [MustUseReturnValue]
     private static ListItem[] Build(IReadOnlyList<object?> items, ItemTemplate template)
     {
         Debug.Assert(items is not null, "ListView build requires a non-null item source.");
@@ -884,6 +896,7 @@ public sealed class ListView: ItemsControl
         }
     }
 
+    [Pure]
     private int FindRealizedInsertPosition(int index)
     {
         var position = 0;
@@ -917,7 +930,7 @@ public sealed class ListView: ItemsControl
     /// <exception cref="ArgumentException">Template output is null, disposed, attached, or duplicated.</exception>
     /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
-    internal void InsertItem(int index, object? item)
+    internal void InsertItem([NonNegativeValue] int index, object? item)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(index, _items.Count);
@@ -1014,7 +1027,7 @@ public sealed class ListView: ItemsControl
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside <see cref="Items"/>.</exception>
     /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
-    internal void RemoveItem(int index)
+    internal void RemoveItem([NonNegativeValue] int index)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, _items.Count);
@@ -1137,7 +1150,7 @@ public sealed class ListView: ItemsControl
     /// <exception cref="ArgumentException">Template output is null, disposed, attached, or duplicated.</exception>
     /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
-    internal void ReplaceItem(int index, object? item)
+    internal void ReplaceItem([NonNegativeValue] int index, object? item)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, _items.Count);
@@ -1184,7 +1197,8 @@ public sealed class ListView: ItemsControl
         NotifyPropertyChanged(nameof(Items), InvalidationImpact.Measure);
     }
 
-    private static ListItem BuildSingle(int index, object? item, ItemTemplate template)
+    [MustUseReturnValue]
+    private static ListItem BuildSingle([NonNegativeValue] int index, object? item, ItemTemplate template)
     {
         var control = template(item) ??
             throw new ArgumentException(
@@ -1202,6 +1216,7 @@ public sealed class ListView: ItemsControl
         return new ListItem(index, control);
     }
 
+    [Pure]
     private static int[] BuildIndexMap(
         object?[] previousItems,
         GenericList nextItems)
@@ -1247,6 +1262,7 @@ public sealed class ListView: ItemsControl
         return map;
     }
 
+    [Pure]
     private static HashSet<int> MapIndexes(IReadOnlyList<int> indexes, IReadOnlyList<int> indexMap)
     {
         HashSet<int> mapped = [];
@@ -1264,9 +1280,11 @@ public sealed class ListView: ItemsControl
         return mapped;
     }
 
+    [Pure]
     private static int MapIndex(int previousIndex, IReadOnlyList<int> indexMap) =>
         (uint) previousIndex < (uint) indexMap.Count ? indexMap[previousIndex] : -1;
 
+    [Pure]
     private int FindAvailableActiveIndex(int index)
     {
         if (_items.Count == 0 || index < 0)
@@ -1634,6 +1652,7 @@ public sealed class ListView: ItemsControl
     // distance directly as an item-index delta. Once RowHeight is set every row is the same fixed
     // height, so the same distance becomes pure arithmetic requiring no realized row at all. The
     // returned index is raw and possibly out of range; FindEligible resolves it.
+    [Pure]
     private int StepPage(int start, int direction)
     {
         var target = PagingStep.TargetExtent(Viewport.Height, PageOverlap);
@@ -1647,6 +1666,7 @@ public sealed class ListView: ItemsControl
     /// <param name="start">The starting index; clamped into range before scanning.</param>
     /// <param name="direction">Plus or minus one.</param>
     /// <returns>The found index, or -1 when no eligible index exists in that direction.</returns>
+    [Pure]
     private int FindEligible(int start, int direction)
     {
         var clamped = Math.Clamp(start, 0, Math.Max(0, Items.Count - 1));
@@ -1670,6 +1690,7 @@ public sealed class ListView: ItemsControl
     /// <summary>Gets the realized row for a logical index, or null when the index is unrealized -
     /// always the case in eager mode only when the index is out of range, but a routine and
     /// expected outcome in virtualized mode for any index outside the current window.</summary>
+    [Pure]
     private ListItem? ItemAt(int index)
     {
         if (index < 0 || index >= _items.Count)
@@ -1704,6 +1725,7 @@ public sealed class ListView: ItemsControl
     /// <see cref="FindEligible"/> already tolerates when skipping past unavailable rows without
     /// crashing.
     /// </remarks>
+    [Pure]
     private bool IsIndexAvailable(int index)
     {
         if (index < 0 || index >= _items.Count)
@@ -1734,6 +1756,7 @@ public sealed class ListView: ItemsControl
         return realized;
     }
 
+    [Pure]
     private static ListItem? FindItem(ControlBase? source)
     {
         for (var current = source; current is not null; current = current.Parent)
@@ -1747,6 +1770,7 @@ public sealed class ListView: ItemsControl
         return null;
     }
 
+    [Pure]
     private int IndexOfItem(object value)
     {
         for (var index = 0; index < Items.Count; index++)

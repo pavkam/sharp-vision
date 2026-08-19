@@ -174,6 +174,7 @@ public sealed record TableStyle: ControlStyle
 
     // A null part color stays distinct from every resolved one, so "inherit the face" and "paint
     // this exact color" never compare equal just because a theme maps them to the same literal.
+    [Pure]
     private static Color? Resolved(ControlColor? value, Theme? theme) =>
         value is { } color ? ControlBase.ResolveColor(color, theme) : null;
 }

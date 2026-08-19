@@ -5,6 +5,8 @@ namespace SharpVision.Controls.Layout;
 
 using SharpVision.Controls.Input;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Retains one private TextInput edit transaction for a Table.</summary>
 internal sealed class TableEditState
 {
@@ -29,6 +31,7 @@ internal sealed class TableEditState
     internal TableRow Row { get; }
 
     /// <summary>Gets the edited column.</summary>
+    [NonNegativeValue]
     internal int ColumnIndex { get; }
 
     /// <summary>Gets the retained TextInput editor.</summary>

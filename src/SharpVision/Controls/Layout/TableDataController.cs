@@ -3,7 +3,9 @@
 
 namespace SharpVision.Controls.Layout;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 using TerminalInput = Terminal.Input;
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
 
 /// <summary>Owns one progressive <see cref="Table"/>'s fetch scheduling, cache, windowed
 /// realization, and key-based selection state.</summary>
@@ -48,6 +50,7 @@ internal sealed class TableDataController: IDisposable
     }
 
     /// <summary>Gets the positive uniform row height.</summary>
+    [ValueRange(1, int.MaxValue)]
     public int RowHeight { get; }
 
     /// <summary>Gets the table-wide aggregate loading state.</summary>
@@ -65,6 +68,7 @@ internal sealed class TableDataController: IDisposable
     public event EventHandler<TableSelectionChangedEventArgs>? SelectionChanged;
 
     /// <summary>Gets the active navigation index, or -1 when nothing is active.</summary>
+    [ValueRange(-1, int.MaxValue)]
     public int ActiveIndex { get; private set; } = -1;
 
     /// <summary>Gets the active navigation key, or null when nothing is active.</summary>
@@ -75,6 +79,7 @@ internal sealed class TableDataController: IDisposable
 
     /// <summary>Gets the current logical row extent, including one phantom row past the highest
     /// confirmed index while the source's total count is unknown and data has not ended.</summary>
+    [NonNegativeValue]
     public int LogicalCount =>
         IsEndOfData
             ? _knownFrontier + 1
@@ -86,16 +91,20 @@ internal sealed class TableDataController: IDisposable
     public bool IsEndOfData { get; private set; }
 
     /// <summary>Gets the first realized logical index, valid only while a window is realized.</summary>
+    [NonNegativeValue]
     public int WindowStart { get; private set; }
 
     /// <summary>Gets the number of realized window slots.</summary>
+    [NonNegativeValue]
     public int WindowCount => _window.Length;
 
     /// <summary>Gets the number of ranges currently pending a fetch, for diagnostics and tests.</summary>
+    [NonNegativeValue]
     public int PendingCount => _pending.Count;
 
     /// <summary>Gets the realized row at a logical index, or null when unrealized.</summary>
     /// <param name="logicalIndex">The zero-based logical index.</param>
+    [Pure]
     public TableRow? RowAt(int logicalIndex)
     {
         var position = logicalIndex - WindowStart;
@@ -104,6 +113,7 @@ internal sealed class TableDataController: IDisposable
 
     /// <summary>Gets whether a logical index is currently rendered as a placeholder or error skeleton.</summary>
     /// <param name="logicalIndex">The zero-based logical index.</param>
+    [Pure]
     public bool IsPlaceholder(int logicalIndex) => !_cache.ContainsKey(logicalIndex);
 
     /// <summary>Reconciles realized rows, in-flight fetches, and the cache against the current
@@ -246,6 +256,7 @@ internal sealed class TableDataController: IDisposable
     }
 
     /// <summary>Copies currently loaded selected rows, in ascending index order, skipping unloaded keys.</summary>
+    [Pure]
     public IReadOnlyList<(int Index, TableRow Row)> CopyLoadedSelection()
     {
         List<(int, TableRow)> result = [];
@@ -345,6 +356,7 @@ internal sealed class TableDataController: IDisposable
         RewindowFollowingCommit();
     }
 
+    [Pure]
     private object? ResolveSelectionTarget(int index) =>
         _cache.TryGetValue(index, out var entry) ? entry.Key : null;
 
@@ -388,6 +400,7 @@ internal sealed class TableDataController: IDisposable
         _ = _selectedKeys.Add(key);
     }
 
+    [Pure]
     private (int ActiveIndex, object? ActiveKey, HashSet<object> SelectedKeys) CaptureSelectionState() =>
         (ActiveIndex, ActiveKey, new HashSet<object>(_selectedKeys, EqualityComparer<object>.Default));
 
@@ -534,8 +547,10 @@ internal sealed class TableDataController: IDisposable
     // exact same broken range, storming a persistently failing backend forever instead of settling
     // on the rendered error placeholder until Reload() or eviction-then-return gives it a fresh
     // attempt.
+    [Pure]
     private bool IsSatisfied(int index) => _cache.ContainsKey(index) || IsPending(index) || _errorIndices.Contains(index);
 
+    [Pure]
     private bool IsPending(int index)
     {
         foreach (var range in _pending)

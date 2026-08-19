@@ -43,6 +43,7 @@ public readonly record struct TableColumn
     /// <param name="isReadOnly">Whether cells in this column reject Table editing.</param>
     /// <param name="sortKey">An optional stable comparable key selector for a cell control.</param>
     /// <returns>An automatic column.</returns>
+    [Pure]
     public static TableColumn Auto(string header, bool isReadOnly = false, Func<ControlBase, IComparable?>? sortKey = null) =>
         new(header, Length.Auto, isReadOnly, sortKey);
 
@@ -52,6 +53,7 @@ public readonly record struct TableColumn
     /// <param name="isReadOnly">Whether cells in this column reject Table editing.</param>
     /// <param name="sortKey">An optional stable comparable key selector for a cell control.</param>
     /// <returns>A fixed-width column.</returns>
+    [Pure]
     public static TableColumn Fixed(string header, int width, bool isReadOnly = false, Func<ControlBase, IComparable?>? sortKey = null) =>
         new(header, Length.Cells(width), isReadOnly, sortKey);
 
@@ -61,6 +63,7 @@ public readonly record struct TableColumn
     /// <param name="isReadOnly">Whether cells in this column reject Table editing.</param>
     /// <param name="sortKey">An optional stable comparable key selector for a cell control.</param>
     /// <returns>A percentage-width column.</returns>
+    [Pure]
     public static TableColumn Percent(string header, double percent, bool isReadOnly = false, Func<ControlBase, IComparable?>? sortKey = null) =>
         new(header, Length.Percent(percent), isReadOnly, sortKey);
 
@@ -70,6 +73,7 @@ public readonly record struct TableColumn
     /// <param name="isReadOnly">Whether cells in this column reject Table editing.</param>
     /// <param name="sortKey">An optional stable comparable key selector for a cell control.</param>
     /// <returns>A fill column.</returns>
+    [Pure]
     public static TableColumn Fill(string header, double weight = 1, bool isReadOnly = false, Func<ControlBase, IComparable?>? sortKey = null) =>
         new(header, Length.Star(weight), isReadOnly, sortKey);
 }

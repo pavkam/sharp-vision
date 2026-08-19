@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Layout;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Consumes physical edges in child order and optionally fills the remainder.</summary>
 [PublicAPI]
 public sealed class Dock: Container
@@ -29,6 +31,7 @@ public sealed class Dock: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int Spacing
     {
         get;
@@ -354,6 +357,7 @@ public sealed class Dock: Container
         }
     }
 
+    [Pure]
     private static Rect Consume(Rect value, DockSide side, int extent)
     {
         Debug.Assert(extent >= 0, "Consumed dock extent cannot be negative.");
@@ -371,6 +375,7 @@ public sealed class Dock: Container
 
     // Resolves a non-Star edge request against the given axis. Called once per participant by
     // ResolveAxisBorders; Star lengths never reach here.
+    [Pure]
     private static int Resolve(ControlBase child, int available, bool horizontal)
     {
         Debug.Assert(available >= 0, "Available dock axis space is non-negative.");
@@ -412,6 +417,7 @@ public sealed class Dock: Container
     // decided here, independent of where any Star sits in the sequence. Only participants are
     // considered: a collapsed child, or the last child when LastChildFills, never reserves space
     // on either axis.
+    [Pure]
     private int[] ResolveAxisBorders(bool horizontal, int axisTotal, int last)
     {
         var borders = new int[Children.Count];
@@ -550,6 +556,7 @@ public sealed class Dock: Container
         }
     }
 
+    [Pure]
     private static int Percent(int axis, double value)
     {
         Debug.Assert(axis >= 0, "Percentage base axis is non-negative.");
@@ -558,6 +565,7 @@ public sealed class Dock: Container
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
+    [Pure]
     private int LastParticipant()
     {
         for (var index = Children.Count - 1; index >= 0; index--)

@@ -3,6 +3,9 @@
 
 namespace SharpVision.Controls.Layout;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Requests one contiguous range of progressively loaded items.</summary>
 [PublicAPI]
 public readonly record struct TableDataRequest
@@ -22,8 +25,10 @@ public readonly record struct TableDataRequest
     }
 
     /// <summary>Gets the non-negative zero-based starting logical index.</summary>
+    [NonNegativeValue]
     public int StartIndex { get; }
 
     /// <summary>Gets the positive number of items requested.</summary>
+    [ValueRange(1, int.MaxValue)]
     public int Count { get; }
 }

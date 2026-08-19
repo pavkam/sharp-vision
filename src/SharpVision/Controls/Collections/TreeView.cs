@@ -12,6 +12,9 @@ using SharpVision.Terminal.Input;
 
 using LayoutStack = Layout.Stack;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Displays hierarchical data as an expandable and collapsible tree of items.</summary>
 [PublicAPI]
 public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
@@ -108,6 +111,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
     /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
+    [NonNegativeValue]
     public int HorizontalOffset
     {
         get => _itemsStack.HorizontalOffset;
@@ -118,6 +122,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
     /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
+    [NonNegativeValue]
     public int VerticalOffset
     {
         get => _itemsStack.VerticalOffset;
@@ -133,6 +138,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
+    [NonNegativeValue]
     public int LineSize
     {
         get => _itemsStack.LineSize;
@@ -152,6 +158,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
+    [NonNegativeValue]
     public int PageOverlap
     {
         get => _itemsStack.PageOverlap;
@@ -367,6 +374,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     /// <summary>Projects the theme-resolved checkbox mark family into the narrow shared value.</summary>
     /// <param name="theme">The inherited theme, or null before attachment.</param>
     /// <returns>The check mark a row renders when nothing overrides it.</returns>
+    [Pure]
     internal static CheckMark ThemedCheckMark(Theme? theme)
     {
         var style = CheckBoxStyle.ForwardingDefinition.Resolve(null, theme);
@@ -377,6 +385,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
+    [NonNegativeValue]
     public int Indent
     {
         get;
@@ -424,6 +433,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     /// <summary>Gets or sets the maximum number of child-loading requests this tree runs at once
     /// across every item; additional requests queue until a running one completes.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    [ValueRange(1, int.MaxValue)]
     public int MaxConcurrentChildLoads
     {
         get;
@@ -1044,6 +1054,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     // current but not selectable" together are exactly the added/removed sets, whether or not an
     // item left ownership entirely: a detached item can only ever appear in current, never in
     // selectable, so it is still correctly reported as removed by the second loop below.
+    [Pure]
     private static (TreeViewItem[] Added, TreeViewItem[] Removed) ComputeSelectionDelta(
         IReadOnlySet<TreeViewItem> current,
         IReadOnlySet<TreeViewItem> selectable)
@@ -1076,6 +1087,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     // Linear scan for the minimum TreeOrder, not a sort - callers only ever need the single
     // first-in-tree-order item, and the candidate set is bounded by selection size, never by tree
     // size.
+    [Pure]
     private static TreeViewItem? FindFirstInTreeOrder(IEnumerable<TreeViewItem> items)
     {
         TreeViewItem? first = null;
@@ -1273,6 +1285,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     // Accumulates realized item heights from the current position until the sum reaches the
     // committed viewport height, rather than treating the viewport's cell height as an item
     // count. A landing index that runs past either end is clamped into range.
+    [Pure]
     private ControlBase StepPage(List<ControlBase> visible, int direction)
     {
         var index = _navigator.Current is { } current ? visible.IndexOf(current) : -1;
@@ -1288,6 +1301,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
         return visible[result];
     }
 
+    [Pure]
     private List<ControlBase> CollectVisibleItems()
     {
         List<ControlBase> result = [];
@@ -1303,6 +1317,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
         return result;
     }
 
+    [Pure]
     private static TreeViewItem? FindParentItem(TreeViewItem target) =>
         // The item already knows its owning collection, and that collection knows its owning item,
         // so the parent is a direct lookup. Walking the whole hierarchy to rediscover it was both
@@ -1340,6 +1355,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
         }
     }
 
+    [Pure]
     private static int IndexOf(List<ControlBase> items, ControlBase value)
     {
         for (var index = 0; index < items.Count; index++)
