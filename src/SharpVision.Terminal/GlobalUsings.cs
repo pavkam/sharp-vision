@@ -7,7 +7,6 @@ global using System.Collections.ObjectModel;
 global using System.ComponentModel;
 global using System.Diagnostics;
 global using System.Diagnostics.CodeAnalysis;
-global using System.Diagnostics.Contracts;
 global using System.Globalization;
 global using System.Runtime.CompilerServices;
 global using System.Runtime.ExceptionServices;
@@ -26,3 +25,4 @@ global using SharpVision.Terminal.Terminfo;
 global using SharpVision.Terminal.Unicode;
 
 global using PublicAPI = JetBrains.Annotations.PublicAPIAttribute;
+global using Pure = JetBrains.Annotations.PureAttribute;

@@ -2821,6 +2821,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NotifyPropertyChangedInvocator]
     protected bool SetProperty<T>(
         ref T field,
         T value,
@@ -3112,6 +3113,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <exception cref="ArgumentException"><paramref name="propertyName"/> is empty.</exception>
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NotifyPropertyChangedInvocator]
     protected bool SetVisualStateProperty<T>(
         ref T field,
         T value,
@@ -3139,6 +3141,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NotifyPropertyChangedInvocator]
     protected void NotifyPropertyChanged(string propertyName, InvalidationImpact impact)
     {
         ArgumentException.ThrowIfNullOrEmpty(propertyName);

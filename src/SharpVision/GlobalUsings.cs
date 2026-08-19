@@ -5,7 +5,6 @@ global using System.Buffers;
 global using System.Collections;
 global using System.Diagnostics;
 global using System.Diagnostics.CodeAnalysis;
-global using System.Diagnostics.Contracts;
 global using System.Globalization;
 global using System.Reflection;
 global using System.Runtime.CompilerServices;
@@ -30,6 +29,8 @@ global using SharpVision.Threading;
 
 global using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
 global using KeyAction = SharpVision.Terminal.Input.KeyAction;
+global using NotifyPropertyChangedInvocator = JetBrains.Annotations.NotifyPropertyChangedInvocatorAttribute;
 global using PublicAPI = JetBrains.Annotations.PublicAPIAttribute;
+global using Pure = JetBrains.Annotations.PureAttribute;
 global using TerminalStyle = SharpVision.Terminal.Rendering.CellStyle;
 global using VisualState = SharpVision.Styling.VisualState;
