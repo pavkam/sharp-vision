@@ -19,6 +19,7 @@ internal sealed class PropertyPath
     public string LeafName => _segments[^1].Property.Name;
 
     /// <summary>Creates one validated property-only path.</summary>
+    [Pure]
     public static PropertyPath Create(LambdaExpression expression, bool requireWritable)
     {
         ArgumentNullException.ThrowIfNull(expression);
@@ -69,9 +70,11 @@ internal sealed class PropertyPath
     }
 
     /// <summary>Gets one segment by zero-based position.</summary>
+    [Pure]
     public PropertyPathSegment SegmentAt(int index) => _segments[index];
 
     /// <summary>Reads the current leaf or reports an unavailable null intermediate.</summary>
+    [Pure]
     public bool TryRead(object root, out object? value)
     {
         ArgumentNullException.ThrowIfNull(root);
