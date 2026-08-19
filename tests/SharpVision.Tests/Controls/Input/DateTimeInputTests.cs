@@ -802,6 +802,28 @@ public sealed class DateTimeInputTests
         control.Value.ShouldNotBeNull().Year.ShouldBe(2026);
     }
 
+    /// <summary>Verifies Right stops at the last segment instead of wrapping back to Month,
+    /// matching the non-wrapping Left/Right convention <see cref="TimeInput"/> and
+    /// <see cref="DateInput"/> both use for the identical shared
+    /// <c>SegmentFieldBehavior.MoveSegment</c> navigation engine.</summary>
+    [Fact]
+    public void MoveSegment_WhenRightIsPressedPastLastSegment_StaysOnLastSegmentInsteadOfWrapping()
+    {
+        // Arrange: default Use24HourFormat/ShowSeconds layout is Month, Day, Year, Hour, Minute.
+        using var control = new DateTimeInput { Value = new DateTime(2026, 6, 15, 10, 30, 0) };
+
+        // Act: four Right presses reach Minute (the last segment); a fifth must not move past it.
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Up));
+
+        // Assert: Up still increments Minute, not Month (which wrapping would land on instead).
+        control.Value.ShouldBe(new DateTime(2026, 6, 15, 10, 31, 0));
+    }
+
     #endregion
 
     #region Segment clamp arithmetic
