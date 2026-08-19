@@ -49,6 +49,7 @@ internal static class TerminalBackendResolver
         }
     }
 
+    [Pure]
     [SuppressMessage(
         "Style",
         "IDE0051:Remove unused private members",
@@ -59,6 +60,7 @@ internal static class TerminalBackendResolver
          candidate.Origin == BackendEvidenceOrigin.Environment &&
          current.Origin == BackendEvidenceOrigin.Description);
 
+    [Pure]
     private static int Specificity(TerminalBackendKind kind) => kind switch
     {
         TerminalBackendKind.Kitty => 3,
@@ -68,6 +70,7 @@ internal static class TerminalBackendResolver
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "The terminal backend kind is unknown.")
     };
 
+    [Pure]
     [SuppressMessage(
         "Style",
         "IDE0051:Remove unused private members",

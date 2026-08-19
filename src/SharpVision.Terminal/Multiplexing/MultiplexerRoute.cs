@@ -41,6 +41,7 @@ public sealed class MultiplexerRoute
     /// <summary>Gets the exact largest inner graphics frame for a known ESC count.</summary>
     /// <param name="escapeBytes">The non-negative ESC byte count in the complete inner frame.</param>
     /// <returns>A positive inner byte bound, or zero when graphics cannot be routed.</returns>
+    [Pure]
     internal int GetMaximumGraphicsFrameBytes(int escapeBytes)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(escapeBytes);
@@ -213,6 +214,7 @@ public sealed class MultiplexerRoute
     /// <summary>Gets whether an outer terminator can end at the current suffix.</summary>
     /// <param name="candidate">The current candidate bytes.</param>
     /// <returns>True when the nearest layer may terminate at the suffix.</returns>
+    [Pure]
     internal bool MayEnd(ReadOnlySpan<byte> candidate)
     {
         if (candidate.Length < 2 || candidate[^1] != (byte) '\\')
@@ -233,6 +235,7 @@ public sealed class MultiplexerRoute
     /// <summary>Gets whether a rejected candidate reached its complete outer recovery boundary.</summary>
     /// <param name="candidate">The bounded complete-or-partial route candidate.</param>
     /// <returns>True when no further byte belongs to the rejected envelope.</returns>
+    [Pure]
     internal bool IsCompleteRecoveryEnvelope(ReadOnlySpan<byte> candidate)
     {
         if (Policy.Kind == MultiplexerKind.Tmux)
@@ -259,6 +262,7 @@ public sealed class MultiplexerRoute
                };
     }
 
+    [Pure]
     private static bool IsCompleteQueryReply(ReadOnlySpan<byte> reply)
     {
         var sink = new ReplyValidationSink();
@@ -268,6 +272,7 @@ public sealed class MultiplexerRoute
         return sink.Valid;
     }
 
+    [Pure]
     private static bool IsCsiQueryBatch(ReadOnlySpan<byte> input)
     {
         var position = 0;
@@ -318,6 +323,7 @@ public sealed class MultiplexerRoute
         return position > 0;
     }
 
+    [Pure]
     private static int EncodedLength(MultiplexerKind kind, ReadOnlySpan<byte> input)
     {
         if (kind == MultiplexerKind.Screen)
