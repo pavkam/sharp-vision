@@ -53,6 +53,7 @@ internal sealed class Programs
     /// <summary>Gets the highest color tier backed by complete directional programs.</summary>
     /// <param name="declared">The semantic fidelity declared by the active profile.</param>
     /// <returns>The highest safely emittable color tier.</returns>
+    [Pure]
     public ColorDepth EffectiveColorDepth(ColorDepth declared)
     {
         var indexed = Has("setaf") && Has("setab");
@@ -78,6 +79,7 @@ internal sealed class Programs
     /// <returns><see langword="true"/> when the retained program is executable for its known contract.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="name"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="name"/> is empty or contains only white space.</exception>
+    [Pure]
     public bool Has(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -98,6 +100,7 @@ internal sealed class Programs
     /// <returns><see langword="true"/> when the name is retained, including an empty program.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="name"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="name"/> is empty or contains only white space.</exception>
+    [Pure]
     public bool TryGet(string name, out DescriptionProgram program)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -142,6 +145,7 @@ internal sealed class Programs
     /// <summary>Compares exact program names, kinds, and raw representations.</summary>
     /// <param name="other">The comparison aggregate.</param>
     /// <returns>Whether both aggregates encode the same named programs.</returns>
+    [Pure]
     public bool SemanticallyEquals(Programs other)
     {
         ArgumentNullException.ThrowIfNull(other);
@@ -173,6 +177,7 @@ internal sealed class Programs
     /// <param name="prefixName">The non-blank prefix program name.</param>
     /// <param name="suffixName">The non-blank suffix program name.</param>
     /// <returns>Whether both programs accept no parameters and prove non-empty paired output.</returns>
+    [Pure]
     public bool HasZeroParameterPair(string prefixName, string suffixName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(prefixName);

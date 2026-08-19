@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Capabilities;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Defines finite limits for loading and validating one terminal description.</summary>
 /// <remarks>
 /// Instances are immutable after construction. Use a <see langword="with"/>
@@ -64,6 +66,7 @@ public sealed record DescriptionLimits
 
     /// <summary>Gets the maximum UTF-8 byte count of one terminal database name.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive or exceeds 1,024.</exception>
+    [ValueRange(1, 1_024)]
     public int MaxTerminalNameBytes
     {
         get;
@@ -72,6 +75,7 @@ public sealed record DescriptionLimits
 
     /// <summary>Gets the maximum entries accepted in one terminal database path list.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive or exceeds 256.</exception>
+    [ValueRange(1, 256)]
     public int MaxDescriptionPathEntries
     {
         get;
@@ -80,6 +84,7 @@ public sealed record DescriptionLimits
 
     /// <summary>Gets the maximum UTF-8 bytes accepted in one database path.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive or exceeds 32,768.</exception>
+    [ValueRange(1, 32_768)]
     public int MaxDescriptionPathBytes
     {
         get;
@@ -88,6 +93,7 @@ public sealed record DescriptionLimits
 
     /// <summary>Gets the maximum owned environment and accepted-description snapshot bytes.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive or exceeds 16 MiB.</exception>
+    [ValueRange(1, 16_777_216)]
     public int MaxDescriptionSnapshotBytes
     {
         get;
@@ -96,6 +102,7 @@ public sealed record DescriptionLimits
 
     /// <summary>Gets the maximum exact key byte sequences retained from one description.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive or exceeds 1,024.</exception>
+    [ValueRange(1, 1_024)]
     public int MaxDescriptionKeyBindings
     {
         get;
@@ -104,6 +111,7 @@ public sealed record DescriptionLimits
 
     /// <summary>Gets the maximum bits accepted in one RGB component descriptor.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive or exceeds 63.</exception>
+    [ValueRange(1, 63)]
     public int MaxDescriptionRgbComponentBits
     {
         get;
@@ -112,6 +120,7 @@ public sealed record DescriptionLimits
 
     /// <summary>Gets the maximum UTF-8 bytes accepted in one legacy termcap environment variable.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive or exceeds 4,096.</exception>
+    [ValueRange(1, 4_096)]
     public int MaxTermcapVariableBytes
     {
         get;

@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Capabilities;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Defines finite limits for outstanding terminal capability queries.</summary>
 /// <remarks>
 /// Instances are immutable after construction. Use a <see langword="with"/>
@@ -22,6 +24,7 @@ public sealed record QueryLimits
 
     /// <summary>Gets the maximum number of capability or clipboard queries in flight.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    [ValueRange(1, int.MaxValue)]
     public int MaxConcurrentQueries
     {
         get;
@@ -38,6 +41,7 @@ public sealed record QueryLimits
 
     /// <summary>Gets the maximum name/value pairs accepted in one XTGETTCAP reply.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive or exceeds 256.</exception>
+    [ValueRange(1, 256)]
     public int MaxCapabilityItems
     {
         get;
@@ -46,6 +50,7 @@ public sealed record QueryLimits
 
     /// <summary>Gets the maximum decoded bytes accepted for one XTGETTCAP value.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive or exceeds 64 KiB.</exception>
+    [ValueRange(1, 65_536)]
     public int MaxCapabilityValueBytes
     {
         get;

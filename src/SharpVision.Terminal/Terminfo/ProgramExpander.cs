@@ -56,6 +56,7 @@ public sealed class ProgramExpander
     /// the profile this expander was created from.
     /// </returns>
     /// <exception cref="ArgumentNullException"><paramref name="profile"/> is <see langword="null"/>.</exception>
+    [Pure]
     public bool AppliesTo(TerminalProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
@@ -68,6 +69,7 @@ public sealed class ProgramExpander
     /// <returns><see langword="true"/> when the program is present and non-empty.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="name"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="name"/> is empty or only white space.</exception>
+    [Pure]
     public bool Has(string name) => _programs.Has(name);
 
     /// <summary>
@@ -79,6 +81,7 @@ public sealed class ProgramExpander
     /// <returns><see langword="true"/> only when both programs are present and executable.</returns>
     /// <exception cref="ArgumentNullException">Either name is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">Either name is empty or only white space.</exception>
+    [Pure]
     public bool HasPair(string prefixName, string suffixName) =>
         _programs.HasZeroParameterPair(prefixName, suffixName);
 

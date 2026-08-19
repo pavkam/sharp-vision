@@ -27,6 +27,7 @@ internal static class TerminfoCompiler
             "Design",
             "CA2208:Instantiate argument exceptions correctly",
             Justification = "'source' is the extension receiver, which the analyzer doesn't recognize as a valid ArgumentException paramName yet.")]
+        [Pure]
         public DescriptionProgram Compile(ProgramLimits limits)
         {
             ArgumentNullException.ThrowIfNull(limits);

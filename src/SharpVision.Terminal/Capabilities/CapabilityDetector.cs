@@ -6,6 +6,8 @@ namespace SharpVision.Terminal.Capabilities;
 using Discovery;
 using Discovery.Adapters;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>
 /// Combines conservative defaults, validated description evidence, environment
 /// hints, queries, and explicit overrides.
@@ -23,6 +25,8 @@ public static class CapabilityDetector
     /// <exception cref="ArgumentNullException">
     /// <paramref name="environment"/> is <see langword="null"/>.
     /// </exception>
+    [Pure]
+    [MustUseReturnValue]
     public static TerminalCapabilities Detect(
         IReadOnlyDictionary<string, string?> environment,
         QueryResults? queries = null,
@@ -39,6 +43,8 @@ public static class CapabilityDetector
     /// <param name="overrides">Optional explicit final overrides.</param>
     /// <returns>A newly published immutable capability profile.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="baseline"/> or <paramref name="environment"/> is null.</exception>
+    [Pure]
+    [MustUseReturnValue]
     internal static TerminalCapabilities Detect(
         TerminalCapabilities baseline,
         IReadOnlyDictionary<string, string?> environment,
@@ -62,6 +68,8 @@ public static class CapabilityDetector
     /// <paramref name="capabilities"/>, <paramref name="description"/>, or
     /// <paramref name="programs"/> is <see langword="null"/>.
     /// </exception>
+    [Pure]
+    [MustUseReturnValue]
     internal static TerminalCapabilities ApplyDescriptionEvidence(
         TerminalCapabilities capabilities,
         Description description,

@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Discovery.Adapters;
 
 using Capabilities;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>Translates explicit nullable caller settings into final override-origin evidence.</summary>
 internal static class OverrideEvidenceAdapter
 {
@@ -14,6 +16,8 @@ internal static class OverrideEvidenceAdapter
         /// <param name="overrides">The optional explicit caller settings.</param>
         /// <returns>The original reference when <paramref name="overrides"/> is null; otherwise a settings-refined snapshot.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> is null.</exception>
+        [Pure]
+        [MustUseReturnValue]
         public TerminalCapabilities Apply(CapabilityOverrides? overrides)
         {
             ArgumentNullException.ThrowIfNull(capabilities);

@@ -34,20 +34,24 @@ internal readonly struct KeySignature: IEquatable<KeySignature>
     public byte Final { get; }
 
     /// <summary>Creates one control signature from a parser callback.</summary>
+    [Pure]
     public static KeySignature Control(byte value) =>
         new(KeySignatureKind.Control, [], [], value);
 
     /// <summary>Creates one Escape signature from a parser callback.</summary>
+    [Pure]
     public static KeySignature Escape(ReadOnlySpan<byte> intermediates, byte final) =>
         new(KeySignatureKind.Escape, [], intermediates, final);
 
     /// <summary>Creates one CSI signature from a parser callback.</summary>
+    [Pure]
     public static KeySignature Csi(
         ReadOnlySpan<byte> parameters,
         ReadOnlySpan<byte> intermediates,
         byte final) => new(KeySignatureKind.Csi, parameters, intermediates, final);
 
     /// <summary>Creates one SS3 signature from a parser callback.</summary>
+    [Pure]
     public static KeySignature Ss3(byte final) =>
         new(KeySignatureKind.Ss3, [], [], final);
 
@@ -55,6 +59,7 @@ internal readonly struct KeySignature: IEquatable<KeySignature>
     /// <param name="sequence">The non-empty terminal bytes.</param>
     /// <param name="signature">The compiled signature when representable.</param>
     /// <returns>Whether the sequence is exactly one supported parser signature.</returns>
+    [Pure]
     public static bool TryCreate(ReadOnlySpan<byte> sequence, out KeySignature signature)
         => TryCreate(sequence, ParserLimits.Default, out signature);
 
@@ -64,6 +69,7 @@ internal readonly struct KeySignature: IEquatable<KeySignature>
     /// <param name="signature">The compiled signature when representable and reachable.</param>
     /// <returns>Whether the sequence is exactly one admitted parser signature.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="limits"/> is null.</exception>
+    [Pure]
     public static bool TryCreate(
         ReadOnlySpan<byte> sequence,
         ParserLimits limits,

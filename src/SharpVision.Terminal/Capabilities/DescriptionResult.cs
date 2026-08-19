@@ -28,6 +28,7 @@ public sealed class DescriptionResult
     public IReadOnlyList<DescriptionDiagnostic> Diagnostics { get; }
 
     /// <summary>Creates one loaded result.</summary>
+    [Pure]
     internal static DescriptionResult Loaded(
         TerminalProfile profile,
         IReadOnlyList<DescriptionDiagnostic> diagnostics)
@@ -38,6 +39,7 @@ public sealed class DescriptionResult
     }
 
     /// <summary>Creates one result for ncurses' indistinguishable missing-or-generic status.</summary>
+    [Pure]
     internal static DescriptionResult MissingOrGeneric(
         IReadOnlyList<DescriptionDiagnostic>? diagnostics = null) => new(
         DescriptionLoadStatus.MissingOrGeneric,
@@ -45,6 +47,7 @@ public sealed class DescriptionResult
         diagnostics ?? Array.Empty<DescriptionDiagnostic>());
 
     /// <summary>Creates one platform-unavailable result.</summary>
+    [Pure]
     internal static DescriptionResult PlatformUnavailable(
         IReadOnlyList<DescriptionDiagnostic>? diagnostics = null) => new(
         DescriptionLoadStatus.PlatformUnavailable,
@@ -52,6 +55,7 @@ public sealed class DescriptionResult
         diagnostics ?? Array.Empty<DescriptionDiagnostic>());
 
     /// <summary>Creates one failed-provider result.</summary>
+    [Pure]
     internal static DescriptionResult ProviderFailed(
         IReadOnlyList<DescriptionDiagnostic> diagnostics)
     {

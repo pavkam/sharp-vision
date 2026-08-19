@@ -7,6 +7,8 @@ using Capabilities;
 
 using Xterm;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>Translates bounded query results into query-origin semantic evidence.</summary>
 internal static class QueryEvidenceAdapter
 {
@@ -19,6 +21,8 @@ internal static class QueryEvidenceAdapter
         /// <param name="environment">The non-null caller-supplied environment, used only to narrow iTerm2 evidence.</param>
         /// <returns>The original reference when <paramref name="queries"/> is null; otherwise a query-refined snapshot.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> or <paramref name="environment"/> is null.</exception>
+        [Pure]
+        [MustUseReturnValue]
         public TerminalCapabilities Apply(QueryResults? queries, IReadOnlyDictionary<string, string?> environment)
         {
             ArgumentNullException.ThrowIfNull(capabilities);

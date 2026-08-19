@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Discovery;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>Owns the finite, ordered, side-effect-free semantic evidence pipeline.</summary>
 internal sealed class DiscoveryPipeline
 {
@@ -60,6 +62,8 @@ internal sealed class DiscoveryPipeline
     /// <param name="context">The non-null immutable discovery context.</param>
     /// <returns>The resulting immutable capability snapshot.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="context"/> is null.</exception>
+    [Pure]
+    [MustUseReturnValue]
     public TerminalCapabilities Detect(DiscoveryContext context)
     {
         ArgumentNullException.ThrowIfNull(context);

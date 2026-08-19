@@ -33,6 +33,7 @@ internal static class EnvironmentSnapshot
     /// <summary>Creates the owned ordinal snapshot for one caller environment.</summary>
     /// <param name="environment">The non-null caller-supplied environment.</param>
     /// <returns>An owned read-only ordinal snapshot with canonical recognized keys.</returns>
+    [Pure]
     internal static ReadOnlyDictionary<string, string?> Create(
         IReadOnlyDictionary<string, string?> environment)
     {

@@ -118,6 +118,7 @@ public sealed record TerminalCapabilities
     /// <param name="protocol">The protocol to query.</param>
     /// <returns>The feature evidence.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="protocol"/> is unknown.</exception>
+    [Pure]
     public Feature Support(TerminalProtocol protocol) => protocol switch
     {
         TerminalProtocol.SynchronizedOutput => SynchronizedOutput,

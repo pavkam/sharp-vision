@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Discovery;
 
 using Adapters;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>Applies caller-supplied environment hints and conservative narrowing.</summary>
 internal sealed class EnvironmentDiscoveryStrategy: IDiscoveryStrategy
 {
@@ -21,6 +23,8 @@ internal sealed class EnvironmentDiscoveryStrategy: IDiscoveryStrategy
     /// <param name="context">The non-null immutable discovery context.</param>
     /// <returns>The original or refined capability snapshot.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="current"/> or <paramref name="context"/> is null.</exception>
+    [Pure]
+    [MustUseReturnValue]
     public TerminalCapabilities Apply(TerminalCapabilities current, DiscoveryContext context)
     {
         ArgumentNullException.ThrowIfNull(current);

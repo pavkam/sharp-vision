@@ -6,6 +6,7 @@ namespace SharpVision.Terminal.Discovery.Adapters;
 using Capabilities;
 
 using MultiplexingKind = MultiplexerKind;
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
 
 /// <summary>Translates caller-supplied environment hints into conservative semantic evidence.</summary>
 internal static class EnvironmentEvidenceAdapter
@@ -16,6 +17,8 @@ internal static class EnvironmentEvidenceAdapter
         /// <param name="environment">The non-null caller-supplied environment snapshot.</param>
         /// <returns>The original or refined immutable capability snapshot.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> or <paramref name="environment"/> is null.</exception>
+        [Pure]
+        [MustUseReturnValue]
         public TerminalCapabilities Apply(IReadOnlyDictionary<string, string?> environment)
         {
             ArgumentNullException.ThrowIfNull(capabilities);
