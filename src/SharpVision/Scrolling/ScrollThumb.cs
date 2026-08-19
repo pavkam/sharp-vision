@@ -5,6 +5,8 @@ namespace SharpVision.Scrolling;
 
 using SharpVision.Controls;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Describes one contained integer scrollbar thumb.</summary>
 [PublicAPI]
 public readonly record struct ScrollThumb
@@ -23,9 +25,11 @@ public readonly record struct ScrollThumb
     }
 
     /// <summary>Gets the thumb offset from the track start.</summary>
+    [NonNegativeValue]
     public int Start { get; }
 
     /// <summary>Gets the thumb length.</summary>
+    [NonNegativeValue]
     public int Length { get; }
 
     /// <summary>Resolves stable contained thumb geometry for one track.</summary>
@@ -33,6 +37,7 @@ public readonly record struct ScrollThumb
     /// <param name="trackLength">The non-negative available track cells.</param>
     /// <returns>The contained thumb.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="trackLength"/> is negative.</exception>
+    [Pure]
     public static ScrollThumb Resolve(ScrollRange range, int trackLength)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(trackLength);
@@ -65,6 +70,8 @@ public readonly record struct ScrollThumb
     /// <param name="thumbStart">The requested thumb start, clamped to travel.</param>
     /// <returns>The inclusive mapped value.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="trackLength"/> is negative.</exception>
+    [Pure]
+    [NonNegativeValue]
     public static int ValueAt(ScrollRange range, int trackLength, int thumbStart)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(trackLength);

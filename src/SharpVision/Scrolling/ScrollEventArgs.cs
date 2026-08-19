@@ -3,6 +3,8 @@
 
 namespace SharpVision.Scrolling;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Reports one committed ScrollBar value transition.</summary>
 [PublicAPI]
 public sealed class ScrollEventArgs: EventArgs
@@ -27,9 +29,11 @@ public sealed class ScrollEventArgs: EventArgs
     }
 
     /// <summary>Gets the value before the transition.</summary>
+    [NonNegativeValue]
     public int PreviousValue { get; }
 
     /// <summary>Gets the scroll position after the transition, within [Minimum, Maximum].</summary>
+    [NonNegativeValue]
     public int Value { get; }
 
     /// <summary>Gets the input path that caused the transition.</summary>
