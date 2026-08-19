@@ -77,6 +77,7 @@ public readonly record struct CellMetrics
     /// Whether the coordinate is non-negative and inside an exact grid, or is
     /// representable by uniform compatibility metrics.
     /// </returns>
+    [Pure]
     public bool TryMap(Point pixels, out Point cells)
     {
         cells = default;
@@ -114,6 +115,7 @@ public readonly record struct CellMetrics
     /// <see cref="TryMapCells"/>. Extents beyond the measured viewport continue at the measured
     /// rational density so intrinsic image measure is deterministic before arrange clipping.
     /// </remarks>
+    [Pure]
     public bool TryMeasureCells(Size pixels, out Size cells)
     {
         cells = default;
@@ -153,6 +155,7 @@ public readonly record struct CellMetrics
     /// Whether the rectangle is positive and inside an exact grid, or can be represented without
     /// overflow by uniform compatibility metrics.
     /// </returns>
+    [Pure]
     public bool TryMapCells(Rect cells, out Rect pixels)
     {
         pixels = default;

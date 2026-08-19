@@ -18,6 +18,7 @@ internal static class LinePatternResolver
         /// <see cref="LinePattern.TripleDash"/> uses 2 on, 2 off; and
         /// <see cref="LinePattern.QuadrupleDash"/> uses 1 on, 2 off, all in half-cell steps.
         /// </remarks>
+        [Pure]
         public bool IsStepOn(int step)
         {
             var (on, cycle) = value switch

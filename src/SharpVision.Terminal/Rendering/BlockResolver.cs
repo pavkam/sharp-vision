@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Rendering;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Maps shade and quadrant values to Unicode Block Elements Runes.</summary>
 internal static class BlockResolver
 {
@@ -11,6 +13,7 @@ internal static class BlockResolver
         /// <summary>Resolves one shade.</summary>
         /// <param name="ambiguousWidth">The active frame width policy.</param>
         /// <returns>The exact Unicode Rune or a portable one-cell ASCII fallback.</returns>
+        [Pure]
         public Rune Resolve(Ambiguous ambiguousWidth) => new(
             ambiguousWidth == Ambiguous.Wide
                 ? value switch
@@ -35,6 +38,7 @@ internal static class BlockResolver
         /// <summary>Resolves one non-empty quadrant mask.</summary>
         /// <param name="ambiguousWidth">The active frame width policy.</param>
         /// <returns>The exact Unicode Rune or a portable one-cell ASCII fallback.</returns>
+        [Pure]
         public Rune Resolve(Ambiguous ambiguousWidth) => new(
             ambiguousWidth == Ambiguous.Wide && value != Quadrants.None
                 ? '#'
@@ -65,6 +69,7 @@ internal static class BlockResolver
         /// <summary>Attempts to decode one supported quadrant Rune.</summary>
         /// <param name="quadrants">The decoded mask when recognized.</param>
         /// <returns>Whether the Rune represents filled quadrants.</returns>
+        [Pure]
         public bool TryDecode(out Quadrants quadrants)
         {
             quadrants = value.Value switch
@@ -114,7 +119,8 @@ internal static class BlockResolver
         /// <param name="ambiguousWidth">The active frame width policy.</param>
         /// <returns>The exact Unicode Rune, or a portable ASCII fallback under a wide policy; a
         /// space when the rounded portion is empty.</returns>
-        public Rune ResolveCap(int eighths, Ambiguous ambiguousWidth)
+        [Pure]
+        public Rune ResolveCap([ValueRange(0, 8)] int eighths, Ambiguous ambiguousWidth)
         {
             if (ambiguousWidth == Ambiguous.Wide)
             {

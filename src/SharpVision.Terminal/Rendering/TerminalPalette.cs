@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Rendering;
 
 using Capabilities;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Projects RGB colors through a deterministic xterm-compatible reference palette.</summary>
 [PublicAPI]
 public static class TerminalPalette
@@ -14,6 +16,7 @@ public static class TerminalPalette
     /// <param name="depth">The validated terminal color tier.</param>
     /// <returns>The default color or projected RGB value contained by <paramref name="depth"/>.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="depth"/> is unknown.</exception>
+    [Pure]
     public static Color Project(Color source, ColorDepth depth)
     {
         ValidateConcrete(source);
@@ -38,6 +41,7 @@ public static class TerminalPalette
     /// <param name="source">The concrete RGB color.</param>
     /// <param name="depth">The basic-16 or 256-color output tier.</param>
     /// <returns>The nearest bounded palette position.</returns>
+    [Pure]
     internal static int FindPosition(Color source, ColorDepth depth)
     {
         ValidateConcrete(source);
@@ -63,7 +67,8 @@ public static class TerminalPalette
     /// <param name="position">The palette position from zero through 255.</param>
     /// <returns>The corresponding RGB value.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="position"/> is outside zero through 255.</exception>
-    internal static Color ColorAt(int position)
+    [Pure]
+    internal static Color ColorAt([ValueRange(0, 255)] int position)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(position);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(position, byte.MaxValue);

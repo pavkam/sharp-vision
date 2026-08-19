@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Rendering;
 
 using Graphics;
 
+using InstantHandle = JetBrains.Annotations.InstantHandleAttribute;
+
 /// <summary>
 /// Draws semantic grapheme clusters into a clipped frame cell region.
 /// </summary>
@@ -376,7 +378,7 @@ public readonly struct TerminalCanvas
     /// <exception cref="Exception">
     /// <paramref name="selector"/> throws; the same exception instance is propagated.
     /// </exception>
-    public void ApplyForeground(Rect region, Func<Point, Color> selector)
+    public void ApplyForeground(Rect region, [InstantHandle] Func<Point, Color> selector)
     {
         ArgumentNullException.ThrowIfNull(selector);
         _frame.ThrowIfDisposed();
@@ -414,8 +416,8 @@ public readonly struct TerminalCanvas
     /// </exception>
     public void DrawWithForeground(
         Rect region,
-        Action<TerminalCanvas> draw,
-        Func<Point, Color> selector)
+        [InstantHandle] Action<TerminalCanvas> draw,
+        [InstantHandle] Func<Point, Color> selector)
     {
         ArgumentNullException.ThrowIfNull(draw);
         ArgumentNullException.ThrowIfNull(selector);

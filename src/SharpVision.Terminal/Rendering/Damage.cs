@@ -16,6 +16,7 @@ public static class Damage
     /// <returns>Whether a backend must replace its remote graphics state.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="back"/> is null.</exception>
     /// <exception cref="ObjectDisposedException">A supplied frame is disposed.</exception>
+    [Pure]
     public static bool PlacementsChanged(Frame? front, Frame back, bool full = false)
     {
         ArgumentNullException.ThrowIfNull(back);

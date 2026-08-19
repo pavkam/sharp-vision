@@ -135,6 +135,7 @@ public readonly record struct CellStyle
 
     /// <summary>Returns a copy of this style with the specified foreground color.</summary>
     /// <param name="foreground">The replacement foreground color.</param>
+    [Pure]
     public CellStyle WithForeground(Color foreground) => new(
         foreground,
         Background,
