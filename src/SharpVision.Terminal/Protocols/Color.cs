@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Protocols;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>
 /// A validated color value: default, transparent, or 24-bit RGB.
 /// </summary>
@@ -32,7 +34,10 @@ public readonly record struct Color
     /// <returns>The validated RGB color.</returns>
     /// <exception cref="ArgumentOutOfRangeException">A component is outside 0 through 255.</exception>
     [Pure]
-    public static Color Rgb(int red, int green, int blue)
+    public static Color Rgb(
+        [ValueRange(0, byte.MaxValue)] int red,
+        [ValueRange(0, byte.MaxValue)] int green,
+        [ValueRange(0, byte.MaxValue)] int blue)
     {
         ValidateComponent(red, nameof(red));
         ValidateComponent(green, nameof(green));

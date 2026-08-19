@@ -2,6 +2,9 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 namespace SharpVision.Terminal.Input;
+
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>Incrementally applies bounded longest-match decoding to non-signature key strings.</summary>
 internal sealed class KeySequenceMatcher
 {
@@ -77,6 +80,7 @@ internal sealed class KeySequenceMatcher
     /// <param name="replayOffset">The first retained byte not consumed by a match.</param>
     /// <param name="replayLength">The exact retained byte count to replay.</param>
     /// <returns>The incremental match status.</returns>
+    [MustUseReturnValue]
     public KeySequenceMatchStatus Add(
         byte value,
         out KeyBinding binding,
@@ -145,6 +149,7 @@ internal sealed class KeySequenceMatcher
     /// <param name="replayOffset">The first retained byte not consumed by a match.</param>
     /// <param name="replayLength">The exact retained byte count to replay.</param>
     /// <returns>The completion result.</returns>
+    [MustUseReturnValue]
     public KeySequenceMatchStatus Complete(
         out KeyBinding binding,
         out int replayOffset,

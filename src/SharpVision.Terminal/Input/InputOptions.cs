@@ -8,6 +8,8 @@ using SharpVision.Terminal.Clipboard;
 using SharpVision.Terminal.Kitty;
 using SharpVision.Terminal.Protocols;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Defines finite immutable input decoding policy.</summary>
 [PublicAPI]
 public sealed record InputOptions
@@ -36,6 +38,7 @@ public sealed record InputOptions
 
     /// <summary>Gets the positive maximum retained paste byte count.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    [ValueRange(1, int.MaxValue)]
     public int MaxPasteBytes
     {
         get;

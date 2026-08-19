@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Protocols;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>
 /// Writes validated ECMA-48 sequence grammar directly to a byte buffer.
 /// </summary>
@@ -110,7 +112,7 @@ public readonly struct ProtocolWriter
     /// <exception cref="ArgumentException">
     /// <paramref name="payload"/> contains a control byte.
     /// </exception>
-    public void Osc(int selector, ReadOnlySpan<byte> payload)
+    public void Osc([NonNegativeValue] int selector, ReadOnlySpan<byte> payload)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(selector);
         ValidatePayload(payload, nameof(payload));

@@ -5,9 +5,11 @@ namespace SharpVision.Terminal.Protocols;
 
 using Input;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
 
 /// <summary>Routes one terminal byte stream into typed input and protocol events.</summary>
 [PublicAPI]
+[MustDisposeResource]
 public sealed class ProtocolRouter: IDisposable
 {
     private readonly IProtocolSink _sink;

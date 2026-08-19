@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Xterm;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Encodes xterm modifyOtherKeys query, set, and restoration commands.</summary>
 [PublicAPI]
 public static class XtermModifyOtherKeys
@@ -15,7 +17,7 @@ public static class XtermModifyOtherKeys
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="level">The level from zero through three.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="level"/> is outside zero through three.</exception>
-    public static void Set(ProtocolWriter writer, int level)
+    public static void Set(ProtocolWriter writer, [ValueRange(0, 3)] int level)
     {
         if (level is < 0 or > 3)
         {

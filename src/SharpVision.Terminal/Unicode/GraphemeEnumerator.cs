@@ -92,6 +92,7 @@ public ref struct GraphemeEnumerator
         return true;
     }
 
+    [Pure]
     private static int NextIndicState(int state, IndicConjunct value) => value switch
     {
         IndicConjunct.Consonant => 1,
@@ -101,6 +102,7 @@ public ref struct GraphemeEnumerator
         _ => throw new UnreachableException()
     };
 
+    [Pure]
     private static bool ShouldBreak(
         GraphemeBreak previous,
         GraphemeBreak current,
@@ -167,6 +169,7 @@ public ref struct GraphemeEnumerator
                  regionalIndicators % 2 == 1);
     }
 
+    [Pure]
     private static bool IsControl(GraphemeBreak value) => value is
         GraphemeBreak.Control or GraphemeBreak.Cr or GraphemeBreak.Lf;
 

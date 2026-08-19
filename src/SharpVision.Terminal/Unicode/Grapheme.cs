@@ -3,6 +3,9 @@
 
 namespace SharpVision.Terminal.Unicode;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Identifies one extended grapheme cluster inside a borrowed UTF-16 span.</summary>
 [DebuggerDisplay("{ToString()}")]
 [PublicAPI]
@@ -15,7 +18,10 @@ public readonly record struct Grapheme
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="offset"/> is negative or <paramref name="length"/> is not positive.
     /// </exception>
-    public Grapheme(int offset, int length, bool hasInvalidData)
+    public Grapheme(
+        [NonNegativeValue] int offset,
+        [ValueRange(1, int.MaxValue)] int length,
+        bool hasInvalidData)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(offset);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(length);
@@ -26,9 +32,11 @@ public readonly record struct Grapheme
     }
 
     /// <summary>Gets the zero-based UTF-16 code-unit offset.</summary>
+    [NonNegativeValue]
     public int Offset { get; }
 
     /// <summary>Gets the positive UTF-16 code-unit length.</summary>
+    [ValueRange(1, int.MaxValue)]
     public int Length { get; }
 
     /// <summary>Gets whether the segment contains invalid data represented as U+FFFD.</summary>

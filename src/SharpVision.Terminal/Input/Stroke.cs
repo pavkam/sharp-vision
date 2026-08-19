@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Input;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Represents one immutable logical keyboard transition.</summary>
 [PublicAPI]
 public readonly record struct Stroke
@@ -24,7 +26,7 @@ public readonly record struct Stroke
     public Stroke(
         Code code,
         Rune? character,
-        int nativeCode,
+        [NonNegativeValue] int nativeCode,
         Modifiers modifiers,
         KeyAction action,
         Rune? shifted = null,
@@ -80,6 +82,7 @@ public readonly record struct Stroke
     public Rune? Character { get; }
 
     /// <summary>Gets the native numeric code, or zero when absent.</summary>
+    [NonNegativeValue]
     public int NativeCode { get; }
 
     /// <summary>Gets active modifiers.</summary>

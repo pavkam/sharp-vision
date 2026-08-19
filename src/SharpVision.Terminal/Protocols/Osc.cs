@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Protocols;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>
 /// Encodes typed operating system commands used by the terminal runtime.
 /// </summary>
@@ -86,7 +88,7 @@ public static class Osc
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="index"/> is outside 0 through 255.
     /// </exception>
-    public static void QueryPalette(ProtocolWriter writer, int index)
+    public static void QueryPalette(ProtocolWriter writer, [ValueRange(0, byte.MaxValue)] int index)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(index, byte.MaxValue);

@@ -3,6 +3,9 @@
 
 namespace SharpVision.Terminal.Protocols;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>
 /// Parses bounded ECMA-48 terminal sequences across arbitrary input reads.
 /// </summary>
@@ -20,6 +23,7 @@ namespace SharpVision.Terminal.Protocols;
 /// </code>
 /// </example>
 [PublicAPI]
+[MustDisposeResource]
 public sealed class ProtocolParser: IDisposable
 {
     private readonly ParserLimits _limits;
@@ -64,6 +68,7 @@ public sealed class ProtocolParser: IDisposable
     /// <summary>
     /// Gets the total number of bytes consumed since construction or reset.
     /// </summary>
+    [NonNegativeValue]
     public long Offset { get; private set; }
 
     /// <summary>Gets whether no terminal sequence is currently pending.</summary>

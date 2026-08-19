@@ -1773,7 +1773,7 @@ namespace SharpVision.Terminal.Xterm
     public static class XtermGetCap
     {
         public static void Query(SharpVision.Terminal.Protocols.ProtocolWriter writer, System.ReadOnlySpan<SharpVision.Terminal.Xterm.CapabilityName> names) { }
-        public static bool TryParse(System.ReadOnlySpan<byte> parameters, System.ReadOnlySpan<byte> intermediates, byte final, System.ReadOnlySpan<byte> payload, SharpVision.Terminal.Capabilities.QueryLimits? limits, out SharpVision.Terminal.Xterm.CapabilityResponse? response) { }
+        public static bool TryParse(System.ReadOnlySpan<byte> parameters, System.ReadOnlySpan<byte> intermediates, byte final, System.ReadOnlySpan<byte> payload, SharpVision.Terminal.Capabilities.QueryLimits? limits, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out SharpVision.Terminal.Xterm.CapabilityResponse? response) { }
     }
     public static class XtermModifyOtherKeys
     {

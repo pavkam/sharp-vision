@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Protocols;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>
 /// Encodes typed Select Graphic Rendition attributes and colors.
 /// </summary>
@@ -61,19 +63,19 @@ public static class Sgr
     /// <summary>Applies one 256-color palette position to the foreground.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="position">The palette position from zero through 255.</param>
-    internal static void ForegroundPalette(ProtocolWriter writer, int position) =>
+    internal static void ForegroundPalette(ProtocolWriter writer, [ValueRange(0, byte.MaxValue)] int position) =>
         WritePaletteColor(writer, position, selector: 38);
 
     /// <summary>Applies one 256-color palette position to the background.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="position">The palette position from zero through 255.</param>
-    internal static void BackgroundPalette(ProtocolWriter writer, int position) =>
+    internal static void BackgroundPalette(ProtocolWriter writer, [ValueRange(0, byte.MaxValue)] int position) =>
         WritePaletteColor(writer, position, selector: 48);
 
     /// <summary>Applies one 256-color palette position to the underline.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="position">The palette position from zero through 255.</param>
-    internal static void UnderlineColorPalette(ProtocolWriter writer, int position) =>
+    internal static void UnderlineColorPalette(ProtocolWriter writer, [ValueRange(0, byte.MaxValue)] int position) =>
         WritePaletteColor(writer, position, selector: 58);
 
     /// <summary>Applies one xterm-compatible underline variant.</summary>

@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Protocols;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Defines finite limits for control-sequence parsing.</summary>
 /// <remarks>
 /// Instances are immutable after construction. Use a <see langword="with"/>
@@ -22,6 +24,7 @@ public sealed record ParserLimits
 
     /// <summary>Gets the maximum retained CSI or DCS parameter bytes.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    [ValueRange(1, int.MaxValue)]
     public int MaxParameterBytes
     {
         get;
@@ -30,6 +33,7 @@ public sealed record ParserLimits
 
     /// <summary>Gets the maximum retained ESC, CSI, or DCS intermediate bytes.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    [ValueRange(1, int.MaxValue)]
     public int MaxIntermediateBytes
     {
         get;
@@ -38,6 +42,7 @@ public sealed record ParserLimits
 
     /// <summary>Gets the maximum retained OSC, DCS, APC, PM, or SOS payload bytes.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    [ValueRange(1, int.MaxValue)]
     public int MaxStringBytes
     {
         get;

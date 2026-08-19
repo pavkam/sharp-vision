@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Protocols;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>
 /// Enumerates raw CSI parameter and subparameter fields without allocation.
 /// </summary>
@@ -37,7 +39,10 @@ public ref struct Parameters
     /// <paramref name="maxCount"/> or <paramref name="maxValue"/> is not
     /// positive.
     /// </exception>
-    public Parameters(ReadOnlySpan<byte> input, int maxCount = 32, int maxValue = 65_535)
+    public Parameters(
+        ReadOnlySpan<byte> input,
+        [ValueRange(1, int.MaxValue)] int maxCount = 32,
+        [ValueRange(1, int.MaxValue)] int maxValue = 65_535)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxCount);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxValue);
