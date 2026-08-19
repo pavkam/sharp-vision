@@ -155,8 +155,8 @@ bridged into the dispatcher's own callback-failure path
 (`Dispatcher.UnhandledException`), the same way a synchronous callback failure
 already running on the dispatcher would surface, instead of vanishing with no
 signal anywhere. Only a queue that is still saturated on that bridging retry -
-or a target dispatcher that is genuinely disposed - drops the pending update
-and clears the scheduled state, so a later, unsaturated notification can still
+or a target dispatcher that is genuinely disposed - drops the pending update and
+clears the scheduled state, so a later, unsaturated notification can still
 schedule. Binding retains no unbounded event history.
 
 Detached targets update synchronously; concurrent mutation of a single detached
