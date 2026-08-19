@@ -58,11 +58,13 @@ internal sealed class SixelPalette
     /// <summary>Gets the sorted cube color for a dense sixel identifier.</summary>
     /// <param name="identifier">The zero-based identifier.</param>
     /// <returns>The corresponding cube index.</returns>
+    [Pure]
     public byte GetColor(int identifier) => _colors[identifier];
 
     /// <summary>Gets the dense identifier for a used cube color.</summary>
     /// <param name="color">The used cube index.</param>
     /// <returns>The corresponding dense identifier.</returns>
+    [Pure]
     public byte GetIdentifier(byte color)
     {
         var identifier = _identifiers[color];

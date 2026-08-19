@@ -13,6 +13,7 @@ internal static class GraphicsBackendSupport
         /// <summary>Finds placements whose ordinary-cell fallback must replace an image render.</summary>
         /// <param name="encodable">Whether each placement, by index, can be protocol-encoded.</param>
         /// <returns>Whether each placement, by index, must fall back to an ordinary-cell render.</returns>
+        [Pure]
         public bool[] FindFallbackBlockedPlacements(ReadOnlySpan<bool> encodable)
         {
             var blocked = new bool[frame.PlacementCount];
@@ -49,6 +50,7 @@ internal static class GraphicsBackendSupport
         /// <summary>Reports whether two rectangles share any pixel area.</summary>
         /// <param name="second">The second rectangle.</param>
         /// <returns>Whether the rectangles intersect.</returns>
+        [Pure]
         public bool Overlaps(Rect second)
         {
             var intersection = first.Intersect(second);

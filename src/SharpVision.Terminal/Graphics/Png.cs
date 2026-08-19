@@ -22,6 +22,7 @@ internal static class Png
         /// <summary>Reads positive IHDR dimensions after validating bounded chunk structure.</summary>
         /// <returns>The validated pixel dimensions.</returns>
         /// <exception cref="ArgumentException">The PNG structure or required header fields are invalid.</exception>
+        [Pure]
         public Size ReadSize()
         {
             if (source.Length < 57 || !source.StartsWith(Signature))
@@ -91,6 +92,7 @@ internal static class Png
         /// The source is interlaced, uses a bit depth other than 8, or is indexed without a
         /// <c>PLTE</c> chunk.
         /// </exception>
+        [Pure]
         public byte[] DecodeRgba()
         {
             var size = source.ReadSize();

@@ -124,6 +124,7 @@ public sealed class Frame: IDisposable
     /// <returns>The immutable placement value.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the active snapshot.</exception>
     /// <exception cref="ObjectDisposedException">The frame is disposed.</exception>
+    [Pure]
     public Placement GetPlacement(int index)
     {
         ThrowIfDisposed();
@@ -151,6 +152,7 @@ public sealed class Frame: IDisposable
     /// <paramref name="point"/> is outside the frame.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The frame is disposed.</exception>
+    [Pure]
     public CellInfo GetCell(Point point)
     {
         var index = GetIndex(point);
@@ -169,6 +171,7 @@ public sealed class Frame: IDisposable
     /// <paramref name="point"/> is outside the frame.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The frame is disposed.</exception>
+    [Pure]
     public int GetGraphemeByteCount(Point point)
     {
         var index = ResolveLead(GetIndex(point));
@@ -524,6 +527,7 @@ public sealed class Frame: IDisposable
     /// <summary>Gets a copied internal cell by absolute row-major index.</summary>
     /// <param name="index">The validated absolute index.</param>
     /// <returns>The internal semantic cell.</returns>
+    [Pure]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal Cell GetCellByIndex(int index)
     {
@@ -534,6 +538,7 @@ public sealed class Frame: IDisposable
     /// <summary>Gets borrowed complete lead grapheme bytes by absolute index.</summary>
     /// <param name="index">The validated lead or continuation index.</param>
     /// <returns>Borrowed bytes valid until frame mutation or disposal.</returns>
+    [Pure]
     internal ReadOnlySpan<byte> GetGrapheme(int index)
     {
         Debug.Assert((uint) index < (uint) Cells.Length, "Internal grapheme indexes are bounded.");
@@ -546,6 +551,7 @@ public sealed class Frame: IDisposable
     /// <param name="row">The validated row.</param>
     /// <param name="column">The validated column.</param>
     /// <returns>The lead column, or the input column for non-continuations.</returns>
+    [Pure]
     internal int GetLeadColumn(int row, int column)
     {
         var index = checked((row * Size.Width) + column);
@@ -557,6 +563,7 @@ public sealed class Frame: IDisposable
     /// <param name="row">The validated row.</param>
     /// <param name="column">The validated column.</param>
     /// <returns>The exclusive column after the complete owner.</returns>
+    [Pure]
     internal int GetOwnedEnd(int row, int column)
     {
         var leadColumn = GetLeadColumn(row, column);
@@ -600,6 +607,7 @@ public sealed class Frame: IDisposable
     /// <summary>Compares the complete ordered placement snapshot.</summary>
     /// <param name="other">The other active frame.</param>
     /// <returns>Whether image identity and placement geometry are equal.</returns>
+    [Pure]
     internal bool PlacementsEqual(Frame other)
     {
         ThrowIfDisposed();
@@ -614,6 +622,7 @@ public sealed class Frame: IDisposable
     /// <summary>Compares ordered semantic placements and their effective cell-paint visibility.</summary>
     /// <param name="other">The other active frame.</param>
     /// <returns>Whether both frames expose the same effective placement snapshot.</returns>
+    [Pure]
     internal bool EffectivePlacementsEqual(Frame other)
     {
         if (!PlacementsEqual(other))
@@ -635,6 +644,7 @@ public sealed class Frame: IDisposable
     /// <summary>Gets whether no later cell mutation intersects one ordered placement.</summary>
     /// <param name="index">The validated zero-based placement index.</param>
     /// <returns>Whether a graphics backend may render the placement above its cell underlay.</returns>
+    [Pure]
     internal bool IsPlacementEffective(int index)
     {
         var placement = GetPlacement(index);
@@ -664,6 +674,7 @@ public sealed class Frame: IDisposable
     /// <param name="other">The other active frame.</param>
     /// <param name="index">The validated absolute index.</param>
     /// <returns>Whether metadata and complete lead bytes are equal.</returns>
+    [Pure]
     internal bool SemanticallyEquals(Frame other, int index)
     {
         Debug.Assert(Size == other.Size, "Semantic cell comparison requires equal dimensions.");
@@ -683,6 +694,7 @@ public sealed class Frame: IDisposable
     /// <summary>Gets a validated absolute index for an in-bounds point.</summary>
     /// <param name="point">The point to validate.</param>
     /// <returns>The absolute row-major index.</returns>
+    [Pure]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal int GetIndex(Point point)
     {
@@ -819,6 +831,7 @@ public sealed class Frame: IDisposable
     /// <summary>Counts UTF-8 bytes using the frame's replacement policy.</summary>
     /// <param name="value">The borrowed UTF-16 cluster.</param>
     /// <returns>The encoded byte count.</returns>
+    [Pure]
     internal static int CountUtf8(ReadOnlySpan<char> value)
     {
         var count = 0;

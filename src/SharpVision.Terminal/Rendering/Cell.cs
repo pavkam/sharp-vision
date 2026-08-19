@@ -37,6 +37,7 @@ internal struct Cell
     /// <param name="style">The blank background style.</param>
     /// <param name="mutationRevision">The frame-local semantic mutation revision.</param>
     /// <returns>The blank cell.</returns>
+    [Pure]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Cell Blank(CellStyle style, ulong mutationRevision) => new()
     {
@@ -51,6 +52,7 @@ internal struct Cell
     /// <param name="style">The lead's semantic style.</param>
     /// <param name="mutationRevision">The frame-local semantic mutation revision.</param>
     /// <returns>The continuation cell.</returns>
+    [Pure]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Cell Continuation(int leadIndex, CellStyle style, ulong mutationRevision) => new()
     {

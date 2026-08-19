@@ -11,6 +11,7 @@ internal static class LineResolver
         /// <summary>Combines two topology values commutatively.</summary>
         /// <param name="right">The second topology.</param>
         /// <returns>The deterministic combined topology.</returns>
+        [Pure]
         public Topology Merge(Topology right)
         {
             var connections = left.Connections | right.Connections;
@@ -28,6 +29,7 @@ internal static class LineResolver
         /// <summary>Resolves a topology to its exact or safely degraded Rune.</summary>
         /// <param name="ambiguousWidth">The active frame width policy.</param>
         /// <returns>A printable one-cell Rune.</returns>
+        [Pure]
         public Rune Resolve(Ambiguous ambiguousWidth) =>
             left.Line.IsAscii || ambiguousWidth == Ambiguous.Wide
                 ? new Rune(ResolveAscii(left.Connections))
@@ -41,6 +43,7 @@ internal static class LineResolver
         /// <summary>Attempts to decode one previously produced line Rune.</summary>
         /// <param name="topology">The decoded topology when recognized.</param>
         /// <returns>Whether the Rune belongs to a supported line family.</returns>
+        [Pure]
         public bool TryDecode(out Topology topology)
         {
             var decoded = value.Value switch

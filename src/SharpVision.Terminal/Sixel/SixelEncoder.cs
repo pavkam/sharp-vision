@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Sixel;
 
 using Graphics;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Samples one indexed raster and emits bounded DEC sixel band planes.</summary>
 internal static class SixelEncoder
 {
@@ -63,7 +65,8 @@ internal static class SixelEncoder
     /// <param name="destination">The positive raster size.</param>
     /// <param name="colorCount">The palette color count from zero through 216.</param>
     /// <returns>The checked finite maximum encoded byte count.</returns>
-    public static long CalculateMaximumBytes(Size destination, int colorCount)
+    [Pure]
+    public static long CalculateMaximumBytes(Size destination, [ValueRange(0, 216)] int colorCount)
     {
         Debug.Assert(destination.Width > 0 && destination.Height > 0, "Validated rasters are positive.");
         Debug.Assert(colorCount is >= 0 and <= 216, "The fixed cube bounds the palette.");
