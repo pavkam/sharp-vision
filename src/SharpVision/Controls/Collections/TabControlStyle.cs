@@ -16,8 +16,12 @@ public sealed record TabControlStyle: ControlStyle
     internal static StyleDefinition<TabControlStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,
-        static (previous, _, current, _) =>
-            previous != current ? InvalidationImpact.Render : InvalidationImpact.None);
+        static (previous, previousTheme, current, currentTheme) =>
+            previous != current ||
+            ControlBase.ResolveColor(previous.DividerColor, previousTheme) != ControlBase.ResolveColor(current.DividerColor, currentTheme) ||
+            ControlBase.ResolveColor(previous.SelectionIndicatorColor, previousTheme) != ControlBase.ResolveColor(current.SelectionIndicatorColor, currentTheme)
+                ? InvalidationImpact.Render
+                : InvalidationImpact.None);
 
     private static TabControlStyle Complete(ControlStyle control, VisualState state) =>
         new(
