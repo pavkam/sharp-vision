@@ -10,6 +10,7 @@ internal static class ChartScaleResolver
     /// <param name="scale">The validated authored policy.</param>
     /// <param name="values">The finite values to inspect.</param>
     /// <returns>A finite range whose maximum is above its minimum.</returns>
+    [Pure]
     internal static ChartScaleRange Resolve(ChartScale scale, ReadOnlySpan<double> values)
     {
         var observedMinimum = double.PositiveInfinity;
@@ -31,6 +32,7 @@ internal static class ChartScaleResolver
     /// <param name="scale">The validated authored policy.</param>
     /// <param name="series">The series whose point values are inspected.</param>
     /// <returns>A finite range whose maximum is above its minimum.</returns>
+    [Pure]
     internal static ChartScaleRange Resolve(ChartScale scale, IReadOnlyList<ChartSeries> series)
     {
         var observedMinimum = double.PositiveInfinity;
@@ -51,6 +53,7 @@ internal static class ChartScaleResolver
         return Resolve(scale, observedMinimum, observedMaximum, hasValues);
     }
 
+    [Pure]
     private static ChartScaleRange Resolve(
         ChartScale scale,
         double observedMinimum,
@@ -83,6 +86,7 @@ internal static class ChartScaleResolver
             : ExpandCollapsed(scale, minimum);
     }
 
+    [Pure]
     private static ChartScaleRange ResolveEmpty(ChartScale scale)
     {
         return scale.Minimum is { } minimum && scale.Maximum is { } maximum
@@ -94,6 +98,7 @@ internal static class ChartScaleResolver
                     : new ChartScaleRange(0, 1);
     }
 
+    [Pure]
     private static ChartScaleRange ExpandCollapsed(ChartScale scale, double value)
     {
         var margin = value == 0 ? 1 : Math.Max(Math.Abs(value) * 0.1, 1);

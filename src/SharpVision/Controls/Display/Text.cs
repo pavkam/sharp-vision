@@ -161,6 +161,7 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
     /// <param name="value">The non-null visible text.</param>
     /// <returns>The text with opening-angle and backslash metacharacters escaped.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+    [Pure]
     public static string Escape(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
@@ -434,6 +435,7 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
         }
     }
 
+    [Pure]
     private int SpanIndexAt(int offset)
     {
         for (var index = 0; index < _spans.Length; index++)
@@ -449,6 +451,7 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
         return -1;
     }
 
+    [Pure]
     private int AdvanceSpan(int index, int offset)
     {
         if (index < 0)
@@ -464,6 +467,7 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
         return index;
     }
 
+    [Pure]
     private TerminalStyle ResolveSpanStyle(StyleSpan span)
     {
         var inherited = ResolvedStyle;
@@ -504,6 +508,7 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
             resolvedUnderlineColor);
     }
 
+    [Pure]
     private static BackgroundMode ResolveBackgroundMode(StyleSpan span) =>
         span.Background.HasValue
             ? BackgroundMode.Opaque

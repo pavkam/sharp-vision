@@ -153,6 +153,7 @@ public sealed class Image: ControlBase
         }
     }
 
+    [Pure]
     private static PlacementMode ToPlacementMode(ImageStretch value) => value switch
     {
         ImageStretch.Contain => PlacementMode.Contain,

@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Charts;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Provides common scale, color, legend, and coordinate chart rendering.</summary>
 internal static class ChartRenderer
 {
@@ -20,6 +22,7 @@ internal static class ChartRenderer
     }
 
     /// <summary>Resolves the authored point, series, or palette color in precedence order.</summary>
+    [Pure]
     internal static ControlColor ResolveColor(
         ChartStyle style,
         ChartSeries series,
@@ -29,14 +32,17 @@ internal static class ChartRenderer
     /// <summary>Resolves the authored series dash pattern, falling back to the style's default.
     /// Resolved once per series - not per point - so a segment's phase counter can run
     /// continuously across the whole polyline.</summary>
+    [Pure]
     internal static LinePattern ResolveSeriesPattern(ChartStyle style, ChartSeries series) =>
         series.LinePattern ?? style.LinePattern;
 
     /// <summary>Maps a finite value to its clamped 0-1 position within a resolved range.</summary>
+    [Pure]
     internal static double Ratio(ChartScaleRange range, double value) =>
         Math.Clamp((value - range.Minimum) / (range.Maximum - range.Minimum), 0, 1);
 
     /// <summary>Maps a finite value to an inclusive vertical plot cell.</summary>
+    [Pure]
     internal static int MapY(ChartScaleRange range, double value, Rect plot)
     {
         if (plot.Height <= 1)
@@ -49,6 +55,7 @@ internal static class ChartRenderer
     }
 
     /// <summary>Maps one ordered point index to an inclusive horizontal plot cell.</summary>
+    [Pure]
     internal static int MapX(int index, int count, Rect plot)
     {
         return plot.Width <= 1 || count <= 1
@@ -61,6 +68,7 @@ internal static class ChartRenderer
     /// <summary>Maps one ordered point to inclusive half-cell coordinates, doubling both axes'
     /// resolution for the quadrant rasterizer. The extrema land on the same cells MapX and MapY
     /// choose, so markers and labels agree with the drawn line.</summary>
+    [Pure]
     internal static Point MapHalf(ChartScaleRange range, int index, int count, double value, Rect plot)
     {
         var x = plot.Width <= 1 || count <= 1
@@ -78,6 +86,7 @@ internal static class ChartRenderer
     }
 
     /// <summary>Creates a terminal style using the resolved authored series color.</summary>
+    [Pure]
     internal static TerminalStyle ResolveSeriesStyle(
         ChartRenderContext context,
         ChartSeries series,
@@ -90,20 +99,24 @@ internal static class ChartRenderer
     }
 
     /// <summary>Creates a terminal style using the chart's resolved label color.</summary>
+    [Pure]
     internal static TerminalStyle ResolveLabelStyle(ChartRenderContext context) =>
         context.InheritedStyle.WithForeground(
             ControlBase.ResolveColor(context.Chart.ActualStyle.LabelColor, context.Chart.Control.Theme));
 
     /// <summary>Creates a terminal style using the chart's resolved axis color.</summary>
+    [Pure]
     internal static TerminalStyle ResolveAxisStyle(ChartRenderContext context) =>
         context.InheritedStyle.WithForeground(
             ControlBase.ResolveColor(context.Chart.ActualStyle.AxisColor, context.Chart.Control.Theme));
 
     // The axis rules sit beside AxisColor, which already made this part theme-owned; only the glyph
     // half was still a literal, so a theme could recolour an axis it could not replace.
+    [Pure]
     internal static Rune ResolveVerticalAxisGlyph(ChartRenderContext context) =>
         context.Chart.ActualStyle.Glyphs.VerticalAxis;
 
+    [Pure]
     internal static Rune ResolveHorizontalAxisGlyph(ChartRenderContext context) =>
         context.Chart.ActualStyle.Glyphs.HorizontalAxis;
 
@@ -220,6 +233,8 @@ internal static class ChartRenderer
     // Anchoring at the rounded boundary rather than the exact zero ratio keeps every bar and the
     // drawn axis rule consistent with one another; the sub-cell precision all goes to the value
     // end, which is the end a reader compares.
+    [Pure]
+    [NonNegativeValue]
     internal static int ExtentEighths(ChartScaleRange range, double value, int extent, int zeroCells)
     {
         // A value of exactly zero shares the identical ratio used to compute zeroCells itself.
@@ -236,6 +251,7 @@ internal static class ChartRenderer
         return Math.Abs(valueEighths - (zeroCells * 8));
     }
 
+    [Pure]
     private static ChartPlotLayout ResolveLayout(IChartControl chart)
     {
         var bounds = chart.Control.Bounds;
@@ -267,6 +283,7 @@ internal static class ChartRenderer
             };
     }
 
+    [Pure]
     private static ChartLegendPlacement ResolveLegendPlacement(IChartControl chart)
     {
         if (chart.LegendPlacement != ChartLegendPlacement.Automatic)

@@ -171,6 +171,7 @@ public sealed record ChartStyle: ControlStyle
     } = LinePattern.Solid;
 
     /// <summary>Gets one deterministic fallback series foreground by zero-based index.</summary>
+    [Pure]
     internal ControlColor GetSeriesColor(int index) => Math.Abs(index % 3) switch
     {
         0 => PrimaryColor,

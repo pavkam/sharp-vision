@@ -321,6 +321,7 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
         }
     }
 
+    [Pure]
     private Rune ResolveConfiguredGlyph(ControlGlyph themed) =>
         themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
 

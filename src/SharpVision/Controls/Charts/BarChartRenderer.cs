@@ -200,6 +200,7 @@ internal static class BarChartRenderer
     // the band evenly, and a band wide enough to afford it keeps its final cell as a gutter so
     // adjacent categories stay visually separate. The glyph mode keeps the historical one-cell
     // lanes, whose geometry existing themes and tests rely on.
+    [Pure]
     private static int LaneThickness((int Start, int Length) band, int seriesCount, bool fractional)
     {
         if (!fractional)
@@ -305,6 +306,7 @@ internal static class BarChartRenderer
         return plot;
     }
 
+    [Pure]
     private static int GetCategoryCount(IReadOnlyList<ChartSeries> series)
     {
         var count = 0;
@@ -317,6 +319,7 @@ internal static class BarChartRenderer
         return count;
     }
 
+    [Pure]
     private static int CenterSlot(int slot, int slotCount, int origin, int extent) =>
         extent <= 1
             ? origin
@@ -327,6 +330,7 @@ internal static class BarChartRenderer
     // global slot spread mapped two adjacent slots to one cell whenever the plot was shorter than
     // the slot count, and the later series then silently overdrew the earlier one - with the
     // labels placed independently, the label could end up naming a bar from a different group.
+    [Pure]
     private static (int Start, int Length) CategoryBand(int category, int categoryCount, int origin, int extent)
     {
         var start = origin + (category * extent / categoryCount);
@@ -336,17 +340,20 @@ internal static class BarChartRenderer
 
     // Within a roomy band the series keep the historical centered spread; within a squeezed band
     // they pack adjacently and the caller drops the series past the band instead of overdrawing.
+    [Pure]
     private static int PlaceInBand((int Start, int Length) band, int seriesIndex, int seriesCount) =>
         band.Length >= seriesCount
             ? band.Start + CenterSlot(seriesIndex, seriesCount, 0, band.Length)
             : band.Start + seriesIndex;
 
+    [Pure]
     private static int BoundaryX(ChartScaleRange range, double value, Rect plot)
     {
         var ratio = ChartRenderer.Ratio(range, value);
         return plot.X + (int) Math.Round(ratio * plot.Width, MidpointRounding.AwayFromZero);
     }
 
+    [Pure]
     private static int BoundaryY(ChartScaleRange range, double value, Rect plot)
     {
         var ratio = ChartRenderer.Ratio(range, value);
