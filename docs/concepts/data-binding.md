@@ -149,9 +149,15 @@ intermediate values.
 
 A notification that arrives while the callback is executing requests one
 additional latest-value pass. Sustained publication yields through another
-single callback each time. Queue saturation drops the pending update silently,
-clears the scheduled state, and permits a later retry. Binding retains no
-unbounded event history.
+single callback each time. A worker-thread notification that finds the
+dispatcher queue momentarily saturated is not silently dropped: the failure is
+bridged into the dispatcher's own callback-failure path
+(`Dispatcher.UnhandledException`), the same way a synchronous callback failure
+already running on the dispatcher would surface, instead of vanishing with no
+signal anywhere. Only a queue that is still saturated on that bridging retry -
+or a target dispatcher that is genuinely disposed - drops the pending update
+and clears the scheduled state, so a later, unsaturated notification can still
+schedule. Binding retains no unbounded event history.
 
 Detached targets update synchronously; concurrent mutation of a single detached
 control remains unsupported. Explicitly disposing an attached binding is

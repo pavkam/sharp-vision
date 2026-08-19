@@ -390,20 +390,34 @@ public sealed class Binding: IDisposable
             throw;
         }
 
-        // A target whose dispatcher is stopping or whose queue is momentarily full is going
-        // away regardless; drop the pending update instead of rethrowing into this dispatcher
-        // work item, matching DispatcherSynchronizationContext.Post's contract for the same
-        // underlying race.
+        // This method itself runs as the body of one already-dequeued dispatcher work item
+        // (DrainSourceUpdates is only ever reached through a prior Dispatcher.Post), so a full
+        // queue on the self-repost below does not need the off-thread bridging OnSourceInvalidated
+        // requires: propagating it here reaches the dispatcher's own synchronous callback-failure
+        // path (Dispatcher.Report, via the same try/catch that already wraps every work item's
+        // Execute()) exactly like any other callback exception would, with no separate signal
+        // needed. Only a genuinely disposed dispatcher - truly going away regardless - is dropped
+        // rather than propagated; _sourceScheduled is still reset first in both cases so a later
+        // source change is not left believing a drain is already pending forever.
         try
         {
             dispatcher.Post(() => DrainSourceUpdates(dispatcher));
         }
-        catch (Exception exception) when (exception is ObjectDisposedException or InvalidOperationException)
+        catch (ObjectDisposedException)
         {
             lock (_gate)
             {
                 _sourceScheduled = false;
             }
+        }
+        catch (InvalidOperationException)
+        {
+            lock (_gate)
+            {
+                _sourceScheduled = false;
+            }
+
+            throw;
         }
     }
 
@@ -434,21 +448,85 @@ public sealed class Binding: IDisposable
             _sourceScheduled = true;
         }
 
-        // A dispatcher that is stopping or whose queue is momentarily full is going away
-        // regardless; drop the pending update instead of rethrowing into whatever thread
-        // mutated the source model — that thread never expected binding internals to fail.
+        // Unlike DrainSourceUpdates' own self-repost above, this call runs from an arbitrary
+        // background thread - whatever thread raised the source's PropertyChanged or
+        // CollectionChanged notification - with no synchronous caller ever able to observe a
+        // thrown exception and no dispatcher work item wrapping this call to report it either.
+        // A saturated (but otherwise healthy) queue here previously vanished with no signal
+        // anywhere - not a target update, not Dispatcher.UnhandledException - leaving the target
+        // silently stale until some unrelated later change happened to find the queue clear.
+        // PostOrReportFault bridges that full-queue case into the dispatcher's own
+        // callback-failure path instead, the same fire-and-forget shape
+        // TreeViewItem.RunLoadAsync, FileDialogBase.ObserveLoadAsync, and
+        // Application.ObserveRenderAsync/ObserveOutOfBandAsync already bridge.
+        PostOrReportFault(
+            dispatcher,
+            () => DrainSourceUpdates(dispatcher),
+            () =>
+            {
+                lock (_gate)
+                {
+                    _sourceScheduled = false;
+                }
+            });
+    }
+
+    /// <summary>Posts <paramref name="action"/> as the source-to-target drain reached from a
+    /// background source-notification thread; a full bounded queue
+    /// (<see cref="InvalidOperationException"/>) is bridged into the dispatcher's own
+    /// callback-failure path by re-posting a callback that rethrows the caught exception, so a
+    /// failure originating off the dispatcher thread is reported through
+    /// <see cref="Dispatcher.UnhandledException"/> exactly like one thrown by a callback already
+    /// running on it - the same bridge <c>TreeViewItem.RunLoadAsync</c>,
+    /// <c>FileDialogBase.ObserveLoadAsync</c>, and
+    /// <c>Application.ObserveRenderAsync</c>/<c>ObserveOutOfBandAsync</c> use for their own
+    /// fire-and-forget completion posts. <paramref name="onNotScheduled"/> runs whenever
+    /// <paramref name="action"/> itself will never run - a disposed dispatcher, a full queue on
+    /// both this attempt and the bridging retry, or a full queue on this attempt whose retry only
+    /// ever queues the rethrow rather than the real drain - so a caller can release bookkeeping
+    /// (such as <see cref="_sourceScheduled"/>) that would otherwise wrongly believe a drain is
+    /// still pending forever.</summary>
+    /// <param name="dispatcher">The target dispatcher.</param>
+    /// <param name="action">The drain callback to post.</param>
+    /// <param name="onNotScheduled">Runs when <paramref name="action"/> will never run.</param>
+    private void PostOrReportFault(Dispatcher dispatcher, Action action, Action onNotScheduled)
+    {
         try
         {
-            dispatcher.Post(() => DrainSourceUpdates(dispatcher));
+            dispatcher.Post(action);
+            return;
         }
-        catch (Exception exception) when (exception is ObjectDisposedException or InvalidOperationException)
+        catch (ObjectDisposedException)
         {
-            lock (_gate)
+        }
+        catch (InvalidOperationException exception)
+        {
+            PostRetryHookForTests?.Invoke();
+
+            try
             {
-                _sourceScheduled = false;
+                dispatcher.Post(() => throw exception);
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            catch (InvalidOperationException)
+            {
             }
         }
+
+        onNotScheduled();
     }
+
+    /// <summary>
+    /// Test-only synchronization seam. When set, invoked once by <see cref="PostOrReportFault"/>
+    /// immediately after a first <see cref="Dispatcher.Post(Action)"/> attempt is rejected for a
+    /// full queue, but before the bridging retry attempt - letting a test deterministically free
+    /// the queue slot the retry needs in the otherwise nanosecond-wide window between the two
+    /// attempts, rather than racing a genuine drain. Instance-scoped, like the analogous seams on
+    /// <c>TreeViewItem</c>, <c>FileDialogBase</c>, and <c>Application</c>.
+    /// </summary>
+    internal Action? PostRetryHookForTests { get; set; }
 
     private void OnTargetPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
