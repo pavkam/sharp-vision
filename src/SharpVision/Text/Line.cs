@@ -3,6 +3,8 @@
 
 namespace SharpVision.Text;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Describes one formatted source slice and its terminal-cell placement.</summary>
 [PublicAPI]
 public readonly record struct Line
@@ -28,15 +30,19 @@ public readonly record struct Line
     }
 
     /// <summary>Gets the zero-based UTF-16 source offset.</summary>
+    [NonNegativeValue]
     public int Offset { get; }
 
     /// <summary>Gets the UTF-16 source length excluding a logical newline.</summary>
+    [NonNegativeValue]
     public int Length { get; }
 
     /// <summary>Gets the rendered cells including an optional ellipsis.</summary>
+    [NonNegativeValue]
     public int Cells { get; }
 
     /// <summary>Gets the leading alignment cells within the finite width.</summary>
+    [NonNegativeValue]
     public int Leading { get; }
 
     /// <summary>Gets whether rendering appends one narrow ellipsis.</summary>

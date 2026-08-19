@@ -94,6 +94,7 @@ public static class Layout
         return count;
     }
 
+    [Pure]
     private static int Align(int width, int cells, Alignment alignment)
     {
         var remaining = Math.Max(0, width - cells);
@@ -106,6 +107,7 @@ public static class Layout
         };
     }
 
+    [Pure]
     private static int Cells(ReadOnlySpan<char> value, Ambiguous ambiguous)
     {
         var result = 0;
@@ -122,6 +124,7 @@ public static class Layout
         return result;
     }
 
+    [Pure]
     private static int ClusterCells(
         ReadOnlySpan<char> value,
         int current,
@@ -335,18 +338,21 @@ public static class Layout
         }
     }
 
+    [Pure]
     private static bool IsWhitespace(ReadOnlySpan<char> value)
     {
         var status = Rune.DecodeFromUtf16(value, out var rune, out _);
         return status == OperationStatus.Done && Rune.IsWhiteSpace(rune);
     }
 
+    [Pure]
     private static int SaturatingAdd(int left, int right)
     {
         var result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
+    [Pure]
     private static Grapheme Next(ReadOnlySpan<char> value)
     {
         var enumerator = Graphemes.Enumerate(value).GetEnumerator();

@@ -49,6 +49,7 @@ internal readonly record struct OpenTag
     /// <param name="name">The source tag name.</param>
     /// <param name="value">The contributed flag.</param>
     /// <returns>The active facet.</returns>
+    [Pure]
     public static OpenTag Attribute(ReadOnlySpan<char> name, TerminalAttributes value) =>
         new(name.ToString(), value, null, null, null, null, null);
 
@@ -56,6 +57,7 @@ internal readonly record struct OpenTag
     /// <param name="name">The source tag name.</param>
     /// <param name="value">The contributed color.</param>
     /// <returns>The active facet.</returns>
+    [Pure]
     public static OpenTag ForegroundTag(ReadOnlySpan<char> name, Color value) =>
         new(name.ToString(), TerminalAttributes.None, value, null, null, null, null);
 
@@ -63,6 +65,7 @@ internal readonly record struct OpenTag
     /// <param name="name">The source tag name.</param>
     /// <param name="value">The contributed color.</param>
     /// <returns>The active facet.</returns>
+    [Pure]
     public static OpenTag BackgroundTag(ReadOnlySpan<char> name, Color value) =>
         new(name.ToString(), TerminalAttributes.None, null, value, null, null, null);
 
@@ -70,6 +73,7 @@ internal readonly record struct OpenTag
     /// <param name="name">The source tag name.</param>
     /// <param name="value">The contributed shape.</param>
     /// <returns>The active facet.</returns>
+    [Pure]
     public static OpenTag UnderlineTag(ReadOnlySpan<char> name, Underline value) =>
         new(name.ToString(), TerminalAttributes.None, null, null, value, null, null);
 
@@ -77,6 +81,7 @@ internal readonly record struct OpenTag
     /// <param name="name">The source tag name.</param>
     /// <param name="value">The contributed color.</param>
     /// <returns>The active facet.</returns>
+    [Pure]
     public static OpenTag UnderlineColorTag(ReadOnlySpan<char> name, Color value) =>
         new(name.ToString(), TerminalAttributes.None, null, null, null, value, null);
 
@@ -84,6 +89,7 @@ internal readonly record struct OpenTag
     /// <param name="name">The source tag name.</param>
     /// <param name="value">The validated target.</param>
     /// <returns>The active facet.</returns>
+    [Pure]
     public static OpenTag LinkTag(ReadOnlySpan<char> name, string value) =>
         new(name.ToString(), TerminalAttributes.None, null, null, null, null, value);
 }

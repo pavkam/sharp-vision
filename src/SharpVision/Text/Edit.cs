@@ -3,6 +3,9 @@
 
 namespace SharpVision.Text;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Provides pure grapheme-boundary text navigation and mutation transactions.</summary>
 [PublicAPI]
 public static class Edit
@@ -38,6 +41,7 @@ public static class Edit
     /// <param name="index">The candidate UTF-16 index.</param>
     /// <returns>True for the start, end, or start of a segmented cluster.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
+    [Pure]
     public static bool IsBoundary(string text, int index) => IsBoundaryCore(text, index, out _);
 
     /// <summary>
@@ -57,6 +61,7 @@ public static class Edit
     /// </param>
     /// <returns>True for the start, end, or start of a segmented cluster.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
+    [Pure]
     internal static bool IsBoundaryCore(string text, int index, out int iterations)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -104,6 +109,8 @@ public static class Edit
     /// <param name="text">The non-null UTF-16 source.</param>
     /// <returns>The non-negative cluster count.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
+    [Pure]
+    [NonNegativeValue]
     public static int GraphemeCount(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -118,6 +125,7 @@ public static class Edit
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
     /// <exception cref="ArgumentException">An endpoint splits a grapheme.</exception>
     /// <exception cref="ArgumentOutOfRangeException">An endpoint exceeds the source.</exception>
+    [Pure]
     public static EditResult MovePrevious(string text, Selection selection, bool extend)
     {
         Validate(text, selection);
@@ -137,6 +145,7 @@ public static class Edit
     /// <c>TextInput</c>) can hold Left/Right through a large document without paying for that
     /// re-validation on every repeat.
     /// </remarks>
+    [Pure]
     internal static EditResult MovePreviousUnchecked(string text, Selection selection, bool extend)
     {
         var caret = !extend && !selection.IsEmpty
@@ -153,6 +162,7 @@ public static class Edit
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
     /// <exception cref="ArgumentException">An endpoint splits a grapheme.</exception>
     /// <exception cref="ArgumentOutOfRangeException">An endpoint exceeds the source.</exception>
+    [Pure]
     public static EditResult MoveNext(string text, Selection selection, bool extend)
     {
         Validate(text, selection);
@@ -167,6 +177,7 @@ public static class Edit
     /// <param name="extend">Whether to retain the anchor.</param>
     /// <returns>The immutable navigation result.</returns>
     /// <remarks>See <see cref="MovePreviousUnchecked"/>.</remarks>
+    [Pure]
     internal static EditResult MoveNextUnchecked(string text, Selection selection, bool extend)
     {
         var caret = !extend && !selection.IsEmpty
@@ -183,6 +194,7 @@ public static class Edit
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
     /// <exception cref="ArgumentException">An endpoint splits a grapheme.</exception>
     /// <exception cref="ArgumentOutOfRangeException">An endpoint exceeds the source.</exception>
+    [Pure]
     public static EditResult MoveHome(string text, Selection selection, bool extend)
     {
         Validate(text, selection);
@@ -198,6 +210,7 @@ public static class Edit
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
     /// <exception cref="ArgumentException">An endpoint splits a grapheme.</exception>
     /// <exception cref="ArgumentOutOfRangeException">An endpoint exceeds the source.</exception>
+    [Pure]
     public static EditResult MoveEnd(string text, Selection selection, bool extend)
     {
         Validate(text, selection);
@@ -214,6 +227,7 @@ public static class Edit
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
     /// <exception cref="ArgumentException">An endpoint splits a grapheme.</exception>
     /// <exception cref="ArgumentOutOfRangeException">An endpoint exceeds the source.</exception>
+    [Pure]
     public static EditResult MoveNextWord(string text, Selection selection, bool extend)
     {
         Validate(text, selection);
@@ -240,6 +254,7 @@ public static class Edit
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
     /// <exception cref="ArgumentException">An endpoint splits a grapheme.</exception>
     /// <exception cref="ArgumentOutOfRangeException">An endpoint exceeds the source.</exception>
+    [Pure]
     public static EditResult MovePreviousWord(string text, Selection selection, bool extend)
     {
         Validate(text, selection);
@@ -268,6 +283,7 @@ public static class Edit
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the source.</exception>
     /// <exception cref="ArgumentException"><paramref name="index"/> splits a grapheme cluster.</exception>
+    [Pure]
     public static Selection SelectWord(string text, int index)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -310,6 +326,7 @@ public static class Edit
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
     /// <exception cref="ArgumentException">An endpoint splits a grapheme.</exception>
     /// <exception cref="ArgumentOutOfRangeException">An endpoint exceeds the source.</exception>
+    [Pure]
     public static EditResult Backspace(string text, Selection selection)
     {
         Validate(text, selection);
@@ -332,6 +349,7 @@ public static class Edit
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
     /// <exception cref="ArgumentException">An endpoint splits a grapheme.</exception>
     /// <exception cref="ArgumentOutOfRangeException">An endpoint exceeds the source.</exception>
+    [Pure]
     public static EditResult Delete(string text, Selection selection)
     {
         Validate(text, selection);
@@ -358,11 +376,12 @@ public static class Edit
     /// <exception cref="ArgumentNullException">A string is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxLength"/> is negative.</exception>
     /// <exception cref="ArgumentException">ControlBase policy rejects input or retained text exceeds maximum.</exception>
+    [Pure]
     public static EditResult Replace(
         string text,
         Selection selection,
         string replacement,
-        int maxLength = 0,
+        [NonNegativeValue] int maxLength = 0,
         bool acceptsReturn = false,
         bool acceptsTab = false) =>
         ReplaceCore(text, selection, replacement, maxLength, acceptsReturn, acceptsTab, out _);
@@ -389,11 +408,12 @@ public static class Edit
     /// <exception cref="ArgumentNullException">A string is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxLength"/> is negative.</exception>
     /// <exception cref="ArgumentException">ControlBase policy rejects input or retained text exceeds maximum.</exception>
+    [Pure]
     internal static EditResult ReplaceCore(
         string text,
         Selection selection,
         string replacement,
-        int maxLength,
+        [NonNegativeValue] int maxLength,
         bool acceptsReturn,
         bool acceptsTab,
         out int graphemeCountCalls)
@@ -458,6 +478,7 @@ public static class Edit
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
     /// <exception cref="ArgumentException">The mask is a control or not one cell wide.</exception>
     /// <exception cref="OverflowException">The projected UTF-16 length exceeds an integer.</exception>
+    [Pure]
     public static string ProjectPassword(string text, Rune mask, Ambiguous ambiguousWidth = Ambiguous.Narrow)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -483,6 +504,7 @@ public static class Edit
             });
     }
 
+    [Pure]
     private static EditResult Move(string text, Selection previous, int caret, bool extend)
     {
         var next = extend ? new Selection(previous.Anchor, caret) : new Selection(caret, caret);
@@ -491,9 +513,12 @@ public static class Edit
             : new EditResult(text, next, changed: true);
     }
 
+    [Pure]
     private static EditResult Unchanged(string text, Selection selection) =>
         new(text, selection, changed: false);
 
+    [Pure]
+    [NonNegativeValue]
     private static int PreviousBoundary(string text, int index)
     {
         var previous = 0;
@@ -506,6 +531,8 @@ public static class Edit
         return previous;
     }
 
+    [Pure]
+    [NonNegativeValue]
     private static int NextBoundary(string text, int index)
     {
         if (index >= text.Length)
@@ -519,6 +546,8 @@ public static class Edit
         return index + enumerator.Current.Length;
     }
 
+    [Pure]
+    [NonNegativeValue]
     private static int SkipForward(string text, int position, int kind)
     {
         while (position < text.Length && Kind(text, position) == kind)
@@ -534,6 +563,8 @@ public static class Edit
     /// Exposed internally so <c>TextInput</c> can replicate <see cref="MovePreviousWord"/>'s
     /// classification against its own cached boundary offsets instead of this type's O(n)
     /// <see cref="PreviousBoundary"/> scan.</summary>
+    [Pure]
+    [ValueRange(0, 2)]
     internal static int Kind(string text, int position)
     {
         var status = Rune.DecodeFromUtf16(text.AsSpan(position), out var rune, out _);
@@ -543,6 +574,8 @@ public static class Edit
             Rune.IsWhiteSpace(rune) ? 1 : 0;
     }
 
+    [Pure]
+    [NonNegativeValue]
     private static int Count(ReadOnlySpan<char> value)
     {
         var count = 0;
@@ -556,6 +589,8 @@ public static class Edit
         return count;
     }
 
+    [Pure]
+    [NonNegativeValue]
     private static int Prefix(string value, int allowed)
     {
         var count = 0;
