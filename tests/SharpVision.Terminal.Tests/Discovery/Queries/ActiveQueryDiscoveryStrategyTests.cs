@@ -979,8 +979,8 @@ public sealed class ActiveQueryDiscoveryStrategyTests
 
         negotiator.Accept(in status).ShouldBe(QueryMatch.Matched);
         negotiator.Accept(in status).ShouldBe(QueryMatch.Duplicate);
-        negotiator.Accept(capability!).ShouldBe(QueryMatch.Matched);
-        negotiator.Accept(capability!).ShouldBe(QueryMatch.Duplicate);
+        negotiator.Accept(capability).ShouldBe(QueryMatch.Matched);
+        negotiator.Accept(capability).ShouldBe(QueryMatch.Duplicate);
     }
 
     /// <summary>Verifies a valid response for another selector cannot consume requested work.</summary>
@@ -1013,8 +1013,8 @@ public sealed class ActiveQueryDiscoveryStrategyTests
 
         negotiator.Accept(in otherStatus).ShouldBe(QueryMatch.Unknown);
         negotiator.Accept(in requestedStatus).ShouldBe(QueryMatch.Matched);
-        negotiator.Accept(otherCapability!).ShouldBe(QueryMatch.Unknown);
-        negotiator.Accept(requestedCapability!).ShouldBe(QueryMatch.Matched);
+        negotiator.Accept(otherCapability).ShouldBe(QueryMatch.Unknown);
+        negotiator.Accept(requestedCapability).ShouldBe(QueryMatch.Matched);
     }
 
     /// <summary>Verifies validated query evidence refines semantics while overrides remain final.</summary>
@@ -1309,7 +1309,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
             payload,
             QueryLimits.Default,
             out var capability).ShouldBeTrue();
-        return capability!;
+        return capability;
     }
 
     private static XtermCapabilitiesResponse Numeric(ReadOnlySpan<byte> parameters, byte final)

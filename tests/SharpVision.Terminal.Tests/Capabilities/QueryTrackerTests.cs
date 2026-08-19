@@ -259,6 +259,6 @@ public sealed class QueryTrackerTests
             payload,
             QueryLimits.Default,
             out var response).ShouldBeTrue();
-        return response!;
+        return response;
     }
 }

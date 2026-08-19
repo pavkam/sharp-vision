@@ -53,7 +53,9 @@ public static class XtermGetCap
     /// <param name="final">The DCS final byte.</param>
     /// <param name="payload">The borrowed bounded hex payload.</param>
     /// <param name="limits">Finite parsing limits, or null for defaults.</param>
-    /// <param name="response">Receives the owned approved response.</param>
+    /// <param name="response">
+    /// Receives the owned approved response, or <see langword="null"/> when parsing fails.
+    /// </param>
     /// <returns>Whether the DCS belongs to XTGETTCAP and is strictly valid.</returns>
     public static bool TryParse(
         ReadOnlySpan<byte> parameters,
@@ -61,7 +63,7 @@ public static class XtermGetCap
         byte final,
         ReadOnlySpan<byte> payload,
         QueryLimits? limits,
-        out CapabilityResponse? response)
+        [NotNullWhen(true)] out CapabilityResponse? response)
     {
         response = null;
         var policy = limits ?? QueryLimits.Default;
