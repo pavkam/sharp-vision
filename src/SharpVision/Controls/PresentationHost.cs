@@ -7,6 +7,8 @@ using Layout;
 
 using SharpVision.Surfaces;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>Adapts one explicit Overlay or application Screen as a temporary presentation owner.</summary>
 internal sealed class PresentationHost
 {
@@ -21,6 +23,7 @@ internal sealed class PresentationHost
     /// <summary>Resolves the supplied explicit Overlay, owning Screen, or outermost fallback Overlay.</summary>
     /// <param name="owner">The non-null control whose retained ancestry is searched.</param>
     /// <returns>The resolved host, or null when no supported owner exists.</returns>
+    [MustUseReturnValue]
     public static PresentationHost? Resolve(ControlBase owner)
     {
         ArgumentNullException.ThrowIfNull(owner);
@@ -70,6 +73,7 @@ internal sealed class PresentationHost
     /// <summary>Returns whether this host directly owns the supplied control.</summary>
     /// <param name="control">The non-null candidate.</param>
     /// <returns>True when the candidate's committed parent is this host.</returns>
+    [Pure]
     public bool Owns(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);

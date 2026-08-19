@@ -5,6 +5,8 @@ namespace SharpVision.Controls.Scrolling;
 
 using SharpVision.Terminal.Input;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Defines a focusable integer range with buttons, track, and draggable thumb.</summary>
 [PublicAPI]
 public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
@@ -58,6 +60,7 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
     /// <exception cref="ArgumentException">The value exceeds Maximum or the current Value.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int Minimum
     {
         get;
@@ -75,6 +78,7 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
     /// <exception cref="ArgumentException">The value is below Minimum or the current Value.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int Maximum
     {
         get;
@@ -91,6 +95,7 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int ViewportSize
     {
         get;
@@ -105,6 +110,7 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the range.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int Value
     {
         get => _value;
@@ -120,6 +126,7 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int SmallChange
     {
         get;
@@ -134,6 +141,7 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int LargeChange
     {
         get;
@@ -578,6 +586,7 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
     /// <param name="localStyle">The optional local style override.</param>
     /// <param name="theme">The active theme, or null to fall back to the library default theme.</param>
     /// <returns>The complete style the generated bar would resolve and render.</returns>
+    [Pure]
     internal static ScrollBarStyle ResolveStyle(ScrollBarStyle? localStyle, Theme? theme) =>
         ScrollBarStyle.Definition.Resolve(localStyle, theme);
 

@@ -225,6 +225,7 @@ public abstract class ItemsControl: ControlBase
         base.OnDisposing();
     }
 
+    [Pure]
     private Container GetItemsHost() => _itemsHostSlot.Count == 1
         ? (Container) _itemsHostSlot[0]
         : throw new InvalidOperationException("The item presentation host is not available.");

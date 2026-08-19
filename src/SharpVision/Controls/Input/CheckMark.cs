@@ -90,11 +90,13 @@ public readonly struct CheckMark: IEquatable<CheckMark>
     /// <param name="glyphs">The replacement glyph family.</param>
     /// <returns>A mark with the same layout and the supplied glyphs.</returns>
     /// <exception cref="ArgumentException">A glyph is a control or is not one cell wide.</exception>
+    [Pure]
     public CheckMark WithGlyphs(CheckBoxGlyphs glyphs) => new(MarkStyle, glyphs);
 
     /// <summary>Selects the glyph this mark uses for one check state.</summary>
     /// <param name="state">The checked, unchecked, or indeterminate state.</param>
     /// <returns>The configured glyph for that state.</returns>
+    [Pure]
     public Rune GlyphFor(bool? state) => state switch
     {
         true => Glyphs.Checked,

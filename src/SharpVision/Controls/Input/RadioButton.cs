@@ -289,6 +289,7 @@ public sealed class RadioButton: InputBase, IStyled<RadioButtonStyle>
     /// <param name="version">The positive staged commit version.</param>
     /// <param name="value">The expected staged value.</param>
     /// <returns>True when no reentrant selection replaced the commit.</returns>
+    [Pure]
     internal bool IsCheckedCommitCurrent(int version, bool value) =>
         version > 0 && _checkedVersion == version && _isChecked == value;
 
@@ -321,6 +322,7 @@ public sealed class RadioButton: InputBase, IStyled<RadioButtonStyle>
 
     private int MarkWidth => ActualStyle.MarkWidth;
 
+    [Pure]
     private string Mark()
     {
         var selection = ControlGlyphs.Selection;
@@ -338,6 +340,7 @@ public sealed class RadioButton: InputBase, IStyled<RadioButtonStyle>
         };
     }
 
+    [Pure]
     private string Mark(Rune value, Rune fallback) =>
         value.Resolve(fallback, CellPolicy.AmbiguousWidth).ToString();
 }

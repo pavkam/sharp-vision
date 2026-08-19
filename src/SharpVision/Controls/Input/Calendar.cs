@@ -207,7 +207,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         get
         {
             EnsureSeeded();
-            return _activeDate!.Value;
+            return _activeDate.Value;
         }
     }
 
@@ -320,7 +320,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         get
         {
             EnsureSeeded();
-            return _displayMonth!.Value;
+            return _displayMonth.Value;
         }
         set
         {
@@ -681,6 +681,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         return DisplayMonth.DayNumber - offset;
     }
 
+    [Pure]
     private bool IsSelectable(DateOnly date) =>
         date >= MinimumDate && date <= MaximumDate && !BlockedDates.Contains(date);
 
@@ -1112,6 +1113,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
     /// <summary>Latches ActiveDate and DisplayMonth to today on first read, from one shared clock
     /// sample, without overwriting either field an earlier explicit assignment already set. The
     /// DisplayMonth setter can pre-seed the active date before this ever runs.</summary>
+    [MemberNotNull(nameof(_activeDate), nameof(_displayMonth))]
     private void EnsureSeeded()
     {
         if (_activeDate.HasValue && _displayMonth.HasValue)
@@ -1124,6 +1126,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         _displayMonth ??= StartOfMonth(today);
     }
 
+    [Pure]
     private static DateOnly StartOfMonth(DateOnly date) => new(date.Year, date.Month, 1);
 
     #endregion

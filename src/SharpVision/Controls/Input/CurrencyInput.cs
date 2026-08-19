@@ -5,6 +5,8 @@ namespace SharpVision.Controls.Input;
 
 using SharpVision.Terminal.Input;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Edits a nullable monetary value through a transient typed buffer committed on Enter or
 /// focus loss, formatted and parsed against a culture's currency-specific globalization
 /// data.</summary>
@@ -182,6 +184,7 @@ public sealed class CurrencyInput: InputBase
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int? DecimalPlaces
     {
         get;
@@ -473,6 +476,7 @@ public sealed class CurrencyInput: InputBase
 
     /// <summary>Resolves the decimal places and rounding policy a freshly parsed buffer value
     /// commits under, for <see cref="NumericInputCommitCoordinator"/>.</summary>
+    [Pure]
     private decimal ResolveCommitRounding(decimal parsed) => Math.Round(parsed, EffectiveDecimalPlaces, RoundingMode);
 
     private void RefreshBuffer()
@@ -487,8 +491,10 @@ public sealed class CurrencyInput: InputBase
 
     private int EffectiveDecimalPlaces => DecimalPlaces ?? Culture.NumberFormat.CurrencyDecimalDigits;
 
+    [Pure]
     private string ResolveCurrencyText() => ResolveCurrencyText(DisplayMode, Culture, CurrencyOverride);
 
+    [Pure]
     private static string ResolveCurrencyText(CurrencyDisplayMode mode, CultureInfo culture, string? overrideText)
     {
         if (mode == CurrencyDisplayMode.Custom)
@@ -514,6 +520,7 @@ public sealed class CurrencyInput: InputBase
 #pragma warning restore IDE0072
     }
 
+    [Pure]
     private static RegionInfo ResolveRegion(CultureInfo culture)
     {
         try
@@ -534,6 +541,7 @@ public sealed class CurrencyInput: InputBase
     /// <see cref="DisplayMode"/> identity, so the committed idle display can flow entirely through the
     /// runtime's own currency-pattern-aware <c>"C"</c> formatting instead of a hand-built
     /// template.</summary>
+    [Pure]
     private NumberFormatInfo BuildFormatInfo()
     {
         var format = (NumberFormatInfo) Culture.NumberFormat.Clone();
@@ -552,6 +560,7 @@ public sealed class CurrencyInput: InputBase
     /// culture's currency-specific equivalents, so the currency-agnostic
     /// <see cref="NumericEditBuffer"/> parses and formats against the right tokens without needing
     /// to know currency exists.</summary>
+    [Pure]
     private NumberFormatInfo BuildBufferFormat()
     {
         var format = (NumberFormatInfo) Culture.NumberFormat.Clone();
@@ -561,6 +570,7 @@ public sealed class CurrencyInput: InputBase
         return format;
     }
 
+    [Pure]
     private string FormatValue(decimal value) =>
         value.ToString("C" + EffectiveDecimalPlaces.ToString(CultureInfo.InvariantCulture), BuildFormatInfo());
 
@@ -568,6 +578,7 @@ public sealed class CurrencyInput: InputBase
     /// sign token prepended for a negative value - deliberately never through the culture's plain
     /// <see cref="NumberFormatInfo.NumberNegativePattern"/>, which can insert a
     /// space the buffer's own leading-sign grammar does not expect.</summary>
+    [Pure]
     private string FormatCoreForBuffer(decimal value)
     {
         var format = BuildBufferFormat();
@@ -583,6 +594,7 @@ public sealed class CurrencyInput: InputBase
 
     private readonly record struct FocusedDisplay(string Text, int CoreStart, string Magnitude, int SignLength);
 
+    [Pure]
     private FocusedDisplay BuildFocusedDisplay()
     {
         var format = Culture.NumberFormat;
@@ -595,6 +607,7 @@ public sealed class CurrencyInput: InputBase
         return new FocusedDisplay(composed, coreStart, magnitude, signLength);
     }
 
+    [Pure]
     private static string StripLeadingSign(string raw, NumberFormatInfo format, out bool isNegative, out int signLength)
     {
         if (TryStripToken(raw, format.NegativeSign, out var rest, out signLength) ||
@@ -616,6 +629,7 @@ public sealed class CurrencyInput: InputBase
         return raw;
     }
 
+    [Pure]
     private static bool TryStripToken(string text, string token, out string rest, out int length)
     {
         if (!string.IsNullOrEmpty(token) && text.StartsWith(token, StringComparison.Ordinal))
@@ -630,6 +644,7 @@ public sealed class CurrencyInput: InputBase
         return false;
     }
 
+    [Pure]
     private static string ComposeTemplate(
         string template,
         string symbol,
@@ -663,6 +678,7 @@ public sealed class CurrencyInput: InputBase
         return builder.ToString();
     }
 
+    [Pure]
     private static int IndexAtColumn(string text, int column, Ambiguous ambiguousWidth)
     {
         var x = 0;

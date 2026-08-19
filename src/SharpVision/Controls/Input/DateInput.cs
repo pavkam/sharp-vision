@@ -861,6 +861,7 @@ public sealed class DateInput: InputBase
         return builder.ToString();
     }
 
+    [Pure]
     private static TerminalStyle SegmentHighlightStyle(TerminalStyle source) => new(
         source.Foreground,
         source.Background,
@@ -869,6 +870,7 @@ public sealed class DateInput: InputBase
         source.Underline,
         source.UnderlineColor);
 
+    [Pure]
     private static TerminalStyle PlaceholderStyle(TerminalStyle source) => new(
         source.Foreground,
         source.Background,
@@ -929,6 +931,7 @@ public sealed class DateInput: InputBase
         SyncCalendar();
     }
 
+    [Pure]
     private DateOnly ClampDate(DateOnly date) => date.Clamp(Minimum, Maximum);
 
     private void RepairValue()

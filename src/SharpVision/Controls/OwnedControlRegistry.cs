@@ -5,6 +5,9 @@ namespace SharpVision.Controls;
 
 using System.Runtime.ExceptionServices;
 
+using InstantHandle = JetBrains.Annotations.InstantHandleAttribute;
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Coordinates every visual ownership edge for one control.</summary>
 internal sealed class OwnedControlRegistry
 {
@@ -42,7 +45,8 @@ internal sealed class OwnedControlRegistry
     /// <param name="index">The valid zero-based global position.</param>
     /// <returns>The control at the requested position.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the owned controls.</exception>
-    public ControlBase At(int index)
+    [Pure]
+    public ControlBase At([NonNegativeValue] int index)
     {
         var requested = index;
         ArgumentOutOfRangeException.ThrowIfNegative(index);
@@ -130,7 +134,7 @@ internal sealed class OwnedControlRegistry
     /// <exception cref="ArgumentException">A stable part key is already registered.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative.</exception>
     /// <exception cref="InvalidOperationException">Registration occurs during structural publication.</exception>
-    public OwnedControlSlot Register(OwnedControlOptions options, int capacity)
+    public OwnedControlSlot Register(OwnedControlOptions options, [NonNegativeValue] int capacity)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(capacity);
         VerifyNotTransacting();
@@ -167,7 +171,7 @@ internal sealed class OwnedControlRegistry
 
     /// <summary>Visits every direct owned control in slot registration and item order.</summary>
     /// <param name="visitor">The non-null synchronous visitor.</param>
-    public void Visit(Action<ControlBase> visitor)
+    public void Visit([InstantHandle] Action<ControlBase> visitor)
     {
         ArgumentNullException.ThrowIfNull(visitor);
 
@@ -185,7 +189,8 @@ internal sealed class OwnedControlRegistry
     /// <param name="index">The valid zero-based navigation position.</param>
     /// <returns>The control at the requested position.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the eligible controls.</exception>
-    public ControlBase NavigationAt(int index)
+    [Pure]
+    public ControlBase NavigationAt([NonNegativeValue] int index)
     {
         var requested = index;
         ArgumentOutOfRangeException.ThrowIfNegative(index);
@@ -789,9 +794,11 @@ internal sealed class OwnedControlRegistry
         entered.Add(registry);
     }
 
+    [Pure]
     private static bool SameOrder(List<ControlBase> left, List<ControlBase> right) =>
         left.Count == right.Count && !left.Where((t, index) => !ReferenceEquals(t, right[index])).Any();
 
+    [Pure]
     private static bool ContainsIdentity(List<ControlBase> controls, ControlBase candidate) =>
         controls.Any(control => ReferenceEquals(control, candidate));
 }

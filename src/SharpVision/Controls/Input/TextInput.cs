@@ -11,6 +11,7 @@ using Terminal.Rendering;
 
 using Text;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 using UnicodeWidth = Width;
 
 /// <summary>Defines a focusable grapheme-safe single- or multiline text editor.</summary>
@@ -244,6 +245,7 @@ public sealed class TextInput: ControlBase
     /// <exception cref="ArgumentException">The current text exceeds a non-zero value.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int MaxLength
     {
         get;
@@ -375,6 +377,7 @@ public sealed class TextInput: ControlBase
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int UndoLimit
     {
         get;
@@ -407,7 +410,7 @@ public sealed class TextInput: ControlBase
     /// <exception cref="ArgumentException">An endpoint splits a grapheme.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public void Select(int start, int length)
+    public void Select([NonNegativeValue] int start, [NonNegativeValue] int length)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(start);
         ArgumentOutOfRangeException.ThrowIfNegative(length);
@@ -1020,13 +1023,17 @@ public sealed class TextInput: ControlBase
     /// reposition the caret, previously cost O(n) per keystroke twice over - once in
     /// <c>Edit.MovePreviousUnchecked</c> and again in <see cref="Position"/> - for O(n^2) total
     /// across n keystrokes.</summary>
+    [MemberNotNull(nameof(BoundaryOffsets), nameof(_boundaryRowCache), nameof(_boundaryColumnCache))]
     private (int[] Offsets, int[] Rows, int[] Columns) BoundaryCache()
     {
         if (ReferenceEquals(_boundaryCacheSource, Text) &&
             _boundaryCachePasswordCharacter == PasswordCharacter &&
-            _boundaryCacheCellPolicy == CellPolicy)
+            _boundaryCacheCellPolicy == CellPolicy &&
+            BoundaryOffsets is { } cachedOffsets &&
+            _boundaryRowCache is { } cachedRows &&
+            _boundaryColumnCache is { } cachedColumns)
         {
-            return (BoundaryOffsets!, _boundaryRowCache!, _boundaryColumnCache!);
+            return (cachedOffsets, cachedRows, cachedColumns);
         }
 
         var offsets = new List<int> { 0 };
@@ -1436,6 +1443,7 @@ public sealed class TextInput: ControlBase
     /// cref="Offset(int, int, int, int)"/>. Keeps an offset left behind by a wheel scroll (or any
     /// prior focused chase) in range after the viewport or content size changes, without pulling
     /// it toward a caret nobody can currently see.</summary>
+    [Pure]
     private static int ClampOffset(int current, int viewport, int content) =>
         viewport <= 0 ? 0 : Math.Clamp(current, 0, Math.Max(0, content - viewport + 1));
 
@@ -1483,6 +1491,7 @@ public sealed class TextInput: ControlBase
     /// <summary>Finds the first index whose cached row is at least <paramref name="row"/> via binary
     /// search over the non-decreasing row array, so <see cref="AlignToClusterStart"/> starts scanning
     /// at the target row instead of the document start.</summary>
+    [Pure]
     private static int LowerBoundByRow(int[] rows, int row) => LowerBoundByRow(rows, row, out _);
 
     /// <summary>
@@ -1499,6 +1508,7 @@ public sealed class TextInput: ControlBase
     /// wall-clock timing gate.
     /// </param>
     /// <returns>The first index whose cached row is at least <paramref name="row"/>.</returns>
+    [Pure]
     internal static int LowerBoundByRow(int[] rows, int row, out int iterations)
     {
         var low = 0;

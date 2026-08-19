@@ -5,6 +5,8 @@ namespace SharpVision.Controls.Input;
 
 using SharpVision.Terminal.Input;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Edits an integer or decimal value through a transient typed buffer committed on Enter
 /// or focus loss.</summary>
 /// <remarks>
@@ -200,6 +202,7 @@ public sealed class NumberInput: InputBase
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int DecimalPlaces
     {
         get;
@@ -433,6 +436,7 @@ public sealed class NumberInput: InputBase
 
     /// <summary>Resolves the decimal places and rounding policy a freshly parsed buffer value
     /// commits under, for <see cref="NumericInputCommitCoordinator"/>.</summary>
+    [Pure]
     private decimal ResolveCommitRounding(decimal parsed)
     {
         var places = Mode == NumberInputMode.Integer ? 0 : DecimalPlaces;
@@ -448,6 +452,7 @@ public sealed class NumberInput: InputBase
         _buffer.Load(_value is { } value ? FormatValue(value) : string.Empty);
     }
 
+    [Pure]
     private string FormatValue(decimal value)
     {
         var places = Mode == NumberInputMode.Integer ? 0 : DecimalPlaces;

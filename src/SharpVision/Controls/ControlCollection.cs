@@ -67,6 +67,7 @@ public sealed class ControlCollection: IList<ControlBase>, IReadOnlyList<Control
     public void Clear() => _slot.Clear();
 
     /// <inheritdoc/>
+    [Pure]
     public bool Contains(ControlBase item) => _slot.Contains(item);
 
     /// <inheritdoc/>
@@ -77,6 +78,7 @@ public sealed class ControlCollection: IList<ControlBase>, IReadOnlyList<Control
     public List<ControlBase>.Enumerator GetEnumerator() => _slot.GetEnumerator();
 
     /// <inheritdoc/>
+    [Pure]
     public int IndexOf(ControlBase item) => _slot.IndexOf(item);
 
     /// <inheritdoc/>

@@ -309,12 +309,14 @@ public sealed partial class Button: InputBase, IStyled<ButtonStyle>
             ? bounds.Shift(PressedTranslation)
             : bounds;
 
+    [Pure]
     private static Point ResolvePressedTranslation(Shadow shadow) => !shadow.IsVisible
         ? default
         : shadow.Mode == ShadowMode.FractionalBlock
             ? new Point(shadow.Offset.X, 0)
             : shadow.Offset;
 
+    [Pure]
     private static int? DeflateConstraint(int? value, int inset) =>
         value.HasValue ? Math.Max(0, value.Value - inset) : null;
 

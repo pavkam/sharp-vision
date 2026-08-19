@@ -281,6 +281,7 @@ public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
 
     private int MarkWidth => ActualStyle.MarkWidth;
 
+    [Pure]
     private string Mark() =>
         new CheckMark(ActualStyle.MarkStyle, ActualStyle.Glyphs).Format(_isChecked, CellPolicy.AmbiguousWidth);
 }

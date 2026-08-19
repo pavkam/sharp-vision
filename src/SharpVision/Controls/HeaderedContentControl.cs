@@ -126,6 +126,7 @@ public abstract class HeaderedContentControl: ContentControl
 
     /// <summary>Gets whether <paramref name="candidate"/> is this control's own header control.</summary>
     /// <param name="candidate">The control to test.</param>
+    [Pure]
     internal bool OwnsCaption(ControlBase candidate) => ReferenceEquals(Header, candidate);
 
     private void OnHeaderSlotChanged()

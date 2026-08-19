@@ -159,6 +159,7 @@ internal static class RangeValidation
         /// <param name="minimum">The inclusive lower endpoint.</param>
         /// <param name="maximum">The inclusive upper endpoint.</param>
         /// <returns><paramref name="minimum"/> or <paramref name="maximum"/> if <paramref name="value"/> falls outside them; otherwise <paramref name="value"/>.</returns>
+        [Pure]
         public T Clamp(T minimum, T maximum) =>
             value.CompareTo(minimum) < 0 ? minimum
             : value.CompareTo(maximum) > 0 ? maximum
@@ -170,6 +171,7 @@ internal static class RangeValidation
     /// <param name="numerator">The non-negative dividend.</param>
     /// <param name="denominator">The positive divisor.</param>
     /// <returns>The quotient, rounded half up.</returns>
+    [Pure]
     internal static int RoundHalfUp(long numerator, long denominator) =>
         (int) ((numerator + (denominator / 2)) / denominator);
 }

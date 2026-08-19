@@ -5,6 +5,8 @@ namespace SharpVision.Controls;
 
 using Styling;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Reports the reserved cell columns an edge-pinned <see cref="Affix"/> pair occupies,
 /// gap included, as measured by <see cref="ControlBase.MeasureAffixes"/>.</summary>
 /// <remarks>
@@ -22,7 +24,7 @@ public readonly record struct AffixMetrics
     /// <param name="startCells">The non-negative reserved leading columns.</param>
     /// <param name="endCells">The non-negative reserved trailing columns.</param>
     /// <exception cref="ArgumentOutOfRangeException">A column count is negative.</exception>
-    public AffixMetrics(int startCells, int endCells)
+    public AffixMetrics([NonNegativeValue] int startCells, [NonNegativeValue] int endCells)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(startCells);
         ArgumentOutOfRangeException.ThrowIfNegative(endCells);
@@ -32,8 +34,10 @@ public readonly record struct AffixMetrics
     }
 
     /// <summary>Gets the reserved leading columns; zero when the start affix is unset.</summary>
+    [NonNegativeValue]
     public int StartCells { get; }
 
     /// <summary>Gets the reserved trailing columns; zero when the end affix is unset.</summary>
+    [NonNegativeValue]
     public int EndCells { get; }
 }

@@ -5,6 +5,8 @@ namespace SharpVision.Controls.Input;
 
 using SharpVision.Terminal.Input;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Edits saturation and value for one hue across a semantic color plane.</summary>
 internal sealed class ColorPlane: ControlBase
 {
@@ -32,6 +34,7 @@ internal sealed class ColorPlane: ControlBase
     public event EventHandler? Changed;
 
     /// <summary>Gets the selected HSV hue angle (0-359 degrees).</summary>
+    [ValueRange(0, 359)]
     public int Hue { get; private set; }
 
     /// <summary>Gets the selected HSV saturation (0.0 = grey, 1.0 = fully saturated).</summary>
@@ -53,7 +56,7 @@ internal sealed class ColorPlane: ControlBase
     /// <param name="hue">The hue from zero through 359.</param>
     /// <param name="saturation">The saturation from zero through one.</param>
     /// <param name="value">The value from zero through one.</param>
-    public void SetSelection(int hue, double saturation, double value)
+    public void SetSelection([ValueRange(0, 359)] int hue, double saturation, double value)
     {
         Debug.Assert(hue is >= 0 and < 360, "Picker hue is normalized.");
         Debug.Assert(saturation is >= 0 and <= 1, "Picker saturation is normalized.");

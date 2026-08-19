@@ -37,6 +37,7 @@ internal sealed class CalendarDateMarkup
     /// <summary>Gets the style span containing one visible UTF-16 offset.</summary>
     /// <param name="offset">The visible UTF-16 offset.</param>
     /// <returns>The containing style span, or null when the face inherits.</returns>
+    [Pure]
     public StyleSpan? SpanAt(int offset)
     {
         foreach (var span in Spans)
