@@ -27,6 +27,7 @@ internal static class NcursesNames
     extension(string name)
     {
         /// <summary>Gets whether an exact identifier is an input key byte sequence rather than an output program.</summary>
+        [Pure]
         public bool IsKey() =>
             name is "kbs" or "kcbt" or "kent" or "kcuu1" or "kcud1" or "kcub1" or "kcuf1" or
             "khome" or "kend" or "kich1" or "kdch1" or "kpp" or "knp" or "kbeg" or "ka1" or
@@ -34,6 +35,7 @@ internal static class NcursesNames
             IsModifiedKey(name);
 
         /// <summary>Maps one exact retained input identifier to its typed logical key and modifiers.</summary>
+        [Pure]
         public bool TryMapKey(out Code code, out Modifiers modifiers)
         {
             modifiers = Modifiers.None;

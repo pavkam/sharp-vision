@@ -129,7 +129,7 @@ internal sealed class Provider: IDescriptionProvider
                     }
                     else
                     {
-                        profile = Snapshot(native, request, diagnostics, environment!.ByteCount);
+                        profile = Snapshot(native, request, diagnostics, environment.ByteCount);
                         status = DescriptionLoadStatus.Loaded;
                     }
                 }
@@ -149,7 +149,7 @@ internal sealed class Provider: IDescriptionProvider
                 {
                     diagnostics.Add(new DescriptionDiagnostic(DescriptionDiagnosticCode.MissingOrGeneric));
 
-                    if (environment!.HasMatchingInlineTermcap(request.TerminalName))
+                    if (environment.HasMatchingInlineTermcap(request.TerminalName))
                     {
                         diagnostics.Add(new DescriptionDiagnostic(DescriptionDiagnosticCode.NativeFailure));
                         status = DescriptionLoadStatus.ProviderFailed;
@@ -638,6 +638,7 @@ internal sealed class Provider: IDescriptionProvider
         }
     }
 
+    [Pure]
     private static bool TryParseRgb(ReadOnlySpan<byte> value, int maximumBits, out int totalBits)
     {
         totalBits = 0;

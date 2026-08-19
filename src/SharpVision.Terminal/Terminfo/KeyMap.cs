@@ -119,6 +119,7 @@ internal sealed class KeyMap
     /// <param name="signature">The parsed signature.</param>
     /// <param name="binding">The described logical binding when found.</param>
     /// <returns>Whether the map contains that signature.</returns>
+    [Pure]
     public bool TryGet(in KeySignature signature, out KeyBinding binding)
     {
         foreach (var candidate in _bindings)
@@ -141,6 +142,7 @@ internal sealed class KeyMap
     /// <param name="final">The callback final or control byte.</param>
     /// <param name="binding">The described logical binding when found.</param>
     /// <returns>Whether the map contains that signature.</returns>
+    [Pure]
     public bool TryGet(
         KeySignatureKind kind,
         ReadOnlySpan<byte> parameters,

@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Terminfo.Ncurses;
 
 using Capabilities;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Owns the bounded relevant live environment observed immediately before native lookup.</summary>
 internal sealed class DescriptionEnvironment
 {
@@ -17,6 +19,7 @@ internal sealed class DescriptionEnvironment
     }
 
     /// <summary>Gets the owned UTF-8 byte count charged to the accepted snapshot budget.</summary>
+    [NonNegativeValue]
     public int ByteCount { get; }
 
     /// <summary>Gets whether a matching inline TERMCAP value was present.</summary>
@@ -39,7 +42,7 @@ internal sealed class DescriptionEnvironment
         Func<string, string?> read,
         string terminalName,
         DescriptionLimits limits,
-        out DescriptionEnvironment? environment,
+        [NotNullWhen(true)] out DescriptionEnvironment? environment,
         out DescriptionDiagnostic diagnostic)
     {
         ArgumentNullException.ThrowIfNull(read);

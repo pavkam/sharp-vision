@@ -32,5 +32,6 @@ internal readonly struct NativeString
     /// <summary>Creates one present result by copying exact raw bytes.</summary>
     /// <param name="bytes">The exact bytes to own, including a present empty value.</param>
     /// <returns>The owned native string value.</returns>
+    [Pure]
     public static NativeString Present(ReadOnlySpan<byte> bytes) => new NativeString(NativeStringStatus.Present, bytes);
 }
