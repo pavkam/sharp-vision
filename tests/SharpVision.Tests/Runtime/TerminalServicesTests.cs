@@ -31,6 +31,26 @@ public sealed class TerminalServicesTests
         application.Terminal.Description.ShouldBeSameAs(application.TerminalProfile.Description);
     }
 
+    /// <summary>
+    /// Verifies clipboard cleanup during shutdown runs on the owning dispatcher thread, matching
+    /// the invariant every other mutator of this pending clipboard state already asserts with
+    /// <see cref="Dispatcher.VerifyAccess"/>. A live query's deadline timer ticks on that same
+    /// thread; disposing from off-thread instead would race those ticks on the same in-flight,
+    /// single-threaded transaction with no lock between them.
+    /// </summary>
+    [Fact]
+    public async Task Dispose_WhenApplicationStops_RunsOnTheOwningDispatcherThreadAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        ((TerminalServices) application.Terminal).DisposedOnDispatcherThreadForTests.ShouldBeTrue();
+    }
+
     /// <summary>Verifies bell bytes come from the selected description program.</summary>
     [Fact]
     public async Task Bell_WhenDescriptionSuppliesProgram_EmitsExactDescribedBytesAsync()

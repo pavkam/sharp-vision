@@ -378,12 +378,28 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, ID
     ///
     /// A request outstanding at shutdown is abandoned the same way a superseded one is: no reply
     /// event fires. The consumer gets no outcome either way, but at least nothing is left armed.
+    ///
+    /// The caller must invoke this on the owning dispatcher thread. Every other mutator of this
+    /// pending clipboard state - <see cref="ReceiveClipboardReply"/>,
+    /// <see cref="ReceiveKittyClipboardPacket"/>, and <see cref="StartOsc52Request"/> - asserts
+    /// that with <see cref="Dispatcher.VerifyAccess"/> because a live query's deadline
+    /// <see cref="DispatcherTimer"/> ticks <see cref="OnKittyTimeout"/> or
+    /// <see cref="OnOsc52Timeout"/> on that same thread; calling this from any other thread would
+    /// race those ticks on the same in-flight, single-threaded transaction with no lock between
+    /// them.
     /// </remarks>
     public void Dispose()
     {
+        DisposedOnDispatcherThreadForTests = _application.Dispatcher.CheckAccess();
         CancelPendingKittyTransaction();
         CancelPendingOsc52Request();
     }
+
+    /// <summary>Gets whether the most recent <see cref="Dispose"/> call observed itself running on
+    /// the owning dispatcher thread. A regression seam only, proving shutdown cleanup never
+    /// touches this dispatcher-owned clipboard state from another thread; see the threading
+    /// requirement documented on <see cref="Dispose"/>.</summary>
+    internal bool DisposedOnDispatcherThreadForTests { get; private set; }
 
     /// <summary>Arms one OSC 52 read and its deadline, superseding any request still outstanding.</summary>
     /// <param name="selection">The selection being queried.</param>

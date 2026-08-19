@@ -2138,7 +2138,16 @@ public sealed class Application:
         // ObjectDisposedException, and re-arms forever - rooting this Application, its dispatcher,
         // renderer, and whole control tree through the timer's own callback, so disposing the
         // Application would not have collected any of it.
-        _terminalServices.Dispose();
+        //
+        // Must run on the owning dispatcher thread: TerminalServices tracks this pending clipboard
+        // state exclusively there (see the threading requirement on TerminalServices.Dispose), but
+        // this method itself runs on whatever background thread the Task infrastructure resumed
+        // ObserveSessionAsync/FinishWithoutSessionAsync on. Calling Dispose() directly from here
+        // would race a live query's own deadline tick - which fires on the dispatcher thread - on
+        // the same in-flight, single-threaded transaction with no lock between them. The dispatcher
+        // itself is still running at this point in every caller of this method, so this cannot
+        // observe it disposed.
+        await Dispatcher.InvokeAsync(_terminalServices.Dispose).ConfigureAwait(false);
 
         if (_renderer is { } renderer)
         {
