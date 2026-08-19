@@ -16,11 +16,10 @@ using Terminal.Clipboard;
 using Terminal.Rendering;
 
 using MultiplexerRoute = Terminal.Multiplexing.MultiplexerRoute;
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
 using TerminalCellMetrics = CellMetrics;
 using TerminalDiagnostic = Diagnostic;
 using TerminalDiagnosticCode = DiagnosticCode;
-
-
 using TerminalResponse = XtermCapabilitiesResponse;
 using TerminalSequence = ProtocolSequence;
 using TerminalSequenceKind = SequenceKind;
@@ -288,6 +287,7 @@ public sealed class Application:
     /// <param name="outsideInteraction">The policy applied to input outside the modal plane.</param>
     /// <param name="initialFocus">An optional eligible focus target inside the root.</param>
     /// <returns>The disposable scope; disposing exits the modal plane.</returns>
+    [MustDisposeResource]
     public ModalScope EnterModal(
         ControlBase root,
         OutsideInteraction outsideInteraction = OutsideInteraction.Ignore,

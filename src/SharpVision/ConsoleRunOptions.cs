@@ -180,10 +180,12 @@ public sealed record ConsoleRunOptions
 
     /// <summary>Resolves the theme, defaulting to <see cref="ThemeCatalog.Dark"/>.</summary>
     /// <returns>The theme to publish.</returns>
+    [Pure]
     public Theme ResolveTheme() => Theme ?? ThemeCatalog.Dark;
 
     /// <summary>Builds the host policy for <see cref="ConsoleHost.Open"/>.</summary>
     /// <returns>The validated host options.</returns>
+    [Pure]
     public ConsoleHostOptions ToHostOptions() => new()
     {
         ResizeInterval = ResizeInterval,

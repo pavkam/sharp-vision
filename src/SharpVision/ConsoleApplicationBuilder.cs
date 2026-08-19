@@ -9,6 +9,9 @@ using SharpVision.Terminal.Runtime;
 using Terminal.Capabilities;
 using Terminal.Kitty.Keyboard;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>Configures and builds one interactive console <see cref="Application"/> fluently.</summary>
 [PublicAPI]
 public sealed class ConsoleApplicationBuilder
@@ -73,6 +76,7 @@ public sealed class ConsoleApplicationBuilder
     /// <param name="theme">The non-null theme.</param>
     /// <returns>This builder.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="theme"/> is null.</exception>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder UseTheme(Theme theme)
     {
         ArgumentNullException.ThrowIfNull(theme);
@@ -83,6 +87,7 @@ public sealed class ConsoleApplicationBuilder
     /// <summary>Sets whether to enter the alternate screen.</summary>
     /// <param name="enabled">Whether to enter the alternate screen.</param>
     /// <returns>This builder.</returns>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder UseAlternateScreen(bool enabled = true)
     {
         Options = Options with { AlternateScreen = enabled };
@@ -92,6 +97,7 @@ public sealed class ConsoleApplicationBuilder
     /// <summary>Sets whether the cursor stays visible.</summary>
     /// <param name="visible">Whether the cursor stays visible.</param>
     /// <returns>This builder.</returns>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder ShowCursor(bool visible = true)
     {
         Options = Options with { ShowCursor = visible };
@@ -103,6 +109,7 @@ public sealed class ConsoleApplicationBuilder
     /// <param name="coordinates">The mouse coordinate encoding.</param>
     /// <returns>This builder.</returns>
     /// <exception cref="ArgumentOutOfRangeException">A value is unknown.</exception>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder UseMouse(
         MouseTracking tracking = MouseTracking.Any,
         MouseCoordinates coordinates = MouseCoordinates.Sgr)
@@ -113,6 +120,7 @@ public sealed class ConsoleApplicationBuilder
 
     /// <summary>Disables mouse input.</summary>
     /// <returns>This builder.</returns>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder WithoutMouse()
     {
         Options = Options with { MouseTracking = null };
@@ -122,6 +130,7 @@ public sealed class ConsoleApplicationBuilder
     /// <summary>Sets whether bracketed paste is enabled.</summary>
     /// <param name="enabled">Whether bracketed paste is enabled.</param>
     /// <returns>This builder.</returns>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder UseBracketedPaste(bool enabled = true)
     {
         Options = Options with { BracketedPaste = enabled };
@@ -131,6 +140,7 @@ public sealed class ConsoleApplicationBuilder
     /// <summary>Sets whether focus reporting is enabled.</summary>
     /// <param name="enabled">Whether focus reporting is enabled.</param>
     /// <returns>This builder.</returns>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder UseFocusReporting(bool enabled = true)
     {
         Options = Options with { FocusReporting = enabled };
@@ -140,6 +150,7 @@ public sealed class ConsoleApplicationBuilder
     /// <summary>Sets the Kitty keyboard enhancement flags, or null to disable.</summary>
     /// <param name="enhancement">The enhancement flags, or null to disable.</param>
     /// <returns>This builder.</returns>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder UseKeyboardEnhancement(KittyKeyboardEnhancement? enhancement)
     {
         Options = Options with { KeyboardEnhancement = enhancement };
@@ -150,6 +161,7 @@ public sealed class ConsoleApplicationBuilder
     /// <param name="depth">The color depth override.</param>
     /// <returns>This builder.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="depth"/> is unknown.</exception>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder UseColorDepth(ColorDepth depth)
     {
         Options = Options with { ColorDepth = depth };
@@ -158,6 +170,7 @@ public sealed class ConsoleApplicationBuilder
 
     /// <summary>Forces the minimal monochrome color depth.</summary>
     /// <returns>This builder.</returns>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder WithoutColors()
     {
         Options = Options with { ColorDepth = ColorDepth.Monochrome };
@@ -168,6 +181,7 @@ public sealed class ConsoleApplicationBuilder
     /// <param name="capabilities">The non-null capability profile.</param>
     /// <returns>This builder.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> is null.</exception>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder UseCapabilities(TerminalCapabilities capabilities)
     {
         ArgumentNullException.ThrowIfNull(capabilities);
@@ -179,6 +193,7 @@ public sealed class ConsoleApplicationBuilder
     /// <param name="profile">The non-null complete profile.</param>
     /// <returns>This builder.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="profile"/> is null.</exception>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder UseTerminalProfile(TerminalProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
@@ -190,6 +205,7 @@ public sealed class ConsoleApplicationBuilder
     /// <param name="negotiation">The non-null negotiation policy.</param>
     /// <returns>This builder.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="negotiation"/> is null.</exception>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder UseNegotiation(NegotiationOptions negotiation)
     {
         ArgumentNullException.ThrowIfNull(negotiation);
@@ -199,6 +215,7 @@ public sealed class ConsoleApplicationBuilder
 
     /// <summary>Disables startup negotiation.</summary>
     /// <returns>This builder.</returns>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder WithoutNegotiation()
     {
         Options = Options with
@@ -215,6 +232,7 @@ public sealed class ConsoleApplicationBuilder
     /// <param name="timeout">The positive finite reverse-cleanup timeout.</param>
     /// <returns>This builder.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="timeout"/> is not positive and finite.</exception>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder WithCleanupTimeout(TimeSpan timeout)
     {
         Options = Options with { CleanupTimeout = timeout };
@@ -225,6 +243,7 @@ public sealed class ConsoleApplicationBuilder
     /// <param name="size">The positive read-buffer size.</param>
     /// <returns>This builder.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="size"/> is not positive.</exception>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder WithReadBufferSize(int size)
     {
         Options = Options with { ReadBufferSize = size };
@@ -235,6 +254,7 @@ public sealed class ConsoleApplicationBuilder
     /// <param name="interval">The positive finite resize poll interval.</param>
     /// <returns>This builder.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="interval"/> is not positive and finite.</exception>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder WithResizeInterval(TimeSpan interval)
     {
         Options = Options with { ResizeInterval = interval };
@@ -244,6 +264,7 @@ public sealed class ConsoleApplicationBuilder
     /// <summary>Delivers Ctrl+C as input instead of requesting shutdown.</summary>
     /// <param name="enabled">Whether Ctrl+C is delivered as input.</param>
     /// <returns>This builder.</returns>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder TreatControlCAsInput(bool enabled = true)
     {
         Options = Options with { TreatControlCAsInput = enabled };
@@ -257,6 +278,7 @@ public sealed class ConsoleApplicationBuilder
     /// </remarks>
     /// <param name="enabled">Whether the environment variables override the initial size.</param>
     /// <returns>This builder.</returns>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder UseEnvironmentSizeOverrides(bool enabled = true)
     {
         Options = Options with { UseEnvironmentSizeOverrides = enabled };
@@ -266,6 +288,7 @@ public sealed class ConsoleApplicationBuilder
     /// <summary>Sets the message written when the console is redirected.</summary>
     /// <param name="message">The message to write, or null for none.</param>
     /// <returns>This builder.</returns>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder WithRedirectedMessage(string? message)
     {
         Options = Options with { RedirectedMessage = message };
@@ -275,6 +298,7 @@ public sealed class ConsoleApplicationBuilder
     /// <summary>Sets the plain message written when terminal-description preflight rejects the console.</summary>
     /// <param name="message">The message to write, or null for none.</param>
     /// <returns>This builder.</returns>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder WithUnsupportedTerminalMessage(string? message)
     {
         Options = Options with { UnsupportedTerminalMessage = message };
@@ -286,6 +310,7 @@ public sealed class ConsoleApplicationBuilder
     /// <returns>This builder.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="configure"/> is null.</exception>
     /// <exception cref="InvalidOperationException"><paramref name="configure"/> returned null.</exception>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder ConfigureOptions(Func<ConsoleRunOptions, ConsoleRunOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
@@ -299,6 +324,7 @@ public sealed class ConsoleApplicationBuilder
     /// <exception cref="NotSupportedException">No usable terminal description is available.</exception>
     /// <exception cref="ArgumentException">The screen is already attached to an application.</exception>
     /// <exception cref="ObjectDisposedException">The screen is disposed.</exception>
+    [MustDisposeResource]
     public Application Build()
     {
         if (!_isInteractive())
