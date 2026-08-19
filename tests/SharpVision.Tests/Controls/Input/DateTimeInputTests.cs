@@ -285,6 +285,36 @@ public sealed class DateTimeInputTests
         up.IsHandled.ShouldBeFalse();
     }
 
+    /// <summary>Verifies Minimum validates its argument against Maximum before checking whether
+    /// the control is disposed, matching every other Min/Max-bounded control in the library
+    /// (TimeInput, DateInput, NumberInput, CurrencyInput, Slider, Calendar): an out-of-range
+    /// argument always surfaces as ArgumentException, even on a disposed control, rather than
+    /// masking the argument problem behind ObjectDisposedException.</summary>
+    [Fact]
+    public void Minimum_WhenAboveMaximumOnDisposedControl_ThrowsArgumentException()
+    {
+        // Arrange
+        var control = new DateTimeInput { Maximum = new DateTime(2026, 1, 1) };
+        control.Dispose();
+
+        // Act & Assert
+        _ = Should.Throw<ArgumentException>(() => control.Minimum = new DateTime(2026, 2, 1));
+    }
+
+    /// <summary>Verifies Maximum validates its argument against Minimum before checking whether
+    /// the control is disposed, matching every other Min/Max-bounded control in the library.
+    /// See <see cref="Minimum_WhenAboveMaximumOnDisposedControl_ThrowsArgumentException"/>.</summary>
+    [Fact]
+    public void Maximum_WhenBelowMinimumOnDisposedControl_ThrowsArgumentException()
+    {
+        // Arrange
+        var control = new DateTimeInput { Minimum = new DateTime(2026, 2, 1) };
+        control.Dispose();
+
+        // Act & Assert
+        _ = Should.Throw<ArgumentException>(() => control.Maximum = new DateTime(2026, 1, 1));
+    }
+
     #endregion
 
     #region Commit
@@ -770,6 +800,28 @@ public sealed class DateTimeInputTests
 
         // Assert
         control.Value.ShouldNotBeNull().Year.ShouldBe(2026);
+    }
+
+    /// <summary>Verifies Right stops at the last segment instead of wrapping back to Month,
+    /// matching the non-wrapping Left/Right convention <see cref="TimeInput"/> and
+    /// <see cref="DateInput"/> both use for the identical shared
+    /// <c>SegmentFieldBehavior.MoveSegment</c> navigation engine.</summary>
+    [Fact]
+    public void MoveSegment_WhenRightIsPressedPastLastSegment_StaysOnLastSegmentInsteadOfWrapping()
+    {
+        // Arrange: default Use24HourFormat/ShowSeconds layout is Month, Day, Year, Hour, Minute.
+        using var control = new DateTimeInput { Value = new DateTime(2026, 6, 15, 10, 30, 0) };
+
+        // Act: four Right presses reach Minute (the last segment); a fifth must not move past it.
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Up));
+
+        // Assert: Up still increments Minute, not Month (which wrapping would land on instead).
+        control.Value.ShouldBe(new DateTime(2026, 6, 15, 10, 31, 0));
     }
 
     #endregion

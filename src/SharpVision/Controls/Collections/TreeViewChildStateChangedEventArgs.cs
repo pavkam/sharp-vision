@@ -10,8 +10,14 @@ public sealed class TreeViewChildStateChangedEventArgs: EventArgs
     /// <summary>Initializes immutable transition values.</summary>
     /// <param name="previous">The previous state.</param>
     /// <param name="current">The committed state.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="previous"/> or <paramref name="current"/> is undefined.
+    /// </exception>
     public TreeViewChildStateChangedEventArgs(TreeViewChildState previous, TreeViewChildState current)
     {
+        ArgumentOutOfRangeException.ThrowIfNotDefined(previous, nameof(previous), "The previous child state is unknown.");
+        ArgumentOutOfRangeException.ThrowIfNotDefined(current, nameof(current), "The current child state is unknown.");
+
         Previous = previous;
         Current = current;
     }

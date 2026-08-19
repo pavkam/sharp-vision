@@ -276,7 +276,6 @@ public sealed class DateTimeInput: InputBase
         get;
         set
         {
-            VerifyMutable();
             ArgumentException.ThrowIfAboveMaximum(value, Maximum, nameof(value), "Minimum cannot exceed Maximum.");
 
             if (SetProperty(ref field, value, InvalidationImpact.Render))
@@ -296,7 +295,6 @@ public sealed class DateTimeInput: InputBase
         get;
         set
         {
-            VerifyMutable();
             ArgumentException.ThrowIfBelowMinimum(value, Minimum, nameof(value), "Maximum cannot be less than Minimum.");
 
             if (SetProperty(ref field, value, InvalidationImpact.Render))
@@ -614,8 +612,8 @@ public sealed class DateTimeInput: InputBase
 #pragma warning disable IDE0072 // Unknown or unsupported keys intentionally remain unhandled.
         var handled = stroke.Code switch
         {
-            Code.Left => _segments.MoveSegment(-1, wrap: true),
-            Code.Right => _segments.MoveSegment(1, wrap: true),
+            Code.Left => _segments.MoveSegment(-1, wrap: false),
+            Code.Right => _segments.MoveSegment(1, wrap: false),
             Code.Home => _segments.MoveToEdge(first: true),
             Code.End => _segments.MoveToEdge(first: false),
             Code.Delete => ClearValue(),
