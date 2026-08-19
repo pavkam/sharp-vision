@@ -182,6 +182,7 @@ internal static class AppearanceResolver
         /// <summary>Compares two concrete appearances for their exact earliest invalidation phase.</summary>
         /// <param name="current">The concrete appearance after a transaction.</param>
         /// <returns>The strongest phase affected by the concrete difference.</returns>
+        [Pure]
         internal InvalidationImpact GetImpact(ResolvedAppearance current)
         {
             // Mode changes the footprint exactly as IsVisible and Offset do - see

@@ -32,6 +32,7 @@ public readonly record struct AppearanceOverlay
     /// <summary>Overlays a later partial contribution over this contribution.</summary>
     /// <param name="later">The later contribution whose supplied members win.</param>
     /// <returns>The combined partial contribution.</returns>
+    [Pure]
     public AppearanceOverlay Overlay(AppearanceOverlay later) => new(
         Overlay(Face, later.Face),
         Overlay(Border, later.Border),

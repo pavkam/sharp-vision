@@ -63,6 +63,7 @@ public readonly record struct FaceOverlay
     /// <summary>Applies this contribution to a complete face.</summary>
     /// <param name="face">The earlier complete face.</param>
     /// <returns>The composed complete face.</returns>
+    [Pure]
     public Face Apply(Face face) => new(
         Foreground ?? face.Foreground,
         Background ?? face.Background,
@@ -73,6 +74,7 @@ public readonly record struct FaceOverlay
     /// <summary>Overlays a later partial contribution over this contribution.</summary>
     /// <param name="later">The later contribution whose supplied members win.</param>
     /// <returns>The combined partial contribution.</returns>
+    [Pure]
     public FaceOverlay Overlay(FaceOverlay later) => new(
         later.Foreground ?? Foreground,
         later.Background ?? Background,

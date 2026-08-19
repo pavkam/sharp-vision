@@ -22,6 +22,7 @@ public static class StyleKey
     /// <summary>Gets the <c>styles.*</c> section key owned by one style type.</summary>
     /// <typeparam name="TStyle">The style type that owns the section.</typeparam>
     /// <returns>The non-empty section key, computed once per type.</returns>
+    [Pure]
     public static string Of<TStyle>()
         where TStyle : ControlStyle => Cache<TStyle>.Key;
 
@@ -29,6 +30,7 @@ public static class StyleKey
     /// <param name="styleType">The style type that owns the section.</param>
     /// <returns>The non-empty section key.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="styleType"/> is <see langword="null"/>.</exception>
+    [Pure]
     internal static string Of(Type styleType)
     {
         ArgumentNullException.ThrowIfNull(styleType);

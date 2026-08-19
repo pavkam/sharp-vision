@@ -67,6 +67,7 @@ public static class ThemeCatalog
     // Shared by Theme.ResolveSectionDecoration, via the ConvertLeaf unification, and this
     // file's own ParseAttributes below, so the one literal-attribute-name vocabulary is defined
     // exactly once.
+    [Pure]
     internal static TerminalAttributes ResolveAttributeName(string name, string source, string context) =>
         _attributeNames.TryGetValue(name, out var attribute)
             ? attribute
@@ -185,6 +186,7 @@ public static class ThemeCatalog
     /// <returns>A newly parsed frozen theme.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="json"/> is null.</exception>
     /// <exception cref="InvalidDataException">The document is oversized or invalid.</exception>
+    [Pure]
     public static Theme Parse(string json)
     {
         ArgumentNullException.ThrowIfNull(json);
@@ -192,6 +194,7 @@ public static class ThemeCatalog
     }
 
     /// <summary>Parses a frozen theme using an internal diagnostic source label.</summary>
+    [Pure]
     internal static Theme Parse(string json, string source)
     {
         ArgumentNullException.ThrowIfNull(json);

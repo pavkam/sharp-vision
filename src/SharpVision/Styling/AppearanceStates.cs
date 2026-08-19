@@ -138,6 +138,7 @@ public sealed class AppearanceStates: IEquatable<AppearanceStates>
     /// <param name="state">The exact local visual-state flags.</param>
     /// <returns>The complete composed semantic appearance.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="state"/> contains unknown flags.</exception>
+    [Pure]
     public ControlAppearance Resolve(VisualState state)
         => ApplyStates(Normal, state);
 
@@ -147,6 +148,7 @@ public sealed class AppearanceStates: IEquatable<AppearanceStates>
     /// underline, a table presenter's grid - uses this rather than rebuilding a whole set.</summary>
     /// <param name="overlay">The partial contributions whose supplied members win.</param>
     /// <returns>A complete composed set.</returns>
+    [Pure]
     public AppearanceStates Compose(AppearanceStatesOverlay overlay) =>
         new(
             overlay.Normal is null ? Normal : Normal.Apply(overlay.Normal.Value),
@@ -164,6 +166,7 @@ public sealed class AppearanceStates: IEquatable<AppearanceStates>
         overlay is null ? baseline : baseline.Overlay(overlay.Value);
 
     /// <summary>Applies these states' contributions to one earlier complete appearance.</summary>
+    [Pure]
     internal ControlAppearance ApplyStates(ControlAppearance appearance, VisualState state)
     {
         // Deliberately NOT ArgumentOutOfRangeException.ThrowIfUndefinedFlags here: this runs on
@@ -227,6 +230,7 @@ public sealed class AppearanceStates: IEquatable<AppearanceStates>
     /// </remarks>
     /// <param name="set">The partial contribution to classify.</param>
     /// <returns>Whether applying it can change the footprint.</returns>
+    [Pure]
     internal static bool ChangesChromeGeometry(AppearanceOverlay set) =>
         set.Border?.Sides.HasValue == true ||
         set.Shadow?.IsVisible.HasValue == true ||

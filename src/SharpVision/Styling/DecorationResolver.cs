@@ -12,6 +12,7 @@ internal static class DecorationResolver
     /// <param name="underline">The optional typed underline override.</param>
     /// <param name="underlineColor">The optional underline-color override.</param>
     /// <returns>The validated, conflict-free semantic decoration fields.</returns>
+    [Pure]
     public static (TerminalAttributes Attributes, Underline Underline, Color UnderlineColor) Resolve(
         TerminalStyle inherited,
         TerminalAttributes? attributes = null,

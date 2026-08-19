@@ -13,6 +13,7 @@ internal static class ControlChrome
         /// <param name="mode">The composition mode that determines vertical shadow units.</param>
         /// <param name="offset">The signed shadow translation.</param>
         /// <returns>The union of the body and translated shadow footprint.</returns>
+        [Pure]
         public Rect ExpandVisualBounds(
             bool hasShadow,
             ShadowMode mode,
@@ -30,6 +31,7 @@ internal static class ControlChrome
     /// <param name="visual">The control's own visual rectangle.</param>
     /// <param name="hardClip">The nearest frame, viewport, or explicit clipping rectangle.</param>
     /// <returns>The finite visible portion of <paramref name="visual"/>.</returns>
+    [Pure]
     public static Rect ResolveVisualClip(
         Rect contentClip,
         Rect body,
@@ -46,6 +48,7 @@ internal static class ControlChrome
     /// to decide whether - and how far - the aperture widens.</param>
     /// <param name="hardClip">The nearest frame, viewport, or explicit clipping rectangle.</param>
     /// <returns>The widened aperture, not yet intersected with <paramref name="extent"/>.</returns>
+    [Pure]
     public static Rect ResolveClipBox(
         Rect contentClip,
         Rect body,
@@ -327,6 +330,7 @@ internal static class ControlChrome
 
     extension(Rect value)
     {
+        [Pure]
         public Rect Shift(Point offset) => new(
             value.X.SaturatingAdd(offset.X),
             value.Y.SaturatingAdd(offset.Y),
@@ -399,6 +403,7 @@ internal static class ControlChrome
 
     extension(Rect left)
     {
+        [Pure]
         public Rect Union(Rect right)
         {
             var x = Math.Min(left.X, right.X);
