@@ -15,6 +15,7 @@ internal static class SixelQuantizer
     /// <param name="blue">The sRGB blue component.</param>
     /// <param name="alpha">Zero for transparency; every other value is opaque.</param>
     /// <returns>A cube index from zero through 215, or <see cref="Transparent"/>.</returns>
+    [Pure]
     public static byte Quantize(byte red, byte green, byte blue, byte alpha)
     {
         if (alpha == 0)
