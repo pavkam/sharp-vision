@@ -3,6 +3,8 @@
 
 namespace SharpVision.Text;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Describes one non-overlapping semantic style slice of parsed visible text.</summary>
 internal readonly record struct StyleSpan
 {
@@ -38,9 +40,11 @@ internal readonly record struct StyleSpan
     }
 
     /// <summary>Gets the zero-based UTF-16 offset into visible text.</summary>
+    [NonNegativeValue]
     public int Offset { get; }
 
     /// <summary>Gets the positive UTF-16 length of the slice.</summary>
+    [NonNegativeValue]
     public int Length { get; }
 
     /// <summary>Gets the foreground override, or null to inherit.</summary>

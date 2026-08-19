@@ -48,6 +48,7 @@ internal readonly record struct Style
     /// <summary>Flattens open facets using last-opened precedence for single-valued groups.</summary>
     /// <param name="open">The ordered active facet list.</param>
     /// <returns>The complete semantic delta at the current visible offset.</returns>
+    [Pure]
     public static Style From(IReadOnlyList<OpenTag> open)
     {
         var attributes = TerminalAttributes.None;
@@ -79,6 +80,7 @@ internal readonly record struct Style
     /// <param name="offset">The non-negative visible UTF-16 offset.</param>
     /// <param name="length">The positive visible UTF-16 length.</param>
     /// <returns>The immutable style slice.</returns>
+    [Pure]
     public StyleSpan ToSpan(int offset, int length) =>
         new(offset, length, Foreground, Background, Attributes, Underline, UnderlineColor, Link);
 }

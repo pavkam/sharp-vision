@@ -19,6 +19,7 @@ internal static class FigletRenderer
     /// <param name="text">The non-null input text.</param>
     /// <param name="options">The validated overrides.</param>
     /// <returns>The composed output.</returns>
+    [Pure]
     public static string Render(FigletFont font, string text, FigletOptions options)
     {
         var direction = options.Direction ?? font.Direction;
@@ -58,6 +59,7 @@ internal static class FigletRenderer
         return output.Replace(font.HardBlank, ' ').ToString();
     }
 
+    [Pure]
     private static StringBuilder[] RenderLine(
         FigletFont font,
         ReadOnlySpan<Rune> runes,
@@ -102,6 +104,7 @@ internal static class FigletRenderer
         return rows;
     }
 
+    [Pure]
     private static int GetOverlap(
         StringBuilder[] left,
         FigletGlyph right,
@@ -172,6 +175,7 @@ internal static class FigletRenderer
         _ = left.Append(right.AsSpan(overlap));
     }
 
+    [Pure]
     private static char Smush(char left, char right, FigletLayout layout, char hardBlank)
     {
         if ((layout & FigletLayout.HorizontalSmushing) == 0)
@@ -252,8 +256,10 @@ internal static class FigletRenderer
             };
     }
 
+    [Pure]
     private static bool IsHierarchy(char value) => Hierarchy(value) >= 0;
 
+    [Pure]
     private static int Hierarchy(char value) => value switch
     {
         '|' => 0,
@@ -265,6 +271,7 @@ internal static class FigletRenderer
         _ => -1
     };
 
+    [Pure]
     private static bool IsOpposite(char left, char right) =>
         (left, right) is ('[', ']') or (']', '[') or ('{', '}') or ('}', '{') or
         ('(', ')') or (')', '(');
@@ -297,6 +304,7 @@ internal static class FigletRenderer
     /// <summary>Measures the common leading blank-column count TrimLeading would remove.</summary>
     /// <param name="rows">The rows composed so far for one logical line.</param>
     /// <returns>The number of leading blank columns shared by every row.</returns>
+    [Pure]
     private static int MeasureLeadingBlank(StringBuilder[] rows)
     {
         var count = rows.Length == 0 ? 0 : rows[0].Length;
@@ -371,6 +379,7 @@ internal static class FigletRenderer
         EnsureLimit(font, outputLength);
     }
 
+    [Pure]
     private static int GetVerticalOverlap(
         List<StringBuilder> top,
         int topWidth,
@@ -398,6 +407,7 @@ internal static class FigletRenderer
     /// accumulated output length, without a flaky wall-clock timing gate.
     /// </param>
     /// <returns>The number of trailing/leading rows that may be merged in place.</returns>
+    [Pure]
     internal static int GetVerticalOverlapCore(
         List<StringBuilder> top,
         int topWidth,
@@ -452,6 +462,7 @@ internal static class FigletRenderer
         return result;
     }
 
+    [Pure]
     private static StringBuilder MergeVertical(
         StringBuilder top,
         StringBuilder bottom,
@@ -477,6 +488,7 @@ internal static class FigletRenderer
         return result;
     }
 
+    [Pure]
     private static char VerticalSmush(
         char top,
         char bottom,
@@ -543,9 +555,11 @@ internal static class FigletRenderer
                 : '\0';
     }
 
+    [Pure]
     private static bool IsVerticalBlank(char value, char hardBlank) =>
         value == ' ' || value == hardBlank;
 
+    [Pure]
     private static char Get(StringBuilder value, int index) =>
         index < value.Length ? value[index] : ' ';
 }

@@ -11,6 +11,7 @@ internal static class Markup
         /// <summary>Parses markup without discarding malformed source fragments.</summary>
         /// <param name="display">The visible text with valid tags removed and escapes resolved.</param>
         /// <returns>Positive spans that tile the complete visible text in source order.</returns>
+        [Pure]
         public StyleSpan[] Parse(out string display)
         {
             var text = new StringBuilder(source.Length);
@@ -82,6 +83,7 @@ internal static class Markup
         /// <summary>Escapes visible text so markup metacharacters round-trip literally.</summary>
         /// <returns>A string with backslash and opening-angle characters escaped.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+        [Pure]
         public string Escape()
         {
             ArgumentNullException.ThrowIfNull(value);
@@ -173,6 +175,7 @@ internal static class Markup
         return true;
     }
 
+    [Pure]
     private static bool TryResolveFacet(
         ReadOnlySpan<char> name,
         ReadOnlySpan<char> value,
@@ -252,6 +255,7 @@ internal static class Markup
         }
     }
 
+    [Pure]
     private static bool TryAttribute(string key, ReadOnlySpan<char> name, out OpenTag tag)
     {
         var attribute = key switch
@@ -272,6 +276,7 @@ internal static class Markup
         return attribute != TerminalAttributes.None;
     }
 
+    [Pure]
     private static bool TryUnderline(ReadOnlySpan<char> value, out Underline underline)
     {
         underline = value.ToString().ToLowerInvariant() switch
@@ -287,6 +292,7 @@ internal static class Markup
         return underline != Underline.None;
     }
 
+    [Pure]
     private static bool TryColor(ReadOnlySpan<char> value, out Color color)
     {
         if (!value.IsEmpty)
@@ -300,6 +306,7 @@ internal static class Markup
         return false;
     }
 
+    [Pure]
     private static bool IsValidLink(ReadOnlySpan<char> value)
     {
         if (value.IsEmpty)

@@ -3,6 +3,8 @@
 
 namespace SharpVision.Text;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Stores directional grapheme-boundary selection endpoints in UTF-16 units.</summary>
 [PublicAPI]
 public readonly record struct Selection
@@ -20,18 +22,23 @@ public readonly record struct Selection
     }
 
     /// <summary>Gets the fixed endpoint used while extending the selection.</summary>
+    [NonNegativeValue]
     public int Anchor { get; }
 
     /// <summary>Gets the active endpoint used for insertion and navigation.</summary>
+    [NonNegativeValue]
     public int Caret { get; }
 
     /// <summary>Gets the normalized inclusive start endpoint.</summary>
+    [NonNegativeValue]
     public int Start => Math.Min(Anchor, Caret);
 
     /// <summary>Gets the normalized UTF-16 length.</summary>
+    [NonNegativeValue]
     public int Length => Math.Abs(Anchor - Caret);
 
     /// <summary>Gets the normalized exclusive end endpoint.</summary>
+    [NonNegativeValue]
     public int End => Math.Max(Anchor, Caret);
 
     /// <summary>Gets whether anchor and caret are the same endpoint.</summary>

@@ -19,12 +19,15 @@ using SharpVision.Controls.Layout;
 
 using ControlCalendar = Controls.Input.Calendar;
 using DisplayText = Controls.Display.Text;
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+using UsedImplicitly = JetBrains.Annotations.UsedImplicitlyAttribute;
 
 /// <summary>Creates strongly typed model relationships for retained SharpVision controls.</summary>
 [PublicAPI]
 public static class BindingExtensions
 {
     /// <summary>Binds nullable model state two-way to a check box.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this CheckBox target,
         TModel source,
@@ -38,6 +41,7 @@ public static class BindingExtensions
             BindingMode.TwoWay);
 
     /// <summary>Binds model state two-way to a radio button.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this RadioButton target,
         TModel source,
@@ -51,6 +55,7 @@ public static class BindingExtensions
             BindingMode.TwoWay);
 
     /// <summary>Binds an integer model value two-way to a slider.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this Slider target,
         TModel source,
@@ -70,6 +75,7 @@ public static class BindingExtensions
     }
 
     /// <summary>Binds an integer model value two-way to a scroll bar.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this ScrollBar target,
         TModel source,
@@ -89,6 +95,7 @@ public static class BindingExtensions
     }
 
     /// <summary>Binds a floating-point model value one-way to a progress bar.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this ProgressBar target,
         TModel source,
@@ -108,6 +115,7 @@ public static class BindingExtensions
     }
 
     /// <summary>Binds observable chart series one-way to a horizontal bar chart.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this HorizontalBarChart target,
         TModel source,
@@ -115,6 +123,7 @@ public static class BindingExtensions
         where TModel : class => BindChartSeries(target, static chart => chart.Series, source, sourceProperty);
 
     /// <summary>Binds observable chart series one-way to a vertical bar chart.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this VerticalBarChart target,
         TModel source,
@@ -122,6 +131,7 @@ public static class BindingExtensions
         where TModel : class => BindChartSeries(target, static chart => chart.Series, source, sourceProperty);
 
     /// <summary>Binds observable chart series one-way to a line chart.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this LineChart target,
         TModel source,
@@ -129,6 +139,7 @@ public static class BindingExtensions
         where TModel : class => BindChartSeries(target, static chart => chart.Series, source, sourceProperty);
 
     /// <summary>Binds observable chart series one-way to an area chart.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this AreaChart target,
         TModel source,
@@ -136,6 +147,7 @@ public static class BindingExtensions
         where TModel : class => BindChartSeries(target, static chart => chart.Series, source, sourceProperty);
 
     /// <summary>Binds zero or one observable chart series one-way to a sparkline.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this Sparkline target,
         TModel source,
@@ -143,6 +155,7 @@ public static class BindingExtensions
         where TModel : class => BindChartSeries(target, static chart => chart.Series, source, sourceProperty);
 
     /// <summary>Binds a color model value two-way to a color picker.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this ColorPicker target,
         TModel source,
@@ -156,6 +169,7 @@ public static class BindingExtensions
             BindingMode.TwoWay);
 
     /// <summary>Binds a selected index two-way to a list.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this ListView target,
         TModel source,
@@ -172,6 +186,7 @@ public static class BindingExtensions
             -1);
 
     /// <summary>Binds a selected index two-way to a combo box.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this ComboBox target,
         TModel source,
@@ -188,6 +203,7 @@ public static class BindingExtensions
             -1);
 
     /// <summary>Binds a selected index two-way to a tab control.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this TabControl target,
         TModel source,
@@ -204,6 +220,7 @@ public static class BindingExtensions
             -1);
 
     /// <summary>Binds a selected index two-way to a menu.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this Menu target,
         TModel source,
@@ -220,6 +237,7 @@ public static class BindingExtensions
             -1);
 
     /// <summary>Binds a nullable date interval two-way to a calendar.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this ControlCalendar target,
         TModel source,
@@ -233,6 +251,7 @@ public static class BindingExtensions
             BindingMode.TwoWay);
 
     /// <summary>Binds a nullable date model value two-way to a date input.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this DateInput target,
         TModel source,
@@ -246,6 +265,7 @@ public static class BindingExtensions
             BindingMode.TwoWay);
 
     /// <summary>Binds a nullable time model value two-way to a time input.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this TimeInput target,
         TModel source,
@@ -259,6 +279,7 @@ public static class BindingExtensions
             BindingMode.TwoWay);
 
     /// <summary>Binds a nullable date-time model value two-way to a date-time input.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this DateTimeInput target,
         TModel source,
@@ -272,6 +293,7 @@ public static class BindingExtensions
             BindingMode.TwoWay);
 
     /// <summary>Binds an expansion state two-way to an expander.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this Expander target,
         TModel source,
@@ -285,6 +307,7 @@ public static class BindingExtensions
             BindingMode.TwoWay);
 
     /// <summary>Binds optional model text one-way to FIGlet text.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this FigletText target,
         TModel source,
@@ -301,6 +324,7 @@ public static class BindingExtensions
             string.Empty);
 
     /// <summary>Binds a command property one-way to a control that opted into the command capability.</summary>
+    [MustDisposeResource]
     public static Binding BindCommand<TModel>(
         this InputBase target,
         TModel source,
@@ -315,6 +339,7 @@ public static class BindingExtensions
 
     /// <summary>Binds a borrowed parameter property one-way to a control that opted into the command
     /// capability.</summary>
+    [MustDisposeResource]
     public static Binding BindCommandParameter<TModel, TValue>(
         this InputBase target,
         TModel source,
@@ -331,6 +356,7 @@ public static class BindingExtensions
             fallbackValue: null);
 
     /// <summary>Binds optional model text one-way to displayed text.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this DisplayText target,
         TModel source,
@@ -347,6 +373,7 @@ public static class BindingExtensions
             string.Empty);
 
     /// <summary>Binds optional model text one-way to a control's caption.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this InputBase target,
         TModel source,
@@ -363,6 +390,7 @@ public static class BindingExtensions
             string.Empty);
 
     /// <summary>Binds optional model text two-way to editable text.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this TextInput target,
         TModel source,
@@ -371,6 +399,7 @@ public static class BindingExtensions
         Bind(target, source, sourceProperty, BindingMode.TwoWay);
 
     /// <summary>Binds optional model text to editable text with an explicit direction.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this TextInput target,
         TModel source,
@@ -388,6 +417,7 @@ public static class BindingExtensions
             string.Empty);
 
     /// <summary>Binds one finite observable item snapshot to a list.</summary>
+    [MustDisposeResource]
     public static Binding BindItems<TModel, TItem>(
         this ListView target,
         TModel source,
@@ -412,6 +442,7 @@ public static class BindingExtensions
     }
 
     /// <summary>Binds one finite observable item snapshot to a combo box.</summary>
+    [MustDisposeResource]
     public static Binding BindItems<TModel, TItem>(
         this ComboBox target,
         TModel source,
@@ -436,6 +467,7 @@ public static class BindingExtensions
     }
 
     /// <summary>Binds one nullable selected item two-way to a single-selection list.</summary>
+    [MustDisposeResource]
     public static Binding BindSelection<TModel, TItem>(
         this ListView target,
         TModel source,
@@ -466,6 +498,7 @@ public static class BindingExtensions
     }
 
     /// <summary>Binds one nullable selected item two-way to a combo box.</summary>
+    [MustDisposeResource]
     public static Binding BindSelection<TModel, TItem>(
         this ComboBox target,
         TModel source,
@@ -489,6 +522,7 @@ public static class BindingExtensions
     }
 
     /// <summary>Binds equal source and target property types with an explicit direction.</summary>
+    [MustDisposeResource]
     public static Binding BindProperty<TControl, TModel, TValue>(
         this TControl target,
         Expression<Func<TControl, TValue>> targetProperty,
@@ -508,6 +542,7 @@ public static class BindingExtensions
             default!);
 
     /// <summary>Binds converted source and target properties with an explicit direction and fallback.</summary>
+    [MustDisposeResource]
     public static Binding BindProperty<TControl, TModel, TSource, TTarget>(
         this TControl target,
         Expression<Func<TControl, TTarget>> targetProperty,
@@ -532,6 +567,7 @@ public static class BindingExtensions
             coordinatesItems: false,
             refreshAfterItems: false);
 
+    [MustDisposeResource]
     private static Binding CreateBinding<TControl, TModel, TSource, TTarget>(
         TControl target,
         Expression<Func<TControl, TTarget>> targetProperty,
@@ -587,6 +623,7 @@ public static class BindingExtensions
         return binding;
     }
 
+    [MustDisposeResource]
     private static Binding BindChartSeries<TControl, TModel>(
         TControl target,
         Expression<Func<TControl, IReadOnlyList<ChartSeries>>> targetProperty,
@@ -687,6 +724,7 @@ public static class BindingExtensions
     }
 
     /// <summary>Binds a selected item two-way to a tree view.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this TreeView target,
         TModel source,
@@ -700,6 +738,7 @@ public static class BindingExtensions
             BindingMode.TwoWay);
 
     /// <summary>Binds model JSON text one-way to a JSON view.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this JsonView target,
         TModel source,
@@ -716,6 +755,7 @@ public static class BindingExtensions
             "null");
 
     /// <summary>Binds a model header text one-way to a tree view item.</summary>
+    [MustDisposeResource]
     public static Binding Bind<TModel>(
         this TreeViewItem target,
         TModel source,
@@ -732,6 +772,15 @@ public static class BindingExtensions
             string.Empty);
 
     /// <summary>Binds a model expansion state two-way to a tree view item.</summary>
+    /// <remarks>
+    /// Reached only from consumer code outside this repository's own tests and showcase; every
+    /// sibling <c>Bind*</c> overload here has an in-repo call site, but this one's shape - a
+    /// dedicated <see cref="TreeViewItem"/> expansion binding distinct from its own
+    /// <c>Bind(TreeViewItem, ...)</c> header overload - is exercised only through the public fluent
+    /// API this type exists to offer, not by anything internal.
+    /// </remarks>
+    [MustDisposeResource]
+    [UsedImplicitly]
     public static Binding BindExpanded<TModel>(
         this TreeViewItem target,
         TModel source,

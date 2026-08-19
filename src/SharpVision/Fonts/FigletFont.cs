@@ -3,6 +3,9 @@
 
 namespace SharpVision.Fonts;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Represents one validated immutable FIGfont version 2 definition.</summary>
 [PublicAPI]
 public sealed class FigletFont
@@ -34,9 +37,11 @@ public sealed class FigletFont
     public string Name { get; }
 
     /// <summary>Gets the fixed glyph height in text rows.</summary>
+    [ValueRange(1, int.MaxValue)]
     public int Height { get; }
 
     /// <summary>Gets the baseline row counted from one.</summary>
+    [NonNegativeValue]
     public int Baseline { get; }
 
     /// <summary>Gets the FIGfont hardblank character.</summary>
@@ -117,6 +122,7 @@ public sealed class FigletFont
     /// <returns>The composed multi-line UTF-16 output.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The output limit would be exceeded.</exception>
+    [Pure]
     public string Render(string text) => Render(text, default);
 
     /// <summary>Renders text using explicit direction or layout overrides.</summary>
@@ -125,6 +131,7 @@ public sealed class FigletFont
     /// <returns>The composed multi-line UTF-16 output.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The output limit would be exceeded.</exception>
+    [Pure]
     public string Render(string text, FigletOptions options)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -134,6 +141,7 @@ public sealed class FigletFont
     /// <summary>Gets a scalar glyph or the question-mark fallback.</summary>
     /// <param name="value">The Unicode scalar value.</param>
     /// <returns>The matching immutable glyph.</returns>
+    [Pure]
     internal FigletGlyph GetGlyph(int value) =>
         _glyphs.TryGetValue(value, out var glyph)
             ? glyph
