@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Discovery;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>Applies one fixed-precedence source of immutable capability evidence.</summary>
 internal interface IDiscoveryStrategy
 {
@@ -14,5 +16,7 @@ internal interface IDiscoveryStrategy
     /// <param name="context">The non-null owned discovery evidence.</param>
     /// <returns>The original or a refined immutable capability snapshot.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="current"/> or <paramref name="context"/> is null.</exception>
+    [Pure]
+    [MustUseReturnValue]
     public TerminalCapabilities Apply(TerminalCapabilities current, DiscoveryContext context);
 }

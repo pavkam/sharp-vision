@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Discovery.Adapters;
 
 using Capabilities;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>
 /// Validates database-origin semantic claims against their exact retained
 /// terminal-description programs.
@@ -24,6 +26,8 @@ internal static class DescriptionEvidenceAdapter
         /// <paramref name="capabilities"/>, <paramref name="description"/>, or
         /// <paramref name="programs"/> is null.
         /// </exception>
+        [Pure]
+        [MustUseReturnValue]
         public TerminalCapabilities Apply(Description description, Programs programs)
         {
             ArgumentNullException.ThrowIfNull(capabilities);

@@ -155,6 +155,7 @@ public sealed class TerminalProfile
     /// <param name="capabilities">The non-null immutable semantic capabilities to retain.</param>
     /// <returns>A new profile using the stable built-in ANSI description.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> is <see langword="null"/>.</exception>
+    [Pure]
     public static TerminalProfile CreateAnsi(TerminalCapabilities capabilities)
     {
         ArgumentNullException.ThrowIfNull(capabilities);
@@ -181,6 +182,7 @@ public sealed class TerminalProfile
     /// <param name="capabilities">The non-null immutable semantic capabilities to publish.</param>
     /// <returns>A new profile retaining all non-semantic terminal-description state.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> is <see langword="null"/>.</exception>
+    [Pure]
     public TerminalProfile WithCapabilities(TerminalCapabilities capabilities)
     {
         ArgumentNullException.ThrowIfNull(capabilities);
@@ -196,6 +198,7 @@ public sealed class TerminalProfile
     /// <summary>Compares all state that can change terminal rendering output.</summary>
     /// <param name="other">The comparison profile.</param>
     /// <returns>Whether capabilities, description semantics, and programs are equivalent.</returns>
+    [Pure]
     internal bool IsRenderingEquivalentTo(TerminalProfile other)
     {
         ArgumentNullException.ThrowIfNull(other);
