@@ -7,19 +7,24 @@ internal static class LayoutMath
 {
     extension(int left)
     {
+        [Pure]
         public int Add(int right) => (int) Math.Clamp((long) left + right, int.MinValue, int.MaxValue);
 
+        [Pure]
         public int SaturatingAdd(int right) =>
             (int) Math.Clamp((long) left + right, int.MinValue, int.MaxValue);
 
+        [Pure]
         public int Negate() => left == int.MinValue ? int.MaxValue : -left;
 
+        [Pure]
         public int Multiply(int right) =>
             (int) Math.Clamp((long) left * right, int.MinValue, int.MaxValue);
     }
 
     extension(int? value)
     {
+        [Pure]
         public int? Subtract(int extent) =>
             value.HasValue ? Math.Max(0, value.Value - extent) : null;
     }

@@ -381,10 +381,12 @@ public sealed class Overlay: Container
         }
     }
 
+    [Pure]
     private static int Fixed(Length? value) => value is { Kind: LengthKind.Cells }
         ? (int) value.Value.Value
         : 0;
 
+    [Pure]
     private static int Outer(
         ControlBase child,
         bool horizontal,
@@ -433,12 +435,15 @@ public sealed class Overlay: Container
 
     // Independently valid offsets and extents may sum past the signed integer
     // range, so subtractive geometry widens before it saturates.
+    [Pure]
     private static int StretchedExtent(int axis, int leading, int trailing) =>
         (int) Math.Clamp((long) axis - leading - trailing, 0, int.MaxValue);
 
+    [Pure]
     private static int TrailingOrigin(int edge, int offset, int extent) =>
         (int) Math.Clamp((long) edge - offset - extent, int.MinValue, int.MaxValue);
 
+    [Pure]
     private static int Resolve(Length? value, int axis)
     {
         Debug.Assert(axis >= 0, "Percentage base axis is non-negative.");
@@ -452,6 +457,7 @@ public sealed class Overlay: Container
         };
     }
 
+    [Pure]
     private static int Percent(int axis, double value)
     {
         Debug.Assert(axis >= 0, "Percentage base axis is non-negative.");

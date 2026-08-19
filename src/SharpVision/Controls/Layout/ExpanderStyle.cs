@@ -5,6 +5,8 @@ namespace SharpVision.Controls.Layout;
 
 using System.Diagnostics.CodeAnalysis;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Defines one complete immutable collapsible-section presentation. This style's own
 /// "expander" theme key falls back to the standard borderless interactive appearance for
 /// anything it does not author itself.</summary>
@@ -76,6 +78,7 @@ public sealed record ExpanderStyle: ControlStyle
 
     /// <summary>Gets the content indent in terminal cells.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The replacement value is negative.</exception>
+    [NonNegativeValue]
     public required int ContentIndent
     {
         get;

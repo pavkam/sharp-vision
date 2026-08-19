@@ -3,6 +3,9 @@
 
 namespace SharpVision.Controls.Layout;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Owns row/column definitions and attached placement for a track Grid.</summary>
 [PublicAPI]
 public sealed class Grid: Container
@@ -34,6 +37,7 @@ public sealed class Grid: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached Grid is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The Grid is disposed.</exception>
+    [NonNegativeValue]
     public int RowSpacing
     {
         get;
@@ -48,6 +52,7 @@ public sealed class Grid: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached Grid is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The Grid is disposed.</exception>
+    [NonNegativeValue]
     public int ColumnSpacing
     {
         get;
@@ -62,24 +67,28 @@ public sealed class Grid: Container
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached row, defaulting to zero.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
+    [NonNegativeValue]
     public static int GetRow(ControlBase control) => GetPlacement(control)?.Row ?? 0;
 
     /// <summary>Gets a control's zero-based attached column.</summary>
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached column, defaulting to zero.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
+    [NonNegativeValue]
     public static int GetColumn(ControlBase control) => GetPlacement(control)?.Column ?? 0;
 
     /// <summary>Gets a control's positive attached row span.</summary>
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached row span, defaulting to one.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
+    [ValueRange(1, int.MaxValue)]
     public static int GetRowSpan(ControlBase control) => GetPlacement(control)?.RowSpan ?? 1;
 
     /// <summary>Gets a control's positive attached column span.</summary>
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached column span, defaulting to one.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
+    [ValueRange(1, int.MaxValue)]
     public static int GetColumnSpan(ControlBase control) => GetPlacement(control)?.ColumnSpan ?? 1;
 
     /// <summary>Sets a control's zero-based attached row.</summary>
@@ -289,6 +298,7 @@ public sealed class Grid: Container
         }
     }
 
+    [Pure]
     private static int Offset(int origin, int extent)
     {
         // A scrolling parent translates the committed Grid origin into negative
@@ -304,6 +314,7 @@ public sealed class Grid: Container
         };
     }
 
+    [Pure]
     private static Track[] Definitions(TrackCollection source)
     {
         Debug.Assert(source is not null, "Grid definitions require a non-null collection.");
@@ -319,6 +330,7 @@ public sealed class Grid: Container
         return result;
     }
 
+    [Pure]
     private static int[] Resolve(
         int? available,
         int spacing,
@@ -349,6 +361,7 @@ public sealed class Grid: Container
         return result;
     }
 
+    [Pure]
     private static int Spacing(int value, int count, int? limit)
     {
         Debug.Assert(value >= 0, "Grid spacing value is non-negative.");
@@ -363,6 +376,7 @@ public sealed class Grid: Container
         return limit.HasValue ? (int) Math.Min(limit.Value, requested) : (int) requested;
     }
 
+    [Pure]
     private static int Sum(ReadOnlySpan<int> values)
     {
         var result = 0;
@@ -427,6 +441,7 @@ public sealed class Grid: Container
         }
     }
 
+    [Pure]
     private static int[] Origins(
         int origin,
         int available,
@@ -651,6 +666,7 @@ public sealed class Grid: Container
         }
     }
 
+    [Pure]
     private static bool IsAutomaticSpan(ReadOnlySpan<Track> definitions, int origin, int span)
     {
         Debug.Assert(span >= 1, "Grid automatic span is positive.");
@@ -667,6 +683,7 @@ public sealed class Grid: Container
         return true;
     }
 
+    [Pure]
     private static int SpanExtent(
         ReadOnlySpan<int> extents,
         int origin,

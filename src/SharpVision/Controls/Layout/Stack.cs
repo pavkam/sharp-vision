@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Layout;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Arranges owned children sequentially on one terminal-cell axis.</summary>
 [SuppressMessage(
     "Naming",
@@ -37,6 +39,7 @@ public sealed class Stack: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int Spacing
     {
         get;
@@ -232,6 +235,7 @@ public sealed class Stack: Container
         }
     }
 
+    [Pure]
     private int CountParticipants()
     {
         var count = 0;
@@ -279,6 +283,7 @@ public sealed class Stack: Container
         Debug.Assert(position == children.Length, "Every participating child must have one track.");
     }
 
+    [Pure]
     private int SumMargins(ReadOnlySpan<ControlBase> children)
     {
         Debug.Assert(children.Length >= 0, "Stack margin sum requires a valid span.");
@@ -333,6 +338,7 @@ public sealed class Stack: Container
         }
     }
 
+    [Pure]
     private int SpacingExtent(int count, int limit)
     {
         Debug.Assert(count >= 0, "Participant count is non-negative.");

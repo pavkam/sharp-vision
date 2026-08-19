@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Layout;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Describes one Table row activation.</summary>
 public sealed class TableRowInvokedEventArgs: EventArgs
 {
@@ -27,6 +29,7 @@ public sealed class TableRowInvokedEventArgs: EventArgs
     public TableRow Row { get; }
 
     /// <summary>Gets the row's current zero-based display index.</summary>
+    [NonNegativeValue]
     public int RowIndex { get; }
 
     /// <summary>Gets the semantic source of activation.</summary>

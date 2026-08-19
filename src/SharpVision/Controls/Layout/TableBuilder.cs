@@ -5,6 +5,8 @@ namespace SharpVision.Controls.Layout;
 
 using DisplayText = Display.Text;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>Builds a configured Table through a fluent column-then-row sequence.</summary>
 [PublicAPI]
 public sealed class TableBuilder
@@ -45,6 +47,7 @@ public sealed class TableBuilder
 
     /// <summary>Materializes the configured Table.</summary>
     /// <returns>A new Table populated with the defined columns and rows.</returns>
+    [MustUseReturnValue]
     public Table Build()
     {
         var table = new Table();

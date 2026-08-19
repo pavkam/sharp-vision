@@ -5,6 +5,8 @@ namespace SharpVision.Controls.Layout;
 
 using Terminal.Rendering;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Owns the private cell realization and scrolling geometry of one <see cref="Table"/>.</summary>
 /// <remarks>
 /// The presenter is deliberately a true <see cref="Container"/>: it owns arbitrary realized cell
@@ -429,8 +431,10 @@ internal sealed class TablePresenter: Container
         }
     }
 
+    [NonNegativeValue]
     internal int ColumnGap => Math.Max(_owner.ColumnSpacing, _owner.ShowGridLines ? _gridLineThickness : 0);
 
+    [NonNegativeValue]
     internal int RowGap => Math.Max(_owner.RowSpacing, _owner.ShowGridLines ? _gridLineThickness : 0);
 
     private void DrawVerticalGridLine(
@@ -462,6 +466,7 @@ internal sealed class TablePresenter: Container
         }
     }
 
+    [Pure]
     private bool IsColumnSeparator(int x)
     {
         var line = ContentSlot.X;
@@ -540,10 +545,13 @@ internal sealed class TablePresenter: Container
         }
     }
 
+    [Pure]
     private int GapWidth(int count) => count < 2 ? 0 : Multiply(ColumnGap, count - 1);
 
+    [Pure]
     private int GapHeight(int count) => count < 2 ? 0 : Multiply(RowGap, count - 1);
 
+    [Pure]
     private static int Sum(IEnumerable<int> values)
     {
         var total = 0;
@@ -556,5 +564,6 @@ internal sealed class TablePresenter: Container
         return total;
     }
 
+    [Pure]
     private static int Multiply(int value, int count) => (int) Math.Min(int.MaxValue, (long) value * count);
 }
