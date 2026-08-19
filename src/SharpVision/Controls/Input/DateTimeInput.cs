@@ -760,8 +760,10 @@ public sealed class DateTimeInput: InputBase
     private bool ClearValue() =>
         AllowNull && _value.HasValue && Commit(null);
 
+    [Pure]
     private static bool IsDigit(Rune character) => TemporalSegmentClassification.IsDigit(character);
 
+    [Pure]
     private static bool IsAmPmToggle(Rune character) => TemporalSegmentClassification.IsAmPmToggle(character);
 
     #endregion
@@ -808,6 +810,7 @@ public sealed class DateTimeInput: InputBase
         PushCalendarSelection(DateOnly.FromDateTime(now));
     }
 
+    [Pure]
     private DateTime ClampToRange(DateTime dateTime) => dateTime.Clamp(Minimum, Maximum);
 
     private void ClampCurrentValue()
@@ -983,6 +986,7 @@ public sealed class DateTimeInput: InputBase
     }
 
 #pragma warning disable IDE0072 // Every segment kind is individually handled.
+    [Pure]
     private static int MaxValueFor(TemporalSegmentKind kind, bool hasAmPm) =>
         kind switch
         {
@@ -999,6 +1003,7 @@ public sealed class DateTimeInput: InputBase
 
     #region Date arithmetic helpers
 
+    [Pure]
     private static DateTime ReplaceMonth(DateTime dt, int month)
     {
         var (year, resolvedMonth, day) = TemporalCalendarArithmetic.ReplaceMonth(dt.Year, dt.Day, month);
@@ -1009,18 +1014,21 @@ public sealed class DateTimeInput: InputBase
     // same year and month this clamp itself recomputes - so the clamp below never actually
     // fires. Kept as a thin adapter, rather than inlined at each call site, purely for symmetry
     // with ReplaceMonth/ReplaceYear above.
+    [Pure]
     private static DateTime ReplaceDay(DateTime dt, int day)
     {
         var (year, month, clampedDay) = TemporalCalendarArithmetic.ClampDayOfMonth(dt.Year, dt.Month, day);
         return new DateTime(year, month, clampedDay, dt.Hour, dt.Minute, dt.Second, dt.Kind);
     }
 
+    [Pure]
     private static DateTime ReplaceYear(DateTime dt, int year)
     {
         var (clampedYear, month, day) = TemporalCalendarArithmetic.ReplaceYear(dt.Month, dt.Day, year);
         return new DateTime(clampedYear, month, day, dt.Hour, dt.Minute, dt.Second, dt.Kind);
     }
 
+    [Pure]
     private static DateTime SafeAddMonths(DateTime dt, int delta)
     {
         try
@@ -1033,6 +1041,7 @@ public sealed class DateTimeInput: InputBase
         }
     }
 
+    [Pure]
     private static DateTime SafeAddDays(DateTime dt, int delta)
     {
         try
@@ -1045,12 +1054,14 @@ public sealed class DateTimeInput: InputBase
         }
     }
 
+    [Pure]
     private static DateTime SafeAddYears(DateTime dt, int delta)
     {
         var year = dt.Year + delta;
         return year is < 1 or > 9999 ? dt : ReplaceYear(dt, year);
     }
 
+    [Pure]
     private static DateTime SafeAddTicks(DateTime dateTime, long ticks)
     {
         try
@@ -1063,6 +1074,7 @@ public sealed class DateTimeInput: InputBase
         }
     }
 
+    [Pure]
     private static int To24Hour(int hour12, bool isPm) => TemporalSegmentClassification.To24Hour(hour12, isPm);
 
     #endregion

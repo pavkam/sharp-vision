@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Input;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Converts deterministic RGB and HSV values for color controls.</summary>
 internal static class ColorMath
 {
@@ -13,7 +15,8 @@ internal static class ColorMath
         /// <param name="saturation">The saturation from zero through one.</param>
         /// <param name="value">The value from zero through one.</param>
         /// <returns>The nearest 8-bit RGB color.</returns>
-        public static Color FromHsv(int hue, double saturation, double value)
+        [Pure]
+        public static Color FromHsv([ValueRange(0, 359)] int hue, double saturation, double value)
         {
             Debug.Assert(hue is >= 0 and < 360, "Hue is normalized before conversion.");
             Debug.Assert(saturation is >= 0 and <= 1, "Saturation is normalized before conversion.");
@@ -67,7 +70,7 @@ internal static class ColorMath
         /// <param name="hue">Receives hue from zero through 359.</param>
         /// <param name="saturation">Receives saturation from zero through one.</param>
         /// <param name="value">Receives value from zero through one.</param>
-        public void ToHsv(out int hue, out double saturation, out double value)
+        public void ToHsv([ValueRange(0, 359)] out int hue, out double saturation, out double value)
         {
             Debug.Assert(color.IsRgb, "Palette colors are resolved before HSV conversion.");
             var red = color.Red / 255d;
@@ -99,6 +102,7 @@ internal static class ColorMath
 
         /// <summary>Chooses black or white foreground for one RGB background.</summary>
         /// <returns>Black for light colors; otherwise white.</returns>
+        [Pure]
         public Color Contrast()
         {
             Debug.Assert(color.IsRgb, "Contrast receives resolved RGB.");

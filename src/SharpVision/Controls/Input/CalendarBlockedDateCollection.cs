@@ -112,6 +112,7 @@ public sealed class CalendarBlockedDateCollection: IReadOnlyCollection<DateInter
     /// <summary>Determines whether one date is blocked.</summary>
     /// <param name="date">The date to search for.</param>
     /// <returns>True when a normalized range contains <paramref name="date"/>.</returns>
+    [Pure]
     public bool Contains(DateOnly date)
     {
         var low = 0;
@@ -142,6 +143,7 @@ public sealed class CalendarBlockedDateCollection: IReadOnlyCollection<DateInter
     /// <summary>Determines whether any blocked range intersects an interval.</summary>
     /// <param name="interval">The inclusive interval to test.</param>
     /// <returns>True when at least one date in <paramref name="interval"/> is blocked.</returns>
+    [Pure]
     internal bool Intersects(DateInterval interval)
     {
         foreach (var blocked in _ranges)

@@ -382,8 +382,10 @@ public sealed class TimeInput: InputBase
     private bool ClearValue() =>
         AllowNull && _value.HasValue && Commit(null);
 
+    [Pure]
     private static bool IsDigit(Rune character) => TemporalSegmentClassification.IsDigit(character);
 
+    [Pure]
     private static bool IsAmPmToggle(Rune character) => TemporalSegmentClassification.IsAmPmToggle(character);
 
     #endregion
@@ -524,6 +526,7 @@ public sealed class TimeInput: InputBase
         _value = ClampToRange(TimeOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime));
     }
 
+    [Pure]
     private TimeOnly ClampToRange(TimeOnly time) => time.Clamp(Minimum, Maximum);
 
     private void ClampCurrentValue()
@@ -574,6 +577,7 @@ public sealed class TimeInput: InputBase
         }
     }
 
+    [Pure]
     private static TerminalStyle SegmentHighlightStyle(TerminalStyle source) => new(
         source.Foreground,
         source.Background,
@@ -661,6 +665,7 @@ public sealed class TimeInput: InputBase
     }
 
 #pragma warning disable IDE0072 // Month, Day, Year, and AmPmDesignator are unreachable from TimeInput's time-only layout.
+    [Pure]
     private static int MaxValueFor(TemporalSegmentKind kind, bool hasAmPm) =>
         kind switch
         {

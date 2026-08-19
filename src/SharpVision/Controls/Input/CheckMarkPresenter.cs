@@ -17,6 +17,7 @@ internal static class CheckMarkPresenter
         /// <param name="state">The checked, unchecked, or indeterminate state.</param>
         /// <param name="ambiguousWidth">The active ambiguous-width policy.</param>
         /// <returns>The exact cells to draw, three wide for brackets and one otherwise.</returns>
+        [Pure]
         internal string Format(bool? state, Ambiguous ambiguousWidth)
         {
             var resolved = Resolve(mark, state, ambiguousWidth);
@@ -31,6 +32,7 @@ internal static class CheckMarkPresenter
         "Style",
         "IDE0051:Remove unused private members",
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    [Pure]
     private static Rune Resolve(CheckMark mark, bool? state, Ambiguous ambiguousWidth)
     {
         var selection = ControlGlyphs.Selection;

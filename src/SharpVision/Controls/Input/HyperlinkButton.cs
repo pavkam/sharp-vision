@@ -137,6 +137,7 @@ public sealed class HyperlinkButton: InputBase, IStyled<HyperlinkButtonStyle>
         set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
     }
 
+    [Pure]
     private static int? DeflateConstraint(int? value, int inset) =>
         value.HasValue ? Math.Max(0, value.Value - inset) : null;
 }

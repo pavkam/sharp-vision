@@ -86,6 +86,7 @@ public sealed record ButtonStyle: InputStyle
             SemanticDecoration.Shadow),
         new Thickness(horizontal: 2, vertical: 0));
 
+    [Pure]
     private static bool PressedTranslationChanged(
         ButtonStyle previous,
         Theme? previousTheme,
@@ -118,6 +119,7 @@ public sealed record ButtonStyle: InputStyle
         return false;
     }
 
+    [Pure]
     private static Point ResolvePressedTranslation(Shadow shadow) => !shadow.IsVisible
         ? default
         : shadow.Mode == ShadowMode.FractionalBlock

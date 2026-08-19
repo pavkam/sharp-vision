@@ -5,6 +5,8 @@ namespace SharpVision.Controls.Input;
 
 using SharpVision.Terminal.Input;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Edits one signed integer value along a focusable horizontal or vertical rail.</summary>
 [PublicAPI]
 public sealed class Slider: ControlBase, IStyled<SliderStyle>
@@ -108,6 +110,7 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int SmallChange
     {
         get;
@@ -122,6 +125,7 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int LargeChange
     {
         get;

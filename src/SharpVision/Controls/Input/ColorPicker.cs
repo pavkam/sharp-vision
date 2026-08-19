@@ -256,6 +256,7 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
     // no such backdrop, so only HueSlider's forwarded Face is pinned transparent here - an opaque
     // ColorPickerStyle.SliderStyle.Face.Background must not reach HueSlider's resolved appearance,
     // or Slider.OnRenderContent clears the gradient out from under it before drawing.
+    [Pure]
     private static SliderStyle? HueSliderStyle(SliderStyle? sliderStyle) => sliderStyle is null
         ? null
         : sliderStyle with { Face = sliderStyle.Face with { Background = Color.Transparent } };
