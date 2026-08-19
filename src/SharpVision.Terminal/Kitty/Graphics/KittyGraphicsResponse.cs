@@ -57,6 +57,7 @@ public sealed class KittyGraphicsResponse
     /// <param name="value">The complete borrowed APC payload without framing.</param>
     /// <param name="limits">Optional finite metadata policy.</param>
     /// <returns>An owned valid response or redacted invalid value.</returns>
+    [Pure]
     public static KittyGraphicsResponse Parse(ReadOnlySpan<byte> value, KittyMetadataLimits? limits = null)
     {
         var policy = limits ?? KittyMetadataLimits.Default;
@@ -160,6 +161,7 @@ public sealed class KittyGraphicsResponse
     public override string ToString() =>
         $"KittyGraphicsResponse valid={Valid} image={ImageId} placement={PlacementId} success={Succeeded}";
 
+    [Pure]
     private static KittyGraphicsResponse Invalid(DiagnosticCode code, int discardedBytes) => new(
         isValid: false,
         imageId: 0,
@@ -169,6 +171,7 @@ public sealed class KittyGraphicsResponse
         message: null,
         new Diagnostic(code, SequenceKind.Apc, offset: 0, discardedBytes));
 
+    [Pure]
     private static bool IsPrintable(ReadOnlySpan<byte> value)
     {
         if (value.IsEmpty)
@@ -187,6 +190,7 @@ public sealed class KittyGraphicsResponse
         return true;
     }
 
+    [Pure]
     private static bool TryParseIdentifier(ReadOnlySpan<byte> value, out uint result)
     {
         result = 0;

@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Kitty.Graphics;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>Owns a finite process-local set of nonzero protocol identifiers.</summary>
 internal sealed class KittyGraphicsIdentifierAllocator
 {
@@ -21,6 +23,8 @@ internal sealed class KittyGraphicsIdentifierAllocator
     /// <summary>Rents one inactive nonzero identifier without allocation.</summary>
     /// <returns>The newly active identifier.</returns>
     /// <exception cref="InvalidOperationException">Every bounded identifier is active.</exception>
+    [MustUseReturnValue(
+        "Discarding the rented identifier leaks it: Return requires the exact value Rent returned.")]
     public uint Rent()
     {
         for (var count = 0; count < _active.Length - 1; count++)

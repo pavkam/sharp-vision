@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Kitty.Graphics;
 
 using Capabilities;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>Correlates exactly one Kitty graphics response and rejects identifier reuse.</summary>
 [PublicAPI]
 public sealed class KittyGraphicsTransaction
@@ -31,6 +33,7 @@ public sealed class KittyGraphicsTransaction
     /// <param name="response">The non-null response.</param>
     /// <returns>Matched, duplicate, or unknown correlation.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="response"/> is null.</exception>
+    [MustUseReturnValue]
     public QueryMatch Accept(KittyGraphicsResponse response)
     {
         ArgumentNullException.ThrowIfNull(response);

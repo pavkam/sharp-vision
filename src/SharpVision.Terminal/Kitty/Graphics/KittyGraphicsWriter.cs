@@ -6,6 +6,8 @@ namespace SharpVision.Terminal.Kitty.Graphics;
 using SharpVision.Terminal.Clipboard;
 using SharpVision.Terminal.Graphics;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>Encodes validated direct Kitty graphics APC commands with finite canonical chunking.</summary>
 [PublicAPI]
 public static class KittyGraphicsWriter
@@ -142,12 +144,14 @@ public static class KittyGraphicsWriter
 
     #region Metadata and framing
 
+    [MustUseReturnValue]
     private static int Append(Span<byte> destination, int position, ReadOnlySpan<byte> value)
     {
         value.CopyTo(destination[position..]);
         return checked(position + value.Length);
     }
 
+    [MustUseReturnValue]
     private static int Append(Span<byte> destination, int position, byte key, int value)
     {
         destination[position++] = key;
@@ -158,6 +162,7 @@ public static class KittyGraphicsWriter
             : position + written;
     }
 
+    [MustUseReturnValue]
     private static int Append(Span<byte> destination, int position, byte key, uint value)
     {
         destination[position++] = key;
@@ -168,6 +173,7 @@ public static class KittyGraphicsWriter
             : position + written;
     }
 
+    [MustUseReturnValue]
     private static int AppendField(Span<byte> destination, int position, byte key, int value)
     {
         if (position != 0)
@@ -178,6 +184,7 @@ public static class KittyGraphicsWriter
         return Append(destination, position, key, value);
     }
 
+    [MustUseReturnValue]
     private static int AppendField(Span<byte> destination, int position, byte key, uint value)
     {
         if (position != 0)
@@ -188,6 +195,7 @@ public static class KittyGraphicsWriter
         return Append(destination, position, key, value);
     }
 
+    [MustUseReturnValue]
     private static int AppendLiteralField(
         Span<byte> destination,
         int position,
@@ -205,6 +213,7 @@ public static class KittyGraphicsWriter
         return position;
     }
 
+    [MustUseReturnValue]
     private static int BuildMetadata(KittyGraphicsCommand command, Span<byte> destination)
     {
         var position = 0;
@@ -297,6 +306,7 @@ public static class KittyGraphicsWriter
             : AppendField(destination, position, (byte) 'q', command.Quiet);
     }
 
+    [MustUseReturnValue]
     private static int Encode(ReadOnlySpan<byte> payload, Span<byte> destination) =>
         payload.EncodeBase64OrThrow(destination, "A bounded Kitty chunk failed Base64 encoding.");
 

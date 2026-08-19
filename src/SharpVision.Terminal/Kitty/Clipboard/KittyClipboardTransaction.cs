@@ -6,6 +6,9 @@ namespace SharpVision.Terminal.Kitty.Clipboard;
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Clipboard;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>
 /// Enforces bounded Kitty OSC 5522 read or write response ordering.
 /// </summary>
@@ -85,6 +88,7 @@ public sealed class KittyClipboardTransaction: IDisposable
     /// <param name="queryLimits">Optional immutable query limits bounding the transaction deadline.</param>
     /// <returns>The new read transaction.</returns>
     /// <exception cref="ArgumentException"><paramref name="id"/> is invalid.</exception>
+    [MustDisposeResource]
     public static KittyClipboardTransaction Read(
         TransferLimits? limits = null,
         string? id = null,
@@ -100,6 +104,7 @@ public sealed class KittyClipboardTransaction: IDisposable
     /// <param name="queryLimits">Optional immutable query limits bounding the transaction deadline.</param>
     /// <returns>The new write transaction.</returns>
     /// <exception cref="ArgumentException"><paramref name="id"/> is invalid.</exception>
+    [MustDisposeResource]
     public static KittyClipboardTransaction Write(
         TransferLimits? limits = null,
         string? id = null,
@@ -112,6 +117,7 @@ public sealed class KittyClipboardTransaction: IDisposable
     /// <returns>How the packet affected the transaction.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="packet"/> is null.</exception>
     /// <exception cref="ObjectDisposedException">The transaction is disposed.</exception>
+    [MustUseReturnValue]
     public KittyClipboardAcceptResult Accept(KittyClipboardPacket packet)
     {
         ObjectDisposedException.ThrowIf(State == KittyClipboardTransactionState.Disposed, this);
@@ -176,6 +182,7 @@ public sealed class KittyClipboardTransaction: IDisposable
     /// <summary>Checks the injected clock and times out an expired transaction.</summary>
     /// <returns><see langword="true"/> when this call caused timeout.</returns>
     /// <exception cref="ObjectDisposedException">The transaction is disposed.</exception>
+    [MustUseReturnValue]
     public bool CheckTimeout()
     {
         ObjectDisposedException.ThrowIf(State == KittyClipboardTransactionState.Disposed, this);
@@ -345,6 +352,7 @@ public sealed class KittyClipboardTransaction: IDisposable
         return KittyClipboardAcceptResult.Failed;
     }
 
+    [Pure]
     private static bool IsError(KittyClipboardReplyStatus status) => status is
         KittyClipboardReplyStatus.Io or
         KittyClipboardReplyStatus.Invalid or

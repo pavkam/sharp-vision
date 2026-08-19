@@ -5,6 +5,7 @@ namespace SharpVision.Terminal.Kitty.Clipboard;
 
 using SharpVision.Terminal.Clipboard;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
 
 /// <summary>
 /// Encodes canonical Kitty OSC 5522 clipboard requests and MIME data packets.
@@ -203,9 +204,11 @@ public static class KittyClipboardWriter
     public static void PasteEvents(ProtocolWriter writer, bool enabled) =>
         ProtocolModes.ClipboardPasteEvents(writer, enabled);
 
+    [MustUseReturnValue]
     private static int AppendBase64(ReadOnlySpan<byte> value, Span<byte> destination) =>
         value.EncodeBase64OrThrow(destination, "Validated metadata failed Base64 encoding.");
 
+    [MustUseReturnValue]
     private static int AppendLiteral(ReadOnlySpan<byte> value, Span<byte> destination, int position)
     {
         value.CopyTo(destination[position..]);
