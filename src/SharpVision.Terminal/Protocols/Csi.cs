@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Protocols;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>
 /// Encodes typed control sequence commands used by the terminal runtime.
 /// </summary>
@@ -23,7 +25,7 @@ public static class Csi
     /// <paramref name="direction"/> is unknown or <paramref name="count"/> is
     /// not positive.
     /// </exception>
-    public static void Move(ProtocolWriter writer, Movement direction, int count = 1)
+    public static void Move(ProtocolWriter writer, Movement direction, [ValueRange(1, int.MaxValue)] int count = 1)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
 
@@ -47,7 +49,7 @@ public static class Csi
     /// <param name="row">The one-based row.</param>
     /// <param name="column">The one-based column.</param>
     /// <exception cref="ArgumentOutOfRangeException">A coordinate is not positive.</exception>
-    public static void Position(ProtocolWriter writer, int row, int column)
+    public static void Position(ProtocolWriter writer, [ValueRange(1, int.MaxValue)] int row, [ValueRange(1, int.MaxValue)] int column)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(row);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(column);
@@ -85,42 +87,42 @@ public static class Csi
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="count">The positive number of characters.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is not positive.</exception>
-    public static void InsertCharacters(ProtocolWriter writer, int count = 1) =>
+    public static void InsertCharacters(ProtocolWriter writer, [ValueRange(1, int.MaxValue)] int count = 1) =>
         WritePositive(writer, count, (byte) '@');
 
     /// <summary>Deletes characters at the cursor.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="count">The positive number of characters.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is not positive.</exception>
-    public static void DeleteCharacters(ProtocolWriter writer, int count = 1) =>
+    public static void DeleteCharacters(ProtocolWriter writer, [ValueRange(1, int.MaxValue)] int count = 1) =>
         WritePositive(writer, count, (byte) 'P');
 
     /// <summary>Inserts blank lines at the cursor row.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="count">The positive number of lines.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is not positive.</exception>
-    public static void InsertLines(ProtocolWriter writer, int count = 1) =>
+    public static void InsertLines(ProtocolWriter writer, [ValueRange(1, int.MaxValue)] int count = 1) =>
         WritePositive(writer, count, (byte) 'L');
 
     /// <summary>Deletes lines at the cursor row.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="count">The positive number of lines.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is not positive.</exception>
-    public static void DeleteLines(ProtocolWriter writer, int count = 1) =>
+    public static void DeleteLines(ProtocolWriter writer, [ValueRange(1, int.MaxValue)] int count = 1) =>
         WritePositive(writer, count, (byte) 'M');
 
     /// <summary>Scrolls display content upward.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="count">The positive number of lines.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is not positive.</exception>
-    public static void ScrollUp(ProtocolWriter writer, int count = 1) =>
+    public static void ScrollUp(ProtocolWriter writer, [ValueRange(1, int.MaxValue)] int count = 1) =>
         WritePositive(writer, count, (byte) 'S');
 
     /// <summary>Scrolls display content downward.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="count">The positive number of lines.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is not positive.</exception>
-    public static void ScrollDown(ProtocolWriter writer, int count = 1) =>
+    public static void ScrollDown(ProtocolWriter writer, [ValueRange(1, int.MaxValue)] int count = 1) =>
         WritePositive(writer, count, (byte) 'T');
 
     /// <summary>Saves the current cursor position using ANSI CSI s.</summary>
@@ -159,7 +161,7 @@ public static class Csi
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="mode">The positive private mode number.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="mode"/> is not positive.</exception>
-    public static void QueryPrivateMode(ProtocolWriter writer, int mode)
+    public static void QueryPrivateMode(ProtocolWriter writer, [ValueRange(1, int.MaxValue)] int mode)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(mode);
 

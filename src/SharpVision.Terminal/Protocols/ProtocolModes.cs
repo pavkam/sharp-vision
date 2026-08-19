@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Protocols;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>
 /// Encodes DEC private modes required by lifecycle, input, and output handling.
 /// </summary>
@@ -20,7 +22,7 @@ public static class ProtocolModes
     /// <param name="mode">The positive private mode number.</param>
     /// <param name="enabled"><see langword="true"/> for DECSET; otherwise DECRST.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="mode"/> is not positive.</exception>
-    public static void SetPrivate(ProtocolWriter writer, int mode, bool enabled)
+    public static void SetPrivate(ProtocolWriter writer, [ValueRange(1, int.MaxValue)] int mode, bool enabled)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(mode);
 

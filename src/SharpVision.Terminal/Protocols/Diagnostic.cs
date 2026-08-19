@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Protocols;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>
 /// Describes a protocol condition without retaining untrusted or sensitive
 /// payload bytes.
@@ -20,8 +22,8 @@ public readonly record struct Diagnostic
     public Diagnostic(
         DiagnosticCode code,
         SequenceKind kind,
-        long offset,
-        long discardedBytes)
+        [NonNegativeValue] long offset,
+        [NonNegativeValue] long discardedBytes)
     {
         ArgumentOutOfRangeException.ThrowIfNotDefined(code, nameof(code), "The diagnostic code is unknown.");
 
@@ -62,11 +64,13 @@ public readonly record struct Diagnostic
     /// <summary>
     /// Gets the zero-based stream byte offset.
     /// </summary>
+    [NonNegativeValue]
     public long Offset { get; }
 
     /// <summary>
     /// Gets the number of bytes discarded during recovery.
     /// </summary>
+    [NonNegativeValue]
     public long DiscardedBytes { get; }
 
     /// <summary>

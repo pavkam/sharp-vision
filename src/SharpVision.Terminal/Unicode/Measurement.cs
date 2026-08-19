@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Unicode;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Reports whole-span terminal cell measurement.</summary>
 [PublicAPI]
 public readonly record struct Measurement
@@ -12,7 +14,10 @@ public readonly record struct Measurement
     /// <param name="graphemes">The non-negative grapheme count.</param>
     /// <param name="controls">The non-negative control-cluster count.</param>
     /// <exception cref="ArgumentOutOfRangeException">A count is negative.</exception>
-    public Measurement(int cells, int graphemes, int controls)
+    public Measurement(
+        [NonNegativeValue] int cells,
+        [NonNegativeValue] int graphemes,
+        [NonNegativeValue] int controls)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(cells);
         ArgumentOutOfRangeException.ThrowIfNegative(graphemes);
@@ -24,12 +29,15 @@ public readonly record struct Measurement
     }
 
     /// <summary>Gets the printable terminal-cell count.</summary>
+    [NonNegativeValue]
     public int Cells { get; }
 
     /// <summary>Gets the extended-grapheme count.</summary>
+    [NonNegativeValue]
     public int Graphemes { get; }
 
     /// <summary>Gets the contextual control-cluster count.</summary>
+    [NonNegativeValue]
     public int Controls { get; }
 
     /// <summary>Deconstructs the whole-span measurement.</summary>
