@@ -3,6 +3,8 @@
 
 namespace SharpVision.Input;
 
+using InstantHandle = JetBrains.Annotations.InstantHandleAttribute;
+
 /// <summary>Parses a .NET custom date/time format pattern into an ordered sequence of literal and
 /// editable-token runs, and formats a value against that same pattern one segment at a time.</summary>
 /// <remarks>
@@ -21,6 +23,7 @@ internal static class TemporalPatternSegmenter
     /// <param name="culture">Supplies <see cref="DateTimeFormatInfo.DateSeparator"/> and <see cref="DateTimeFormatInfo.TimeSeparator"/> for unquoted '/' and ':' literals.</param>
     /// <returns>The pattern's literal and editable runs, in left-to-right order.</returns>
     /// <exception cref="ArgumentNullException">Any parameter is null.</exception>
+    [Pure]
     public static IReadOnlyList<PatternSegment> ParseTokens(
         string pattern,
         IReadOnlyDictionary<char, TemporalSegmentKind> tokenKinds,
@@ -119,11 +122,12 @@ internal static class TemporalPatternSegmenter
     /// <returns>The rendered text for each entry in <paramref name="tokens"/>, in the same order.</returns>
     /// <exception cref="ArgumentNullException">Any parameter is null.</exception>
     /// <exception cref="InvalidOperationException">The formatted value exhausts all available marker characters.</exception>
+    [Pure]
     public static IReadOnlyList<string> FormatSegments(
         string pattern,
         IReadOnlyList<PatternSegment> tokens,
         IReadOnlyDictionary<char, TemporalSegmentKind> tokenKinds,
-        Func<string, string> formatter)
+        [InstantHandle] Func<string, string> formatter)
     {
         ArgumentNullException.ThrowIfNull(pattern);
         ArgumentNullException.ThrowIfNull(tokens);

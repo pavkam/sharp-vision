@@ -18,6 +18,7 @@ internal static class ActivationModifiers
     {
         /// <summary>Gets whether a keyboard stroke carrying these modifiers may activate a control.</summary>
         /// <returns>True when no modifier beyond Shift and the lock keys is held.</returns>
+        [Pure]
         public bool IsActivationEligible() => (modifiers & ~_allowedModifiers) == 0;
     }
 }

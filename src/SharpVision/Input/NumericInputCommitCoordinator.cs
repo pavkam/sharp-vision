@@ -174,6 +174,7 @@ internal sealed class NumericInputCommitCoordinator
     }
 
     /// <summary>Clamps a value into the caller's current Minimum/Maximum.</summary>
+    [Pure]
     public decimal ClampToRange(decimal value) => value.Clamp(_getMinimum(), _getMaximum());
 
     /// <summary>Applies one step increment or decrement from the currently committed value (or zero

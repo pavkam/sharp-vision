@@ -78,6 +78,7 @@ public readonly record struct KeyGesture
     /// character (for <see cref="Code.Character"/>), and modifiers - lock keys excluded - match
     /// this gesture exactly.
     /// </returns>
+    [Pure]
     public bool Matches(in Stroke stroke) =>
         stroke.Action == KeyAction.Press &&
         stroke.Code == Code &&

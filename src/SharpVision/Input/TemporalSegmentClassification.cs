@@ -5,6 +5,8 @@ namespace SharpVision.Input;
 
 using SharpVision.Terminal.Input;
 
+using InstantHandle = JetBrains.Annotations.InstantHandleAttribute;
+
 /// <summary>
 /// Implements the shared AM/PM designator toggle, pointer-driven segment activation, and
 /// digit/AM-PM keystroke classification used by every 12-hour-capable segmented temporal field
@@ -33,8 +35,8 @@ internal static class TemporalSegmentClassification
     /// <returns>True if the value changed.</returns>
     /// <exception cref="ArgumentNullException">Any parameter is null.</exception>
     public static bool ToggleAmPm(
-        Func<IReadOnlyList<SegmentDescriptor>> segmentsProvider,
-        Func<bool> hasValue,
+        [InstantHandle] Func<IReadOnlyList<SegmentDescriptor>> segmentsProvider,
+        [InstantHandle] Func<bool> hasValue,
         SegmentFieldBehavior segments)
     {
         ArgumentNullException.ThrowIfNull(segmentsProvider);
@@ -63,8 +65,9 @@ internal static class TemporalSegmentClassification
     /// <param name="kind">The segment kind to locate.</param>
     /// <returns>The editable-segment index, or -1 when the layout has no segment of that kind.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="segmentsProvider"/> is null.</exception>
+    [Pure]
     public static int FindEditableIndex(
-        Func<IReadOnlyList<SegmentDescriptor>> segmentsProvider,
+        [InstantHandle] Func<IReadOnlyList<SegmentDescriptor>> segmentsProvider,
         TemporalSegmentKind kind)
     {
         ArgumentNullException.ThrowIfNull(segmentsProvider);
@@ -94,22 +97,26 @@ internal static class TemporalSegmentClassification
     /// effective 12-versus-24-hour policy for editing the hour segment.</summary>
     /// <param name="segmentsProvider">Returns the current, possibly culture- or format-dependent, segment layout.</param>
     /// <exception cref="ArgumentNullException"><paramref name="segmentsProvider"/> is null.</exception>
-    public static bool HasAmPmDesignator(Func<IReadOnlyList<SegmentDescriptor>> segmentsProvider) =>
+    [Pure]
+    public static bool HasAmPmDesignator([InstantHandle] Func<IReadOnlyList<SegmentDescriptor>> segmentsProvider) =>
         FindEditableIndex(segmentsProvider, TemporalSegmentKind.AmPmDesignator) >= 0;
 
     /// <summary>Reports whether a typed character is an ASCII decimal digit.</summary>
+    [Pure]
     public static bool IsDigit(Rune character) =>
         character.Value is >= '0' and <= '9';
 
     /// <summary>Reports whether a typed character is the fixed "a"/"p" AM/PM toggle shortcut,
     /// independent of <see cref="Controls.Input.TimeInput.Culture"/> or <see
     /// cref="Controls.Input.DateTimeInput.Culture"/>'s own localized designator text.</summary>
+    [Pure]
     public static bool IsAmPmToggle(Rune character) =>
         character.Value is 'a' or 'A' or 'p' or 'P';
 
     /// <summary>Converts a clamped 1-12 hour and an AM/PM flag to its 0-23 24-hour equivalent.</summary>
     /// <param name="hour12">The 1-12 hour value.</param>
     /// <param name="isPm">Whether the hour is in the PM half of the day.</param>
+    [Pure]
     public static int To24Hour(int hour12, bool isPm) =>
         hour12 == 12 ? isPm ? 12 : 0 : isPm ? hour12 + 12 : hour12;
 
@@ -137,7 +144,7 @@ internal static class TemporalSegmentClassification
         Ambiguous ambiguousWidth,
         SegmentFieldBehavior segments,
         bool isFocused,
-        Func<bool> requestFocus)
+        [InstantHandle] Func<bool> requestFocus)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
         ArgumentNullException.ThrowIfNull(segments);

@@ -3,6 +3,9 @@
 
 namespace SharpVision.Input;
 
+using InstantHandle = JetBrains.Annotations.InstantHandleAttribute;
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Advances a collection index by accumulating realized item extents toward a target.</summary>
 /// <remarks>
 /// A page step distributes cell-space distance across a variable number of items rather than
@@ -26,7 +29,8 @@ internal static class PagingStep
     /// <c>[0, count - 1]</c>, which requires <paramref name="count"/> to be at least one; when
     /// false, it is returned as-is for the caller to resolve.</param>
     /// <returns>The resulting index.</returns>
-    public static int Accumulate(int start, int direction, int count, int target, Func<int, int> extentAt, bool clamp)
+    [Pure]
+    public static int Accumulate(int start, int direction, int count, int target, [InstantHandle] Func<int, int> extentAt, bool clamp)
     {
         var index = start;
         var accumulated = 0;
@@ -57,6 +61,8 @@ internal static class PagingStep
     /// <paramref name="viewportExtent"/> so it can never overshoot it.</param>
     /// <returns>The target extent to pass to <see cref="Accumulate"/>, floored at one so a page step
     /// always advances by at least one item even when the viewport or overlap leaves no room.</returns>
+    [Pure]
+    [NonNegativeValue]
     public static int TargetExtent(int viewportExtent, int pageOverlap) =>
         Math.Max(1, viewportExtent - Math.Min(pageOverlap, viewportExtent));
 
@@ -70,6 +76,8 @@ internal static class PagingStep
     /// <param name="viewportExtent">The extent of the viewport being scrolled, in cells.</param>
     /// <param name="contentExtent">The total scrollable content extent, in cells.</param>
     /// <returns>The offset to scroll to, clamped to <c>[0, max(0, contentExtent - viewportExtent)]</c>.</returns>
+    [Pure]
+    [NonNegativeValue]
     public static int IndexIntoViewOffset(int index, int itemExtent, int currentOffset, int viewportExtent, int contentExtent)
     {
         var start = index.Multiply(itemExtent);

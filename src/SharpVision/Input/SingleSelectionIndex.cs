@@ -3,6 +3,8 @@
 
 namespace SharpVision.Input;
 
+using InstantHandle = JetBrains.Annotations.InstantHandleAttribute;
+
 /// <summary>Locates the eligible index a single-selection cursor should land on next, over a
 /// collection whose items and their eligibility can change out from under it.</summary>
 /// <remarks>
@@ -23,7 +25,8 @@ internal static class SingleSelectionIndex
     /// <param name="isEligible">Reports whether the item at a given index can be selected.</param>
     /// <returns>The first eligible index reached, or -1 when the scan runs past either end without
     /// finding one.</returns>
-    public static int FindLinear(int start, int direction, int count, Func<int, bool> isEligible)
+    [Pure]
+    public static int FindLinear(int start, int direction, int count, [InstantHandle] Func<int, bool> isEligible)
     {
         for (var index = start; index >= 0 && index < count; index += direction)
         {
@@ -44,7 +47,8 @@ internal static class SingleSelectionIndex
     /// <param name="count">The number of items in the collection.</param>
     /// <param name="isEligible">Reports whether the item at a given index can be selected.</param>
     /// <returns>The nearest eligible index, or -1 when no item in the collection is eligible.</returns>
-    public static int FindNearest(int start, int count, Func<int, bool> isEligible)
+    [Pure]
+    public static int FindNearest(int start, int count, [InstantHandle] Func<int, bool> isEligible)
     {
         var successor = FindLinear(Math.Max(0, start), 1, count, isEligible);
         return successor >= 0 ? successor : FindLinear(Math.Min(start - 1, count - 1), -1, count, isEligible);
@@ -59,7 +63,8 @@ internal static class SingleSelectionIndex
     /// <param name="isEligible">Reports whether the item at a given index can be selected.</param>
     /// <returns>The next eligible index, or -1 when no item is eligible or the collection is
     /// empty.</returns>
-    public static int FindWrapped(int start, int direction, int count, Func<int, bool> isEligible)
+    [Pure]
+    public static int FindWrapped(int start, int direction, int count, [InstantHandle] Func<int, bool> isEligible)
     {
         if (count == 0)
         {

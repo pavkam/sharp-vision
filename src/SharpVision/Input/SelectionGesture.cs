@@ -5,6 +5,8 @@ namespace SharpVision.Input;
 
 using SharpVision.Terminal.Input;
 
+using InstantHandle = JetBrains.Annotations.InstantHandleAttribute;
+
 /// <summary>Resolves a pointer- or keyboard-driven selection gesture over a keyed collection into a
 /// proposed selection set and anchor.</summary>
 /// <remarks>
@@ -36,6 +38,7 @@ internal static class SelectionGesture<TKey>
     /// clearing it.</param>
     /// <returns>The proposed next selection set and the anchor the caller should adopt if it
     /// accepts the proposal.</returns>
+    [Pure]
     public static (HashSet<TKey> Selection, TKey Anchor) Resolve(
         IEqualityComparer<TKey> comparer,
         IReadOnlySet<TKey> selection,
@@ -44,7 +47,7 @@ internal static class SelectionGesture<TKey>
         TKey target,
         Modifiers modifiers,
         bool allowsMultiple,
-        Func<TKey, TKey, IEnumerable<TKey>?> eligibleRange)
+        [InstantHandle] Func<TKey, TKey, IEnumerable<TKey>?> eligibleRange)
     {
         ArgumentNullException.ThrowIfNull(comparer);
         ArgumentNullException.ThrowIfNull(selection);

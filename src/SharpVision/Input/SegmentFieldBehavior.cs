@@ -298,6 +298,7 @@ internal sealed class SegmentFieldBehavior
     /// canvas rendered the same segments under.
     /// </param>
     /// <returns>The editable segment index, or -1 when the layout has no editable segments.</returns>
+    [Pure]
     public int SegmentIndexAtColumn(int column, Ambiguous ambiguousWidth = Ambiguous.Narrow)
     {
         var running = 0;

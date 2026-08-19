@@ -25,6 +25,7 @@ internal static class TemporalCalendarArithmetic
     /// <param name="year">The year, already in the valid 1-9999 range.</param>
     /// <param name="month">The month, already in the valid 1-12 range.</param>
     /// <param name="day">The day to clamp.</param>
+    [Pure]
     public static (int Year, int Month, int Day) ClampDayOfMonth(int year, int month, int day) =>
         (year, month, Math.Min(day, DateTime.DaysInMonth(year, month)));
 
@@ -33,6 +34,7 @@ internal static class TemporalCalendarArithmetic
     /// <param name="year">The year, already in the valid 1-9999 range.</param>
     /// <param name="day">The existing day.</param>
     /// <param name="newMonth">The replacement month, already in the valid 1-12 range.</param>
+    [Pure]
     public static (int Year, int Month, int Day) ReplaceMonth(int year, int day, int newMonth) =>
         ClampDayOfMonth(year, newMonth, day);
 
@@ -42,6 +44,7 @@ internal static class TemporalCalendarArithmetic
     /// <param name="month">The month, already in the valid 1-12 range.</param>
     /// <param name="day">The existing day.</param>
     /// <param name="newYear">The replacement year.</param>
+    [Pure]
     public static (int Year, int Month, int Day) ReplaceYear(int month, int day, int newYear) =>
         ClampDayOfMonth(Math.Clamp(newYear, 1, 9999), month, day);
 }

@@ -3,6 +3,8 @@
 
 namespace SharpVision.Input;
 
+using JetBrains.Annotations;
+
 /// <summary>Shared format-pattern validation for the segmented temporal input controls: each
 /// rejects a format pattern its own value type cannot render at the property boundary, instead
 /// of throwing later from the layout pass where it would escape as an unhandled exception.</summary>
@@ -15,7 +17,7 @@ internal static class TemporalFormatValidation
         CultureInfo culture,
         string paramName,
         string typeName,
-        Func<string, CultureInfo, string> render)
+        [InstantHandle] Func<string, CultureInfo, string> render)
     {
         try
         {

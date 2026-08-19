@@ -5,6 +5,8 @@ namespace SharpVision.Input;
 
 using Terminal.Rendering;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Parses, measures, and draws ampersand-marked access text.</summary>
 internal static class AccessKeyText
 {
@@ -54,6 +56,8 @@ internal static class AccessKeyText
         /// <param name="ambiguous">The validated ambiguous-width policy.</param>
         /// <param name="useMnemonic">Whether ampersands have access-text semantics.</param>
         /// <returns>The non-negative visible terminal-cell width.</returns>
+        [Pure]
+        [NonNegativeValue]
         public int Measure(Ambiguous ambiguous, bool useMnemonic)
         {
             ArgumentNullException.ThrowIfNull(text);
@@ -149,6 +153,7 @@ internal static class AccessKeyText
         /// <param name="highlightMnemonic">Whether the marked grapheme receives the access-key foreground.</param>
         /// <param name="hotkeyColor">Optional concrete hotkey color to apply as an inline foreground tag.</param>
         /// <returns>Source markup with marker escapes collapsed and the mnemonic grapheme underlined.</returns>
+        [Pure]
         public string ToMarkup(
             bool useMnemonic,
             bool highlightMnemonic = true,

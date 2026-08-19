@@ -3,6 +3,8 @@
 
 namespace SharpVision.Input;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>
 /// Implements the shared hour/minute/second digit-entry clamp bounds used by every segmented
 /// clock field control (<see cref="Controls.Input.TimeInput"/>, <see
@@ -28,10 +30,13 @@ internal static class TemporalClockArithmetic
     /// <param name="value">The candidate hour value.</param>
     /// <param name="hasAmPmDesignator">Whether the current layout has a 12-hour AM/PM
     /// designator segment.</param>
+    [Pure]
     public static int ClampHour(int value, bool hasAmPmDesignator) =>
         hasAmPmDesignator ? Math.Clamp(value, 1, 12) : Math.Clamp(value, 0, 23);
 
     /// <summary>Clamps a typed minute or second digit to its segment's valid 0-59 range.</summary>
     /// <param name="value">The candidate minute or second value.</param>
+    [Pure]
+    [ValueRange(0, 59)]
     public static int ClampMinuteOrSecond(int value) => Math.Clamp(value, 0, 59);
 }

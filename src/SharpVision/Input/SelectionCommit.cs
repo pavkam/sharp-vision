@@ -5,6 +5,8 @@ namespace SharpVision.Input;
 
 using System.ComponentModel;
 
+using JetBrains.Annotations;
+
 /// <summary>Diffs and commits a proposed selection set against a keyed collection's current
 /// selection, including the cancellable-event and reentrancy machinery that guards the commit.</summary>
 /// <remarks>
@@ -48,13 +50,13 @@ internal static class SelectionCommit<TKey>
         IReadOnlySet<TKey> current,
         IEnumerable<TKey> proposed,
         IEqualityComparer<TKey> comparer,
-        Func<TKey, bool>? isEligible,
+        [InstantHandle] Func<TKey, bool>? isEligible,
         bool selectionDisabled,
-        Func<IReadOnlySet<TKey>, IReadOnlySet<TKey>, (TKey[] Added, TKey[] Removed)> computeDelta,
+        [InstantHandle] Func<IReadOnlySet<TKey>, IReadOnlySet<TKey>, (TKey[] Added, TKey[] Removed)> computeDelta,
         bool cancellable,
         ref int selectionVersion,
-        Func<TKey[], TKey[], TChangingArgs> createChangingArgs,
-        Action<TChangingArgs> raiseChanging,
+        [InstantHandle] Func<TKey[], TKey[], TChangingArgs> createChangingArgs,
+        [InstantHandle] Action<TChangingArgs> raiseChanging,
         out HashSet<TKey> selection,
         out TKey[] added,
         out TKey[] removed)
