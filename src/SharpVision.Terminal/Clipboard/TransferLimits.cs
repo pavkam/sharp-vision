@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Clipboard;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Defines finite limits for OSC 52 and Kitty OSC 5522 clipboard transfers.</summary>
 /// <remarks>
 /// Instances are immutable after construction. Use a <see langword="with"/>
@@ -22,6 +24,7 @@ public sealed record TransferLimits
 
     /// <summary>Gets the maximum decoded clipboard bytes retained by one transaction.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    [NonNegativeValue]
     public int MaxClipboardBytes
     {
         get;
@@ -30,6 +33,7 @@ public sealed record TransferLimits
 
     /// <summary>Gets the maximum OSC 5522 metadata bytes accepted in one packet.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    [NonNegativeValue]
     public int MaxMetadataBytes
     {
         get;
