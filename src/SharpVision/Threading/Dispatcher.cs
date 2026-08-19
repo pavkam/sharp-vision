@@ -3,6 +3,8 @@
 
 namespace SharpVision.Threading;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>
 /// Serializes UI work, callbacks, and idle transitions on one dedicated thread.
 /// </summary>
@@ -69,9 +71,10 @@ public sealed class Dispatcher: IAsyncDisposable
     /// <param name="capacity">The positive maximum queued callback count.</param>
     /// <param name="name">The optional non-blank thread name.</param>
     /// <param name="timeProvider">The optional clock used by dispatcher-owned timers.</param>
-    /// <returns>The running dispatcher.</returns>
+    /// <returns>The running dispatcher, which the caller owns and must dispose.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is not positive.</exception>
     /// <exception cref="ArgumentException"><paramref name="name"/> is blank.</exception>
+    [MustDisposeResource]
     public static Dispatcher Start(
         int capacity = 4096,
         string? name = null,
@@ -100,10 +103,11 @@ public sealed class Dispatcher: IAsyncDisposable
     /// <param name="capacity">The positive maximum queued callback count.</param>
     /// <param name="name">The optional non-blank thread name.</param>
     /// <param name="timeProvider">The optional clock used by dispatcher-owned timers.</param>
-    /// <returns>The running, currently paused dispatcher.</returns>
+    /// <returns>The running, currently paused dispatcher, which the caller owns and must dispose.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="releaseGate"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is not positive.</exception>
     /// <exception cref="ArgumentException"><paramref name="name"/> is blank.</exception>
+    [MustDisposeResource]
     internal static Dispatcher StartPaused(
         ManualResetEventSlim releaseGate,
         int capacity = 4096,

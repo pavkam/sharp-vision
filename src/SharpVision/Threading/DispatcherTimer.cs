@@ -3,6 +3,8 @@
 
 namespace SharpVision.Threading;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>Raises coalesced periodic callbacks on one dispatcher.</summary>
 /// <remarks>
 /// The underlying clock may signal from any thread. At most one signal is queued
@@ -31,11 +33,12 @@ public sealed class DispatcherTimer: IDisposable
     private TimeSpan _interval;
     private bool _isRunning;
 
-    /// <summary>Initializes one stopped dispatcher timer.</summary>
+    /// <summary>Initializes one stopped dispatcher timer. The caller owns and must dispose it.</summary>
     /// <param name="dispatcher">The non-null dispatcher that owns timer callbacks.</param>
     /// <param name="interval">The interval from one through 2,147,483,647 milliseconds.</param>
     /// <exception cref="ArgumentNullException"><paramref name="dispatcher"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="interval"/> is outside the supported range.</exception>
+    [MustDisposeResource]
     public DispatcherTimer(Dispatcher dispatcher, TimeSpan interval)
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
