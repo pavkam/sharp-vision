@@ -276,7 +276,6 @@ public sealed class DateTimeInput: InputBase
         get;
         set
         {
-            VerifyMutable();
             ArgumentException.ThrowIfAboveMaximum(value, Maximum, nameof(value), "Minimum cannot exceed Maximum.");
 
             if (SetProperty(ref field, value, InvalidationImpact.Render))
@@ -296,7 +295,6 @@ public sealed class DateTimeInput: InputBase
         get;
         set
         {
-            VerifyMutable();
             ArgumentException.ThrowIfBelowMinimum(value, Minimum, nameof(value), "Maximum cannot be less than Minimum.");
 
             if (SetProperty(ref field, value, InvalidationImpact.Render))

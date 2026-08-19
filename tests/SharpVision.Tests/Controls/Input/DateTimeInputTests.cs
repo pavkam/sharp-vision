@@ -285,6 +285,36 @@ public sealed class DateTimeInputTests
         up.IsHandled.ShouldBeFalse();
     }
 
+    /// <summary>Verifies Minimum validates its argument against Maximum before checking whether
+    /// the control is disposed, matching every other Min/Max-bounded control in the library
+    /// (TimeInput, DateInput, NumberInput, CurrencyInput, Slider, Calendar): an out-of-range
+    /// argument always surfaces as ArgumentException, even on a disposed control, rather than
+    /// masking the argument problem behind ObjectDisposedException.</summary>
+    [Fact]
+    public void Minimum_WhenAboveMaximumOnDisposedControl_ThrowsArgumentException()
+    {
+        // Arrange
+        var control = new DateTimeInput { Maximum = new DateTime(2026, 1, 1) };
+        control.Dispose();
+
+        // Act & Assert
+        _ = Should.Throw<ArgumentException>(() => control.Minimum = new DateTime(2026, 2, 1));
+    }
+
+    /// <summary>Verifies Maximum validates its argument against Minimum before checking whether
+    /// the control is disposed, matching every other Min/Max-bounded control in the library.
+    /// See <see cref="Minimum_WhenAboveMaximumOnDisposedControl_ThrowsArgumentException"/>.</summary>
+    [Fact]
+    public void Maximum_WhenBelowMinimumOnDisposedControl_ThrowsArgumentException()
+    {
+        // Arrange
+        var control = new DateTimeInput { Minimum = new DateTime(2026, 2, 1) };
+        control.Dispose();
+
+        // Act & Assert
+        _ = Should.Throw<ArgumentException>(() => control.Maximum = new DateTime(2026, 1, 1));
+    }
+
     #endregion
 
     #region Commit
