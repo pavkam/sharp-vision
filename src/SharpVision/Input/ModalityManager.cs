@@ -5,6 +5,8 @@ namespace SharpVision.Input;
 
 using System.Runtime.ExceptionServices;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>Owns the dispatcher-affine modal-scope stack for one attached application tree.</summary>
 [PublicAPI]
 public sealed class ModalityManager: IDisposable
@@ -30,7 +32,8 @@ public sealed class ModalityManager: IDisposable
     private bool _unwindRestoresFocus = true;
     private bool _isUnwinding;
 
-    /// <summary>Initializes modal ownership for the same tree owned by focus and pointer services.</summary>
+    /// <summary>Initializes modal ownership for the same tree owned by focus and pointer services.
+    /// The caller owns and must dispose the manager.</summary>
     /// <param name="root">The non-null attached application root.</param>
     /// <param name="focus">The non-null live focus manager for <paramref name="root"/>.</param>
     /// <param name="pointer">The non-null live pointer manager for <paramref name="root"/>.</param>
@@ -38,6 +41,7 @@ public sealed class ModalityManager: IDisposable
     /// <exception cref="ArgumentException">A dependency does not own the same attached tree.</exception>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The root is disposed.</exception>
+    [MustDisposeResource]
     internal ModalityManager(ControlBase root, FocusManager focus, PointerManager pointer)
     {
         ArgumentNullException.ThrowIfNull(root);
@@ -113,6 +117,7 @@ public sealed class ModalityManager: IDisposable
     /// <exception cref="Exception">
     /// Pointer cleanup, focus publication, or transactional rollback notification fails after committed cleanup.
     /// </exception>
+    [MustDisposeResource]
     public ModalScope Enter(
         ControlBase root,
         OutsideInteraction outsideInteraction = OutsideInteraction.Ignore,
@@ -196,6 +201,7 @@ public sealed class ModalityManager: IDisposable
     /// <param name="index">The valid zero-based position.</param>
     /// <returns>The active plane root.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The position is outside the active plane roots.</exception>
+    [Pure]
     internal ControlBase ActiveRootAt(int index)
     {
         var active = Active ?? throw new ArgumentOutOfRangeException(
@@ -208,6 +214,7 @@ public sealed class ModalityManager: IDisposable
     /// <summary>Returns whether one target may interact under the current active plane.</summary>
     /// <param name="control">The target, or null.</param>
     /// <returns>True when unrestricted or contained by an active plane root.</returns>
+    [Pure]
     internal bool Allows(ControlBase? control)
     {
         var active = Active;
@@ -222,6 +229,7 @@ public sealed class ModalityManager: IDisposable
     /// The eligible focused control, the active primary plane root, or the application root
     /// when no scope and no focus are active.
     /// </returns>
+    [Pure]
     internal ControlBase KeyTarget(ControlBase? focused)
     {
         var active = Active;
@@ -235,6 +243,7 @@ public sealed class ModalityManager: IDisposable
     /// <summary>Resolves a text or paste target without falling back through an active plane.</summary>
     /// <param name="focused">The currently focused control, or null.</param>
     /// <returns>The eligible focused control, or null when an active plane excludes it.</returns>
+    [Pure]
     internal ControlBase? FocusedTarget(ControlBase? focused)
     {
         var active = Active;
@@ -249,6 +258,7 @@ public sealed class ModalityManager: IDisposable
     /// <param name="control">The non-null target.</param>
     /// <returns>The matching route boundary, or null.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
+    [Pure]
     internal ControlBase? BoundaryFor(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
@@ -413,6 +423,7 @@ public sealed class ModalityManager: IDisposable
     /// <param name="control">The target, or null.</param>
     /// <param name="subtree">The non-null subtree root.</param>
     /// <returns>True when ancestry reaches the subtree root.</returns>
+    [Pure]
     internal static bool IsWithin(ControlBase? control, ControlBase subtree)
     {
         Debug.Assert(subtree is not null, "Subtree membership requires a concrete root.");
@@ -1172,6 +1183,7 @@ public sealed class ModalityManager: IDisposable
     /// <summary>Gets whether a control is inside a subtree currently publishing framework unavailability.</summary>
     /// <param name="control">The non-null control to inspect.</param>
     /// <returns>True while an enclosing unavailable transaction is active; otherwise false.</returns>
+    [Pure]
     internal bool IsUnavailable(ControlBase control)
     {
         foreach (var subtree in _unavailableSubtrees)

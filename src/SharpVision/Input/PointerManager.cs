@@ -7,6 +7,8 @@ using System.Runtime.ExceptionServices;
 
 using SharpVision.Terminal.Input;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>Owns hit targeting, hover, press, and exclusive pointer capture.</summary>
 [PublicAPI]
 public sealed class PointerManager: IDisposable
@@ -28,7 +30,8 @@ public sealed class PointerManager: IDisposable
 
     #region Construction and state
 
-    /// <summary>Initializes pointer ownership for one attached root.</summary>
+    /// <summary>Initializes pointer ownership for one attached root. The caller owns and must
+    /// dispose the manager.</summary>
     /// <param name="root">The non-null attached tree root.</param>
     /// <param name="timeProvider">The optional monotonic gesture clock.</param>
     /// <exception cref="ArgumentNullException"><paramref name="root"/> is null.</exception>
@@ -37,17 +40,20 @@ public sealed class PointerManager: IDisposable
     /// </exception>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The root is disposed.</exception>
+    [MustDisposeResource]
     public PointerManager(ControlBase root, TimeProvider? timeProvider = null)
         : this(root, timeProvider, activationTarget: null)
     {
     }
 
-    /// <summary>Initializes pointer ownership with an application activation-target callback.</summary>
+    /// <summary>Initializes pointer ownership with an application activation-target callback. The
+    /// caller owns and must dispose the manager.</summary>
     /// <param name="root">The non-null attached tree root.</param>
     /// <param name="timeProvider">The optional monotonic gesture clock.</param>
     /// <param name="activationTarget">
     /// The optional callback for modal-eligible primary-press targets. Its result bounds pointer focus.
     /// </param>
+    [MustDisposeResource]
     internal PointerManager(
         ControlBase root,
         TimeProvider? timeProvider,

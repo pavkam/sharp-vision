@@ -5,13 +5,16 @@ namespace SharpVision.Input;
 
 using System.Runtime.ExceptionServices;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>Owns transactional keyboard focus within one attached control tree.</summary>
 [PublicAPI]
 public sealed class FocusManager: IDisposable
 {
     #region Construction and state
 
-    /// <summary>Initializes focus ownership for one attached root.</summary>
+    /// <summary>Initializes focus ownership for one attached root. The caller owns and must
+    /// dispose the manager.</summary>
     /// <param name="root">The non-null attached tree root.</param>
     /// <exception cref="ArgumentNullException"><paramref name="root"/> is null.</exception>
     /// <exception cref="ArgumentException">
@@ -19,6 +22,7 @@ public sealed class FocusManager: IDisposable
     /// </exception>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The root is disposed.</exception>
+    [MustDisposeResource]
     public FocusManager(ControlBase root)
     {
         ArgumentNullException.ThrowIfNull(root);
@@ -1050,6 +1054,7 @@ public sealed class FocusManager: IDisposable
     /// to its anchor. Exposed so a caller holding a possibly-stale anchor - captured before an
     /// input route ran, which may have detached it - can check before calling, instead of
     /// discovering the failure only as a thrown <see cref="ArgumentException"/>.</summary>
+    [Pure]
     internal bool IsMember(ControlBase control)
     {
         Debug.Assert(control is not null, "Focus membership requires a control instance.");
