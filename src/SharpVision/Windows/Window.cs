@@ -310,6 +310,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     }
 
     /// <inheritdoc/>
+    [Pure]
     Rect IOverlayPositionConstraint.ConstrainOverlaySlot(Rect slot, Rect contentBounds)
     {
         var requestedX = Overlay.GetLeft(this) is null && Overlay.GetRight(this) is null &&
@@ -325,12 +326,14 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         return new Rect(x, y, slot.Width, slot.Height);
     }
 
+    [Pure]
     private static int CenterOverlayOrigin(int extent, int leading, int trailing)
     {
         var remaining = (long) trailing - leading - extent;
         return SaturateOverlayCoordinate(leading + (remaining / 2));
     }
 
+    [Pure]
     private static int SaturateOverlayCoordinate(long value) => value switch
     {
         < int.MinValue => int.MinValue,
@@ -338,6 +341,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         _ => (int) value
     };
 
+    [Pure]
     private static int ClampOverlayOrigin(int origin, int extent, int leading, int trailing)
     {
         Debug.Assert(extent >= 0, "A Window Overlay slot has a non-negative extent.");
@@ -555,6 +559,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         return MaximumImpact(baseImpact, colorImpact);
     }
 
+    [Pure]
     private Rect ResolveCloseChromeBounds()
     {
         if (!CanClose || Bounds.Height == 0 || Bounds.Width < _minimumCloseWidth)
@@ -572,6 +577,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         return new Rect(x, Bounds.Y, width, 1);
     }
 
+    [Pure]
     private Rect ResolveCloseTargetBounds()
     {
         var chrome = ResolveCloseChromeBounds();
@@ -581,6 +587,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             : chrome;
     }
 
+    [Pure]
     private Rect ResolveTitleLane(Rect closeChrome)
     {
         var interiorWidth = Math.Max(0, Bounds.Width - 2);
@@ -921,9 +928,11 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         }
     }
 
+    [Pure]
     private bool IsTitleBar(Point cells) =>
         cells.Y == Bounds.Y && cells.X >= Bounds.X && cells.X < Bounds.Right;
 
+    [Pure]
     private bool IsResizeCorner(Point cells) =>
         cells.Y == Bounds.Bottom - 1 && cells.X == Bounds.Right - 1;
 
@@ -1141,6 +1150,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         }
     }
 
+    [Pure]
     private static ControlBase? FindFirstFocusable(ControlBase root)
     {
         var count = root.OwnedControlCount;
@@ -1163,6 +1173,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         return null;
     }
 
+    [Pure]
     private static Button? FindButton(ControlBase control, Func<Button, bool> predicate)
     {
         ArgumentNullException.ThrowIfNull(control);
