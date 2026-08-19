@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Runtime;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>Owns one Windows console raw/VT mode lease with guaranteed restoration.</summary>
 [SupportedOSPlatform("windows")]
 internal sealed class WindowsConsoleMode: IDisposable
@@ -38,6 +40,7 @@ internal sealed class WindowsConsoleMode: IDisposable
     /// </param>
     /// <returns>A lease that restores both saved modes when disposed.</returns>
     /// <exception cref="IOException">A console mode cannot be read or written.</exception>
+    [MustDisposeResource]
     public static WindowsConsoleMode Enter(
         bool captureControlKeys,
         Func<nint, uint, bool>? setConsoleMode = null)

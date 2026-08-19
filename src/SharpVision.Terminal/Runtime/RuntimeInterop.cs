@@ -118,6 +118,7 @@ internal static partial class RuntimeInterop
     /// Whether Ctrl-key combinations should be delivered as input bytes instead of raising signals.
     /// </param>
     /// <returns>A new raw-mode termios buffer of the same platform size.</returns>
+    [Pure]
     public static unsafe byte[] ComputeRawTerminalAttributes(byte[] captured, bool captureControlKeys)
     {
         var raw = new byte[captured.Length];
@@ -184,6 +185,7 @@ internal static partial class RuntimeInterop
     /// <param name="current">The saved console input mode.</param>
     /// <param name="captureControlKeys">Whether Ctrl+C is delivered as input.</param>
     /// <returns>The mode enabling VT input without canonical line editing or echo.</returns>
+    [Pure]
     public static uint ComputeInputMode(uint current, bool captureControlKeys)
     {
         var mode = current;
@@ -205,6 +207,7 @@ internal static partial class RuntimeInterop
     /// <summary>Computes the wrapping VT-processing console output mode from the saved mode.</summary>
     /// <param name="current">The saved console output mode.</param>
     /// <returns>The mode enabling processed output, wrapping, VT processing, and delayed newline auto-return.</returns>
+    [Pure]
     public static uint ComputeOutputMode(uint current) =>
         current |
         EnableProcessedOutput |

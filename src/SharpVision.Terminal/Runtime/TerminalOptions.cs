@@ -7,7 +7,9 @@ using Backends;
 
 using Capabilities;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 using TerminalNegotiationOptions = NegotiationOptions;
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
 
 /// <summary>Defines validated terminal session modes, bounds, and cleanup policy.</summary>
 [PublicAPI]
@@ -147,6 +149,7 @@ public sealed record TerminalOptions
 
     /// <summary>Gets the optional xterm modifyOtherKeys level used when Kitty keyboard is unavailable.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside one through three.</exception>
+    [ValueRange(1, 3)]
     public int? ModifyOtherKeys
     {
         get;
@@ -175,6 +178,7 @@ public sealed record TerminalOptions
 
     /// <summary>Gets the positive transport read-buffer size.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    [NonNegativeValue]
     public int ReadBufferSize
     {
         get;
@@ -210,6 +214,7 @@ public sealed record TerminalOptions
     /// environment state.
     /// </summary>
     /// <returns>A context with this profile and its fixed canonical backend identity.</returns>
+    [Pure]
     internal TerminalContext CreateContext()
     {
         var environment = Negotiation?.Environment ?? _emptyEnvironment;

@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Kitty.Graphics;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Owns one validated protocol-safe Kitty graphics command description.</summary>
 [PublicAPI]
 public sealed class KittyGraphicsCommand
@@ -72,6 +74,7 @@ public sealed class KittyGraphicsCommand
     public int ZIndex { get; }
 
     /// <summary>Gets response suppression mode zero, one, or two.</summary>
+    [ValueRange(0, 2)]
     public int Quiet { get; }
 
     /// <summary>Gets whether placement uses the Kitty <c>C=1</c> no-cursor-movement policy.</summary>
@@ -91,6 +94,7 @@ public sealed class KittyGraphicsCommand
     /// <param name="imageId">The nonzero correlation identifier.</param>
     /// <returns>A validated query command.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="imageId"/> is zero.</exception>
+    [Pure]
     public static KittyGraphicsCommand Query(uint imageId)
     {
         RequireId(imageId, nameof(imageId));
@@ -116,6 +120,7 @@ public sealed class KittyGraphicsCommand
     /// <param name="quiet">Response suppression mode zero, one, or two.</param>
     /// <returns>A validated exact-placement delete command.</returns>
     /// <exception cref="ArgumentOutOfRangeException">An identifier is zero or <paramref name="quiet"/> is invalid.</exception>
+    [Pure]
     public static KittyGraphicsCommand DeletePlacement(uint imageId, uint placementId, int quiet = 2)
     {
         RequireId(imageId, nameof(imageId));
@@ -147,6 +152,7 @@ public sealed class KittyGraphicsCommand
     /// <returns>A validated transmission command.</returns>
     /// <exception cref="ArgumentOutOfRangeException">An identifier, dimension, enum, or quiet value is invalid.</exception>
     /// <exception cref="NotSupportedException">The format, medium, or compression is unsupported.</exception>
+    [Pure]
     public static KittyGraphicsCommand Transmit(
         uint imageId,
         Size pixelSize,
@@ -195,6 +201,7 @@ public sealed class KittyGraphicsCommand
     /// <param name="doNotMoveCursor">Whether to emit <c>C=1</c>.</param>
     /// <returns>A validated placement command.</returns>
     /// <exception cref="ArgumentOutOfRangeException">An identifier, rectangle, dimension, or quiet value is invalid.</exception>
+    [Pure]
     public static KittyGraphicsCommand Place(
         uint imageId,
         uint placementId,
@@ -230,6 +237,7 @@ public sealed class KittyGraphicsCommand
     /// <param name="quiet">Response suppression mode zero, one, or two.</param>
     /// <returns>A validated delete command.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="imageId"/> is zero or <paramref name="quiet"/> is invalid.</exception>
+    [Pure]
     public static KittyGraphicsCommand DeleteImage(uint imageId, int quiet = 2)
     {
         RequireId(imageId, nameof(imageId));
@@ -252,6 +260,7 @@ public sealed class KittyGraphicsCommand
     }
 
     /// <summary>Creates the first transmission chunk with an exact continuation flag.</summary>
+    [Pure]
     internal KittyGraphicsCommand WithMore(bool more) => new(
         Action,
         Medium,
@@ -269,6 +278,7 @@ public sealed class KittyGraphicsCommand
         DeleteData);
 
     /// <summary>Creates a metadata-minimal continuation chunk.</summary>
+    [Pure]
     internal static KittyGraphicsCommand Continuation(bool more, int quiet) => new(
         KittyGraphicsAction.Transmit,
         KittyGraphicsMedium.Direct,

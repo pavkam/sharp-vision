@@ -43,12 +43,18 @@ internal sealed class WindowsConsoleInputStream: Stream
     public override bool CanWrite => false;
 
     /// <inheritdoc/>
-    public override long Length => throw new NotSupportedException();
+    public override long Length
+    {
+        [DoesNotReturn]
+        get => throw new NotSupportedException();
+    }
 
     /// <inheritdoc/>
     public override long Position
     {
+        [DoesNotReturn]
         get => throw new NotSupportedException();
+        [DoesNotReturn]
         set => throw new NotSupportedException();
     }
 
@@ -100,15 +106,19 @@ internal sealed class WindowsConsoleInputStream: Stream
         ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
 
     /// <inheritdoc/>
+    [DoesNotReturn]
     public override void Flush() => throw new NotSupportedException();
 
     /// <inheritdoc/>
+    [DoesNotReturn]
     public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
 
     /// <inheritdoc/>
+    [DoesNotReturn]
     public override void SetLength(long value) => throw new NotSupportedException();
 
     /// <inheritdoc/>
+    [DoesNotReturn]
     public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
     /// <inheritdoc/>

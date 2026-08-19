@@ -9,6 +9,8 @@ using Graphics;
 
 using SharpVision.Terminal.Clipboard;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Writes canonical bounded iTerm2 3.5 multipart inline PNG images.</summary>
 [PublicAPI]
 public static class ItermWriter
@@ -105,6 +107,8 @@ public static class ItermWriter
     /// <param name="maxSequenceBytes">The positive complete-sequence limit.</param>
     /// <returns>A positive raw chunk size divisible by three.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The limit is invalid or cannot hold data.</exception>
+    [Pure]
+    [NonNegativeValue]
     internal static int GetMaximumRawPartBytes(int maxSequenceBytes)
     {
         ValidateSequenceLimit(maxSequenceBytes);
@@ -125,6 +129,7 @@ public static class ItermWriter
     /// <param name="maxSequenceBytes">The complete per-OSC bound.</param>
     /// <param name="maxOutputBytes">The complete prepared transaction bound.</param>
     /// <returns>Whether every frame and the complete transaction fit.</returns>
+    [Pure]
     internal static bool CanWrite(
         ImageSource image,
         Size destinationCells,
@@ -167,6 +172,7 @@ public static class ItermWriter
     /// <param name="maxSequenceBytes">The complete per-OSC bound.</param>
     /// <param name="totalBytes">Receives the exact transaction byte count on success.</param>
     /// <returns>Whether metadata, every part, and FileEnd fit the sequence bound without overflow.</returns>
+    [Pure]
     internal static bool TryCalculateTransactionBytes(
         int sourceBytes,
         Size destinationCells,
@@ -294,6 +300,7 @@ public static class ItermWriter
         }
     }
 
+    [Pure]
     private static int DecimalBytes(int value)
     {
         Debug.Assert(value > 0, "Validated iTerm2 metadata values are positive.");

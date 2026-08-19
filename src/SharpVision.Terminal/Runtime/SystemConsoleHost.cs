@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Runtime;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>The real platform <see cref="IConsoleHost"/>, dispatching to the Unix or Windows
 /// console host for the current operating system.</summary>
 internal sealed class SystemConsoleHost: IConsoleHost
@@ -12,6 +14,7 @@ internal sealed class SystemConsoleHost: IConsoleHost
         !Console.IsInputRedirected && !Console.IsOutputRedirected;
 
     /// <inheritdoc />
+    [MustDisposeResource]
     public ConsoleConnection Open(ConsoleHostOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);

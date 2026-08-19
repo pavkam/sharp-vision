@@ -96,6 +96,7 @@ public sealed class KittyClipboardPacket
     /// Whether to decode the Base64 payload into owned memory.
     /// </param>
     /// <returns>A valid typed packet or a redacted diagnostic packet.</returns>
+    [Pure]
     public static KittyClipboardPacket Parse(
         ReadOnlySpan<byte> value,
         TransferLimits? limits = null,
@@ -290,6 +291,7 @@ public sealed class KittyClipboardPacket
                $"mimeBytes={Mime.Length} payloadBytes={Data.Length} unknown={unknown}";
     }
 
+    [Pure]
     private static KittyClipboardPacket Invalid(DiagnosticCode code, int discarded, string? id = null)
     {
         Debug.Assert(Enum.IsDefined(code), "Invalid packets require a defined diagnostic code.");
@@ -318,6 +320,7 @@ public sealed class KittyClipboardPacket
     }
 
 
+    [Pure]
     private static bool IsMetadataAscii(ReadOnlySpan<byte> value)
     {
         foreach (var item in value)
@@ -331,6 +334,7 @@ public sealed class KittyClipboardPacket
         return true;
     }
 
+    [Pure]
     private static bool TryDecode(
         ReadOnlySpan<byte> encoded,
         int maximum,
@@ -386,12 +390,14 @@ public sealed class KittyClipboardPacket
         }
     }
 
+    [Pure]
     private static bool TryDecodeUtf8(
         ReadOnlySpan<byte> encoded,
         int maximum,
         out byte[] decoded) =>
         TryDecode(encoded, maximum, out decoded) && decoded.Valid();
 
+    [Pure]
     private static bool TryParseOperation(
         ReadOnlySpan<byte> value,
         out KittyClipboardOperation operation)
@@ -408,6 +414,7 @@ public sealed class KittyClipboardPacket
         return operation != KittyClipboardOperation.None;
     }
 
+    [Pure]
     private static bool TryParseSelection(ReadOnlySpan<byte> value, out Selection selection)
     {
         if (value.SequenceEqual("primary"u8))
@@ -426,6 +433,7 @@ public sealed class KittyClipboardPacket
         return false;
     }
 
+    [Pure]
     private static bool TryParseStatus(
         ReadOnlySpan<byte> value,
         out KittyClipboardReplyStatus status)

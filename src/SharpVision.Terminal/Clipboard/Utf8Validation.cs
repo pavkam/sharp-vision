@@ -10,6 +10,7 @@ internal static class Utf8Validation
     {
         /// <summary>Reports whether every byte in the span decodes as well-formed UTF-8.</summary>
         /// <returns>Whether the span decodes completely with no invalid or incomplete sequence.</returns>
+        [Pure]
         public bool Valid()
         {
             while (!value.IsEmpty)

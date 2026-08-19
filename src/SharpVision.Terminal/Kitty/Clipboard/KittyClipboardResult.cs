@@ -3,8 +3,11 @@
 
 namespace SharpVision.Terminal.Kitty.Clipboard;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>Owns completed Kitty clipboard MIME data until disposal.</summary>
 [PublicAPI]
+[MustDisposeResource]
 public sealed class KittyClipboardResult: IDisposable
 {
     private bool _disposed;

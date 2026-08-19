@@ -3,6 +3,9 @@
 
 namespace SharpVision.Terminal.Runtime;
 
+using InstantHandle = JetBrains.Annotations.InstantHandleAttribute;
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>Owns one best-effort Unix terminal raw-input lease for interactive console hosts.</summary>
 internal sealed class UnixConsoleMode: IDisposable
 {
@@ -44,9 +47,10 @@ internal sealed class UnixConsoleMode: IDisposable
     /// canonical line buffering. When <paramref name="captureControlKeys"/> is true, `ISIG` is
     /// left disabled so Ctrl-key combinations arrive as input bytes.
     /// </remarks>
+    [MustDisposeResource]
     public static UnixConsoleMode Enter(
         bool captureControlKeys,
-        Func<int, byte[]?>? getAttributes = null,
+        [InstantHandle] Func<int, byte[]?>? getAttributes = null,
         Func<int, byte[], bool>? setAttributes = null)
     {
         var read = getAttributes ?? DefaultGetAttributes;

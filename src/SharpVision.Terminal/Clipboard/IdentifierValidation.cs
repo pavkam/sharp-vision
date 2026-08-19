@@ -29,6 +29,7 @@ internal static class IdentifierValidation
     {
         /// <summary>Reports whether the span is a non-empty valid Kitty correlation identifier.</summary>
         /// <returns>Whether every byte belongs to the identifier character set and the span is non-empty.</returns>
+        [Pure]
         public bool IsIdentifier() => !value.IsEmpty && !value.ContainsAnyExcept(_validBytes);
     }
 
@@ -36,6 +37,7 @@ internal static class IdentifierValidation
     {
         /// <summary>Reports whether the span is a non-empty valid Kitty correlation identifier.</summary>
         /// <returns>Whether every character belongs to the identifier character set and the span is non-empty.</returns>
+        [Pure]
         public bool IsIdentifier() => !value.IsEmpty && !value.ContainsAnyExcept(_validChars);
     }
 }

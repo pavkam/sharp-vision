@@ -73,6 +73,7 @@ internal sealed class KittyKeyDecoder
     /// <param name="modifiers">The decoded modifier flags.</param>
     /// <param name="action">The decoded key transition, defaulting to press.</param>
     /// <returns>True when the field is a valid modifier, with an optional event-type suffix.</returns>
+    [Pure]
     internal static bool TryReadModifiers(
         ReadOnlySpan<byte> input,
         out Modifiers modifiers,
@@ -128,6 +129,7 @@ internal sealed class KittyKeyDecoder
     /// <param name="allowEmpty">Whether an empty field is valid, yielding zero.</param>
     /// <param name="value">The decoded non-negative value, or zero when invalid.</param>
     /// <returns>True when the field is empty and allowed, or entirely bounded decimal digits.</returns>
+    [Pure]
     internal static bool TryDecimal(ReadOnlySpan<byte> input, bool allowEmpty, out int value) =>
         TryDecimal(input, allowEmpty, out value, out _);
 
@@ -144,6 +146,7 @@ internal sealed class KittyKeyDecoder
     /// <see cref="ParameterSeparator.None"/>. Otherwise trailing content past an internal ';' or ':'
     /// this overload doesn't itself reject is silently dropped instead of failing the field.
     /// </remarks>
+    [Pure]
     internal static bool TryDecimal(
         ReadOnlySpan<byte> input,
         bool allowEmpty,
@@ -192,6 +195,7 @@ internal sealed class KittyKeyDecoder
         }
     }
 
+    [Pure]
     private static Code MapKittyCode(int native, out Rune? character)
     {
         character = null;
@@ -272,6 +276,7 @@ internal sealed class KittyKeyDecoder
         return Code.Character;
     }
 
+    [Pure]
     private static bool TrySplitGroups(
         ReadOnlySpan<byte> input,
         out ReadOnlySpan<byte> key,
@@ -308,6 +313,7 @@ internal sealed class KittyKeyDecoder
         return text.IndexOf((byte) ';') < 0;
     }
 
+    [Pure]
     private static bool TryReadKey(
         ReadOnlySpan<byte> input,
         out int native,
@@ -349,6 +355,7 @@ internal sealed class KittyKeyDecoder
                TryOptionalRune(baseField, out baseLayout);
     }
 
+    [Pure]
     private static bool ValidateText(ReadOnlySpan<byte> input)
     {
         var count = 0;
@@ -372,6 +379,7 @@ internal sealed class KittyKeyDecoder
         return true;
     }
 
+    [Pure]
     private static bool TryOptionalRune(ReadOnlySpan<byte> input, out Rune? rune)
     {
         if (input.IsEmpty)

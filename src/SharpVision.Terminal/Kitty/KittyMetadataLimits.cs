@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Kitty;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Defines finite limits for one delimited Kitty protocol metadata section.</summary>
 /// <remarks>
 /// Bounds <see cref="Graphics.KittyGraphicsResponse.Parse"/> (the graphics APC response payload)
@@ -26,6 +28,7 @@ public sealed record KittyMetadataLimits
 
     /// <summary>Gets the maximum metadata bytes accepted in one Kitty protocol message.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    [NonNegativeValue]
     public int MaxMetadataBytes
     {
         get;

@@ -113,6 +113,7 @@ public static class Osc52
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="maxBytes"/> is not positive.
     /// </exception>
+    [Pure]
     public static ClipboardReply Decode(
         ReadOnlySpan<byte> value,
         int maxBytes = _defaultMaxBytes)
@@ -185,6 +186,7 @@ public static class Osc52
         }
     }
 
+    [Pure]
     private static byte GetIdentifier(Selection selection) => selection switch
     {
         Selection.Clipboard => (byte) 'c',
@@ -203,6 +205,7 @@ public static class Osc52
             nameof(selection), selection, "The OSC 52 selection is unknown.")
     };
 
+    [Pure]
     private static ClipboardReply Malformed(Selection selection = Selection.Clipboard) =>
         new(ClipboardStatus.Malformed, selection, ReadOnlyMemory<byte>.Empty);
 
@@ -211,6 +214,7 @@ public static class Osc52
     // meaning "the configurable primary/clipboard selection and cut-buffer 0"; Selection.Select
     // is the closer of the two for a single-value result, since it names the caller-configured
     // target rather than a specific numbered cut buffer.
+    [Pure]
     private static bool TryResolveSelection(ReadOnlySpan<byte> pc, out Selection selection)
     {
         if (pc.IsEmpty)
@@ -231,6 +235,7 @@ public static class Osc52
         return false;
     }
 
+    [Pure]
     private static bool TryGetSelection(byte value, out Selection selection)
     {
         selection = value switch

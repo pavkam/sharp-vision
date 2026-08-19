@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Clipboard;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>Shares canonical Base64 validation common to the clipboard and Kitty graphics encoders.</summary>
 /// <remarks>
 /// The BCL span decoder accepts some non-canonical final quanta. Correlation-sensitive protocols
@@ -19,6 +21,7 @@ internal static class Base64Validation
         /// embedded whitespace.
         /// </summary>
         /// <returns>Whether every byte belongs to a well-formed canonical Base64 encoding.</returns>
+        [Pure]
         public bool IsCanonicalBase64()
         {
             if (value.Length % 4 != 0)
@@ -74,6 +77,7 @@ internal static class Base64Validation
         /// a provable no-change, because <see cref="Base64.EncodeToUtf8"/> reports
         /// <see cref="OperationStatus.Done"/> only once the entire source has been consumed.
         /// </remarks>
+        [MustUseReturnValue]
         public int EncodeBase64OrThrow(Span<byte> destination, string failureMessage)
         {
             var status = Base64.EncodeToUtf8(value, destination, out var consumed, out var written);

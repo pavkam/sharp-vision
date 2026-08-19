@@ -5,6 +5,9 @@ namespace SharpVision.Terminal.Multiplexing;
 
 using Capabilities;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Owns explicit bounded authorization for one multiplexer route.</summary>
 /// <remarks>
 /// Environment discovery identifies only the nearest inner multiplexer. It
@@ -106,9 +109,11 @@ public sealed class MultiplexingPolicy
     public MultiplexingOperation ApprovedOperations { get; }
 
     /// <summary>Gets the maximum accepted nesting depth.</summary>
+    [ValueRange(1, _maximumDepth)]
     public int MaxDepth { get; }
 
     /// <summary>Gets the maximum encoded envelope bytes.</summary>
+    [ValueRange(1, _maximumEnvelopeBytes)]
     public int MaxEnvelopeBytes { get; }
 
     /// <summary>Gets whether explicit evidence permits any passthrough operation.</summary>
@@ -154,6 +159,8 @@ public sealed class MultiplexingPolicy
     /// <param name="environment">The non-null environment snapshot.</param>
     /// <returns>A conservative policy with no outer profile or approved operation.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="environment"/> is null.</exception>
+    [Pure]
+    [MustUseReturnValue]
     public static MultiplexingPolicy Detect(IReadOnlyDictionary<string, string?> environment)
     {
         ArgumentNullException.ThrowIfNull(environment);
@@ -175,6 +182,7 @@ public sealed class MultiplexingPolicy
     /// <param name="operation">One defined non-composite operation family.</param>
     /// <returns>True when routing is active and the family is approved.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="operation"/> is none, composite, or unknown.</exception>
+    [Pure]
     public bool Allows(MultiplexingOperation operation)
     {
         return operation switch
@@ -195,6 +203,7 @@ public sealed class MultiplexingPolicy
         operation,
         "One typed operation family is required.");
 
+    [Pure]
     private static bool StartsWith(string? value, string prefix) =>
         value?.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) == true;
 }

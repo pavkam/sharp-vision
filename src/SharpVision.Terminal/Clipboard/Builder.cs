@@ -3,7 +3,10 @@
 
 namespace SharpVision.Terminal.Clipboard;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>Builds one bounded Kitty clipboard MIME value in pooled storage.</summary>
+[MustDisposeResource]
 internal sealed class Builder: IDisposable
 {
     private byte[]? _buffer;
@@ -20,6 +23,7 @@ internal sealed class Builder: IDisposable
 
     /// <summary>Copies the complete active data.</summary>
     /// <returns>An independent exact-size array.</returns>
+    [Pure]
     public byte[] ToArray() => _buffer.AsSpan(0, _length).ToArray();
 
     /// <summary>Clears and returns pooled storage.</summary>

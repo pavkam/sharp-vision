@@ -3,10 +3,13 @@
 
 namespace SharpVision.Terminal.Runtime;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>
 /// Adapts readable and writable streams to serialized complete terminal writes.
 /// </summary>
 [PublicAPI]
+[MustDisposeResource]
 public sealed class StreamTransport: ITransport
 {
     private readonly Stream _input;
