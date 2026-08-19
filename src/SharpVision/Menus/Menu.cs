@@ -986,6 +986,7 @@ public sealed class Menu: ItemsControl
 
     /// <summary>Finds the exact top menu that owns this menu's current submenu session.</summary>
     /// <returns>This menu or its outermost owning menu.</returns>
+    [Pure]
     internal Menu FindSessionOwner()
     {
         var owner = this;
@@ -1082,6 +1083,7 @@ public sealed class Menu: ItemsControl
             () => TransitionToSubmenuCore(menu, item, openedFromPointerSelection));
     }
 
+    [Pure]
     private bool CanReplaySubmenuTransition(
         Menu menu,
         MenuItem item,
@@ -1376,6 +1378,7 @@ public sealed class Menu: ItemsControl
         NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
     }
 
+    [Pure]
     private int IndexOfItem(MenuItem item)
     {
         for (var index = 0; index < ItemControlCount; index++)
@@ -1411,6 +1414,7 @@ public sealed class Menu: ItemsControl
         }
     }
 
+    [Pure]
     private bool Available(int index) =>
         ItemAt(index) is MenuItem { EffectiveIsEnabled: true, EffectiveIsVisible: true };
 
@@ -1426,6 +1430,7 @@ public sealed class Menu: ItemsControl
         return true;
     }
 
+    [Pure]
     private bool HasOpenSubmenu()
     {
         for (var index = 0; index < ItemControlCount; index++)
@@ -1581,6 +1586,7 @@ public sealed class Menu: ItemsControl
 
     private static void ApplyItemSizing(ControlBase item) => item.Height = Length.Cells(1);
 
+    [Pure]
     private static ControlBase RequireEntry(ControlBase child)
     {
         return child is MenuItem or MenuSeparator
