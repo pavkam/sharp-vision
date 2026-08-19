@@ -477,6 +477,7 @@ public sealed class NavigationView: CompositeControlBase
     // same way removing that descendant directly would — this is also the
     // seam NavigationViewGroup uses to repair selection for removals that
     // never pass through RemoveEntry/ClearEntries at all.
+    [Pure]
     internal NavigationViewRemovalRepair PrepareRemoval(ControlBase root)
     {
         var currentRemoved = _navigator.Current is { } current &&
@@ -856,6 +857,7 @@ public sealed class NavigationView: CompositeControlBase
             : remaining[_selectedIndex.Clamp(0, remaining.Count - 1)]);
     }
 
+    [Pure]
     private List<NavigationViewItem> CollectSelectableItems()
     {
         List<NavigationViewItem> result = [];
@@ -867,6 +869,7 @@ public sealed class NavigationView: CompositeControlBase
     // Accumulates realized entry heights from the current position until the sum reaches the
     // committed viewport height, rather than treating the viewport's cell height as an entry
     // count. A landing index that runs past either end is clamped into range.
+    [Pure]
     private ControlBase StepPage(List<ControlBase> entries, int direction)
     {
         var index = _navigator.Current is { } current ? entries.IndexOf(current) : -1;
@@ -882,6 +885,7 @@ public sealed class NavigationView: CompositeControlBase
         return entries[result];
     }
 
+    [Pure]
     private List<ControlBase> CollectNavigableEntries()
     {
         List<ControlBase> result = [];
@@ -943,6 +947,7 @@ public sealed class NavigationView: CompositeControlBase
         }
     }
 
+    [Pure]
     private static bool IsDescendantOf(ControlBase control, ControlBase ancestor)
     {
         for (var current = control.Parent; current is not null; current = current.Parent)

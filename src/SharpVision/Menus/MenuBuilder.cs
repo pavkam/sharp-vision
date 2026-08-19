@@ -3,6 +3,8 @@
 
 namespace SharpVision.Menus;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>Fluent builder for composing <see cref="Menu"/> hierarchies declaratively.</summary>
 /// <remarks>
 /// <para>
@@ -35,11 +37,15 @@ public sealed class MenuBuilder
 
     /// <summary>Starts building a vertical menu (typical for context and dropdown menus).</summary>
     /// <returns>A new builder configured for vertical orientation.</returns>
+    [Pure]
+    [MustUseReturnValue]
     public static MenuBuilder Vertical() => new(Orientation.Vertical, 0);
 
     /// <summary>Starts building a horizontal menu (typical for menu bars).</summary>
     /// <param name="spacing">The cell spacing between items. Defaults to 1.</param>
     /// <returns>A new builder configured for horizontal orientation.</returns>
+    [Pure]
+    [MustUseReturnValue]
     public static MenuBuilder Horizontal(int spacing = 1) => new(Orientation.Horizontal, spacing);
 
     /// <summary>Adds a command menu item.</summary>
@@ -160,6 +166,7 @@ public sealed class MenuBuilder
 
     /// <summary>Builds and returns the configured <see cref="Menu"/>.</summary>
     /// <returns>A new Menu populated with all items added through the builder chain.</returns>
+    [MustUseReturnValue]
     public Menu Build()
     {
         var menu = new Menu { Orientation = _orientation, Spacing = _spacing };

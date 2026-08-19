@@ -116,6 +116,7 @@ internal sealed class StatusBarHost: Container
         }
     }
 
+    [Pure]
     private int Count(StatusBarItemAlignment alignment)
     {
         var count = 0;
@@ -133,8 +134,10 @@ internal sealed class StatusBarHost: Container
         return count;
     }
 
+    [Pure]
     private static int OuterWidth(ControlBase item) => item.DesiredSize.Width.Add(item.Margin.Horizontal);
 
+    [Pure]
     private int SpacingExtent(int count, int limit)
     {
         Debug.Assert(count >= 0, "Status item count is non-negative.");

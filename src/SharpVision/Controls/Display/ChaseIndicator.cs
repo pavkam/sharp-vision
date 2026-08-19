@@ -467,6 +467,7 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
         _trailCount = Math.Min(_trailCount + 1, _trailFirstPositions.Length);
     }
 
+    [Pure]
     private long SaturatingElapsed(int priorIntervalCount)
     {
         if (priorIntervalCount == 0)
@@ -480,6 +481,7 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
             : Math.Min(FadeDuration.Ticks, priorIntervalCount * Interval.Ticks);
     }
 
+    [Pure]
     private void PositionsAtPhase(long phase, out int first, out int second)
     {
         var normalized = phase % CycleLength;
@@ -539,6 +541,7 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
         _lastTimestamp = Dispatcher.TimeProvider.GetTimestamp();
     }
 
+    [Pure]
     private TimeSpan NextInterval()
     {
         var nextTicks = Interval.Ticks - _movementElapsedTicks;
@@ -584,6 +587,7 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
         canvas.DrawRune(glyph, point, style, BackgroundMode.Transparent);
     }
 
+    [Pure]
     private static Color Interpolate(
         Color head,
         Color trail,
@@ -610,6 +614,7 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
             InterpolateComponent(head.Blue, trail.Blue, elapsedTicks, durationTicks));
     }
 
+    [Pure]
     private static int InterpolateComponent(
         byte start,
         byte end,
@@ -622,6 +627,7 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
             MidpointRounding.AwayFromZero);
     }
 
+    [Pure]
     private static int Extent(
         int length,
         int spacing,

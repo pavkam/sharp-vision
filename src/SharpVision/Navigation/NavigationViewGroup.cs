@@ -268,6 +268,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
         }
     }
 
+    [Pure]
     internal NavigationView? FindNavigationView() => FindAncestor<NavigationView>();
 
     private void OnItemInvoked(object? sender, ActivationEventArgs eventArgs)

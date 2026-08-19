@@ -6,6 +6,8 @@ namespace SharpVision.Controls.Display;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>Defines one complete immutable spinner presentation. This style's own
 /// "spinner" theme key falls back to <see cref="ControlStyle"/>'s "control" key.</summary>
 [PublicAPI]
@@ -108,6 +110,8 @@ public sealed record SpinnerStyle: ControlStyle
     /// <returns>A non-empty immutable frame sequence no longer than <see cref="MaximumFrameCount"/>.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="frames"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">The sequence is empty, too long, or contains an invalid frame.</exception>
+    [Pure]
+    [MustUseReturnValue]
     internal static ImmutableArray<Rune> CopyFrames(IEnumerable<Rune> frames, string parameterName)
     {
         ArgumentNullException.ThrowIfNull(frames, parameterName);

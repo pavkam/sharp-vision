@@ -156,6 +156,7 @@ public sealed class StatusBarItem: ContentControl, IStyled<StatusBarItemStyle>
 
     private int SeparatorCount => (ShowLeftSeparator ? 1 : 0) + (ShowRightSeparator ? 1 : 0);
 
+    [Pure]
     private (int Left, int Right) Insets(int width)
     {
         Debug.Assert(width >= 0, "Status item content width is non-negative.");
@@ -164,6 +165,7 @@ public sealed class StatusBarItem: ContentControl, IStyled<StatusBarItemStyle>
         return (left, right);
     }
 
+    [Pure]
     private Rune ResolveSeparator(Rune value) =>
         value.Resolve(new Rune('|'), CellPolicy.AmbiguousWidth);
 

@@ -223,5 +223,6 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
         HandlePressActivation(eventArgs);
     }
 
+    [Pure]
     internal NavigationView? FindNavigationView() => FindAncestor<NavigationView>();
 }

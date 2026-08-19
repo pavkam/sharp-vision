@@ -156,6 +156,7 @@ public sealed class Prism: ContentControl
     private void DrawContent(TerminalCanvas canvas) =>
         base.RenderChildren(canvas, _renderContentClip);
 
+    [Pure]
     private Color SelectColor(Point point)
     {
         var bounds = ContentBounds;

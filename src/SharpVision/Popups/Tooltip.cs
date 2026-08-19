@@ -112,6 +112,7 @@ public sealed class Tooltip: Popup
     /// <param name="anchor">The non-null control to inspect.</param>
     /// <returns>The associated tooltip, or null.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="anchor"/> is null.</exception>
+    [Pure]
     public static Tooltip? GetTooltip(ControlBase anchor)
     {
         ArgumentNullException.ThrowIfNull(anchor);

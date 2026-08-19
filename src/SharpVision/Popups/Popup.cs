@@ -8,6 +8,8 @@ using System.Runtime.ExceptionServices;
 using SharpVision.Surfaces;
 using SharpVision.Terminal.Input;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>Displays one owned content control on an opaque, framed, anchor-relative modal surface.</summary>
 [PublicAPI]
 public class Popup: FloatingSurfaceBase
@@ -241,6 +243,7 @@ public class Popup: FloatingSurfaceBase
     /// An opening, pointer-cleanup, focus, scope, or user callback fails. Modal entry and any visual
     /// exposure are rolled back before the earliest failure is rethrown.
     /// </exception>
+    [MustDisposeResource]
     public ModalScope OpenModal(
         OutsideInteraction outsideInteraction = OutsideInteraction.Dismiss,
         ControlBase? initialFocus = null)
@@ -671,6 +674,7 @@ public class Popup: FloatingSurfaceBase
         ReconcilePresentationAvailability();
     }
 
+    [Pure]
     private ControlBase? FindUnavailableAncestor()
     {
         for (var current = Parent; current is not null; current = current.Parent)
@@ -996,6 +1000,7 @@ public class Popup: FloatingSurfaceBase
 
     #region Geometry
 
+    [Pure]
     private static Size SurfaceSize(
         ControlBase child,
         int anchorWidth,
@@ -1015,6 +1020,7 @@ public class Popup: FloatingSurfaceBase
             availableHeight.HasValue ? Math.Min(height, availableHeight.Value) : height);
     }
 
+    [Pure]
     private PopupPlacement ResolvePlacement(Rect bounds, Rect anchor, Size desired)
     {
         // Keep the preferred direction when it fits. A terminal-edge popup
@@ -1033,6 +1039,7 @@ public class Popup: FloatingSurfaceBase
         };
     }
 
+    [Pure]
     private Thickness SurfaceFrame(PopupPlacement placement)
     {
         var sides = ActualBorder.Sides;
@@ -1129,6 +1136,7 @@ public class Popup: FloatingSurfaceBase
         }
     }
 
+    [Pure]
     private static ControlBase? FindFocusable(ControlBase control)
     {
         if (control is { CanFocus: true, EffectiveIsEnabled: true, EffectiveIsVisible: true })
@@ -1149,6 +1157,7 @@ public class Popup: FloatingSurfaceBase
         return null;
     }
 
+    [Pure]
     private static bool ContainsOpenDescendantSurface(ControlBase owner, Point point)
     {
         var count = owner.OwnedControlCount;
@@ -1201,6 +1210,7 @@ public class Popup: FloatingSurfaceBase
         }
     }
 
+    [Pure]
     private static bool IsAncestorOf(ControlBase candidate, ControlBase descendant)
     {
         for (var current = descendant.Parent; current is not null; current = current.Parent)
@@ -1218,6 +1228,7 @@ public class Popup: FloatingSurfaceBase
     // Read from the style set directly rather than through AppearanceStates: flattening a style to
     // AppearanceStates keeps only the appearance members and drops everything else, so a control
     // that needs a glyph member has to resolve its own style.
+    [Pure]
     private Rune ResolveAnchor(ControlGlyph themed) =>
         themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
 

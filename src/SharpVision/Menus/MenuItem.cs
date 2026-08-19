@@ -268,6 +268,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
     /// required, so shortcuts reach items inside a closed submenu), and <see cref="Shortcut"/> is
     /// set and matches <paramref name="stroke"/>.
     /// </returns>
+    [Pure]
     internal bool MatchesShortcut(in Stroke stroke) =>
         !IsDisposed &&
         Dispatcher is not null &&
@@ -741,6 +742,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
     /// <param name="version">The positive staged commit version.</param>
     /// <param name="value">The expected checked value.</param>
     /// <returns>True when no reentrant transaction replaced the staged value.</returns>
+    [Pure]
     internal bool IsCheckedCommitCurrent(int version, bool value) =>
         version > 0 && _checkedVersion == version && _isChecked == value;
 
@@ -888,6 +890,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
     // is the split theming-new-controls.md asks for. This resolver was already named for a theme
     // lookup it did not perform - it read four hardcoded ControlGlyphs.Selection entries that
     // nothing in the theme pipeline parsed.
+    [Pure]
     private ControlGlyph ThemeMenuGlyph(bool checkedValue)
     {
         var selection = ControlGlyphs.Selection;
@@ -938,5 +941,6 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
         _submenuOpenedFromPointerSelection = false;
     }
 
+    [Pure]
     private Menu? FindMenu() => FindAncestor<Menu>();
 }
