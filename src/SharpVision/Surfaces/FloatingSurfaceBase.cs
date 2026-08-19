@@ -5,6 +5,9 @@ namespace SharpVision.Surfaces;
 
 using System.Runtime.ExceptionServices;
 
+using InstantHandle = JetBrains.Annotations.InstantHandleAttribute;
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>
 /// Provides retained content, committed bounds, lifecycle, and modality support for an elevated surface.
 /// </summary>
@@ -99,7 +102,7 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// is reentered, or the surface becomes unavailable during the family commit.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The surface is disposed.</exception>
-    protected void OpenSurface(Action commitOpenState)
+    protected void OpenSurface([InstantHandle] Action commitOpenState)
     {
         ArgumentNullException.ThrowIfNull(commitOpenState);
         VerifyMutable();
@@ -170,8 +173,8 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <exception cref="ObjectDisposedException">The surface is disposed.</exception>
     /// <exception cref="Exception">A state callback, lifecycle subscriber, or modal cleanup callback fails.</exception>
     protected bool CloseSurface(
-        Action commitClosingState,
-        Action commitUnavailableState) =>
+        [InstantHandle] Action commitClosingState,
+        [InstantHandle] Action commitUnavailableState) =>
         CloseSurfaceCore(commitClosingState, commitUnavailableState, publishClosing: true);
 
     /// <summary>Completes closure after the concrete surface has already published its closing request.</summary>
@@ -190,13 +193,13 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <exception cref="ObjectDisposedException">The surface is disposed.</exception>
     /// <exception cref="Exception">A state callback, lifecycle subscriber, or modal cleanup callback fails.</exception>
     private protected bool CloseSurfaceAfterClosingRequest(
-        Action commitClosingState,
-        Action commitUnavailableState) =>
+        [InstantHandle] Action commitClosingState,
+        [InstantHandle] Action commitUnavailableState) =>
         CloseSurfaceCore(commitClosingState, commitUnavailableState, publishClosing: false);
 
     private bool CloseSurfaceCore(
-        Action commitClosingState,
-        Action commitUnavailableState,
+        [InstantHandle] Action commitClosingState,
+        [InstantHandle] Action commitUnavailableState,
         bool publishClosing)
     {
         ArgumentNullException.ThrowIfNull(commitClosingState);
@@ -277,6 +280,7 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <exception cref="ObjectDisposedException">
     /// The surface, modality manager, or supplied focus target is disposed.
     /// </exception>
+    [MustDisposeResource]
     protected ModalScope EnterSurfaceModal(
         OutsideInteraction outsideInteraction,
         ControlBase? initialFocus)
@@ -426,6 +430,7 @@ public abstract class FloatingSurfaceBase: ContentControl
 
     private void IncrementPresentationVersion() => _presentationVersion = unchecked(_presentationVersion + 1);
 
+    [Pure]
     private static bool RemovesPresentation(ReleaseReason reason) => reason switch
     {
         ReleaseReason.Detached => true,
