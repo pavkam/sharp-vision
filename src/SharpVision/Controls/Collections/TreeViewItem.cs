@@ -1190,7 +1190,7 @@ public sealed class TreeViewItem: ControlBase
 
         if (!TryValidate(result, out var failure))
         {
-            CommitChildLoadFailure(generation, failure!);
+            CommitChildLoadFailure(generation, failure);
             return;
         }
 
@@ -1199,7 +1199,7 @@ public sealed class TreeViewItem: ControlBase
 
         try
         {
-            ApplyCommittedChildren(result!);
+            ApplyCommittedChildren(result);
             // Cleared before the transition publishes, so a ChildStateChanged observer reacting to
             // Loaded never reads the previous request's stale error.
             LastChildLoadError = null;
@@ -1229,7 +1229,9 @@ public sealed class TreeViewItem: ControlBase
         ReleaseCompletedLoad();
     }
 
-    private bool TryValidate(IReadOnlyList<TreeViewChildDescription>? result, out Exception? failure)
+    private bool TryValidate(
+        [NotNullWhen(true)] IReadOnlyList<TreeViewChildDescription>? result,
+        [NotNullWhen(false)] out Exception? failure)
     {
         failure = null;
 

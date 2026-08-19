@@ -1752,11 +1752,11 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         VerifyMutable();
     }
 
-    private bool TryGetCell(ControlBase? source, out TableRow row, out int columnIndex)
+    private bool TryGetCell(ControlBase? source, [MaybeNullWhen(false)] out TableRow row, out int columnIndex)
     {
         if (source is null)
         {
-            row = null!;
+            row = null;
             columnIndex = -1;
             return false;
         }
@@ -1779,7 +1779,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             }
         }
 
-        row = null!;
+        row = null;
         columnIndex = -1;
         return false;
     }
