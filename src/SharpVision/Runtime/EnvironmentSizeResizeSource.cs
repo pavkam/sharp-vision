@@ -3,6 +3,8 @@
 
 namespace SharpVision.Runtime;
 
+using JetBrains.Annotations;
+
 /// <summary>Substitutes the <c>COLUMNS</c> and <c>LINES</c> environment variables for the first
 /// dimensions an inner resize source reports.</summary>
 /// <remarks>
@@ -31,6 +33,9 @@ internal sealed class EnvironmentSizeResizeSource: IResizeSource
     /// application that enabled the option in an environment that does not describe a size keeps
     /// exactly the behavior it had without it, with no added indirection.
     /// </returns>
+    [MustUseReturnValue(
+        "Wrap either decorates or returns the supplied source; discarding the result silently "
+            + "keeps using the un-overridden source.")]
     public static IResizeSource Wrap(IResizeSource inner, Func<string, string?> readEnvironment)
     {
         ArgumentNullException.ThrowIfNull(inner);
