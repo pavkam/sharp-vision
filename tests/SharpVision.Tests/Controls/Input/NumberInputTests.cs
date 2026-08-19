@@ -506,6 +506,25 @@ public sealed class NumberInputTests
         control.Value.ShouldBe(decimal.MaxValue);
     }
 
+    /// <summary>Verifies jump to Minimum under the default unbounded decimal.MinValue does not throw
+    /// when DecimalPlaces exceeds the 28 significant digits Decimal itself can represent -
+    /// isolating whole units at that precision needs a scaling power of ten that itself exceeds
+    /// Decimal's own range before the bound is ever multiplied by it, so the scale must stop
+    /// growing, and the jump must recover, the same way the already-scaled multiplication does one
+    /// step later.</summary>
+    [Fact]
+    public void Jump_WhenHomeIsPressedWithDecimalPlacesBeyondDecimalRange_CommitsMinValueWithoutOverflow()
+    {
+        // Arrange
+        using var control = new NumberInput { Value = 5m, DecimalPlaces = 29 };
+
+        // Act
+        _ = Router.Route(control, Events.Key, Key(Code.Home));
+
+        // Assert
+        control.Value.ShouldBe(decimal.MinValue);
+    }
+
     /// <summary>Verifies step when the configured step carries more fractional digits than
     /// DecimalPlaces rounds the stepped candidate to the configured precision - the same rounding
     /// an Enter-commit of the equivalent typed text ("0.333") would apply, instead of leaving the

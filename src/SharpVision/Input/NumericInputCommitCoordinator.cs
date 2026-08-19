@@ -235,26 +235,29 @@ internal sealed class NumericInputCommitCoordinator
             return isMinimum ? Math.Ceiling(value) : Math.Floor(value);
         }
 
-        var scale = 1m;
-
-        for (var index = 0; index < places; index++)
-        {
-            scale *= 10m;
-        }
-
+        decimal scale;
         decimal scaled;
 
         try
         {
+            scale = 1m;
+
+            for (var index = 0; index < places; index++)
+            {
+                scale *= 10m;
+            }
+
             scaled = value * scale;
         }
         catch (OverflowException)
         {
             // Home and End reach here with the unbounded decimal.MinValue/MaxValue defaults for
-            // Minimum/Maximum: isolating whole units at the requested precision would need more
-            // magnitude than Decimal holds. Such a bound already carries no fractional component
-            // finer than Decimal's own range, so it stands unrounded rather than crashing the
-            // jump a keypress is not expected to ever fail.
+            // Minimum/Maximum, or with a caller-supplied places beyond the 28 significant digits
+            // Decimal itself can represent: isolating whole units at the requested precision would
+            // need more magnitude than Decimal holds, either while building the scaling power of
+            // ten itself or while applying it to the bound. Such a bound already carries no
+            // fractional component finer than Decimal's own range, so it stands unrounded rather
+            // than crashing the jump a keypress is not expected to ever fail.
             return value;
         }
 
