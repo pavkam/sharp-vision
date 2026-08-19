@@ -10,7 +10,7 @@ using SharpVision.DataBinding;
 using Support;
 
 /// <summary>Verifies the public scalar data-binding lifetime and update contract.</summary>
-public sealed class BindingTests
+public sealed partial class BindingTests
 {
     /// <summary>Verifies a Text binding initializes and observes one notifying model property.</summary>
     [Fact]
