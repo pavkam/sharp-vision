@@ -279,6 +279,7 @@ internal static class FigletParser
         "Style",
         "IDE0051:Remove unused private members",
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    [Pure]
     private static int Positive(string value, string area)
     {
         var result = Integer(value, area);
@@ -289,12 +290,14 @@ internal static class FigletParser
         "Style",
         "IDE0051:Remove unused private members",
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    [Pure]
     private static int NonNegative(string value, string area)
     {
         var result = Integer(value, area);
         return result >= 0 ? result : throw new FormatException($"The FIG-font {area} cannot be negative.");
     }
 
+    [Pure]
     private static int Integer(string value, string area) =>
         int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result)
             ? result
@@ -304,6 +307,7 @@ internal static class FigletParser
         "Style",
         "IDE0051:Remove unused private members",
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    [Pure]
     private static int CodePoint(string value)
     {
         var sign = 1;
@@ -351,6 +355,7 @@ internal static class FigletParser
         "Style",
         "IDE0051:Remove unused private members",
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    [Pure]
     private static FigletDirection Direction(int value) => value switch
     {
         1 => FigletDirection.RightToLeft,
@@ -370,6 +375,7 @@ internal static class FigletParser
         "Style",
         "IDE0052:Remove unread private members",
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    [Pure]
     private static FigletLayout OldLayout(int value)
     {
         if (value == -1)
@@ -403,5 +409,6 @@ internal static class FigletParser
         "Style",
         "IDE0051:Remove unused private members",
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    [Pure]
     private static FigletLayout FullLayout(int value) => (FigletLayout) value;
 }

@@ -3,6 +3,8 @@
 
 namespace SharpVision.Fonts;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Owns one normalized fixed-height FIGfont glyph.</summary>
 internal sealed class FigletGlyph
 {
@@ -18,5 +20,6 @@ internal sealed class FigletGlyph
     public string[] Rows { get; }
 
     /// <summary>Gets the normalized UTF-16 row width.</summary>
+    [NonNegativeValue]
     public int Width { get; }
 }

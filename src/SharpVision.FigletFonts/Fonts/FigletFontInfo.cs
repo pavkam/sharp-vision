@@ -3,6 +3,8 @@
 
 namespace SharpVision.Fonts;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Exposes immutable provenance and audit metadata for one catalog font.</summary>
 [PublicAPI]
 public readonly record struct FigletFontInfo
@@ -12,7 +14,8 @@ public readonly record struct FigletFontInfo
     /// <param name="file">The exact source filename.</param>
     /// <param name="format">The lower-case source format.</param>
     /// <param name="sha256">The lower-case source-byte SHA-256.</param>
-    /// <param name="bytes">The positive source-byte count.</param>
+    /// <param name="bytes">The non-negative source-byte count, zero for a caller-supplied
+    /// in-memory font with no backing byte sequence to audit.</param>
     /// <param name="notice">The preserved embedded notice.</param>
     /// <param name="license">The SPDX license expression.</param>
     /// <param name="resource">The exact embedded resource name, or empty for caller-supplied fonts.</param>
@@ -55,6 +58,7 @@ public readonly record struct FigletFontInfo
     public string Sha256 { get; }
 
     /// <summary>Gets the source byte count.</summary>
+    [NonNegativeValue]
     public int Bytes { get; }
 
     /// <summary>Gets the preserved FIGfont comment notice.</summary>

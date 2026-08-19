@@ -9,6 +9,8 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
 
+using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
+
 /// <summary>Provides case-sensitive lazy access to a named collection of FIGfont sources.</summary>
 /// <remarks>
 /// <see cref="Default"/> is the audited embedded BSD/MIT collection. <see cref="FromDirectory"/>,
@@ -57,6 +59,7 @@ public sealed class FigletCatalog
     /// </exception>
     /// <exception cref="DirectoryNotFoundException"><paramref name="path"/> does not exist.</exception>
     /// <exception cref="InvalidDataException">A file exceeds the configured input byte limit.</exception>
+    [MustUseReturnValue]
     public static FigletCatalog FromDirectory(string path, FigletLimits? limits = null)
     {
         ArgumentNullException.ThrowIfNull(path);
@@ -100,6 +103,7 @@ public sealed class FigletCatalog
     /// <exception cref="InvalidDataException">
     /// The stream is not a valid Zip archive, or an entry exceeds the configured input byte limit.
     /// </exception>
+    [MustUseReturnValue]
     public static FigletCatalog FromZip(Stream archive, FigletLimits? limits = null)
     {
         ArgumentNullException.ThrowIfNull(archive);
@@ -145,6 +149,7 @@ public sealed class FigletCatalog
     /// <see cref="GetInfo"/> reports placeholder metadata for these entries: there is no source file
     /// or byte sequence to audit for an already-parsed font.
     /// </remarks>
+    [MustUseReturnValue]
     public static FigletCatalog FromFonts(IEnumerable<FigletFont> fonts)
     {
         ArgumentNullException.ThrowIfNull(fonts);
@@ -187,6 +192,7 @@ public sealed class FigletCatalog
     /// <returns>The immutable metadata record.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="name"/> is null.</exception>
     /// <exception cref="KeyNotFoundException">The exact name is absent.</exception>
+    [Pure]
     public FigletFontInfo GetInfo(string name)
     {
         ArgumentNullException.ThrowIfNull(name);

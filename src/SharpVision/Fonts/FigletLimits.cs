@@ -3,6 +3,8 @@
 
 namespace SharpVision.Fonts;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Bounds FIG-font parsing and rendered output resource use.</summary>
 [PublicAPI]
 public readonly record struct FigletLimits
@@ -42,20 +44,26 @@ public readonly record struct FigletLimits
         16 * 1024 * 1024);
 
     /// <summary>Gets the largest accepted encoded font.</summary>
+    [ValueRange(1, int.MaxValue)]
     public int MaxInputBytes { get; }
 
     /// <summary>Gets the largest accepted glyph count.</summary>
+    [ValueRange(1, int.MaxValue)]
     public int MaxGlyphs { get; }
 
     /// <summary>Gets the largest accepted glyph height.</summary>
+    [ValueRange(1, int.MaxValue)]
     public int MaxHeight { get; }
 
     /// <summary>Gets the largest accepted encoded glyph row.</summary>
+    [ValueRange(1, int.MaxValue)]
     public int MaxRowWidth { get; }
 
     /// <summary>Gets the largest accepted comment-line count.</summary>
+    [ValueRange(1, int.MaxValue)]
     public int MaxComments { get; }
 
     /// <summary>Gets the largest rendered UTF-16 result.</summary>
+    [ValueRange(1, int.MaxValue)]
     public int MaxOutputChars { get; }
 }
