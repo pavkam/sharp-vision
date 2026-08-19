@@ -150,6 +150,7 @@ public sealed record ScrollBarStyle: ControlStyle
         }
     }
 
+    [Pure]
     private static InvalidationImpact Compare(
         ScrollBarStyle previous,
         Theme? previousTheme,
