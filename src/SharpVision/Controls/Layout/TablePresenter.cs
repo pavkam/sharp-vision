@@ -87,7 +87,7 @@ internal sealed class TablePresenter: Container
     /// <param name="row">The resolved display row.</param>
     /// <param name="columnIndex">The resolved zero-based column index.</param>
     /// <returns>True when the point is inside an arranged cell.</returns>
-    internal bool TryGetCell(Point point, out TableRow row, out int columnIndex)
+    internal bool TryGetCell(Point point, [MaybeNullWhen(false)] out TableRow row, out int columnIndex)
     {
         var y = ContentSlot.Y;
 
@@ -140,7 +140,7 @@ internal sealed class TablePresenter: Container
             }
         }
 
-        row = null!;
+        row = null;
         columnIndex = -1;
         return false;
     }
