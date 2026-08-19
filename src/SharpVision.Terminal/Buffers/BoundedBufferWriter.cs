@@ -3,7 +3,11 @@
 
 namespace SharpVision.Terminal.Buffers;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Provides one pooled synchronous byte writer under a finite active byte budget.</summary>
+[MustDisposeResource]
 internal sealed class BoundedBufferWriter: IBufferWriter<byte>, IDisposable
 {
     private readonly int _maximum;
@@ -26,6 +30,7 @@ internal sealed class BoundedBufferWriter: IBufferWriter<byte>, IDisposable
 
     /// <summary>Gets the active written byte count.</summary>
     /// <exception cref="ObjectDisposedException">The writer is disposed.</exception>
+    [NonNegativeValue]
     public int WrittenCount
     {
         get
