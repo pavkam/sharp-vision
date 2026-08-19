@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Terminfo;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Defines finite limits for compiling and interpreting terminfo parameter programs.</summary>
 /// <remarks>
 /// Instances are immutable after construction. Use a <see langword="with"/>
@@ -23,6 +25,7 @@ public sealed record ProgramLimits
 
     /// <summary>Gets the maximum raw bytes accepted in one terminfo parameter program.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive or exceeds 1 MiB.</exception>
+    [ValueRange(1, 1_048_576)]
     public int MaxProgramBytes
     {
         get;
@@ -31,6 +34,7 @@ public sealed record ProgramLimits
 
     /// <summary>Gets the maximum compiled operations retained for one terminfo program.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive or exceeds 16,384.</exception>
+    [ValueRange(1, 16_384)]
     public int MaxProgramOperations
     {
         get;
@@ -39,6 +43,7 @@ public sealed record ProgramLimits
 
     /// <summary>Gets the maximum evaluation-stack depth for one terminfo expansion.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive or exceeds 256.</exception>
+    [ValueRange(1, 256)]
     public int MaxProgramStackDepth
     {
         get;
@@ -47,6 +52,7 @@ public sealed record ProgramLimits
 
     /// <summary>Gets the maximum raw output bytes produced by one terminfo expansion.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive or exceeds 1 MiB.</exception>
+    [ValueRange(1, 1_048_576)]
     public int MaxProgramOutputBytes
     {
         get;
@@ -55,6 +61,7 @@ public sealed record ProgramLimits
 
     /// <summary>Gets the maximum raw bytes accepted in one terminfo string parameter.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive or exceeds 1 MiB.</exception>
+    [ValueRange(1, 1_048_576)]
     public int MaxStringParameterBytes
     {
         get;
