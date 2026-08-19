@@ -3,9 +3,8 @@
 
 namespace SharpVision.Controls.Layout;
 
-using TerminalInput = Terminal.Input;
-
 using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+using TerminalInput = Terminal.Input;
 using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
 
 /// <summary>Owns one progressive <see cref="Table"/>'s fetch scheduling, cache, windowed

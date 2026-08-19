@@ -5,6 +5,8 @@ namespace SharpVision.Controls.Collections;
 
 using SharpVision.Terminal.Input;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Owns one realized ListView template control and its selection behavior.</summary>
 /// <remarks>
 /// Composes <see cref="PressBehavior"/> directly instead of deriving <see cref="InputBase"/> and
@@ -19,7 +21,7 @@ internal sealed class ListItem: ContentControl
     /// <summary>Initializes one indexed detached realized control.</summary>
     /// <param name="index">The non-negative stable item index.</param>
     /// <param name="content">The non-null detached template control.</param>
-    public ListItem(int index, ControlBase content)
+    public ListItem([NonNegativeValue] int index, ControlBase content)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentNullException.ThrowIfNull(content);
@@ -64,6 +66,7 @@ internal sealed class ListItem: ContentControl
     public event EventHandler? AvailabilityChanged;
 
     /// <summary>Gets or sets the item index within the owning ListView.</summary>
+    [NonNegativeValue]
     public int Index { get; set; }
 
     /// <summary>Gets whether this item is committed selected.</summary>
@@ -77,6 +80,7 @@ internal sealed class ListItem: ContentControl
 
     /// <summary>Gets the consecutive same-target press count captured from the activation
     /// transition, or zero for key-driven activation.</summary>
+    [NonNegativeValue]
     internal int LastClickCount { get; private set; }
 
     /// <summary>Gets whether content is effectively available for navigation and activation.</summary>

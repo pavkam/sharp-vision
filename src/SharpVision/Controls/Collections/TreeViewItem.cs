@@ -705,6 +705,7 @@ public sealed class TreeViewItem: ControlBase
         base.OnDisposing();
     }
 
+    [Pure]
     internal TreeView? FindTreeView() => ParentCollection?.Owner ?? FindAncestor<TreeView>();
 
     internal TreeViewItemCollection? ParentCollection { get; set; }
@@ -754,6 +755,7 @@ public sealed class TreeViewItem: ControlBase
         }
     }
 
+    [Pure]
     private static Dictionary<TreeViewItem, bool?> EvaluateStates(List<TreeViewItem> affected)
     {
         var memo = new Dictionary<TreeViewItem, bool?>(affected.Count);
@@ -858,6 +860,7 @@ public sealed class TreeViewItem: ControlBase
         }
     }
 
+    [Pure]
     private List<TreeViewItem> CollectAffectedCheckStateItems(bool propagate)
     {
         var affected = new List<TreeViewItem>();

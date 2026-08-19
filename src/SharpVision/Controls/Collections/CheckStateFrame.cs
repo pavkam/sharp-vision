@@ -78,6 +78,7 @@ internal struct CheckStateFrame
 
     /// <summary>Produces this node's effective state once every checkable child was folded in.</summary>
     /// <returns>The aggregate, or the node's own state when it has no checkable child.</returns>
+    [Pure]
     internal readonly bool? Resolve() =>
         _indeterminate ? null
         : _hasCheckableChild ? _common

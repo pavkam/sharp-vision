@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Collections;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Owns ListView's private realized-item presentation and virtualized extent synthesis.</summary>
 /// <remarks>
 /// Eager mode (<see cref="RowHeight"/> null) stacks every realized child sequentially at its own
@@ -21,6 +23,7 @@ internal sealed class ListViewHost: Container
     public ListViewHost() => HorizontalAlignment = HorizontalAlignment.Stretch;
 
     /// <summary>Gets or sets the non-negative logical item count backing virtualized extent synthesis.</summary>
+    [NonNegativeValue]
     public int ItemCount
     {
         get;

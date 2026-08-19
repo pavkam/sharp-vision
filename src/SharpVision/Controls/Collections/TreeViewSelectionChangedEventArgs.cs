@@ -57,6 +57,7 @@ public sealed class TreeViewSelectionChangedEventArgs: EventArgs
     /// <summary>Gets the owned items this transition deselected, in stable tree order.</summary>
     public IReadOnlyList<TreeViewItem> RemovedItems { get; }
 
+    [Pure]
     private static IReadOnlyList<TreeViewItem> Copy(IReadOnlyList<TreeViewItem> items, string name)
     {
         ArgumentNullException.ThrowIfNull(items, name);

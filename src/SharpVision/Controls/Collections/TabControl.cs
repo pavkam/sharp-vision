@@ -9,6 +9,9 @@ using SharpVision.Terminal.Input;
 
 using LayoutStack = Layout.Stack;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Arranges typed tab pages and coordinates header rendering and keyboard selection.</summary>
 [PublicAPI]
 public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
@@ -106,6 +109,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is less than -1 or is outside the current item range.</exception>
     /// <exception cref="InvalidOperationException">The attached tab control is mutated off-dispatcher, or the target page is unavailable.</exception>
     /// <exception cref="ObjectDisposedException">The tab control is disposed.</exception>
+    [ValueRange(-1, int.MaxValue)]
     public int SelectedIndex
     {
         get => _selectedIndex;
@@ -246,9 +250,14 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             : TryNavigate(key.Stroke.Code);
     }
 
+    [NonNegativeValue]
     internal int ItemCount => ItemControlCount;
-    internal TabItem ItemAt(int index) => (TabItem) GetItemControl(index);
-    internal TabHeader HeaderAt(int index) => (TabHeader) _headers.Children[index];
+
+    [Pure]
+    internal TabItem ItemAt([NonNegativeValue] int index) => (TabItem) GetItemControl(index);
+
+    [Pure]
+    internal TabHeader HeaderAt([NonNegativeValue] int index) => (TabHeader) _headers.Children[index];
 
     internal void AddItem(TabItem item) => InsertItem(ItemControlCount, item);
 
@@ -656,6 +665,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             new TabSelectionChangedEventArgs(previousIndex, index, previousItem, currentItem));
     }
 
+    [Pure]
     internal int IndexOfItem(TabItem item)
     {
         for (var index = 0; index < ItemControlCount; index++)
@@ -739,12 +749,14 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         return true;
     }
 
+    [Pure]
     private bool IsEligible(int index)
     {
         var item = ItemAt(index);
         return item.IsEnabled && RequestedVisibility(item) == Visibility.Visible;
     }
 
+    [Pure]
     private Visibility RequestedVisibility(TabItem item) =>
         _requestedPresentations.TryGetValue(item, out var presentation) ? presentation.Visibility : item.Visibility;
 

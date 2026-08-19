@@ -7,9 +7,8 @@ using SharpVision.Controls.Display;
 using SharpVision.Controls.Input;
 using SharpVision.Controls.Scrolling;
 
-using TerminalInput = Terminal.Input;
-
 using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+using TerminalInput = Terminal.Input;
 using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
 
 /// <summary>Arranges typed rows and columns into a terminal-safe table with optional headers and grid lines.</summary>

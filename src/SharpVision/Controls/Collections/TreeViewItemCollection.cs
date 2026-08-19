@@ -3,6 +3,9 @@
 
 namespace SharpVision.Controls.Collections;
 
+using CollectionAccess = JetBrains.Annotations.CollectionAccessAttribute;
+using CollectionAccessType = JetBrains.Annotations.CollectionAccessType;
+
 /// <summary>Exposes a typed tree view item collection backed by the owning tree view or parent item.</summary>
 [PublicAPI]
 public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
@@ -84,6 +87,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
     /// attached owner is mutated off its dispatcher.
     /// </exception>
     /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
+    [CollectionAccess(CollectionAccessType.Read | CollectionAccessType.ModifyExistingContent)]
     public TreeViewItem this[int index]
     {
         get => _items[index];
@@ -122,6 +126,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
     }
 
     /// <inheritdoc/>
+    [CollectionAccess(CollectionAccessType.Read)]
     public int Count => _items.Count;
 
     /// <summary>Adds one detached tree view item.</summary>
@@ -132,6 +137,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
     /// is mutated off its dispatcher.
     /// </exception>
     /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
+    [CollectionAccess(CollectionAccessType.UpdatedContent)]
     public void Add(TreeViewItem item) => Insert(_items.Count, item);
 
     /// <summary>Inserts one detached tree view item at a position.</summary>
@@ -143,6 +149,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
     /// is mutated off its dispatcher.
     /// </exception>
     /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
+    [CollectionAccess(CollectionAccessType.UpdatedContent)]
     public void Insert(int index, TreeViewItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
@@ -222,6 +229,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
     /// <exception cref="InvalidOperationException">An attached owner is mutated off its dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
+    [CollectionAccess(CollectionAccessType.ModifyExistingContent)]
     public bool Remove(TreeViewItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
@@ -246,6 +254,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current items.</exception>
     /// <exception cref="InvalidOperationException">An attached owner is mutated off its dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
+    [CollectionAccess(CollectionAccessType.ModifyExistingContent)]
     public void RemoveAt(int index)
     {
         Owner?.VerifyTreeMutable();
@@ -273,6 +282,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
     /// </exception>
     /// <exception cref="InvalidOperationException">An attached owner is mutated off its dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
+    [CollectionAccess(CollectionAccessType.ModifyExistingContent)]
     public void Move(int oldIndex, int newIndex)
     {
         Owner?.VerifyTreeMutable();
@@ -303,6 +313,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
 
     /// <summary>Gets the position of one item, or -1 when it is not owned by this collection.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    [CollectionAccess(CollectionAccessType.Read)]
     public int IndexOf(TreeViewItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
@@ -312,6 +323,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
     /// <summary>Removes every owned tree view item.</summary>
     /// <exception cref="InvalidOperationException">An attached owner is mutated off its dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
+    [CollectionAccess(CollectionAccessType.ModifyExistingContent)]
     public void Clear()
     {
         Owner?.VerifyTreeMutable();
@@ -346,6 +358,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
     /// <exception cref="ArgumentNullException"><paramref name="items"/> is null.</exception>
     /// <exception cref="InvalidOperationException">An attached owner is mutated off its dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
+    [CollectionAccess(CollectionAccessType.UpdatedContent | CollectionAccessType.ModifyExistingContent)]
     internal void LoaderReplace(IReadOnlyList<TreeViewItem> items)
     {
         ArgumentNullException.ThrowIfNull(items);
@@ -372,6 +385,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
     }
 
     /// <inheritdoc/>
+    [CollectionAccess(CollectionAccessType.Read)]
     public IEnumerator<TreeViewItem> GetEnumerator()
     {
         for (var index = 0; index < _items.Count; index++)

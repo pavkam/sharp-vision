@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Collections;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Reports one committed TabControl selection transition.</summary>
 [PublicAPI]
 public sealed class TabSelectionChangedEventArgs: EventArgs
@@ -36,9 +38,11 @@ public sealed class TabSelectionChangedEventArgs: EventArgs
     }
 
     /// <summary>Gets the index before the transition, or -1.</summary>
+    [ValueRange(-1, int.MaxValue)]
     public int PreviousIndex { get; }
 
     /// <summary>Gets the committed index, or -1.</summary>
+    [ValueRange(-1, int.MaxValue)]
     public int CurrentIndex { get; }
 
     /// <summary>Gets the page selected before the transition, or null.</summary>

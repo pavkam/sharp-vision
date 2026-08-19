@@ -10,6 +10,8 @@ using Scrolling;
 using SharpVision.Terminal.Input;
 
 using LayoutStack = Layout.Stack;
+
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 using TextAlignment = Text.Alignment;
 using TextLayout = Text.Layout;
 using TextLine = Text.Line;
@@ -116,6 +118,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int Indent
     {
         get;
@@ -216,6 +219,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int HorizontalOffset
     {
         get => _stack.HorizontalOffset;
@@ -226,6 +230,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int VerticalOffset
     {
         get => _stack.VerticalOffset;
@@ -240,6 +245,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int LineSize
     {
         get => _stack.LineSize;
@@ -261,6 +267,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int PageOverlap
     {
         get => _stack.PageOverlap;
@@ -330,6 +337,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     public void CollapseAll() => SetAllExpanded(false);
 
     /// <summary>Gets the visible selectable-entry count used to prove disclosure projection invariants.</summary>
+    [NonNegativeValue]
     internal int VisibleEntryCount => _visibleNodes.Count;
 
     /// <summary>Measures the current projected document for the private content surface.</summary>
@@ -653,12 +661,14 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
         }
     }
 
+    [Pure]
     private static JsonViewNode Parse(string value)
     {
         using var document = JsonDocument.Parse(value);
         return BuildNode(document.RootElement, string.Empty, null, null, false);
     }
 
+    [Pure]
     private static JsonViewNode BuildNode(
         JsonElement element,
         string path,
@@ -714,9 +724,11 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
         return node;
     }
 
+    [Pure]
     private static string EscapePointerSegment(string value) =>
         value.Replace("~", "~0", StringComparison.Ordinal).Replace("/", "~1", StringComparison.Ordinal);
 
+    [Pure]
     private static List<JsonViewNode> CollectVisibleNodes(JsonViewNode root)
     {
         var result = new List<JsonViewNode>();
@@ -737,6 +749,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
         }
     }
 
+    [Pure]
     private List<JsonViewLine> BuildLines(JsonViewNode root, int indent)
     {
         var lines = new List<JsonViewLine>();
@@ -841,6 +854,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
         }
     }
 
+    [Pure]
     private List<JsonViewLine> BuildDisplayLines(List<JsonViewLine> source, int width)
     {
         var result = new List<JsonViewLine>(source.Count);
@@ -891,6 +905,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
         return result;
     }
 
+    [Pure]
     private JsonViewNode? FindNode(string path)
     {
         var pending = new Stack<JsonViewNode>();
@@ -1069,6 +1084,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
         return true;
     }
 
+    [Pure]
     private JsonViewNode? FindOwningNode(int lineIndex, int direction)
     {
         var index = SingleSelectionIndex.FindLinear(lineIndex, direction, _lines.Count, i => _lines[i].Node is not null);
@@ -1226,6 +1242,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
         x += MeasureCells(value);
     }
 
+    [Pure]
     private TerminalStyle ResolveValueStyle(
         JsonValueKind kind,
         JsonViewStyle style,
@@ -1240,6 +1257,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
             _ => throw new NotImplementedException()
         };
 
+    [Pure]
     private static TerminalStyle WithColors(TerminalStyle source, Color foreground, Color background) => new(
         foreground,
         background,
@@ -1251,6 +1269,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     // one hit-testing measures to compute the clickable span. They were three literals that had to
     // stay in lockstep by hand, and the glyph participates in layout, so a drift moved the
     // clickable region away from the drawn arrow.
+    [Pure]
     private Rune DisclosureGlyph(bool expanded) =>
         expanded ? ActualStyle.ExpandedGlyph : ActualStyle.CollapsedGlyph;
 
