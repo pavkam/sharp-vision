@@ -61,6 +61,7 @@ internal sealed class OwnedControlSlot
     /// <summary>Determines whether this exact control belongs to the slot.</summary>
     /// <param name="control">The non-null candidate.</param>
     /// <returns>True when the identical control is present.</returns>
+    [Pure]
     public bool Contains(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
@@ -83,6 +84,7 @@ internal sealed class OwnedControlSlot
     /// <summary>Gets the identity position of one control.</summary>
     /// <param name="control">The non-null candidate.</param>
     /// <returns>The zero-based position, or -1.</returns>
+    [Pure]
     public int IndexOf(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
@@ -118,6 +120,7 @@ internal sealed class OwnedControlSlot
     public void RemoveForDisposalWithinPublication(ControlBase control) =>
         Registry.RemoveForDisposalWithinPublication(this, control);
 
+    [Pure]
     private int IndexOfIdentity(ControlBase control)
     {
         for (var index = 0; index < Items.Count; index++)

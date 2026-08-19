@@ -99,6 +99,7 @@ public abstract class CompositeControlBase: ControlBase
     protected override void ArrangeOverride(Rect bounds) =>
         ArrangeChild(GetContent(), bounds, ResolvedAxes.Both);
 
+    [Pure]
     private ControlBase GetContent() => _contentSlot.Count == 0
         ? throw new InvalidOperationException(
             "A composite control requires one committed composition root.")

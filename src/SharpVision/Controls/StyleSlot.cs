@@ -183,6 +183,7 @@ public sealed class StyleSlot<TStyle>
             : null;
     }
 
+    [Pure]
     private static bool ResolvedValuesEqual(object? previous, Theme? previousTheme, object? current, Theme? currentTheme)
     {
         if (previous is null || current is null)
@@ -238,6 +239,7 @@ public sealed class StyleSlot<TStyle>
 
     // Mirrors ControlBase.ResolveColor's themeless fallback: no theme means no table to consult, so
     // a symbolic reference resolves to the same neutral value on both sides and compares equal.
+    [Pure]
     private static TerminalAttributes Resolve(ControlDecoration value, Theme? theme) => value.IsLiteral
         ? value.Literal
         : theme?.Resolve(value) ?? TerminalAttributes.None;

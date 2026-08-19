@@ -11,6 +11,9 @@ using DataBinding;
 using SharpVision.Menus;
 using SharpVision.Terminal.Input;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>
 /// Defines a traditional mutable UI element with dispatcher affinity and box layout.
 /// </summary>
@@ -115,6 +118,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <exception cref="ArgumentException">The value exceeds <see cref="MaxWidth"/>.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int MinWidth
     {
         get;
@@ -132,6 +136,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <exception cref="ArgumentException">The value exceeds <see cref="MaxHeight"/>.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int MinHeight
     {
         get;
@@ -149,6 +154,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <exception cref="ArgumentException">The value is below <see cref="MinWidth"/>.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int MaxWidth
     {
         get;
@@ -166,6 +172,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <exception cref="ArgumentException">The value is below <see cref="MinHeight"/>.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NonNegativeValue]
     public int MaxHeight
     {
         get;
@@ -696,6 +703,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <exception cref="ArgumentException">The same event and delegate are registered.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [MustDisposeResource]
     public IDisposable AddHandler<TArgs>(
         Event<TArgs> routedEvent,
         EventHandler<TArgs> handler,
@@ -2443,7 +2451,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <returns>Zero cells for a null affix - zero cost when unused - otherwise the affix's own
     /// resolved content width plus <paramref name="gap"/>.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="gap"/> is negative.</exception>
-    protected AffixMetrics MeasureAffixes(Affix? start, Affix? end, int gap)
+    protected AffixMetrics MeasureAffixes(Affix? start, Affix? end, [NonNegativeValue] int gap)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(gap);
 
@@ -2588,6 +2596,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <param name="usesFallback">Receives whether <see cref="Affix.Fallback"/> must be drawn in
     /// place of <see cref="Affix.Content"/>.</param>
     /// <returns>The resolved printable cell width.</returns>
+    [Pure]
     private int ResolveAffixCells(Affix affix, out bool usesFallback)
     {
         var measurement = Terminal.Unicode.Width.Measure(affix.Content, CellPolicy.AmbiguousWidth);
@@ -2605,6 +2614,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <summary>Maps one validated public change impact to the complete internal dirty-phase closure.</summary>
     /// <param name="impact">The validated earliest affected UI phase.</param>
     /// <returns>The internal dirty phases requested by the change.</returns>
+    [Pure]
     internal static Invalidation InvalidationFor(InvalidationImpact impact) => impact switch
     {
         InvalidationImpact.None => Invalidation.None,
@@ -2614,6 +2624,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         _ => throw new UnreachableException()
     };
 
+    [Pure]
     private static Invalidation Expand(Invalidation value) => value switch
     {
         Invalidation.None => Invalidation.None,
@@ -2624,6 +2635,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         _ => value & Invalidation.All
     };
 
+    [Pure]
     private static int Align(
         int origin,
         int available,
@@ -2636,6 +2648,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             _ => throw new UnreachableException()
         };
 
+    [Pure]
     private static int Align(
         int origin,
         int available,
@@ -2648,6 +2661,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             _ => throw new UnreachableException()
         };
 
+    [Pure]
     private static int ResolveArrangeAxis(
         Length length,
         bool stretch,
@@ -2670,6 +2684,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         return Math.Min(available, Math.Clamp(requested, minimum, maximum));
     }
 
+    [Pure]
     private static int ResolveMeasureAxis(
         Length length,
         int? slot,
@@ -2698,6 +2713,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             : clamped;
     }
 
+    [Pure]
     private static int? ResolveContentAxis(
         Length length,
         int? slot,
@@ -2736,6 +2752,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         return Math.Max(0, Math.Min(border.Value, available) - inset);
     }
 
+    [Pure]
     private static int ResolvePercent(int value, double percent)
     {
         var result = Math.Round(value * percent / 100, MidpointRounding.AwayFromZero);
@@ -4132,12 +4149,14 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <returns>The non-null complete appearance states.</returns>
     internal AppearanceStates ResolveAppearanceStates(Theme? theme) => GetAppearanceStates(theme);
 
+    [Pure]
     internal static Color ResolveThemeColor(Color color) => color;
 
     /// <summary>Resolves a possibly-literal color value against an optional theme.</summary>
     /// <param name="value">The literal or theme-referenced color value.</param>
     /// <param name="theme">The active theme, or null when no theme resolves the value.</param>
     /// <returns>The literal color, or the theme-resolved color, or <see cref="Color.Default"/>.</returns>
+    [Pure]
     protected internal static Color ResolveColor(ControlColor value, Theme? theme) => value.IsLiteral
         ? value.Literal
         : theme?.ResolveColor(value.SemanticColor) ?? Color.Default;
@@ -4145,6 +4164,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <summary>Resolves a possibly-literal color value against this control's active theme.</summary>
     /// <param name="value">The literal or theme-referenced color value.</param>
     /// <returns>The literal color, or the theme-resolved color, or <see cref="Color.Default"/>.</returns>
+    [Pure]
     protected Color ResolveColor(ControlColor value) => ResolveColor(value, Theme);
 
     internal Rune ResolveControlGlyph(ControlGlyph glyph) =>

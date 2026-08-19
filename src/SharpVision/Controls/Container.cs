@@ -7,6 +7,8 @@ using Scrolling;
 
 using SharpVision.Terminal.Input;
 
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+
 /// <summary>Defines a mutable control that owns an ordered child collection.</summary>
 [PublicAPI]
 public abstract class Container: ControlBase
@@ -21,7 +23,7 @@ public abstract class Container: ControlBase
     /// <summary>Initializes an empty ordered child collection with a finite capacity.</summary>
     /// <param name="capacity">The non-negative maximum child count.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative.</exception>
-    protected Container(int capacity)
+    protected Container([NonNegativeValue] int capacity)
     {
         Children = new ControlCollection(this, capacity);
         Children.Changed += OnChildrenChangedCore;
@@ -468,6 +470,7 @@ public abstract class Container: ControlBase
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached container is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
+    [NonNegativeValue]
     public int LineSize
     {
         get;
@@ -486,6 +489,7 @@ public abstract class Container: ControlBase
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached container is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
+    [NonNegativeValue]
     public int PageOverlap
     {
         get;
@@ -751,6 +755,7 @@ public abstract class Container: ControlBase
     // Viewport (only non-negativity is validated), so a PageOverlap at or above the viewport
     // extent would otherwise compute a page step of exactly zero, permanently turning PageUp and
     // PageDown into silent no-ops for that axis instead of degrading to a smaller step.
+    [Pure]
     private int PageStep(int extent) => extent - Math.Min(PageOverlap, Math.Max(0, extent - 1));
 
     private void Handle(PointerEventArgs eventArgs)
@@ -798,6 +803,7 @@ public abstract class Container: ControlBase
         return false;
     }
 
+    [Pure]
     private static Container? Ancestor(ControlBase control)
     {
         Debug.Assert(control is not null, "Scrollable ancestor lookup requires a control.");
@@ -1033,6 +1039,7 @@ public abstract class Container: ControlBase
         return true;
     }
 
+    [Pure]
     private bool IsContentDescendant(ControlBase value)
     {
         Debug.Assert(value is not null, "Descendant checks require a control.");
@@ -1048,6 +1055,7 @@ public abstract class Container: ControlBase
         return false;
     }
 
+    [Pure]
     private static int Reveal(int current, int viewport, int start, int length)
     {
         Debug.Assert(current >= 0 && viewport >= 0, "Reveal uses a non-negative viewport.");
@@ -1062,10 +1070,12 @@ public abstract class Container: ControlBase
         return end > current.Add(viewport) ? Math.Max(0, end - viewport) : current;
     }
 
+    [Pure]
     private int MaximumX() => AutoScroll && (ScrollBars & ScrollBars.Horizontal) != 0
         ? Math.Max(0, Extent.Width - Viewport.Width)
         : 0;
 
+    [Pure]
     private int MaximumY() => AutoScroll && (ScrollBars & ScrollBars.Vertical) != 0
         ? Math.Max(0, Extent.Height - Viewport.Height)
         : 0;
@@ -1141,12 +1151,15 @@ public abstract class Container: ControlBase
         }
     }
 
+    [Pure]
     private static int Difference(int left, int right) =>
         (int) Math.Clamp((long) left - right, int.MinValue, int.MaxValue);
 
+    [Pure]
     private static int MultiplyNegative(int left, int right) =>
         (int) Math.Clamp(-(long) left * right, int.MinValue, int.MaxValue);
 
+    [Pure]
     private static int Multiply(int left, int right) =>
         (int) Math.Clamp((long) left * right, int.MinValue, int.MaxValue);
 
