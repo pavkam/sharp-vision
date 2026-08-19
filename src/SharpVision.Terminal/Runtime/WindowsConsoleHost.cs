@@ -5,6 +5,9 @@ namespace SharpVision.Terminal.Runtime;
 
 using Capabilities;
 
+using InstantHandle = JetBrains.Annotations.InstantHandleAttribute;
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>Opens an interactive console on Windows using VT input and VT processing.</summary>
 [SupportedOSPlatform("windows")]
 internal static class WindowsConsoleHost
@@ -13,6 +16,7 @@ internal static class WindowsConsoleHost
     /// <param name="options">The validated host policy.</param>
     /// <returns>A connection whose disposal restores the saved console modes.</returns>
     /// <exception cref="IOException">The console mode cannot be configured.</exception>
+    [MustDisposeResource]
     public static ConsoleConnection Open(ConsoleHostOptions options) =>
         Open(
             options,
@@ -35,9 +39,10 @@ internal static class WindowsConsoleHost
     /// <param name="createResize">Builds the resize source from the already-open transport.</param>
     /// <returns>A connection whose disposal restores the saved console modes.</returns>
     /// <exception cref="IOException">The console mode cannot be configured.</exception>
+    [MustDisposeResource]
     internal static ConsoleConnection Open(
         ConsoleHostOptions options,
-        Func<StreamTransport, IResizeSource> createResize)
+        [InstantHandle] Func<StreamTransport, IResizeSource> createResize)
     {
         Debug.Assert(createResize is not null, "The console host always supplies a resize factory.");
         var mode = WindowsConsoleMode.Enter(options.CaptureControlKeys);

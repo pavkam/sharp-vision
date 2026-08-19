@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Runtime;
 
 using Capabilities;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>
 /// Bundles the transport and resize source opened for one interactive console and
 /// owns the platform terminal-mode restore lease.
@@ -15,6 +17,7 @@ using Capabilities;
 /// host performs after the session's reverse mode cleanup.
 /// </remarks>
 [PublicAPI]
+[MustDisposeResource]
 public sealed class ConsoleConnection: IAsyncDisposable
 {
     private readonly IDisposable _restore;

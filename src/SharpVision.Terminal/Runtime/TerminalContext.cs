@@ -43,6 +43,7 @@ internal sealed class TerminalContext
     /// <param name="capabilities">The non-null immutable replacement capability snapshot.</param>
     /// <returns>A new context with the refined profile and the same backend reference.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> is <see langword="null"/>.</exception>
+    [Pure]
     public TerminalContext WithCapabilities(TerminalCapabilities capabilities)
     {
         ArgumentNullException.ThrowIfNull(capabilities);

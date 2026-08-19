@@ -7,6 +7,9 @@ using Capabilities;
 
 using Microsoft.Win32.SafeHandles;
 
+using InstantHandle = JetBrains.Annotations.InstantHandleAttribute;
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>Opens an interactive console on Linux and macOS with SIGWINCH pixel resize.</summary>
 [SupportedOSPlatform("linux")]
 [SupportedOSPlatform("macos")]
@@ -16,6 +19,7 @@ internal static class UnixConsoleHost
     /// <param name="options">The validated host policy.</param>
     /// <returns>A connection whose disposal restores the terminal input mode.</returns>
     /// <exception cref="IOException">Raw mode or the tty streams cannot be prepared.</exception>
+    [MustDisposeResource]
     public static ConsoleConnection Open(ConsoleHostOptions options) =>
         Open(
             options,
@@ -36,9 +40,10 @@ internal static class UnixConsoleHost
     /// <param name="createResize">Builds the resize source from the borrowed tty handle.</param>
     /// <returns>A connection whose disposal restores the terminal input mode.</returns>
     /// <exception cref="IOException">Raw mode or the tty streams cannot be prepared.</exception>
+    [MustDisposeResource]
     internal static ConsoleConnection Open(
         ConsoleHostOptions options,
-        Func<SafeFileHandle, IResizeSource> createResize)
+        [InstantHandle] Func<SafeFileHandle, IResizeSource> createResize)
     {
         Debug.Assert(createResize is not null, "The console host always supplies a resize factory.");
         var mode = UnixConsoleMode.Enter(options.CaptureControlKeys);

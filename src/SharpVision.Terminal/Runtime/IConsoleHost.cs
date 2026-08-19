@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Runtime;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
+
 /// <summary>
 /// Opens interactive console streams for a SharpVision application host, as an injectable seam
 /// over the operating-system boundary.
@@ -25,5 +27,6 @@ public interface IConsoleHost
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
     /// <exception cref="PlatformNotSupportedException">The current platform is not supported.</exception>
     /// <exception cref="IOException">The console cannot enter raw or VT mode.</exception>
+    [MustDisposeResource]
     public ConsoleConnection Open(ConsoleHostOptions options);
 }

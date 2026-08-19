@@ -9,12 +9,14 @@ using Capabilities;
 
 using Xterm;
 
+using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
 
 /// <summary>
 /// Owns terminal mode leases and serializes input, resize, closure, and cleanup.
 /// </summary>
 [DebuggerDisplay("Session {_options}")]
 [PublicAPI]
+[MustDisposeResource]
 public sealed class Session: IAsyncDisposable
 {
     private readonly ITransport _transport;
