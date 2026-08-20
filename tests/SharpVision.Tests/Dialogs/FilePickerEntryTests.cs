@@ -6,6 +6,38 @@ namespace SharpVision.Tests.Dialogs;
 /// <summary>Verifies identity semantics for file-picker entries.</summary>
 public sealed class FilePickerEntryTests
 {
+    /// <summary>Verifies construction retains every constructor argument unchanged.</summary>
+    [Fact]
+    public void Constructor_WhenArgumentsAreValid_RetainsEveryProperty()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-entry-construction"));
+        var fullPath = Path.Combine(directory, "notes.txt");
+
+        // Act
+        var entry = new FilePickerEntry("notes.txt", fullPath, isDirectory: false, isHidden: true);
+
+        // Assert
+        entry.Name.ShouldBe("notes.txt");
+        entry.FullPath.ShouldBe(fullPath);
+        entry.IsDirectory.ShouldBeFalse();
+        entry.IsHidden.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies every malformed constructor argument is rejected before an instance can be observed.</summary>
+    [Fact]
+    public void Constructor_WhenArgumentsAreInvalid_ThrowsValidationExceptions()
+    {
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-entry-invalid"));
+        var fullPath = Path.Combine(directory, "notes.txt");
+
+        _ = Should.Throw<ArgumentNullException>(() => new FilePickerEntry(null!, fullPath, false, false));
+        _ = Should.Throw<ArgumentNullException>(() => new FilePickerEntry("notes.txt", null!, false, false));
+        _ = Should.Throw<ArgumentException>(() => new FilePickerEntry(" ", fullPath, false, false));
+        _ = Should.Throw<ArgumentException>(() => new FilePickerEntry("notes.txt", " ", false, false));
+        _ = Should.Throw<ArgumentException>(() => new FilePickerEntry("notes.txt", "notes.txt", false, false));
+    }
+
     /// <summary>Verifies two entries whose FullPath differs only by case are treated as distinct
     /// identities - matching the Ordinal tie-break FilePickerEntryComparer already assumes when
     /// sorting case-variant siblings (e.g. "readme.txt" and "Readme.txt") as separate rows.</summary>

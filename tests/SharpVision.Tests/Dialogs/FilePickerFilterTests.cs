@@ -40,4 +40,20 @@ public sealed class FilePickerFilterTests
         _ = Should.Throw<ArgumentException>(() => new FilePickerFilter("Files", "../*.cs"));
         _ = Should.Throw<ArgumentException>(() => new FilePickerFilter("Files", Path.GetPathRoot(Environment.CurrentDirectory)!));
     }
+
+    /// <summary>Verifies the shared AllFiles filter matches every basename through its single
+    /// wildcard pattern, the documented default offered when a caller configures no filters.</summary>
+    [Fact]
+    public void AllFiles_WhenAccessed_MatchesEveryBasename()
+    {
+        // Act
+        var filter = FilePickerFilter.AllFiles;
+
+        // Assert
+        filter.Name.ShouldBe("All files");
+        filter.Patterns.ShouldBe(["*"]);
+        filter.Matches("Program.cs").ShouldBeTrue();
+        filter.Matches("README").ShouldBeTrue();
+        FilePickerFilter.AllFiles.ShouldBeSameAs(filter);
+    }
 }
