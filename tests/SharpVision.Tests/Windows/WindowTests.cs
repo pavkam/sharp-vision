@@ -2538,6 +2538,19 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a Window that never joined an attached application tree - so it has no
+    /// ModalityOwner to enter - rejects ShowModal with its own dedicated message rather than the
+    /// shared "already modal"/reentrancy guards.</summary>
+    [Fact]
+    public void ShowModal_WhenNeverAttached_ThrowsInvalidOperationException()
+    {
+        var window = new Window();
+
+        var exception = Should.Throw<InvalidOperationException>(() => window.ShowModal());
+
+        exception.Message.ShouldBe("A modal Window must belong to an attached application tree.");
+    }
+
     #endregion
 
     #region Modal interaction

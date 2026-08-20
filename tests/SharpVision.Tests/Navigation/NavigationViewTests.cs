@@ -245,6 +245,33 @@ public sealed class NavigationViewTests
         command.Executions.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies unavailable items reject programmatic activation, matching the same
+    /// EffectiveIsEnabled/EffectiveIsVisible gate every other PerformInvoke-equivalent method
+    /// enforces.</summary>
+    [Theory]
+    [InlineData(false, Visibility.Visible)]
+    [InlineData(true, Visibility.Hidden)]
+    public void PerformInvoke_WhenItemIsUnavailable_DoesNothing(bool enabled, Visibility visibility)
+    {
+        var item = new NavigationViewItem { Text = "Page", IsEnabled = enabled, Visibility = visibility };
+        var invoked = 0;
+        item.Invoked += (_, _) => invoked++;
+
+        item.PerformInvoke();
+
+        invoked.ShouldBe(0);
+    }
+
+    /// <summary>Verifies PerformInvoke rejects use after disposal.</summary>
+    [Fact]
+    public void PerformInvoke_WhenDisposed_Throws()
+    {
+        var item = new NavigationViewItem { Text = "Page" };
+        item.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(item.PerformInvoke);
+    }
+
     /// <summary>Verifies callers select an owned semantic entry without moving focus to its private face.</summary>
     [Fact]
     public void SelectItem_WhenOwned_UpdatesSelectionWithoutChangingFocusOwnership()
@@ -288,6 +315,20 @@ public sealed class NavigationViewTests
         other.Items.Add(item);
 
         _ = Should.Throw<ArgumentException>(() => nav.SelectItem(item));
+    }
+
+    /// <summary>Verifies semantic selection rejects a null item and leaves selection untouched.</summary>
+    [Fact]
+    public void SelectItem_WhenItemIsNull_ThrowsArgumentNullException()
+    {
+        var nav = new NavigationView();
+        var item = new NavigationViewItem { Text = "Page" };
+        nav.Items.Add(item);
+        nav.SelectItem(item);
+
+        _ = Should.Throw<ArgumentNullException>(() => nav.SelectItem(null!));
+
+        nav.SelectedItem.ShouldBeSameAs(item);
     }
 
     /// <summary>Verifies private items reject focus while selection remains owner-managed.</summary>
@@ -1193,6 +1234,57 @@ public sealed class NavigationViewTests
         second.Items.Count.ShouldBe(0);
     }
 
+    /// <summary>Verifies a group's sub-item collection rejects a null Add argument and leaves
+    /// Count unchanged.</summary>
+    [Fact]
+    public void Items_WhenAddedItemIsNull_ThrowsArgumentNullException()
+    {
+        var group = new NavigationViewGroup { Header = "Group" };
+
+        _ = Should.Throw<ArgumentNullException>(() => group.Items.Add(null!));
+
+        group.Items.Count.ShouldBe(0);
+    }
+
+    /// <summary>Verifies re-adding an item already owned by this same group is rejected instead of
+    /// silently duplicating it in the underlying stack.</summary>
+    [Fact]
+    public void Items_WhenAddedItemAlreadyBelongsToThisGroup_ThrowsArgumentException()
+    {
+        var group = new NavigationViewGroup { Header = "Group" };
+        var item = new NavigationViewItem { Text = "Item" };
+        group.Items.Add(item);
+
+        _ = Should.Throw<ArgumentException>(() => group.Items.Add(item));
+
+        group.Items.Count.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a group's sub-item collection rejects a null Remove argument.</summary>
+    [Fact]
+    public void Items_WhenRemovedItemIsNull_ThrowsArgumentNullException()
+    {
+        var group = new NavigationViewGroup { Header = "Group" };
+
+        _ = Should.Throw<ArgumentNullException>(() => group.Items.Remove(null!));
+    }
+
+    /// <summary>Verifies removing an item this group never owned reports false instead of throwing
+    /// or disturbing the current membership.</summary>
+    [Fact]
+    public void Items_WhenRemovedItemIsNotOwned_ReturnsFalse()
+    {
+        var group = new NavigationViewGroup { Header = "Group" };
+        var owned = new NavigationViewItem { Text = "Owned" };
+        group.Items.Add(owned);
+        var stray = new NavigationViewItem { Text = "Stray" };
+
+        group.Items.Remove(stray).ShouldBeFalse();
+
+        group.Items.Count.ShouldBe(1);
+        group.Items[0].ShouldBeSameAs(owned);
+    }
+
     /// <summary>Verifies the item indent defaults to 2 cells and rejects negative values, now on the
     /// group's own style rather than a control-side setter.</summary>
     [ComponentUnitEvidence(typeof(NavigationViewGroup))]
@@ -1223,6 +1315,41 @@ public sealed class NavigationViewTests
         group.Style = null;
 
         group.Style.ShouldBeNull();
+    }
+
+    /// <summary>Verifies a local style's ItemIndent difference is graded Measure, not just Render -
+    /// the same distinction NavigationViewItemStyle's own comparer draws for AffixGap - isolated
+    /// from every other style member by starting from an already-assigned identical style.</summary>
+    [Fact]
+    public void Style_WhenItemIndentChanges_InvalidatesMeasure()
+    {
+        using var group = new NavigationViewGroup
+        {
+            Header = "Group",
+            Style = NavigationViewGroupStyle.Default
+        };
+        group.Clear(Invalidation.All);
+
+        group.Style = NavigationViewGroupStyle.Default with { ItemIndent = 4 };
+
+        group.Pending.ShouldBe(Invalidation.All);
+    }
+
+    /// <summary>Verifies a local style difference that does not touch ItemIndent still invalidates
+    /// rendering only, unaffected by the ItemIndent-specific comparer branch.</summary>
+    [Fact]
+    public void Style_WhenGlyphChangesButItemIndentDoesNot_InvalidatesRenderOnly()
+    {
+        using var group = new NavigationViewGroup
+        {
+            Header = "Group",
+            Style = NavigationViewGroupStyle.Default
+        };
+        group.Clear(Invalidation.All);
+
+        group.Style = NavigationViewGroupStyle.Default with { CollapsedGlyph = new Rune('*') };
+
+        group.Pending.ShouldBe(Invalidation.Render);
     }
 
     /// <summary>Verifies direct and owning-NavigationView-inherited IsEnabled changes flip a
@@ -1441,7 +1568,68 @@ public sealed class NavigationViewTests
 
         moved.ShouldBeTrue();
         nav.VerticalOffset.ShouldBe(3);
-        _ = changes.ShouldHaveSingleItem();
+        var change = changes.ShouldHaveSingleItem();
+        change.PreviousOffset.ShouldBe(new Point(0, 0));
+        change.Offset.ShouldBe(new Point(0, 3));
+        change.Cause.ShouldBe(ScrollCause.Programmatic);
+    }
+
+    /// <summary>Verifies ScrollBy reports no movement, and raises no ScrollChanged, once the
+    /// viewport is already saturated at the requested end - matching the generated scroll
+    /// container's own endpoint-clamping contract exposed on TreeView and ListView.</summary>
+    [Fact]
+    public void ScrollBy_WhenAlreadyAtSaturatedEndpoint_ReturnsFalseWithoutRaisingScrollChanged()
+    {
+        var nav = new NavigationView();
+
+        for (var index = 0; index < 20; index++)
+        {
+            nav.Items.Add(new NavigationViewItem { Text = $"Item {index}" });
+        }
+
+        new LayoutEngine().Layout(nav, new Size(10, 4));
+        var changes = 0;
+        nav.ScrollChanged += (_, _) => changes++;
+
+        var moved = nav.ScrollBy(0, -1);
+
+        moved.ShouldBeFalse();
+        nav.VerticalOffset.ShouldBe(0);
+        changes.ShouldBe(0);
+    }
+
+    /// <summary>Verifies ScrollBy propagates the composed scroll container's own cause validation.</summary>
+    [Fact]
+    public void ScrollBy_WhenCauseIsUndefined_ThrowsArgumentOutOfRangeException()
+    {
+        var nav = new NavigationView();
+        nav.Items.Add(new NavigationViewItem { Text = "Item" });
+
+        new LayoutEngine().Layout(nav, new Size(10, 4));
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => nav.ScrollBy(0, 1, (ScrollCause) 99));
+    }
+
+    /// <summary>Verifies ScrollBy rejects use after disposal.</summary>
+    [Fact]
+    public void ScrollBy_WhenDisposed_ThrowsObjectDisposedException()
+    {
+        var nav = new NavigationView();
+        nav.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => nav.ScrollBy(0, 1));
+    }
+
+    /// <summary>Verifies ScrollBy requires dispatcher affinity once attached.</summary>
+    [Fact]
+    public async Task ScrollBy_WhenAttachedOffThread_ThrowsInvalidOperationExceptionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var nav = new NavigationView();
+
+        await dispatcher.InvokeAsync(() => nav.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => nav.ScrollBy(0, 1));
     }
 
     /// <summary>Verifies BringItemIntoView scrolls minimally to reveal an item below the viewport.</summary>
@@ -1472,6 +1660,46 @@ public sealed class NavigationViewTests
         var nav = new NavigationView();
 
         _ = Should.Throw<ArgumentNullException>(() => nav.BringItemIntoView(null!));
+    }
+
+    /// <summary>Verifies BringItemIntoView rejects an item that is not owned by this navigation
+    /// view - never added, or added to a different NavigationView entirely.</summary>
+    [Fact]
+    public void BringItemIntoView_WhenItemIsNotOwned_ThrowsArgumentException()
+    {
+        var nav = new NavigationView();
+        nav.Items.Add(new NavigationViewItem { Text = "Item" });
+        new LayoutEngine().Layout(nav, new Size(10, 4));
+        var stray = new NavigationViewItem { Text = "Stray" };
+
+        _ = Should.Throw<ArgumentException>(() => nav.BringItemIntoView(stray));
+    }
+
+    /// <summary>Verifies BringItemIntoView rejects use after disposal.</summary>
+    [Fact]
+    public void BringItemIntoView_WhenDisposed_ThrowsObjectDisposedException()
+    {
+        var nav = new NavigationView();
+        var item = new NavigationViewItem { Text = "Item" };
+        nav.Items.Add(item);
+
+        nav.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => nav.BringItemIntoView(item));
+    }
+
+    /// <summary>Verifies BringItemIntoView requires dispatcher affinity once attached.</summary>
+    [Fact]
+    public async Task BringItemIntoView_WhenAttachedOffThread_ThrowsInvalidOperationExceptionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var nav = new NavigationView();
+        var item = new NavigationViewItem { Text = "Item" };
+        nav.Items.Add(item);
+
+        await dispatcher.InvokeAsync(() => nav.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => nav.BringItemIntoView(item));
     }
 
     /// <summary>Verifies an item header carrying a terminal control character is rejected instead of
