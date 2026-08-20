@@ -20,7 +20,6 @@ using SharpVision.Controls.Layout;
 using ControlCalendar = Controls.Input.Calendar;
 using DisplayText = Controls.Display.Text;
 using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
-using UsedImplicitly = JetBrains.Annotations.UsedImplicitlyAttribute;
 
 /// <summary>Creates strongly typed model relationships for retained SharpVision controls.</summary>
 [PublicAPI]
@@ -772,15 +771,7 @@ public static class BindingExtensions
             string.Empty);
 
     /// <summary>Binds a model expansion state two-way to a tree view item.</summary>
-    /// <remarks>
-    /// Reached only from consumer code outside this repository's own tests and showcase; every
-    /// sibling <c>Bind*</c> overload here has an in-repo call site, but this one's shape - a
-    /// dedicated <see cref="TreeViewItem"/> expansion binding distinct from its own
-    /// <c>Bind(TreeViewItem, ...)</c> header overload - is exercised only through the public fluent
-    /// API this type exists to offer, not by anything internal.
-    /// </remarks>
     [MustDisposeResource]
-    [UsedImplicitly]
     public static Binding BindExpanded<TModel>(
         this TreeViewItem target,
         TModel source,

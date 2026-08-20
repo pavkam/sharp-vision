@@ -316,6 +316,47 @@ public sealed partial class BindingTests
         model.SelectedTreeItem.ShouldBeSameAs(second);
     }
 
+    /// <summary>Verifies TreeViewItem maps its header text one-way.</summary>
+    [Fact]
+    public void TreeViewItemBind_WhenSourceChanges_SyncsHeader()
+    {
+        var model = new BindingModel { Name = "Documents" };
+        var target = new TreeViewItem();
+        using var binding = target.Bind(model, source => source.Name);
+
+        target.Header.ShouldBe("Documents");
+
+        model.Name = "Reports";
+
+        target.Header.ShouldBe("Reports");
+        binding.Mode.ShouldBe(BindingMode.OneWay);
+    }
+
+    /// <summary>Verifies a tree view item expansion binding initializes from the model.</summary>
+    [Fact]
+    public void TreeViewItemBindExpanded_WhenSourceChanges_SyncsIsExpanded()
+    {
+        var model = new BindingModel { IsExpanded = false };
+        var item = new TreeViewItem("Item");
+        using var binding = item.BindExpanded(model, source => source.IsExpanded);
+
+        item.IsExpanded.ShouldBeFalse();
+        binding.Mode.ShouldBe(BindingMode.TwoWay);
+    }
+
+    /// <summary>Verifies a tree view item expansion toggle propagates back to the model.</summary>
+    [Fact]
+    public void TreeViewItemBindExpanded_WhenTargetChanges_UpdatesModel()
+    {
+        var model = new BindingModel { IsExpanded = true };
+        var item = new TreeViewItem("Item");
+        using var binding = item.BindExpanded(model, source => source.IsExpanded);
+
+        item.IsExpanded = false;
+
+        model.IsExpanded.ShouldBeFalse();
+    }
+
     /// <summary>Verifies Button command and parameter replacements remain live.</summary>
     [Fact]
     public void BindCommand_WhenModelReplacesValues_UsesLatestCommandAndParameter()
@@ -349,6 +390,36 @@ public sealed partial class BindingTests
         _ = Should.Throw<InvalidOperationException>(
             () => target.BindCommandParameter(model, source => source.Parameter));
         _ = Should.Throw<InvalidOperationException>(() => target.Bind(model, source => source.Name));
+    }
+
+    /// <summary>Verifies InputBase.Bind maps optional model text one-way to a caption-enabled
+    /// control's Text.</summary>
+    [Fact]
+    public void InputBaseBind_WhenSourceChanges_SyncsCaption()
+    {
+        var model = new BindingModel { Name = "Caption" };
+        var target = new Button();
+        using var binding = target.Bind(model, source => source.Name);
+
+        target.Text.ShouldBe("Caption");
+
+        model.Name = "Updated";
+
+        target.Text.ShouldBe("Updated");
+        binding.Mode.ShouldBe(BindingMode.OneWay);
+    }
+
+    /// <summary>Verifies InputBase.Bind projects a null model caption as empty text.</summary>
+    [Fact]
+    public void InputBaseBind_WhenSourceIsNull_ProjectsEmptyCaption()
+    {
+        var model = new BindingModel { Name = "Caption" };
+        var target = new Button();
+        using var binding = target.Bind(model, source => source.Name);
+
+        model.Name = null;
+
+        target.Text.ShouldBeEmpty();
     }
 
     /// <summary>Verifies membership changes project the latest finite snapshot.</summary>
