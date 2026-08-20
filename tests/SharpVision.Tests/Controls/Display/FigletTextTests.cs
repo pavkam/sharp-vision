@@ -81,6 +81,52 @@ public sealed class FigletTextTests
         control.Font.ShouldBeSameAs(font);
     }
 
+    /// <summary>Verifies a null replacement fails before changing the current content.</summary>
+    [Fact]
+    public void Content_WhenValueIsNull_ThrowsBeforeMutation()
+    {
+        var control = new FigletText(FigletCatalog.Default.Load("standard")) { Content = "safe" };
+
+        _ = Should.Throw<ArgumentNullException>(() => control.Content = null!);
+
+        control.Content.ShouldBe("safe");
+    }
+
+    /// <summary>Verifies assigning Options round-trips, invalidates measurement, and produces a
+    /// direction-reversed layout distinct from the default left-to-right composition.</summary>
+    [Fact]
+    public void Options_WhenDirectionIsRightToLeft_ReordersRenderedOutput()
+    {
+        var control = new FigletText(FigletCatalog.Default.Load("standard")) { Content = "AB" };
+        var engine = new LayoutEngine();
+        engine.Layout(control, new Size(20, 10));
+        using Frame first = new(new Size(20, 10));
+        control.Render(first.Canvas);
+        var firstRow = Row(first, control.DesiredSize.Width, 0);
+
+        control.Options = new FigletOptions(FigletDirection.RightToLeft);
+        control.Options.Direction.ShouldBe(FigletDirection.RightToLeft);
+        control.Pending.ShouldBe(Invalidation.Measure | Invalidation.Arrange | Invalidation.Render);
+        engine.Layout(control, new Size(20, 10));
+        using Frame second = new(new Size(20, 10));
+        control.Render(second.Canvas);
+        var secondRow = Row(second, control.DesiredSize.Width, 0);
+
+        secondRow.ShouldNotBe(firstRow);
+    }
+
+    private static string Row(Frame frame, int width, int row)
+    {
+        var value = new StringBuilder();
+
+        for (var column = 0; column < width; column++)
+        {
+            _ = value.Append(FrameOracle.Get(frame, new Point(column, row)));
+        }
+
+        return value.ToString();
+    }
+
     /// <summary>Verifies direct and ancestor-inherited IsEnabled changes compute the effective
     /// disabled state FigletText's mounted disabled contract depends on.</summary>
     [ComponentUnitEvidence(typeof(FigletText), ComponentBehavior.Disabled)]

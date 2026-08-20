@@ -142,6 +142,58 @@ public sealed class StatusBarTests
         item.RightSeparator.ShouldBe(StatusBarSeparatorGlyphs.Chevron);
     }
 
+    /// <summary>Verifies each actual separator falls back to the themed glyph when its own
+    /// override is unset, and that assigning an override takes precedence for that side only.</summary>
+    [Fact]
+    public void ActualSeparators_WhenOverrideIsUnset_FallBackToThemedGlyph()
+    {
+        // Arrange
+        using var item = new StatusBarItem { ShowLeftSeparator = true, ShowRightSeparator = true };
+
+        // Assert defaults
+        item.LeftSeparator.ShouldBeNull();
+        item.RightSeparator.ShouldBeNull();
+        item.ActualLeftSeparator.ShouldBe(item.ActualStyle.LeftSeparatorGlyph);
+        item.ActualRightSeparator.ShouldBe(item.ActualStyle.RightSeparatorGlyph);
+
+        // Act
+        item.LeftSeparator = StatusBarSeparatorGlyphs.Chevron;
+
+        // Assert only the overridden side changes
+        item.ActualLeftSeparator.ShouldBe(StatusBarSeparatorGlyphs.Chevron);
+        item.ActualRightSeparator.ShouldBe(item.ActualStyle.RightSeparatorGlyph);
+    }
+
+    /// <summary>Verifies a local Style's separator glyphs override the theme default and clearing
+    /// the Style restores it, exercising StatusBarItem's own Style/ActualStyle round trip.</summary>
+    [Fact]
+    public void Style_WhenSeparatorGlyphsAreCustomized_OverrideDefaultsAndClearingRestores()
+    {
+        // Arrange
+        using var item = new StatusBarItem();
+        var defaultStyle = item.ActualStyle;
+
+        // Act
+        item.Style = defaultStyle with
+        {
+            LeftSeparatorGlyph = StatusBarSeparatorGlyphs.Diamond,
+            RightSeparatorGlyph = StatusBarSeparatorGlyphs.Bullet
+        };
+
+        // Assert custom
+        _ = item.Style.ShouldNotBeNull();
+        item.ActualStyle.LeftSeparatorGlyph.ShouldBe(StatusBarSeparatorGlyphs.Diamond);
+        item.ActualStyle.RightSeparatorGlyph.ShouldBe(StatusBarSeparatorGlyphs.Bullet);
+
+        // Act reset
+        item.Style = null;
+
+        // Assert restored
+        item.Style.ShouldBeNull();
+        item.ActualStyle.LeftSeparatorGlyph.ShouldBe(defaultStyle.LeftSeparatorGlyph);
+        item.ActualStyle.RightSeparatorGlyph.ShouldBe(defaultStyle.RightSeparatorGlyph);
+    }
+
     /// <summary>Verifies separator cells enlarge the item and inset its retained content.</summary>
     [Fact]
     public void Arrange_WhenItemHasBothSeparators_ReservesOneCellOnEachSide()
@@ -166,6 +218,28 @@ public sealed class StatusBarTests
         item.DesiredSize.ShouldBe(new Size(7, 1));
         item.Bounds.ShouldBe(new Rect(0, 0, 7, 1));
         content.Bounds.ShouldBe(new Rect(1, 0, 5, 1));
+    }
+
+    /// <summary>Verifies a Spacing value other than the constructed default actually widens the
+    /// gap the layout reserves between adjacent items, proving the setter's forwarded
+    /// <c>_host.Spacing</c> assignment - not merely that the property round-trips.</summary>
+    [Fact]
+    public void Arrange_WhenSpacingChangesFromDefault_AdjustsGapBetweenAdjacentItems()
+    {
+        // Arrange
+        using var bar = new StatusBar { Spacing = 3 };
+        var first = Item("AA");
+        var second = Item("BB");
+        bar.Items.Add(first);
+        bar.Items.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(bar, new Size(20, 1));
+
+        // Assert
+        bar.Spacing.ShouldBe(3);
+        first.Bounds.ShouldBe(new Rect(0, 0, 2, 1));
+        second.Bounds.ShouldBe(new Rect(5, 0, 2, 1));
     }
 
     /// <summary>Verifies left and right groups preserve order and anchor to their respective edges.</summary>
