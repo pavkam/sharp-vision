@@ -277,6 +277,24 @@ public sealed class ExpanderTests
         // Assert
         _ = Should.Throw<ObjectDisposedException>(() => expander.IsExpanded = false);
         _ = Should.Throw<ObjectDisposedException>(() => expander.HeaderText = "Test");
+        _ = Should.Throw<ObjectDisposedException>(() => expander.Style = ExpanderStyle.Default);
+    }
+
+    /// <summary>Verifies Style mutation requires dispatcher affinity once attached.</summary>
+    [Fact]
+    public async Task Style_WhenAttachedOffThread_ThrowsBeforeMutationAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var expander = new Expander();
+        await dispatcher.InvokeAsync(
+            () => expander.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+
+        // Act and assert
+        _ = Should.Throw<InvalidOperationException>(() => expander.Style = ExpanderStyle.Default);
+
+        expander.Style.ShouldBeNull();
     }
 
     /// <summary>Verifies zero ContentIndent places content at the leading edge.</summary>

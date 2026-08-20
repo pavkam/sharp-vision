@@ -164,6 +164,14 @@ public sealed class DockTests
         fill.Bounds.X.ShouldBe(3);
     }
 
+    /// <summary>Verifies the attached side accessors reject a null control.</summary>
+    [Fact]
+    public void GetSideAndSetSide_WhenControlIsNull_ThrowsArgumentNullException()
+    {
+        _ = Should.Throw<ArgumentNullException>(() => Dock.GetSide(null!));
+        _ = Should.Throw<ArgumentNullException>(() => Dock.SetSide(null!, DockSide.Top));
+    }
+
     /// <summary>Verifies side mutation invalidates only an owning Dock and enforces affinity.</summary>
     [Fact]
     public async Task SetSide_WhenChildIsOwned_InvalidatesMeasureAndRequiresDispatcherAsync()

@@ -25,6 +25,64 @@ public sealed class ScrollBarTests
         control.ActualStyle.ShouldBe(ScrollBarStyle.Default);
     }
 
+    /// <summary>Verifies every ScrollBar-declared property starts at its documented default.</summary>
+    [Fact]
+    public void Constructor_WhenCreated_UsesDocumentedDefaults()
+    {
+        var control = new ScrollBar();
+
+        control.Style.ShouldBeNull();
+        control.Minimum.ShouldBe(0);
+        control.Maximum.ShouldBe(100);
+        control.Value.ShouldBe(0);
+        control.ViewportSize.ShouldBe(0);
+        control.SmallChange.ShouldBe(1);
+        control.LargeChange.ShouldBe(10);
+        control.Orientation.ShouldBe(Orientation.Vertical);
+    }
+
+    /// <summary>Verifies disposing the scroll bar prevents every declared property from mutating.</summary>
+    [Fact]
+    public void Dispose_WhenCalled_PreventsMutation()
+    {
+        var control = new ScrollBar();
+
+        control.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => control.Style = ScrollBarStyle.ThinLine);
+        _ = Should.Throw<ObjectDisposedException>(() => control.Maximum = 50);
+        _ = Should.Throw<ObjectDisposedException>(() => control.Minimum = 0);
+        _ = Should.Throw<ObjectDisposedException>(() => control.Value = 1);
+        _ = Should.Throw<ObjectDisposedException>(() => control.ViewportSize = 1);
+        _ = Should.Throw<ObjectDisposedException>(() => control.SmallChange = 2);
+        _ = Should.Throw<ObjectDisposedException>(() => control.LargeChange = 2);
+        _ = Should.Throw<ObjectDisposedException>(() => control.Orientation = Orientation.Horizontal);
+        _ = Should.Throw<ObjectDisposedException>(() => control.ScrollBy(1));
+    }
+
+    /// <summary>Verifies every declared setter requires dispatcher affinity once attached.</summary>
+    [Fact]
+    public async Task PropertySetter_WhenAttachedOffThread_ThrowsBeforeMutationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var control = new ScrollBar();
+        await dispatcher.InvokeAsync(
+            () => control.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => control.Style = ScrollBarStyle.ThinLine);
+        _ = Should.Throw<InvalidOperationException>(() => control.Maximum = 50);
+        _ = Should.Throw<InvalidOperationException>(() => control.Minimum = 0);
+        _ = Should.Throw<InvalidOperationException>(() => control.Value = 1);
+        _ = Should.Throw<InvalidOperationException>(() => control.ViewportSize = 1);
+        _ = Should.Throw<InvalidOperationException>(() => control.SmallChange = 2);
+        _ = Should.Throw<InvalidOperationException>(() => control.LargeChange = 2);
+        _ = Should.Throw<InvalidOperationException>(() => control.Orientation = Orientation.Horizontal);
+        _ = Should.Throw<InvalidOperationException>(() => control.ScrollBy(1));
+
+        control.Value.ShouldBe(0);
+    }
+
     /// <summary>Verifies invalid public assignments fail before changing any range state.</summary>
     [Fact]
     public void Properties_WhenAssignmentIsInvalid_PreservePreviousState()

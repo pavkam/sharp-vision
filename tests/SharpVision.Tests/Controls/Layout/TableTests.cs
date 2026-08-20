@@ -246,6 +246,122 @@ public sealed class TableTests
         notifications.Count(name => name == nameof(Table.PageOverlap)).ShouldBe(1);
     }
 
+    /// <summary>Verifies every table-declared property starts at its documented default.</summary>
+    [ComponentUnitEvidence(typeof(Table))]
+    [Fact]
+    public void Constructor_WhenCreated_UsesDocumentedDefaults()
+    {
+        var table = new Table();
+
+        table.SelectionMode.ShouldBe(TableSelectionMode.Row);
+        table.ShowHeader.ShouldBeTrue();
+        table.ShowGridLines.ShouldBeTrue();
+        table.Style.ShouldBeNull();
+        table.RowSpacing.ShouldBe(0);
+        table.ColumnSpacing.ShouldBe(0);
+        table.ScrollBars.ShouldBe(ScrollBars.Vertical);
+        table.ShowScrollBars.ShouldBe(ShowScrollBars.WhenNeeded);
+        table.ScrollBarStyle.ShouldBeNull();
+        table.LineSize.ShouldBe(1);
+        table.PageOverlap.ShouldBe(0);
+        table.HorizontalOffset.ShouldBe(0);
+        table.VerticalOffset.ShouldBe(0);
+        table.Extent.ShouldBe(default);
+        table.Viewport.ShouldBe(default);
+        table.ActiveRow.ShouldBeNull();
+        table.ActiveColumnIndex.ShouldBe(-1);
+        table.ActiveCell.ShouldBeNull();
+        table.IsEditing.ShouldBeFalse();
+        table.SortColumnIndex.ShouldBe(-1);
+        table.SortDirection.ShouldBe(TableSortDirection.None);
+        table.SelectedRows.ShouldBeEmpty();
+        table.SelectedCells.ShouldBeEmpty();
+        table.IsProgressive.ShouldBeFalse();
+        table.LoadState.ShouldBe(TableLoadState.Idle);
+        table.ActiveIndex.ShouldBe(-1);
+        table.ActiveKey.ShouldBeNull();
+        table.SelectedKeys.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies every table-declared setter with documented argument validation rejects
+    /// an invalid value and leaves the property at its previous value.</summary>
+    [Fact]
+    public void Setter_WhenValueIsInvalid_ThrowsBeforeMutation()
+    {
+        var table = new Table();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => table.SelectionMode = (TableSelectionMode) int.MaxValue);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => table.RowSpacing = -1);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => table.ColumnSpacing = -1);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => table.ScrollBars = (ScrollBars) int.MaxValue);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => table.ShowScrollBars = (ShowScrollBars) int.MaxValue);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => table.LineSize = -1);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => table.PageOverlap = -1);
+        // A freshly constructed table has zero Extent, so any positive offset is out of range.
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => table.HorizontalOffset = 1);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => table.VerticalOffset = 1);
+
+        table.SelectionMode.ShouldBe(TableSelectionMode.Row);
+        table.RowSpacing.ShouldBe(0);
+        table.ColumnSpacing.ShouldBe(0);
+        table.ScrollBars.ShouldBe(ScrollBars.Vertical);
+        table.ShowScrollBars.ShouldBe(ShowScrollBars.WhenNeeded);
+        table.LineSize.ShouldBe(1);
+        table.PageOverlap.ShouldBe(0);
+        table.HorizontalOffset.ShouldBe(0);
+        table.VerticalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies disposing the table prevents every table-declared property from mutating.</summary>
+    [Fact]
+    public void Dispose_WhenCalled_PreventsMutation()
+    {
+        var table = new Table();
+
+        table.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => table.SelectionMode = TableSelectionMode.MultipleRows);
+        _ = Should.Throw<ObjectDisposedException>(() => table.ShowHeader = false);
+        _ = Should.Throw<ObjectDisposedException>(() => table.Style = TableStyle.Default);
+        _ = Should.Throw<ObjectDisposedException>(() => table.RowSpacing = 1);
+        _ = Should.Throw<ObjectDisposedException>(() => table.ColumnSpacing = 1);
+        _ = Should.Throw<ObjectDisposedException>(() => table.ShowGridLines = false);
+        _ = Should.Throw<ObjectDisposedException>(() => table.ScrollBars = ScrollBars.Both);
+        _ = Should.Throw<ObjectDisposedException>(() => table.ShowScrollBars = ShowScrollBars.Always);
+        _ = Should.Throw<ObjectDisposedException>(() => table.ScrollBarStyle = ScrollBarStyle.ThinLine);
+        _ = Should.Throw<ObjectDisposedException>(() => table.LineSize = 2);
+        _ = Should.Throw<ObjectDisposedException>(() => table.PageOverlap = 2);
+        _ = Should.Throw<ObjectDisposedException>(() => table.HorizontalOffset = 0);
+        _ = Should.Throw<ObjectDisposedException>(() => table.VerticalOffset = 0);
+    }
+
+    /// <summary>Verifies every table-declared setter requires dispatcher affinity once attached.</summary>
+    [Fact]
+    public async Task PropertySetter_WhenAttachedOffThread_ThrowsBeforeMutationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var table = new Table();
+        await dispatcher.InvokeAsync(
+            () => table.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => table.SelectionMode = TableSelectionMode.MultipleRows);
+        _ = Should.Throw<InvalidOperationException>(() => table.ShowHeader = false);
+        _ = Should.Throw<InvalidOperationException>(() => table.Style = TableStyle.Default);
+        _ = Should.Throw<InvalidOperationException>(() => table.RowSpacing = 1);
+        _ = Should.Throw<InvalidOperationException>(() => table.ColumnSpacing = 1);
+        _ = Should.Throw<InvalidOperationException>(() => table.ShowGridLines = false);
+        _ = Should.Throw<InvalidOperationException>(() => table.ScrollBars = ScrollBars.Both);
+        _ = Should.Throw<InvalidOperationException>(() => table.ShowScrollBars = ShowScrollBars.Always);
+        _ = Should.Throw<InvalidOperationException>(() => table.ScrollBarStyle = ScrollBarStyle.ThinLine);
+        _ = Should.Throw<InvalidOperationException>(() => table.LineSize = 2);
+        _ = Should.Throw<InvalidOperationException>(() => table.PageOverlap = 2);
+        _ = Should.Throw<InvalidOperationException>(() => table.HorizontalOffset = 0);
+        _ = Should.Throw<InvalidOperationException>(() => table.VerticalOffset = 0);
+
+        table.SelectionMode.ShouldBe(TableSelectionMode.Row);
+    }
+
     /// <summary>Verifies the row-mutation repair paths that move the active cell outside SetActive —
     /// removing the active row, replacing it, and cancelling an edit while rows disappear — publish
     /// PropertyChanged for the active-cell properties they commit.</summary>
@@ -799,6 +915,27 @@ public sealed class TableTests
         editor.Text.ShouldBe("changed");
     }
 
+    /// <summary>Verifies a column's SortKey overrides the default cell-text comparison - a numeric
+    /// key sorts "9" before "10" where the default ordinal text comparison would order "10" before
+    /// "9".</summary>
+    [Fact]
+    public void SortBy_WhenColumnHasSortKey_OrdersByTheSelectedKeyInsteadOfCellText()
+    {
+        var nine = new TableRow([new ControlText("9")]);
+        var ten = new TableRow([new ControlText("10")]);
+        var table = new Table();
+        table.Columns.Add(new TableColumn(
+            "Value",
+            Length.Auto,
+            sortKey: cell => int.Parse(((ControlText) cell).Content, CultureInfo.InvariantCulture)));
+        table.Rows.Add(ten);
+        table.Rows.Add(nine);
+
+        table.SortBy(0);
+
+        table.Rows.ShouldBe([nine, ten]);
+    }
+
     /// <summary>Verifies default text sorting is ordinal and stable across the direction cycle.</summary>
     [Fact]
     public void SortBy_WhenDefaultTextKeysAreComparedUnderCulture_PreservesOrdinalStableOrder()
@@ -1292,6 +1429,31 @@ public sealed class TableTests
 
         exception.ParamName.ShouldBe("value");
         table.Rows.ShouldBe([original]);
+    }
+
+    /// <summary>Verifies the non-structural IList query members reject a null row argument.</summary>
+    [Fact]
+    public void Rows_WhenQueryMemberReceivesNull_ThrowsArgumentNullException()
+    {
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(new TableRow([new ControlText("Value")]));
+
+        _ = Should.Throw<ArgumentNullException>(() => table.Rows.Contains(null!));
+        _ = Should.Throw<ArgumentNullException>(() => table.Rows.IndexOf(null!));
+        _ = Should.Throw<ArgumentNullException>(() => table.Rows.Remove(null!));
+    }
+
+    /// <summary>Verifies both owned collections reject a null CopyTo destination array.</summary>
+    [Fact]
+    public void ColumnsAndRows_WhenCopyToReceivesNullArray_ThrowsArgumentNullException()
+    {
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(new TableRow([new ControlText("Value")]));
+
+        _ = Should.Throw<ArgumentNullException>(() => table.Columns.CopyTo(null!, 0));
+        _ = Should.Throw<ArgumentNullException>(() => table.Rows.CopyTo(null!, 0));
     }
 
     /// <summary>Verifies fixed, percentage, and fill columns resolve exact contained cell slots.</summary>

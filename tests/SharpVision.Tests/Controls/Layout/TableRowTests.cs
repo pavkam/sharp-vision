@@ -21,4 +21,47 @@ public sealed class TableRowTests
 
         row.Cells.ShouldHaveSingleItem().ShouldBeSameAs(original);
     }
+
+    /// <summary>Verifies a null cell sequence, or a null cell within an otherwise valid sequence,
+    /// is rejected.</summary>
+    [Fact]
+    public void Constructor_WhenCellsOrACellIsNull_ThrowsArgumentNullException()
+    {
+        _ = Should.Throw<ArgumentNullException>(() => new TableRow(null!));
+        _ = Should.Throw<ArgumentNullException>(() => new TableRow([new ControlText("A"), null!]));
+    }
+
+    /// <summary>Verifies an empty cell sequence is rejected.</summary>
+    [Fact]
+    public void Constructor_WhenCellsIsEmpty_ThrowsArgumentException() =>
+        _ = Should.Throw<ArgumentException>(() => new TableRow([]));
+
+    /// <summary>Verifies the same control instance repeated in one row is rejected.</summary>
+    [Fact]
+    public void Constructor_WhenACellRepeats_ThrowsArgumentException()
+    {
+        var cell = new ControlText("Repeated");
+
+        _ = Should.Throw<ArgumentException>(() => new TableRow([cell, cell]));
+    }
+
+    /// <summary>Verifies a cell already owned by another parent is rejected.</summary>
+    [Fact]
+    public void Constructor_WhenACellIsAlreadyOwned_ThrowsArgumentException()
+    {
+        var owned = new ControlText("Owned");
+        _ = new Stack { Children = { owned } };
+
+        _ = Should.Throw<ArgumentException>(() => new TableRow([owned]));
+    }
+
+    /// <summary>Verifies a disposed cell is rejected.</summary>
+    [Fact]
+    public void Constructor_WhenACellIsDisposed_ThrowsArgumentException()
+    {
+        var disposed = new ControlText("Disposed");
+        disposed.Dispose();
+
+        _ = Should.Throw<ArgumentException>(() => new TableRow([disposed]));
+    }
 }
