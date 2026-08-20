@@ -1100,21 +1100,24 @@ public sealed class SaveFileDialogTests
         hidden.Style.ShouldBe(checkBoxStyle);
     }
 
-    /// <summary>Verifies SaveFileOptions carries every owned-part style through construction and
-    /// through Copy(), matching how ShowAsync's copied snapshot reaches the constructed dialog.</summary>
+    /// <summary>Verifies SaveFileOptions carries every owned-part style, plus the aggregate
+    /// <see cref="SaveFileOptions.Style"/>, through construction and through Copy(), matching how
+    /// ShowAsync's copied snapshot reaches the constructed dialog.</summary>
     [Fact]
     public void Constructor_WhenOptionsCarryStyles_AppliesThemToTheConstructedDialog()
     {
         var buttonStyle = ButtonStyle.Standard with { Padding = new Thickness(horizontal: 1, vertical: 0) };
         var checkBoxStyle = CheckBoxStyle.Default;
         var scrollBarStyle = ScrollBarStyle.Default;
+        var aggregateStyle = SaveFileDialogStyle.Default with { RootPadding = new Thickness(2) };
         var options = new SaveFileOptions
         {
             CancelButtonStyle = buttonStyle,
             ShowHiddenCheckBoxStyle = checkBoxStyle,
             FileListScrollBarStyle = scrollBarStyle,
             FilterScrollBarStyle = scrollBarStyle,
-            SaveButtonStyle = buttonStyle
+            SaveButtonStyle = buttonStyle,
+            Style = aggregateStyle
         };
         var copy = options.Copy();
 
@@ -1125,11 +1128,75 @@ public sealed class SaveFileDialogTests
         copy.FileListScrollBarStyle.ShouldBe(scrollBarStyle);
         copy.FilterScrollBarStyle.ShouldBe(scrollBarStyle);
         copy.SaveButtonStyle.ShouldBe(buttonStyle);
+        copy.Style.ShouldBe(aggregateStyle);
         dialog.ActualCancelButtonStyle.ShouldBe(buttonStyle);
         dialog.ActualShowHiddenCheckBoxStyle.ShouldBe(checkBoxStyle);
         dialog.ActualFileListScrollBarStyle.ShouldBe(scrollBarStyle);
         dialog.ActualFilterScrollBarStyle.ShouldBe(scrollBarStyle);
         dialog.ActualSaveButtonStyle.ShouldBe(buttonStyle);
+        dialog.ActualStyle.ShouldBe(aggregateStyle);
+    }
+
+    /// <summary>Verifies SaveFileOptions carries every caption, directory-placeholder, and
+    /// overwrite-confirmation caption through construction and through Copy(), matching how
+    /// ShowAsync's copied snapshot reaches the constructed dialog - the sibling coverage to the
+    /// owned-part style forwarding above.</summary>
+    [Fact]
+    public void Constructor_WhenOptionsCarryCaptions_AppliesThemToTheConstructedDialog()
+    {
+        var options = new SaveFileOptions
+        {
+            ParentDirectoryText = "«",
+            DirectoryPlaceholder = "Ruta",
+            ShowHiddenText = "Mostrar &ocultos",
+            CancelText = "&Salir",
+            SaveText = "&Guardar",
+            FileNameLabel = "Archivo:",
+            FileNamePlaceholder = "Nombre del archivo",
+            OverwriteTitle = "¿Sobrescribir?",
+            OverwriteYesText = "&Sí",
+            OverwriteNoText = "&No, gracias"
+        };
+        var copy = options.Copy();
+
+        using var dialog = new SaveFileDialog(options, new FakeFilePickerFileSystem());
+
+        copy.ParentDirectoryText.ShouldBe("«");
+        copy.DirectoryPlaceholder.ShouldBe("Ruta");
+        copy.ShowHiddenText.ShouldBe("Mostrar &ocultos");
+        copy.CancelText.ShouldBe("&Salir");
+        copy.SaveText.ShouldBe("&Guardar");
+        copy.FileNameLabel.ShouldBe("Archivo:");
+        copy.FileNamePlaceholder.ShouldBe("Nombre del archivo");
+        copy.OverwriteTitle.ShouldBe("¿Sobrescribir?");
+        copy.OverwriteYesText.ShouldBe("&Sí");
+        copy.OverwriteNoText.ShouldBe("&No, gracias");
+        dialog.ParentDirectoryText.ShouldBe("«");
+        dialog.DirectoryPlaceholder.ShouldBe("Ruta");
+        dialog.ShowHiddenText.ShouldBe("Mostrar &ocultos");
+        dialog.CancelText.ShouldBe("&Salir");
+        dialog.SaveText.ShouldBe("&Guardar");
+        dialog.FileNameLabel.ShouldBe("Archivo:");
+        dialog.FileNamePlaceholder.ShouldBe("Nombre del archivo");
+        dialog.OverwriteTitle.ShouldBe("¿Sobrescribir?");
+        dialog.OverwriteYesText.ShouldBe("&Sí");
+        dialog.OverwriteNoText.ShouldBe("&No, gracias");
+    }
+
+    /// <summary>Verifies OverwriteStyle round-trips through its own getter, since the dialog's
+    /// existing confirmation-flow coverage only ever proves its downstream effect on the generated
+    /// MessageBox's ActualStyle, not that the property itself returns the assigned value.</summary>
+    [Fact]
+    public void OverwriteStyle_WhenSet_RoundTrips()
+    {
+        using var dialog = new SaveFileDialog(null, new FakeFilePickerFileSystem());
+        var style = MessageBoxStyle.Default with { ActionBarMargin = new Thickness(3, 0) };
+
+        dialog.OverwriteStyle.ShouldBeNull();
+
+        dialog.OverwriteStyle = style;
+
+        dialog.OverwriteStyle.ShouldBe(style);
     }
 
     /// <summary>Verifies the overwrite-confirmation MessageBox's Yes/No actions inherit the dialog's

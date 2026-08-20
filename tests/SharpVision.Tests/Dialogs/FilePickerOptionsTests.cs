@@ -41,7 +41,12 @@ public sealed class FilePickerOptionsTests
         {
             Filters = [new FilePickerFilter("Sources", "*.cs"), FilePickerFilter.AllFiles],
             FilterIndex = 1,
-            MaxVisibleRows = 7
+            MaxVisibleRows = 7,
+            ParentDirectoryText = "«",
+            DirectoryPlaceholder = "Ruta",
+            ShowHiddenText = "Mostrar",
+            CancelText = "Salir",
+            OpenText = "Elegir"
         };
 
         _ = Should.Throw<ArgumentNullException>(() => options.Title = null!);
@@ -55,11 +60,41 @@ public sealed class FilePickerOptionsTests
         _ = Should.Throw<ArgumentOutOfRangeException>(() => options.MaxVisibleRows = 0);
         _ = Should.Throw<ArgumentOutOfRangeException>(() => options.MaxVisibleRows = -1);
         _ = Should.Throw<ArgumentException>(() => options.Filters = [FilePickerFilter.AllFiles]);
+        _ = Should.Throw<ArgumentNullException>(() => options.ParentDirectoryText = null!);
+        _ = Should.Throw<ArgumentNullException>(() => options.DirectoryPlaceholder = null!);
+        _ = Should.Throw<ArgumentNullException>(() => options.ShowHiddenText = null!);
+        _ = Should.Throw<ArgumentNullException>(() => options.CancelText = null!);
+        _ = Should.Throw<ArgumentNullException>(() => options.OpenText = null!);
 
         options.Title.ShouldBe("Open File");
         options.InitialDirectory.ShouldBe(Environment.CurrentDirectory);
         options.Filters.Count.ShouldBe(2);
         options.FilterIndex.ShouldBe(1);
         options.MaxVisibleRows.ShouldBe(7);
+        options.ParentDirectoryText.ShouldBe("«");
+        options.DirectoryPlaceholder.ShouldBe("Ruta");
+        options.ShowHiddenText.ShouldBe("Mostrar");
+        options.CancelText.ShouldBe("Salir");
+        options.OpenText.ShouldBe("Elegir");
+    }
+
+    /// <summary>Verifies the boolean and style-slot properties round-trip through their own getters,
+    /// including the aggregate <see cref="FilePickerOptions.Style"/> the ownership-transfer test
+    /// below deliberately omits from its style-slot coverage.</summary>
+    [Fact]
+    public void Properties_WhenSetToValidValues_RoundTrip()
+    {
+        var style = FilePickerDialogStyle.Default with { RootPadding = new Thickness(2) };
+
+        var options = new FilePickerOptions
+        {
+            AllowMultiple = true,
+            ShowHidden = true,
+            Style = style
+        };
+
+        options.AllowMultiple.ShouldBeTrue();
+        options.ShowHidden.ShouldBeTrue();
+        options.Style.ShouldBe(style);
     }
 }

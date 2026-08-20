@@ -1085,21 +1085,24 @@ public sealed class FilePickerDialogTests
         hidden.Style.ShouldBe(checkBoxStyle);
     }
 
-    /// <summary>Verifies FilePickerOptions carries every owned-part style through construction and
-    /// through Copy(), matching how ShowAsync's copied snapshot reaches the constructed dialog.</summary>
+    /// <summary>Verifies FilePickerOptions carries every owned-part style, plus the aggregate
+    /// <see cref="FilePickerOptions.Style"/>, through construction and through Copy(), matching how
+    /// ShowAsync's copied snapshot reaches the constructed dialog.</summary>
     [Fact]
     public void Constructor_WhenOptionsCarryStyles_AppliesThemToTheConstructedDialog()
     {
         var buttonStyle = ButtonStyle.Standard with { Padding = new Thickness(horizontal: 1, vertical: 0) };
         var checkBoxStyle = CheckBoxStyle.Default;
         var scrollBarStyle = ScrollBarStyle.Default;
+        var aggregateStyle = FilePickerDialogStyle.Default with { RootPadding = new Thickness(2) };
         var options = new FilePickerOptions
         {
             CancelButtonStyle = buttonStyle,
             ShowHiddenCheckBoxStyle = checkBoxStyle,
             FileListScrollBarStyle = scrollBarStyle,
             FilterScrollBarStyle = scrollBarStyle,
-            OpenButtonStyle = buttonStyle
+            OpenButtonStyle = buttonStyle,
+            Style = aggregateStyle
         };
         var copy = options.Copy();
 
@@ -1110,11 +1113,43 @@ public sealed class FilePickerDialogTests
         copy.FileListScrollBarStyle.ShouldBe(scrollBarStyle);
         copy.FilterScrollBarStyle.ShouldBe(scrollBarStyle);
         copy.OpenButtonStyle.ShouldBe(buttonStyle);
+        copy.Style.ShouldBe(aggregateStyle);
         dialog.ActualCancelButtonStyle.ShouldBe(buttonStyle);
         dialog.ActualShowHiddenCheckBoxStyle.ShouldBe(checkBoxStyle);
         dialog.ActualFileListScrollBarStyle.ShouldBe(scrollBarStyle);
         dialog.ActualFilterScrollBarStyle.ShouldBe(scrollBarStyle);
         dialog.ActualOpenButtonStyle.ShouldBe(buttonStyle);
+        dialog.ActualStyle.ShouldBe(aggregateStyle);
+    }
+
+    /// <summary>Verifies FilePickerOptions carries every caption and directory-placeholder text
+    /// through construction and through Copy(), matching how ShowAsync's copied snapshot reaches
+    /// the constructed dialog - the sibling coverage to the owned-part style forwarding above.</summary>
+    [Fact]
+    public void Constructor_WhenOptionsCarryCaptions_AppliesThemToTheConstructedDialog()
+    {
+        var options = new FilePickerOptions
+        {
+            ParentDirectoryText = "«",
+            DirectoryPlaceholder = "Ruta",
+            ShowHiddenText = "Mostrar &ocultos",
+            CancelText = "&Salir",
+            OpenText = "&Elegir"
+        };
+        var copy = options.Copy();
+
+        using var dialog = new FilePickerDialog(options, new FakeFilePickerFileSystem());
+
+        copy.ParentDirectoryText.ShouldBe("«");
+        copy.DirectoryPlaceholder.ShouldBe("Ruta");
+        copy.ShowHiddenText.ShouldBe("Mostrar &ocultos");
+        copy.CancelText.ShouldBe("&Salir");
+        copy.OpenText.ShouldBe("&Elegir");
+        dialog.ParentDirectoryText.ShouldBe("«");
+        dialog.DirectoryPlaceholder.ShouldBe("Ruta");
+        dialog.ShowHiddenText.ShouldBe("Mostrar &ocultos");
+        dialog.CancelText.ShouldBe("&Salir");
+        dialog.OpenText.ShouldBe("&Elegir");
     }
 
     /// <summary>Verifies ShowAsync forwards an explicit Open Button style to the presented dialog
@@ -1199,6 +1234,7 @@ public sealed class FilePickerDialogTests
         using var dialog = new FilePickerDialog(new FilePickerOptions(), new FakeFilePickerFileSystem());
         var upButton = OwnedTree.FindAll<Button>(dialog).First(static button => button.Width == Length.Cells(5));
         var openButton = OwnedTree.FindAll<Button>(dialog).Single(static button => button.IsDefault);
+        var cancelButton = OwnedTree.FindAll<Button>(dialog).Single(static button => button.IsCancel);
         var hidden = OwnedTree.Find<CheckBox>(dialog).ShouldNotBeNull();
         var pathInput = OwnedTree.Find<TextInput>(dialog).ShouldNotBeNull();
 
@@ -1206,12 +1242,15 @@ public sealed class FilePickerDialogTests
         dialog.OpenText = "&Choose";
         dialog.ShowHiddenText = "Mostrar &ocultos";
         dialog.DirectoryPlaceholder = "Ruta";
+        dialog.CancelText = "&Salir";
 
         upButton.Text.ShouldBe("«");
         openButton.Text.ShouldBe("&Choose");
         hidden.Text.ShouldBe("Mostrar &ocultos");
         pathInput.Placeholder.ShouldBe("Ruta");
+        cancelButton.Text.ShouldBe("&Salir");
         upButton.ShouldBeSameAs(OwnedTree.FindAll<Button>(dialog).First(static button => button.Width == Length.Cells(5)));
+        cancelButton.ShouldBeSameAs(OwnedTree.FindAll<Button>(dialog).Single(static button => button.IsCancel));
     }
 
     /// <summary>Verifies a null caption throws before any observable mutation.</summary>
@@ -1224,8 +1263,10 @@ public sealed class FilePickerDialogTests
         _ = Should.Throw<ArgumentNullException>(() => dialog.ParentDirectoryText = null!);
         _ = Should.Throw<ArgumentNullException>(() => dialog.ShowHiddenText = null!);
         _ = Should.Throw<ArgumentNullException>(() => dialog.CancelText = null!);
+        _ = Should.Throw<ArgumentNullException>(() => dialog.DirectoryPlaceholder = null!);
 
         dialog.OpenText.ShouldBe("&Open");
+        dialog.DirectoryPlaceholder.ShouldBe("Directory path");
     }
 
     /// <summary>Verifies a custom selection formatter builds the status text shown while at least
@@ -1251,5 +1292,89 @@ public sealed class FilePickerDialogTests
         await surface.UpdateAsync(() => list.SelectedIndex = 0, "select one entry");
 
         dialog.Status.ShouldBe("1 elegido(s)");
+    }
+
+    /// <summary>Verifies ReadyText and LoadingText default to the documented status captions and
+    /// round-trip through their own getters. ReadyText only ever seeds the shared Status field
+    /// once, at construction, so no further status transition observes a value assigned after
+    /// construction; LoadingText's own dynamic effect on Status is covered separately below.
+    /// ShowHiddenText's own default is asserted directly here too, since every other coverage of
+    /// it only ever observes a customized value.</summary>
+    [Fact]
+    public void ReadyAndLoadingText_WhenAccessedOrChanged_DefaultAndRoundTrip()
+    {
+        using var dialog = new FilePickerDialog(null, new FakeFilePickerFileSystem());
+
+        dialog.ReadyText.ShouldBe("Ready");
+        dialog.LoadingText.ShouldBe("Loading…");
+        dialog.ShowHiddenText.ShouldBe("Show &hidden");
+
+        dialog.ReadyText = "Idle";
+        dialog.LoadingText = "Cargando…";
+
+        dialog.ReadyText.ShouldBe("Idle");
+        dialog.LoadingText.ShouldBe("Cargando…");
+    }
+
+    /// <summary>Verifies a customized LoadingText appears as the Status shown while a directory
+    /// request is outstanding, the documented dynamic effect LoadingText has beyond construction.</summary>
+    [Fact]
+    public async Task LoadingText_WhenCustomized_AppearsAsStatusWhileRequestIsOutstandingAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-loading-text"));
+        var file = Path.Combine(directory, "a.txt");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory, new FilePickerEntry("a.txt", file, isDirectory: false, isHidden: false));
+        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source)
+        {
+            LoadingText = "Cargando…"
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(80, 24),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(static () => { }, "settle initial load");
+        var hidden = OwnedTree.Find<CheckBox>(dialog).ShouldNotBeNull();
+        var deferred = source.DeferNext(directory);
+
+        // Act
+        await surface.UpdateAsync(() => hidden.IsChecked = true, "start deferred reload");
+
+        // Assert
+        dialog.IsLoading.ShouldBeTrue();
+        dialog.Status.ShouldBe("Cargando…");
+
+        // Cleanup: resolve the deferred load so the surface can settle before disposal.
+        _ = deferred.TrySetResult([new FilePickerEntry("a.txt", file, false, false)]);
+        await surface.UpdateAsync(static () => { }, "settle deferred reload");
+    }
+
+    /// <summary>Verifies a custom folder/file count formatter builds the Status text committed after
+    /// a successful directory load, in place of the default "N folders · M files" wording.</summary>
+    [Fact]
+    public async Task CountFormat_WhenCustomized_BuildsTheReadyStatusTextAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-count-format"));
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(
+            directory,
+            new FilePickerEntry("docs", Path.Combine(directory, "docs"), isDirectory: true, isHidden: false),
+            new FilePickerEntry("a.txt", Path.Combine(directory, "a.txt"), isDirectory: false, isHidden: false));
+        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source)
+        {
+            CountFormat = static (folders, files) => $"{folders}d/{files}f"
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(80, 24),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(static () => { }, "settle customized-count load");
+
+        // Assert
+        dialog.Status.ShouldBe("1d/1f");
     }
 }
