@@ -176,6 +176,18 @@ public sealed class HyperlinkButtonTests
         clicks.ShouldBe(0);
     }
 
+    /// <summary>Verifies PerformClick rejects use after disposal.</summary>
+    [Fact]
+    public void PerformClick_WhenDisposed_Throws()
+    {
+        // Arrange
+        var link = new HyperlinkButton("Go");
+        link.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(link.PerformClick);
+    }
+
     /// <summary>Verifies command replacement raises the standard property notification once.</summary>
     [Fact]
     public void Command_WhenReplacementChanges_RaisesPropertyChangedOnce()

@@ -506,6 +506,18 @@ public sealed class RadioButtonTests
         _ = Should.Throw<ObjectDisposedException>(() => radio.IsChecked = true);
     }
 
+    /// <summary>Verifies PerformClick rejects use after disposal.</summary>
+    [Fact]
+    public void PerformClick_WhenDisposed_Throws()
+    {
+        // Arrange
+        var radio = new RadioButton();
+        radio.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(radio.PerformClick);
+    }
+
     /// <summary>Verifies PerformClick on a disabled RadioButton is a no-op.</summary>
     [ComponentUnitEvidence(typeof(RadioButton), ComponentBehavior.Disabled)]
     [Fact]

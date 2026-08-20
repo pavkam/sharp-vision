@@ -1538,6 +1538,125 @@ public sealed class TextInputTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies Select rejects a negative start before mutating the current selection.</summary>
+    [Fact]
+    public void Select_WhenStartIsNegative_ThrowsAndPreservesSelection()
+    {
+        // Arrange
+        var control = new TextInput { Text = "abcdef" };
+        control.Select(1, 2);
+
+        // Act
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() => control.Select(-1, 2));
+
+        // Assert
+        exception.ParamName.ShouldBe("start");
+        control.SelectionStart.ShouldBe(1);
+        control.SelectionLength.ShouldBe(2);
+    }
+
+    /// <summary>Verifies Select rejects a negative length before mutating the current selection.</summary>
+    [Fact]
+    public void Select_WhenLengthIsNegative_ThrowsAndPreservesSelection()
+    {
+        // Arrange
+        var control = new TextInput { Text = "abcdef" };
+        control.Select(1, 2);
+
+        // Act
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() => control.Select(1, -2));
+
+        // Assert
+        exception.ParamName.ShouldBe("length");
+        control.SelectionStart.ShouldBe(1);
+        control.SelectionLength.ShouldBe(2);
+    }
+
+    /// <summary>Verifies Select rejects a range that exceeds the current text without mutating the
+    /// prior selection, matching its documented "range overflows or exceeds text" contract for the
+    /// non-overflowing exceeds-text case.</summary>
+    [Fact]
+    public void Select_WhenRangeExceedsText_ThrowsArgumentOutOfRangeExceptionAndPreservesSelection()
+    {
+        // Arrange
+        var control = new TextInput { Text = "abc" };
+        control.Select(1, 1);
+
+        // Act
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() => control.Select(0, 10));
+
+        // Assert
+        exception.ParamName.ShouldBe("selection");
+        control.SelectionStart.ShouldBe(1);
+        control.SelectionLength.ShouldBe(1);
+    }
+
+    /// <summary>Verifies Select rejects an endpoint that splits an extended grapheme cluster
+    /// (landing inside a ZWJ emoji sequence) without mutating the prior selection.</summary>
+    [Fact]
+    public void Select_WhenEndpointSplitsGraphemeCluster_ThrowsArgumentExceptionAndPreservesSelection()
+    {
+        // Arrange - "👩‍💻" is one extended grapheme cluster spanning multiple UTF-16 code units.
+        var control = new TextInput { Text = "A👩‍💻Z" };
+        control.Select(0, 1);
+
+        // Act
+        var exception = Should.Throw<ArgumentException>(() => control.Select(2, 1));
+
+        // Assert
+        exception.ParamName.ShouldBe("selection");
+        control.SelectionStart.ShouldBe(0);
+        control.SelectionLength.ShouldBe(1);
+    }
+
+    /// <summary>Verifies CopySelection and CutSelection both return empty and leave text untouched
+    /// when there is no active selection, matching their documented "no selection" empty-return
+    /// case.</summary>
+    [Fact]
+    public void CopySelectionAndCutSelection_WhenNoSelectionExists_ReturnEmptyWithoutMutation()
+    {
+        // Arrange
+        var control = new TextInput { Text = "abc" };
+
+        // Act and assert
+        control.SelectionLength.ShouldBe(0);
+        control.CopySelection().ShouldBeEmpty();
+        control.CutSelection().ShouldBeEmpty();
+        control.Text.ShouldBe("abc");
+    }
+
+    /// <summary>Verifies ReplaceSelection rejects a null replacement value.</summary>
+    [Fact]
+    public void ReplaceSelection_WhenValueIsNull_Throws()
+    {
+        // Arrange
+        var control = new TextInput { Text = "abc" };
+
+        // Act and assert
+        var exception = Should.Throw<ArgumentNullException>(() => control.ReplaceSelection(null!));
+        exception.ParamName.ShouldBe("value");
+        control.Text.ShouldBe("abc");
+    }
+
+    /// <summary>Verifies every documented public editing and history method rejects use after
+    /// disposal with the documented ObjectDisposedException, instead of silently operating on a
+    /// disposed control's stale state.</summary>
+    [Fact]
+    public void Methods_WhenControlIsDisposed_ThrowObjectDisposedException()
+    {
+        // Arrange
+        var control = new TextInput { Text = "abc" };
+        control.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(() => control.Select(0, 1));
+        _ = Should.Throw<ObjectDisposedException>(control.CopySelection);
+        _ = Should.Throw<ObjectDisposedException>(control.CutSelection);
+        _ = Should.Throw<ObjectDisposedException>(() => control.ReplaceSelection("x"));
+        _ = Should.Throw<ObjectDisposedException>(() => control.Undo());
+        _ = Should.Throw<ObjectDisposedException>(() => control.Redo());
+    }
+
     private static void Key(TextInput control, Code code, Modifiers modifiers) =>
         Route(
             control,
