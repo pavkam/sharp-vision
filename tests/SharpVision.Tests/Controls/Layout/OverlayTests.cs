@@ -100,6 +100,23 @@ public sealed class OverlayTests
         FrameOracle.Get(frame, default).ShouldBe("A");
     }
 
+    /// <summary>Verifies re-asserting the already-committed z-order is a no-op that does not
+    /// invalidate the owning Overlay's render phase.</summary>
+    [Fact]
+    public void SetZIndex_WhenValueIsUnchanged_DoesNotInvalidateOwningOverlay()
+    {
+        var layer = new Overlay();
+        var child = Child("A");
+        layer.Children.Add(child);
+        Overlay.SetZIndex(child, 5);
+        layer.Clear(Invalidation.All);
+
+        Overlay.SetZIndex(child, 5);
+
+        Overlay.GetZIndex(child).ShouldBe(5);
+        layer.Pending.ShouldBe(Invalidation.None);
+    }
+
     /// <summary>Verifies disabled clipping allows descendant drawing and targeting outside bounds.</summary>
     [Fact]
     public void ClipToBounds_WhenFalse_AllowsChildrenInsideAncestorCanvas()
