@@ -95,6 +95,115 @@ public sealed class StyleDefinitionsTests
         definition.Appearance.ShouldBeNull();
     }
 
+    /// <summary>Verifies the root form's type-derived-key overload resolves through
+    /// <see cref="StyleKey.Of{TStyle}"/> rather than requiring every call site to hand-write its
+    /// own key literal - the overload every one of the six well-known base types actually calls.</summary>
+    [Fact]
+    public void Control_RootForm_WhenKeyIsDerivedFromTypeName_ResolvesToCodeOwnedDefault()
+    {
+        var codeDefault = RootDefault();
+        var definition = StyleDefinitions.Control(codeDefault, _neverInvalidates);
+
+        // A fresh, per-test Theme instance - never the shared ThemeCatalog.Dark singleton - because
+        // Theme.GetStyleSet memoizes per (style type, key) only, not per codeOwnedDefault instance;
+        // reusing Dark here would let this assertion observe whichever instance an unrelated test
+        // happened to populate the cache with first.
+        definition.Resolve(null, CreateTheme()).ShouldBeSameAs(codeDefault);
+        definition.IsControl.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies the root form's derived-key overload rejects null arguments before
+    /// constructing a definition.</summary>
+    [Fact]
+    public void Control_RootForm_WhenArgumentsAreNull_ThrowsArgumentNullException()
+    {
+        _ = Should.Throw<ArgumentNullException>(() =>
+            StyleDefinitions.Control(null!, _neverInvalidates));
+        _ = Should.Throw<ArgumentNullException>(() =>
+            StyleDefinitions.Control(RootDefault(), null!));
+    }
+
+    /// <summary>Verifies the root form's explicit-key overload rejects a null or empty key before
+    /// constructing a definition.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void Control_RootForm_WhenKeyIsNullOrEmpty_ThrowsArgumentException(string? key)
+    {
+        _ = Should.Throw<ArgumentException>(() =>
+            StyleDefinitions.Control(key!, RootDefault(), _neverInvalidates));
+    }
+
+    /// <summary>Verifies the root form's explicit-key overload rejects null delegate/value
+    /// arguments before constructing a definition.</summary>
+    [Fact]
+    public void Control_RootForm_ExplicitKey_WhenArgumentsAreNull_ThrowsArgumentNullException()
+    {
+        _ = Should.Throw<ArgumentNullException>(() =>
+            StyleDefinitions.Control("test.root", null!, _neverInvalidates));
+        _ = Should.Throw<ArgumentNullException>(() =>
+            StyleDefinitions.Control("test.root", RootDefault(), null!));
+    }
+
+    /// <summary>Verifies the fallback form's type-derived-key overload resolves through
+    /// <see cref="StyleKey.Of{TStyle}"/> - the overload every leaf control style actually calls.</summary>
+    [Fact]
+    public void Control_FallbackForm_WhenKeyIsDerivedFromTypeName_CompletesTheFallback()
+    {
+        var definition = StyleDefinitions.Control(
+            static t => t.GetStyleSet("test.root", RootDefault()),
+            Complete,
+            _neverInvalidatesWidget);
+
+        // A fresh, per-test Theme instance for the same reason as the root-form derived-key test
+        // above: this resolution also feeds through Theme.GetStyleSet's per-(type, key) memoized
+        // cache via the fallbackTo lambda's "test.root" lookup.
+        var resolved = definition.Resolve(null, CreateTheme());
+
+        resolved.Padding.ShouldBe(1);
+    }
+
+    /// <summary>Verifies the fallback form's derived-key overload rejects null delegate
+    /// arguments before constructing a definition.</summary>
+    [Fact]
+    public void Control_FallbackForm_WhenArgumentsAreNull_ThrowsArgumentNullException()
+    {
+        _ = Should.Throw<ArgumentNullException>(() =>
+            StyleDefinitions.Control<TestWidgetStyle, TestRootStyle>(null!, Complete, _neverInvalidatesWidget));
+        _ = Should.Throw<ArgumentNullException>(() =>
+            StyleDefinitions.Control(
+                static t => t.GetStyleSet("test.root", RootDefault()), null!, _neverInvalidatesWidget));
+        _ = Should.Throw<ArgumentNullException>(() =>
+            StyleDefinitions.Control(
+                static t => t.GetStyleSet("test.root", RootDefault()), Complete, null!));
+    }
+
+    /// <summary>Verifies the fallback form's explicit-key overload rejects a null or empty key
+    /// before constructing a definition.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void Control_FallbackForm_WhenKeyIsNullOrEmpty_ThrowsArgumentException(string? key)
+    {
+        _ = Should.Throw<ArgumentException>(() =>
+            StyleDefinitions.Control(
+                key!,
+                static t => t.GetStyleSet("test.root", RootDefault()),
+                Complete,
+                _neverInvalidatesWidget));
+    }
+
+    /// <summary>Verifies Part rejects null delegate arguments before constructing a
+    /// definition.</summary>
+    [Fact]
+    public void Part_WhenArgumentsAreNull_ThrowsArgumentNullException()
+    {
+        _ = Should.Throw<ArgumentNullException>(() =>
+            StyleDefinitions.Part(null!, _neverInvalidates));
+        _ = Should.Throw<ArgumentNullException>(() =>
+            StyleDefinitions.Part(static _ => RootDefault(), null!));
+    }
+
     private static TestRootStyle RootDefault() =>
         new(ControlStyle.DefaultFace, ControlStyle.NoBorder, ControlStyle.NoShadow);
 

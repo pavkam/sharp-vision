@@ -471,6 +471,18 @@ public sealed class RouterTests
         order.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies a disposed control rejects new handler registration.</summary>
+    [Fact]
+    public void AddHandler_WhenControlIsDisposed_ThrowsObjectDisposedException()
+    {
+        List<string> order = [];
+        var target = new RecordingControl("target", order);
+        target.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() =>
+            target.AddHandler(Events.Key, (_, _) => { }));
+    }
+
     /// <summary>Verifies attached routing is dispatcher-affine.</summary>
     [Fact]
     public async Task Route_WhenAttachedOffThread_ThrowsBeforeHandlersAsync()

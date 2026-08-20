@@ -659,6 +659,83 @@ public sealed partial class ControlBaseTests
         control.CanTabStop.ShouldBeFalse();
     }
 
+    /// <summary>Verifies the public Focus() returns false without throwing for a detached control -
+    /// the documented "false when detached" branch, reachable only because a detached control's
+    /// inherited FocusOwner is always null.</summary>
+    [Fact]
+    public void Focus_WhenDetached_ReturnsFalse()
+    {
+        var control = new ProbeControl { IsFocusable = true };
+
+        control.Focus().ShouldBeFalse();
+        control.IsFocused.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies the public Focus() acquires focus through the inherited manager and
+    /// reports true, exercising the delegation this method exists to provide over calling the
+    /// manager directly.</summary>
+    [Fact]
+    public async Task Focus_WhenAttachedAndEligible_AcquiresFocusAndReturnsTrueAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var child = new ProbeControl { IsFocusable = true };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+
+            var acquired = child.Focus();
+
+            acquired.ShouldBeTrue();
+            child.IsFocused.ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(child);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies calling the public Focus() on an already focused control is idempotent:
+    /// it returns true again and leaves focus ownership unchanged, matching "already owned" in its
+    /// documented return contract.</summary>
+    [Fact]
+    public async Task Focus_WhenAlreadyFocused_ReturnsTrueAndIsIdempotentAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var child = new ProbeControl { IsFocusable = true };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            child.Focus().ShouldBeTrue();
+
+            var reacquired = child.Focus();
+
+            reacquired.ShouldBeTrue();
+            child.IsFocused.ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(child);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies the public Focus() is dispatcher-affine, matching every other public
+    /// mutation seam instead of silently deferring or acquiring focus off-thread.</summary>
+    [Fact]
+    public async Task Focus_WhenAttachedAndCalledOffThread_ThrowsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var control = new ProbeControl { IsFocusable = true };
+        await dispatcher.InvokeAsync(
+            () => control.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => control.Focus());
+
+        control.IsFocused.ShouldBeFalse();
+    }
+
     /// <summary>Verifies that setting a glyph fires PropertyChanged.</summary>
     [Fact]
     public void SetOptionalGlyph_WhenNewValue_FiresPropertyChanged()

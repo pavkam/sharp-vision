@@ -646,6 +646,32 @@ public sealed class ContainerTests
         _ = Should.Throw<ArgumentException>(() => container.BringIntoView(stray));
     }
 
+    /// <summary>Verifies BringIntoView rejects a null descendant before any offset changes.</summary>
+    [Fact]
+    public void BringIntoView_WhenDescendantIsNull_ThrowsArgumentNullException()
+    {
+        var container = new Stack { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        container.Children.Add(new ProbeControl(new Size(4, 20)));
+        new LayoutEngine().Layout(container, new Size(4, 10));
+
+        _ = Should.Throw<ArgumentNullException>(() => container.BringIntoView(null!));
+
+        container.VerticalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies ScrollBy rejects an undefined cause before any offset changes.</summary>
+    [Fact]
+    public void ScrollBy_WhenCauseIsUndefined_ThrowsArgumentOutOfRangeException()
+    {
+        var container = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(container, new Size(4, 10));
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => container.ScrollBy(0, 1, (ScrollCause) int.MaxValue));
+
+        container.VerticalOffset.ShouldBe(0);
+    }
+
     /// <summary>
     /// Verifies arming AutoScroll creates the scrollbar chrome immediately from the
     /// property setter rather than lazily the first time this container arranges.

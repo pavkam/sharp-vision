@@ -41,6 +41,88 @@ public sealed class ItemsControlTests
         invalid.Parent.ShouldBeSameAs(other);
     }
 
+    /// <summary>Verifies every protected item accessor rejects use before
+    /// <see cref="ItemsControl.InitializeItemsHost"/> installs a presentation host, instead of
+    /// silently no-op'ing or null-referencing against a host that was never committed.</summary>
+    [Fact]
+    public void ItemAccessors_WhenHostIsNotInitialized_ThrowInvalidOperationException()
+    {
+        var owner = new ProbeItemsControl(initialize: false);
+        var control = new ProbeControl();
+
+        _ = Should.Throw<InvalidOperationException>(() => owner.Count);
+        _ = Should.Throw<InvalidOperationException>(() => owner.At(0));
+        _ = Should.Throw<InvalidOperationException>(() => owner.IndexOf(control));
+        _ = Should.Throw<InvalidOperationException>(() => owner.Insert(0, control));
+        _ = Should.Throw<InvalidOperationException>(() => owner.Remove(control));
+        _ = Should.Throw<InvalidOperationException>(() => owner.RemoveAt(0));
+        _ = Should.Throw<InvalidOperationException>(() => owner.Replace(0, control));
+        _ = Should.Throw<InvalidOperationException>(owner.Clear);
+        _ = Should.Throw<InvalidOperationException>(() => owner.ReplaceAll([control]));
+
+        control.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies IndexOfItemControl reports the exact realized position, rejects a null
+    /// candidate, and reports -1 for a control this owner never realized.</summary>
+    [Fact]
+    public void IndexOfItemControl_WhenCalled_ReportsExactPositionOrNegativeOne()
+    {
+        var owner = new ProbeItemsControl();
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        var stranger = new ProbeControl();
+        owner.Insert(0, first);
+        owner.Insert(1, second);
+
+        owner.IndexOf(first).ShouldBe(0);
+        owner.IndexOf(second).ShouldBe(1);
+        owner.IndexOf(stranger).ShouldBe(-1);
+        _ = Should.Throw<ArgumentNullException>(() => owner.IndexOf(null!));
+    }
+
+    /// <summary>Verifies GetItemControl rejects an out-of-range position.</summary>
+    [Fact]
+    public void GetItemControl_WhenIndexIsOutOfRange_ThrowsArgumentOutOfRangeException()
+    {
+        var owner = new ProbeItemsControl();
+        owner.Insert(0, new ProbeControl());
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => owner.At(1));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => owner.At(-1));
+    }
+
+    /// <summary>Verifies InsertItemControl rejects an out-of-range position before mutating the
+    /// realized snapshot.</summary>
+    [Fact]
+    public void InsertItemControl_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var owner = new ProbeItemsControl();
+        var existing = new ProbeControl();
+        var rejected = new ProbeControl();
+        owner.Insert(0, existing);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => owner.Insert(2, rejected));
+
+        owner.Count.ShouldBe(1);
+        rejected.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies RemoveItemControlAt rejects an out-of-range position before mutating the
+    /// realized snapshot.</summary>
+    [Fact]
+    public void RemoveItemControlAt_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var owner = new ProbeItemsControl();
+        var only = new ProbeControl();
+        owner.Insert(0, only);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => owner.RemoveAt(1));
+
+        owner.Count.ShouldBe(1);
+        only.Parent.ShouldBeSameAs(owner.Host);
+    }
+
     /// <summary>Verifies every protected mutation publishes one complete committed snapshot.</summary>
     [Fact]
     public void ItemControls_WhenMutated_PublishOneCommittedSnapshotPerChange()
