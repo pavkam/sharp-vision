@@ -189,6 +189,42 @@ public sealed class ContextMenuTests
         menu.IsOpen.ShouldBeFalse();
     }
 
+    /// <summary>Verifies Dispose unsubscribes from the owned popup's Closing/Closed events, so a
+    /// disposed ContextMenu no longer republishes its own Closing/Closed when the underlying popup
+    /// it never released still transitions afterward.</summary>
+    [Fact]
+    public void Dispose_WhenCalled_UnsubscribesFromPopupEvents()
+    {
+        using var button = new Button { Text = "Host" };
+        var menu = new ContextMenu();
+        menu.Items.Add(new MenuItem { Text = "Test" });
+        button.ContextMenu = menu;
+        menu.Show(0, 0);
+        var popup = (Popup) menu.Presentation;
+        var closingRaised = 0;
+        var closedRaised = 0;
+        menu.Closing += (_, _) => closingRaised++;
+        menu.Closed += (_, _) => closedRaised++;
+
+        menu.Dispose();
+        popup.IsOpen = false;
+
+        closingRaised.ShouldBe(0);
+        closedRaised.ShouldBe(0);
+    }
+
+    /// <summary>Verifies disposing twice is a no-op, matching every other IDisposable in the library.</summary>
+    [Fact]
+    public void Dispose_WhenCalledTwice_IsNoOp()
+    {
+        var menu = new ContextMenu();
+        menu.Items.Add(new MenuItem { Text = "Test" });
+
+        menu.Dispose();
+
+        Should.NotThrow(menu.Dispose);
+    }
+
     /// <summary>Verifies setting the same instance is a no-op — reassigning an already-open menu
     /// must not force a detach/reattach that would have closed it.</summary>
     [Fact]

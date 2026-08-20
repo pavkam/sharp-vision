@@ -193,8 +193,65 @@ public sealed class MenuBuilderTests
     public void Check_WhenLabelIsNull_Throws() =>
         Should.Throw<ArgumentNullException>(() => _ = MenuBuilder.Vertical().Check(null!));
 
+    /// <summary>Verifies null label on Radio throws ArgumentNullException.</summary>
+    [Fact]
+    public void Radio_WhenLabelIsNull_Throws() =>
+        Should.Throw<ArgumentNullException>(() => _ = MenuBuilder.Vertical().Radio(null!, "group"));
+
     /// <summary>Verifies null groupName on Radio throws ArgumentNullException.</summary>
     [Fact]
     public void Radio_WhenGroupNameIsNull_Throws() =>
         Should.Throw<ArgumentNullException>(() => _ = MenuBuilder.Vertical().Radio("Label", null!));
+
+    /// <summary>Verifies null label on Submenu throws ArgumentNullException.</summary>
+    [Fact]
+    public void Submenu_WhenLabelIsNull_Throws() =>
+        Should.Throw<ArgumentNullException>(() => _ = MenuBuilder.Vertical().Submenu(null!, static _ => { }));
+
+    /// <summary>Verifies a null configure callback on Submenu throws ArgumentNullException.</summary>
+    [Fact]
+    public void Submenu_WhenConfigureIsNull_Throws() =>
+        Should.Throw<ArgumentNullException>(() => _ = MenuBuilder.Vertical().Submenu("File", null!));
+
+    /// <summary>Verifies Check with onInvoke wires the handler, matching Item's own contract.</summary>
+    [Fact]
+    public void Check_WhenOnInvokeProvided_RaisesCallbackOnActivation()
+    {
+        var invoked = false;
+        var menu = MenuBuilder.Vertical()
+            .Check("Word wrap", onInvoke: () => invoked = true)
+            .Build();
+
+        menu.Items[0].ShouldBeOfType<MenuItem>().PerformInvoke();
+
+        invoked.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies Radio with onInvoke wires the handler, matching Item's own contract.</summary>
+    [Fact]
+    public void Radio_WhenOnInvokeProvided_RaisesCallbackOnActivation()
+    {
+        var invoked = false;
+        var menu = MenuBuilder.Vertical()
+            .Radio("Compact", "density", onInvoke: () => invoked = true)
+            .Build();
+
+        menu.Items[0].ShouldBeOfType<MenuItem>().PerformInvoke();
+
+        invoked.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies every fluent mutating method returns the same builder instance for
+    /// chaining, matching the type's own documented remarks.</summary>
+    [Fact]
+    public void FluentMethods_WhenCalled_ReturnTheSameBuilderInstance()
+    {
+        var builder = MenuBuilder.Vertical();
+
+        builder.Item("Item").ShouldBeSameAs(builder);
+        builder.Check("Check").ShouldBeSameAs(builder);
+        builder.Radio("Radio", "group").ShouldBeSameAs(builder);
+        builder.Separator().ShouldBeSameAs(builder);
+        builder.Submenu("Submenu", static _ => { }).ShouldBeSameAs(builder);
+    }
 }

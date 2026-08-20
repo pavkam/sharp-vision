@@ -578,6 +578,32 @@ public sealed class MenuTests
         command.Executions.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies an unavailable item (disabled or hidden) rejects programmatic activation
+    /// without raising Invoked, matching Button.PerformClick's own unavailable no-op contract.</summary>
+    [Theory]
+    [InlineData(false, Visibility.Visible)]
+    [InlineData(true, Visibility.Hidden)]
+    public void PerformInvoke_WhenItemIsUnavailable_DoesNothing(bool enabled, Visibility visibility)
+    {
+        var item = new MenuItem { Text = "Save", IsEnabled = enabled, Visibility = visibility };
+        var invoked = 0;
+        item.Invoked += (_, _) => invoked++;
+
+        item.PerformInvoke();
+
+        invoked.ShouldBe(0);
+    }
+
+    /// <summary>Verifies PerformInvoke rejects use after disposal.</summary>
+    [Fact]
+    public void PerformInvoke_WhenDisposed_Throws()
+    {
+        var item = new MenuItem();
+        item.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(item.PerformInvoke);
+    }
+
     /// <summary>Verifies a separator is never focusable, hit-testable, selectable, or invokable.</summary>
     [Fact]
     public async Task MenuSeparator_WhenUsed_RemainsNonInteractiveAsync()
@@ -601,6 +627,47 @@ public sealed class MenuTests
             _ = Should.Throw<ArgumentException>(() => menu.SelectedIndex = 1);
             menu.SelectedIndex.ShouldBe(0);
         }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies MenuSeparator's local style overrides the code-owned default and
+    /// clearing it restores the default, matching every other IStyled control's precedence
+    /// contract - the same round-trip MenuItem's own Style property already proves.</summary>
+    [Fact]
+    public void MenuSeparatorStyle_WhenAssignedThenCleared_OverridesDefaultThenReturnsToIt()
+    {
+        var separator = new MenuSeparator();
+        var defaultStyle = separator.ActualStyle;
+        separator.Style.ShouldBeNull();
+        var custom = defaultStyle with { Glyph = new Rune('=') };
+
+        separator.Style = custom;
+
+        separator.Style.ShouldBe(custom);
+        separator.ActualStyle.ShouldBe(custom);
+
+        separator.Style = null;
+
+        separator.Style.ShouldBeNull();
+        separator.ActualStyle.ShouldBe(defaultStyle);
+    }
+
+    /// <summary>Verifies a local Style's custom glyph actually renders in place of the theme
+    /// default, proving the property is not merely stored but consumed by rendering.</summary>
+    [Fact]
+    public void MenuSeparatorStyle_WhenAssignedCustomGlyph_RendersThatGlyph()
+    {
+        var separator = new MenuSeparator
+        {
+            Style = MenuSeparatorStyle.Default with { Glyph = new Rune('=') },
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        var size = new Size(5, 1);
+        new LayoutEngine().Layout(separator, size);
+        using Frame frame = new(size);
+
+        separator.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("=");
     }
 
     /// <summary>Verifies Tab and Shift+Tab move menu selection while private items remain outside traversal.</summary>
@@ -1782,6 +1849,93 @@ public sealed class MenuTests
 
         menu.Items.IndexOf(second).ShouldBe(1);
         menu.Items.IndexOf(foreign).ShouldBe(-1);
+    }
+
+    /// <summary>Verifies IndexOf rejects a null candidate.</summary>
+    [Fact]
+    public void IndexOf_WhenItemIsNull_ThrowsArgumentNullException()
+    {
+        var menu = new Menu();
+
+        _ = Should.Throw<ArgumentNullException>(() => menu.Items.IndexOf(null!));
+    }
+
+    /// <summary>Verifies Add rejects a null MenuItem or MenuSeparator without mutating the collection.</summary>
+    [Fact]
+    public void Add_WhenEntryIsNull_ThrowsArgumentNullException()
+    {
+        var menu = new Menu();
+
+        _ = Should.Throw<ArgumentNullException>(() => menu.Items.Add((MenuItem) null!));
+        _ = Should.Throw<ArgumentNullException>(() => menu.Items.Add((MenuSeparator) null!));
+        menu.Items.Count.ShouldBe(0);
+    }
+
+    /// <summary>Verifies Insert rejects a null MenuItem or MenuSeparator without mutating the collection.</summary>
+    [Fact]
+    public void Insert_WhenEntryIsNull_ThrowsArgumentNullException()
+    {
+        var menu = new Menu();
+        var item = new MenuItem { Text = "First" };
+        menu.Items.Add(item);
+
+        _ = Should.Throw<ArgumentNullException>(() => menu.Items.Insert(0, (MenuItem) null!));
+        _ = Should.Throw<ArgumentNullException>(() => menu.Items.Insert(0, (MenuSeparator) null!));
+        menu.Items.ShouldBe([item]);
+    }
+
+    /// <summary>Verifies Remove rejects a null MenuItem or MenuSeparator.</summary>
+    [Fact]
+    public void Remove_WhenEntryIsNull_ThrowsArgumentNullException()
+    {
+        var menu = new Menu();
+
+        _ = Should.Throw<ArgumentNullException>(() => menu.Items.Remove((MenuItem) null!));
+        _ = Should.Throw<ArgumentNullException>(() => menu.Items.Remove((MenuSeparator) null!));
+    }
+
+    /// <summary>Verifies Remove reports false and leaves the collection untouched for an item or
+    /// separator this menu does not own, matching IndexOf's own foreign-candidate contract.</summary>
+    [Fact]
+    public void Remove_WhenEntryIsForeign_ReturnsFalseAndLeavesCollectionUnchanged()
+    {
+        var owned = new MenuItem { Text = "Owned" };
+        var menu = new Menu();
+        menu.Items.Add(owned);
+        var foreignItem = new MenuItem { Text = "Foreign" };
+        var foreignSeparator = new MenuSeparator();
+
+        menu.Items.Remove(foreignItem).ShouldBeFalse();
+        menu.Items.Remove(foreignSeparator).ShouldBeFalse();
+
+        menu.Items.ShouldBe([owned]);
+    }
+
+    /// <summary>Verifies Clear removes every owned entry, restores each one's authored
+    /// presentation, and resets selection to -1 - the same repair RemoveAt applies per entry.</summary>
+    [Fact]
+    public void Clear_WhenCalled_RemovesEveryEntryRestoresPresentationAndClearsSelection()
+    {
+        var first = new MenuItem { Text = "First", IsFocusable = false, IsTabStop = false };
+        var separator = new MenuSeparator();
+        var second = new MenuItem { Text = "Second" };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(separator);
+        menu.Items.Add(second);
+        menu.SelectedIndex = 2;
+
+        menu.Items.Clear();
+
+        menu.Items.Count.ShouldBe(0);
+        menu.SelectedIndex.ShouldBe(-1);
+        menu.SelectedItem.ShouldBeNull();
+        first.Parent.ShouldBeNull();
+        first.IsDisposed.ShouldBeFalse();
+        first.IsFocusable.ShouldBeFalse();
+        first.IsTabStop.ShouldBeFalse();
+        second.Parent.ShouldBeNull();
+        second.IsDisposed.ShouldBeFalse();
     }
 
     /// <summary>Verifies disposed collection mutations reject Insert, RemoveAt, indexer assignment, and Move.</summary>
