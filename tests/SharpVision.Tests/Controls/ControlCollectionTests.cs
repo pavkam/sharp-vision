@@ -89,7 +89,7 @@ public sealed class ControlCollectionTests
     }
 
     /// <summary>Verifies the collection always reports mutable - a caller pattern-matching against
-    /// the inherited <see cref="System.Collections.Generic.IList{T}"/> surface must not see
+    /// the inherited <see cref="IList{T}"/> surface must not see
     /// IsReadOnly true on a type whose entire purpose is exposing Add/Remove/Insert.</summary>
     [Fact]
     public void IsReadOnly_WhenAccessed_IsFalse()
