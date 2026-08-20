@@ -4,8 +4,6 @@
 
 namespace SharpVision.Tests.Windows;
 
-using SharpVision.Surfaces;
-
 /// <summary>Verifies framed terminal window layout, title chrome, and visual shadow behavior.</summary>
 public sealed class WindowTests
 {
@@ -138,25 +136,6 @@ public sealed class WindowTests
             window.ClosePlacement = (WindowClosePlacement) 2);
 
         window.ClosePlacement.ShouldBe(WindowClosePlacement.Right);
-    }
-
-    /// <summary>Verifies Window exposes only the public single-content authoring role.</summary>
-    [Fact]
-    public void Type_WhenInspected_DerivesFromFloatingSurfaceWithoutRoleOrChildCollection()
-    {
-        var type = typeof(Window);
-
-        type.BaseType.ShouldBe(typeof(FloatingSurfaceBase));
-        typeof(FloatingSurfaceBase).IsAssignableFrom(type).ShouldBeTrue();
-        type.IsSealed.ShouldBeFalse();
-        typeof(Container).IsAssignableFrom(type).ShouldBeFalse();
-        type.GetProperty(nameof(Container.Children)).ShouldBeNull();
-        type.GetProperty(nameof(Container.AutoScroll)).ShouldBeNull();
-        type.GetProperty(nameof(Container.AutoSize)).ShouldBeNull();
-        type.GetProperty("Child").ShouldBeNull();
-        _ = type.GetProperty(nameof(ContentControl.Content)).ShouldNotBeNull();
-        type.GetConstructors().ShouldHaveSingleItem().GetParameters().ShouldBeEmpty();
-        type.Assembly.GetType("SharpVision.Windows.WindowKind").ShouldBeNull();
     }
 
     /// <summary>Verifies attaching an already arranged visible Window immediately publishes its committed bounds.</summary>

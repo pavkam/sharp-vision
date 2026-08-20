@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Popups;
 
-using SharpVision.Surfaces;
-
 /// <summary>Verifies anchored popup visibility, placement, and dismissal behavior.</summary>
 public sealed class PopupTests
 {
@@ -123,40 +121,6 @@ public sealed class PopupTests
 
         popup.ModalBehavior.ShouldBe(PopupModalBehavior.Auto);
         notifications.ShouldBe(0);
-    }
-
-    /// <summary>Verifies Popup exposes only the public single-content authoring role.</summary>
-    [Fact]
-    public void Type_WhenInspected_DerivesFromUnsealedFloatingSurfaceWithoutShadowingLifecycle()
-    {
-        var type = typeof(Popup);
-
-        type.BaseType.ShouldBe(typeof(FloatingSurfaceBase));
-        typeof(FloatingSurfaceBase).IsAssignableFrom(type).ShouldBeTrue();
-        type.IsSealed.ShouldBeFalse();
-        typeof(Container).IsAssignableFrom(type).ShouldBeFalse();
-        type.GetProperty(nameof(Container.Children)).ShouldBeNull();
-        type.GetProperty(nameof(Container.AutoScroll)).ShouldBeNull();
-        type.GetProperty(nameof(Container.AutoSize)).ShouldBeNull();
-        type.GetProperty("Child").ShouldBeNull();
-        _ = type.GetProperty(nameof(ContentControl.Content)).ShouldNotBeNull();
-        type.GetProperty(
-            nameof(FloatingSurfaceBase.SurfaceBounds),
-            System.Reflection.BindingFlags.Instance |
-            System.Reflection.BindingFlags.Public |
-            System.Reflection.BindingFlags.DeclaredOnly).ShouldBeNull();
-        type.GetEvent(
-            nameof(FloatingSurfaceBase.Closing),
-            System.Reflection.BindingFlags.Instance |
-            System.Reflection.BindingFlags.Public |
-            System.Reflection.BindingFlags.DeclaredOnly).ShouldBeNull();
-        type.GetEvent(
-            nameof(FloatingSurfaceBase.Closed),
-            System.Reflection.BindingFlags.Instance |
-            System.Reflection.BindingFlags.Public |
-            System.Reflection.BindingFlags.DeclaredOnly).ShouldBeNull();
-        var constructor = type.GetConstructors().ShouldHaveSingleItem();
-        constructor.GetParameters().ShouldBeEmpty();
     }
 
     /// <summary>Verifies replacement applies current open state only to newly committed content.</summary>

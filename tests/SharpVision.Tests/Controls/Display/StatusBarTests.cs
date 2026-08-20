@@ -475,9 +475,10 @@ public sealed class StatusBarTests
         bar.Items.IndexOf(foreign).ShouldBe(-1);
     }
 
-    /// <summary>Verifies disposed collection mutations reject Insert, RemoveAt, indexer assignment, and Move.</summary>
+    /// <summary>Verifies disposed collection mutations reject Insert, RemoveAt, indexer assignment, Move, and
+    /// Clear.</summary>
     [Fact]
-    public void Items_WhenOwnerIsDisposed_RejectsInsertRemoveAtIndexerAndMove()
+    public void Items_WhenOwnerIsDisposed_RejectsInsertRemoveAtIndexerMoveAndClear()
     {
         var bar = new StatusBar();
         bar.Items.Add(Item("First"));
@@ -488,6 +489,7 @@ public sealed class StatusBarTests
         _ = Should.Throw<ObjectDisposedException>(() => bar.Items.RemoveAt(0));
         _ = Should.Throw<ObjectDisposedException>(() => bar.Items[0] = Item("New"));
         _ = Should.Throw<ObjectDisposedException>(() => bar.Items.Move(0, 1));
+        _ = Should.Throw<ObjectDisposedException>(bar.Items.Clear);
     }
 
     /// <summary>Verifies a Collapsed item in the left bucket frees its space for surviving left

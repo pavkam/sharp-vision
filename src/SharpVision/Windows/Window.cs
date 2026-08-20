@@ -162,7 +162,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     }
 
     /// <summary>Gets or sets whether the window can be dragged by its title bar.</summary>
-    /// <remarks>IsDragging keeps the window's border box inside its parent's committed content area.</remarks>
+    /// <remarks>Dragging keeps the window's border box inside its parent's committed content area.</remarks>
     /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The window is disposed.</exception>
     public bool CanMove

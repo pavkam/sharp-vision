@@ -138,5 +138,9 @@ public sealed class StatusBar: ItemsControl
     }
 
     /// <summary>Removes all items without disposing the detached instances.</summary>
-    internal void ClearItems() => ClearItemControls();
+    internal void ClearItems()
+    {
+        VerifyMutable();
+        ClearItemControls();
+    }
 }

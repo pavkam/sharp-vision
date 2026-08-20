@@ -358,7 +358,11 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
 
     /// <summary>Scrolls minimally to expose one row-cell descendant.</summary>
     /// <param name="descendant">The non-null descendant control.</param>
-    /// <returns>True when at least one offset changed.</returns>
+    /// <returns>
+    /// True when the descendant's complete arranged bounds end up contained within this table's
+    /// viewport, regardless of whether an offset actually changed to get there; false when clamping
+    /// at an extent boundary leaves any part of it still outside.
+    /// </returns>
     /// <exception cref="ArgumentNullException"><paramref name="descendant"/> is null.</exception>
     /// <exception cref="ArgumentException">The control is not a realized table descendant.</exception>
     /// <exception cref="InvalidOperationException">The attached table is accessed off-dispatcher.</exception>
