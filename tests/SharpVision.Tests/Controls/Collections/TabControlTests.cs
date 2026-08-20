@@ -209,6 +209,17 @@ public sealed class TabControlTests
         tabs.HeaderOverflowPolicy.ShouldBe(TabHeaderOverflowPolicy.Scroll);
     }
 
+    /// <summary>Verifies HeaderOverflowPolicy rejects an undefined value before mutating state.</summary>
+    [Fact]
+    public void HeaderOverflowPolicy_WhenSetToUndefinedValue_ThrowsArgumentOutOfRangeException()
+    {
+        var tabs = new TabControl();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tabs.HeaderOverflowPolicy = (TabHeaderOverflowPolicy) 99);
+
+        tabs.HeaderOverflowPolicy.ShouldBe(TabHeaderOverflowPolicy.Clip);
+    }
+
     /// <summary>Verifies a local Style overrides the code-owned strip glyphs, and clearing it
     /// returns ownership to the theme rather than to a second set of code-owned values.</summary>
     [Fact]

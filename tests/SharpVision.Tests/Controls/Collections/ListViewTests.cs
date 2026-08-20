@@ -172,6 +172,17 @@ public sealed class ListViewTests
         notifications.ShouldBe(1);
     }
 
+    /// <summary>Verifies ShowScrollBars rejects an undefined value forwarded to the composed viewport.</summary>
+    [Fact]
+    public void ShowScrollBars_WhenSetToUndefinedValue_ThrowsArgumentOutOfRangeException()
+    {
+        var control = new UiListView();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.ShowScrollBars = (ShowScrollBars) 99);
+
+        control.ShowScrollBars.ShouldBe(ShowScrollBars.WhenNeeded);
+    }
+
     /// <summary>Verifies unchanged LineSize assignments do not raise duplicate public notifications.</summary>
     [Fact]
     public void LineSize_WhenValueIsUnchanged_DoesNotRaisePropertyChanged()
@@ -527,6 +538,32 @@ public sealed class ListViewTests
 
         control.ActiveIndex.ShouldBe(3);
         control.Items[control.ActiveIndex].ShouldBe("High");
+    }
+
+    /// <summary>Verifies each realized row's private ListItem.IsSelected mirrors the owning
+    /// ListView's committed selection, toggling as SelectedIndex moves between rows.</summary>
+    [Fact]
+    public void SelectedIndex_WhenChanged_TogglesTheRealizedRowsOwnIsSelected()
+    {
+        List<ControlText> realized = [];
+        var control = new UiListView
+        {
+            ItemTemplate = item => Add(realized, new ControlText(item?.ToString() ?? "null")),
+            Items = ["A", "B", "C"]
+        };
+
+        var first = (ListItem) realized[0].Parent!;
+        var second = (ListItem) realized[1].Parent!;
+
+        control.SelectedIndex = 0;
+
+        first.IsSelected.ShouldBeTrue();
+        second.IsSelected.ShouldBeFalse();
+
+        control.SelectedIndex = 1;
+
+        first.IsSelected.ShouldBeFalse();
+        second.IsSelected.ShouldBeTrue();
     }
 
     /// <summary>Verifies none, single, and multiple modes normalize selection deterministically.</summary>
@@ -1028,6 +1065,19 @@ public sealed class ListViewTests
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => control.ItemInvocation = (ListItemInvocation) 99);
         control.ItemInvocation.ShouldBe(ListItemInvocation.SingleClick);
+    }
+
+    /// <summary>Verifies SelectionMode rejects an undefined value and leaves selection untouched.</summary>
+    [Fact]
+    public void SelectionMode_WhenSetToUndefinedValue_ThrowsArgumentOutOfRangeException()
+    {
+        var control = Create("A", "B", "C");
+        control.SelectedIndex = 1;
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.SelectionMode = (ListSelectionMode) 99);
+
+        control.SelectionMode.ShouldBe(ListSelectionMode.Single);
+        control.SelectedIndex.ShouldBe(1);
     }
 
     /// <summary>Verifies BringIntoView(index) scrolls minimally to reveal an item below the

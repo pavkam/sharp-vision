@@ -15,8 +15,24 @@ public sealed class TabItemTests
 
         item.HeaderText.ShouldBe(string.Empty);
         item.Content.ShouldBeNull();
+        item.IsClosable.ShouldBeFalse();
 
         _ = Should.Throw<ArgumentNullException>(() => item.HeaderText = null!);
+
+        item.HeaderText.ShouldBe(string.Empty);
+    }
+
+    /// <summary>Verifies a header carrying a terminal control character is rejected instead of
+    /// silently dropping post-newline text or shifting later cells at render time.</summary>
+    [Theory]
+    [InlineData("Save\nAs")]
+    [InlineData("Save\rAs")]
+    [InlineData("Save\tAs")]
+    public void HeaderText_WhenContainingControlCharacter_Throws(string header)
+    {
+        var item = new TabItem();
+
+        _ = Should.Throw<ArgumentException>(() => item.HeaderText = header);
 
         item.HeaderText.ShouldBe(string.Empty);
     }

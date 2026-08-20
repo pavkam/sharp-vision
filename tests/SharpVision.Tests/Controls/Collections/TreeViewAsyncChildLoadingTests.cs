@@ -18,6 +18,24 @@ public sealed partial class TreeViewTests
         item.HasChildren.ShouldBeFalse();
     }
 
+    /// <summary>Verifies an item whose children were authored directly (never through
+    /// <see cref="TreeViewItem.ChildSource"/>) reports Loaded, and HasChildren tracks whether that
+    /// committed snapshot is non-empty rather than reporting true unconditionally.</summary>
+    [Fact]
+    public void ChildState_WhenChildrenAreAuthoredDirectly_IsLoadedAndTracksEmptiness()
+    {
+        var item = new TreeViewItem("Node");
+        item.Children.Add(new TreeViewItem("Child"));
+
+        item.ChildState.ShouldBe(TreeViewChildState.Loaded);
+        item.HasChildren.ShouldBeTrue();
+
+        item.Children.Clear();
+
+        item.ChildState.ShouldBe(TreeViewChildState.Leaf);
+        item.HasChildren.ShouldBeFalse();
+    }
+
     /// <summary>Verifies assigning a source moves an item to Unloaded, offering a disclosure
     /// affordance before any request has ever been made.</summary>
     [Fact]
@@ -133,6 +151,36 @@ public sealed partial class TreeViewTests
         loadedTransitions.ShouldBe(1);
         observedCountAtLoaded.ShouldBe(25, "the full committed set must already be visible at the moment the transition fires");
         item.Children.Count.ShouldBe(25);
+    }
+
+    /// <summary>Verifies a description that never sets Presence defaults to MayHaveChildren: the
+    /// materialized child inherits the parent's ChildSource instead of becoming a Leaf, so it stays
+    /// independently expandable.</summary>
+    [Fact]
+    public async Task Presence_WhenUnspecified_DefaultsToMayHaveChildrenAndInheritsTheSourceAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null, new TreeViewChildDescription("child", "Child"));
+        TreeView tree = null!;
+        TreeViewItem root = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            root = new TreeViewItem("Root") { ChildSource = source };
+            tree = new TreeView { Items = { root } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            root,
+            () => root.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        var child = root.Children.ShouldHaveSingleItem();
+        child.ChildSource.ShouldBeSameAs(source);
+        child.ChildState.ShouldBe(TreeViewChildState.Unloaded);
+        child.HasChildren.ShouldBeTrue();
     }
 
     /// <summary>Verifies an empty successful result commits Loaded, not Leaf - only never having had
@@ -643,6 +691,43 @@ public sealed partial class TreeViewTests
         child.IsChecked.ShouldBe(true);
     }
 
+    /// <summary>Verifies a description's explicit InitialCheckState overrides the checkable
+    /// parent's own check state, rather than always inheriting it.</summary>
+    [Fact]
+    public async Task InitialCheckState_WhenSpecified_OverridesTheCheckableParentsOwnStateAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        TreeView tree = null!;
+        TreeViewItem root = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            root = new TreeViewItem("Root") { ChildSource = source, IsCheckable = true, IsExpanded = false };
+            tree = new TreeView { Items = { root } };
+            tree.Attach(dispatcher);
+            root.IsChecked = true;
+        }, TestContext.Current.CancellationToken);
+
+        source.AddChildren(
+            null,
+            new TreeViewChildDescription("k1", "One")
+            {
+                IsCheckable = true,
+                InitialCheckState = false,
+                Presence = TreeViewChildPresence.Leaf
+            });
+
+        await dispatcher.InvokeAsync(() => { root.IsExpanded = true; }, TestContext.Current.CancellationToken);
+        await TreeViewChildLoadWait.UntilAsync(
+            root,
+            () => root.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        var child = root.Children.ShouldHaveSingleItem();
+        child.IsChecked.ShouldBe(false, "the description's own InitialCheckState must win over the inherited parent state");
+    }
+
     /// <summary>Verifies disposing the owning tree while a descendant's load is still in flight
     /// cancels the subtree's pending loads through the item's own disposal hook, and a late
     /// completion afterward does not fault the fire-and-forget loop.</summary>
@@ -718,6 +803,28 @@ public sealed partial class TreeViewTests
         item.IsExpanded.ShouldBeFalse();
         item.ChildState.ShouldBe(TreeViewChildState.Unloaded);
         source.Requests.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a fresh tree defaults to four concurrent child-load admissions.</summary>
+    [Fact]
+    public void MaxConcurrentChildLoads_WhenCreated_DefaultsToFour()
+    {
+        var tree = new TreeView();
+
+        tree.MaxConcurrentChildLoads.ShouldBe(4);
+    }
+
+    /// <summary>Verifies a non-positive concurrency limit is rejected before mutation.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void MaxConcurrentChildLoads_WhenSetToNonPositiveValue_ThrowsArgumentOutOfRangeException(int value)
+    {
+        var tree = new TreeView();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tree.MaxConcurrentChildLoads = value);
+
+        tree.MaxConcurrentChildLoads.ShouldBe(4);
     }
 
     /// <summary>Verifies a second concurrent load request beyond <see cref="TreeView.MaxConcurrentChildLoads"/>
@@ -1026,5 +1133,58 @@ public sealed partial class TreeViewTests
 
         item.Children.Count.ShouldBe(1);
         source.Requests.Count.ShouldBe(2, "the retry must have reached the source as a second request");
+    }
+
+    /// <summary>Verifies a fresh tree carries the documented default status row text.</summary>
+    [Fact]
+    public void LoadingAndLoadFailedText_WhenCreated_UseDocumentedDefaults()
+    {
+        var tree = new TreeView();
+
+        tree.LoadingText.ShouldBe("Loading…");
+        tree.LoadFailedText.ShouldBe("Failed to load. Press Enter to retry.");
+    }
+
+    /// <summary>Verifies LoadingText and LoadFailedText round-trip a caller-assigned value.</summary>
+    [Fact]
+    public void LoadingAndLoadFailedText_WhenAssigned_RoundTrip()
+    {
+        var tree = new TreeView
+        {
+            LoadingText = "Please wait…",
+            LoadFailedText = "Could not load.",
+        };
+
+        tree.LoadingText.ShouldBe("Please wait…");
+        tree.LoadFailedText.ShouldBe("Could not load.");
+    }
+
+    /// <summary>Verifies LoadingText and LoadFailedText reject a null value.</summary>
+    [Fact]
+    public void LoadingAndLoadFailedText_WhenAssignedNull_ThrowArgumentNullException()
+    {
+        var tree = new TreeView();
+
+        _ = Should.Throw<ArgumentNullException>(() => tree.LoadingText = null!);
+        _ = Should.Throw<ArgumentNullException>(() => tree.LoadFailedText = null!);
+
+        tree.LoadingText.ShouldBe("Loading…");
+        tree.LoadFailedText.ShouldBe("Failed to load. Press Enter to retry.");
+    }
+
+    /// <summary>Verifies LoadingText and LoadFailedText reject a value containing a terminal
+    /// control character instead of silently corrupting the rendered status row.</summary>
+    [Theory]
+    [InlineData("Loading\nnow")]
+    [InlineData("Loading\tnow")]
+    public void LoadingAndLoadFailedText_WhenContainingControlCharacter_ThrowArgumentException(string value)
+    {
+        var tree = new TreeView();
+
+        _ = Should.Throw<ArgumentException>(() => tree.LoadingText = value);
+        _ = Should.Throw<ArgumentException>(() => tree.LoadFailedText = value);
+
+        tree.LoadingText.ShouldBe("Loading…");
+        tree.LoadFailedText.ShouldBe("Failed to load. Press Enter to retry.");
     }
 }

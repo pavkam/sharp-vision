@@ -1260,6 +1260,28 @@ public sealed partial class TreeViewTests
         _ = changes.ShouldHaveSingleItem();
     }
 
+    /// <summary>Verifies HorizontalOffset defaults to zero and rejects any nonzero value, because
+    /// the generated scroll container only ever enables vertical scrolling for a tree.</summary>
+    [Fact]
+    public void HorizontalOffset_WhenSetToNonZeroValue_ThrowsArgumentOutOfRangeException()
+    {
+        var tree = new TreeView();
+
+        for (var index = 0; index < 20; index++)
+        {
+            tree.Items.Add(new TreeViewItem { Header = $"Item {index}" });
+        }
+
+        new LayoutEngine().Layout(tree, new Size(10, 4));
+        tree.HorizontalOffset.ShouldBe(0);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tree.HorizontalOffset = 1);
+
+        tree.HorizontalOffset.ShouldBe(0);
+        tree.HorizontalOffset = 0;
+        tree.HorizontalOffset.ShouldBe(0);
+    }
+
     /// <summary>Verifies BringItemIntoView scrolls minimally to reveal an item below the viewport.</summary>
     [Fact]
     public void BringItemIntoView_WhenItemIsBelowViewport_ScrollsToRevealIt()
@@ -1498,6 +1520,50 @@ public sealed partial class TreeViewTests
         _ = Should.Throw<ArgumentException>(() => item.Header = header);
     }
 
+    /// <summary>Verifies the header constructor and property both reject a null value, and a
+    /// fresh item defaults to an empty header.</summary>
+    [Fact]
+    public void Header_WhenAssignedNullOrUnset_ThrowsOrDefaultsToEmpty()
+    {
+        _ = Should.Throw<ArgumentNullException>(() => new TreeViewItem(null!));
+
+        var item = new TreeViewItem();
+        item.Header.ShouldBe(string.Empty);
+
+        _ = Should.Throw<ArgumentNullException>(() => item.Header = null!);
+
+        item.Header.ShouldBe(string.Empty);
+    }
+
+    /// <summary>Verifies a fresh tree carries no local style, resolving to the code-owned default.</summary>
+    [Fact]
+    public void Style_WhenUnassigned_ResolvesToDefault()
+    {
+        var tree = new TreeView();
+
+        tree.Style.ShouldBeNull();
+        tree.ActualStyle.LoadingGlyph.ShouldBe(TreeViewStyle.Default.LoadingGlyph);
+    }
+
+    /// <summary>Verifies a local Style overrides the code-owned status glyphs, and clearing it
+    /// returns ownership to the theme-resolved default.</summary>
+    [Fact]
+    public void Style_WhenAssigned_OverridesStatusGlyphsAndClearingRestoresTheResolvedOne()
+    {
+        var tree = new TreeView();
+        var defaultLoadingGlyph = tree.ActualStyle.LoadingGlyph;
+
+        tree.Style = TreeViewStyle.Default with { LoadingGlyph = new Rune('~') };
+
+        _ = tree.Style.ShouldNotBeNull();
+        tree.ActualStyle.LoadingGlyph.ShouldBe(new Rune('~'));
+
+        tree.Style = null;
+
+        tree.Style.ShouldBeNull();
+        tree.ActualStyle.LoadingGlyph.ShouldBe(defaultLoadingGlyph);
+    }
+
     /// <summary>
     /// Verifies a tree defaults to the same bracket mark a standalone CheckBox uses, so the two
     /// controls no longer disagree about what an unconfigured check mark looks like.
@@ -1700,6 +1766,42 @@ public sealed partial class TreeViewTests
 
         // indent(0) + disclosure(1) + gap(1) + mark(1) + leading space(1) + header(3)
         item.DesiredSize.Width.ShouldBe(1 + 1 + 1 + 1 + 3);
+    }
+
+    /// <summary>Verifies a fresh tree defaults to a two-cell indentation per nesting level.</summary>
+    [Fact]
+    public void Indent_WhenCreated_DefaultsToTwo()
+    {
+        var tree = new TreeView();
+
+        tree.Indent.ShouldBe(2);
+    }
+
+    /// <summary>Verifies a negative indent is rejected before mutation.</summary>
+    [Fact]
+    public void Indent_WhenSetToNegativeValue_ThrowsArgumentOutOfRangeException()
+    {
+        var tree = new TreeView();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tree.Indent = -1);
+
+        tree.Indent.ShouldBe(2);
+    }
+
+    /// <summary>Verifies a configured indent widens a nested row's measured width by exactly the
+    /// configured amount per nesting level, matching what OnRenderContent draws.</summary>
+    [Fact]
+    public void Indent_WhenConfigured_WidensNestedRowsByTheConfiguredAmount()
+    {
+        var tree = new TreeView { Indent = 5 };
+        var parent = new TreeViewItem { Header = "a" };
+        var child = new TreeViewItem { Header = "a" };
+        parent.Children.Add(child);
+        tree.Items.Add(parent);
+        new LayoutEngine().Layout(tree, new Size(40, 4));
+
+        child.Depth.ShouldBe(parent.Depth + 1);
+        child.DesiredSize.Width.ShouldBe(parent.DesiredSize.Width + 5);
     }
 
     /// <summary>Verifies adding one item to a multiple selection reports only that addition.</summary>
