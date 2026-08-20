@@ -206,6 +206,15 @@ public sealed class JsonViewTests
         view.Indent.ShouldBe(2);
     }
 
+    /// <summary>Verifies Indent round-trips a caller-assigned non-negative value.</summary>
+    [Fact]
+    public void Indent_WhenAssigned_RoundTrips()
+    {
+        var view = new JsonView { Indent = 4 };
+
+        view.Indent.ShouldBe(4);
+    }
+
     /// <summary>Verifies callers can collapse and restore one container by JSON Pointer.</summary>
     [Fact]
     public void SetExpanded_WhenContainerPathExists_ChangesVisibleEntryCount()
@@ -318,6 +327,28 @@ public sealed class JsonViewTests
         // Assert
         changed.Count(name => name == nameof(JsonView.ScrollBars)).ShouldBe(1);
         changed.Count(name => name == nameof(JsonView.ShowScrollBars)).ShouldBe(1);
+    }
+
+    /// <summary>Verifies ScrollBars rejects unknown flags before mutating the composed viewport.</summary>
+    [Fact]
+    public void ScrollBars_WhenSetToUndefinedFlags_ThrowsArgumentOutOfRangeException()
+    {
+        var view = new JsonView();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => view.ScrollBars = (ScrollBars) 99);
+
+        view.ScrollBars.ShouldBe(ScrollBars.Both);
+    }
+
+    /// <summary>Verifies ShowScrollBars rejects an undefined value before mutating the composed viewport.</summary>
+    [Fact]
+    public void ShowScrollBars_WhenSetToUndefinedValue_ThrowsArgumentOutOfRangeException()
+    {
+        var view = new JsonView();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => view.ShowScrollBars = (ShowScrollBars) 99);
+
+        view.ShowScrollBars.ShouldBe(ShowScrollBars.WhenNeeded);
     }
 
     /// <summary>Verifies unchanged LineSize assignments do not raise duplicate public notifications.</summary>
@@ -544,5 +575,55 @@ public sealed class JsonViewTests
         view.VerticalOffset.ShouldBe(2);
         view.Extent.Width.ShouldBeGreaterThan(view.Viewport.Width);
         view.Extent.Height.ShouldBeGreaterThan(view.Viewport.Height);
+    }
+
+    /// <summary>Verifies a fresh view carries no local style, resolving to the code-owned default.</summary>
+    [Fact]
+    public void Style_WhenUnassigned_ResolvesToDefault()
+    {
+        var view = new JsonView();
+
+        view.Style.ShouldBeNull();
+        view.ActualStyle.KeyColor.ShouldBe(JsonViewStyle.Default.KeyColor);
+    }
+
+    /// <summary>Verifies a local Style overrides the code-owned key color, and clearing it returns
+    /// ownership to the theme-resolved default.</summary>
+    [Fact]
+    public void Style_WhenAssigned_OverridesKeyColorAndClearingRestoresTheResolvedOne()
+    {
+        var view = new JsonView();
+        var defaultKeyColor = view.ActualStyle.KeyColor;
+
+        view.Style = JsonViewStyle.Default with { KeyColor = Color.Rgb(0x11, 0x22, 0x33) };
+
+        _ = view.Style.ShouldNotBeNull();
+        view.ActualStyle.KeyColor.ShouldBe((ControlColor) Color.Rgb(0x11, 0x22, 0x33));
+
+        view.Style = null;
+
+        view.Style.ShouldBeNull();
+        view.ActualStyle.KeyColor.ShouldBe(defaultKeyColor);
+    }
+
+    /// <summary>Verifies the generated scrollbar style is unpinned by default, round-trips a local
+    /// assignment, reaches the generated bar, and releases back to the theme when cleared.</summary>
+    [Fact]
+    public void ScrollBarStyle_WhenAssignedAndCleared_ResolvesAndReleases()
+    {
+        var view = new JsonView();
+
+        view.ScrollBarStyle.ShouldBeNull();
+        view.ActualScrollBarStyle.ShouldBe(ScrollBar.ResolveStyle(null, view.Theme));
+
+        view.ScrollBarStyle = ScrollBarStyle.ThinBlock;
+
+        view.ScrollBarStyle.ShouldBe(ScrollBarStyle.ThinBlock);
+        view.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.ThinBlock);
+
+        view.ScrollBarStyle = null;
+
+        view.ScrollBarStyle.ShouldBeNull();
+        view.ActualScrollBarStyle.ShouldBe(ScrollBar.ResolveStyle(null, view.Theme));
     }
 }
