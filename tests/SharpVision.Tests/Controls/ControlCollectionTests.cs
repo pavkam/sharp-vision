@@ -198,6 +198,152 @@ public sealed class ControlCollectionTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies Contains reports identity membership and rejects a null candidate.</summary>
+    [Fact]
+    public void Contains_WhenCalled_ReportsExactIdentityMembership()
+    {
+        var parent = new ProbeContainer();
+        var member = new ProbeControl();
+        var stranger = new ProbeControl();
+        parent.Children.Add(member);
+
+        parent.Children.Contains(member).ShouldBeTrue();
+        parent.Children.Contains(stranger).ShouldBeFalse();
+        _ = Should.Throw<ArgumentNullException>(() => parent.Children.Contains(null!));
+    }
+
+    /// <summary>Verifies IndexOf reports the exact zero-based position or -1, and rejects null.</summary>
+    [Fact]
+    public void IndexOf_WhenCalled_ReportsExactPositionOrNegativeOne()
+    {
+        var parent = new ProbeContainer();
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        var stranger = new ProbeControl();
+        parent.Children.Add(first);
+        parent.Children.Add(second);
+
+        parent.Children.IndexOf(first).ShouldBe(0);
+        parent.Children.IndexOf(second).ShouldBe(1);
+        parent.Children.IndexOf(stranger).ShouldBe(-1);
+        _ = Should.Throw<ArgumentNullException>(() => parent.Children.IndexOf(null!));
+    }
+
+    /// <summary>Verifies CopyTo copies committed controls in order into an existing array.</summary>
+    [Fact]
+    public void CopyTo_WhenDestinationFits_CopiesInCommittedOrder()
+    {
+        var parent = new ProbeContainer();
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        parent.Children.Add(first);
+        parent.Children.Add(second);
+        var destination = new ControlBase[3];
+
+        parent.Children.CopyTo(destination, 1);
+
+        ControlBase?[] expected = [null, first, second];
+        destination.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies CopyTo rejects a null destination without altering the collection.</summary>
+    [Fact]
+    public void CopyTo_WhenDestinationIsNull_ThrowsArgumentNullException()
+    {
+        var parent = new ProbeContainer();
+        parent.Children.Add(new ProbeControl());
+
+        _ = Should.Throw<ArgumentNullException>(() => parent.Children.CopyTo(null!, 0));
+
+        parent.Children.Count.ShouldBe(1);
+    }
+
+    /// <summary>Verifies the allocation-free enumerator yields committed controls in order.</summary>
+    [Fact]
+    public void GetEnumerator_WhenIterated_YieldsControlsInCommittedOrder()
+    {
+        var parent = new ProbeContainer();
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        parent.Children.Add(first);
+        parent.Children.Add(second);
+        List<ControlBase> observed = [];
+
+        foreach (var child in parent.Children)
+        {
+            observed.Add(child);
+        }
+
+        observed.ShouldBe([first, second]);
+    }
+
+    /// <summary>Verifies the explicit non-generic and generic <see cref="IEnumerable{T}"/>
+    /// implementations also yield committed controls in order, matching direct iteration.</summary>
+    [Fact]
+    public void GetEnumerator_WhenAccessedThroughIEnumerableInterface_YieldsSameOrder()
+    {
+        var parent = new ProbeContainer();
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        parent.Children.Add(first);
+        parent.Children.Add(second);
+
+        IEnumerable<ControlBase> generic = parent.Children;
+        System.Collections.IEnumerable nonGeneric = parent.Children;
+
+        generic.ShouldBe([first, second]);
+        nonGeneric.Cast<ControlBase>().ShouldBe([first, second]);
+    }
+
+    /// <summary>Verifies RemoveAt detaches the exact positioned child without disposing it.</summary>
+    [Fact]
+    public void RemoveAt_WhenPositionIsValid_DetachesExactChild()
+    {
+        var parent = new ProbeContainer();
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        parent.Children.Add(first);
+        parent.Children.Add(second);
+
+        parent.Children.RemoveAt(0);
+
+        parent.Children.ShouldBe([second]);
+        first.Parent.ShouldBeNull();
+        first.IsDisposed.ShouldBeFalse();
+        second.Parent.ShouldBeSameAs(parent);
+    }
+
+    /// <summary>Verifies RemoveAt rejects an out-of-range position before mutating the collection.</summary>
+    [Fact]
+    public void RemoveAt_WhenPositionIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var parent = new ProbeContainer();
+        var only = new ProbeControl();
+        parent.Children.Add(only);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => parent.Children.RemoveAt(1));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => parent.Children.RemoveAt(-1));
+
+        parent.Children.ShouldBe([only]);
+        only.Parent.ShouldBeSameAs(parent);
+    }
+
+    /// <summary>Verifies Remove returns false for a control this collection does not own, without
+    /// disturbing existing membership, and rejects a null candidate.</summary>
+    [Fact]
+    public void Remove_WhenControlIsNotOwned_ReturnsFalseWithoutMutation()
+    {
+        var parent = new ProbeContainer();
+        var owned = new ProbeControl();
+        var stranger = new ProbeControl();
+        parent.Children.Add(owned);
+
+        parent.Children.Remove(stranger).ShouldBeFalse();
+        _ = Should.Throw<ArgumentNullException>(() => parent.Children.Remove(null!));
+
+        parent.Children.ShouldBe([owned]);
+    }
+
     /// <summary>Verifies disposing a container recursively disposes owned descendants.</summary>
     [Fact]
     public void Dispose_WhenTreeIsDetached_DisposesOwnedChildrenOnce()

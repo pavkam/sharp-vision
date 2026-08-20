@@ -814,6 +814,179 @@ public sealed partial class ControlBaseTests
         actual.Foreground.Literal.ShouldBe(ThemeCatalog.Dark.ResolveColor(SemanticColor.ControlBorder));
     }
 
+    /// <summary>Verifies resetting a border whose local Sides matches the resolved theme Sides
+    /// invalidates only Render - the documented exact-phase distinction ResetBorder draws between a
+    /// chrome-geometry-changing reset and a color-only one.</summary>
+    [Fact]
+    public void ResetBorder_WhenLocalSidesMatchThemeSides_InvalidatesRenderOnly()
+    {
+        var control = new ProbeControl
+        {
+            Border = new Border(
+                ThemeCatalog.Dark.Control.Normal.Border.Sides,
+                BorderGlyphStyle.Ascii,
+                Color.Rgb(1, 2, 3),
+                Color.Transparent,
+                TerminalAttributes.None)
+        };
+        control.SetTheme(ThemeCatalog.Dark);
+        List<string?> notifications = [];
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+        control.Clear(Invalidation.All);
+
+        control.ResetBorder();
+
+        control.Pending.ShouldBe(Invalidation.Render);
+        notifications.ShouldBe([nameof(ControlBase.Border), nameof(ControlBase.ActualBorder)]);
+    }
+
+    /// <summary>Verifies resetting a border whose local Sides differs from the resolved theme Sides
+    /// invalidates Measure (and its dependents) since the chrome-geometry footprint itself changes.</summary>
+    [Fact]
+    public void ResetBorder_WhenLocalSidesDifferFromThemeSides_InvalidatesMeasure()
+    {
+        ThemeCatalog.Dark.Control.Normal.Border.Sides.ShouldNotBe(BorderSide.All);
+        var control = new ProbeControl { Border = CreateBorder(Color.Rgb(1, 2, 3)) };
+        control.SetTheme(ThemeCatalog.Dark);
+        control.Clear(Invalidation.All);
+
+        control.ResetBorder();
+
+        control.Pending.ShouldBe(Invalidation.All);
+    }
+
+    /// <summary>Verifies resetting an already-theme-owned border is a documented no-op: no
+    /// invalidation and no property notification.</summary>
+    [Fact]
+    public void ResetBorder_WhenNoLocalBorderIsSet_IsNoOp()
+    {
+        var control = new ProbeControl();
+        control.SetTheme(ThemeCatalog.Dark);
+        control.Clear(Invalidation.All);
+        List<string?> notifications = [];
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        control.ResetBorder();
+
+        control.Pending.ShouldBe(Invalidation.None);
+        notifications.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies resetting a complete local face returns ownership to the semantic
+    /// appearance and raises both documented property notifications.</summary>
+    [Fact]
+    public void ResetFace_WhenLocalFaceIsSet_ReturnsOwnershipToThemeAndNotifies()
+    {
+        var control = new ProbeControl
+        {
+            Face = new Face(Color.Rgb(1, 2, 3), Color.Rgb(4, 5, 6), TerminalAttributes.None, Underline.None, Color.Default)
+        };
+        control.SetTheme(ThemeCatalog.Dark);
+        List<string?> notifications = [];
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+        control.Clear(Invalidation.All);
+
+        var themeOwnedControl = new ProbeControl();
+        themeOwnedControl.SetTheme(ThemeCatalog.Dark);
+
+        control.ResetFace();
+
+        control.Face.ShouldBe(themeOwnedControl.Face);
+        control.ActualFace.ShouldBe(themeOwnedControl.ActualFace);
+        control.Face.ShouldNotBe(new Face(Color.Rgb(1, 2, 3), Color.Rgb(4, 5, 6), TerminalAttributes.None, Underline.None, Color.Default));
+        notifications.ShouldBe([nameof(ControlBase.Face), nameof(ControlBase.ActualFace)]);
+        ((control.Pending & Invalidation.Render) != 0).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies resetting a Face render-invalidates every descendant, mirroring the
+    /// direct <see cref="ControlBase.Face"/> setter's subtree-wide ambient-appearance
+    /// invalidation.</summary>
+    [Fact]
+    public void ResetFace_WhenLocalFaceIsSet_RenderInvalidatesEveryDescendant()
+    {
+        var grandchild = new ProbeControl();
+        var child = new ProbeContainer();
+        var root = new ProbeContainer { Face = new Face(Color.Rgb(1, 2, 3), Color.Rgb(4, 5, 6), TerminalAttributes.None, Underline.None, Color.Default) };
+        child.Children.Add(grandchild);
+        root.Children.Add(child);
+        root.Clear(Invalidation.All);
+        child.Clear(Invalidation.All);
+        grandchild.Clear(Invalidation.All);
+
+        root.ResetFace();
+
+        ((root.Pending & Invalidation.Render) != 0).ShouldBeTrue();
+        ((child.Pending & Invalidation.Render) != 0).ShouldBeTrue();
+        ((grandchild.Pending & Invalidation.Render) != 0).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies resetting an already-theme-owned face is a documented no-op: no
+    /// invalidation and no property notification.</summary>
+    [Fact]
+    public void ResetFace_WhenNoLocalFaceIsSet_IsNoOp()
+    {
+        var control = new ProbeControl();
+        control.SetTheme(ThemeCatalog.Dark);
+        control.Clear(Invalidation.All);
+        List<string?> notifications = [];
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        control.ResetFace();
+
+        control.Pending.ShouldBe(Invalidation.None);
+        notifications.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies resetting a complete local shadow returns ownership to the semantic
+    /// appearance, render-invalidates, and raises both documented property notifications.</summary>
+    [Fact]
+    public void ResetShadow_WhenLocalShadowIsSet_ReturnsOwnershipToThemeAndNotifies()
+    {
+        var control = new ProbeControl
+        {
+            Shadow = new Shadow(
+                isVisible: true,
+                ShadowMode.Composite,
+                new Point(1, 1),
+                new Rune('#'),
+                Color.Rgb(1, 2, 3),
+                Color.Transparent,
+                TerminalAttributes.None)
+        };
+        control.SetTheme(ThemeCatalog.Dark);
+        List<string?> notifications = [];
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+        control.Clear(Invalidation.All);
+
+        var themeOwnedControl = new ProbeControl();
+        themeOwnedControl.SetTheme(ThemeCatalog.Dark);
+
+        control.ResetShadow();
+
+        control.Shadow.ShouldBe(themeOwnedControl.Shadow);
+        control.ActualShadow.ShouldBe(themeOwnedControl.ActualShadow);
+        control.Shadow.IsVisible.ShouldBeFalse();
+        notifications.ShouldBe([nameof(ControlBase.Shadow), nameof(ControlBase.ActualShadow)]);
+        control.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies resetting an already-theme-owned shadow is a documented no-op: no
+    /// invalidation and no property notification.</summary>
+    [Fact]
+    public void ResetShadow_WhenNoLocalShadowIsSet_IsNoOp()
+    {
+        var control = new ProbeControl();
+        control.SetTheme(ThemeCatalog.Dark);
+        control.Clear(Invalidation.All);
+        List<string?> notifications = [];
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        control.ResetShadow();
+
+        control.Pending.ShouldBe(Invalidation.None);
+        notifications.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies an explicit state set may intentionally override a complete local value.</summary>
     [Fact]
     public void SetAppearance_WhenLocalStateSetIsPresent_OverridesLocalCompositeMember()
