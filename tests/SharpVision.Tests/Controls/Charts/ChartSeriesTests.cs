@@ -25,6 +25,42 @@ public sealed class ChartSeriesTests
         notifications.ShouldBe(0);
     }
 
+    /// <summary>Verifies a series rejects a null name before changing observable state.</summary>
+    [Fact]
+    public void Name_WhenAssignedNull_RejectsBeforeMutation()
+    {
+        // Arrange
+        var series = new ChartSeries("CPU");
+        var notifications = 0;
+        series.PropertyChanged += (_, _) => notifications++;
+
+        // Act
+        _ = Should.Throw<ArgumentNullException>(() => series.Name = null!);
+
+        // Assert
+        series.Name.ShouldBe("CPU");
+        notifications.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a series rejects a transparent literal color override before changing
+    /// observable state, since a transparent series could never paint.</summary>
+    [Fact]
+    public void Color_WhenAssignedTransparent_RejectsBeforeMutation()
+    {
+        // Arrange
+        var color = Color.Rgb(10, 20, 30);
+        var series = new ChartSeries("CPU") { Color = color };
+        var notifications = 0;
+        series.PropertyChanged += (_, _) => notifications++;
+
+        // Act
+        _ = Should.Throw<ArgumentException>(() => series.Color = Color.Transparent);
+
+        // Assert
+        series.Color.ShouldBe(color);
+        notifications.ShouldBe(0);
+    }
+
     /// <summary>Verifies a changed series pattern publishes its exact property name, exactly like
     /// the existing color property.</summary>
     [Fact]

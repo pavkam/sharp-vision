@@ -23,6 +23,42 @@ public sealed class ChartDataPointTests
         notifications.ShouldBe(0);
     }
 
+    /// <summary>Verifies a point rejects a null label before changing observable state.</summary>
+    [Fact]
+    public void Label_WhenAssignedNull_RejectsBeforeMutation()
+    {
+        // Arrange
+        var point = new ChartDataPoint("CPU", 12);
+        var notifications = 0;
+        point.PropertyChanged += (_, _) => notifications++;
+
+        // Act
+        _ = Should.Throw<ArgumentNullException>(() => point.Label = null!);
+
+        // Assert
+        point.Label.ShouldBe("CPU");
+        notifications.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a point rejects a transparent literal color override before changing
+    /// observable state, since a transparent point could never paint.</summary>
+    [Fact]
+    public void Color_WhenAssignedTransparent_RejectsBeforeMutation()
+    {
+        // Arrange
+        var color = Color.Rgb(10, 20, 30);
+        var point = new ChartDataPoint("CPU", 12) { Color = color };
+        var notifications = 0;
+        point.PropertyChanged += (_, _) => notifications++;
+
+        // Act
+        _ = Should.Throw<ArgumentException>(() => point.Color = Color.Transparent);
+
+        // Assert
+        point.Color.ShouldBe(color);
+        notifications.ShouldBe(0);
+    }
+
     /// <summary>Verifies changed labels, values, and colors publish their exact property names.</summary>
     [Fact]
     public void Properties_WhenChanged_PublishObservableNotifications()

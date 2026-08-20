@@ -504,6 +504,57 @@ public sealed class ChaseIndicatorSurfaceTests
             TerminalPalette.Project(Color.Rgb(159, 159, 159), ColorDepth.Basic16));
     }
 
+    /// <summary>Verifies raising TrailLength at runtime immediately backfills the newly retained
+    /// slots as fully faded history rather than leaving them empty until new movement ticks
+    /// populate them — the exact seam ResizeTrail's synthesized <c>startedAt</c> values exist to
+    /// prove, since production code never observably distinguishes freshly resized capacity from
+    /// capacity that has simply always been there.</summary>
+    [Fact]
+    public async Task TrailLength_WhenIncreasedAtRuntime_BackfillsFullyFadedHistoryImmediatelyAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var baseline = ChaseIndicatorStyle.Default;
+        var indicator = new ChaseIndicator
+        {
+            Movement = ChaseMovement.Wrap,
+            Length = 5,
+            TrailLength = 0,
+            Style = new ChaseIndicatorStyle(
+                baseline.Face,
+                baseline.Border,
+                baseline.Shadow,
+                baseline.Active,
+                baseline.Inactive,
+                Color.Rgb(255, 255, 255),
+                Color.Rgb(0, 0, 0),
+                Color.Rgb(15, 15, 15))
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            indicator,
+            new Size(5, 1),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        // Act: advance the head to position 2 with no trail retained (TrailLength = 0).
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(200), "advance wrapping head to position 1");
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(200), "advance wrapping head to position 2");
+        await surface.UpdateAsync(() => indicator.TrailLength = 2, "raise TrailLength at runtime");
+
+        // Assert
+        indicator.TrailLength.ShouldBe(2);
+        surface.Cell(new Point(2, 0)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(Color.Rgb(255, 255, 255), ColorDepth.Basic16));
+        surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(Color.Rgb(0, 0, 0), ColorDepth.Basic16));
+        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(Color.Rgb(0, 0, 0), ColorDepth.Basic16));
+        surface.Cell(new Point(3, 0)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(Color.Rgb(15, 15, 15), ColorDepth.Basic16));
+        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(Color.Rgb(15, 15, 15), ColorDepth.Basic16));
+    }
+
     /// <summary>Verifies a wrapping endpoint remains and fades after the head restarts.</summary>
     [Fact]
     public async Task AdvanceAsync_WhenWrapMoves_FadesAbandonedPositionGraduallyAsync()

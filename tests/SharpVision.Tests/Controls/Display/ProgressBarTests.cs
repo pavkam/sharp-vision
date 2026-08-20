@@ -433,6 +433,33 @@ public sealed class ProgressBarTests
         _ = Should.Throw<ArgumentException>(() => bar.Maximum = 0);
     }
 
+    /// <summary>Verifies IsIndeterminate round-trips and its rendering replaces the value-driven
+    /// fill/track bar with a uniform indeterminate glyph across every content cell.</summary>
+    [Fact]
+    public void Render_WhenIsIndeterminateIsTrue_FillsEveryCellWithIndeterminateGlyph()
+    {
+        // Arrange
+        var bar = new ProgressBar
+        {
+            Value = 0,
+            IsIndeterminate = true,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        new LayoutEngine().Layout(bar, new Size(5, 1));
+        using Frame frame = new(new Size(5, 1));
+
+        // Act
+        bar.IsIndeterminate.ShouldBeTrue();
+        bar.Render(frame.Canvas);
+
+        // Assert
+        for (var x = 0; x < 5; x++)
+        {
+            FrameOracle.Get(frame, new Point(x, 0)).ShouldBe(bar.ActualStyle.Glyphs.Indeterminate.ToString());
+        }
+    }
+
     /// <summary>Verifies rendering at Value = 0 produces a fully empty bar.</summary>
     [Fact]
     public void Render_WhenValueIsZero_ProducesEmptyBar()
