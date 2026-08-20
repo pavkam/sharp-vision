@@ -26,6 +26,59 @@ public sealed class MenuTests
         menu.MaxWidth.ShouldBe(24);
     }
 
+    /// <summary>Verifies every Menu-declared property starts at its documented default.</summary>
+    [Fact]
+    public void Constructor_WhenCreated_UsesDocumentedDefaults()
+    {
+        var menu = new Menu();
+
+        menu.Orientation.ShouldBe(Orientation.Horizontal);
+        menu.Spacing.ShouldBe(0);
+        menu.SelectedIndex.ShouldBe(-1);
+        menu.SelectedItem.ShouldBeNull();
+        menu.Items.Count.ShouldBe(0);
+    }
+
+    /// <summary>Verifies an unknown orientation is rejected before the previous value changes,
+    /// matching the sibling Stack.Orientation setter's own validation.</summary>
+    [Fact]
+    public void Orientation_WhenValueIsUndefined_ThrowsArgumentOutOfRangeException()
+    {
+        var menu = new Menu { Orientation = Orientation.Vertical };
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => menu.Orientation = (Orientation) 99);
+
+        menu.Orientation.ShouldBe(Orientation.Vertical);
+    }
+
+    /// <summary>Verifies a negative spacing is rejected before the previous value changes.</summary>
+    [Fact]
+    public void Spacing_WhenValueIsNegative_ThrowsArgumentOutOfRangeException()
+    {
+        var menu = new Menu { Spacing = 2 };
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => menu.Spacing = -1);
+
+        menu.Spacing.ShouldBe(2);
+    }
+
+    /// <summary>Verifies a horizontal Menu arranges its owned items left to right with Spacing cells
+    /// between them, proving both properties' effect on the underlying Stack presentation host.</summary>
+    [Fact]
+    public void MeasureOverride_WhenOrientationIsHorizontalWithSpacing_ArrangesItemsSideBySideWithGap()
+    {
+        var menu = new Menu { Orientation = Orientation.Horizontal, Spacing = 2 };
+        var first = new MenuItem { Text = "One" };
+        var second = new MenuItem { Text = "Two" };
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+
+        new LayoutEngine().Layout(menu, new Size(30, 1));
+
+        first.Bounds.Y.ShouldBe(second.Bounds.Y);
+        second.Bounds.X.ShouldBe(first.Bounds.Right + 2);
+    }
+
     /// <summary>Verifies typed collection ownership selects the first available item and renders compact shared-width rows.</summary>
     [ComponentUnitEvidence(typeof(Menu))]
     [ComponentUnitEvidence(typeof(MenuItem))]

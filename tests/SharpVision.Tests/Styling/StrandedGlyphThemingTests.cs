@@ -645,12 +645,15 @@ public sealed class StrandedGlyphThemingTests
     {
         var theme = Authored(""", "menuSeparator": { "normal": { "glyph": "=" } } """);
         using var separator = new MenuSeparator();
+        separator.Style.ShouldBeNull();
         separator.PropagateTheme(theme);
 
         separator.Style = MenuSeparatorStyle.Default with { Glyph = new Rune('~') };
+        separator.Style.ShouldBe(MenuSeparatorStyle.Default with { Glyph = new Rune('~') });
         separator.ActualStyle.Glyph.ShouldBe(new Rune('~'));
 
         separator.Style = null;
+        separator.Style.ShouldBeNull();
         separator.ActualStyle.Glyph.ShouldBe(new Rune('='));
     }
 
