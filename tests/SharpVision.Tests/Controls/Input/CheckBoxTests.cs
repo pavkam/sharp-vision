@@ -68,6 +68,18 @@ public sealed class CheckBoxTests
         checkBox.IsChecked.ShouldBe(false);
     }
 
+    /// <summary>Verifies PerformClick rejects use after disposal.</summary>
+    [Fact]
+    public void PerformClick_WhenDisposed_Throws()
+    {
+        // Arrange
+        var checkBox = new CheckBox();
+        checkBox.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(checkBox.PerformClick);
+    }
+
     /// <summary>Verifies PerformClick on a disabled CheckBox does nothing.</summary>
     [ComponentUnitEvidence(typeof(CheckBox), ComponentBehavior.Disabled)]
     [Fact]

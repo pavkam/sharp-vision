@@ -610,6 +610,181 @@ public sealed class CalendarTests
         calendar.Selection.ShouldBe(existing);
     }
 
+    /// <summary>Verifies the single-date Select overload commits the exact one-day interval its
+    /// documentation promises.</summary>
+    [Fact]
+    public void Select_WhenGivenOneDate_CommitsOneDayInterval()
+    {
+        // Arrange
+        using var calendar = new UiCalendar { Selection = null };
+        var date = new DateOnly(2026, 7, 19);
+
+        // Act
+        var selected = calendar.Select(date);
+
+        // Assert
+        selected.ShouldBeTrue();
+        calendar.Selection.ShouldBe(new DateInterval(date, date));
+    }
+
+    /// <summary>Verifies the single-date Select overload rejects a blocked date and leaves the
+    /// prior selection untouched.</summary>
+    [Fact]
+    public void Select_WhenDateIsBlocked_ThrowsAndPreservesSelection()
+    {
+        // Arrange
+        var existing = new DateOnly(2026, 7, 10);
+        using var calendar = new UiCalendar { Selection = new DateInterval(existing, existing) };
+        var blocked = new DateOnly(2026, 7, 19);
+        calendar.BlockedDates.Block(blocked);
+
+        // Act
+        _ = Should.Throw<ArgumentException>(() => calendar.Select(blocked));
+
+        // Assert
+        calendar.Selection.ShouldBe(new DateInterval(existing, existing));
+    }
+
+    /// <summary>Verifies the two-date Select overload rejects an end that precedes its start
+    /// before touching the committed selection, matching DateInterval's own documented
+    /// validation.</summary>
+    [Fact]
+    public void Select_WhenEndPrecedesStart_ThrowsAndPreservesSelection()
+    {
+        // Arrange
+        var existing = new DateOnly(2026, 7, 10);
+        using var calendar = new UiCalendar
+        {
+            SelectionMode = CalendarSelectionMode.Interval,
+            Selection = new DateInterval(existing, existing)
+        };
+
+        // Act
+        var exception = Should.Throw<ArgumentException>(() =>
+            calendar.Select(new DateOnly(2026, 7, 20), new DateOnly(2026, 7, 15)));
+
+        // Assert
+        exception.ParamName.ShouldBe("end");
+        calendar.Selection.ShouldBe(new DateInterval(existing, existing));
+    }
+
+    /// <summary>Verifies RemoveMarkup removes an authored face and reports true, and reports false
+    /// without invalidating when no markup was authored for the date.</summary>
+    [Fact]
+    public void RemoveMarkup_WhenAuthoredFaceExists_RemovesAndReportsTrue()
+    {
+        // Arrange
+        using var calendar = new UiCalendar();
+        var date = new DateOnly(2026, 7, 19);
+        calendar.SetMarkup(date, "VIP");
+        calendar.Clear(Invalidation.All);
+
+        // Act
+        var removed = calendar.RemoveMarkup(date);
+
+        // Assert
+        removed.ShouldBeTrue();
+        calendar.GetMarkup(date).ShouldBeNull();
+        calendar.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies RemoveMarkup on a date with no authored face reports false and does not
+    /// invalidate rendering.</summary>
+    [Fact]
+    public void RemoveMarkup_WhenNoAuthoredFaceExists_ReportsFalseWithoutInvalidating()
+    {
+        // Arrange
+        using var calendar = new UiCalendar();
+        calendar.Clear(Invalidation.All);
+
+        // Act
+        var removed = calendar.RemoveMarkup(new DateOnly(2026, 7, 19));
+
+        // Assert
+        removed.ShouldBeFalse();
+        calendar.Pending.ShouldBe(Invalidation.None);
+    }
+
+    /// <summary>Verifies ClearMarkup removes every authored face and invalidates rendering.</summary>
+    [Fact]
+    public void ClearMarkup_WhenFacesAreAuthored_RemovesAllAndInvalidatesRender()
+    {
+        // Arrange
+        using var calendar = new UiCalendar();
+        calendar.SetMarkup(new DateOnly(2026, 7, 10), "A");
+        calendar.SetMarkup(new DateOnly(2026, 7, 19), "B");
+        calendar.Clear(Invalidation.All);
+
+        // Act
+        calendar.ClearMarkup();
+
+        // Assert
+        calendar.GetMarkup(new DateOnly(2026, 7, 10)).ShouldBeNull();
+        calendar.GetMarkup(new DateOnly(2026, 7, 19)).ShouldBeNull();
+        calendar.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies ClearMarkup on a calendar with no authored faces is a no-op that does not
+    /// invalidate rendering.</summary>
+    [Fact]
+    public void ClearMarkup_WhenNoFacesAreAuthored_IsNoOp()
+    {
+        // Arrange
+        using var calendar = new UiCalendar();
+        calendar.Clear(Invalidation.All);
+
+        // Act
+        calendar.ClearMarkup();
+
+        // Assert
+        calendar.Pending.ShouldBe(Invalidation.None);
+    }
+
+    /// <summary>Verifies GoToToday reports false and leaves ActiveDate and DisplayMonth untouched
+    /// when today falls outside the calendar's selectable bounds.</summary>
+    [Fact]
+    public void GoToToday_WhenTodayIsOutsideBounds_ReturnsFalseWithoutMoving()
+    {
+        // Arrange
+        var today = DateOnly.FromDateTime(TimeProvider.System.GetLocalNow().DateTime);
+        using var calendar = new UiCalendar
+        {
+            MinimumDate = today.AddDays(1),
+            MaximumDate = DateOnly.MaxValue,
+            DisplayMonth = new DateOnly(2000, 1, 1)
+        };
+        var previousActive = calendar.ActiveDate;
+        var previousMonth = calendar.DisplayMonth;
+
+        // Act
+        var moved = calendar.GoToToday();
+
+        // Assert
+        moved.ShouldBeFalse();
+        calendar.ActiveDate.ShouldBe(previousActive);
+        calendar.DisplayMonth.ShouldBe(previousMonth);
+    }
+
+    /// <summary>Verifies GoToToday reports false and leaves state untouched when today is blocked.</summary>
+    [Fact]
+    public void GoToToday_WhenTodayIsBlocked_ReturnsFalseWithoutMoving()
+    {
+        // Arrange
+        var today = DateOnly.FromDateTime(TimeProvider.System.GetLocalNow().DateTime);
+        using var calendar = new UiCalendar { DisplayMonth = new DateOnly(2000, 1, 1) };
+        calendar.BlockedDates.Block(today);
+        var previousActive = calendar.ActiveDate;
+        var previousMonth = calendar.DisplayMonth;
+
+        // Act
+        var moved = calendar.GoToToday();
+
+        // Assert
+        moved.ShouldBeFalse();
+        calendar.ActiveDate.ShouldBe(previousActive);
+        calendar.DisplayMonth.ShouldBe(previousMonth);
+    }
+
     /// <summary>Verifies non-Gregorian display cultures cannot produce false month geometry.</summary>
     [Fact]
     public void Culture_WhenCalendarIsNonGregorian_ThrowsBeforeMutation()
@@ -1078,6 +1253,30 @@ public sealed class CalendarTests
         // Assert
         calendar.ActiveDate.ShouldBe(active);
         calendar.DisplayMonth.ShouldBe(new DateOnly(2020, 1, 1));
+    }
+
+    /// <summary>Verifies every documented public editing method on Calendar and its owned
+    /// BlockedDates collection rejects use after disposal with the documented
+    /// ObjectDisposedException.</summary>
+    [Fact]
+    public void Methods_WhenCalendarIsDisposed_ThrowObjectDisposedException()
+    {
+        // Arrange
+        var calendar = new UiCalendar();
+        calendar.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(() => calendar.Select(new DateOnly(2026, 7, 19)));
+        _ = Should.Throw<ObjectDisposedException>(() =>
+            calendar.Select(new DateOnly(2026, 7, 19), new DateOnly(2026, 7, 19)));
+        _ = Should.Throw<ObjectDisposedException>(() => calendar.ClearSelection());
+        _ = Should.Throw<ObjectDisposedException>(() => calendar.SetMarkup(new DateOnly(2026, 7, 19), "x"));
+        _ = Should.Throw<ObjectDisposedException>(() => calendar.RemoveMarkup(new DateOnly(2026, 7, 19)));
+        _ = Should.Throw<ObjectDisposedException>(calendar.ClearMarkup);
+        _ = Should.Throw<ObjectDisposedException>(() => calendar.GoToToday());
+        _ = Should.Throw<ObjectDisposedException>(() => calendar.BlockedDates.Block(new DateOnly(2026, 7, 19)));
+        _ = Should.Throw<ObjectDisposedException>(() => calendar.BlockedDates.Unblock(new DateOnly(2026, 7, 19)));
+        _ = Should.Throw<ObjectDisposedException>(calendar.BlockedDates.Clear);
     }
 
     #endregion

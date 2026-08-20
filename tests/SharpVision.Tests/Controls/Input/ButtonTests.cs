@@ -923,6 +923,18 @@ public sealed class ButtonTests
         button.ActualBorder.GlyphStyle.ShouldBe(BorderGlyphStyle.Heavy);
     }
 
+    /// <summary>Verifies PerformClick rejects use after disposal.</summary>
+    [Fact]
+    public void PerformClick_WhenDisposed_Throws()
+    {
+        // Arrange
+        var button = new Button();
+        button.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(button.PerformClick);
+    }
+
     /// <summary>Verifies PerformClick on a disabled button does nothing.</summary>
     [ComponentUnitEvidence(typeof(Button), ComponentBehavior.Disabled)]
     [Fact]

@@ -130,26 +130,36 @@ public sealed class CurrencyInputTests
 
     #region Bounds and step
 
-    /// <summary>Verifies minimum when exceeds maximum throws.</summary>
+    /// <summary>Verifies minimum when exceeds maximum throws and leaves the prior bound untouched.</summary>
     [Fact]
-    public void Minimum_WhenExceedsMaximum_Throws()
+    public void Minimum_WhenExceedsMaximum_ThrowsAndPreservesPreviousMinimum()
     {
         // Arrange
-        using var control = new CurrencyInput { Maximum = 10m };
+        using var control = new CurrencyInput { Minimum = 0m, Maximum = 10m };
 
-        // Act and assert
-        _ = Should.Throw<ArgumentException>(() => control.Minimum = 20m);
+        // Act
+        var exception = Should.Throw<ArgumentException>(() => control.Minimum = 20m);
+
+        // Assert
+        exception.ParamName.ShouldBe("value");
+        control.Minimum.ShouldBe(0m);
+        control.Maximum.ShouldBe(10m);
     }
 
-    /// <summary>Verifies maximum when below minimum throws.</summary>
+    /// <summary>Verifies maximum when below minimum throws and leaves the prior bound untouched.</summary>
     [Fact]
-    public void Maximum_WhenBelowMinimum_Throws()
+    public void Maximum_WhenBelowMinimum_ThrowsAndPreservesPreviousMaximum()
     {
         // Arrange
-        using var control = new CurrencyInput { Minimum = 10m };
+        using var control = new CurrencyInput { Minimum = 10m, Maximum = 20m };
 
-        // Act and assert
-        _ = Should.Throw<ArgumentException>(() => control.Maximum = 5m);
+        // Act
+        var exception = Should.Throw<ArgumentException>(() => control.Maximum = 5m);
+
+        // Assert
+        exception.ParamName.ShouldBe("value");
+        control.Maximum.ShouldBe(20m);
+        control.Minimum.ShouldBe(10m);
     }
 
     /// <summary>Verifies minimum when equal to maximum is accepted.</summary>
@@ -169,32 +179,44 @@ public sealed class CurrencyInputTests
         control.Maximum.ShouldBe(5m);
     }
 
-    /// <summary>Verifies minimum when raised above committed value repairs by clamping.</summary>
+    /// <summary>Verifies minimum when raised above committed value repairs by clamping and raises
+    /// ValueChanged with the exact previous and new committed values.</summary>
     [Fact]
-    public void Minimum_WhenRaisedAboveCommittedValue_RepairsByClamping()
+    public void Minimum_WhenRaisedAboveCommittedValue_RepairsByClampingAndRaisesValueChanged()
     {
         // Arrange
         using var control = new CurrencyInput { Value = 3m };
+        CurrencyInputValueChangedEventArgs? change = null;
+        control.ValueChanged += (_, args) => change = args;
 
         // Act
         control.Minimum = 5m;
 
         // Assert
         control.Value.ShouldBe(5m);
+        var raised = change.ShouldNotBeNull();
+        raised.PreviousValue.ShouldBe(3m);
+        raised.Value.ShouldBe(5m);
     }
 
-    /// <summary>Verifies maximum when lowered below committed value repairs by clamping.</summary>
+    /// <summary>Verifies maximum when lowered below committed value repairs by clamping and raises
+    /// ValueChanged with the exact previous and new committed values.</summary>
     [Fact]
-    public void Maximum_WhenLoweredBelowCommittedValue_RepairsByClamping()
+    public void Maximum_WhenLoweredBelowCommittedValue_RepairsByClampingAndRaisesValueChanged()
     {
         // Arrange
         using var control = new CurrencyInput { Value = 8m };
+        CurrencyInputValueChangedEventArgs? change = null;
+        control.ValueChanged += (_, args) => change = args;
 
         // Act
         control.Maximum = 5m;
 
         // Assert
         control.Value.ShouldBe(5m);
+        var raised = change.ShouldNotBeNull();
+        raised.PreviousValue.ShouldBe(8m);
+        raised.Value.ShouldBe(5m);
     }
 
     /// <summary>Verifies step when assigned zero or negative throws.</summary>
