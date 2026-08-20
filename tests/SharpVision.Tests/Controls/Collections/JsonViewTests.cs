@@ -254,6 +254,79 @@ public sealed class JsonViewTests
         view.VisibleEntryCount.ShouldBe(visibleCount);
     }
 
+    /// <summary>Verifies a null path is rejected before any lookup or mutation.</summary>
+    [Fact]
+    public void SetExpanded_WhenPathIsNull_ThrowsArgumentNullException()
+    {
+        var view = new JsonView { Json = /*lang=json,strict*/ "{\"child\":1}" };
+
+        _ = Should.Throw<ArgumentNullException>(() => view.SetExpanded(null!, false));
+    }
+
+    /// <summary>Verifies a path identifying a scalar leaf, rather than an object or array, is
+    /// rejected the same way the root pointer is.</summary>
+    [Fact]
+    public void SetExpanded_WhenPathIdentifiesLeaf_ThrowsArgumentException()
+    {
+        var view = new JsonView { Json = /*lang=json,strict*/ "{\"child\":1}" };
+        var visibleCount = view.VisibleEntryCount;
+
+        _ = Should.Throw<ArgumentException>(() => view.SetExpanded("/child", false));
+
+        view.VisibleEntryCount.ShouldBe(visibleCount);
+    }
+
+    /// <summary>Verifies requesting the disclosure state a container is already in is a no-op that
+    /// returns false and leaves the projection unchanged.</summary>
+    [Fact]
+    public void SetExpanded_WhenAlreadyInRequestedState_ReturnsFalse()
+    {
+        var view = new JsonView { Json = /*lang=json,strict*/ "{\"author\":{\"name\":\"Alex\"}}" };
+        var visibleCount = view.VisibleEntryCount;
+
+        var changed = view.SetExpanded("/author", true);
+
+        changed.ShouldBeFalse();
+        view.VisibleEntryCount.ShouldBe(visibleCount);
+    }
+
+    /// <summary>Verifies ExpandAll discloses every nested object and array entry.</summary>
+    [Fact]
+    public void ExpandAll_WhenSomeContainersAreCollapsed_ExpandsEveryContainer()
+    {
+        var view = new JsonView
+        {
+            Json = /*lang=json,strict*/ "{\"author\":{\"name\":\"Alex\"},\"tags\":[1,2]}"
+        };
+        var fullyExpandedCount = view.VisibleEntryCount;
+        _ = view.SetExpanded("/author", false);
+        _ = view.SetExpanded("/tags", false);
+        view.VisibleEntryCount.ShouldBeLessThan(fullyExpandedCount);
+
+        view.ExpandAll();
+
+        view.VisibleEntryCount.ShouldBe(fullyExpandedCount);
+    }
+
+    /// <summary>Verifies CollapseAll hides every non-root object and array entry's descendants.</summary>
+    [Fact]
+    public void CollapseAll_WhenCalled_CollapsesEveryContainer()
+    {
+        var view = new JsonView
+        {
+            Json = /*lang=json,strict*/ "{\"author\":{\"name\":\"Alex\"},\"tags\":[1,2]}"
+        };
+        var fullyExpandedCount = view.VisibleEntryCount;
+
+        view.CollapseAll();
+
+        view.VisibleEntryCount.ShouldBeLessThan(fullyExpandedCount);
+
+        view.ExpandAll();
+
+        view.VisibleEntryCount.ShouldBe(fullyExpandedCount);
+    }
+
     /// <summary>Verifies selection changes publish old and new JSON Pointer values after replacement.</summary>
     [Fact]
     public void SelectionChanged_WhenDocumentReplacementChangesSelection_PublishesCommittedPaths()
