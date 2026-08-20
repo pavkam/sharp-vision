@@ -163,6 +163,50 @@ public sealed class NavigationViewTests
         nav.PageOverlap.ShouldBe(3);
     }
 
+    /// <summary>Verifies HorizontalOffset defaults to zero and stays there - the generated items
+    /// container only ever enables vertical scrolling, so zero is the only value the current
+    /// extent ever admits - while still rejecting a positive request the way the documented
+    /// exception promises.</summary>
+    [Fact]
+    public void HorizontalOffset_WhenNavigationViewHasNoHorizontalScrolling_AlwaysReportsZeroAndRejectsPositive()
+    {
+        var nav = new NavigationView();
+
+        nav.HorizontalOffset.ShouldBe(0);
+        nav.HorizontalOffset = 0;
+        nav.HorizontalOffset.ShouldBe(0);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => nav.HorizontalOffset = 1);
+        nav.HorizontalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies VerticalOffset can be set directly (not only through ScrollBy) and reads
+    /// back from the generated scroll container within the current extent.</summary>
+    [Fact]
+    public void VerticalOffset_WhenSetDirectly_RoundTripsWithinExtent()
+    {
+        var nav = new NavigationView();
+
+        for (var index = 0; index < 20; index++)
+        {
+            nav.Items.Add(new NavigationViewItem { Text = $"Item {index}" });
+        }
+
+        new LayoutEngine().Layout(nav, new Size(10, 4));
+
+        nav.VerticalOffset = 3;
+
+        nav.VerticalOffset.ShouldBe(3);
+    }
+
+    /// <summary>Verifies VerticalOffset rejects a value outside the current extent.</summary>
+    [Fact]
+    public void VerticalOffset_WhenOutOfRange_ThrowsArgumentOutOfRangeException()
+    {
+        var nav = new NavigationView();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => nav.VerticalOffset = 1);
+    }
+
     /// <summary>Verifies PerformInvoke activates a standalone item through the same path as
     /// owner-driven activation, raising Invoked and then executing the bound command.</summary>
     [Fact]
@@ -1162,6 +1206,25 @@ public sealed class NavigationViewTests
             () => group.Style = NavigationViewGroupStyle.Default with { ItemIndent = -1 });
     }
 
+    /// <summary>Verifies a group's local Style defaults to null (theme ownership) and round-trips
+    /// an assigned complete style through both Style and the resolved ActualStyle.</summary>
+    [Fact]
+    public void Style_WhenAssigned_RoundTripsLocalAndResolvedStyle()
+    {
+        var group = new NavigationViewGroup();
+        group.Style.ShouldBeNull();
+
+        var style = NavigationViewGroupStyle.Default with { ItemIndent = 4 };
+        group.Style = style;
+
+        group.Style.ShouldBe(style);
+        group.ActualStyle.ShouldBe(style);
+
+        group.Style = null;
+
+        group.Style.ShouldBeNull();
+    }
+
     /// <summary>Verifies direct and owning-NavigationView-inherited IsEnabled changes flip a
     /// NavigationViewGroup's EffectiveIsEnabled without disturbing its own IsEnabled property, and
     /// re-enabling restores it.</summary>
@@ -1281,6 +1344,30 @@ public sealed class NavigationViewTests
         nav.Render(frame.Canvas);
 
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("M");
+    }
+
+    /// <summary>Verifies Header round-trips, defaults to null, and its documented Measure impact
+    /// actually reserves and releases the header row - not just repaints it - by comparing the
+    /// auto-sized height with and without a header.</summary>
+    [Fact]
+    public void Header_WhenSetThenCleared_RoundTripsAndTogglesReservedHeaderRow()
+    {
+        var withoutHeader = new NavigationView();
+        withoutHeader.Header.ShouldBeNull();
+        new LayoutEngine().Layout(withoutHeader, new Size(20, 10));
+        var baselineHeight = withoutHeader.DesiredSize.Height;
+
+        var nav = new NavigationView { Header = "Title" };
+        new LayoutEngine().Layout(nav, new Size(20, 10));
+
+        nav.Header.ShouldBe("Title");
+        nav.DesiredSize.Height.ShouldBe(baselineHeight + 1);
+
+        nav.Header = null;
+        new LayoutEngine().Layout(nav, new Size(20, 10));
+
+        nav.Header.ShouldBeNull();
+        nav.DesiredSize.Height.ShouldBe(baselineHeight);
     }
 
     /// <summary>Verifies removing an item clears selection if it was selected.</summary>
@@ -1411,6 +1498,21 @@ public sealed class NavigationViewTests
         var group = new NavigationViewGroup();
 
         _ = Should.Throw<ArgumentException>(() => group.Header = header);
+    }
+
+    /// <summary>Verifies a group's Header defaults to empty, round-trips an assigned value, and
+    /// rejects null while leaving the previous value in place.</summary>
+    [Fact]
+    public void GroupHeader_WhenAssignedOrNull_DefaultsRoundTripsAndRejectsNull()
+    {
+        var group = new NavigationViewGroup();
+        group.Header.ShouldBe(string.Empty);
+
+        group.Header = "Settings";
+
+        group.Header.ShouldBe("Settings");
+        _ = Should.Throw<ArgumentNullException>(() => group.Header = null!);
+        group.Header.ShouldBe("Settings");
     }
 
     /// <summary>Verifies Insert places an entry at the requested position instead of appending.</summary>
@@ -1605,5 +1707,125 @@ public sealed class NavigationViewTests
         nav.Items.IndexOf(footer).ShouldBe(-1);
         nav.FooterItems.IndexOf(footer).ShouldBe(0);
         nav.Items.IndexOf(foreign).ShouldBe(-1);
+    }
+
+    /// <summary>Verifies every NavigationView-declared property starts at its documented default.</summary>
+    [Fact]
+    public void Constructor_WhenCreated_UsesDocumentedDefaults()
+    {
+        var nav = new NavigationView();
+
+        nav.Header.ShouldBeNull();
+        nav.ScrollBarStyle.ShouldBeNull();
+        nav.LineSize.ShouldBe(1);
+        nav.PageOverlap.ShouldBe(0);
+        nav.HorizontalOffset.ShouldBe(0);
+        nav.VerticalOffset.ShouldBe(0);
+        nav.Extent.ShouldBe(default);
+        nav.Viewport.ShouldBe(default);
+        nav.Items.Count.ShouldBe(0);
+        nav.FooterItems.Count.ShouldBe(0);
+        nav.SelectedItem.ShouldBeNull();
+    }
+
+    /// <summary>Verifies disposing the navigation view prevents every NavigationView-declared
+    /// settable property from mutating further.</summary>
+    [Fact]
+    public void Dispose_WhenCalled_PreventsMutation()
+    {
+        var nav = new NavigationView();
+
+        nav.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => nav.Header = "Test");
+        _ = Should.Throw<ObjectDisposedException>(() => nav.ScrollBarStyle = ScrollBarStyle.ThinLine);
+        _ = Should.Throw<ObjectDisposedException>(() => nav.LineSize = 2);
+        _ = Should.Throw<ObjectDisposedException>(() => nav.PageOverlap = 2);
+        _ = Should.Throw<ObjectDisposedException>(() => nav.HorizontalOffset = 0);
+        _ = Should.Throw<ObjectDisposedException>(() => nav.VerticalOffset = 0);
+    }
+
+    /// <summary>Verifies every NavigationView-declared settable property requires dispatcher
+    /// affinity once attached.</summary>
+    [Fact]
+    public async Task PropertySetter_WhenAttachedOffThread_ThrowsBeforeMutationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var nav = new NavigationView();
+
+        await dispatcher.InvokeAsync(() => nav.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => nav.Header = "Test");
+        _ = Should.Throw<InvalidOperationException>(() => nav.ScrollBarStyle = ScrollBarStyle.ThinLine);
+        _ = Should.Throw<InvalidOperationException>(() => nav.LineSize = 2);
+        _ = Should.Throw<InvalidOperationException>(() => nav.PageOverlap = 2);
+        _ = Should.Throw<InvalidOperationException>(() => nav.HorizontalOffset = 0);
+        _ = Should.Throw<InvalidOperationException>(() => nav.VerticalOffset = 0);
+    }
+
+    /// <summary>Verifies every NavigationViewGroup-declared settable property starts at its
+    /// documented default, and disposing the group prevents further mutation.</summary>
+    [Fact]
+    public void Group_WhenCreatedThenDisposed_UsesDocumentedDefaultsThenPreventsMutation()
+    {
+        var group = new NavigationViewGroup();
+
+        group.Header.ShouldBe(string.Empty);
+        group.IsExpanded.ShouldBeTrue();
+        group.Style.ShouldBeNull();
+        group.Items.Count.ShouldBe(0);
+
+        group.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => group.Header = "Group");
+        _ = Should.Throw<ObjectDisposedException>(() => group.IsExpanded = false);
+        _ = Should.Throw<ObjectDisposedException>(() => group.Style = NavigationViewGroupStyle.Default);
+    }
+
+    /// <summary>Verifies every NavigationViewGroup-declared settable property requires dispatcher
+    /// affinity once attached.</summary>
+    [Fact]
+    public async Task Group_PropertySetter_WhenAttachedOffThread_ThrowsBeforeMutationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var group = new NavigationViewGroup();
+
+        await dispatcher.InvokeAsync(() => group.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => group.Header = "Group");
+        _ = Should.Throw<InvalidOperationException>(() => group.IsExpanded = false);
+        _ = Should.Throw<InvalidOperationException>(() => group.Style = NavigationViewGroupStyle.Default);
+    }
+
+    /// <summary>Verifies a separator's local Style defaults to null, round-trips an assigned
+    /// complete style, and disposing the separator prevents further mutation.</summary>
+    [Fact]
+    public void Separator_WhenStyleAssignedThenDisposed_RoundTripsThenPreventsMutation()
+    {
+        var separator = new NavigationViewSeparator();
+        separator.Style.ShouldBeNull();
+
+        var style = NavigationViewSeparatorStyle.Default with { Glyph = new Rune('*') };
+        separator.Style = style;
+
+        separator.Style.ShouldBe(style);
+        separator.ActualStyle.ShouldBe(style);
+
+        separator.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => separator.Style = null);
+    }
+
+    /// <summary>Verifies a separator's settable Style property requires dispatcher affinity once
+    /// attached.</summary>
+    [Fact]
+    public async Task Separator_PropertySetter_WhenAttachedOffThread_ThrowsBeforeMutationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var separator = new NavigationViewSeparator();
+
+        await dispatcher.InvokeAsync(() => separator.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => separator.Style = NavigationViewSeparatorStyle.Default);
     }
 }
