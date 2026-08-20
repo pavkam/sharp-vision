@@ -272,6 +272,15 @@ public sealed partial class TreeViewTests
         _ = Should.Throw<ArgumentException>(() => tree.SelectItem(item));
     }
 
+    /// <summary>Verifies programmatic selection rejects a null item.</summary>
+    [Fact]
+    public void SelectItem_WhenItemIsNull_ThrowsArgumentNullException()
+    {
+        var tree = new TreeView();
+
+        _ = Should.Throw<ArgumentNullException>(() => tree.SelectItem(null!));
+    }
+
     /// <summary>Verifies SelectionChanged provides old and new items in typed event args.</summary>
     [Fact]
     public void SelectionChanged_WhenItemSelected_ProvidesOldAndNewInEventArgs()
@@ -711,6 +720,28 @@ public sealed partial class TreeViewTests
 
         a.IsExpanded.ShouldBeTrue();
         b.IsExpanded.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies ExpandAll skips a branch whose children have never been requested - it
+    /// never promised to fire a remote load - leaving it collapsed and Unloaded without issuing a
+    /// request, distinct from an eagerly authored branch, which it does expand.</summary>
+    [Fact]
+    public void ExpandAll_WhenBranchIsUnloaded_SkipsItWithoutTriggeringALoad()
+    {
+        var source = new FakeTreeViewChildSource();
+        var tree = new TreeView();
+        var loaded = new TreeViewItem { Header = "Loaded", IsExpanded = false };
+        loaded.Children.Add(new TreeViewItem { Header = "Child" });
+        var unloaded = new TreeViewItem { Header = "Unloaded", ChildSource = source, IsExpanded = false };
+        tree.Items.Add(loaded);
+        tree.Items.Add(unloaded);
+
+        tree.ExpandAll();
+
+        loaded.IsExpanded.ShouldBeTrue();
+        unloaded.IsExpanded.ShouldBeFalse();
+        unloaded.ChildState.ShouldBe(TreeViewChildState.Unloaded);
+        source.Requests.ShouldBeEmpty();
     }
 
     /// <summary>Verifies collapsing every node in the tree.</summary>
@@ -1257,7 +1288,91 @@ public sealed partial class TreeViewTests
 
         moved.ShouldBeTrue();
         tree.VerticalOffset.ShouldBe(3);
-        _ = changes.ShouldHaveSingleItem();
+        var change = changes.ShouldHaveSingleItem();
+        change.PreviousOffset.ShouldBe(new Point(0, 0));
+        change.Offset.ShouldBe(new Point(0, 3));
+        change.Cause.ShouldBe(ScrollCause.Programmatic);
+    }
+
+    /// <summary>Verifies ScrollBy reports no movement, and raises no ScrollChanged, once the
+    /// viewport is already saturated at the requested end.</summary>
+    [Fact]
+    public void ScrollBy_WhenAlreadyAtSaturatedEndpoint_ReturnsFalseWithoutRaisingScrollChanged()
+    {
+        var tree = new TreeView();
+
+        for (var index = 0; index < 20; index++)
+        {
+            tree.Items.Add(new TreeViewItem { Header = $"Item {index}" });
+        }
+
+        new LayoutEngine().Layout(tree, new Size(10, 4));
+        var changes = 0;
+        tree.ScrollChanged += (_, _) => changes++;
+
+        var moved = tree.ScrollBy(0, -1);
+
+        moved.ShouldBeFalse();
+        tree.VerticalOffset.ShouldBe(0);
+        changes.ShouldBe(0);
+    }
+
+    /// <summary>Verifies ScrollBy propagates the composed viewport's own cause validation.</summary>
+    [Fact]
+    public void ScrollBy_WhenCauseIsUndefined_ThrowsArgumentOutOfRangeException()
+    {
+        var tree = new TreeView();
+
+        for (var index = 0; index < 20; index++)
+        {
+            tree.Items.Add(new TreeViewItem { Header = $"Item {index}" });
+        }
+
+        new LayoutEngine().Layout(tree, new Size(10, 4));
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tree.ScrollBy(0, 1, (ScrollCause) 99));
+    }
+
+    /// <summary>Verifies VerticalOffset defaults to zero and round-trips a directly assigned
+    /// in-range value, without requiring a caller to go through ScrollBy.</summary>
+    [Fact]
+    public void VerticalOffset_WhenAssignedDirectly_DefaultsToZeroAndRoundTrips()
+    {
+        var tree = new TreeView();
+
+        for (var index = 0; index < 20; index++)
+        {
+            tree.Items.Add(new TreeViewItem { Header = $"Item {index}" });
+        }
+
+        new LayoutEngine().Layout(tree, new Size(10, 4));
+
+        tree.VerticalOffset.ShouldBe(0);
+
+        tree.VerticalOffset = 5;
+
+        tree.VerticalOffset.ShouldBe(5);
+    }
+
+    /// <summary>Verifies VerticalOffset rejects a value outside the generated scroll container's
+    /// current extent, and leaves the previously committed offset unchanged.</summary>
+    [Fact]
+    public void VerticalOffset_WhenOutsideExtent_ThrowsArgumentOutOfRangeExceptionAndPreservesOffset()
+    {
+        var tree = new TreeView();
+
+        for (var index = 0; index < 20; index++)
+        {
+            tree.Items.Add(new TreeViewItem { Header = $"Item {index}" });
+        }
+
+        new LayoutEngine().Layout(tree, new Size(10, 4));
+        tree.VerticalOffset = 3;
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tree.VerticalOffset = -1);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tree.VerticalOffset = 9999);
+
+        tree.VerticalOffset.ShouldBe(3);
     }
 
     /// <summary>Verifies HorizontalOffset defaults to zero and rejects any nonzero value, because
@@ -1310,6 +1425,38 @@ public sealed partial class TreeViewTests
         var tree = new TreeView();
 
         _ = Should.Throw<ArgumentNullException>(() => tree.BringItemIntoView(null!));
+    }
+
+    /// <summary>Verifies BringItemIntoView rejects an owned item that is not currently realized as
+    /// a visible descendant - here, a child of a collapsed parent - the same way the underlying
+    /// container rejects a genuinely foreign control.</summary>
+    [Fact]
+    public void BringItemIntoView_WhenItemIsNotRealized_ThrowsArgumentException()
+    {
+        var tree = new TreeView();
+        var parent = new TreeViewItem { Header = "Parent", IsExpanded = false };
+        var child = new TreeViewItem { Header = "Child" };
+        parent.Children.Add(child);
+        tree.Items.Add(parent);
+        new LayoutEngine().Layout(tree, new Size(10, 4));
+
+        _ = Should.Throw<ArgumentException>(() => tree.BringItemIntoView(child));
+    }
+
+    /// <summary>Verifies BringItemIntoView leaves the offset untouched and still reports true once
+    /// the requested item is already entirely inside the viewport.</summary>
+    [Fact]
+    public void BringItemIntoView_WhenItemIsAlreadyFullyVisible_ReturnsTrueWithoutMovingOffset()
+    {
+        var tree = new TreeView();
+        var first = new TreeViewItem { Header = "First" };
+        tree.Items.Add(first);
+        new LayoutEngine().Layout(tree, new Size(10, 4));
+
+        var moved = tree.BringItemIntoView(first);
+
+        moved.ShouldBeTrue();
+        tree.VerticalOffset.ShouldBe(0);
     }
 
     /// <summary>Verifies Insert places a node at the requested position without disturbing existing order.</summary>
@@ -2011,6 +2158,25 @@ public sealed partial class TreeViewTests
         _ = observed.ShouldNotBeNull();
         observed.AddedItems.ShouldBe([first, child, second]);
         observed.RemovedItems.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies SelectAll refuses to run outside Multiple selection mode, since a single
+    /// or none-selection tree has no way to represent the result, and leaves selection state
+    /// untouched.</summary>
+    [Theory]
+    [InlineData(TreeSelectionMode.Single)]
+    [InlineData(TreeSelectionMode.None)]
+    public void SelectAll_WhenModeIsNotMultiple_ThrowsInvalidOperationExceptionAndPreservesSelection(
+        TreeSelectionMode mode)
+    {
+        var tree = Build(out var first, out _, out _);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        tree.SelectItem(first);
+        tree.SelectionMode = mode;
+
+        _ = Should.Throw<InvalidOperationException>(tree.SelectAll);
+
+        tree.SelectedItems.ShouldBe(mode == TreeSelectionMode.Single ? [first] : []);
     }
 
     /// <summary>Verifies narrowing the mode reports the items it deselected.</summary>

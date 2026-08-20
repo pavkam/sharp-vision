@@ -344,6 +344,79 @@ public sealed class ListViewTests
         control.SelectedItem.ShouldBe("A");
     }
 
+    /// <summary>Verifies SetSelected validates its index the same way SelectedIndex and
+    /// BringIntoView do, and leaves selection state untouched when it rejects.</summary>
+    [Fact]
+    public void SetSelected_WhenIndexIsOutOfRange_ThrowsArgumentOutOfRangeExceptionAndPreservesSelection()
+    {
+        var control = Create("A", "B", "C");
+        control.SelectedIndex = 1;
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.SetSelected(3, true));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.SetSelected(-1, true));
+
+        control.SelectedIndex.ShouldBe(1);
+        control.SelectedItem.ShouldBe("B");
+    }
+
+    /// <summary>Verifies SetSelected(index, true) rejects selection in None mode the same way the
+    /// SelectedIndex setter does, without mutating selection state.</summary>
+    [Fact]
+    public void SetSelected_WhenSelectingInNoneMode_ThrowsInvalidOperationExceptionAndPreservesSelection()
+    {
+        var control = Create("A", "B");
+        control.SelectionMode = ListSelectionMode.None;
+
+        _ = Should.Throw<InvalidOperationException>(() => control.SetSelected(0, true));
+
+        control.SelectedIndex.ShouldBe(-1);
+    }
+
+    /// <summary>Verifies deselecting is always legal in None mode since it never adds anything to
+    /// an already-empty selection.</summary>
+    [Fact]
+    public void SetSelected_WhenDeselectingInNoneMode_DoesNotThrow()
+    {
+        var control = Create("A", "B");
+        control.SelectionMode = ListSelectionMode.None;
+
+        control.SetSelected(0, false).ShouldBeFalse();
+
+        control.SelectedIndex.ShouldBe(-1);
+    }
+
+    /// <summary>Verifies selecting an index that is already selected is a no-op that returns false
+    /// and raises neither SelectionChanging nor SelectionChanged.</summary>
+    [Fact]
+    public void SetSelected_WhenIndexIsAlreadySelected_ReturnsFalseWithoutRaisingEvents()
+    {
+        var control = Create("A", "B", "C");
+        control.SelectedIndex = 1;
+        var changingRaised = false;
+        var changedRaised = false;
+        control.SelectionChanging += (_, _) => changingRaised = true;
+        control.SelectionChanged += (_, _) => changedRaised = true;
+
+        control.SetSelected(1, true).ShouldBeFalse();
+
+        control.SelectedIndex.ShouldBe(1);
+        changingRaised.ShouldBeFalse();
+        changedRaised.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies deselecting an index that is not currently selected is a no-op that
+    /// returns false without disturbing the existing selection.</summary>
+    [Fact]
+    public void SetSelected_WhenIndexIsNotSelected_DeselectReturnsFalse()
+    {
+        var control = Create("A", "B", "C");
+        control.SelectedIndex = 1;
+
+        control.SetSelected(2, false).ShouldBeFalse();
+
+        control.SelectedIndex.ShouldBe(1);
+    }
+
     /// <summary>Verifies assigning a disabled SelectedIndex preserves the existing valid selection.</summary>
     [Fact]
     public void SelectedIndex_WhenTargetIsDisabled_PreservesExistingSelection()
@@ -500,7 +573,7 @@ public sealed class ListViewTests
     {
         var control = new UiListView
         {
-            ItemTemplate = item => new ControlText((string) item!),
+            ItemTemplate = item => new ControlText((string) item!) { Height = Length.Cells(3) },
             Items = Enumerable.Range(0, 10).Select(value => (object?) $"Item {value}").ToArray(),
             RowHeight = 3
         };
@@ -846,7 +919,95 @@ public sealed class ListViewTests
 
         moved.ShouldBeTrue();
         control.VerticalOffset.ShouldBe(3);
-        _ = changes.ShouldHaveSingleItem();
+        var change = changes.ShouldHaveSingleItem();
+        change.PreviousOffset.ShouldBe(new Point(0, 0));
+        change.Offset.ShouldBe(new Point(0, 3));
+        change.Cause.ShouldBe(ScrollCause.Programmatic);
+    }
+
+    /// <summary>Verifies ScrollBy reports no movement, and raises no ScrollChanged, once the
+    /// viewport is already saturated at the requested end - a strict distinct case from an
+    /// unsaturated move, since a caller relies on the return value to know whether the offset
+    /// actually changed.</summary>
+    [Fact]
+    public void ScrollBy_WhenAlreadyAtSaturatedEndpoint_ReturnsFalseWithoutRaisingScrollChanged()
+    {
+        var control = new UiListView
+        {
+            ItemTemplate = item => new ControlText(item?.ToString() ?? "null"),
+            Items = Enumerable.Range(0, 20).Select(value => (object?) $"Item {value}").ToArray()
+        };
+        new LayoutEngine().Layout(control, new Size(10, 4));
+        var changes = 0;
+        control.ScrollChanged += (_, _) => changes++;
+
+        var moved = control.ScrollBy(0, -1);
+
+        moved.ShouldBeFalse();
+        control.VerticalOffset.ShouldBe(0);
+        changes.ShouldBe(0);
+    }
+
+    /// <summary>Verifies ScrollBy propagates the composed viewport's own cause validation, rather
+    /// than silently accepting an undefined <see cref="ScrollCause"/>.</summary>
+    [Fact]
+    public void ScrollBy_WhenCauseIsUndefined_ThrowsArgumentOutOfRangeException()
+    {
+        var control = new UiListView
+        {
+            ItemTemplate = item => new ControlText(item?.ToString() ?? "null"),
+            Items = Enumerable.Range(0, 20).Select(value => (object?) $"Item {value}").ToArray()
+        };
+        new LayoutEngine().Layout(control, new Size(10, 4));
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.ScrollBy(0, 1, (ScrollCause) 99));
+    }
+
+    /// <summary>Verifies VerticalOffset and HorizontalOffset default to zero and round-trip a
+    /// directly assigned in-range value, without requiring a caller to go through ScrollBy.</summary>
+    [Fact]
+    public void VerticalAndHorizontalOffset_WhenAssignedDirectly_DefaultToZeroAndRoundTrip()
+    {
+        var control = new UiListView
+        {
+            ScrollBars = ScrollBars.Both,
+            ItemTemplate = item => new ControlText(item?.ToString() ?? "null"),
+            Items = Enumerable.Range(0, 20).Select(value => (object?) $"Item {value} 0123456789").ToArray()
+        };
+        new LayoutEngine().Layout(control, new Size(10, 4));
+
+        control.VerticalOffset.ShouldBe(0);
+        control.HorizontalOffset.ShouldBe(0);
+
+        control.VerticalOffset = 5;
+        control.HorizontalOffset = 2;
+
+        control.VerticalOffset.ShouldBe(5);
+        control.HorizontalOffset.ShouldBe(2);
+    }
+
+    /// <summary>Verifies VerticalOffset and HorizontalOffset each reject a value outside the
+    /// composed viewport's current extent, and leave the previously committed offset unchanged.</summary>
+    [Fact]
+    public void VerticalAndHorizontalOffset_WhenOutsideExtent_ThrowsArgumentOutOfRangeExceptionAndPreservesOffset()
+    {
+        var control = new UiListView
+        {
+            ScrollBars = ScrollBars.Both,
+            ItemTemplate = item => new ControlText(item?.ToString() ?? "null"),
+            Items = Enumerable.Range(0, 20).Select(value => (object?) $"Item {value} 0123456789").ToArray()
+        };
+        new LayoutEngine().Layout(control, new Size(10, 4));
+        control.VerticalOffset = 3;
+        control.HorizontalOffset = 1;
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.VerticalOffset = -1);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.VerticalOffset = 9999);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.HorizontalOffset = -1);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.HorizontalOffset = 9999);
+
+        control.VerticalOffset.ShouldBe(3);
+        control.HorizontalOffset.ShouldBe(1);
     }
 
     /// <summary>Verifies RowHeight defaults to null and that leaving it unset produces byte-identical
@@ -1108,6 +1269,45 @@ public sealed class ListViewTests
         new LayoutEngine().Layout(control, new Size(10, 4));
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => control.BringIntoView(3));
+    }
+
+    /// <summary>Verifies BringIntoView leaves the offset untouched and still reports true - fully
+    /// contained, matching <see cref="Container.BringIntoView(ControlBase)"/>'s own "no clamping
+    /// occurred" contract - once the requested item is already entirely inside the viewport.</summary>
+    [Fact]
+    public void BringIntoView_WhenIndexIsAlreadyFullyVisible_ReturnsTrueWithoutMovingOffset()
+    {
+        var control = new UiListView
+        {
+            ItemTemplate = item => new ControlText(item?.ToString() ?? "null"),
+            Items = Enumerable.Range(0, 20).Select(value => (object?) $"Item {value}").ToArray()
+        };
+        new LayoutEngine().Layout(control, new Size(10, 4));
+
+        var moved = control.BringIntoView(0);
+
+        moved.ShouldBeTrue();
+        control.VerticalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies BringIntoView scrolls arithmetically by logical index - without requiring
+    /// a realized row - once RowHeight opts into windowed realization, and that the target row is
+    /// realized by the window Rewindow computes afterward.</summary>
+    [Fact]
+    public void BringIntoView_WhenRowHeightIsSet_ScrollsArithmeticallyAndRealizesTarget()
+    {
+        var control = new UiListView
+        {
+            RowHeight = 1,
+            ItemTemplate = item => new ControlText(item?.ToString() ?? "null"),
+            Items = Enumerable.Range(0, 200).Select(value => (object?) $"Item {value}").ToArray()
+        };
+        new LayoutEngine().Layout(control, new Size(10, 4));
+
+        var moved = control.BringIntoView(150);
+
+        moved.ShouldBeTrue();
+        control.VerticalOffset.ShouldBeGreaterThan(0);
     }
 
     /// <summary>Verifies the mouse wheel scrolls a windowed viewport by the configured LineSize,

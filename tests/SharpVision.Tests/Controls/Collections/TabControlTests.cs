@@ -193,6 +193,32 @@ public sealed class TabControlTests
         tabs.Items.ShouldContain(item);
     }
 
+    /// <summary>Verifies RequestClose rejects a null tab.</summary>
+    [Fact]
+    public void RequestClose_WhenItemIsNull_ThrowsArgumentNullException()
+    {
+        var tabs = Create(Create("First", "One"));
+
+        _ = Should.Throw<ArgumentNullException>(() => tabs.RequestClose(null!));
+    }
+
+    /// <summary>Verifies RequestClose rejects a tab owned by a different control, without raising
+    /// CloseRequested or mutating either control's items.</summary>
+    [Fact]
+    public void RequestClose_WhenItemIsForeign_ThrowsArgumentException()
+    {
+        var tabs = Create(Create("First", "One"));
+        var foreign = Create("Foreign", "Two");
+        var other = Create(foreign);
+        var raised = false;
+        tabs.CloseRequested += (_, _) => raised = true;
+
+        _ = Should.Throw<ArgumentException>(() => tabs.RequestClose(foreign));
+
+        raised.ShouldBeFalse();
+        other.Items.ShouldContain(foreign);
+    }
+
     /// <summary>Verifies configured header lengths and scrolling policy reach retained headers.</summary>
     [Fact]
     public void HeaderLayout_WhenConfigured_UsesLengthAndOverflowPolicy()
