@@ -915,6 +915,20 @@ public sealed class GridTests
         Grid.GetColumnSpan(child).ShouldBe(1);
     }
 
+    /// <summary>Verifies every attached row/column accessor rejects a null control.</summary>
+    [Fact]
+    public void Attached_WhenControlIsNull_ThrowsArgumentNullException()
+    {
+        _ = Should.Throw<ArgumentNullException>(() => Grid.GetRow(null!));
+        _ = Should.Throw<ArgumentNullException>(() => Grid.GetColumn(null!));
+        _ = Should.Throw<ArgumentNullException>(() => Grid.GetRowSpan(null!));
+        _ = Should.Throw<ArgumentNullException>(() => Grid.GetColumnSpan(null!));
+        _ = Should.Throw<ArgumentNullException>(() => Grid.SetRow(null!, 0));
+        _ = Should.Throw<ArgumentNullException>(() => Grid.SetColumn(null!, 0));
+        _ = Should.Throw<ArgumentNullException>(() => Grid.SetRowSpan(null!, 1));
+        _ = Should.Throw<ArgumentNullException>(() => Grid.SetColumnSpan(null!, 1));
+    }
+
     /// <summary>Verifies origins, spans, and spacing reject invalid values before mutation.</summary>
     [Fact]
     public void Setter_WhenValueIsInvalid_ThrowsBeforeMutation()
