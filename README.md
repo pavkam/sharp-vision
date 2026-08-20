@@ -50,10 +50,17 @@ then browse the [control catalog](docs/controls/index.md#control-catalog).
 - **Terminal behavior you can inspect.** Unicode cell geometry, capabilities,
   input protocols, rendering, and cleanup have explicit specifications and
   observable tests.
-- **Examples that run.** The showcase, text editor, and Snake application are
-  production examples rather than disconnected snippets.
+- **Examples that run.** The showcase, text editor, Snake, and Process Monitor
+  applications are production examples rather than disconnected snippets.
 - **Documentation that makes commitments.** Public behavior, implementation
   gaps, and verified protocol support live alongside the code.
+
+## Examples
+
+|                                                     |                                                                                  |
+| --------------------------------------------------- | -------------------------------------------------------------------------------- |
+| ![Snake gameplay in a terminal](media/snake.gif)    | ![Process Monitor dashboard in a terminal](media/process-monitor.gif)            |
+| [Snake](examples/Snake/README.md#sharpvision-snake) | [Process Monitor](examples/ProcessMonitor/README.md#sharpvision-process-monitor) |
 
 ## Packages
 
@@ -74,15 +81,15 @@ It accepts the matching `SharpVision` version or later.
 
 ## Find your way around
 
-| You want to…                               | Start here                                                                                                                                                                        |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Build your first application               | [First-application walkthrough](docs/walkthroughs/first-application.md#build-your-first-application)                                                                              |
-| Explore controls and composition           | [Control catalog](docs/controls/index.md#control-catalog)                                                                                                                         |
-| Understand layout, input, themes, or hosts | [Concept map](docs/concepts/index.md#concept-map)                                                                                                                                 |
-| Check whether a feature is ready           | [Feature support](docs/features/index.md#feature-support)                                                                                                                         |
-| Check terminal protocol support            | [Coverage matrix](docs/protocols/coverage-matrix.md#coverage)                                                                                                                     |
-| Understand ownership and runtime flow      | [Architecture map](docs/architecture/index.md#architecture-map)                                                                                                                   |
-| See complete applications                  | [Showcase](docs/architecture/showcase.md#overview), [text editor](examples/TextEditor/README.md#sharpvision-text-editor), and [Snake](examples/Snake/README.md#sharpvision-snake) |
+| You want to…                               | Start here                                                                                                                                                                                                                                                          |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Build your first application               | [First-application walkthrough](docs/walkthroughs/first-application.md#build-your-first-application)                                                                                                                                                                |
+| Explore controls and composition           | [Control catalog](docs/controls/index.md#control-catalog)                                                                                                                                                                                                           |
+| Understand layout, input, themes, or hosts | [Concept map](docs/concepts/index.md#concept-map)                                                                                                                                                                                                                   |
+| Check whether a feature is ready           | [Feature support](docs/features/index.md#feature-support)                                                                                                                                                                                                           |
+| Check terminal protocol support            | [Coverage matrix](docs/protocols/coverage-matrix.md#coverage)                                                                                                                                                                                                       |
+| Understand ownership and runtime flow      | [Architecture map](docs/architecture/index.md#architecture-map)                                                                                                                                                                                                     |
+| See complete applications                  | [Showcase](docs/architecture/showcase.md#overview), [text editor](examples/TextEditor/README.md#sharpvision-text-editor), [Snake](examples/Snake/README.md#sharpvision-snake), and [Process Monitor](examples/ProcessMonitor/README.md#sharpvision-process-monitor) |
 
 The repository has three main pieces:
 

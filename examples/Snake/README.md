@@ -7,6 +7,8 @@ a custom cell-canvas game board with layered transient effects, a draining
 `ProgressBar` boost meter, routed keyboard input, and independent simulation and
 presentation clocks — all without a single control being rebuilt at runtime.
 
+![Snake gameplay in a terminal](../../media/snake.gif)
+
 ## Run it
 
 Install the .NET 10 SDK, then use a modern Unicode terminal. A true-color
