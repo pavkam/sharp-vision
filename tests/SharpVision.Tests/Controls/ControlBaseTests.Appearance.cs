@@ -243,6 +243,45 @@ public sealed partial class ControlBaseTests
         ((grandchild.Pending & Invalidation.Render) != 0).ShouldBeTrue();
     }
 
+    /// <summary>Verifies IsAppearanceBoundary defaults to false, leaving a transparent-background
+    /// descendant free to inherit its parent's ambient face - the behavior every control has until
+    /// it opts out.</summary>
+    [Fact]
+    public void IsAppearanceBoundary_WhenUnset_DefaultsToFalseAndInheritsAmbientFace()
+    {
+        var parent = new ProbeContainer { Face = AppearanceTestValues.Face(foreground: Color.Rgb(7, 8, 9)) };
+        var child = new StyledProbe
+        {
+            Style = StyleWith(face: AppearanceTestValues.Face(foreground: Color.Rgb(1, 2, 3)))
+        };
+        parent.Children.Add(child);
+
+        child.IsAppearanceBoundary.ShouldBeFalse();
+        child.ActualFace.Foreground.Literal.ShouldBe(Color.Rgb(7, 8, 9));
+    }
+
+    /// <summary>Verifies setting IsAppearanceBoundary stops ambient face inheritance - the boundary
+    /// control falls back to its own authored foreground instead of the parent's - and requests a
+    /// repaint so the now-differently-resolved face reaches the screen.</summary>
+    [Fact]
+    public void IsAppearanceBoundary_WhenSetTrue_StopsAmbientInheritanceAndInvalidatesRender()
+    {
+        var parent = new ProbeContainer { Face = AppearanceTestValues.Face(foreground: Color.Rgb(7, 8, 9)) };
+        var child = new StyledProbe
+        {
+            Style = StyleWith(face: AppearanceTestValues.Face(foreground: Color.Rgb(1, 2, 3)))
+        };
+        parent.Children.Add(child);
+        child.ActualFace.Foreground.Literal.ShouldBe(Color.Rgb(7, 8, 9));
+        child.Clear(Invalidation.All);
+
+        child.IsAppearanceBoundary = true;
+
+        child.IsAppearanceBoundary.ShouldBeTrue();
+        child.ActualFace.Foreground.Literal.ShouldBe(Color.Rgb(1, 2, 3));
+        ((child.Pending & Invalidation.Render) != 0).ShouldBeTrue();
+    }
+
     /// <summary>Verifies a local style suppresses unchanged resolved notifications across Theme identity changes.</summary>
     [Fact]
     public void SetTheme_WhenExplicitStyleKeepsOutputEqual_NotifiesOnlyTheme()

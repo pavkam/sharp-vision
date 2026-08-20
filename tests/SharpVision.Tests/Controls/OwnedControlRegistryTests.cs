@@ -916,4 +916,66 @@ public sealed class OwnedControlRegistryTests
 
         root.HitTest(new Point(4, 0)).ShouldNotBeSameAs(popup);
     }
+
+    /// <summary>Verifies OwnedControlOptions rejects an undefined Role, Layer, or Impact before
+    /// constructing the immutable metadata every registered slot carries.</summary>
+    [Fact]
+    public void OwnedControlOptions_WhenRoleLayerOrImpactIsUndefined_Throws()
+    {
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new OwnedControlOptions(
+            (OwnedControlRole) 99,
+            OwnedControlLayer.Normal,
+            participatesInHitTesting: true,
+            participatesInNavigation: true,
+            partKey: null,
+            InvalidationImpact.None));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new OwnedControlOptions(
+            OwnedControlRole.FrameworkPart,
+            (OwnedControlLayer) 99,
+            participatesInHitTesting: true,
+            participatesInNavigation: true,
+            partKey: null,
+            InvalidationImpact.None));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new OwnedControlOptions(
+            OwnedControlRole.FrameworkPart,
+            OwnedControlLayer.Normal,
+            participatesInHitTesting: true,
+            participatesInNavigation: true,
+            partKey: null,
+            (InvalidationImpact) 99));
+    }
+
+    /// <summary>Verifies OwnedControlOptions rejects a whitespace-only part key, since a named
+    /// framework part must resolve to a stable, non-empty lookup key.</summary>
+    [Fact]
+    public void OwnedControlOptions_WhenPartKeyIsWhitespace_Throws()
+    {
+        _ = Should.Throw<ArgumentException>(() => new OwnedControlOptions(
+            OwnedControlRole.FrameworkPart,
+            OwnedControlLayer.Normal,
+            participatesInHitTesting: true,
+            participatesInNavigation: true,
+            partKey: "   ",
+            InvalidationImpact.None));
+    }
+
+    /// <summary>Verifies every OwnedControlOptions member round-trips exactly as constructed.</summary>
+    [Fact]
+    public void OwnedControlOptions_WhenConstructed_ExposesEveryValidatedMember()
+    {
+        var options = new OwnedControlOptions(
+            OwnedControlRole.FrameworkPart,
+            OwnedControlLayer.Popup,
+            participatesInHitTesting: true,
+            participatesInNavigation: false,
+            partKey: "drop-down",
+            InvalidationImpact.Measure);
+
+        options.Role.ShouldBe(OwnedControlRole.FrameworkPart);
+        options.Layer.ShouldBe(OwnedControlLayer.Popup);
+        options.ParticipatesInHitTesting.ShouldBeTrue();
+        options.ParticipatesInNavigation.ShouldBeFalse();
+        options.PartKey.ShouldBe("drop-down");
+        options.Impact.ShouldBe(InvalidationImpact.Measure);
+    }
 }

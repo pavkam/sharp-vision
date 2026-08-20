@@ -316,6 +316,47 @@ public sealed class InputBaseTests
         probe.Text.ShouldBe(string.Empty);
     }
 
+    /// <summary>Verifies Text materializes the owned caption child on its first assignment and
+    /// updates that same child's content directly afterward, requesting re-measurement both times
+    /// since the caption's own content width can change.</summary>
+    [Fact]
+    public void Text_WhenSetAfterCaptionIsEnabled_MaterializesChildAndInvalidatesMeasure()
+    {
+        var probe = new ProbePressable();
+        probe.Clear(Invalidation.All);
+
+        probe.Text = "first";
+
+        probe.Text.ShouldBe("first");
+        probe.TextControl.ShouldNotBeNull().Content.ShouldBe("first");
+        ((probe.Pending & Invalidation.Measure) != 0).ShouldBeTrue();
+        var materializedChild = probe.TextControl;
+        probe.Clear(Invalidation.All);
+
+        probe.Text = "second";
+
+        probe.Text.ShouldBe("second");
+        probe.TextControl.ShouldBeSameAs(materializedChild);
+        probe.TextControl.Content.ShouldBe("second");
+        ((probe.Pending & Invalidation.Measure) != 0).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies assigning the same committed Text value again is a silent no-op - no
+    /// notification and no invalidation - since the caption's content did not actually change.</summary>
+    [Fact]
+    public void Text_WhenSetToSameCommittedValue_IsNoOp()
+    {
+        var probe = new ProbePressable { Text = "same" };
+        probe.Clear(Invalidation.All);
+        List<string?> notifications = [];
+        probe.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        probe.Text = "same";
+
+        notifications.ShouldBeEmpty();
+        probe.Pending.ShouldBe(Invalidation.None);
+    }
+
     #endregion
 
     #region Command
@@ -349,6 +390,41 @@ public sealed class InputBaseTests
 
         _ = Should.Throw<InvalidOperationException>(() => probe.CommandParameter);
         _ = Should.Throw<InvalidOperationException>(() => probe.CommandParameter = new object());
+    }
+
+    /// <summary>Verifies Command round-trips and requests a repaint - a bound command's own
+    /// resolved identity can change how a control renders (for example, a disabled visual for a
+    /// command that cannot currently execute).</summary>
+    [Fact]
+    public void Command_WhenSet_RoundTripsAndInvalidatesRender()
+    {
+        var probe = new ProbePressable();
+        probe.Clear(Invalidation.All);
+        var command = new ProbeCommand();
+
+        probe.Command = command;
+
+        probe.Command.ShouldBeSameAs(command);
+        ((probe.Pending & Invalidation.Render) != 0).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies CommandParameter round-trips, raises PropertyChanged exactly once, and
+    /// requests a repaint, matching Command's own invalidation impact since the two are always
+    /// read together on activation.</summary>
+    [Fact]
+    public void CommandParameter_WhenSet_RoundTripsRaisesPropertyChangedAndInvalidatesRender()
+    {
+        var probe = new ProbePressable();
+        probe.Clear(Invalidation.All);
+        List<string?> notifications = [];
+        probe.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+        var parameter = new object();
+
+        probe.CommandParameter = parameter;
+
+        probe.CommandParameter.ShouldBeSameAs(parameter);
+        notifications.ShouldBe([nameof(InputBase.CommandParameter)]);
+        ((probe.Pending & Invalidation.Render) != 0).ShouldBeTrue();
     }
 
     /// <summary>Verifies a consumer-derived InputBase's activation is recorded before command execution.</summary>

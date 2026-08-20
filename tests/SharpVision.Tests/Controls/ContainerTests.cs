@@ -1706,6 +1706,35 @@ public sealed class ContainerTests
         outer.HitTest(corner).ShouldBeOfType<ScrollBar>().Orientation.ShouldBe(Orientation.Horizontal);
     }
 
+    /// <summary>Verifies AutoSizeMode rejects an undefined value before committing it, leaving the
+    /// documented default in place - the growth/shrink policy every AutoSize-driven measure decision
+    /// below depends on being one of the two defined values.</summary>
+    [Fact]
+    public void AutoSizeMode_WhenValueIsUndefined_ThrowsBeforeMutation()
+    {
+        var container = new LayoutProbe();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => container.AutoSizeMode = (AutoSizeMode) 99);
+
+        container.AutoSizeMode.ShouldBe(AutoSizeMode.GrowAndShrink);
+    }
+
+    /// <summary>Verifies HorizontalBarVisibility and VerticalBarVisibility each reject an undefined
+    /// value before committing it, matching every other chrome-reservation enum on this control.</summary>
+    [Fact]
+    public void BarVisibility_WhenValueIsUndefined_ThrowsBeforeMutation()
+    {
+        var container = new LayoutProbe();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            container.HorizontalBarVisibility = (ScrollBarVisibility) 99);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            container.VerticalBarVisibility = (ScrollBarVisibility) 99);
+
+        container.HorizontalBarVisibility.ShouldBe(ScrollBarVisibility.Auto);
+        container.VerticalBarVisibility.ShouldBe(ScrollBarVisibility.Auto);
+    }
+
     /// <summary>Verifies AutoSize includes border and padding in the border box while preserving the content inset.</summary>
     [Fact]
     public void AutoSize_WhenContentHasPaddingAndBorder_SizesBorderBoxAndInsetsContent()
