@@ -6,6 +6,27 @@ namespace SharpVision.Tests.Menus;
 /// <summary>Proves menu invocation events contain a real semantic input path.</summary>
 public sealed class MenuItemInvokedEventArgsTests
 {
+    /// <summary>Verifies the constructor exposes exactly the item and cause it was given.</summary>
+    [Fact]
+    public void Constructor_WhenGivenItemAndCause_ExposesBothAsGiven()
+    {
+        var item = new MenuItem();
+
+        var eventArgs = new MenuItemInvokedEventArgs(item, ActivationCause.Pointer);
+
+        eventArgs.Item.ShouldBeSameAs(item);
+        eventArgs.Cause.ShouldBe(ActivationCause.Pointer);
+    }
+
+    /// <summary>Verifies a null item is rejected.</summary>
+    [Fact]
+    public void Constructor_WhenItemIsNull_ThrowsArgumentNullException()
+    {
+        var action = () => _ = new MenuItemInvokedEventArgs(null!, ActivationCause.Keyboard);
+
+        action.ShouldThrow<ArgumentNullException>().ParamName.ShouldBe("item");
+    }
+
     /// <summary>Verifies an undefined activation cause cannot enter a completed invocation event.</summary>
     [Fact]
     public void Constructor_WhenCauseIsUndefined_Throws()

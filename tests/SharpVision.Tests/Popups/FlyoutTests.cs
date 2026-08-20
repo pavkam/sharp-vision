@@ -178,6 +178,28 @@ public sealed class FlyoutTests
         flyout.IsOpen.ShouldBeTrue();
     }
 
+    /// <summary>Verifies ShowAt rejects a null anchor.</summary>
+    [Fact]
+    public void ShowAt_WhenAnchorIsNull_ThrowsArgumentNullException()
+    {
+        using var flyout = new Flyout { Content = new ProbeControl(new Size(4, 2)) };
+
+        _ = Should.Throw<ArgumentNullException>(() => flyout.ShowAt(null!));
+
+        flyout.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies ShowAt rejects use after disposal.</summary>
+    [Fact]
+    public void ShowAt_WhenDisposed_Throws()
+    {
+        using var anchor = new ProbeControl(new Size(6, 1));
+        var flyout = new Flyout();
+        flyout.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => flyout.ShowAt(anchor));
+    }
+
     /// <summary>Verifies opening one flyout closes an already open sibling flyout.</summary>
     [Fact]
     public async Task IsOpen_WhenSiblingFlyoutOpens_ClosesPreviousFlyoutAsync()

@@ -338,6 +338,72 @@ public sealed class PopupDropDownCoordinatorTests
             new PopupDropDownCoordinator(owner, popup, content, RequestFocus, NoOp, NoOp, null!));
     }
 
+    /// <summary>Verifies OnOwnerAttached re-enters the modal scope for a popup that was already
+    /// open before its owner ever attached to a dispatcher and modality manager, matching an
+    /// owner constructed and opened programmatically before being added to a live tree.</summary>
+    [Fact]
+    public async Task OnOwnerAttached_WhenPopupWasOpenedBeforeAttachment_EntersModalScopeAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var owner = new ProbeContainer { IsFocusable = true };
+            var content = new ProbeControl();
+            using var popup = new Popup();
+            owner.Children.Add(content);
+            owner.Children.Add(popup);
+
+            var coordinator = Create(owner, popup, content);
+
+            // Open before the owner is ever attached: SetOpen's own modal-entry attempt is a
+            // no-op here since ModalityOwner is null while detached.
+            coordinator.SetOpen(true);
+            coordinator.IsOpen.ShouldBeTrue();
+
+            var root = new ProbeContainer { Children = { owner } };
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            modality.Active.ShouldBeNull();
+
+            coordinator.OnOwnerAttached();
+
+            _ = modality.Active.ShouldNotBeNull();
+            modality.Active.Root.ShouldBeSameAs(owner);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies OnOwnerAttached is a no-op for a popup that is not currently open,
+    /// matching an owner that simply attaches without ever having opened its drop-down.</summary>
+    [Fact]
+    public async Task OnOwnerAttached_WhenPopupIsClosed_DoesNothingAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var owner = new ProbeContainer { IsFocusable = true };
+            var content = new ProbeControl();
+            using var popup = new Popup();
+            owner.Children.Add(content);
+            owner.Children.Add(popup);
+            var coordinator = Create(owner, popup, content);
+
+            var root = new ProbeContainer { Children = { owner } };
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+
+            Should.NotThrow(coordinator.OnOwnerAttached);
+
+            modality.Active.ShouldBeNull();
+            coordinator.IsOpen.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies Detach unsubscribes from the popup's lifecycle events, so a disposed
     /// owner's coordinator no longer republishes PropertyChanged for a popup it no longer owns.
     /// Opens the popup before detaching (an unattached, never-presented popup never raises its own

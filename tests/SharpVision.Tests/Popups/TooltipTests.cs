@@ -168,6 +168,117 @@ public sealed class TooltipTests
         tooltip.Content.ShouldBeSameAs(content);
     }
 
+    /// <summary>Verifies the placement overload of SetText applies both text and placement.</summary>
+    [Fact]
+    public void SetText_WhenGivenPlacement_SetsTextAndPlacement()
+    {
+        using var anchor = new ProbeControl(new Size(6, 1));
+
+        Tooltip.SetText(anchor, "Save", PopupPlacement.Right);
+
+        var tooltip = Tooltip.GetTooltip(anchor).ShouldNotBeNull();
+        tooltip.Text.ShouldBe("Save");
+        tooltip.Placement.ShouldBe(PopupPlacement.Right);
+    }
+
+    /// <summary>Verifies an unknown placement passed to the placement overload of SetText is rejected.</summary>
+    [Fact]
+    public void SetText_WhenGivenUnknownPlacement_ThrowsArgumentOutOfRangeException()
+    {
+        using var anchor = new ProbeControl(new Size(6, 1));
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => Tooltip.SetText(anchor, "Save", (PopupPlacement) 99));
+    }
+
+    /// <summary>Verifies the placement-and-delay overload of SetText applies text, placement, and
+    /// ShowDelay together.</summary>
+    [Fact]
+    public void SetText_WhenGivenPlacementAndShowDelay_SetsAllThree()
+    {
+        using var anchor = new ProbeControl(new Size(6, 1));
+
+        Tooltip.SetText(anchor, "Save", PopupPlacement.Above, TimeSpan.FromMilliseconds(250));
+
+        var tooltip = Tooltip.GetTooltip(anchor).ShouldNotBeNull();
+        tooltip.Text.ShouldBe("Save");
+        tooltip.Placement.ShouldBe(PopupPlacement.Above);
+        tooltip.ShowDelay.ShouldBe(TimeSpan.FromMilliseconds(250));
+    }
+
+    /// <summary>Verifies an invalid ShowDelay passed to the placement-and-delay overload of SetText
+    /// is rejected, matching the ShowDelay property's own validation.</summary>
+    [Fact]
+    public void SetText_WhenGivenInvalidShowDelay_ThrowsArgumentOutOfRangeException()
+    {
+        using var anchor = new ProbeControl(new Size(6, 1));
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => Tooltip.SetText(anchor, "Save", PopupPlacement.Below, TimeSpan.Zero));
+    }
+
+    /// <summary>Verifies the placement overload of SetContent applies both content and placement.</summary>
+    [Fact]
+    public void SetContent_WhenGivenPlacement_SetsContentAndPlacement()
+    {
+        using var anchor = new ProbeControl(new Size(6, 1));
+        using var content = new ProbeControl(new Size(4, 2));
+
+        Tooltip.SetContent(anchor, content, PopupPlacement.Left);
+
+        var tooltip = Tooltip.GetTooltip(anchor).ShouldNotBeNull();
+        tooltip.Content.ShouldBeSameAs(content);
+        tooltip.Placement.ShouldBe(PopupPlacement.Left);
+    }
+
+    /// <summary>Verifies an unknown placement passed to the placement overload of SetContent is rejected.</summary>
+    [Fact]
+    public void SetContent_WhenGivenUnknownPlacement_ThrowsArgumentOutOfRangeException()
+    {
+        using var anchor = new ProbeControl(new Size(6, 1));
+        using var content = new ProbeControl(new Size(4, 2));
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => Tooltip.SetContent(anchor, content, (PopupPlacement) 99));
+    }
+
+    /// <summary>Verifies every static attached-data method rejects a null anchor.</summary>
+    [Fact]
+    public void StaticMethods_WhenAnchorIsNull_ThrowArgumentNullException()
+    {
+        using var content = new ProbeControl(new Size(4, 2));
+
+        _ = Should.Throw<ArgumentNullException>(() => Tooltip.SetText(null!, "Save"));
+        _ = Should.Throw<ArgumentNullException>(() => Tooltip.SetText(null!, "Save", PopupPlacement.Below));
+        _ = Should.Throw<ArgumentNullException>(
+            () => Tooltip.SetText(null!, "Save", PopupPlacement.Below, TimeSpan.FromMilliseconds(100)));
+        _ = Should.Throw<ArgumentNullException>(() => Tooltip.SetContent(null!, content));
+        _ = Should.Throw<ArgumentNullException>(() => Tooltip.SetContent(null!, content, PopupPlacement.Below));
+        _ = Should.Throw<ArgumentNullException>(() => Tooltip.GetTooltip(null!));
+        _ = Should.Throw<ArgumentNullException>(() => Tooltip.ClearTooltip(null!));
+    }
+
+    /// <summary>Verifies SetText and SetContent reject a null text or content argument.</summary>
+    [Fact]
+    public void SetTextAndSetContent_WhenValueIsNull_ThrowArgumentNullException()
+    {
+        using var anchor = new ProbeControl(new Size(6, 1));
+
+        _ = Should.Throw<ArgumentNullException>(() => Tooltip.SetText(anchor, null!));
+        _ = Should.Throw<ArgumentNullException>(() => Tooltip.SetContent(anchor, null!));
+    }
+
+    /// <summary>Verifies clearing a control with no attached tooltip is a no-op rather than throwing.</summary>
+    [Fact]
+    public void ClearTooltip_WhenNoTooltipIsAttached_IsNoOp()
+    {
+        using var anchor = new ProbeControl(new Size(6, 1));
+
+        Should.NotThrow(() => Tooltip.ClearTooltip(anchor));
+
+        Tooltip.GetTooltip(anchor).ShouldBeNull();
+    }
+
     /// <summary>Verifies ClearTooltip removes the attached tooltip from a control.</summary>
     [Fact]
     public void ClearTooltip_WhenCalled_RemovesTooltip()

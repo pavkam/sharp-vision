@@ -1633,6 +1633,93 @@ public sealed class PopupTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a detached popup - one with no attached application tree, and therefore
+    /// no <see cref="ModalityManager"/> to enter - rejects OpenModal instead of silently exposing
+    /// content nothing can route input through.</summary>
+    [Fact]
+    public void OpenModal_WhenPopupIsDetached_ThrowsInvalidOperationException()
+    {
+        var action = new ProbeControl { IsFocusable = true };
+        using var popup = new Popup { Content = action };
+
+        var exception = Should.Throw<InvalidOperationException>(() => popup.OpenModal());
+
+        exception.Message.ShouldBe("A modal Popup must belong to an attached application tree.");
+        popup.IsOpen.ShouldBeFalse();
+        action.Visibility.ShouldBe(Visibility.Collapsed);
+    }
+
+    /// <summary>Verifies OpenModal called synchronously from a callback that runs during this
+    /// exact popup's own open-state transition - not a nested OpenModal call, which
+    /// <see cref="OpenModal_WhenFocusCallbackReenters_RejectsNestedCallAndKeepsOuterPresentationAsync"/>
+    /// already covers - is rejected before it can enter a second, conflicting transition.</summary>
+    [Fact]
+    public async Task OpenModal_WhenCalledDuringOwnOpenStateTransition_ThrowsInvalidOperationExceptionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var action = new ProbeControl { IsFocusable = true };
+            var popup = new Popup { ModalBehavior = PopupModalBehavior.None, Content = action };
+            var root = new Overlay { Children = { popup } };
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            InvalidOperationException? nested = null;
+            popup.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(Popup.IsOpen) && popup.IsOpen)
+                {
+                    nested = Should.Throw<InvalidOperationException>(() => popup.OpenModal());
+                }
+            };
+
+            popup.IsOpen = true;
+
+            nested.ShouldNotBeNull().Message.ShouldBe(
+                "Popup modal presentation cannot begin during an open-state transition.");
+            popup.IsOpen.ShouldBeTrue();
+            modality.Active.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies setting IsOpen to its own current value is a complete no-op: no
+    /// PropertyChanged, no Closing/Closed, and no repeated content-availability work, matching
+    /// every other SetProperty-backed member's own no-op contract.</summary>
+    [Fact]
+    public void IsOpen_WhenSetToCurrentValue_IsNoOp()
+    {
+        using var popup = new Popup { Content = new ProbeControl() };
+        var notifications = 0;
+        popup.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Popup.IsOpen))
+            {
+                notifications++;
+            }
+        };
+
+        popup.IsOpen = false;
+
+        notifications.ShouldBe(0);
+
+        popup.IsOpen = true;
+        notifications = 0;
+        var closingRaised = false;
+        var closedRaised = false;
+        popup.Closing += (_, _) => closingRaised = true;
+        popup.Closed += (_, _) => closedRaised = true;
+
+        popup.IsOpen = true;
+
+        notifications.ShouldBe(0);
+        closingRaised.ShouldBeFalse();
+        closedRaised.ShouldBeFalse();
+        popup.IsOpen.ShouldBeTrue();
+    }
+
     /// <summary>Verifies a caller-selected eligible descendant receives modal entry focus.</summary>
     [Fact]
     public async Task OpenModal_WhenInitialFocusIsProvided_FocusesThatDescendantAsync()
