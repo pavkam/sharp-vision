@@ -113,6 +113,54 @@ public sealed partial class ControlBaseTests
         observed.ShouldBe([(nameof(ControlBase.Width), Length.Cells(12))]);
     }
 
+    /// <summary>Verifies Name defaults to null and round-trips through PropertyChanged, matching
+    /// every other debugging/accessibility identifier that never affects layout or render.</summary>
+    [Fact]
+    public void Name_WhenSet_RoundTripsAndRaisesPropertyChanged()
+    {
+        var control = new ProbeControl();
+        control.Name.ShouldBeNull();
+        List<string?> notifications = [];
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        control.Name = "search-box";
+
+        control.Name.ShouldBe("search-box");
+        notifications.ShouldBe([nameof(ControlBase.Name)]);
+    }
+
+    /// <summary>Verifies Tag defaults to null and round-trips through PropertyChanged, carrying
+    /// arbitrary user data without affecting layout or render.</summary>
+    [Fact]
+    public void Tag_WhenSet_RoundTripsAndRaisesPropertyChanged()
+    {
+        var control = new ProbeControl();
+        control.Tag.ShouldBeNull();
+        List<string?> notifications = [];
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+        var value = new object();
+
+        control.Tag = value;
+
+        control.Tag.ShouldBeSameAs(value);
+        notifications.ShouldBe([nameof(ControlBase.Tag)]);
+    }
+
+    /// <summary>Verifies TabIndex round-trips through PropertyChanged, complementing the
+    /// documented-default assertion above with an explicit set/read proof.</summary>
+    [Fact]
+    public void TabIndex_WhenSet_RoundTripsAndRaisesPropertyChanged()
+    {
+        var control = new ProbeControl();
+        List<string?> notifications = [];
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        control.TabIndex = 5;
+
+        control.TabIndex.ShouldBe(5);
+        notifications.ShouldBe([nameof(ControlBase.TabIndex)]);
+    }
+
     /// <summary>Verifies effective enabled state inherits and invalidates descendants.</summary>
     [Fact]
     public void IsEnabled_WhenAncestorChanges_UpdatesDescendantEffectiveState()
@@ -497,6 +545,12 @@ public sealed partial class ControlBaseTests
         _ = Should.Throw<ArgumentOutOfRangeException>(() => control.Visibility = (Visibility) int.MaxValue);
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             control.HorizontalAlignment = (HorizontalAlignment) int.MaxValue);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            control.VerticalAlignment = (VerticalAlignment) int.MaxValue);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            control.TabNavigation = (TabNavigation) int.MaxValue);
+        control.VerticalAlignment.ShouldBe(VerticalAlignment.Stretch);
+        control.TabNavigation.ShouldBe(TabNavigation.Continue);
         control.Dispose();
         _ = Should.Throw<ObjectDisposedException>(() => control.IsEnabled = false);
     }
