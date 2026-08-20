@@ -14,6 +14,7 @@ public sealed class ContextMenuTests
         using var menu = new ContextMenu();
         menu.IsOpen.ShouldBeFalse();
         menu.Items.ShouldBeEmpty();
+        menu.PopupChrome.ShouldBe(default);
     }
 
     /// <summary>Verifies assigning a ContextMenu to an already-laid-out, clean control dirties
@@ -52,6 +53,7 @@ public sealed class ContextMenuTests
         menu.PopupChrome = new PopupChrome { Border = border };
 
         // Assert
+        menu.PopupChrome.ShouldBe(new PopupChrome { Border = border });
         popup.Border.ShouldBe(border);
 
         // Act

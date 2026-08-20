@@ -21,6 +21,24 @@ public sealed class PopupTests
         popup.Border.Foreground.ShouldBe(SemanticColor.ControlBorder);
     }
 
+    /// <summary>Verifies every Popup-declared property starts at its documented default.</summary>
+    [Fact]
+    public void Constructor_WhenCreated_UsesDocumentedDefaults()
+    {
+        using var popup = new Popup();
+
+        popup.Anchor.ShouldBeNull();
+        popup.Placement.ShouldBe(PopupPlacement.Below);
+        popup.ConnectsToAnchor.ShouldBeFalse();
+        popup.SuppressCloseOtherPopups.ShouldBeFalse();
+        popup.ShowAnchorIndicator.ShouldBeFalse();
+        popup.ModalBehavior.ShouldBe(PopupModalBehavior.Auto);
+        popup.FocusOnOpen.ShouldBeTrue();
+        popup.IsOpen.ShouldBeFalse();
+        popup.CloseOnEscape.ShouldBeTrue();
+        popup.Style.ShouldBe(default);
+    }
+
     /// <summary>Verifies changing ShowAnchorIndicator after the popup is already rendered
     /// publishes PropertyChanged, matching every other live-mutable Popup property, instead
     /// of silently doing nothing until an unrelated change forces a repaint.</summary>
@@ -64,6 +82,26 @@ public sealed class PopupTests
         popup.Style = new PopupChrome { Border = border };
 
         raised.ShouldNotContain(nameof(Popup.Style));
+    }
+
+    /// <summary>Verifies Style's computed getter returns exactly the Border and Shadow components
+    /// last assigned, and that resetting to default releases both back to Theme ownership.</summary>
+    [Fact]
+    public void Style_WhenSet_RoundTripsBorderAndShadowComponents()
+    {
+        using var popup = new Popup();
+        var border = new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Rgb(65, 43, 21), Color.Transparent, TerminalAttributes.None);
+        var shadow = AppearanceTestValues.Shadow(visible: true);
+
+        popup.Style = new PopupChrome { Border = border, Shadow = shadow };
+
+        popup.Style.ShouldBe(new PopupChrome { Border = border, Shadow = shadow });
+        popup.Border.ShouldBe(border);
+        popup.Shadow.ShouldBe(shadow);
+
+        popup.Style = default;
+
+        popup.Style.ShouldBe(default);
     }
 
     /// <summary>Verifies unknown modal policies are rejected before observable Popup state changes.</summary>

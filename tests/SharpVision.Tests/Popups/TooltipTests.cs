@@ -126,6 +126,36 @@ public sealed class TooltipTests
         OwnedTree.FindAll<Popup>(anchor).Single().ShouldBeSameAs(tooltip);
     }
 
+    /// <summary>Verifies a too-small or too-large ShowDelay is rejected before the previous value
+    /// changes, matching DispatcherTimer's own interval contract.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void ShowDelay_WhenIntervalIsBelowOneMillisecond_ThrowsArgumentOutOfRangeException(int milliseconds)
+    {
+        using var tooltip = new Tooltip();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => tooltip.ShowDelay = TimeSpan.FromMilliseconds(milliseconds));
+
+        tooltip.ShowDelay.ShouldBe(TimeSpan.FromMilliseconds(500));
+    }
+
+    /// <summary>Verifies a too-small or too-large HideDelay is rejected before the previous value
+    /// changes, matching DispatcherTimer's own interval contract.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void HideDelay_WhenIntervalIsBelowOneMillisecond_ThrowsArgumentOutOfRangeException(int milliseconds)
+    {
+        using var tooltip = new Tooltip();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => tooltip.HideDelay = TimeSpan.FromMilliseconds(milliseconds));
+
+        tooltip.HideDelay.ShouldBe(TimeSpan.FromMilliseconds(100));
+    }
+
     /// <summary>Verifies SetContent creates and attaches a tooltip with rich content.</summary>
     [Fact]
     public void SetContent_WhenCalled_CreatesTooltipForAnchor()

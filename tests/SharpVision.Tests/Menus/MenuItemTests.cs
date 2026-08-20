@@ -6,6 +6,81 @@ namespace SharpVision.Tests.Menus;
 /// <summary>Verifies shortcut text measurement, rendering position, and dim attributes on menu items.</summary>
 public sealed class MenuItemTests
 {
+    /// <summary>Verifies every MenuItem-declared property starts at its documented default.</summary>
+    [Fact]
+    public void Constructor_WhenCreated_UsesDocumentedDefaults()
+    {
+        using var item = new MenuItem();
+
+        item.Kind.ShouldBe(MenuItemKind.Command);
+        item.IsChecked.ShouldBeFalse();
+        item.GroupName.ShouldBeNull();
+        item.Style.ShouldBeNull();
+        item.Submenu.ShouldBeNull();
+        item.SubmenuChrome.ShouldBe(default);
+        item.StartAffix.ShouldBeNull();
+        item.EndAffix.ShouldBeNull();
+        item.Shortcut.ShouldBeNull();
+        item.ShortcutText.ShouldBeNull();
+    }
+
+    /// <summary>Verifies a local style overrides the code-owned default and clearing it restores
+    /// the default, matching every other IStyled control's precedence contract.</summary>
+    [Fact]
+    public void Style_WhenAssignedThenCleared_OverridesDefaultThenReturnsToIt()
+    {
+        using var item = new MenuItem();
+        var defaultStyle = item.ActualStyle;
+        var custom = defaultStyle with { CheckedGlyph = new Rune('X') };
+
+        item.Style = custom;
+
+        item.Style.ShouldBe(custom);
+        item.ActualStyle.ShouldBe(custom);
+
+        item.Style = null;
+
+        item.Style.ShouldBeNull();
+        item.ActualStyle.ShouldBe(defaultStyle);
+    }
+
+    /// <summary>Verifies an empty or whitespace-only group name is rejected before the previous
+    /// value changes, matching every other non-empty-string validated property.</summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void GroupName_WhenValueIsEmptyOrWhitespace_ThrowsArgumentException(string value)
+    {
+        var item = new MenuItem { GroupName = "valid" };
+
+        _ = Should.Throw<ArgumentException>(() => item.GroupName = value);
+
+        item.GroupName.ShouldBe("valid");
+    }
+
+    /// <summary>Verifies an unknown kind is rejected before the previous value changes.</summary>
+    [Fact]
+    public void Kind_WhenValueIsUndefined_ThrowsArgumentOutOfRangeException()
+    {
+        var item = new MenuItem { Kind = MenuItemKind.Check };
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => item.Kind = (MenuItemKind) 99);
+
+        item.Kind.ShouldBe(MenuItemKind.Check);
+    }
+
+    /// <summary>Verifies a command-kind item rejects a checked-state assignment instead of silently
+    /// storing state its Command kind never displays or activates.</summary>
+    [Fact]
+    public void IsChecked_WhenKindIsCommand_ThrowsInvalidOperationException()
+    {
+        var item = new MenuItem();
+
+        _ = Should.Throw<InvalidOperationException>(() => item.IsChecked = true);
+
+        item.IsChecked.ShouldBeFalse();
+    }
+
     /// <summary>Verifies the shortcut text renders right-aligned with dim attributes within the item bounds.</summary>
     [Fact]
     public void Render_WhenShortcutTextIsSet_DrawsDimTextAtRightEdge()
