@@ -27,6 +27,11 @@ public sealed class FilePickerFilterTests
         filter.Matches("notes.txt").ShouldBeFalse();
     }
 
+    /// <summary>Verifies Matches rejects a null basename instead of forwarding it into pattern matching.</summary>
+    [Fact]
+    public void Matches_WhenNameIsNull_ThrowsArgumentNullException() =>
+        Should.Throw<ArgumentNullException>(() => FilePickerFilter.AllFiles.Matches(null!));
+
     /// <summary>Verifies every malformed filter argument is rejected before an instance can be observed.</summary>
     [Fact]
     public void Constructor_WhenFilterIsInvalid_ThrowsValidationException()

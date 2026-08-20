@@ -71,4 +71,18 @@ public sealed class FilePickerEntryTests
         second.Equals(first).ShouldBeTrue();
         first.GetHashCode().ShouldBe(second.GetHashCode());
     }
+
+    /// <summary>Verifies Equals returns false for a null reference and for an unrelated object,
+    /// rather than only ever being exercised against another FilePickerEntry.</summary>
+    [Fact]
+    public void Equals_WhenComparedToNullOrAnUnrelatedType_ReturnsFalse()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-entry-unrelated"));
+        var entry = new FilePickerEntry("readme.txt", Path.Combine(directory, "readme.txt"), false, false);
+
+        // Act and assert
+        entry.Equals(null).ShouldBeFalse();
+        entry.Equals("readme.txt").ShouldBeFalse();
+    }
 }

@@ -752,6 +752,83 @@ public sealed class SaveFileDialogTests
         }
     }
 
+    /// <summary>Verifies ShowAsync rejects a null owner before constructing or attaching any dialog.</summary>
+    [Fact]
+    public void ShowAsync_WhenOwnerIsNull_ThrowsArgumentNullException() =>
+        Should.Throw<ArgumentNullException>(() => SaveFileDialog.ShowAsync(null!));
+
+    /// <summary>Verifies ShowAsync rejects a disposed owner before constructing any dialog.</summary>
+    [Fact]
+    public void ShowAsync_WhenOwnerIsDisposed_ThrowsObjectDisposedException()
+    {
+        var owner = new Button();
+        owner.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => SaveFileDialog.ShowAsync(owner));
+    }
+
+    /// <summary>Verifies ShowAsync rejects an already cancelled token before constructing any dialog.</summary>
+    [Fact]
+    public void ShowAsync_WhenCancellationTokenIsAlreadyCancelled_ThrowsOperationCanceledException()
+    {
+        var owner = new Button();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        _ = Should.Throw<OperationCanceledException>(
+            () => SaveFileDialog.ShowAsync(owner, cancellationToken: cancellation.Token));
+    }
+
+    /// <summary>Verifies ShowAsync rejects a detached (never attached) owner with the documented
+    /// ArgumentException instead of a null-reference fault reading its Dispatcher.</summary>
+    [Fact]
+    public void ShowAsync_WhenOwnerIsDetached_ThrowsArgumentException()
+    {
+        var owner = new Button();
+
+        var exception = Should.Throw<ArgumentException>(() => SaveFileDialog.ShowAsync(owner));
+
+        exception.ParamName.ShouldBe("owner");
+    }
+
+    /// <summary>Verifies ShowAsync rejects an attached owner with no presentation host, and leaves
+    /// the owner otherwise unaffected - no dialog is ever constructed for this rejection.</summary>
+    [Fact]
+    public async Task ShowAsync_WhenOwnerHasNoPresentationHost_ThrowsArgumentExceptionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var owner = new Button { Text = "Bare" };
+            owner.Attach(dispatcher, UnicodePolicy.Default, TerminalCapabilities.Conservative);
+
+            var exception = Should.Throw<ArgumentException>(() => SaveFileDialog.ShowAsync(owner));
+
+            exception.ParamName.ShouldBe("owner");
+            owner.Parent.ShouldBeNull();
+            owner.IsDisposed.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies ShowAsync called from a thread other than the owner's dispatcher throws
+    /// InvalidOperationException instead of racing dialog construction against the owning
+    /// dispatcher, and that no dialog was attached under the mounted root.</summary>
+    [Fact]
+    public async Task ShowAsync_WhenCalledOffTheOwnersDispatcher_ThrowsInvalidOperationExceptionAsync()
+    {
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => SaveFileDialog.ShowAsync(opener));
+
+        OwnedTree.Find<SaveFileDialog>(surface.Application.Root).ShouldBeNull();
+    }
+
     /// <summary>Verifies the overwrite confirmation is skipped when ConfirmOverwrite is false.</summary>
     [Fact]
     public async Task Save_WhenConfirmOverwriteIsFalse_SkipsConfirmationAsync()
@@ -897,6 +974,67 @@ public sealed class SaveFileDialogTests
             var result = await pending!;
             result.IsConfirmed.ShouldBeTrue();
             result.Path.ShouldBe(existingPath);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    /// <summary>Verifies declining the overwrite confirmation ("No") leaves the save dialog open
+    /// and its own returned task uncompleted, the sibling outcome to the "Yes" path covered by
+    /// Save_WhenFileExistsAndConfirmOverwrite_ShowsConfirmationAsync immediately above - the
+    /// production code only completes on <c>MessageBoxResult.Yes</c>, but nothing previously
+    /// proved the "No" branch is actually reachable and inert instead of always falling through.</summary>
+    [Fact]
+    public async Task Save_WhenOverwriteConfirmationIsDeclined_LeavesTheDialogOpenWithoutCompletingAsync()
+    {
+        // Arrange
+        var directory = Path.Combine(Path.GetTempPath(), $"save-confirm-decline-{Guid.NewGuid():N}");
+        _ = Directory.CreateDirectory(directory);
+
+        try
+        {
+            var existingPath = Path.Combine(directory, "existing.txt");
+            await File.WriteAllTextAsync(existingPath, "content", TestContext.Current.CancellationToken);
+            var opener = new Button { Text = "Save" };
+            var host = new Overlay { Children = { opener } };
+            await using var surface = await ComponentSurface.MountAsync(
+                host,
+                new Size(100, 40),
+                TestContext.Current.CancellationToken);
+            Task<SaveFileResult>? pending = null;
+
+            // Act
+            await surface.UpdateAsync(
+                () => pending = SaveFileDialog.ShowAsync(
+                    opener,
+                    new SaveFileOptions
+                    {
+                        InitialDirectory = directory,
+                        InitialFileName = "existing.txt",
+                        ConfirmOverwrite = true
+                    }),
+                "show save dialog");
+            var dialog = OwnedTree.Find<SaveFileDialog>(surface.Application.Root).ShouldNotBeNull();
+            await DialogWait.UntilAsync(surface, dialog, () => !dialog.IsLoading);
+
+            // Trigger save so the overwrite confirmation appears, then decline it.
+            await surface.Keyboard.PressAsync(Code.Enter);
+            await surface.UpdateAsync(static () => { }, "settle confirmation dialog");
+            var confirmation = OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldNotBeNull();
+            var no = OwnedTree.FindAll<Button>(confirmation).Single(static button => button.Text == "&No");
+            await surface.UpdateAsync(
+                () => surface.Application.Focus.Focus(no).ShouldBeTrue(),
+                "focus overwrite confirmation No button");
+            await surface.Keyboard.PressAsync(Code.Enter);
+            await surface.UpdateAsync(static () => { }, "settle declined confirmation");
+
+            // Assert
+            pending!.IsCompleted.ShouldBeFalse();
+            dialog.IsDisposed.ShouldBeFalse();
+            OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldBeNull();
+            OwnedTree.Find<SaveFileDialog>(surface.Application.Root).ShouldBeSameAs(dialog);
         }
         finally
         {

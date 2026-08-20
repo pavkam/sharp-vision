@@ -1195,6 +1195,83 @@ public sealed class FilePickerDialogTests
         _ = await pending!;
     }
 
+    /// <summary>Verifies ShowAsync rejects a null owner before constructing or attaching any dialog.</summary>
+    [Fact]
+    public void ShowAsync_WhenOwnerIsNull_ThrowsArgumentNullException() =>
+        Should.Throw<ArgumentNullException>(() => FilePickerDialog.ShowAsync(null!));
+
+    /// <summary>Verifies ShowAsync rejects a disposed owner before constructing any dialog.</summary>
+    [Fact]
+    public void ShowAsync_WhenOwnerIsDisposed_ThrowsObjectDisposedException()
+    {
+        var owner = new Button();
+        owner.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => FilePickerDialog.ShowAsync(owner));
+    }
+
+    /// <summary>Verifies ShowAsync rejects an already cancelled token before constructing any dialog.</summary>
+    [Fact]
+    public void ShowAsync_WhenCancellationTokenIsAlreadyCancelled_ThrowsOperationCanceledException()
+    {
+        var owner = new Button();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        _ = Should.Throw<OperationCanceledException>(
+            () => FilePickerDialog.ShowAsync(owner, cancellationToken: cancellation.Token));
+    }
+
+    /// <summary>Verifies ShowAsync rejects a detached (never attached) owner with the documented
+    /// ArgumentException instead of a null-reference fault reading its Dispatcher.</summary>
+    [Fact]
+    public void ShowAsync_WhenOwnerIsDetached_ThrowsArgumentException()
+    {
+        var owner = new Button();
+
+        var exception = Should.Throw<ArgumentException>(() => FilePickerDialog.ShowAsync(owner));
+
+        exception.ParamName.ShouldBe("owner");
+    }
+
+    /// <summary>Verifies ShowAsync rejects an attached owner with no presentation host, and leaves
+    /// the owner otherwise unaffected - no dialog is ever constructed for this rejection.</summary>
+    [Fact]
+    public async Task ShowAsync_WhenOwnerHasNoPresentationHost_ThrowsArgumentExceptionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var owner = new Button { Text = "Bare" };
+            owner.Attach(dispatcher, UnicodePolicy.Default, TerminalCapabilities.Conservative);
+
+            var exception = Should.Throw<ArgumentException>(() => FilePickerDialog.ShowAsync(owner));
+
+            exception.ParamName.ShouldBe("owner");
+            owner.Parent.ShouldBeNull();
+            owner.IsDisposed.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies ShowAsync called from a thread other than the owner's dispatcher throws
+    /// InvalidOperationException instead of racing dialog construction against the owning
+    /// dispatcher, and that no dialog was attached under the mounted root.</summary>
+    [Fact]
+    public async Task ShowAsync_WhenCalledOffTheOwnersDispatcher_ThrowsInvalidOperationExceptionAsync()
+    {
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => FilePickerDialog.ShowAsync(opener));
+
+        OwnedTree.Find<FilePickerDialog>(surface.Application.Root).ShouldBeNull();
+    }
+
     /// <summary>Verifies the resolved aggregate style defaults to the Window fallback until an
     /// explicit local style is assigned, and that assigning one applies the root padding and
     /// file-list border on the next layout pass.</summary>

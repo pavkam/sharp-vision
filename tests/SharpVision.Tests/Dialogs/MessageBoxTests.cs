@@ -919,4 +919,119 @@ public sealed class MessageBoxTests
         _ = Should.Throw<ArgumentNullException>(() => MessageBox.ShowAsync(null!, "Message", new MessageBoxOptions()));
         _ = Should.Throw<ArgumentNullException>(() => MessageBox.ShowAsync(opener, null!, new MessageBoxOptions()));
     }
+
+    /// <summary>Verifies the two-argument ShowAsync overload - never exercised anywhere else in this
+    /// suite - forwards the documented default title ("Message") and the default Ok button layout,
+    /// exactly like calling the full overload with both defaults explicit.</summary>
+    [Fact]
+    public async Task ShowAsync_WhenCalledWithOnlyOwnerAndMessage_UsesDefaultTitleAndOkButtonAsync()
+    {
+        // Arrange
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(40, 12),
+            TestContext.Current.CancellationToken);
+        Task<MessageBoxResult>? pending = null;
+
+        // Act
+        await surface.UpdateAsync(
+            () => pending = MessageBox.ShowAsync(opener, "Saved successfully."),
+            "show MessageBox with only owner and message");
+        var messageBox = OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldNotBeNull();
+
+        // Assert
+        messageBox.Title.ShouldBe("Message");
+        messageBox.Buttons.ShouldBe(MessageBoxButtons.Ok);
+        OwnedTree.FindAll<Button>(messageBox).Select(static button => button.Text).ShouldBe(["&OK"]);
+
+        await surface.Keyboard.PressAsync(Code.Enter);
+        (await pending!).ShouldBe(MessageBoxResult.Ok);
+    }
+
+    /// <summary>Verifies the buttons-only ShowAsync overload - never exercised anywhere else in this
+    /// suite - applies the requested standard button layout while still defaulting the title to
+    /// "Message", exactly like the sibling title-only overload defaults the buttons to Ok.</summary>
+    [Fact]
+    public async Task ShowAsync_WhenCalledWithOnlyOwnerMessageAndButtons_UsesDefaultTitleAsync()
+    {
+        // Arrange
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(40, 12),
+            TestContext.Current.CancellationToken);
+        Task<MessageBoxResult>? pending = null;
+
+        // Act
+        await surface.UpdateAsync(
+            () => pending = MessageBox.ShowAsync(opener, "Discard changes?", MessageBoxButtons.YesNo),
+            "show MessageBox with owner, message, and buttons only");
+        var messageBox = OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldNotBeNull();
+
+        // Assert
+        messageBox.Title.ShouldBe("Message");
+        messageBox.Buttons.ShouldBe(MessageBoxButtons.YesNo);
+        OwnedTree.FindAll<Button>(messageBox).Select(static button => button.Text).ShouldBe(["&Yes", "&No"]);
+
+        await surface.Keyboard.PressAsync(Code.Enter);
+        (await pending!).ShouldBe(MessageBoxResult.Yes);
+    }
+
+    /// <summary>Verifies the core title/buttons/style ShowAsync overload validates its own required
+    /// arguments before constructing or attaching any dialog - every other ShowAsync validation
+    /// test in this suite exercises the options-carrier overload instead, leaving this directly
+    /// reachable overload's own null checks unobserved.</summary>
+    [Fact]
+    public void ShowAsync_WhenOwnerOrMessageIsNull_ThrowsArgumentNullException()
+    {
+        var opener = new Button { Text = "Open" };
+
+        _ = Should.Throw<ArgumentNullException>(
+            () => MessageBox.ShowAsync(null!, "Message", "Title", MessageBoxButtons.Ok));
+        _ = Should.Throw<ArgumentNullException>(
+            () => MessageBox.ShowAsync(opener, null!, "Title", MessageBoxButtons.Ok));
+    }
+
+    /// <summary>Verifies ShowAsync rejects an owner with no attached presentation host instead of
+    /// constructing or attaching a dialog - this exact "messageBox" resolution path
+    /// (<c>ShowCoreAsync</c>) duplicates, rather than reuses, <c>Dialog{TResult}.PresentAsync</c>'s
+    /// own host-resolution check, so it was never exercised by that shared base's own coverage.</summary>
+    [Fact]
+    public async Task ShowAsync_WhenOwnerHasNoPresentationHost_ThrowsArgumentExceptionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var owner = new Button { Text = "Bare" };
+            owner.Attach(dispatcher, UnicodePolicy.Default, TerminalCapabilities.Conservative);
+
+            var exception = Should.Throw<ArgumentException>(
+                () => MessageBox.ShowAsync(owner, "Message"));
+
+            exception.ParamName.ShouldBe("owner");
+            owner.Parent.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies ShowAsync called from a thread other than the owner's dispatcher throws
+    /// InvalidOperationException instead of racing dialog construction against the owning
+    /// dispatcher.</summary>
+    [Fact]
+    public async Task ShowAsync_WhenCalledOffTheOwnersDispatcher_ThrowsInvalidOperationExceptionAsync()
+    {
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(40, 12),
+            TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => MessageBox.ShowAsync(opener, "Message"));
+
+        OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldBeNull();
+    }
 }

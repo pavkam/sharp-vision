@@ -33,4 +33,21 @@ public sealed class FilePickerResultTests
         cancelled.Paths.ShouldBeEmpty();
         cancelled.SelectedPath.ShouldBeNull();
     }
+
+    /// <summary>Verifies every malformed accepted-path argument is rejected before an instance can
+    /// be observed - Accept is reached internally from FilePickerDialog's own accept flow, but its
+    /// own validation contract was previously never exercised directly.</summary>
+    [Fact]
+    public void Accept_WhenPathsAreInvalid_ThrowsValidationExceptions()
+    {
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-result-invalid"));
+        var valid = Path.Combine(root, "a.cs");
+
+        _ = Should.Throw<ArgumentNullException>(() => FilePickerResult.Accept(null!));
+        _ = Should.Throw<ArgumentException>(() => FilePickerResult.Accept([]));
+        _ = Should.Throw<ArgumentNullException>(() => FilePickerResult.Accept([null!]));
+        _ = Should.Throw<ArgumentException>(() => FilePickerResult.Accept([" "]));
+        _ = Should.Throw<ArgumentException>(() => FilePickerResult.Accept(["a.cs"]));
+        _ = Should.Throw<ArgumentException>(() => FilePickerResult.Accept([valid, "relative.cs"]));
+    }
 }
