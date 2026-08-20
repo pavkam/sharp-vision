@@ -93,6 +93,110 @@ public sealed class DateInputTests
         control.Value.ShouldBe(new DateOnly(2026, 7, 15));
     }
 
+    /// <summary>Verifies Minimum and Maximum default to DateOnly.MinValue and DateOnly.MaxValue.</summary>
+    [Fact]
+    public void Properties_WhenConstructed_MinimumAndMaximumDefaultToFullRange()
+    {
+        // Arrange
+        using var control = new DateInput();
+
+        // Assert
+        control.Minimum.ShouldBe(DateOnly.MinValue);
+        control.Maximum.ShouldBe(DateOnly.MaxValue);
+    }
+
+    /// <summary>Verifies Minimum rejects a value that exceeds Maximum.</summary>
+    [Fact]
+    public void Minimum_WhenExceedsMaximum_ThrowsBeforeMutation()
+    {
+        // Arrange
+        using var control = new DateInput { Maximum = new DateOnly(2026, 7, 25) };
+
+        // Act and assert
+        _ = Should.Throw<ArgumentException>(() => control.Minimum = new DateOnly(2026, 8, 1));
+        control.Minimum.ShouldBe(DateOnly.MinValue);
+    }
+
+    /// <summary>Verifies Maximum rejects a value below Minimum.</summary>
+    [Fact]
+    public void Maximum_WhenBelowMinimum_ThrowsBeforeMutation()
+    {
+        // Arrange
+        using var control = new DateInput { Minimum = new DateOnly(2026, 7, 15) };
+
+        // Act and assert
+        _ = Should.Throw<ArgumentException>(() => control.Maximum = new DateOnly(2026, 7, 1));
+        control.Maximum.ShouldBe(DateOnly.MaxValue);
+    }
+
+    /// <summary>Verifies raising Minimum above the committed value repairs it by clamping.</summary>
+    [Fact]
+    public void Minimum_WhenRaisedAboveCommittedValue_RepairsByClamping()
+    {
+        // Arrange
+        using var control = new DateInput { Value = new DateOnly(2026, 7, 10) };
+
+        // Act
+        control.Minimum = new DateOnly(2026, 7, 15);
+
+        // Assert
+        control.Value.ShouldBe(new DateOnly(2026, 7, 15));
+    }
+
+    /// <summary>Verifies lowering Maximum below the committed value repairs it by clamping.</summary>
+    [Fact]
+    public void Maximum_WhenLoweredBelowCommittedValue_RepairsByClamping()
+    {
+        // Arrange
+        using var control = new DateInput { Value = new DateOnly(2026, 7, 30) };
+
+        // Act
+        control.Maximum = new DateOnly(2026, 7, 25);
+
+        // Assert
+        control.Value.ShouldBe(new DateOnly(2026, 7, 25));
+    }
+
+    /// <summary>Verifies DropDownHeight defaults to a positive value, round-trips, and rejects a
+    /// non-positive assignment.</summary>
+    [Fact]
+    public void DropDownHeight_WhenConstructed_DefaultsToPositiveValue()
+    {
+        // Arrange
+        using var control = new DateInput();
+
+        // Assert
+        control.DropDownHeight.ShouldBe(10);
+    }
+
+    /// <summary>Verifies DropDownHeight round-trips a valid value.</summary>
+    [Fact]
+    public void DropDownHeight_WhenSet_RoundTrips()
+    {
+        // Arrange
+        using var control = new DateInput();
+
+        // Act
+        control.DropDownHeight = 4;
+
+        // Assert
+        control.DropDownHeight.ShouldBe(4);
+    }
+
+    /// <summary>Verifies DropDownHeight rejects a non-positive value.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void DropDownHeight_WhenNonPositive_ThrowsBeforeMutation(int value)
+    {
+        // Arrange
+        using var control = new DateInput();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.DropDownHeight = value);
+        control.DropDownHeight.ShouldBe(10);
+    }
+
     /// <summary>Verifies a single-character Format outside DateOnly's own specifier set is rejected
     /// by the setter instead of arming a FormatException that would later escape the layout
     /// pass.</summary>

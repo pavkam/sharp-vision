@@ -440,6 +440,22 @@ public sealed class CurrencyInputTests
 
     #endregion
 
+    #region RoundingMode
+
+    /// <summary>Verifies rounding mode when assigned undefined value throws before mutation.</summary>
+    [Fact]
+    public void RoundingMode_WhenAssignedUndefinedValue_ThrowsBeforeMutation()
+    {
+        // Arrange
+        using var control = new CurrencyInput();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.RoundingMode = (MidpointRounding) 99);
+        control.RoundingMode.ShouldBe(MidpointRounding.AwayFromZero);
+    }
+
+    #endregion
+
     #region Typed buffer commit and rounding
 
     /// <summary>Verifies commit when a typed value sits at a rounding midpoint at one decimal place
@@ -930,6 +946,24 @@ public sealed class CurrencyInputTests
 
         // Assert
         wide.DesiredSize.Width.ShouldBeGreaterThan(narrow.DesiredSize.Width);
+    }
+
+    /// <summary>Verifies grouped digit display measures wider than ungrouped display for the same
+    /// bound, proving AllowGrouping actually reaches the widest-formatted-bound measurement it
+    /// documents rather than only affecting a currently-unmeasured idle display string.</summary>
+    [Fact]
+    public void Measure_WhenAllowGroupingIsTrue_WidensToFitGroupedDigits()
+    {
+        // Arrange
+        using var grouped = new CurrencyInput { Minimum = 0m, Maximum = 999999m, DecimalPlaces = 0 };
+        using var ungrouped = new CurrencyInput { Minimum = 0m, Maximum = 999999m, DecimalPlaces = 0, AllowGrouping = false };
+
+        // Act
+        new LayoutEngine().Layout(grouped, new Size(80, 3));
+        new LayoutEngine().Layout(ungrouped, new Size(80, 3));
+
+        // Assert
+        grouped.DesiredSize.Width.ShouldBeGreaterThan(ungrouped.DesiredSize.Width);
     }
 
     #endregion

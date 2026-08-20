@@ -246,6 +246,18 @@ public sealed class RadioButtonTests
         second.IsChecked.ShouldBeTrue();
     }
 
+    /// <summary>Verifies GroupName round-trips for an unchecked member, where no coordinator
+    /// resolution is triggered by the assignment.</summary>
+    [Fact]
+    public void GroupName_WhenSetOnUncheckedMember_RoundTrips()
+    {
+        // Arrange and act
+        var radio = new RadioButton { GroupName = "density" };
+
+        // Assert
+        radio.GroupName.ShouldBe("density");
+    }
+
     /// <summary>Verifies regrouping a selected member resolves its new group.</summary>
     [Fact]
     public void GroupName_WhenCheckedMemberMoves_ResolvesNewGroupAfterCommit()

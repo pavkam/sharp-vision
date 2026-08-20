@@ -851,6 +851,98 @@ public sealed class CalendarTests
         calendar.ActiveDate.ShouldBe(active);
     }
 
+    /// <summary>Verifies MinimumDate and MaximumDate default to DateOnly.MinValue and
+    /// DateOnly.MaxValue.</summary>
+    [Fact]
+    public void Bounds_WhenConstructed_DefaultToFullDateOnlyRange()
+    {
+        // Arrange
+        using var calendar = new UiCalendar();
+
+        // Assert
+        calendar.MinimumDate.ShouldBe(DateOnly.MinValue);
+        calendar.MaximumDate.ShouldBe(DateOnly.MaxValue);
+    }
+
+    /// <summary>Verifies MinimumDate rejects a value that exceeds MaximumDate.</summary>
+    [Fact]
+    public void MinimumDate_WhenExceedsMaximumDate_ThrowsBeforeMutation()
+    {
+        // Arrange
+        using var calendar = new UiCalendar { MaximumDate = new DateOnly(2026, 7, 20) };
+
+        // Act and assert
+        _ = Should.Throw<ArgumentException>(() => calendar.MinimumDate = new DateOnly(2026, 7, 21));
+        calendar.MinimumDate.ShouldBe(DateOnly.MinValue);
+    }
+
+    /// <summary>Verifies MaximumDate rejects a value that precedes MinimumDate.</summary>
+    [Fact]
+    public void MaximumDate_WhenPrecedesMinimumDate_ThrowsBeforeMutation()
+    {
+        // Arrange
+        using var calendar = new UiCalendar { MinimumDate = new DateOnly(2026, 7, 20) };
+
+        // Act and assert
+        _ = Should.Throw<ArgumentException>(() => calendar.MaximumDate = new DateOnly(2026, 7, 19));
+        calendar.MaximumDate.ShouldBe(DateOnly.MaxValue);
+    }
+
+    /// <summary>Verifies narrowing MaximumDate below a committed selection clears that selection,
+    /// the documented repair MinimumDate and MaximumDate share.</summary>
+    [Fact]
+    public void MaximumDate_WhenNarrowedBelowSelection_ClearsSelection()
+    {
+        // Arrange
+        var selected = new DateOnly(2026, 7, 25);
+        using var calendar = new UiCalendar { Selection = new DateInterval(selected, selected) };
+
+        // Act
+        calendar.MaximumDate = new DateOnly(2026, 7, 20);
+
+        // Assert
+        calendar.Selection.ShouldBeNull();
+    }
+
+    /// <summary>Verifies narrowing MinimumDate above the active date clamps it back inside bounds.</summary>
+    [Fact]
+    public void MinimumDate_WhenRaisedAboveActiveDate_ClampsActiveDate()
+    {
+        // Arrange
+        var active = new DateOnly(2026, 7, 10);
+        using var calendar = new UiCalendar { Selection = new DateInterval(active, active) };
+
+        // Act
+        calendar.MinimumDate = new DateOnly(2026, 7, 15);
+
+        // Assert
+        calendar.ActiveDate.ShouldBe(new DateOnly(2026, 7, 15));
+    }
+
+    /// <summary>Verifies Culture rejects a null assignment.</summary>
+    [Fact]
+    public void Culture_WhenAssignedNull_ThrowsBeforeMutation()
+    {
+        // Arrange
+        using var calendar = new UiCalendar { Culture = CultureInfo.InvariantCulture };
+
+        // Act and assert
+        _ = Should.Throw<ArgumentNullException>(() => calendar.Culture = null!);
+        calendar.Culture.ShouldBe(CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>Verifies FirstDayOfWeek rejects an undefined value.</summary>
+    [Fact]
+    public void FirstDayOfWeek_WhenUndefined_ThrowsBeforeMutation()
+    {
+        // Arrange
+        using var calendar = new UiCalendar { FirstDayOfWeek = DayOfWeek.Monday };
+
+        // Act and assert
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => calendar.FirstDayOfWeek = (DayOfWeek) 99);
+        calendar.FirstDayOfWeek.ShouldBe(DayOfWeek.Monday);
+    }
+
     /// <summary>Verifies unblocking a date does not repage a caller-set DisplayMonth when the
     /// active date does not move.</summary>
     [Fact]

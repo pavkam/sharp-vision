@@ -114,6 +114,37 @@ public sealed class ColorPickerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies the plane defaults to full saturation and value at hue zero, matching the
+    /// picker's own default RGB-red selection.</summary>
+    [Fact]
+    public void Plane_WhenConstructed_DefaultsToFullSaturationAndValue()
+    {
+        // Arrange and act
+        var picker = new ColorPicker();
+
+        // Assert
+        picker.Plane.Hue.ShouldBe(0);
+        picker.Plane.Saturation.ShouldBe(1);
+        picker.Plane.Value.ShouldBe(1);
+    }
+
+    /// <summary>Verifies SetSelection round-trips the exact HSV coordinates through the read-only
+    /// Hue, Saturation, and Value properties without requiring pointer or keyboard input.</summary>
+    [Fact]
+    public void Plane_WhenSelectionIsSet_RoundTripsHueSaturationAndValue()
+    {
+        // Arrange
+        var picker = new ColorPicker();
+
+        // Act
+        picker.Plane.SetSelection(180, 0.25, 0.75);
+
+        // Assert
+        picker.Plane.Hue.ShouldBe(180);
+        picker.Plane.Saturation.ShouldBe(0.25);
+        picker.Plane.Value.ShouldBe(0.75);
+    }
+
     /// <summary>Verifies keys outside the plane's editing contract remain available to routed input.</summary>
     [Fact]
     public void Plane_WhenKeyIsUnhandled_RaisesInheritedKeyDownWithoutConsumingIt()

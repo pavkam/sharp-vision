@@ -51,6 +51,54 @@ public sealed class ButtonTests
         button.TextAlignment.ShouldBe(Alignment.Center);
     }
 
+    /// <summary>Verifies IsDefault and IsCancel round-trip independently of one another, matching
+    /// their separate documented fallback-activation roles.</summary>
+    [Fact]
+    public void IsDefault_WhenSet_RoundTripsIndependentlyOfIsCancel()
+    {
+        // Arrange
+        using var button = new Button();
+
+        // Act
+        button.IsDefault = true;
+
+        // Assert
+        button.IsDefault.ShouldBeTrue();
+        button.IsCancel.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies IsCancel round-trips independently of IsDefault.</summary>
+    [Fact]
+    public void IsCancel_WhenSet_RoundTripsIndependentlyOfIsDefault()
+    {
+        // Arrange
+        using var button = new Button();
+
+        // Act
+        button.IsCancel = true;
+
+        // Assert
+        button.IsCancel.ShouldBeTrue();
+        button.IsDefault.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a TextAlignment mutation invalidates arrangement, matching its documented
+    /// horizontal-placement contract for retained caption content.</summary>
+    [Fact]
+    public void TextAlignment_WhenChanged_InvalidatesArrange()
+    {
+        // Arrange
+        using var button = new Button("Save");
+        button.Clear(Invalidation.All);
+
+        // Act
+        button.TextAlignment = Alignment.Start;
+
+        // Assert
+        button.TextAlignment.ShouldBe(Alignment.Start);
+        button.Pending.ShouldBe(Invalidation.Arrange | Invalidation.Render);
+    }
+
     /// <summary>Verifies a local filled style selects the compact fractional-shadow profile.</summary>
     [Fact]
     public void Style_WhenFilledIsAssigned_UsesCompactFractionalProfile()
