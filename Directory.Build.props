@@ -5,9 +5,9 @@
          move in lockstep. These three properties are the single source of truth for their
          respective package's version; every other version-derived property below selects the
          matching one by project name. -->
-    <SharpVisionTerminalVersion>0.10.0-beta.1</SharpVisionTerminalVersion>
-    <SharpVisionVersion>0.10.0-beta.1</SharpVisionVersion>
-    <SharpVisionFigletFontsVersion>0.10.0-beta.1</SharpVisionFigletFontsVersion>
+    <SharpVisionTerminalVersion>1.0.0-beta.1</SharpVisionTerminalVersion>
+    <SharpVisionVersion>1.0.0-beta.1</SharpVisionVersion>
+    <SharpVisionFigletFontsVersion>1.0.0-beta.1</SharpVisionFigletFontsVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'SharpVision.Terminal'">
