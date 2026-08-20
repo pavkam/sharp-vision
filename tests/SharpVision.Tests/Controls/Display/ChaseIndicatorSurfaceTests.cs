@@ -218,6 +218,34 @@ public sealed class ChaseIndicatorSurfaceTests
         surface.ShouldRender("●●");
     }
 
+    /// <summary>Verifies changing the track length resets playback to the first position instead
+    /// of reinterpreting the in-flight phase against the new, shorter cycle - which could
+    /// otherwise coincidentally reproduce the same head position and mask a missing reset.</summary>
+    [Fact]
+    public async Task Length_WhenChangedAtRuntime_ResetsPlaybackToFirstPositionAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var indicator = new ChaseIndicator { Movement = ChaseMovement.Wrap, Length = 5, TrailLength = 0 };
+        await using var surface = await ComponentSurface.MountAsync(
+            indicator,
+            new Size(5, 1),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        // Act and assert: advance the wrapping head to position 2 of 5.
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(200), "advance wrap head to position 1");
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(200), "advance wrap head to position 2");
+        surface.ShouldRender("◯◯●◯◯");
+
+        // Shrinking to a four-cell track without a reset would keep phase 2, and phase 2 modulo
+        // the new four-position cycle is still position 2 - indistinguishable from a correct
+        // reset unless the assertion below actually observes position 0.
+        await surface.UpdateAsync(() => indicator.Length = 4, "shrink track length at runtime");
+
+        surface.ShouldRender("●◯◯◯");
+    }
+
     /// <summary>Verifies every built-in style renders its exact active and inactive glyph pair.</summary>
     [Theory]
     [InlineData("Circle", "●◯◯")]

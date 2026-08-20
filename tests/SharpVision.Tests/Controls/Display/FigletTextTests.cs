@@ -19,6 +19,11 @@ public sealed class FigletTextTests
         control.Options.ShouldBe(default);
     }
 
+    /// <summary>Verifies a null font is rejected before constructing the control.</summary>
+    [Fact]
+    public void Constructor_WhenFontIsNull_Throws() =>
+        Should.Throw<ArgumentNullException>(() => new FigletText(null!));
+
     /// <summary>Verifies FIGlet output determines desired cell dimensions.</summary>
     [Fact]
     public void Layout_WhenContentIsSet_MeasuresRenderedFontOutput()
