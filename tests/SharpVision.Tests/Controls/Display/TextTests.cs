@@ -33,6 +33,11 @@ public sealed class TextTests
         value.CanFocus.ShouldBeFalse();
     }
 
+    /// <summary>Verifies the content constructor rejects a null value before constructing the control.</summary>
+    [Fact]
+    public void Constructor_WhenContentIsNull_Throws() =>
+        Should.Throw<ArgumentNullException>(() => new ControlText(null!));
+
     /// <summary>Verifies TextChanged fires when Content changes and does not fire for identical assignment.</summary>
     [Fact]
     public void TextChanged_WhenContentChanges_Fires()

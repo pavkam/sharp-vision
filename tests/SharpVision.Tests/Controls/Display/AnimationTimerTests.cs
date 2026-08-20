@@ -231,4 +231,88 @@ public sealed class AnimationTimerTests
         // Assert
         timer.Interval.ShouldBe(TimeSpan.FromMilliseconds(300));
     }
+
+    /// <summary>Verifies EnsureRunning is a silent no-op before the timer is ever attached, since
+    /// there is no underlying dispatcher timer instance yet to start.</summary>
+    [Fact]
+    public void EnsureRunning_WhenNeverAttached_DoesNotThrow()
+    {
+        // Arrange
+        var timer = new AnimationTimer(TimeSpan.FromMilliseconds(100), static () => { }) { IsPlaying = true };
+
+        // Act and assert
+        Should.NotThrow(timer.EnsureRunning);
+    }
+
+    /// <summary>Verifies EnsureRunning restarts a timer that stopped itself through the
+    /// <c>shouldTick</c> callback (for example, a control that became invisible) even though
+    /// <see cref="AnimationTimer.IsPlaying"/> was never toggled - exactly the seam
+    /// <see cref="Spinner"/> and <see cref="ChaseIndicator"/> rely on inside their own
+    /// <c>OnRenderContent</c> to resume playback after visibility recovers.</summary>
+    [Fact]
+    public async Task EnsureRunning_WhenShouldTickStoppedTheTimer_RestartsPlaybackAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        await using var dispatcher = Dispatcher.Start(timeProvider: clock);
+        var ticks = 0;
+        var canTick = true;
+        var timer = new AnimationTimer(TimeSpan.FromMilliseconds(100), () => ticks++, () => canTick)
+        {
+            IsPlaying = true
+        };
+        await dispatcher.InvokeAsync(
+            () => timer.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+        clock.Advance(TimeSpan.FromMilliseconds(100));
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        ticks.ShouldBe(1);
+
+        // Act: the next tick observes shouldTick() == false and stops the underlying timer
+        // internally, without changing the public IsPlaying flag.
+        canTick = false;
+        clock.Advance(TimeSpan.FromMilliseconds(100));
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        ticks.ShouldBe(1);
+        timer.IsPlaying.ShouldBeTrue();
+
+        // Act: recovery restores shouldTick, then calls EnsureRunning the same way a render pass
+        // would, without ever setting IsPlaying again.
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                canTick = true;
+                timer.EnsureRunning();
+            },
+            TestContext.Current.CancellationToken);
+        clock.Advance(TimeSpan.FromMilliseconds(100));
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        ticks.ShouldBe(2);
+        timer.Dispose();
+    }
+
+    /// <summary>Verifies EnsureRunning does not restart or otherwise disturb an already-running timer.</summary>
+    [Fact]
+    public async Task EnsureRunning_WhenAlreadyRunning_IsNoOpAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        await using var dispatcher = Dispatcher.Start(timeProvider: clock);
+        var ticks = 0;
+        var timer = new AnimationTimer(TimeSpan.FromMilliseconds(100), () => ticks++) { IsPlaying = true };
+        await dispatcher.InvokeAsync(
+            () => timer.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await dispatcher.InvokeAsync(timer.EnsureRunning, TestContext.Current.CancellationToken);
+        clock.Advance(TimeSpan.FromMilliseconds(100));
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        ticks.ShouldBe(1);
+        timer.Dispose();
+    }
 }

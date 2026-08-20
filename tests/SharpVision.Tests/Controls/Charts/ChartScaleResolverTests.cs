@@ -190,4 +190,136 @@ public sealed class ChartScaleResolverTests
         range.Minimum.ShouldBe(-10);
         range.Maximum.ShouldBe(10);
     }
+
+    /// <summary>Verifies empty data with only an authored minimum expands one whole unit above it
+    /// when zero inclusion would not otherwise reach further, matching <c>ResolveEmpty</c>'s
+    /// minimum-only branch instead of the both-bounds or maximum-only branches.</summary>
+    [Fact]
+    public void Resolve_WhenValuesAreEmptyAndOnlyMinimumIsAuthored_ExpandsOneUnitAbove()
+    {
+        // Arrange
+        var scale = new ChartScale(minimum: 5, maximum: null, includeZero: false);
+
+        // Act
+        var range = ChartScaleResolver.Resolve(scale, ReadOnlySpan<double>.Empty);
+
+        // Assert
+        range.Minimum.ShouldBe(5);
+        range.Maximum.ShouldBe(6);
+    }
+
+    /// <summary>Verifies empty data with only an authored negative minimum and zero inclusion
+    /// enabled expands to zero instead of one unit above the minimum, since zero is further away
+    /// and inclusion is requested.</summary>
+    [Fact]
+    public void Resolve_WhenValuesAreEmptyAndOnlyMinimumIsAuthoredWithZeroIncluded_ExpandsToZero()
+    {
+        // Arrange
+        var scale = new ChartScale(minimum: -5, maximum: null, includeZero: true);
+
+        // Act
+        var range = ChartScaleResolver.Resolve(scale, ReadOnlySpan<double>.Empty);
+
+        // Assert
+        range.Minimum.ShouldBe(-5);
+        range.Maximum.ShouldBe(0);
+    }
+
+    /// <summary>Verifies empty data with only an authored maximum expands one whole unit below it,
+    /// matching <c>ResolveEmpty</c>'s maximum-only branch.</summary>
+    [Fact]
+    public void Resolve_WhenValuesAreEmptyAndOnlyMaximumIsAuthored_ExpandsOneUnitBelow()
+    {
+        // Arrange
+        var scale = new ChartScale(minimum: null, maximum: 5, includeZero: false);
+
+        // Act
+        var range = ChartScaleResolver.Resolve(scale, ReadOnlySpan<double>.Empty);
+
+        // Assert
+        range.Minimum.ShouldBe(4);
+        range.Maximum.ShouldBe(5);
+    }
+
+    /// <summary>Verifies empty data with only an authored positive maximum and zero inclusion
+    /// enabled expands down to zero instead of one unit below the maximum.</summary>
+    [Fact]
+    public void Resolve_WhenValuesAreEmptyAndOnlyMaximumIsAuthoredWithZeroIncluded_ExpandsToZero()
+    {
+        // Arrange
+        var scale = new ChartScale(minimum: null, maximum: 5, includeZero: true);
+
+        // Act
+        var range = ChartScaleResolver.Resolve(scale, ReadOnlySpan<double>.Empty);
+
+        // Assert
+        range.Minimum.ShouldBe(0);
+        range.Maximum.ShouldBe(5);
+    }
+
+    /// <summary>Verifies empty data with both bounds authored uses the authored range directly,
+    /// without consulting <see cref="ChartScale.IncludeZero"/> at all.</summary>
+    [Fact]
+    public void Resolve_WhenValuesAreEmptyAndBothBoundsAreAuthored_UsesAuthoredRangeDirectly()
+    {
+        // Arrange
+        var scale = new ChartScale(minimum: 2, maximum: 9, includeZero: true);
+
+        // Act
+        var range = ChartScaleResolver.Resolve(scale, ReadOnlySpan<double>.Empty);
+
+        // Assert
+        range.Minimum.ShouldBe(2);
+        range.Maximum.ShouldBe(9);
+    }
+
+    /// <summary>Verifies a collapsed observed range with only an authored minimum expands
+    /// upward from that fixed minimum instead of symmetrically, matching <c>ExpandCollapsed</c>'s
+    /// minimum-authored branch.</summary>
+    [Fact]
+    public void Resolve_WhenValuesCollapseAndOnlyMinimumIsAuthored_ExpandsUpwardFromMinimum()
+    {
+        // Arrange
+        var scale = new ChartScale(minimum: 5, maximum: null, includeZero: false);
+
+        // Act
+        var range = ChartScaleResolver.Resolve(scale, [5d, 5d]);
+
+        // Assert
+        range.Minimum.ShouldBe(5);
+        range.Maximum.ShouldBe(6);
+    }
+
+    /// <summary>Verifies a collapsed observed range with only an authored maximum expands
+    /// downward from that fixed maximum instead of symmetrically, matching
+    /// <c>ExpandCollapsed</c>'s maximum-authored branch.</summary>
+    [Fact]
+    public void Resolve_WhenValuesCollapseAndOnlyMaximumIsAuthored_ExpandsDownwardFromMaximum()
+    {
+        // Arrange
+        var scale = new ChartScale(minimum: null, maximum: 5, includeZero: false);
+
+        // Act
+        var range = ChartScaleResolver.Resolve(scale, [5d, 5d]);
+
+        // Assert
+        range.Minimum.ShouldBe(4);
+        range.Maximum.ShouldBe(5);
+    }
+
+    /// <summary>Verifies a collapsed zero-valued observed range expands by exactly one unit on
+    /// each side rather than a magnitude-proportional margin, since a proportional margin of zero
+    /// itself is zero and would otherwise collapse right back to a single point.</summary>
+    [Fact]
+    public void Resolve_WhenValuesCollapseAtZero_ExpandsByOneUnitOnEachSide()
+    {
+        // Arrange and act
+        var range = ChartScaleResolver.Resolve(
+            new ChartScale(minimum: null, maximum: null, includeZero: false),
+            [0d, 0d]);
+
+        // Assert
+        range.Minimum.ShouldBe(-1);
+        range.Maximum.ShouldBe(1);
+    }
 }

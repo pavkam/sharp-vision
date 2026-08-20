@@ -8,6 +8,63 @@ using System.Collections.Specialized;
 /// <summary>Verifies observable chart series validation and notification behavior.</summary>
 public sealed class ChartSeriesTests
 {
+    /// <summary>Verifies the name-only constructor round-trips its name and defaults to no color,
+    /// no line pattern override, and an empty owned point collection.</summary>
+    [Fact]
+    public void Constructor_WhenNameOnly_UsesDocumentedDefaults()
+    {
+        // Arrange and act
+        var series = new ChartSeries("CPU");
+
+        // Assert
+        series.Name.ShouldBe("CPU");
+        series.Color.ShouldBeNull();
+        series.LinePattern.ShouldBeNull();
+        series.Points.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a null name is rejected by the name-only constructor.</summary>
+    [Fact]
+    public void Constructor_WhenNameOnlyAndNameIsNull_Throws() =>
+        Should.Throw<ArgumentNullException>(() => new ChartSeries(null!));
+
+    /// <summary>Verifies the points constructor copies validated points in enumeration order into
+    /// a distinct owned collection.</summary>
+    [Fact]
+    public void Constructor_WithPoints_CopiesPointsInEnumerationOrder()
+    {
+        // Arrange
+        var first = new ChartDataPoint("A", 1);
+        var second = new ChartDataPoint("B", 2);
+
+        // Act
+        var series = new ChartSeries("Host A", [first, second]);
+
+        // Assert
+        series.Points.ShouldBe([first, second]);
+    }
+
+    /// <summary>Verifies a null name is rejected by the points constructor.</summary>
+    [Fact]
+    public void Constructor_WithPoints_WhenNameIsNull_Throws() =>
+        Should.Throw<ArgumentNullException>(() => new ChartSeries(null!, [new ChartDataPoint("A", 1)]));
+
+    /// <summary>Verifies a null points enumerable is rejected by the points constructor.</summary>
+    [Fact]
+    public void Constructor_WithPoints_WhenPointsIsNull_Throws() =>
+        Should.Throw<ArgumentNullException>(() => new ChartSeries("Host A", null!));
+
+    /// <summary>Verifies a points enumerable containing a repeated reference is rejected.</summary>
+    [Fact]
+    public void Constructor_WithPoints_WhenPointsContainDuplicateReference_Throws()
+    {
+        // Arrange
+        var point = new ChartDataPoint("A", 1);
+
+        // Act and assert
+        _ = Should.Throw<ArgumentException>(() => new ChartSeries("Host A", [point, point]));
+    }
+
     /// <summary>Verifies a series rejects an unknown pattern before changing observable state.</summary>
     [Fact]
     public void LinePattern_WhenAssignedUnknownValue_RejectsBeforeMutation()

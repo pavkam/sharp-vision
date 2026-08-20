@@ -47,6 +47,23 @@ public sealed class ChartControlTests
         chart.IsHitTestVisible.ShouldBeFalse();
     }
 
+    /// <summary>Verifies a sparkline's own fixed-policy overrides - unlike every full chart, which
+    /// forwards a settable property - always report Hidden/false/false through
+    /// <see cref="IChartControl"/>, regardless of the base class's own constructor-supplied
+    /// state, since Sparkline exposes no public LegendPlacement, ShowCategoryLabels, or
+    /// ShowValueLabels surface at all.</summary>
+    [Fact]
+    public void ResolvePresentation_WhenSparkline_AlwaysReportsHiddenLabelsAndLegend()
+    {
+        // Arrange and act
+        var chart = new Sparkline().ShouldBeAssignableTo<IChartControl>();
+
+        // Assert
+        chart.LegendPlacement.ShouldBe(ChartLegendPlacement.Hidden);
+        chart.ShowCategoryLabels.ShouldBeFalse();
+        chart.ShowValueLabels.ShouldBeFalse();
+    }
+
     /// <summary>Verifies a local Style overrides the chart's default palette and clearing it
     /// restores the theme-owned default, exercising ChartControlBase's own Style/ActualStyle
     /// round trip shared by every concrete chart family.</summary>
@@ -211,20 +228,158 @@ public sealed class ChartControlTests
         chart.Series.ShouldBe([original]);
     }
 
-    /// <summary>Verifies direct observable source membership remains reactive without binding.</summary>
+    /// <summary>Verifies direct observable source membership remains reactive without binding,
+    /// and that the refreshed membership is reported through the same <see cref="ChartControlBase.Series"/>
+    /// property-changed notification and measure-phase invalidation an ordinary Series
+    /// reassignment would raise - not merely that the snapshot value happens to update.</summary>
     [Fact]
-    public void Series_WhenObservableSourceChanges_RefreshesMembership()
+    public void Series_WhenObservableSourceChanges_RefreshesMembershipAndNotifiesSeriesProperty()
     {
         // Arrange
         var source = new ObservableCollection<ChartSeries>();
         var chart = new HorizontalBarChart { Series = source };
+        new LayoutEngine().Layout(chart, new Size(30, 10));
+        using (var frame = new Frame(new Size(30, 10)))
+        {
+            chart.Render(frame.Canvas);
+        }
         var series = new ChartSeries("Live");
+        var notifications = new List<string?>();
+        chart.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
 
         // Act
         source.Add(series);
 
         // Assert
         chart.Series.ShouldBe([series]);
+        chart.Pending.ShouldBe(Invalidation.Measure | Invalidation.Arrange | Invalidation.Render);
+        notifications.ShouldBe([nameof(ChartControlBase.Series)]);
+    }
+
+    /// <summary>Verifies mutating an already-owned series' <see cref="ChartSeries.Points"/>
+    /// collection is treated identically to a top-level membership change - requiring measure
+    /// invalidation and a <see cref="ChartControlBase.Series"/> notification - even though the
+    /// series reference itself never left the chart, since a chart's rendered layout depends on
+    /// each series' point count and labels just as much as on which series are present.</summary>
+    [Fact]
+    public void Series_WhenOwnedSeriesPointsCollectionChanges_TreatsMembershipAsChanged()
+    {
+        // Arrange
+        var series = new ChartSeries("CPU");
+        var chart = new LineChart { Series = [series] };
+        new LayoutEngine().Layout(chart, new Size(30, 10));
+        using (var frame = new Frame(new Size(30, 10)))
+        {
+            chart.Render(frame.Canvas);
+        }
+        var notifications = new List<string?>();
+        chart.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        // Act
+        series.Points.Add(new ChartDataPoint("t1", 1));
+
+        // Assert
+        chart.Series.ShouldBe([series]);
+        chart.Pending.ShouldBe(Invalidation.Measure | Invalidation.Arrange | Invalidation.Render);
+        notifications.ShouldBe([nameof(ChartControlBase.Series)]);
+    }
+
+    /// <summary>Verifies a changed series <see cref="ChartSeries.Name"/> invalidates measure but
+    /// publishes no <see cref="ChartControlBase.Series"/> (or any other) property notification,
+    /// since the observer forwards non-membership property changes straight to
+    /// <c>Invalidate</c> rather than through <c>NotifyPropertyChanged</c>.</summary>
+    [Fact]
+    public void Series_WhenOwnedSeriesNameChanges_InvalidatesMeasureWithoutPropertyNotification()
+    {
+        // Arrange
+        var series = new ChartSeries("CPU");
+        var chart = new LineChart { Series = [series] };
+        new LayoutEngine().Layout(chart, new Size(30, 10));
+        using (var frame = new Frame(new Size(30, 10)))
+        {
+            chart.Render(frame.Canvas);
+        }
+        var notifications = new List<string?>();
+        chart.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        // Act
+        series.Name = "Memory";
+
+        // Assert
+        chart.Pending.ShouldBe(Invalidation.Measure | Invalidation.Arrange | Invalidation.Render);
+        notifications.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a changed series <see cref="ChartSeries.Color"/> - unlike its Name -
+    /// invalidates only rendering, since color is presentation rather than layout-affecting.</summary>
+    [Fact]
+    public void Series_WhenOwnedSeriesColorChanges_InvalidatesRenderOnly()
+    {
+        // Arrange
+        var series = new ChartSeries("CPU");
+        var chart = new LineChart { Series = [series] };
+        new LayoutEngine().Layout(chart, new Size(30, 10));
+        using (var frame = new Frame(new Size(30, 10)))
+        {
+            chart.Render(frame.Canvas);
+        }
+        var notifications = new List<string?>();
+        chart.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        // Act
+        series.Color = Color.Rgb(10, 20, 30);
+
+        // Assert
+        chart.Pending.ShouldBe(Invalidation.Render);
+        notifications.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a changed point <see cref="ChartDataPoint.Label"/> invalidates measure
+    /// without any property notification, mirroring a series' own Name.</summary>
+    [Fact]
+    public void Series_WhenOwnedPointLabelChanges_InvalidatesMeasureWithoutPropertyNotification()
+    {
+        // Arrange
+        var point = new ChartDataPoint("CPU", 1);
+        var chart = new LineChart { Series = [new ChartSeries("Host", [point])] };
+        new LayoutEngine().Layout(chart, new Size(30, 10));
+        using (var frame = new Frame(new Size(30, 10)))
+        {
+            chart.Render(frame.Canvas);
+        }
+        var notifications = new List<string?>();
+        chart.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        // Act
+        point.Label = "Memory";
+
+        // Assert
+        chart.Pending.ShouldBe(Invalidation.Measure | Invalidation.Arrange | Invalidation.Render);
+        notifications.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a changed point <see cref="ChartDataPoint.Value"/> - unlike its Label -
+    /// invalidates only rendering.</summary>
+    [Fact]
+    public void Series_WhenOwnedPointValueChanges_InvalidatesRenderOnly()
+    {
+        // Arrange
+        var point = new ChartDataPoint("CPU", 1);
+        var chart = new LineChart { Series = [new ChartSeries("Host", [point])] };
+        new LayoutEngine().Layout(chart, new Size(30, 10));
+        using (var frame = new Frame(new Size(30, 10)))
+        {
+            chart.Render(frame.Canvas);
+        }
+        var notifications = new List<string?>();
+        chart.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        // Act
+        point.Value = 42;
+
+        // Assert
+        chart.Pending.ShouldBe(Invalidation.Render);
+        notifications.ShouldBeEmpty();
     }
 
     /// <summary>Verifies a direct assignment of more than one series to a sparkline is rejected

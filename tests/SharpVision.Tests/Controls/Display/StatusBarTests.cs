@@ -429,6 +429,37 @@ public sealed class StatusBarTests
         bar.Items.ShouldBe([first, second]);
     }
 
+    /// <summary>Verifies Clear detaches every owned item without disposing the detached instances.</summary>
+    [Fact]
+    public void Clear_WhenCalled_DetachesEveryItemWithoutDisposal()
+    {
+        using var bar = new StatusBar();
+        var first = Item("First");
+        var second = Item("Second");
+        bar.Items.Add(first);
+        bar.Items.Add(second);
+
+        bar.Items.Clear();
+
+        bar.Items.ShouldBeEmpty();
+        bar.Items.Count.ShouldBe(0);
+        first.IsDisposed.ShouldBeFalse();
+        first.Parent.ShouldBeNull();
+        second.IsDisposed.ShouldBeFalse();
+        second.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies Clear on an already-empty collection is a harmless no-op.</summary>
+    [Fact]
+    public void Clear_WhenCollectionIsAlreadyEmpty_IsNoOp()
+    {
+        using var bar = new StatusBar();
+
+        Should.NotThrow(bar.Items.Clear);
+
+        bar.Items.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies IndexOf reports the current position of an owned item and -1 for a foreign item.</summary>
     [Fact]
     public void IndexOf_WhenItemIsOwnedOrForeign_ReportsPositionOrNegativeOne()

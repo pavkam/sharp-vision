@@ -6,6 +6,33 @@ namespace SharpVision.Tests.Controls.Charts;
 /// <summary>Verifies observable chart data point validation and notification behavior.</summary>
 public sealed class ChartDataPointTests
 {
+    /// <summary>Verifies a valid construction round-trips its label and value and defaults to no
+    /// color override.</summary>
+    [Fact]
+    public void Constructor_WhenValid_UsesDocumentedDefaults()
+    {
+        // Arrange and act
+        var point = new ChartDataPoint("CPU", 12);
+
+        // Assert
+        point.Label.ShouldBe("CPU");
+        point.Value.ShouldBe(12);
+        point.Color.ShouldBeNull();
+    }
+
+    /// <summary>Verifies a null label is rejected.</summary>
+    [Fact]
+    public void Constructor_WhenLabelIsNull_Throws() =>
+        Should.Throw<ArgumentNullException>(() => new ChartDataPoint(null!, 1));
+
+    /// <summary>Verifies a non-finite value is rejected.</summary>
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void Constructor_WhenValueIsNotFinite_Throws(double value) =>
+        Should.Throw<ArgumentOutOfRangeException>(() => new ChartDataPoint("CPU", value));
+
     /// <summary>Verifies a point rejects a non-finite value before changing observable state.</summary>
     [Fact]
     public void Value_WhenAssignedNonFiniteValue_RejectsBeforeMutation()
