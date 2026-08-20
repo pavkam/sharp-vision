@@ -56,6 +56,46 @@ public sealed class DateTimeInputTests
         control.Value.ShouldBe(new DateTime(2026, 7, 15, 10, 0, 0));
     }
 
+    /// <summary>Verifies Minimum and Maximum default to DateTime.MinValue and DateTime.MaxValue.</summary>
+    [Fact]
+    public void Properties_WhenConstructed_MinimumAndMaximumDefaultToFullRange()
+    {
+        // Arrange
+        using var control = new DateTimeInput();
+
+        // Assert
+        control.Minimum.ShouldBe(DateTime.MinValue);
+        control.Maximum.ShouldBe(DateTime.MaxValue);
+    }
+
+    /// <summary>Verifies raising Minimum above the committed value repairs it by clamping.</summary>
+    [Fact]
+    public void Minimum_WhenRaisedAboveCommittedValue_RepairsByClamping()
+    {
+        // Arrange
+        using var control = new DateTimeInput { Value = new DateTime(2026, 7, 10, 8, 0, 0) };
+
+        // Act
+        control.Minimum = new DateTime(2026, 7, 15, 10, 0, 0);
+
+        // Assert
+        control.Value.ShouldBe(new DateTime(2026, 7, 15, 10, 0, 0));
+    }
+
+    /// <summary>Verifies lowering Maximum below the committed value repairs it by clamping.</summary>
+    [Fact]
+    public void Maximum_WhenLoweredBelowCommittedValue_RepairsByClamping()
+    {
+        // Arrange
+        using var control = new DateTimeInput { Value = new DateTime(2026, 7, 30, 8, 0, 0) };
+
+        // Act
+        control.Maximum = new DateTime(2026, 7, 25, 14, 0, 0);
+
+        // Assert
+        control.Value.ShouldBe(new DateTime(2026, 7, 25, 14, 0, 0));
+    }
+
     /// <summary>Verifies the configurable minute step is applied by the inline minute segment.</summary>
     [Fact]
     public void Input_WhenMinuteStepIsConfigured_ArrowAdjustsByConfiguredMinutes()

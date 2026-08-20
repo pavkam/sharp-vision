@@ -72,6 +72,70 @@ public sealed class TimeInputTests
         control.Value.ShouldBe(new TimeOnly(10, 0));
     }
 
+    /// <summary>Verifies Minimum and Maximum default to TimeOnly.MinValue and TimeOnly.MaxValue.</summary>
+    [Fact]
+    public void Properties_WhenConstructed_MinimumAndMaximumDefaultToFullDayRange()
+    {
+        // Arrange
+        using var control = new TimeInput();
+
+        // Assert
+        control.Minimum.ShouldBe(TimeOnly.MinValue);
+        control.Maximum.ShouldBe(TimeOnly.MaxValue);
+    }
+
+    /// <summary>Verifies Minimum rejects a value that exceeds Maximum.</summary>
+    [Fact]
+    public void Minimum_WhenExceedsMaximum_ThrowsBeforeMutation()
+    {
+        // Arrange
+        using var control = new TimeInput { Maximum = new TimeOnly(10, 0) };
+
+        // Act and assert
+        _ = Should.Throw<ArgumentException>(() => control.Minimum = new TimeOnly(11, 0));
+        control.Minimum.ShouldBe(TimeOnly.MinValue);
+    }
+
+    /// <summary>Verifies Maximum rejects a value below Minimum.</summary>
+    [Fact]
+    public void Maximum_WhenBelowMinimum_ThrowsBeforeMutation()
+    {
+        // Arrange
+        using var control = new TimeInput { Minimum = new TimeOnly(10, 0) };
+
+        // Act and assert
+        _ = Should.Throw<ArgumentException>(() => control.Maximum = new TimeOnly(9, 0));
+        control.Maximum.ShouldBe(TimeOnly.MaxValue);
+    }
+
+    /// <summary>Verifies raising Minimum above the committed value repairs it by clamping.</summary>
+    [Fact]
+    public void Minimum_WhenRaisedAboveCommittedValue_RepairsByClamping()
+    {
+        // Arrange
+        using var control = new TimeInput { Value = new TimeOnly(8, 0) };
+
+        // Act
+        control.Minimum = new TimeOnly(10, 0);
+
+        // Assert
+        control.Value.ShouldBe(new TimeOnly(10, 0));
+    }
+
+    /// <summary>Verifies lowering Maximum below the committed value repairs it by clamping.</summary>
+    [Fact]
+    public void Maximum_WhenLoweredBelowCommittedValue_RepairsByClamping()
+    {
+        // Arrange
+        using var control = new TimeInput { Value = new TimeOnly(18, 0) };
+
+        // Act
+        control.Maximum = new TimeOnly(14, 0);
+
+        // Assert
+        control.Value.ShouldBe(new TimeOnly(14, 0));
+    }
+
     /// <summary>Verifies toggling Use24HourFormat changes the rendered output.</summary>
     [Fact]
     public void Properties_WhenUse24HourFormatChanges_InvalidatesRender()

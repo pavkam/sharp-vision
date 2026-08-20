@@ -71,6 +71,198 @@ public sealed class TextInputTests
         control.CursorShape.ShouldBe(CursorShape.Block);
     }
 
+    /// <summary>Verifies Text rejects a value that violates the current return policy, leaving the
+    /// previously committed text unchanged, matching the "value violates policy" documented
+    /// exception.</summary>
+    [Fact]
+    public void Text_WhenViolatesReturnPolicy_ThrowsBeforeMutation()
+    {
+        // Arrange
+        var control = new TextInput { Text = "start" };
+
+        // Act and assert
+        _ = Should.Throw<ArgumentException>(() => control.Text = "a\nb");
+        control.Text.ShouldBe("start");
+    }
+
+    /// <summary>Verifies MaxLength rejects a value smaller than the current text's grapheme
+    /// count, leaving the previous unlimited/positive value unchanged.</summary>
+    [Fact]
+    public void MaxLength_WhenBelowCurrentTextLength_ThrowsBeforeMutation()
+    {
+        // Arrange
+        var control = new TextInput { Text = "abcdef" };
+
+        // Act and assert
+        _ = Should.Throw<ArgumentException>(() => control.MaxLength = 3);
+        control.MaxLength.ShouldBe(0);
+    }
+
+    /// <summary>Verifies ScrollBars rejects flag combinations outside the defined axis mask.</summary>
+    [Fact]
+    public void ScrollBars_WhenValueContainsUndefinedFlags_ThrowsBeforeMutation()
+    {
+        // Arrange
+        var control = new TextInput();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.ScrollBars = (ScrollBars) 99);
+        control.ScrollBars.ShouldBe(ScrollBars.Both);
+    }
+
+    /// <summary>Verifies ShowScrollBars rejects an undefined value.</summary>
+    [Fact]
+    public void ShowScrollBars_WhenValueIsUnknown_ThrowsBeforeMutation()
+    {
+        // Arrange
+        var control = new TextInput();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.ShowScrollBars = (ShowScrollBars) 99);
+        control.ShowScrollBars.ShouldBe(ShowScrollBars.WhenNeeded);
+    }
+
+    /// <summary>Verifies Placeholder round-trips and defaults to null.</summary>
+    [Fact]
+    public void Placeholder_WhenSet_RoundTripsAndDefaultsToNull()
+    {
+        // Arrange
+        var control = new TextInput();
+        control.Placeholder.ShouldBeNull();
+
+        // Act
+        control.Placeholder = "Name";
+
+        // Assert
+        control.Placeholder.ShouldBe("Name");
+    }
+
+    /// <summary>Verifies ScrollBarStyle round-trips and resolves ActualScrollBarStyle, matching
+    /// the same local-or-theme precedence every other complete local style property uses.</summary>
+    [Fact]
+    public void ScrollBarStyle_WhenAssigned_RoundTripsAndResolvesActualScrollBarStyle()
+    {
+        // Arrange
+        var control = new TextInput();
+        control.ScrollBarStyle.ShouldBeNull();
+
+        // Act
+        control.ScrollBarStyle = ScrollBarStyle.ThinLine;
+
+        // Assert
+        control.ScrollBarStyle.ShouldBe(ScrollBarStyle.ThinLine);
+        control.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.ThinLine);
+
+        // Act - clearing restores theme ownership
+        control.ScrollBarStyle = null;
+
+        // Assert
+        control.ScrollBarStyle.ShouldBeNull();
+    }
+
+    /// <summary>Verifies SelectionStart moves the normalized range start while preserving the
+    /// current selection length.</summary>
+    [Fact]
+    public void SelectionStart_WhenSet_MovesRangeStartAndPreservesLength()
+    {
+        // Arrange
+        var control = new TextInput { Text = "abcdef" };
+        control.Select(1, 2);
+
+        // Act
+        control.SelectionStart = 3;
+
+        // Assert
+        control.SelectionStart.ShouldBe(3);
+        control.SelectionLength.ShouldBe(2);
+        control.CaretIndex.ShouldBe(5);
+    }
+
+    /// <summary>Verifies SelectionLength extends the range from the current SelectionStart with
+    /// the caret landing at the range end.</summary>
+    [Fact]
+    public void SelectionLength_WhenSet_ExtendsRangeFromCurrentStart()
+    {
+        // Arrange and act
+        var control = new TextInput { Text = "abcdef", SelectionStart = 1, SelectionLength = 3 };
+
+        // Assert
+        control.SelectionStart.ShouldBe(1);
+        control.SelectionLength.ShouldBe(3);
+        control.CaretIndex.ShouldBe(4);
+    }
+
+    /// <summary>Verifies SelectionLength rejects a range that exceeds the current text.</summary>
+    [Fact]
+    public void SelectionLength_WhenExceedsText_ThrowsBeforeMutation()
+    {
+        // Arrange
+        var control = new TextInput { Text = "abc" };
+
+        // Act and assert
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.SelectionLength = 10);
+        control.SelectionLength.ShouldBe(0);
+    }
+
+    /// <summary>Verifies CaretIndex collapses any existing selection to the given boundary.</summary>
+    [Fact]
+    public void CaretIndex_WhenSet_CollapsesSelectionToTheGivenBoundary()
+    {
+        // Arrange
+        var control = new TextInput { Text = "abcdef" };
+        control.Select(1, 3);
+
+        // Act
+        control.CaretIndex = 2;
+
+        // Assert
+        control.CaretIndex.ShouldBe(2);
+        control.SelectionStart.ShouldBe(2);
+        control.SelectionLength.ShouldBe(0);
+    }
+
+    /// <summary>Verifies WordWrap defaults to false and a change invalidates every layout phase.</summary>
+    [Fact]
+    public void WordWrap_WhenChanged_InvalidatesMeasure()
+    {
+        // Arrange
+        var control = new TextInput { Text = "Hello" };
+        control.Measure(new Constraint(10, 3));
+        control.Arrange(new Rect(0, 0, 10, 3));
+        using Frame frame = new(new Size(10, 3));
+        control.Render(frame.Canvas);
+        control.WordWrap.ShouldBeFalse();
+        control.Clear(Invalidation.All);
+
+        // Act
+        control.WordWrap = true;
+
+        // Assert
+        control.WordWrap.ShouldBeTrue();
+        control.Pending.ShouldBe(Invalidation.All);
+    }
+
+    /// <summary>Verifies enabling WordWrap reflows content across multiple visual lines at a
+    /// constrained width, while an otherwise identical unwrapped editor stays single-line.</summary>
+    [Fact]
+    public void Measure_WhenWordWrapIsEnabled_WrapsContentAcrossMultipleLines()
+    {
+        // Arrange
+        var wrapped = new TextInput { Text = "one two three four", WordWrap = true };
+        var unwrapped = new TextInput { Text = "one two three four" };
+        wrapped.SetTheme(TestThemes.BorderlessInput);
+        unwrapped.SetTheme(TestThemes.BorderlessInput);
+
+        // Act
+        new LayoutEngine().Layout(wrapped, new Size(8, 10));
+        new LayoutEngine().Layout(unwrapped, new Size(8, 10));
+
+        // Assert
+        wrapped.DesiredSize.Width.ShouldBe(8);
+        wrapped.DesiredSize.Height.ShouldBeGreaterThan(1);
+        unwrapped.DesiredSize.Height.ShouldBe(1);
+    }
+
     /// <summary>Verifies Select throws the documented ArgumentOutOfRangeException - not an
     /// unchecked OverflowException - when start plus length overflows a 32-bit integer, matching
     /// the "range overflows" case its own XML documentation promises.</summary>

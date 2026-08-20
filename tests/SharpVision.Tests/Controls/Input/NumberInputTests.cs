@@ -280,6 +280,18 @@ public sealed class NumberInputTests
         _ = Should.Throw<ArgumentOutOfRangeException>(() => control.Mode = (NumberInputMode) 99);
     }
 
+    /// <summary>Verifies rounding mode when assigned undefined value throws before mutation.</summary>
+    [Fact]
+    public void RoundingMode_WhenAssignedUndefinedValue_ThrowsBeforeMutation()
+    {
+        // Arrange
+        using var control = new NumberInput();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.RoundingMode = (MidpointRounding) 99);
+        control.RoundingMode.ShouldBe(MidpointRounding.AwayFromZero);
+    }
+
     #endregion
 
     #region Typed buffer commit and rounding
@@ -665,6 +677,24 @@ public sealed class NumberInputTests
 
         // Assert
         wide.DesiredSize.Width.ShouldBeGreaterThan(narrow.DesiredSize.Width);
+    }
+
+    /// <summary>Verifies grouped digit display measures wider than ungrouped display for the same
+    /// bound, proving AllowGrouping actually reaches the widest-formatted-bound measurement it
+    /// documents rather than only affecting a currently-unmeasured idle display string.</summary>
+    [Fact]
+    public void Measure_WhenAllowGroupingIsTrue_WidensToFitGroupedDigits()
+    {
+        // Arrange
+        using var grouped = new NumberInput { Minimum = 0m, Maximum = 999999m, DecimalPlaces = 0 };
+        using var ungrouped = new NumberInput { Minimum = 0m, Maximum = 999999m, DecimalPlaces = 0, AllowGrouping = false };
+
+        // Act
+        new LayoutEngine().Layout(grouped, new Size(80, 3));
+        new LayoutEngine().Layout(ungrouped, new Size(80, 3));
+
+        // Assert
+        grouped.DesiredSize.Width.ShouldBeGreaterThan(ungrouped.DesiredSize.Width);
     }
 
     #endregion

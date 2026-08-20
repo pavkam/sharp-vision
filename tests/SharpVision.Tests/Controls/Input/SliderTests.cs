@@ -378,6 +378,41 @@ public sealed class SliderTests
         slider.Style.ShouldBeNull();
     }
 
+    /// <summary>Verifies a valid Style assignment round-trips through Style and ActualStyle, and
+    /// that a color-only change to an already-assigned Style invalidates rendering only, matching
+    /// SliderStyle.Definition's documented render-only color-diff contract.</summary>
+    [Fact]
+    public void Style_WhenAssignedValidStyle_RoundTripsAndInvalidatesRenderOnColorChange()
+    {
+        // Arrange
+        var theme = new Theme();
+        theme.Freeze();
+        var slider = new Slider();
+        slider.SetTheme(theme);
+        var custom = SliderStyle.Default with { FillColor = Color.Rgb(10, 20, 30) };
+
+        // Act
+        slider.Style = custom;
+
+        // Assert
+        slider.Style.ShouldBe(custom);
+        slider.ActualStyle.ShouldBe(custom);
+
+        // Act - a color-only change
+        slider.Clear(Invalidation.All);
+        slider.Style = custom with { TrackColor = Color.Rgb(40, 50, 60) };
+
+        // Assert
+        slider.Pending.ShouldBe(Invalidation.Render);
+
+        // Act - clearing restores theme ownership
+        slider.Style = null;
+
+        // Assert
+        slider.Style.ShouldBeNull();
+        slider.ActualStyle.ShouldBe(SliderStyle.Default);
+    }
+
     /// <summary>Verifies disposing the slider prevents further mutation.</summary>
     [Fact]
     public void Dispose_WhenCalled_PreventsMutation()

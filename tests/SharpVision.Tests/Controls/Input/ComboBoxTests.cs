@@ -210,6 +210,18 @@ public sealed class ComboBoxTests
         order.ShouldBe(["property", "event"]);
     }
 
+    /// <summary>Verifies Items rejects a null assignment.</summary>
+    [Fact]
+    public void Items_WhenAssignedNull_ThrowsBeforeMutation()
+    {
+        // Arrange
+        var box = new ComboBox { Items = ["a", "b"] };
+
+        // Act and assert
+        _ = Should.Throw<ArgumentNullException>(() => box.Items = null!);
+        box.Items.ShouldBe(["a", "b"]);
+    }
+
     /// <summary>Verifies assigning Items auto-selects index 0 through the normal selection-change
     /// path, raising SelectionChanged and PropertyChanged(SelectedIndex) like any other change.</summary>
     [Fact]
@@ -396,6 +408,30 @@ public sealed class ComboBoxTests
         var rail = list.HitTest(new Point(list.Bounds.Right - 1, list.Bounds.Y)).ShouldBeOfType<ScrollBar>();
         rail.Orientation.ShouldBe(Orientation.Vertical);
         rail.ActualStyle.ShouldBe(ScrollBarStyle.ThinLine);
+    }
+
+    /// <summary>Verifies ScrollBars rejects flag combinations outside the defined axis mask.</summary>
+    [Fact]
+    public void ScrollBars_WhenValueContainsUndefinedFlags_ThrowsBeforeMutation()
+    {
+        // Arrange
+        var box = new ComboBox();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => box.ScrollBars = (ScrollBars) 99);
+        box.ScrollBars.ShouldBe(ScrollBars.Vertical);
+    }
+
+    /// <summary>Verifies ShowScrollBars rejects an undefined value.</summary>
+    [Fact]
+    public void ShowScrollBars_WhenValueIsUnknown_ThrowsBeforeMutation()
+    {
+        // Arrange
+        var box = new ComboBox();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => box.ShowScrollBars = (ShowScrollBars) 99);
+        box.ShowScrollBars.ShouldBe(ShowScrollBars.WhenNeeded);
     }
 
     /// <summary>Verifies Enter opens the list while the composite owner retains focus for directional selection.</summary>
@@ -621,6 +657,25 @@ public sealed class ComboBoxTests
         combo.SelectedIndex.ShouldBe(2);
         combo.SelectedItem.ShouldBe("Gamma");
         combo.Placeholder.ShouldBe("Choose");
+    }
+
+    /// <summary>Verifies AllowNull defaults to true and disabling it blocks Delete/Backspace from
+    /// clearing an active selection.</summary>
+    [Fact]
+    public void AllowNull_WhenDisabled_BlocksKeyboardClear()
+    {
+        // Arrange
+        var combo = new ComboBox { Items = ["Alpha", "Beta"], SelectedIndex = 1 };
+        combo.AllowNull.ShouldBeTrue();
+
+        // Act
+        combo.AllowNull = false;
+        var cleared = Router.Route(combo, Events.Key, Key(Code.Delete));
+
+        // Assert
+        combo.AllowNull.ShouldBeFalse();
+        cleared.IsHandled.ShouldBeFalse();
+        combo.SelectedIndex.ShouldBe(1);
     }
 
     /// <summary>Verifies TextSelector drives closed-field text instead of Convert.ToString.</summary>
