@@ -193,6 +193,22 @@ public sealed class DockTests
         Dock.GetSide(child).ShouldBe(DockSide.Top);
     }
 
+    /// <summary>Verifies re-asserting the already-committed side is a no-op that neither
+    /// invalidates the owning Dock nor requires dispatcher affinity.</summary>
+    [Fact]
+    public void SetSide_WhenValueIsUnchanged_DoesNotInvalidateOwningDock()
+    {
+        var panel = new Dock();
+        var child = new ProbeControl();
+        panel.Children.Add(child);
+        panel.Clear(Invalidation.All);
+
+        Dock.SetSide(child, DockSide.Left);
+
+        Dock.GetSide(child).ShouldBe(DockSide.Left);
+        panel.Pending.ShouldBe(Invalidation.None);
+    }
+
     /// <summary>Verifies an empty dock produces zero desired size.</summary>
     [Fact]
     public void Layout_WhenEmpty_MeasuresToZero()

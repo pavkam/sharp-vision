@@ -991,6 +991,32 @@ public sealed class GridTests
         Grid.GetRow(child).ShouldBe(1);
     }
 
+    /// <summary>Verifies re-asserting the already-committed row, column, row span, or column span
+    /// is a no-op that neither invalidates the owning Grid nor requires dispatcher affinity.</summary>
+    [Fact]
+    public void SetPlacement_WhenValueIsUnchanged_DoesNotInvalidateOwningGrid()
+    {
+        var grid = new Grid();
+        grid.Rows.Add(Track.Auto());
+        grid.Rows.Add(Track.Auto());
+        grid.Columns.Add(Track.Auto());
+        grid.Columns.Add(Track.Auto());
+        var child = new ProbeControl();
+        grid.Children.Add(child);
+        grid.Clear(Invalidation.All);
+
+        Grid.SetRow(child, 0);
+        Grid.SetColumn(child, 0);
+        Grid.SetRowSpan(child, 1);
+        Grid.SetColumnSpan(child, 1);
+
+        Grid.GetRow(child).ShouldBe(0);
+        Grid.GetColumn(child).ShouldBe(0);
+        Grid.GetRowSpan(child).ShouldBe(1);
+        Grid.GetColumnSpan(child).ShouldBe(1);
+        grid.Pending.ShouldBe(Invalidation.None);
+    }
+
     /// <summary>Verifies off-thread definition mutation fails before changing the collection.</summary>
     [Fact]
     public async Task Add_WhenGridIsAttachedOffThread_ThrowsBeforeCollectionMutationAsync()

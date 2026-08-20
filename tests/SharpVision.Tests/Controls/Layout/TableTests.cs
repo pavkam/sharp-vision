@@ -283,6 +283,25 @@ public sealed class TableTests
         table.SelectedKeys.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies the progressive-only navigation members reject use before a data source
+    /// is bound, directing callers to call <see cref="Table.SetDataSource{T}"/> first, and that
+    /// the rejection leaves the table in its untouched eager default state.</summary>
+    [Fact]
+    public void ProgressiveOnlyMembers_WhenNotProgressive_ThrowInvalidOperationException()
+    {
+        var table = new Table();
+
+        var reloadException = Should.Throw<InvalidOperationException>(table.Reload);
+        var selectIndexException = Should.Throw<InvalidOperationException>(() => table.SelectIndex(0));
+        var selectKeyException = Should.Throw<InvalidOperationException>(() => table.SelectKey("key"));
+
+        reloadException.Message.ShouldContain("requires a progressive table");
+        selectIndexException.Message.ShouldContain("requires a progressive table");
+        selectKeyException.Message.ShouldContain("requires a progressive table");
+        table.IsProgressive.ShouldBeFalse();
+        table.ActiveIndex.ShouldBe(-1);
+    }
+
     /// <summary>Verifies every table-declared setter with documented argument validation rejects
     /// an invalid value and leaves the property at its previous value.</summary>
     [Fact]
@@ -1273,6 +1292,76 @@ public sealed class TableTests
         table.Columns.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies the TableColumn constructor itself - not only Table's own re-validation -
+    /// rejects an empty or whitespace header for a directly constructed value and for every
+    /// convenience factory that forwards to it.</summary>
+    [Fact]
+    public void TableColumn_WhenHeaderIsEmptyOrWhitespace_ThrowsArgumentException()
+    {
+        _ = Should.Throw<ArgumentException>(() => new TableColumn(string.Empty, Length.Auto));
+        _ = Should.Throw<ArgumentException>(() => new TableColumn("   ", Length.Auto));
+        _ = Should.Throw<ArgumentException>(() => TableColumn.Auto(string.Empty));
+        _ = Should.Throw<ArgumentException>(() => TableColumn.Fixed(string.Empty, 5));
+        _ = Should.Throw<ArgumentException>(() => TableColumn.Percent(string.Empty, 50));
+        _ = Should.Throw<ArgumentException>(() => TableColumn.Fill(string.Empty));
+        _ = Should.Throw<ArgumentNullException>(() => new TableColumn(null!, Length.Auto));
+    }
+
+    /// <summary>Verifies each convenience factory produces the documented Width kind, and that the
+    /// shared IsReadOnly/SortKey parameters flow through every factory identically to the
+    /// constructor itself.</summary>
+    [Fact]
+    public void TableColumn_WhenCreatedThroughFactories_ProducesDocumentedWidthKindAndSharedOptions()
+    {
+        Func<ControlBase, IComparable?> key = static cell => ((ControlText) cell).Content;
+
+        var auto = TableColumn.Auto("Auto", isReadOnly: true, sortKey: key);
+        var fixedWidth = TableColumn.Fixed("Fixed", 7, isReadOnly: true, sortKey: key);
+        var percent = TableColumn.Percent("Percent", 40, isReadOnly: true, sortKey: key);
+        var fill = TableColumn.Fill("Fill", weight: 2, isReadOnly: true, sortKey: key);
+
+        auto.Width.Kind.ShouldBe(LengthKind.Auto);
+        fixedWidth.Width.ShouldBe(Length.Cells(7));
+        percent.Width.ShouldBe(Length.Percent(40));
+        fill.Width.ShouldBe(Length.Star(2));
+
+        foreach (var column in new[] { auto, fixedWidth, percent, fill })
+        {
+            column.IsReadOnly.ShouldBeTrue();
+            column.SortKey.ShouldBeSameAs(key);
+        }
+
+        // The default weight and IsReadOnly/SortKey values match the constructor's own defaults.
+        var defaultFill = TableColumn.Fill("Default");
+        defaultFill.Width.ShouldBe(Length.Star(1));
+        defaultFill.IsReadOnly.ShouldBeFalse();
+        defaultFill.SortKey.ShouldBeNull();
+    }
+
+    /// <summary>Verifies TableColumnCollection.Remove locates and removes an existing column,
+    /// reports false for a column that is not present, and repairs sort identity exactly the way
+    /// RemoveAt already does for a directly indexed removal.</summary>
+    [Fact]
+    public void Columns_WhenRemoved_ReturnsWhetherFoundAndRepairsSort()
+    {
+        var first = TableColumn.Auto("First");
+        var sorted = TableColumn.Auto("Sorted");
+        var absent = TableColumn.Auto("Absent");
+        var table = new Table();
+        table.Columns.Add(first);
+        table.Columns.Add(sorted);
+        table.SetSort(1, TableSortDirection.Ascending);
+
+        table.Columns.Remove(absent).ShouldBeFalse();
+        table.Columns.ShouldBe([first, sorted]);
+
+        table.Columns.Remove(sorted).ShouldBeTrue();
+
+        table.Columns.ShouldBe([first]);
+        table.SortColumnIndex.ShouldBe(-1);
+        table.SortDirection.ShouldBe(TableSortDirection.None);
+    }
+
     /// <summary>Verifies selection event arguments retain an immutable snapshot of caller lists.</summary>
     [Fact]
     public void SelectionChangedEventArgs_WhenSourceListsMutate_RetainsOriginalSnapshot()
@@ -1671,6 +1760,116 @@ public sealed class TableTests
         new LayoutEngine().Layout(table, new Size(30, 10));
 
         table.Extent.Height.ShouldBeGreaterThan(table.Viewport.Height);
+    }
+
+    /// <summary>Verifies ScrollBy moves the vertical offset by the requested delta, clamps at the
+    /// committed extent instead of overshooting it, and reports false once further scrolling in
+    /// the same direction is already pinned at that boundary.</summary>
+    [Fact]
+    public void ScrollBy_WhenDeltaIsRequested_MovesOffsetClampsAtExtentAndReportsChange()
+    {
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Name"));
+
+        for (var index = 0; index < 40; index++)
+        {
+            table.Rows.Add(new TableRow([new ControlText($"Row {index}")]));
+        }
+
+        new LayoutEngine().Layout(table, new Size(20, 10));
+
+        table.ScrollBy(0, 5).ShouldBeTrue();
+
+        table.VerticalOffset.ShouldBe(5);
+
+        var maximumOffset = table.Extent.Height - table.Viewport.Height;
+
+        table.ScrollBy(0, int.MaxValue).ShouldBeTrue();
+
+        table.VerticalOffset.ShouldBe(maximumOffset);
+
+        // Already pinned at the maximum: a further positive delta is a genuine no-op.
+        table.ScrollBy(0, 1).ShouldBeFalse();
+        table.VerticalOffset.ShouldBe(maximumOffset);
+    }
+
+    /// <summary>Verifies ScrollBy rejects an undefined cause before mutating either committed
+    /// offset.</summary>
+    [Fact]
+    public void ScrollBy_WhenCauseIsUndefined_ThrowsArgumentOutOfRangeExceptionBeforeMutation()
+    {
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Name"));
+        table.Rows.Add(new TableRow([new ControlText("Row")]));
+        new LayoutEngine().Layout(table, new Size(20, 10));
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => table.ScrollBy(1, 1, (ScrollCause) 99));
+
+        table.HorizontalOffset.ShouldBe(0);
+        table.VerticalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies BringIntoView rejects a null descendant.</summary>
+    [Fact]
+    public void BringIntoView_WhenDescendantIsNull_ThrowsArgumentNullException() =>
+        _ = Should.Throw<ArgumentNullException>(() => new Table().BringIntoView(null!));
+
+    /// <summary>Verifies BringIntoView rejects a control that is not a realized cell owned by
+    /// this table's private cell presenter.</summary>
+    [Fact]
+    public void BringIntoView_WhenDescendantIsNotARealizedCell_ThrowsArgumentException()
+    {
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Name"));
+        table.Rows.Add(new TableRow([new ControlText("Row")]));
+        var foreign = new ProbeControl();
+
+        _ = Should.Throw<ArgumentException>(() => table.BringIntoView(foreign));
+
+        table.VerticalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies BringIntoView scrolls the vertical offset just far enough to reveal a
+    /// cell below the current viewport, returns true once fully revealed, and becomes a no-op
+    /// once the cell is already visible.</summary>
+    [Fact]
+    public void BringIntoView_WhenCellIsBelowViewport_ScrollsMinimallyToRevealIt()
+    {
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Name"));
+        TableRow target = null!;
+
+        for (var index = 0; index < 40; index++)
+        {
+            var row = new TableRow([new ControlText($"Row {index}")]);
+            table.Rows.Add(row);
+
+            if (index == 30)
+            {
+                target = row;
+            }
+        }
+
+        var engine = new LayoutEngine();
+        var size = new Size(20, 10);
+        engine.Layout(table, size);
+        table.VerticalOffset.ShouldBe(0);
+
+        table.BringIntoView(target.Cells[0]).ShouldBeTrue();
+
+        table.VerticalOffset.ShouldBeGreaterThan(0);
+        var revealedOffset = table.VerticalOffset;
+
+        // A fresh layout pass is required for the cell's own arranged Bounds to reflect the
+        // committed offset - scrolling alone only invalidates Render, not Arrange (see
+        // Layout_WhenOnlyScrollOriginChanges_DoesNotRemeasureCellsOrRemainArrangeInvalidated).
+        engine.Layout(table, size);
+
+        // The cell is now already fully visible, so a repeated call is a genuine no-op: the
+        // offset does not move again, and BringIntoView still reports success since the cell
+        // ends up contained within the viewport either way.
+        table.BringIntoView(target.Cells[0]).ShouldBeTrue();
+        table.VerticalOffset.ShouldBe(revealedOffset);
     }
 
     /// <summary>

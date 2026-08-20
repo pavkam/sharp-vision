@@ -839,6 +839,76 @@ public sealed class TableDataControllerTests
 
     #endregion
 
+    #region Eager-only members while progressive
+
+    /// <summary>Verifies SelectRow rejects use while progressive, directing callers to the
+    /// key-based selection API instead of falling through to owned-row validation.</summary>
+    [Fact]
+    public async Task SelectRow_WhenProgressive_ThrowsInvalidOperationExceptionAsync()
+    {
+        var table = CreateHost();
+        var source = CreateSource(5);
+        await using var surface = await ComponentSurface.MountAsync(
+            table, new Size(20, 5), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        var detached = new TableRow([new ControlText("detached")]);
+
+        var exception = await surface.Application.Dispatcher.InvokeAsync(
+            () => Should.Throw<InvalidOperationException>(() => table.SelectRow(detached)),
+            TestContext.Current.CancellationToken);
+
+        exception.Message.ShouldContain("SelectRow is unavailable");
+        table.ActiveIndex.ShouldBe(-1);
+    }
+
+    /// <summary>Verifies SelectCell rejects use while progressive, directing callers to the
+    /// key-based selection API.</summary>
+    [Fact]
+    public async Task SelectCell_WhenProgressive_ThrowsInvalidOperationExceptionAsync()
+    {
+        var table = CreateHost();
+        var source = CreateSource(5);
+        await using var surface = await ComponentSurface.MountAsync(
+            table, new Size(20, 5), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        var detached = new TableRow([new ControlText("detached")]);
+
+        var exception = await surface.Application.Dispatcher.InvokeAsync(
+            () => Should.Throw<InvalidOperationException>(() => table.SelectCell(detached, 0)),
+            TestContext.Current.CancellationToken);
+
+        exception.Message.ShouldContain("SelectCell is unavailable");
+        table.ActiveIndex.ShouldBe(-1);
+    }
+
+    /// <summary>Verifies SetSort (and, transitively, SortBy) rejects use while progressive,
+    /// since the data source - not Table - owns sort order in that mode.</summary>
+    [Fact]
+    public async Task SetSort_WhenProgressive_ThrowsInvalidOperationExceptionAsync()
+    {
+        var table = CreateHost();
+        var source = CreateSource(5);
+        await using var surface = await ComponentSurface.MountAsync(
+            table, new Size(20, 5), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+
+        var exception = await surface.Application.Dispatcher.InvokeAsync(
+            () => Should.Throw<InvalidOperationException>(
+                () => table.SetSort(0, TableSortDirection.Ascending)),
+            TestContext.Current.CancellationToken);
+
+        exception.Message.ShouldContain("Sorting is unavailable");
+        table.SortColumnIndex.ShouldBe(-1);
+
+        var sortByException = await surface.Application.Dispatcher.InvokeAsync(
+            () => Should.Throw<InvalidOperationException>(() => table.SortBy(0)),
+            TestContext.Current.CancellationToken);
+
+        sortByException.Message.ShouldContain("Sorting is unavailable");
+    }
+
+    #endregion
+
     #region Progressive horizontal scrolling
 
     private sealed record TwoColumnItem(int Id, string First, string Second);
