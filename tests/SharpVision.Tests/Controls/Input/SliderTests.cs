@@ -427,6 +427,62 @@ public sealed class SliderTests
         _ = Should.Throw<ObjectDisposedException>(() => slider.Value = 50);
     }
 
+    /// <summary>Verifies ChangeBy rejects use after disposal, matching its documented
+    /// ObjectDisposedException contract independently of the Value setter.</summary>
+    [Fact]
+    public void ChangeBy_WhenDisposed_Throws()
+    {
+        // Arrange
+        var slider = new Slider();
+        slider.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(() => slider.ChangeBy(1));
+    }
+
+    /// <summary>Verifies Orientation invalidates measurement, matching its documented layout-axis
+    /// swap contract.</summary>
+    [Fact]
+    public void Orientation_WhenChanged_InvalidatesMeasure()
+    {
+        // Arrange
+        var slider = new Slider();
+        slider.Clear(Invalidation.All);
+
+        // Act
+        slider.Orientation = Orientation.Vertical;
+
+        // Assert
+        slider.Orientation.ShouldBe(Orientation.Vertical);
+        slider.Pending.ShouldBe(Invalidation.All);
+    }
+
+    /// <summary>Verifies a non-clamping Minimum or Maximum change still invalidates rendering,
+    /// matching the endpoint markers' own documented render-only impact.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void MinimumOrMaximum_WhenChangedWithoutClampingValue_InvalidatesRenderOnly(bool changeMinimum)
+    {
+        // Arrange
+        var slider = new Slider { Minimum = 0, Maximum = 100, Value = 50 };
+        slider.Clear(Invalidation.All);
+
+        // Act
+        if (changeMinimum)
+        {
+            slider.Minimum = 10;
+        }
+        else
+        {
+            slider.Maximum = 90;
+        }
+
+        // Assert
+        slider.Value.ShouldBe(50);
+        slider.Pending.ShouldBe(Invalidation.Render);
+    }
+
     /// <summary>Verifies auto-clamping raises ValueChanged when Value is adjusted.</summary>
     [Fact]
     public void Minimum_WhenClampsValue_RaisesValueChanged()

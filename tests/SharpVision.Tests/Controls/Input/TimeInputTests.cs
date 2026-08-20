@@ -108,32 +108,44 @@ public sealed class TimeInputTests
         control.Maximum.ShouldBe(TimeOnly.MaxValue);
     }
 
-    /// <summary>Verifies raising Minimum above the committed value repairs it by clamping.</summary>
+    /// <summary>Verifies raising Minimum above the committed value repairs it by clamping and
+    /// raises ValueChanged with the exact previous and new committed times.</summary>
     [Fact]
-    public void Minimum_WhenRaisedAboveCommittedValue_RepairsByClamping()
+    public void Minimum_WhenRaisedAboveCommittedValue_RepairsByClampingAndRaisesValueChanged()
     {
         // Arrange
         using var control = new TimeInput { Value = new TimeOnly(8, 0) };
+        TimeInputValueChangedEventArgs? change = null;
+        control.ValueChanged += (_, args) => change = args;
 
         // Act
         control.Minimum = new TimeOnly(10, 0);
 
         // Assert
         control.Value.ShouldBe(new TimeOnly(10, 0));
+        var raised = change.ShouldNotBeNull();
+        raised.PreviousValue.ShouldBe(new TimeOnly(8, 0));
+        raised.Value.ShouldBe(new TimeOnly(10, 0));
     }
 
-    /// <summary>Verifies lowering Maximum below the committed value repairs it by clamping.</summary>
+    /// <summary>Verifies lowering Maximum below the committed value repairs it by clamping and
+    /// raises ValueChanged with the exact previous and new committed times.</summary>
     [Fact]
-    public void Maximum_WhenLoweredBelowCommittedValue_RepairsByClamping()
+    public void Maximum_WhenLoweredBelowCommittedValue_RepairsByClampingAndRaisesValueChanged()
     {
         // Arrange
         using var control = new TimeInput { Value = new TimeOnly(18, 0) };
+        TimeInputValueChangedEventArgs? change = null;
+        control.ValueChanged += (_, args) => change = args;
 
         // Act
         control.Maximum = new TimeOnly(14, 0);
 
         // Assert
         control.Value.ShouldBe(new TimeOnly(14, 0));
+        var raised = change.ShouldNotBeNull();
+        raised.PreviousValue.ShouldBe(new TimeOnly(18, 0));
+        raised.Value.ShouldBe(new TimeOnly(14, 0));
     }
 
     /// <summary>Verifies toggling Use24HourFormat changes the rendered output.</summary>

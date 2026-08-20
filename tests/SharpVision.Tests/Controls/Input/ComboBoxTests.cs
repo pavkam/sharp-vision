@@ -170,6 +170,18 @@ public sealed class ComboBoxTests
         popup.Border.ShouldBe(themeRoleBorder);
     }
 
+    /// <summary>Verifies ResetPopupChrome rejects use after disposal.</summary>
+    [Fact]
+    public void ResetPopupChrome_WhenDisposed_Throws()
+    {
+        // Arrange
+        var box = new ComboBox();
+        box.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(box.ResetPopupChrome);
+    }
+
     /// <summary>Verifies RowHeight forwards to the owned drop-down list without leaking it.</summary>
     [Fact]
     public void RowHeight_WhenSet_AppliesToOwnedListView()

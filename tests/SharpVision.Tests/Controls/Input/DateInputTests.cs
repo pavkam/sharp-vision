@@ -129,32 +129,44 @@ public sealed class DateInputTests
         control.Maximum.ShouldBe(DateOnly.MaxValue);
     }
 
-    /// <summary>Verifies raising Minimum above the committed value repairs it by clamping.</summary>
+    /// <summary>Verifies raising Minimum above the committed value repairs it by clamping and
+    /// raises ValueChanged with the exact previous and new committed dates.</summary>
     [Fact]
-    public void Minimum_WhenRaisedAboveCommittedValue_RepairsByClamping()
+    public void Minimum_WhenRaisedAboveCommittedValue_RepairsByClampingAndRaisesValueChanged()
     {
         // Arrange
         using var control = new DateInput { Value = new DateOnly(2026, 7, 10) };
+        DateInputValueChangedEventArgs? change = null;
+        control.ValueChanged += (_, args) => change = args;
 
         // Act
         control.Minimum = new DateOnly(2026, 7, 15);
 
         // Assert
         control.Value.ShouldBe(new DateOnly(2026, 7, 15));
+        var raised = change.ShouldNotBeNull();
+        raised.PreviousValue.ShouldBe(new DateOnly(2026, 7, 10));
+        raised.Value.ShouldBe(new DateOnly(2026, 7, 15));
     }
 
-    /// <summary>Verifies lowering Maximum below the committed value repairs it by clamping.</summary>
+    /// <summary>Verifies lowering Maximum below the committed value repairs it by clamping and
+    /// raises ValueChanged with the exact previous and new committed dates.</summary>
     [Fact]
-    public void Maximum_WhenLoweredBelowCommittedValue_RepairsByClamping()
+    public void Maximum_WhenLoweredBelowCommittedValue_RepairsByClampingAndRaisesValueChanged()
     {
         // Arrange
         using var control = new DateInput { Value = new DateOnly(2026, 7, 30) };
+        DateInputValueChangedEventArgs? change = null;
+        control.ValueChanged += (_, args) => change = args;
 
         // Act
         control.Maximum = new DateOnly(2026, 7, 25);
 
         // Assert
         control.Value.ShouldBe(new DateOnly(2026, 7, 25));
+        var raised = change.ShouldNotBeNull();
+        raised.PreviousValue.ShouldBe(new DateOnly(2026, 7, 30));
+        raised.Value.ShouldBe(new DateOnly(2026, 7, 25));
     }
 
     /// <summary>Verifies DropDownHeight defaults to a positive value, round-trips, and rejects a
@@ -508,6 +520,18 @@ public sealed class DateInputTests
         // Assert
         control.PopupChrome.ShouldBe(default);
         popup.Border.ShouldBe(themeRoleBorder);
+    }
+
+    /// <summary>Verifies ResetPopupChrome rejects use after disposal.</summary>
+    [Fact]
+    public void ResetPopupChrome_WhenDisposed_Throws()
+    {
+        // Arrange
+        var control = new DateInput();
+        control.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(control.ResetPopupChrome);
     }
 
     /// <summary>Verifies CalendarStyle applies to the owned Calendar without leaking it, and reading

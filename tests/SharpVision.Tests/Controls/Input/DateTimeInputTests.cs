@@ -68,32 +68,44 @@ public sealed class DateTimeInputTests
         control.Maximum.ShouldBe(DateTime.MaxValue);
     }
 
-    /// <summary>Verifies raising Minimum above the committed value repairs it by clamping.</summary>
+    /// <summary>Verifies raising Minimum above the committed value repairs it by clamping and
+    /// raises ValueChanged with the exact previous and new committed date-times.</summary>
     [Fact]
-    public void Minimum_WhenRaisedAboveCommittedValue_RepairsByClamping()
+    public void Minimum_WhenRaisedAboveCommittedValue_RepairsByClampingAndRaisesValueChanged()
     {
         // Arrange
         using var control = new DateTimeInput { Value = new DateTime(2026, 7, 10, 8, 0, 0) };
+        DateTimeInputValueChangedEventArgs? change = null;
+        control.ValueChanged += (_, args) => change = args;
 
         // Act
         control.Minimum = new DateTime(2026, 7, 15, 10, 0, 0);
 
         // Assert
         control.Value.ShouldBe(new DateTime(2026, 7, 15, 10, 0, 0));
+        var raised = change.ShouldNotBeNull();
+        raised.PreviousValue.ShouldBe(new DateTime(2026, 7, 10, 8, 0, 0));
+        raised.Value.ShouldBe(new DateTime(2026, 7, 15, 10, 0, 0));
     }
 
-    /// <summary>Verifies lowering Maximum below the committed value repairs it by clamping.</summary>
+    /// <summary>Verifies lowering Maximum below the committed value repairs it by clamping and
+    /// raises ValueChanged with the exact previous and new committed date-times.</summary>
     [Fact]
-    public void Maximum_WhenLoweredBelowCommittedValue_RepairsByClamping()
+    public void Maximum_WhenLoweredBelowCommittedValue_RepairsByClampingAndRaisesValueChanged()
     {
         // Arrange
         using var control = new DateTimeInput { Value = new DateTime(2026, 7, 30, 8, 0, 0) };
+        DateTimeInputValueChangedEventArgs? change = null;
+        control.ValueChanged += (_, args) => change = args;
 
         // Act
         control.Maximum = new DateTime(2026, 7, 25, 14, 0, 0);
 
         // Assert
         control.Value.ShouldBe(new DateTime(2026, 7, 25, 14, 0, 0));
+        var raised = change.ShouldNotBeNull();
+        raised.PreviousValue.ShouldBe(new DateTime(2026, 7, 30, 8, 0, 0));
+        raised.Value.ShouldBe(new DateTime(2026, 7, 25, 14, 0, 0));
     }
 
     /// <summary>Verifies the configurable minute step is applied by the inline minute segment.</summary>
@@ -267,6 +279,18 @@ public sealed class DateTimeInputTests
         // Assert
         control.PopupChrome.ShouldBe(default);
         popup.Border.ShouldBe(themeRoleBorder);
+    }
+
+    /// <summary>Verifies ResetPopupChrome rejects use after disposal.</summary>
+    [Fact]
+    public void ResetPopupChrome_WhenDisposed_Throws()
+    {
+        // Arrange
+        var control = new DateTimeInput();
+        control.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(control.ResetPopupChrome);
     }
 
     /// <summary>Verifies CalendarStyle applies to the owned Calendar without leaking it, and reading
