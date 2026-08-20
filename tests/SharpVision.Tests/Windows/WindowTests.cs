@@ -64,8 +64,11 @@ public sealed class WindowTests
         window.HeaderPlacement.ShouldBe(WindowTitlePlacement.Left);
         window.ClosePlacement.ShouldBe(WindowClosePlacement.Left);
         window.CanMove.ShouldBeTrue();
+        window.CanResize.ShouldBeFalse();
         window.CanClose.ShouldBeTrue();
         window.CloseOnEscape.ShouldBeFalse();
+        window.Header.ShouldBe(string.Empty);
+        window.IsActive.ShouldBeFalse();
     }
 
     /// <summary>Verifies ordinary Window properties can express specialized chrome without a role enum.</summary>
@@ -1322,6 +1325,176 @@ public sealed class WindowTests
         window.CanMove.ShouldBeTrue();
         window.CanMove = false;
         window.CanMove.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies CanResize defaults to false (off by default, per its documented remarks)
+    /// and can be enabled.</summary>
+    [Fact]
+    public void CanResize_WhenDefaulted_IsFalse()
+    {
+        var window = new Window();
+
+        window.CanResize.ShouldBeFalse();
+        window.CanResize = true;
+        window.CanResize.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies CanClose round-trips to false and back, matching its documented default
+    /// of true.</summary>
+    [Fact]
+    public void CanClose_WhenSetToFalseAndBack_RoundTrips()
+    {
+        var window = new Window();
+        window.CanClose.ShouldBeTrue();
+
+        window.CanClose = false;
+
+        window.CanClose.ShouldBeFalse();
+
+        window.CanClose = true;
+
+        window.CanClose.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies CloseOnEscape round-trips to true, matching its documented default of
+    /// false.</summary>
+    [Fact]
+    public void CloseOnEscape_WhenSetToTrue_RoundTrips()
+    {
+        var window = new Window();
+        window.CloseOnEscape.ShouldBeFalse();
+
+        window.CloseOnEscape = true;
+
+        window.CloseOnEscape.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies dragging the bottom-right corner resizes the Window only when CanResize
+    /// is true, gating the resize gesture the way its documentation promises.</summary>
+    [Fact]
+    public async Task Drag_WhenCanResizeIsTrue_ResizesFromBottomRightCornerAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var canvas = new Overlay();
+            var window = new Window
+            {
+                Width = Length.Cells(10),
+                Height = Length.Cells(4),
+                CanResize = true,
+                CanMove = false
+            };
+            Overlay.SetLeft(window, Length.Cells(0));
+            Overlay.SetTop(window, Length.Cells(0));
+            canvas.Children.Add(window);
+            new LayoutEngine().Layout(canvas, new Size(20, 10));
+            canvas.Attach(dispatcher);
+            using PointerManager capture = new(canvas);
+            var corner = new Point(window.Bounds.Right - 1, window.Bounds.Bottom - 1);
+
+            _ = capture.Dispatch(Pointer(corner, PointerAction.Press));
+            capture.Captured.ShouldBeSameAs(window);
+            _ = capture.Dispatch(Pointer(new Point(corner.X + 2, corner.Y + 2), PointerAction.Move));
+
+            window.Width.ShouldBe(Length.Cells(12));
+            window.Height.ShouldBe(Length.Cells(6));
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies dragging the bottom-right corner does nothing while CanResize is false,
+    /// the default.</summary>
+    [Fact]
+    public async Task Drag_WhenCanResizeIsFalse_DoesNotResizeAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var canvas = new Overlay();
+            var window = new Window
+            {
+                Width = Length.Cells(10),
+                Height = Length.Cells(4),
+                CanMove = false
+            };
+            Overlay.SetLeft(window, Length.Cells(0));
+            Overlay.SetTop(window, Length.Cells(0));
+            canvas.Children.Add(window);
+            new LayoutEngine().Layout(canvas, new Size(20, 10));
+            canvas.Attach(dispatcher);
+            using PointerManager capture = new(canvas);
+            var corner = new Point(window.Bounds.Right - 1, window.Bounds.Bottom - 1);
+
+            _ = capture.Dispatch(Pointer(corner, PointerAction.Press));
+            capture.Captured.ShouldNotBeSameAs(window);
+            _ = capture.Dispatch(Pointer(new Point(corner.X + 2, corner.Y + 2), PointerAction.Move));
+
+            window.Width.ShouldBe(Length.Cells(10));
+            window.Height.ShouldBe(Length.Cells(4));
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an undefined header placement is rejected before the current value changes.</summary>
+    [Fact]
+    public void HeaderPlacement_WhenValueIsUndefined_ThrowsBeforeMutation()
+    {
+        var window = new Window { HeaderPlacement = WindowTitlePlacement.Right };
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            window.HeaderPlacement = (WindowTitlePlacement) 3);
+
+        window.HeaderPlacement.ShouldBe(WindowTitlePlacement.Right);
+    }
+
+    /// <summary>Verifies a null header is rejected, matching the documented exception - the
+    /// non-null contract that the round-trip and control-character tests already assume.</summary>
+    [Fact]
+    public void Header_WhenNull_ThrowsArgumentNullException()
+    {
+        var window = new Window { Header = "Test" };
+
+        _ = Should.Throw<ArgumentNullException>(() => window.Header = null!);
+
+        window.Header.ShouldBe("Test");
+    }
+
+    /// <summary>Verifies disposing the Window prevents every Window-declared settable property
+    /// from mutating further.</summary>
+    [Fact]
+    public void Dispose_WhenCalled_PreventsMutation()
+    {
+        var window = new Window();
+
+        window.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => window.CanMove = false);
+        _ = Should.Throw<ObjectDisposedException>(() => window.CanResize = true);
+        _ = Should.Throw<ObjectDisposedException>(() => window.CanClose = false);
+        _ = Should.Throw<ObjectDisposedException>(() => window.CloseOnEscape = true);
+        _ = Should.Throw<ObjectDisposedException>(() => window.ClosePlacement = WindowClosePlacement.Right);
+        _ = Should.Throw<ObjectDisposedException>(() => window.Header = "Test");
+        _ = Should.Throw<ObjectDisposedException>(() => window.HeaderPlacement = WindowTitlePlacement.Right);
+    }
+
+    /// <summary>Verifies every Window-declared settable property requires dispatcher affinity once
+    /// attached.</summary>
+    [Fact]
+    public async Task PropertySetter_WhenAttachedOffThread_ThrowsBeforeMutationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var window = new Window();
+
+        await dispatcher.InvokeAsync(() => window.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => window.CanMove = false);
+        _ = Should.Throw<InvalidOperationException>(() => window.CanResize = true);
+        _ = Should.Throw<InvalidOperationException>(() => window.CanClose = false);
+        _ = Should.Throw<InvalidOperationException>(() => window.CloseOnEscape = true);
+        _ = Should.Throw<InvalidOperationException>(() => window.ClosePlacement = WindowClosePlacement.Right);
+        _ = Should.Throw<InvalidOperationException>(() => window.Header = "Test");
+        _ = Should.Throw<InvalidOperationException>(() => window.HeaderPlacement = WindowTitlePlacement.Right);
     }
 
     /// <summary>Verifies dragging the title bar updates the window's own Left and Top properties.</summary>

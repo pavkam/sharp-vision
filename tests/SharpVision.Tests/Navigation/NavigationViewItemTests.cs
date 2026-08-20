@@ -7,14 +7,102 @@ namespace SharpVision.Tests.Navigation;
 /// grading, detached from any owning NavigationView.</summary>
 public sealed class NavigationViewItemTests
 {
-    /// <summary>Verifies documented affix defaults for an empty item.</summary>
+    /// <summary>Verifies every NavigationViewItem-declared property starts at its documented
+    /// default for an empty item.</summary>
     [Fact]
-    public void Constructor_WhenCreated_HasNoAffixes()
+    public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
         var item = new NavigationViewItem();
 
+        item.Text.ShouldBe(string.Empty);
+        item.Glyph.ShouldBeNull();
+        item.IsSelected.ShouldBeFalse();
+        item.Style.ShouldBeNull();
         item.StartAffix.ShouldBeNull();
         item.EndAffix.ShouldBeNull();
+    }
+
+    /// <summary>Verifies Text rejects a null value and leaves the previous value in place.</summary>
+    [Fact]
+    public void Text_WhenNull_ThrowsArgumentNullException()
+    {
+        var item = new NavigationViewItem { Text = "Page" };
+
+        _ = Should.Throw<ArgumentNullException>(() => item.Text = null!);
+
+        item.Text.ShouldBe("Page");
+    }
+
+    /// <summary>Verifies Glyph round-trips an assigned value and clearing it back to null both
+    /// require Measure, matching the documented affix-prefix reservation it shares space with.</summary>
+    [Fact]
+    public void Glyph_WhenAssignedOrCleared_RoundTripsAndInvalidatesMeasure()
+    {
+        using var item = new NavigationViewItem { Text = "Page" };
+        item.Clear(Invalidation.All);
+
+        item.Glyph = "*";
+
+        item.Glyph.ShouldBe("*");
+        item.Pending.ShouldBe(Invalidation.All);
+        item.Clear(Invalidation.All);
+
+        item.Glyph = null;
+
+        item.Glyph.ShouldBeNull();
+        item.Pending.ShouldBe(Invalidation.All);
+    }
+
+    /// <summary>Verifies a local Style round-trips through both Style and the resolved
+    /// ActualStyle, and clearing it releases the item back to theme ownership.</summary>
+    [Fact]
+    public void Style_WhenAssigned_RoundTripsLocalAndResolvedStyle()
+    {
+        var item = new NavigationViewItem();
+        item.Style.ShouldBeNull();
+
+        var style = NavigationViewItemStyle.Default with { AffixGap = 3 };
+        item.Style = style;
+
+        item.Style.ShouldBe(style);
+        item.ActualStyle.ShouldBe(style);
+
+        item.Style = null;
+
+        item.Style.ShouldBeNull();
+    }
+
+    /// <summary>Verifies disposing the item prevents every NavigationViewItem-declared settable
+    /// property from mutating further.</summary>
+    [Fact]
+    public void Dispose_WhenCalled_PreventsMutation()
+    {
+        var item = new NavigationViewItem();
+
+        item.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => item.Text = "Page");
+        _ = Should.Throw<ObjectDisposedException>(() => item.Glyph = "*");
+        _ = Should.Throw<ObjectDisposedException>(() => item.Style = NavigationViewItemStyle.Default);
+        _ = Should.Throw<ObjectDisposedException>(() => item.StartAffix = new Affix("!"));
+        _ = Should.Throw<ObjectDisposedException>(() => item.EndAffix = new Affix("!"));
+    }
+
+    /// <summary>Verifies every NavigationViewItem-declared settable property requires dispatcher
+    /// affinity once attached.</summary>
+    [Fact]
+    public async Task PropertySetter_WhenAttachedOffThread_ThrowsBeforeMutationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var item = new NavigationViewItem();
+
+        await dispatcher.InvokeAsync(() => item.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => item.Text = "Page");
+        _ = Should.Throw<InvalidOperationException>(() => item.Glyph = "*");
+        _ = Should.Throw<InvalidOperationException>(() => item.Style = NavigationViewItemStyle.Default);
+        _ = Should.Throw<InvalidOperationException>(() => item.StartAffix = new Affix("!"));
+        _ = Should.Throw<InvalidOperationException>(() => item.EndAffix = new Affix("!"));
     }
 
     /// <summary>Verifies desired width grows by exactly one reserved column per set affix, plus the
