@@ -1,0 +1,9 @@
+{
+  "extends": "../../../.markdownlint.jsonc",
+  // Bare URLs are executable input for the optional extended-autolink parser.
+  "MD034": false,
+  // The sample intentionally exercises both ATX and Setext heading syntax.
+  "MD003": false,
+  // A Setext level-one heading is parser input rather than the page title.
+  "MD025": false
+}

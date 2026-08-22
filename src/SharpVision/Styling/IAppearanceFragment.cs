@@ -5,7 +5,8 @@ namespace SharpVision.Styling;
 
 /// <summary>Marks a themeable type as a mergeable fragment - <see cref="Theme.Overlay"/> patches a
 /// property whose type implements this interface recursively instead of replacing it outright.</summary>
-internal interface IAppearanceFragment
+[PublicAPI]
+public interface IAppearanceFragment
 {
     /// <summary>Returns an independent copy safe for the overlay to mutate through reflection
     /// without aliasing the original instance's own property values.</summary>

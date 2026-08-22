@@ -3,10 +3,14 @@
 
 namespace SharpVision.Styling;
 
-/// <summary>Defines one code-owned control glyph and its one-cell repair value.</summary>
-internal readonly record struct ControlGlyph
+/// <summary>Defines one preferred control glyph and its one-cell repair value.</summary>
+[PublicAPI]
+public readonly record struct ControlGlyph
 {
     /// <summary>Initializes a printable one-cell primary glyph and fallback.</summary>
+    /// <param name="value">The preferred printable one-cell glyph.</param>
+    /// <param name="fallback">The portable printable one-cell repair glyph.</param>
+    /// <exception cref="ArgumentException">A glyph is a control or is not one cell wide.</exception>
     public ControlGlyph(Rune value, Rune fallback)
     {
         Value = value.ValidateSingleCell(nameof(value));

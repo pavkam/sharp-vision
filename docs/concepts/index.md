@@ -28,6 +28,7 @@ flowchart TB
 - [Styling](styling.md#overview)
 - [Intrinsic chrome](intrinsic-chrome.md#overview)
 - [Themes](themes.md#overview)
+- [Markdown documents](markdown-documents.md#overview)
 - [Layout](layout.md#overview)
 - [Invalidation and UI updates](invalidation.md#overview)
 - [Box model](box-model.md#overview)

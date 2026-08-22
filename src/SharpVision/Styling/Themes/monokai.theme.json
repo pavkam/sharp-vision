@@ -291,6 +291,64 @@
           "⣽"
         ]
       }
+    },
+    "sharpVision.document": {
+      "normal": {
+        "headingFace": {
+          "foreground": "accent",
+          "attributes": "focusedText"
+        },
+        "markerFace": {
+          "foreground": "accent",
+          "attributes": "focusedText"
+        },
+        "quoteFace": {
+          "foreground": "controlText"
+        },
+        "codeFace": {
+          "foreground": "surfaceText",
+          "background": "surface"
+        },
+        "ruleFace": {
+          "foreground": "muted"
+        },
+        "linkFace": {
+          "foreground": "info"
+        },
+        "activeLinkFace": {
+          "foreground": "selectedText",
+          "background": "selectedControl"
+        },
+        "disabledLinkFace": {
+          "foreground": "disabledText"
+        },
+        "actionLinkFace": {
+          "foreground": "selectedText",
+          "background": "selectedControl",
+          "attributes": "focusedText"
+        },
+        "activeActionLinkFace": {
+          "foreground": "pressedText",
+          "background": "pressedControl",
+          "attributes": "focusedText"
+        },
+        "calloutFace": {
+          "foreground": "warning"
+        },
+        "calloutTitleFace": {
+          "foreground": "warning",
+          "attributes": "focusedText"
+        },
+        "tableFace": {
+          "foreground": "surfaceText",
+          "background": "surface"
+        },
+        "tableHeaderFace": {
+          "foreground": "accent",
+          "background": "surface",
+          "attributes": "focusedText"
+        }
+      }
     }
   }
 }

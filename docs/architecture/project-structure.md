@@ -2,14 +2,15 @@
 
 ## Overview
 
-The solution contains three production libraries, three executable examples, and
-four top-level validation projects. The UI test project also exercises all three
+The solution contains four production libraries, three executable examples, and
+five top-level validation projects. The UI test project also exercises all three
 examples, so examples do not need duplicate test projects of their own.
 
 ```mermaid
 flowchart LR
     Terminal["SharpVision.Terminal"]
     UI["SharpVision"]
+    Document["SharpVision.Document"]
     FigletFonts["SharpVision.FigletFonts"]
     Showcase["SharpVision.Showcase"]
     Snake["Snake"]
@@ -18,10 +19,13 @@ flowchart LR
     Probe["SharpVision.Terminal.Probe"]
     UITests["SharpVision.Tests"]
     CompatibilityTests["SharpVision.Compatibility.Tests"]
+    DocumentTests["SharpVision.Document.Tests"]
     UI --> Terminal
     FigletFonts -. "NuGet >= current version" .-> UI
+    Document -. "NuGet >= current version" .-> UI
     Showcase --> UI
     Showcase --> FigletFonts
+    Showcase --> Document
     Snake --> UI
     Snake --> FigletFonts
     TextEditor --> UI
@@ -36,6 +40,8 @@ flowchart LR
     CompatibilityTests -. public API snapshot .-> Terminal
     CompatibilityTests -. public API snapshot .-> UI
     CompatibilityTests -. public API snapshot .-> FigletFonts
+    CompatibilityTests -. public API snapshot .-> Document
+    DocumentTests -. parser and model tests .-> Document
 ```
 
 `SharpVision.Terminal` owns protocols, transport, capabilities, input events,
@@ -113,6 +119,12 @@ packages publish independently and are not expected to share a version number.
 The reverse dependency is forbidden, so installing `SharpVision` never brings
 the catalog or its assets into an application.
 
+`SharpVision.Document` is an optional leaf over public SharpVision UI seams. It
+owns the semantic block/inline tree, hybrid retained presenter,
+`IDocumentFormatReader`, and the native Markdown reader. Core SharpVision never
+references it, so applications that do not display documents carry neither the
+document model nor Markdown parser.
+
 The UI project ships the complete
 [control catalog](../controls/index.md#control-catalog): layout panels, text and
 editing, selection and item controls, menus, context menus, popups, tooltips,
@@ -157,7 +169,7 @@ terminal checks. `SharpVision.Terminal.Tests` owns its lifecycle and assertions;
 production code does not use it.
 
 `SharpVision.Compatibility.Tests` owns the versioned public API baselines for
-all three libraries. It references production projects only from the test layer
+all four libraries. It references production projects only from the test layer
 and participates in the solution-wide gate. The normative reconciliation
 workflow is defined by the
 [public API compatibility contract](../testing/correctness-model.md#public-api-compatibility).

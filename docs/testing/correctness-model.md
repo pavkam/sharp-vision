@@ -83,28 +83,28 @@ diagnosed and fixed, or the gate stays red.
 ## Public API compatibility
 
 `SharpVision.Compatibility.Tests` generates the complete public surfaces of
-`SharpVision.Terminal`, `SharpVision`, and `SharpVision.FigletFonts` with
-PublicApiGenerator, strips every attribute-application line from the generated
-text (attributes are metadata annotations, not binary-breaking surface, so
-adding, removing, or editing one is never itself a reason to fail this gate),
-and compares what remains against one Verify snapshot per assembly in
-`Snapshots/*.verified.txt`. There is no per-version subfolder: the snapshot
-always reflects the current, approved shape of the public API, not a frozen
-baseline tied to a released version number.
+`SharpVision.Terminal`, `SharpVision`, `SharpVision.Document`, and
+`SharpVision.FigletFonts` with PublicApiGenerator, strips every
+attribute-application line from the generated text (attributes are metadata
+annotations, not binary-breaking surface, so adding, removing, or editing one is
+never itself a reason to fail this gate), and compares what remains against one
+Verify snapshot per assembly in `Snapshots/*.verified.txt`. There is no
+per-version subfolder: the snapshot always reflects the current, approved shape
+of the public API, not a frozen baseline tied to a released version number.
 
 A changed public signature fails this gate. That failure is the maintainer's own
 signal to decide, from the diff, whether the change is significant enough to
 warrant bumping that assembly's own version property
-(`SharpVisionTerminalVersion`, `SharpVisionVersion`, or
-`SharpVisionFigletFontsVersion`) in `Directory.Build.props` - the gate does not
-make that decision automatically, and accepting a new baseline does not by
-itself require a version bump. Each of the three libraries versions and
-publishes independently, so a signature change in one assembly never requires
-bumping the other two.
+(`SharpVisionTerminalVersion`, `SharpVisionVersion`,
+`SharpVisionDocumentVersion`, or `SharpVisionFigletFontsVersion`) in
+`Directory.Build.props` - the gate does not make that decision automatically,
+and accepting a new baseline does not by itself require a version bump. Each
+library versions and publishes independently, so a signature change in one
+assembly never requires bumping the others.
 
 Reviewing and accepting a changed baseline requires:
 
-1. Run the compatibility tests and inspect all three `.received.txt` files.
+1. Run the compatibility tests and inspect all four `.received.txt` files.
 2. Confirm every difference is an intended addition, removal, signature, or
    visibility change - not an accidental one.
 3. Overwrite the paired `.verified.txt` file with the `.received.txt` content to
@@ -117,7 +117,7 @@ snapshots are approval artifacts, not disposable test output.
 
 ## Shape and reflection
 
-`SharpVision.Compatibility.Tests` is the shape oracle for all three public
+`SharpVision.Compatibility.Tests` is the shape oracle for all four public
 surfaces; see [Public API compatibility](#public-api-compatibility) above. A
 hand-written test asserting that a member exists, is absent, or has a given
 accessibility duplicates that snapshot while covering less: the snapshot
@@ -152,7 +152,7 @@ standalone `Type_WhenInspected_*` test that only walks members is not allowed.
 | Stateful UI behavior | Unit state proof plus mounted surface observation.                   |
 | Protocol behavior    | Exact bytes, fragmentation, malformed recovery, and typed routing.   |
 | Rendering behavior   | Semantic cells plus incremental/full equivalence and terminal bytes. |
-| Public API change    | Reviewed versioned snapshots for all three production assemblies.    |
+| Public API change    | Reviewed versioned snapshots for all four production assemblies.     |
 
 No snapshot, mocked interaction, green build, or smoke test substitutes for a
 missing proof layer.

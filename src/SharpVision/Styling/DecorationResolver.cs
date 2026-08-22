@@ -4,7 +4,8 @@
 namespace SharpVision.Styling;
 
 /// <summary>Validates one complete optional inline-decoration proposal before mutation.</summary>
-internal static class DecorationResolver
+[PublicAPI]
+public static class DecorationResolver
 {
     /// <summary>Resolves optional decoration overlays against one inherited semantic style.</summary>
     /// <param name="inherited">The complete inherited semantic style.</param>

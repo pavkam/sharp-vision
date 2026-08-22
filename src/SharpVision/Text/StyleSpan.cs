@@ -6,8 +6,21 @@ namespace SharpVision.Text;
 using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 
 /// <summary>Describes one non-overlapping semantic style slice of parsed visible text.</summary>
-internal readonly record struct StyleSpan
+[PublicAPI]
+public readonly record struct StyleSpan
 {
+    private const TerminalAttributes _knownAttributes =
+        TerminalAttributes.Bold |
+        TerminalAttributes.Dim |
+        TerminalAttributes.Italic |
+        TerminalAttributes.Underline |
+        TerminalAttributes.Blink |
+        TerminalAttributes.Reverse |
+        TerminalAttributes.Hidden |
+        TerminalAttributes.Strike |
+        TerminalAttributes.RapidBlink |
+        TerminalAttributes.Overline;
+
     /// <summary>Initializes one parser-produced style slice.</summary>
     /// <param name="offset">The non-negative UTF-16 offset into visible text.</param>
     /// <param name="length">The positive UTF-16 length of the slice.</param>
@@ -17,6 +30,9 @@ internal readonly record struct StyleSpan
     /// <param name="underline">The typed underline override, or none to inherit.</param>
     /// <param name="underlineColor">The underline color override, or null to inherit.</param>
     /// <param name="link">The semantic hyperlink target, or null.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="offset"/> is negative,
+    /// <paramref name="length"/> is not positive, <paramref name="attributes"/> contains an
+    /// unknown bit, or <paramref name="underline"/> is undefined.</exception>
     public StyleSpan(
         int offset,
         int length,
@@ -27,8 +43,19 @@ internal readonly record struct StyleSpan
         Color? underlineColor,
         string? link)
     {
-        Debug.Assert(offset >= 0, "Markup span offsets are non-negative.");
-        Debug.Assert(length > 0, "Markup spans contain visible text.");
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        ArgumentOutOfRangeException.ThrowIfLessThan(length, 1);
+
+        if ((attributes & ~_knownAttributes) != 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(attributes), attributes, "Unknown terminal attribute bits are not valid.");
+        }
+
+        if (!Enum.IsDefined(underline))
+        {
+            throw new ArgumentOutOfRangeException(nameof(underline), underline, "The underline style must be defined.");
+        }
+
         Offset = offset;
         Length = length;
         Foreground = foreground;

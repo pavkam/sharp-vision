@@ -205,6 +205,11 @@ public sealed class ComponentVisibilityCoverageTests
         // data onto one internal surface), so the child-visibility matrix does not apply.
         { typeof(JsonView), ComponentVisibilityRole.NotApplicable },
 
+        // NotApplicable: a Document's content is a tree of pure data nodes, not ControlBase
+        // children - one internal surface paints every heading, paragraph, marker, bar, and rule.
+        // There is no per-child Hidden/Collapsed matrix to prove, the same reasoning as JsonView.
+        { typeof(Document), ComponentVisibilityRole.NotApplicable },
+
         // SingleContent, base-covered: the content-collapse path is exactly ContentControl's own.
         { typeof(Prism), ComponentVisibilityRole.SingleContent },
         { typeof(StatusBarItem), ComponentVisibilityRole.SingleContent },
@@ -276,6 +281,7 @@ public sealed class ComponentVisibilityCoverageTests
         { typeof(NavigationViewItem), _excluded },
         { typeof(NavigationViewSeparator), _excluded },
         { typeof(JsonView), _excluded },
+        { typeof(Document), _excluded },
         { typeof(Prism), _excluded },
         { typeof(StatusBarItem), _excluded },
         { typeof(TabItem), _excluded },
@@ -306,7 +312,8 @@ public sealed class ComponentVisibilityCoverageTests
     [Fact]
     public void Catalog_WhenPublicConcreteControlsChange_RequiresExplicitVisibilityClassification()
     {
-        var controls = typeof(ControlBase).Assembly.GetExportedTypes()
+        var controls = new[] { typeof(ControlBase).Assembly, typeof(Document).Assembly }
+            .SelectMany(assembly => assembly.GetExportedTypes())
             .Where(type => !type.IsAbstract && typeof(ControlBase).IsAssignableFrom(type))
             .ToHashSet();
 

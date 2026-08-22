@@ -13,7 +13,7 @@ namespace SharpVision.Compatibility.Tests;
 /// diff here is the maintainer's own signal for whether the change is a documented breaking
 /// change that warrants bumping that assembly's own version property in
 /// <c>Directory.Build.props</c> - not an automated release gate keyed to a shared version.
-/// SharpVision.Terminal, SharpVision, and SharpVision.FigletFonts each version and publish
+/// SharpVision.Terminal, SharpVision, SharpVision.Document, and SharpVision.FigletFonts each version and publish
 /// independently, so a signature change in one never requires bumping the others. Accepting the
 /// new snapshot is a deliberate, reviewed decision, not a mechanical bookkeeping step.
 ///
@@ -43,6 +43,17 @@ public sealed class PublicApiCompatibilityTests
         var assembly = typeof(Controls.ControlBase).Assembly;
 
         return VerifyPublicApiAsync(assembly, "SharpVision");
+    }
+
+    /// <summary>
+    /// Verifies the optional rich-document library against the approved public API baseline.
+    /// </summary>
+    [Fact]
+    public Task SharpVisionDocument_WhenComparedWithApprovedBaseline_MatchesApprovedPublicApi()
+    {
+        var assembly = typeof(Controls.Documents.Document).Assembly;
+
+        return VerifyPublicApiAsync(assembly, "SharpVision.Document");
     }
 
     /// <summary>

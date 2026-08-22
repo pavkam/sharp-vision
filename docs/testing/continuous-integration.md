@@ -111,33 +111,34 @@ unused.
 
 ## Package publication
 
-`SharpVision.Terminal`, `SharpVision`, and `SharpVision.FigletFonts` each own an
-independent version (`SharpVisionTerminalVersion`, `SharpVisionVersion`, and
-`SharpVisionFigletFontsVersion` in `Directory.Build.props`) and publish on their
-own schedule; none of the three needs to move in lockstep with the others; only
-`SharpVision.FigletFonts`'s dependency on `SharpVision` ties two of their
-numbers together (see below).
+`SharpVision.Terminal`, `SharpVision`, `SharpVision.Document`, and
+`SharpVision.FigletFonts` each own an independent version
+(`SharpVisionTerminalVersion`, `SharpVisionVersion`,
+`SharpVisionDocumentVersion`, and `SharpVisionFigletFontsVersion` in
+`Directory.Build.props`) and publish on their own schedule. Neither optional
+leaf needs to move in lockstep with core; its dependency on `SharpVision` uses
+the packed core version as the floor.
 
 The `sharpvision-publish.yml` workflow runs the same build-and-test action and
 then reads each project's own `Version` independently. Publication accepts a
 three-part semantic version with an optional prerelease suffix for each package;
-the three packages are never required to agree.
+the four packages are never required to agree.
 
-The workflow independently checks whether `SharpVision.Terminal`, `SharpVision`,
-and `SharpVision.FigletFonts` already exist at their own respective version. It
-always packs and validates exactly three main packages and three symbol
-packages, then publishes each missing package with its symbols in dependency
-order: Terminal, UI, then the optional font catalog. An existing UI package
-cannot suppress a missing Terminal or FigletFonts package. A main package that
-already exists is not rebuilt or republished under the immutable version.
+The workflow independently checks whether each of the four packages already
+exists at its own version. It always packs and validates exactly four main
+packages and four symbol packages, then publishes each missing package with its
+symbols in dependency order: Terminal, UI, then the optional Document and font
+catalog leaves. An existing UI package cannot suppress a missing optional
+package. A main package that already exists is not rebuilt or republished under
+the immutable version.
 
-`SharpVision.FigletFonts` emits a minimum dependency on the `SharpVision` core's
-own version (`SharpVisionVersion`), not on its own version - the two packages
-publish independently and are not expected to share a version number. NuGet
-serializes that open-ended range as that bare minimum version in the `.nuspec`.
-The packed-consumer test asserts the packed dependency equals the packed core
-package's own version, so a floor that drifted away from the core it ships
-beside fails there rather than shipping.
+`SharpVision.Document` and `SharpVision.FigletFonts` each emit a minimum
+dependency on the `SharpVision` core's own version (`SharpVisionVersion`), not
+on the leaf's own version. The packages publish independently and are not
+expected to share a version number. NuGet serializes that open-ended range as
+that bare minimum version in the `.nuspec`. The packed-consumer test asserts the
+packed dependency equals the packed core package's own version, so a floor that
+drifted away from the core it ships beside fails there rather than shipping.
 
 That test restores the two packed artifacts from the local feed; nuget.org stays
 in its generated `NuGet.config` because the packed nuspecs depend on
@@ -167,4 +168,4 @@ terminal, Unicode, rendering, and control behavior.
 | Format and lint | No C# formatting/analyzer, Markdown formatting/lint, or local-link violations; runs as its own job beside build and test. |
 | Build           | Zero warnings/errors across production, examples, showcase, tests, and XML documentation.                                 |
 | Test            | Minimum discovery is met and every discovered test passes without retries.                                                |
-| Package         | All three packages and symbols use the approved version and validated metadata; dependencies publish before dependents.   |
+| Package         | All four packages and symbols use the approved version and validated metadata; dependencies publish before dependents.    |

@@ -392,6 +392,7 @@ namespace SharpVision.Controls
             where TStyle : SharpVision.Styling.ControlStyle { }
         public void Invalidate() { }
         protected void Invalidate(SharpVision.Controls.InvalidationImpact impact) { }
+        protected void InvalidateRetainedDescendant(SharpVision.Controls.ControlBase descendant, SharpVision.Controls.InvalidationImpact impact) { }
         protected void InvalidateVisualState() { }
         protected SharpVision.Controls.AffixMetrics MeasureAffixes(SharpVision.Styling.Affix? start, SharpVision.Styling.Affix? end, int gap) { }
         protected int MeasureCells(System.ReadOnlySpan<char> value) { }
@@ -427,6 +428,7 @@ namespace SharpVision.Controls
         protected void SetOptionalGlyph(ref System.Text.Rune? storage, System.Text.Rune value, string propertyName) { }
         protected bool SetProperty<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
         protected bool SetVisualStateProperty<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
+        protected void VerifyMutable() { }
         protected static SharpVision.Terminal.Geometry.Rect DeflateForAffixes(SharpVision.Terminal.Geometry.Rect contentBox, SharpVision.Controls.AffixMetrics metrics) { }
         protected static SharpVision.Controls.InvalidationImpact MaximumImpact(SharpVision.Controls.InvalidationImpact left, SharpVision.Controls.InvalidationImpact right) { }
         protected static SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.ControlColor value, SharpVision.Styling.Theme? theme) { }
@@ -445,6 +447,18 @@ namespace SharpVision.Controls
         public void Insert(int index, SharpVision.Controls.ControlBase item) { }
         public bool Remove(SharpVision.Controls.ControlBase item) { }
         public void RemoveAt(int index) { }
+    }
+    public static class EnumValidation
+    {
+        extension(System.ArgumentOutOfRangeException)
+        {
+            public static void ThrowIfNotDefined<T>(T value)
+                where T :  struct, System.Enum { }
+            public static void ThrowIfNotDefined<T>(T value, string paramName, string message)
+                where T :  struct, System.Enum { }
+            public static void ThrowIfUndefinedFlags<T>(T value, T allowedMask, string paramName, string message)
+                where T :  struct, System.Enum { }
+        }
     }
     public abstract class HeaderedContentControl : SharpVision.Controls.ContentControl
     {
@@ -600,7 +614,7 @@ namespace SharpVision.Controls.Charts
         Fractional = 0,
         Glyph = 1,
     }
-    public readonly struct ChartGlyphs : System.IEquatable<SharpVision.Controls.Charts.ChartGlyphs>
+    public readonly struct ChartGlyphs : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Controls.Charts.ChartGlyphs>
     {
         public ChartGlyphs(System.Text.Rune bar, System.Text.Rune point, System.Text.Rune line, System.Text.Rune area, System.Text.Rune legendMarker, System.Text.Rune verticalAxis, System.Text.Rune horizontalAxis) { }
         public System.Text.Rune Area { get; init; }
@@ -1137,7 +1151,7 @@ namespace SharpVision.Controls.Display
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
-    public readonly struct ProgressBarGlyphs : System.IEquatable<SharpVision.Controls.Display.ProgressBarGlyphs>
+    public readonly struct ProgressBarGlyphs : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Controls.Display.ProgressBarGlyphs>
     {
         public ProgressBarGlyphs(System.Text.Rune fill, System.Text.Rune track, System.Text.Rune indeterminate) { }
         public System.Text.Rune Fill { get; init; }
@@ -1407,7 +1421,7 @@ namespace SharpVision.Controls.Input
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void PerformClick() { }
     }
-    public readonly struct CheckBoxGlyphs : System.IEquatable<SharpVision.Controls.Input.CheckBoxGlyphs>
+    public readonly struct CheckBoxGlyphs : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Controls.Input.CheckBoxGlyphs>
     {
         public CheckBoxGlyphs(System.Text.Rune uncheckedMark, System.Text.Rune checkedMark, System.Text.Rune indeterminateMark) { }
         public System.Text.Rune Checked { get; init; }
@@ -1678,7 +1692,7 @@ namespace SharpVision.Controls.Input
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void PerformClick() { }
     }
-    public readonly struct RadioButtonGlyphs : System.IEquatable<SharpVision.Controls.Input.RadioButtonGlyphs>
+    public readonly struct RadioButtonGlyphs : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Controls.Input.RadioButtonGlyphs>
     {
         public RadioButtonGlyphs(System.Text.Rune uncheckedMark, System.Text.Rune checkedMark) { }
         public System.Text.Rune Checked { get; init; }
@@ -1729,7 +1743,7 @@ namespace SharpVision.Controls.Input
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
-    public readonly struct SliderGlyphs : System.IEquatable<SharpVision.Controls.Input.SliderGlyphs>
+    public readonly struct SliderGlyphs : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Controls.Input.SliderGlyphs>
     {
         public SliderGlyphs(System.Text.Rune horizontalTrack, System.Text.Rune horizontalFill, System.Text.Rune verticalTrack, System.Text.Rune verticalFill, System.Text.Rune thumb) { }
         public System.Text.Rune HorizontalFill { get; init; }
@@ -2043,7 +2057,7 @@ namespace SharpVision.Controls.Layout
         public bool IsEndOfData { get; init; }
         public required System.Collections.Generic.IReadOnlyList<T> Items { get; init; }
     }
-    public readonly struct TableGlyphs : System.IEquatable<SharpVision.Controls.Layout.TableGlyphs>
+    public readonly struct TableGlyphs : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Controls.Layout.TableGlyphs>
     {
         public TableGlyphs(System.Text.Rune horizontal, System.Text.Rune vertical, System.Text.Rune cross) { }
         public TableGlyphs(System.Text.Rune horizontal, System.Text.Rune vertical, System.Text.Rune cross, System.Text.Rune sortAscending, System.Text.Rune sortDescending) { }
@@ -2167,7 +2181,7 @@ namespace SharpVision.Controls.Scrolling
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool ScrollBy(int delta, SharpVision.Scrolling.ScrollCause cause = 0) { }
     }
-    public readonly struct ScrollBarGlyphs : System.IEquatable<SharpVision.Controls.Scrolling.ScrollBarGlyphs>
+    public readonly struct ScrollBarGlyphs : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Controls.Scrolling.ScrollBarGlyphs>
     {
         public ScrollBarGlyphs(System.Text.Rune verticalDecrement, System.Text.Rune verticalIncrement, System.Text.Rune horizontalDecrement, System.Text.Rune horizontalIncrement, System.Text.Rune blockTrack, System.Text.Rune blockThumb, System.Text.Rune horizontalLineTrack, System.Text.Rune horizontalLineThumb, System.Text.Rune verticalLineTrack, System.Text.Rune verticalLineThumb) { }
         public System.Text.Rune BlockThumb { get; init; }
@@ -2192,6 +2206,7 @@ namespace SharpVision.Controls.Scrolling
         public required SharpVision.Styling.ControlColor ThumbColor { get; init; }
         public required SharpVision.Styling.ControlColor TrackColor { get; init; }
         public new static SharpVision.Controls.Scrolling.ScrollBarStyle Default { get; }
+        public static SharpVision.Controls.StyleDefinition<SharpVision.Controls.Scrolling.ScrollBarStyle> ForwardingDefinition { get; }
         public static SharpVision.Controls.Scrolling.ScrollBarStyle FullBlock { get; }
         public static SharpVision.Controls.Scrolling.ScrollBarStyle FullLine { get; }
         public static SharpVision.Controls.Scrolling.ScrollBarStyle ThinBlock { get; }
@@ -2614,6 +2629,13 @@ namespace SharpVision.Input
     {
         public ActivationEventArgs(SharpVision.Input.ActivationCause cause) { }
         public SharpVision.Input.ActivationCause Cause { get; }
+    }
+    public static class ActivationModifiers
+    {
+        extension(SharpVision.Terminal.Input.Modifiers modifiers)
+        {
+            public bool IsActivationEligible() { }
+        }
     }
     public sealed class CheckChangedEventArgs : System.EventArgs
     {
@@ -3485,7 +3507,7 @@ namespace SharpVision.Styling
         public SharpVision.Styling.AppearanceOverlay? Selected { get; }
         public SharpVision.Styling.AppearanceStatesOverlay Overlay(SharpVision.Styling.AppearanceStatesOverlay later) { }
     }
-    public readonly struct Border : System.IEquatable<SharpVision.Styling.Border>
+    public readonly struct Border : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Styling.Border>
     {
         public Border(SharpVision.Styling.BorderSide sides, SharpVision.Styling.BorderGlyphStyle glyphStyle, SharpVision.Styling.ControlColor foreground, SharpVision.Styling.ControlColor background, SharpVision.Styling.ControlDecoration attributes) { }
         public SharpVision.Styling.ControlDecoration Attributes { get; init; }
@@ -3537,6 +3559,15 @@ namespace SharpVision.Styling
         Right = 4,
         Bottom = 8,
         All = 15,
+    }
+    public static class CellGlyphResolver
+    {
+        extension(System.Text.Rune value)
+        {
+            public System.Text.Rune Resolve(System.Text.Rune fallback, SharpVision.Terminal.Unicode.Ambiguous ambiguousWidth) { }
+            public System.Text.Rune ValidateSingleCell(string parameterName) { }
+            public System.Text.Rune ValidateSingleCell(string parameterName, SharpVision.Terminal.Unicode.Ambiguous ambiguousWidth) { }
+        }
     }
     public readonly struct ChromeRenderOptions
     {
@@ -3591,7 +3622,13 @@ namespace SharpVision.Styling
         public static SharpVision.Styling.ControlDecoration op_Implicit(SharpVision.Styling.SemanticDecoration value) { }
         public static SharpVision.Styling.ControlDecoration op_Implicit(SharpVision.Terminal.Rendering.TerminalAttributes value) { }
     }
-    public class ControlStyle : System.IEquatable<SharpVision.Styling.ControlStyle>
+    public readonly struct ControlGlyph : System.IEquatable<SharpVision.Styling.ControlGlyph>
+    {
+        public ControlGlyph(System.Text.Rune value, System.Text.Rune fallback) { }
+        public System.Text.Rune Fallback { get; }
+        public System.Text.Rune Value { get; }
+    }
+    public class ControlStyle : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Styling.ControlStyle>
     {
         public ControlStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow) { }
         public required SharpVision.Styling.Border Border { get; init; }
@@ -3599,7 +3636,19 @@ namespace SharpVision.Styling
         public required SharpVision.Styling.Shadow Shadow { get; init; }
         public static SharpVision.Styling.ControlStyle Default { get; }
     }
-    public readonly struct Face : System.IEquatable<SharpVision.Styling.Face>
+    public static class DecorationResolver
+    {
+        [return: System.Runtime.CompilerServices.TupleElementNames(new string[] {
+                "Attributes",
+                "Underline",
+                "UnderlineColor"})]
+        public static System.ValueTuple<SharpVision.Terminal.Rendering.TerminalAttributes, SharpVision.Terminal.Protocols.Underline, SharpVision.Terminal.Protocols.Color> Resolve(SharpVision.Terminal.Rendering.CellStyle inherited, SharpVision.Terminal.Rendering.TerminalAttributes? attributes = default, SharpVision.Terminal.Protocols.Underline? underline = default, SharpVision.Terminal.Protocols.Color? underlineColor = default) { }
+        extension(SharpVision.Terminal.Rendering.TerminalAttributes? attributes)
+        {
+            public void Validate(SharpVision.Terminal.Protocols.Underline? underline, SharpVision.Terminal.Protocols.Color? underlineColor) { }
+        }
+    }
+    public readonly struct Face : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Styling.Face>
     {
         public Face(SharpVision.Styling.ControlColor foreground, SharpVision.Styling.ControlColor background, SharpVision.Styling.ControlDecoration attributes, SharpVision.Terminal.Protocols.Underline underline, SharpVision.Styling.ControlColor underlineColor) { }
         public SharpVision.Styling.ControlDecoration Attributes { get; init; }
@@ -3619,6 +3668,11 @@ namespace SharpVision.Styling
         public SharpVision.Styling.Face Apply(SharpVision.Styling.Face face) { }
         public SharpVision.Styling.FaceOverlay Overlay(SharpVision.Styling.FaceOverlay later) { }
     }
+    public interface IAppearanceFragment
+    {
+        SharpVision.Styling.IAppearanceFragment Clone();
+        void Validate();
+    }
     public class InputStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Styling.InputStyle>
     {
         public InputStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, System.Text.Rune dropDownGlyph) { }
@@ -3626,7 +3680,7 @@ namespace SharpVision.Styling
         public required System.Text.Rune DropDownGlyph { get; init; }
         public new static SharpVision.Styling.InputStyle Default { get; }
     }
-    public readonly struct PopupAnchorGlyphs : System.IEquatable<SharpVision.Styling.PopupAnchorGlyphs>
+    public readonly struct PopupAnchorGlyphs : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Styling.PopupAnchorGlyphs>
     {
         public PopupAnchorGlyphs(System.Text.Rune pointingUp, System.Text.Rune pointingDown, System.Text.Rune pointingLeft, System.Text.Rune pointingRight) { }
         public System.Text.Rune PointingDown { get; init; }
@@ -3686,7 +3740,7 @@ namespace SharpVision.Styling
         Shadow = 7,
         Hotkey = 8,
     }
-    public readonly struct Shadow : System.IEquatable<SharpVision.Styling.Shadow>
+    public readonly struct Shadow : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Styling.Shadow>
     {
         public Shadow(bool isVisible, SharpVision.Styling.ShadowMode mode, SharpVision.Terminal.Geometry.Point offset, System.Text.Rune glyph, SharpVision.Styling.ControlColor foreground, SharpVision.Styling.ControlColor background, SharpVision.Styling.ControlDecoration attributes) { }
         public SharpVision.Styling.ControlDecoration Attributes { get; init; }
@@ -3760,6 +3814,8 @@ namespace SharpVision.Styling
         public SharpVision.Terminal.Protocols.Color Warning { get; }
         public SharpVision.Styling.AppearanceStates Window { get; }
         public void Freeze() { }
+        public SharpVision.Styling.StyleStates<TStyle> GetStyleSet<TStyle>(TStyle codeOwnedDefault)
+            where TStyle : SharpVision.Styling.ControlStyle { }
         public SharpVision.Terminal.Rendering.TerminalAttributes ResolveAttributes(SharpVision.Styling.SemanticDecoration decoration) { }
         public SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.SemanticColor color) { }
     }
@@ -3907,6 +3963,23 @@ namespace SharpVision.Text
         public bool IsEmpty { get; }
         public int Length { get; }
         public int Start { get; }
+    }
+    public readonly struct StyleSpan : System.IEquatable<SharpVision.Text.StyleSpan>
+    {
+        public StyleSpan(int offset, int length, SharpVision.Terminal.Protocols.Color? foreground, SharpVision.Terminal.Protocols.Color? background, SharpVision.Terminal.Rendering.TerminalAttributes attributes, SharpVision.Terminal.Protocols.Underline underline, SharpVision.Terminal.Protocols.Color? underlineColor, string? link) { }
+        public SharpVision.Terminal.Rendering.TerminalAttributes Attributes { get; }
+        public SharpVision.Terminal.Protocols.Color? Background { get; }
+        public SharpVision.Terminal.Protocols.Color? Foreground { get; }
+        public int Length { get; }
+        public string? Link { get; }
+        public int Offset { get; }
+        public SharpVision.Terminal.Protocols.Underline Underline { get; }
+        public SharpVision.Terminal.Protocols.Color? UnderlineColor { get; }
+    }
+    public static class TextMarkup
+    {
+        public static string Escape(string value) { }
+        public static SharpVision.Text.StyleSpan[] Parse(System.ReadOnlySpan<char> source, out string display) { }
     }
 }
 namespace SharpVision.Threading

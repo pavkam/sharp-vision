@@ -61,6 +61,7 @@ use the shared [layout](../concepts/layout.md#overview),
 | `SharpVision.Controls.Input`       | Buttons, editors, pickers, and value controls.               |
 | `SharpVision.Controls.Layout`      | Panels, overlays, structural chrome, and tables.             |
 | `SharpVision.Controls.Collections` | Lists, tabs, trees, typed collections, and item realization. |
+| `SharpVision.Controls.Documents`   | The Document control and its rich-text content-node tree.    |
 | `SharpVision.Controls.Scrolling`   | The ScrollBar control and its glyph and style values.        |
 | `SharpVision.Menus`                | Menus, menu entries, and context menus.                      |
 | `SharpVision.Navigation`           | Sidebar navigation controls and entries.                     |
@@ -151,6 +152,8 @@ See the [intrinsic appearance rules](../concepts/styling.md#shared-chrome).
 
 ### Collections
 
+- [Document](collections/document.md#overview)
+- [Markdown documents](../concepts/markdown-documents.md#overview)
 - [JsonView](collections/json-view.md#overview)
 - [ListView](collections/list-view.md#overview)
 - [TabControl and TabItem](collections/tab-control.md#overview)

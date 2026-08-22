@@ -157,6 +157,31 @@ test("parseSnapshotTypes_WhenGivenTheFixtureSnapshot_MapsEveryTypeToItsBaseAndMe
   assert.ok(!map.has("IDisposable#0"));
 });
 
+test("parseSnapshotTypes_WhenATypeHasAnInlineEmptyBody_KeepsItsBaseAndDoesNotSwallowSiblings", () => {
+  const snapshot = `namespace Fixture.Nodes
+{
+    public abstract class Node { }
+    public abstract class Block : Fixture.Nodes.Node { }
+    public sealed class BlockCollection : Fixture.Nodes.NodeCollection<Fixture.Nodes.Block> { }
+    public sealed class Paragraph : Fixture.Nodes.Block
+    {
+        public Paragraph() { }
+        public string Text { get; set; }
+    }
+}
+`;
+
+  const map = parseSnapshotTypes(snapshot);
+
+  assert.equal(map.size, 4);
+  assert.equal(map.get("Node#0").base, null);
+  assert.equal(map.get("Node#0").members.size, 0);
+  assert.equal(map.get("Block#0").base, "Node#0");
+  assert.equal(map.get("BlockCollection#0").base, "NodeCollection#1");
+  assert.ok(map.has("Paragraph#0"));
+  assert.ok(map.get("Paragraph#0").members.has("Text"));
+});
+
 test("ancestorMemberSet_WhenWalkingAChain_CollectsOwnAndInheritedMembers", () => {
   const map = parseSnapshotTypes(fixtureSnapshot);
   const members = ancestorMemberSet("Widget#0", map);

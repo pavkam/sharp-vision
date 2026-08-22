@@ -1398,6 +1398,28 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         Invalidate(InvalidationFor(impact));
     }
 
+    /// <summary>Requests the earliest UI phase on a retained descendant owned by this composite.</summary>
+    /// <param name="descendant">The non-null retained descendant to invalidate.</param>
+    /// <param name="impact">The validated earliest affected phase.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="descendant"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="descendant"/> is not retained
+    /// beneath this control, or the attached tree is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">This control or the descendant is disposed.</exception>
+    protected void InvalidateRetainedDescendant(ControlBase descendant, InvalidationImpact impact)
+    {
+        ArgumentNullException.ThrowIfNull(descendant);
+        ValidateImpact(impact);
+        VerifyMutable();
+
+        if (!IsRetainedDescendant(descendant))
+        {
+            throw new InvalidOperationException("Only a retained descendant can be invalidated through its composite owner.");
+        }
+
+        descendant.Invalidate(impact);
+    }
+
     /// <summary>Requests a repaint of this control's rendered output.</summary>
     /// <remarks>
     /// Composition-based code that does not own a subclass - an adapter, a view-model bridge, or
@@ -1744,7 +1766,9 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         OnParentChanged(previous, current);
 
     /// <summary>Throws when mutation is not valid for this owner.</summary>
-    internal void VerifyMutable()
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    protected internal void VerifyMutable()
     {
         ThrowIfDisposed();
         VerifyAccess();

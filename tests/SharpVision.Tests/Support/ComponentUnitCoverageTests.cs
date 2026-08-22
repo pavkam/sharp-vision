@@ -16,6 +16,7 @@ using Popups;
 
 using SharpVision.Controls.Charts;
 using SharpVision.Tests.Controls.Charts;
+using SharpVision.Tests.Controls.Documents;
 using SharpVision.Tests.Controls.Input;
 using SharpVision.Tests.Controls.Layout;
 using SharpVision.Tests.Controls.Scrolling;
@@ -89,14 +90,16 @@ public sealed class ComponentUnitCoverageTests
         { typeof(Window), typeof(WindowTests) },
         { typeof(MessageBox), typeof(MessageBoxTests) },
         { typeof(FilePickerDialog), typeof(FilePickerDialogTests) },
-        { typeof(SaveFileDialog), typeof(SaveFileDialogTests) }
+        { typeof(SaveFileDialog), typeof(SaveFileDialogTests) },
+        { typeof(Document), typeof(DocumentTests) }
     };
 
     /// <summary>Verifies every exported concrete control has exactly one named focused unit fixture.</summary>
     [Fact]
     public void Catalog_WhenPublicConcreteControlsChange_RequiresFocusedUnitFixture()
     {
-        var controls = typeof(ControlBase).Assembly.GetExportedTypes()
+        var controls = new[] { typeof(ControlBase).Assembly, typeof(Document).Assembly }
+            .SelectMany(assembly => assembly.GetExportedTypes())
             .Where(type => !type.IsAbstract && typeof(ControlBase).IsAssignableFrom(type))
             .ToHashSet();
 

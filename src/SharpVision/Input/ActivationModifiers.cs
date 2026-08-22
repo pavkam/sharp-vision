@@ -6,7 +6,8 @@ namespace SharpVision.Input;
 using SharpVision.Terminal.Input;
 
 /// <summary>Gates keyboard activation strokes against incidental modifiers.</summary>
-internal static class ActivationModifiers
+[PublicAPI]
+public static class ActivationModifiers
 {
     [SuppressMessage(
         "Style",

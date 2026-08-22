@@ -33,16 +33,16 @@ export const SKIP_TIER_B = Symbol("skip-tier-b");
 // own before it was folded into `InputBase` alongside the rest of that base's opt-in capabilities -
 // so its API table is checked against `InputBase#0` the same as `input-base.md`'s own table.
 const documentedTypeOverrides = new Map([
-  ["list-view", "ListView#0"],
-  ["status-bar", "StatusBar#0"],
-  ["control", "ControlBase#0"],
-  ["composite-control", "CompositeControlBase#0"],
-  ["content-control", "ContentControl#0"],
-  ["headered-content-control", "HeaderedContentControl#0"],
-  ["items-control", "ItemsControl#0"],
-  ["container", "Container#0"],
-  ["context-menu", SKIP_TIER_B],
-  ["pressable", "InputBase#0"],
+    ["list-view", "ListView#0"],
+    ["status-bar", "StatusBar#0"],
+    ["control", "ControlBase#0"],
+    ["composite-control", "CompositeControlBase#0"],
+    ["content-control", "ContentControl#0"],
+    ["headered-content-control", "HeaderedContentControl#0"],
+    ["items-control", "ItemsControl#0"],
+    ["container", "Container#0"],
+    ["context-menu", SKIP_TIER_B],
+    ["pressable", "InputBase#0"],
 ]);
 
 const expectedApiHeader = ["Member", "Type", "Default", "Description"];
@@ -55,14 +55,16 @@ const expectedApiHeader = ["Member", "Type", "Default", "Description"];
  * @returns {boolean} Whether the header matches exactly, in order.
  */
 function isCanonicalApiHeader(headerCells) {
-  return (
-    headerCells.length === expectedApiHeader.length &&
-    headerCells.every((cell, index) => cell === expectedApiHeader[index])
-  );
+    return (
+        headerCells.length === expectedApiHeader.length &&
+        headerCells.every((cell, index) => cell === expectedApiHeader[index])
+    );
 }
 
 const typeDeclarationPattern =
-  /^ {4}(?:public|internal|protected|private)\s+(?:abstract\s+|sealed\s+|static\s+|readonly\s+|partial\s+|new\s+|virtual\s+)*(?:class|struct|interface|enum)\s+([A-Za-z_][A-Za-z0-9_]*)(<[^>]*>)?\s*(?::\s*(.+))?$/;
+    /^ {4}(?:public|internal|protected|private)\s+(?:abstract\s+|sealed\s+|static\s+|readonly\s+|partial\s+|new\s+|virtual\s+)*(?:class|struct|interface|enum)\s+([A-Za-z_][A-Za-z0-9_]*)(<[^>]*>)?\s*(?::\s*(.+))?$/;
+
+const inlineBodyPattern = /\s*\{\s*\}\s*$/u;
 
 const fencePattern = /^\s{0,3}(`{3,}|~{3,})\s*(\S*)/;
 const fenceClosePattern = /^\s{0,3}(`{3,}|~{3,})\s*$/;
@@ -76,10 +78,12 @@ const tableDelimiterPattern = /^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?$/;
  * @returns {string} The default PascalCase name.
  */
 export function slugToPascalCase(slug) {
-  return slug
-    .split("-")
-    .map((part) => (part.length === 0 ? part : part[0].toUpperCase() + part.slice(1)))
-    .join("");
+    return slug
+        .split("-")
+        .map((part) =>
+            part.length === 0 ? part : part[0].toUpperCase() + part.slice(1),
+        )
+        .join("");
 }
 
 /**
@@ -92,9 +96,9 @@ export function slugToPascalCase(slug) {
  * sentinel.
  */
 export function deriveDocumentedType(slug) {
-  return documentedTypeOverrides.has(slug)
-    ? documentedTypeOverrides.get(slug)
-    : `${slugToPascalCase(slug)}#0`;
+    return documentedTypeOverrides.has(slug)
+        ? documentedTypeOverrides.get(slug)
+        : `${slugToPascalCase(slug)}#0`;
 }
 
 /**
@@ -105,30 +109,30 @@ export function deriveDocumentedType(slug) {
  * @returns {string[]} Trimmed, non-empty segments in order.
  */
 export function splitTopLevelCommas(text) {
-  const parts = [];
-  let depth = 0;
-  let current = "";
+    const parts = [];
+    let depth = 0;
+    let current = "";
 
-  for (const char of text) {
-    if (char === "<") {
-      depth++;
-    } else if (char === ">") {
-      depth--;
+    for (const char of text) {
+        if (char === "<") {
+            depth++;
+        } else if (char === ">") {
+            depth--;
+        }
+
+        if (char === "," && depth === 0) {
+            parts.push(current.trim());
+            current = "";
+        } else {
+            current += char;
+        }
     }
 
-    if (char === "," && depth === 0) {
-      parts.push(current.trim());
-      current = "";
-    } else {
-      current += char;
+    if (current.trim() !== "") {
+        parts.push(current.trim());
     }
-  }
 
-  if (current.trim() !== "") {
-    parts.push(current.trim());
-  }
-
-  return parts;
+    return parts;
 }
 
 /**
@@ -141,17 +145,18 @@ export function splitTopLevelCommas(text) {
  * or `undefined` when the token is not a recognizable type reference.
  */
 export function parseTypeReference(token) {
-  const cleaned = token.trim().replaceAll(/~([^~]*)~/gu, "<$1>");
-  const match = cleaned.match(/^([A-Za-z_][\w.]*)(?:<(.*)>)?$/u);
+    const cleaned = token.trim().replaceAll(/~([^~]*)~/gu, "<$1>");
+    const match = cleaned.match(/^([A-Za-z_][\w.]*)(?:<(.*)>)?$/u);
 
-  if (!match) {
-    return undefined;
-  }
+    if (!match) {
+        return undefined;
+    }
 
-  const simpleName = match[1].split(".").at(-1);
-  const arity = match[2] === undefined ? 0 : splitTopLevelCommas(match[2]).length;
+    const simpleName = match[1].split(".").at(-1);
+    const arity =
+        match[2] === undefined ? 0 : splitTopLevelCommas(match[2]).length;
 
-  return { simpleName, arity, key: `${simpleName}#${arity}` };
+    return { simpleName, arity, key: `${simpleName}#${arity}` };
 }
 
 /**
@@ -161,63 +166,79 @@ export function parseTypeReference(token) {
  * That fixed shape means indentation alone disambiguates a type line from a member line or a
  * generic `where` constraint line, with no brace-depth tracking required.
  *
+ * A member-less type is emitted by the snapshot writer with its whole body inline, as
+ * `public abstract class Node : Base { }`. That trailing `{ }` is stripped before the declaration is
+ * matched, for two reasons: it would otherwise be captured as part of the base list and defeat the
+ * base-type parse, and the type has no member block to scan, so scanning forward would consume every
+ * following sibling declaration as if it were a member of this one.
+ *
  * @param {string} snapshotText The full contents of `SharpVision.verified.txt`.
  * @returns {Map<string, { name: string, arity: number, base: string | null, members: Set<string> }>}
  * Type key (`Name#arity`) to its declaration.
  */
 export function parseSnapshotTypes(snapshotText) {
-  const lines = snapshotText.split(/\r?\n/u);
-  const map = new Map();
-  let index = 0;
+    const lines = snapshotText.split(/\r?\n/u);
+    const map = new Map();
+    let index = 0;
 
-  while (index < lines.length) {
-    const declarationMatch = lines[index].match(typeDeclarationPattern);
+    while (index < lines.length) {
+        const inlineBody = inlineBodyPattern.test(lines[index]);
+        const declarationLine = inlineBody
+            ? lines[index].replace(inlineBodyPattern, "")
+            : lines[index];
+        const declarationMatch = declarationLine.match(typeDeclarationPattern);
 
-    if (!declarationMatch) {
-      index++;
-      continue;
+        if (!declarationMatch) {
+            index++;
+            continue;
+        }
+
+        const [, name, generics, baseList] = declarationMatch;
+        const arity =
+            generics === undefined
+                ? 0
+                : splitTopLevelCommas(generics.slice(1, -1)).length;
+        const key = `${name}#${arity}`;
+
+        let base = null;
+
+        if (baseList !== undefined) {
+            const baseTokens = splitTopLevelCommas(baseList);
+
+            if (baseTokens.length > 0) {
+                const reference = parseTypeReference(baseTokens[0]);
+                base = reference === undefined ? null : reference.key;
+            }
+        }
+
+        const members = new Set();
+        let cursor = index + 1;
+
+        while (!inlineBody && cursor < lines.length) {
+            if (/^ {4}\}\s*$/u.test(lines[cursor])) {
+                cursor++;
+                break;
+            }
+
+            const cut = lines[cursor].search(/[({;]/u);
+            const head =
+                cut === -1 ? lines[cursor] : lines[cursor].slice(0, cut + 1);
+            const memberMatch = head.match(
+                /([A-Za-z_][A-Za-z0-9_]*)\s*[({;]$/u,
+            );
+
+            if (memberMatch) {
+                members.add(memberMatch[1]);
+            }
+
+            cursor++;
+        }
+
+        map.set(key, { name, arity, base, members });
+        index = cursor;
     }
 
-    const [, name, generics, baseList] = declarationMatch;
-    const arity = generics === undefined ? 0 : splitTopLevelCommas(generics.slice(1, -1)).length;
-    const key = `${name}#${arity}`;
-
-    let base = null;
-
-    if (baseList !== undefined) {
-      const baseTokens = splitTopLevelCommas(baseList);
-
-      if (baseTokens.length > 0) {
-        const reference = parseTypeReference(baseTokens[0]);
-        base = reference === undefined ? null : reference.key;
-      }
-    }
-
-    const members = new Set();
-    let cursor = index + 1;
-
-    while (cursor < lines.length) {
-      if (/^ {4}\}\s*$/u.test(lines[cursor])) {
-        cursor++;
-        break;
-      }
-
-      const cut = lines[cursor].search(/[({;]/u);
-      const head = cut === -1 ? lines[cursor] : lines[cursor].slice(0, cut + 1);
-      const memberMatch = head.match(/([A-Za-z_][A-Za-z0-9_]*)\s*[({;]$/u);
-
-      if (memberMatch) {
-        members.add(memberMatch[1]);
-      }
-
-      cursor++;
-    }
-
-    map.set(key, { name, arity, base, members });
-    index = cursor;
-  }
-
-  return map;
+    return map;
 }
 
 /**
@@ -232,22 +253,27 @@ export function parseSnapshotTypes(snapshotText) {
  * @returns {Set<string>} Every member name declared by the type or any ancestor in the chain.
  */
 export function ancestorMemberSet(startKey, snapshotMap) {
-  const members = new Set();
-  const visited = new Set();
-  let currentKey = startKey;
+    const members = new Set();
+    const visited = new Set();
+    let currentKey = startKey;
 
-  while (currentKey !== null && currentKey !== undefined && snapshotMap.has(currentKey) && !visited.has(currentKey)) {
-    visited.add(currentKey);
-    const entry = snapshotMap.get(currentKey);
+    while (
+        currentKey !== null &&
+        currentKey !== undefined &&
+        snapshotMap.has(currentKey) &&
+        !visited.has(currentKey)
+    ) {
+        visited.add(currentKey);
+        const entry = snapshotMap.get(currentKey);
 
-    for (const member of entry.members) {
-      members.add(member);
+        for (const member of entry.members) {
+            members.add(member);
+        }
+
+        currentKey = entry.base;
     }
 
-    currentKey = entry.base;
-  }
-
-  return members;
+    return members;
 }
 
 /**
@@ -258,36 +284,36 @@ export function ancestorMemberSet(startKey, snapshotMap) {
  * @returns {{ text: string, line: number }[]} Each H2's text and zero-based line index.
  */
 export function extractH2Headings(lines) {
-  const headings = [];
-  let fenceMarker = null;
+    const headings = [];
+    let fenceMarker = null;
 
-  for (const [index, line] of lines.entries()) {
-    const fenceMatch = line.match(fencePattern);
+    for (const [index, line] of lines.entries()) {
+        const fenceMatch = line.match(fencePattern);
 
-    if (fenceMatch) {
-      const marker = fenceMatch[1][0];
+        if (fenceMatch) {
+            const marker = fenceMatch[1][0];
 
-      if (fenceMarker === null) {
-        fenceMarker = marker;
-      } else if (marker === fenceMarker) {
-        fenceMarker = null;
-      }
+            if (fenceMarker === null) {
+                fenceMarker = marker;
+            } else if (marker === fenceMarker) {
+                fenceMarker = null;
+            }
 
-      continue;
+            continue;
+        }
+
+        if (fenceMarker !== null) {
+            continue;
+        }
+
+        const headingMatch = line.match(/^##\s+(.+?)\s*$/u);
+
+        if (headingMatch) {
+            headings.push({ text: headingMatch[1], line: index });
+        }
     }
 
-    if (fenceMarker !== null) {
-      continue;
-    }
-
-    const headingMatch = line.match(/^##\s+(.+?)\s*$/u);
-
-    if (headingMatch) {
-      headings.push({ text: headingMatch[1], line: index });
-    }
-  }
-
-  return headings;
+    return headings;
 }
 
 /**
@@ -299,36 +325,40 @@ export function extractH2Headings(lines) {
  * @returns {{ text: string, line: number, level: 2 | 3 }[]} Each heading's text, line, and level.
  */
 export function extractSubsectionHeadings(lines) {
-  const headings = [];
-  let fenceMarker = null;
+    const headings = [];
+    let fenceMarker = null;
 
-  for (const [index, line] of lines.entries()) {
-    const fenceMatch = line.match(fencePattern);
+    for (const [index, line] of lines.entries()) {
+        const fenceMatch = line.match(fencePattern);
 
-    if (fenceMatch) {
-      const marker = fenceMatch[1][0];
+        if (fenceMatch) {
+            const marker = fenceMatch[1][0];
 
-      if (fenceMarker === null) {
-        fenceMarker = marker;
-      } else if (marker === fenceMarker) {
-        fenceMarker = null;
-      }
+            if (fenceMarker === null) {
+                fenceMarker = marker;
+            } else if (marker === fenceMarker) {
+                fenceMarker = null;
+            }
 
-      continue;
+            continue;
+        }
+
+        if (fenceMarker !== null) {
+            continue;
+        }
+
+        const headingMatch = line.match(/^(#{2,3})(?!#)\s+(.+?)\s*$/u);
+
+        if (headingMatch) {
+            headings.push({
+                text: headingMatch[2],
+                line: index,
+                level: headingMatch[1].length,
+            });
+        }
     }
 
-    if (fenceMarker !== null) {
-      continue;
-    }
-
-    const headingMatch = line.match(/^(#{2,3})(?!#)\s+(.+?)\s*$/u);
-
-    if (headingMatch) {
-      headings.push({ text: headingMatch[2], line: index, level: headingMatch[1].length });
-    }
-  }
-
-  return headings;
+    return headings;
 }
 
 /**
@@ -340,17 +370,17 @@ export function extractSubsectionHeadings(lines) {
  * @returns {{ text: string, line: number } | undefined} The nearest preceding heading, if any.
  */
 export function findNearestHeadingBefore(headings, lineIndex) {
-  let nearest;
+    let nearest;
 
-  for (const heading of headings) {
-    if (heading.line >= lineIndex) {
-      break;
+    for (const heading of headings) {
+        if (heading.line >= lineIndex) {
+            break;
+        }
+
+        nearest = heading;
     }
 
-    nearest = heading;
-  }
-
-  return nearest;
+    return nearest;
 }
 
 /**
@@ -361,40 +391,44 @@ export function findNearestHeadingBefore(headings, lineIndex) {
  * @returns {string | null} A violation description, or `null` when the spine is correct.
  */
 export function validateSectionSpine(headings) {
-  const texts = headings.map((heading) => heading.text);
+    const texts = headings.map((heading) => heading.text);
 
-  if (texts.length < 5) {
-    return (
-      `H2 spine is incomplete (found: ${texts.length === 0 ? "none" : texts.join(", ")}); ` +
-      "expected Overview, Inheritance, API, ..., Example, Expected behavior"
-    );
-  }
+    if (texts.length < 5) {
+        return (
+            `H2 spine is incomplete (found: ${texts.length === 0 ? "none" : texts.join(", ")}); ` +
+            "expected Overview, Inheritance, API, ..., Example, Expected behavior"
+        );
+    }
 
-  const problems = [];
+    const problems = [];
 
-  if (texts[0] !== "Overview") {
-    problems.push(`first H2 is "${texts[0]}", expected "Overview"`);
-  }
+    if (texts[0] !== "Overview") {
+        problems.push(`first H2 is "${texts[0]}", expected "Overview"`);
+    }
 
-  if (texts[1] !== "Inheritance") {
-    problems.push(`second H2 is "${texts[1]}", expected "Inheritance"`);
-  }
+    if (texts[1] !== "Inheritance") {
+        problems.push(`second H2 is "${texts[1]}", expected "Inheritance"`);
+    }
 
-  if (texts[2] !== "API") {
-    problems.push(`third H2 is "${texts[2]}", expected "API"`);
-  }
+    if (texts[2] !== "API") {
+        problems.push(`third H2 is "${texts[2]}", expected "API"`);
+    }
 
-  if (texts.at(-1) !== "Expected behavior") {
-    problems.push(`last H2 is "${texts.at(-1)}", expected "Expected behavior"`);
-  }
+    if (texts.at(-1) !== "Expected behavior") {
+        problems.push(
+            `last H2 is "${texts.at(-1)}", expected "Expected behavior"`,
+        );
+    }
 
-  if (texts.at(-2) !== "Example") {
-    problems.push(`H2 before "Expected behavior" is "${texts.at(-2)}", expected "Example"`);
-  }
+    if (texts.at(-2) !== "Example") {
+        problems.push(
+            `H2 before "Expected behavior" is "${texts.at(-2)}", expected "Example"`,
+        );
+    }
 
-  return problems.length === 0
-    ? null
-    : `H2 spine violation: ${problems.join("; ")} (full spine: ${texts.join(" > ")})`;
+    return problems.length === 0
+        ? null
+        : `H2 spine violation: ${problems.join("; ")} (full spine: ${texts.join(" > ")})`;
 }
 
 /**
@@ -407,16 +441,17 @@ export function validateSectionSpine(headings) {
  * @returns {string[] | undefined} The section's lines, or `undefined` when the heading is absent.
  */
 export function sliceSection(lines, headings, name) {
-  const index = headings.findIndex((heading) => heading.text === name);
+    const index = headings.findIndex((heading) => heading.text === name);
 
-  if (index === -1) {
-    return undefined;
-  }
+    if (index === -1) {
+        return undefined;
+    }
 
-  const start = headings[index].line + 1;
-  const end = index + 1 < headings.length ? headings[index + 1].line : lines.length;
+    const start = headings[index].line + 1;
+    const end =
+        index + 1 < headings.length ? headings[index + 1].line : lines.length;
 
-  return lines.slice(start, end);
+    return lines.slice(start, end);
 }
 
 /**
@@ -427,33 +462,33 @@ export function sliceSection(lines, headings, name) {
  * or `undefined` when no fence exists.
  */
 export function firstFence(lines) {
-  for (const [index, line] of lines.entries()) {
-    const openMatch = line.match(fencePattern);
+    for (const [index, line] of lines.entries()) {
+        const openMatch = line.match(fencePattern);
 
-    if (!openMatch) {
-      continue;
+        if (!openMatch) {
+            continue;
+        }
+
+        const marker = openMatch[1][0];
+        const lang = openMatch[2] ?? "";
+        const body = [];
+        let cursor = index + 1;
+
+        while (cursor < lines.length) {
+            const closeMatch = lines[cursor].match(fenceClosePattern);
+
+            if (closeMatch && closeMatch[1][0] === marker) {
+                break;
+            }
+
+            body.push(lines[cursor]);
+            cursor++;
+        }
+
+        return { lang, body };
     }
 
-    const marker = openMatch[1][0];
-    const lang = openMatch[2] ?? "";
-    const body = [];
-    let cursor = index + 1;
-
-    while (cursor < lines.length) {
-      const closeMatch = lines[cursor].match(fenceClosePattern);
-
-      if (closeMatch && closeMatch[1][0] === marker) {
-        break;
-      }
-
-      body.push(lines[cursor]);
-      cursor++;
-    }
-
-    return { lang, body };
-  }
-
-  return undefined;
+    return undefined;
 }
 
 /**
@@ -466,27 +501,32 @@ export function firstFence(lines) {
  * @returns {{ error?: string, mermaidBody?: string }} The violation, or the extracted diagram body.
  */
 export function validateInheritanceSection(lines, headings) {
-  const section = sliceSection(lines, headings, "Inheritance");
+    const section = sliceSection(lines, headings, "Inheritance");
 
-  if (section === undefined) {
-    return { error: "missing ## Inheritance section" };
-  }
+    if (section === undefined) {
+        return { error: "missing ## Inheritance section" };
+    }
 
-  const fence = firstFence(section);
+    const fence = firstFence(section);
 
-  if (fence === undefined) {
-    return { error: "## Inheritance has no fenced code block; expected a mermaid classDiagram" };
-  }
+    if (fence === undefined) {
+        return {
+            error: "## Inheritance has no fenced code block; expected a mermaid classDiagram",
+        };
+    }
 
-  if (fence.lang.trim() !== "mermaid" || !fence.body.some((line) => line.includes("classDiagram"))) {
-    return {
-      error:
-        "## Inheritance's first fenced block is not a mermaid classDiagram " +
-        `(found language "${fence.lang.trim()}")`,
-    };
-  }
+    if (
+        fence.lang.trim() !== "mermaid" ||
+        !fence.body.some((line) => line.includes("classDiagram"))
+    ) {
+        return {
+            error:
+                "## Inheritance's first fenced block is not a mermaid classDiagram " +
+                `(found language "${fence.lang.trim()}")`,
+        };
+    }
 
-  return { mermaidBody: fence.body.join("\n") };
+    return { mermaidBody: fence.body.join("\n") };
 }
 
 /**
@@ -496,17 +536,17 @@ export function validateInheritanceSection(lines, headings) {
  * @returns {string[]} The row's cells.
  */
 function splitTableRow(row) {
-  let inner = row;
+    let inner = row;
 
-  if (inner.startsWith("|")) {
-    inner = inner.slice(1);
-  }
+    if (inner.startsWith("|")) {
+        inner = inner.slice(1);
+    }
 
-  if (inner.endsWith("|")) {
-    inner = inner.slice(0, -1);
-  }
+    if (inner.endsWith("|")) {
+        inner = inner.slice(0, -1);
+    }
 
-  return inner.split("|").map((cell) => cell.trim());
+    return inner.split("|").map((cell) => cell.trim());
 }
 
 /**
@@ -518,57 +558,64 @@ function splitTableRow(row) {
  * found, in document order.
  */
 export function parseMarkdownTables(lines) {
-  const tables = [];
-  let fenceMarker = null;
-  let index = 0;
+    const tables = [];
+    let fenceMarker = null;
+    let index = 0;
 
-  while (index < lines.length) {
-    const line = lines[index];
-    const fenceMatch = line.match(fencePattern);
+    while (index < lines.length) {
+        const line = lines[index];
+        const fenceMatch = line.match(fencePattern);
 
-    if (fenceMatch) {
-      const marker = fenceMatch[1][0];
+        if (fenceMatch) {
+            const marker = fenceMatch[1][0];
 
-      if (fenceMarker === null) {
-        fenceMarker = marker;
-      } else if (marker === fenceMarker) {
-        fenceMarker = null;
-      }
+            if (fenceMarker === null) {
+                fenceMarker = marker;
+            } else if (marker === fenceMarker) {
+                fenceMarker = null;
+            }
 
-      index++;
-      continue;
-    }
-
-    if (fenceMarker !== null) {
-      index++;
-      continue;
-    }
-
-    const trimmed = line.trim();
-
-    if (trimmed.startsWith("|") && trimmed.endsWith("|") && index + 1 < lines.length) {
-      const nextTrimmed = lines[index + 1].trim();
-
-      if (tableDelimiterPattern.test(nextTrimmed)) {
-        const headerCells = splitTableRow(trimmed);
-        const dataRows = [];
-        let cursor = index + 2;
-
-        while (cursor < lines.length && lines[cursor].trim().startsWith("|")) {
-          dataRows.push(splitTableRow(lines[cursor].trim()));
-          cursor++;
+            index++;
+            continue;
         }
 
-        tables.push({ headerCells, dataRows, startIndex: index });
-        index = cursor;
-        continue;
-      }
+        if (fenceMarker !== null) {
+            index++;
+            continue;
+        }
+
+        const trimmed = line.trim();
+
+        if (
+            trimmed.startsWith("|") &&
+            trimmed.endsWith("|") &&
+            index + 1 < lines.length
+        ) {
+            const nextTrimmed = lines[index + 1].trim();
+
+            if (tableDelimiterPattern.test(nextTrimmed)) {
+                const headerCells = splitTableRow(trimmed);
+                const dataRows = [];
+                let cursor = index + 2;
+
+                while (
+                    cursor < lines.length &&
+                    lines[cursor].trim().startsWith("|")
+                ) {
+                    dataRows.push(splitTableRow(lines[cursor].trim()));
+                    cursor++;
+                }
+
+                tables.push({ headerCells, dataRows, startIndex: index });
+                index = cursor;
+                continue;
+            }
+        }
+
+        index++;
     }
 
-    index++;
-  }
-
-  return tables;
+    return tables;
 }
 
 /**
@@ -578,17 +625,19 @@ export function parseMarkdownTables(lines) {
  * @returns {{ parent: string, child: string }[]} Every inheritance edge, in document order.
  */
 export function extractInheritanceEdges(mermaidBody) {
-  const edges = [];
+    const edges = [];
 
-  for (const rawLine of mermaidBody.split("\n")) {
-    const match = rawLine.trim().match(/^(\S+)\s*<\|--\s*(\S+?)(?:\s*:.*)?$/u);
+    for (const rawLine of mermaidBody.split("\n")) {
+        const match = rawLine
+            .trim()
+            .match(/^(\S+)\s*<\|--\s*(\S+?)(?:\s*:.*)?$/u);
 
-    if (match) {
-      edges.push({ parent: match[1], child: match[2] });
+        if (match) {
+            edges.push({ parent: match[1], child: match[2] });
+        }
     }
-  }
 
-  return edges;
+    return edges;
 }
 
 /**
@@ -598,12 +647,12 @@ export function extractInheritanceEdges(mermaidBody) {
  * @returns {string} A readable description.
  */
 function describeKey(key) {
-  if (key === null || key === undefined) {
-    return "no class base";
-  }
+    if (key === null || key === undefined) {
+        return "no class base";
+    }
 
-  const [name, arity] = key.split("#");
-  return arity === "0" ? name : `${name}<...>`;
+    const [name, arity] = key.split("#");
+    return arity === "0" ? name : `${name}<...>`;
 }
 
 /**
@@ -618,37 +667,37 @@ function describeKey(key) {
  * @returns {{ errors: string[], checked: number, skipped: number }} Violations plus edge counts.
  */
 export function validateTierA(mermaidBody, snapshotMap) {
-  const edges = extractInheritanceEdges(mermaidBody);
-  const errors = [];
-  let checked = 0;
-  let skipped = 0;
+    const edges = extractInheritanceEdges(mermaidBody);
+    const errors = [];
+    let checked = 0;
+    let skipped = 0;
 
-  for (const edge of edges) {
-    const parentRef = parseTypeReference(edge.parent);
-    const childRef = parseTypeReference(edge.child);
+    for (const edge of edges) {
+        const parentRef = parseTypeReference(edge.parent);
+        const childRef = parseTypeReference(edge.child);
 
-    if (
-      parentRef === undefined ||
-      childRef === undefined ||
-      !snapshotMap.has(parentRef.key) ||
-      !snapshotMap.has(childRef.key)
-    ) {
-      skipped++;
-      continue;
+        if (
+            parentRef === undefined ||
+            childRef === undefined ||
+            !snapshotMap.has(parentRef.key) ||
+            !snapshotMap.has(childRef.key)
+        ) {
+            skipped++;
+            continue;
+        }
+
+        checked++;
+        const childEntry = snapshotMap.get(childRef.key);
+
+        if (childEntry.base !== parentRef.key) {
+            errors.push(
+                `Inheritance edge "${edge.parent} <|-- ${edge.child}" does not match the compatibility ` +
+                    `snapshot; ${childRef.simpleName}'s actual base is ${describeKey(childEntry.base)}`,
+            );
+        }
     }
 
-    checked++;
-    const childEntry = snapshotMap.get(childRef.key);
-
-    if (childEntry.base !== parentRef.key) {
-      errors.push(
-        `Inheritance edge "${edge.parent} <|-- ${edge.child}" does not match the compatibility ` +
-          `snapshot; ${childRef.simpleName}'s actual base is ${describeKey(childEntry.base)}`,
-      );
-    }
-  }
-
-  return { errors, checked, skipped };
+    return { errors, checked, skipped };
 }
 
 /**
@@ -670,46 +719,55 @@ export function validateTierA(mermaidBody, snapshotMap) {
  * the literal `Inherited `).
  */
 export function extractCheckableTokens(cell) {
-  const trimmed = cell.trim();
+    const trimmed = cell.trim();
 
-  if (trimmed === "" || trimmed === "—" || trimmed === "-") {
-    return [];
-  }
-
-  const inheritedMatch = trimmed.match(/^Inherited\s+(.+)$/u);
-  const candidate = inheritedMatch ? inheritedMatch[1] : trimmed;
-
-  const spans = [...candidate.matchAll(/`([^`]*)`/gu)];
-
-  if (spans.length === 0) {
-    return [];
-  }
-
-  const residue = candidate.replaceAll(/`[^`]*`/gu, "").replaceAll(/[,\s]/gu, "");
-
-  if (residue !== "") {
-    return [];
-  }
-
-  const tokens = [];
-
-  for (const span of spans) {
-    const content = span[1];
-    const attachedMatch = content.match(/^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$/u);
-
-    if (attachedMatch) {
-      tokens.push({ owner: attachedMatch[1], property: attachedMatch[2] });
-      continue;
+    if (trimmed === "" || trimmed === "—" || trimmed === "-") {
+        return [];
     }
 
-    const plainMatch = content.match(/^([A-Za-z_][A-Za-z0-9_]*)(?:\(.*\))?$/u);
+    const inheritedMatch = trimmed.match(/^Inherited\s+(.+)$/u);
+    const candidate = inheritedMatch ? inheritedMatch[1] : trimmed;
 
-    if (plainMatch) {
-      tokens.push({ name: plainMatch[1] });
+    const spans = [...candidate.matchAll(/`([^`]*)`/gu)];
+
+    if (spans.length === 0) {
+        return [];
     }
-  }
 
-  return tokens;
+    const residue = candidate
+        .replaceAll(/`[^`]*`/gu, "")
+        .replaceAll(/[,\s]/gu, "");
+
+    if (residue !== "") {
+        return [];
+    }
+
+    const tokens = [];
+
+    for (const span of spans) {
+        const content = span[1];
+        const attachedMatch = content.match(
+            /^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$/u,
+        );
+
+        if (attachedMatch) {
+            tokens.push({
+                owner: attachedMatch[1],
+                property: attachedMatch[2],
+            });
+            continue;
+        }
+
+        const plainMatch = content.match(
+            /^([A-Za-z_][A-Za-z0-9_]*)(?:\(.*\))?$/u,
+        );
+
+        if (plainMatch) {
+            tokens.push({ name: plainMatch[1] });
+        }
+    }
+
+    return tokens;
 }
 
 /**
@@ -726,20 +784,24 @@ export function extractCheckableTokens(cell) {
  * @returns {string[]} The paragraph's lines, oldest first; empty when the table has no leading prose.
  */
 function precedingParagraph(lines, tableStartIndex) {
-  let index = tableStartIndex - 1;
+    let index = tableStartIndex - 1;
 
-  while (index >= 0 && lines[index].trim() === "") {
-    index--;
-  }
+    while (index >= 0 && lines[index].trim() === "") {
+        index--;
+    }
 
-  const paragraph = [];
+    const paragraph = [];
 
-  while (index >= 0 && lines[index].trim() !== "" && !/^#{1,6}\s/u.test(lines[index])) {
-    paragraph.unshift(lines[index]);
-    index--;
-  }
+    while (
+        index >= 0 &&
+        lines[index].trim() !== "" &&
+        !/^#{1,6}\s/u.test(lines[index])
+    ) {
+        paragraph.unshift(lines[index]);
+        index--;
+    }
 
-  return paragraph;
+    return paragraph;
 }
 
 /**
@@ -751,13 +813,13 @@ function precedingParagraph(lines, tableStartIndex) {
  * @returns {string | undefined} The leading identifier of the first backtick span, if any.
  */
 function firstBacktickIdentifier(paragraph) {
-  const span = paragraph.join(" ").match(/`([^`]*)`/u);
+    const span = paragraph.join(" ").match(/`([^`]*)`/u);
 
-  if (span === null) {
-    return undefined;
-  }
+    if (span === null) {
+        return undefined;
+    }
 
-  return span[1].match(/^([A-Za-z_][A-Za-z0-9_]*)/u)?.[1];
+    return span[1].match(/^([A-Za-z_][A-Za-z0-9_]*)/u)?.[1];
 }
 
 /**
@@ -775,23 +837,36 @@ function firstBacktickIdentifier(paragraph) {
  * @param {Map<string, unknown>} snapshotMap The parsed snapshot.
  * @returns {string} The resolved subject type key.
  */
-export function resolveTableSubjectKey(lines, headings, table, primaryKey, snapshotMap) {
-  const heading = findNearestHeadingBefore(headings, table.startIndex);
-  const headingKey =
-    heading === undefined ? undefined : `${heading.text.replaceAll("`", "").trim()}#0`;
+export function resolveTableSubjectKey(
+    lines,
+    headings,
+    table,
+    primaryKey,
+    snapshotMap,
+) {
+    const heading = findNearestHeadingBefore(headings, table.startIndex);
+    const headingKey =
+        heading === undefined
+            ? undefined
+            : `${heading.text.replaceAll("`", "").trim()}#0`;
 
-  if (headingKey !== undefined && snapshotMap.has(headingKey)) {
-    return headingKey;
-  }
+    if (headingKey !== undefined && snapshotMap.has(headingKey)) {
+        return headingKey;
+    }
 
-  const paragraphIdentifier = firstBacktickIdentifier(precedingParagraph(lines, table.startIndex));
-  const paragraphKey = paragraphIdentifier === undefined ? undefined : `${paragraphIdentifier}#0`;
+    const paragraphIdentifier = firstBacktickIdentifier(
+        precedingParagraph(lines, table.startIndex),
+    );
+    const paragraphKey =
+        paragraphIdentifier === undefined
+            ? undefined
+            : `${paragraphIdentifier}#0`;
 
-  if (paragraphKey !== undefined && snapshotMap.has(paragraphKey)) {
-    return paragraphKey;
-  }
+    if (paragraphKey !== undefined && snapshotMap.has(paragraphKey)) {
+        return paragraphKey;
+    }
 
-  return primaryKey;
+    return primaryKey;
 }
 
 /**
@@ -818,77 +893,88 @@ export function resolveTableSubjectKey(lines, headings, table, primaryKey, snaps
  * @returns {{ errors: string[], checked: number, skipped: number }} Violations plus token counts.
  */
 export function validateTierB(lines, headings, primaryKey, snapshotMap) {
-  const errors = [];
-  let checked = 0;
-  let skipped = 0;
+    const errors = [];
+    let checked = 0;
+    let skipped = 0;
 
-  const canonicalTables = parseMarkdownTables(lines).filter((table) =>
-    isCanonicalApiHeader(table.headerCells),
-  );
+    const canonicalTables = parseMarkdownTables(lines).filter((table) =>
+        isCanonicalApiHeader(table.headerCells),
+    );
 
-  if (canonicalTables.length === 0) {
-    return { errors, checked, skipped };
-  }
-
-  if (!snapshotMap.has(primaryKey)) {
-    errors.push(`documented type "${describeKey(primaryKey)}" was not found in the compatibility snapshot`);
-    return { errors, checked, skipped };
-  }
-
-  const memberCache = new Map();
-  const membersOf = (key) => {
-    if (!memberCache.has(key)) {
-      memberCache.set(key, ancestorMemberSet(key, snapshotMap));
+    if (canonicalTables.length === 0) {
+        return { errors, checked, skipped };
     }
 
-    return memberCache.get(key);
-  };
+    if (!snapshotMap.has(primaryKey)) {
+        errors.push(
+            `documented type "${describeKey(primaryKey)}" was not found in the compatibility snapshot`,
+        );
+        return { errors, checked, skipped };
+    }
 
-  for (const table of canonicalTables) {
-    const subjectKey = resolveTableSubjectKey(lines, headings, table, primaryKey, snapshotMap);
-    const subjectMembers = membersOf(subjectKey);
-
-    for (const row of table.dataRows) {
-      const tokens = extractCheckableTokens(row[0] ?? "");
-
-      if (tokens.length === 0) {
-        skipped++;
-        continue;
-      }
-
-      for (const token of tokens) {
-        checked++;
-
-        if ("owner" in token) {
-          const ownerKey = `${token.owner}#0`;
-
-          if (!snapshotMap.has(ownerKey)) {
-            errors.push(
-              `attached property owner \`${token.owner}\` was not found in the compatibility snapshot`,
-            );
-            continue;
-          }
-
-          const ownerMembers = membersOf(ownerKey);
-
-          if (!ownerMembers.has(`Get${token.property}`) && !ownerMembers.has(`Set${token.property}`)) {
-            errors.push(
-              `attached property \`${token.owner}.${token.property}\` has neither ` +
-                `Get${token.property} nor Set${token.property} on ${token.owner} in the ` +
-                "compatibility snapshot",
-            );
-          }
-        } else if (!subjectMembers.has(token.name)) {
-          errors.push(
-            `member \`${token.name}\` was not found on ${describeKey(subjectKey)} or its ` +
-              "ancestors in the compatibility snapshot",
-          );
+    const memberCache = new Map();
+    const membersOf = (key) => {
+        if (!memberCache.has(key)) {
+            memberCache.set(key, ancestorMemberSet(key, snapshotMap));
         }
-      }
-    }
-  }
 
-  return { errors, checked, skipped };
+        return memberCache.get(key);
+    };
+
+    for (const table of canonicalTables) {
+        const subjectKey = resolveTableSubjectKey(
+            lines,
+            headings,
+            table,
+            primaryKey,
+            snapshotMap,
+        );
+        const subjectMembers = membersOf(subjectKey);
+
+        for (const row of table.dataRows) {
+            const tokens = extractCheckableTokens(row[0] ?? "");
+
+            if (tokens.length === 0) {
+                skipped++;
+                continue;
+            }
+
+            for (const token of tokens) {
+                checked++;
+
+                if ("owner" in token) {
+                    const ownerKey = `${token.owner}#0`;
+
+                    if (!snapshotMap.has(ownerKey)) {
+                        errors.push(
+                            `attached property owner \`${token.owner}\` was not found in the compatibility snapshot`,
+                        );
+                        continue;
+                    }
+
+                    const ownerMembers = membersOf(ownerKey);
+
+                    if (
+                        !ownerMembers.has(`Get${token.property}`) &&
+                        !ownerMembers.has(`Set${token.property}`)
+                    ) {
+                        errors.push(
+                            `attached property \`${token.owner}.${token.property}\` has neither ` +
+                                `Get${token.property} nor Set${token.property} on ${token.owner} in the ` +
+                                "compatibility snapshot",
+                        );
+                    }
+                } else if (!subjectMembers.has(token.name)) {
+                    errors.push(
+                        `member \`${token.name}\` was not found on ${describeKey(subjectKey)} or its ` +
+                            "ancestors in the compatibility snapshot",
+                    );
+                }
+            }
+        }
+    }
+
+    return { errors, checked, skipped };
 }
 
 /**
@@ -898,20 +984,20 @@ export function validateTierB(lines, headings, primaryKey, snapshotMap) {
  * @returns {Promise<string[]>} Absolute paths to every `.md` file.
  */
 async function findMarkdownFiles(root) {
-  const entries = await readdir(root, { withFileTypes: true });
-  const files = [];
+    const entries = await readdir(root, { withFileTypes: true });
+    const files = [];
 
-  for (const entry of entries) {
-    const entryPath = join(root, entry.name);
+    for (const entry of entries) {
+        const entryPath = join(root, entry.name);
 
-    if (entry.isDirectory()) {
-      files.push(...(await findMarkdownFiles(entryPath)));
-    } else if (entry.isFile() && entry.name.endsWith(".md")) {
-      files.push(entryPath);
+        if (entry.isDirectory()) {
+            files.push(...(await findMarkdownFiles(entryPath)));
+        } else if (entry.isFile() && entry.name.endsWith(".md")) {
+            files.push(entryPath);
+        }
     }
-  }
 
-  return files;
+    return files;
 }
 
 /**
@@ -936,127 +1022,163 @@ async function findMarkdownFiles(root) {
  * }>} Every violation, every pending-migration warning, and summary counts.
  */
 export async function validateControlDocStructure(root) {
-  const snapshotText = await readFile(
-    join(root, "tests", "SharpVision.Compatibility.Tests", "Snapshots", "SharpVision.verified.txt"),
-    "utf8",
-  );
-  const snapshotMap = parseSnapshotTypes(snapshotText);
+    const snapshotsRoot = join(
+        root,
+        "tests",
+        "SharpVision.Compatibility.Tests",
+        "Snapshots",
+    );
+    const snapshotTexts = [
+        await readFile(join(snapshotsRoot, "SharpVision.verified.txt"), "utf8"),
+    ];
 
-  const controlsRoot = join(root, "docs", "controls");
-  const docFiles = (await findMarkdownFiles(controlsRoot)).sort();
-
-  const errors = [];
-  const warnings = [];
-  const stats = {
-    typesMapped: snapshotMap.size,
-    pagesChecked: 0,
-    pagesExempt: 0,
-    tierAChecked: 0,
-    tierASkipped: 0,
-    tierBChecked: 0,
-    tierBSkipped: 0,
-  };
-
-  for (const docPath of docFiles) {
-    if (basename(docPath) === "index.md") {
-      continue;
+    try {
+        snapshotTexts.push(
+            await readFile(
+                join(snapshotsRoot, "SharpVision.Document.verified.txt"),
+                "utf8",
+            ),
+        );
+    } catch (error) {
+        if (error.code !== "ENOENT") {
+            throw error;
+        }
     }
 
-    const relativePath = relative(root, docPath).split(sep).join("/");
+    const snapshotMap = new Map();
 
-    if (PENDING_MIGRATION.has(relativePath)) {
-      stats.pagesExempt++;
-      warnings.push(
-        `${relativePath}: PENDING_MIGRATION exemption - control-doc-structure checks skipped ` +
-          "pending its own migration",
-      );
-      continue;
+    for (const snapshotText of snapshotTexts) {
+        for (const [key, value] of parseSnapshotTypes(snapshotText)) {
+            snapshotMap.set(key, value);
+        }
     }
 
-    stats.pagesChecked++;
-    const text = await readFile(docPath, "utf8");
-    const lines = text.split(/\r?\n/u);
-    const headings = extractH2Headings(lines);
+    const controlsRoot = join(root, "docs", "controls");
+    const docFiles = (await findMarkdownFiles(controlsRoot)).sort();
 
-    const spineError = validateSectionSpine(headings);
+    const errors = [];
+    const warnings = [];
+    const stats = {
+        typesMapped: snapshotMap.size,
+        pagesChecked: 0,
+        pagesExempt: 0,
+        tierAChecked: 0,
+        tierASkipped: 0,
+        tierBChecked: 0,
+        tierBSkipped: 0,
+    };
 
-    if (spineError !== null) {
-      errors.push(`${relativePath}: ${spineError}`);
+    for (const docPath of docFiles) {
+        if (basename(docPath) === "index.md") {
+            continue;
+        }
+
+        const relativePath = relative(root, docPath).split(sep).join("/");
+
+        if (PENDING_MIGRATION.has(relativePath)) {
+            stats.pagesExempt++;
+            warnings.push(
+                `${relativePath}: PENDING_MIGRATION exemption - control-doc-structure checks skipped ` +
+                    "pending its own migration",
+            );
+            continue;
+        }
+
+        stats.pagesChecked++;
+        const text = await readFile(docPath, "utf8");
+        const lines = text.split(/\r?\n/u);
+        const headings = extractH2Headings(lines);
+
+        const spineError = validateSectionSpine(headings);
+
+        if (spineError !== null) {
+            errors.push(`${relativePath}: ${spineError}`);
+        }
+
+        const inheritanceResult = validateInheritanceSection(lines, headings);
+
+        if (inheritanceResult.error !== undefined) {
+            errors.push(`${relativePath}: ${inheritanceResult.error}`);
+        } else {
+            const tierA = validateTierA(
+                inheritanceResult.mermaidBody,
+                snapshotMap,
+            );
+
+            for (const error of tierA.errors) {
+                errors.push(`${relativePath}: ${error}`);
+            }
+
+            stats.tierAChecked += tierA.checked;
+            stats.tierASkipped += tierA.skipped;
+        }
+
+        const apiSection = sliceSection(lines, headings, "API");
+        const apiTables =
+            apiSection === undefined ? [] : parseMarkdownTables(apiSection);
+
+        if (apiTables.length === 0) {
+            errors.push(`${relativePath}: ## API has no Markdown table`);
+        } else if (!isCanonicalApiHeader(apiTables[0].headerCells)) {
+            errors.push(
+                `${relativePath}: ## API table header is "| ${apiTables[0].headerCells.join(" | ")} |", ` +
+                    `expected "| ${expectedApiHeader.join(" | ")} |"`,
+            );
+        }
+
+        const documentedKey = deriveDocumentedType(basename(docPath, ".md"));
+
+        if (documentedKey !== SKIP_TIER_B) {
+            const subsectionHeadings = extractSubsectionHeadings(lines);
+            const tierB = validateTierB(
+                lines,
+                subsectionHeadings,
+                documentedKey,
+                snapshotMap,
+            );
+
+            for (const error of tierB.errors) {
+                errors.push(`${relativePath}: ${error}`);
+            }
+
+            stats.tierBChecked += tierB.checked;
+            stats.tierBSkipped += tierB.skipped;
+        }
     }
 
-    const inheritanceResult = validateInheritanceSection(lines, headings);
-
-    if (inheritanceResult.error !== undefined) {
-      errors.push(`${relativePath}: ${inheritanceResult.error}`);
-    } else {
-      const tierA = validateTierA(inheritanceResult.mermaidBody, snapshotMap);
-
-      for (const error of tierA.errors) {
-        errors.push(`${relativePath}: ${error}`);
-      }
-
-      stats.tierAChecked += tierA.checked;
-      stats.tierASkipped += tierA.skipped;
-    }
-
-    const apiSection = sliceSection(lines, headings, "API");
-    const apiTables = apiSection === undefined ? [] : parseMarkdownTables(apiSection);
-
-    if (apiTables.length === 0) {
-      errors.push(`${relativePath}: ## API has no Markdown table`);
-    } else if (!isCanonicalApiHeader(apiTables[0].headerCells)) {
-      errors.push(
-        `${relativePath}: ## API table header is "| ${apiTables[0].headerCells.join(" | ")} |", ` +
-          `expected "| ${expectedApiHeader.join(" | ")} |"`,
-      );
-    }
-
-    const documentedKey = deriveDocumentedType(basename(docPath, ".md"));
-
-    if (documentedKey !== SKIP_TIER_B) {
-      const subsectionHeadings = extractSubsectionHeadings(lines);
-      const tierB = validateTierB(lines, subsectionHeadings, documentedKey, snapshotMap);
-
-      for (const error of tierB.errors) {
-        errors.push(`${relativePath}: ${error}`);
-      }
-
-      stats.tierBChecked += tierB.checked;
-      stats.tierBSkipped += tierB.skipped;
-    }
-  }
-
-  return { errors, warnings, stats };
+    return { errors, warnings, stats };
 }
 
 async function main() {
-  const root = join(import.meta.dirname, "..");
-  const { errors, warnings, stats } = await validateControlDocStructure(root);
+    const root = join(import.meta.dirname, "..");
+    const { errors, warnings, stats } = await validateControlDocStructure(root);
 
-  for (const warning of warnings) {
-    console.log(`PENDING_MIGRATION: ${warning}`);
-  }
+    for (const warning of warnings) {
+        console.log(`PENDING_MIGRATION: ${warning}`);
+    }
 
-  if (errors.length === 0) {
-    console.log(
-      `Control-page contract satisfied for ${stats.pagesChecked} page(s) ` +
-        `(${stats.pagesExempt} pending-migration exemption(s)). ` +
-        `Tier A checked ${stats.tierAChecked} edge(s), skipped ${stats.tierASkipped}. ` +
-        `Tier B checked ${stats.tierBChecked} member(s), skipped ${stats.tierBSkipped}.`,
-    );
-    return;
-  }
+    if (errors.length === 0) {
+        console.log(
+            `Control-page contract satisfied for ${stats.pagesChecked} page(s) ` +
+                `(${stats.pagesExempt} pending-migration exemption(s)). ` +
+                `Tier A checked ${stats.tierAChecked} edge(s), skipped ${stats.tierASkipped}. ` +
+                `Tier B checked ${stats.tierBChecked} member(s), skipped ${stats.tierBSkipped}.`,
+        );
+        return;
+    }
 
-  for (const error of errors) {
-    console.error(error);
-  }
+    for (const error of errors) {
+        console.error(error);
+    }
 
-  process.exitCode = 1;
+    process.exitCode = 1;
 }
 
 const invokedPath =
-  process.argv[1] === undefined ? undefined : pathToFileURL(process.argv[1]).href;
+    process.argv[1] === undefined
+        ? undefined
+        : pathToFileURL(process.argv[1]).href;
 
 if (invokedPath === import.meta.url) {
-  await main();
+    await main();
 }

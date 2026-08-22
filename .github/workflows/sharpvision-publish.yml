@@ -44,9 +44,11 @@ jobs:
     outputs:
       terminal_version: ${{ steps.package-versions.outputs.terminal_version }}
       ui_version: ${{ steps.package-versions.outputs.ui_version }}
+      document_version: ${{ steps.package-versions.outputs.document_version }}
       fonts_version: ${{ steps.package-versions.outputs.fonts_version }}
       terminal_deployed: ${{ steps.published-versions.outputs.terminal_deployed }}
       ui_deployed: ${{ steps.published-versions.outputs.ui_deployed }}
+      document_deployed: ${{ steps.published-versions.outputs.document_deployed }}
       fonts_deployed: ${{ steps.published-versions.outputs.fonts_deployed }}
 
     steps:
@@ -65,11 +67,12 @@ jobs:
         run: |
           terminal_version="$(dotnet msbuild src/SharpVision.Terminal/SharpVision.Terminal.csproj -getProperty:Version | tail -n 1)"
           ui_version="$(dotnet msbuild src/SharpVision/SharpVision.csproj -getProperty:Version | tail -n 1)"
+          document_version="$(dotnet msbuild src/SharpVision.Document/SharpVision.Document.csproj -getProperty:Version | tail -n 1)"
           fonts_version="$(dotnet msbuild src/SharpVision.FigletFonts/SharpVision.FigletFonts.csproj -getProperty:Version | tail -n 1)"
 
           semver_pattern='^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'
 
-          for entry in "SharpVision.Terminal:$terminal_version" "SharpVision:$ui_version" "SharpVision.FigletFonts:$fonts_version"; do
+          for entry in "SharpVision.Terminal:$terminal_version" "SharpVision:$ui_version" "SharpVision.Document:$document_version" "SharpVision.FigletFonts:$fonts_version"; do
             name="${entry%%:*}"
             version="${entry#*:}"
 
@@ -81,6 +84,7 @@ jobs:
 
           echo "terminal_version=$terminal_version" >> "$GITHUB_OUTPUT"
           echo "ui_version=$ui_version" >> "$GITHUB_OUTPUT"
+          echo "document_version=$document_version" >> "$GITHUB_OUTPUT"
           echo "fonts_version=$fonts_version" >> "$GITHUB_OUTPUT"
 
       - name: 🔎 Check if package is already published
@@ -89,6 +93,7 @@ jobs:
         env:
           TERMINAL_VERSION: ${{ steps.package-versions.outputs.terminal_version }}
           UI_VERSION: ${{ steps.package-versions.outputs.ui_version }}
+          DOCUMENT_VERSION: ${{ steps.package-versions.outputs.document_version }}
           FONTS_VERSION: ${{ steps.package-versions.outputs.fonts_version }}
         run: |
           check_package() {
@@ -118,6 +123,7 @@ jobs:
 
           check_package terminal_deployed SharpVision.Terminal "$TERMINAL_VERSION"
           check_package ui_deployed SharpVision "$UI_VERSION"
+          check_package document_deployed SharpVision.Document "$DOCUMENT_VERSION"
           check_package fonts_deployed SharpVision.FigletFonts "$FONTS_VERSION"
 
       - name: 📦 Pack SharpVision packages
@@ -125,6 +131,7 @@ jobs:
         env:
           TERMINAL_VERSION: ${{ steps.package-versions.outputs.terminal_version }}
           UI_VERSION: ${{ steps.package-versions.outputs.ui_version }}
+          DOCUMENT_VERSION: ${{ steps.package-versions.outputs.document_version }}
           FONTS_VERSION: ${{ steps.package-versions.outputs.fonts_version }}
         run: |
           rm -rf artifacts/package
@@ -142,6 +149,12 @@ jobs:
             --no-restore \
             --output artifacts/package
 
+          dotnet pack src/SharpVision.Document/SharpVision.Document.csproj \
+            --configuration Release \
+            --no-build \
+            --no-restore \
+            --output artifacts/package
+
           dotnet pack src/SharpVision.FigletFonts/SharpVision.FigletFonts.csproj \
             --configuration Release \
             --no-build \
@@ -151,6 +164,8 @@ jobs:
           expected_files=(
             "SharpVision.$UI_VERSION.nupkg"
             "SharpVision.$UI_VERSION.snupkg"
+            "SharpVision.Document.$DOCUMENT_VERSION.nupkg"
+            "SharpVision.Document.$DOCUMENT_VERSION.snupkg"
             "SharpVision.FigletFonts.$FONTS_VERSION.nupkg"
             "SharpVision.FigletFonts.$FONTS_VERSION.snupkg"
             "SharpVision.Terminal.$TERMINAL_VERSION.nupkg"
@@ -160,7 +175,7 @@ jobs:
           mapfile -t package_files < <(find artifacts/package -maxdepth 1 -type f -printf '%f\n' | sort)
 
           if [[ "${package_files[*]}" != "${expected_sorted[*]}" ]]; then
-            echo "Unexpected package output. Exactly three packages and their symbols are expected:" >&2
+            echo "Unexpected package output. Exactly four packages and their symbols are expected:" >&2
             printf '  %s\n' "${package_files[@]}" >&2
             exit 1
           fi
@@ -237,6 +252,28 @@ jobs:
           --source "$NUGET_SOURCE"
           --skip-duplicate
 
+      - name: 🚀 Publish SharpVision.Document package
+        if: ${{ needs.build-and-test.outputs.document_deployed == 'no' }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_ORG_API_KEY }}
+          VERSION: ${{ needs.build-and-test.outputs.document_version }}
+        run: >-
+          dotnet nuget push "artifacts/package/SharpVision.Document.${VERSION}.nupkg"
+          --api-key "$NUGET_API_KEY"
+          --source "$NUGET_SOURCE"
+          --skip-duplicate
+
+      - name: 🚀 Publish SharpVision.Document symbols
+        if: ${{ needs.build-and-test.outputs.document_deployed == 'no' }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_ORG_API_KEY }}
+          VERSION: ${{ needs.build-and-test.outputs.document_version }}
+        run: >-
+          dotnet nuget push "artifacts/package/SharpVision.Document.${VERSION}.snupkg"
+          --api-key "$NUGET_API_KEY"
+          --source "$NUGET_SOURCE"
+          --skip-duplicate
+
       - name: 🚀 Publish SharpVision.FigletFonts package
         if: ${{ needs.build-and-test.outputs.fonts_deployed == 'no' }}
         env:
@@ -288,6 +325,12 @@ jobs:
               fonts_status="✅ Already published"
             fi
 
+            if [[ "${{ needs.build-and-test.outputs.document_deployed }}" == "no" ]]; then
+              document_status="✅ Published"
+            else
+              document_status="✅ Already published"
+            fi
+
             {
               echo "## NuGet packages"
               echo
@@ -295,6 +338,7 @@ jobs:
               echo "| --- | --- | --- |"
               echo "| SharpVision.Terminal | $terminal_status | ${{ needs.build-and-test.outputs.terminal_version }} |"
               echo "| SharpVision | $ui_status | ${{ needs.build-and-test.outputs.ui_version }} |"
+              echo "| SharpVision.Document | $document_status | ${{ needs.build-and-test.outputs.document_version }} |"
               echo "| SharpVision.FigletFonts | $fonts_status | ${{ needs.build-and-test.outputs.fonts_version }} |"
             } >> "$GITHUB_STEP_SUMMARY"
           else

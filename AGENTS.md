@@ -16,6 +16,8 @@ documentation, tests, and showcase example agree.
   capabilities, Unicode cell geometry, buffers, and rendering.
 - `src/SharpVision/` contains the dispatcher, mutable controls, layout, input
   routing, focus, styling, scrolling, menus, popups, and windows.
+- `src/SharpVision.Document/` contains the optional semantic Document control,
+  retained form embedding, format-reader abstraction, and Markdown parser.
 - `src/SharpVision.FigletFonts/` contains the optional embedded FIGlet font
   catalog, shipped as a separate package so an application does not carry the
   font assets unless it wants them.
@@ -30,11 +32,11 @@ documentation, tests, and showcase example agree.
   symlinks to it, so every agent reads one copy. Add or edit skills only under
   `.agents/skills/`.
 
-`SharpVision` may reference `SharpVision.Terminal`. `SharpVision.FigletFonts` is
-an optional leaf that an application references directly; nothing in the core
-libraries references it. The showcase may reference all three. Dependencies must
-never point from a lower layer to a higher layer or from production code to
-tests.
+`SharpVision` may reference `SharpVision.Terminal`. `SharpVision.Document` and
+`SharpVision.FigletFonts` are optional leaves that an application references
+directly; nothing in the core libraries references them. The showcase may
+reference all four. Dependencies must never point from a lower layer to a higher
+layer or from production code to tests.
 
 ## Orientation workflow
 

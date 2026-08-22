@@ -16,6 +16,7 @@ using Popups;
 
 using SharpVision.Controls.Charts;
 using SharpVision.Tests.Controls.Charts;
+using SharpVision.Tests.Controls.Documents;
 using SharpVision.Tests.Controls.Input;
 using SharpVision.Tests.Controls.Layout;
 using SharpVision.Tests.Controls.Scrolling;
@@ -331,13 +332,21 @@ public sealed class ComponentSurfaceCoverageTests
             ComponentBehavior.UnavailableCleanup |
             ComponentBehavior.Transient |
             ComponentBehavior.Composition) },
+        { typeof(Document), Requirement<DocumentLinkSurfaceTests>(
+            _interactive |
+            ComponentBehavior.Directional |
+            ComponentBehavior.PressReleaseExcluded |
+            ComponentBehavior.Activation |
+            ComponentBehavior.PointerActivation |
+            ComponentBehavior.KeyboardActivation) },
     };
 
     /// <summary>Verifies every exported concrete ControlBase has one explicit complete behavior requirement.</summary>
     [Fact]
     public void Catalog_WhenPublicConcreteControlsChange_RequiresExplicitBehaviorClassification()
     {
-        var controls = typeof(ControlBase).Assembly.GetExportedTypes()
+        var controls = new[] { typeof(ControlBase).Assembly, typeof(Document).Assembly }
+            .SelectMany(assembly => assembly.GetExportedTypes())
             .Where(type => !type.IsAbstract && typeof(ControlBase).IsAssignableFrom(type))
             .ToHashSet();
 

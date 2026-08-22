@@ -64,7 +64,7 @@ then browse the [control catalog](docs/controls/index.md#control-catalog).
 
 ## Packages
 
-SharpVision `1.0.0-beta.1` is a prerelease and may change before the stable API.
+SharpVision `1.1.0-beta.1` is a prerelease and may change before the stable API.
 
 `SharpVision` installs `SharpVision.Terminal` transitively. Reference the
 lower-level package directly only when building terminal infrastructure without

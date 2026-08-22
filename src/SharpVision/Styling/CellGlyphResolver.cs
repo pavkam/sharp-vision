@@ -4,7 +4,8 @@
 namespace SharpVision.Styling;
 
 /// <summary>Validates and resolves fixed-cell control glyphs against Unicode width policies.</summary>
-internal static class CellGlyphResolver
+[PublicAPI]
+public static class CellGlyphResolver
 {
     extension(Rune value)
     {

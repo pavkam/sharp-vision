@@ -1,0 +1,151 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Tests.Controls.Documents;
+
+/// <summary>Verifies table column measurement, alignment, and header presentation.</summary>
+public sealed class DocumentTableTests
+{
+    /// <summary>Verifies the semantic table hierarchy owns empty collections and documented defaults.</summary>
+    [Fact]
+    public void Constructor_WhenTableHierarchyIsEmpty_UsesDocumentedDefaults()
+    {
+        // Arrange and act
+        var table = new DocumentTable();
+        var row = new DocumentTableRow();
+        var cell = new DocumentTableCell();
+
+        // Assert
+        table.Rows.Count.ShouldBe(0);
+        row.IsHeader.ShouldBeFalse();
+        row.Cells.Count.ShouldBe(0);
+        cell.Alignment.ShouldBe(DocumentTableCellAlignment.Left);
+        cell.Inlines.Count.ShouldBe(0);
+    }
+
+    /// <summary>Verifies cell construction and alignment validate without corrupting prior state.</summary>
+    [Fact]
+    public void Alignment_WhenCellIsConstructedAndMutated_ValidatesAndPreservesContent()
+    {
+        // Arrange
+        var cell = new DocumentTableCell("value");
+        cell.Alignment.ShouldBe(DocumentTableCellAlignment.Left);
+
+        // Act
+        cell.Alignment = DocumentTableCellAlignment.Center;
+
+        // Assert
+        cell.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("value");
+        cell.Alignment.ShouldBe(DocumentTableCellAlignment.Center);
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => cell.Alignment = (DocumentTableCellAlignment) 99);
+        _ = Should.Throw<ArgumentNullException>(static () => new DocumentTableCell(null!));
+        cell.Alignment.ShouldBe(DocumentTableCellAlignment.Center);
+    }
+
+    /// <summary>Verifies concrete row and cell collections detach nodes for immediate reuse.</summary>
+    [Fact]
+    public void Remove_WhenRowsAndCellsAreOwned_DetachesThemForReuse()
+    {
+        // Arrange
+        var cell = new DocumentTableCell("value");
+        var row = new DocumentTableRow { Cells = { cell } };
+        var table = new DocumentTable { Rows = { row } };
+
+        // Act
+        row.Cells.Remove(cell).ShouldBeTrue();
+        table.Rows.Remove(row).ShouldBeTrue();
+        var replacementRow = new DocumentTableRow { Cells = { cell } };
+        var replacement = new DocumentTable { Rows = { row, replacementRow } };
+
+        // Assert
+        replacement.Rows.Count.ShouldBe(2);
+        replacementRow.Cells[0].ShouldBeSameAs(cell);
+    }
+
+    /// <summary>Verifies all rows share widths and cells honor their declared alignment.</summary>
+    [Fact]
+    public void Render_WhenTableHasAlignedColumns_UsesSharedMeasuredWidths()
+    {
+        // Arrange
+        var header = new DocumentTableRow
+        {
+            IsHeader = true,
+            Cells =
+            {
+                new DocumentTableCell("Name"),
+                new DocumentTableCell("N") { Alignment = DocumentTableCellAlignment.Right }
+            }
+        };
+        var body = new DocumentTableRow
+        {
+            Cells =
+            {
+                new DocumentTableCell("A"),
+                new DocumentTableCell("12") { Alignment = DocumentTableCellAlignment.Right }
+            }
+        };
+        var document = new Document
+        {
+            Blocks = { new DocumentTable { Rows = { header, body } } }
+        };
+
+        // Act
+        using var render = new DocumentRenderProbe(document, new Size(20, 2));
+
+        // Assert
+        render.Rows().ShouldBe(["| Name |  N |", "| A    | 12 |"]);
+        (render.Cell(0, 0).Style.Attributes & TerminalAttributes.Bold).ShouldBe(TerminalAttributes.Bold);
+    }
+
+    /// <summary>Verifies table projection preserves semantic inline attributes and hyperlinks
+    /// instead of flattening a cell to inert text.</summary>
+    [Fact]
+    public void Render_WhenTableCellContainsRichInlines_PreservesStylingAndLinkIdentity()
+    {
+        // Arrange
+        var strong = new DocumentStrong { Inlines = { new DocumentTextRun("Bold") } };
+        var link = new DocumentLink("docs", "https://example.test/docs");
+        var cell = new DocumentTableCell { Inlines = { strong, new DocumentTextRun(" "), link } };
+        var document = new Document
+        {
+            Blocks = { new DocumentTable { Rows = { new DocumentTableRow { Cells = { cell } } } } }
+        };
+
+        // Act
+        using var render = new DocumentRenderProbe(document, new Size(20, 1));
+
+        // Assert
+        render.Row(0).ShouldBe("| Bold docs |");
+        (render.Cell(2, 0).Style.Attributes & TerminalAttributes.Bold).ShouldBe(TerminalAttributes.Bold);
+        render.Cell(7, 0).Style.Hyperlink.ShouldBe("https://example.test/docs");
+        document.ActiveLink = link;
+        document.ActiveLink.ShouldBeSameAs(link);
+    }
+
+    /// <summary>Verifies a retained inline control in a table contributes to column measurement and
+    /// receives the projected cell position.</summary>
+    [Fact]
+    public void Layout_WhenTableCellContainsInlineControl_ArrangesItInsideTheCell()
+    {
+        // Arrange
+        var checkBox = new CheckBox("Ready");
+        var cell = new DocumentTableCell
+        {
+            Inlines = { new DocumentInlineControl(checkBox) }
+        };
+        var document = new Document
+        {
+            Blocks = { new DocumentTable { Rows = { new DocumentTableRow { Cells = { cell } } } } }
+        };
+
+        // Act
+        using var render = new DocumentRenderProbe(document, new Size(20, 1));
+
+        // Assert
+        checkBox.Bounds.X.ShouldBe(2);
+        checkBox.Bounds.Y.ShouldBe(0);
+        checkBox.Bounds.Width.ShouldBeGreaterThan(0);
+        render.Row(0).ShouldContain("Ready");
+    }
+}

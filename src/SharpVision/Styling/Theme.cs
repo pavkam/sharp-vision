@@ -653,7 +653,7 @@ public sealed class Theme
     /// <typeparam name="TStyle">The style type that owns the section.</typeparam>
     /// <param name="codeOwnedDefault">The code-owned default this type falls back to.</param>
     /// <returns>The complete per-state set.</returns>
-    internal StyleStates<TStyle> GetStyleSet<TStyle>(TStyle codeOwnedDefault)
+    public StyleStates<TStyle> GetStyleSet<TStyle>(TStyle codeOwnedDefault)
         where TStyle : ControlStyle => GetStyleSet(StyleKey.Of<TStyle>(), codeOwnedDefault);
 
     /// <summary>Resolves one root style's complete per-state set from an explicit key, memoized

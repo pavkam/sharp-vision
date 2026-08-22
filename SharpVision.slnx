@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/SharpVision.Document/SharpVision.Document.csproj"/>
     <Project Path="src/SharpVision.FigletFonts/SharpVision.FigletFonts.csproj"/>
     <Project Path="src/SharpVision.Terminal/SharpVision.Terminal.csproj"/>
     <Project Path="src/SharpVision/SharpVision.csproj"/>
@@ -12,6 +13,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SharpVision.Compatibility.Tests/SharpVision.Compatibility.Tests.csproj"/>
+    <Project Path="tests/SharpVision.Document.Tests/SharpVision.Document.Tests.csproj"/>
     <Project Path="tests/SharpVision.Terminal.Probe/SharpVision.Terminal.Probe.csproj"/>
     <Project Path="tests/SharpVision.Terminal.Tests/SharpVision.Terminal.Tests.csproj"/>
     <Project Path="tests/SharpVision.Tests/SharpVision.Tests.csproj"/>

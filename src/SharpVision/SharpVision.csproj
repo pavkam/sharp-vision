@@ -21,7 +21,7 @@
     <PackageTags>terminal;terminal-ui;tui;console;ui;unicode;cross-platform;retained-mode</PackageTags>
     <Description>Retained-mode terminal UI framework for .NET 10 with mutable controls, deterministic layout and input, Unicode-aware rendering, styling, dialogs, windows, and managed console hosting.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>SharpVision 1.0.0-beta.1 prerelease of the retained terminal UI framework. See https://github.com/pavkam/sharp-vision/blob/main/docs/index.md for API contracts, examples, and current support.</PackageReleaseNotes>
+    <PackageReleaseNotes>SharpVision 1.1.0-beta.1 prerelease of the retained terminal UI framework. See https://github.com/pavkam/sharp-vision/blob/main/docs/index.md for API contracts, examples, and current support.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

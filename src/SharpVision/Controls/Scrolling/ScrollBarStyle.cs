@@ -28,7 +28,7 @@ public sealed record ScrollBarStyle: ControlStyle
         Compare);
 
     /// <summary>Gets the non-invalidating definition used by pure forwarding hosts.</summary>
-    internal static StyleDefinition<ScrollBarStyle> ForwardingDefinition { get; } = StyleDefinitions.Part(
+    public static StyleDefinition<ScrollBarStyle> ForwardingDefinition { get; } = StyleDefinitions.Part(
         static theme => Definition.Resolve(null, theme),
         static (_, _, _, _) => InvalidationImpact.None);
 

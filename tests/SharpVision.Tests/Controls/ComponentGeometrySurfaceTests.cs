@@ -21,6 +21,7 @@ public sealed class ComponentGeometrySurfaceTests
         typeof(DateInput),
         typeof(DateTimeInput),
         typeof(Dock),
+        typeof(Document),
         typeof(Expander),
         typeof(FigletText),
         typeof(FilePickerDialog),
@@ -76,7 +77,8 @@ public sealed class ComponentGeometrySurfaceTests
     [Fact]
     public void Catalog_WhenPublicConcreteControlsChange_RequiresMountedGeometryCase()
     {
-        var exported = typeof(ControlBase).Assembly.GetExportedTypes()
+        var exported = new[] { typeof(ControlBase).Assembly, typeof(Document).Assembly }
+            .SelectMany(assembly => assembly.GetExportedTypes())
             .Where(type => !type.IsAbstract && typeof(ControlBase).IsAssignableFrom(type))
             .OrderBy(type => type.Name)
             .ToArray();

@@ -10,7 +10,8 @@ namespace SharpVision.Controls;
 /// this internal type: the project dependency points the other way, from SharpVision to
 /// SharpVision.Terminal, not back. Apply any behavioral change to both copies.
 /// </remarks>
-internal static class EnumValidation
+[PublicAPI]
+public static class EnumValidation
 {
     extension(ArgumentOutOfRangeException)
     {
