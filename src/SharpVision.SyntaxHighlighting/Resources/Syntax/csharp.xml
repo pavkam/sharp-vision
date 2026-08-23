@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Copyright (c) SharpVision contributors.
+
+    Permission is hereby granted, free of charge, to any
+    person obtaining a copy of this software and associated
+    documentation files (the "Software"), to deal in the
+    Software without restriction, including without
+    limitation the rights to use, copy, modify, merge,
+    publish, distribute, sublicense, and/or sell copies of
+    the Software, and to permit persons to whom the Software
+    is furnished to do so, subject to the following
+    conditions:
+
+    The above copyright notice and this permission notice
+    shall be included in all copies or substantial portions
+    of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+    ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+    TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+    PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+    SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+    IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+
+    This is an original SharpVision work, not derived from KDE's own C# syntax
+    definition: KDE's upstream data/syntax/cs.xml carries no license attribute at
+    all, so SharpVision.SyntaxHighlighting cannot embed or redistribute it (see
+    extern/kde-syntax-highlighting/README.md). This file is written from scratch
+    against the C# language grammar directly, covers keywords, contextual
+    keywords, built-in types, comments (line, block, and XML documentation),
+    string literals (regular, verbatim, interpolated, and their combinations),
+    character literals, numeric literals, preprocessor directives (including
+    #region/#endregion folding), and brace folding. It does not attempt exact
+    variable-length-delimiter raw string literal ("""...""") parsing, generic
+    type-argument-aware "<...>" highlighting, or attribute-bracket ("[Attr]")
+    highlighting distinct from array brackets - each degrades gracefully to
+    ordinary text/operator coloring rather than mis-highlighting.
+-->
+<!DOCTYPE language>
+<language name="C#" alternativeNames="CSharp" version="1" kateversion="5.0" section="Sources" extensions="*.cs;*.csx" mimetype="text/x-csharp" priority="0" license="MIT" author="SharpVision contributors">
+<highlighting>
+    <list name="controlflow">
+        <item>break</item>
+        <item>case</item>
+        <item>catch</item>
+        <item>continue</item>
+        <item>default</item>
+        <item>do</item>
+        <item>else</item>
+        <item>finally</item>
+        <item>for</item>
+        <item>foreach</item>
+        <item>goto</item>
+        <item>if</item>
+        <item>return</item>
+        <item>switch</item>
+        <item>throw</item>
+        <item>try</item>
+        <item>while</item>
+        <item>yield</item>
+    </list>
+    <list name="keywords">
+        <item>abstract</item>
+        <item>add</item>
+        <item>alias</item>
+        <item>and</item>
+        <item>as</item>
+        <item>ascending</item>
+        <item>async</item>
+        <item>await</item>
+        <item>base</item>
+        <item>by</item>
+        <item>checked</item>
+        <item>class</item>
+        <item>const</item>
+        <item>delegate</item>
+        <item>descending</item>
+        <item>enum</item>
+        <item>equals</item>
+        <item>event</item>
+        <item>explicit</item>
+        <item>extern</item>
+        <item>file</item>
+        <item>fixed</item>
+        <item>from</item>
+        <item>get</item>
+        <item>global</item>
+        <item>group</item>
+        <item>implicit</item>
+        <item>in</item>
+        <item>init</item>
+        <item>interface</item>
+        <item>internal</item>
+        <item>into</item>
+        <item>is</item>
+        <item>join</item>
+        <item>let</item>
+        <item>lock</item>
+        <item>nameof</item>
+        <item>namespace</item>
+        <item>new</item>
+        <item>not</item>
+        <item>notnull</item>
+        <item>on</item>
+        <item>operator</item>
+        <item>or</item>
+        <item>orderby</item>
+        <item>out</item>
+        <item>override</item>
+        <item>params</item>
+        <item>partial</item>
+        <item>private</item>
+        <item>protected</item>
+        <item>public</item>
+        <item>readonly</item>
+        <item>record</item>
+        <item>ref</item>
+        <item>remove</item>
+        <item>required</item>
+        <item>scoped</item>
+        <item>sealed</item>
+        <item>select</item>
+        <item>set</item>
+        <item>sizeof</item>
+        <item>stackalloc</item>
+        <item>static</item>
+        <item>struct</item>
+        <item>this</item>
+        <item>typeof</item>
+        <item>unchecked</item>
+        <item>unmanaged</item>
+        <item>unsafe</item>
+        <item>using</item>
+        <item>value</item>
+        <item>var</item>
+        <item>virtual</item>
+        <item>volatile</item>
+        <item>when</item>
+        <item>where</item>
+        <item>with</item>
+    </list>
+    <list name="types">
+        <item>bool</item>
+        <item>byte</item>
+        <item>char</item>
+        <item>decimal</item>
+        <item>double</item>
+        <item>dynamic</item>
+        <item>float</item>
+        <item>int</item>
+        <item>long</item>
+        <item>nint</item>
+        <item>nuint</item>
+        <item>object</item>
+        <item>sbyte</item>
+        <item>short</item>
+        <item>string</item>
+        <item>uint</item>
+        <item>ulong</item>
+        <item>ushort</item>
+        <item>void</item>
+    </list>
+    <list name="constants">
+        <item>default</item>
+        <item>false</item>
+        <item>null</item>
+        <item>true</item>
+    </list>
+    <contexts>
+        <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+            <DetectSpaces/>
+            <StringDetect String="#region" attribute="Preprocessor" context="PreprocessorLine" firstNonSpace="true" beginRegion="Region"/>
+            <StringDetect String="#endregion" attribute="Preprocessor" context="PreprocessorLine" firstNonSpace="true" endRegion="Region"/>
+            <DetectChar char="#" attribute="Preprocessor" context="PreprocessorLine" firstNonSpace="true"/>
+            <StringDetect String="///" attribute="Documentation" context="DocComment"/>
+            <Detect2Chars char="/" char1="/" attribute="Comment" context="LineComment"/>
+            <Detect2Chars char="/" char1="*" attribute="Comment" context="BlockComment" beginRegion="Comment"/>
+            <StringDetect String="$@&quot;" attribute="VerbatimString" context="InterpolatedVerbatimString"/>
+            <StringDetect String="@$&quot;" attribute="VerbatimString" context="InterpolatedVerbatimString"/>
+            <StringDetect String="&quot;&quot;&quot;" attribute="String" context="RawString"/>
+            <Detect2Chars char="@" char1="&quot;" attribute="VerbatimString" context="VerbatimString"/>
+            <Detect2Chars char="$" char1="&quot;" attribute="String" context="InterpolatedString"/>
+            <DetectChar char="&quot;" attribute="String" context="String"/>
+            <DetectChar char="'" attribute="Char" context="Char"/>
+            <keyword String="controlflow" attribute="Control Flow" context="#stay"/>
+            <keyword String="keywords" attribute="Keyword" context="#stay"/>
+            <keyword String="types" attribute="DataType" context="#stay"/>
+            <keyword String="constants" attribute="Constant" context="#stay"/>
+            <RegExpr String="\b[A-Za-z_][A-Za-z0-9_]*(?=\s*[&lt;(])" attribute="Function" context="#stay"/>
+            <RegExpr String="\b0[xX][0-9a-fA-F][0-9a-fA-F_]*[uUlL]{0,2}\b" attribute="BaseN" context="#stay"/>
+            <RegExpr String="\b0[bB][01][01_]*[uUlL]{0,2}\b" attribute="BaseN" context="#stay"/>
+            <RegExpr String="\b[0-9][0-9_]*\.[0-9][0-9_]*(?:[eE][-+]?[0-9]+)?[fFdDmM]?\b" attribute="Float" context="#stay"/>
+            <RegExpr String="\b[0-9][0-9_]*[eE][-+]?[0-9]+[fFdDmM]?\b" attribute="Float" context="#stay"/>
+            <RegExpr String="\b[0-9][0-9_]*[fFdDmM]\b" attribute="Float" context="#stay"/>
+            <RegExpr String="\b[0-9][0-9_]*[uUlL]{0,2}\b" attribute="DecVal" context="#stay"/>
+            <DetectIdentifier/>
+            <DetectChar char="{" attribute="Normal Text" context="#stay" beginRegion="Brace"/>
+            <DetectChar char="}" attribute="Normal Text" context="#stay" endRegion="Brace"/>
+            <AnyChar String="+-*/%=&lt;&gt;!&amp;|^~?:.,;()[]" attribute="Operator" context="#stay"/>
+        </context>
+        <context name="PreprocessorLine" attribute="Preprocessor" lineEndContext="#pop">
+            <RegExpr String=".*" attribute="Preprocessor" context="#pop"/>
+        </context>
+        <context name="LineComment" attribute="Comment" lineEndContext="#pop">
+            <IncludeRules context="##Comments"/>
+        </context>
+        <context name="DocComment" attribute="Documentation" lineEndContext="#pop">
+            <RegExpr String="&lt;/?[A-Za-z][A-Za-z0-9]*" attribute="Annotation" context="DocTag"/>
+            <IncludeRules context="##Comments"/>
+        </context>
+        <context name="DocTag" attribute="Annotation" lineEndContext="#pop#pop">
+            <DetectChar char="&gt;" attribute="Annotation" context="#pop"/>
+            <DetectChar char="&quot;" attribute="Documentation" context="#stay"/>
+        </context>
+        <context name="BlockComment" attribute="Comment" lineEndContext="#stay">
+            <Detect2Chars char="*" char1="/" attribute="Comment" context="#pop" endRegion="Comment"/>
+            <IncludeRules context="##Comments"/>
+        </context>
+        <context name="String" attribute="String" lineEndContext="#pop">
+            <DetectChar char="\" attribute="SpecialChar" context="StringEscape"/>
+            <DetectChar char="&quot;" attribute="String" context="#pop"/>
+        </context>
+        <context name="StringEscape" attribute="SpecialChar" lineEndContext="#pop#pop">
+            <RegExpr String="u[0-9a-fA-F]{4}|x[0-9a-fA-F]{1,4}|U[0-9a-fA-F]{8}|." attribute="SpecialChar" context="#pop"/>
+        </context>
+        <context name="VerbatimString" attribute="VerbatimString" lineEndContext="#stay">
+            <StringDetect String="&quot;&quot;" attribute="VerbatimString" context="#stay"/>
+            <DetectChar char="&quot;" attribute="VerbatimString" context="#pop"/>
+        </context>
+        <context name="InterpolatedString" attribute="String" lineEndContext="#pop">
+            <DetectChar char="\" attribute="SpecialChar" context="StringEscape"/>
+            <StringDetect String="{{" attribute="String" context="#stay"/>
+            <StringDetect String="}}" attribute="String" context="#stay"/>
+            <DetectChar char="{" attribute="Normal Text" context="Interpolation"/>
+            <DetectChar char="&quot;" attribute="String" context="#pop"/>
+        </context>
+        <context name="InterpolatedVerbatimString" attribute="VerbatimString" lineEndContext="#stay">
+            <StringDetect String="&quot;&quot;" attribute="VerbatimString" context="#stay"/>
+            <StringDetect String="{{" attribute="VerbatimString" context="#stay"/>
+            <StringDetect String="}}" attribute="VerbatimString" context="#stay"/>
+            <DetectChar char="{" attribute="Normal Text" context="Interpolation"/>
+            <DetectChar char="&quot;" attribute="VerbatimString" context="#pop"/>
+        </context>
+        <context name="RawString" attribute="String" lineEndContext="#stay">
+            <StringDetect String="&quot;&quot;&quot;" attribute="String" context="#pop"/>
+        </context>
+        <context name="Char" attribute="Char" lineEndContext="#pop">
+            <DetectChar char="\" attribute="SpecialChar" context="CharEscape"/>
+            <DetectChar char="'" attribute="Char" context="#pop"/>
+        </context>
+        <context name="CharEscape" attribute="SpecialChar" lineEndContext="#pop#pop">
+            <RegExpr String="u[0-9a-fA-F]{4}|x[0-9a-fA-F]{1,4}|U[0-9a-fA-F]{8}|." attribute="SpecialChar" context="#pop"/>
+        </context>
+        <context name="Interpolation" attribute="Normal Text" lineEndContext="#stay">
+            <DetectSpaces/>
+            <DetectChar char="&quot;" attribute="String" context="String"/>
+            <DetectChar char="'" attribute="Char" context="Char"/>
+            <keyword String="controlflow" attribute="Control Flow" context="#stay"/>
+            <keyword String="keywords" attribute="Keyword" context="#stay"/>
+            <keyword String="types" attribute="DataType" context="#stay"/>
+            <keyword String="constants" attribute="Constant" context="#stay"/>
+            <RegExpr String="\b[A-Za-z_][A-Za-z0-9_]*(?=\s*[&lt;(])" attribute="Function" context="#stay"/>
+            <RegExpr String="\b0[xX][0-9a-fA-F][0-9a-fA-F_]*[uUlL]{0,2}\b" attribute="BaseN" context="#stay"/>
+            <RegExpr String="\b0[bB][01][01_]*[uUlL]{0,2}\b" attribute="BaseN" context="#stay"/>
+            <RegExpr String="\b[0-9][0-9_]*\.[0-9][0-9_]*(?:[eE][-+]?[0-9]+)?[fFdDmM]?\b" attribute="Float" context="#stay"/>
+            <RegExpr String="\b[0-9][0-9_]*[eE][-+]?[0-9]+[fFdDmM]?\b" attribute="Float" context="#stay"/>
+            <RegExpr String="\b[0-9][0-9_]*[fFdDmM]\b" attribute="Float" context="#stay"/>
+            <RegExpr String="\b[0-9][0-9_]*[uUlL]{0,2}\b" attribute="DecVal" context="#stay"/>
+            <DetectIdentifier/>
+            <DetectChar char="{" attribute="Normal Text" context="Interpolation"/>
+            <DetectChar char="}" attribute="Normal Text" context="#pop"/>
+            <AnyChar String="+-*/%=&lt;&gt;!&amp;|^~?:.,;()[]" attribute="Operator" context="#stay"/>
+        </context>
+    </contexts>
+    <itemDatas>
+        <itemData name="Normal Text"    defStyleNum="dsNormal" spellChecking="0"/>
+        <itemData name="Keyword"        defStyleNum="dsKeyword" spellChecking="0"/>
+        <itemData name="Control Flow"   defStyleNum="dsControlFlow" spellChecking="0"/>
+        <itemData name="DataType"       defStyleNum="dsDataType" spellChecking="0"/>
+        <itemData name="Constant"       defStyleNum="dsConstant" spellChecking="0"/>
+        <itemData name="Function"       defStyleNum="dsFunction" spellChecking="0"/>
+        <itemData name="Comment"        defStyleNum="dsComment"/>
+        <itemData name="Documentation"  defStyleNum="dsDocumentation"/>
+        <itemData name="Annotation"     defStyleNum="dsAnnotation" spellChecking="0"/>
+        <itemData name="Preprocessor"   defStyleNum="dsPreprocessor" spellChecking="0"/>
+        <itemData name="String"         defStyleNum="dsString"/>
+        <itemData name="VerbatimString" defStyleNum="dsVerbatimString"/>
+        <itemData name="Char"           defStyleNum="dsChar" spellChecking="0"/>
+        <itemData name="SpecialChar"    defStyleNum="dsSpecialChar" spellChecking="0"/>
+        <itemData name="DecVal"         defStyleNum="dsDecVal" spellChecking="0"/>
+        <itemData name="BaseN"          defStyleNum="dsBaseN" spellChecking="0"/>
+        <itemData name="Float"          defStyleNum="dsFloat" spellChecking="0"/>
+        <itemData name="Operator"       defStyleNum="dsOperator" spellChecking="0"/>
+    </itemDatas>
+</highlighting>
+<general>
+    <comments>
+        <comment name="singleLine" start="//" position="afterwhitespace"/>
+        <comment name="multiLine" start="/*" end="*/" region="Comment"/>
+    </comments>
+    <keywords casesensitive="1"/>
+</general>
+</language>

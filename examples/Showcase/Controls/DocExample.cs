@@ -3,6 +3,8 @@
 
 namespace SharpVision.Showcase.Controls;
 
+using SharpVision.Controls.SyntaxHighlighting;
+
 using Text = SharpVision.Controls.Display.Text;
 
 /// <summary>Builds one example block: a bold heading and dim description above a live specimen.</summary>
@@ -49,26 +51,25 @@ internal sealed class DocExample: CompositeControlBase
 
         if (source is not null)
         {
-            var code = new Text($"<info><b>C#</b></info>\n{Text.Escape(source)}")
+            // Sized to the recipe's own line count rather than a fixed constant, so a short
+            // one-liner does not reserve the same vertical space as a dozen-line excerpt; longer
+            // recipes still get real scroll bars past the cap instead of growing unboundedly. The
+            // Expander already supplies its own border, so the recipe needs no bordered wrapper
+            // of its own.
+            var lineCount = source.Count(static c => c == '\n') + 1;
+            var code = new CodeView
             {
-                Overflow = Overflow.WrapAnywhere
-            };
-            var recipe = new Dock
-            {
+                Code = source,
+                Language = "C#",
                 HorizontalAlignment = HorizontalAlignment.Stretch,
-                Border = new Border(
-                    BorderSide.All,
-                    BorderGlyphStyle.Light,
-                    SemanticColor.ControlBorder,
-                    Color.Transparent,
-                    SemanticDecoration.Border),
-                Padding = new Thickness(1, 0),
-                Children = { code }
+                Height = Length.Cells(Math.Clamp(lineCount, 3, 20)),
+                ScrollBars = ScrollBars.Both,
+                ShowScrollBars = ShowScrollBars.WhenNeeded
             };
             block.Children.Add(new Expander
             {
                 HeaderText = "C# recipe",
-                Content = recipe,
+                Content = code,
                 IsExpanded = false,
                 UseMnemonic = false
             });

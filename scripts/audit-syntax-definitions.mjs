@@ -8,6 +8,20 @@ export const upstreamSource = Object.freeze({
   commit: "60cfa684b64cccde19bf12c74db52129709ed863",
 });
 
+// A definition in this set is original SharpVision work, not sourced from the pinned upstream
+// checkout above - usually because upstream's own file carries no permissive (or no) license and
+// cannot be redistributed (see extern/kde-syntax-highlighting/README.md for the audited reason a
+// given upstream file was excluded). Its manifest entry records this project's own repository as
+// its provenance and an empty sourceCommit, since there is no external commit to pin - the
+// opposite of every other entry, which always has both a real sourceRepository and a real
+// 40-character sourceCommit. This set is reviewed by hand and never derived, so a file only
+// enters it through a deliberate decision recorded in that same file's own license header.
+export const firstPartySource = Object.freeze({
+  repository: "https://github.com/pavkam/sharp-vision",
+});
+
+export const firstPartyDefinitions = Object.freeze(new Set(["csharp.xml"]));
+
 // Only unambiguous permissive licenses are curated into the embedded catalog. A syntax
 // definition with no stated license, an empty license attribute, an ambiguous bare "BSD"
 // (clause count unknown), or a copyleft license (GPL/LGPL/Artistic/FDL/WTFPL/Apache/...) is
@@ -100,6 +114,8 @@ export const createManifest = async (root) => {
       throw new Error(`'${file}' is missing a required 'name' attribute.`);
     }
 
+    const isFirstParty = firstPartyDefinitions.has(file);
+
     definitions.push({
       name,
       file,
@@ -112,8 +128,8 @@ export const createManifest = async (root) => {
       license,
       sha256: createHash("sha256").update(bytes).digest("hex"),
       bytes: bytes.length,
-      sourceRepository: upstreamSource.repository,
-      sourceCommit: upstreamSource.commit,
+      sourceRepository: isFirstParty ? firstPartySource.repository : upstreamSource.repository,
+      sourceCommit: isFirstParty ? "" : upstreamSource.commit,
     });
   }
 

@@ -131,9 +131,10 @@ collapsed/expanded state untouched - `IsFolded` keeps reporting it, and toggling
 ## Syntax definitions and catalogs
 
 `Language` resolves a compiled grammar from `Catalog`, which defaults to
-`SyntaxDefinitionCatalog.Default`: the audited, embedded collection of 159
-permissively licensed KDE syntax definitions documented in the
-`SharpVision.SyntaxHighlighting` package's own `THIRD-PARTY-NOTICES.md`.
+`SyntaxDefinitionCatalog.Default`: the embedded collection of 160 permissively
+licensed syntax definitions documented in the `SharpVision.SyntaxHighlighting`
+package's own `THIRD-PARTY-NOTICES.md` - 159 audited and redistributed from
+upstream KDE, plus C#, a first-party definition original to SharpVision.
 Assigning a different `SyntaxDefinitionCatalog` - for example one built with
 `SyntaxDefinitionCatalog.FromDirectory` - lets an application highlight against
 any other KDE-format definition, including one this package does not embed for

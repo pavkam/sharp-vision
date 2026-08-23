@@ -26,6 +26,17 @@ license file since their original authors declared them public domain outright.
 Every embedded XML file also keeps whatever copyright or SPDX comment header it
 shipped with upstream, unchanged.
 
+## First-party definitions
+
+`SharpVision.SyntaxHighlighting` also embeds one syntax definition that is
+**not** third-party: `csharp.xml` (C#), written from scratch by SharpVision
+contributors against the C# grammar directly, because upstream's own C#
+definition is one of the 250 excluded files above (no stated license) and cannot
+be redistributed. It is ordinary SharpVision source code licensed under this
+repository's own root `LICENSE`, the same as every other file in this project -
+it does not belong in, and is intentionally omitted from, the third-party tables
+below.
+
 ### MIT (149)
 
 | Language                           | File                            | Author                                                                                                      |

@@ -81,7 +81,7 @@ directly where minimal matching is required.
 
 ## The embedded catalog and licensing
 
-`SyntaxDefinitionCatalog.Default` embeds 159 syntax definitions from
+`SyntaxDefinitionCatalog.Default` embeds 160 syntax definitions. 159 come from
 [`KDE/syntax-highlighting`](https://github.com/KDE/syntax-highlighting), audited
 to include only files whose own declared license is unambiguously permissive
 (MIT, BSD-3-Clause, CC0-1.0, Zlib, or an explicit Public Domain dedication).
@@ -91,6 +91,14 @@ ambiguous bare `"BSD"` value, or a copyleft license, and are not redistributed
 by this package. See the `SharpVision.SyntaxHighlighting` package's own
 `THIRD-PARTY-NOTICES.md` for the complete per-file list and
 `extern/kde-syntax-highlighting/README.md` for the full audit methodology.
+
+The 160th, C#, is a first-party definition original to SharpVision itself rather
+than redistributed from upstream: upstream's own C# definition carries no stated
+license at all and cannot be redistributed, so SharpVision wrote its own from
+scratch against the C# grammar directly, released under this project's own MIT
+license. `SyntaxDefinitionInfo.SourceCommit` is empty for this one entry - every
+other entry's is a real 40-character upstream commit hash - since there is no
+external commit for a first-party definition to pin.
 
 `SyntaxDefinitionCatalog.FromDirectory` loads any KDE-format XML file from an
 application's own files, mirroring upstream Kate's own local-file pickup model -

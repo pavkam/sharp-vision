@@ -143,6 +143,16 @@ const expand = (row) => {
 const entryPattern = (marker, page) =>
     new RegExp(`${marker} ${page.replaceAll(" ", "\\s")}(?![0-9A-Za-z])`, "u");
 
+// The captured tmux session's fixed viewport size. A page's own scrollable body reserves the
+// session's rightmost couple of columns for its own vertical scrollbar track, which is the one
+// screen position guaranteed to stay outside every specimen's own bounds regardless of how wide
+// an individual DocExample happens to render - the reason the page-scroll search below targets
+// `sessionWidth - 2` rather than a fixed column: a fixed column that happened to sit inside a
+// wide specimen would have its wheel input consumed by that specimen's own scrolling/selection
+// instead of scrolling the page underneath it.
+const sessionWidth = 150;
+const sessionHeight = 50;
+
 const main = async () => {
     const requested = new Set(process.argv.slice(2));
     const root = path.resolve(import.meta.dirname, "..");
@@ -227,9 +237,9 @@ const main = async () => {
         "new-session",
         "-d",
         "-x",
-        "120",
+        String(sessionWidth),
         "-y",
-        "50",
+        String(sessionHeight),
         "-s",
         session,
         "-c",
@@ -337,7 +347,7 @@ const main = async () => {
             for (let scroll = 0; scroll < 40; scroll += 1) {
                 if (locateExampleBox(capture()) !== null) break;
 
-                sendSgr(65, 70, 25, "M");
+                sendSgr(65, sessionWidth - 2, 25, "M");
                 await sleep(80);
             }
 

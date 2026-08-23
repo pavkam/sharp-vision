@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readdir, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -60,5 +60,32 @@ test("stageCuratedSyntaxDefinitions_WhenPinned_StagesOnlyPermissiveFiles", async
 
   assert.equal(result.staged, 1);
   assert.equal(result.excluded, 1);
+  assert.equal(result.preserved, 0);
   assert.deepEqual(staged, ["permissive.xml"]);
+});
+
+test("stageCuratedSyntaxDefinitions_WhenAFirstPartyFileAlreadyExists_PreservesItUnchanged", async () => {
+  const { root: checkout, commit } = await createPinnedCheckout();
+  const output = await mkdtemp(path.join(os.tmpdir(), "sharpvision-syntax-output-"));
+  const csharpContent = definition("C#", "MIT");
+  await writeFile(path.join(output, "csharp.xml"), csharpContent);
+
+  const result = await stageCuratedSyntaxDefinitions(checkout, output, commit);
+  const staged = await readdir(output);
+  const preservedContent = await readFile(path.join(output, "csharp.xml"), "utf8");
+
+  assert.equal(result.preserved, 1);
+  assert.deepEqual(staged.sort(), ["csharp.xml", "permissive.xml"]);
+  assert.equal(preservedContent, csharpContent);
+});
+
+test("stageCuratedSyntaxDefinitions_WhenNoFirstPartyFileExistsYet_DoesNotFabricateOne", async () => {
+  const { root: checkout, commit } = await createPinnedCheckout();
+  const output = await mkdtemp(path.join(os.tmpdir(), "sharpvision-syntax-output-"));
+
+  const result = await stageCuratedSyntaxDefinitions(checkout, output, commit);
+  const staged = await readdir(output);
+
+  assert.equal(result.preserved, 0);
+  assert.ok(!staged.includes("csharp.xml"));
 });

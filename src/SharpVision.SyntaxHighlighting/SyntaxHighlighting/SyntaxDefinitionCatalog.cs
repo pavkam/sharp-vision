@@ -15,8 +15,11 @@ using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
 /// <c>Normal##JavaScript</c>) among the definitions it contains.
 /// </summary>
 /// <remarks>
-/// <see cref="Default"/> is the audited embedded collection of 159 permissively licensed
-/// definitions documented in the package's own <c>THIRD-PARTY-NOTICES.md</c>.
+/// <see cref="Default"/> is the embedded collection of 160 permissively licensed definitions
+/// documented in the package's own <c>THIRD-PARTY-NOTICES.md</c>: 159 audited and redistributed
+/// from upstream KDE/syntax-highlighting, plus one first-party definition (C#) original to
+/// SharpVision itself, written from scratch because upstream's own C# definition carries no
+/// stated license and cannot be redistributed.
 /// <see cref="FromDirectory"/> builds a catalog from caller-supplied files with the same lookup,
 /// parsing, and compilation surface, mirroring how upstream Kate itself picks up additional
 /// syntax definitions from the local file system.
@@ -184,8 +187,8 @@ public sealed class SyntaxDefinitionCatalog
 
         var entries = ParseManifest(manifestStream);
 
-        return entries.Count != 159
-            ? throw new InvalidDataException("The embedded syntax-definition manifest must contain exactly 159 definitions.")
+        return entries.Count != 160
+            ? throw new InvalidDataException("The embedded syntax-definition manifest must contain exactly 160 definitions.")
             : new SyntaxDefinitionCatalog(entries, ReadEmbeddedXml);
     }
 
@@ -266,6 +269,9 @@ public sealed class SyntaxDefinitionCatalog
                 element.GetProperty("sourceRepository").GetString()!,
                 element.GetProperty("sourceCommit").GetString()!);
 
+            // sourceCommit is empty exactly for a first-party definition original to this
+            // repository rather than redistributed from sourceRepository's own commit history -
+            // never partially populated: either a real 40-character pinned commit hash, or empty.
             if (string.IsNullOrWhiteSpace(info.Name) ||
                 string.IsNullOrWhiteSpace(info.File) ||
                 info.File.Contains('/') ||
@@ -273,7 +279,7 @@ public sealed class SyntaxDefinitionCatalog
                 info.Bytes <= 0 ||
                 info.Sha256.Length != 64 ||
                 string.IsNullOrWhiteSpace(info.SourceRepository) ||
-                info.SourceCommit.Length != 40 ||
+                (info.SourceCommit.Length != 40 && info.SourceCommit.Length != 0) ||
                 !result.TryAdd(info.Name, info))
             {
                 throw new InvalidDataException("The embedded syntax-definition manifest contains an invalid entry.");

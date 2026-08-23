@@ -88,7 +88,7 @@ export const SUITE_LEVEL_ALLOW_LIST = new Set([
   "PostRouteAnchorMutationTests", // post-route anchor-staleness contract spanning Router, FocusManager, and Application
   "ProtocolRoutingTests", // protocol responses traversing Session, Application, and Dispatcher
   "InteractivePerformanceTests", // representative interactive-tree allocation gate spanning several composed controls
-  "SyntaxDefinitionCorpusTests", // whole-embedded-catalog sweep: parses and tokenizes all 159 syntax definitions, no single src subject
+  "SyntaxDefinitionCorpusTests", // whole-embedded-catalog sweep: parses and tokenizes all 160 syntax definitions, no single src subject
   "CuratedThemeDocumentStyleTests", // every bundled theme x DocumentStyle, no single src subject
   "ResponseContainerCompatibilityTests", // four core EventArgs types wrapping terminal-declared response types, no single src subject
 ]);

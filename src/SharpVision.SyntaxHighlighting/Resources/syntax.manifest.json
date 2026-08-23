@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "count": 159,
+  "count": 160,
   "definitions": [
     {
       "name": "ABNF",
@@ -181,6 +181,21 @@
       "bytes": 31660,
       "sourceRepository": "https://github.com/KDE/syntax-highlighting",
       "sourceCommit": "60cfa684b64cccde19bf12c74db52129709ed863"
+    },
+    {
+      "name": "C#",
+      "file": "csharp.xml",
+      "resource": "SharpVision.SyntaxHighlighting.Resources.Syntax.csharp.xml",
+      "section": "Sources",
+      "extensions": "*.cs;*.csx",
+      "mimetype": "text/x-csharp",
+      "alternativeNames": "CSharp",
+      "author": "SharpVision contributors",
+      "license": "MIT",
+      "sha256": "0eb5d8290e0845ebd01594eb2e08400dbe40d3d98a852565c026856ec09d2ef4",
+      "bytes": 15639,
+      "sourceRepository": "https://github.com/pavkam/sharp-vision",
+      "sourceCommit": ""
     },
     {
       "name": "CLIST",

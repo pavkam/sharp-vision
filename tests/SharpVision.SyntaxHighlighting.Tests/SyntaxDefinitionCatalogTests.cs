@@ -8,7 +8,7 @@ public sealed class SyntaxDefinitionCatalogTests
 {
     /// <summary>Verifies the embedded catalog contains exactly the audited definition count.</summary>
     [Fact]
-    public void Default_WhenInspected_ContainsExactlyTheAuditedDefinitionCount() => SyntaxDefinitionCatalog.Default.Names.Count.ShouldBe(159);
+    public void Default_WhenInspected_ContainsExactlyTheAuditedDefinitionCount() => SyntaxDefinitionCatalog.Default.Names.Count.ShouldBe(160);
 
     /// <summary>Verifies unstated-license and copyleft upstream languages are excluded from the embedded catalog.</summary>
     [Fact]
@@ -16,12 +16,27 @@ public sealed class SyntaxDefinitionCatalogTests
     {
         var names = SyntaxDefinitionCatalog.Default.Names;
 
-        // C, C#, Python, and JSON carry no stated or a copyleft upstream license and must never
-        // be embedded by this package; see extern/kde-syntax-highlighting/README.md.
+        // C, Python, and JSON carry no stated or a copyleft upstream license and must never be
+        // embedded from upstream by this package; see extern/kde-syntax-highlighting/README.md.
+        // C# is present (see the dedicated first-party test below), but as this project's own
+        // original definition, not upstream's unlicensed one.
         names.ShouldNotContain("C");
-        names.ShouldNotContain("C#");
         names.ShouldNotContain("Python");
         names.ShouldNotContain("JSON");
+    }
+
+    /// <summary>Verifies the one first-party definition carries this repository's own provenance
+    /// instead of the upstream KDE pin every other embedded definition carries, since upstream's
+    /// own C# definition has no stated license and cannot be redistributed.</summary>
+    [Fact]
+    public void GetInfo_WhenNameIsCSharp_ReportsFirstPartyProvenance()
+    {
+        var info = SyntaxDefinitionCatalog.Default.GetInfo("C#");
+
+        info.License.ShouldBe("MIT");
+        info.SourceRepository.ShouldNotBeNullOrWhiteSpace();
+        info.SourceRepository.ShouldNotBe("https://github.com/KDE/syntax-highlighting");
+        info.SourceCommit.ShouldBeEmpty();
     }
 
     /// <summary>Verifies loading the same definition twice reads its embedded resource only once.</summary>

@@ -18,8 +18,16 @@ public readonly record struct SyntaxDefinitionInfo
     /// <param name="license">The declared, redistribution-audited license, or empty for a caller-supplied definition.</param>
     /// <param name="sha256">The lower-case source-byte SHA-256, or empty for a caller-supplied definition.</param>
     /// <param name="bytes">The non-negative source-byte count.</param>
-    /// <param name="sourceRepository">The pinned source repository, or empty for a caller-supplied definition.</param>
-    /// <param name="sourceCommit">The pinned source commit, or empty for a caller-supplied definition.</param>
+    /// <param name="sourceRepository">
+    /// The repository a caller can inspect for provenance: the pinned upstream repository for a
+    /// redistributed embedded definition, this project's own repository for a first-party embedded
+    /// definition original to SharpVision, or empty for a caller-supplied definition.
+    /// </param>
+    /// <param name="sourceCommit">
+    /// The pinned upstream commit a redistributed embedded definition's bytes were copied from, or
+    /// empty for a first-party embedded definition (which has no external commit to pin) or a
+    /// caller-supplied definition.
+    /// </param>
     internal SyntaxDefinitionInfo(
         string name,
         string file,
@@ -78,9 +86,18 @@ public readonly record struct SyntaxDefinitionInfo
     /// <summary>Gets the source byte count.</summary>
     public int Bytes { get; }
 
-    /// <summary>Gets the pinned source repository, or an empty string for a caller-supplied definition.</summary>
+    /// <summary>
+    /// Gets the repository a caller can inspect for provenance: the pinned upstream repository for
+    /// a redistributed embedded definition, this project's own repository for a first-party
+    /// embedded definition original to SharpVision, or an empty string for a caller-supplied
+    /// definition.
+    /// </summary>
     public string SourceRepository { get; }
 
-    /// <summary>Gets the pinned source commit, or an empty string for a caller-supplied definition.</summary>
+    /// <summary>
+    /// Gets the pinned upstream commit a redistributed embedded definition's bytes were copied
+    /// from, or an empty string for a first-party embedded definition (which has no external
+    /// commit to pin) or a caller-supplied definition.
+    /// </summary>
     public string SourceCommit { get; }
 }

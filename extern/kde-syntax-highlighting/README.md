@@ -21,6 +21,20 @@ XML file supplied from an application's own file system at runtime (see
 own local-override model, so an application remains free to add one of these
 excluded definitions on its own without this package redistributing it.
 
+`SharpVision.SyntaxHighlighting` additionally embeds one first-party definition
+not sourced from this checkout at all:
+`src/SharpVision.SyntaxHighlighting/Resources/Syntax/csharp.xml` (C#), written
+from scratch against the C# grammar directly and released under this project's
+own MIT license, because upstream's own C# definition is one of the 250 excluded
+above (no stated license) and cannot be redistributed. It carries
+`sourceRepository` pointing at this project's own repository and an empty
+`sourceCommit` in `syntax.manifest.json`, rather than the upstream pin every
+other entry carries. `scripts/audit-syntax-definitions.mjs`'s
+`firstPartyDefinitions` set names it explicitly, and
+`scripts/package-syntax-definitions.mjs`'s `stageCuratedSyntaxDefinitions`
+preserves it - rather than deleting it - every time this checkout is refreshed
+from a newer upstream pin.
+
 ## Reproduction
 
 Check out the pinned commit above, then run:

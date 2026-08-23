@@ -49,8 +49,8 @@ in the main repository for the full architecture, and
 
 ## Loading additional languages
 
-The embedded `SyntaxDefinitionCatalog.Default` ships 159 permissively licensed
-KDE syntax definitions - see [Attribution](#attribution) below for exactly which
+The embedded `SyntaxDefinitionCatalog.Default` ships 160 permissively licensed
+syntax definitions - see [Attribution](#attribution) below for exactly which
 ones and why. Any other KDE-format XML file, including one of the definitions
 this package does not embed, can be loaded from an application's own files:
 
@@ -63,17 +63,24 @@ This mirrors upstream Kate's own local-file pickup model for syntax definitions.
 
 ## Attribution
 
-The 159 embedded syntax-definition XML files under `Resources/Syntax/` are
-copied byte-for-byte from
+159 of the 160 embedded syntax-definition XML files under `Resources/Syntax/`
+are copied byte-for-byte from
 [`KDE/syntax-highlighting`](https://github.com/KDE/syntax-highlighting), each
 one included only because its own declared license is unambiguously permissive
 (MIT, BSD-3-Clause, CC0-1.0, Zlib, or an explicit Public Domain dedication). See
 `THIRD-PARTY-NOTICES.md` for the complete per-file list grouped by license, and
 [`extern/kde-syntax-highlighting/README.md`](https://github.com/pavkam/sharp-vision/blob/main/extern/kde-syntax-highlighting/README.md)
 in the main repository for the full audit methodology, including why roughly 250
-upstream definitions - among them C, C#, Python, PHP, Lua, MATLAB, Objective-C,
+upstream definitions - among them C, Python, PHP, Lua, MATLAB, Objective-C,
 Pascal, and JSON - are not redistributed by this package. Full license texts
 ship in the package's `licenses/` directory.
 
+The 160th, `csharp.xml` (C#), is first-party SharpVision source code, not
+third-party: upstream's own C# definition carries no stated license and cannot
+be redistributed, so this one was written from scratch against the C# grammar
+directly and is licensed under this repository's own root `LICENSE`, the same as
+every other file in this project.
+
 No C++ source code from `KDE/syntax-highlighting` is compiled into or
-redistributed by this package; only the data files identified above are.
+redistributed by this package; only the third-party data files identified above
+are.

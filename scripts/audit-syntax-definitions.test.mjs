@@ -4,7 +4,14 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { classifyLicense, createManifest, upstreamSource, validateManifest } from "./audit-syntax-definitions.mjs";
+import {
+  classifyLicense,
+  createManifest,
+  firstPartyDefinitions,
+  firstPartySource,
+  upstreamSource,
+  validateManifest,
+} from "./audit-syntax-definitions.mjs";
 
 const definition = (name, extensions, license, extra = "") =>
   `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE language>\n` +
@@ -91,4 +98,29 @@ test("validateManifest_WhenContentDrifts_Rejects", async () => {
   manifest.definitions[0].sha256 = "0".repeat(64);
 
   await assert.rejects(validateManifest(root, manifest), /does not match/iu);
+});
+
+test("firstPartyDefinitions_WhenInspected_ContainsExactlyCSharp", () => {
+  assert.deepEqual([...firstPartyDefinitions], ["csharp.xml"]);
+});
+
+test("createManifest_WhenFileIsFirstParty_RecordsThisRepositoryWithNoCommit", async () => {
+  const root = await createCuratedFolder();
+  await writeFile(path.join(root, "csharp.xml"), definition("C#", "*.cs", "MIT"));
+
+  const manifest = await createManifest(root);
+  const csharp = manifest.definitions.find(({ name }) => name === "C#");
+
+  assert.equal(csharp.sourceRepository, firstPartySource.repository);
+  assert.equal(csharp.sourceCommit, "");
+});
+
+test("createManifest_WhenFileIsNotFirstParty_RecordsTheUpstreamPin", async () => {
+  const root = await createCuratedFolder();
+
+  const manifest = await createManifest(root);
+  const demo = manifest.definitions.find(({ name }) => name === "Demo");
+
+  assert.equal(demo.sourceRepository, upstreamSource.repository);
+  assert.equal(demo.sourceCommit, upstreamSource.commit);
 });
