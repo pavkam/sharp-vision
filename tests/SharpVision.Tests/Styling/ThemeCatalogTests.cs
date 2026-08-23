@@ -791,4 +791,22 @@ public sealed class ThemeCatalogTests
     }
 
     private static string JsonWithName(string name) => ThemeJson.Create(name: name);
+
+    /// <summary>The regression this test exists to pin. A secondary style type - one that derives
+    /// from <c>ControlStyle</c> but declares itself a part/secondary style owning no theme section
+    /// of its own, such as <see cref="ColorPickerStyle"/> - must have its derived key rejected
+    /// exactly like any other unknown name rather than accepted and then silently ignored.</summary>
+    [Fact]
+    public void Parse_WhenSectionBelongsToASecondaryStyle_Throws()
+    {
+        var key = StyleKey.Of<ColorPickerStyle>();
+        key.ShouldBe("colorPicker", "the key is still derived from the type name");
+
+        var json = ThemeJson.Create(
+            extraStyles: $$""", "{{key}}": { "normal": { "face": { "foreground": "accent" } } } """);
+
+        var exception = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json));
+
+        exception.Message.ShouldContain(key);
+    }
 }

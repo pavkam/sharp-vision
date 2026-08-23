@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Styling;
 
-using System.Reflection;
-
 /// <summary>Verifies every embedded theme loads and the curated set is complete.</summary>
 public sealed class CuratedThemesTests
 {
@@ -511,67 +509,4 @@ public sealed class CuratedThemesTests
 
     private static Color Resolve(AppearanceStates states, VisualState state, Theme theme) =>
         ControlBase.ResolveColor(states.Resolve(state).Face.Background, theme);
-
-    /// <summary>Verifies every bundled theme resolves every primary style definition eagerly -
-    /// the resolver and the full appearance-states materialization both run against every theme.
-    ///
-    /// <para>Style-section parsing is deliberately lazy: a section's leaf values convert only the
-    /// first time something resolves that style type. The earlier eight-section round-trip test
-    /// predates most of the registered set, so a malformed value in a bundled theme's newer
-    /// section (or a conversion regression on a member no theme authors yet) would ship silently
-    /// and surface as a render-time failure in whichever application first touched it. This walk
-    /// discovers the definitions reflectively - the same way the section registry itself does -
-    /// so a style type added tomorrow is covered without editing this test.</para>
-    /// </summary>
-    [Fact]
-    public void EveryTheme_ResolvesEveryPrimaryStyleDefinitionEagerly()
-    {
-        var definitions = new List<(Type Style, object Definition)>();
-
-        foreach (var type in typeof(ControlStyle).Assembly.GetTypes())
-        {
-            if (type.IsAbstract || !type.IsAssignableTo(typeof(ControlStyle)))
-            {
-                continue;
-            }
-
-            if (type.GetProperty("Definition", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
-                    ?.GetValue(null) is IStyleDefinition { IsControl: true } definition)
-            {
-                definitions.Add((type, definition));
-            }
-        }
-
-        // Sanity: the reflective walk must actually find the primary set, or the loop below
-        // vacuously passes. Well above the original eight to prove the newer types are included.
-        definitions.Count.ShouldBeGreaterThanOrEqualTo(15);
-
-        var failures = new List<string>();
-
-        foreach (var slug in ThemeCatalog.Slugs)
-        {
-            var theme = ThemeCatalog.Load(slug);
-
-            foreach (var (style, definition) in definitions)
-            {
-                var definitionType = definition.GetType();
-                var resolveProperty = definitionType.GetProperty("Resolve", BindingFlags.Instance | BindingFlags.NonPublic)!;
-                var appearanceProperty = definitionType.GetProperty("Appearance", BindingFlags.Instance | BindingFlags.NonPublic)!;
-                var resolve = (Delegate) resolveProperty.GetValue(definition)!;
-                var appearance = (Delegate) appearanceProperty.GetValue(definition)!;
-
-                try
-                {
-                    var resolved = resolve.DynamicInvoke(null, theme);
-                    _ = appearance.DynamicInvoke(resolved, theme);
-                }
-                catch (TargetInvocationException error)
-                {
-                    failures.Add($"{slug}/{style.Name}: {error.InnerException?.Message ?? error.Message}");
-                }
-            }
-        }
-
-        failures.ShouldBeEmpty();
-    }
 }

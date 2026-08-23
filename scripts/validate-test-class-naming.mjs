@@ -54,7 +54,6 @@ export const SUITE_LEVEL_ALLOW_LIST = new Set([
   "AssemblyTests", // both projects: test-harness self-check; name-based so one entry covers both
   "PublicApiCompatibilityTests", // three-assembly shape oracle
   "FirstPartyPackageVersionTests", // cross-package version sanity
-  "SealedControlsContractTests", // whole-catalog contract
   "LoaderAndChromeContractTests", // explicitly multi-subject styling contracts
   "PhaseThreePerformanceTests", // multi-stage milestone allocation gate
   "GraphicsBackendNamesTests", // assembly-wide backend naming invariants
@@ -76,7 +75,6 @@ export const SUITE_LEVEL_ALLOW_LIST = new Set([
   "CuratedThemesTests", // whole-catalog invariants across every bundled theme
   "StrandedGlyphThemingTests", // stranded-glyph regression suite spanning a dozen control styles
   "StyleInvariantEnforcementTests", // one invariant held identically across many style value types and three mutation doors
-  "StyleSectionRegistryTests", // assembly-wide styles.* section registry sweep
   "RandomizedLayoutTests", // whole-infrastructure fuzz spanning ownership, focus, capture, pointer, and render
   "DisplayPanelTests", // composed multi-control layout, damage, and byte-exact render proof
   "InteractiveControlTests", // eight-control family fixture for cross-control event ordering
