@@ -6,9 +6,10 @@ namespace SharpVision.Terminal.Tests.Support;
 /// <summary>Provides an independent xterm-compatible RGB oracle for received palette positions.</summary>
 /// <remarks>
 /// This is a mirrored copy of the equivalent class at
-/// <c>tests/SharpVision.Tests/Support/ReferenceColors.cs</c>, byte-identical apart from its
-/// namespace, because the two test assemblies do not share a common internals-visible
-/// project. Apply any behavioral change to both copies.
+/// <c>tests/SharpVision.Test.Shared/ReferenceColors.cs</c>, byte-identical apart from its
+/// namespace, because layering that project's own dependency on core <c>SharpVision</c> onto this
+/// Terminal test assembly - which otherwise never needs it - is worse than the duplication. Apply
+/// any behavioral change to both copies.
 /// </remarks>
 internal static class ReferenceColors
 {

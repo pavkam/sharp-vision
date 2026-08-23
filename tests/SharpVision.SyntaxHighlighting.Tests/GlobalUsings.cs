@@ -3,8 +3,6 @@
 
 global using System.Text;
 
-global using SharpVision;
-global using SharpVision.Controls;
 global using SharpVision.Controls.SyntaxHighlighting;
 global using SharpVision.Input;
 global using SharpVision.Menus;
@@ -18,5 +16,3 @@ global using SharpVision.Test.Shared;
 global using SharpVision.Text;
 
 global using Shouldly;
-
-global using TerminalStyle = SharpVision.Terminal.Rendering.CellStyle;
