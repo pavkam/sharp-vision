@@ -5,8 +5,6 @@ namespace SharpVision.Tests.Controls;
 
 using System.Diagnostics.CodeAnalysis;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies the two StyleDefinitions factories against synthetic style types: the
 /// self-contained root form (used only by the six well-known base types) and the one-hop
 /// fallback form (used by every leaf control style). Complements

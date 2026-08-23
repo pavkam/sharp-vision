@@ -7,14 +7,6 @@ namespace SharpVision.Tests.Controls.Display;
 public sealed class SeparatorSurfaceTests
 {
     /// <summary>Verifies horizontal drawing, terminal-visible style, and excluded hit testing.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Separator),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.HoverExcluded |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task Pointer_WhenMovedOverHorizontalSeparator_LeavesExactNonInteractiveLineAsync()
     {
@@ -106,7 +98,6 @@ public sealed class SeparatorSurfaceTests
 
     /// <summary>Verifies direct and ancestor-inherited disable painting, stable geometry across a
     /// genuine resize, and re-enable recovery for a mounted Separator.</summary>
-    [ComponentBehaviorEvidence(typeof(Separator), ComponentBehavior.Disabled)]
     [Fact]
     public async Task IsEnabled_WhenSeparatorIsDisabled_ProvesDisabledContractAsync()
     {

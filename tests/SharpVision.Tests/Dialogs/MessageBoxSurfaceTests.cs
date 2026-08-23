@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Dialogs;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies MessageBox appearance, centering, and interaction through a mounted terminal surface.</summary>
 public sealed class MessageBoxSurfaceTests
 {

@@ -447,7 +447,6 @@ public sealed class RadioButtonTests
         _ = Should.Throw<ArgumentNullException>(() => new RadioButton(null!));
 
     /// <summary>Verifies documented constructor defaults.</summary>
-    [ComponentUnitEvidence(typeof(RadioButton))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
@@ -519,7 +518,6 @@ public sealed class RadioButtonTests
     }
 
     /// <summary>Verifies PerformClick on a disabled RadioButton is a no-op.</summary>
-    [ComponentUnitEvidence(typeof(RadioButton), ComponentBehavior.Disabled)]
     [Fact]
     public void PerformClick_WhenDisabled_IsNoOp()
     {

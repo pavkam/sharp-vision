@@ -42,7 +42,6 @@ public sealed class GroupBoxSurfaceTests
     /// mnemonic syntax, cascades disabled appearance to composed content — GroupBox's natural
     /// "ancestor-inherited" leg since it is content-composing — keeps geometry stable across a
     /// genuine resize, and recovers on re-enable.</summary>
-    [ComponentBehaviorEvidence(typeof(GroupBox), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Render_WhenMnemonicOwnerIsDisabled_PreservesDisabledForegroundAsync()
     {
@@ -135,15 +134,6 @@ public sealed class GroupBoxSurfaceTests
     }
 
     /// <summary>Verifies a mounted GroupBox observes descendant hover without taking focus or press state.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(GroupBox),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Composition)]
     [Fact]
     public async Task Pointer_WhenContentIsHovered_TracksComposedAncestryWithoutInteractionAsync()
     {
@@ -380,10 +370,6 @@ public sealed class GroupBoxSurfaceTests
     /// <summary>Verifies content collapsing at runtime clears its committed cells and hit target
     /// while the border and header keep rendering, and that restoring it redraws exactly the
     /// original cells - proving the frame never leaves stale content cells behind either way.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(GroupBox),
-        ComponentVisibilityEvidence.MountedTransitionCommittedGeometry |
-        ComponentVisibilityEvidence.MountedTransitionHitTargets)]
     [Fact]
     public async Task UpdateAsync_WhenContentCollapsesAndRestores_ClearsThenRedrawsContentCellsAsync()
     {

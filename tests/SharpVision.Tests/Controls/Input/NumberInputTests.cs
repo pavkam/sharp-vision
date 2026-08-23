@@ -10,7 +10,6 @@ public sealed class NumberInputTests
     #region Defaults
 
     /// <summary>Verifies construct when created has documented defaults.</summary>
-    [ComponentUnitEvidence(typeof(NumberInput))]
     [Fact]
     public void Construct_WhenCreated_HasDocumentedDefaults()
     {
@@ -854,7 +853,6 @@ public sealed class NumberInputTests
     #region IsEnabled contract
 
     /// <summary>Verifies enabled when control is disabled refuses focus and reports ineffective enabled.</summary>
-    [ComponentUnitEvidence(typeof(NumberInput), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenControlIsDisabled_RefusesFocusAndReportsIneffectiveEnabled()
     {

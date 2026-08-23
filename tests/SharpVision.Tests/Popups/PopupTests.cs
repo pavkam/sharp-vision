@@ -9,7 +9,6 @@ public sealed class PopupTests
     /// <summary>Verifies an opaque popup owns the dedicated application-window background,
     /// distinct from ordinary Control/Container content, plus the standard themed border
     /// color.</summary>
-    [ComponentUnitEvidence(typeof(Popup))]
     [Fact]
     public void Constructor_WhenCreated_HasThemeWindowAppearanceDefaults()
     {
@@ -1936,7 +1935,6 @@ public sealed class PopupTests
     /// <summary>Verifies disabling preserves presentation while ending and later restoring automatic modality.
     /// This is also the detached-unit disabled-contract evidence for Popup: it proves direct
     /// disable, stable geometry across the disabled window, and re-enable recovery.</summary>
-    [ComponentUnitEvidence(typeof(Popup), ComponentBehavior.Disabled)]
     [Fact]
     public async Task IsEnabled_WhenOpenPopupIsDisabled_PreservesPresentationAndRestoresAutomaticModalityAsync()
     {

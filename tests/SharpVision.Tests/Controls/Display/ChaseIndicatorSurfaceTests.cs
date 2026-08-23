@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Display;
 
-using SharpVision.Tests.Input;
-
 /// <summary>Verifies ChaseIndicator playback through a mounted terminal surface.</summary>
 public sealed class ChaseIndicatorSurfaceTests
 {
@@ -35,14 +33,6 @@ public sealed class ChaseIndicatorSurfaceTests
     }
 
     /// <summary>Verifies the exact forward and reverse cycle without duplicate endpoints.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(ChaseIndicator),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.HoverExcluded |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task AdvanceAsync_WhenCircleStyleRuns_BouncesAcrossTrackAsync()
     {
@@ -685,7 +675,6 @@ public sealed class ChaseIndicatorSurfaceTests
 
     /// <summary>Verifies direct and ancestor-inherited disable painting, stable geometry across a
     /// genuine resize, and re-enable recovery for a mounted ChaseIndicator.</summary>
-    [ComponentBehaviorEvidence(typeof(ChaseIndicator), ComponentBehavior.Disabled)]
     [Fact]
     public async Task IsEnabled_WhenChaseIndicatorIsDisabled_ProvesDisabledContractAsync()
     {

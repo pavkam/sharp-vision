@@ -7,7 +7,6 @@ namespace SharpVision.Tests.Navigation;
 public sealed class NavigationViewTests
 {
     /// <summary>Verifies a navigation view starts as a quiet borderless sidebar surface without caller styling.</summary>
-    [ComponentUnitEvidence(typeof(NavigationView))]
     [Fact]
     public void Constructor_WhenCreated_UsesQuietBackgroundDefaults()
     {
@@ -21,7 +20,6 @@ public sealed class NavigationViewTests
 
     /// <summary>Verifies direct and ancestor-inherited IsEnabled changes flip EffectiveIsEnabled and
     /// the derived focus eligibility it drives, and re-enabling restores both.</summary>
-    [ComponentUnitEvidence(typeof(NavigationView), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenToggledDirectlyOrByAncestor_UpdatesNavigationViewEffectiveEnabled()
     {
@@ -48,7 +46,6 @@ public sealed class NavigationViewTests
     }
 
     /// <summary>Verifies items are added through the typed collection.</summary>
-    [ComponentUnitEvidence(typeof(NavigationViewItem))]
     [Fact]
     public void Items_WhenAdded_IncreasesCount()
     {
@@ -62,7 +59,6 @@ public sealed class NavigationViewTests
     /// <summary>Verifies direct and owning-NavigationView-inherited IsEnabled changes flip a
     /// NavigationViewItem's EffectiveIsEnabled without disturbing its own IsEnabled property, and
     /// re-enabling restores it.</summary>
-    [ComponentUnitEvidence(typeof(NavigationViewItem), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenToggledDirectlyOrByOwner_UpdatesNavigationViewItemEffectiveEnabled()
     {
@@ -564,7 +560,6 @@ public sealed class NavigationViewTests
     /// the cached navigator position onto the group itself when the navigator's *current* entry is
     /// still a descendant of it, and by the time IsExpanded flips back to true the navigator (and
     /// SelectedItem) have already moved to "After", which is neither the group nor inside it.</summary>
-    [ComponentVisibilityEvidence(typeof(NavigationView), ComponentVisibilityEvidence.TransitionInvalidatesCorrectly)]
     [Fact]
     public async Task Group_WhenReExpandedAfterRepair_DoesNotStealSelectionBackAsync()
     {
@@ -680,7 +675,6 @@ public sealed class NavigationViewTests
     /// <summary>Verifies collapsing the selected item's own Visibility - not a removal, not an
     /// ancestor group toggling - repairs selection to the adjacent remaining item and raises
     /// exactly one SelectionChanged, matching how a removal already repairs.</summary>
-    [ComponentVisibilityEvidence(typeof(NavigationView), ComponentVisibilityEvidence.TransitionInvalidatesCorrectly)]
     [Fact]
     public void Items_WhenSelectedItemVisibilityIsSetDirectlyToCollapsed_RepairsSelectionToAdjacentItem()
     {
@@ -1287,7 +1281,6 @@ public sealed class NavigationViewTests
 
     /// <summary>Verifies the item indent defaults to 2 cells and rejects negative values, now on the
     /// group's own style rather than a control-side setter.</summary>
-    [ComponentUnitEvidence(typeof(NavigationViewGroup))]
     [Fact]
     public void ItemIndent_WhenDefaulted_Is2AndRejectsNegative()
     {
@@ -1355,7 +1348,6 @@ public sealed class NavigationViewTests
     /// <summary>Verifies direct and owning-NavigationView-inherited IsEnabled changes flip a
     /// NavigationViewGroup's EffectiveIsEnabled without disturbing its own IsEnabled property, and
     /// re-enabling restores it.</summary>
-    [ComponentUnitEvidence(typeof(NavigationViewGroup), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenToggledDirectlyOrByOwner_UpdatesNavigationViewGroupEffectiveEnabled()
     {
@@ -1381,7 +1373,6 @@ public sealed class NavigationViewTests
     }
 
     /// <summary>Verifies separator is non-focusable and non-hit-testable.</summary>
-    [ComponentUnitEvidence(typeof(NavigationViewSeparator))]
     [Fact]
     public void Separator_WhenCreated_IsNonInteractive()
     {
@@ -1394,7 +1385,6 @@ public sealed class NavigationViewTests
     /// <summary>Verifies direct and owning-NavigationView-inherited IsEnabled changes flip a
     /// NavigationViewSeparator's EffectiveIsEnabled without disturbing its own IsEnabled property,
     /// and re-enabling restores it.</summary>
-    [ComponentUnitEvidence(typeof(NavigationViewSeparator), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenToggledDirectlyOrByOwner_UpdatesNavigationViewSeparatorEffectiveEnabled()
     {

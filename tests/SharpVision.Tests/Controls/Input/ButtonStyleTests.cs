@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies the immutable Button presentation record: its two code-owned presets, its
 /// declared one-hop fallback to <see cref="InputStyle"/>'s "input" key, and its
 /// invalidation policy.</summary>

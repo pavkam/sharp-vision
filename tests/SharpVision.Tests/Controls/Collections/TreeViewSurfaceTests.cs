@@ -3,38 +3,10 @@
 
 namespace SharpVision.Tests.Controls.Collections;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies TreeView composition, selection, expand/collapse, keyboard navigation, and pointer interaction through mounted surfaces.</summary>
 public sealed partial class TreeViewSurfaceTests
 {
     /// <summary>Verifies indented hierarchy, Tab entry, directional selection, keyboard and pointer activation, and unavailable cleanup.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(TreeView),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.Directional |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Activation |
-        ComponentBehavior.PointerActivation |
-        ComponentBehavior.KeyboardActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Disabled |
-        ComponentBehavior.Composition)]
-    [ComponentBehaviorEvidence(
-        typeof(TreeViewItem),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Activation |
-        ComponentBehavior.PointerActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Disabled)]
     [Fact]
     public async Task Render_WhenTreeIsPopulated_DrawsIndentedHierarchyAsync()
     {
@@ -181,7 +153,6 @@ public sealed partial class TreeViewSurfaceTests
     /// <summary>Verifies a TreeView inherits Disabled from a disabled ancestor rather than only
     /// from its own IsEnabled flag, keeps stable geometry across a genuine resize while disabled,
     /// and resumes normal interaction once re-enabled.</summary>
-    [ComponentBehaviorEvidence(typeof(TreeView), ComponentBehavior.Disabled)]
     [Fact]
     public async Task IsEnabled_WhenAncestorIsDisabled_InheritsDisabledAndRecoversAsync()
     {
@@ -727,10 +698,6 @@ public sealed partial class TreeViewSurfaceTests
     /// <summary>Verifies a runtime IsVisible -&gt; Collapsed -&gt; IsVisible transition on a mounted
     /// top-level item leaves no stale rendered row behind, and that pointer hit-testing tracks the
     /// surviving item's live row at every step.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(TreeView),
-        ComponentVisibilityEvidence.MountedTransitionCommittedGeometry |
-        ComponentVisibilityEvidence.MountedTransitionHitTargets)]
     [Fact]
     public async Task Pointer_WhenItemTogglesCollapsedThenVisible_ClearsStaleRowsAndHitTargetAsync()
     {

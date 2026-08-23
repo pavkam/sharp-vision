@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using Input;
-
 using SharpVision.Tests.Controls;
 
 using Terminal.Capabilities;

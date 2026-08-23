@@ -5,8 +5,6 @@ namespace SharpVision.Tests.Controls.Input;
 
 using System.Buffers;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies Button appearance and interaction through a mounted terminal surface.</summary>
 public sealed class ButtonSurfaceTests
 {
@@ -374,7 +372,6 @@ public sealed class ButtonSurfaceTests
                              ┃ Save ┃
                              ┗━━━━━━┛
 
-
                              """);
         var borderColor = TerminalPalette.Project(ThemeColorHelper.InactiveBorder(ThemeCatalog.Dark), ColorDepth.Basic16);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(borderColor);
@@ -695,7 +692,6 @@ public sealed class ButtonSurfaceTests
                              ┃ 界 ┃
                              ┗━━━━┛
 
-
                              """);
         var lead = surface.Cell(new Point(2, 1));
         lead.Text.ShouldBe("界");
@@ -706,7 +702,6 @@ public sealed class ButtonSurfaceTests
     }
 
     /// <summary>Verifies pointer hover changes only the Button foreground and border.</summary>
-    [ComponentBehaviorEvidence(typeof(Button), ComponentBehavior.Mounted | ComponentBehavior.Hover)]
     [Fact]
     public async Task Pointer_WhenMovedOverButton_ShowsHoveredAppearanceAsync()
     {
@@ -733,7 +728,6 @@ public sealed class ButtonSurfaceTests
                              ┏━━━━━━┓
                              ┃ Save ┃
                              ┗━━━━━━┛
-
 
                              """);
         var borderColor = TerminalPalette.Project(ThemeColorHelper.HoveredBorder(ThemeCatalog.Dark), ColorDepth.Basic16);
@@ -812,13 +806,6 @@ public sealed class ButtonSurfaceTests
     }
 
     /// <summary>Verifies a held default Button changes semantic paint without translating its border.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Button),
-        ComponentBehavior.Focus |
-        ComponentBehavior.PressRelease |
-        ComponentBehavior.PressedFrame |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Disabled)]
     [Fact]
     public async Task Pointer_WhenPrimaryButtonIsHeld_ShowsPressedTranslatedFaceAsync()
     {
@@ -846,7 +833,6 @@ public sealed class ButtonSurfaceTests
                              ┏━━━━━━┓
                              ┃ Save ┃
                              ┗━━━━━━┛
-
 
                              """);
         surface.Cell(new Point(0, 0)).Text.ShouldBe("┏");
@@ -977,10 +963,6 @@ public sealed class ButtonSurfaceTests
     }
 
     /// <summary>Verifies a decoded Tab key focuses the sole mounted Button and updates its cells.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Button),
-        ComponentBehavior.Tab |
-        ComponentBehavior.DirectionalExcluded)]
     [Fact]
     public async Task Keyboard_WhenTabIsPressed_ShowsFocusedAppearanceAsync()
     {
@@ -1013,7 +995,6 @@ public sealed class ButtonSurfaceTests
                              ┃ Save ┃
                              ┗━━━━━━┛
 
-
                              """);
         var focusedBorder = TerminalPalette.Project(ThemeColorHelper.FocusedBorder(ThemeCatalog.Dark), ColorDepth.Basic16);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(focusedBorder);
@@ -1027,9 +1008,6 @@ public sealed class ButtonSurfaceTests
     }
 
     /// <summary>Verifies the click shorthand emits move, press, and release and settles activation.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Button),
-        ComponentBehavior.Activation | ComponentBehavior.PointerActivation)]
     [Fact]
     public async Task Pointer_WhenButtonIsClicked_ReleasesAndActivatesOnceAsync()
     {
@@ -1060,7 +1038,6 @@ public sealed class ButtonSurfaceTests
                              ┃ Save ┃
                              ┗━━━━━━┛
 
-
                              """);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(TerminalPalette.Project(
             ThemeColorHelper.FocusedBorder(ThemeCatalog.Dark),
@@ -1069,7 +1046,6 @@ public sealed class ButtonSurfaceTests
     }
 
     /// <summary>Verifies terminal Enter and Space input activate the focused button.</summary>
-    [ComponentBehaviorEvidence(typeof(Button), ComponentBehavior.KeyboardActivation)]
     [Fact]
     public async Task Keyboard_WhenEnterAndSpaceAreCompleted_ActivatesFocusedButtonAsync()
     {
@@ -1229,7 +1205,6 @@ public sealed class ButtonSurfaceTests
                              ┃ Save ┃
                              ┗━━━━━━┛
 
-
                              """,
             (false, true) => """
                                Save
@@ -1240,9 +1215,6 @@ public sealed class ButtonSurfaceTests
                              """,
             (false, false) => """
                                 Save
-
-
-
 
                               """
         };
@@ -1262,20 +1234,14 @@ public sealed class ButtonSurfaceTests
                              ┃ Save ┃
                              ┗━━━━━━┛
 
-
                              """,
             (false, true) => """
 
                                 Save
 
-
-
                              """,
             (false, false) => """
                                 Save
-
-
-
 
                               """
         };

@@ -10,7 +10,6 @@ public sealed class CurrencyInputTests
     #region Defaults
 
     /// <summary>Verifies construct when created has documented defaults.</summary>
-    [ComponentUnitEvidence(typeof(CurrencyInput))]
     [Fact]
     public void Construct_WhenCreated_HasDocumentedDefaults()
     {
@@ -1123,7 +1122,6 @@ public sealed class CurrencyInputTests
     #region IsEnabled contract
 
     /// <summary>Verifies enabled when control is disabled refuses focus and reports ineffective enabled.</summary>
-    [ComponentUnitEvidence(typeof(CurrencyInput), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenControlIsDisabled_RefusesFocusAndReportsIneffectiveEnabled()
     {

@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>
 /// Verifies every generated-scrollbar host reports an ActualScrollBarStyle that merges the active
 /// theme, matching what ScrollBar.ResolveStyle (and therefore the generated bar itself) resolves,

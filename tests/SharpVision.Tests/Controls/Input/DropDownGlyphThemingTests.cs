@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies the drop-down chevron has one application-wide answer.
 ///
 /// <para><c>ComboBox</c>, <c>DateInput</c>, and <c>DateTimeInput</c> each declared their own

@@ -10,7 +10,6 @@ using PlacementMode = Terminal.Graphics.PlacementMode;
 public sealed class ImageTests
 {
     /// <summary>Verifies stable borrowed-source, alternate-text, and fitting defaults.</summary>
-    [ComponentUnitEvidence(typeof(Image))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
@@ -267,7 +266,6 @@ public sealed class ImageTests
 
     /// <summary>Verifies direct and ancestor-inherited IsEnabled changes compute the effective
     /// disabled state Image's mounted disabled contract depends on.</summary>
-    [ComponentUnitEvidence(typeof(Image), ComponentBehavior.Disabled)]
     [Fact]
     public void IsEnabled_WhenDisabledDirectlyOrByAncestor_ComputesEffectiveState()
     {

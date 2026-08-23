@@ -33,21 +33,25 @@ concept pages are the narrow exception, because the assigned property is their
 subject. Ordinary showcase examples therefore demonstrate the shipped control
 defaults rather than carrying a second styling layer.
 
-The exported-control inventory is guarded twice. The focused-unit catalog
-requires every concrete public control to name the fixture that proves its
-detached API contract, and the mounted-surface catalog separately requires real
-application evidence for each supported route. Pointer activation, keyboard
-activation, and pointer activation forwarded by a retained child are distinct
-obligations: evidence for one route never satisfies another, even when multiple
-routes produce the same selection or invocation event.
+Every concrete public control has a focused detached-unit fixture that proves
+its API contract, and a mounted-surface fixture that proves real application
+evidence for each route it supports. Pointer activation, keyboard activation,
+and pointer activation forwarded by a retained child are distinct obligations:
+proving one route never substitutes for another, even when multiple routes
+produce the same selection or invocation event. This is a per-control review
+discipline enforced at PR time, not a reflection-based inventory a build step
+checks automatically - a mechanical catalog that only asserts "a test exists"
+for every exported type, without exercising real behavior, is a test smell in
+this codebase and is deliberately not part of the suite.
 
-The common mounted geometry matrix applies the same fixed margin, intrinsic
-border, and padding to every exported concrete control. It requires exact
-border-box placement, exact `ContentBounds` deflation, and the expected frame
-corner in the final modeled terminal. Specialized fixtures still own the hover,
-focus, pressed, disabled, resize, tiny-bound, and semantic activation evidence;
-the common matrix exists so no control can escape the shared box model or chrome
-pipeline.
+`ComponentGeometrySurfaceTests` applies the same fixed margin, intrinsic border,
+and padding through a single dedicated `ChromeProbe` control, proving exact
+border-box placement, exact `ContentBounds` deflation, the expected frame corner
+in the final modeled terminal, and that a resize down to and through zero-sized
+content preserves the same insets and an intact corner. Every other concrete
+control's own fixture separately proves its hover, focus, pressed, disabled,
+resize, tiny-bound, and semantic activation evidence against its own real
+content, rather than relying on a shared probe to stand in for it.
 
 Controls whose pressed presentation changes geometry or chrome need explicit
 pressed-frame evidence, not just a boolean `IsPressed` assertion. The Button
@@ -175,27 +179,19 @@ Action timeouts report the action and the latest screen. Snapshot mismatches
 retain row boundaries and cell differences. Tests isolate held-pointer scenarios
 or release capture before reuse, so state cannot leak between surfaces.
 
-`ComponentSurfaceCoverageTests` catalogs every exported concrete control and
-requires an exact attributed evidence set for mounted rendering, hover or its
-explicit exclusion, focus, Tab, directional keys, semantic press and release,
-activation, unavailable-state cleanup, transient layers, retained composition,
-and disabled state or its explicit exclusion. Adding a control, or changing its
-behavior classification, fails the catalog until its mounted fixture supplies
-matching evidence. The composition suite separately places heterogeneous
-controls on one root and drives forward and reverse Tab, local arrow behavior,
-hover transfer, and press activation. A deep
-Overlay-to-Window-to-GroupBox-to-Expander-to-CheckBox tree proves preview
-routing, handled bubble termination, pointer ancestry, focus-within, and
-transitive capture and focus cleanup.
+`ComponentCompositionSurfaceTests` places heterogeneous controls on one root and
+drives forward and reverse Tab, local arrow behavior, hover transfer, and press
+activation. A deep Overlay-to-Window-to-GroupBox-to-Expander-to-CheckBox tree
+proves preview routing, handled bubble termination, pointer ancestry,
+focus-within, and transitive capture and focus cleanup.
 
-`ComponentUnitCoverageTests` mirrors that classification for every control's
-focused detached unit fixture: any control the mounted map requires disabled
-evidence for must also carry a detached
-`[ComponentUnitEvidence(typeof(X), ComponentBehavior.Disabled)]` test, so
-IsEnabled=false is proven both on a real mounted surface and in isolation rather
-than only in one place.
+Every control that supports disabled state proves `IsEnabled=false` both on a
+real mounted surface and in isolation - mounted rendering, hover, focus, Tab,
+input routing, and appearance in its own `*SurfaceTests` fixture, and detached
+validation and property behavior in its own unit fixture - rather than in only
+one place.
 
-### Visibility coverage matrix
+### Visibility contract
 
 The three-state [`Visibility`](../concepts/box-model.md#expected-behavior)
 contract is deliberately not Boolean: `IsVisible` participates in layout,
@@ -209,51 +205,21 @@ Measure. A host that manages children or single content still owns everything
 `ControlBase` does not: spacing, track contribution, desired-size aggregation,
 scroll extents and offsets, item realization, and stale-cell cleanup.
 
-`ComponentVisibilityCoverageTests` catalogs every exported concrete control
-against a `ComponentVisibilityRole` — `Leaf`, `SingleContent`, `OrderedChildren`
-(Stack/Dock), `TrackedChildren` (Grid), `LayeredChildren` (Overlay),
-`ScrollingExtent`, `RealizedItems`, or `NotApplicable` for content that is not
-itself a tree of `ControlBase` children — and requires an exact attributed
-`ComponentVisibilityEvidence` set per role: `HiddenRetainsSlot`,
-`HiddenExcludesRenderInput`, `CollapsedExcludesSize`,
-`CollapsedRemovesSpacingOrTrack`, `CollapsedExcludesInput`,
-`TransitionInvalidatesCorrectly`, `AncestorInheritance`, `FocusCaptureCleanup`,
-`ZeroTinyConstraint`, `MountedTransitionCommittedGeometry`, and
-`MountedTransitionHitTargets`. Evidence is attributed with
-`[ComponentVisibilityEvidence(typeof(Control), flags)]` on the test method that
-proves it, exactly like the mounted behavior catalog above; the gate sums every
-attributed flag across the whole test assembly and requires the exact set per
-control, listing both missing and unexpected flags for every incomplete host in
-one failure.
+Every structural host - a container that manages children, a `ContentControl`,
+or an items host - proves that same contract for its own children: a `Leaf`
+control needs no dedicated Visibility fixture at all, because `ControlBase`
+alone already proves the whole leaf contract and a per-leaf repeat would prove
+nothing new, but a host that owns spacing, track contribution, desired-size
+aggregation, scroll extents, or item realization proves each of those against
+its own real content.
 
-A `Leaf` control (no structural child or content) or a `NotApplicable` control
-needs no attributed evidence at all — the classification itself is the explicit
-exclusion, because `ControlBase` alone already proves the whole contract and a
-no-op test per leaf would prove nothing new. A narrower exclusion applies to
-`SingleContent` concretes whose content-collapse path is exactly
-`ContentControl`'s own with no host-specific chrome reflow — the floating
-surfaces, `Prism`, `StatusBarItem`, and `TabItem` — so they also require no
-host-specific evidence. Abstract authoring bases with their own layout contract
-(`Container`, `ContentControl`, `CompositeControlBase`, `ItemsControl`) are
-never catalogued directly, because they are not concrete; their generic contract
-is proved once through a concrete or test-only subtype in their own fixture, and
-that proof may itself carry evidence toward a concrete descendant's requirement
-— contributing part of what the descendant needs while its own dedicated fixture
-supplies the rest.
-
-Mounted evidence for a structural host uses a full `IsVisible` → `Hidden` →
+Mounted proof for a structural host uses a full `IsVisible` → `Hidden` →
 `Collapsed` → `IsVisible` transition on a live `ComponentSurface`, not only the
 initial mounted state: an opaque sibling background proves the committed final
 cells at every phase, and a pointer probe proves the committed hit targets at
 every phase, including that a `Hidden` phase freezes geometry while a
 `Collapsed` phase reflows it. `StackSurfaceTests`, `DockSurfaceTests`, and
 `GridSurfaceTests` follow this pattern for their respective layout algorithms.
-
-A new layout, container, or realized-item host cannot be catalogued without
-naming its role and closing its required evidence: add its
-`ComponentVisibilityRole` and `ComponentVisibilityEvidence` entries, then
-attribute or add the unit and mounted tests that prove the role's exact flag
-set, mirroring an existing host with the same role.
 
 `TerminalInputTests` sends real UTF-8 plus focus, SGR pixel mouse, bracketed
 paste, and Kitty keyboard sequences through `Session`. It asserts focused route
@@ -386,11 +352,6 @@ only the latest value in one target update. A warmed allocation test bounds
 scalar updates at 256 managed bytes each and proves reverse updates cannot
 recurse.
 
-`DataBindingConsumerTests` (in `SharpVision.Tests`) compiles nested two-way and
-observable selection examples using only public API. Because that suite is a
-friend assembly, the no-internal-access rule is enforced by convention in those
-tests rather than by the compiler.
-
 ## Required evidence
 
 | Layer           | Observation                                                                   |
@@ -398,7 +359,6 @@ tests rather than by the compiler.
 | Control unit    | Public defaults, validation, state, ownership, invalidation, and event order. |
 | Mounted surface | Application context, routed input, layout, cells/styles, focus, and capture.  |
 | Cross-layer     | Terminal bytes produce the expected retained state and output.                |
-| Consumer        | Public composition compiles without internals or friend access.               |
 
 Every shipped control covers normal, interactive, disabled, tiny, Unicode, and
 resize behavior and has a representative showcase page.

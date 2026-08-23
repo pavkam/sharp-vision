@@ -12,7 +12,6 @@ public sealed class JsonViewTests
 {
     /// <summary>Verifies malformed replacement text cannot partially replace the current document or selection.</summary>
     [Fact]
-    [ComponentUnitEvidence(typeof(JsonView))]
     public void Json_WhenMalformed_PreservesPreviousState()
     {
         // Arrange
@@ -32,7 +31,6 @@ public sealed class JsonViewTests
     /// <summary>Verifies a top-level duplicate object key cannot partially replace the current document or
     /// selection, since it would make node paths ambiguous.</summary>
     [Fact]
-    [ComponentUnitEvidence(typeof(JsonView))]
     public void Json_WhenTopLevelObjectHasDuplicateKey_PreservesPreviousState()
     {
         // Arrange
@@ -52,7 +50,6 @@ public sealed class JsonViewTests
     /// <summary>Verifies a duplicate object key nested below the root is also rejected, confirming the
     /// uniqueness check applies recursively through every object encountered by BuildNode.</summary>
     [Fact]
-    [ComponentUnitEvidence(typeof(JsonView))]
     public void Json_WhenNestedObjectHasDuplicateKey_PreservesPreviousState()
     {
         // Arrange
@@ -71,7 +68,6 @@ public sealed class JsonViewTests
 
     /// <summary>Verifies direct and ancestor-inherited IsEnabled changes flip EffectiveIsEnabled and
     /// the derived focus eligibility it drives, and re-enabling restores both.</summary>
-    [ComponentUnitEvidence(typeof(JsonView), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenToggledDirectlyOrByAncestor_UpdatesEffectiveEnabledAndFocusEligibility()
     {

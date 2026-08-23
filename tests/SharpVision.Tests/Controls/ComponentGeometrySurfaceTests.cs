@@ -3,90 +3,9 @@
 
 namespace SharpVision.Tests.Controls;
 
-
-
-/// <summary>Proves the shared mounted box model and intrinsic frame for every exported concrete control.</summary>
+/// <summary>Proves the shared mounted box model and intrinsic frame through a focused probe control.</summary>
 public sealed class ComponentGeometrySurfaceTests
 {
-    private static readonly Type[] _controlTypes =
-    [
-        typeof(AreaChart),
-        typeof(Button),
-        typeof(UiCalendar),
-        typeof(ChaseIndicator),
-        typeof(CheckBox),
-        typeof(ColorPicker),
-        typeof(ComboBox),
-        typeof(CurrencyInput),
-        typeof(DateInput),
-        typeof(DateTimeInput),
-        typeof(Dock),
-        typeof(Document),
-        typeof(Expander),
-        typeof(FigletText),
-        typeof(FilePickerDialog),
-        typeof(Flyout),
-        typeof(Grid),
-        typeof(GroupBox),
-        typeof(HorizontalBarChart),
-        typeof(HyperlinkButton),
-        typeof(Image),
-        typeof(JsonView),
-        typeof(LineChart),
-        typeof(UiListView),
-        typeof(Menu),
-        typeof(MenuItem),
-        typeof(MenuSeparator),
-        typeof(MessageBox),
-        typeof(NavigationView),
-        typeof(NavigationViewGroup),
-        typeof(NavigationViewItem),
-        typeof(NavigationViewSeparator),
-        typeof(NumberInput),
-        typeof(Overlay),
-        typeof(Popup),
-        typeof(Prism),
-        typeof(ProgressBar),
-        typeof(RadioButton),
-        typeof(SaveFileDialog),
-        typeof(ScrollBar),
-        typeof(Separator),
-        typeof(Slider),
-        typeof(Sparkline),
-        typeof(Spinner),
-        typeof(Stack),
-        typeof(StatusBar),
-        typeof(StatusBarItem),
-        typeof(TabControl),
-        typeof(TabItem),
-        typeof(Table),
-        typeof(ControlText),
-        typeof(TextInput),
-        typeof(TimeInput),
-        typeof(Tooltip),
-        typeof(TreeView),
-        typeof(TreeViewItem),
-        typeof(VerticalBarChart),
-        typeof(Window)
-    ];
-
-    /// <summary>Gets every exported concrete control type in deterministic name order.</summary>
-    public static TheoryData<Type> ControlTypes => [.. _controlTypes];
-
-    /// <summary>Verifies the matrix remains identical to the exported concrete control inventory.</summary>
-    [Fact]
-    public void Catalog_WhenPublicConcreteControlsChange_RequiresMountedGeometryCase()
-    {
-        var exported = new[] { typeof(ControlBase).Assembly, typeof(Document).Assembly }
-            .SelectMany(assembly => assembly.GetExportedTypes())
-            .Where(type => !type.IsAbstract && typeof(ControlBase).IsAssignableFrom(type))
-            .OrderBy(type => type.Name)
-            .ToArray();
-        var catalogued = _controlTypes.OrderBy(type => type.Name).ToArray();
-
-        catalogued.ShouldBe(exported);
-    }
-
     /// <summary>Verifies protected intrinsic chrome participates in the shared mounted box model.</summary>
     [Fact]
     public async Task Render_WhenBoxModelIsApplied_UsesExactBoundsContentAndFrameAsync()

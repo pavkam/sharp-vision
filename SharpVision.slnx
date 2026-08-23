@@ -15,9 +15,11 @@
   <Folder Name="/tests/">
     <Project Path="tests/SharpVision.Compatibility.Tests/SharpVision.Compatibility.Tests.csproj"/>
     <Project Path="tests/SharpVision.Document.Tests/SharpVision.Document.Tests.csproj"/>
+    <Project Path="tests/SharpVision.FigletFonts.Tests/SharpVision.FigletFonts.Tests.csproj"/>
     <Project Path="tests/SharpVision.SyntaxHighlighting.Tests/SharpVision.SyntaxHighlighting.Tests.csproj"/>
     <Project Path="tests/SharpVision.Terminal.Probe/SharpVision.Terminal.Probe.csproj"/>
     <Project Path="tests/SharpVision.Terminal.Tests/SharpVision.Terminal.Tests.csproj"/>
+    <Project Path="tests/SharpVision.Test.Shared/SharpVision.Test.Shared.csproj"/>
     <Project Path="tests/SharpVision.Tests/SharpVision.Tests.csproj"/>
   </Folder>
 </Solution>

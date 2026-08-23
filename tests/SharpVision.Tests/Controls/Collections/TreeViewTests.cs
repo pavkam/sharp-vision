@@ -52,7 +52,6 @@ public sealed partial class TreeViewTests
     }
 
     /// <summary>Verifies a tree view starts as a framed surface with a visible border and semantic background.</summary>
-    [ComponentUnitEvidence(typeof(TreeView))]
     [Fact]
     public void Constructor_WhenCreated_UsesFramedBackgroundDefaults()
     {
@@ -194,7 +193,6 @@ public sealed partial class TreeViewTests
     }
 
     /// <summary>Verifies items are added through the typed collection.</summary>
-    [ComponentUnitEvidence(typeof(TreeViewItem))]
     [Fact]
     public void Items_WhenAdded_IncreasesCount()
     {
@@ -359,7 +357,6 @@ public sealed partial class TreeViewTests
     /// <summary>Verifies a Collapsed item drops its own row and its entire subtree from
     /// realization, retains selection on an unreachable descendant, and fully recovers when
     /// restored to IsVisible.</summary>
-    [ComponentVisibilityEvidence(typeof(TreeView), ComponentVisibilityEvidence.AncestorInheritance)]
     [Fact]
     public void Visibility_WhenParentCollapsed_RemovesOwnRowAndSubtreeFromRealization()
     {
@@ -879,7 +876,6 @@ public sealed partial class TreeViewTests
 
     /// <summary>Verifies directional navigation skips a Collapsed item exactly like a disabled one -
     /// CollectVisibleItems gates on EffectiveIsVisible, which a Collapsed item never satisfies.</summary>
-    [ComponentVisibilityEvidence(typeof(TreeView), ComponentVisibilityEvidence.CollapsedExcludesInput)]
     [Fact]
     public async Task Dispatch_WhenArrowKeyPressed_SkipsCollapsedItemAsync()
     {
@@ -915,7 +911,6 @@ public sealed partial class TreeViewTests
     /// <summary>Verifies directional navigation skips a Hidden item too - Hidden's usual "keeps its
     /// slot, only excludes render/input" leaf contract still fails TreeView's own
     /// EffectiveIsVisible-based eligibility gate, matching Collapsed for navigation purposes.</summary>
-    [ComponentVisibilityEvidence(typeof(TreeView), ComponentVisibilityEvidence.HiddenExcludesRenderInput)]
     [Fact]
     public async Task Dispatch_WhenArrowKeyPressed_SkipsHiddenItemAsync()
     {
@@ -951,7 +946,6 @@ public sealed partial class TreeViewTests
     /// measured content height - the flattened items host is a plain vertical Stack, so this is an
     /// end-to-end integration proof through TreeView's own public surface, not a re-proof of Stack
     /// itself.</summary>
-    [ComponentVisibilityEvidence(typeof(TreeView), ComponentVisibilityEvidence.CollapsedExcludesSize)]
     [Fact]
     public void Measure_WhenTopLevelItemIsCollapsed_ContributesNoRow()
     {
@@ -2052,7 +2046,6 @@ public sealed partial class TreeViewTests
     /// <summary>Verifies TreeView proves direct and ancestor-inherited disabled state at the
     /// detached unit level, and that clearing IsEnabled on each recovers EffectiveIsEnabled - the
     /// same disabled contract exercised on a live mounted terminal surface.</summary>
-    [ComponentUnitEvidence(typeof(TreeView), ComponentBehavior.Disabled)]
     [Fact]
     public void EffectiveIsEnabled_WhenTreeIsDisabledDirectlyOrByAncestor_ReportsDisabledAndRecovers()
     {
@@ -2076,7 +2069,6 @@ public sealed partial class TreeViewTests
 
     /// <summary>Verifies TreeViewItem proves direct and owning-tree-inherited disabled state at
     /// the detached unit level, and that clearing IsEnabled on each recovers EffectiveIsEnabled.</summary>
-    [ComponentUnitEvidence(typeof(TreeViewItem), ComponentBehavior.Disabled)]
     [Fact]
     public void EffectiveIsEnabled_WhenItemIsDisabledDirectlyOrByOwningTree_ReportsDisabledAndRecovers()
     {

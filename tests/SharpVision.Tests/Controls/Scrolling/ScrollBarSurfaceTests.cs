@@ -155,15 +155,6 @@ public sealed class ScrollBarSurfaceTests
     }
 
     /// <summary>Verifies hover, focus, pressed, and disabled state commits and cleans up.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(ScrollBar),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.PressRelease |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Disabled)]
     [Fact]
     public async Task Pointer_WhenBehaviorStateChanges_CommitsStateAndCleanupAsync()
     {
@@ -269,11 +260,6 @@ public sealed class ScrollBarSurfaceTests
     }
 
     /// <summary>Verifies arrows, pages, and endpoints decode through terminal bytes with typed causes.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(ScrollBar),
-        ComponentBehavior.Directional |
-        ComponentBehavior.Activation |
-        ComponentBehavior.KeyboardActivation)]
     [Fact]
     public async Task Keyboard_WhenRangeCommandsArePressed_AppliesExactChangesAndCausesAsync()
     {
@@ -317,7 +303,6 @@ public sealed class ScrollBarSurfaceTests
     }
 
     /// <summary>Verifies buttons, track, and wheel commit exact values and preserve endpoint bubbling.</summary>
-    [ComponentBehaviorEvidence(typeof(ScrollBar), ComponentBehavior.PointerActivation)]
     [Fact]
     public async Task Pointer_WhenButtonsTrackAndWheelAreUsed_ReportsExactRangeCausesAsync()
     {

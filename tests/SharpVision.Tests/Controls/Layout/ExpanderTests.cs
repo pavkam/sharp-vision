@@ -7,7 +7,6 @@ namespace SharpVision.Tests.Controls.Layout;
 public sealed class ExpanderTests
 {
     /// <summary>Verifies an Expander starts as a borderless transparent section without caller styling.</summary>
-    [ComponentUnitEvidence(typeof(Expander))]
     [Fact]
     public void Constructor_WhenCreated_UsesBorderlessTransparentDefaults()
     {
@@ -21,7 +20,6 @@ public sealed class ExpanderTests
     }
 
     /// <summary>Verifies a disabled Expander refuses Space activation and leaves IsExpanded unchanged.</summary>
-    [ComponentUnitEvidence(typeof(Expander), ComponentBehavior.Disabled)]
     [Fact]
     public void Dispatch_WhenDisabled_RefusesSpaceActivation()
     {
@@ -429,7 +427,6 @@ public sealed class ExpanderTests
     /// <summary>Verifies a collapsed header contributes nothing to the header-content width, leaving
     /// only the fixed disclosure-glyph chrome - distinct from the expand-state↔Visibility restoration
     /// the rest of this file already covers.</summary>
-    [ComponentVisibilityEvidence(typeof(Expander), ComponentVisibilityEvidence.CollapsedExcludesSize)]
     [Fact]
     public void Layout_WhenHeaderIsCollapsed_ExcludesItFromHeaderWidth()
     {
@@ -451,7 +448,6 @@ public sealed class ExpanderTests
     /// never touching the expand/collapse toggle - measures header-only geometry identical to the
     /// IsExpanded=false baseline established above, proving the exclusion at Expander.cs's own
     /// content-width oracle rather than the already-covered IsExpanded↔Visibility restoration.</summary>
-    [ComponentVisibilityEvidence(typeof(Expander), ComponentVisibilityEvidence.CollapsedExcludesSize)]
     [Fact]
     public void Layout_WhenContentIsCollapsedWhileExpanded_MeasuresHeaderOnlyGeometry()
     {
@@ -476,10 +472,6 @@ public sealed class ExpanderTests
 
     /// <summary>Verifies hidden content while expanded keeps the exact measured and arranged
     /// geometry visible content of the same intrinsic size receives, and only excludes rendering.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(Expander),
-        ComponentVisibilityEvidence.HiddenRetainsSlot |
-        ComponentVisibilityEvidence.HiddenExcludesRenderInput)]
     [Fact]
     public void Layout_WhenContentIsHiddenWhileExpanded_MatchesVisibleGeometryButExcludesRendering()
     {

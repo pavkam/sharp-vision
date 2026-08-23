@@ -7,7 +7,6 @@ namespace SharpVision.Tests.Controls.Display;
 public sealed class PrismTests
 {
     /// <summary>Verifies a new Prism has stable effect defaults and no required content.</summary>
-    [ComponentUnitEvidence(typeof(Prism))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
@@ -363,7 +362,6 @@ public sealed class PrismTests
 
     /// <summary>Verifies disabling a detached Prism cascades EffectiveIsEnabled to its owned content
     /// and recovers on re-enable, without needing a mounted surface.</summary>
-    [ComponentUnitEvidence(typeof(Prism), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenToggled_CascadesEffectiveIsEnabledToOwnedContent()
     {

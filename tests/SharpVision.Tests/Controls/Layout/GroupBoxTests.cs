@@ -7,7 +7,6 @@ namespace SharpVision.Tests.Controls.Layout;
 public sealed class GroupBoxTests
 {
     /// <summary>Verifies defaults and invalid assignments preserve committed public state.</summary>
-    [ComponentUnitEvidence(typeof(GroupBox))]
     [Fact]
     public void Properties_WhenCreatedOrAssignedInvalidValue_PreserveValidatedDefaults()
     {
@@ -277,7 +276,6 @@ public sealed class GroupBoxTests
 
     /// <summary>Verifies collapsed content contributes nothing to measurement - the frame measures
     /// to exactly the same header-only geometry a GroupBox with no content at all would produce.</summary>
-    [ComponentVisibilityEvidence(typeof(GroupBox), ComponentVisibilityEvidence.CollapsedExcludesSize)]
     [Fact]
     public void Layout_WhenContentIsCollapsed_MeasuresHeaderOnlyGeometry()
     {
@@ -307,7 +305,6 @@ public sealed class GroupBoxTests
 
     /// <summary>Verifies hidden content keeps contributing to measurement and still receives its
     /// filled arranged slot, identical to visible content of the same intrinsic size.</summary>
-    [ComponentVisibilityEvidence(typeof(GroupBox), ComponentVisibilityEvidence.HiddenRetainsSlot)]
     [Fact]
     public void Layout_WhenContentIsHidden_RetainsDesiredSizeAndArrangedSlot()
     {
@@ -331,7 +328,6 @@ public sealed class GroupBoxTests
     /// while DesiredSize and the arranged slot stay exactly what the sibling test above proves for
     /// the same intrinsic size. Completes the layout-only proof above with the render and hit-test
     /// halves Expander's own Hidden proof already covers.</summary>
-    [ComponentVisibilityEvidence(typeof(GroupBox), ComponentVisibilityEvidence.HiddenExcludesRenderInput)]
     [Fact]
     public void Render_WhenContentIsHidden_ExcludesRenderingAndHitTestingButKeepsGeometry()
     {
@@ -370,7 +366,6 @@ public sealed class GroupBoxTests
 
     /// <summary>Verifies toggling content between IsVisible and Collapsed at runtime invalidates and
     /// restores exactly the same geometry each time, rather than drifting.</summary>
-    [ComponentVisibilityEvidence(typeof(GroupBox), ComponentVisibilityEvidence.TransitionInvalidatesCorrectly)]
     [Fact]
     public void Layout_WhenContentTogglesCollapsedThenVisible_InvalidatesAndRestoresGeometry()
     {
@@ -404,7 +399,6 @@ public sealed class GroupBoxTests
     /// <summary>Verifies direct and ancestor-inherited IsEnabled changes compute the effective
     /// disabled state GroupBox's mounted disabled contract depends on, including the state its
     /// composed content inherits.</summary>
-    [ComponentUnitEvidence(typeof(GroupBox), ComponentBehavior.Disabled)]
     [Fact]
     public void IsEnabled_WhenDisabledDirectlyOrByAncestor_ComputesEffectiveState()
     {

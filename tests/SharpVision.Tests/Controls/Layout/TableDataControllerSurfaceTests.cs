@@ -5,8 +5,6 @@ namespace SharpVision.Tests.Controls.Layout;
 
 using System.Text.Json;
 
-using SharpVision.Tests.Input;
-
 /// <summary>Verifies progressive Table rendering: placeholder and loaded glyphs, visible
 /// selection/current highlighting, failure recovery, keyboard navigation on unloaded rows, header
 /// sort requests, detach/reattach, and equivalence with an eager table over the same data.</summary>

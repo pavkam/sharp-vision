@@ -3,20 +3,10 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
-using SharpVision.Tests.Input;
-
 /// <summary>Proves TimeInput appearance and interaction through mounted terminal surfaces.</summary>
 public sealed class TimeInputSurfaceTests
 {
     /// <summary>Verifies a mounted TimeInput renders a bordered field with a formatted time.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(TimeInput),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task Render_WhenTimeInputIsMounted_DrawsBorderedFieldWithTimeAsync()
     {
@@ -316,7 +306,6 @@ public sealed class TimeInputSurfaceTests
 
     /// <summary>Verifies a mounted TimeInput proves direct disable, ancestor-inherited disable, and
     /// re-enable recovery on a real terminal surface.</summary>
-    [ComponentBehaviorEvidence(typeof(TimeInput), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Enabled_WhenToggledOnMountedTimeInput_AppliesDirectAndInheritedDisabledStateAsync()
     {
@@ -358,7 +347,6 @@ public sealed class TimeInputSurfaceTests
     /// <summary>Verifies a disabled TimeInput's arranged geometry after a genuine resize still
     /// matches an independently mounted, still-enabled TimeInput arranged at that same size,
     /// proving disabling does not perturb layout.</summary>
-    [ComponentBehaviorEvidence(typeof(TimeInput), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Layout_WhenDisabledTimeInputIsResized_MatchesEnabledGeometryAtNewSizeAsync()
     {
@@ -388,7 +376,6 @@ public sealed class TimeInputSurfaceTests
 
     /// <summary>Verifies a disabled TimeInput refuses Tab focus and leaves it on a focusable
     /// sibling instead.</summary>
-    [ComponentBehaviorEvidence(typeof(TimeInput), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Keyboard_WhenDisabledTimeInputIsTabbed_DoesNotReceiveFocusAsync()
     {

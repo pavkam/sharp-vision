@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Layout;
 
-using SharpVision.Tests.Input;
-
 /// <summary>Verifies progressive Table loading: SetDataSource preconditions, fetch scheduling,
 /// generation and cancellation discipline, cache eviction, and key-based selection - independent of
 /// rendered surface content (see <see cref="TableDataControllerSurfaceTests"/> for that).</summary>

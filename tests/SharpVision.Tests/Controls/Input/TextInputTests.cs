@@ -3,14 +3,10 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
-using SharpVision.Tests.Input;
-
-
 /// <summary>Verifies TextInput validation, editing, events, input, rendering, and history.</summary>
 public sealed class TextInputTests
 {
     /// <summary>Verifies a text field is discoverable through light intrinsic chrome by default.</summary>
-    [ComponentUnitEvidence(typeof(TextInput))]
     [Fact]
     public void Properties_WhenConstructed_UsesLightFieldBorder()
     {
@@ -25,7 +21,6 @@ public sealed class TextInputTests
     }
 
     /// <summary>Verifies a disabled TextInput ignores character input and leaves committed text unchanged.</summary>
-    [ComponentUnitEvidence(typeof(TextInput), ComponentBehavior.Disabled)]
     [Fact]
     public void Dispatch_WhenDisabled_IgnoresCharacterInput()
     {

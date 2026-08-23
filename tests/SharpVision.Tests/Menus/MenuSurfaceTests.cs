@@ -212,41 +212,6 @@ public sealed class MenuSurfaceTests
     }
 
     /// <summary>Verifies root navigation, item press/release, separator exclusion, and cleanup.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Menu),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.Directional |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Activation |
-        ComponentBehavior.PointerActivation |
-        ComponentBehavior.KeyboardActivation |
-        ComponentBehavior.RetainedPointerActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Disabled |
-        ComponentBehavior.Composition)]
-    [ComponentBehaviorEvidence(
-        typeof(MenuItem),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressRelease |
-        ComponentBehavior.Activation |
-        ComponentBehavior.PointerActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Disabled)]
-    [ComponentBehaviorEvidence(
-        typeof(MenuSeparator),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.HoverExcluded |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task Input_WhenMenuNavigatesAndInvokes_UsesOwnedFacesWithoutFocusTheftAsync()
     {
@@ -367,7 +332,6 @@ public sealed class MenuSurfaceTests
 
     /// <summary>Verifies a mounted Menu inherits Disabled from a disabled ancestor rather than
     /// only from its own IsEnabled flag, and resumes Normal once re-enabled.</summary>
-    [ComponentBehaviorEvidence(typeof(Menu), ComponentBehavior.Disabled)]
     [Fact]
     public async Task IsEnabled_WhenMenuAncestorIsDisabled_InheritsDisabledAndRecoversAsync()
     {
@@ -403,7 +367,6 @@ public sealed class MenuSurfaceTests
     /// <summary>Verifies a MenuSeparator proves direct disable, inherits Disabled from its owning
     /// Menu, keeps stable geometry across a genuine resize while disabled, and resumes Normal
     /// once re-enabled.</summary>
-    [ComponentBehaviorEvidence(typeof(MenuSeparator), ComponentBehavior.Disabled)]
     [Fact]
     public async Task IsEnabled_WhenSeparatorOrOwningMenuIsDisabled_ReflectsDisabledAndRecoversAsync()
     {
@@ -766,10 +729,6 @@ public sealed class MenuSurfaceTests
     /// vertical menu item leaves no stale rendered row behind, and that pointer hover correctly
     /// tracks the surviving item's live position rather than a stale one - both immediately after
     /// the collapse and again after the item is restored.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(Menu),
-        ComponentVisibilityEvidence.MountedTransitionCommittedGeometry |
-        ComponentVisibilityEvidence.MountedTransitionHitTargets)]
     [Fact]
     public async Task Pointer_WhenVerticalItemTogglesCollapsedThenVisible_ClearsStaleRowsAndHoverAsync()
     {

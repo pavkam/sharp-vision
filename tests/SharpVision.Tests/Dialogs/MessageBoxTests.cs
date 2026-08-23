@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Dialogs;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Defines the public and measured behavior of the standard MessageBox surface.</summary>
 public sealed class MessageBoxTests
 {
@@ -25,7 +23,6 @@ public sealed class MessageBoxTests
     }
 
     /// <summary>Verifies construction validates content and retains the requested public contract.</summary>
-    [ComponentUnitEvidence(typeof(MessageBox))]
     [Fact]
     public void Constructor_WhenConfigured_RetainsTitleMessageAndButtons()
     {
@@ -39,7 +36,6 @@ public sealed class MessageBoxTests
     /// <summary>Verifies direct and ancestor-inherited disablement both resolve through
     /// EffectiveIsEnabled without requiring a mounted surface, and re-enabling restores it -
     /// the detached counterpart to the mounted disabled-appearance evidence below.</summary>
-    [ComponentUnitEvidence(typeof(MessageBox), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenSetDirectlyOrByAncestor_UpdatesEffectiveIsEnabled()
     {
@@ -163,19 +159,6 @@ public sealed class MessageBoxTests
     }
 
     /// <summary>Verifies ShowAsync confines focus, activates the default button, and removes its temporary surface.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(MessageBox),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Activation |
-        ComponentBehavior.KeyboardActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Transient |
-        ComponentBehavior.Composition)]
     [Fact]
     public async Task ShowAsync_WhenDefaultButtonIsPressed_CompletesAndRestoresHostAsync()
     {
@@ -205,7 +188,6 @@ public sealed class MessageBoxTests
     /// to its disabled appearance, re-enabling restores Normal, and a disabled instance moved to a
     /// genuinely different size arranges identically to an independently-mounted enabled instance
     /// at that same size.</summary>
-    [ComponentBehaviorEvidence(typeof(MessageBox), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Enabled_WhenDisabledDirectlyOrByAncestor_ChangesAppearanceAndRecoversAsync()
     {
@@ -260,7 +242,6 @@ public sealed class MessageBoxTests
 
     /// <summary>Verifies a disabled MessageBox's close glyph renders with the theme's disabled-text
     /// color and ignores pointer hover/press instead of closing the dialog.</summary>
-    [ComponentBehaviorEvidence(typeof(MessageBox), ComponentBehavior.Disabled)]
     [Fact]
     public async Task CloseGlyph_WhenMessageBoxIsDisabled_ShowsDisabledColorAndIgnoresPointerAsync()
     {

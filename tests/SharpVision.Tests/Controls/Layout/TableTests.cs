@@ -100,7 +100,6 @@ public sealed class TableTests
     }
 
     /// <summary>Verifies private rail local mechanics publish exact resolved-style notifications.</summary>
-    [ComponentUnitEvidence(typeof(Table))]
     [Fact]
     public void ScrollBarStyle_WhenOwnershipChanges_PublishesLocalAndActualNotifications()
     {
@@ -135,7 +134,6 @@ public sealed class TableTests
     /// <summary>Verifies disabling a Table makes it ineligible for focus and re-enabling restores
     /// eligibility, matching the framework's generic disabled-input gate that the mounted evidence
     /// exercises end-to-end through the real hit-test and focus pipeline.</summary>
-    [ComponentUnitEvidence(typeof(Table), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenToggled_ChangesEffectiveIsEnabledAndFocusEligibility()
     {
@@ -247,7 +245,6 @@ public sealed class TableTests
     }
 
     /// <summary>Verifies every table-declared property starts at its documented default.</summary>
-    [ComponentUnitEvidence(typeof(Table))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
@@ -1886,10 +1883,6 @@ public sealed class TableTests
     /// Visibility-aware logic. A whole TableRow has no Visibility property at all - hiding an
     /// entire row is structurally impossible short of removing it from Table.Rows.
     /// </summary>
-    [ComponentVisibilityEvidence(
-        typeof(Table),
-        ComponentVisibilityEvidence.CollapsedExcludesSize |
-        ComponentVisibilityEvidence.ZeroTinyConstraint)]
     [Fact]
     public void MeasureCells_WhenACellIsCollapsed_ExcludesItsAutomaticWidthContribution()
     {

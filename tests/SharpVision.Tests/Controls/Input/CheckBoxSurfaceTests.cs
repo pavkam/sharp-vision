@@ -31,16 +31,6 @@ public sealed class CheckBoxSurfaceTests
     }
 
     /// <summary>Verifies hover, held press, release, focus, and pointer activation compose correctly.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(CheckBox),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.PressRelease |
-        ComponentBehavior.Activation |
-        ComponentBehavior.PointerActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Disabled)]
     [Fact]
     public async Task Pointer_WhenCheckBoxIsClicked_ComposesStatesAndTogglesWithPointerCauseAsync()
     {
@@ -121,11 +111,6 @@ public sealed class CheckBoxSurfaceTests
     }
 
     /// <summary>Verifies complete Space actions reach checked and indeterminate states with keyboard cause.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(CheckBox),
-        ComponentBehavior.Tab |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.KeyboardActivation)]
     [Fact]
     public async Task Keyboard_WhenThreeStateCheckBoxCompletesSpace_CyclesThroughIntendedStatesAsync()
     {

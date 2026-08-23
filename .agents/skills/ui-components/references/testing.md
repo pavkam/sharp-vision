@@ -21,32 +21,33 @@ showcase verification, rendering assertions, or interaction evidence.
    capture, resize, cleanup, and final semantic cells.
 3. Run and capture the real showcase for visible application composition.
 
-## Required catalog work
+## Required fixture work
 
-- Add every public concrete Control to `_requirements` in
-  `tests/SharpVision.Tests/Support/ComponentSurfaceCoverageTests.cs`.
-- Assign exactly one fixture and explicit required/excluded behavior pairs.
-- Mark mounted evidence methods with `ComponentBehaviorEvidence` for the exact
-  behaviors they prove.
-- The registry and attributed evidence must match exactly; an attribute alone is
-  insufficient.
+- Every public concrete control needs its own focused detached-unit fixture and
+  its own mounted `*SurfaceTests` fixture proving every route it supports:
+  mounted rendering, hover or its explicit non-support, focus, Tab, directional
+  keys, semantic press/release, activation, unavailable-state cleanup, transient
+  layers, retained composition, and disabled state or its explicit non-support.
+- Never add a reflection-based catalog test that scans the assembly and asserts
+  a matching test/attribute/fixture exists for every exported type - that only
+  proves a test exists, never that it exercises real behavior, and it rots
+  silently the moment the catalog and the reflected set drift. Prove the shared
+  contract through the control's own fixture instead, reviewed by hand against a
+  sibling control with the same shape.
 
 Use xUnit v3, Shouldly, Arrange/Act/Assert, real public behavior, and
 deterministic fakes. Every focused command must include
 `--minimum-expected-tests 1`.
 
 Do not assert private call graphs or hand-write API-shape assertions —
-`SharpVision.Compatibility.Tests` already freezes all three public surfaces, so
-a shape test duplicates it and covers less. When a test needs state a control
-does not expose, add a documented `internal` seam instead of reflecting into
-private state.
+`SharpVision.Compatibility.Tests` already freezes every production assembly's
+public surface, so a shape test duplicates it and covers less. When a test needs
+state a control does not expose, add a documented `internal` seam instead of
+reflecting into private state.
 
 ## Focused verification
 
 ```bash
-dotnet test --project tests/SharpVision.Tests \
-  --filter-class "*ComponentSurfaceCoverageTests" \
-  --minimum-expected-tests 1 --timeout 60s
 dotnet test --project tests/SharpVision.Tests \
   --filter-namespace "SharpVision.Tests.Controls*" \
   --minimum-expected-tests 1 --timeout 60s

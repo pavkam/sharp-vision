@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies representative controls render code-owned glyph defaults.</summary>
 public sealed class CodeOwnedGlyphRenderingTests
 {

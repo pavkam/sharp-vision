@@ -7,7 +7,6 @@ namespace SharpVision.Tests.Controls.Input;
 public sealed class ColorPickerTests
 {
     /// <summary>Verifies a picker rejects default colors before changing selection.</summary>
-    [ComponentUnitEvidence(typeof(ColorPicker))]
     [Fact]
     public void Value_WhenColorIsDefault_AcceptsValue()
     {
@@ -298,7 +297,6 @@ public sealed class ColorPickerTests
     }
 
     /// <summary>Verifies a disabled ColorPicker refuses pointer selection through its retained plane.</summary>
-    [ComponentUnitEvidence(typeof(ColorPicker), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Dispatch_WhenDisabled_RefusesPlaneSelectionAsync()
     {

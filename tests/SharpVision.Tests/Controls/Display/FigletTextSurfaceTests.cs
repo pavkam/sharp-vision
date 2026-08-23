@@ -7,14 +7,6 @@ namespace SharpVision.Tests.Controls.Display;
 public sealed class FigletTextSurfaceTests
 {
     /// <summary>Verifies passive FIGlet art observes hover without entering focus or press state.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(FigletText),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task Pointer_WhenFigletTextIsMounted_TracksHoverWithoutFocusOrPressAsync()
     {
@@ -128,7 +120,6 @@ public sealed class FigletTextSurfaceTests
 
     /// <summary>Verifies direct and ancestor-inherited disable painting, stable geometry across a
     /// genuine resize, and re-enable recovery for a mounted FigletText.</summary>
-    [ComponentBehaviorEvidence(typeof(FigletText), ComponentBehavior.Disabled)]
     [Fact]
     public async Task IsEnabled_WhenFigletTextIsDisabled_ProvesDisabledContractAsync()
     {

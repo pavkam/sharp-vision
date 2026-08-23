@@ -615,8 +615,6 @@ public sealed class ContentControlTests
     }
 
     /// <summary>Verifies collapsed content contributes neither size nor margin and enters no child layout pass.</summary>
-    [ComponentVisibilityEvidence(typeof(GroupBox), ComponentVisibilityEvidence.CollapsedExcludesSize)]
-    [ComponentVisibilityEvidence(typeof(Expander), ComponentVisibilityEvidence.CollapsedExcludesSize)]
     [Fact]
     public void Layout_WhenContentIsCollapsed_ExcludesContentAndMargin()
     {
@@ -635,12 +633,6 @@ public sealed class ContentControlTests
     /// desired size while still excluding rendering and hit-testing - the shared base contract
     /// concrete single-content hosts such as GroupBox and Expander compose their own chrome
     /// around, so a host-specific test only needs to add what the base does not already prove.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(GroupBox),
-        ComponentVisibilityEvidence.HiddenRetainsSlot | ComponentVisibilityEvidence.HiddenExcludesRenderInput)]
-    [ComponentVisibilityEvidence(
-        typeof(Expander),
-        ComponentVisibilityEvidence.HiddenRetainsSlot | ComponentVisibilityEvidence.HiddenExcludesRenderInput)]
     [Fact]
     public void Layout_WhenContentIsHidden_RetainsSlotAndMarginButExcludesRenderingAndHitTesting()
     {
@@ -665,8 +657,6 @@ public sealed class ContentControlTests
     }
 
     /// <summary>Verifies collapse clears prior geometry without re-entering child layout overrides.</summary>
-    [ComponentVisibilityEvidence(typeof(GroupBox), ComponentVisibilityEvidence.TransitionInvalidatesCorrectly)]
-    [ComponentVisibilityEvidence(typeof(Expander), ComponentVisibilityEvidence.TransitionInvalidatesCorrectly)]
     [Fact]
     public void Layout_WhenContentBecomesCollapsed_ClearsCommittedChildGeometry()
     {

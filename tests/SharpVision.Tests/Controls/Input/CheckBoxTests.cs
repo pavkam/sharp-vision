@@ -4,13 +4,10 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies CheckBox transitions, events, ownership, styling, and cells.</summary>
 public sealed class CheckBoxTests
 {
     /// <summary>Verifies local style ownership overrides Theme fallback and clearing restores it.</summary>
-    [ComponentUnitEvidence(typeof(CheckBox))]
     [Fact]
     public void Style_WhenThemeAndLocalValuesChange_UsesDocumentedPrecedence()
     {
@@ -81,7 +78,6 @@ public sealed class CheckBoxTests
     }
 
     /// <summary>Verifies PerformClick on a disabled CheckBox does nothing.</summary>
-    [ComponentUnitEvidence(typeof(CheckBox), ComponentBehavior.Disabled)]
     [Fact]
     public void PerformClick_WhenDisabled_IsNoOp()
     {

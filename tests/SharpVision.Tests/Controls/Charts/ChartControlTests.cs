@@ -9,10 +9,6 @@ using System.Collections.ObjectModel;
 public sealed class ChartControlTests
 {
     /// <summary>Verifies full charts share documented passive presentation defaults.</summary>
-    [ComponentUnitEvidence(typeof(HorizontalBarChart))]
-    [ComponentUnitEvidence(typeof(VerticalBarChart))]
-    [ComponentUnitEvidence(typeof(LineChart))]
-    [ComponentUnitEvidence(typeof(AreaChart))]
     [Theory]
     [MemberData(nameof(FullCharts))]
     public void Constructor_WhenFullChartIsCreated_UsesSharedDefaults(ControlBase control)
@@ -33,7 +29,6 @@ public sealed class ChartControlTests
     }
 
     /// <summary>Verifies a sparkline uses compact one-series trend defaults.</summary>
-    [ComponentUnitEvidence(typeof(Sparkline))]
     [Fact]
     public void Constructor_WhenSparklineIsCreated_UsesCompactDefaults()
     {
@@ -418,10 +413,6 @@ public sealed class ChartControlTests
 
     /// <summary>Verifies full charts compute the effective disabled state directly and through an
     /// ancestor, the same axis their mounted Disabled contract exercises.</summary>
-    [ComponentUnitEvidence(typeof(HorizontalBarChart), ComponentBehavior.Disabled)]
-    [ComponentUnitEvidence(typeof(VerticalBarChart), ComponentBehavior.Disabled)]
-    [ComponentUnitEvidence(typeof(LineChart), ComponentBehavior.Disabled)]
-    [ComponentUnitEvidence(typeof(AreaChart), ComponentBehavior.Disabled)]
     [Theory]
     [MemberData(nameof(FullCharts))]
     public void IsEnabled_WhenDisabledDirectlyOrByAncestor_ComputesEffectiveState(ControlBase chart)
@@ -442,7 +433,6 @@ public sealed class ChartControlTests
     }
 
     /// <summary>Verifies a sparkline computes the same direct and ancestor-inherited disabled state.</summary>
-    [ComponentUnitEvidence(typeof(Sparkline), ComponentBehavior.Disabled)]
     [Fact]
     public void IsEnabled_WhenSparklineIsDisabledDirectlyOrByAncestor_ComputesEffectiveState()
     {

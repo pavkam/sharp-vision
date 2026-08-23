@@ -137,11 +137,6 @@ public sealed class ExpanderSurfaceTests
     /// distinct from collapsing by toggling IsExpanded - clears its committed cells and hit target,
     /// and restoring it through Visibility alone redraws exactly the original cells without ever
     /// touching the expand/collapse toggle.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(Expander),
-        ComponentVisibilityEvidence.TransitionInvalidatesCorrectly |
-        ComponentVisibilityEvidence.MountedTransitionCommittedGeometry |
-        ComponentVisibilityEvidence.MountedTransitionHitTargets)]
     [Fact]
     public async Task UpdateAsync_WhenContentCollapsesViaVisibilityWhileExpanded_ClearsThenRedrawsCellsAsync()
     {
@@ -201,17 +196,6 @@ public sealed class ExpanderSurfaceTests
     }
 
     /// <summary>Verifies pointer, Space, and Enter activation share focus and changed-event behavior.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Expander),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressRelease |
-        ComponentBehavior.Activation |
-        ComponentBehavior.PointerActivation |
-        ComponentBehavior.KeyboardActivation)]
     [Fact]
     public async Task Input_WhenHeaderIsActivated_TogglesThroughEverySupportedPathAsync()
     {
@@ -339,11 +323,6 @@ public sealed class ExpanderSurfaceTests
     }
 
     /// <summary>Verifies disabled input refuses toggles and collapsed replacement appears only after expansion.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Expander),
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Composition |
-        ComponentBehavior.Disabled)]
     [Fact]
     public async Task Input_WhenDisabledOrContentReplaced_PreservesAvailabilityAndOwnershipPolicyAsync()
     {

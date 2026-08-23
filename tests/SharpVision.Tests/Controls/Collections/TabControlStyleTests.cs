@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Collections;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies the immutable tab-strip presentation record's invalidation policy.</summary>
 public sealed class TabControlStyleTests
 {

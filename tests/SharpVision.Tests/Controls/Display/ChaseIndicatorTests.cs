@@ -23,7 +23,6 @@ public sealed class ChaseIndicatorTests
     }
 
     /// <summary>Verifies documented five-cell non-interactive defaults.</summary>
-    [ComponentUnitEvidence(typeof(ChaseIndicator))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
@@ -267,7 +266,6 @@ public sealed class ChaseIndicatorTests
 
     /// <summary>Verifies direct and ancestor-inherited IsEnabled changes compute the effective
     /// disabled state ChaseIndicator's mounted disabled contract depends on.</summary>
-    [ComponentUnitEvidence(typeof(ChaseIndicator), ComponentBehavior.Disabled)]
     [Fact]
     public void IsEnabled_WhenDisabledDirectlyOrByAncestor_ComputesEffectiveState()
     {

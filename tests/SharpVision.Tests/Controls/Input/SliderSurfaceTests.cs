@@ -55,7 +55,6 @@ public sealed class SliderSurfaceTests
     }
 
     /// <summary>Verifies pressing the Right arrow increases value by SmallChange.</summary>
-    [ComponentBehaviorEvidence(typeof(Slider), ComponentBehavior.Directional | ComponentBehavior.KeyboardActivation)]
     [Fact]
     public async Task Keyboard_WhenRightArrowIsPressed_IncreasesValueBySmallChangeAsync()
     {
@@ -150,19 +149,6 @@ public sealed class SliderSurfaceTests
 
     /// <summary>Verifies mounted hover, focus, Tab, keys, press, selection, and unavailable cleanup.</summary>
     [Fact]
-    [ComponentBehaviorEvidence(
-        typeof(Slider),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.Directional |
-        ComponentBehavior.PressRelease |
-        ComponentBehavior.Activation |
-        ComponentBehavior.PointerActivation |
-        ComponentBehavior.KeyboardActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Disabled)]
     public async Task Surface_WhenInputIsDispatched_ExposesCompleteSliderBehaviorAsync()
     {
         // Arrange

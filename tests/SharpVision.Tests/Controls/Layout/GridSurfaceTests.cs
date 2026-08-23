@@ -66,15 +66,6 @@ public sealed class GridSurfaceTests
     }
 
     /// <summary>Verifies spanning, padding, collapsed exclusion, and pointer routing use final arranged slots.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Grid),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Composition)]
     [Fact]
     public async Task Pointer_WhenGridUsesSpanPaddingAndCollapsedChild_HitsCommittedCellAsync()
     {
@@ -154,11 +145,6 @@ public sealed class GridSurfaceTests
     /// space; returning to IsVisible restores both the original track geometry and hit routing. An
     /// opaque fill background and pointer probes prove committed cells and hit targets at every
     /// phase, not only the initial mounted state.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(Grid),
-        ComponentVisibilityEvidence.TransitionInvalidatesCorrectly |
-        ComponentVisibilityEvidence.MountedTransitionCommittedGeometry |
-        ComponentVisibilityEvidence.MountedTransitionHitTargets)]
     [Fact]
     public async Task Pointer_WhenTrackedChildTransitionsThroughVisibleHiddenCollapsedVisible_CommitsExactGeometryAndHitTargetsAsync()
     {
@@ -368,7 +354,6 @@ public sealed class GridSurfaceTests
     /// <summary>Verifies disabling a mounted Grid cascades disabled visual state and reduced
     /// EffectiveIsEnabled to its owned child, holds geometry stable across a genuine resize
     /// compared to an equivalently-built enabled instance, and recovers on re-enable.</summary>
-    [ComponentBehaviorEvidence(typeof(Grid), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Enabled_WhenGridIsDisabledAndReenabled_CascadesStateAndPreservesGeometryAsync()
     {

@@ -8,7 +8,6 @@ namespace SharpVision.Tests.Controls.Collections;
 public sealed class ListViewTests
 {
     /// <summary>Verifies a ListView starts as a quiet borderless collection surface without caller styling.</summary>
-    [ComponentUnitEvidence(typeof(UiListView))]
     [Fact]
     public void Constructor_WhenCreated_UsesQuietBackgroundDefaults()
     {
@@ -22,7 +21,6 @@ public sealed class ListViewTests
 
     /// <summary>Verifies direct and ancestor-inherited IsEnabled changes flip EffectiveIsEnabled and
     /// the derived focus eligibility it drives, and re-enabling restores both.</summary>
-    [ComponentUnitEvidence(typeof(UiListView), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenToggledDirectlyOrByAncestor_UpdatesEffectiveEnabledAndFocusEligibility()
     {
@@ -1780,10 +1778,6 @@ public sealed class ListViewTests
     /// <summary>Verifies collapsing the current row's own content eagerly repairs ActiveIndex and
     /// drops that index from selection, rather than leaving stale state until the next navigation
     /// key press.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(UiListView),
-        ComponentVisibilityEvidence.CollapsedExcludesSize |
-        ComponentVisibilityEvidence.TransitionInvalidatesCorrectly)]
     [Fact]
     public void Visibility_WhenCurrentItemContentCollapses_RepairsActiveIndexAndDropsSelection()
     {
@@ -2190,11 +2184,6 @@ public sealed class ListViewTests
     /// contribution, so the net effect matches a genuinely skipped row even though the host's own
     /// per-child Collapsed check (which inspects the realized ListItem wrapper, never toggled by
     /// ListView itself) never actually trips.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(UiListView),
-        ComponentVisibilityEvidence.CollapsedExcludesSize |
-        ComponentVisibilityEvidence.CollapsedRemovesSpacingOrTrack |
-        ComponentVisibilityEvidence.TransitionInvalidatesCorrectly)]
     [Fact]
     public void Visibility_WhenItemContentCollapsesInEagerMode_RemovesRowAndReflowsSiblings()
     {
@@ -2234,10 +2223,6 @@ public sealed class ListViewTests
     /// ListView's own desired height and in the row's committed arranged Bounds - while excluding
     /// only rendering, matching the documented Hidden contract ("keeps its measured/arranged slot
     /// but does not render or accept input").</summary>
-    [ComponentVisibilityEvidence(
-        typeof(UiListView),
-        ComponentVisibilityEvidence.HiddenRetainsSlot |
-        ComponentVisibilityEvidence.HiddenExcludesRenderInput)]
     [Fact]
     public void Visibility_WhenItemContentIsHiddenInEagerMode_RetainsRowSlotButRendersNothing()
     {
@@ -2267,10 +2252,6 @@ public sealed class ListViewTests
     /// <summary>Verifies a Hidden realized item's template content keeps its row's full arithmetic
     /// slot while RowHeight virtualization is active, and that ListView's scroll Extent - purely
     /// ItemCount * RowHeight by design - is unaffected by any per-item visibility.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(UiListView),
-        ComponentVisibilityEvidence.HiddenRetainsSlot |
-        ComponentVisibilityEvidence.HiddenExcludesRenderInput)]
     [Fact]
     public void Visibility_WhenItemContentIsHiddenInRowHeightMode_RetainsArithmeticRowSlotAndExtent()
     {
@@ -2302,7 +2283,6 @@ public sealed class ListViewTests
     /// size, so arranging it to a zero-height slot rather than the full RowHeight satisfies the
     /// asserted contract exactly like a genuinely short template would. Sibling rows keep their
     /// untouched arithmetic Y, proving the collapse never perturbs the rest of the fixed grid.</summary>
-    [ComponentVisibilityEvidence(typeof(UiListView), ComponentVisibilityEvidence.CollapsedExcludesSize)]
     [Fact]
     public void Arrange_WhenRealizedRowContentCollapsesInRowHeightMode_ZeroArrangesRowAndKeepsSiblingSlots()
     {
@@ -2339,7 +2319,6 @@ public sealed class ListViewTests
     /// arrange never carried a Debug.Assert at all, so a mismatched template there silently produced
     /// a stale full-height Bounds instead of failing loudly; this pins the fix at the site that used
     /// to fail silently in both Debug and Release.</summary>
-    [ComponentVisibilityEvidence(typeof(UiListView), ComponentVisibilityEvidence.CollapsedExcludesSize)]
     [Fact]
     public void Rewindow_WhenInWindowRowContentCollapsesThenScrolls_ZeroArrangesRow()
     {

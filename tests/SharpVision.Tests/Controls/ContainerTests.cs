@@ -2344,9 +2344,6 @@ public sealed class ContainerTests
     /// custom scrolling host, including ListView, must honor for a Collapsed child. Note:
     /// <see cref="ScrollBarVisibility"/> here names the bar's own chrome mode, an unrelated enum
     /// from the child's Layout.<see cref="Visibility"/> under test.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(UiListView),
-        ComponentVisibilityEvidence.CollapsedExcludesSize | ComponentVisibilityEvidence.ZeroTinyConstraint)]
     [Fact]
     public void Layout_WhenOversizedChildInAnAutoBarredContainerCollapses_ShrinksExtentReclampsOffsetAndRetractsTheBar()
     {

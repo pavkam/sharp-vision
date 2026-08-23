@@ -63,14 +63,6 @@ public sealed class TextSurfaceTests
     }
 
     /// <summary>Verifies passive text observes physical hover without entering focus or press state.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(ControlText),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task Pointer_WhenTextIsMounted_TracksHoverWithoutFocusOrPressAsync()
     {
@@ -378,7 +370,6 @@ public sealed class TextSurfaceTests
 
     /// <summary>Verifies direct and ancestor-inherited disable painting, stable geometry across a
     /// genuine resize, and re-enable recovery for a mounted Text.</summary>
-    [ComponentBehaviorEvidence(typeof(ControlText), ComponentBehavior.Disabled)]
     [Fact]
     public async Task IsEnabled_WhenTextIsDisabled_ProvesDisabledContractAsync()
     {

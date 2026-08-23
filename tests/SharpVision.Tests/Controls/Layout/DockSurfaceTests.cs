@@ -88,15 +88,6 @@ public sealed class DockSurfaceTests
     }
 
     /// <summary>Verifies all four edges consume in order and leave one exact clickable fill rectangle.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Dock),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Composition)]
     [Fact]
     public async Task ResizeAsync_WhenEverySideAndFillArePresent_ReflowsExactRegionsAsync()
     {
@@ -317,11 +308,6 @@ public sealed class DockSurfaceTests
     /// edge entirely so the fill child reclaims the row; returning to IsVisible restores both the
     /// original edge geometry and hit routing. An opaque fill background and pointer probes prove
     /// committed cells and hit targets at every phase, not only the initial mounted state.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(Dock),
-        ComponentVisibilityEvidence.TransitionInvalidatesCorrectly |
-        ComponentVisibilityEvidence.MountedTransitionCommittedGeometry |
-        ComponentVisibilityEvidence.MountedTransitionHitTargets)]
     [Fact]
     public async Task Pointer_WhenDockedChildTransitionsThroughVisibleHiddenCollapsedVisible_CommitsExactGeometryAndHitTargetsAsync()
     {
@@ -403,7 +389,6 @@ public sealed class DockSurfaceTests
     /// <summary>Verifies disabling a mounted Dock cascades disabled visual state and reduced
     /// EffectiveIsEnabled to its owned child, holds geometry stable across a genuine resize
     /// compared to an equivalently-built enabled instance, and recovers on re-enable.</summary>
-    [ComponentBehaviorEvidence(typeof(Dock), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Enabled_WhenDockIsDisabledAndReenabled_CascadesStateAndPreservesGeometryAsync()
     {

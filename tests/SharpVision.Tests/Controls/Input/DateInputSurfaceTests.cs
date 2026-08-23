@@ -3,20 +3,10 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
-using SharpVision.Tests.Input;
-
 /// <summary>Proves DateInput appearance and interaction through mounted terminal surfaces.</summary>
 public sealed class DateInputSurfaceTests
 {
     /// <summary>Verifies a mounted DateInput renders a bordered field with a formatted date.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(DateInput),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task Render_WhenDateInputIsMounted_DrawsBorderedFieldWithDateAsync()
     {
@@ -604,7 +594,6 @@ public sealed class DateInputSurfaceTests
 
     /// <summary>Verifies a mounted DateInput proves direct disable, ancestor-inherited disable, and
     /// re-enable recovery on a real terminal surface.</summary>
-    [ComponentBehaviorEvidence(typeof(DateInput), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Enabled_WhenToggledOnMountedDateInput_AppliesDirectAndInheritedDisabledStateAsync()
     {
@@ -654,7 +643,6 @@ public sealed class DateInputSurfaceTests
     /// <summary>Verifies a disabled DateInput's arranged geometry after a genuine resize still
     /// matches an independently mounted, still-enabled DateInput arranged at that same size,
     /// proving disabling does not perturb layout.</summary>
-    [ComponentBehaviorEvidence(typeof(DateInput), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Layout_WhenDisabledDateInputIsResized_MatchesEnabledGeometryAtNewSizeAsync()
     {
@@ -693,7 +681,6 @@ public sealed class DateInputSurfaceTests
     /// <summary>Verifies a disabled DateInput refuses Tab focus and leaves it on a focusable
     /// sibling instead, reusing the same Stack-of-two idiom the segment-carry evidence above mounts
     /// for Tab navigation between two DateInput instances.</summary>
-    [ComponentBehaviorEvidence(typeof(DateInput), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Keyboard_WhenDisabledDateInputIsTabbedPast_LeavesFocusOnSiblingAsync()
     {

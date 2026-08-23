@@ -7,7 +7,6 @@ namespace SharpVision.Tests.Controls.Display;
 public sealed class FigletTextTests
 {
     /// <summary>Verifies constructor validation and documented defaults.</summary>
-    [ComponentUnitEvidence(typeof(FigletText))]
     [Fact]
     public void Constructor_WhenFontIsProvided_UsesDocumentedDefaults()
     {
@@ -134,7 +133,6 @@ public sealed class FigletTextTests
 
     /// <summary>Verifies direct and ancestor-inherited IsEnabled changes compute the effective
     /// disabled state FigletText's mounted disabled contract depends on.</summary>
-    [ComponentUnitEvidence(typeof(FigletText), ComponentBehavior.Disabled)]
     [Fact]
     public void IsEnabled_WhenDisabledDirectlyOrByAncestor_ComputesEffectiveState()
     {

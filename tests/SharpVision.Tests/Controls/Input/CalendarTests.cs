@@ -10,7 +10,6 @@ public sealed class CalendarTests
     #region Interaction and rendering
 
     /// <summary>Verifies Space press activates the active date while release remains inert.</summary>
-    [ComponentUnitEvidence(typeof(UiCalendar))]
     [Fact]
     public void Dispatch_WhenSpaceIsPressed_ActivatesOnlyPress()
     {
@@ -30,7 +29,6 @@ public sealed class CalendarTests
     }
 
     /// <summary>Verifies a disabled Calendar refuses Space activation and leaves selection unchanged.</summary>
-    [ComponentUnitEvidence(typeof(UiCalendar), ComponentBehavior.Disabled)]
     [Fact]
     public void Dispatch_WhenDisabled_RefusesSpaceActivation()
     {

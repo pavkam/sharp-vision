@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies the immutable checkbox presentation record: its three code-owned presets,
 /// its declared one-hop chromeless fallback to <see cref="InputStyle"/>'s "input" key,
 /// and its invalidation policy.</summary>

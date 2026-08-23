@@ -9,14 +9,6 @@ using GraphicsImage = Terminal.Graphics.ImageSource;
 public sealed class ImageSurfaceTests
 {
     /// <summary>Verifies unsupported graphics retain full alternate-text underlay at mounted size.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Image),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task Render_WhenGraphicsAreUnsupported_ShowsCompleteMountedFallbackAsync()
     {
@@ -40,7 +32,6 @@ public sealed class ImageSurfaceTests
 
     /// <summary>Verifies direct and ancestor-inherited disable painting, stable geometry across a
     /// genuine resize, and re-enable recovery for a mounted Image.</summary>
-    [ComponentBehaviorEvidence(typeof(Image), ComponentBehavior.Disabled)]
     [Fact]
     public async Task IsEnabled_WhenImageIsDisabled_ProvesDisabledContractAsync()
     {

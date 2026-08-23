@@ -7,24 +7,6 @@ namespace SharpVision.Tests.Controls.Display;
 public sealed class StatusBarSurfaceTests
 {
     /// <summary>Verifies exact edge layout while the bar and item remain passive focus exclusions.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(StatusBar),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Composition)]
-    [ComponentBehaviorEvidence(
-        typeof(StatusBarItem),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Composition)]
     [Fact]
     public async Task Render_WhenItemsUseBothAlignments_DrawsEdgeAnchoredStatusAsync()
     {
@@ -57,7 +39,6 @@ public sealed class StatusBarSurfaceTests
     /// <summary>Verifies a StatusBar proves direct disable, inherits Disabled from a disabled
     /// ancestor, keeps stable geometry across a genuine resize while disabled, and resumes
     /// Normal once re-enabled.</summary>
-    [ComponentBehaviorEvidence(typeof(StatusBar), ComponentBehavior.Disabled)]
     [Fact]
     public async Task IsEnabled_WhenBarIsDisabledDirectlyOrByAncestor_ReflectsDisabledAndRecoversAsync()
     {
@@ -125,7 +106,6 @@ public sealed class StatusBarSurfaceTests
     /// <summary>Verifies a StatusBarItem proves direct disable, inherits Disabled from its owning
     /// StatusBar, keeps stable geometry across a genuine resize while disabled, and resumes
     /// Normal once re-enabled.</summary>
-    [ComponentBehaviorEvidence(typeof(StatusBarItem), ComponentBehavior.Disabled)]
     [Fact]
     public async Task IsEnabled_WhenItemIsDisabledDirectlyOrByOwningBar_ReflectsDisabledAndRecoversAsync()
     {
@@ -325,10 +305,6 @@ public sealed class StatusBarSurfaceTests
     /// <summary>Verifies a runtime IsVisible -&gt; Collapsed -&gt; IsVisible transition on a mounted item
     /// leaves no stale rendered cells behind and keeps pointer hit targets synchronized with the
     /// item's live position at every step, not merely its initial or final one.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(StatusBar),
-        ComponentVisibilityEvidence.MountedTransitionCommittedGeometry |
-        ComponentVisibilityEvidence.MountedTransitionHitTargets)]
     [Fact]
     public async Task Pointer_WhenLeftItemTogglesCollapsedThenVisible_ClearsStaleCellsAndHitTargetsAsync()
     {

@@ -8,14 +8,6 @@ public sealed class NumberInputSurfaceTests
 {
     /// <summary>Verifies a mounted NumberInput renders a bordered field with a formatted value, and
     /// observes hover and focus.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(NumberInput),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task Render_WhenNumberInputIsMounted_DrawsBorderedFieldWithValueAsync()
     {
@@ -476,7 +468,6 @@ public sealed class NumberInputSurfaceTests
 
     /// <summary>Verifies direct disable, ancestor-inherited disable, geometry stability across a
     /// genuine resize, and re-enable recovery all behave correctly on a mounted NumberInput.</summary>
-    [ComponentBehaviorEvidence(typeof(NumberInput), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Enabled_WhenDirectlyAndAncestorDisabledThenReenabled_TracksEffectiveStateAcrossResizeAsync()
     {

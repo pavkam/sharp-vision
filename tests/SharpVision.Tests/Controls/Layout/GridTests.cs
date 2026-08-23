@@ -7,7 +7,6 @@ namespace SharpVision.Tests.Controls.Layout;
 public sealed class GridTests
 {
     /// <summary>Verifies empty definitions behave as one intrinsic automatic cell.</summary>
-    [ComponentUnitEvidence(typeof(Grid))]
     [Fact]
     public void Layout_WhenDefinitionsAreEmpty_UsesOneImplicitAutoTrack()
     {
@@ -296,9 +295,6 @@ public sealed class GridTests
     }
 
     /// <summary>Verifies collapsed children contribute no intrinsic requirement.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(Grid),
-        ComponentVisibilityEvidence.CollapsedExcludesSize | ComponentVisibilityEvidence.CollapsedRemovesSpacingOrTrack)]
     [Fact]
     public void Measure_WhenLargeChildIsCollapsed_IgnoresItsRequest()
     {
@@ -643,7 +639,6 @@ public sealed class GridTests
     }
 
     /// <summary>Verifies hidden children still contribute to track sizing.</summary>
-    [ComponentVisibilityEvidence(typeof(Grid), ComponentVisibilityEvidence.HiddenRetainsSlot)]
     [Fact]
     public void Layout_WhenChildIsHidden_StillContributesToTrackSize()
     {
@@ -1037,7 +1032,6 @@ public sealed class GridTests
 
     /// <summary>Verifies disabling a detached Grid cascades EffectiveIsEnabled to an owned child
     /// and recovers on re-enable, without needing a mounted surface.</summary>
-    [ComponentUnitEvidence(typeof(Grid), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenToggled_CascadesEffectiveIsEnabledToOwnedChild()
     {

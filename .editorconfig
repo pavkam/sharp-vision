@@ -194,3 +194,11 @@ dotnet_diagnostic.CA1062.severity = error
 
 [**/GlobalUsings.cs]
 dotnet_diagnostic.IDE0005.severity = none
+
+[tests/SharpVision.Test.Shared/*.cs]
+# This project is private test-only scaffolding (IsPackable=false, never shipped, never crosses a
+# language boundary), so the CLS-compliance naming rules below would only force worse names for no
+# real benefit: "Shared" is the clearest word for what this project is, and "Pointer" is the correct
+# domain term for the mounted mouse-pointer driver, not a native-pointer type.
+dotnet_diagnostic.CA1716.severity = none
+dotnet_diagnostic.CA1720.severity = none

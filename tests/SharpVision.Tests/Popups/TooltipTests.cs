@@ -3,15 +3,12 @@
 
 namespace SharpVision.Tests.Popups;
 
-using SharpVision.Tests.Input;
-
 using ReflectionBindingFlags = System.Reflection.BindingFlags;
 
 /// <summary>Verifies tooltip attachment, triggering, and content display.</summary>
 public sealed class TooltipTests
 {
     /// <summary>Verifies a new tooltip has expected defaults for all properties.</summary>
-    [ComponentUnitEvidence(typeof(Tooltip))]
     [Fact]
     public void Constructor_WhenCreated_HasExpectedDefaults()
     {
@@ -33,7 +30,6 @@ public sealed class TooltipTests
     /// <summary>Verifies Tooltip proves direct and ancestor-inherited disabled state at the
     /// detached unit level, and that clearing IsEnabled on each recovers EffectiveIsEnabled - the
     /// same disabled contract exercised on a live mounted terminal surface.</summary>
-    [ComponentUnitEvidence(typeof(Tooltip), ComponentBehavior.Disabled)]
     [Fact]
     public void EffectiveIsEnabled_WhenTooltipIsDisabledDirectlyOrByAncestor_ReportsDisabledAndRecovers()
     {

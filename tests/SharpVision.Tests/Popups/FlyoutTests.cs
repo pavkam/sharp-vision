@@ -9,7 +9,6 @@ using ReflectionBindingFlags = System.Reflection.BindingFlags;
 public sealed class FlyoutTests
 {
     /// <summary>Verifies a newly constructed flyout has expected defaults for all properties.</summary>
-    [ComponentUnitEvidence(typeof(Flyout))]
     [Fact]
     public void Constructor_WhenCreated_HasExpectedDefaults()
     {
@@ -41,7 +40,6 @@ public sealed class FlyoutTests
     /// <summary>Verifies Flyout proves direct and ancestor-inherited disabled state at the
     /// detached unit level, and that clearing IsEnabled on each recovers EffectiveIsEnabled - the
     /// same disabled contract exercised on a live mounted terminal surface.</summary>
-    [ComponentUnitEvidence(typeof(Flyout), ComponentBehavior.Disabled)]
     [Fact]
     public void EffectiveIsEnabled_WhenFlyoutIsDisabledDirectlyOrByAncestor_ReportsDisabledAndRecovers()
     {

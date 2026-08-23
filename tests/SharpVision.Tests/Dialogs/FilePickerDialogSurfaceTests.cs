@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Dialogs;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Proves the public file-picker presentation through a mounted application surface.</summary>
 public sealed class FilePickerDialogSurfaceTests
 {
@@ -272,19 +270,6 @@ public sealed class FilePickerDialogSurfaceTests
     }
 
     /// <summary>Verifies accepting one selected file returns its canonical path and restores the opener.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(FilePickerDialog),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Activation |
-        ComponentBehavior.KeyboardActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Transient |
-        ComponentBehavior.Composition)]
     [Fact]
     public async Task ShowAsync_WhenFileIsAccepted_ReturnsPathAndRemovesModalDialogAsync()
     {
@@ -343,7 +328,6 @@ public sealed class FilePickerDialogSurfaceTests
     /// FilePickerDialog to its disabled appearance, re-enabling restores Normal, and a disabled
     /// instance moved to a genuinely different size arranges identically to an
     /// independently-mounted enabled instance at that same size.</summary>
-    [ComponentBehaviorEvidence(typeof(FilePickerDialog), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Enabled_WhenDisabledDirectlyOrByAncestor_ChangesAppearanceAndRecoversAsync()
     {
@@ -408,7 +392,6 @@ public sealed class FilePickerDialogSurfaceTests
 
     /// <summary>Verifies a disabled FilePickerDialog's close glyph renders with the theme's
     /// disabled-text color and ignores pointer hover/press instead of closing the dialog.</summary>
-    [ComponentBehaviorEvidence(typeof(FilePickerDialog), ComponentBehavior.Disabled)]
     [Fact]
     public async Task CloseGlyph_WhenFilePickerDialogIsDisabled_ShowsDisabledColorAndIgnoresPointerAsync()
     {

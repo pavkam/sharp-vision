@@ -9,10 +9,6 @@ using System.Text.Json;
 public sealed class TableSurfaceTests
 {
     /// <summary>Verifies every column kind aligns headers, grid lines, combining text, and wide cells exactly.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Table),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Composition)]
     [Fact]
     public async Task Render_WhenColumnsMixKinds_DrawsExactHeaderGridAndUnicodeCellsAsync()
     {
@@ -84,7 +80,6 @@ public sealed class TableSurfaceTests
 
     /// <summary>Verifies mounted Table hover remains observable without restyling its passive
     /// shell, headers, grid lines, cells, or unused body area.</summary>
-    [ComponentBehaviorEvidence(typeof(Table), ComponentBehavior.Hover)]
     [Fact]
     public async Task Input_WhenMountedTableIsHovered_PreservesRenderedAppearanceAsync()
     {
@@ -122,7 +117,6 @@ public sealed class TableSurfaceTests
     /// default to recolor: an unstyled Table rebased onto the passive "control" key alone (as it
     /// did before) left literally no visible difference between focused and unfocused, so a
     /// keyboard user tabbing onto a Table had no cue it had happened.</summary>
-    [ComponentBehaviorEvidence(typeof(Table), ComponentBehavior.Focus)]
     [Fact]
     public async Task Input_WhenMountedTableReceivesFocus_AppliesFocusedTextAttributeAsync()
     {
@@ -350,14 +344,6 @@ public sealed class TableSurfaceTests
     }
 
     /// <summary>Verifies pointer cell selection, keyboard row navigation, and row invocation on a mounted Table.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Table),
-        ComponentBehavior.Focus |
-        ComponentBehavior.Directional |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Activation |
-        ComponentBehavior.PointerActivation |
-        ComponentBehavior.KeyboardActivation)]
     [Fact]
     public async Task Input_WhenPointerAndKeyboardNavigateTable_SelectsActiveCellAndInvokesRowAsync()
     {
@@ -525,7 +511,6 @@ public sealed class TableSurfaceTests
     }
 
     /// <summary>Verifies mounted Ctrl+A commits select-all and raises SelectionChanged.</summary>
-    [ComponentBehaviorEvidence(typeof(Table), ComponentBehavior.Tab)]
     [Fact]
     public async Task Keyboard_WhenCtrlAIsPressed_SelectsAllRowsAndRaisesSelectionChangedAsync()
     {
@@ -808,7 +793,6 @@ public sealed class TableSurfaceTests
 
     /// <summary>Verifies a mounted Table proves direct disable, ancestor-inherited disable, and
     /// re-enable recovery on a real terminal surface.</summary>
-    [ComponentBehaviorEvidence(typeof(Table), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Enabled_WhenToggledOnMountedTable_AppliesDirectAndInheritedDisabledStateAsync()
     {
@@ -850,7 +834,6 @@ public sealed class TableSurfaceTests
     /// <summary>Verifies a disabled Table's arranged geometry after a genuine resize still matches
     /// an independently mounted, still-enabled Table arranged at that same size, proving disabling
     /// does not perturb layout.</summary>
-    [ComponentBehaviorEvidence(typeof(Table), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Layout_WhenDisabledTableIsResized_MatchesEnabledGeometryAtNewSizeAsync()
     {
@@ -881,7 +864,6 @@ public sealed class TableSurfaceTests
     /// <summary>Verifies a disabled Table with an already-active row selection refuses Tab focus and
     /// ignores both a pointer press on another row and a directional key, leaving the prior
     /// selection exactly as it was before disabling.</summary>
-    [ComponentBehaviorEvidence(typeof(Table), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Input_WhenDisabledTableHasActiveSelection_RefusesFocusAndIgnoresPointerAndDirectionalKeysAsync()
     {

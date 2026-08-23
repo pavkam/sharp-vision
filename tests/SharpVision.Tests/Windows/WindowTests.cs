@@ -9,7 +9,6 @@ public sealed class WindowTests
 {
     /// <summary>Verifies a Window owns an opaque semantic background distinct from ordinary
     /// Control/Container content, without caller styling.</summary>
-    [ComponentUnitEvidence(typeof(Window))]
     [Fact]
     public void Constructor_WhenCreated_UsesWindowBackgroundColor()
     {
@@ -21,7 +20,6 @@ public sealed class WindowTests
     /// <summary>Verifies Window proves direct and ancestor-inherited disabled state at the
     /// detached unit level, and that clearing IsEnabled on each recovers EffectiveIsEnabled - the
     /// same disabled contract exercised on a live mounted terminal surface.</summary>
-    [ComponentUnitEvidence(typeof(Window), ComponentBehavior.Disabled)]
     [Fact]
     public void EffectiveIsEnabled_WhenWindowIsDisabledDirectlyOrByAncestor_ReportsDisabledAndRecovers()
     {

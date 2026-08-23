@@ -8,8 +8,6 @@ using System.Reflection;
 
 using SharpVision.Runtime;
 
-using SharpVision.Tests.Input;
-
 using Terminal.Clipboard;
 using Terminal.Kitty.Clipboard;
 

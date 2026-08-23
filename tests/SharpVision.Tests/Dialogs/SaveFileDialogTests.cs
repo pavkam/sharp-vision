@@ -5,13 +5,10 @@ namespace SharpVision.Tests.Dialogs;
 
 using System.Reflection;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Defines retained composition and asynchronous state behavior for SaveFileDialog.</summary>
 public sealed class SaveFileDialogTests
 {
     /// <summary>Verifies construction copies configuration and composes one responsive dialog Window.</summary>
-    [ComponentUnitEvidence(typeof(SaveFileDialog))]
     [Fact]
     public void Constructor_WhenConfigured_UsesCopiedOptionsAndSemanticControls()
     {
@@ -63,7 +60,6 @@ public sealed class SaveFileDialogTests
     /// <summary>Verifies direct and ancestor-inherited disablement both resolve through
     /// EffectiveIsEnabled without requiring a mounted surface, and re-enabling restores it - the
     /// detached counterpart to the mounted disabled-appearance evidence below.</summary>
-    [ComponentUnitEvidence(typeof(SaveFileDialog), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenSetDirectlyOrByAncestor_UpdatesEffectiveIsEnabled()
     {
@@ -456,19 +452,6 @@ public sealed class SaveFileDialogTests
     }
 
     /// <summary>Verifies the save completes without confirmation when the file does not exist.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(SaveFileDialog),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Activation |
-        ComponentBehavior.KeyboardActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Transient |
-        ComponentBehavior.Composition)]
     [Fact]
     public async Task Save_WhenFileDoesNotExist_CompletesWithPathAsync()
     {
@@ -516,7 +499,6 @@ public sealed class SaveFileDialogTests
     /// SaveFileDialog to its disabled appearance, re-enabling restores Normal, and a disabled
     /// instance moved to a genuinely different size arranges identically to an
     /// independently-mounted enabled instance at that same size.</summary>
-    [ComponentBehaviorEvidence(typeof(SaveFileDialog), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Enabled_WhenDisabledDirectlyOrByAncestor_ChangesAppearanceAndRecoversAsync()
     {
@@ -581,7 +563,6 @@ public sealed class SaveFileDialogTests
 
     /// <summary>Verifies a disabled SaveFileDialog's close glyph renders with the theme's
     /// disabled-text color and ignores pointer hover/press instead of closing the dialog.</summary>
-    [ComponentBehaviorEvidence(typeof(SaveFileDialog), ComponentBehavior.Disabled)]
     [Fact]
     public async Task CloseGlyph_WhenSaveFileDialogIsDisabled_ShowsDisabledColorAndIgnoresPointerAsync()
     {

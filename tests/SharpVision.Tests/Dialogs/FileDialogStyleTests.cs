@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Dialogs;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies the immutable FilePickerDialog/SaveFileDialog aggregate presentation records:
 /// their declared one-hop fallback to <see cref="WindowStyle"/>'s "window" key, and their
 /// invalidation policy.</summary>

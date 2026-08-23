@@ -116,15 +116,6 @@ public sealed class JsonViewSurfaceTests
     }
 
     /// <summary>Verifies syntax lines, keyboard traversal, selection, and collapse through decoded terminal input.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(JsonView),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.Directional |
-        ComponentBehavior.Activation |
-        ComponentBehavior.KeyboardActivation |
-        ComponentBehavior.Composition)]
     [Fact]
     public async Task Input_WhenNestedDocumentIsMounted_NavigatesAndCollapsesAsync()
     {
@@ -366,13 +357,6 @@ public sealed class JsonViewSurfaceTests
     /// <summary>Verifies primary pointer input selects a key and toggles a disclosure glyph, and the
     /// full disabled contract: direct and ancestor-inherited disabled state, stable geometry across
     /// a genuine resize, and re-enable recovery.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(JsonView),
-        ComponentBehavior.Hover |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.PointerActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Disabled)]
     [Fact]
     public async Task Pointer_WhenKeyAndDisclosureAreClicked_SelectsAndCollapsesAsync()
     {

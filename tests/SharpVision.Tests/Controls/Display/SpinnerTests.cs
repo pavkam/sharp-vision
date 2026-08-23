@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Display;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies Spinner defaults, validation, and layout.</summary>
 public sealed class SpinnerTests
 {
@@ -25,7 +23,6 @@ public sealed class SpinnerTests
     }
 
     /// <summary>Verifies documented one-cell non-interactive defaults.</summary>
-    [ComponentUnitEvidence(typeof(Spinner))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
@@ -144,7 +141,6 @@ public sealed class SpinnerTests
 
     /// <summary>Verifies direct and ancestor-inherited IsEnabled changes compute the effective
     /// disabled state Spinner's mounted disabled contract depends on.</summary>
-    [ComponentUnitEvidence(typeof(Spinner), ComponentBehavior.Disabled)]
     [Fact]
     public void IsEnabled_WhenDisabledDirectlyOrByAncestor_ComputesEffectiveState()
     {

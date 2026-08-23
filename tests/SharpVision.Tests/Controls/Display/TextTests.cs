@@ -11,7 +11,6 @@ using Performance;
 public sealed class TextTests
 {
     /// <summary>Verifies constructor content and documented defaults.</summary>
-    [ComponentUnitEvidence(typeof(ControlText))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
@@ -484,7 +483,6 @@ public sealed class TextTests
 
     /// <summary>Verifies direct and ancestor-inherited IsEnabled changes compute the effective
     /// disabled state Text's mounted disabled contract depends on.</summary>
-    [ComponentUnitEvidence(typeof(ControlText), ComponentBehavior.Disabled)]
     [Fact]
     public void IsEnabled_WhenDisabledDirectlyOrByAncestor_ComputesEffectiveState()
     {

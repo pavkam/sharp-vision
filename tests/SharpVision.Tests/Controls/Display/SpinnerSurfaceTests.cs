@@ -3,9 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Display;
 
-using SharpVision.Tests.Input;
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies Spinner playback through a mounted terminal surface.</summary>
 public sealed class SpinnerSurfaceTests
 {
@@ -47,14 +44,6 @@ public sealed class SpinnerSurfaceTests
     }
 
     /// <summary>Verifies exact default frames, cadence, styling, and excluded interaction.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Spinner),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.HoverExcluded |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task AdvanceAsync_WhenBrailleStyleRuns_RendersExactFramesAsync()
     {
@@ -233,7 +222,6 @@ public sealed class SpinnerSurfaceTests
 
     /// <summary>Verifies direct and ancestor-inherited disable painting, stable geometry across a
     /// genuine resize, and re-enable recovery for a mounted Spinner.</summary>
-    [ComponentBehaviorEvidence(typeof(Spinner), ComponentBehavior.Disabled)]
     [Fact]
     public async Task IsEnabled_WhenSpinnerIsDisabled_ProvesDisabledContractAsync()
     {

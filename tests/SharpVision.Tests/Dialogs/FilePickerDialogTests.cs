@@ -10,7 +10,6 @@ namespace SharpVision.Tests.Dialogs;
 public sealed class FilePickerDialogTests
 {
     /// <summary>Verifies construction copies configuration and composes one responsive dialog Window.</summary>
-    [ComponentUnitEvidence(typeof(FilePickerDialog))]
     [Fact]
     public void Constructor_WhenConfigured_UsesCopiedOptionsAndSemanticControls()
     {
@@ -68,7 +67,6 @@ public sealed class FilePickerDialogTests
     /// EffectiveIsEnabled without requiring a mounted surface, and re-enabling restores it - the
     /// detached counterpart to the mounted disabled-appearance evidence in
     /// FilePickerDialogSurfaceTests.</summary>
-    [ComponentUnitEvidence(typeof(FilePickerDialog), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenSetDirectlyOrByAncestor_UpdatesEffectiveIsEnabled()
     {

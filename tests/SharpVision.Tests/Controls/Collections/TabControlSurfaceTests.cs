@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Collections;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Proves tab selection and navigation through mounted terminal surfaces.</summary>
 public sealed class TabControlSurfaceTests
 {
@@ -232,30 +230,6 @@ public sealed class TabControlSurfaceTests
     /// <summary>Verifies keyboard and pointer header behavior commit selection only on completed
     /// input, and the full TabControl disabled contract: direct and ancestor-inherited disabled
     /// state, stable geometry across a genuine resize, and re-enable recovery.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(TabControl),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.Directional |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Activation |
-        ComponentBehavior.PointerActivation |
-        ComponentBehavior.KeyboardActivation |
-        ComponentBehavior.RetainedPointerActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Composition |
-        ComponentBehavior.Disabled)]
-    [ComponentBehaviorEvidence(
-        typeof(TabItem),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Composition)]
     [Fact]
     public async Task Input_WhenHeadersNavigateAndPress_CommitsReleasedSelectionAndCleanupAsync()
     {
@@ -387,7 +361,6 @@ public sealed class TabControlSurfaceTests
     /// <summary>Verifies a TabItem inherits Disabled from its owning TabControl, can also be
     /// disabled directly while the TabControl stays enabled, keeps stable geometry across a
     /// genuine resize while disabled, and recovers on re-enable.</summary>
-    [ComponentBehaviorEvidence(typeof(TabItem), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Enabled_WhenOwnerOrItemToggles_UpdatesTabItemDisabledStateAsync()
     {
@@ -693,7 +666,6 @@ public sealed class TabControlSurfaceTests
     /// repairs selection to the nearest eligible page and clears the previously selected page's
     /// stale rendered content from the content area - not merely from the header strip, which the
     /// unrendered-index math alone would not prove.</summary>
-    [ComponentVisibilityEvidence(typeof(TabControl), ComponentVisibilityEvidence.MountedTransitionCommittedGeometry)]
     [Fact]
     public async Task Content_WhenSelectedTabItemCollapsesAtRuntime_RepairsSelectionAndClearsStaleContentAsync()
     {

@@ -7,7 +7,6 @@ namespace SharpVision.Tests.Controls.Input;
 public sealed class SliderTests
 {
     /// <summary>Verifies documented range, presentation, alignment, and interaction defaults.</summary>
-    [ComponentUnitEvidence(typeof(Slider))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
@@ -266,7 +265,6 @@ public sealed class SliderTests
     }
 
     /// <summary>Verifies disable cancels a drag without committing a second value.</summary>
-    [ComponentUnitEvidence(typeof(Slider), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Dispatch_WhenSliderBecomesDisabled_CancelsCaptureWithoutChangingValueAsync()
     {

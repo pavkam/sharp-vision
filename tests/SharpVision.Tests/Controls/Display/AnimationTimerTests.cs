@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Display;
 
-using SharpVision.Tests.Input;
-
 /// <summary>Verifies AnimationTimer lifecycle, interval propagation, and playback state.</summary>
 public sealed class AnimationTimerTests
 {

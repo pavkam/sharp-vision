@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies the immutable radio-button presentation record: its two code-owned presets,
 /// its declared one-hop chromeless fallback to <see cref="InputStyle"/>'s "input" key with a
 /// checked-state accent default, and its invalidation policy.</summary>

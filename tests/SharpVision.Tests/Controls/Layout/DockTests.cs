@@ -8,7 +8,6 @@ namespace SharpVision.Tests.Controls.Layout;
 public sealed class DockTests
 {
     /// <summary>Verifies defaults and invalid values fail before mutation.</summary>
-    [ComponentUnitEvidence(typeof(Dock))]
     [Fact]
     public void Constructor_WhenCreated_HasValidatedDefaults()
     {
@@ -124,9 +123,6 @@ public sealed class DockTests
     }
 
     /// <summary>Verifies collapsed children consume no edge or spacing and cannot become fill.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(Dock),
-        ComponentVisibilityEvidence.CollapsedExcludesSize | ComponentVisibilityEvidence.CollapsedRemovesSpacingOrTrack)]
     [Fact]
     public void Layout_WhenChildIsCollapsed_SkipsItsGeometryEntirely()
     {
@@ -276,7 +272,6 @@ public sealed class DockTests
     }
 
     /// <summary>Verifies hidden children retain their dock edge slot.</summary>
-    [ComponentVisibilityEvidence(typeof(Dock), ComponentVisibilityEvidence.HiddenRetainsSlot)]
     [Fact]
     public void Layout_WhenDockedChildIsHidden_RetainsEdgeSlot()
     {
@@ -709,7 +704,6 @@ public sealed class DockTests
 
     /// <summary>Verifies disabling a detached Dock cascades EffectiveIsEnabled to an owned child
     /// and recovers on re-enable, without needing a mounted surface.</summary>
-    [ComponentUnitEvidence(typeof(Dock), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenToggled_CascadesEffectiveIsEnabledToOwnedChild()
     {

@@ -8,7 +8,6 @@ namespace SharpVision.Tests.Controls.Layout;
 public sealed class OverlayTests
 {
     /// <summary>Verifies conservative defaults and maximum intrinsic desired size.</summary>
-    [ComponentUnitEvidence(typeof(Overlay))]
     [Fact]
     public void Measure_WhenChildrenDiffer_UsesMaximumMarginInclusiveSize()
     {
@@ -358,7 +357,6 @@ public sealed class OverlayTests
     }
 
     /// <summary>Verifies a collapsed child contributes no desired size while a visible sibling still does.</summary>
-    [ComponentVisibilityEvidence(typeof(Overlay), ComponentVisibilityEvidence.CollapsedExcludesSize)]
     [Fact]
     public void Measure_WhenChildIsCollapsed_ExcludesItFromMaximumDesiredSize()
     {
@@ -376,7 +374,6 @@ public sealed class OverlayTests
 
     /// <summary>Verifies a hidden child still contributes its measured size to the shared maximum,
     /// the same as a visible child would.</summary>
-    [ComponentVisibilityEvidence(typeof(Overlay), ComponentVisibilityEvidence.HiddenRetainsSlot)]
     [Fact]
     public void Measure_WhenChildIsHidden_StillContributesToMaximumDesiredSize()
     {
@@ -394,7 +391,6 @@ public sealed class OverlayTests
     /// <summary>Verifies a hidden child keeps the exact resolved slot, alignment, and offset it would
     /// receive while visible - the same geometry <see cref="Arrange_WhenChildUsesPercentAndAlignment_ResolvesAgainstSharedBounds"/>
     /// proves for a visible child.</summary>
-    [ComponentVisibilityEvidence(typeof(Overlay), ComponentVisibilityEvidence.HiddenRetainsSlot)]
     [Fact]
     public void Arrange_WhenChildIsHidden_KeepsSlotAlignmentAndOffset()
     {
@@ -417,7 +413,6 @@ public sealed class OverlayTests
     /// <summary>Verifies collapsed children never reach z-order arrange, rendering, or hit testing -
     /// an attached z-index and offset that would otherwise win both are ignored entirely - while a
     /// visible sibling underneath is unaffected.</summary>
-    [ComponentVisibilityEvidence(typeof(Overlay), ComponentVisibilityEvidence.CollapsedExcludesSize)]
     [Fact]
     public void Arrange_WhenChildIsCollapsed_SkipsZOrderArrangeRenderAndHitTest()
     {
@@ -440,11 +435,6 @@ public sealed class OverlayTests
 
     /// <summary>Verifies a hidden child excludes itself from rendering and hit testing while keeping
     /// its arranged slot, and that the exclusion reverses the instant the child becomes visible again.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(Overlay),
-        ComponentVisibilityEvidence.HiddenRetainsSlot |
-        ComponentVisibilityEvidence.HiddenExcludesRenderInput |
-        ComponentVisibilityEvidence.TransitionInvalidatesCorrectly)]
     [Fact]
     public void HitTest_WhenChildIsHidden_ExcludesItButKeepsArrangedSlot()
     {
@@ -473,7 +463,6 @@ public sealed class OverlayTests
     /// <summary>Verifies a IsVisible → Hidden → Collapsed → IsVisible cycle invalidates only the phases
     /// each transition requires and restores identical geometry, rather than drifting after each
     /// step.</summary>
-    [ComponentVisibilityEvidence(typeof(Overlay), ComponentVisibilityEvidence.TransitionInvalidatesCorrectly)]
     [Fact]
     public void Visibility_WhenCyclingThroughAllStates_RestoresDeterministicGeometry()
     {
@@ -513,7 +502,6 @@ public sealed class OverlayTests
 
     /// <summary>Verifies attached offsets on both edges of a zero-size axis clamp StretchedExtent to
     /// zero through saturating arithmetic instead of throwing or going negative.</summary>
-    [ComponentVisibilityEvidence(typeof(Overlay), ComponentVisibilityEvidence.ZeroTinyConstraint)]
     [Fact]
     public void Arrange_WhenAvailableAxesAndOffsetsAreZero_ClampsStretchedExtentWithoutThrowing()
     {
@@ -554,7 +542,6 @@ public sealed class OverlayTests
     };
     /// <summary>Verifies disabling a detached Overlay cascades EffectiveIsEnabled to an owned child
     /// and recovers on re-enable, without needing a mounted surface.</summary>
-    [ComponentUnitEvidence(typeof(Overlay), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenToggled_CascadesEffectiveIsEnabledToOwnedChild()
     {

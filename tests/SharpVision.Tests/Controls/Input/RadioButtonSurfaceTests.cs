@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies RadioButton groups and appearance through a mounted terminal surface.</summary>
 public sealed class RadioButtonSurfaceTests
 {
@@ -90,13 +88,6 @@ public sealed class RadioButtonSurfaceTests
     }
 
     /// <summary>Verifies Space selection and arrows skip disabled members and wrap.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(RadioButton),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Tab |
-        ComponentBehavior.Directional |
-        ComponentBehavior.Activation |
-        ComponentBehavior.KeyboardActivation)]
     [Fact]
     public async Task Keyboard_WhenRadioGroupNavigates_SelectsEligibleMembersAndWrapsAsync()
     {
@@ -149,14 +140,6 @@ public sealed class RadioButtonSurfaceTests
     }
 
     /// <summary>Verifies primary-click selection is exclusive and reports pointer cause.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(RadioButton),
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.PressRelease |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Disabled)]
-    [ComponentBehaviorEvidence(typeof(RadioButton), ComponentBehavior.PointerActivation)]
     [Fact]
     public async Task Pointer_WhenDifferentRadioIsClicked_MovesExclusiveSelectionAsync()
     {

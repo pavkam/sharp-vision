@@ -7,7 +7,6 @@ namespace SharpVision.Tests.Controls.Input;
 public sealed class ComboBoxTests
 {
     /// <summary>Verifies a combo field is discoverable through light intrinsic chrome by default.</summary>
-    [ComponentUnitEvidence(typeof(ComboBox))]
     [Fact]
     public void Properties_WhenConstructed_UsesLightFieldBorder()
     {
@@ -49,7 +48,6 @@ public sealed class ComboBoxTests
     }
 
     /// <summary>Verifies a disabled field continues to display its committed selected value.</summary>
-    [ComponentUnitEvidence(typeof(ComboBox), ComponentBehavior.Disabled)]
     [Fact]
     public void Render_WhenDisabled_PreservesSelectedLabel()
     {

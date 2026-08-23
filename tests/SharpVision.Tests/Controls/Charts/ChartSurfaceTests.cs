@@ -7,14 +7,6 @@ namespace SharpVision.Tests.Controls.Charts;
 public sealed class ChartSurfaceTests
 {
     /// <summary>Verifies a horizontal bar fills away from the automatic zero baseline.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(HorizontalBarChart),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.HoverExcluded |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task Render_WhenHorizontalBarHasOnePositiveValue_FillsAvailableWidthAsync()
     {
@@ -36,14 +28,6 @@ public sealed class ChartSurfaceTests
     }
 
     /// <summary>Verifies a vertical bar rises from the bottom of its plot.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(VerticalBarChart),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.HoverExcluded |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task Render_WhenVerticalBarHasOnePositiveValue_FillsAvailableHeightAsync()
     {
@@ -69,14 +53,6 @@ public sealed class ChartSurfaceTests
     }
 
     /// <summary>Verifies line points map to both extrema of an explicit scale.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(LineChart),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.HoverExcluded |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task Render_WhenLineHasThreePoints_MapsExtremaIntoPlotAsync()
     {
@@ -207,14 +183,6 @@ public sealed class ChartSurfaceTests
     }
 
     /// <summary>Verifies an area chart fills cells beneath its visible line.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(AreaChart),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.HoverExcluded |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task Render_WhenAreaHasPositiveValue_FillsTowardBaselineAsync()
     {
@@ -293,14 +261,6 @@ public sealed class ChartSurfaceTests
     }
 
     /// <summary>Verifies a sparkline uses sub-cell blocks and the most recent fitting points.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Sparkline),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.HoverExcluded |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task Render_WhenSparklineExceedsWidth_UsesMostRecentPointsAsync()
     {
@@ -1079,7 +1039,6 @@ public sealed class ChartSurfaceTests
 
     /// <summary>Verifies direct and ancestor-inherited disable painting, stable geometry across a
     /// genuine resize, and re-enable recovery for a mounted HorizontalBarChart.</summary>
-    [ComponentBehaviorEvidence(typeof(HorizontalBarChart), ComponentBehavior.Disabled)]
     [Fact]
     public Task IsEnabled_WhenHorizontalBarChartIsDisabled_ProvesDisabledContractAsync() =>
         VerifyDisabledContractAsync(() => new HorizontalBarChart
@@ -1090,7 +1049,6 @@ public sealed class ChartSurfaceTests
 
     /// <summary>Verifies direct and ancestor-inherited disable painting, stable geometry across a
     /// genuine resize, and re-enable recovery for a mounted VerticalBarChart.</summary>
-    [ComponentBehaviorEvidence(typeof(VerticalBarChart), ComponentBehavior.Disabled)]
     [Fact]
     public Task IsEnabled_WhenVerticalBarChartIsDisabled_ProvesDisabledContractAsync() =>
         VerifyDisabledContractAsync(() => new VerticalBarChart
@@ -1101,7 +1059,6 @@ public sealed class ChartSurfaceTests
 
     /// <summary>Verifies direct and ancestor-inherited disable painting, stable geometry across a
     /// genuine resize, and re-enable recovery for a mounted LineChart.</summary>
-    [ComponentBehaviorEvidence(typeof(LineChart), ComponentBehavior.Disabled)]
     [Fact]
     public Task IsEnabled_WhenLineChartIsDisabled_ProvesDisabledContractAsync() =>
         VerifyDisabledContractAsync(() => new LineChart
@@ -1114,7 +1071,6 @@ public sealed class ChartSurfaceTests
 
     /// <summary>Verifies direct and ancestor-inherited disable painting, stable geometry across a
     /// genuine resize, and re-enable recovery for a mounted AreaChart.</summary>
-    [ComponentBehaviorEvidence(typeof(AreaChart), ComponentBehavior.Disabled)]
     [Fact]
     public Task IsEnabled_WhenAreaChartIsDisabled_ProvesDisabledContractAsync() =>
         VerifyDisabledContractAsync(() => new AreaChart
@@ -1127,7 +1083,6 @@ public sealed class ChartSurfaceTests
 
     /// <summary>Verifies direct and ancestor-inherited disable painting, stable geometry across a
     /// genuine resize, and re-enable recovery for a mounted Sparkline.</summary>
-    [ComponentBehaviorEvidence(typeof(Sparkline), ComponentBehavior.Disabled)]
     [Fact]
     public Task IsEnabled_WhenSparklineIsDisabled_ProvesDisabledContractAsync() =>
         VerifyDisabledContractAsync(() => new Sparkline

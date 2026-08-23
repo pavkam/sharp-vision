@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Collections;
 
-using SharpVision.Tests.Input;
-
 /// <summary>Verifies ListView selection, focus, invocation, modifiers, scrolling, mutation, and cells through mounted surfaces.</summary>
 public sealed class ListViewSurfaceTests
 {
@@ -116,7 +114,6 @@ public sealed class ListViewSurfaceTests
     }
 
     /// <summary>Verifies a hovered row changes foreground without covering the ListView background.</summary>
-    [ComponentBehaviorEvidence(typeof(UiListView), ComponentBehavior.Hover)]
     [Fact]
     public async Task Pointer_WhenMovedOverItem_PreservesListBackgroundAsync()
     {
@@ -260,20 +257,6 @@ public sealed class ListViewSurfaceTests
     /// <summary>Verifies pointer and keyboard paths commit selection, focus, invocation, Unicode
     /// appearance, and the full disabled contract: direct and ancestor-inherited disabled state,
     /// stable geometry across a genuine resize, and re-enable recovery.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(UiListView),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.Directional |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Activation |
-        ComponentBehavior.PointerActivation |
-        ComponentBehavior.KeyboardActivation |
-        ComponentBehavior.RetainedPointerActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Composition |
-        ComponentBehavior.Disabled)]
     [Fact]
     public async Task Input_WhenPointerAndKeyboardNavigate_SelectsAndInvokesExactRowsAsync()
     {
@@ -929,13 +912,6 @@ public sealed class ListViewSurfaceTests
     /// <see cref="Pointer_WhenRowHeightItemContentTogglesCollapsedThenVisible_LeavesArithmeticGapAndHitTargetsAsync"/>
     /// for the RowHeight (fixed, virtualized) counterpart, which keeps the collapsed row's
     /// arithmetic slot blank instead of reflowing siblings up into it.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(UiListView),
-        ComponentVisibilityEvidence.CollapsedExcludesSize |
-        ComponentVisibilityEvidence.CollapsedRemovesSpacingOrTrack |
-        ComponentVisibilityEvidence.TransitionInvalidatesCorrectly |
-        ComponentVisibilityEvidence.MountedTransitionCommittedGeometry |
-        ComponentVisibilityEvidence.MountedTransitionHitTargets)]
     [Fact]
     public async Task Pointer_WhenItemContentTogglesCollapsedThenVisible_ClearsStaleCellsAndHitTargetsAsync()
     {
@@ -997,11 +973,6 @@ public sealed class ListViewSurfaceTests
     /// stops resolving to the collapsed row at its former position, and Extent, VerticalOffset, and
     /// the composed scrollbar's own geometry stay exactly where they started throughout, since none
     /// of them are a function of which rows currently render content.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(UiListView),
-        ComponentVisibilityEvidence.CollapsedExcludesSize |
-        ComponentVisibilityEvidence.MountedTransitionCommittedGeometry |
-        ComponentVisibilityEvidence.MountedTransitionHitTargets)]
     [Fact]
     public async Task Pointer_WhenRowHeightItemContentTogglesCollapsedThenVisible_LeavesArithmeticGapAndHitTargetsAsync()
     {

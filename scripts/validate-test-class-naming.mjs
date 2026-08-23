@@ -59,7 +59,7 @@ export const SUITE_LEVEL_ALLOW_LIST = new Set([
   "PhaseThreePerformanceTests", // multi-stage milestone allocation gate
   "GraphicsBackendNamesTests", // assembly-wide backend naming invariants
   "MultiplexerPseudoterminalTests", // drives real tmux/screen binaries over a live pseudoterminal; asserts on raw process output, no single src subject
-  "ChartSurfaceTests", // family fixture for five chart controls; compiler-verified in ComponentSurfaceCoverageTests
+  "ChartSurfaceTests", // family fixture for five chart controls
   "ComponentCompositionSurfaceTests", // cross-cutting shared surface/box-model/border contract spanning many controls
   "ComponentGeometrySurfaceTests", // cross-cutting shared surface/box-model/border contract spanning many controls
   "IntrinsicBorderSurfaceTests", // cross-cutting shared surface/box-model/border contract spanning many controls
@@ -78,12 +78,6 @@ export const SUITE_LEVEL_ALLOW_LIST = new Set([
   "StyleInvariantEnforcementTests", // one invariant held identically across many style value types and three mutation doors
   "StyleSectionRegistryTests", // assembly-wide styles.* section registry sweep
   "RandomizedLayoutTests", // whole-infrastructure fuzz spanning ownership, focus, capture, pointer, and render
-  "ConsoleHostingConsumerTests", // console-hosting public-surface accessibility across five unrelated types
-  "DataBindingConsumerTests", // public binding surface proven across five control types without friend access
-  "FigletFontsPackedPackageConsumerTests", // whole-package pack plus external-consumer build proof
-  "ComponentSurfaceCoverageTests", // whole-catalog mounted-behavior classification inventory
-  "ComponentUnitCoverageTests", // whole-catalog unit-fixture coverage inventory
-  "ComponentVisibilityCoverageTests", // whole-catalog Hidden/Collapsed classification inventory
   "DisplayPanelTests", // composed multi-control layout, damage, and byte-exact render proof
   "InteractiveControlTests", // eight-control family fixture for cross-control event ordering
   "TerminalInputTests", // raw terminal bytes fanned across five event kinds to final output
@@ -95,6 +89,8 @@ export const SUITE_LEVEL_ALLOW_LIST = new Set([
   "ProtocolRoutingTests", // protocol responses traversing Session, Application, and Dispatcher
   "InteractivePerformanceTests", // representative interactive-tree allocation gate spanning several composed controls
   "SyntaxDefinitionCorpusTests", // whole-embedded-catalog sweep: parses and tokenizes all 159 syntax definitions, no single src subject
+  "CuratedThemeDocumentStyleTests", // every bundled theme x DocumentStyle, no single src subject
+  "ResponseContainerCompatibilityTests", // four core EventArgs types wrapping terminal-declared response types, no single src subject
 ]);
 
 /**

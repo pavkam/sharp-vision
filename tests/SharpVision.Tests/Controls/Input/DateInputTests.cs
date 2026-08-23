@@ -10,7 +10,6 @@ public sealed class DateInputTests
     #region Properties
 
     /// <summary>Verifies a null value is accepted when AllowNull is enabled.</summary>
-    [ComponentUnitEvidence(typeof(DateInput))]
     [Fact]
     public void Properties_WhenValueIsNull_AllowsNullWhenEnabled()
     {
@@ -569,7 +568,6 @@ public sealed class DateInputTests
     /// committing a changed Value, proving the detached OnEvent gate honors EffectiveIsEnabled on
     /// its own - independently of the mounted focus and hit-test pipeline the surface evidence
     /// exercises end-to-end.</summary>
-    [ComponentUnitEvidence(typeof(DateInput), ComponentBehavior.Disabled)]
     [Fact]
     public void Input_WhenDisabled_IgnoresSegmentAdjustmentKeys()
     {

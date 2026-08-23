@@ -7,15 +7,6 @@ namespace SharpVision.Tests.Controls.Layout;
 public sealed class OverlaySurfaceTests
 {
     /// <summary>Verifies z-order changes visual and hit priority and removal clears the winning layer.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Overlay),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Composition)]
     [Fact]
     public async Task Pointer_WhenZOrderChangesAndWinnerIsRemoved_UsesCurrentTopLayerAsync()
     {
@@ -183,12 +174,6 @@ public sealed class OverlaySurfaceTests
     /// rendering and stops intercepting pointer input while hidden - letting the opaque layer
     /// beneath receive both the paint and the hit - and resumes both the instant it is restored,
     /// all without leaving or re-entering the overlay's z-order.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(Overlay),
-        ComponentVisibilityEvidence.HiddenRetainsSlot |
-        ComponentVisibilityEvidence.HiddenExcludesRenderInput |
-        ComponentVisibilityEvidence.MountedTransitionCommittedGeometry |
-        ComponentVisibilityEvidence.MountedTransitionHitTargets)]
     [Fact]
     public async Task Pointer_WhenTopLayerTransitionsHiddenThenVisible_ChangesRenderedAndHitLayerAsync()
     {
@@ -295,7 +280,6 @@ public sealed class OverlaySurfaceTests
     /// <summary>Verifies disabling a mounted Overlay cascades disabled visual state and reduced
     /// EffectiveIsEnabled to its owned child, holds geometry stable across a genuine resize
     /// compared to an equivalently-built enabled instance, and recovers on re-enable.</summary>
-    [ComponentBehaviorEvidence(typeof(Overlay), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Enabled_WhenOverlayIsDisabledAndReenabled_CascadesStateAndPreservesGeometryAsync()
     {

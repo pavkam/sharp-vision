@@ -19,8 +19,6 @@ or binding lifetime.
 - Binding implementation: `src/SharpVision/DataBinding/`
 - Target integration: controls and collection controls under `src/SharpVision/`
 - Tests: `tests/SharpVision.Tests/DataBinding/`
-- Unfriended consumer proof:
-  `tests/SharpVision.Tests/Compatibility/DataBindingConsumerTests.cs`
 
 ## Workflow
 
@@ -31,7 +29,6 @@ or binding lifetime.
    dispatcher bursts, stale queued work, cycles, and disposal.
 4. Preserve notification ordering and coalesce background work without losing
    the latest valid value.
-5. Retain external consumer proof for public/protected extensibility.
 
 ## Project-specific traps
 

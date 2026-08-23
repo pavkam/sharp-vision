@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Dialogs;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies the immutable MessageBox aggregate presentation record: its declared one-hop
 /// fallback to <see cref="WindowStyle"/>'s "window" key (including the shared
 /// ActiveBorder-on-FocusWithin default every Window-derived style resolves), and its invalidation

@@ -7,14 +7,6 @@ namespace SharpVision.Tests.Controls.Display;
 public sealed class ProgressBarSurfaceTests
 {
     /// <summary>Verifies partial horizontal fill, style, pointer exclusion, and clamped mutation.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(ProgressBar),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.HoverExcluded |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task UpdateAsync_WhenHorizontalValueChanges_RendersPartialThenFullBarAsync()
     {
@@ -123,7 +115,6 @@ public sealed class ProgressBarSurfaceTests
 
     /// <summary>Verifies direct and ancestor-inherited disable painting, stable geometry across a
     /// genuine resize, and re-enable recovery for a mounted ProgressBar.</summary>
-    [ComponentBehaviorEvidence(typeof(ProgressBar), ComponentBehavior.Disabled)]
     [Fact]
     public async Task IsEnabled_WhenProgressBarIsDisabled_ProvesDisabledContractAsync()
     {

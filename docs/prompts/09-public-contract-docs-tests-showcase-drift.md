@@ -31,9 +31,11 @@ Use these source-of-truth surfaces:
   documents, `docs/controls/index.md`, and each public control spec
 - protocol `coverage-matrix.md` and focused protocol documents
 - public/internal XML documentation in both production assemblies
-- `tests/SharpVision.Compatibility.Tests/` versioned Verify API snapshots
-- `tests/SharpVision.Consumer.Tests/` and package-consumer tests that compile as
-  unprivileged external consumers
+- `tests/SharpVision.Compatibility.Tests/` versioned Verify API snapshots and
+  its `FirstPartyPackageVersionTests` first-party version-derivation check - the
+  only package-consumption proof this repository keeps; packing and building
+  external unprivileged-consumer mini-projects per control was retired as not
+  worth its CI cost, so do not flag its absence as drift
 - terminal/UI correctness, integration, mounted surface, randomized, and
   performance tests
 - `examples/Showcase/` gallery, pages, interactions, and responsive rendered

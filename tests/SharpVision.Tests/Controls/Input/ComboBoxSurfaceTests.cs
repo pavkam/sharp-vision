@@ -355,21 +355,6 @@ public sealed class ComboBoxSurfaceTests
     }
 
     /// <summary>Verifies field press, popup navigation, release activation, and unavailable cleanup.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(ComboBox),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.Directional |
-        ComponentBehavior.PressRelease |
-        ComponentBehavior.Activation |
-        ComponentBehavior.PointerActivation |
-        ComponentBehavior.KeyboardActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Transient |
-        ComponentBehavior.Composition |
-        ComponentBehavior.Disabled)]
     [Fact]
     public async Task Input_WhenDropDownNavigates_CommitsReleasedChoiceAndCleanupAsync()
     {

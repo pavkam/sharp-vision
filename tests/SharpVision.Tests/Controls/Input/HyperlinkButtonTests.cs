@@ -7,7 +7,6 @@ namespace SharpVision.Tests.Controls.Input;
 public sealed class HyperlinkButtonTests
 {
     /// <summary>Verifies documented defaults for an empty HyperlinkButton.</summary>
-    [ComponentUnitEvidence(typeof(HyperlinkButton))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
@@ -28,7 +27,6 @@ public sealed class HyperlinkButtonTests
     /// <summary>Verifies HyperlinkButton proves direct and ancestor-inherited disabled state at
     /// the detached unit level, and that clearing IsEnabled on each recovers EffectiveIsEnabled -
     /// the same disabled contract exercised on a live mounted terminal surface.</summary>
-    [ComponentUnitEvidence(typeof(HyperlinkButton), ComponentBehavior.Disabled)]
     [Fact]
     public void EffectiveIsEnabled_WhenLinkIsDisabledDirectlyOrByAncestor_ReportsDisabledAndRecovers()
     {

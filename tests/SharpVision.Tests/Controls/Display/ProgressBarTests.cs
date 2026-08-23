@@ -7,7 +7,6 @@ namespace SharpVision.Tests.Controls.Display;
 public sealed class ProgressBarTests
 {
     /// <summary>Verifies documented range, presentation, alignment, and interaction defaults.</summary>
-    [ComponentUnitEvidence(typeof(ProgressBar))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
@@ -510,7 +509,6 @@ public sealed class ProgressBarTests
 
     /// <summary>Verifies direct and ancestor-inherited IsEnabled changes compute the effective
     /// disabled state ProgressBar's mounted disabled contract depends on.</summary>
-    [ComponentUnitEvidence(typeof(ProgressBar), ComponentBehavior.Disabled)]
     [Fact]
     public void IsEnabled_WhenDisabledDirectlyOrByAncestor_ComputesEffectiveState()
     {

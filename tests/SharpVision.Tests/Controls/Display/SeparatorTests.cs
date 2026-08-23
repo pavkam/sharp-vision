@@ -7,7 +7,6 @@ namespace SharpVision.Tests.Controls.Display;
 public sealed class SeparatorTests
 {
     /// <summary>Verifies the divider starts horizontal, one-cell, and non-interactive.</summary>
-    [ComponentUnitEvidence(typeof(Separator))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
@@ -174,7 +173,6 @@ public sealed class SeparatorTests
 
     /// <summary>Verifies direct and ancestor-inherited IsEnabled changes compute the effective
     /// disabled state Separator's mounted disabled contract depends on.</summary>
-    [ComponentUnitEvidence(typeof(Separator), ComponentBehavior.Disabled)]
     [Fact]
     public void IsEnabled_WhenDisabledDirectlyOrByAncestor_ComputesEffectiveState()
     {

@@ -88,20 +88,6 @@ public sealed class ColorPickerSurfaceTests
 
     /// <summary>Verifies mounted composition, hover, exclusion policy, selection, and cleanup.</summary>
     [Fact]
-    [ComponentBehaviorEvidence(
-        typeof(ColorPicker),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Activation |
-        ComponentBehavior.PointerActivation |
-        ComponentBehavior.RetainedPointerActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Composition |
-        ComponentBehavior.Disabled)]
     public async Task Surface_WhenPlaneIsSelected_ExposesAdaptiveCompositeBehaviorAsync()
     {
         // Arrange

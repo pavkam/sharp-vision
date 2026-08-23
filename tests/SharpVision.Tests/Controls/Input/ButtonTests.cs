@@ -3,13 +3,10 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies Button ownership, command ordering, activation, layout, and cells.</summary>
 public sealed class ButtonTests
 {
     /// <summary>Verifies documented defaults and capacity-one content ownership.</summary>
-    [ComponentUnitEvidence(typeof(Button))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
@@ -936,7 +933,6 @@ public sealed class ButtonTests
     }
 
     /// <summary>Verifies PerformClick on a disabled button does nothing.</summary>
-    [ComponentUnitEvidence(typeof(Button), ComponentBehavior.Disabled)]
     [Fact]
     public void PerformClick_WhenDisabled_IsNoOp()
     {

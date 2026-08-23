@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies complete local appearance values and resolved theme ownership.</summary>
 public sealed partial class ControlBaseTests
 {

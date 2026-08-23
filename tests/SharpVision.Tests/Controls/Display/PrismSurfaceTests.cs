@@ -68,15 +68,6 @@ public sealed class PrismSurfaceTests
     }
 
     /// <summary>Verifies retained Unicode content receives the effect while pointer state follows ancestry.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Prism),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Composition)]
     [Fact]
     public async Task Render_WhenPrismOwnsUnicodeContent_AppliesScopedColorAndRoutesHoverAsync()
     {
@@ -113,7 +104,6 @@ public sealed class PrismSurfaceTests
     /// <summary>Verifies disabling a mounted Prism cascades disabled visual state and reduced
     /// EffectiveIsEnabled to its owned content, holds geometry stable across a genuine resize
     /// compared to an equivalently-built enabled instance, and recovers on re-enable.</summary>
-    [ComponentBehaviorEvidence(typeof(Prism), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Enabled_WhenPrismIsDisabledAndReenabled_CascadesStateAndPreservesGeometryAsync()
     {

@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Threading;
 
-using Input;
-
 /// <summary>Verifies deterministic dispatcher timer scheduling and lifetime.</summary>
 public sealed class DispatcherTimerTests
 {

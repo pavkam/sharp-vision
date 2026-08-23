@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies HyperlinkButton appearance, interaction, and activation on a mounted surface.</summary>
 public sealed class HyperlinkButtonSurfaceTests
 {
@@ -73,7 +71,6 @@ public sealed class HyperlinkButtonSurfaceTests
     }
 
     /// <summary>Verifies the mounted HyperlinkButton renders accent-colored underlined text and responds to hover.</summary>
-    [ComponentBehaviorEvidence(typeof(HyperlinkButton), ComponentBehavior.Mounted | ComponentBehavior.Hover)]
     [Fact]
     public async Task Render_WhenMounted_ShowsAccentUnderlinedTextAsync()
     {
@@ -112,10 +109,6 @@ public sealed class HyperlinkButtonSurfaceTests
     }
 
     /// <summary>Verifies Tab focuses the HyperlinkButton and updates its appearance.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(HyperlinkButton),
-        ComponentBehavior.Tab |
-        ComponentBehavior.DirectionalExcluded)]
     [Fact]
     public async Task Keyboard_WhenTabIsPressed_ShowsFocusedAppearanceAsync()
     {
@@ -147,12 +140,6 @@ public sealed class HyperlinkButtonSurfaceTests
     }
 
     /// <summary>Verifies pointer press shows pressed state and disable cleans up.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(HyperlinkButton),
-        ComponentBehavior.Focus |
-        ComponentBehavior.PressRelease |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Disabled)]
     [Fact]
     public async Task Pointer_WhenPrimaryButtonIsHeld_ShowsPressedAppearanceAsync()
     {
@@ -246,9 +233,6 @@ public sealed class HyperlinkButtonSurfaceTests
     }
 
     /// <summary>Verifies the click shorthand emits move, press, and release and settles activation.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(HyperlinkButton),
-        ComponentBehavior.Activation | ComponentBehavior.PointerActivation)]
     [Fact]
     public async Task Pointer_WhenLinkIsClicked_ReleasesAndActivatesOnceAsync()
     {
@@ -274,7 +258,6 @@ public sealed class HyperlinkButtonSurfaceTests
     }
 
     /// <summary>Verifies terminal Enter and Space input activate the focused HyperlinkButton.</summary>
-    [ComponentBehaviorEvidence(typeof(HyperlinkButton), ComponentBehavior.KeyboardActivation)]
     [Fact]
     public async Task Keyboard_WhenEnterAndSpaceAreCompleted_ActivatesFocusedLinkAsync()
     {
@@ -321,7 +304,6 @@ public sealed class HyperlinkButtonSurfaceTests
 
     /// <summary>Verifies a disabled HyperlinkButton does not activate on click - the command/
     /// access-key non-invocation leg of its disabled contract.</summary>
-    [ComponentBehaviorEvidence(typeof(HyperlinkButton), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Pointer_WhenDisabled_DoesNotActivateAsync()
     {

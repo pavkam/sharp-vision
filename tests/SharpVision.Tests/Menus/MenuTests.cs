@@ -80,9 +80,6 @@ public sealed class MenuTests
     }
 
     /// <summary>Verifies typed collection ownership selects the first available item and renders compact shared-width rows.</summary>
-    [ComponentUnitEvidence(typeof(Menu))]
-    [ComponentUnitEvidence(typeof(MenuItem))]
-    [ComponentUnitEvidence(typeof(MenuSeparator))]
     [Fact]
     public void Items_WhenAdded_UseTypedOwnershipSelectionAndVerticalCells()
     {
@@ -115,7 +112,6 @@ public sealed class MenuTests
     /// <summary>Verifies Menu proves direct and ancestor-inherited disabled state at the detached
     /// unit level, and that clearing IsEnabled on each recovers EffectiveIsEnabled - the same
     /// disabled contract exercised on a live mounted terminal surface.</summary>
-    [ComponentUnitEvidence(typeof(Menu), ComponentBehavior.Disabled)]
     [Fact]
     public void EffectiveIsEnabled_WhenMenuIsDisabledDirectlyOrByAncestor_ReportsDisabledAndRecovers()
     {
@@ -139,7 +135,6 @@ public sealed class MenuTests
 
     /// <summary>Verifies MenuItem proves direct and owning-Menu-inherited disabled state at the
     /// detached unit level, and that clearing IsEnabled on each recovers EffectiveIsEnabled.</summary>
-    [ComponentUnitEvidence(typeof(MenuItem), ComponentBehavior.Disabled)]
     [Fact]
     public void EffectiveIsEnabled_WhenItemIsDisabledDirectlyOrByOwningMenu_ReportsDisabledAndRecovers()
     {
@@ -163,7 +158,6 @@ public sealed class MenuTests
 
     /// <summary>Verifies MenuSeparator proves direct and owning-Menu-inherited disabled state at
     /// the detached unit level, and that clearing IsEnabled on each recovers EffectiveIsEnabled.</summary>
-    [ComponentUnitEvidence(typeof(MenuSeparator), ComponentBehavior.Disabled)]
     [Fact]
     public void EffectiveIsEnabled_WhenSeparatorIsDisabledDirectlyOrByOwningMenu_ReportsDisabledAndRecovers()
     {
@@ -331,7 +325,6 @@ public sealed class MenuTests
 
     /// <summary>Verifies directional keys skip a Collapsed item exactly like a separator, and still
     /// wrap past it back to the first item.</summary>
-    [ComponentVisibilityEvidence(typeof(Menu), ComponentVisibilityEvidence.CollapsedExcludesInput)]
     [Fact]
     public async Task Dispatch_WhenDirectionalKeyArrives_SkipsCollapsedItemAndWrapsAsync()
     {
@@ -367,7 +360,6 @@ public sealed class MenuTests
     /// Collapsed one - Menu's own eligibility gate reads EffectiveIsVisible, which requires
     /// Visibility == IsVisible, so Hidden's usual "keeps its slot, only excludes render/input" leaf
     /// contract still yields the same navigation exclusion Collapsed produces at this layer.</summary>
-    [ComponentVisibilityEvidence(typeof(Menu), ComponentVisibilityEvidence.HiddenExcludesRenderInput)]
     [Fact]
     public async Task Dispatch_WhenDirectionalKeyArrives_SkipsHiddenItemAsync()
     {
@@ -397,7 +389,6 @@ public sealed class MenuTests
     /// MenuItem for its widest label and shortcut columns - excludes a Collapsed item's own label
     /// width from that shared maximum, matching the general Collapsed-excludes-size contract for a
     /// menu-specific derived measurement, not merely the base Stack item spacing.</summary>
-    [ComponentVisibilityEvidence(typeof(Menu), ComponentVisibilityEvidence.CollapsedExcludesSize)]
     [Fact]
     public void MeasureOverride_WhenVerticalItemIsCollapsed_ExcludesItsLabelFromSharedColumnWidth()
     {

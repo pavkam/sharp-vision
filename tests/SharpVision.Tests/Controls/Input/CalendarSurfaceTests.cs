@@ -5,9 +5,6 @@ namespace SharpVision.Tests.Controls.Input;
 
 using System.Text.Json;
 
-using SharpVision.Tests.Input;
-
-
 /// <summary>Proves Calendar behavior through mounted terminal input and semantic output.</summary>
 public sealed class CalendarSurfaceTests
 {
@@ -225,19 +222,6 @@ public sealed class CalendarSurfaceTests
 
     /// <summary>Verifies exact rendering, hover, focus, keyboard, pointer, markup, and unavailable cleanup.</summary>
     [Fact]
-    [ComponentBehaviorEvidence(
-        typeof(UiCalendar),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.Directional |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Activation |
-        ComponentBehavior.PointerActivation |
-        ComponentBehavior.KeyboardActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Disabled)]
     public async Task Surface_WhenSelectInputIsDispatched_ExposesCompleteCalendarBehaviorAsync()
     {
         // Arrange

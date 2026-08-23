@@ -35,14 +35,6 @@ public sealed class NavigationViewSurfaceTests
     }
 
     /// <summary>Verifies header, main, group, separators, footer, indentation, and Unicode draw exact borderless cells.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(NavigationViewSeparator),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.HoverExcluded |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task Render_WhenEverySectionIsPresent_DrawsExactRetainedSidebarAsync()
     {
@@ -96,32 +88,6 @@ public sealed class NavigationViewSurfaceTests
     /// traversal, event order, and the full disabled contract for both NavigationView and
     /// NavigationViewItem: direct and ancestor-inherited disabled state, stable geometry across a
     /// genuine resize, and re-enable recovery.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(NavigationView),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.Directional |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Activation |
-        ComponentBehavior.PointerActivation |
-        ComponentBehavior.KeyboardActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Composition |
-        ComponentBehavior.Disabled)]
-    [ComponentBehaviorEvidence(
-        typeof(NavigationViewItem),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressRelease |
-        ComponentBehavior.Activation |
-        ComponentBehavior.PointerActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Disabled)]
     [Fact]
     public async Task Input_WhenItemsNavigate_UsesOneFlatEligibleSelectionOrderAsync()
     {
@@ -286,21 +252,6 @@ public sealed class NavigationViewSurfaceTests
     }
 
     /// <summary>Verifies pointer and keyboard group toggles repair selection when descendants disappear.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(NavigationViewGroup),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Composition)]
-    [ComponentVisibilityEvidence(
-        typeof(NavigationView),
-        ComponentVisibilityEvidence.HiddenExcludesRenderInput |
-        ComponentVisibilityEvidence.FocusCaptureCleanup |
-        ComponentVisibilityEvidence.MountedTransitionCommittedGeometry |
-        ComponentVisibilityEvidence.MountedTransitionHitTargets)]
     [Fact]
     public async Task Input_WhenSelectedGroupCollapses_RepairsSelectionAndRetainedBoundsAsync()
     {
@@ -396,7 +347,6 @@ public sealed class NavigationViewSurfaceTests
 
     /// <summary>Verifies a NavigationViewGroup inherits Disabled from its owning NavigationView
     /// and recovers when the owner is re-enabled.</summary>
-    [ComponentBehaviorEvidence(typeof(NavigationViewGroup), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Enabled_WhenOwningNavigationViewIsDisabled_NavigationViewGroupInheritsAsync()
     {
@@ -428,7 +378,6 @@ public sealed class NavigationViewSurfaceTests
 
     /// <summary>Verifies a NavigationViewSeparator inherits Disabled from its owning NavigationView
     /// and recovers when the owner is re-enabled.</summary>
-    [ComponentBehaviorEvidence(typeof(NavigationViewSeparator), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Enabled_WhenOwningNavigationViewIsDisabled_NavigationViewSeparatorInheritsAsync()
     {
@@ -492,7 +441,6 @@ public sealed class NavigationViewSurfaceTests
     }
 
     /// <summary>Verifies a pointer click on a grouped item commits selection through the owning view.</summary>
-    [ComponentBehaviorEvidence(typeof(NavigationView), ComponentBehavior.RetainedPointerActivation)]
     [Fact]
     public async Task Pointer_WhenGroupedItemIsClicked_SelectsItemThroughOwnerAsync()
     {

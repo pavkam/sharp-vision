@@ -206,12 +206,6 @@ public sealed class CompositeControlBaseTests
     }
 
     /// <summary>Verifies collapsed content contributes no margin and clears stale geometry.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(NavigationView),
-        ComponentVisibilityEvidence.CollapsedExcludesSize | ComponentVisibilityEvidence.TransitionInvalidatesCorrectly)]
-    [ComponentVisibilityEvidence(
-        typeof(TreeView),
-        ComponentVisibilityEvidence.CollapsedExcludesSize | ComponentVisibilityEvidence.TransitionInvalidatesCorrectly)]
     [Fact]
     public void Layout_WhenContentBecomesCollapsed_ExcludesItWithoutReplacingTheRoot()
     {
@@ -238,12 +232,6 @@ public sealed class CompositeControlBaseTests
     /// contract concrete realized-item hosts such as NavigationView and TreeView compose their
     /// private tree around, so a host-specific test only needs to add what the base does not
     /// already prove.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(NavigationView),
-        ComponentVisibilityEvidence.HiddenRetainsSlot | ComponentVisibilityEvidence.HiddenExcludesRenderInput)]
-    [ComponentVisibilityEvidence(
-        typeof(TreeView),
-        ComponentVisibilityEvidence.HiddenRetainsSlot | ComponentVisibilityEvidence.HiddenExcludesRenderInput)]
     [Fact]
     public void Layout_WhenContentIsHidden_RetainsSlotAndMarginButExcludesRenderingAndHitTesting()
     {

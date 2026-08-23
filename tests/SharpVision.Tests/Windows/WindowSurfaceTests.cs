@@ -1,12 +1,9 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-
 namespace SharpVision.Tests.Windows;
 
 using System.Text.Json;
-
-using SharpVision.Tests.Styling;
 
 /// <summary>Proves window focus and interaction through mounted terminal surfaces.</summary>
 public sealed class WindowSurfaceTests
@@ -1003,19 +1000,6 @@ public sealed class WindowSurfaceTests
     }
 
     /// <summary>Verifies retained content focus, fallback activation, hover ancestry, and unavailable cleanup.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Window),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Activation |
-        ComponentBehavior.KeyboardActivation |
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Disabled |
-        ComponentBehavior.Composition)]
     [Fact]
     public async Task Input_WhenWindowHostsButtons_RoutesFallbacksAndCleansFocusAsync()
     {
@@ -1108,7 +1092,6 @@ public sealed class WindowSurfaceTests
 
     /// <summary>Verifies a mounted Window inherits Disabled from a disabled ancestor rather than
     /// only from its own IsEnabled flag, and resumes Normal once re-enabled.</summary>
-    [ComponentBehaviorEvidence(typeof(Window), ComponentBehavior.Disabled)]
     [Fact]
     public async Task IsEnabled_WhenAncestorIsDisabled_InheritsDisabledAndRecoversAsync()
     {
@@ -1439,7 +1422,6 @@ public sealed class WindowSurfaceTests
     }
 
     /// <summary>Verifies mounted close-glyph requests retain modality until the Closing owner hides the Window.</summary>
-    [ComponentBehaviorEvidence(typeof(Window), ComponentBehavior.PointerActivation)]
     [Fact]
     public async Task ShowModal_WhenCloseGlyphIsActivated_ClosesModalWindowByDefaultAsync()
     {
@@ -1471,7 +1453,6 @@ public sealed class WindowSurfaceTests
     }
 
     /// <summary>Verifies a Closing handler that hides the Window itself is respected instead of being force-collapsed.</summary>
-    [ComponentBehaviorEvidence(typeof(Window), ComponentBehavior.PointerActivation)]
     [Fact]
     public async Task ShowModal_WhenClosingHandlerHidesTheWindowItself_RespectsThatOutcomeAsync()
     {

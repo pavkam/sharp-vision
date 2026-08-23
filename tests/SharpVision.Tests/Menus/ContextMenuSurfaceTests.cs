@@ -40,16 +40,6 @@ public sealed class ContextMenuSurfaceTests
     }
 
     /// <summary>Verifies right-click on a button with a custom ContextMenu opens the popup.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(ContextMenu),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Transient |
-        ComponentBehavior.Composition)]
     [Fact]
     public async Task Pointer_WhenSecondaryPressOnButtonWithContextMenu_OpensMenuAsync()
     {
@@ -174,16 +164,6 @@ public sealed class ContextMenuSurfaceTests
     }
 
     /// <summary>Verifies right-click on a TextInput opens the default TextInputContextMenu.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(TextInputContextMenu),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Transient |
-        ComponentBehavior.Composition)]
     [Fact]
     public async Task Pointer_WhenSecondaryPressOnTextInput_OpensDefaultContextMenuAsync()
     {

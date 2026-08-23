@@ -7,8 +7,6 @@ namespace SharpVision.Tests.Controls.Display;
 public sealed class StatusBarTests
 {
     /// <summary>Verifies the conventional one-row passive strip and item defaults.</summary>
-    [ComponentUnitEvidence(typeof(StatusBar))]
-    [ComponentUnitEvidence(typeof(StatusBarItem))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
@@ -37,7 +35,6 @@ public sealed class StatusBarTests
     /// <summary>Verifies StatusBar proves direct and ancestor-inherited disabled state at the
     /// detached unit level, and that clearing IsEnabled on each recovers EffectiveIsEnabled - the
     /// same disabled contract exercised on a live mounted terminal surface.</summary>
-    [ComponentUnitEvidence(typeof(StatusBar), ComponentBehavior.Disabled)]
     [Fact]
     public void EffectiveIsEnabled_WhenBarIsDisabledDirectlyOrByAncestor_ReportsDisabledAndRecovers()
     {
@@ -61,7 +58,6 @@ public sealed class StatusBarTests
 
     /// <summary>Verifies StatusBarItem proves direct and owning-bar-inherited disabled state at
     /// the detached unit level, and that clearing IsEnabled on each recovers EffectiveIsEnabled.</summary>
-    [ComponentUnitEvidence(typeof(StatusBarItem), ComponentBehavior.Disabled)]
     [Fact]
     public void EffectiveIsEnabled_WhenItemIsDisabledDirectlyOrByOwningBar_ReportsDisabledAndRecovers()
     {
@@ -495,13 +491,6 @@ public sealed class StatusBarTests
     /// <summary>Verifies a Collapsed item in the left bucket frees its space for surviving left
     /// siblings, while a Hidden item in the same bucket keeps its slot (and the spacing it
     /// participates in) but renders nothing.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(StatusBar),
-        ComponentVisibilityEvidence.HiddenRetainsSlot |
-        ComponentVisibilityEvidence.HiddenExcludesRenderInput |
-        ComponentVisibilityEvidence.CollapsedExcludesSize |
-        ComponentVisibilityEvidence.CollapsedRemovesSpacingOrTrack |
-        ComponentVisibilityEvidence.TransitionInvalidatesCorrectly)]
     [Fact]
     public void Arrange_WhenLeftItemIsCollapsed_FreesSpaceForRemainingLeftSiblings()
     {
@@ -552,11 +541,6 @@ public sealed class StatusBarTests
     /// reverse collection order starting at the physical trailing edge, so the item actually closest
     /// to that edge ("Ln 1", added last) never moves regardless of what collapses behind it - only
     /// "UTF-8", allocated after "Ln 1" in the walk, shifts to close the gap.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(StatusBar),
-        ComponentVisibilityEvidence.CollapsedExcludesSize |
-        ComponentVisibilityEvidence.CollapsedRemovesSpacingOrTrack |
-        ComponentVisibilityEvidence.TransitionInvalidatesCorrectly)]
     [Fact]
     public void Arrange_WhenRightItemIsCollapsed_FreesSpaceForRemainingRightSiblings()
     {
@@ -592,7 +576,6 @@ public sealed class StatusBarTests
     /// measure branch consults to decide whether inter-item spacing is owed - excludes Collapsed
     /// items from the count, so a single remaining item after a collapse no longer reserves the
     /// spacing cell a two-item bucket would.</summary>
-    [ComponentVisibilityEvidence(typeof(StatusBar), ComponentVisibilityEvidence.CollapsedRemovesSpacingOrTrack)]
     [Fact]
     public void Measure_WhenOneOfTwoLeftItemsIsCollapsed_ExcludesItFromSpacingCount()
     {

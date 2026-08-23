@@ -7,7 +7,6 @@ namespace SharpVision.Tests.Controls.Collections;
 public sealed class TabItemTests
 {
     /// <summary>Verifies a new page rejects invalid header text before mutation.</summary>
-    [ComponentUnitEvidence(typeof(TabItem))]
     [Fact]
     public void Properties_WhenCreatedOrAssignedInvalidHeader_PreserveDefaults()
     {
@@ -39,7 +38,6 @@ public sealed class TabItemTests
 
     /// <summary>Verifies direct and owning-TabControl-inherited IsEnabled changes flip a TabItem's
     /// EffectiveIsEnabled without disturbing its own IsEnabled property, and re-enabling restores it.</summary>
-    [ComponentUnitEvidence(typeof(TabItem), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenToggledDirectlyOrByOwningTabControl_UpdatesEffectiveEnabled()
     {

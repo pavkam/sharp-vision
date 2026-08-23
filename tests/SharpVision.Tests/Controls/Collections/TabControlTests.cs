@@ -7,7 +7,6 @@ namespace SharpVision.Tests.Controls.Collections;
 public sealed class TabControlTests
 {
     /// <summary>Verifies documented defaults for a new TabControl.</summary>
-    [ComponentUnitEvidence(typeof(TabControl))]
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
@@ -29,7 +28,6 @@ public sealed class TabControlTests
 
     /// <summary>Verifies direct and ancestor-inherited IsEnabled changes flip EffectiveIsEnabled and
     /// the derived focus eligibility it drives, and re-enabling restores both.</summary>
-    [ComponentUnitEvidence(typeof(TabControl), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenToggledDirectlyOrByAncestor_UpdatesEffectiveEnabledAndFocusEligibility()
     {
@@ -573,7 +571,6 @@ public sealed class TabControlTests
     /// otherwise keeps its measured slot everywhere else in the framework) still repairs a selected
     /// page away, matching TabControl's own single-page-visible internal contract rather than the
     /// leaf Hidden-keeps-its-slot rule.</summary>
-    [ComponentVisibilityEvidence(typeof(TabControl), ComponentVisibilityEvidence.TransitionInvalidatesCorrectly)]
     [Fact]
     public void Availability_WhenSelectedPageBecomesHidden_RepairsSelectionLikeCollapsed()
     {
@@ -591,7 +588,6 @@ public sealed class TabControlTests
 
     /// <summary>Verifies keyboard Left/Right navigation skips a Collapsed page exactly like a
     /// disabled one, and still wraps around it.</summary>
-    [ComponentVisibilityEvidence(typeof(TabControl), ComponentVisibilityEvidence.CollapsedExcludesInput)]
     [Fact]
     public void Keyboard_WhenPageIsCollapsed_ArrowNavigationSkipsIt()
     {
@@ -620,10 +616,6 @@ public sealed class TabControlTests
     /// its own reentrancy guard), so authoring Collapsed on an already-unselected item is a
     /// same-value no-op that never raises PropertyChanged and never reaches
     /// OnItemPropertyChanged's header-mirroring write at all.</para></summary>
-    [ComponentVisibilityEvidence(
-        typeof(TabControl),
-        ComponentVisibilityEvidence.CollapsedRemovesSpacingOrTrack |
-        ComponentVisibilityEvidence.TransitionInvalidatesCorrectly)]
     [Fact]
     public void Header_WhenSelectedTabItemIsCollapsed_HeaderMirrorsVisibilityAndSuppressesDivider()
     {

@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using Input;
-
 using Terminal.Capabilities;
 
 /// <summary>Verifies terminal protocol responses traverse Session and Application onto the dispatcher.</summary>

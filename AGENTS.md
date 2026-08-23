@@ -21,10 +21,29 @@ documentation, tests, and showcase example agree.
 - `src/SharpVision.FigletFonts/` contains the optional embedded FIGlet font
   catalog, shipped as a separate package so an application does not carry the
   font assets unless it wants them.
-- `examples/Showcase/` demonstrates every shipped control and state.
-- `tests/` contains the terminal and UI suites plus the unprivileged consumer
-  contract suite. The showcase is compiled as a production example and has no
-  dedicated test project.
+- `src/SharpVision.SyntaxHighlighting/` contains the optional KDE/Kate-format
+  syntax-highlighting engine and the `CodeView` control, shipped as a separate
+  package so an application does not carry the embedded language definitions
+  unless it wants them.
+- `examples/` contains runnable sample applications (`Showcase`, `Snake`,
+  `TextEditor`, `ProcessMonitor`). None of them has, or needs, a dedicated test
+  project: an example demonstrates and visually proves behavior that the owning
+  library's own test project already covers; testing the example itself would
+  only duplicate that coverage against throwaway application code.
+- `tests/` contains one test project per packable `src/` project
+  (`SharpVision.Tests`, `SharpVision.Terminal.Tests`,
+  `SharpVision.Document.Tests`, `SharpVision.FigletFonts.Tests`,
+  `SharpVision.SyntaxHighlighting.Tests`), plus two cross-cutting projects that
+  are not owned by any single package: `SharpVision.Compatibility.Tests`
+  (versioned public-API snapshots and the first-party package-version-derivation
+  check) and `SharpVision.Test.Shared` (the shared mounted-surface test
+  harness - `ComponentSurface` and its `Pointer`/`Keyboard` drivers,
+  `ComponentTerminal`, `FrameOracle`, and related scaffolding - referenced by
+  every test project that needs to mount a real control under a real
+  `Application`; it is a plain library, not itself a test project). A type's
+  tests live in the test project matching the `src/` project that declares the
+  type, never in another project's test suite merely because that suite already
+  has the mounting harness in scope.
 - `docs/` contains normative architecture, protocol, concept, control, and test
   specifications.
 - `.agents/skills/` contains focused routing and invariants for each domain. It
@@ -32,11 +51,11 @@ documentation, tests, and showcase example agree.
   symlinks to it, so every agent reads one copy. Add or edit skills only under
   `.agents/skills/`.
 
-`SharpVision` may reference `SharpVision.Terminal`. `SharpVision.Document` and
-`SharpVision.FigletFonts` are optional leaves that an application references
-directly; nothing in the core libraries references them. The showcase may
-reference all four. Dependencies must never point from a lower layer to a higher
-layer or from production code to tests.
+`SharpVision` may reference `SharpVision.Terminal`. `SharpVision.Document`,
+`SharpVision.FigletFonts`, and `SharpVision.SyntaxHighlighting` are optional
+leaves that an application references directly; nothing in the core libraries
+references them. The showcase may reference all five. Dependencies must never
+point from a lower layer to a higher layer or from production code to tests.
 
 ## Orientation workflow
 
@@ -215,13 +234,35 @@ in the protocol document.
   `GetField`, `GetMethod`, `GetProperty`, and `Activator` are not testing tools.
   A rename must break the build, not a test at runtime.
 - When a test needs state the type does not expose, add an `internal` member and
-  document on it which invariant it exists to prove. Both test assemblies are
-  already friend assemblies. An `internal` seam is not public surface: it never
-  appears in the API snapshot and no consumer can see it.
+  document on it which invariant it exists to prove. Every test project that
+  needs one is already a friend assembly of the production project(s) it tests.
+  An `internal` seam is not public surface: it never appears in the API snapshot
+  and no consumer can see it.
 - Do not assert API shape. The versioned Verify snapshot already freezes every
-  public and protected member of all three production assemblies. A test
-  asserting that a member exists, is absent, or has a given accessibility
-  duplicates the snapshot and covers less than it does.
+  public and protected member of every production assembly. A test asserting
+  that a member exists, is absent, or has a given accessibility duplicates the
+  snapshot and covers less than it does.
+- Do not write a reflection-based "coverage catalog" test that scans an assembly
+  for every exported control and asserts that some matching test, attribute, or
+  fixture exists for it. That only proves a test exists, never that it exercises
+  real behavior, and it silently rots the moment the catalog and the reflected
+  set drift - a mechanical inventory is not a substitute for reviewing that each
+  control's own fixture actually proves its contract. Prove a shared contract
+  (box model, disabled state, Visibility transitions) through one or a few
+  representative fixtures instead, the same way every other cross-cutting
+  contract in this repository is proved.
+- An example application under `examples/` never gets its own test project or
+  test files. It demonstrates and visually proves behavior that the owning
+  library's own test project already covers under `ComponentSurface`; a
+  duplicate assertion against the same behavior through throwaway example code
+  adds no coverage.
+- Do not add a "package consumer" test that packs a project as a NuGet package
+  and builds/runs an external mini-project against it to prove a type is
+  consumable without friend access. `FirstPartyPackageVersionTests` (in
+  `SharpVision.Compatibility.Tests`) is the one exception this repository keeps,
+  because it catches a real, previously-shipped regression class (a package's
+  dependency floor silently falling behind its own version) at the source,
+  without packing anything.
 - A shape assertion may appear only inside a test that exercises the behavior
   the shape protects, and only for a fact the snapshot cannot express, such as
   `internal` or `private protected` accessibility. A standalone

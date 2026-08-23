@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Tests.Styling;
-
 /// <summary>Verifies framework-owned complete-style slots.
 ///
 /// <para>Also verifies a theme swap publishes <c>ActualStyle</c> whenever the value a viewer would

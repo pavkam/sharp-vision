@@ -201,36 +201,6 @@ public sealed class PopupSurfaceTests
     }
 
     /// <summary>Verifies open popup composition, descendant hover, focus transfer, and Escape closure.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Popup),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Transient |
-        ComponentBehavior.Composition)]
-    [ComponentBehaviorEvidence(
-        typeof(Flyout),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Transient |
-        ComponentBehavior.Composition)]
-    [ComponentBehaviorEvidence(
-        typeof(Tooltip),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.HoverExcluded |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Transient |
-        ComponentBehavior.Composition)]
     [Fact]
     public async Task Input_WhenPopupOpensAndEscapes_TracksTransientCompositionAsync()
     {
@@ -281,7 +251,6 @@ public sealed class PopupSurfaceTests
     /// keeps a stable surface across a genuine resize while disabled, and resumes Normal once
     /// re-enabled. The nested modality-recovery test above separately proves that a disabled
     /// ancestor also deactivates and later restores this Popup's modal scope.</summary>
-    [ComponentBehaviorEvidence(typeof(Popup), ComponentBehavior.Disabled)]
     [Fact]
     public async Task IsEnabled_WhenPopupIsDisabledDirectlyOrByAncestor_ReflectsDisabledAndRecoversAsync()
     {
@@ -343,7 +312,6 @@ public sealed class PopupSurfaceTests
     /// <summary>Verifies a mounted Flyout proves direct and ancestor-inherited disabled state,
     /// keeps a stable surface across a genuine resize while disabled, and resumes Normal once
     /// re-enabled.</summary>
-    [ComponentBehaviorEvidence(typeof(Flyout), ComponentBehavior.Disabled)]
     [Fact]
     public async Task IsEnabled_WhenFlyoutIsDisabledDirectlyOrByAncestor_ReflectsDisabledAndRecoversAsync()
     {
@@ -403,7 +371,6 @@ public sealed class PopupSurfaceTests
     /// <summary>Verifies a mounted Tooltip proves direct and ancestor-inherited disabled state,
     /// keeps a stable surface across a genuine resize while disabled, and resumes Normal once
     /// re-enabled.</summary>
-    [ComponentBehaviorEvidence(typeof(Tooltip), ComponentBehavior.Disabled)]
     [Fact]
     public async Task IsEnabled_WhenTooltipIsDisabledDirectlyOrByAncestor_ReflectsDisabledAndRecoversAsync()
     {

@@ -94,15 +94,6 @@ public sealed class StackSurfaceTests
     }
 
     /// <summary>Verifies reverse order excludes collapsed children and routes clicks to final arranged rows.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(Stack),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Hover |
-        ComponentBehavior.FocusExcluded |
-        ComponentBehavior.TabExcluded |
-        ComponentBehavior.DirectionalExcluded |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Composition)]
     [Fact]
     public async Task Pointer_WhenStackIsReversedAndChildCollapsed_UsesVisibleVisualOrderAsync()
     {
@@ -359,11 +350,6 @@ public sealed class StackSurfaceTests
     /// restores both the original geometry and hit routing. An opaque sibling background and
     /// pointer probes prove committed cells and hit targets at every phase, not only the initial
     /// mounted state.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(Stack),
-        ComponentVisibilityEvidence.TransitionInvalidatesCorrectly |
-        ComponentVisibilityEvidence.MountedTransitionCommittedGeometry |
-        ComponentVisibilityEvidence.MountedTransitionHitTargets)]
     [Fact]
     public async Task Pointer_WhenChildTransitionsThroughVisibleHiddenCollapsedVisible_CommitsExactGeometryAndHitTargetsAsync()
     {
@@ -446,7 +432,6 @@ public sealed class StackSurfaceTests
     /// <summary>Verifies disabling a mounted Stack cascades disabled visual state and reduced
     /// EffectiveIsEnabled to its owned child, holds geometry stable across a genuine resize
     /// compared to an equivalently-built enabled instance, and recovers on re-enable.</summary>
-    [ComponentBehaviorEvidence(typeof(Stack), ComponentBehavior.Disabled)]
     [Fact]
     public async Task Enabled_WhenStackIsDisabledAndReenabled_CascadesStateAndPreservesGeometryAsync()
     {

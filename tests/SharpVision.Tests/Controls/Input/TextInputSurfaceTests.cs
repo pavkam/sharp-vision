@@ -66,14 +66,6 @@ public sealed class TextInputSurfaceTests
     }
 
     /// <summary>Verifies placeholder, focus, raw Unicode typing, wide cells, and committed cursor.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(TextInput),
-        ComponentBehavior.Mounted |
-        ComponentBehavior.Focus |
-        ComponentBehavior.Tab |
-        ComponentBehavior.PressReleaseExcluded |
-        ComponentBehavior.Activation |
-        ComponentBehavior.KeyboardActivation)]
     [Fact]
     public async Task Keyboard_WhenUnicodeTextIsTyped_ReplacesPlaceholderAndCommitsCursorAsync()
     {
@@ -145,7 +137,6 @@ public sealed class TextInputSurfaceTests
     }
 
     /// <summary>Verifies navigation, Backspace, and Delete remove complete grapheme clusters.</summary>
-    [ComponentBehaviorEvidence(typeof(TextInput), ComponentBehavior.Directional)]
     [Fact]
     public async Task Keyboard_WhenUnicodeClustersAreDeleted_NeverSplitsAGraphemeAsync()
     {
@@ -358,10 +349,6 @@ public sealed class TextInputSurfaceTests
     }
 
     /// <summary>Verifies password source is absent from cells and disabled input refuses focus and mutation.</summary>
-    [ComponentBehaviorEvidence(
-        typeof(TextInput),
-        ComponentBehavior.UnavailableCleanup |
-        ComponentBehavior.Disabled)]
     [Fact]
     public async Task Render_WhenPasswordOrDisabled_PreservesSecurityAndAvailabilityPolicyAsync()
     {
@@ -541,8 +528,6 @@ public sealed class TextInputSurfaceTests
     }
 
     /// <summary>Verifies a real cell drag selects complete graphemes including both cells of a wide rune.</summary>
-    [ComponentBehaviorEvidence(typeof(TextInput), ComponentBehavior.Hover)]
-    [ComponentBehaviorEvidence(typeof(TextInput), ComponentBehavior.PointerActivation)]
     [Fact]
     public async Task Pointer_WhenUnicodeTextIsDragged_SelectsOnlyCompleteRenderedClustersAsync()
     {

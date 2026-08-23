@@ -9,7 +9,6 @@ using Panel = Stack;
 public sealed class StackTests
 {
     /// <summary>Verifies defaults and invalid setters preserve prior state.</summary>
-    [ComponentUnitEvidence(typeof(Panel))]
     [Fact]
     public void Constructor_WhenCreated_HasValidatedDefaults()
     {
@@ -71,9 +70,6 @@ public sealed class StackTests
     }
 
     /// <summary>Verifies collapsed children consume neither a track nor adjacent spacing.</summary>
-    [ComponentVisibilityEvidence(
-        typeof(Panel),
-        ComponentVisibilityEvidence.CollapsedExcludesSize | ComponentVisibilityEvidence.CollapsedRemovesSpacingOrTrack)]
     [Fact]
     public void Layout_WhenMiddleChildIsCollapsed_RemovesItsTrackAndSpacing()
     {
@@ -371,7 +367,6 @@ public sealed class StackTests
     }
 
     /// <summary>Verifies hidden children retain their layout slot unlike collapsed ones.</summary>
-    [ComponentVisibilityEvidence(typeof(Panel), ComponentVisibilityEvidence.HiddenRetainsSlot)]
     [Fact]
     public void Layout_WhenChildIsHidden_RetainsSlotButCollapsedRemovesIt()
     {
@@ -624,7 +619,6 @@ public sealed class StackTests
 
     /// <summary>Verifies disabling a detached Stack cascades EffectiveIsEnabled to an owned child
     /// and recovers on re-enable, without needing a mounted surface.</summary>
-    [ComponentUnitEvidence(typeof(Panel), ComponentBehavior.Disabled)]
     [Fact]
     public void Enabled_WhenToggled_CascadesEffectiveIsEnabledToOwnedChild()
     {
