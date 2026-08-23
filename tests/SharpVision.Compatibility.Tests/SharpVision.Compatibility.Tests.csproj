@@ -25,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SharpVision.Document\SharpVision.Document.csproj"/>
     <ProjectReference Include="..\..\src\SharpVision.FigletFonts\SharpVision.FigletFonts.csproj"/>
+    <ProjectReference Include="..\..\src\SharpVision.SyntaxHighlighting\SharpVision.SyntaxHighlighting.csproj"/>
     <ProjectReference Include="..\..\src\SharpVision.Terminal\SharpVision.Terminal.csproj"/>
     <ProjectReference Include="..\..\src\SharpVision\SharpVision.csproj"/>
   </ItemGroup>

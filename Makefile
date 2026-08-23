@@ -71,7 +71,8 @@ test-ci: build
 	@dotnet test --project tests/SharpVision.Terminal.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 1716 --timeout $${TEST_TIMEOUT:-900s} --coverage --coverage-settings $(COVERAGE_SETTINGS) --coverage-output-format cobertura --report-xunit-trx
 	@dotnet test --project tests/SharpVision.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 2670 --timeout $${TEST_TIMEOUT:-900s} --coverage --coverage-settings $(COVERAGE_SETTINGS) --coverage-output-format cobertura --report-xunit-trx --parallel none
 	@dotnet test --project tests/SharpVision.Document.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 12 --timeout $${TEST_TIMEOUT:-900s} --coverage --coverage-settings $(COVERAGE_SETTINGS) --coverage-output-format cobertura --report-xunit-trx
-	@dotnet test --project tests/SharpVision.Compatibility.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 4 --timeout 300s --report-xunit-trx
+	@dotnet test --project tests/SharpVision.SyntaxHighlighting.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 198 --timeout $${TEST_TIMEOUT:-900s} --coverage --coverage-settings $(COVERAGE_SETTINGS) --coverage-output-format cobertura --report-xunit-trx
+	@dotnet test --project tests/SharpVision.Compatibility.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 5 --timeout 300s --report-xunit-trx
 	@echo "⏱️  Re-running performance gates without instrumentation..."
 	@dotnet test --project tests/SharpVision.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 24 --timeout 300s --filter-query "/*/SharpVision.Tests.Performance/*/*"
 	@node scripts/validate-control-coverage.mjs --results tests/SharpVision.Tests/bin/$${CONFIGURATION:-Release}/net10.0/TestResults --minimum 0.85
@@ -91,6 +92,7 @@ docs-samples:
 	@dotnet build src/SharpVision/SharpVision.csproj --configuration Release --no-restore
 	@dotnet build src/SharpVision.Document/SharpVision.Document.csproj --configuration Release --no-restore
 	@dotnet build src/SharpVision.FigletFonts/SharpVision.FigletFonts.csproj --configuration Release --no-restore
+	@dotnet build src/SharpVision.SyntaxHighlighting/SharpVision.SyntaxHighlighting.csproj --configuration Release --no-restore
 	@npm run lint:docs-samples
 	@echo "✅ Documentation samples compile."
 
@@ -100,6 +102,7 @@ lint: restore docs-samples
 	@npm run format:check
 	@npm run check:unicode
 	@npm run check:figlet
+	@npm run check:syntax-definitions
 	@npm run lint:markdown
 	@npm run lint:links
 	@npm run lint:doc-content

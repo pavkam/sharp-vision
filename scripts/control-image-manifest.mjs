@@ -49,6 +49,7 @@ export const controls = [
     { doc: "input/time-input", page: "TimeInput" },
     { doc: "collections/document", page: "Document" },
     { doc: "collections/json-view", page: "JsonView" },
+    { doc: "display/code-view", page: "CodeView" },
     { doc: "collections/list-view", page: "ListView" },
     { doc: "collections/tab-control", page: "TabControl" },
     { doc: "collections/tree-view", page: "TreeView" },

@@ -1,0 +1,408 @@
+﻿namespace SharpVision.Controls.SyntaxHighlighting
+{
+    public sealed class CodeView : SharpVision.Controls.CompositeControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.SyntaxHighlighting.CodeViewStyle>
+    {
+        public CodeView() { }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
+        public SharpVision.Controls.SyntaxHighlighting.CodeViewStyle ActualStyle { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxDefinitionCatalog Catalog { get; set; }
+        public System.Action<string>? ClipboardWriter { get; set; }
+        public string Code { get; set; }
+        public SharpVision.Terminal.Geometry.Size Extent { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxFoldRange> FoldRanges { get; }
+        public int HorizontalOffset { get; set; }
+        public bool IsFoldingEnabled { get; set; }
+        public string? Language { get; set; }
+        public int LineSize { get; set; }
+        public int PageOverlap { get; set; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
+        public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
+        public string SelectedText { get; }
+        public SharpVision.Text.Selection Selection { get; }
+        public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
+        public SharpVision.Controls.SyntaxHighlighting.CodeViewStyle? Style { get; set; }
+        public int VerticalOffset { get; set; }
+        public SharpVision.Terminal.Geometry.Size Viewport { get; }
+        public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
+        public event System.EventHandler<System.EventArgs>? SelectionChanged;
+        public void ClearSelection() { }
+        public void CollapseAll() { }
+        public string CopySelection() { }
+        public void ExpandAll() { }
+        public bool IsFoldStart(int line) { }
+        public bool IsFolded(int line) { }
+        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
+        public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
+        public void SelectAll() { }
+        public bool SetFolded(int line, bool folded) { }
+        public void SetSelection(SharpVision.Text.Selection selection) { }
+        public bool ToggleFold(int line) { }
+    }
+    public sealed class CodeViewContextMenu : SharpVision.Menus.ContextMenu
+    {
+        public CodeViewContextMenu(SharpVision.Controls.SyntaxHighlighting.CodeView owner) { }
+    }
+    public sealed class CodeViewStyle : SharpVision.Styling.ContainerStyle, System.IEquatable<SharpVision.Controls.SyntaxHighlighting.CodeViewStyle>
+    {
+        public CodeViewStyle(
+                    SharpVision.Styling.Face face,
+                    SharpVision.Styling.Border border,
+                    SharpVision.Styling.Shadow shadow,
+                    SharpVision.Styling.ControlColor normalColor,
+                    SharpVision.Styling.ControlColor keywordColor,
+                    SharpVision.Styling.ControlColor functionColor,
+                    SharpVision.Styling.ControlColor variableColor,
+                    SharpVision.Styling.ControlColor controlFlowColor,
+                    SharpVision.Styling.ControlColor operatorColor,
+                    SharpVision.Styling.ControlColor builtInColor,
+                    SharpVision.Styling.ControlColor extensionColor,
+                    SharpVision.Styling.ControlColor preprocessorColor,
+                    SharpVision.Styling.ControlColor attributeColor,
+                    SharpVision.Styling.ControlColor charColor,
+                    SharpVision.Styling.ControlColor specialCharColor,
+                    SharpVision.Styling.ControlColor stringColor,
+                    SharpVision.Styling.ControlColor verbatimStringColor,
+                    SharpVision.Styling.ControlColor specialStringColor,
+                    SharpVision.Styling.ControlColor importColor,
+                    SharpVision.Styling.ControlColor dataTypeColor,
+                    SharpVision.Styling.ControlColor decimalValueColor,
+                    SharpVision.Styling.ControlColor baseNColor,
+                    SharpVision.Styling.ControlColor floatColor,
+                    SharpVision.Styling.ControlColor constantColor,
+                    SharpVision.Styling.ControlColor commentColor,
+                    SharpVision.Styling.ControlColor documentationColor,
+                    SharpVision.Styling.ControlColor annotationColor,
+                    SharpVision.Styling.ControlColor commentVariableColor,
+                    SharpVision.Styling.ControlColor regionMarkerColor,
+                    SharpVision.Styling.ControlColor informationColor,
+                    SharpVision.Styling.ControlColor warningColor,
+                    SharpVision.Styling.ControlColor alertColor,
+                    SharpVision.Styling.ControlColor othersColor,
+                    SharpVision.Styling.ControlColor errorColor,
+                    SharpVision.Styling.ControlColor selectedTextColor,
+                    SharpVision.Styling.ControlColor selectedBackground,
+                    SharpVision.Styling.ControlColor gutterColor,
+                    System.Text.Rune collapsedGlyph,
+                    System.Text.Rune expandedGlyph) { }
+        public required SharpVision.Styling.ControlColor AlertColor { get; init; }
+        public required SharpVision.Styling.ControlColor AnnotationColor { get; init; }
+        public required SharpVision.Styling.ControlColor AttributeColor { get; init; }
+        public required SharpVision.Styling.ControlColor BaseNColor { get; init; }
+        public required SharpVision.Styling.ControlColor BuiltInColor { get; init; }
+        public required SharpVision.Styling.ControlColor CharColor { get; init; }
+        public required System.Text.Rune CollapsedGlyph { get; init; }
+        public required SharpVision.Styling.ControlColor CommentColor { get; init; }
+        public required SharpVision.Styling.ControlColor CommentVariableColor { get; init; }
+        public required SharpVision.Styling.ControlColor ConstantColor { get; init; }
+        public required SharpVision.Styling.ControlColor ControlFlowColor { get; init; }
+        public required SharpVision.Styling.ControlColor DataTypeColor { get; init; }
+        public required SharpVision.Styling.ControlColor DecimalValueColor { get; init; }
+        public required SharpVision.Styling.ControlColor DocumentationColor { get; init; }
+        public required SharpVision.Styling.ControlColor ErrorColor { get; init; }
+        public required System.Text.Rune ExpandedGlyph { get; init; }
+        public required SharpVision.Styling.ControlColor ExtensionColor { get; init; }
+        public required SharpVision.Styling.ControlColor FloatColor { get; init; }
+        public required SharpVision.Styling.ControlColor FunctionColor { get; init; }
+        public required SharpVision.Styling.ControlColor GutterColor { get; init; }
+        public required SharpVision.Styling.ControlColor ImportColor { get; init; }
+        public required SharpVision.Styling.ControlColor InformationColor { get; init; }
+        public required SharpVision.Styling.ControlColor KeywordColor { get; init; }
+        public required SharpVision.Styling.ControlColor NormalColor { get; init; }
+        public required SharpVision.Styling.ControlColor OperatorColor { get; init; }
+        public required SharpVision.Styling.ControlColor OthersColor { get; init; }
+        public required SharpVision.Styling.ControlColor PreprocessorColor { get; init; }
+        public required SharpVision.Styling.ControlColor RegionMarkerColor { get; init; }
+        public required SharpVision.Styling.ControlColor SelectedBackground { get; init; }
+        public required SharpVision.Styling.ControlColor SelectedTextColor { get; init; }
+        public required SharpVision.Styling.ControlColor SpecialCharColor { get; init; }
+        public required SharpVision.Styling.ControlColor SpecialStringColor { get; init; }
+        public required SharpVision.Styling.ControlColor StringColor { get; init; }
+        public required SharpVision.Styling.ControlColor VariableColor { get; init; }
+        public required SharpVision.Styling.ControlColor VerbatimStringColor { get; init; }
+        public required SharpVision.Styling.ControlColor WarningColor { get; init; }
+        public new static SharpVision.Controls.SyntaxHighlighting.CodeViewStyle Default { get; }
+        public SharpVision.Styling.ControlColor ColorFor(SharpVision.SyntaxHighlighting.SyntaxDefaultStyle role) { }
+    }
+}
+namespace SharpVision.SyntaxHighlighting
+{
+    public sealed class SyntaxCommentDefinition
+    {
+        public string? End { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxCommentKind Kind { get; }
+        public bool MatchAfterWhitespace { get; }
+        public string? Region { get; }
+        public string Start { get; }
+    }
+    public enum SyntaxCommentKind
+    {
+        SingleLine = 0,
+        MultiLine = 1,
+    }
+    public sealed class SyntaxCompiledRule
+    {
+        public SharpVision.SyntaxHighlighting.SyntaxDefaultStyle? ResolvedStyle { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxContextTarget ResolvedTarget { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxRule Source { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxRuleMatch TryMatch(string line, int offset, System.Collections.Generic.IReadOnlyList<string> captures) { }
+    }
+    public sealed class SyntaxContext
+    {
+        public string? AttributeName { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxContextSwitch FallthroughContext { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxContextSwitch LineEmptyContext { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxContextSwitch LineEndContext { get; }
+        public string Name { get; }
+        public bool NoIndentationBasedFolding { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxRule> Rules { get; }
+        public bool StopEmptyLineContextSwitchLoop { get; }
+    }
+    public readonly struct SyntaxContextReference : System.IEquatable<SharpVision.SyntaxHighlighting.SyntaxContextReference>
+    {
+        public string ContextName { get; }
+        public string? DefinitionName { get; }
+    }
+    public readonly struct SyntaxContextSwitch : System.IEquatable<SharpVision.SyntaxHighlighting.SyntaxContextSwitch>
+    {
+        public bool IsStay { get; }
+        public int PopCount { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxContextReference> Targets { get; }
+    }
+    public readonly struct SyntaxContextTarget : System.IEquatable<SharpVision.SyntaxHighlighting.SyntaxContextTarget>
+    {
+        public static readonly SharpVision.SyntaxHighlighting.SyntaxContextTarget Stay;
+        public bool IsStay { get; }
+        public int PopCount { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxContextTargetEntry> Pushes { get; }
+    }
+    public readonly struct SyntaxContextTargetEntry : System.IEquatable<SharpVision.SyntaxHighlighting.SyntaxContextTargetEntry>
+    {
+        public int ContextIndex { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxGrammar Grammar { get; }
+    }
+    public enum SyntaxDefaultStyle
+    {
+        Normal = 0,
+        Keyword = 1,
+        Function = 2,
+        Variable = 3,
+        ControlFlow = 4,
+        Operator = 5,
+        BuiltIn = 6,
+        Extension = 7,
+        Preprocessor = 8,
+        Attribute = 9,
+        Char = 10,
+        SpecialChar = 11,
+        String = 12,
+        VerbatimString = 13,
+        SpecialString = 14,
+        Import = 15,
+        DataType = 16,
+        DecimalValue = 17,
+        BaseN = 18,
+        Float = 19,
+        Constant = 20,
+        Comment = 21,
+        Documentation = 22,
+        Annotation = 23,
+        CommentVariable = 24,
+        RegionMarker = 25,
+        Information = 26,
+        Warning = 27,
+        Alert = 28,
+        Others = 29,
+        Error = 30,
+    }
+    public sealed class SyntaxDefinition
+    {
+        public System.Collections.Generic.IReadOnlyList<string> AlternativeNames { get; }
+        public string Author { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxContext> Contexts { get; }
+        public System.Collections.Generic.IReadOnlyList<string> Extensions { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxGeneralOptions General { get; }
+        public bool Hidden { get; }
+        public string? Indenter { get; }
+        public System.Collections.Generic.IReadOnlyDictionary<string, SharpVision.SyntaxHighlighting.SyntaxItemData> ItemDataSet { get; }
+        public System.Collections.Generic.IReadOnlyDictionary<string, SharpVision.SyntaxHighlighting.SyntaxKeywordList> KeywordLists { get; }
+        public string License { get; }
+        public System.Collections.Generic.IReadOnlyList<string> MimeTypes { get; }
+        public string Name { get; }
+        public int? Priority { get; }
+        public string Section { get; }
+        public int Version { get; }
+    }
+    public sealed class SyntaxDefinitionCatalog
+    {
+        public System.Collections.Generic.IReadOnlyList<string> Names { get; }
+        public static SharpVision.SyntaxHighlighting.SyntaxDefinitionCatalog Default { get; }
+        public string? FindNameForFile(string fileName) { }
+        public SharpVision.SyntaxHighlighting.SyntaxDefinition GetDefinition(string name) { }
+        public SharpVision.SyntaxHighlighting.SyntaxGrammar GetGrammar(string name) { }
+        public SharpVision.SyntaxHighlighting.SyntaxDefinitionInfo GetInfo(string name) { }
+        public static SharpVision.SyntaxHighlighting.SyntaxDefinitionCatalog FromDirectory(string path) { }
+    }
+    public readonly struct SyntaxDefinitionInfo : System.IEquatable<SharpVision.SyntaxHighlighting.SyntaxDefinitionInfo>
+    {
+        public System.Collections.Generic.IReadOnlyList<string> AlternativeNames { get; }
+        public string Author { get; }
+        public int Bytes { get; }
+        public System.Collections.Generic.IReadOnlyList<string> Extensions { get; }
+        public string File { get; }
+        public string License { get; }
+        public System.Collections.Generic.IReadOnlyList<string> MimeTypes { get; }
+        public string Name { get; }
+        public string Section { get; }
+        public string Sha256 { get; }
+        public string SourceCommit { get; }
+        public string SourceRepository { get; }
+    }
+    public static class SyntaxDefinitionReader
+    {
+        public static SharpVision.SyntaxHighlighting.SyntaxDefinition Read(string xml) { }
+    }
+    public sealed class SyntaxEmptyLineRule
+    {
+        public bool CaseSensitive { get; }
+        public string Pattern { get; }
+    }
+    public readonly struct SyntaxFoldRange : System.IEquatable<SharpVision.SyntaxHighlighting.SyntaxFoldRange>
+    {
+        public int EndLine { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxFoldRangeKind Kind { get; }
+        public string? RegionName { get; }
+        public int StartLine { get; }
+    }
+    public enum SyntaxFoldRangeKind
+    {
+        Region = 0,
+        Indentation = 1,
+    }
+    public readonly struct SyntaxFoldingOptions : System.IEquatable<SharpVision.SyntaxHighlighting.SyntaxFoldingOptions>
+    {
+        public bool IndentationSensitive { get; }
+    }
+    public sealed class SyntaxGeneralOptions
+    {
+        public string AdditionalDeliminator { get; }
+        public bool CaseSensitiveKeywords { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxCommentDefinition> Comments { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxEmptyLineRule> EmptyLineRules { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxFoldingOptions Folding { get; }
+        public string WeakDeliminator { get; }
+    }
+    public sealed class SyntaxGrammar
+    {
+        public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxGrammarContext> Contexts { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxDefinition Definition { get; }
+        public static SharpVision.SyntaxHighlighting.SyntaxGrammar Compile(SharpVision.SyntaxHighlighting.SyntaxDefinition definition, System.Func<string, SharpVision.SyntaxHighlighting.SyntaxDefinition?>? resolveDefinition = null) { }
+    }
+    public sealed class SyntaxGrammarContext
+    {
+        public SharpVision.SyntaxHighlighting.SyntaxDefaultStyle AttributeStyle { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxContextTarget FallthroughTarget { get; }
+        public bool IndentationBasedFoldingEnabled { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxContextTarget LineEmptyTarget { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxContextTarget LineEndTarget { get; }
+        public string Name { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxCompiledRule> Rules { get; }
+        public bool StopEmptyLineContextSwitchLoop { get; }
+    }
+    public sealed class SyntaxHighlightResult
+    {
+        public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxFoldRange> FoldRanges { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxHighlightedLine> Lines { get; }
+    }
+    public readonly struct SyntaxHighlightedLine : System.IEquatable<SharpVision.SyntaxHighlighting.SyntaxHighlightedLine>
+    {
+        public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxToken> Tokens { get; }
+    }
+    public readonly struct SyntaxItemData : System.IEquatable<SharpVision.SyntaxHighlighting.SyntaxItemData>
+    {
+        public SharpVision.SyntaxHighlighting.SyntaxDefaultStyle DefaultStyle { get; }
+        public string Name { get; }
+    }
+    public sealed class SyntaxKeywordList
+    {
+        public System.Collections.Generic.IReadOnlyList<string> CrossDefinitionIncludes { get; }
+        public string Name { get; }
+        public System.Collections.Generic.IReadOnlyList<string> Words { get; }
+    }
+    public sealed class SyntaxKeywordMatcher
+    {
+        public int Match(System.ReadOnlySpan<char> line, int offset) { }
+    }
+    public sealed class SyntaxRule
+    {
+        public string AdditionalDeliminator { get; }
+        public string? AttributeName { get; }
+        public string? BeginRegion { get; }
+        public char Char1 { get; }
+        public char Char2 { get; }
+        public int? Column { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxContextSwitch ContextSwitch { get; }
+        public bool Dynamic { get; }
+        public string? EndRegion { get; }
+        public bool FirstNonSpace { get; }
+        public bool IncludeAttribute { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxContextReference? IncludeContext { get; }
+        public bool Insensitive { get; }
+        public bool? KeywordCaseSensitiveOverride { get; }
+        public string? KeywordListName { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxRuleKind Kind { get; }
+        public bool LookAhead { get; }
+        public bool Minimal { get; }
+        public string? Text { get; }
+        public string WeakDeliminator { get; }
+    }
+    public enum SyntaxRuleKind
+    {
+        Keyword = 0,
+        Float = 1,
+        Octal = 2,
+        Hex = 3,
+        Integer = 4,
+        Character = 5,
+        TwoCharacter = 6,
+        AnyCharacter = 7,
+        StringMatch = 8,
+        WordMatch = 9,
+        RegularExpression = 10,
+        LineContinuation = 11,
+        EscapedCharacter = 12,
+        Range = 13,
+        QuotedCharacter = 14,
+        IncludeRules = 15,
+        DetectSpaces = 16,
+        DetectIdentifier = 17,
+    }
+    public readonly struct SyntaxRuleMatch : System.IEquatable<SharpVision.SyntaxHighlighting.SyntaxRuleMatch>
+    {
+        public static readonly SharpVision.SyntaxHighlighting.SyntaxRuleMatch None;
+        public System.Collections.Generic.IReadOnlyList<string> Captures { get; }
+        public int Length { get; }
+        public bool Success { get; }
+    }
+    public readonly struct SyntaxToken : System.IEquatable<SharpVision.SyntaxHighlighting.SyntaxToken>
+    {
+        public int Length { get; }
+        public int Start { get; }
+        public SharpVision.SyntaxHighlighting.SyntaxDefaultStyle Style { get; }
+    }
+    public static class SyntaxTokenizer
+    {
+        public static SharpVision.SyntaxHighlighting.SyntaxHighlightResult Tokenize(SharpVision.SyntaxHighlighting.SyntaxGrammar grammar, string text) { }
+    }
+    public readonly struct SyntaxWordDelimiters : System.IEquatable<SharpVision.SyntaxHighlighting.SyntaxWordDelimiters>
+    {
+        public static SharpVision.SyntaxHighlighting.SyntaxWordDelimiters Default { get; }
+        public bool Contains(char value) { }
+        public bool Equals(SharpVision.SyntaxHighlighting.SyntaxWordDelimiters other) { }
+        public override bool Equals(object? obj) { }
+        public override int GetHashCode() { }
+        public SharpVision.SyntaxHighlighting.SyntaxWordDelimiters With(string additional, string weak) { }
+        public static bool operator !=(SharpVision.SyntaxHighlighting.SyntaxWordDelimiters left, SharpVision.SyntaxHighlighting.SyntaxWordDelimiters right) { }
+        public static bool operator ==(SharpVision.SyntaxHighlighting.SyntaxWordDelimiters left, SharpVision.SyntaxHighlighting.SyntaxWordDelimiters right) { }
+    }
+}

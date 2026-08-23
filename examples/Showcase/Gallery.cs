@@ -57,6 +57,7 @@ public sealed class Gallery: Screen
         ("Display", DocumentPane.Title, static () => new DocumentPane()),
         ("Display", MarkdownPane.Title, static () => new MarkdownPane()),
         ("Collections", JsonViewPane.Title, static () => new JsonViewPane()),
+        ("Display", CodeViewPane.Title, static () => new CodeViewPane()),
         ("Collections", ListViewPane.Title, static () => new ListViewPane()),
         ("Navigation", MenuPane.Title, static () => new MenuPane()),
         ("Navigation", MenuItemPane.Title, static () => new MenuItemPane()),

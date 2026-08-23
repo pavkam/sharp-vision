@@ -67,6 +67,17 @@ public sealed class PublicApiCompatibilityTests
         return VerifyPublicApiAsync(assembly, "SharpVision.FigletFonts");
     }
 
+    /// <summary>
+    /// Verifies the optional syntax-highlighting library against the approved public API baseline.
+    /// </summary>
+    [Fact]
+    public Task SharpVisionSyntaxHighlighting_WhenComparedWithApprovedBaseline_MatchesApprovedPublicApi()
+    {
+        var assembly = typeof(SyntaxHighlighting.SyntaxDefinitionCatalog).Assembly;
+
+        return VerifyPublicApiAsync(assembly, "SharpVision.SyntaxHighlighting");
+    }
+
     private static Task VerifyPublicApiAsync(Assembly assembly, string assemblyName)
     {
         var publicApi = assembly.GeneratePublicApi();

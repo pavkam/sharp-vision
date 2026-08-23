@@ -10,6 +10,7 @@
     <SharpVisionVersion>1.1.0-beta.1</SharpVisionVersion>
     <SharpVisionDocumentVersion>1.1.0-beta.1</SharpVisionDocumentVersion>
     <SharpVisionFigletFontsVersion>1.1.0-beta.1</SharpVisionFigletFontsVersion>
+    <SharpVisionSyntaxHighlightingVersion>1.1.0-beta.1</SharpVisionSyntaxHighlightingVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'SharpVision.Terminal'">
@@ -26,6 +27,10 @@
 
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'SharpVision.FigletFonts'">
     <Version>$(SharpVisionFigletFontsVersion)</Version>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'SharpVision.SyntaxHighlighting'">
+    <Version>$(SharpVisionSyntaxHighlightingVersion)</Version>
   </PropertyGroup>
 
   <!-- Every other project (tests, examples, the showcase) is unpackaged and unpublished, so it

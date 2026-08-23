@@ -1045,6 +1045,19 @@ export async function validateControlDocStructure(root) {
         }
     }
 
+    try {
+        snapshotTexts.push(
+            await readFile(
+                join(snapshotsRoot, "SharpVision.SyntaxHighlighting.verified.txt"),
+                "utf8",
+            ),
+        );
+    } catch (error) {
+        if (error.code !== "ENOENT") {
+            throw error;
+        }
+    }
+
     const snapshotMap = new Map();
 
     for (const snapshotText of snapshotTexts) {

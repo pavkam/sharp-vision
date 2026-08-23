@@ -1,0 +1,52 @@
+# KDE syntax-highlighting definition provenance
+
+## Curated source
+
+`SharpVision.SyntaxHighlighting` embeds only the syntax-definition XML files
+from [`KDE/syntax-highlighting`](https://github.com/KDE/syntax-highlighting) at
+commit `60cfa684b64cccde19bf12c74db52129709ed863` whose own
+`<language license="…">` attribute, or an in-file `SPDX-License-Identifier`
+header, states an unambiguous permissive license: `MIT`, `BSD-3-Clause`,
+`CC0-1.0`, `Zlib`, or an explicit `Public Domain` dedication.
+
+At that commit, `data/syntax/` contains 409 definitions. 159 meet that bar and
+are embedded; the remaining 250 are excluded because they carry no `license`
+attribute at all, an empty one, an ambiguous bare `"BSD"` value with no clause
+count, or a copyleft license (GPL, LGPL, and similar). Notably this excludes
+several widely used definitions upstream ships under GPL/LGPL or with no stated
+license at all, including C, C#, Python, PHP, Lua, MATLAB, Objective-C, Pascal,
+and JSON. `SharpVision.SyntaxHighlighting`'s loader still accepts any KDE-format
+XML file supplied from an application's own file system at runtime (see
+`SyntaxDefinitionCatalog.FromFile`/`FromDirectory`), matching upstream Kate's
+own local-override model, so an application remains free to add one of these
+excluded definitions on its own without this package redistributing it.
+
+## Reproduction
+
+Check out the pinned commit above, then run:
+
+```bash
+node scripts/package-syntax-definitions.mjs \
+  --source /path/to/syntax-highlighting \
+  --output src/SharpVision.SyntaxHighlighting/Resources/Syntax
+
+node scripts/audit-syntax-definitions.mjs \
+  --source src/SharpVision.SyntaxHighlighting/Resources/Syntax \
+  --output src/SharpVision.SyntaxHighlighting/Resources/syntax.manifest.json
+```
+
+The packaging script rejects a source checkout whose `HEAD` is not the pinned
+commit and copies only files whose stated license passes the classification
+above. The audit script re-derives the manifest from the staged files and fails
+on drift.
+
+## Verification
+
+```bash
+node --test scripts/audit-syntax-definitions.test.mjs scripts/package-syntax-definitions.test.mjs
+
+node scripts/audit-syntax-definitions.mjs \
+  --source src/SharpVision.SyntaxHighlighting/Resources/Syntax \
+  --output src/SharpVision.SyntaxHighlighting/Resources/syntax.manifest.json \
+  --check
+```

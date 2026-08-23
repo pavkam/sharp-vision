@@ -102,6 +102,8 @@ Complete modal tasks such as `MessageBox` live in
 - [Spinner](display/spinner.md#overview)
 - [ChaseIndicator](display/chase-indicator.md#overview)
 - [StatusBar and StatusBarItem](display/status-bar.md#overview)
+- [CodeView](display/code-view.md#overview)
+- [Syntax highlighting](../concepts/syntax-highlighting.md#overview)
 
 ### Charts
 

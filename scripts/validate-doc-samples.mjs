@@ -91,6 +91,7 @@ const harnessUsings = [
   "SharpVision.Controls.Input",
   "SharpVision.Controls.Layout",
   "SharpVision.Controls.Scrolling",
+  "SharpVision.Controls.SyntaxHighlighting",
   "SharpVision.DataBinding",
   "SharpVision.Dialogs",
   "SharpVision.Documents",
@@ -105,6 +106,7 @@ const harnessUsings = [
   "SharpVision.Scrolling",
   "SharpVision.Styling",
   "SharpVision.Surfaces",
+  "SharpVision.SyntaxHighlighting",
   "SharpVision.Terminal.Geometry",
   "SharpVision.Terminal.Protocols",
   "SharpVision.Terminal.Rendering",
@@ -658,17 +660,26 @@ async function main() {
     "Release",
     "net10.0",
   );
+  const syntaxHighlightingRoot = resolve(
+    process.cwd(),
+    "src",
+    "SharpVision.SyntaxHighlighting",
+    "bin",
+    "Release",
+    "net10.0",
+  );
   const sharpVisionAssemblies = [
     join(sharpVisionRoot, "SharpVision.dll"),
     join(sharpVisionRoot, "SharpVision.Terminal.dll"),
     join(figletFontsRoot, "SharpVision.FigletFonts.dll"),
     join(documentRoot, "SharpVision.Document.dll"),
+    join(syntaxHighlightingRoot, "SharpVision.SyntaxHighlighting.dll"),
   ];
 
   for (const assembly of sharpVisionAssemblies) {
     if (!existsSync(assembly)) {
       console.error(
-        `${assembly} is missing. Build SharpVision, SharpVision.Document, and SharpVision.FigletFonts in Release before running this check.`,
+        `${assembly} is missing. Build SharpVision, SharpVision.Document, SharpVision.FigletFonts, and SharpVision.SyntaxHighlighting in Release before running this check.`,
       );
       process.exitCode = 1;
       return;
