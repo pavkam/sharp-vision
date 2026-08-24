@@ -3951,6 +3951,54 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     protected virtual AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
         (theme ?? ThemeCatalog.Dark).GetStyleSet(ControlStyle.Default).ToAppearanceStates();
 
+    /// <summary>Resolves the concrete appearance this control presents for one explicit
+    /// prospective Theme and one exact visual-state combination, without attachment.</summary>
+    /// <param name="theme">The prospective inherited Theme to resolve against, or null for the
+    /// library fallback.</param>
+    /// <param name="visualState">The exact visual-state flags to fold, exactly as the live
+    /// properties fold the control's current state.</param>
+    /// <returns>The complete appearance with every semantic color and decoration resolved to a
+    /// literal against the supplied Theme.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="visualState"/> contains
+    /// unknown flags.</exception>
+    /// <exception cref="ArgumentException">A paint channel resolved to transparent, or resolving
+    /// decorations against the supplied Theme produced a conflict.</exception>
+    /// <remarks>
+    /// This is the sanctioned seam for asserting theme-resolved appearance without a mounted
+    /// application: it runs the identical resolution <see cref="ActualFace"/>,
+    /// <see cref="ActualBorder"/>, and <see cref="ActualShadow"/> read - appearance-state
+    /// selection through the same derived hooks, visual-state and local-overlay folding, ambient
+    /// inheritance, and semantic resolution - against the supplied Theme instead of the inherited
+    /// one, bypassing the resolved-appearance cache and publishing no change. The control and its
+    /// ancestors resolve as if the entire tree inherited the supplied Theme, so ambient
+    /// inheritance across a transparent chain previews consistently. Local style, face, border,
+    /// shadow, and per-state appearance values participate exactly as they do live.
+    /// </remarks>
+    public ControlAppearance ResolveAppearance(Theme? theme, VisualState visualState = VisualState.Normal)
+    {
+        VerifyKnownVisualState(visualState, nameof(visualState));
+
+        var resolved = this.ResolveSnapshot(
+            visualState,
+            theme,
+            GetAppearanceStates(theme),
+            ResolveProspectiveAmbientFace(theme));
+        return new ControlAppearance(resolved.Face, resolved.Border, resolved.Shadow);
+    }
+
+    /// <summary>Resolves the ambient face one prospective Theme would publish from this control's
+    /// ancestor chain, mirroring the live parent-ambient walk at explicit-Theme fidelity.</summary>
+    /// <param name="theme">The prospective inherited Theme, or null for the library fallback.</param>
+    /// <returns>The prospective parent ambient face, or null at a root.</returns>
+    private Face? ResolveProspectiveAmbientFace(Theme? theme) =>
+        Parent is { } parent
+            ? parent.ResolveSnapshot(
+                parent.AmbientAppearanceState,
+                theme,
+                parent.GetAppearanceStates(theme),
+                parent.ResolveProspectiveAmbientFace(theme)).Face
+            : null;
+
     /// <summary>Calculates exact invalidation for a prospective inherited Theme replacement.</summary>
     /// <param name="previous">The currently inherited Theme, or null.</param>
     /// <param name="current">The prospective inherited Theme, or null.</param>
@@ -4226,14 +4274,19 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <inheritdoc/>
     protected internal TerminalStyle GetResolvedStyle(VisualState state) => GetResolvedAppearance(state).Style;
 
-    internal ResolvedAppearance GetResolvedAppearance(VisualState state)
+    private static void VerifyKnownVisualState(VisualState state, string paramName)
     {
         const int stateCount = 1 << 9;
-        var index = (int) state;
-        if ((uint) index >= stateCount)
+
+        if ((uint) state >= stateCount)
         {
-            throw new ArgumentOutOfRangeException(nameof(state), state, "The visual state contains unknown flags.");
+            throw new ArgumentOutOfRangeException(paramName, state, "The visual state contains unknown flags.");
         }
+    }
+
+    internal ResolvedAppearance GetResolvedAppearance(VisualState state)
+    {
+        VerifyKnownVisualState(state, nameof(state));
 
         var cache = _resolvedAppearanceCache;
 

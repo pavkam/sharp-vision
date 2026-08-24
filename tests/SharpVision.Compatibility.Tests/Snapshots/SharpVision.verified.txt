@@ -427,6 +427,7 @@ namespace SharpVision.Controls
         protected bool ResetOptionalGlyph(ref System.Text.Rune? storage, string propertyName) { }
         public void ResetShadow() { }
         protected int ResolveAffixGap() { }
+        public SharpVision.Styling.ControlAppearance ResolveAppearance(SharpVision.Styling.Theme? theme, SharpVision.Styling.VisualState visualState = 0) { }
         protected SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.ControlColor value) { }
         protected SharpVision.Terminal.Geometry.Rect RootBounds(SharpVision.Terminal.Geometry.Rect fallback) { }
         protected void SetAppearance(SharpVision.Styling.VisualState state, SharpVision.Styling.AppearanceOverlay? appearance) { }

@@ -85,7 +85,11 @@ complete control Style.
 `ActualFace`, `ActualBorder`, and `ActualShadow` expose the fully resolved
 values for the control's current state. They are always available, even when no
 local value has been assigned, and they are the supported inspection surface for
-third-party rendering and composition.
+third-party rendering and composition. `ResolveAppearance(theme, visualState)`
+resolves the same appearance for one explicit theme and visual-state combination
+without requiring attachment - the seam consumer tests use to assert
+theme-resolved values, with every semantic color resolved to the supplied
+theme's literal.
 
 IsActive states apply in this order:
 

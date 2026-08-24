@@ -258,6 +258,191 @@ public sealed class AppearanceResolverTests
         (probe.Pending & Invalidation.Measure).ShouldBe(Invalidation.None);
     }
 
+    /// <summary>Verifies the public preview resolves identically to the live cached pipeline for
+    /// the control's own inherited Theme, across control shapes, themes, and state combinations —
+    /// the equivalence contract that makes a preview assertion a proof about what the control
+    /// actually presents.</summary>
+    [Fact]
+    public void ResolveAppearance_WhenThemeMatchesTheInheritedOne_MatchesLiveResolutionExactly()
+    {
+        Theme[] themes = [ThemeCatalog.Dark, ThemeCatalog.White];
+        VisualState[] states =
+        [
+            VisualState.Normal,
+            VisualState.Focused,
+            VisualState.Disabled,
+            VisualState.Focused | VisualState.IsPointerOver,
+            VisualState.Selected | VisualState.FocusWithin
+        ];
+
+        foreach (var theme in themes)
+        {
+            ControlBase[] controls =
+                [new Button(), new TextInput(), new GroupBox(), new Window(), new Popup(), new StyledProbe()];
+
+            foreach (var control in controls)
+            {
+                control.SetTheme(theme);
+
+                foreach (var state in states)
+                {
+                    var preview = control.ResolveAppearance(theme, state);
+
+                    preview.ShouldBe(new ControlAppearance(
+                        control.GetActualFace(state),
+                        control.GetActualBorder(state),
+                        control.GetActualShadow(state)));
+                }
+            }
+        }
+    }
+
+    /// <summary>Verifies a preview of a Theme the control does not yet inherit matches what the
+    /// live pipeline resolves once that Theme actually arrives — the prospective half of the
+    /// equivalence contract, resolved through the same derived hooks the transition planner
+    /// uses.</summary>
+    [Fact]
+    public void ResolveAppearance_WhenPreviewingAProspectiveTheme_MatchesLiveResolutionAfterTheSwap()
+    {
+        using var control = new StyledProbe();
+        control.SetTheme(ThemeCatalog.Dark);
+
+        var preview = control.ResolveAppearance(ThemeCatalog.White, VisualState.Focused);
+        control.SetTheme(ThemeCatalog.White);
+
+        preview.ShouldBe(new ControlAppearance(
+            control.GetActualFace(VisualState.Focused),
+            control.GetActualBorder(VisualState.Focused),
+            control.GetActualShadow(VisualState.Focused)));
+    }
+
+    /// <summary>Verifies a null Theme previews the same library-fallback resolution an unthemed
+    /// control presents live: Dark's style sets with every semantic color floored to the default
+    /// literal.</summary>
+    [Fact]
+    public void ResolveAppearance_WhenThemeIsNull_MatchesUnthemedLiveResolution()
+    {
+        using var control = new Button();
+
+        var preview = control.ResolveAppearance(theme: null, VisualState.Disabled);
+
+        preview.ShouldBe(new ControlAppearance(
+            control.GetActualFace(VisualState.Disabled),
+            control.GetActualBorder(VisualState.Disabled),
+            control.GetActualShadow(VisualState.Disabled)));
+    }
+
+    /// <summary>Verifies the preview resolves ambient inheritance through the ancestor chain under
+    /// the supplied Theme: a transparent child previews the same inherited foreground the live
+    /// pipeline resolves, not its own authored one.</summary>
+    [Fact]
+    public void ResolveAppearance_WhenAncestorsSupplyAmbientFace_ResolvesTheChainUnderTheSuppliedTheme()
+    {
+        var profile = new AppearanceStates(
+            new ControlAppearance(
+                AppearanceTestValues.Face(
+                    foreground: Color.Rgb(1, 1, 1),
+                    background: Color.Transparent),
+                AppearanceTestValues.Border(BorderSide.None),
+                AppearanceTestValues.Shadow(visible: false)));
+        using var root = new Stack();
+        var middle = new Stack();
+        var child = new StyledProbe { AppearanceStatesOverride = profile };
+        root.Children.Add(middle);
+        middle.Children.Add(child);
+        root.PropagateTheme(ThemeCatalog.White);
+
+        var preview = child.ResolveAppearance(ThemeCatalog.White);
+
+        preview.Face.ShouldBe(child.GetActualFace(VisualState.Normal));
+        preview.Face.Foreground.ShouldBe(
+            middle.GetActualFace(middle.AmbientAppearanceState).Foreground);
+        preview.Face.Foreground.Literal.ShouldNotBe(Color.Rgb(1, 1, 1));
+    }
+
+    /// <summary>Verifies the prospective ambient walk agrees with the live one end-to-end: a
+    /// child's preview taken while the tree is still unthemed equals what the live pipeline
+    /// resolves once the root propagates that Theme through the subtree — the same publication a
+    /// mounted application's Theme swap performs. (A bare root SetTheme is narrower: it themes the
+    /// root alone and reaches descendants only ambiently, which is not the coherent whole-tree
+    /// inheritance the preview models.)</summary>
+    [Fact]
+    public void ResolveAppearance_WhenPreviewingBeforeTheTreeIsThemed_MatchesTheChildsResolutionAfterThePropagation()
+    {
+        using var root = new Stack();
+        var child = new ControlText("x");
+        root.Children.Add(child);
+
+        var preview = child.ResolveAppearance(ThemeCatalog.White);
+        root.PropagateTheme(ThemeCatalog.White);
+
+        preview.ShouldBe(new ControlAppearance(
+            child.GetActualFace(VisualState.Normal),
+            child.GetActualBorder(VisualState.Normal),
+            child.GetActualShadow(VisualState.Normal)));
+    }
+
+    /// <summary>Verifies developer-owned local values — a complete local face and a per-state
+    /// local overlay — participate in the preview exactly as they do live, since local values are
+    /// what a control author most often needs to prove against a theme.</summary>
+    [Fact]
+    public void ResolveAppearance_WhenLocalAppearanceValuesExist_HonorsThemExactlyAsLiveResolutionDoes()
+    {
+        using var probe = new ChromeProbe();
+        probe.SetTheme(ThemeCatalog.Dark);
+        probe.Face = AppearanceTestValues.Face(
+            foreground: Color.Rgb(3, 3, 3),
+            background: Color.Rgb(4, 4, 4));
+        probe.SetStateAppearance(
+            VisualState.Focused,
+            new AppearanceOverlay(face: new FaceOverlay(foreground: Color.Rgb(5, 5, 5))));
+
+        var preview = probe.ResolveAppearance(ThemeCatalog.Dark, VisualState.Focused);
+
+        preview.ShouldBe(new ControlAppearance(
+            probe.GetActualFace(VisualState.Focused),
+            probe.GetActualBorder(VisualState.Focused),
+            probe.GetActualShadow(VisualState.Focused)));
+        preview.Face.Foreground.Literal.ShouldBe(Color.Rgb(5, 5, 5));
+    }
+
+    /// <summary>Verifies the preview is a pure read: no resolved-appearance cache entries, no
+    /// invalidation, and no property notifications — so asserting a prospective Theme in a test
+    /// cannot perturb the control it asserts on.</summary>
+    [Fact]
+    public void ResolveAppearance_WhenCalled_BypassesTheCacheAndPublishesNothing()
+    {
+        using var probe = new ChromeProbe();
+        probe.SetTheme(ThemeCatalog.Dark);
+        var live = probe.GetActualFace(VisualState.Normal);
+        var resolutions = probe.UncachedAppearanceResolutionCount;
+        var notifications = new List<string?>();
+        probe.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+        probe.Clear(Invalidation.All);
+
+        _ = probe.ResolveAppearance(ThemeCatalog.White);
+        _ = probe.ResolveAppearance(ThemeCatalog.White, VisualState.Focused);
+        _ = probe.ResolveAppearance(theme: null, VisualState.Disabled);
+        _ = probe.ResolveAppearance(ThemeCatalog.Dark);
+
+        probe.UncachedAppearanceResolutionCount.ShouldBe(resolutions);
+        notifications.ShouldBeEmpty();
+        probe.Pending.ShouldBe(Invalidation.None);
+        probe.GetActualFace(VisualState.Normal).ShouldBe(live);
+    }
+
+    /// <summary>Verifies the public entry rejects unknown state flags with the same contract the
+    /// live resolution entry enforces.</summary>
+    [Fact]
+    public void ResolveAppearance_WhenVisualStateContainsUnknownFlags_Throws()
+    {
+        using var control = new Button();
+
+        Should.Throw<ArgumentOutOfRangeException>(
+                () => control.ResolveAppearance(ThemeCatalog.Dark, (VisualState) (1 << 9)))
+            .ParamName.ShouldBe("visualState");
+    }
+
     private static AppearanceOverlay ShadowGeometryOverlay =>
         new(shadow: new ShadowOverlay(isVisible: true, offset: new Point(2, 1)));
 

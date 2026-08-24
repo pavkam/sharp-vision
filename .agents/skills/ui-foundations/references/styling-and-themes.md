@@ -112,6 +112,12 @@ probes using synthetic `test.*` keys.
   appearance and carry concrete colors. A style's own `Face` still carries
   semantic tokens. Never assert one against the other — compare each in its own
   representation, or resolve explicitly with `theme.ResolveColor(...)`.
+- `ResolveAppearance(theme, visualState)` (public) previews the same resolved
+  appearance for an explicit Theme and state without attachment, cache writes,
+  or events. It models whole-tree inheritance — what `PropagateTheme` and a
+  mounted Application publish — not the single-control internal `SetTheme`,
+  which themes one control and reaches descendants only ambiently (pinned by
+  ControlBaseTests.Appearance).
 
 ## Traps that have already caused regressions
 

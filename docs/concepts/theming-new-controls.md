@@ -207,6 +207,14 @@ not the render code ever reads it: revert a call site to a hardcoded glyph and
 the test stays green. The assertion that separates the two is one on the
 rendered cell. Apply the theme, render, and read the cell back.
 
+A resolved-appearance assertion sits between those two layers.
+`ResolveAppearance(theme, visualState)` resolves through the control's own
+hooks - appearance selection, state folding, ambient inheritance, and semantic
+literals - without a mounted application, so a unit test can prove which
+appearance the control selects under an explicit theme and state. It still does
+not prove the render pass reads a structural member; that proof stays with the
+rendered cell.
+
 **Choosing a fallback type is a layout decision, not a color one.**
 `ContainerStyle` is the intuitive parent for anything box-shaped, but its
 default border encloses all four sides, and enabled border sides reserve layout
