@@ -174,12 +174,20 @@ self-contained root) is how every library leaf control - `Button`, `CheckBox`,
 `RadioButton`, `ScrollBar`, and the rest - resolves today
 (`StyleDefinitions.Control<TStyle, TFallback>`), so a restyled `"input"` or
 `"control"` section automatically reaches every control that falls back to it
-without hand-listing each one. That factory needs a
-`Func<Theme, StyleStates<TFallback>>` produced from `Theme`'s own internal
-resolution primitive, so it is presently usable only by controls compiled inside
-the SharpVision assembly. A self-contained root (as above) is the supported path
-for a control outside the assembly; it does not lose theme responsiveness, it
-just does not automatically follow another type's restyle.
+without hand-listing each one. The factory is fully public: a third-party style
+uses the same explicit-key overload and `"vendor.control"` convention described
+above, paired with a `fallbackTo` delegate that resolves any public per-state
+set - one of the six well-known types through `Theme.GetStyleSet`, or one of
+`Theme`'s four derived interaction sets: `GetInteractiveControlStyleSet`,
+`GetInteractiveRowStyleSet`, `GetFocusableContainerStyleSet`, and
+`GetFocusableControlStyleSet`. Choose a derived set the same way a library leaf
+style does: the Interactive pair for a borderless control that owns direct
+interaction outright (Row alone keeps the passive background under pointer
+hover, for a row whose selection owns the fill instead), and the narrower
+Focusable pair - Container or Control geometry - for a control that is merely a
+direct focus target whose own content already owns hover, press, and selection
+more specifically. A self-contained root (as above) remains the right choice
+when the control should not automatically follow another type's restyle at all.
 
 ## What goes wrong
 

@@ -3,35 +3,40 @@
 
 namespace SharpVision.Styling;
 
-/// <summary>Adapts a complete-per-state <see cref="StyleStates{TStyle}"/> into today's
-/// <see cref="AppearanceStates"/> (one complete Normal appearance plus nine partial per-state
-/// <see cref="AppearanceOverlay"/> contributions), so <see cref="AppearanceResolver"/> and
-/// <see cref="AppearanceStates.ApplyStates"/> need no changes at all.</summary>
-internal static class StyleStatesExtensions
+/// <summary>Adapts a complete-per-state <see cref="StyleStates{TStyle}"/> into an
+/// <see cref="AppearanceStates"/> - one complete Normal appearance plus nine partial per-state
+/// <see cref="AppearanceOverlay"/> contributions - the shape the control rendering pipeline
+/// resolves every visual state from.</summary>
+[PublicAPI]
+public static class StyleStatesExtensions
 {
-    /// <summary>Converts every present state to a partial contribution: a member is recorded when
-    /// it differs from Normal's value, or when <see cref="StyleStates{TStyle}.Authored"/> says this
-    /// state's JSON wrote it regardless of what it wrote.</summary>
+    /// <summary>Converts a complete per-state style resolution - from
+    /// <see cref="Theme.GetStyleSet{TStyle}(TStyle)"/>,
+    /// <see cref="Theme.GetInteractiveControlStyleSet"/>, or one of that method's three siblings -
+    /// into the <see cref="AppearanceStates"/> shape a control returns from its
+    /// <c>GetDefaultAppearanceStates</c> hook, or assigns as a <c>StyleDefinition</c>'s appearance
+    /// selector when it owns a primary style slot.</summary>
     /// <remarks>
-    /// Value-diffing alone is not sound, though it reads as though it should be. The argument for
-    /// it was that a member resolving to exactly Normal's value is observationally identical
-    /// whether recorded or left unset - which holds for a single state and fails for the
-    /// simultaneous multi-state fold. <see cref="AppearanceStates.ApplyStates"/> walks
-    /// <see cref="VisualStateOrder"/> combining with <c>later.X ?? X</c>, so an unset member yields
-    /// to whatever an *earlier* state supplied rather than falling back to Normal. Dropping a
-    /// member the author deliberately wrote back to Normal's value therefore hands that member to
-    /// the earlier state: a row that is both Selected and Disabled kept Selected's accent
-    /// background under a theme that had explicitly asked for Normal's surface when disabled, and
-    /// no spelling of the request could survive, because the erasure keyed on the value being the
-    /// one the author wanted.
+    /// A member equal to Normal's own value is still recorded as a real per-state contribution
+    /// when this set's own resolution deliberately wrote it there, rather than dropped as
+    /// redundant: the fold that later combines simultaneously active states prefers whichever
+    /// later state actually supplied a member and only then falls through to an earlier state's
+    /// own contribution, so silently dropping a deliberately-repeated value would hand that member
+    /// back to whichever earlier state supplied it instead. That provenance travels only through
+    /// <see cref="Theme"/>'s own resolution; a <see cref="StyleStates{TStyle}"/> a consumer builds
+    /// directly rather than obtains from <see cref="Theme"/> can only be value-diffed against its
+    /// own Normal.
     /// </remarks>
     /// <typeparam name="TStyle">The concrete themeable style type.</typeparam>
     /// <param name="set">The complete per-state resolution to adapt.</param>
     /// <returns>The equivalent Normal-plus-nine-overlays appearance set.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="set"/> is null.</exception>
     [Pure]
-    internal static AppearanceStates ToAppearanceStates<TStyle>(this StyleStates<TStyle> set)
+    public static AppearanceStates ToAppearanceStates<TStyle>(this StyleStates<TStyle> set)
         where TStyle : ControlStyle
     {
+        ArgumentNullException.ThrowIfNull(set);
+
         var normal = new ControlAppearance(set.Normal.Face, set.Normal.Border, set.Normal.Shadow);
         return new AppearanceStates(
             normal,

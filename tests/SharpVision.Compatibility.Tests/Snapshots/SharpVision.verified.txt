@@ -3805,6 +3805,11 @@ namespace SharpVision.Styling
         public static string Of<TStyle>()
             where TStyle : SharpVision.Styling.ControlStyle { }
     }
+    public static class StyleStatesExtensions
+    {
+        public static SharpVision.Styling.AppearanceStates ToAppearanceStates<TStyle>(this SharpVision.Styling.StyleStates<TStyle> set)
+            where TStyle : SharpVision.Styling.ControlStyle { }
+    }
     public sealed class StyleStates<TStyle>
         where TStyle : SharpVision.Styling.ControlStyle
     {
@@ -3844,6 +3849,10 @@ namespace SharpVision.Styling
         public SharpVision.Terminal.Protocols.Color Warning { get; }
         public SharpVision.Styling.AppearanceStates Window { get; }
         public void Freeze() { }
+        public SharpVision.Styling.StyleStates<SharpVision.Styling.ContainerStyle> GetFocusableContainerStyleSet() { }
+        public SharpVision.Styling.StyleStates<SharpVision.Styling.ControlStyle> GetFocusableControlStyleSet() { }
+        public SharpVision.Styling.StyleStates<SharpVision.Styling.ControlStyle> GetInteractiveControlStyleSet() { }
+        public SharpVision.Styling.StyleStates<SharpVision.Styling.ControlStyle> GetInteractiveRowStyleSet() { }
         public SharpVision.Styling.StyleStates<TStyle> GetStyleSet<TStyle>(TStyle codeOwnedDefault)
             where TStyle : SharpVision.Styling.ControlStyle { }
         public SharpVision.Terminal.Rendering.TerminalAttributes ResolveAttributes(SharpVision.Styling.SemanticDecoration decoration) { }

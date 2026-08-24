@@ -674,21 +674,48 @@ public sealed class Theme
             (theme: this, key, codeOwnedDefault));
     }
 
-    /// <summary>Gets the standard interactive state deltas rebased onto the passive control
-    /// Normal appearance, for borderless controls that own direct interaction without adopting
-    /// input-field geometry.</summary>
+    /// <summary>Gets Input's interaction state deltas rebased onto the passive control's own
+    /// borderless Normal geometry: every interactive state - hover, focus, press, selection, and
+    /// the rest - reacts. Use this as a leaf style's <c>StyleDefinitions.Control</c> fallback
+    /// target when the control is borderless and owns direct interaction outright, rather than
+    /// adopting input-field geometry - a slider, a scroll bar, or any other plain clickable
+    /// control.</summary>
+    /// <remarks>
+    /// <see cref="GetInteractiveRowStyleSet"/> is the row-flavored sibling: identical except
+    /// pointer hover keeps this geometry's own background instead of adopting Input's hover fill,
+    /// for a selectable row whose selection - not mere pointer membership - owns the highlighted
+    /// fill. <see cref="GetFocusableControlStyleSet"/> is the narrower sibling for a borderless
+    /// control that is a direct focus target but already owns hover, press, and selection more
+    /// specifically through its own content, and so rebases only Focused/FocusWithin.
+    ///
+    /// <para>Every theme bundled with SharpVision signals focus through a border color change
+    /// alone, which this borderless geometry has none of. When Focused or FocusWithin would
+    /// otherwise resolve to exactly Normal's own foreground and background, this forces the
+    /// terminal's reverse-video attribute on top as a safety net so focus stays visible; a custom
+    /// theme that already authors genuinely different focus colors is used exactly as authored,
+    /// with nothing forced on top of it.</para>
+    /// </remarks>
     /// <returns>The cached complete per-state control-style set.</returns>
-    internal StyleStates<ControlStyle> GetInteractiveControlStyleSet() =>
+    public StyleStates<ControlStyle> GetInteractiveControlStyleSet() =>
         (StyleStates<ControlStyle>) _styleSets.GetOrAdd(
             (typeof(ControlStyle), "$interactiveControl"),
             static (_, theme) => theme.BuildInteractiveStyleSet(theme.GetStyleSet(ControlStyle.Default), preservePointerBackground: false),
             this);
 
-    /// <summary>Gets the standard interactive state deltas rebased onto the passive control
-    /// Normal appearance while retaining that background during pointer hover, for selectable
-    /// borderless rows whose selection rather than mere pointer membership owns their fill.</summary>
+    /// <summary>Gets Input's interaction state deltas rebased onto the passive control's own
+    /// borderless Normal geometry, the same as <see cref="GetInteractiveControlStyleSet"/> except
+    /// pointer hover retains this geometry's own background instead of adopting Input's hover
+    /// fill. Use this as a leaf style's <c>StyleDefinitions.Control</c> fallback target for a
+    /// selectable borderless row whose selection - rather than mere pointer membership - owns the
+    /// highlighted fill, such as a list, tree, or combo-box item.</summary>
+    /// <remarks>
+    /// See <see cref="GetInteractiveControlStyleSet"/> for every other interactive state,
+    /// including the reverse-video safety net Focused/FocusWithin share with it, and
+    /// <see cref="GetFocusableControlStyleSet"/> for the narrower sibling that rebases only
+    /// Focused/FocusWithin.
+    /// </remarks>
     /// <returns>The cached complete per-state control-style set.</returns>
-    internal StyleStates<ControlStyle> GetInteractiveRowStyleSet() =>
+    public StyleStates<ControlStyle> GetInteractiveRowStyleSet() =>
         (StyleStates<ControlStyle>) _styleSets.GetOrAdd(
             (typeof(ControlStyle), "$interactiveRow"),
             static (_, theme) => theme.BuildInteractiveStyleSet(theme.GetStyleSet(ControlStyle.Default), preservePointerBackground: true),
@@ -786,33 +813,49 @@ public sealed class Theme
 
     private Color ResolveColorValue(ControlColor value) => value.IsLiteral ? value.Literal : ResolveColor(value.SemanticColor);
 
-    /// <summary>Gets only the Focused/FocusWithin state deltas rebased onto the passive container's
-    /// own bordered Normal geometry, for a directly focusable container-shaped control (a
-    /// TreeView or JsonView) that needs a visible focus cue on its own frame without adopting
-    /// input-field geometry, losing its all-sides light border, or picking up hover, press,
-    /// selection, or current-item cues its own content already owns more specifically. Table's
-    /// pointer-hover-does-nothing and per-row selection design is the reason this exists
-    /// separately from <see cref="GetInteractiveControlStyleSet"/>/<see cref="GetInteractiveRowStyleSet"/>:
-    /// those rebase every interactive state, which would light up a data-dense grid's entire
-    /// shell on mere mouse-over. The rebased border keeps its own sides and glyph style while only
-    /// its color reacts - the same reservation-neutral guarantee <see cref="Cascade{TStyle}"/>
-    /// already gives every other caller, since a state that changed <c>Border.Sides</c> here would
-    /// silently resize the container's measured box every time focus moved.</summary>
+    /// <summary>Gets only the Focused/FocusWithin state deltas rebased onto the passive
+    /// container's own all-sides-bordered Normal geometry, leaving every other state exactly as
+    /// the passive "container" key resolves it. Use this as a leaf style's
+    /// <c>StyleDefinitions.Control</c> fallback target for a directly focusable container-shaped
+    /// control whose own content already owns hover, press, selection, and current-item cues more
+    /// specifically - a TreeView or JsonView. Rebasing every interactive state the way
+    /// <see cref="GetInteractiveControlStyleSet"/> does would light up a data-dense tree's entire
+    /// frame on mere mouse-over instead of leaving that to its rows.</summary>
+    /// <remarks>
+    /// <see cref="GetFocusableControlStyleSet"/> is the borderless-geometry sibling for the same
+    /// kind of control shape without the container's own border.
+    ///
+    /// <para>The rebased border keeps its own sides and glyph style; only its color reacts, so
+    /// focus can never change the container's measured size. Unlike the borderless sets above, no
+    /// reverse-video fallback applies here - the border's own color change is already a visible
+    /// cue on its own.</para>
+    /// </remarks>
     /// <returns>The cached complete per-state container-style set.</returns>
-    internal StyleStates<ContainerStyle> GetFocusableContainerStyleSet() =>
+    public StyleStates<ContainerStyle> GetFocusableContainerStyleSet() =>
         (StyleStates<ContainerStyle>) _styleSets.GetOrAdd(
             (typeof(ContainerStyle), "$focusableContainer"),
             static (_, theme) => theme.BuildFocusableStyleSet(theme.GetStyleSet(ContainerStyle.Default)),
             this);
 
     /// <summary>Gets only the Focused/FocusWithin state deltas rebased onto the passive control's
-    /// own borderless Normal geometry, for a directly focusable borderless control (a Table) that
-    /// needs a visible focus cue without picking up hover, press, selection, or current-item cues
-    /// its own content already owns more specifically. See
-    /// <see cref="GetFocusableContainerStyleSet"/> for why this is narrower than
-    /// <see cref="GetInteractiveControlStyleSet"/>.</summary>
+    /// own borderless Normal geometry, leaving every other state exactly as the passive "control"
+    /// key resolves it. Use this as a leaf style's <c>StyleDefinitions.Control</c> fallback target
+    /// for a directly focusable borderless control whose own content already owns hover, press,
+    /// selection, and current-item cues more specifically - a Table.</summary>
+    /// <remarks>
+    /// See <see cref="GetFocusableContainerStyleSet"/> for the bordered-geometry sibling and for
+    /// why both are narrower than
+    /// <see cref="GetInteractiveControlStyleSet"/>/<see cref="GetInteractiveRowStyleSet"/>.
+    ///
+    /// <para>Every theme bundled with SharpVision signals focus through a border color change
+    /// alone, which this borderless geometry has none of. When Focused or FocusWithin would
+    /// otherwise resolve to exactly Normal's own foreground and background, this forces the
+    /// terminal's reverse-video attribute on top as a safety net so focus stays visible; a custom
+    /// theme that already authors genuinely different focus colors is used exactly as authored,
+    /// with nothing forced on top of it.</para>
+    /// </remarks>
     /// <returns>The cached complete per-state control-style set.</returns>
-    internal StyleStates<ControlStyle> GetFocusableControlStyleSet() =>
+    public StyleStates<ControlStyle> GetFocusableControlStyleSet() =>
         (StyleStates<ControlStyle>) _styleSets.GetOrAdd(
             (typeof(ControlStyle), "$focusableControl"),
             static (_, theme) => theme.BuildFocusableStyleSet(theme.GetStyleSet(ControlStyle.Default)),
