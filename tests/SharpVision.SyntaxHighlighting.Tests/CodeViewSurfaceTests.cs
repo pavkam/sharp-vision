@@ -58,6 +58,75 @@ public sealed class CodeViewSurfaceTests
         view.SelectedText.ShouldBe("abc");
     }
 
+    /// <summary>Verifies a pointer drag held past the control's own right edge on a line wider
+    /// than the viewport keeps auto-scrolling and extending the selection for as long as the
+    /// button stays down, eventually reaching the true end of the line without any further
+    /// pointer motion.</summary>
+    [Fact]
+    public async Task Pointer_WhenHeldPastTheRightEdge_AutoScrollsToTheEndOfAWideLineAsync()
+    {
+        const string Line = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN";
+        var clock = new ManualTimeProvider();
+        var view = new CodeView { Code = Line + "\n", Width = Length.Cells(20) };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(30, 3),
+            clock,
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        await surface.Pointer.MoveToAsync(view, new Point(2, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(new Point(view.Bounds.Right + 5, view.Bounds.Y));
+
+        // Advancing the clock in increments matching the auto-scroll interval - rather than in
+        // one large jump - lets the dispatcher actually drain and re-arm the timer between due
+        // periods, the same pattern SpinnerSurfaceTests uses to observe every animation frame.
+        for (var tick = 0; tick < 40; tick++)
+        {
+            await surface.AdvanceAsync(TimeSpan.FromMilliseconds(60), $"auto-scroll tick {tick}");
+        }
+
+        await surface.Pointer.ReleaseAsync();
+
+        view.SelectedText.ShouldBe(Line);
+    }
+
+    /// <summary>Verifies a pointer drag held past the control's own bottom edge on a buffer taller
+    /// than the viewport keeps scrolling down and extending the selection line by line for as long
+    /// as the button stays down, eventually reaching the last line without any further pointer
+    /// motion.</summary>
+    [Fact]
+    public async Task Pointer_WhenHeldPastTheBottomEdge_AutoScrollsToTheLastLineAsync()
+    {
+        var lines = Enumerable.Range(0, 20).Select(index => $"line{index}").ToArray();
+        var code = string.Join('\n', lines) + "\n";
+        var clock = new ManualTimeProvider();
+        var view = new CodeView { Code = code, Height = Length.Cells(3) };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 10),
+            clock,
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        await surface.Pointer.MoveToAsync(view, new Point(2, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(new Point(view.Bounds.X + 2, view.Bounds.Bottom + 5));
+
+        // Advancing the clock in increments matching the auto-scroll interval - rather than in
+        // one large jump - lets the dispatcher actually drain and re-arm the timer between due
+        // periods, the same pattern SpinnerSurfaceTests uses to observe every animation frame.
+        for (var tick = 0; tick < 40; tick++)
+        {
+            await surface.AdvanceAsync(TimeSpan.FromMilliseconds(60), $"auto-scroll tick {tick}");
+        }
+
+        await surface.Pointer.ReleaseAsync();
+
+        view.SelectedText.ShouldBe(code);
+    }
+
     /// <summary>Verifies Right arrow advances the caret by one grapheme.</summary>
     [Fact]
     public async Task Keyboard_WhenRightArrowIsPressed_AdvancesCaretByOneAsync()

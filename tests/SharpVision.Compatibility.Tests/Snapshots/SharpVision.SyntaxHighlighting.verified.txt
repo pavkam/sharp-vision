@@ -31,6 +31,9 @@
         public void ExpandAll() { }
         public bool IsFoldStart(int line) { }
         public bool IsFolded(int line) { }
+        protected override void OnAttached() { }
+        protected override void OnDetached() { }
+        protected override void OnDisposing() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }

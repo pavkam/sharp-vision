@@ -41,6 +41,11 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
 {
     private const int _foldGutterWidth = 2;
 
+    /// <summary>The interval between auto-scroll steps while a captured drag holds past the
+    /// content's edge. Matches the cadence a moving pointer would otherwise supply through its own
+    /// motion events, so a held-still drag makes the same steady forward progress.</summary>
+    private static readonly TimeSpan _autoScrollInterval = TimeSpan.FromMilliseconds(60);
+
     private readonly CodeViewContent _content;
     private readonly LayoutStack _stack;
     private readonly StyleSlot<CodeViewStyle> _style;
@@ -55,6 +60,8 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
     private int _extentWidth;
     private int _pointerAnchor;
     private bool _pointerSelecting;
+    private Point _lastDragCells;
+    private DispatcherTimer? _autoScrollTimer;
     private int? _desiredColumn;
 
     /// <summary>Initializes an empty, unstyled read-only code view.</summary>
@@ -828,6 +835,41 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
     #region Pointer input
 
     /// <inheritdoc/>
+    protected override void OnAttached()
+    {
+        base.OnAttached();
+        Debug.Assert(Dispatcher is not null, "An attached CodeView owns a dispatcher.");
+        _autoScrollTimer = new DispatcherTimer(Dispatcher, _autoScrollInterval);
+        _autoScrollTimer.Tick += OnAutoScrollTick;
+    }
+
+    /// <inheritdoc/>
+    protected override void OnDetached()
+    {
+        ReleaseAutoScrollTimer();
+        base.OnDetached();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnDisposing()
+    {
+        ReleaseAutoScrollTimer();
+        base.OnDisposing();
+    }
+
+    private void ReleaseAutoScrollTimer()
+    {
+        if (_autoScrollTimer is not { } timer)
+        {
+            return;
+        }
+
+        timer.Tick -= OnAutoScrollTick;
+        timer.Dispose();
+        _autoScrollTimer = null;
+    }
+
+    /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
@@ -866,10 +908,16 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
             return;
         }
 
-        if (_content.Bounds.Contains(cells) && OffsetAt(cells) is { } dragged)
-        {
-            CommitSelection(new TextSelection(_pointerAnchor, dragged), resetDesiredColumn: true);
-        }
+        // Never gated on _content.Bounds.Contains(cells): a captured drag routinely reports
+        // positions past the visible content - most usefully, past its right edge on a line
+        // wider than the viewport, or past its top/bottom edge on a buffer taller than the
+        // viewport. AdvanceDragSelection resolves one step immediately from this move event;
+        // UpdateAutoScroll arms a repeating timer that keeps invoking that same step for as long
+        // as the drag position remains outside the content while the button stays held, so a
+        // drag held still past an edge keeps scrolling and extending the selection instead of
+        // stalling the instant the pointer itself stops moving.
+        AdvanceDragSelection(cells);
+        UpdateAutoScroll(cells);
 
         eventArgs.IsHandled = true;
 
@@ -962,6 +1010,7 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
     private void CancelPointerSelection()
     {
         _pointerSelecting = false;
+        _autoScrollTimer?.Stop();
         ReleasePointerCapture();
     }
 
@@ -970,6 +1019,105 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
     {
         base.OnLostPointerCapture(reason);
         _pointerSelecting = false;
+        _autoScrollTimer?.Stop();
+    }
+
+    /// <summary>Gets the currently visible, clipped viewing rectangle: <see cref="_content"/>'s
+    /// own arranged position combined with <see cref="Viewport"/>'s size, rather than <see
+    /// cref="_content"/>'s own Bounds size. <see cref="_content"/> is arranged once at its full
+    /// unclipped logical extent - which can be far larger than the viewport - and the scrollable
+    /// stack shifts that arranged position by the negative scroll offset so the correct portion
+    /// lines up with the clip region; <see cref="_content"/>'s own Bounds therefore already
+    /// reports the viewport's true root-relative origin, but its Width and Height still describe
+    /// the full extent rather than what actually renders on screen.</summary>
+    private Rect ViewportBounds => new(_content.Bounds.X, _content.Bounds.Y, Viewport.Width, Viewport.Height);
+
+    /// <summary>Extends the active drag selection toward one pointer position, taking the
+    /// vertical step when the position sits above or below the visible <see
+    /// cref="ViewportBounds"/> - which <see cref="OffsetAt"/> alone cannot resolve, since a source
+    /// line's row on screen depends on which lines are currently scrolled into view, not on a
+    /// continuous pixel offset - and otherwise resolving through <see cref="OffsetAt"/>'s own
+    /// scroll-aware column clamp for a position that is merely left or right of the viewport.</summary>
+    /// <param name="cells">The root-relative pointer position to extend the selection toward.</param>
+    private void AdvanceDragSelection(Point cells)
+    {
+        var viewport = ViewportBounds;
+
+        if (cells.Y < viewport.Y)
+        {
+            if (!ScrollBy(0, -1, ScrollCause.Pointer))
+            {
+                return;
+            }
+
+            Debug.Assert(
+                VerticalOffset < _visibleLines.Count,
+                "MeasureProjection reports Extent.Height as exactly _visibleLines.Count, so a saturated VerticalOffset always indexes a real visible line.");
+            var line = _visibleLines[VerticalOffset];
+            CommitSelection(new TextSelection(_pointerAnchor, LineStartOffset(line)), resetDesiredColumn: true);
+            RevealCaret();
+            return;
+        }
+
+        if (cells.Y >= viewport.Bottom)
+        {
+            if (!ScrollBy(0, 1, ScrollCause.Pointer))
+            {
+                return;
+            }
+
+            var bottomVisibleIndex = VerticalOffset + Viewport.Height - 1;
+            Debug.Assert(
+                bottomVisibleIndex < _visibleLines.Count,
+                "MeasureProjection reports Extent.Height as exactly _visibleLines.Count, so a saturated VerticalOffset always leaves the bottommost viewport row indexing a real visible line.");
+            var line = _visibleLines[bottomVisibleIndex];
+            CommitSelection(new TextSelection(_pointerAnchor, LineEndOffset(line)), resetDesiredColumn: true);
+            RevealCaret();
+            return;
+        }
+
+        if (OffsetAt(cells) is { } dragged)
+        {
+            CommitSelection(new TextSelection(_pointerAnchor, dragged), resetDesiredColumn: true);
+            RevealCaret();
+        }
+    }
+
+    /// <summary>Arms or disarms the repeating auto-scroll timer for a drag position, and records
+    /// that position for the timer's own tick to resolve against once the pointer itself stops
+    /// generating new move events.</summary>
+    /// <param name="cells">The most recently reported root-relative drag position.</param>
+    private void UpdateAutoScroll(Point cells)
+    {
+        _lastDragCells = cells;
+
+        if (!ViewportBounds.Contains(cells))
+        {
+            _autoScrollTimer?.Start();
+        }
+        else
+        {
+            _autoScrollTimer?.Stop();
+        }
+    }
+
+    private void OnAutoScrollTick(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+
+        if (!_pointerSelecting)
+        {
+            _autoScrollTimer?.Stop();
+            return;
+        }
+
+        AdvanceDragSelection(_lastDragCells);
+
+        if (ViewportBounds.Contains(_lastDragCells))
+        {
+            _autoScrollTimer?.Stop();
+        }
     }
 
     #endregion

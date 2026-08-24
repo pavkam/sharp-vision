@@ -89,7 +89,12 @@ these extends the selection instead of moving the caret alone. Ctrl+A selects
 everything. A primary click sets an empty selection at the clicked position and
 requests focus; a drag while the primary button is held extends the selection
 continuously; a double-click selects the word under the pointer, and a
-triple-click selects the whole line.
+triple-click selects the whole line. Holding the drag past the visible content's
+edge - past the right edge of a line wider than the viewport, or past the
+top/bottom edge of a buffer taller than the viewport - keeps auto-scrolling and
+extending the selection on a short repeating interval for as long as the button
+stays down, even without further pointer motion, until the drag returns inside
+the viewport or the button is released.
 
 `CopySelection()` is a pure read with no side effect, the same contract
 `TextInput.CopySelection` and `Table.CopySelection` use: this control never

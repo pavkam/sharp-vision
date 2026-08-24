@@ -23,6 +23,7 @@ global using SharpVision.Terminal.Protocols;
 global using SharpVision.Terminal.Rendering;
 global using SharpVision.Terminal.Unicode;
 global using SharpVision.Text;
+global using SharpVision.Threading;
 
 global using KeyAction = SharpVision.Terminal.Input.KeyAction;
 global using PublicAPI = JetBrains.Annotations.PublicAPIAttribute;

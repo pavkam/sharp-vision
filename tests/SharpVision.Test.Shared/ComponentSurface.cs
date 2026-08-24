@@ -143,6 +143,26 @@ public sealed class ComponentSurface: IAsyncDisposable
         CancellationToken cancellationToken) =>
         await MountAsync(control, size, timeProvider, TerminalOptions.Minimal, theme: null, cancellationToken);
 
+    /// <summary>Mounts one detached control with a deterministic application clock and an explicit
+    /// application theme.</summary>
+    /// <param name="control">The non-null detached control to mount.</param>
+    /// <param name="size">The positive terminal surface size.</param>
+    /// <param name="timeProvider">The non-null deterministic application clock.</param>
+    /// <param name="theme">The non-null application theme to apply before the first frame.</param>
+    /// <param name="cancellationToken">Requests cancellation while the first frame settles.</param>
+    /// <returns>The started component surface after its first rendered frame.</returns>
+    /// <exception cref="ArgumentNullException">A required argument is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">A surface dimension is not positive.</exception>
+    /// <exception cref="ArgumentException"><paramref name="control"/> is attached or already owned.</exception>
+    /// <exception cref="ObjectDisposedException"><paramref name="control"/> is disposed.</exception>
+    public static async Task<ComponentSurface> MountAsync(
+        ControlBase control,
+        Size size,
+        ManualTimeProvider? timeProvider,
+        Theme theme,
+        CancellationToken cancellationToken) =>
+        await MountAsync(control, size, timeProvider, TerminalOptions.Minimal, theme, cancellationToken);
+
     /// <summary>Mounts one detached control with an explicit terminal profile and mode policy.</summary>
     public static async Task<ComponentSurface> MountAsync(
         ControlBase control,
