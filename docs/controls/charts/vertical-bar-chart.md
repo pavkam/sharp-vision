@@ -30,9 +30,10 @@ The [shared chart API](index.md#api) documents `ChartSeries`, `ChartDataPoint`,
 `ChartScale`, and the one-way binding pattern common to every chart control.
 
 `ChartStyle`, reached through `Style`/`ActualStyle`, also carries `AxisColor`,
-`LabelColor`, the `PrimaryColor`/`SecondaryColor`/`TertiaryColor` deterministic
-series palette, `Glyphs`, and `FillMode` (default `Fractional`), which governs
-how this chart's bars rasterize; see [Expected behavior](#expected-behavior).
+`LabelColor`, the `PrimaryColor`/`SecondaryColor`/`TertiaryColor`/
+`QuaternaryColor`/`QuinaryColor`/`SenaryColor` deterministic six-color series
+palette, `Glyphs`, and `FillMode` (default `Fractional`), which governs how this
+chart's bars rasterize; see [Expected behavior](#expected-behavior).
 
 ## Example
 

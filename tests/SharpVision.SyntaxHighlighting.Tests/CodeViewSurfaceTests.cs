@@ -1157,19 +1157,19 @@ public sealed class CodeViewSurfaceTests
 
     /// <summary>Verifies swapping the live Theme repaints a syntax color role even when the
     /// unresolved CodeViewStyle stays declaratively identical - the common case for every symbolic
-    /// SemanticColor role CodeViewStyle.Complete assigns - by changing only SemanticColor.Info,
+    /// SemanticColor role CodeViewStyle.Complete assigns - by changing only SemanticColor.Cyan,
     /// which the "container" style section this control falls back to never authors.</summary>
     [Fact]
     public async Task Theme_WhenOnlyASyntaxSemanticColorChanges_RepaintsTheTokenAsync()
     {
-        var directory = Directory.CreateTempSubdirectory("sharpvision-syntax-view-theme-info-");
+        var directory = Directory.CreateTempSubdirectory("sharpvision-syntax-view-theme-cyan-");
 
         try
         {
             File.WriteAllText(
-                Path.Combine(directory.FullName, "info-role.xml"),
+                Path.Combine(directory.FullName, "builtin-role.xml"),
                 """
-                <language name="InfoRoleTest" section="Sources" extensions="*.ext" version="1" kateversion="5.0">
+                <language name="BuiltInRoleTest" section="Sources" extensions="*.ext" version="1" kateversion="5.0">
                   <highlighting>
                     <contexts>
                       <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
@@ -1189,12 +1189,12 @@ public sealed class CodeViewSurfaceTests
             // ThemeCatalog.Dark here keeps every other semantic role resolving exactly as the
             // shipped default theme does, so the token cell sits one row and one column past the
             // control's own top-left corner instead of at (2, 0).
-            var themeA = WithSemanticColor(SemanticColor.Info, Color.Rgb(10, 20, 30));
-            var themeB = WithSemanticColor(SemanticColor.Info, Color.Rgb(240, 230, 220));
+            var themeA = WithSemanticColor(SemanticColor.Cyan, Color.Rgb(10, 20, 30));
+            var themeB = WithSemanticColor(SemanticColor.Cyan, Color.Rgb(240, 230, 220));
             var view = new CodeView
             {
                 Catalog = SyntaxDefinitionCatalog.FromDirectory(directory.FullName),
-                Language = "InfoRoleTest",
+                Language = "BuiltInRoleTest",
                 Code = "!\n",
             };
             await using var surface = await ComponentSurface.MountAsync(
@@ -1204,7 +1204,7 @@ public sealed class CodeViewSurfaceTests
                 TestContext.Current.CancellationToken);
             var before = surface.Cell(new Point(3, 1)).Style.Foreground;
 
-            await surface.UpdateAsync(() => surface.Application.Theme = themeB, "swap the Info semantic color");
+            await surface.UpdateAsync(() => surface.Application.Theme = themeB, "swap the Cyan semantic color");
 
             surface.Cell(new Point(3, 1)).Style.Foreground.ShouldNotBe(before);
         }

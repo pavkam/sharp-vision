@@ -111,7 +111,7 @@ public sealed class JsonViewSurfaceTests
         surface.ShouldRender("\"root\"  ");
         view.SelectedPath.ShouldBeNull();
         surface.Cell(default).Style.Foreground.ShouldBe(TerminalPalette.Project(
-            TestThemes.BorderlessContainer.ResolveColor(SemanticColor.Success),
+            TestThemes.BorderlessContainer.ResolveColor(SemanticColor.Green),
             ColorDepth.Basic16));
     }
 
@@ -149,15 +149,15 @@ public sealed class JsonViewSurfaceTests
         surface.Cell(new Point(2, 1)).Style.Background.ShouldBe(
             TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), depth));
         surface.Cell(new Point(11, 1)).Style.Foreground.ShouldBe(
-            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Success), depth));
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Green), depth));
         surface.Cell(new Point(2, 2)).Style.Foreground.ShouldBe(
-            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Accent), depth));
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Cyan), depth));
         surface.Cell(new Point(10, 2)).Style.Foreground.ShouldBe(
-            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Info), depth));
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Yellow), depth));
         surface.Cell(new Point(11, 3)).Style.Foreground.ShouldBe(
-            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Warning), depth));
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Magenta), depth));
         surface.Cell(new Point(13, 4)).Style.Foreground.ShouldBe(
-            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Muted), depth));
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Magenta), depth));
 
         // Act
         await surface.Keyboard.PressAsync(Code.Tab);

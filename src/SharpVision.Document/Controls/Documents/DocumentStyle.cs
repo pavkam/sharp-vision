@@ -165,6 +165,13 @@ public sealed record DocumentStyle: ControlStyle
         control.Face,
         control.Border,
         control.Shadow,
+        // Literal Bold, not SemanticDecoration.FocusedText: FocusedText is the interactive-focus
+        // decoration, and a theme that redefines it for that purpose (for example to Reverse - the
+        // exact scenario the borderless-focus fallback anticipates) must not also reskin this static
+        // typography. Every bundled theme resolved the deleted per-theme "sharpVision.document"
+        // sections' own authoring to plain Bold, so a literal preserves exactly what a themed user
+        // already saw. MarkerFace below previously, pre-stream, defaulted to None - Bold is the
+        // deliberate keep-what-themed-users-saw choice for it too.
         headingFace: new Face(
             new ControlColor(SemanticColor.Accent),
             Color.Transparent,
@@ -174,17 +181,16 @@ public sealed record DocumentStyle: ControlStyle
         markerFace: new Face(
             new ControlColor(SemanticColor.Accent),
             Color.Transparent,
-            TerminalAttributes.None,
+            TerminalAttributes.Bold,
             Underline.None,
             Color.Default),
         // Quoted text is still text a reader needs to read, not secondary chrome, so it keeps the
-        // full-contrast inherited foreground - Color.Default resolves to whatever face this
-        // document (or an enclosing quote) already has - and is set apart from the surrounding body
-        // purely through the typographic convention for a quotation, not by dimming it. A muted
-        // foreground on a transparent background previously left quoted paragraphs barely readable
-        // against a themed surface background.
+        // full-contrast ControlText foreground - matching this style's own ordinary body face -
+        // and is set apart from the surrounding body purely through the typographic convention for
+        // a quotation, not by dimming it. A muted foreground on a transparent background previously
+        // left quoted paragraphs barely readable against a themed surface background.
         quoteFace: new Face(
-            Color.Default,
+            new ControlColor(SemanticColor.ControlText),
             Color.Transparent,
             TerminalAttributes.Italic,
             Underline.None,
@@ -227,6 +233,11 @@ public sealed record DocumentStyle: ControlStyle
             TerminalAttributes.Bold,
             Underline.None,
             Color.Default),
+        // Info, not Blue: Blue resolves identical to Accent in 8 of the 15 bundled themes, and
+        // document headings are painted with Accent. Info is the one chromatic-adjacent color the
+        // theme test suite guarantees stays distinct from Accent, so a link stays visibly distinct
+        // from a heading under every bundled theme. The underline mirrors the foreground, the same
+        // pairing every other visibly underlined face in this style keeps.
         linkFace: new Face(
             new ControlColor(SemanticColor.Info),
             Color.Transparent,

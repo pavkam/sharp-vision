@@ -25,7 +25,13 @@ public sealed record ChartStyle: ControlStyle
             ControlBase.ResolveColor(previous.SecondaryColor, previousTheme) !=
             ControlBase.ResolveColor(current.SecondaryColor, currentTheme) ||
             ControlBase.ResolveColor(previous.TertiaryColor, previousTheme) !=
-            ControlBase.ResolveColor(current.TertiaryColor, currentTheme)
+            ControlBase.ResolveColor(current.TertiaryColor, currentTheme) ||
+            ControlBase.ResolveColor(previous.QuaternaryColor, previousTheme) !=
+            ControlBase.ResolveColor(current.QuaternaryColor, currentTheme) ||
+            ControlBase.ResolveColor(previous.QuinaryColor, previousTheme) !=
+            ControlBase.ResolveColor(current.QuinaryColor, currentTheme) ||
+            ControlBase.ResolveColor(previous.SenaryColor, previousTheme) !=
+            ControlBase.ResolveColor(current.SenaryColor, currentTheme)
                 ? InvalidationImpact.Render
                 : InvalidationImpact.None);
 
@@ -38,6 +44,9 @@ public sealed record ChartStyle: ControlStyle
     /// <param name="primaryColor">The first non-transparent fallback series foreground.</param>
     /// <param name="secondaryColor">The second non-transparent fallback series foreground.</param>
     /// <param name="tertiaryColor">The third non-transparent fallback series foreground.</param>
+    /// <param name="quaternaryColor">The fourth non-transparent fallback series foreground.</param>
+    /// <param name="quinaryColor">The fifth non-transparent fallback series foreground.</param>
+    /// <param name="senaryColor">The sixth non-transparent fallback series foreground.</param>
     /// <param name="glyphs">The complete narrow chart glyph family.</param>
     /// <exception cref="ArgumentException">A color is transparent.</exception>
     [SetsRequiredMembers]
@@ -50,6 +59,9 @@ public sealed record ChartStyle: ControlStyle
         ControlColor primaryColor,
         ControlColor secondaryColor,
         ControlColor tertiaryColor,
+        ControlColor quaternaryColor,
+        ControlColor quinaryColor,
+        ControlColor senaryColor,
         ChartGlyphs glyphs) : base(face, border, shadow)
     {
         AxisColor = axisColor;
@@ -57,6 +69,9 @@ public sealed record ChartStyle: ControlStyle
         PrimaryColor = primaryColor;
         SecondaryColor = secondaryColor;
         TertiaryColor = tertiaryColor;
+        QuaternaryColor = quaternaryColor;
+        QuinaryColor = quinaryColor;
+        SenaryColor = senaryColor;
         Glyphs = glyphs;
     }
 
@@ -123,6 +138,42 @@ public sealed record ChartStyle: ControlStyle
         }
     }
 
+    /// <summary>Gets the fourth fallback series foreground.</summary>
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public required ControlColor QuaternaryColor
+    {
+        get;
+        init
+        {
+            ControlColor.ValidatePaint(value, nameof(value));
+            field = value;
+        }
+    }
+
+    /// <summary>Gets the fifth fallback series foreground.</summary>
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public required ControlColor QuinaryColor
+    {
+        get;
+        init
+        {
+            ControlColor.ValidatePaint(value, nameof(value));
+            field = value;
+        }
+    }
+
+    /// <summary>Gets the sixth fallback series foreground.</summary>
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public required ControlColor SenaryColor
+    {
+        get;
+        init
+        {
+            ControlColor.ValidatePaint(value, nameof(value));
+            field = value;
+        }
+    }
+
     /// <summary>Gets the complete chart glyph family.</summary>
     public required ChartGlyphs Glyphs
     {
@@ -172,11 +223,14 @@ public sealed record ChartStyle: ControlStyle
 
     /// <summary>Gets one deterministic fallback series foreground by zero-based index.</summary>
     [Pure]
-    internal ControlColor GetSeriesColor(int index) => Math.Abs(index % 3) switch
+    internal ControlColor GetSeriesColor(int index) => Math.Abs(index % 6) switch
     {
         0 => PrimaryColor,
         1 => SecondaryColor,
-        _ => TertiaryColor
+        2 => TertiaryColor,
+        3 => QuaternaryColor,
+        4 => QuinaryColor,
+        _ => SenaryColor
     };
 
     private static ChartStyle Complete(ControlStyle control, VisualState state)
@@ -188,9 +242,14 @@ public sealed record ChartStyle: ControlStyle
             control.Shadow,
             SemanticColor.Muted,
             SemanticColor.ControlText,
-            SemanticColor.Accent,
-            SemanticColor.Success,
-            SemanticColor.Warning,
+            SemanticColor.Blue,
+            SemanticColor.Green,
+            SemanticColor.Yellow,
+            SemanticColor.Magenta,
+            SemanticColor.Cyan,
+            // Red reads as an alarm, so it anchors the sequence last rather than competing for
+            // attention among the first few series most charts actually render.
+            SemanticColor.Red,
             ChartGlyphs.Default);
     }
 }

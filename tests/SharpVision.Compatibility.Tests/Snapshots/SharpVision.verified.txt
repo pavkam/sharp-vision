@@ -672,7 +672,7 @@ namespace SharpVision.Controls.Charts
     }
     public sealed class ChartStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Controls.Charts.ChartStyle>
     {
-        public ChartStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Styling.ControlColor axisColor, SharpVision.Styling.ControlColor labelColor, SharpVision.Styling.ControlColor primaryColor, SharpVision.Styling.ControlColor secondaryColor, SharpVision.Styling.ControlColor tertiaryColor, SharpVision.Controls.Charts.ChartGlyphs glyphs) { }
+        public ChartStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Styling.ControlColor axisColor, SharpVision.Styling.ControlColor labelColor, SharpVision.Styling.ControlColor primaryColor, SharpVision.Styling.ControlColor secondaryColor, SharpVision.Styling.ControlColor tertiaryColor, SharpVision.Styling.ControlColor quaternaryColor, SharpVision.Styling.ControlColor quinaryColor, SharpVision.Styling.ControlColor senaryColor, SharpVision.Controls.Charts.ChartGlyphs glyphs) { }
         public required SharpVision.Styling.ControlColor AxisColor { get; init; }
         public SharpVision.Controls.Charts.ChartFillMode FillMode { get; init; }
         public required SharpVision.Controls.Charts.ChartGlyphs Glyphs { get; init; }
@@ -680,7 +680,10 @@ namespace SharpVision.Controls.Charts
         public SharpVision.Controls.Charts.ChartLineMode LineMode { get; init; }
         public SharpVision.Terminal.Rendering.LinePattern LinePattern { get; init; }
         public required SharpVision.Styling.ControlColor PrimaryColor { get; init; }
+        public required SharpVision.Styling.ControlColor QuaternaryColor { get; init; }
+        public required SharpVision.Styling.ControlColor QuinaryColor { get; init; }
         public required SharpVision.Styling.ControlColor SecondaryColor { get; init; }
+        public required SharpVision.Styling.ControlColor SenaryColor { get; init; }
         public required SharpVision.Styling.ControlColor TertiaryColor { get; init; }
         public new static SharpVision.Controls.Charts.ChartStyle Default { get; }
     }

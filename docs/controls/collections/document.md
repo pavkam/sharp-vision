@@ -603,8 +603,8 @@ inherited `Face`/`Border`/`Shadow`:
 | Member                 | Type             | Default                                                              | Description                                                                |
 | ---------------------- | ---------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | `HeadingFace`          | `Face`           | Bold, straight-underlined `SemanticColor.Accent`                     | Level 1 and 2 headings.                                                    |
-| `MarkerFace`           | `Face`           | `SemanticColor.Accent`                                               | A list item's bullet or number.                                            |
-| `QuoteFace`            | `Face`           | Inherited foreground, italic                                         | A block quote's bar and its quoted content.                                |
+| `MarkerFace`           | `Face`           | Bold `SemanticColor.Accent`                                          | A list item's bullet or number.                                            |
+| `QuoteFace`            | `Face`           | `SemanticColor.ControlText`, italic                                  | A block quote's bar and its quoted content.                                |
 | `CodeFace`             | `Face`           | `SemanticColor.SurfaceText` on `SemanticColor.Surface`               | A preformatted code block.                                                 |
 | `RuleFace`             | `Face`           | `SemanticColor.Muted`                                                | A thematic break.                                                          |
 | `CalloutFace`          | `Face`           | `SemanticColor.Warning`                                              | A callout body and its vertical bar.                                       |
@@ -623,14 +623,13 @@ Every member is required. A `with` expression creates a validated member-wise
 copy of `DocumentStyle.Default` or of any resolved style; assigning `null` to
 `Style` restores the theme-owned presentation, and `ActualStyle` never returns
 null. A theme may author a `styles.sharpVision.document` section ahead of the
-code-owned defaults. Every bundled theme authors this namespaced
-optional-package section (see
+code-owned defaults, though no bundled theme currently does (see
 [themes.md](../../concepts/themes.md#style-types)).
 
-The code-owned `QuoteFace` default uses `Color.Default`, while bundled themes
-author the same semantic foreground as their document body. A quotation is set
-apart through the italic attribute, never through a separately colored,
-lower-contrast tone that a theme's palette might not keep legible.
+The `QuoteFace` default uses `SemanticColor.ControlText`, the same foreground as
+the document body. A quotation is set apart through the italic attribute, never
+through a separately colored, lower-contrast tone that a theme's palette might
+not keep legible.
 
 `ActionLinkFace` and `ActiveActionLinkFace` deliberately reuse the same
 selection and press color pairs every theme must already keep legible for

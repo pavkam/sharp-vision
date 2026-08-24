@@ -89,12 +89,15 @@ internal sealed class AreaChartPane: CompositeControlBase
                             primaryColor: Color.Rgb(0xff, 0x8c, 0x40),
                             secondaryColor: ChartStyle.Default.SecondaryColor,
                             tertiaryColor: ChartStyle.Default.TertiaryColor,
+                            quaternaryColor: ChartStyle.Default.QuaternaryColor,
+                            quinaryColor: ChartStyle.Default.QuinaryColor,
+                            senaryColor: ChartStyle.Default.SenaryColor,
                             glyphs: ChartGlyphs.Default with { Area = new Rune('▓') })
                         {
                             FillMode = ChartFillMode.Glyph
                         }
                     },
-                    "chart.Style = new ChartStyle(\n    face, border, shadow,\n    axisColor, labelColor, primaryColor, secondaryColor, tertiaryColor,\n    ChartGlyphs.Default with { Area = new Rune('▓') })\n{\n    FillMode = ChartFillMode.Glyph\n};"))));
+                    "chart.Style = new ChartStyle(\n    face, border, shadow,\n    axisColor, labelColor, primaryColor, secondaryColor, tertiaryColor,\n    quaternaryColor, quinaryColor, senaryColor,\n    ChartGlyphs.Default with { Area = new Rune('▓') })\n{\n    FillMode = ChartFillMode.Glyph\n};"))));
     }
 
     // A 12-point waveform: sparse enough that the markers read as measurements, dense enough

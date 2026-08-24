@@ -18,6 +18,24 @@ public sealed class SliderStyleTests
         actual.Glyphs.ShouldBe(SliderGlyphs.Default);
     }
 
+    /// <summary>Verifies every bundled theme resolves Slider to the code-owned
+    /// Accent/Muted/Accent mapping. Every curated theme's own "slider" section used to author
+    /// exactly this mapping and has since been deleted as redundant; this pins that the deletion
+    /// changed nothing observable.</summary>
+    [Fact]
+    public void EveryTheme_ResolvesTheCodeOwnedFillTrackAndThumbColors()
+    {
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+            var style = SliderStyle.Definition.Resolve(null, theme);
+
+            style.FillColor.SemanticColor.ShouldBe(SemanticColor.Accent, slug);
+            style.TrackColor.SemanticColor.ShouldBe(SemanticColor.Muted, slug);
+            style.ThumbColor.SemanticColor.ShouldBe(SemanticColor.Accent, slug);
+        }
+    }
+
     /// <summary>Verifies equality compares every record member structurally.</summary>
     [Fact]
     public void Equality_WhenEveryMemberMatches_IsEqual()

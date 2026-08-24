@@ -14,21 +14,37 @@ using Document = Controls.Documents.Document;
 /// of the tree stale.</summary>
 public sealed class DocumentStyleTests
 {
-    /// <summary>Verifies every bundled theme explicitly authors the optional Document style section.</summary>
+    /// <summary>Verifies every bundled theme resolves DocumentStyle to the code-owned face
+    /// mapping - heading and marker on Accent, quote on ControlText, code and table on
+    /// SurfaceText/Surface, rule on Muted, callout on Warning, link on Info, and literal bold
+    /// weight on the marker face. All fifteen bundled themes used to author one byte-identical
+    /// "sharpVision.document" section carrying exactly this mapping; it has since been folded into
+    /// these code-owned defaults and deleted, so this pins that the fold changed nothing
+    /// observable.</summary>
     [Fact]
-    public void EveryTheme_WhenDocumentStyleResolves_UsesItsAuthoredDocumentProfile()
+    public void EveryTheme_WhenDocumentStyleResolves_UsesTheCodeOwnedDocumentProfile()
     {
         foreach (var slug in ThemeCatalog.Slugs)
         {
-            var style = DocumentStyle.Definition.Resolve(null, ThemeCatalog.Load(slug));
-            (ThemeCatalog.Load(slug).ResolveAttributes(style.MarkerFace.Attributes.SemanticDecoration) &
-             TerminalAttributes.Bold).ShouldBe(
-                TerminalAttributes.Bold,
-                $"{slug} must author styles.sharpVision.document.normal.markerFace");
+            var theme = ThemeCatalog.Load(slug);
+            var style = DocumentStyle.Definition.Resolve(null, theme);
+
+            style.MarkerFace.Attributes.Literal.ShouldBe(TerminalAttributes.Bold, slug);
             style.HeadingFace.Foreground.SemanticColor.ShouldBe(SemanticColor.Accent, slug);
+            style.MarkerFace.Foreground.SemanticColor.ShouldBe(SemanticColor.Accent, slug);
+            style.QuoteFace.Foreground.SemanticColor.ShouldBe(SemanticColor.ControlText, slug);
+            style.CodeFace.Foreground.SemanticColor.ShouldBe(SemanticColor.SurfaceText, slug);
+            style.CodeFace.Background.SemanticColor.ShouldBe(SemanticColor.Surface, slug);
+            style.RuleFace.Foreground.SemanticColor.ShouldBe(SemanticColor.Muted, slug);
             style.CalloutFace.Foreground.SemanticColor.ShouldBe(SemanticColor.Warning, slug);
             style.CalloutTitleFace.Foreground.SemanticColor.ShouldBe(SemanticColor.Warning, slug);
+            style.TableFace.Foreground.SemanticColor.ShouldBe(SemanticColor.SurfaceText, slug);
             style.TableHeaderFace.Foreground.SemanticColor.ShouldBe(SemanticColor.Accent, slug);
+            style.LinkFace.Foreground.SemanticColor.ShouldBe(SemanticColor.Info, slug);
+            style.ActiveLinkFace.Foreground.SemanticColor.ShouldBe(SemanticColor.SelectedText, slug);
+            style.DisabledLinkFace.Foreground.SemanticColor.ShouldBe(SemanticColor.DisabledText, slug);
+            style.ActionLinkFace.Foreground.SemanticColor.ShouldBe(SemanticColor.SelectedText, slug);
+            style.ActiveActionLinkFace.Foreground.SemanticColor.ShouldBe(SemanticColor.PressedText, slug);
         }
     }
 
@@ -133,10 +149,11 @@ public sealed class DocumentStyleTests
         style.CalloutFace.Attributes.ShouldNotBe(style.CalloutTitleFace.Attributes);
     }
 
-    /// <summary>Verifies the quote face keeps full contrast: it inherits the ambient foreground
-    /// rather than a separately colored, lower-contrast tone, and marks a quotation through italics
-    /// instead of dimming it. A muted foreground on a transparent background previously left quoted
-    /// text barely readable against a themed surface background.</summary>
+    /// <summary>Verifies the quote face keeps full contrast: it uses the same ControlText
+    /// foreground as the ordinary body face rather than a separately colored, lower-contrast tone,
+    /// and marks a quotation through italics instead of dimming it. A muted foreground on a
+    /// transparent background previously left quoted text barely readable against a themed surface
+    /// background.</summary>
     [Fact]
     public void Default_WhenQuoteFaceIsRead_PreservesContrastThroughItalicsNotColor()
     {
@@ -144,7 +161,7 @@ public sealed class DocumentStyleTests
         var style = DocumentStyle.Default;
 
         // Assert
-        style.QuoteFace.Foreground.ShouldBe((ControlColor) Color.Default);
+        style.QuoteFace.Foreground.ShouldBe((ControlColor) SemanticColor.ControlText);
         style.QuoteFace.Background.ShouldBe((ControlColor) Color.Transparent);
         style.QuoteFace.Attributes.ShouldBe((ControlDecoration) TerminalAttributes.Italic);
     }
@@ -541,14 +558,17 @@ public sealed class DocumentStyleTests
         surface.Cell(new Point(2, 0)).Style.Foreground.ShouldNotBe(before);
     }
 
-    /// <summary>Verifies theme-owned semantic decoration changes invalidate document-only faces,
-    /// not just palette changes.</summary>
+    /// <summary>Verifies a theme-owned FocusedText semantic-decoration change does not repaint the
+    /// document. Every DocumentStyle face that once resolved its weight through that symbolic
+    /// decoration now carries a literal Bold instead, precisely so a theme that redefines
+    /// FocusedText for its own interactive-focus purposes (for example to Reverse) cannot also
+    /// reskin this static typography.</summary>
     [Fact]
-    public async Task Theme_WhenOnlyDocumentSemanticDecorationChanges_RepaintsTheDocumentAsync()
+    public async Task Theme_WhenOnlyDocumentSemanticDecorationChanges_LeavesTheDocumentUnaffectedAsync()
     {
         // Arrange
         var themeA = WithSemanticDecoration(SemanticDecoration.FocusedText, TerminalAttributes.None);
-        var themeB = WithSemanticDecoration(SemanticDecoration.FocusedText, TerminalAttributes.Bold);
+        var themeB = WithSemanticDecoration(SemanticDecoration.FocusedText, TerminalAttributes.Reverse);
         var document = new Document
         {
             Blocks = { new DocumentList { Items = { new DocumentListItem("Item") } } }
@@ -564,7 +584,8 @@ public sealed class DocumentStyleTests
         await surface.UpdateAsync(() => surface.Application.Theme = themeB, "swap document semantic decoration");
 
         // Assert
-        surface.Cell(new Point(0, 0)).Style.Attributes.ShouldNotBe(before);
+        surface.Cell(new Point(0, 0)).Style.Attributes.ShouldBe(before);
+        (before & TerminalAttributes.Bold).ShouldBe(TerminalAttributes.Bold);
     }
 
     private static Theme WithSemanticColor(SemanticColor role, Color value)

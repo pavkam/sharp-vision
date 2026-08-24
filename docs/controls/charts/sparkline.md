@@ -29,9 +29,10 @@ property: it never shows a legend or labels, regardless of series count. The
 `ChartScale`, and the one-way binding pattern common to every chart control.
 
 `ChartStyle`, reached through `Style`/`ActualStyle`, also carries `AxisColor`,
-`LabelColor`, the `PrimaryColor`/`SecondaryColor`/`TertiaryColor` deterministic
-series palette, `Glyphs`, and `FillMode` (default `Fractional`), which governs
-how this chart's columns rasterize; see [Expected behavior](#expected-behavior).
+`LabelColor`, the `PrimaryColor`/`SecondaryColor`/`TertiaryColor`/
+`QuaternaryColor`/`QuinaryColor`/`SenaryColor` deterministic six-color series
+palette, `Glyphs`, and `FillMode` (default `Fractional`), which governs how this
+chart's columns rasterize; see [Expected behavior](#expected-behavior).
 
 ## Example
 

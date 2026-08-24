@@ -39,12 +39,15 @@ public sealed record JsonViewStyle: ContainerStyle
             container.Face,
             container.Border,
             container.Shadow,
-            SemanticColor.Accent,
-            SemanticColor.Info,
-            SemanticColor.Success,
-            SemanticColor.Info,
-            SemanticColor.Warning,
-            SemanticColor.Muted,
+            SemanticColor.Cyan,
+            // Blue, not Info: several bundled themes alias their cyan and info hues to the same
+            // literal color, which collided this role with KeyColor above. Blue is a distinct
+            // chromatic role the pairwise-distinctness gate keeps apart from Cyan in every theme.
+            SemanticColor.Blue,
+            SemanticColor.Green,
+            SemanticColor.Yellow,
+            SemanticColor.Magenta,
+            SemanticColor.Magenta,
             SemanticColor.ControlText,
             SemanticColor.Accent,
             ControlGlyphs.Disclosure.Collapsed.Value,

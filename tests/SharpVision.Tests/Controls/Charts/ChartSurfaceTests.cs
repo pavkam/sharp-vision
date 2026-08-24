@@ -157,6 +157,48 @@ public sealed class ChartSurfaceTests
         surface.Cell(new Point(0, 2)).Style.Foreground.ShouldBe(markerColor);
     }
 
+    /// <summary>Verifies a chart with five series reaches past the first three entries of the
+    /// six-color chromatic sequence: the fourth and fifth legend markers resolve
+    /// <see cref="ChartStyle.QuaternaryColor"/> and <see cref="ChartStyle.QuinaryColor"/> rather
+    /// than repeating or dropping colors once a chart outgrows the three-series coverage every
+    /// other legend test in this file happens to stop at.</summary>
+    [Fact]
+    public async Task Render_WhenChartHasFiveSeries_ResolvesQuaternaryAndQuinaryLegendColorsAsync()
+    {
+        // Arrange
+        var theme = ThemeCatalog.Dark;
+        var chart = new LineChart
+        {
+            Series = [
+                new ChartSeries("A", [new ChartDataPoint("1", 1)]),
+                new ChartSeries("B", [new ChartDataPoint("1", 2)]),
+                new ChartSeries("C", [new ChartDataPoint("1", 3)]),
+                new ChartSeries("D", [new ChartDataPoint("1", 4)]),
+                new ChartSeries("E", [new ChartDataPoint("1", 5)])],
+            ShowCategoryLabels = false
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(24, 3),
+            theme,
+            TestContext.Current.CancellationToken);
+
+        // Assert: legend slots are four cells wide (marker, gap, one-letter name, gap), so the
+        // fourth and fifth of five series land at columns 12 and 16 on the bottom legend row.
+        var quaternary = TerminalPalette.Project(
+            ControlBase.ResolveColor(ChartStyle.Default.QuaternaryColor, theme),
+            ColorDepth.Basic16);
+        var quinary = TerminalPalette.Project(
+            ControlBase.ResolveColor(ChartStyle.Default.QuinaryColor, theme),
+            ColorDepth.Basic16);
+        surface.Cell(new Point(12, 2)).Text.ShouldBe("■");
+        surface.Cell(new Point(12, 2)).Style.Foreground.ShouldBe(quaternary);
+        surface.Cell(new Point(16, 2)).Text.ShouldBe("■");
+        surface.Cell(new Point(16, 2)).Style.Foreground.ShouldBe(quinary);
+    }
+
     /// <summary>Verifies line charts can render finite values beside visible point markers.</summary>
     [Fact]
     public async Task Render_WhenLineShowsValueLabels_LabelsVisiblePointsAsync()

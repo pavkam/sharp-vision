@@ -31,9 +31,10 @@ The [shared chart API](index.md#api) documents `ChartSeries`, `ChartDataPoint`,
 Callers can use an explicit `ChartScale` when comparisons require fixed bounds.
 
 `ChartStyle`, reached through `Style`/`ActualStyle`, also carries `AxisColor`,
-`LabelColor`, the `PrimaryColor`/`SecondaryColor`/`TertiaryColor` deterministic
-series palette, `Glyphs`, `LineMode` (default `Quadrant`), and `LinePattern`
-(default `Solid`), which govern how this chart's lines rasterize; see
+`LabelColor`, the `PrimaryColor`/`SecondaryColor`/`TertiaryColor`/
+`QuaternaryColor`/`QuinaryColor`/`SenaryColor` deterministic six-color series
+palette, `Glyphs`, `LineMode` (default `Quadrant`), and `LinePattern` (default
+`Solid`), which govern how this chart's lines rasterize; see
 [Expected behavior](#expected-behavior).
 
 ## Example

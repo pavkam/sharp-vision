@@ -3,6 +3,10 @@
 
 namespace SharpVision.SyntaxHighlighting.Tests;
 
+// Not part of this project's GlobalUsings: ControlBase.ResolveColor is the only member from
+// SharpVision.Controls (rather than SharpVision.Controls.SyntaxHighlighting) this file needs.
+using SharpVision.Controls;
+
 /// <summary>Verifies <see cref="CodeViewStyle"/>'s own paint and glyph validation wiring.</summary>
 /// <remarks>
 /// <see cref="ControlColor"/>'s transparent rejection and <c>Rune.ValidateSingleCell</c>'s width
@@ -137,5 +141,43 @@ public sealed class CodeViewStyleTests
         var wide = new Rune(0x4E16);
 
         _ = Should.Throw<ArgumentException>(() => baseline with { CollapsedGlyph = wide });
+    }
+
+    /// <summary>Verifies the five headline content-differentiating roles - strings, numbers,
+    /// keywords, functions, and types - resolve to five pairwise distinct colors under the default
+    /// dark theme, proving the chromatic remap actually differentiates code content by color
+    /// instead of merely renaming which shared role each token borrows.</summary>
+    [Fact]
+    public void Default_WhenResolvedAgainstDarkTheme_DifferentiatesStringsNumbersKeywordsFunctionsAndTypes()
+    {
+        var theme = ThemeCatalog.Dark;
+        var style = CodeViewStyle.Definition.Resolve(null, theme);
+
+        var colors = new[]
+        {
+            ControlBase.ResolveColor(style.StringColor, theme),
+            ControlBase.ResolveColor(style.DecimalValueColor, theme),
+            ControlBase.ResolveColor(style.KeywordColor, theme),
+            ControlBase.ResolveColor(style.FunctionColor, theme),
+            ControlBase.ResolveColor(style.DataTypeColor, theme)
+        };
+
+        colors.Distinct().Count().ShouldBe(colors.Length);
+    }
+
+    /// <summary>Verifies the escape-sequence and special-string roles resolve a color distinct
+    /// from the surrounding string color they are nested within, matching base16's dedicated
+    /// support/escape slot - the contrast the five-way distinctness check above does not itself
+    /// exercise, since it never samples either role.</summary>
+    [Fact]
+    public void Default_WhenResolvedAgainstDarkTheme_ContrastsSpecialCharAndSpecialStringAgainstString()
+    {
+        var theme = ThemeCatalog.Dark;
+        var style = CodeViewStyle.Definition.Resolve(null, theme);
+
+        var stringColor = ControlBase.ResolveColor(style.StringColor, theme);
+
+        ControlBase.ResolveColor(style.SpecialCharColor, theme).ShouldNotBe(stringColor);
+        ControlBase.ResolveColor(style.SpecialStringColor, theme).ShouldNotBe(stringColor);
     }
 }
