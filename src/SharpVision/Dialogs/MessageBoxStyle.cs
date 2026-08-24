@@ -31,7 +31,7 @@ public sealed record MessageBoxStyle: WindowStyle
                 ? InvalidationImpact.Measure
                 : InvalidationImpact.None);
 
-    private static MessageBoxStyle Complete(WindowStyle window, VisualState state) =>
+    private static MessageBoxStyle Complete(WindowStyle window, VisualState state, Theme theme) =>
         new(window.Face, window.Border, window.Shadow, window.Face, new Thickness(1, 2, 1, 0), new Thickness(1, 0))
         {
             CloseGlyph = window.CloseGlyph,
@@ -75,7 +75,7 @@ public sealed record MessageBoxStyle: WindowStyle
     }
 
     /// <summary>Gets the standard MessageBox presentation.</summary>
-    public static new MessageBoxStyle Default => Complete(WindowStyle.Default, VisualState.Normal);
+    public static new MessageBoxStyle Default => Complete(WindowStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the message text face.</summary>
     public required Face MessageFace { get; init; }

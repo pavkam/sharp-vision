@@ -13,34 +13,50 @@ public sealed class ChaseIndicatorStyleTests
         var actual = ChaseIndicatorStyle.Default;
 
         actual.ShouldBe(ChaseIndicatorStyle.Circle);
-        actual.Active.ShouldBe(new Rune('●'));
-        actual.Inactive.ShouldBe(new Rune('◯'));
+        actual.Glyphs.Active.ShouldBe(new Rune('●'));
+        actual.Glyphs.Inactive.ShouldBe(new Rune('◯'));
         actual.HeadColor.ShouldBe(SemanticColor.Accent);
         actual.TrailColor.ShouldBe(SemanticColor.Muted);
         actual.TrackColor.ShouldBe(SemanticColor.Muted);
+    }
+
+    /// <summary>Verifies every bundled theme resolves ChaseIndicator's glyph pair to exactly the
+    /// glyph family that theme's own root-level "glyphs" field declares - the same values the
+    /// deleted "chaseIndicator" section used to author directly for the curated set (see
+    /// themes.md#glyph-families).</summary>
+    [Fact]
+    public void EveryTheme_ResolvesTheThemesDeclaredGlyphFamily()
+    {
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+            var resolved = ChaseIndicatorStyle.Definition.Resolve(null, theme);
+
+            resolved.Glyphs.ShouldBe(theme.Glyphs.ChaseIndicator, slug);
+        }
     }
 
     /// <summary>Verifies every retained named glyph recipe is exposed.</summary>
     [Fact]
     public void Presets_WhenResolved_RetainEstablishedRecipes()
     {
-        ChaseIndicatorStyle.Diamond.Active.ShouldBe(new Rune('◆'));
-        ChaseIndicatorStyle.Square.Active.ShouldBe(new Rune('■'));
-        ChaseIndicatorStyle.Up.Active.ShouldBe(new Rune('▲'));
-        ChaseIndicatorStyle.Down.Active.ShouldBe(new Rune('▼'));
-        ChaseIndicatorStyle.Left.Active.ShouldBe(new Rune('◀'));
-        ChaseIndicatorStyle.Right.Active.ShouldBe(new Rune('▶'));
+        ChaseIndicatorStyle.Diamond.Glyphs.Active.ShouldBe(new Rune('◆'));
+        ChaseIndicatorStyle.Square.Glyphs.Active.ShouldBe(new Rune('■'));
+        ChaseIndicatorStyle.Up.Glyphs.Active.ShouldBe(new Rune('▲'));
+        ChaseIndicatorStyle.Down.Glyphs.Active.ShouldBe(new Rune('▼'));
+        ChaseIndicatorStyle.Left.Glyphs.Active.ShouldBe(new Rune('◀'));
+        ChaseIndicatorStyle.Right.Glyphs.Active.ShouldBe(new Rune('▶'));
     }
 
     /// <summary>Verifies a <c>with</c> expression preserves omitted members.</summary>
     [Fact]
-    public void With_WhenOnlyActiveIsSupplied_PreservesOmittedMembers()
+    public void With_WhenOnlyGlyphsIsSupplied_PreservesOmittedMembers()
     {
         var baseline = ChaseIndicatorStyle.Circle;
-        var actual = baseline with { Active = new Rune('*') };
+        var actual = baseline with { Glyphs = new ChaseIndicatorGlyphs(new Rune('*'), baseline.Glyphs.Inactive) };
 
-        actual.Active.ShouldBe(new Rune('*'));
-        actual.Inactive.ShouldBe(baseline.Inactive);
+        actual.Glyphs.Active.ShouldBe(new Rune('*'));
+        actual.Glyphs.Inactive.ShouldBe(baseline.Glyphs.Inactive);
         actual.HeadColor.ShouldBe(baseline.HeadColor);
         actual.TrailColor.ShouldBe(baseline.TrailColor);
         actual.TrackColor.ShouldBe(baseline.TrackColor);
@@ -61,11 +77,10 @@ public sealed class ChaseIndicatorStyleTests
             baseline.Face,
             baseline.Border,
             baseline.Shadow,
-            baseline.Active,
-            baseline.Inactive,
             baseline.HeadColor,
             baseline.TrailColor,
-            baseline.TrackColor);
+            baseline.TrackColor,
+            baseline.Glyphs);
 
         equivalent.ShouldBe(baseline);
         equivalent.GetHashCode().ShouldBe(baseline.GetHashCode());
@@ -75,19 +90,13 @@ public sealed class ChaseIndicatorStyleTests
     [Theory]
     [InlineData(true, 0x4E16)]
     [InlineData(false, 0)]
-    public void Constructor_WhenGlyphIsWideOrControl_Throws(bool active, int scalar)
+    public void Glyphs_WhenActiveOrInactiveIsWideOrControl_Throws(bool active, int scalar)
     {
-        var baseline = ChaseIndicatorStyle.Default;
-
-        _ = Should.Throw<ArgumentException>(() => new ChaseIndicatorStyle(
-            baseline.Face,
-            baseline.Border,
-            baseline.Shadow,
+        var exception = Should.Throw<ArgumentException>(() => new ChaseIndicatorGlyphs(
             active ? new Rune(scalar) : new Rune('*'),
-            active ? new Rune('.') : new Rune(scalar),
-            baseline.HeadColor,
-            baseline.TrailColor,
-            baseline.TrackColor));
+            active ? new Rune('.') : new Rune(scalar)));
+
+        exception.ParamName.ShouldBe(active ? "active" : "inactive");
     }
 
     /// <summary>Verifies a <c>with</c> expression rejects an invalid glyph contribution too.</summary>
@@ -99,8 +108,8 @@ public sealed class ChaseIndicatorStyleTests
         var baseline = ChaseIndicatorStyle.Default;
 
         _ = Should.Throw<ArgumentException>(() => active
-            ? baseline with { Active = new Rune(scalar) }
-            : baseline with { Inactive = new Rune(scalar) });
+            ? baseline.Glyphs with { Active = new Rune(scalar) }
+            : baseline.Glyphs with { Inactive = new Rune(scalar) });
     }
 
     /// <summary>Verifies every chase-indicator part foreground rejects transparent paint from the constructor.</summary>
@@ -117,10 +126,9 @@ public sealed class ChaseIndicatorStyleTests
             baseline.Face,
             baseline.Border,
             baseline.Shadow,
-            baseline.Active,
-            baseline.Inactive,
             part == 0 ? transparent : baseline.HeadColor,
             part == 1 ? transparent : baseline.TrailColor,
-            part == 2 ? transparent : baseline.TrackColor));
+            part == 2 ? transparent : baseline.TrackColor,
+            baseline.Glyphs));
     }
 }

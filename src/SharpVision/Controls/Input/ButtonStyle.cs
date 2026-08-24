@@ -30,7 +30,7 @@ public sealed record ButtonStyle: InputStyle
         static theme => Definition.Resolve(null, theme),
         static (_, _, _, _) => InvalidationImpact.None);
 
-    private static ButtonStyle Complete(InputStyle input, VisualState state) =>
+    private static ButtonStyle Complete(InputStyle input, VisualState state, Theme theme) =>
         new(input.Face, input.Border, input.Shadow, new Thickness(horizontal: 1, vertical: 0))
         {
             // Forwarded from the fallback rather than left at the code-owned value the base
@@ -54,7 +54,7 @@ public sealed record ButtonStyle: InputStyle
     public required Thickness Padding { get; init; }
 
     /// <summary>Gets the standard bordered Button presentation.</summary>
-    public static ButtonStyle Standard { get; } = Complete(InputStyle.Default, VisualState.Normal);
+    public static ButtonStyle Standard { get; } = Complete(InputStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the standard Button presentation, aliasing <see cref="Standard"/>.</summary>
     /// <remarks>

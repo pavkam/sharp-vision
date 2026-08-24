@@ -30,6 +30,35 @@ public sealed class CheckBoxSurfaceTests
         surface.Cell(new Point(5, 0)).Continuation.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a theme document authoring the root-level "glyphs" field reaches a
+    /// mounted CheckBox's rendered mark - the ascii family's bracket layout and '.'/'X'/'-' trio,
+    /// not the code-owned defaults (see themes.md#glyph-families).</summary>
+    [Fact]
+    public async Task Render_WhenThemeAuthorsAnAsciiGlyphFamily_DrawsItsCheckBoxMarkAsync()
+    {
+        // Arrange
+        var checkBox = new CheckBox { Text = "Go", ThreeState = true, IsChecked = null };
+        await using var surface = await ComponentSurface.MountAsync(
+            checkBox,
+            new Size(10, 1),
+            TestContext.Current.CancellationToken);
+        surface.ShouldRender("[─] Go");
+
+        // Act
+        await surface.UpdateAsync(
+            () => surface.Application.Theme = ThemeCatalog.Parse(ThemeJson.Create(glyphs: "ascii")),
+            "author an ascii glyph family");
+
+        // Assert the indeterminate mark switches to the ascii family's own glyph trio.
+        surface.ShouldRender("[-] Go");
+
+        // Act and assert the checked and unchecked marks too.
+        await surface.UpdateAsync(() => checkBox.IsChecked = true, "check");
+        surface.ShouldRender("[X] Go");
+        await surface.UpdateAsync(() => checkBox.IsChecked = false, "uncheck");
+        surface.ShouldRender("[.] Go");
+    }
+
     /// <summary>Verifies hover, held press, release, focus, and pointer activation compose correctly.</summary>
     [Fact]
     public async Task Pointer_WhenCheckBoxIsClicked_ComposesStatesAndTogglesWithPointerCauseAsync()

@@ -6,6 +6,7 @@
   "author": "Pavel Pertsev",
   "license": "MIT",
   "source": "https://github.com/morhetz/gruvbox",
+  "glyphs": "ascii",
   "palette": {
     "bg0": "#282828",
     "bg1": "#3c3836",
@@ -216,77 +217,12 @@
         }
       }
     },
-    "scrollBar": {
-      "normal": {
-        "chrome": "thin",
-        "fill": "line",
-        "glyphs": {
-          "verticalDecrement": "^",
-          "verticalIncrement": "v",
-          "horizontalDecrement": "<",
-          "horizontalIncrement": ">",
-          "blockTrack": ".",
-          "blockThumb": "#",
-          "horizontalLineTrack": "-",
-          "horizontalLineThumb": "=",
-          "verticalLineTrack": "|",
-          "verticalLineThumb": "#"
-        }
-      }
-    },
-    "checkBox": {
-      "normal": {
-        "markStyle": "brackets",
-        "glyphs": {
-          "unchecked": ".",
-          "checked": "X",
-          "indeterminate": "-"
-        }
-      }
-    },
-    "radioButton": {
-      "normal": {
-        "markStyle": "parentheses",
-        "glyphs": {
-          "unchecked": ".",
-          "checked": "*"
-        }
-      }
-    },
     "button": {
       "normal": {
         "padding": {
           "x": 1,
           "y": 0
         }
-      }
-    },
-    "chaseIndicator": {
-      "normal": {
-        "active": "*",
-        "inactive": "."
-      }
-    },
-    "progressBar": {
-      "normal": {
-        "fillColor": "accent",
-        "trackColor": "muted",
-        "indeterminateColor": "warning",
-        "glyphs": {
-          "fill": "#",
-          "track": ".",
-          "indeterminate": "?"
-        }
-      }
-    },
-    "spinner": {
-      "normal": {
-        "frames": [
-          "|",
-          "/",
-          "-",
-          "\\"
-        ]
       }
     }
   }

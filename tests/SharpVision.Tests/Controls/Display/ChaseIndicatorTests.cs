@@ -176,29 +176,26 @@ public sealed class ChaseIndicatorTests
             baseline.Face,
             baseline.Border,
             baseline.Shadow,
-            baseline.Active,
-            baseline.Inactive,
             Color.Transparent,
             baseline.TrailColor,
-            baseline.TrackColor));
+            baseline.TrackColor,
+            baseline.Glyphs));
         _ = Should.Throw<ArgumentException>(() => indicator.Style = new ChaseIndicatorStyle(
             baseline.Face,
             baseline.Border,
             baseline.Shadow,
-            baseline.Active,
-            baseline.Inactive,
             baseline.HeadColor,
             Color.Transparent,
-            baseline.TrackColor));
+            baseline.TrackColor,
+            baseline.Glyphs));
         _ = Should.Throw<ArgumentException>(() => indicator.Style = new ChaseIndicatorStyle(
             baseline.Face,
             baseline.Border,
             baseline.Shadow,
-            baseline.Active,
-            baseline.Inactive,
             baseline.HeadColor,
             baseline.TrailColor,
-            Color.Transparent));
+            Color.Transparent,
+            baseline.Glyphs));
         indicator.Style.ShouldBeNull();
     }
 
@@ -245,11 +242,10 @@ public sealed class ChaseIndicatorTests
                 baseline.Face,
                 baseline.Border,
                 baseline.Shadow,
-                baseline.Active,
-                baseline.Inactive,
                 Color.Rgb(240, 120, 60),
                 Color.Rgb(60, 30, 0),
-                Color.Rgb(15, 15, 15))
+                Color.Rgb(15, 15, 15),
+                baseline.Glyphs)
         };
         new LayoutEngine().Layout(indicator, new Size(5, 1));
         using Frame frame = new(new Size(5, 1));

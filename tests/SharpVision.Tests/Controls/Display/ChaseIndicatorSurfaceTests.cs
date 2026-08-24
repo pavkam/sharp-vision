@@ -285,20 +285,18 @@ public sealed class ChaseIndicatorSurfaceTests
             LiteralFace(Color.Rgb(0x40, 0x80, 0xC0)),
             ChaseIndicatorStyle.Default.Border,
             ChaseIndicatorStyle.Default.Shadow,
-            glyphs.Active,
-            glyphs.Inactive,
             ChaseIndicatorStyle.Default.HeadColor,
             ChaseIndicatorStyle.Default.TrailColor,
-            ChaseIndicatorStyle.Default.TrackColor);
+            ChaseIndicatorStyle.Default.TrackColor,
+            glyphs.Glyphs);
         var secondStyle = new ChaseIndicatorStyle(
             LiteralFace(Color.Rgb(0xC0, 0x80, 0x40)),
             ChaseIndicatorStyle.Default.Border,
             ChaseIndicatorStyle.Default.Shadow,
-            glyphs.Active,
-            glyphs.Inactive,
             ChaseIndicatorStyle.Default.HeadColor,
             ChaseIndicatorStyle.Default.TrailColor,
-            ChaseIndicatorStyle.Default.TrackColor);
+            ChaseIndicatorStyle.Default.TrackColor,
+            glyphs.Glyphs);
         var indicator = new ChaseIndicator
         {
             Length = 5,
@@ -356,11 +354,10 @@ public sealed class ChaseIndicatorSurfaceTests
                 LiteralFace(Color.Rgb(0xE0, 0xE0, 0xE0)),
                 ChaseIndicatorStyle.Default.Border,
                 ChaseIndicatorStyle.Default.Shadow,
-                baseline.Active,
-                baseline.Inactive,
                 ChaseIndicatorStyle.Default.HeadColor,
                 ChaseIndicatorStyle.Default.TrailColor,
-                ChaseIndicatorStyle.Default.TrackColor)
+                ChaseIndicatorStyle.Default.TrackColor,
+                baseline.Glyphs)
         };
         await using var surface = await ComponentSurface.MountAsync(
             indicator,
@@ -403,11 +400,10 @@ public sealed class ChaseIndicatorSurfaceTests
                 ChaseIndicatorStyle.Default.Face,
                 ChaseIndicatorStyle.Default.Border,
                 ChaseIndicatorStyle.Default.Shadow,
-                ChaseIndicatorStyle.Default.Active,
-                ChaseIndicatorStyle.Default.Inactive,
                 Color.Rgb(0xFF, 0xFF, 0xFF),
                 ChaseIndicatorStyle.Default.TrailColor,
-                Color.Rgb(0x00, 0x00, 0xFF))
+                Color.Rgb(0x00, 0x00, 0xFF),
+                ChaseIndicatorStyle.Default.Glyphs)
         };
         await using var surface = await ComponentSurface.MountAsync(
             indicator,
@@ -467,11 +463,10 @@ public sealed class ChaseIndicatorSurfaceTests
                 ChaseIndicatorStyle.Default.Face,
                 ChaseIndicatorStyle.Default.Border,
                 ChaseIndicatorStyle.Default.Shadow,
-                ChaseIndicatorStyle.Default.Active,
-                ChaseIndicatorStyle.Default.Inactive,
                 Color.Rgb(255, 255, 255),
                 Color.Rgb(0, 0, 0),
-                Color.Rgb(0, 0, 0)),
+                Color.Rgb(0, 0, 0),
+                ChaseIndicatorStyle.Default.Glyphs),
             FadeDuration = TimeSpan.FromMilliseconds(400),
         };
         await using var surface = await ComponentSurface.MountAsync(
@@ -542,11 +537,10 @@ public sealed class ChaseIndicatorSurfaceTests
                 baseline.Face,
                 baseline.Border,
                 baseline.Shadow,
-                baseline.Active,
-                baseline.Inactive,
                 Color.Rgb(255, 255, 255),
                 Color.Rgb(0, 0, 0),
-                Color.Rgb(15, 15, 15))
+                Color.Rgb(15, 15, 15),
+                baseline.Glyphs)
         };
         await using var surface = await ComponentSurface.MountAsync(
             indicator,
@@ -587,11 +581,10 @@ public sealed class ChaseIndicatorSurfaceTests
                 ChaseIndicatorStyle.Default.Face,
                 ChaseIndicatorStyle.Default.Border,
                 ChaseIndicatorStyle.Default.Shadow,
-                ChaseIndicatorStyle.Default.Active,
-                ChaseIndicatorStyle.Default.Inactive,
                 Color.Rgb(255, 255, 255),
                 Color.Rgb(0, 0, 0),
-                Color.Rgb(0, 0, 0)),
+                Color.Rgb(0, 0, 0),
+                ChaseIndicatorStyle.Default.Glyphs),
             FadeDuration = TimeSpan.FromMilliseconds(400)
         };
         await using var surface = await ComponentSurface.MountAsync(
@@ -625,11 +618,10 @@ public sealed class ChaseIndicatorSurfaceTests
                 ChaseIndicatorStyle.Default.Face,
                 ChaseIndicatorStyle.Default.Border,
                 ChaseIndicatorStyle.Default.Shadow,
-                ChaseIndicatorStyle.Default.Active,
-                ChaseIndicatorStyle.Default.Inactive,
                 Color.Rgb(255, 255, 255),
                 Color.Rgb(0, 0, 0),
-                Color.Rgb(0, 0, 0)),
+                Color.Rgb(0, 0, 0),
+                ChaseIndicatorStyle.Default.Glyphs),
             FadeDuration = TimeSpan.FromMilliseconds(400)
         };
         await using var surface = await ComponentSurface.MountAsync(

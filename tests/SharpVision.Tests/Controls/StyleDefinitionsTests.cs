@@ -205,7 +205,7 @@ public sealed class StyleDefinitionsTests
     private static TestRootStyle RootDefault() =>
         new(ControlStyle.DefaultFace, ControlStyle.NoBorder, ControlStyle.NoShadow);
 
-    private static TestWidgetStyle Complete(TestRootStyle parent, VisualState state) =>
+    private static TestWidgetStyle Complete(TestRootStyle parent, VisualState state, Theme theme) =>
         new(parent.Face, parent.Border, parent.Shadow, padding: 1);
 
     private sealed record TestRootStyle: ControlStyle

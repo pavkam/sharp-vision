@@ -29,7 +29,7 @@ public sealed record MenuItemStyle: ControlStyle
                     ? InvalidationImpact.Render
                     : InvalidationImpact.None);
 
-    private static MenuItemStyle Complete(ControlStyle control, VisualState state) =>
+    private static MenuItemStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
         new(
             control.Face,
             control.Border,
@@ -65,7 +65,7 @@ public sealed record MenuItemStyle: ControlStyle
     }
 
     /// <summary>Gets the standard menu-entry presentation.</summary>
-    public static new MenuItemStyle Default => Complete(ControlStyle.Default, VisualState.Normal);
+    public static new MenuItemStyle Default => Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the unchecked marker for a check-kind entry.</summary>
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>

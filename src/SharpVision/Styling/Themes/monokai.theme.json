@@ -6,6 +6,7 @@
   "author": "Wimer Hazenberg",
   "license": "MIT",
   "source": "https://www.monokai.nl",
+  "glyphs": "shades",
   "palette": {
     "bg": "#272822",
     "raised": "#3e3d32",
@@ -215,81 +216,12 @@
         }
       }
     },
-    "scrollBar": {
-      "normal": {
-        "chrome": "full",
-        "fill": "block",
-        "glyphs": {
-          "verticalDecrement": "▲",
-          "verticalIncrement": "▼",
-          "horizontalDecrement": "◀",
-          "horizontalIncrement": "▶",
-          "blockTrack": "▒",
-          "blockThumb": "▓",
-          "horizontalLineTrack": "═",
-          "horizontalLineThumb": "━",
-          "verticalLineTrack": "║",
-          "verticalLineThumb": "┃"
-        }
-      }
-    },
-    "checkBox": {
-      "normal": {
-        "markStyle": "square",
-        "glyphs": {
-          "unchecked": "☐",
-          "checked": "☑",
-          "indeterminate": "▪"
-        }
-      }
-    },
-    "radioButton": {
-      "normal": {
-        "markStyle": "circle",
-        "glyphs": {
-          "unchecked": "○",
-          "checked": "◉"
-        }
-      }
-    },
     "button": {
       "normal": {
         "padding": {
           "x": 2,
           "y": 0
         }
-      }
-    },
-    "chaseIndicator": {
-      "normal": {
-        "active": "▓",
-        "inactive": "░"
-      }
-    },
-    "progressBar": {
-      "normal": {
-        "fillColor": "accent",
-        "trackColor": "muted",
-        "indeterminateColor": "info",
-        "glyphs": {
-          "fill": "▓",
-          "track": "░",
-          "indeterminate": "▒"
-        }
-      }
-    },
-    "spinner": {
-      "normal": {
-        "frames": [
-          "⣿",
-          "⣷",
-          "⣯",
-          "⣟",
-          "⡿",
-          "⢿",
-          "⣻",
-          "⣽"
-        ]
       }
     }
   }

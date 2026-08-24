@@ -22,7 +22,7 @@ public sealed record NavigationViewItemStyle: ControlStyle
                     ? InvalidationImpact.Render
                     : InvalidationImpact.None);
 
-    private static NavigationViewItemStyle Complete(ControlStyle control, VisualState state) =>
+    private static NavigationViewItemStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
         new(
             control.Face,
             control.Border,
@@ -46,7 +46,7 @@ public sealed record NavigationViewItemStyle: ControlStyle
     }
 
     /// <summary>Gets the standard navigation-entry presentation.</summary>
-    public static new NavigationViewItemStyle Default => Complete(ControlStyle.Default, VisualState.Normal);
+    public static new NavigationViewItemStyle Default => Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the marker drawn for a non-current entry.</summary>
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>

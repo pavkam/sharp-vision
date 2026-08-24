@@ -30,7 +30,7 @@ public sealed record CalendarStyle: InputStyle
                     ? InvalidationImpact.Render
                     : InvalidationImpact.None);
 
-    private static CalendarStyle Complete(InputStyle input, VisualState state) =>
+    private static CalendarStyle Complete(InputStyle input, VisualState state, Theme theme) =>
         new(
             input.Face,
             input.Border,
@@ -124,7 +124,7 @@ public sealed record CalendarStyle: InputStyle
     }
 
     /// <summary>Gets the standard calendar presentation.</summary>
-    public static new CalendarStyle Default { get; } = Complete(InputStyle.Default, VisualState.Normal);
+    public static new CalendarStyle Default { get; } = Complete(InputStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the foreground for a date inside the committed selection.</summary>
     /// <exception cref="ArgumentException">The replacement value is transparent.</exception>

@@ -21,7 +21,7 @@ public sealed record HyperlinkButtonStyle: ControlStyle
         static (previous, _, current, _) =>
             previous != current ? InvalidationImpact.Render : InvalidationImpact.None);
 
-    private static HyperlinkButtonStyle Complete(ControlStyle control, VisualState state) =>
+    private static HyperlinkButtonStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
         new(
             control.Face with
             {
@@ -48,5 +48,5 @@ public sealed record HyperlinkButtonStyle: ControlStyle
     public HyperlinkButtonStyle(Face face, Border border, Shadow shadow) : base(face, border, shadow) { }
 
     /// <summary>Gets the standard hyperlink-button presentation.</summary>
-    public static new HyperlinkButtonStyle Default => Complete(ControlStyle.Default, VisualState.Normal);
+    public static new HyperlinkButtonStyle Default => Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 }

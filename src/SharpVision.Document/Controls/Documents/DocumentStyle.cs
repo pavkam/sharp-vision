@@ -96,7 +96,10 @@ public sealed record DocumentStyle: ControlStyle
     }
 
     /// <summary>Gets the standard document presentation.</summary>
-    public static new DocumentStyle Default => Complete(ControlStyle.Default, VisualState.Normal);
+    // A bare Theme, not ThemeCatalog.Dark: this style has no internal access to SharpVision's own
+    // Theme.Unthemed (declared in a different assembly with no InternalsVisibleTo grant here), and
+    // Complete never reads the theme it is given, so any valid instance resolves identically.
+    public static new DocumentStyle Default => Complete(ControlStyle.Default, VisualState.Normal, new Theme());
 
     /// <summary>Gets the complete face used for level 1 and 2 headings. Levels 3 through 6 render in
     /// the plain <see cref="ControlStyle.Face"/> with bold weight added.</summary>
@@ -161,7 +164,7 @@ public sealed record DocumentStyle: ControlStyle
     /// <summary>Gets the complete bullet, quote-bar, and rule glyph family.</summary>
     public required DocumentGlyphs Glyphs { get; init; }
 
-    private static DocumentStyle Complete(ControlStyle control, VisualState _) => new(
+    private static DocumentStyle Complete(ControlStyle control, VisualState _, Theme theme) => new(
         control.Face,
         control.Border,
         control.Shadow,

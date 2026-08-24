@@ -114,11 +114,10 @@ internal sealed class ChaseIndicatorPane: CompositeControlBase
                             ChaseIndicatorStyle.Default.Face,
                             ChaseIndicatorStyle.Default.Border,
                             ChaseIndicatorStyle.Default.Shadow,
-                            ChaseIndicatorStyle.Default.Active,
-                            ChaseIndicatorStyle.Default.Inactive,
                             Color.Rgb(0xff, 0x40, 0x40),
                             Color.Rgb(0x80, 0x20, 0x20),
-                            Color.Rgb(0x30, 0x30, 0x30))
+                            Color.Rgb(0x30, 0x30, 0x30),
+                            ChaseIndicatorStyle.Default.Glyphs)
                     },
                     "chase.Style = ChaseIndicatorStyle.Default with { HeadColor = Color.Rgb(0xFF, 0x40, 0x40) };")),
             new DocSection(

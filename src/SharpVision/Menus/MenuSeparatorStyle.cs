@@ -19,7 +19,7 @@ public sealed record MenuSeparatorStyle: ControlStyle
         static (previous, _, current, _) =>
             previous != current ? InvalidationImpact.Render : InvalidationImpact.None);
 
-    private static MenuSeparatorStyle Complete(ControlStyle control, VisualState state) =>
+    private static MenuSeparatorStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
         new(control.Face, control.Border, control.Shadow, ControlGlyphs.Separators.Menu.Value);
 
     /// <summary>Initializes a complete menu-divider presentation.</summary>
@@ -33,7 +33,7 @@ public sealed record MenuSeparatorStyle: ControlStyle
         Glyph = glyph;
 
     /// <summary>Gets the standard menu-divider presentation.</summary>
-    public static new MenuSeparatorStyle Default => Complete(ControlStyle.Default, VisualState.Normal);
+    public static new MenuSeparatorStyle Default => Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the divider glyph.</summary>
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>

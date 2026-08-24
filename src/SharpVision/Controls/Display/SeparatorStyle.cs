@@ -26,7 +26,7 @@ public sealed record SeparatorStyle: ControlStyle
         static theme => Definition.Resolve(null, theme),
         static (_, _, _, _) => InvalidationImpact.None);
 
-    private static SeparatorStyle Complete(ControlStyle control, VisualState state) =>
+    private static SeparatorStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
         new(control.Face, control.Border, control.Shadow, new Rune('─'), new Rune('│'));
 
     /// <summary>Initializes a complete separator presentation.</summary>
@@ -44,7 +44,7 @@ public sealed record SeparatorStyle: ControlStyle
     }
 
     /// <summary>Gets the standard separator presentation.</summary>
-    public static new SeparatorStyle Default => Complete(ControlStyle.Default, VisualState.Normal);
+    public static new SeparatorStyle Default => Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the horizontal divider glyph.</summary>
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>

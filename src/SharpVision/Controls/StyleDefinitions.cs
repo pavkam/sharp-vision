@@ -16,7 +16,7 @@ public static class StyleDefinitions
     /// fallback, for a style type that owns a code-defined default and inherits no other type's
     /// theme customization.</summary>
     /// <remarks>
-    /// Prefer <see cref="Control{TStyle,TFallback}(Func{Theme,StyleStates{TFallback}},Func{TFallback,VisualState,TStyle},Func{TStyle,Theme?,TStyle,Theme?,InvalidationImpact})"/>
+    /// Prefer <see cref="Control{TStyle,TFallback}(Func{Theme,StyleStates{TFallback}},Func{TFallback,VisualState,Theme,TStyle},Func{TStyle,Theme?,TStyle,Theme?,InvalidationImpact})"/>
     /// unless the type genuinely has no sensible fallback: a root resolves entirely from its own
     /// key, so a theme that authors only <c>styles.control</c> moves nothing about it.
     ///
@@ -77,13 +77,13 @@ public static class StyleDefinitions
     /// <typeparam name="TFallback">The declared fallback style type (typically one of the six
     /// well-known base types).</typeparam>
     /// <param name="fallbackTo">Resolves the fallback type's complete per-state set for one Theme.</param>
-    /// <param name="complete">Completes one fallback-contributed style into this control's own style.</param>
+    /// <param name="complete">Completes one fallback-contributed style into this control's own style. The Theme argument is how a completion consults theme-level values beyond the fallback's own resolved appearance - e.g. the glyph-aware styles read <c>theme.Glyphs</c> to complete their own structural members.</param>
     /// <param name="compare">Returns the earliest phase affected by structural or directly themed members.</param>
     /// <returns>An immutable primary-style definition.</returns>
     /// <exception cref="ArgumentNullException">A delegate is null.</exception>
     public static StyleDefinition<TStyle> Control<TStyle, TFallback>(
         Func<Theme, StyleStates<TFallback>> fallbackTo,
-        Func<TFallback, VisualState, TStyle> complete,
+        Func<TFallback, VisualState, Theme, TStyle> complete,
         Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> compare)
         where TStyle : ControlStyle
         where TFallback : ControlStyle =>
@@ -96,7 +96,7 @@ public static class StyleDefinitions
     /// <typeparam name="TFallback">The declared fallback style type.</typeparam>
     /// <param name="key">The exact <c>styles.*</c> key this control resolves (e.g. "acme.gauge").</param>
     /// <param name="fallbackTo">Resolves the fallback type's complete per-state set for one Theme.</param>
-    /// <param name="complete">Completes one fallback-contributed style into this control's own style.</param>
+    /// <param name="complete">Completes one fallback-contributed style into this control's own style. The Theme argument is how a completion consults theme-level values beyond the fallback's own resolved appearance - e.g. the glyph-aware styles read <c>theme.Glyphs</c> to complete their own structural members.</param>
     /// <param name="compare">Returns the earliest phase affected by structural or directly themed members.</param>
     /// <returns>An immutable primary-style definition.</returns>
     /// <exception cref="ArgumentException"><paramref name="key"/> is null or empty.</exception>
@@ -104,7 +104,7 @@ public static class StyleDefinitions
     public static StyleDefinition<TStyle> Control<TStyle, TFallback>(
         string key,
         Func<Theme, StyleStates<TFallback>> fallbackTo,
-        Func<TFallback, VisualState, TStyle> complete,
+        Func<TFallback, VisualState, Theme, TStyle> complete,
         Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> compare)
         where TStyle : ControlStyle
         where TFallback : ControlStyle
@@ -127,11 +127,11 @@ public static class StyleDefinitions
         Theme theme,
         string key,
         Func<Theme, StyleStates<TFallback>> fallbackTo,
-        Func<TFallback, VisualState, TStyle> complete)
+        Func<TFallback, VisualState, Theme, TStyle> complete)
         where TStyle : ControlStyle
         where TFallback : ControlStyle
     {
-        var completed = complete(fallbackTo(theme).Normal, VisualState.Normal);
+        var completed = complete(fallbackTo(theme).Normal, VisualState.Normal, theme);
         var raw = theme.GetRawStyleSection(key);
         return raw?.TryGetValue("normal", out var overrides) == true
             ? (TStyle) theme.Overlay(completed, overrides, $"styles.{key}.normal")

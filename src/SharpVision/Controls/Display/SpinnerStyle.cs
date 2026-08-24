@@ -13,11 +13,6 @@ using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
 [PublicAPI]
 public sealed record SpinnerStyle: ControlStyle
 {
-    private static readonly ImmutableArray<Rune> _brailleFrames =
-    [
-        new Rune('⠋'), new Rune('⠙'), new Rune('⠹'), new Rune('⠸'), new Rune('⠼'),
-        new Rune('⠴'), new Rune('⠦'), new Rune('⠧'), new Rune('⠇'), new Rune('⠏')
-    ];
     private static readonly ImmutableArray<Rune> _denseBrailleFrames =
     [
         new Rune('⣿'), new Rune('⣷'), new Rune('⣯'), new Rune('⣟'),
@@ -39,8 +34,12 @@ public sealed record SpinnerStyle: ControlStyle
             ? InvalidationImpact.None
             : InvalidationImpact.Render);
 
-    private static SpinnerStyle Complete(ControlStyle control, VisualState state) =>
-        new(control.Face, control.Border, control.Shadow, _brailleFrames);
+    // The frame sequence comes from the active theme's glyph family (see
+    // themes.md#glyph-families) rather than a literal hardcoded here - GlyphFamily.Default carries
+    // the exact ten-frame light Braille orbit this style used to hardcode directly, so an
+    // unthemed resolution is unchanged.
+    private static SpinnerStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
+        new(control.Face, control.Border, control.Shadow, theme.Glyphs.Spinner);
 
     /// <summary>Gets the maximum number of frames retained by one spinner presentation.</summary>
     public const int MaximumFrameCount = 256;
@@ -60,7 +59,7 @@ public sealed record SpinnerStyle: ControlStyle
     public static new SpinnerStyle Default => Braille;
 
     /// <summary>Gets the ten-frame light Braille orbit.</summary>
-    public static SpinnerStyle Braille { get; } = Complete(ControlStyle.Default, VisualState.Normal);
+    public static SpinnerStyle Braille { get; } = Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the eight-frame dense Braille rotation.</summary>
     public static SpinnerStyle DenseBraille { get; } = Braille with { Frames = _denseBrailleFrames };

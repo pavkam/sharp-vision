@@ -272,6 +272,7 @@ public static class ThemeCatalog
         SetSemanticColors(theme, definition.Colors, palette, source);
         SetSemanticAttributes(theme, definition.Attributes, source);
         ApplyStyleSections(theme, definition.Styles, source);
+        theme.SetGlyphs(ReadGlyphFamily(definition.Glyphs, source));
         theme.Freeze();
         return theme;
     }
@@ -537,7 +538,8 @@ public static class ThemeCatalog
                      ("colorScheme", definition.ColorScheme),
                      ("author", definition.Author),
                      ("license", definition.License),
-                     ("source", definition.Source)
+                     ("source", definition.Source),
+                     ("glyphs", definition.Glyphs)
                  })
         {
             if (value is { Length: > _maximumMetadataLength })
@@ -567,6 +569,23 @@ public static class ThemeCatalog
                 _ => throw new InvalidDataException($"Theme '{source}' has invalid colorScheme '{value}'.")
             };
     }
+
+    // Case-insensitive, matching ResolveSectionBorderGlyphStyle's identical string-to-static-
+    // instance leniency rather than ReadColorScheme's exact-case switch: "glyphs" is authored
+    // freely by any theme document, not just the fifteen curated ones ReadColorScheme's stricter
+    // metadata rules already assume complete, embedded documents for.
+    private static GlyphFamily ReadGlyphFamily(string? value, string source) =>
+        value is null
+            ? GlyphFamily.Default
+            : value.ToLowerInvariant() switch
+            {
+                "dots" => GlyphFamily.Dots,
+                "blocks" => GlyphFamily.Blocks,
+                "ascii" => GlyphFamily.Ascii,
+                "shades" => GlyphFamily.Shades,
+                "lines" => GlyphFamily.Lines,
+                _ => throw new InvalidDataException($"Theme '{source}' has invalid glyphs '{value}'.")
+            };
 
     #endregion
 

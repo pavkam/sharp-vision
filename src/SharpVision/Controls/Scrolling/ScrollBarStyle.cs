@@ -19,8 +19,21 @@ public sealed record ScrollBarStyle: ControlStyle
         Complete,
         Compare);
 
-    private static ScrollBarStyle Complete(ControlStyle control, VisualState state) =>
-        new(control.Face, control.Border, control.Shadow, ScrollBarChrome.Full, ScrollBarFill.Block, ScrollBarGlyphs.Default, SemanticColor.Muted, SemanticColor.Accent, SemanticColor.ControlText);
+    // The chrome, fill, and glyph set come from the active theme's glyph family (see
+    // themes.md#glyph-families) rather than a literal hardcoded here - GlyphFamily.Default carries
+    // the exact Full/Block/ScrollBarGlyphs.Default combination this style used to hardcode
+    // directly, so an unthemed resolution is unchanged.
+    private static ScrollBarStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
+        new(
+            control.Face,
+            control.Border,
+            control.Shadow,
+            theme.Glyphs.ScrollBar.Chrome,
+            theme.Glyphs.ScrollBar.Fill,
+            theme.Glyphs.ScrollBar.Glyphs,
+            SemanticColor.Muted,
+            SemanticColor.Accent,
+            SemanticColor.ControlText);
 
     /// <summary>Gets the secondary definition used by generated-scrollbar hosts.</summary>
     internal static StyleDefinition<ScrollBarStyle> PartDefinition { get; } = StyleDefinitions.Part(
@@ -76,7 +89,7 @@ public sealed record ScrollBarStyle: ControlStyle
     public static new ScrollBarStyle Default => FullBlock;
 
     /// <summary>Gets the full button-and-track block presentation.</summary>
-    public static ScrollBarStyle FullBlock { get; } = Complete(ControlStyle.Default, VisualState.Normal);
+    public static ScrollBarStyle FullBlock { get; } = Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the full button-and-track line presentation.</summary>
     public static ScrollBarStyle FullLine { get; } = FullBlock with { Fill = ScrollBarFill.Line };

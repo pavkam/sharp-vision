@@ -23,7 +23,7 @@ public sealed record TabControlStyle: ControlStyle
                 ? InvalidationImpact.Render
                 : InvalidationImpact.None);
 
-    private static TabControlStyle Complete(ControlStyle control, VisualState state) =>
+    private static TabControlStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
         new(
             control.Face,
             control.Border,
@@ -61,7 +61,7 @@ public sealed record TabControlStyle: ControlStyle
     }
 
     /// <summary>Gets the standard tab-strip presentation.</summary>
-    public static new TabControlStyle Default => Complete(ControlStyle.Default, VisualState.Normal);
+    public static new TabControlStyle Default => Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the glyph drawn between adjacent headers.</summary>
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>

@@ -38,6 +38,12 @@ internal sealed class ThemeDocument
     [JsonPropertyName("source")]
     public string? Source { get; set; }
 
+    /// <summary>Gets or sets the named glyph family selecting CheckBox, RadioButton, ScrollBar,
+    /// Spinner, ProgressBar, and ChaseIndicator's code-owned presentation - one of "dots",
+    /// "blocks", "ascii", "shades", or "lines". Absent resolves to <see cref="GlyphFamily.Default"/>.</summary>
+    [JsonPropertyName("glyphs")]
+    public string? Glyphs { get; set; }
+
     /// <summary>Gets or sets named RGB colors.</summary>
     [JsonPropertyName("palette")]
     public Dictionary<string, string>? Palette { get; set; }

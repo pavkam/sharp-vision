@@ -4,6 +4,7 @@
 namespace SharpVision.Compatibility.Tests;
 
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
 using SharpVision.Controls;
 using SharpVision.Styling;
@@ -27,18 +28,25 @@ using SharpVision.Styling;
 /// </remarks>
 public sealed class ThemeConsumerTests
 {
-    /// <summary>Models a third-party "gauge" control's complete style: one structural member
-    /// (<see cref="FillColor"/>) beyond Face/Border/Shadow, falling back through
-    /// <see cref="Theme.GetInteractiveControlStyleSet"/> the same way a library-owned borderless
-    /// interactive leaf style falls back through it, but declared under an explicit vendor-dotted
-    /// key since a third-party type name cannot contain the dot <see cref="StyleKey"/> derives keys
-    /// from.</summary>
+    /// <summary>Models a third-party "gauge" control's complete style: two structural members
+    /// (<see cref="FillColor"/>, <see cref="FillGlyph"/>) beyond Face/Border/Shadow, falling back
+    /// through <see cref="Theme.GetInteractiveControlStyleSet"/> the same way a library-owned
+    /// borderless interactive leaf style falls back through it, but declared under an explicit
+    /// vendor-dotted key since a third-party type name cannot contain the dot
+    /// <see cref="StyleKey"/> derives keys from. <see cref="FillGlyph"/> exists specifically to
+    /// prove the completion delegate's <see cref="Theme"/> argument reaches theme-level values
+    /// beyond the fallback style's own resolved appearance, the same way a library glyph-aware
+    /// style (e.g. <c>ProgressBarStyle</c>) reads <c>theme.Glyphs</c> to complete itself.</summary>
     private sealed record GaugeStyle: ControlStyle
     {
         /// <summary>Initializes a complete gauge presentation.</summary>
         [SetsRequiredMembers]
-        public GaugeStyle(Face face, Border border, Shadow shadow, ControlColor fillColor)
-            : base(face, border, shadow) => FillColor = fillColor;
+        public GaugeStyle(Face face, Border border, Shadow shadow, ControlColor fillColor, Rune fillGlyph)
+            : base(face, border, shadow)
+        {
+            FillColor = fillColor;
+            FillGlyph = fillGlyph;
+        }
 
         /// <summary>Gets the primary gauge-style definition, resolved against the public
         /// <c>"acme.gauge"</c> vendor-dotted key.</summary>
@@ -50,11 +58,15 @@ public sealed class ThemeConsumerTests
                 static (previous, _, current, _) =>
                     previous != current ? InvalidationImpact.Render : InvalidationImpact.None);
 
-        private static GaugeStyle Complete(ControlStyle control, VisualState state) =>
-            new(control.Face, control.Border, control.Shadow, SemanticColor.Accent);
+        private static GaugeStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
+            new(control.Face, control.Border, control.Shadow, SemanticColor.Accent, theme.Glyphs.ProgressBar.Fill);
 
         /// <summary>Gets the fill indicator foreground.</summary>
         public required ControlColor FillColor { get; init; }
+
+        /// <summary>Gets the fill indicator glyph, completed from the active theme's glyph family
+        /// rather than a literal hardcoded in <see cref="Complete"/>.</summary>
+        public required Rune FillGlyph { get; init; }
     }
 
     /// <summary>Hosts <see cref="GaugeStyle"/> the way a real third-party control would: a primary
@@ -81,7 +93,11 @@ public sealed class ThemeConsumerTests
     /// assignment, no attached Theme - resolves its "acme.gauge" style against
     /// <see cref="ThemeCatalog.Dark"/> by completing <see cref="Theme.GetInteractiveControlStyleSet"/>'s
     /// own Normal appearance, the public one-hop fallback resolving a real complete style with
-    /// nothing to override it.</summary>
+    /// nothing to override it. Also verifies <see cref="GaugeStyle.FillGlyph"/> resolves to
+    /// <see cref="GlyphFamily.Default"/>'s own fill glyph - <see cref="ThemeCatalog.Dark"/> is one
+    /// of the two zero-config themes, so its <c>Theme.Glyphs</c> is <see cref="GlyphFamily.Default"/>
+    /// - proving <see cref="GaugeStyle.Complete"/> genuinely reads the <see cref="Theme"/> argument
+    /// <see cref="StyleDefinitions"/>'s completion delegate carries rather than ignoring it.</summary>
     [Fact]
     public void ActualStyle_WhenGaugeHasNoLocalOverride_CompletesTheInteractiveControlSetsNormal()
     {
@@ -96,6 +112,7 @@ public sealed class ThemeConsumerTests
         actual.Face.ShouldBe(expectedNormal.Face);
         actual.Border.ShouldBe(expectedNormal.Border);
         actual.Shadow.ShouldBe(expectedNormal.Shadow);
+        actual.FillGlyph.ShouldBe(GlyphFamily.Default.ProgressBar.Fill);
     }
 
     /// <summary>Verifies the interactive control set - the fallback <see cref="GaugeStyle"/>

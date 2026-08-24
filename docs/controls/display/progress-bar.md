@@ -61,17 +61,20 @@ presentation on top of the inherited `Face`/`Border`/`Shadow`:
 A `with` expression creates a validated member-wise copy of
 `ProgressBarStyle.Default` or of any resolved style. Assigning `Style` replaces
 the entire Theme-owned presentation, and assigning `null` restores it. Without a
-local `Style`, all progress cells resolve from the code-owned glyph defaults,
-and a glyph that is unsuitable under the active width policy uses its code-owned
-fallback. Replacing the Theme recolors an existing bar without changing its
-glyphs. In indeterminate mode, the committed content bounds fill with the
-resolved indeterminate glyph.
+local `Style`, all progress cells resolve from the code-owned glyph defaults -
+themselves chosen by the active theme's `glyphs` field (see
+[themes.md](../../concepts/themes.md#glyph-families)) - and a glyph that is
+unsuitable under the active width policy uses its code-owned fallback. Replacing
+the Theme recolors an existing bar without changing its glyphs. In indeterminate
+mode, the committed content bounds fill with the resolved indeterminate glyph.
 
-Without a theme section or a local `Style`, completed and indeterminate progress
-use the theme's accent color (`SemanticColor.Accent`), and incomplete track
-cells use the theme's muted color (`SemanticColor.Muted`). The style's per-part
-colors override those fallbacks while preserving background and attributes. A
-theme document may author a `styles.progressBar` section with
+Without a theme section or a local `Style`, completed progress uses the theme's
+accent color (`SemanticColor.Accent`), incomplete track cells use the theme's
+muted color (`SemanticColor.Muted`), and indeterminate progress uses the theme's
+info color (`SemanticColor.Info`). These three colors are not part of a glyph
+family and remain code-owned regardless of `glyphs`. The style's per-part colors
+override those fallbacks while preserving background and attributes. A theme
+document may author a `styles.progressBar` section with
 `fillColor`/`trackColor`/`indeterminateColor` string members (accepting a
 `SemanticColor` name, a palette key, or `"transparent"`/`"default"` - never a
 raw hex literal); an active theme's section supplies those colors ahead of the

@@ -34,7 +34,7 @@ public sealed record JsonViewStyle: ContainerStyle
                 ? InvalidationImpact.Render
                 : InvalidationImpact.None);
 
-    private static JsonViewStyle Complete(ContainerStyle container, VisualState state) =>
+    private static JsonViewStyle Complete(ContainerStyle container, VisualState state, Theme theme) =>
         new(
             container.Face,
             container.Border,
@@ -105,7 +105,7 @@ public sealed record JsonViewStyle: ContainerStyle
     }
 
     /// <summary>Gets the standard JSON-view presentation.</summary>
-    public static new JsonViewStyle Default => Complete(ContainerStyle.Default, VisualState.Normal);
+    public static new JsonViewStyle Default => Complete(ContainerStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the object-key foreground.</summary>
     /// <exception cref="ArgumentException">The replacement value is transparent.</exception>

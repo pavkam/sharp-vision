@@ -18,7 +18,7 @@ public sealed record NavigationViewSeparatorStyle: ControlStyle
         static (previous, _, current, _) =>
             previous != current ? InvalidationImpact.Render : InvalidationImpact.None);
 
-    private static NavigationViewSeparatorStyle Complete(ControlStyle control, VisualState state) =>
+    private static NavigationViewSeparatorStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
         new(control.Face, control.Border, control.Shadow, ControlGlyphs.Navigation.Separator.Value);
 
     /// <summary>Initializes a complete navigation-divider presentation.</summary>
@@ -33,7 +33,7 @@ public sealed record NavigationViewSeparatorStyle: ControlStyle
         Glyph = glyph;
 
     /// <summary>Gets the standard navigation-divider presentation.</summary>
-    public static new NavigationViewSeparatorStyle Default => Complete(ControlStyle.Default, VisualState.Normal);
+    public static new NavigationViewSeparatorStyle Default => Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the divider glyph.</summary>
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>

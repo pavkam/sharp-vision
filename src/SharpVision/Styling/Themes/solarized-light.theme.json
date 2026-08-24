@@ -6,6 +6,7 @@
   "author": "Ethan Schoonover",
   "license": "MIT",
   "source": "https://github.com/altercation/solarized",
+  "glyphs": "lines",
   "palette": {
     "base03": "#002b36",
     "base02": "#073642",
@@ -219,77 +220,12 @@
         }
       }
     },
-    "scrollBar": {
-      "normal": {
-        "chrome": "thin",
-        "fill": "line",
-        "glyphs": {
-          "verticalDecrement": "▲",
-          "verticalIncrement": "▼",
-          "horizontalDecrement": "◀",
-          "horizontalIncrement": "▶",
-          "blockTrack": "·",
-          "blockThumb": "━",
-          "horizontalLineTrack": "─",
-          "horizontalLineThumb": "━",
-          "verticalLineTrack": "│",
-          "verticalLineThumb": "┃"
-        }
-      }
-    },
-    "checkBox": {
-      "normal": {
-        "markStyle": "brackets",
-        "glyphs": {
-          "unchecked": "☐",
-          "checked": "☑",
-          "indeterminate": "▪"
-        }
-      }
-    },
-    "radioButton": {
-      "normal": {
-        "markStyle": "circle",
-        "glyphs": {
-          "unchecked": "○",
-          "checked": "●"
-        }
-      }
-    },
     "button": {
       "normal": {
         "padding": {
           "x": 1,
           "y": 0
         }
-      }
-    },
-    "chaseIndicator": {
-      "normal": {
-        "active": "━",
-        "inactive": "─"
-      }
-    },
-    "progressBar": {
-      "normal": {
-        "fillColor": "accent",
-        "trackColor": "muted",
-        "indeterminateColor": "info",
-        "glyphs": {
-          "fill": "━",
-          "track": "─",
-          "indeterminate": "┈"
-        }
-      }
-    },
-    "spinner": {
-      "normal": {
-        "frames": [
-          "-",
-          "\\",
-          "|",
-          "/"
-        ]
       }
     }
   }

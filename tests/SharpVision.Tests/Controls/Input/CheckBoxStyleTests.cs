@@ -89,6 +89,23 @@ public sealed class CheckBoxStyleTests
         resolved.MarkStyle.ShouldBe(CheckBoxMarkStyle.Tick);
     }
 
+    /// <summary>Verifies every bundled theme resolves CheckBox's mark style and glyph trio to
+    /// exactly the glyph family that theme's own root-level "glyphs" field declares - the same
+    /// values the deleted "checkBox" section used to author directly for the curated set (see
+    /// themes.md#glyph-families).</summary>
+    [Fact]
+    public void EveryTheme_ResolvesTheThemesDeclaredGlyphFamily()
+    {
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+            var resolved = CheckBoxStyle.Definition.Resolve(null, theme);
+
+            resolved.MarkStyle.ShouldBe(theme.Glyphs.CheckBox.MarkStyle, slug);
+            resolved.Glyphs.ShouldBe(theme.Glyphs.CheckBox.Glyphs, slug);
+        }
+    }
+
     /// <summary>Verifies a MarkWidth change (bracket vs. one-cell family) is measure-affecting.</summary>
     [Fact]
     public void Definition_Compare_WhenMarkWidthChanges_IsMeasure()

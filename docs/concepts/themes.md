@@ -19,14 +19,15 @@ flowchart LR
 
 The root object accepts only these fields:
 
-| Field                                  | Type     | Description                                              |
-| -------------------------------------- | -------- | -------------------------------------------------------- |
-| `name`, `slug`, `colorScheme`, `order` | metadata | Embedded catalog identity and ordering.                  |
-| `author`, `license`, `source`          | metadata | Attribution and provenance.                              |
-| `palette`                              | object   | At most 256 case-sensitive names mapped to RGB literals. |
-| `colors`                               | object   | One concrete value for every known `SemanticColor`.      |
-| `attributes`                           | object   | One concrete value for every known `SemanticDecoration`. |
-| `styles`                               | object   | One JSON section per themeable style type (see below).   |
+| Field                                  | Type     | Description                                                                                          |
+| -------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------- |
+| `name`, `slug`, `colorScheme`, `order` | metadata | Embedded catalog identity and ordering.                                                              |
+| `author`, `license`, `source`          | metadata | Attribution and provenance.                                                                          |
+| `glyphs`                               | string   | Optional glyph family name (see [Glyph families](#glyph-families)); absent uses code-owned defaults. |
+| `palette`                              | object   | At most 256 case-sensitive names mapped to RGB literals.                                             |
+| `colors`                               | object   | One concrete value for every known `SemanticColor`.                                                  |
+| `attributes`                           | object   | One concrete value for every known `SemanticDecoration`.                                             |
+| `styles`                               | object   | One JSON section per themeable style type (see below).                                               |
 
 Unknown and duplicate fields are rejected. Embedded themes must carry complete
 metadata, `colorScheme` included; external documents fill in missing _or blank_
@@ -238,13 +239,13 @@ same member on both sides lets the leaf win.
 | `styles.*` key            | Control                   | Fallback style | Own members                                                                                                                                                                                                                                                                              |
 | ------------------------- | ------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `button`                  | `Button`                  | `input`        | `padding` (`{x, y}` object)                                                                                                                                                                                                                                                              |
-| `checkBox`                | `CheckBox`                | `input`        | `markStyle` (string), `glyphs` (three one-character strings)                                                                                                                                                                                                                             |
-| `radioButton`             | `RadioButton`             | `input`        | `markStyle` (string), `glyphs` (two one-character strings)                                                                                                                                                                                                                               |
+| `checkBox`                | `CheckBox`                | `input`        | `markStyle` (string), `glyphs` (three one-character strings) - member baseline now from the theme's glyph family                                                                                                                                                                         |
+| `radioButton`             | `RadioButton`             | `input`        | `markStyle` (string), `glyphs` (two one-character strings) - member baseline now from the theme's glyph family                                                                                                                                                                           |
 | `calendar`                | `Calendar`                | `input`        | `weekdayHeaderColor`, `navigationColor`, `todayMarkerColor`, `outOfMonthDayColor`, `disabledDayColor`, `selectedDayColor`, `selectedDayBackground`, `activeDayBackground`, `disabledDayBackground`, `contentInset`, `previousMonthGlyph`, `nextMonthGlyph`                               |
-| `scrollBar`               | `ScrollBar`               | `control`      | `chrome`, `fill` (strings), `glyphs` (ten one-character strings), `trackColor`, `thumbColor`, `buttonColor`                                                                                                                                                                              |
-| `chaseIndicator`          | `ChaseIndicator`          | `control`      | `active`, `inactive` (one-character strings), `headColor`, `trailColor`, `trackColor`                                                                                                                                                                                                    |
-| `progressBar`             | `ProgressBar`             | `control`      | `fillColor`, `trackColor`, `indeterminateColor` (colors), `glyphs` (three one-character strings)                                                                                                                                                                                         |
-| `spinner`                 | `Spinner`                 | `control`      | `frames` (array of one-character strings, 1-256 entries)                                                                                                                                                                                                                                 |
+| `scrollBar`               | `ScrollBar`               | `control`      | `chrome`, `fill` (strings), `glyphs` (ten one-character strings), `trackColor`, `thumbColor`, `buttonColor` - chrome/fill/glyphs baseline now from the theme's glyph family                                                                                                              |
+| `chaseIndicator`          | `ChaseIndicator`          | `control`      | `glyphs` (object: `active`/`inactive` one-character strings), `headColor`, `trailColor`, `trackColor` - glyphs baseline now from the theme's glyph family                                                                                                                                |
+| `progressBar`             | `ProgressBar`             | `control`      | `fillColor`, `trackColor`, `indeterminateColor` (colors), `glyphs` (three one-character strings) - glyphs baseline now from the theme's glyph family                                                                                                                                     |
+| `spinner`                 | `Spinner`                 | `control`      | `frames` (array of one-character strings, 1-256 entries) - baseline now from the theme's glyph family                                                                                                                                                                                    |
 | `separator`               | `Separator`               | `control`      | `horizontalGlyph`, `verticalGlyph` (one-character strings)                                                                                                                                                                                                                               |
 | `chart`                   | chart controls            | `control`      | `axisColor`, `labelColor`, `primaryColor`, `secondaryColor`, `tertiaryColor`, `quaternaryColor`, `quinaryColor`, `senaryColor`, `glyphs`, `fillMode`, `lineMode`, `linePattern`                                                                                                          |
 | `hyperlinkButton`         | `HyperlinkButton`         | `control`      | None - restyles the fallback's own `Face`/`Border`/`Shadow` members directly                                                                                                                                                                                                             |
@@ -272,11 +273,46 @@ are each one printable, one-cell Rune string - an entry with more than one Rune,
 or a Rune that measures wider than one cell, is rejected the same way a
 hand-authored glyph value would be. Every bundled theme except the two
 zero-config defaults (`default-dark`/`default-light`, backing
-`ThemeCatalog.Dark`/`ThemeCatalog.White`) authors the `normal` state of seven of
-these keys - `button`, `checkBox`, `radioButton`, `scrollBar`, `chaseIndicator`,
-`progressBar`, and `spinner`. The remaining sections, and both zero-config
-defaults, are deliberately left unauthored so a control stays on its code-owned
-presentation until a theme opts into restyling it.
+`ThemeCatalog.Dark`/`ThemeCatalog.White`) authors the `normal` state of `button`
+(the only one of these keys a curated theme still restyles directly) and the
+root-level `glyphs` field described next. `checkBox`, `radioButton`,
+`scrollBar`, `chaseIndicator`, `progressBar`, and `spinner` remain acceptable
+sections - the schema still parses and validates any of them, exactly like every
+other row in the table above - but no bundled theme authors one directly any
+more: `glyphs`, one theme-wide choice, now supplies the baseline all six used to
+carry individually. The remaining sections, and both zero-config defaults, are
+deliberately left unauthored so a control stays on its code-owned presentation
+until a theme opts into restyling it.
+
+### Glyph families
+
+`GlyphFamily` bundles the one theme-wide glyph personality shared by six
+controls that would otherwise need six near-identical sections: CheckBox's mark
+style and glyph trio, RadioButton's mark style and glyph pair, ScrollBar's
+chrome, fill, and ten-glyph set, Spinner's frame sequence, ProgressBar's fill,
+track, and indeterminate glyphs, and ChaseIndicator's active and inactive
+glyphs. The root-level `glyphs` field selects one family by name,
+case-insensitively: `dots`, `blocks`, `ascii`, `shades`, or `lines`. An absent
+field - including both zero-config defaults - resolves every one of those six
+styles to `GlyphFamily.Default`, the exact code-owned presentation each carried
+before this field existed; an unrecognized name fails with a source-labelled
+`InvalidDataException` like every other malformed theme value.
+
+| `glyphs` value | Look           | Extracted from       |
+| -------------- | -------------- | -------------------- |
+| `dots`         | Round, dotted  | Catppuccin           |
+| `blocks`       | Solid, blocky  | Dracula, One Dark    |
+| `ascii`        | Portable ASCII | Gruvbox              |
+| `shades`       | Shade-block    | Monokai, Tokyo Night |
+| `lines`        | Line-drawing   | Nord, Solarized      |
+
+A control's own section still wins where the two overlap: `styles.checkBox` (and
+its five siblings) can still restyle `markStyle`/`glyphs` directly for one
+control, on top of whatever the theme's `glyphs` family already supplied -
+`glyphs` only changes where the code-owned baseline those sections patch onto
+comes from. ProgressBar's `fillColor`/`trackColor`/`indeterminateColor` are not
+part of a glyph family either; they stay code-owned (`Accent`/`Muted`/`Info`) or
+themeable directly through `styles.progressBar`.
 
 ### Where a section name comes from
 

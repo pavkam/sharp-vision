@@ -37,10 +37,15 @@ entries.
 
 ## Presets and glyphs
 
-`ChaseIndicatorStyle`, reached through `Style`/`ActualStyle`, carries the
-validated one-cell `Active`/`Inactive` glyph pair plus `HeadColor`,
-`TrailColor`, and `TrackColor`, alongside the inherited `Face`/`Border`/
-`Shadow`. Seven code-owned presets supply complete glyph pairs:
+`ChaseIndicatorStyle`, reached through `Style`/`ActualStyle`, owns the per-part
+presentation on top of the inherited `Face`/`Border`/`Shadow`:
+
+| Member                                  | Type                   | Description                                                      |
+| --------------------------------------- | ---------------------- | ---------------------------------------------------------------- |
+| `HeadColor`, `TrailColor`, `TrackColor` | `ControlColor`         | The required, non-transparent foreground for each rendered part. |
+| `Glyphs`                                | `ChaseIndicatorGlyphs` | The validated one-cell `Active` and `Inactive` position glyphs.  |
+
+Seven code-owned presets supply complete glyph pairs:
 
 | Preset               | Active | Inactive |
 | -------------------- | ------ | -------- |
@@ -54,11 +59,13 @@ validated one-cell `Active`/`Inactive` glyph pair plus `HeadColor`,
 
 Each color accepts either a concrete `Color` or a `SemanticColor` role and
 defaults to `Accent`, `Muted`, and `Muted` respectively when not overridden. A
-`with` expression creates a validated member-wise copy of any preset. A theme
-document may additionally author a `styles.chaseIndicator` section restyling
-`active`/`inactive` (one-character strings) and any of the three colors ahead of
-the code-owned defaults, falling back to the `control` style section for
-everything else, whenever no local `Style` is assigned (see
+`with` expression creates a validated member-wise copy of any preset. Without a
+local `Style`, the resolved `Glyphs` come from the active theme's `glyphs`
+family field (see [themes.md](../../concepts/themes.md#glyph-families)) rather
+than a fixed code-owned pair. A theme document may additionally author a
+`styles.chaseIndicator` section restyling any of the three colors ahead of the
+code-owned defaults, falling back to the `control` style section for everything
+else, whenever no local `Style` is assigned (see
 [themes.md](../../concepts/themes.md#style-types)). Assigning `Style` replaces
 the entire Theme-owned presentation, and assigning `null` restores it. If the
 active cell-width policy is wide and a configured glyph becomes ambiguous, the

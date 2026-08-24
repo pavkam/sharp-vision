@@ -25,7 +25,7 @@ public sealed record SliderStyle: ControlStyle
                 ? InvalidationImpact.Render
                 : InvalidationImpact.None);
 
-    private static SliderStyle Complete(ControlStyle control, VisualState state) =>
+    private static SliderStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
         new(control.Face, control.Border, control.Shadow, SemanticColor.Accent, SemanticColor.Muted, SemanticColor.Accent, SliderGlyphs.Default);
 
     /// <summary>Initializes a complete slider presentation.</summary>
@@ -54,7 +54,7 @@ public sealed record SliderStyle: ControlStyle
     }
 
     /// <summary>Gets the standard slider presentation.</summary>
-    public static new SliderStyle Default { get; } = Complete(ControlStyle.Default, VisualState.Normal);
+    public static new SliderStyle Default { get; } = Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the filled-rail foreground.</summary>
     /// <exception cref="ArgumentException">The replacement value is transparent.</exception>

@@ -821,4 +821,55 @@ public sealed class ThemeCatalogTests
 
         exception.Message.ShouldContain(key);
     }
+
+    /// <summary>Verifies an absent root-level "glyphs" field resolves to the code-owned
+    /// <see cref="GlyphFamily.Default"/>, exactly as every unauthored style key already does.</summary>
+    [Fact]
+    public void Parse_WhenGlyphsFieldIsAbsent_ResolvesToDefaultFamily()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create());
+
+        theme.Glyphs.ShouldBeSameAs(GlyphFamily.Default);
+    }
+
+    /// <summary>Verifies every documented "glyphs" name resolves to its matching family, accepted
+    /// case-insensitively like every other theme-authored enum-shaped value (see
+    /// <see cref="Theme.ParseSectionEnum{TEnum}"/> and <see cref="Theme.ResolveSectionBorderGlyphStyle"/>).</summary>
+    [Theory]
+    [InlineData("dots", "Dots")]
+    [InlineData("DOTS", "Dots")]
+    [InlineData("blocks", "Blocks")]
+    [InlineData("Blocks", "Blocks")]
+    [InlineData("ascii", "Ascii")]
+    [InlineData("ASCII", "Ascii")]
+    [InlineData("shades", "Shades")]
+    [InlineData("Shades", "Shades")]
+    [InlineData("lines", "Lines")]
+    [InlineData("LINES", "Lines")]
+    public void Parse_WhenGlyphsFieldNamesAFamily_Resolves(string value, string familyName)
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(glyphs: value));
+        var expected = familyName switch
+        {
+            "Dots" => GlyphFamily.Dots,
+            "Blocks" => GlyphFamily.Blocks,
+            "Ascii" => GlyphFamily.Ascii,
+            "Shades" => GlyphFamily.Shades,
+            _ => GlyphFamily.Lines
+        };
+
+        theme.Glyphs.ShouldBeSameAs(expected);
+    }
+
+    /// <summary>Verifies an unrecognized "glyphs" value fails with a source-labelled
+    /// <see cref="InvalidDataException"/>, the same rejection every other malformed theme value gets.</summary>
+    [Fact]
+    public void Parse_WhenGlyphsFieldIsUnknown_ThrowsInvalidDataException()
+    {
+        var exception = Should.Throw<InvalidDataException>(
+            () => ThemeCatalog.Parse(ThemeJson.Create(glyphs: "sparkles"), "glyphs-test"));
+
+        exception.Message.ShouldContain("glyphs-test");
+        exception.Message.ShouldContain("glyphs");
+    }
 }

@@ -95,6 +95,23 @@ public sealed class RadioButtonStyleTests
         resolved.MarkStyle.ShouldBe(RadioButtonMarkStyle.Circle);
     }
 
+    /// <summary>Verifies every bundled theme resolves RadioButton's mark style and glyph pair to
+    /// exactly the glyph family that theme's own root-level "glyphs" field declares - the same
+    /// values the deleted "radioButton" section used to author directly for the curated set (see
+    /// themes.md#glyph-families).</summary>
+    [Fact]
+    public void EveryTheme_ResolvesTheThemesDeclaredGlyphFamily()
+    {
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+            var resolved = RadioButtonStyle.Definition.Resolve(null, theme);
+
+            resolved.MarkStyle.ShouldBe(theme.Glyphs.RadioButton.MarkStyle, slug);
+            resolved.Glyphs.ShouldBe(theme.Glyphs.RadioButton.Glyphs, slug);
+        }
+    }
+
     /// <summary>Verifies a theme's own "radioButton" key cannot restyle Glyphs - a structural,
     /// nested-fragment member - under any state but "normal". The rejection fires on the "glyphs"
     /// property itself, before recursing into its own Unchecked/Checked members, proving a

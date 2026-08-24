@@ -53,10 +53,12 @@ presentation reserving three cells; `Tick` and `Square` are one-cell presets. A
 `styles.checkBox` section with a `markStyle` string member (`"square"`,
 `"brackets"`, or `"tick"`); an active theme's section supplies `MarkStyle` ahead
 of the code-owned default whenever no local `Style` is assigned (see
-[themes.md](../../concepts/themes.md#style-types)). The glyph family remains
-code-owned. Assigning `Style` replaces the complete Theme-owned presentation,
-and assigning `null` restores it. `ActualStyle` never returns null. Every glyph
-is printable and one cell wide under the normal width policy.
+[themes.md](../../concepts/themes.md#style-types)). The code-owned mark style
+and glyph trio themselves come from the active theme's `glyphs` field, not from
+this section (see [themes.md](../../concepts/themes.md#glyph-families)).
+Assigning `Style` replaces the complete Theme-owned presentation, and assigning
+`null` restores it. `ActualStyle` never returns null. Every glyph is printable
+and one cell wide under the normal width policy.
 
 > [!NOTE]
 >

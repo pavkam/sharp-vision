@@ -158,7 +158,7 @@ public sealed class StyleStatesTests
     }
 
     private static TestWidgetStyle ResolveWidgetNormal(Theme theme) =>
-        Complete(theme.GetStyleSet("test.root", RootDefault()).Normal, VisualState.Normal);
+        Complete(theme.GetStyleSet("test.root", RootDefault()).Normal, VisualState.Normal, theme);
 
     private static AppearanceStates BuildWidgetProfile(Theme theme, TestWidgetStyle resolvedNormal) =>
         theme.BuildFallbackAwareStates(
@@ -167,7 +167,7 @@ public sealed class StyleStatesTests
             static t => t.GetStyleSet("test.root", RootDefault()),
             Complete);
 
-    private static TestWidgetStyle Complete(TestRootStyle parent, VisualState state) =>
+    private static TestWidgetStyle Complete(TestRootStyle parent, VisualState state, Theme theme) =>
         new(parent.Face, parent.Border, parent.Shadow, padding: 1);
 
     private sealed record TestRootStyle: ControlStyle

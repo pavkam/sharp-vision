@@ -34,7 +34,7 @@ public sealed class StyleSlotProbe: ControlBase, IStyled<ButtonStyle>
     /// <summary>Gets the number of fallback completions performed by this probe.</summary>
     public int CompletionCalls { get; private set; }
 
-    private ButtonStyle Complete(InputStyle input, VisualState state)
+    private ButtonStyle Complete(InputStyle input, VisualState state, Theme theme)
     {
         CompletionCalls++;
         return new ButtonStyle(input.Face, input.Border, input.Shadow, ButtonStyle.Standard.Padding);

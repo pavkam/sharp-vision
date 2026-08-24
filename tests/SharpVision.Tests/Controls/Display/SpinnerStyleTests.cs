@@ -18,6 +18,22 @@ public sealed class SpinnerStyleTests
         actual.Frames[^1].ShouldBe(new Rune('⠏'));
     }
 
+    /// <summary>Verifies every bundled theme resolves Spinner's frame sequence to exactly the
+    /// glyph family that theme's own root-level "glyphs" field declares - the same values the
+    /// deleted "spinner" section used to author directly for the curated set (see
+    /// themes.md#glyph-families).</summary>
+    [Fact]
+    public void EveryTheme_ResolvesTheThemesDeclaredGlyphFamily()
+    {
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+            var resolved = SpinnerStyle.Definition.Resolve(null, theme);
+
+            resolved.Frames.AsSpan().SequenceEqual(theme.Glyphs.Spinner.AsSpan()).ShouldBeTrue(slug);
+        }
+    }
+
     /// <summary>Verifies construction copies caller-owned mutable frame storage.</summary>
     [Fact]
     public void Constructor_WhenCallerMutatesFrames_RetainsImmutableCopy()

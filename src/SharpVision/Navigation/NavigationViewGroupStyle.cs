@@ -22,7 +22,7 @@ public sealed record NavigationViewGroupStyle: ControlStyle
                     ? InvalidationImpact.Render
                     : InvalidationImpact.None);
 
-    private static NavigationViewGroupStyle Complete(ControlStyle control, VisualState state) =>
+    private static NavigationViewGroupStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
         new(
             control.Face,
             control.Border,
@@ -55,7 +55,7 @@ public sealed record NavigationViewGroupStyle: ControlStyle
     }
 
     /// <summary>Gets the standard navigation-group presentation.</summary>
-    public static new NavigationViewGroupStyle Default => Complete(ControlStyle.Default, VisualState.Normal);
+    public static new NavigationViewGroupStyle Default => Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the collapsed-state disclosure indicator.</summary>
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>

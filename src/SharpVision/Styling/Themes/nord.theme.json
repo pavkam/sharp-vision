@@ -6,6 +6,7 @@
   "author": "Sven Greb",
   "license": "MIT",
   "source": "https://github.com/nordtheme/nord",
+  "glyphs": "lines",
   "palette": {
     "nord0": "#2e3440",
     "nord1": "#3b4252",
@@ -215,77 +216,12 @@
         }
       }
     },
-    "scrollBar": {
-      "normal": {
-        "chrome": "thin",
-        "fill": "line",
-        "glyphs": {
-          "verticalDecrement": "▲",
-          "verticalIncrement": "▼",
-          "horizontalDecrement": "◀",
-          "horizontalIncrement": "▶",
-          "blockTrack": "·",
-          "blockThumb": "━",
-          "horizontalLineTrack": "─",
-          "horizontalLineThumb": "━",
-          "verticalLineTrack": "│",
-          "verticalLineThumb": "┃"
-        }
-      }
-    },
-    "checkBox": {
-      "normal": {
-        "markStyle": "brackets",
-        "glyphs": {
-          "unchecked": "☐",
-          "checked": "☑",
-          "indeterminate": "▪"
-        }
-      }
-    },
-    "radioButton": {
-      "normal": {
-        "markStyle": "circle",
-        "glyphs": {
-          "unchecked": "○",
-          "checked": "●"
-        }
-      }
-    },
     "button": {
       "normal": {
         "padding": {
           "x": 1,
           "y": 0
         }
-      }
-    },
-    "chaseIndicator": {
-      "normal": {
-        "active": "━",
-        "inactive": "─"
-      }
-    },
-    "progressBar": {
-      "normal": {
-        "fillColor": "accent",
-        "trackColor": "muted",
-        "indeterminateColor": "info",
-        "glyphs": {
-          "fill": "━",
-          "track": "─",
-          "indeterminate": "┈"
-        }
-      }
-    },
-    "spinner": {
-      "normal": {
-        "frames": [
-          "-",
-          "\\",
-          "|",
-          "/"
-        ]
       }
     }
   }

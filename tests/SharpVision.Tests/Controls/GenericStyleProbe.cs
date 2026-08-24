@@ -10,7 +10,7 @@ public sealed class GenericStyleProbe: ControlBase, IStyled<ButtonStyle>
     private static readonly StyleDefinition<ButtonStyle> _definition = StyleDefinitions.Control(
         "test.genericStyleProbe",
         static theme => theme.GetStyleSet(InputStyle.Default),
-        static (input, _) => new ButtonStyle(input.Face, input.Border, input.Shadow, ButtonStyle.Standard.Padding),
+        static (input, _, _) => new ButtonStyle(input.Face, input.Border, input.Shadow, ButtonStyle.Standard.Padding),
         static (previous, _, current, _) => previous.Padding == current.Padding
             ? InvalidationImpact.None
             : InvalidationImpact.Measure);

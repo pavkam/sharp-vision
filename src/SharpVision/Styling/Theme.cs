@@ -14,6 +14,20 @@ using System.Text.Json;
 [PublicAPI]
 public sealed class Theme
 {
+    // A leaf style's own code-owned static preset (e.g. CheckBoxStyle.Brackets) calls its Complete
+    // method directly, outside of any real resolution, to build a value with no live Theme in
+    // scope. ThemeCatalog.Dark is deliberately NOT used for that: ThemeCatalog's own static
+    // constructor loads Dark by parsing the embedded "default-dark" document, which - through
+    // ApplyStyleSections/ReadStyleSections - touches every leaf style's own registered
+    // "Definition" property via BuildRegisteredStyleSections's reflective scan. That reenters
+    // THIS type's own static constructor (to reach a leaf style's Complete call, which now needs a
+    // Theme) before ThemeCatalog's Dark/White fields are assigned, so a leaf style's
+    // Complete(..., ThemeCatalog.Dark) observes a still-null Dark and throws a
+    // NullReferenceException the first time anything touches that leaf style. A bare, unauthored
+    // Theme carries the same GlyphFamily.Default (and every other code-owned default) as
+    // ThemeCatalog.Dark without ever touching ThemeCatalog.
+    internal static readonly Theme Unthemed = new();
+
     private readonly Dictionary<string, Color> _palette;
     private readonly Color[] _colors = new Color[Enum.GetValues<SemanticColor>().Length];
     private readonly TerminalAttributes[] _attributes =
@@ -173,6 +187,24 @@ public sealed class Theme
     /// section name - the same source <see cref="SetStyleSections"/> installs, exposed read-only
     /// so a derived scenario theme can replicate another theme's complete style customization.</summary>
     internal IReadOnlyDictionary<string, JsonElement> StyleSections => _styleSections;
+
+    /// <summary>Gets the theme-wide glyph family shaping CheckBox, RadioButton, ScrollBar,
+    /// Spinner, ProgressBar, and ChaseIndicator's code-owned presentation. Defaults to
+    /// <see cref="GlyphFamily.Default"/> - the exact code-owned presentation each of those six
+    /// styles carried before this property existed - until a parsed theme's own root-level
+    /// "glyphs" field selects a different family.</summary>
+    public GlyphFamily Glyphs { get; private set; } = GlyphFamily.Default;
+
+    internal void SetGlyphs(GlyphFamily value)
+    {
+        if (IsFrozen)
+        {
+            throw new InvalidOperationException("A frozen theme cannot be changed.");
+        }
+
+        ArgumentNullException.ThrowIfNull(value);
+        Glyphs = value;
+    }
 
     // Mirrors ThemeCatalog.ResolveColorValue/ResolveColor exactly, but reads this Theme's own public
     // Palette instead of the private dictionary the eager document parse builds - a registrable
@@ -1174,13 +1206,13 @@ public sealed class Theme
         TStyle resolvedNormal,
         string key,
         Func<Theme, StyleStates<TFallback>> fallbackTo,
-        Func<TFallback, VisualState, TStyle> complete)
+        Func<TFallback, VisualState, Theme, TStyle> complete)
         where TStyle : ControlStyle
         where TFallback : ControlStyle
     {
         var fallbackSet = fallbackTo(this);
         var raw = GetRawStyleSection(key);
-        var completedFallbackNormal = complete(fallbackSet.Normal, VisualState.Normal);
+        var completedFallbackNormal = complete(fallbackSet.Normal, VisualState.Normal, this);
         var authored = new Dictionary<string, IReadOnlySet<string>>(StringComparer.Ordinal);
 
         TStyle ResolveState(VisualState state, string stateName, Func<StyleStates<TFallback>, TFallback?> fallbackSelector)
@@ -1207,7 +1239,7 @@ public sealed class Theme
             // RadioButtonStyle.Complete is the only implementation that reads its state parameter,
             // so for all the others complete(Normal, state) equals completedFallbackNormal and the
             // diff comes out empty, yielding resolvedNormal exactly as before.
-            var completedFallbackState = complete(fallbackSelector(fallbackSet) ?? fallbackSet.Normal, state);
+            var completedFallbackState = complete(fallbackSelector(fallbackSet) ?? fallbackSet.Normal, state, this);
             var inheritedMembers = fallbackSet.AuthoredFor(stateName);
             var delta = StyleStatesExtensions.Diff(
                 completedFallbackNormal,

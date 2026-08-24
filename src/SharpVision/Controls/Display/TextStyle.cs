@@ -35,7 +35,7 @@ public sealed record TextStyle: ControlStyle
     // focus foreground cues wherever the pointer path did not reach the caption itself. The
     // code-owned transparent background is the per-state completion default; a theme that
     // genuinely wants an opaque Text background can still author "styles.text.normal.face.background".
-    private static TextStyle Complete(ControlStyle control, VisualState state) =>
+    private static TextStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
         new(
             control.Face with { Background = Color.Transparent },
             control.Border,
@@ -53,7 +53,7 @@ public sealed record TextStyle: ControlStyle
         EllipsisGlyph = ellipsisGlyph;
 
     /// <summary>Gets the standard text presentation.</summary>
-    public static new TextStyle Default => Complete(ControlStyle.Default, VisualState.Normal);
+    public static new TextStyle Default => Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the glyph marking an elided run.</summary>
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>

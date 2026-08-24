@@ -25,8 +25,14 @@ public sealed record ProgressBarStyle: ControlStyle
                 ? InvalidationImpact.Render
                 : InvalidationImpact.None);
 
-    private static ProgressBarStyle Complete(ControlStyle control, VisualState state) =>
-        new(control.Face, control.Border, control.Shadow, SemanticColor.Accent, SemanticColor.Muted, SemanticColor.Accent, ProgressBarGlyphs.Default);
+    // Colors are code-owned, not part of a glyph family: FillColor/TrackColor keep every cluster's
+    // shared Accent/Muted, and IndeterminateColor is normalized to Info, the majority value across
+    // the deleted "progressBar" sections' three-way accent/warning/info split. The glyph trio comes
+    // from the active theme's glyph family (see themes.md#glyph-families) rather than a literal
+    // hardcoded here - GlyphFamily.Default carries the exact ProgressBarGlyphs.Default this style
+    // used to hardcode directly, so an unthemed resolution is unchanged.
+    private static ProgressBarStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
+        new(control.Face, control.Border, control.Shadow, SemanticColor.Accent, SemanticColor.Muted, SemanticColor.Info, theme.Glyphs.ProgressBar);
 
     /// <summary>Initializes a complete progress-bar presentation.</summary>
     /// <param name="face">The complete normal face.</param>
@@ -54,7 +60,7 @@ public sealed record ProgressBarStyle: ControlStyle
     }
 
     /// <summary>Gets the standard progress-bar presentation.</summary>
-    public static new ProgressBarStyle Default { get; } = Complete(ControlStyle.Default, VisualState.Normal);
+    public static new ProgressBarStyle Default { get; } = Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the completed-progress foreground.</summary>
     /// <exception cref="ArgumentException">The replacement value is transparent.</exception>

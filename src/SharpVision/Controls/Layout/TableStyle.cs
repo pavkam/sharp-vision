@@ -42,7 +42,7 @@ public sealed record TableStyle: ControlStyle
                     ? InvalidationImpact.Render
                     : InvalidationImpact.None);
 
-    private static TableStyle Complete(ControlStyle control, VisualState state) =>
+    private static TableStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
         new(
             control.Face,
             control.Border,
@@ -79,7 +79,7 @@ public sealed record TableStyle: ControlStyle
     }
 
     /// <summary>Gets the standard tabular presentation.</summary>
-    public static new TableStyle Default => Complete(ControlStyle.Default, VisualState.Normal);
+    public static new TableStyle Default => Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the complete grid-line glyph family.</summary>
     public required TableGlyphs Glyphs { get; init; }

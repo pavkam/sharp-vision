@@ -100,7 +100,7 @@ public sealed record CodeViewStyle: ContainerStyle
         }
     }
 
-    private static CodeViewStyle Complete(ContainerStyle container, VisualState state) =>
+    private static CodeViewStyle Complete(ContainerStyle container, VisualState state, Theme theme) =>
         new(
             container.Face,
             container.Border,
@@ -270,7 +270,10 @@ public sealed record CodeViewStyle: ContainerStyle
     }
 
     /// <summary>Gets the standard code-view presentation.</summary>
-    public static new CodeViewStyle Default => Complete(ContainerStyle.Default, VisualState.Normal);
+    // A bare Theme, not ThemeCatalog.Dark: this style has no internal access to SharpVision's own
+    // Theme.Unthemed (declared in a different assembly with no InternalsVisibleTo grant here), and
+    // Complete never reads the theme it is given, so any valid instance resolves identically.
+    public static new CodeViewStyle Default => Complete(ContainerStyle.Default, VisualState.Normal, new Theme());
 
     /// <summary>Gets the foreground for one default style role.</summary>
     /// <param name="role">The role to resolve.</param>

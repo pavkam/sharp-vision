@@ -76,7 +76,7 @@ public sealed record ChartStyle: ControlStyle
     }
 
     /// <summary>Gets the code-owned default presentation.</summary>
-    public static new ChartStyle Default { get; } = Complete(ControlStyle.Default, VisualState.Normal);
+    public static new ChartStyle Default { get; } = Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the axis foreground.</summary>
     /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
@@ -233,7 +233,7 @@ public sealed record ChartStyle: ControlStyle
         _ => SenaryColor
     };
 
-    private static ChartStyle Complete(ControlStyle control, VisualState state)
+    private static ChartStyle Complete(ControlStyle control, VisualState state, Theme theme)
     {
         _ = state;
         return new ChartStyle(

@@ -25,7 +25,7 @@ public sealed record StatusBarItemStyle: ControlStyle
         static (previous, _, current, _) =>
             previous != current ? InvalidationImpact.Render : InvalidationImpact.None);
 
-    private static StatusBarItemStyle Complete(ControlStyle control, VisualState state) =>
+    private static StatusBarItemStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
         new(
             control.Face,
             control.Border,
@@ -53,7 +53,7 @@ public sealed record StatusBarItemStyle: ControlStyle
     }
 
     /// <summary>Gets the standard status-bar entry presentation.</summary>
-    public static new StatusBarItemStyle Default => Complete(ControlStyle.Default, VisualState.Normal);
+    public static new StatusBarItemStyle Default => Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the glyph drawn before the retained content when a leading separator is shown.</summary>
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>

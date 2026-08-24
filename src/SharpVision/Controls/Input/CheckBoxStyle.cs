@@ -11,14 +11,6 @@ using System.Diagnostics.CodeAnalysis;
 [PublicAPI]
 public sealed record CheckBoxStyle: InputStyle
 {
-    // The glyphs that go with the three-cell Brackets layout. Declared before every static property
-    // initializer below, because Brackets is itself completed through Complete and would otherwise
-    // read this while still unset. Distinct from CheckBoxGlyphs.Default ('☐','☑','◩'), which is the
-    // ONE-cell family belonging to the Square layout - pairing that family with Brackets renders a
-    // box inside brackets ("[☐]"), which is what an earlier rewrite accidentally did here.
-    private static readonly CheckBoxGlyphs _bracketGlyphs =
-        new(new Rune(' '), new Rune('✓'), new Rune('─'));
-
     /// <summary>Gets the primary checkbox-style definition. A theme's own "checkBox" key can
     /// restyle MarkStyle, Glyphs, or anything else directly - the standalone registrable
     /// "checkBox" style section this used to read separately is retired; the reflective
@@ -33,8 +25,14 @@ public sealed record CheckBoxStyle: InputStyle
                     ? InvalidationImpact.Render
                     : InvalidationImpact.None);
 
-    private static CheckBoxStyle Complete(InputStyle input, VisualState state) =>
-        new(input.Face, NoBorder, NoShadow, CheckBoxMarkStyle.Brackets, _bracketGlyphs)
+    // The mark style and glyph trio come from the active theme's glyph family (see
+    // themes.md#glyph-families) rather than a literal hardcoded here - GlyphFamily.Default carries
+    // the exact three-cell Brackets layout this style used to hardcode directly, so an unthemed
+    // resolution is unchanged. Distinct from CheckBoxGlyphs.Default ('☐','☑','◩'), which is the
+    // ONE-cell family belonging to the Square layout - pairing that family with Brackets renders a
+    // box inside brackets ("[☐]"), which is what an earlier rewrite accidentally did here.
+    private static CheckBoxStyle Complete(InputStyle input, VisualState state, Theme theme) =>
+        new(input.Face, NoBorder, NoShadow, theme.Glyphs.CheckBox.MarkStyle, theme.Glyphs.CheckBox.Glyphs)
         {
             // Forwarded from the fallback rather than left at the code-owned value the base
             // constructor supplies. Without this the member is inherited into this style's own
@@ -68,7 +66,7 @@ public sealed record CheckBoxStyle: InputStyle
     public static new CheckBoxStyle Default => Brackets;
 
     /// <summary>Gets the three-cell bracket presentation.</summary>
-    public static CheckBoxStyle Brackets { get; } = Complete(InputStyle.Default, VisualState.Normal);
+    public static CheckBoxStyle Brackets { get; } = Complete(InputStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the one-cell circle, tick, and indeterminate presentation.</summary>
     public static CheckBoxStyle Tick { get; } = Brackets with

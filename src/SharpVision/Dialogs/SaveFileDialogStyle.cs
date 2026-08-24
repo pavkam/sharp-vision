@@ -19,7 +19,7 @@ public sealed record SaveFileDialogStyle: FileDialogStyle
         Complete,
         static (previous, _, current, _) => RootPaddingOrContentDiffers(previous, current));
 
-    private static SaveFileDialogStyle Complete(WindowStyle window, VisualState state) =>
+    private static SaveFileDialogStyle Complete(WindowStyle window, VisualState state, Theme theme) =>
         new(window.Face, window.Border, window.Shadow, DefaultRootPadding, contentSpacing: 1, DefaultFileListBorder)
         {
             CloseGlyph = window.CloseGlyph,
@@ -50,5 +50,5 @@ public sealed record SaveFileDialogStyle: FileDialogStyle
     }
 
     /// <summary>Gets the standard SaveFileDialog presentation.</summary>
-    public static new SaveFileDialogStyle Default => Complete(WindowStyle.Default, VisualState.Normal);
+    public static new SaveFileDialogStyle Default => Complete(WindowStyle.Default, VisualState.Normal, Theme.Unthemed);
 }

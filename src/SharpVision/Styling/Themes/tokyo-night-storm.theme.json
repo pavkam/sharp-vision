@@ -6,6 +6,7 @@
   "author": "Folke Lemaitre",
   "license": "MIT",
   "source": "https://github.com/folke/tokyonight.nvim",
+  "glyphs": "shades",
   "palette": {
     "bg": "#24283b",
     "bg-highlight": "#292e42",
@@ -216,81 +217,12 @@
         }
       }
     },
-    "scrollBar": {
-      "normal": {
-        "chrome": "full",
-        "fill": "block",
-        "glyphs": {
-          "verticalDecrement": "▲",
-          "verticalIncrement": "▼",
-          "horizontalDecrement": "◀",
-          "horizontalIncrement": "▶",
-          "blockTrack": "▒",
-          "blockThumb": "▓",
-          "horizontalLineTrack": "═",
-          "horizontalLineThumb": "━",
-          "verticalLineTrack": "║",
-          "verticalLineThumb": "┃"
-        }
-      }
-    },
-    "checkBox": {
-      "normal": {
-        "markStyle": "square",
-        "glyphs": {
-          "unchecked": "☐",
-          "checked": "☑",
-          "indeterminate": "▪"
-        }
-      }
-    },
-    "radioButton": {
-      "normal": {
-        "markStyle": "circle",
-        "glyphs": {
-          "unchecked": "○",
-          "checked": "◉"
-        }
-      }
-    },
     "button": {
       "normal": {
         "padding": {
           "x": 2,
           "y": 0
         }
-      }
-    },
-    "chaseIndicator": {
-      "normal": {
-        "active": "▓",
-        "inactive": "░"
-      }
-    },
-    "progressBar": {
-      "normal": {
-        "fillColor": "accent",
-        "trackColor": "muted",
-        "indeterminateColor": "info",
-        "glyphs": {
-          "fill": "▓",
-          "track": "░",
-          "indeterminate": "▒"
-        }
-      }
-    },
-    "spinner": {
-      "normal": {
-        "frames": [
-          "⣿",
-          "⣷",
-          "⣯",
-          "⣟",
-          "⡿",
-          "⢿",
-          "⣻",
-          "⣽"
-        ]
       }
     }
   }

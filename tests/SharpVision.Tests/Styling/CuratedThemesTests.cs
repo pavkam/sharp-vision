@@ -41,7 +41,7 @@ public sealed class CuratedThemesTests
     /// role's resolved Normal face differs from that role's bare code-owned default, proving the
     /// theme's own "styles.&lt;role&gt;.normal" JSON was actually read and applied rather than
     /// silently ignored (the exact class of bug an earlier root-cause fix addressed, and that this
-    /// follow-up investigation continues to guard). Unlike <see cref="EveryCuratedThemeExceptTheDefaults_AuthorsAllEightStyleSections"/>,
+    /// follow-up investigation continues to guard). Unlike <see cref="EveryCuratedThemeExceptTheDefaults_AuthorsButtonAndResolvesEveryGlyphFamilyStyle"/>,
     /// this covers ALL 15 themes including the two zero-config defaults, since every curated theme
     /// (including "default-dark"/"default-light") authors all six well-known roles - only the eight
     /// LEAF registrable sections are deliberately left unauthored for the two defaults.</summary>
@@ -61,58 +61,94 @@ public sealed class CuratedThemesTests
         }
     }
 
-    /// <summary>Verifies every curated theme other than the two zero-config defaults authors all
-    /// eight registrable style sections: every dependent control style resolves to a
-    /// non-code-owned value, proving the section round-trips through the real mechanism rather
-    /// than merely existing unread in the JSON. "default-dark"/"default-light" back
-    /// <see cref="ThemeCatalog.Dark"/>/<see cref="ThemeCatalog.White"/>, the ambient zero-config theme every
-    /// unthemed control and a large share of the test suite resolves against; authoring these
-    /// eight sections there changes framework-wide default presentation rather than opting one
-    /// curated theme in, so they are deliberately left unauthored.</summary>
+    /// <summary>Verifies every curated theme other than the two zero-config defaults authors the
+    /// one remaining registrable style section that still varies per curated theme ("button") and
+    /// resolves every other leaf below without throwing. ScrollBar, CheckBox, RadioButton,
+    /// ChaseIndicator, ProgressBar, and Spinner each used to author their own registrable section
+    /// too; those six were retired in favor of one theme-wide root "glyphs" field
+    /// (<see cref="GlyphFamily"/>, see themes.md#glyph-families), so their own family-accurate
+    /// assertions now live in each style's own test class - see e.g.
+    /// <c>CheckBoxStyleTests.EveryTheme_ResolvesTheThemesDeclaredGlyphFamily</c> - the same
+    /// restructuring <c>SliderStyleTests</c> already carries for Slider's own retired section.
+    /// "default-dark"/"default-light" back <see cref="ThemeCatalog.Dark"/>/<see cref="ThemeCatalog.White"/>,
+    /// the ambient zero-config theme every unthemed control and a large share of the test suite
+    /// resolves against; authoring "button" or a non-default "glyphs" family there would change
+    /// framework-wide default presentation rather than opting one curated theme in, so both are
+    /// deliberately left unauthored.</summary>
     [Fact]
-    public void EveryCuratedThemeExceptTheDefaults_AuthorsAllEightStyleSections()
+    public void EveryCuratedThemeExceptTheDefaults_AuthorsButtonAndResolvesEveryGlyphFamilyStyle()
     {
         foreach (var slug in ThemeCatalog.Slugs.Where(static slug => slug is not ("default-dark" or "default-light")))
         {
             var theme = ThemeCatalog.Load(slug);
 
-            ScrollBarStyle.Definition.Resolve(null, theme).Glyphs
-                .ShouldNotBe(ScrollBarGlyphs.Default, $"{slug} scrollBar.glyphs did not round-trip");
-            CheckBoxStyle.Definition.Resolve(null, theme).Glyphs
-                .ShouldNotBe(CheckBoxStyle.Default.Glyphs, $"{slug} checkBox.glyphs did not round-trip");
-            RadioButtonStyle.Definition.Resolve(null, theme).Glyphs
-                .ShouldNotBe(RadioButtonStyle.Default.Glyphs, $"{slug} radioButton.glyphs did not round-trip");
+            theme.Glyphs.ShouldNotBeSameAs(GlyphFamily.Default, $"{slug} glyphs did not round-trip");
             _ = ButtonStyle.Definition.Resolve(null, theme);
-            ChaseIndicatorStyle.Definition.Resolve(null, theme).Active
-                .ShouldNotBe(ChaseIndicatorStyle.Default.Active, $"{slug} chaseIndicator.active did not round-trip");
             _ = SliderStyle.Definition.Resolve(null, theme);
-            ProgressBarStyle.Definition.Resolve(null, theme).Glyphs
-                .ShouldNotBe(ProgressBarGlyphs.Default, $"{slug} progressBar.glyphs did not round-trip");
-            SpinnerStyle.Definition.Resolve(null, theme).Frames
-                .ShouldNotBe(SpinnerStyle.Default.Frames, $"{slug} spinner.frames did not round-trip");
+            _ = ScrollBarStyle.Definition.Resolve(null, theme);
+            _ = CheckBoxStyle.Definition.Resolve(null, theme);
+            _ = RadioButtonStyle.Definition.Resolve(null, theme);
+            _ = ChaseIndicatorStyle.Definition.Resolve(null, theme);
+            _ = ProgressBarStyle.Definition.Resolve(null, theme);
+            _ = SpinnerStyle.Definition.Resolve(null, theme);
         }
     }
 
-    /// <summary>Verifies the two zero-config default themes stay on code-owned defaults for all
-    /// eight registrable style sections, so authoring the curated set never silently changes
-    /// unthemed presentation.</summary>
+    /// <summary>Verifies the two zero-config default themes stay on <see cref="GlyphFamily.Default"/>
+    /// and resolve every leaf below without throwing, so authoring the curated set never silently
+    /// changes unthemed presentation.</summary>
     [Theory]
     [InlineData("default-dark")]
     [InlineData("default-light")]
-    public void DefaultTheme_StaysOnCodeOwnedDefaultsForAllEightStyleSections(string slug)
+    public void DefaultTheme_StaysOnCodeOwnedGlyphFamilyDefault(string slug)
     {
         var theme = ThemeCatalog.Load(slug);
 
-        ScrollBarStyle.Definition.Resolve(null, theme).Glyphs.ShouldBe(ScrollBarGlyphs.Default);
-        // Compared against the STYLE's default preset (as every other line here does), not against
-        // CheckBoxGlyphs/RadioButtonGlyphs.Default - those are the one-cell Square/Circle glyph
-        // families, not the glyphs the default bracket/parenthesis presentation resolves. Confusing
-        // the two identically-named Defaults is what regressed the resolved defaults to "[☐]"/"(○)".
-        CheckBoxStyle.Definition.Resolve(null, theme).Glyphs.ShouldBe(CheckBoxStyle.Default.Glyphs);
-        RadioButtonStyle.Definition.Resolve(null, theme).Glyphs.ShouldBe(RadioButtonStyle.Default.Glyphs);
-        ChaseIndicatorStyle.Definition.Resolve(null, theme).Active.ShouldBe(ChaseIndicatorStyle.Default.Active);
-        ProgressBarStyle.Definition.Resolve(null, theme).Glyphs.ShouldBe(ProgressBarGlyphs.Default);
-        SpinnerStyle.Definition.Resolve(null, theme).Frames.ShouldBe(SpinnerStyle.Default.Frames);
+        theme.Glyphs.ShouldBeSameAs(GlyphFamily.Default);
+        _ = ButtonStyle.Definition.Resolve(null, theme);
+        _ = SliderStyle.Definition.Resolve(null, theme);
+        _ = ScrollBarStyle.Definition.Resolve(null, theme);
+        _ = CheckBoxStyle.Definition.Resolve(null, theme);
+        _ = RadioButtonStyle.Definition.Resolve(null, theme);
+        _ = ChaseIndicatorStyle.Definition.Resolve(null, theme);
+        _ = ProgressBarStyle.Definition.Resolve(null, theme);
+        _ = SpinnerStyle.Definition.Resolve(null, theme);
+    }
+
+    /// <summary>Pins each curated theme's declared glyph-family personality against an explicit
+    /// slug-to-family map, independent of and in addition to
+    /// <see cref="EveryCuratedThemeExceptTheDefaults_AuthorsButtonAndResolvesEveryGlyphFamilyStyle"/>'s
+    /// "not the default" check: that check alone would still pass if, say, gruvbox-dark's "glyphs"
+    /// value were accidentally edited from "ascii" to "shades" - both are non-default, valid
+    /// families, so nothing else in this file would catch the theme silently drifting onto the
+    /// wrong declared personality.</summary>
+    [Fact]
+    public void EveryCuratedTheme_ResolvesItsExpectedGlyphFamily()
+    {
+        var expected = new Dictionary<string, GlyphFamily>(StringComparer.Ordinal)
+        {
+            ["catppuccin-latte"] = GlyphFamily.Dots,
+            ["catppuccin-mocha"] = GlyphFamily.Dots,
+            ["dracula"] = GlyphFamily.Blocks,
+            ["one-dark"] = GlyphFamily.Blocks,
+            ["gruvbox-dark"] = GlyphFamily.Ascii,
+            ["gruvbox-light"] = GlyphFamily.Ascii,
+            ["monokai"] = GlyphFamily.Shades,
+            ["tokyo-night"] = GlyphFamily.Shades,
+            ["tokyo-night-storm"] = GlyphFamily.Shades,
+            ["tokyo-night-day"] = GlyphFamily.Shades,
+            ["nord"] = GlyphFamily.Lines,
+            ["solarized-dark"] = GlyphFamily.Lines,
+            ["solarized-light"] = GlyphFamily.Lines,
+            ["default-dark"] = GlyphFamily.Default,
+            ["default-light"] = GlyphFamily.Default
+        };
+
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+            theme.Glyphs.ShouldBeSameAs(expected[slug], slug);
+        }
     }
 
     /// <summary>Verifies every embedded theme publishes RGB colors in control state styles.</summary>

@@ -19,7 +19,7 @@ public sealed record FilePickerDialogStyle: FileDialogStyle
         Complete,
         static (previous, _, current, _) => RootPaddingOrContentDiffers(previous, current));
 
-    private static FilePickerDialogStyle Complete(WindowStyle window, VisualState state) =>
+    private static FilePickerDialogStyle Complete(WindowStyle window, VisualState state, Theme theme) =>
         new(window.Face, window.Border, window.Shadow, DefaultRootPadding, contentSpacing: 1, DefaultFileListBorder)
         {
             CloseGlyph = window.CloseGlyph,
@@ -50,5 +50,5 @@ public sealed record FilePickerDialogStyle: FileDialogStyle
     }
 
     /// <summary>Gets the standard FilePickerDialog presentation.</summary>
-    public static new FilePickerDialogStyle Default => Complete(WindowStyle.Default, VisualState.Normal);
+    public static new FilePickerDialogStyle Default => Complete(WindowStyle.Default, VisualState.Normal, Theme.Unthemed);
 }

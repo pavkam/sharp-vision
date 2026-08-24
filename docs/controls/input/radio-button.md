@@ -51,12 +51,14 @@ document may additionally author a `styles.radioButton` section with a
 `markStyle` string member (`"circle"` or `"parentheses"`); an active theme's
 section supplies `MarkStyle` ahead of the code-owned default whenever no local
 `Style` is assigned (see [themes.md](../../concepts/themes.md#style-types)). The
-glyph pair remains code-owned. Assigning `Style` replaces the whole Theme-owned
-presentation, and assigning `null` restores it. `ActualStyle` never returns
-null. The parentheses style marks the selected interior with a bullet; the glyph
-style reserves one cell. The checked state defaults to the Theme accent
-foreground, and a developer-authored checked appearance replaces that color for
-the complete mark.
+code-owned mark style and glyph pair themselves come from the active theme's
+`glyphs` field, not from this section (see
+[themes.md](../../concepts/themes.md#glyph-families)). Assigning `Style`
+replaces the whole Theme-owned presentation, and assigning `null` restores it.
+`ActualStyle` never returns null. The parentheses style marks the selected
+interior with a bullet; the glyph style reserves one cell. The checked state
+defaults to the Theme accent foreground, and a developer-authored checked
+appearance replaces that color for the complete mark.
 
 `StartAffix` and `EndAffix` each reserve a fixed cell column for
 application-owned, per-instance content - never theme-authored - outside the

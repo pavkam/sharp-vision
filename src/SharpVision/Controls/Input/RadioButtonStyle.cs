@@ -12,14 +12,6 @@ using System.Diagnostics.CodeAnalysis;
 [PublicAPI]
 public sealed record RadioButtonStyle: InputStyle
 {
-    // The glyphs that go with the three-cell Parentheses layout. Declared before every static
-    // property initializer below, because Parentheses is itself completed through Complete and
-    // would otherwise read this while still unset. Distinct from RadioButtonGlyphs.Default
-    // ('○','◉'), which is the ONE-cell family belonging to the Circle layout - pairing that family
-    // with Parentheses renders a circle inside parentheses ("(○)"), which is what an earlier
-    // rewrite accidentally did here.
-    private static readonly RadioButtonGlyphs _parenthesesGlyphs = new(new Rune(' '), new Rune('•'));
-
     /// <summary>Gets the primary radio-button-style definition. A theme's own "radioButton" key
     /// can restyle MarkStyle, Glyphs, or anything else directly - the standalone registrable
     /// "radioButton" style section this used to read separately is retired; the reflective
@@ -36,11 +28,18 @@ public sealed record RadioButtonStyle: InputStyle
 
     // The checked state defaults to the semantic accent foreground unless a theme's own
     // "radioButton.checked" section overrides it - the one per-state code-owned default this
-    // type needs, which BuildFallbackAwareStates's VisualState-aware `complete` exists for.
-    private static RadioButtonStyle Complete(InputStyle input, VisualState state)
+    // type needs, which BuildFallbackAwareStates's VisualState-aware `complete` exists for. The
+    // mark style and glyph pair come from the active theme's glyph family (see
+    // themes.md#glyph-families) rather than a literal hardcoded here - GlyphFamily.Default carries
+    // the exact three-cell Parentheses layout this style used to hardcode directly, so an
+    // unthemed resolution is unchanged. Distinct from RadioButtonGlyphs.Default ('○','◉'), which
+    // is the ONE-cell family belonging to the Circle layout - pairing that family with
+    // Parentheses renders a circle inside parentheses ("(○)"), which is what an earlier rewrite
+    // accidentally did here.
+    private static RadioButtonStyle Complete(InputStyle input, VisualState state, Theme theme)
     {
         var face = state == VisualState.Checked ? input.Face with { Foreground = SemanticColor.Accent } : input.Face;
-        return new RadioButtonStyle(face, NoBorder, NoShadow, RadioButtonMarkStyle.Parentheses, _parenthesesGlyphs)
+        return new RadioButtonStyle(face, NoBorder, NoShadow, theme.Glyphs.RadioButton.MarkStyle, theme.Glyphs.RadioButton.Glyphs)
         {
             // Forwarded from the fallback rather than left at the code-owned value the base
             // constructor supplies. Without this the member is inherited into this style's own
@@ -69,7 +68,7 @@ public sealed record RadioButtonStyle: InputStyle
     public static new RadioButtonStyle Default => Parentheses;
 
     /// <summary>Gets the exact three-cell <c>( )</c> and <c>(•)</c> presentation.</summary>
-    public static RadioButtonStyle Parentheses { get; } = Complete(InputStyle.Default, VisualState.Normal);
+    public static RadioButtonStyle Parentheses { get; } = Complete(InputStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the compact one-cell circle-glyph presentation.</summary>
     public static RadioButtonStyle Glyph { get; } = Parentheses with

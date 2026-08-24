@@ -18,6 +18,24 @@ public sealed class ScrollBarStyleTests
         actual.Glyphs.ShouldBe(ScrollBarGlyphs.Default);
     }
 
+    /// <summary>Verifies every bundled theme resolves ScrollBar's chrome, fill, and glyph set to
+    /// exactly the glyph family that theme's own root-level "glyphs" field declares - the same
+    /// values the deleted "scrollBar" section used to author directly for the curated set (see
+    /// themes.md#glyph-families).</summary>
+    [Fact]
+    public void EveryTheme_ResolvesTheThemesDeclaredGlyphFamily()
+    {
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+            var resolved = ScrollBarStyle.Definition.Resolve(null, theme);
+
+            resolved.Chrome.ShouldBe(theme.Glyphs.ScrollBar.Chrome, slug);
+            resolved.Fill.ShouldBe(theme.Glyphs.ScrollBar.Fill, slug);
+            resolved.Glyphs.ShouldBe(theme.Glyphs.ScrollBar.Glyphs, slug);
+        }
+    }
+
     /// <summary>Verifies the named presets retain all chrome and fill combinations.</summary>
     [Theory]
     [InlineData(ScrollBarChrome.Full, ScrollBarFill.Block)]

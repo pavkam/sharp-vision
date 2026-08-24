@@ -46,8 +46,10 @@ public static class ThemeJson
         string controlExtra = "",
         string windowExtra = "",
         string? controlBorderForeground = null,
-        string extraStyles = "")
+        string extraStyles = "",
+        string? glyphs = null)
     {
+        var glyphsField = glyphs is null ? "" : $", \"glyphs\": \"{glyphs}\"";
         var (backgroundRef, backgroundEntry) = ColorRef("background", background);
         var (foregroundRef, foregroundEntry) = ColorRef("foreground", foreground);
         var (accentRef, accentEntry) = ColorRef("accent", accent);
@@ -81,7 +83,7 @@ public static class ThemeJson
 
         return $$"""
             { "name": "{{name}}", "slug": "t", "colorScheme": "dark", "order": 1,
-              "author": "A", "license": "MIT", "source": "s",
+              "author": "A", "license": "MIT", "source": "s"{{glyphsField}},
               "palette": { {{palette}}, {{_reservedPalette}}{{extraPalette}} },
               "colors": {
                 "window":"{{backgroundRef}}", "windowSurface":"{{backgroundRef}}", "windowText":"{{foregroundRef}}",

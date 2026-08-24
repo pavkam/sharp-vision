@@ -31,7 +31,10 @@ public sealed class ProgressBarStyleTests
         baseline.GetHashCode().ShouldBe(equivalent.GetHashCode());
     }
 
-    /// <summary>Verifies the standard preset resolves the documented defaults.</summary>
+    /// <summary>Verifies the standard preset resolves the documented defaults. IndeterminateColor
+    /// is Info, not Accent: the deleted "progressBar" sections split three ways
+    /// (accent/warning/info) across the curated set, and Info was the majority - a deliberate
+    /// normalization, not a preserved value (see themes.md).</summary>
     [Fact]
     public void Default_ResolvesDocumentedDefaults()
     {
@@ -39,8 +42,43 @@ public sealed class ProgressBarStyleTests
 
         actual.FillColor.ShouldBe((ControlColor) SemanticColor.Accent);
         actual.TrackColor.ShouldBe((ControlColor) SemanticColor.Muted);
-        actual.IndeterminateColor.ShouldBe((ControlColor) SemanticColor.Accent);
+        actual.IndeterminateColor.ShouldBe((ControlColor) SemanticColor.Info);
         actual.Glyphs.ShouldBe(ProgressBarGlyphs.Default);
+    }
+
+    /// <summary>Verifies every bundled theme resolves ProgressBar's fill, track, and indeterminate
+    /// glyphs to exactly the glyph family that theme's own root-level "glyphs" field declares -
+    /// the same values the deleted "progressBar" section used to author directly for the curated
+    /// set (see themes.md#glyph-families). Colors are asserted separately below: they are not part
+    /// of a glyph family.</summary>
+    [Fact]
+    public void EveryTheme_ResolvesTheThemesDeclaredGlyphFamily()
+    {
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+            var resolved = ProgressBarStyle.Definition.Resolve(null, theme);
+
+            resolved.Glyphs.ShouldBe(theme.Glyphs.ProgressBar, slug);
+        }
+    }
+
+    /// <summary>Verifies every bundled theme resolves the code-owned Accent/Muted/Info color
+    /// mapping - colors are not part of a glyph family, and the deleted "progressBar" sections'
+    /// own three-way accent/warning/info split is normalized to Info everywhere (see
+    /// <see cref="Default_ResolvesDocumentedDefaults"/> and themes.md).</summary>
+    [Fact]
+    public void EveryTheme_ResolvesTheCodeOwnedFillTrackAndIndeterminateColors()
+    {
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+            var resolved = ProgressBarStyle.Definition.Resolve(null, theme);
+
+            resolved.FillColor.SemanticColor.ShouldBe(SemanticColor.Accent, slug);
+            resolved.TrackColor.SemanticColor.ShouldBe(SemanticColor.Muted, slug);
+            resolved.IndeterminateColor.SemanticColor.ShouldBe(SemanticColor.Info, slug);
+        }
     }
 
     /// <summary>Verifies equality compares every record member structurally.</summary>

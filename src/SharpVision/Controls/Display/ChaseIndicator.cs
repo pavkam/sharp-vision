@@ -243,8 +243,8 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
 
         var presentation = SynchronizeStylePhase();
 
-        var active = presentation.Active.Resolve(new Rune('*'), CellPolicy.AmbiguousWidth);
-        var inactive = presentation.Inactive.Resolve(new Rune('.'), CellPolicy.AmbiguousWidth);
+        var active = presentation.Glyphs.Active.Resolve(new Rune('*'), CellPolicy.AmbiguousWidth);
+        var inactive = presentation.Glyphs.Inactive.Resolve(new Rune('.'), CellPolicy.AmbiguousWidth);
         var axisLength = Orientation == Orientation.Horizontal ? Bounds.Width : Bounds.Height;
         var stride = Spacing + 1;
         var visible = Math.Min(Length, ((axisLength - 1) / stride) + 1);
@@ -319,10 +319,10 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
     private ChaseIndicatorStyle SynchronizeStylePhase()
     {
         var style = ActualStyle;
-        if (!_hasPhaseGlyphs || _phaseActive != style.Active || _phaseInactive != style.Inactive)
+        if (!_hasPhaseGlyphs || _phaseActive != style.Glyphs.Active || _phaseInactive != style.Glyphs.Inactive)
         {
-            _phaseActive = style.Active;
-            _phaseInactive = style.Inactive;
+            _phaseActive = style.Glyphs.Active;
+            _phaseInactive = style.Glyphs.Inactive;
             _hasPhaseGlyphs = true;
             ResetPhase();
         }

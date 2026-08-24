@@ -559,10 +559,10 @@ namespace SharpVision.Controls
             where TStyle : SharpVision.Styling.ControlStyle { }
         public static SharpVision.Controls.StyleDefinition<TStyle> Control<TStyle>(string key, TStyle codeOwnedDefault, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compare)
             where TStyle : SharpVision.Styling.ControlStyle { }
-        public static SharpVision.Controls.StyleDefinition<TStyle> Control<TStyle, TFallback>(System.Func<SharpVision.Styling.Theme, SharpVision.Styling.StyleStates<TFallback>> fallbackTo, System.Func<TFallback, SharpVision.Styling.VisualState, TStyle> complete, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compare)
+        public static SharpVision.Controls.StyleDefinition<TStyle> Control<TStyle, TFallback>(System.Func<SharpVision.Styling.Theme, SharpVision.Styling.StyleStates<TFallback>> fallbackTo, System.Func<TFallback, SharpVision.Styling.VisualState, SharpVision.Styling.Theme, TStyle> complete, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compare)
             where TStyle : SharpVision.Styling.ControlStyle
             where TFallback : SharpVision.Styling.ControlStyle { }
-        public static SharpVision.Controls.StyleDefinition<TStyle> Control<TStyle, TFallback>(string key, System.Func<SharpVision.Styling.Theme, SharpVision.Styling.StyleStates<TFallback>> fallbackTo, System.Func<TFallback, SharpVision.Styling.VisualState, TStyle> complete, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compare)
+        public static SharpVision.Controls.StyleDefinition<TStyle> Control<TStyle, TFallback>(string key, System.Func<SharpVision.Styling.Theme, SharpVision.Styling.StyleStates<TFallback>> fallbackTo, System.Func<TFallback, SharpVision.Styling.VisualState, SharpVision.Styling.Theme, TStyle> complete, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compare)
             where TStyle : SharpVision.Styling.ControlStyle
             where TFallback : SharpVision.Styling.ControlStyle { }
         public static SharpVision.Controls.StyleDefinition<TStyle> Part<TStyle>(System.Func<SharpVision.Styling.Theme?, TStyle> fallback, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compare)
@@ -1082,12 +1082,17 @@ namespace SharpVision.Controls.Display
         protected override void OnDisposing() { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
     }
+    public readonly struct ChaseIndicatorGlyphs : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Controls.Display.ChaseIndicatorGlyphs>
+    {
+        public ChaseIndicatorGlyphs(System.Text.Rune active, System.Text.Rune inactive) { }
+        public System.Text.Rune Active { get; init; }
+        public System.Text.Rune Inactive { get; init; }
+    }
     public sealed class ChaseIndicatorStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Controls.Display.ChaseIndicatorStyle>
     {
-        public ChaseIndicatorStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, System.Text.Rune active, System.Text.Rune inactive, SharpVision.Styling.ControlColor headColor, SharpVision.Styling.ControlColor trailColor, SharpVision.Styling.ControlColor trackColor) { }
-        public required System.Text.Rune Active { get; init; }
+        public ChaseIndicatorStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Styling.ControlColor headColor, SharpVision.Styling.ControlColor trailColor, SharpVision.Styling.ControlColor trackColor, SharpVision.Controls.Display.ChaseIndicatorGlyphs glyphs) { }
+        public required SharpVision.Controls.Display.ChaseIndicatorGlyphs Glyphs { get; init; }
         public required SharpVision.Styling.ControlColor HeadColor { get; init; }
-        public required System.Text.Rune Inactive { get; init; }
         public required SharpVision.Styling.ControlColor TrackColor { get; init; }
         public required SharpVision.Styling.ControlColor TrailColor { get; init; }
         public static SharpVision.Controls.Display.ChaseIndicatorStyle Circle { get; }
@@ -3593,6 +3598,12 @@ namespace SharpVision.Styling
             public System.Text.Rune ValidateSingleCell(string parameterName, SharpVision.Terminal.Unicode.Ambiguous ambiguousWidth) { }
         }
     }
+    public readonly struct CheckBoxGlyphFamily : System.IEquatable<SharpVision.Styling.CheckBoxGlyphFamily>
+    {
+        public CheckBoxGlyphFamily(SharpVision.Controls.Input.CheckBoxMarkStyle markStyle, SharpVision.Controls.Input.CheckBoxGlyphs glyphs) { }
+        public SharpVision.Controls.Input.CheckBoxGlyphs Glyphs { get; init; }
+        public SharpVision.Controls.Input.CheckBoxMarkStyle MarkStyle { get; init; }
+    }
     public readonly struct ChromeRenderOptions
     {
         public SharpVision.Terminal.Geometry.Rect? BodyBounds { get; init; }
@@ -3692,6 +3703,24 @@ namespace SharpVision.Styling
         public SharpVision.Styling.Face Apply(SharpVision.Styling.Face face) { }
         public SharpVision.Styling.FaceOverlay Overlay(SharpVision.Styling.FaceOverlay later) { }
     }
+    public sealed class GlyphFamily : System.IEquatable<SharpVision.Styling.GlyphFamily>
+    {
+        public GlyphFamily(SharpVision.Styling.CheckBoxGlyphFamily checkBox, SharpVision.Styling.RadioButtonGlyphFamily radioButton, SharpVision.Styling.ScrollBarGlyphFamily scrollBar, System.Collections.Generic.IEnumerable<System.Text.Rune> spinner, SharpVision.Controls.Display.ProgressBarGlyphs progressBar, SharpVision.Controls.Display.ChaseIndicatorGlyphs chaseIndicator) { }
+        public required SharpVision.Controls.Display.ChaseIndicatorGlyphs ChaseIndicator { get; init; }
+        public required SharpVision.Styling.CheckBoxGlyphFamily CheckBox { get; init; }
+        public required SharpVision.Controls.Display.ProgressBarGlyphs ProgressBar { get; init; }
+        public required SharpVision.Styling.RadioButtonGlyphFamily RadioButton { get; init; }
+        public required SharpVision.Styling.ScrollBarGlyphFamily ScrollBar { get; init; }
+        public required System.Collections.Immutable.ImmutableArray<System.Text.Rune> Spinner { get; init; }
+        public static SharpVision.Styling.GlyphFamily Ascii { get; }
+        public static SharpVision.Styling.GlyphFamily Blocks { get; }
+        public static SharpVision.Styling.GlyphFamily Default { get; }
+        public static SharpVision.Styling.GlyphFamily Dots { get; }
+        public static SharpVision.Styling.GlyphFamily Lines { get; }
+        public static SharpVision.Styling.GlyphFamily Shades { get; }
+        public bool Equals(SharpVision.Styling.GlyphFamily? other) { }
+        public override int GetHashCode() { }
+    }
     public interface IAppearanceFragment
     {
         SharpVision.Styling.IAppearanceFragment Clone();
@@ -3718,6 +3747,19 @@ namespace SharpVision.Styling
         public PopupStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow) { }
         public SharpVision.Styling.PopupAnchorGlyphs AnchorGlyphs { get; init; }
         public new static SharpVision.Styling.PopupStyle Default { get; }
+    }
+    public readonly struct RadioButtonGlyphFamily : System.IEquatable<SharpVision.Styling.RadioButtonGlyphFamily>
+    {
+        public RadioButtonGlyphFamily(SharpVision.Controls.Input.RadioButtonMarkStyle markStyle, SharpVision.Controls.Input.RadioButtonGlyphs glyphs) { }
+        public SharpVision.Controls.Input.RadioButtonGlyphs Glyphs { get; init; }
+        public SharpVision.Controls.Input.RadioButtonMarkStyle MarkStyle { get; init; }
+    }
+    public readonly struct ScrollBarGlyphFamily : System.IEquatable<SharpVision.Styling.ScrollBarGlyphFamily>
+    {
+        public ScrollBarGlyphFamily(SharpVision.Scrolling.ScrollBarChrome chrome, SharpVision.Scrolling.ScrollBarFill fill, SharpVision.Controls.Scrolling.ScrollBarGlyphs glyphs) { }
+        public SharpVision.Scrolling.ScrollBarChrome Chrome { get; init; }
+        public SharpVision.Scrolling.ScrollBarFill Fill { get; init; }
+        public SharpVision.Controls.Scrolling.ScrollBarGlyphs Glyphs { get; init; }
     }
     public enum SemanticColor
     {
@@ -3833,6 +3875,7 @@ namespace SharpVision.Styling
         public SharpVision.Styling.AppearanceStates Container { get; }
         public SharpVision.Styling.AppearanceStates Control { get; }
         public SharpVision.Terminal.Protocols.Color Error { get; }
+        public SharpVision.Styling.GlyphFamily Glyphs { get; }
         public SharpVision.Terminal.Protocols.Color Hotkey { get; }
         public SharpVision.Terminal.Protocols.Color Info { get; }
         public SharpVision.Styling.AppearanceStates Input { get; }

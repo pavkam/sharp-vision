@@ -25,7 +25,7 @@ public sealed record ExpanderStyle: ControlStyle
                     ? InvalidationImpact.Render
                     : InvalidationImpact.None);
 
-    private static ExpanderStyle Complete(ControlStyle control, VisualState state) =>
+    private static ExpanderStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
         new(
             control.Face,
             control.Border,
@@ -58,7 +58,7 @@ public sealed record ExpanderStyle: ControlStyle
     }
 
     /// <summary>Gets the standard expander presentation.</summary>
-    public static new ExpanderStyle Default => Complete(ControlStyle.Default, VisualState.Normal);
+    public static new ExpanderStyle Default => Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the collapsed-state disclosure indicator.</summary>
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>

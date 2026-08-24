@@ -40,7 +40,9 @@ theme document may additionally author a `styles.scrollBar` section with
 `chrome` (`"thin"` or `"full"`) and `fill` (`"line"` or `"block"`) string
 members; an active theme's section supplies `Chrome`/`Fill` ahead of the
 code-owned defaults whenever no local `Style` is assigned (see
-[themes.md](../../concepts/themes.md#style-types)). The glyph family and
+[themes.md](../../concepts/themes.md#style-types)). The code-owned
+`Chrome`/`Fill`/glyph family come from the active theme's `glyphs` field, not
+from this section (see [themes.md](../../concepts/themes.md#glyph-families));
 per-part colors remain code-owned. A style change that alters `Chrome`
 invalidates measure, because the reserved extent moves; any other difference is
 render-only.

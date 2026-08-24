@@ -27,7 +27,7 @@ public sealed record TreeViewStyle: ContainerStyle
                 ? InvalidationImpact.Render
                 : InvalidationImpact.None);
 
-    private static TreeViewStyle Complete(ContainerStyle container, VisualState state) =>
+    private static TreeViewStyle Complete(ContainerStyle container, VisualState state, Theme theme) =>
         new(
             container.Face,
             container.Border,
@@ -71,7 +71,7 @@ public sealed record TreeViewStyle: ContainerStyle
     }
 
     /// <summary>Gets the standard tree view presentation.</summary>
-    public static new TreeViewStyle Default => Complete(ContainerStyle.Default, VisualState.Normal);
+    public static new TreeViewStyle Default => Complete(ContainerStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the loading-row foreground.</summary>
     /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
