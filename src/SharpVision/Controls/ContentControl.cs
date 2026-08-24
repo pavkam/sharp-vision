@@ -5,6 +5,8 @@ namespace SharpVision.Controls;
 
 using System.Runtime.ExceptionServices;
 
+using SharpVision.Text;
+
 /// <summary>Defines a mutable control that owns zero or one publicly replaceable content control.</summary>
 /// <remarks>
 /// Content participates in the ordinary owned-control lifecycle, rendering, hit testing, focus
@@ -12,7 +14,7 @@ using System.Runtime.ExceptionServices;
 /// control without disposing it; disposing this owner disposes content that remains assigned.
 /// </remarks>
 [PublicAPI]
-public abstract class ContentControl: ControlBase
+public abstract class ContentControl: ControlBase, ISelectableTextSource
 {
     private readonly OwnedControlSlot _contentSlot;
     private ControlBase? _publishedContent;
@@ -54,6 +56,26 @@ public abstract class ContentControl: ControlBase
     {
         get => _contentSlot.Count == 0 ? null : _contentSlot[0];
         set => _contentSlot.ReplaceAll(value is null ? [] : [value]);
+    }
+
+    /// <inheritdoc/>
+    public SelectableTextSnapshot GetSelectableTextSnapshot()
+    {
+        VerifyMutable();
+        return SelectableTextAggregation.Create(this);
+    }
+
+    /// <inheritdoc/>
+    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    {
+        ArgumentNullException.ThrowIfNull(children);
+
+        if (Content is { } content)
+        {
+            children.Add(content);
+        }
+
+        return true;
     }
 
     /// <summary>Responds after the content ownership change is structurally committed.</summary>

@@ -9,6 +9,8 @@ using Popups;
 
 using SharpVision.Terminal.Input;
 
+using SharpVision.Text;
+
 using DisplayText = Display.Text;
 
 /// <summary>
@@ -25,7 +27,7 @@ using DisplayText = Display.Text;
 /// capability is meant to be wired once, from the constructor.
 /// </remarks>
 [PublicAPI]
-public abstract class InputBase: ControlBase
+public abstract class InputBase: ControlBase, ISelectableTextSource
 {
     /// <summary>Initializes a focusable control participating in Tab traversal.</summary>
     protected InputBase()
@@ -160,6 +162,26 @@ public abstract class InputBase: ControlBase
     /// <summary>Gets the lazily materialized owned caption child, or null before <see cref="Text"/>
     /// is first assigned.</summary>
     protected internal DisplayText? TextControl { get; private set; }
+
+    /// <inheritdoc/>
+    public SelectableTextSnapshot GetSelectableTextSnapshot()
+    {
+        VerifyMutable();
+        return SelectableTextAggregation.Create(this);
+    }
+
+    /// <inheritdoc/>
+    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    {
+        ArgumentNullException.ThrowIfNull(children);
+
+        if (TextControl is { } text)
+        {
+            children.Add(text);
+        }
+
+        return true;
+    }
 
     /// <summary>Gets whether <paramref name="candidate"/> is this control's own owned caption child.</summary>
     /// <param name="candidate">The control to test.</param>

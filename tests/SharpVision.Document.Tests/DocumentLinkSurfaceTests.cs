@@ -3,6 +3,8 @@
 
 namespace SharpVision.Document.Tests;
 
+using SharpVision.Text;
+
 // The project's own namespace, SharpVision.Document.Tests, nests textually under the SharpVision.Document
 // segment, so an unqualified "Document" would otherwise resolve to that segment (as a namespace)
 // rather than the Document control - this in-namespace alias, unlike a global one, takes priority
@@ -261,8 +263,8 @@ public sealed class DocumentLinkSurfaceTests
         surface.Cell(new Point(0, 2)).Style.ShouldBe(enabledStyle);
     }
 
-    /// <summary>Verifies a primary press on a link's own cells focuses the document, selects that
-    /// link, and activates it, while a press on ordinary text does neither.</summary>
+    /// <summary>Verifies an eligible primary release on a link focuses the document, selects that
+    /// link, and activates it, while a click on ordinary text does neither.</summary>
     [Fact]
     public async Task Pointer_WhenLinkCellsArePressed_FocusesSelectsAndActivatesAsync()
     {
@@ -291,6 +293,217 @@ public sealed class DocumentLinkSurfaceTests
         // Assert
         activations.ShouldBe(1);
         document.ActiveLink.ShouldBeSameAs(second);
+    }
+
+    /// <summary>Verifies a buttonless legacy X10 release completes the primary potential gesture
+    /// that began on a link and activates it exactly once.</summary>
+    [Fact]
+    public async Task Pointer_WhenLegacyReleaseCompletesPotentialLink_ActivatesAsync()
+    {
+        // Arrange
+        var link = new DocumentLink("link");
+        var document = LinkDocument(link);
+        var activations = 0;
+        link.Clicked += (_, _) => activations++;
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(document.SelectAll, "select before legacy link release");
+        await surface.Pointer.MoveToAsync(document, new Point(0, 0));
+        await surface.Pointer.PressAsync();
+
+        // Act - X10 selector three is an unqualified release at cell zero.
+        await surface.SendAsync("\u001b[M#!!"u8.ToArray(), "legacy release over potential link");
+
+        // Assert
+        activations.ShouldBe(1);
+        document.SelectionGesturePhase.ShouldBe(DocumentSelectionGesturePhase.Idle);
+        (await surface.Application.Dispatcher.InvokeAsync(
+            () => document.Selection,
+            TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 0));
+        surface.ShouldHaveCapture(null);
+    }
+
+    /// <summary>Verifies link activation requires release over the same enabled link and never
+    /// occurs for an outside release or a selection drag.</summary>
+    [Fact]
+    public async Task Pointer_WhenLinkReleaseIsIneligible_DoesNotActivateAsync()
+    {
+        // Arrange
+        var first = new DocumentLink("first");
+        var second = new DocumentLink("second");
+        var document = LinkDocument(first, second);
+        var firstActivations = 0;
+        var secondActivations = 0;
+        first.Clicked += (_, _) => firstActivations++;
+        second.Clicked += (_, _) => secondActivations++;
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(12, 4),
+            TestContext.Current.CancellationToken);
+
+        // Act - release outside every link.
+        await surface.Pointer.MoveToAsync(document, new Point(0, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(document, new Point(8, 1));
+        await surface.Pointer.ReleaseAsync();
+
+        // Act - release over a different link.
+        await surface.Pointer.MoveToAsync(document, new Point(0, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(document, new Point(0, 2));
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert - both movements became selection drags, so neither link activates.
+        firstActivations.ShouldBe(0);
+        secondActivations.ShouldBe(0);
+    }
+
+    /// <summary>Verifies disabling a link between press and release cancels pointer activation.</summary>
+    [Fact]
+    public async Task Pointer_WhenPressedLinkIsDisabledBeforeRelease_DoesNotActivateAsync()
+    {
+        // Arrange
+        var link = new DocumentLink("only");
+        var document = LinkDocument(link);
+        var activations = 0;
+        link.Clicked += (_, _) => activations++;
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(document, new Point(0, 0));
+        await surface.Pointer.PressAsync();
+        activations.ShouldBe(0);
+
+        // Act
+        await surface.UpdateAsync(() => link.IsEnabled = false, "disable pressed link");
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        activations.ShouldBe(0);
+    }
+
+    /// <summary>Verifies an ancestor-consumed preview press never arms document selection or link
+    /// activation when later motion and release records remain unhandled.</summary>
+    [Fact]
+    public async Task Pointer_WhenAncestorConsumesPreviewPress_DoesNotSelectCollapseOrActivateAsync()
+    {
+        // Arrange
+        var link = new DocumentLink("link");
+        var document = LinkDocument(link);
+        var host = new Stack { Children = { document } };
+        var activations = 0;
+        link.Clicked += (_, _) => activations++;
+        _ = host.AddHandler(Events.Pointer, (_, eventArgs) =>
+        {
+            if (eventArgs is
+                {
+                    Phase: RoutingPhase.Preview,
+                    Pointer.Action: PointerAction.Press
+                })
+            {
+                eventArgs.IsHandled = true;
+            }
+        });
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(document.SelectAll, "select document before consumed press");
+
+        // Act
+        await surface.Pointer.DragAsync(document, new Point(0, 0), new Point(1, 0));
+
+        // Assert
+        activations.ShouldBe(0);
+        (await surface.Application.Dispatcher.InvokeAsync(
+            () => document.Selection,
+            TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 4));
+        surface.ShouldHaveCapture(null);
+    }
+
+    /// <summary>Verifies releasing a secondary button cannot complete a primary potential link
+    /// click, while the later primary release still collapses and activates exactly once.</summary>
+    [Fact]
+    public async Task Pointer_WhenSecondaryReleaseOccursDuringPotentialLink_WaitsForPrimaryReleaseAsync()
+    {
+        // Arrange
+        var link = new DocumentLink("link");
+        var document = LinkDocument(link);
+        var activations = 0;
+        link.Clicked += (_, _) => activations++;
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(document.SelectAll, "select before multi-button link click");
+        await surface.Pointer.MoveToAsync(document, new Point(0, 0));
+        await surface.Pointer.PressAsync();
+
+        // Act - SGR secondary release at the held primary point.
+        await surface.SendAsync("\u001b[<2;1;1m"u8.ToArray(), "release secondary during primary link click");
+
+        // Assert
+        activations.ShouldBe(0);
+        document.SelectionGesturePhase.ShouldBe(DocumentSelectionGesturePhase.Potential);
+        (await surface.Application.Dispatcher.InvokeAsync(
+            () => document.Selection,
+            TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 4));
+
+        // Act and assert - the primary release remains the sole completing transition.
+        await surface.Pointer.ReleaseAsync();
+        activations.ShouldBe(1);
+        document.SelectionGesturePhase.ShouldBe(DocumentSelectionGesturePhase.Idle);
+        (await surface.Application.Dispatcher.InvokeAsync(
+            () => document.Selection,
+            TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 0));
+    }
+
+    /// <summary>Verifies release hit testing refreshes a mutated layout before deciding whether the
+    /// pressed link identity still occupies the release cell.</summary>
+    [Fact]
+    public async Task Pointer_WhenLinkReflowsDuringRelease_DoesNotActivateStaleRegionAsync()
+    {
+        // Arrange
+        var link = new DocumentLink("link");
+        var paragraph = new DocumentParagraph { Inlines = { link } };
+        var document = new Document { Blocks = { paragraph } };
+        var host = new Stack { Children = { document } };
+        var activations = 0;
+        var mutated = false;
+        link.Clicked += (_, _) => activations++;
+        _ = host.AddHandler(Events.Pointer, (_, eventArgs) =>
+        {
+            if (!mutated &&
+                eventArgs is
+                {
+                    Phase: RoutingPhase.Preview,
+                    Pointer.Action: PointerAction.Release,
+                    Pointer.Buttons: var buttons
+                } &&
+                (buttons & Buttons.Primary) != 0)
+            {
+                mutated = true;
+                paragraph.Inlines.Insert(0, new DocumentTextRun("xx"));
+            }
+        });
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.ClickAsync(document, new Point(0, 0));
+
+        // Assert
+        mutated.ShouldBeTrue();
+        activations.ShouldBe(0);
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("x");
+        (await surface.Application.Dispatcher.InvokeAsync(
+            () => document.Selection,
+            TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 0));
     }
 
     /// <summary>Verifies a link that wraps stays one logical link and remains activatable on every

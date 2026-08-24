@@ -6,6 +6,7 @@ namespace SharpVision.Controls.SyntaxHighlighting;
 using System.ComponentModel;
 
 using SharpVision.Controls.Scrolling;
+using SharpVision.Runtime;
 using SharpVision.Scrolling;
 using SharpVision.SyntaxHighlighting;
 using SharpVision.Terminal.Input;
@@ -48,7 +49,12 @@ using TextSelection = Selection;
 /// </para>
 /// </remarks>
 [PublicAPI]
-public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
+public sealed class CodeView:
+    CompositeControlBase,
+    IStyled<CodeViewStyle>,
+    ISelectableTextSource,
+    ISelectableTextViewport,
+    IClipboardCopySource
 {
     private const int _foldGutterWidth = 2;
 
@@ -74,6 +80,13 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
     private Point _lastDragCells;
     private DispatcherTimer? _autoScrollTimer;
     private int? _desiredColumn;
+    private int? _pendingRevealOffset;
+    private List<int>? _pendingRevealProjection;
+    private bool _pendingRevealPosted;
+
+    /// <summary>Gets how many projected source lines the most recent selectable snapshot inspected.
+    /// This test seam proves projection work remains bounded by the clipped viewport.</summary>
+    internal int LastSelectableTextSnapshotInspectedLineCount { get; private set; }
 
     /// <summary>Initializes an empty, unstyled read-only code view.</summary>
     public CodeView()
@@ -334,6 +347,154 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
 
     #region Selection
 
+    /// <inheritdoc/>
+    SelectableTextSnapshot ISelectableTextSource.GetSelectableTextSnapshot()
+    {
+        VerifyMutable();
+        LastSelectableTextSnapshotInspectedLineCount = 0;
+
+        if (!EffectiveIsVisible)
+        {
+            return new SelectableTextSnapshot(NormalizedCode, [], isAuthoritative: true);
+        }
+
+        var clip = GetDescendantSelectableTextInheritedClip(_content);
+        var viewport = SelectableTextViewportAbsolute();
+        var textViewport = new Rect(
+            viewport.X + GutterWidth,
+            viewport.Y,
+            Math.Max(0, viewport.Width - GutterWidth),
+            viewport.Height);
+        clip = clip.Intersect(textViewport);
+        var glyphs = new List<SelectableTextGlyph>();
+        var firstVisibleIndex = (int) Math.Clamp(
+            (long) VerticalOffset + clip.Y - viewport.Y,
+            0,
+            _visibleLines.Count);
+        var lastVisibleIndex = (int) Math.Clamp(
+            (long) VerticalOffset + clip.Bottom - viewport.Y,
+            firstVisibleIndex,
+            _visibleLines.Count);
+
+        for (var visibleIndex = firstVisibleIndex; visibleIndex < lastVisibleIndex; visibleIndex++)
+        {
+            LastSelectableTextSnapshotInspectedLineCount++;
+            var sourceLine = _visibleLines[visibleIndex];
+            var y = viewport.Y + visibleIndex - VerticalOffset;
+
+            var line = _lines[sourceLine];
+            var lineStart = LineStartOffset(sourceLine);
+            var cells = 0;
+
+            foreach (var grapheme in Graphemes.Enumerate(line))
+            {
+                var cluster = line.AsSpan(grapheme.Offset, grapheme.Length);
+                var width = CodeClusterWidth(cluster);
+                var absolute = new Rect(
+                    viewport.X + GutterWidth + cells - HorizontalOffset,
+                    y,
+                    width,
+                    1);
+
+                if (width > 0 && ContainsCompleteGlyph(clip, absolute))
+                {
+                    glyphs.Add(new SelectableTextGlyph(
+                        new TextSelection(
+                            lineStart + grapheme.Offset,
+                            lineStart + grapheme.Offset + grapheme.Length),
+                        new Rect(
+                            absolute.X - Bounds.X,
+                            absolute.Y - Bounds.Y,
+                            absolute.Width,
+                            absolute.Height)));
+                }
+
+                cells += width;
+            }
+        }
+
+        return new SelectableTextSnapshot(NormalizedCode, glyphs, isAuthoritative: true);
+    }
+
+    /// <inheritdoc/>
+    public Rect SelectableTextViewport
+    {
+        get
+        {
+            VerifyMutable();
+            var viewport = SelectableTextViewportAbsolute();
+            return new Rect(
+                viewport.X - Bounds.X,
+                viewport.Y - Bounds.Y,
+                viewport.Width,
+                viewport.Height);
+        }
+    }
+
+    /// <inheritdoc/>
+    public bool RevealSelectableTextOffset(int offset)
+    {
+        VerifyMutable();
+        TextEdit.Validate(NormalizedCode, new TextSelection(offset, offset));
+
+        var line = LineAt(offset);
+        var expanded = ExpandFoldsContaining(line);
+
+        if (expanded)
+        {
+            RebuildVisibleLines();
+            _pendingRevealOffset = offset;
+            _pendingRevealProjection = _visibleLines;
+            _content.RequestInvalidate(InvalidationImpact.Measure);
+            return true;
+        }
+
+        if (ReferenceEquals(_pendingRevealProjection, _visibleLines))
+        {
+            _pendingRevealOffset = offset;
+            return true;
+        }
+
+        return RevealOffset(offset, _visibleLines);
+    }
+
+    /// <inheritdoc/>
+    public bool ScrollSelectableTextViewport(int horizontal, int vertical)
+    {
+        VerifyMutable();
+        return _stack.ScrollBy(horizontal, vertical, ScrollCause.Pointer);
+    }
+
+    [Pure]
+    private Rect SelectableTextViewportAbsolute() => new(
+        _stack.Bounds.X,
+        _stack.Bounds.Y,
+        Viewport.Width,
+        Viewport.Height);
+
+    [Pure]
+    private static bool ContainsCompleteGlyph(Rect clip, Rect candidate) =>
+        candidate.X >= clip.X && candidate.Y >= clip.Y &&
+        (long) candidate.X + candidate.Width <= (long) clip.X + clip.Width &&
+        (long) candidate.Y + candidate.Height <= (long) clip.Y + clip.Height;
+
+    [Pure]
+    private int CodeClusterWidth(ReadOnlySpan<char> cluster) =>
+        cluster is ['\t'] ? 1 : MeasureCells(cluster);
+
+    [Pure]
+    private int MeasureCodeCells(ReadOnlySpan<char> text)
+    {
+        var cells = 0;
+
+        foreach (var grapheme in Graphemes.Enumerate(text))
+        {
+            cells += CodeClusterWidth(text.Slice(grapheme.Offset, grapheme.Length));
+        }
+
+        return cells;
+    }
+
     /// <summary>Gets the current directional selection over the normalized <see cref="Code"/> text.</summary>
     public TextSelection Selection { get; private set; }
 
@@ -386,11 +547,9 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
     /// <summary>
     /// Gets or sets the delegate <see cref="RequestClipboardCopy"/> forwards <see cref="CopySelection"/>'s
     /// result to, invoked by the default <see cref="CodeViewContextMenu"/>'s Copy item and by
-    /// Ctrl+C. Left null by default: unlike <c>TextInput</c>, this control's host application is
-    /// never automatically discovered by <c>Application</c> (that mechanism is hard-typed to
-    /// <c>TextInput</c> and cannot be extended from another assembly), so a host that wants Copy to
-    /// reach a real clipboard must assign this delegate itself - for example to
-    /// <c>value => Application.Terminal.Clipboard.Write(value)</c>.
+    /// a detached or manually routed Ctrl+C command. Left null by default. An attached control is
+    /// discovered through <see cref="IClipboardCopySource"/> by <see cref="Application"/>, so its
+    /// ordinary Ctrl+C command uses the application's clipboard path without this delegate.
     /// </summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -510,6 +669,11 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public bool ToggleFold(int line) => _foldStartRanges.ContainsKey(line) && SetFolded(line, !IsFolded(line));
 
+    private bool ExpandFoldsContaining(int line) =>
+        IsFoldingEnabled && _foldedStartLines.RemoveWhere(startLine =>
+            _foldStartRanges.TryGetValue(startLine, out var range) &&
+            line > range.StartLine && line <= range.EndLine) > 0;
+
     /// <summary>Collapses every fold range.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -556,6 +720,27 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
     [Pure]
     internal Size MeasureProjection() => new(_extentWidth, _visibleLines.Count);
 
+    /// <inheritdoc/>
+    protected override void ArrangeOverride(Rect bounds)
+    {
+        base.ArrangeOverride(bounds);
+
+        if (_pendingRevealOffset.HasValue && !_pendingRevealPosted && Dispatcher is { } dispatcher)
+        {
+            _pendingRevealPosted = true;
+
+            try
+            {
+                dispatcher.Post(ProcessPendingReveal);
+            }
+            catch
+            {
+                _pendingRevealPosted = false;
+                throw;
+            }
+        }
+    }
+
     /// <summary>Draws every visible projected line intersecting the clipped content surface.</summary>
     /// <param name="canvas">The clipped semantic canvas.</param>
     /// <param name="bounds">The content surface bounds.</param>
@@ -565,12 +750,13 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
         var last = Math.Min(_visibleLines.Count, canvas.Bounds.Bottom - bounds.Y);
         var style = ActualStyle;
         var gutterStyle = ResolvedStyle.WithForeground(ResolveColor(style.GutterColor, Theme));
+        var viewportX = SelectableTextViewportAbsolute().X;
 
         for (var row = first; row < last; row++)
         {
             var sourceLine = _visibleLines[row];
             var y = bounds.Y + row;
-            var x = bounds.X;
+            var x = viewportX;
 
             if (IsFoldingEnabled)
             {
@@ -638,12 +824,21 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
             ResolvedStyle,
             ResolveColor(style.SelectedTextColor, Theme),
             ResolveColor(style.SelectedBackground, Theme));
-        var column = selectionStart - lineStart;
+        var column = MeasureCodeCellsToOffset(sourceLine, selectionStart - lineStart);
         var slice = text.AsSpan(selectionStart - lineStart, selectionEnd - selectionStart);
-        DrawSlice(canvas, slice, overlayStyle, x, y, ref column, horizontalOffset, BackgroundMode.Opaque, startColumn: selectionStart - lineStart);
+        DrawSlice(
+            canvas,
+            slice,
+            overlayStyle,
+            x,
+            y,
+            ref column,
+            horizontalOffset,
+            BackgroundMode.Opaque,
+            startColumn: column);
     }
 
-    private static void DrawSlice(
+    private void DrawSlice(
         TerminalCanvas canvas,
         ReadOnlySpan<char> raw,
         TerminalStyle style,
@@ -655,23 +850,37 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
         int? startColumn = null)
     {
         var tokenStartColumn = startColumn ?? column;
-        var length = raw.Length;
-        column = tokenStartColumn + length;
+        var tokenCells = MeasureCodeCells(raw);
 
-        if (length == 0 || tokenStartColumn + length <= horizontalOffset)
+        column = tokenStartColumn + tokenCells;
+
+        if (raw.Length == 0 || tokenStartColumn + tokenCells <= horizontalOffset)
         {
             return;
         }
 
-        var visibleStart = Math.Max(0, horizontalOffset - tokenStartColumn);
+        var cellsToSkip = Math.Max(0, horizontalOffset - tokenStartColumn);
+        var visibleStart = 0;
+        var skippedCells = 0;
 
-        if (visibleStart >= length)
+        foreach (var grapheme in Graphemes.Enumerate(raw))
+        {
+            if (skippedCells >= cellsToSkip)
+            {
+                break;
+            }
+
+            skippedCells += CodeClusterWidth(raw.Slice(grapheme.Offset, grapheme.Length));
+            visibleStart = grapheme.Offset + grapheme.Length;
+        }
+
+        if (visibleStart >= raw.Length)
         {
             return;
         }
 
         var visible = raw[visibleStart..];
-        var drawX = x + Math.Max(0, tokenStartColumn - horizontalOffset);
+        var drawX = x + tokenStartColumn + skippedCells - horizontalOffset;
 
         var buffer = visible.Length <= 512 ? stackalloc char[visible.Length] : new char[visible.Length];
 
@@ -778,7 +987,8 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
         }
 
         var caretLine = LineAt(Selection.Caret);
-        var currentColumn = _desiredColumn ?? (Selection.Caret - LineStartOffset(caretLine));
+        var currentColumn = _desiredColumn ??
+            MeasureCodeCellsToOffset(caretLine, Selection.Caret - LineStartOffset(caretLine));
         var visibleIndex = _visibleLines.BinarySearch(caretLine);
 
         if (visibleIndex < 0)
@@ -788,8 +998,7 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
 
         var targetIndex = Math.Clamp(visibleIndex + lineDelta, 0, _visibleLines.Count - 1);
         var targetLine = _visibleLines[targetIndex];
-        var targetLineLength = _lines[targetLine].Length;
-        var targetOffset = LineStartOffset(targetLine) + Math.Min(currentColumn, targetLineLength);
+        var targetOffset = LineStartOffset(targetLine) + OffsetForCodeCells(targetLine, currentColumn);
 
         CommitSelection(new TextSelection(extend ? Selection.Anchor : targetOffset, targetOffset), resetDesiredColumn: false);
         _desiredColumn = currentColumn;
@@ -797,38 +1006,80 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
         return true;
     }
 
-    private void RevealCaret()
-    {
-        var caretLine = LineAt(Selection.Caret);
-        var visibleIndex = _visibleLines.BinarySearch(caretLine);
+    private void RevealCaret() => _ = RevealOffset(Selection.Caret, _visibleLines);
 
-        if (visibleIndex < 0)
+    private void ProcessPendingReveal()
+    {
+        _pendingRevealPosted = false;
+
+        if (_pendingRevealOffset is not { } offset || _pendingRevealProjection is not { } projection)
         {
             return;
         }
 
-        if (visibleIndex < VerticalOffset)
+        _pendingRevealOffset = null;
+        _pendingRevealProjection = null;
+        _ = RevealOffset(offset, projection);
+    }
+
+    private bool RevealOffset(int offset, List<int> projection)
+    {
+        if (!CanContinueReveal(offset, projection))
         {
-            VerticalOffset = visibleIndex;
-        }
-        else if (visibleIndex >= VerticalOffset + Viewport.Height)
-        {
-            VerticalOffset = visibleIndex - Viewport.Height + 1;
+            return false;
         }
 
-        var column = Selection.Caret - LineStartOffset(caretLine);
+        var line = LineAt(offset);
+        var visibleIndex = projection.BinarySearch(line);
+
+        if (visibleIndex < 0)
+        {
+            return false;
+        }
+
+        var previousHorizontal = HorizontalOffset;
+        var previousVertical = VerticalOffset;
+        var targetVertical = previousVertical;
+
+        if (Viewport.Height > 0 && visibleIndex < previousVertical)
+        {
+            targetVertical = visibleIndex;
+        }
+        else if (Viewport.Height > 0 && visibleIndex >= previousVertical + Viewport.Height)
+        {
+            targetVertical = visibleIndex - Viewport.Height + 1;
+        }
+
+        if (targetVertical != previousVertical)
+        {
+            VerticalOffset = targetVertical;
+
+            if (!CanContinueReveal(offset, projection))
+            {
+                return false;
+            }
+        }
+
+        var column = MeasureCodeCellsToOffset(line, offset - LineStartOffset(line));
 
         // The gutter occupies the leftmost GutterWidth cells of Viewport.Width and never scrolls,
         // so only the remaining cells actually show scrolled text columns. Comparing column against
         // the full Viewport.Width - as if the gutter's cells could show text too - let the caret
         // drift up to GutterWidth columns past the true right edge before a scroll ever triggered.
-        var textViewportWidth = Math.Max(1, Viewport.Width - GutterWidth);
+        var textViewportWidth = Viewport.Width - GutterWidth;
 
-        if (column < HorizontalOffset)
+        if (textViewportWidth <= 0)
         {
-            HorizontalOffset = column;
+            return VerticalOffset != previousVertical;
         }
-        else if (column >= HorizontalOffset + textViewportWidth)
+
+        var targetHorizontal = previousHorizontal;
+
+        if (column < previousHorizontal)
+        {
+            targetHorizontal = column;
+        }
+        else if (column >= previousHorizontal + textViewportWidth)
         {
             // Clamped rather than assigned outright: the extent's widest line reserves exactly its
             // own printable width with no phantom trailing column for a caret sitting one past its
@@ -837,8 +1088,53 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
             // still valid - matching ScrollBy's own saturating contract - instead of letting the
             // Container's offset setter throw ArgumentOutOfRangeException out of a keyboard handler.
             var maximumHorizontalOffset = Math.Max(0, Extent.Width - Viewport.Width);
-            HorizontalOffset = Math.Min(maximumHorizontalOffset, column - textViewportWidth + 1);
+            targetHorizontal = Math.Min(maximumHorizontalOffset, column - textViewportWidth + 1);
         }
+
+        if (targetHorizontal != previousHorizontal)
+        {
+            HorizontalOffset = targetHorizontal;
+
+            if (!CanContinueReveal(offset, projection))
+            {
+                return false;
+            }
+        }
+
+        return HorizontalOffset != previousHorizontal || VerticalOffset != previousVertical;
+    }
+
+    [Pure]
+    private bool CanContinueReveal(int offset, List<int> projection) =>
+        !IsDisposed && EffectiveIsVisible &&
+        ReferenceEquals(_visibleLines, projection) &&
+        offset >= 0 && offset <= NormalizedCode.Length;
+
+    [Pure]
+    private int MeasureCodeCellsToOffset(int line, int offset)
+        => MeasureCodeCells(_lines[line].AsSpan(0, offset));
+
+    [Pure]
+    private int OffsetForCodeCells(int line, int targetCells)
+    {
+        var text = _lines[line];
+        var cells = 0;
+
+        foreach (var grapheme in Graphemes.Enumerate(text))
+        {
+            var width = CodeClusterWidth(text.AsSpan(grapheme.Offset, grapheme.Length));
+
+            if (targetCells < cells + width)
+            {
+                return targetCells - cells < (width + 1) / 2
+                    ? grapheme.Offset
+                    : grapheme.Offset + grapheme.Length;
+            }
+
+            cells += width;
+        }
+
+        return text.Length;
     }
 
     #endregion
@@ -1000,14 +1296,15 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
     /// <returns>True when the press landed in the gutter of a line that begins a fold range.</returns>
     private bool TryToggleFoldAt(Point pressedCells)
     {
-        var column = pressedCells.X - _content.Bounds.X;
+        var viewport = SelectableTextViewportAbsolute();
+        var column = pressedCells.X - viewport.X;
 
         if (column < 0 || column >= GutterWidth)
         {
             return false;
         }
 
-        var row = pressedCells.Y - _content.Bounds.Y;
+        var row = pressedCells.Y - viewport.Y + VerticalOffset;
 
         if (row < 0 || row >= _visibleLines.Count)
         {
@@ -1152,7 +1449,8 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
     [Pure]
     private int? OffsetAt(Point cells)
     {
-        var row = cells.Y - _content.Bounds.Y;
+        var viewport = SelectableTextViewportAbsolute();
+        var row = cells.Y - viewport.Y + VerticalOffset;
 
         if (row < 0 || row >= _visibleLines.Count)
         {
@@ -1163,8 +1461,8 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
         Debug.Assert(
             sourceLine >= 0 && sourceLine < _lines.Length,
             "RebuildVisibleLines only ever appends indices it iterated over _lines with, so every entry is a valid source-line index.");
-        var column = Math.Max(0, cells.X - _content.Bounds.X - GutterWidth + HorizontalOffset);
-        return LineStartOffset(sourceLine) + Math.Min(column, _lines[sourceLine].Length);
+        var column = Math.Max(0, cells.X - viewport.X - GutterWidth + HorizontalOffset);
+        return LineStartOffset(sourceLine) + OffsetForCodeCells(sourceLine, column);
     }
 
     #endregion
@@ -1183,6 +1481,8 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
         // Canceling here - the same reset a real Release or focus-loss already performs - keeps a
         // reassignment from ever combining with a stale anchor in the first place.
         CancelPointerSelection();
+        _pendingRevealOffset = null;
+        _pendingRevealProjection = null;
         NormalizedCode = Code.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
         _lines = NormalizedCode.Split('\n');
         _lineStartOffsets = new int[_lines.Length + 1];
@@ -1261,41 +1561,8 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
 
         foreach (var line in _visibleLines)
         {
-            _extentWidth = Math.Max(_extentWidth, GutterWidth + MeasureLineCells(_lines[line]));
+            _extentWidth = Math.Max(_extentWidth, GutterWidth + MeasureCodeCells(_lines[line]));
         }
-    }
-
-    /// <summary>Measures one source line the same way <see cref="DrawSlice"/> actually draws it,
-    /// rather than the way <see cref="ControlBase.MeasureCells"/> alone would measure its raw
-    /// text.</summary>
-    /// <remarks>
-    /// A raw tab character classifies as <see cref="CellWidth.Control"/> and
-    /// contributes zero to <see cref="ControlBase.MeasureCells"/>'s cell count, but <see
-    /// cref="DrawSlice"/> substitutes one literal space - one drawn cell - for every tab before
-    /// painting. Measuring the raw line would therefore undercount <see cref="_extentWidth"/> by
-    /// exactly the tab count on any line that contains one, silently capping <see
-    /// cref="RevealCaret"/>'s horizontal scroll short of content that is genuinely drawn past it.
-    /// Substituting the same one-space-per-tab text this method measures against keeps the extent
-    /// and the paint routine in agreement.
-    /// </remarks>
-    /// <param name="line">The raw source line, not yet tab-substituted.</param>
-    /// <returns>The printable cell count this line actually draws as.</returns>
-    [Pure]
-    private int MeasureLineCells(string line)
-    {
-        if (!line.Contains('\t'))
-        {
-            return MeasureCells(line);
-        }
-
-        var buffer = line.Length <= 512 ? stackalloc char[line.Length] : new char[line.Length];
-
-        for (var i = 0; i < line.Length; i++)
-        {
-            buffer[i] = line[i] == '\t' ? ' ' : line[i];
-        }
-
-        return MeasureCells(buffer);
     }
 
     [Pure]

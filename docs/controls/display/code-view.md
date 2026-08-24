@@ -2,14 +2,18 @@
 
 ## Overview
 
-`CodeView` is declared
-`public sealed class CodeView : CompositeControlBase, IStyled<CodeViewStyle>`.
-It displays a read-only block of source code, colored against a
-[Kate/KSyntaxHighlighting-format](../../concepts/syntax-highlighting.md)
-grammar, with mouse- and keyboard-driven text selection, a pure `CopySelection`
-the host wires to a real clipboard, and collapsible fold ranges. There is no
-editing API: `Code` is the only way to change its content, and setting it always
-replaces the whole document.
+`CodeView` is declared `public sealed class CodeView : CompositeControlBase` and
+implements `IStyled<CodeViewStyle>`, `ISelectableTextSource`,
+`ISelectableTextViewport`, and `IClipboardCopySource`. It displays a read-only,
+syntax-colored source file with grapheme-safe selection, two-axis scrolling, and
+collapsible fold ranges. There is no editing API: replacing `Code` replaces the
+whole source.
+
+Line endings normalize to LF before tokenization or selection. Offsets are
+UTF-16 grapheme boundaries in that normalized string. Lines never wrap, and a
+tab is one semantic character and exactly one displayed cell. The control owns
+its normalized text and token projection; callers retain the assigned source
+string and catalog.
 
 ## Inheritance
 
@@ -17,65 +21,63 @@ replaces the whole document.
 classDiagram
     ControlBase <|-- CompositeControlBase
     CompositeControlBase <|-- CodeView
+    ISelectableTextSource <|.. CodeView
+    ISelectableTextViewport <|.. CodeView
+    IClipboardCopySource <|.. CodeView
 ```
 
 ## API
 
-| Member                    | Type                                   | Default                        | Description                                                                                                                                                       |
-| ------------------------- | -------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Code`                    | `string`                               | `""`                           | Complete non-null source text, retained verbatim; tokenization, `Selection`, and `SelectedText` instead operate against a separately line-ending-normalized copy. |
-| `Language`                | `string?`                              | `null`                         | Exact `Catalog` language name to highlight against, or null for no coloring.                                                                                      |
-| `Catalog`                 | `SyntaxDefinitionCatalog`              | `Default`                      | The catalog `Language` resolves a grammar from.                                                                                                                   |
-| `Style`                   | `CodeViewStyle?`                       | `null`                         | Gets or sets the complete local presentation.                                                                                                                     |
-| `ActualStyle`             | `CodeViewStyle`                        | Resolved                       | Read-only; the complete local, theme-owned, or code-owned presentation.                                                                                           |
-| Inherited `ContextMenu`   | `ContextMenu?`                         | `CodeViewContextMenu` instance | Provides Copy, Select All, and fold commands; replaceable through the inherited ownership contract.                                                               |
-| `ScrollBars`              | `ScrollBars`                           | `Both`                         | Axes that may expose generated scrollbars.                                                                                                                        |
-| `ShowScrollBars`          | `ShowScrollBars`                       | `WhenNeeded`                   | Visibility policy for generated scrollbars.                                                                                                                       |
-| `ScrollBarStyle`          | `ScrollBarStyle?`                      | `null`                         | Complete local style for generated scrollbars.                                                                                                                    |
-| `ActualScrollBarStyle`    | `ScrollBarStyle`                       | Resolved                       | Read-only resolved generated-scrollbar style.                                                                                                                     |
-| `Extent`                  | `Size`                                 | Layout-dependent               | Read-only committed content extent.                                                                                                                               |
-| `Viewport`                | `Size`                                 | Layout-dependent               | Read-only committed visible extent.                                                                                                                               |
-| `HorizontalOffset`        | `int`                                  | `0`                            | Valid horizontal content offset; rejects a value outside the current extent.                                                                                      |
-| `VerticalOffset`          | `int`                                  | `0`                            | Valid vertical content offset; rejects a value outside the current extent.                                                                                        |
-| `LineSize`                | `int`                                  | `1`                            | Non-negative wheel-scroll cell increment.                                                                                                                         |
-| `PageOverlap`             | `int`                                  | `0`                            | Non-negative cells of context retained between page commands.                                                                                                     |
-| `ScrollBy(x, y, cause)`   | `bool`                                 | —                              | Applies signed cell deltas with saturation and endpoint clamping.                                                                                                 |
-| `Selection`               | `Selection`                            | Empty at `0`                   | Read-only current directional selection over the normalized `Code` text.                                                                                          |
-| `SelectedText`            | `string`                               | `""`                           | Read-only selected substring, or empty.                                                                                                                           |
-| `ClipboardWriter`         | `Action<string>?`                      | `null`                         | Delegate Ctrl+C and the default context menu's Copy item invoke with `CopySelection()`'s result.                                                                  |
-| `SetSelection(selection)` | `void`                                 | —                              | Replaces the selection with a validated grapheme-boundary range.                                                                                                  |
-| `SelectAll()`             | `void`                                 | —                              | Selects the entire normalized text.                                                                                                                               |
-| `ClearSelection()`        | `void`                                 | —                              | Collapses the selection to an empty range at its current caret.                                                                                                   |
-| `CopySelection()`         | `string`                               | —                              | Pure read of `SelectedText`; never touches a clipboard - see [Selection and copying](#selection-and-copying).                                                     |
-| `SelectionChanged`        | `EventHandler<EventArgs>`              | No subscribers                 | Raised after the committed selection changes.                                                                                                                     |
-| `FoldRanges`              | `IReadOnlyList<SyntaxFoldRange>`       | —                              | Read-only; every fold range detected in the current `Code`, outer ranges first.                                                                                   |
-| `IsFoldingEnabled`        | `bool`                                 | `true`                         | Whether the fold gutter is reserved and rendered, its arrows are clickable, and collapsed ranges hide lines.                                                      |
-| `IsFoldStart(line)`       | `bool`                                 | —                              | Whether a line begins any fold range at all.                                                                                                                      |
-| `IsFolded(line)`          | `bool`                                 | —                              | Whether a line begins a currently collapsed fold range.                                                                                                           |
-| `SetFolded(line, folded)` | `bool`                                 | —                              | Collapses or expands the fold range starting at one line; returns whether it changed.                                                                             |
-| `ToggleFold(line)`        | `bool`                                 | —                              | Toggles the fold range starting at one line.                                                                                                                      |
-| `CollapseAll()`           | `void`                                 | —                              | Collapses every fold range.                                                                                                                                       |
-| `ExpandAll()`             | `void`                                 | —                              | Expands every fold range.                                                                                                                                         |
-| `ScrollChanged`           | `EventHandler<ScrollChangedEventArgs>` | No subscribers                 | Reports the settled offset, extent, and viewport for one layout pass.                                                                                             |
+| Member                                                       | Type                                   | Default                        | Description                                                                                                          |
+| ------------------------------------------------------------ | -------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `Code`                                                       | `string`                               | `""`                           | Complete non-null source retained verbatim; tokenization and selection use a separately line-ending-normalized copy. |
+| `Language`                                                   | `string?`                              | `null`                         | Exact `Catalog` language name, or null for plain text.                                                               |
+| `Catalog`                                                    | `SyntaxDefinitionCatalog`              | `Default`                      | Catalog used to resolve `Language`.                                                                                  |
+| `Style`                                                      | `CodeViewStyle?`                       | `null`                         | Complete local presentation, or null for theme ownership.                                                            |
+| `ActualStyle`                                                | `CodeViewStyle`                        | Resolved                       | Read-only resolved presentation.                                                                                     |
+| Inherited `ContextMenu`                                      | `ContextMenu?`                         | `CodeViewContextMenu` instance | Replaceable menu with copy, selection, and folding commands.                                                         |
+| `ScrollBars`                                                 | `ScrollBars`                           | `Both`                         | Axes that may expose generated scrollbars.                                                                           |
+| `ShowScrollBars`                                             | `ShowScrollBars`                       | `WhenNeeded`                   | Generated-scrollbar visibility policy.                                                                               |
+| `ScrollBarStyle`                                             | `ScrollBarStyle?`                      | `null`                         | Complete local generated-scrollbar style.                                                                            |
+| `ActualScrollBarStyle`                                       | `ScrollBarStyle`                       | Resolved                       | Read-only resolved generated-scrollbar style.                                                                        |
+| `Extent`                                                     | `Size`                                 | Layout-dependent               | Read-only committed content extent in cells.                                                                         |
+| `Viewport`                                                   | `Size`                                 | Layout-dependent               | Read-only committed visible extent in cells.                                                                         |
+| `HorizontalOffset`, `VerticalOffset`                         | `int`                                  | `0`                            | Valid committed content offsets; reject values beyond the current extent.                                            |
+| `LineSize`                                                   | `int`                                  | `1`                            | Non-negative wheel-scroll cell increment.                                                                            |
+| `PageOverlap`                                                | `int`                                  | `0`                            | Non-negative cells retained between page commands.                                                                   |
+| `Selection`                                                  | `Selection`                            | Empty at `0`                   | Read-only directional range over normalized `Code`.                                                                  |
+| `SelectedText`                                               | `string`                               | `""`                           | Read-only owned selected substring.                                                                                  |
+| `SelectableTextViewport`                                     | `Rect`                                 | Layout-dependent               | Read-only text viewport relative to the control, excluding gutter and chrome.                                        |
+| `ClipboardWriter`                                            | `Action<string>?`                      | `null`                         | Optional detached/context-menu copy sink; attached Ctrl+C uses `Application`.                                        |
+| `IsFoldingEnabled`                                           | `bool`                                 | `true`                         | Whether the fold gutter and collapsed-line projection are active.                                                    |
+| `FoldRanges`                                                 | `IReadOnlyList<SyntaxFoldRange>`       | Empty                          | Detected fold ranges, outer ranges first.                                                                            |
+| `ScrollBy(int x, int y, ScrollCause cause)`                  | `bool`                                 | —                              | Applies signed deltas with saturation and endpoint clamping.                                                         |
+| `SetSelection(Selection selection)`                          | `void`                                 | —                              | Replaces the range after validating grapheme-boundary endpoints.                                                     |
+| `SelectAll()`                                                | `void`                                 | —                              | Selects the complete normalized source.                                                                              |
+| `ClearSelection()`                                           | `void`                                 | —                              | Collapses at the current directional caret.                                                                          |
+| `CopySelection()`                                            | `string`                               | —                              | Pure owned copy of `SelectedText`; emits no clipboard protocol.                                                      |
+| `RevealSelectableTextOffset(int offset)`                     | `bool`                                 | —                              | Validates and reveals one semantic offset, expanding containing folds.                                               |
+| `ScrollSelectableTextViewport(int horizontal, int vertical)` | `bool`                                 | —                              | Pointer-scrolls the selectable viewport by signed cell deltas with clamping.                                         |
+| `IsFoldStart(int line)`                                      | `bool`                                 | —                              | Reports whether a zero-based source line begins a fold.                                                              |
+| `IsFolded(int line)`                                         | `bool`                                 | —                              | Reports the stored collapsed state for a fold-start line.                                                            |
+| `SetFolded(int line, bool folded)`                           | `bool`                                 | —                              | Changes one fold and reports whether its state changed.                                                              |
+| `ToggleFold(int line)`                                       | `bool`                                 | —                              | Toggles a fold-start line and reports success.                                                                       |
+| `CollapseAll()`                                              | `void`                                 | —                              | Stores every detected range as collapsed.                                                                            |
+| `ExpandAll()`                                                | `void`                                 | —                              | Expands every detected range.                                                                                        |
+| `SelectionChanged`                                           | `EventHandler<EventArgs>`              | —                              | Raised after a different selection commits.                                                                          |
+| `ScrollChanged`                                              | `EventHandler<ScrollChangedEventArgs>` | —                              | Raised after a settled offset, extent, or viewport transition.                                                       |
 
-`CodeViewStyle`, reached through `Style`/`ActualStyle`, colors every Kate
-default-style role (`NormalColor`, `KeywordColor`, `FunctionColor`,
-`StringColor`, `CommentColor`, `DecimalValueColor`, `ErrorColor`, and 24 more,
-one per `SyntaxDefaultStyle` member) plus `SelectedTextColor`,
-`SelectedBackground`, `GutterColor`, and the `CollapsedGlyph`/`ExpandedGlyph`
-fold arrows, all through `ControlColor`. Every default reuses one of the
-library's existing `SemanticColor` roles rather than a new syntax-specific one,
-so a theme swap always restyles consistently without requiring every built-in
-theme to define new colors.
+`Code` rejects null with `ArgumentNullException`. `Language` or a replacement
+`Catalog` rejects an unavailable language with `KeyNotFoundException` before
+mutation. `SetSelection` rejects an endpoint past normalized text with
+`ArgumentOutOfRangeException` and an endpoint inside a grapheme with
+`ArgumentException`. Public mutation is dispatcher-affine after attachment.
 
-`Code` rejects null with `ArgumentNullException`. `Language` rejects a name
-`Catalog` does not contain with `KeyNotFoundException`, preserving the previous
-language. `SetSelection` rejects an endpoint past the normalized text or one
-that splits a grapheme cluster. Replacing `Code` or `Language` retokenizes the
-whole document, resets the selection to empty at offset zero, and expands every
-fold range.
+`CodeViewStyle` colors all `SyntaxDefaultStyle` roles, selected foreground and
+background, the fold gutter, and its one-cell collapsed and expanded glyphs.
+Transparent role colors and control or non-one-cell fold glyphs are rejected.
 
-## Selection and copying
+## Selection, viewport, and copying
 
 Selection is a single directional range (`Selection.Anchor`/`Selection.Caret`)
 over the _normalized_ `Code` text - line endings collapsed to `\n` - so
@@ -94,59 +96,66 @@ edge - past the right edge of a line wider than the viewport, or past the
 top/bottom edge of a buffer taller than the viewport - keeps auto-scrolling and
 extending the selection on a short repeating interval for as long as the button
 stays down, even without further pointer motion, until the drag returns inside
-the viewport or the button is released.
+the viewport or the button is released. The gutter remains outside selectable
+text geometry.
 
-`CopySelection()` is a pure read with no side effect, the same contract
-`TextInput.CopySelection` and `Table.CopySelection` use: this control never
-writes to a real clipboard itself. Unlike `TextInput`, though, `CodeView`'s host
-application is never automatically discovered by `Application` - that mechanism
-is hard-typed to `TextInput` and cannot be extended from another assembly - so
-wiring Ctrl+C and the default context menu's Copy item to a real clipboard
-requires assigning `ClipboardWriter` explicitly, for example to
-`view.ClipboardWriter = value => Application.Terminal.Clipboard.Write(value);`.
-Left `null`, Ctrl+C and Copy still update the selection normally but write
-nowhere. Construction installs one `CodeViewContextMenu`, a public specialized
-`ContextMenu` reached through the inherited `ContextMenu` property, ordering
-Copy, Select All, a separator, Collapse All Folds, and Expand All Folds; opening
-it recomputes each item's enablement from the current selection, code length,
-and fold state. Callers may replace or clear it through the ordinary
-context-menu ownership contract.
+As an `ISelectableTextSource`, `CodeView` always contributes the complete
+normalized source as authoritative semantic text. Its snapshot exposes geometry
+only for complete graphemes currently visible through the clipped text viewport;
+folded and scrolled-off lines remain semantic but have no stale rectangles. A
+wide grapheme is mapped as one owner, and one-cell tabs preserve their source
+offsets. Snapshot work is bounded to the projected viewport rows.
+
+As an `ISelectableTextViewport`, the view can reveal one validated semantic
+offset and scroll by requested cell deltas. Revealing an offset inside a
+collapsed range expands every containing fold, waits for the new projection,
+then scrolls vertically and horizontally to the final source cell. A callback
+that changes code or makes the control unavailable cancels the stale reveal.
+
+`CopySelection()` is pure. When an attached `CodeView` or one of its descendants
+owns focus, Ctrl+C reaches the nearest `IClipboardCopySource` through
+`Application` and publishes that result through
+`Application.Terminal.Clipboard`. `ClipboardWriter` remains useful for a
+detached view, manually routed Ctrl+C, or the default context menu's Copy item;
+it is not required for ordinary attached clipboard routing. The application
+still publishes an empty nearest result rather than falling through to an
+ancestor.
+
+When embedded through `DocumentBlockControl`, the owner depends on focus:
+
+| Focus and action                                                 | Selection owner                                                                                  |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Focus inside `CodeView`, ordinary CodeView drag, or Ctrl+C       | `CodeView`; standalone source selection and copy semantics.                                      |
+| Drag begins elsewhere in `Document` and crosses code by one cell | `Document`; child capture transfers and partial code joins the document range.                   |
+| Document keyboard caret enters folded code                       | `Document`; `CodeView` expands/reveals the offset while the document retains the combined range. |
+
+Scrolling a `CodeView` changes geometry only and preserves both its own and an
+owning `Document`'s semantic ranges. Replacing `Code` retokenizes, expands
+folds, and resets the view's own selection to offset zero; an enclosing document
+also detects the changed source text and clears its stale combined selection.
 
 ## Folding
 
-A fold range covers every `beginRegion`/`endRegion` pair a language's grammar
-detects (braces, blocks, multi-line comments, and similar) or, for a language
-whose grammar enables indentation-based folding, every run of more deeply
-indented lines. `IsFoldStart` identifies the first line of such a range;
-`SetFolded`/`ToggleFold` collapse or expand it, hiding or restoring every line
-strictly between its start and end (the start line itself always stays visible,
-showing a `(...)` indicator while collapsed). Folding never changes `Code`,
-`Selection`, or tokenization - only which lines the current viewport projection
-includes.
+A fold range comes from a grammar's region markers or indentation folding.
+Collapsing hides lines strictly inside the range while preserving `Code`, token
+offsets, and `Selection`. The start line remains visible and displays a
+collapsed indicator. Clicking its gutter glyph toggles the fold without moving
+the caret.
 
-While `IsFoldingEnabled` is true (the default), a gutter column precedes each
-line showing a clickable collapsed or expanded arrow on every fold-start line; a
-primary click anywhere in that column on such a line toggles its fold the same
-way calling `ToggleFold(line)` would, without moving the caret. Setting
-`IsFoldingEnabled` to false stops reserving and rendering the gutter and stops
-hiding any collapsed range's interior lines, but leaves every fold's recorded
-collapsed/expanded state untouched - `IsFolded` keeps reporting it, and toggling
-`IsFoldingEnabled` back to true resumes exactly where folding left off.
+Setting `IsFoldingEnabled` false removes the gutter and shows every line while
+retaining stored fold states; restoring it resumes those states. Selection and
+copy always use full normalized source text, including folded lines. Navigation
+uses visible lines, while an explicit semantic reveal expands a containing fold
+before positioning the viewport.
 
 ## Syntax definitions and catalogs
 
-`Language` resolves a compiled grammar from `Catalog`, which defaults to
-`SyntaxDefinitionCatalog.Default`: the embedded collection of 160 permissively
-licensed syntax definitions documented in the `SharpVision.SyntaxHighlighting`
-package's own `THIRD-PARTY-NOTICES.md` - 159 audited and redistributed from
-upstream KDE, plus C#, a first-party definition original to SharpVision.
-Assigning a different `SyntaxDefinitionCatalog` - for example one built with
-`SyntaxDefinitionCatalog.FromDirectory` - lets an application highlight against
-any other KDE-format definition, including one this package does not embed for
-licensing reasons. See
-[Syntax highlighting](../../concepts/syntax-highlighting.md) for the complete
-engine architecture, the KDE format's supported surface, and the theming
-rationale.
+`Language` resolves a compiled grammar from `Catalog`, which defaults to the
+embedded Kate/KSyntaxHighlighting-format definitions. A custom catalog may load
+additional compatible definitions. An unresolved cross-definition reference
+degrades only that reference to plain text. See
+[Syntax highlighting](../../concepts/syntax-highlighting.md#overview) for the
+grammar, catalog, and provenance contract.
 
 ## Example
 
@@ -169,25 +178,20 @@ var copied = view.CopySelection();
 
 ## Expected behavior
 
-| Scope       | Observable evidence                                                                  |
-| ----------- | ------------------------------------------------------------------------------------ |
-| Public API  | Validation, retokenization, selection bounds, and fold-range visibility.             |
-| Surface     | Exact per-role token colors, fold-collapsed line hiding, and selection highlighting. |
-| Integration | Decoded keyboard and pointer input changes the mounted selection and fold state.     |
+| Scope               | Observable evidence                                                                                                |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Public API          | Validation, normalized offsets, selection events, folding state, and pure copy output.                             |
+| Integrated behavior | Keyboard/pointer selection, application clipboard routing, embedded Document ownership, and nested reveal.         |
+| Surface             | Exact syntax roles, complete selected grapheme owners, clipped snapshots, fold projection, and viewport scrolling. |
 
 - Every token is styled purely by its `SyntaxDefaultStyle` role; a syntax
   definition's own optional literal color hints are never read.
-- Rendering measures and clips using the active terminal cell policy; a tab
-  character always measures and draws as exactly one cell.
-- Long lines never wrap: horizontal scrolling reveals the rest of the line.
-- **Known limitation:** horizontal drawing position, scrolling, and pointer
-  hit-testing currently track each token's UTF-16 character count as its column
-  rather than its measured cell width. A line containing a two-cell-wide
-  grapheme cluster (an East Asian wide character, a wide emoji, or fullwidth
-  punctuation) can mis-position later tokens on that line, split a cluster
-  across the horizontal scroll boundary, or resolve a click past such a cluster
-  to the wrong offset. Plain ASCII and other narrow-only text are unaffected;
-  the committed `Extent` itself already measures cell width correctly.
+- Normalization uses LF, selection never splits a grapheme, tabs occupy one
+  semantic character and one displayed cell, and long lines never wrap.
+- Folded and offscreen source remains copyable while contributing no stale hit
+  geometry.
+- Selection reveal expands containing folds and stops safely across reentrant
+  mutation or lifecycle changes.
 - A cross-definition reference (embedding another language) that cannot be
   resolved degrades to no highlighting for that reference instead of failing the
   whole document.
@@ -195,6 +199,7 @@ var copied = view.CopySelection();
   moving the caret; `IsFoldingEnabled = false` reserves no gutter cells and
   shows every line while preserving each fold's recorded state for when it is
   re-enabled.
-- Ctrl+C and the default context menu's Copy item both forward
-  `CopySelection()`'s result to `ClipboardWriter` when assigned, and do nothing
-  observable to any real clipboard when it is left `null`.
+- An embedded drag transfers ownership only after the shared one-cell threshold;
+  a stationary gutter click remains a fold action.
+- Theme and local style changes repaint syntax, selection, and gutter roles
+  without changing source, selection, folds, or offsets.

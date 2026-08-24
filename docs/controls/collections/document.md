@@ -3,7 +3,7 @@
 ## Overview
 
 `Document` is declared
-`public sealed class Document : CompositeControlBase, IStyled<DocumentStyle>`.
+`public sealed class Document : CompositeControlBase, IStyled<DocumentStyle>, IClipboardCopySource`.
 It displays a scrollable tree of rich text content: headings, paragraphs with
 inline markup and activatable links, bulleted and numbered lists, block quotes,
 preformatted code, and thematic breaks.
@@ -33,7 +33,9 @@ corrupting the columns beside each glyph.
 
 Scrolling is vertical. `Document` stretches to fill its slot by default and is a
 single focus stop; it never traps Tab, because link navigation releases focus at
-either end of the document.
+either end of the document. It also owns one browser-like semantic selection
+that can begin or end inside ordinary text, links, retained control captions, or
+an embedded selectable control such as `CodeView`.
 
 ## Inheritance
 
@@ -70,27 +72,38 @@ classDiagram
 
 ## API
 
-| Member                                                                                         | Type                                   | Default          | Description                                                                            |
-| ---------------------------------------------------------------------------------------------- | -------------------------------------- | ---------------- | -------------------------------------------------------------------------------------- |
-| `Blocks`                                                                                       | `DocumentBlockCollection`              | Empty            | Owned ordered root block content; accepts only `DocumentBlock` nodes.                  |
-| `Style`                                                                                        | `DocumentStyle?`                       | `null`           | Complete local presentation, or null for theme ownership.                              |
-| `ActualStyle`                                                                                  | `DocumentStyle`                        | Resolved         | Read-only; the complete local, theme-owned, or code-owned presentation.                |
-| `ScrollBarStyle`                                                                               | `ScrollBarStyle?`                      | `null`           | Local generated-bar style; null leaves it to the theme.                                |
-| `ActualScrollBarStyle`                                                                         | `ScrollBarStyle`                       | Resolved         | Read-only resolved generated-bar style.                                                |
-| `Extent`                                                                                       | `Size`                                 | Layout-dependent | Read-only committed non-negative content extent, in cells.                             |
-| `Viewport`                                                                                     | `Size`                                 | Layout-dependent | Read-only committed non-negative visible extent, in cells.                             |
-| `VerticalOffset`                                                                               | `int`                                  | `0`              | Valid vertical content offset in lines; rejects a value outside the current extent.    |
-| `LineSize`                                                                                     | `int`                                  | `1`              | Non-negative lines one arrow key or wheel notch scrolls; rejects a negative value.     |
-| `PageOverlap`                                                                                  | `int`                                  | `0`              | Non-negative lines a page command keeps in view; rejects a negative value.             |
-| `ShowScrollBars`                                                                               | `ShowScrollBars`                       | `WhenNeeded`     | When the generated vertical scrollbar is shown; rejects an undefined value.            |
-| `ActiveLink`                                                                                   | `DocumentLink?`                        | `null`           | The focused link; assigning a foreign or disabled link clears the selection instead.   |
-| `Load(string, IDocumentFormatReader, DocumentReadOptions?)`                                    | `DocumentReadResult`                   | —                | Parses detached content through a format reader, then replaces the block tree.         |
-| `LoadAsync(Stream, IDocumentFormatReader, DocumentReadOptions?, Encoding?, CancellationToken)` | `ValueTask<DocumentReadResult>`        | —                | Reads a bounded text stream asynchronously, leaves it open, then calls `Load`.         |
-| `ScrollBy(int lines, ScrollCause cause)`                                                       | `bool`                                 | —                | Adds a signed line delta with saturation and endpoint clamping; rejects unknown cause. |
-| `ScrollToTop()`                                                                                | `bool`                                 | —                | Scrolls to the first line; reports whether the offset changed.                         |
-| `ScrollToEnd()`                                                                                | `bool`                                 | —                | Scrolls to the last line; reports whether the offset changed.                          |
-| `ScrollChanged`                                                                                | `EventHandler<ScrollChangedEventArgs>` | —                | Raised after the vertical offset commits.                                              |
-| `LinkClicked`                                                                                  | `EventHandler<DocumentLinkEventArgs>`  | —                | Raised after any link is activated, following that link's own `Clicked`.               |
+| Member                                                                                         | Type                                   | Default          | Description                                                                              |
+| ---------------------------------------------------------------------------------------------- | -------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------- |
+| `Blocks`                                                                                       | `DocumentBlockCollection`              | Empty            | Owned ordered root block content; accepts only `DocumentBlock` nodes.                    |
+| `Style`                                                                                        | `DocumentStyle?`                       | `null`           | Complete local presentation, or null for theme ownership.                                |
+| `ActualStyle`                                                                                  | `DocumentStyle`                        | Resolved         | Read-only; the complete local, theme-owned, or code-owned presentation.                  |
+| `ScrollBarStyle`                                                                               | `ScrollBarStyle?`                      | `null`           | Local generated-bar style; null leaves it to the theme.                                  |
+| `ActualScrollBarStyle`                                                                         | `ScrollBarStyle`                       | Resolved         | Read-only resolved generated-bar style.                                                  |
+| `Extent`                                                                                       | `Size`                                 | Layout-dependent | Read-only committed non-negative content extent, in cells.                               |
+| `Viewport`                                                                                     | `Size`                                 | Layout-dependent | Read-only committed non-negative visible extent, in cells.                               |
+| `VerticalOffset`                                                                               | `int`                                  | `0`              | Valid vertical content offset in lines; rejects a value outside the current extent.      |
+| `LineSize`                                                                                     | `int`                                  | `1`              | Non-negative lines one arrow key or wheel notch scrolls; rejects a negative value.       |
+| `PageOverlap`                                                                                  | `int`                                  | `0`              | Non-negative lines a page command keeps in view; rejects a negative value.               |
+| `ShowScrollBars`                                                                               | `ShowScrollBars`                       | `WhenNeeded`     | When the generated vertical scrollbar is shown; rejects an undefined value.              |
+| `ActiveLink`                                                                                   | `DocumentLink?`                        | `null`           | The focused link; assigning a foreign or disabled link clears the selection instead.     |
+| `Selection`                                                                                    | `Selection`                            | Empty at `0`     | Read-only directional UTF-16 range over the normalized semantic stream.                  |
+| `SelectedText`                                                                                 | `string`                               | `""`             | Read-only owned copy of the selected semantic substring.                                 |
+| `Load(string, IDocumentFormatReader, DocumentReadOptions?)`                                    | `DocumentReadResult`                   | —                | Parses detached content through a format reader, then replaces the block tree.           |
+| `LoadAsync(Stream, IDocumentFormatReader, DocumentReadOptions?, Encoding?, CancellationToken)` | `ValueTask<DocumentReadResult>`        | —                | Reads a bounded stream without closing it, then replaces the block tree unless canceled. |
+| `ScrollBy(int lines, ScrollCause cause)`                                                       | `bool`                                 | —                | Adds a signed line delta with saturation and endpoint clamping; rejects unknown cause.   |
+| `ScrollToTop()`                                                                                | `bool`                                 | —                | Scrolls to the first line; reports whether the offset changed.                           |
+| `ScrollToEnd()`                                                                                | `bool`                                 | —                | Scrolls to the last line; reports whether the offset changed.                            |
+| `SetSelection(Selection selection)`                                                            | `void`                                 | —                | Replaces the range after validating both endpoints as grapheme boundaries.               |
+| `SelectAll()`                                                                                  | `void`                                 | —                | Selects the complete normalized semantic stream.                                         |
+| `ClearSelection()`                                                                             | `void`                                 | —                | Collapses the range at its current active caret.                                         |
+| `CopySelection()`                                                                              | `string`                               | —                | Pure read of `SelectedText`; clipboard publication remains application-owned.            |
+| `GetSelectableTextSnapshot()`                                                                  | `SelectableTextSnapshot`               | —                | Authoritative full semantic stream plus currently visible document-local glyph geometry. |
+| `SelectableTextViewport`                                                                       | `Rect`                                 | Layout-dependent | Read-only visible selectable aperture in document-local cells.                           |
+| `RevealSelectableTextOffset(int offset)`                                                       | `bool`                                 | —                | Reveals one validated grapheme offset through the document's intrinsic viewport.         |
+| `ScrollSelectableTextViewport(int horizontal, int vertical)`                                   | `bool`                                 | —                | Offers signed cell motion to the intrinsic selectable viewport.                          |
+| `ScrollChanged`                                                                                | `EventHandler<ScrollChangedEventArgs>` | —                | Raised after the vertical offset commits.                                                |
+| `LinkClicked`                                                                                  | `EventHandler<DocumentLinkEventArgs>`  | —                | Raised after any link is activated, following that link's own `Clicked`.                 |
+| `SelectionChanged`                                                                             | `EventHandler`                         | —                | Raised synchronously after a different directional selection commits.                    |
 
 `ScrollBy` defaults its `cause` to `ScrollCause.Programmatic`; the other causes
 describe keyboard, pointer, wheel, and content-driven changes and reach
@@ -395,15 +408,15 @@ tab stop, so a break in a different place cannot change its width.
 
 ### DocumentLink
 
-| Member                                     | Type                      | Default    | Description                                                                    |
-| ------------------------------------------ | ------------------------- | ---------- | ------------------------------------------------------------------------------ |
-| `DocumentLink(string text)`                | —                         | —          | Initializes a link with literal text; rejects a null text.                     |
-| `DocumentLink(string text, string target)` | —                         | —          | Adds an OSC 8 target; rejects a null text or target.                           |
-| `Text`                                     | `string`                  | `""`       | Non-null literal link text; rejects null.                                      |
-| `Target`                                   | `string?`                 | `null`     | OSC 8 hyperlink target emitted around the link's cells, or null.               |
-| `IsEnabled`                                | `bool`                    | `true`     | Whether the link can be focused and activated.                                 |
-| `Emphasis`                                 | `DocumentLinkEmphasis`    | `Standard` | Which `DocumentStyle` face family paints the link; rejects an undefined value. |
-| `Clicked`                                  | `EventHandler<EventArgs>` | —          | Raised after the link is activated by Enter, Space, or a primary click.        |
+| Member                                     | Type                      | Default    | Description                                                                         |
+| ------------------------------------------ | ------------------------- | ---------- | ----------------------------------------------------------------------------------- |
+| `DocumentLink(string text)`                | —                         | —          | Initializes a link with literal text; rejects a null text.                          |
+| `DocumentLink(string text, string target)` | —                         | —          | Adds an OSC 8 target; rejects a null text or target.                                |
+| `Text`                                     | `string`                  | `""`       | Non-null literal link text; rejects null.                                           |
+| `Target`                                   | `string?`                 | `null`     | OSC 8 hyperlink target emitted around the link's cells, or null.                    |
+| `IsEnabled`                                | `bool`                    | `true`     | Whether the link can be focused and activated.                                      |
+| `Emphasis`                                 | `DocumentLinkEmphasis`    | `Standard` | Which `DocumentStyle` face family paints the link; rejects an undefined value.      |
+| `Clicked`                                  | `EventHandler<EventArgs>` | —          | Raised after the link is activated by Enter, Space, or an eligible primary release. |
 
 `DocumentLink()` initializes an empty link. The owning document — not the data
 node — owns link focus and activation. Embedded controls retain their own input
@@ -450,17 +463,24 @@ focus on the document; controls embedded through `DocumentInlineControl` and
 `DocumentBlockControl` receive focus directly and retain their ordinary input
 behavior. At either end, the unhandled Tab leaves the whole document subtree.
 
-| Input                            | Result                                                                        |
-| -------------------------------- | ----------------------------------------------------------------------------- |
-| Tab                              | Moves to the next enabled link and scrolls it into view.                      |
-| Shift+Tab                        | Moves to the previous enabled link and scrolls it into view.                  |
-| Enter / Space                    | Activates the focused link for an activation-eligible modifier state.         |
-| Up / Down                        | Scrolls by `LineSize` lines.                                                  |
-| Page Up / Page Down              | Scrolls by the viewport height minus `PageOverlap`, and by at least one line. |
-| Home / End                       | Scrolls to the first or last line.                                            |
-| Wheel up / down                  | Scrolls by `LineSize` lines per notch.                                        |
-| Primary press on an enabled link | Focuses the document, makes that link active, and activates it.               |
-| Primary press elsewhere          | Leaves the event unhandled.                                                   |
+| Input                                  | Result                                                                        |
+| -------------------------------------- | ----------------------------------------------------------------------------- |
+| Tab                                    | Moves to the next enabled link and scrolls it into view.                      |
+| Shift+Tab                              | Moves to the previous enabled link and scrolls it into view.                  |
+| Enter / Space                          | Activates the focused link for an activation-eligible modifier state.         |
+| Up / Down                              | Scrolls by `LineSize` lines.                                                  |
+| Page Up / Page Down                    | Scrolls by the viewport height minus `PageOverlap`, and by at least one line. |
+| Home / End                             | Scrolls to the first or last line.                                            |
+| Wheel up / down                        | Scrolls by `LineSize` lines per notch.                                        |
+| Ctrl+A                                 | Selects the complete semantic stream while `Document` owns focus.             |
+| Ctrl+C                                 | Publishes the nearest focused copy source through the application clipboard.  |
+| Shift+Left / Shift+Right               | Extends from the active caret by one complete grapheme.                       |
+| Shift+Up / Shift+Down                  | Extends by visual row while preserving a sticky cell column.                  |
+| Shift+Home / Shift+End                 | Extends to the current visual line boundary.                                  |
+| Shift+Page Up / Shift+Page Down        | Extends by one document page and reveals the new caret.                       |
+| Primary click on selectable content    | Collapses the selection at the nearest semantic endpoint.                     |
+| Primary drag across selectable content | Selects semantic text and suppresses link or embedded-control activation.     |
+| Eligible primary release on a link     | Activates the same enabled link where the primary press began.                |
 
 Tab and Shift+Tab consume the keystroke only while it actually reaches another
 link. At either end of the document the keystroke is left unhandled, so the
@@ -472,11 +492,104 @@ Activating a link raises that link's own `Clicked` first, then the document's
 `LinkClicked` with the same link. A keyboard activation and a pointer activation
 produce the identical pair of events.
 
+A primary press records a potential click without handling the event, stealing
+child capture, or activating a link. Crossing the shared one-cell drag threshold
+focuses and captures the document for selection. A link activates only when the
+primary release remains over the same enabled link and no selection drag began;
+releasing elsewhere, reflowing the link away from that cell, or dragging leaves
+it inactive. Embedded controls retain their ordinary click behavior below the
+threshold.
+
 A scroll command is reported handled whenever the document has anything to
 scroll, even at a boundary, so the keystroke cannot escape and page an enclosing
 scrollable container out from under the still-focused document. A document whose
 content fits its viewport leaves every scroll key unhandled instead, which keeps
 those keys available to an ancestor.
+
+## Selection and copying
+
+`Selection` uses UTF-16 offsets into one normalized semantic stream. Endpoints
+must be extended-grapheme boundaries. `SetSelection` validates both endpoints
+before changing state; an out-of-range endpoint throws
+`ArgumentOutOfRangeException`, and an endpoint inside a grapheme throws
+`ArgumentException`. `SelectAll` selects the whole stream, `ClearSelection`
+collapses at the directional caret, and `SelectionChanged` raises once only when
+the committed `Selection` value changes.
+
+The stream follows reading semantics rather than painted rows or chrome:
+
+| Content                                          | Copied representation                                                          |
+| ------------------------------------------------ | ------------------------------------------------------------------------------ |
+| Adjacent block values                            | One LF (`\n`), independent of blank display rows or soft wrapping.             |
+| `DocumentSoftBreak` / `DocumentLineBreak`        | One space / one LF.                                                            |
+| Bulleted / numbered list item                    | A hyphen or displayed ordinal, then a period where applicable, then one space. |
+| Table cells / rows                               | Tab-separated cells and LF-separated rows.                                     |
+| Code block                                       | Original tabs with CRLF and CR normalized to LF.                               |
+| Quote, callout, rule, border, and control chrome | Decorative glyphs are omitted; semantic labels and callout title/body remain.  |
+| Embedded `ISelectableTextSource`                 | Its complete authoritative text at the inline or block node position.          |
+| Embedded `Document`                              | Its full normalized stream, independent of that nested document's own range.   |
+
+Wrapping never inserts copied line breaks. Wide and combining graphemes remain
+indivisible, and clipped half-wide glyphs expose no selectable geometry. A
+selection can nevertheless start or end inside one child's semantic text, so a
+button caption or `CodeView` line is not forced to be atomic. Only mapped text
+cells receive `SelectionFace`; borders, checkbox marks, radio marks, gutters,
+quote bars, and other chrome remain unchanged.
+
+`Document` is itself an authoritative `ISelectableTextSource` and an
+`ISelectableTextViewport`. Its snapshot retains semantic-only separators and
+offscreen text while exporting geometry only for complete graphemes inside the
+current inherited clip. This lets one document nest inside another without
+exposing the nested presenter's private controls or letting the nested local
+selection truncate the enclosing stream. A nested document's viewport consumes
+reveal and edge-scroll requests before the enclosing document moves.
+
+`CopySelection()` is pure: it returns an independently owned string and never
+emits a terminal protocol. On Ctrl+C, `Application` walks from the focused
+control toward its parents and publishes the nearest `IClipboardCopySource`'s
+result through `Application.Terminal.Clipboard`. Focus inside an embedded
+`CodeView` therefore copies that view's own selection; focus on the `Document`
+copies the document-owned cross-child range. Ctrl+A while the document owns
+focus selects its complete stream, with Caps Lock and Num Lock ignored.
+
+### Pointer selection and autoscroll
+
+A primary press records a possible click. Staying in the original cell keeps the
+ordinary link, button, checkbox, or radio-button click path. Moving by one cell
+in either axis crosses `PointerDragThreshold.Cells`, cancels the pending child
+activation, transfers capture to `Document`, and begins a directional selection.
+The hit position is resolved at a grapheme midpoint, so either cell of a wide
+grapheme chooses a valid boundary. Reversing direction preserves
+`Anchor`/`Caret` direction. Release, capture loss, terminal-focus loss, hide,
+disable, detach, and disposal end the gesture without leaving capture or a timer
+behind.
+
+While a captured drag remains outside a selectable viewport, `Document` ticks
+autoscroll every 50 milliseconds. Direction follows the edge crossed, and speed
+is the outside cell distance clamped to 1 through 8 cells per tick. The nearest
+eligible nested `ISelectableTextViewport` scrolls first; a saturated viewport
+passes the same motion to `Document`, then to an eligible ancestor `AutoScroll`
+container. Each successful move re-hit-tests the newly exposed content
+immediately. Returning inside stops the timer. Traversal never crosses the
+active modal plane, and source mutation or lifecycle changes cancel stale
+geometry before another selection commit.
+
+### Keyboard extension and mutation
+
+After a click, drag, `SetSelection`, or `SelectAll` establishes a caret, Shift
+with Left/Right moves by one grapheme; Shift+Up/Down keeps a sticky visual
+column; Shift+Home/End reaches the current visual line boundary; and Shift+Page
+Up/Page Down moves by the viewport height minus `PageOverlap`, with at least one
+visual row. Every move reveals the caret through its nested selectable viewport,
+the document, and in-plane scrollable ancestors. A reveal that synchronously
+changes focus, content, selection, or projection stops without recommitting
+stale state.
+
+Pure reflow and scrolling preserve the same semantic range. A semantic tree or
+embedded-source mutation rebuilds text and geometry as one transaction; if its
+ordered source identity, ranges, or text changed, the old selection clears once
+before any requested new range commits. A collapsed caret that no longer fits
+resets to document start.
 
 ## Presentation
 
@@ -484,7 +597,7 @@ those keys available to an ancestor.
 
 `DocumentStyle : ControlStyle` is a complete immutable presentation. Its own
 `"sharpVision.document"` theme key falls back to `control` for anything it does
-not author itself, and it adds fourteen faces and one glyph family to the
+not author itself, and it adds fifteen faces and one glyph family to the
 inherited `Face`/`Border`/`Shadow`:
 
 | Member                 | Type             | Default                                                              | Description                                                                |
@@ -503,6 +616,7 @@ inherited `Face`/`Border`/`Shadow`:
 | `DisabledLinkFace`     | `Face`           | `SemanticColor.DisabledText`                                         | A link whose `IsEnabled` is false, regardless of emphasis.                 |
 | `ActionLinkFace`       | `Face`           | Bold `SemanticColor.SelectedText` on `SemanticColor.SelectedControl` | An `Action`-emphasis link that is not focused.                             |
 | `ActiveActionLinkFace` | `Face`           | Bold `SemanticColor.PressedText` on `SemanticColor.PressedControl`   | The `Action`-emphasis link at `ActiveLink` while the document has focus.   |
+| `SelectionFace`        | `Face`           | `SemanticColor.SelectedText` on `SemanticColor.SelectedControl`      | Final overlay applied only to selected semantic glyph cells.               |
 | `Glyphs`               | `DocumentGlyphs` | `DocumentGlyphs.Default`                                             | The bullet, quote-bar, and rule glyph family.                              |
 
 Every member is required. A `with` expression creates a validated member-wise
@@ -592,17 +706,20 @@ document.LinkClicked += (_, eventArgs) => RecordLinkClick(eventArgs.Link.Text);
 
 document.Blocks.Add(new DocumentBlockControl(new CheckBox("Send updates")));
 
+document.SelectAll();
+var copied = document.CopySelection();
+
 var markdown = File.ReadAllText("README.md");
 document.Load(markdown, new MarkdownDocumentReader());
 ```
 
 ## Expected behavior
 
-| Scope               | Observable evidence                                                                                                    |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Public API          | Constructor and property validation, single ownership, defaults, detach-and-reuse, and level/kind range rejection.     |
-| Surface             | Exact rendered lines: block spacing, wrapping, markers and gutters, quote bars, literal code, rules, and face styling. |
-| Integrated behavior | Link navigation, activation, event order, and scrolling through mounted routed keyboard and pointer input.             |
+| Scope               | Observable evidence                                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Public API          | Constructor and property validation, single ownership, defaults, detach-and-reuse, and level/kind range rejection.       |
+| Surface             | Exact rendered lines, grapheme-safe hit geometry, final selection overlay, clipping, and retained chrome.                |
+| Integrated behavior | Link/control click arbitration, cross-child selection, clipboard routing, keyboard reveal, and deterministic autoscroll. |
 
 - Embedded controls are explicit retained descendants. Inline controls are one
   atomic one-line token; block controls preserve their natural height.
@@ -627,7 +744,13 @@ document.Load(markdown, new MarkdownDocumentReader());
 - Tab and Shift+Tab walk enabled links, skip disabled ones, and release focus at
   either end rather than trapping it inside the document.
 - Activating a link raises the link's own `Clicked` before the document's
-  `LinkClicked`, identically for Enter, Space, and a primary click.
+  `LinkClicked`, identically for Enter, Space, and an eligible primary release.
+- A primary click collapses the selection at the current semantic hit, while a
+  drag selects across text and embedded-control labels without activating them.
+- Semantic selection is independent of visual wrapping and blank spacing; pure
+  reflow preserves its offsets, while semantic mutation clears stale ranges.
+- Selection rendering is the final face overlay on complete visible grapheme
+  owners and preserves hyperlink identity; it never recolors decorative chrome.
 - Swapping the theme restyles every heading, marker, bar, and link on the next
   frame, because presentation resolves at paint time and no node caches it.
 - Under a wide ambiguous-width policy every default glyph degrades to its

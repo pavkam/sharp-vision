@@ -288,6 +288,15 @@ scrollbars, and intrinsic container scrolling must enumerate their valid and
 invalid transitions and their event order. Fake clocks drive hover and open
 delays, timers, idle, and repeated input, so no test sleeps on the wall clock.
 
+`DocumentSelectionTests` freezes the normalized semantic stream, directional
+API, grapheme validation, mutation/reflow reconciliation, source identity, and
+bounded row indexing. `DocumentSelectionSurfaceTests` mounts the real control
+and proves click-versus-drag arbitration across retained children, complete-cell
+selection styling, routed clipboard ownership, Shift navigation and reveal, and
+50-millisecond nested autoscroll with lifecycle and modal cancellation. The
+separate fixtures are intentionally selection-system suites rather than a
+reflection-based control inventory.
+
 Animated display controls use the same deterministic application clock. Tests
 advance one interval at a time and compare consecutive complete semantic
 screens, not private frame indices. They prove pause and resume, interval

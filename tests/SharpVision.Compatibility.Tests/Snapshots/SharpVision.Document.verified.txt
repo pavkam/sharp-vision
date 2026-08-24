@@ -1,6 +1,6 @@
 ﻿namespace SharpVision.Controls.Documents
 {
-    public sealed class Document : SharpVision.Controls.CompositeControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Documents.DocumentStyle>
+    public sealed class Document : SharpVision.Controls.CompositeControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Documents.DocumentStyle>, SharpVision.Runtime.IClipboardCopySource, SharpVision.Text.ISelectableTextSource, SharpVision.Text.ISelectableTextViewport
     {
         public Document() { }
         public SharpVision.Controls.Documents.DocumentLink? ActiveLink { get; set; }
@@ -11,19 +11,33 @@
         public int LineSize { get; set; }
         public int PageOverlap { get; set; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
+        public SharpVision.Terminal.Geometry.Rect SelectableTextViewport { get; }
+        public string SelectedText { get; }
+        public SharpVision.Text.Selection Selection { get; }
         public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
         public SharpVision.Controls.Documents.DocumentStyle? Style { get; set; }
         public int VerticalOffset { get; set; }
         public SharpVision.Terminal.Geometry.Size Viewport { get; }
         public event System.EventHandler<SharpVision.Controls.Documents.DocumentLinkEventArgs>? LinkClicked;
         public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
+        public event System.EventHandler? SelectionChanged;
+        public void ClearSelection() { }
+        public string CopySelection() { }
+        public SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         public SharpVision.Documents.DocumentReadResult Load(string source, SharpVision.Documents.IDocumentFormatReader reader, SharpVision.Documents.DocumentReadOptions? options = null) { }
         public System.Threading.Tasks.ValueTask<SharpVision.Documents.DocumentReadResult> LoadAsync(System.IO.Stream source, SharpVision.Documents.IDocumentFormatReader reader, SharpVision.Documents.DocumentReadOptions? options = null, System.Text.Encoding? encoding = null, System.Threading.CancellationToken cancellationToken = default) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnFocusChanged(bool focused) { }
+        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
+        protected override void OnRenderAdornment(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        public bool RevealSelectableTextOffset(int offset) { }
         public bool ScrollBy(int lines, SharpVision.Scrolling.ScrollCause cause = 0) { }
+        public bool ScrollSelectableTextViewport(int horizontal, int vertical) { }
         public bool ScrollToEnd() { }
         public bool ScrollToTop() { }
+        public void SelectAll() { }
+        public void SetSelection(SharpVision.Text.Selection selection) { }
     }
     public abstract class DocumentBlock : SharpVision.Controls.Documents.DocumentNode { }
     public sealed class DocumentBlockCollection : SharpVision.Controls.Documents.DocumentNodeCollection<SharpVision.Controls.Documents.DocumentBlock> { }
@@ -197,7 +211,8 @@
                     SharpVision.Styling.Face disabledLinkFace,
                     SharpVision.Styling.Face actionLinkFace,
                     SharpVision.Styling.Face activeActionLinkFace,
-                    SharpVision.Controls.Documents.DocumentGlyphs glyphs) { }
+                    SharpVision.Controls.Documents.DocumentGlyphs glyphs,
+                    SharpVision.Styling.Face? selectionFace = default) { }
         public required SharpVision.Styling.Face ActionLinkFace { get; init; }
         public required SharpVision.Styling.Face ActiveActionLinkFace { get; init; }
         public required SharpVision.Styling.Face ActiveLinkFace { get; init; }
@@ -211,6 +226,7 @@
         public required SharpVision.Styling.Face MarkerFace { get; init; }
         public required SharpVision.Styling.Face QuoteFace { get; init; }
         public required SharpVision.Styling.Face RuleFace { get; init; }
+        public required SharpVision.Styling.Face SelectionFace { get; init; }
         public required SharpVision.Styling.Face TableFace { get; init; }
         public required SharpVision.Styling.Face TableHeaderFace { get; init; }
         public new static SharpVision.Controls.Documents.DocumentStyle Default { get; }

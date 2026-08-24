@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls;
 
+using SharpVision.Text;
+
 /// <summary>Defines a reusable component that owns one permanent private implementation root.</summary>
 /// <remarks>
 /// A concrete constructor creates its retained implementation tree and transfers one detached root
@@ -10,7 +12,7 @@ namespace SharpVision.Controls;
 /// in the shared ownership, layout, rendering, input, context, and disposal infrastructure.
 /// </remarks>
 [PublicAPI]
-public abstract class CompositeControlBase: ControlBase
+public abstract class CompositeControlBase: ControlBase, ISelectableTextSource
 {
     private readonly OwnedControlSlot _contentSlot;
     private bool _initializationConsumed;
@@ -34,6 +36,26 @@ public abstract class CompositeControlBase: ControlBase
     /// The root has not been initialized or was disposed directly.
     /// </exception>
     protected ControlBase Content => GetContent();
+
+    /// <summary>Creates one aggregate snapshot from the permanent private implementation root.</summary>
+    /// <returns>An owned, non-authoritative projection of visible semantic descendants.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// The component is attached off-dispatcher, or its root is uninitialized or was disposed directly.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The component has been disposed.</exception>
+    public SelectableTextSnapshot GetSelectableTextSnapshot()
+    {
+        VerifyMutable();
+        return SelectableTextAggregation.Create(this);
+    }
+
+    /// <inheritdoc/>
+    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    {
+        ArgumentNullException.ThrowIfNull(children);
+        children.Add(GetContent());
+        return true;
+    }
 
     /// <summary>Transfers one detached implementation root to this component permanently.</summary>
     /// <param name="content">The non-null detached root of the retained implementation tree.</param>

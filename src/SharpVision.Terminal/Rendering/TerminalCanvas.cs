@@ -382,7 +382,51 @@ public readonly struct TerminalCanvas
     {
         ArgumentNullException.ThrowIfNull(selector);
         _frame.ThrowIfDisposed();
-        ApplyForegroundCore(region, selector, writtenOnly: false, checkpoint: 0, drawEnd: 0);
+        ApplyCellStylesCore(
+            region,
+            selector,
+            styleSelector: null,
+            writtenOnly: false,
+            checkpoint: 0,
+            drawEnd: 0);
+    }
+
+    /// <summary>Transforms complete stored cell-owner styles without changing their graphemes.</summary>
+    /// <param name="region">The requested half-open region in absolute frame cells.</param>
+    /// <param name="selector">
+    /// The synchronous selector receiving each complete owner's absolute lead-cell coordinate and
+    /// current semantic style. The canvas borrows the callback for this call and does not retain it.
+    /// </param>
+    /// <remarks>
+    /// The effective half-open region is intersected with the canvas clip and frame bounds. Touching
+    /// any cell of a complete stored owner selects that entire owner, even when its other cells lie
+    /// outside the requested region. A wide owner is transformed only when every owned cell is inside
+    /// the canvas clip, so lead and continuation styles cannot disagree. Stored spaces participate,
+    /// while untouched blank cells are skipped. Complete owners are visited once in row-major lead-cell
+    /// order. Glyph storage and ownership remain unchanged. The returned <see cref="CellStyle"/>
+    /// replaces the complete semantic style, including its hyperlink; callers must return the current
+    /// hyperlink when they intend to preserve it. If the selector throws, the same exception propagates:
+    /// owners transformed earlier remain changed, while the failing and later owners remain unchanged.
+    /// Null selector validation occurs before owning-frame disposal validation.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="selector"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
+    /// <exception cref="Exception">
+    /// <paramref name="selector"/> throws; the same exception instance is propagated.
+    /// </exception>
+    public void ApplyCellStyle(
+        Rect region,
+        [InstantHandle] Func<Point, CellStyle, CellStyle> selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+        _frame.ThrowIfDisposed();
+        ApplyCellStylesCore(
+            region,
+            foregroundSelector: null,
+            selector,
+            writtenOnly: false,
+            checkpoint: 0,
+            drawEnd: 0);
     }
 
     /// <summary>Draws synchronously and transforms only stored owners mutated by that callback.</summary>
@@ -428,7 +472,13 @@ public readonly struct TerminalCanvas
         {
             draw(this);
             var drawEnd = _frame.CurrentMutationRevision;
-            ApplyForegroundCore(region, selector, writtenOnly: true, checkpoint, drawEnd);
+            ApplyCellStylesCore(
+                region,
+                selector,
+                styleSelector: null,
+                writtenOnly: true,
+                checkpoint,
+                drawEnd);
         }
         finally
         {
@@ -436,9 +486,10 @@ public readonly struct TerminalCanvas
         }
     }
 
-    private void ApplyForegroundCore(
+    private void ApplyCellStylesCore(
         Rect region,
-        Func<Point, Color> selector,
+        Func<Point, Color>? foregroundSelector,
+        Func<Point, CellStyle, CellStyle>? styleSelector,
         bool writtenOnly,
         ulong checkpoint,
         ulong drawEnd)
@@ -490,7 +541,9 @@ public readonly struct TerminalCanvas
                 }
 
                 var style = lead.Style;
-                var foreground = selector(leadPoint);
+                var replacement = styleSelector is null
+                    ? style.WithForeground(foregroundSelector!(leadPoint))
+                    : styleSelector(leadPoint, style);
                 var current = _frame.GetCellByIndex(leadIndex);
 
                 // A selector may mutate the owner it is selecting. That write lies after the
@@ -500,13 +553,6 @@ public readonly struct TerminalCanvas
                     continue;
                 }
 
-                var replacement = new CellStyle(
-                    foreground,
-                    style.Background,
-                    style.Attributes,
-                    style.Hyperlink,
-                    style.Underline,
-                    style.UnderlineColor);
                 _ = _frame.TrySetOwnerStyle(leadIndex, _clip, replacement);
             }
         }

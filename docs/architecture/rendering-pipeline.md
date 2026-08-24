@@ -139,6 +139,15 @@ callback exception propagates unchanged and fails the current render; owners
 completed earlier in the traversal remain transformed, while the failing and
 later owners remain unchanged.
 
+`Canvas.ApplyCellStyle` uses the same complete-owner discovery and clipping
+rules but replaces the complete returned `CellStyle`: foreground, background,
+attributes, typed underline, underline color, and hyperlink. A caller that
+intends to preserve a hyperlink must return it in the replacement. This is the
+final-overlay primitive used by semantic selection, so touching either cell of a
+wide owner styles the whole owner or, when the canvas clip excludes part of it,
+skips it entirely. Stored spaces participate, untouched blanks do not, and a
+throwing selector leaves the completed row-major prefix transformed.
+
 `Canvas.DrawWithForeground` adds write provenance to that same transformation.
 It validates both callbacks before frame lifetime, captures the frame's current
 mutation revision, invokes the borrowed drawing callback exactly once with the

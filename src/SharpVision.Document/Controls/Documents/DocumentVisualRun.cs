@@ -17,7 +17,8 @@ internal readonly struct DocumentVisualRun
         ControlBase? control,
         DocumentFaceKind face,
         DocumentFaceKind? foregroundOverride,
-        int linkIndex)
+        int linkIndex,
+        Selection semanticRange)
     {
         Kind = kind;
         Column = column;
@@ -30,6 +31,7 @@ internal readonly struct DocumentVisualRun
         Face = face;
         ForegroundOverride = foregroundOverride;
         LinkIndex = linkIndex;
+        SemanticRange = semanticRange;
     }
 
     /// <summary>Gets how this run produces cells.</summary>
@@ -68,6 +70,9 @@ internal readonly struct DocumentVisualRun
     /// <summary>Gets the owning link's index, or -1 when this run is not part of a link.</summary>
     public int LinkIndex { get; }
 
+    /// <summary>Gets the semantic range painted by a generated repeat, or an empty range.</summary>
+    public Selection SemanticRange { get; }
+
     /// <summary>Creates a run painting a slice of parsed display text.</summary>
     /// <param name="column">The zero-based start column.</param>
     /// <param name="cells">The non-negative cell width.</param>
@@ -99,7 +104,8 @@ internal readonly struct DocumentVisualRun
             null,
             face,
             foregroundOverride,
-            linkIndex);
+            linkIndex,
+            default);
 
     /// <summary>Creates a run repeating one glyph across its cells.</summary>
     /// <param name="column">The zero-based start column.</param>
@@ -107,6 +113,7 @@ internal readonly struct DocumentVisualRun
     /// <param name="glyph">The repeated glyph.</param>
     /// <param name="face">The painting face.</param>
     /// <param name="foregroundOverride">The enclosing semantic foreground, if any.</param>
+    /// <param name="semanticRange">The semantic grapheme painted by the repeat, or an empty range.</param>
     /// <returns>The repeat run.</returns>
     [Pure]
     public static DocumentVisualRun ForRepeat(
@@ -114,8 +121,9 @@ internal readonly struct DocumentVisualRun
         int cells,
         Rune glyph,
         DocumentFaceKind face,
-        DocumentFaceKind? foregroundOverride = null) =>
-        new(DocumentRunKind.Repeat, column, cells, -1, 0, 0, glyph, null, face, foregroundOverride, -1);
+        DocumentFaceKind? foregroundOverride = null,
+        Selection semanticRange = default) =>
+        new(DocumentRunKind.Repeat, column, cells, -1, 0, 0, glyph, null, face, foregroundOverride, -1, semanticRange);
 
     /// <summary>Creates a positioned retained-control run.</summary>
     /// <param name="column">The zero-based start column.</param>
@@ -124,5 +132,5 @@ internal readonly struct DocumentVisualRun
     /// <returns>The control run.</returns>
     [Pure]
     public static DocumentVisualRun ForControl(int column, int cells, ControlBase control) =>
-        new(DocumentRunKind.Control, column, cells, -1, 0, 0, default, control, DocumentFaceKind.Body, null, -1);
+        new(DocumentRunKind.Control, column, cells, -1, 0, 0, default, control, DocumentFaceKind.Body, null, -1, default);
 }

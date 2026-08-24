@@ -49,6 +49,7 @@ public sealed record DocumentStyle: ControlStyle
     /// <param name="actionLinkFace">The complete inactive <see cref="DocumentLinkEmphasis.Action"/> link face.</param>
     /// <param name="activeActionLinkFace">The complete focused <see cref="DocumentLinkEmphasis.Action"/> link face.</param>
     /// <param name="glyphs">The complete bullet, quote-bar, and rule glyph family.</param>
+    /// <param name="selectionFace">The optional complete semantic-text selection face.</param>
     [SetsRequiredMembers]
     public DocumentStyle(
         Face face,
@@ -68,7 +69,8 @@ public sealed record DocumentStyle: ControlStyle
         Face disabledLinkFace,
         Face actionLinkFace,
         Face activeActionLinkFace,
-        DocumentGlyphs glyphs) : base(face, border, shadow)
+        DocumentGlyphs glyphs,
+        Face? selectionFace = null) : base(face, border, shadow)
     {
         HeadingFace = headingFace;
         MarkerFace = markerFace;
@@ -85,6 +87,12 @@ public sealed record DocumentStyle: ControlStyle
         ActionLinkFace = actionLinkFace;
         ActiveActionLinkFace = activeActionLinkFace;
         Glyphs = glyphs;
+        SelectionFace = selectionFace ?? new Face(
+            new ControlColor(SemanticColor.SelectedText),
+            new ControlColor(SemanticColor.SelectedControl),
+            TerminalAttributes.None,
+            Underline.None,
+            Color.Default);
     }
 
     /// <summary>Gets the standard document presentation.</summary>
@@ -146,6 +154,9 @@ public sealed record DocumentStyle: ControlStyle
     /// <summary>Gets the complete face used for the <see cref="DocumentLinkEmphasis.Action"/> link at
     /// <see cref="Document.ActiveLink"/> while the document has focus.</summary>
     public required Face ActiveActionLinkFace { get; init; }
+
+    /// <summary>Gets the complete face applied to selected semantic document glyphs.</summary>
+    public required Face SelectionFace { get; init; }
 
     /// <summary>Gets the complete bullet, quote-bar, and rule glyph family.</summary>
     public required DocumentGlyphs Glyphs { get; init; }
@@ -281,6 +292,7 @@ public sealed record DocumentStyle: ControlStyle
             !FaceResolvesEqually(previous.DisabledLinkFace, previousTheme, current.DisabledLinkFace, currentTheme) ||
             !FaceResolvesEqually(previous.ActionLinkFace, previousTheme, current.ActionLinkFace, currentTheme) ||
             !FaceResolvesEqually(previous.ActiveActionLinkFace, previousTheme, current.ActiveActionLinkFace, currentTheme) ||
+            !FaceResolvesEqually(previous.SelectionFace, previousTheme, current.SelectionFace, currentTheme) ||
             !SemanticColorResolvesEqually(SemanticColor.Info, previousTheme, currentTheme) ||
             !SemanticColorResolvesEqually(SemanticColor.Success, previousTheme, currentTheme) ||
             !SemanticColorResolvesEqually(SemanticColor.Accent, previousTheme, currentTheme) ||

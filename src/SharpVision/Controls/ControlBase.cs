@@ -634,6 +634,14 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <summary>Gets dirty phases for the next root transaction.</summary>
     internal Invalidation Pending { get; private set; } = Invalidation.All;
 
+    /// <summary>Gets the wrapping generation of state invalidation requests affecting this subtree.</summary>
+    /// <remarks>
+    /// Selectable-text aggregators use this cheap conservative signal to decide when an exact
+    /// semantic snapshot comparison is necessary. It advances even when phase bits were already
+    /// pending, because a second mutation before layout still represents newer retained state.
+    /// </remarks>
+    internal ulong SelectableTextInvalidationVersion { get; private set; }
+
     /// <summary>Gets the last outer constraint committed by the measure transaction, or null before initial measurement.</summary>
     /// <remarks>Derived overlay-owned controls use this viewport record when their own resolved box is intentionally smaller than the host.</remarks>
     internal Constraint? LastMeasureConstraint { get; private set; }
@@ -1331,11 +1339,17 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <param name="value">The earliest dirty phase.</param>
     internal void Invalidate(Invalidation value)
     {
+        unchecked
+        {
+            SelectableTextInvalidationVersion++;
+        }
+
         var expanded = Expand(value);
         var added = expanded & ~Pending;
 
         if (added == Invalidation.None)
         {
+            Parent?.PropagateSelectableTextInvalidationVersion();
             return;
         }
 
@@ -1352,6 +1366,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         // the child's subtree forever.
         if (value == Invalidation.Arrange && Parent is { IsArranging: true } arrangingParent)
         {
+            arrangingParent.PropagateSelectableTextInvalidationVersion();
             (arrangingParent.SwallowedArrangeChildren ??= []).Add(this);
             return;
         }
@@ -1384,7 +1399,25 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// ever notified an ancestor a fresh layout pass is owed.
     /// </remarks>
     /// <param name="value">The earliest dirty phase.</param>
-    internal void InvalidateSelf(Invalidation value) => Pending |= Expand(value);
+    internal void InvalidateSelf(Invalidation value)
+    {
+        unchecked
+        {
+            SelectableTextInvalidationVersion++;
+        }
+
+        Pending |= Expand(value);
+    }
+
+    private void PropagateSelectableTextInvalidationVersion()
+    {
+        unchecked
+        {
+            SelectableTextInvalidationVersion++;
+        }
+
+        Parent?.PropagateSelectableTextInvalidationVersion();
+    }
 
     /// <summary>Requests the earliest UI phase affected by derived control state.</summary>
     /// <param name="impact">The validated earliest affected phase.</param>
@@ -2279,6 +2312,88 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <summary>Gets whether this control forms a hard clip for descendant visual overflow.</summary>
     /// <remarks>Own visual overflow remains eligible for propagation through the control's parent.</remarks>
     internal virtual bool ClipsDescendantVisualOverflow => false;
+
+    /// <summary>Adds ordered retained children that contribute semantic selectable text.</summary>
+    /// <param name="children">The caller-owned destination receiving borrowed child references.</param>
+    /// <returns>True when this control is an aggregate node; false when it is a leaf.</returns>
+    /// <remarks>
+    /// Aggregate overrides expose only semantic presentation children and must not include generated
+    /// chrome. The selectable-text collector consumes this seam without constructing intermediate
+    /// snapshots.
+    /// </remarks>
+    internal virtual bool AddSelectableTextChildren(List<ControlBase> children)
+    {
+        ArgumentNullException.ThrowIfNull(children);
+        return false;
+    }
+
+    /// <summary>Gets the effective absolute clipping aperture inherited from retained ancestors.</summary>
+    /// <returns>The finite absolute cell rectangle that may contain this control's visual output.</returns>
+    internal Rect GetSelectableTextInheritedClip()
+    {
+        if (StartsPopupRenderBranch)
+        {
+            return RootBounds(Bounds);
+        }
+
+        if (Parent is null)
+        {
+            return Bounds;
+        }
+
+        var inherited = Parent.GetSelectableTextInheritedClip();
+        return Parent.ResolveSelectableTextDescendantClip(inherited);
+    }
+
+    /// <summary>Gets the authoritative inherited selectable-text clip for one retained descendant.</summary>
+    /// <param name="descendant">The non-null retained descendant whose aperture is requested.</param>
+    /// <returns>The finite absolute cell rectangle that may contain the descendant's visual output.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="descendant"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="descendant"/> is not this control or its descendant.</exception>
+    protected internal Rect GetDescendantSelectableTextInheritedClip(ControlBase descendant)
+    {
+        ArgumentNullException.ThrowIfNull(descendant);
+
+        for (var current = descendant; current is not null; current = current.Parent)
+        {
+            if (ReferenceEquals(current, this))
+            {
+                return descendant.GetSelectableTextInheritedClip();
+            }
+        }
+
+        throw new ArgumentException("The selectable-text clip target must be a retained descendant.", nameof(descendant));
+    }
+
+    /// <summary>Gets whether the active modal plane permits traversal from this control to one ancestor.</summary>
+    /// <param name="ancestor">The non-null proposed ancestor traversal target.</param>
+    /// <returns>True when modality is inactive or the ancestor belongs to the active plane.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="ancestor"/> is null.</exception>
+    protected internal bool AllowsModalAncestor(ControlBase ancestor)
+    {
+        ArgumentNullException.ThrowIfNull(ancestor);
+        return ModalityOwner?.Allows(ancestor) is not false;
+    }
+
+    /// <summary>Gets whether this control begins a branch rendered from the elevated root plane.</summary>
+    /// <remarks>
+    /// The predicate deliberately matches popup rendering by resolving both the owning slot layer
+    /// and <see cref="IntrinsicLayer"/>. It therefore covers intrinsic popup surfaces, ordinary
+    /// controls promoted by popup slots, and each independently nested popup boundary.
+    /// </remarks>
+    internal bool StartsPopupRenderBranch =>
+        OwningSlot is { } slot &&
+        ResolveOwnedLayer(slot.Options.Layer) == OwnedControlLayer.Popup;
+
+    /// <summary>Resolves the absolute aperture inherited by this control's semantic descendants.</summary>
+    /// <param name="inheritedClip">The finite clipping aperture inherited by this control.</param>
+    /// <returns>The effective aperture after ordinary child and visual-overflow clipping.</returns>
+    internal virtual Rect ResolveSelectableTextDescendantClip(Rect inheritedClip)
+    {
+        var descendantBounds = DescendantRenderBounds;
+        var clip = ClipsChildren ? inheritedClip.Intersect(descendantBounds) : inheritedClip;
+        return ClipsDescendantVisualOverflow ? clip.Intersect(descendantBounds) : clip;
+    }
 
     /// <summary>Gets whether this control's own paint has an effect a copied cell region cannot
     /// reproduce, so it always runs the complete paint sequence instead of a render-clean copy.</summary>

@@ -5,6 +5,7 @@ namespace SharpVision.Controls.Input;
 
 using Scrolling;
 
+using SharpVision.Runtime;
 using SharpVision.Terminal.Input;
 
 using Terminal.Rendering;
@@ -16,7 +17,7 @@ using UnicodeWidth = Width;
 
 /// <summary>Defines a focusable grapheme-safe single- or multiline text editor.</summary>
 [PublicAPI]
-public sealed class TextInput: ControlBase
+public sealed class TextInput: ControlBase, ISelectableTextSource, IClipboardCopySource
 {
     private readonly List<EditResult> _undo = [];
     private readonly List<EditResult> _redo = [];
@@ -308,6 +309,131 @@ public sealed class TextInput: ControlBase
 
     /// <summary>Gets the current vertical line offset.</summary>
     public int VerticalOffset { get; private set; }
+
+    /// <inheritdoc/>
+    public SelectableTextSnapshot GetSelectableTextSnapshot()
+    {
+        VerifyMutable();
+
+        if (PasswordCharacter is not null)
+        {
+            return new SelectableTextSnapshot(string.Empty, [], isAuthoritative: true);
+        }
+
+        if (!EffectiveIsVisible)
+        {
+            return new SelectableTextSnapshot(Text, [], isAuthoritative: true);
+        }
+
+        var glyphs = new List<SelectableTextGlyph>();
+        var bounds = _editorBounds.Intersect(Bounds);
+        var clip = bounds.Intersect(SelectableTextAggregation.GetEffectiveClip(this));
+
+        if (bounds.Width > 0 && bounds.Height > 0)
+        {
+            if (WordWrap && _visualLines.Length > 0)
+            {
+                ProjectWrappedGlyphs(bounds, clip, glyphs);
+            }
+            else
+            {
+                ProjectUnwrappedGlyphs(bounds, clip, glyphs);
+            }
+        }
+
+        return new SelectableTextSnapshot(Text, glyphs, isAuthoritative: true);
+    }
+
+    /// <summary>Projects visible wrapped source graphemes through the committed visual-line cache.</summary>
+    private void ProjectWrappedGlyphs(Rect bounds, Rect clip, List<SelectableTextGlyph> glyphs)
+    {
+        for (var row = 0; row < _visualLines.Length; row++)
+        {
+            var screenY = bounds.Y + row - VerticalOffset;
+
+            if (screenY < bounds.Y || screenY >= bounds.Bottom)
+            {
+                continue;
+            }
+
+            var line = _visualLines[row];
+            var span = Text.AsSpan(line.Offset, line.Length);
+            var x = 0;
+
+            foreach (var grapheme in Graphemes.Enumerate(span))
+            {
+                var cluster = span.Slice(grapheme.Offset, grapheme.Length);
+
+                if (IsLineBreak(cluster))
+                {
+                    continue;
+                }
+
+                var width = ClusterWidth(cluster, x);
+                AddVisibleGlyph(
+                    clip,
+                    glyphs,
+                    line.Offset + grapheme.Offset,
+                    grapheme.Length,
+                    bounds.X + x,
+                    screenY,
+                    width);
+                x += width;
+            }
+        }
+    }
+
+    /// <summary>Projects visible unwrapped source graphemes through the committed scroll offsets.</summary>
+    private void ProjectUnwrappedGlyphs(Rect bounds, Rect clip, List<SelectableTextGlyph> glyphs)
+    {
+        var x = 0;
+        var y = 0;
+
+        foreach (var grapheme in Graphemes.Enumerate(Text))
+        {
+            var cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
+
+            if (IsLineBreak(cluster))
+            {
+                x = 0;
+                y++;
+                continue;
+            }
+
+            var width = ClusterWidth(cluster, x);
+            AddVisibleGlyph(
+                clip,
+                glyphs,
+                grapheme.Offset,
+                grapheme.Length,
+                bounds.X + x - HorizontalOffset,
+                bounds.Y + y - VerticalOffset,
+                width);
+            x += width;
+        }
+    }
+
+    /// <summary>Adds one complete grapheme when all of its rendered cells lie in the editor viewport.</summary>
+    private void AddVisibleGlyph(
+        Rect clip,
+        List<SelectableTextGlyph> glyphs,
+        int offset,
+        int length,
+        int x,
+        int y,
+        int width)
+    {
+        var candidate = new Rect(x, y, Math.Max(0, width), 1);
+
+        if (width <= 0 || !SelectableTextAggregation.ContainsCompleteGlyph(clip, candidate))
+        {
+            return;
+        }
+
+        glyphs.Add(new SelectableTextGlyph(
+            new Selection(offset, offset + length),
+            new Rect(x - Bounds.X, y - Bounds.Y, width, 1)));
+    }
 
     /// <summary>Gets or sets the protocol-neutral cursor shape requested while this editor has focus.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>

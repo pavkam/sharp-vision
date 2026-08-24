@@ -215,6 +215,25 @@ public sealed class InputDecoderTests
             false));
     }
 
+    /// <summary>Verifies a legacy selector-three mouse report preserves its unqualified release
+    /// identity because the protocol does not identify which button transitioned.</summary>
+    [Fact]
+    public void Decode_WhenLegacyMouseReleaseArrives_MapsUnqualifiedRelease()
+    {
+        var pointer = DecodePointer("\u001b[M#*%"u8.ToArray());
+
+        pointer.ShouldBe(new Pointer(
+            new Point(9, 4),
+            null,
+            Buttons.None,
+            InputAction.Release,
+            0,
+            0,
+            Modifiers.None,
+            false,
+            false));
+    }
+
     /// <summary>
     /// Verifies a 0x7f (DEL) X10 coordinate field byte decodes as coordinate 95 rather than
     /// destroying the pending report and leaking a phantom Backspace plus a literal character

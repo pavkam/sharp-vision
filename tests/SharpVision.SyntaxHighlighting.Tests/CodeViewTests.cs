@@ -8,6 +8,53 @@ public sealed class CodeViewTests
 {
     private const string _rustSnippet = "fn main() {\n    let x = 1;\n}\n";
 
+    /// <summary>Verifies the selectable projection owns the complete normalized logical source.</summary>
+    [Fact]
+    public void GetSelectableTextSnapshot_WhenLineEndingsVary_ReturnsNormalizedAuthoritativeText()
+    {
+        var view = new CodeView { Code = "first\r\nsecond\rthird" };
+
+        var snapshot = GetSelectableSnapshot(view);
+
+        snapshot.Text.ShouldBe("first\nsecond\nthird");
+        snapshot.IsAuthoritative.ShouldBeTrue();
+        snapshot.Glyphs.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies repeated snapshot reads do not invent selectable-text mutations.</summary>
+    [Fact]
+    public void SelectableTextVersion_WhenSnapshotsAreRead_RemainsStableUntilCodeChanges()
+    {
+        var view = new CodeView { Code = "before" };
+        var before = GetSelectableVersion(view);
+
+        _ = GetSelectableSnapshot(view);
+        _ = GetSelectableSnapshot(view);
+
+        GetSelectableVersion(view).ShouldBe(before);
+
+        view.Code = "after";
+
+        GetSelectableVersion(view).ShouldNotBe(before);
+    }
+
+    /// <summary>Verifies viewport reveal rejects invalid UTF-16 and grapheme endpoints.</summary>
+    [Fact]
+    public void RevealSelectableTextOffset_WhenOffsetIsInvalid_ThrowsBeforeViewportMutation()
+    {
+        var view = new CodeView { Code = "a🙂b" };
+
+        _ = Should.Throw<ArgumentException>(() => view.RevealSelectableTextOffset(2));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => view.RevealSelectableTextOffset(5));
+    }
+
+    private static SelectableTextSnapshot GetSelectableSnapshot<TSource>(TSource source)
+        where TSource : ISelectableTextSource =>
+        source.GetSelectableTextSnapshot();
+
+    private static ulong GetSelectableVersion<TSource>(TSource source)
+        where TSource : ISelectableTextSource => source.SelectableTextVersion;
+
     /// <summary>Verifies a freshly constructed view has empty content and no selection.</summary>
     [Fact]
     public void Constructor_WhenCalled_StartsEmptyWithNoSelection()

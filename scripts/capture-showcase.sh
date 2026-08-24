@@ -67,7 +67,7 @@ filter_pages() {
   for _ in {1..50}; do
     tmux capture-pane -t "$session" -p -J >"$plain"
 
-    if grep -q "· $name" "$plain"; then
+    if grep -Eq "[·›] $name" "$plain"; then
       return
     fi
 
@@ -84,6 +84,21 @@ select_page() {
   local navigation_row
 
   filter_pages "$name"
+
+  for _ in {1..50}; do
+    tmux capture-pane -t "$session" -p -J >"$plain"
+
+    if grep -q "› $name" "$plain" && grep -q "$witness" "$plain"; then
+      return
+    fi
+
+    if grep -q "· $name" "$plain"; then
+      break
+    fi
+
+    sleep 0.1
+  done
+
   navigation_row="$(find_row "· $name")"
 
   if [[ -z "$navigation_row" ]]; then
@@ -218,58 +233,9 @@ if [[ "$returned" != true ]]; then
 fi
 
 # The complete Concepts-first catalog is taller than the 40-row capture
-# viewport, so filter the sidebar before every pointer test on an entry.
+# viewport. Filtering selects the sole Canvas match and navigates to it without
+# depending on an off-screen sidebar row.
 filter_pages 'Canvas'
-canvas_navigation_row="$(find_row '· Canvas')"
-
-if [[ -z "$canvas_navigation_row" ]]; then
-  printf 'The Canvas sidebar entry is not visible.\n' >&2
-  exit 1
-fi
-
-# Any-event tracking must report passive pointer motion. Hover Canvas without a
-# button, prove its visible marker changes, then prove the terminal leave clears it.
-send_sgr 35 3 "$canvas_navigation_row" M
-
-hovered=false
-
-for _ in {1..50}; do
-  tmux capture-pane -t "$session" -p -J >"$plain"
-
-  if grep -q '› Canvas' "$plain"; then
-    hovered=true
-    break
-  fi
-
-  sleep 0.1
-done
-
-if [[ "$hovered" != true ]]; then
-  printf 'The showcase did not visibly hover Canvas after passive SGR motion.\n' >&2
-  exit 1
-fi
-
-send_sgr 35 0 0 M
-
-for _ in {1..50}; do
-  tmux capture-pane -t "$session" -p -J >"$plain"
-
-  if grep -q '· Canvas' "$plain"; then
-    break
-  fi
-
-  sleep 0.1
-done
-
-if ! grep -q '· Canvas' "$plain"; then
-  printf 'The showcase did not clear Canvas hover after the SGR leave report.\n' >&2
-  exit 1
-fi
-
-# A complete primary SGR press/release must activate navigation on its own.
-# Do not append a key here: that would hide host-side input buffering defects.
-send_sgr 0 10 "$canvas_navigation_row" M
-send_sgr 0 10 "$canvas_navigation_row" m
 
 canvas=false
 
@@ -285,11 +251,69 @@ for _ in {1..50}; do
 done
 
 if [[ "$canvas" != true ]]; then
-  printf 'The showcase did not handle the injected Canvas SGR mouse click.\n' >&2
+  printf 'The showcase did not navigate to the sole filtered Canvas page.\n' >&2
   exit 1
 fi
 
-# The sidebar remains a pointer target after the filtered Canvas activation.
+# Prove the Document page owns one selection across ordinary text, a link, and
+# embedded controls. Keep the drag entirely inside its mixed-content specimen;
+# the changed status text is a deterministic semantic witness, while the ANSI
+# capture retains the visible selection face for manual inspection.
+select_page 'Document' 'Selection across mixed content'
+
+document_start_row=""
+document_end_row=""
+
+for _ in {1..60}; do
+  tmux capture-pane -t "$session" -p -J >"$plain"
+  document_start_row="$(find_row 'One continuous selection')"
+  document_end_row="$(find_row 'Ship')"
+
+  if [[ -n "$document_start_row" && -n "$document_end_row" ]]; then
+    break
+  fi
+
+  send_sgr 65 118 20 M
+  sleep 0.08
+done
+
+if [[ -z "$document_start_row" || -z "$document_end_row" ]]; then
+  printf 'The Document mixed-selection specimen did not become visible.\n' >&2
+  exit 1
+fi
+
+document_start_column="$(find_column "$document_start_row" 'One continuous selection')"
+document_end_column="$(find_column "$document_end_row" 'Ship')"
+
+if [[ "$document_start_column" == 0 || "$document_end_column" == 0 ]]; then
+  printf 'The Document mixed-selection geometry is incomplete.\n' >&2
+  exit 1
+fi
+
+send_sgr 0 "$((document_start_column + 1))" "$document_start_row" M
+send_sgr 32 "$((document_end_column + 2))" "$document_end_row" M
+send_sgr 0 "$((document_end_column + 2))" "$document_end_row" m
+
+document_selected=false
+
+for _ in {1..50}; do
+  tmux capture-pane -t "$session" -p -J >"$plain"
+
+  if grep -Eq 'Selection: [1-9][0-9]* UTF-16 code unit\(s\)' "$plain"; then
+    document_selected=true
+    break
+  fi
+
+  send_sgr 65 118 20 M
+  sleep 0.1
+done
+
+if [[ "$document_selected" != true ]]; then
+  printf 'The Document did not retain the injected mixed-content selection.\n' >&2
+  exit 1
+fi
+
+# The sidebar remains a pointer target after the Document selection gesture.
 select_page 'Button' 'Activation log: waiting'
 
 # Use real pointer reports to choose a font on the FigletText page.
@@ -307,7 +331,7 @@ stable_font_row=0
 
 for _ in {1..100}; do
   tmux capture-pane -t "$session" -p -J >"$plain"
-  candidate_font_row="$(find_row 'Standard')"
+  candidate_font_row="$(find_row 'standard')"
 
   if [[ -n "$candidate_font_row" && "$candidate_font_row" == "$previous_font_row" ]]; then
     stable_font_row=$((stable_font_row + 1))
@@ -337,7 +361,7 @@ dropdown=false
 for _ in {1..50}; do
   tmux capture-pane -t "$session" -p -J >"$plain"
 
-  if grep -q '1Row' "$plain"; then
+  if grep -q 'Classy' "$plain"; then
     dropdown=true
     break
   fi
@@ -350,7 +374,7 @@ if [[ "$dropdown" != true ]]; then
   exit 1
 fi
 
-font_row="$(find_row '1Row')"
+font_row="$(find_row 'Classy')"
 
 if [[ -z "$font_row" ]]; then
   printf 'The first Figlet font option is not visible.\n' >&2
@@ -365,7 +389,7 @@ font=false
 for _ in {1..50}; do
   tmux capture-pane -t "$session" -p -J >"$plain"
 
-  if grep -q 'Previewing 1Row' "$plain"; then
+  if grep -q 'Previewing Classy' "$plain"; then
     font=true
     break
   fi

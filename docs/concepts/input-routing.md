@@ -139,6 +139,27 @@ never preempts preview, bubble, or a control default. When that fallback accepts
 a legacy Alt stroke, it consumes the immediately adjacent equal text Rune so the
 mnemonic cannot be inserted into the newly focused editor.
 
+### Selection and clipboard fallback
+
+Ctrl+C uses the same handled-route precedence as every other key. After preview,
+bubble, and control defaults remain unhandled, `Application` walks from the
+focused target through `ControlBase.Parent` and chooses the nearest
+`IClipboardCopySource`. It calls `CopySelection()` exactly once, publishes that
+owned string through `Application.Terminal.Clipboard`, and consumes the stroke.
+An empty result is still authoritative and never falls through to a more distant
+ancestor. With no source, the stroke remains available to later application
+fallbacks. Ctrl+X and Ctrl+V remain editing commands owned by `TextInput`; the
+copy interface does not imply mutation.
+
+`ISelectableTextSource.GetSelectableTextSnapshot()` supplies complete semantic
+text plus grapheme-to-cell rectangles for currently visible complete glyphs.
+Composite and container controls aggregate child snapshots in retained reading
+order, applying effective clipping and coordinate translation. Semantic text may
+remain present without visible geometry, which is how folded, scrolled, or
+temporarily clipped content stays copyable without becoming hit-testable.
+`ISelectableTextViewport` optionally lets an owner reveal one semantic offset or
+scroll a nested text viewport without knowing its concrete control type.
+
 ## Pointer capture and coordinates
 
 Capture is exclusive per pointer source and supports press, drag, scrollbar,
@@ -146,6 +167,12 @@ selection, move/resize, and popup interactions. Detach, disable, close,
 terminal-focus loss where configured, or an explicit release ends capture and
 raises cancellation when required. Entering or leaving a modal scope applies the
 additional [capture confinement rules](modality.md#modal-pointer-and-capture).
+
+`PointerDragThreshold.Cells` is the shared click-to-drag boundary. Its value is
+one cell because terminal coordinates are integral: movement by one cell in
+either axis crosses the threshold. Composite selection owners use that moment to
+cancel a descendant's pending press and transfer capture; motion below it
+remains an ordinary click.
 
 Pointer events preserve screen cells, optional pixels, the inferred cell
 position, buttons, wheel delta, modifiers, and the action. Local coordinates are

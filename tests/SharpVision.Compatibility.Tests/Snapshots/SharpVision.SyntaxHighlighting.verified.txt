@@ -1,6 +1,6 @@
 ﻿namespace SharpVision.Controls.SyntaxHighlighting
 {
-    public sealed class CodeView : SharpVision.Controls.CompositeControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.SyntaxHighlighting.CodeViewStyle>
+    public sealed class CodeView : SharpVision.Controls.CompositeControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.SyntaxHighlighting.CodeViewStyle>, SharpVision.Runtime.IClipboardCopySource, SharpVision.Text.ISelectableTextSource, SharpVision.Text.ISelectableTextViewport
     {
         public CodeView() { }
         public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
@@ -17,6 +17,7 @@
         public int PageOverlap { get; set; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
         public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
+        public SharpVision.Terminal.Geometry.Rect SelectableTextViewport { get; }
         public string SelectedText { get; }
         public SharpVision.Text.Selection Selection { get; }
         public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
@@ -25,6 +26,7 @@
         public SharpVision.Terminal.Geometry.Size Viewport { get; }
         public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         public event System.EventHandler<System.EventArgs>? SelectionChanged;
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public void ClearSelection() { }
         public void CollapseAll() { }
         public string CopySelection() { }
@@ -36,7 +38,9 @@
         protected override void OnDisposing() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
+        public bool RevealSelectableTextOffset(int offset) { }
         public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
+        public bool ScrollSelectableTextViewport(int horizontal, int vertical) { }
         public void SelectAll() { }
         public bool SetFolded(int line, bool folded) { }
         public void SetSelection(SharpVision.Text.Selection selection) { }

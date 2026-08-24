@@ -385,6 +385,19 @@ const main = async () => {
                         );
                         sendSgr(0, target.column + 1, target.row, "M");
                         held = target;
+                    } else if (action.drag !== undefined) {
+                        if (held === null)
+                            throw new Error(
+                                "A drag action requires an earlier press action.",
+                            );
+
+                        const target = findTarget(
+                            capture(),
+                            rect,
+                            action.drag,
+                        );
+                        sendSgr(32, target.column + 1, target.row, "M");
+                        held = target;
                     } else if (action.hover !== undefined) {
                         const target = findTarget(
                             capture(),

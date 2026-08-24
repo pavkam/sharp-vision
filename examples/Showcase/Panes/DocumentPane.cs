@@ -3,6 +3,8 @@
 
 namespace SharpVision.Showcase.Panes;
 
+using SharpVision.Controls.SyntaxHighlighting;
+
 using Text = SharpVision.Controls.Display.Text;
 
 internal sealed class DocumentPane: CompositeControlBase
@@ -15,6 +17,7 @@ internal sealed class DocumentPane: CompositeControlBase
             Title,
             "Displays a scrollable tree of rich text content: headings, paragraphs with inline " +
             "markup and activatable links, lists, block quotes, code blocks, and thematic breaks.",
+            CreateSelectionSection(),
             CreateTextSection(),
             CreateLinkSection(),
             CreateFormSection(),
@@ -22,6 +25,79 @@ internal sealed class DocumentPane: CompositeControlBase
             CreateBlockQuoteSection(),
             CreateCodeSection(),
             CreateFlagshipSection());
+
+    private static DocSection CreateSelectionSection()
+    {
+        var status = new Text("Selection: collapsed");
+        var link = new DocumentLink("browser-like link");
+        var button = new Button("&Ship");
+        var updates = new CheckBox("&Updates");
+        var stable = new RadioButton("&Stable") { GroupName = "selection-channel", IsChecked = true };
+        var preview = new RadioButton("&Preview") { GroupName = "selection-channel" };
+        var code = new CodeView
+        {
+            Code = "var selected = document.SelectedText;\nclipboard.Write(selected);",
+            Language = "C#",
+            Height = Length.Cells(5),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+
+        var introduction = new DocumentParagraph();
+        introduction.Inlines.Add(new DocumentTextRun(
+            "Drag from this <b>styled paragraph</b>, through the "));
+        introduction.Inlines.Add(link);
+        introduction.Inlines.Add(new DocumentTextRun(
+            ", controls, and code below. Selection follows semantic text rather than decorative chrome."));
+
+        var document = new Document
+        {
+            Width = Length.Cells(64),
+            Height = Length.Cells(18),
+        };
+        document.Blocks.Add(new DocumentHeading(2, "One continuous selection"));
+        document.Blocks.Add(introduction);
+        document.Blocks.Add(new DocumentBlockControl(button));
+        document.Blocks.Add(new DocumentBlockControl(updates));
+        document.Blocks.Add(new DocumentBlockControl(stable));
+        document.Blocks.Add(new DocumentBlockControl(preview));
+        document.Blocks.Add(new DocumentBlockControl(code));
+        document.Blocks.Add(new DocumentParagraph(
+            "Keep dragging beyond the top or bottom edge to autoscroll. Release, then hold Shift " +
+            "with arrows, Home, End, Page Up, or Page Down to extend from the active caret."));
+        document.Blocks.Add(new DocumentParagraph(
+            "Ctrl+A selects the complete semantic stream. Ctrl+C publishes it through the " +
+            "Application clipboard route when the terminal supports clipboard writes."));
+        document.SelectionChanged += (_, _) =>
+            status.Content = document.Selection.IsEmpty
+                ? $"Selection: caret {document.Selection.Caret}"
+                : $"Selection: {document.Selection.Length} UTF-16 code unit(s)";
+
+        return new DocSection(
+            "⌁",
+            "Selection across mixed content",
+            "A <info>Document</info> owns one browser-like semantic selection across its text, links, " +
+            "embedded controls, and <info>CodeView</info> blocks. Drag across the specimen, hold beyond " +
+            "an edge to scroll, extend with Shift plus navigation keys, or use Ctrl+A and Ctrl+C.",
+            new DocExample(
+                "Text, controls, and code in one range",
+                "A stationary click still activates the link, button, checkbox, or radio button. " +
+                "Moving one cell starts selection instead, cancels that pending activation, and can " +
+                "select part of any caption or code line.",
+                new DocColumn(document, status),
+                """
+                var document = new Document();
+                document.Blocks.Add(new DocumentParagraph("Select across everything below."));
+                document.Blocks.Add(new DocumentBlockControl(new Button("Ship")));
+                document.Blocks.Add(new DocumentBlockControl(new CheckBox("Updates")));
+                document.Blocks.Add(new DocumentBlockControl(new CodeView
+                {
+                    Code = source,
+                    Language = "C#"
+                }));
+
+                document.SelectionChanged += (_, _) => Show(document.SelectedText);
+                """));
+    }
 
     private static DocSection CreateTextSection()
     {

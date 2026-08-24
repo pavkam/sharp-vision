@@ -1480,6 +1480,7 @@ namespace SharpVision.Terminal.Rendering
     {
         public SharpVision.Terminal.Geometry.Rect Bounds { get; }
         public bool HasPreviousFrame { get; }
+        public void ApplyCellStyle(SharpVision.Terminal.Geometry.Rect region, System.Func<SharpVision.Terminal.Geometry.Point, SharpVision.Terminal.Rendering.CellStyle, SharpVision.Terminal.Rendering.CellStyle> selector) { }
         public void ApplyForeground(SharpVision.Terminal.Geometry.Rect region, System.Func<SharpVision.Terminal.Geometry.Point, SharpVision.Terminal.Protocols.Color> selector) { }
         public void ApplyStyle(SharpVision.Terminal.Geometry.Rect region, SharpVision.Terminal.Rendering.CellStyle style, SharpVision.Terminal.Rendering.BackgroundMode background = 0) { }
         public void Clear(SharpVision.Terminal.Geometry.Rect region, SharpVision.Terminal.Rendering.CellStyle style = default) { }

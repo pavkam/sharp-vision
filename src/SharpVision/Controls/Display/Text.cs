@@ -9,10 +9,11 @@ using Terminal.Rendering;
 
 using TerminalUnderline = Underline;
 using TextLayout = SharpVision.Text.Layout;
+using UnicodeWidth = Width;
 
 /// <summary>Displays grapheme-safe inline-markup text through semantic terminal cells.</summary>
 [PublicAPI]
-public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
+public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>, ISelectableTextSource
 {
     private const TerminalAttributes _blinkAttributes =
         TerminalAttributes.Blink | TerminalAttributes.RapidBlink;
@@ -156,6 +157,55 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
     /// <see cref="TextLayout.Format"/> directly instead of inspecting this cache.
     /// </remarks>
     internal ReadOnlyMemory<Line> Lines => _lines.AsMemory(0, _lineCount);
+
+    /// <inheritdoc/>
+    public SelectableTextSnapshot GetSelectableTextSnapshot()
+    {
+        VerifyMutable();
+        EnsureParsed();
+
+        if (!EffectiveIsVisible)
+        {
+            return new SelectableTextSnapshot(_display, [], isAuthoritative: true);
+        }
+
+        var bounds = ContentBounds.Intersect(Bounds);
+        var clip = bounds.Intersect(SelectableTextAggregation.GetEffectiveClip(this));
+        EnsureLayout(bounds.Width);
+        var glyphs = new List<SelectableTextGlyph>();
+        var lines = Lines.Span;
+
+        for (var row = 0; row < lines.Length && row < bounds.Height; row++)
+        {
+            var line = lines[row];
+            var x = 0;
+
+            foreach (var grapheme in Graphemes.Enumerate(_display.AsSpan(line.Offset, line.Length)))
+            {
+                var offset = line.Offset + grapheme.Offset;
+                var cluster = _display.AsSpan(offset, grapheme.Length);
+                var width = cluster.Length == 1 && cluster[0] == '\t'
+                    ? TextLayout.TabSize - (x % TextLayout.TabSize)
+                    : UnicodeWidth.Measure(cluster, AmbiguousWidth).Cells;
+                var absolute = new Rect(bounds.X + line.Leading + x, bounds.Y + row, width, 1);
+
+                if (width > 0 && SelectableTextAggregation.ContainsCompleteGlyph(clip, absolute))
+                {
+                    glyphs.Add(new SelectableTextGlyph(
+                        new Selection(offset, offset + grapheme.Length),
+                        new Rect(
+                            absolute.X - Bounds.X,
+                            absolute.Y - Bounds.Y,
+                            absolute.Width,
+                            absolute.Height)));
+                }
+
+                x += width;
+            }
+        }
+
+        return new SelectableTextSnapshot(_display, glyphs, isAuthoritative: true);
+    }
 
     /// <summary>Escapes dynamic visible text for safe interpolation into markup content.</summary>
     /// <param name="value">The non-null visible text.</param>

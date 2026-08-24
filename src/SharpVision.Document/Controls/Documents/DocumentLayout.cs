@@ -50,6 +50,7 @@ internal sealed class DocumentLayout
     private readonly List<DocumentQuoteBar> _quoteBars = [];
     private readonly List<DocumentVisualLine> _lines = [];
     private readonly List<DocumentVisualRun> _runs = [];
+    private readonly DocumentSelectionBuilder _selectionBuilder = new();
 
     private Ambiguous _ambiguousWidth;
     private DocumentGlyphs _glyphs;
@@ -68,6 +69,38 @@ internal sealed class DocumentLayout
 
     /// <summary>Gets retained-control rectangles in content coordinates.</summary>
     public IReadOnlyList<DocumentControlPlacement> ControlPlacements => _controlPlacements;
+
+    /// <summary>Gets the immutable semantic selection projection built beside the visual layout.</summary>
+    public DocumentSelectionMap SelectionMap { get; private set; } = DocumentSelectionMap.Empty;
+
+    /// <summary>Refreshes embedded glyph rectangles after retained children receive final bounds.</summary>
+    /// <param name="contentOrigin">The absolute origin of document content coordinates.</param>
+    /// <returns>True when every refreshed source kept the measured semantic text; otherwise false.</returns>
+    internal bool RefreshSelectionGeometry(Point contentOrigin)
+    {
+        var semanticTextIsCurrent = _selectionBuilder.RefreshControlGeometry();
+        var committedPlacements = new DocumentControlPlacement[_controlPlacements.Count];
+
+        for (var index = 0; index < _controlPlacements.Count; index++)
+        {
+            var control = _controlPlacements[index].Control;
+            committedPlacements[index] = new DocumentControlPlacement(
+                control,
+                new Rect(
+                    SaturatingSubtract(control.Bounds.X, contentOrigin.X),
+                    SaturatingSubtract(control.Bounds.Y, contentOrigin.Y),
+                    control.Bounds.Width,
+                    control.Bounds.Height));
+        }
+
+        SelectionMap = _selectionBuilder.Build(
+            _lines,
+            _runs,
+            _parsedRuns,
+            committedPlacements,
+            _ambiguousWidth);
+        return semanticTextIsCurrent;
+    }
 
     /// <summary>Gets the widest line's cell width.</summary>
     public int MaxCells { get; private set; }
@@ -117,6 +150,7 @@ internal sealed class DocumentLayout
         _quoteBars.Clear();
         _lines.Clear();
         _runs.Clear();
+        _selectionBuilder.Reset();
 
         _ambiguousWidth = ambiguousWidth;
         _glyphs = glyphs;
@@ -124,6 +158,12 @@ internal sealed class DocumentLayout
         _width = Math.Max(0, width);
 
         EmitBlocks(blocks, indent: 0, spacing: 1, DocumentFaceKind.Body, listDepth: 0, foregroundOverride: null);
+        SelectionMap = _selectionBuilder.Build(
+            _lines,
+            _runs,
+            _parsedRuns,
+            _controlPlacements,
+            _ambiguousWidth);
     }
 
     private void EmitBlocks(
@@ -132,7 +172,8 @@ internal sealed class DocumentLayout
         int spacing,
         DocumentFaceKind face,
         int listDepth,
-        DocumentFaceKind? foregroundOverride)
+        DocumentFaceKind? foregroundOverride,
+        bool beginFirst = true)
     {
         for (var index = 0; index < blocks.Count; index++)
         {
@@ -142,6 +183,11 @@ internal sealed class DocumentLayout
                 {
                     EmitBlankLine(indent);
                 }
+            }
+
+            if (beginFirst || index > 0)
+            {
+                _selectionBuilder.BeginBlockValue();
             }
 
             EmitBlock(blocks[index], indent, face, listDepth, foregroundOverride);
@@ -223,6 +269,17 @@ internal sealed class DocumentLayout
             }
 
             var firstLine = _lines.Count;
+            _selectionBuilder.BeginBlockValue();
+            var semanticMarker = list.Kind == DocumentListKind.Bulleted
+                ? "- "
+                : FormattableString.Invariant($"{(long) list.Start + index}. ");
+            _selectionBuilder.AppendListMarker(
+                semanticMarker,
+                markers[index],
+                firstLine,
+                indent,
+                gutter,
+                _ambiguousWidth);
 
             // An item's own blocks are tight: CommonMark places an item's paragraph immediately
             // above its nested list with no blank line between them.
@@ -232,7 +289,8 @@ internal sealed class DocumentLayout
                 spacing: 0,
                 face,
                 listDepth + 1,
-                foregroundOverride);
+                foregroundOverride,
+                beginFirst: false);
 
             if (_lines.Count == firstLine)
             {
@@ -256,7 +314,8 @@ internal sealed class DocumentLayout
             spacing: 1,
             DocumentFaceKind.Quote,
             listDepth,
-            foregroundOverride);
+            foregroundOverride,
+            beginFirst: false);
 
         if (_lines.Count == firstLine)
         {
@@ -276,13 +335,21 @@ internal sealed class DocumentLayout
         var text = code.Text;
         var start = 0;
         var emitted = false;
+        var semanticLine = 0;
 
         while (start <= text.Length)
         {
             var end = text.AsSpan(start).IndexOfAny('\r', '\n');
             var lineEnd = end < 0 ? text.Length : start + end;
+
+            if (semanticLine > 0)
+            {
+                _selectionBuilder.AppendHardBreak();
+            }
+
             EmitCodeLine(text.AsSpan(start, lineEnd - start), indent, foregroundOverride);
             emitted = true;
+            semanticLine++;
 
             if (end < 0)
             {
@@ -312,6 +379,7 @@ internal sealed class DocumentLayout
         var display = ExpandTabs(line);
         var parsedRunIndex = _parsedRuns.Count;
         _parsedRuns.Add(new DocumentParsedRun(display, []));
+        _selectionBuilder.AppendCodeLine(line, display, parsedRunIndex, _ambiguousWidth);
 
         var cells = MeasureCells(display);
         var runStart = _runs.Count;
@@ -359,6 +427,8 @@ internal sealed class DocumentLayout
             EmitBlankLine(indent);
             return;
         }
+
+        _selectionBuilder.AppendControl(block.Control);
 
         var desired = block.Control.DesiredSize;
         var height = Math.Max(1, desired.Height);
@@ -430,8 +500,18 @@ internal sealed class DocumentLayout
             var row = table.Rows[rowIndex];
             cells[rowIndex] = new DocumentFlowToken[row.Cells.Count][];
 
+            if (rowIndex > 0)
+            {
+                _selectionBuilder.AppendHardBreak();
+            }
+
             for (var column = 0; column < row.Cells.Count; column++)
             {
+                if (column > 0)
+                {
+                    _ = _selectionBuilder.AppendLiteral("\t");
+                }
+
                 _tokens.Clear();
                 Tokenize(
                     row.Cells[column].Inlines,
@@ -541,7 +621,8 @@ internal sealed class DocumentLayout
                 1,
                 new Rune(' '),
                 DocumentFaceKind.Table,
-                foregroundOverride));
+                foregroundOverride,
+                token.SemanticRange));
             column++;
             return;
         }
@@ -563,7 +644,8 @@ internal sealed class DocumentLayout
                     token.Cells,
                     token.Glyph,
                     token.Face,
-                    foregroundOverride));
+                    foregroundOverride,
+                    token.SemanticRange));
         column += token.Cells;
     }
 
@@ -594,6 +676,7 @@ internal sealed class DocumentLayout
         _tokens.Clear();
         var parsedRunIndex = _parsedRuns.Count;
         _parsedRuns.Add(new DocumentParsedRun(text, []));
+        _selectionBuilder.AppendParsedRun(parsedRunIndex, text);
         TokenizeText(text, parsedRunIndex, face, linkIndex: -1);
         WrapTokens(indent, foregroundOverride);
     }
@@ -623,6 +706,7 @@ internal sealed class DocumentLayout
                         _parsedRuns.Add(new DocumentParsedRun(
                             display,
                             ApplySemanticAttributes(spans, semanticAttributes, linkTarget)));
+                        _selectionBuilder.AppendParsedRun(parsedRunIndex, display);
                         TokenizeText(display, parsedRunIndex, face, linkIndex);
                         break;
                     }
@@ -633,6 +717,7 @@ internal sealed class DocumentLayout
                         _parsedRuns.Add(new DocumentParsedRun(
                             code.Text,
                             CreateLiteralSpans(code.Text, semanticAttributes, linkTarget)));
+                        _selectionBuilder.AppendParsedRun(parsedRunIndex, code.Text);
                         TokenizeText(code.Text, parsedRunIndex, DocumentFaceKind.Code, linkIndex);
                         break;
                     }
@@ -686,10 +771,12 @@ internal sealed class DocumentLayout
                     }
 
                 case DocumentSoftBreak:
-                    _tokens.Add(DocumentFlowToken.ForBlank(1, face, linkIndex));
+                    var softBreakRange = _selectionBuilder.AppendSoftBreak();
+                    _tokens.Add(DocumentFlowToken.ForBlank(1, face, linkIndex, softBreakRange));
                     break;
 
                 case DocumentLineBreak:
+                    _selectionBuilder.AppendHardBreak();
                     _tokens.Add(DocumentFlowToken.ForBreak());
                     break;
 
@@ -705,6 +792,7 @@ internal sealed class DocumentLayout
                             "An inline control must resolve to exactly one cell of height. Use DocumentBlockControl for taller content.");
                     }
 
+                    _selectionBuilder.AppendControl(control.Control);
                     _tokens.Add(DocumentFlowToken.ForControl(control.Control, control.Control.DesiredSize.Width));
                     break;
 
@@ -814,7 +902,11 @@ internal sealed class DocumentLayout
             if (grapheme.Length == 1 && display[offset] == '\t')
             {
                 Flush(_tokens, _ambiguousWidth);
-                _tokens.Add(DocumentFlowToken.ForBlank(_tabAdvance, face, linkIndex));
+                _tokens.Add(DocumentFlowToken.ForBlank(
+                    _tabAdvance,
+                    face,
+                    linkIndex,
+                    _selectionBuilder.ParsedRangeOf(parsedRunIndex, offset, grapheme.Length)));
                 continue;
             }
 
@@ -904,7 +996,8 @@ internal sealed class DocumentLayout
                         token.Cells,
                         token.Glyph,
                         token.Face,
-                        foregroundOverride));
+                        foregroundOverride,
+                        token.SemanticRange));
 
             column += token.Cells;
             lineWidth += token.Cells;
@@ -1028,6 +1121,17 @@ internal sealed class DocumentLayout
         }
 
         return builder.ToString();
+    }
+
+    [Pure]
+    private static int SaturatingSubtract(int value, int offset)
+    {
+        var result = (long) value - offset;
+        return result < int.MinValue
+            ? int.MinValue
+            : result > int.MaxValue
+                ? int.MaxValue
+                : (int) result;
     }
 
     #endregion

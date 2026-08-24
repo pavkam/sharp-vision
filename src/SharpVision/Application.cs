@@ -1106,8 +1106,7 @@ public sealed class Application:
         if (stroke.Action != KeyAction.Press ||
             stroke.Code != Code.Character ||
             stroke.Character is not { } character ||
-            (stroke.Modifiers & ~(Modifiers.CapsLock | Modifiers.NumLock)) != Modifiers.Control ||
-            keyTarget is not TextInput input)
+            (stroke.Modifiers & ~(Modifiers.CapsLock | Modifiers.NumLock)) != Modifiers.Control)
         {
             return false;
         }
@@ -1116,9 +1115,24 @@ public sealed class Application:
 
         if (command == new Rune('c'))
         {
-            PublishClipboard(input.CopySelection());
+            var boundary = Modality.BoundaryFor(keyTarget);
+            var source = FindClipboardCopySource(keyTarget, boundary);
+
+            if (source is null)
+            {
+                return false;
+            }
+
+            PublishClipboard(source.CopySelection());
+            return true;
         }
-        else if (command == new Rune('x'))
+
+        if (keyTarget is not TextInput input)
+        {
+            return false;
+        }
+
+        if (command == new Rune('x'))
         {
             PublishClipboard(input.CutSelection());
         }
@@ -1132,6 +1146,26 @@ public sealed class Application:
         }
 
         return true;
+    }
+
+    private static IClipboardCopySource? FindClipboardCopySource(
+        ControlBase keyTarget,
+        ControlBase? boundary)
+    {
+        for (var target = keyTarget; target is not null; target = target.Parent)
+        {
+            if (target is IClipboardCopySource source)
+            {
+                return source;
+            }
+
+            if (ReferenceEquals(target, boundary))
+            {
+                break;
+            }
+        }
+
+        return null;
     }
 
     private void OnContextMenuPointer(object? sender, PointerEventArgs eventArgs)
@@ -1159,7 +1193,7 @@ public sealed class Application:
 
     private void PublishClipboard(string value)
     {
-        Debug.Assert(value is not null, "TextInput clipboard operations return owned non-null text.");
+        Debug.Assert(value is not null, "Clipboard operations return owned non-null text.");
 
         if (value.Length == 0)
         {

@@ -115,5 +115,7 @@ internal sealed class DocumentPresenter: Container
                     projected.Height),
                 ResolvedAxes.Both);
         }
+
+        _owner.RefreshSelectionGeometry(new Point(_surface.ContentBounds.X, _surface.ContentBounds.Y));
     }
 }

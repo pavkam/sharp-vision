@@ -1,7 +1,8 @@
 /// Each entry maps one showcase page to one control document. `doc` is the
 /// path under docs/controls without extension; the image slug is its basename.
 /// A state without a name is the default capture. `actions` run before the
-/// capture; `popup: true` widens the crop to rows the actions changed, and
+/// capture; `press` followed by `drag` holds a real primary-button selection
+/// gesture, `popup: true` widens the crop to rows the actions changed, and
 /// `animated: true` skips the stable-frame wait for continuously moving pages.
 export const controls = [
     { doc: "control", page: "Control" },
@@ -47,7 +48,18 @@ export const controls = [
         ],
     },
     { doc: "input/time-input", page: "TimeInput" },
-    { doc: "collections/document", page: "Document" },
+    {
+        doc: "collections/document",
+        page: "Document",
+        states: [
+            {
+                actions: [
+                    { press: "Drag from this" },
+                    { drag: "var selected = document.SelectedText;" },
+                ],
+            },
+        ],
+    },
     { doc: "collections/json-view", page: "JsonView" },
     { doc: "display/code-view", page: "CodeView" },
     { doc: "collections/list-view", page: "ListView" },

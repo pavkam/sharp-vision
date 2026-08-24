@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\SharpVision.Document\SharpVision.Document.csproj"/>
     <ProjectReference Include="..\..\src\SharpVision.SyntaxHighlighting\SharpVision.SyntaxHighlighting.csproj"/>
     <ProjectReference Include="..\..\src\SharpVision\SharpVision.csproj"/>
     <ProjectReference Include="..\SharpVision.Test.Shared\SharpVision.Test.Shared.csproj"/>

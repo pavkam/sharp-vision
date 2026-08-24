@@ -129,6 +129,24 @@ public abstract class HeaderedContentControl: ContentControl
     [Pure]
     internal bool OwnsCaption(ControlBase candidate) => ReferenceEquals(Header, candidate);
 
+    /// <inheritdoc/>
+    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    {
+        ArgumentNullException.ThrowIfNull(children);
+
+        if (Header is { } header)
+        {
+            children.Add(header);
+        }
+
+        if (Content is { } content)
+        {
+            children.Add(content);
+        }
+
+        return true;
+    }
+
     private void OnHeaderSlotChanged()
     {
         var previous = _publishedHeader;

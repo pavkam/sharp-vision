@@ -107,6 +107,13 @@ owning `Document`, so radio lists in sibling documents cannot deselect each
 other. If malformed source marks several radios in one list as selected, the
 last selected marker wins.
 
+Those generated labels participate in the owning `Document`'s continuous
+semantic selection like directly embedded controls. Copy output preserves their
+displayed text but omits checkbox, radio, table-border, quote-bar, and callout
+chrome. The complete stream normalization, pointer/keyboard selection, and
+clipboard rules belong to the
+[Document control](../controls/collections/document.md#selection-and-copying).
+
 ## Expected behavior
 
 | Scope              | Observable evidence                                                               |

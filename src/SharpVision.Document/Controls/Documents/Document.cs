@@ -5,6 +5,7 @@ namespace SharpVision.Controls.Documents;
 
 using SharpVision.Controls.Scrolling;
 using SharpVision.Documents;
+using SharpVision.Runtime;
 using SharpVision.Terminal.Input;
 using SharpVision.Text;
 
@@ -24,13 +25,23 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 /// input and focus behavior. Arrow keys, Page Up, Page Down, Home, End, and the wheel scroll the document.
 /// </para>
 /// <para>
+/// One browser-like semantic selection spans ordinary text, links, and selectable text exposed by
+/// embedded controls. Pointer dragging, Shift navigation, and Ctrl+A update that range;
+/// <see cref="CopySelection"/> returns its normalized text without publishing clipboard state.
+/// </para>
+/// <para>
 /// Presentation is resolved from <see cref="ActualStyle"/> during the paint pass rather than cached
 /// onto nodes, so a live theme swap or a local <see cref="Style"/> assignment restyles every heading,
 /// marker, bar, and link on the next frame.
 /// </para>
 /// </remarks>
 [PublicAPI]
-public sealed class Document: CompositeControlBase, IStyled<DocumentStyle>
+public sealed class Document:
+    CompositeControlBase,
+    IStyled<DocumentStyle>,
+    IClipboardCopySource,
+    ISelectableTextSource,
+    ISelectableTextViewport
 {
     /// <summary>The width an unbounded measurement lays out against.</summary>
     /// <remarks>
@@ -39,8 +50,9 @@ public sealed class Document: CompositeControlBase, IStyled<DocumentStyle>
     /// </remarks>
     private const int _unboundedWidth = 1_000_000;
 
-    private readonly DocumentLayout _layout = new();
+    private DocumentLayout _layout = new();
     private readonly DocumentPresenter _presenter;
+    private readonly DocumentSelectionGesture _selectionGesture;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly LayoutStack _stack;
     private readonly StyleSlot<DocumentStyle> _style;
@@ -51,6 +63,14 @@ public sealed class Document: CompositeControlBase, IStyled<DocumentStyle>
     private DocumentGlyphs _layoutGlyphs;
     private bool _layoutValid;
     private int _layoutWidth = -1;
+    private Selection _selection;
+    private bool _selectionCaretEstablished;
+    private int? _selectionDesiredColumn;
+    private int? _selectionDesiredRow;
+    private Rect? _selectionCaretGeometryAffinity;
+    private DocumentSelectionMap? _selectionCaretGeometryAffinityMap;
+    private int _selectionCaretGeometryAffinityOffset;
+    private DocumentSelectionMap _selectionSemanticMap = DocumentSelectionMap.Empty;
 
     /// <summary>Initializes an empty scrollable document.</summary>
     public Document()
@@ -61,6 +81,7 @@ public sealed class Document: CompositeControlBase, IStyled<DocumentStyle>
         // and a slot can publish its first resolved value while it is still being initialized.
         _surface = new DocumentSurface(this);
         _presenter = new DocumentPresenter(this, _surface);
+        _selectionGesture = new DocumentSelectionGesture(this);
         _style = InitializeStyle(DocumentStyle.Definition, OnStyleChanged);
         _stack = new LayoutStack
         {
@@ -74,6 +95,8 @@ public sealed class Document: CompositeControlBase, IStyled<DocumentStyle>
         FocusEntered += OnDocumentFocusBoundaryChanged;
         FocusLeft += OnDocumentFocusBoundaryChanged;
         _ = AddHandler(Events.Key, OnKeyRouted, handledEventsToo: true);
+        _ = AddHandler(Events.Pointer, OnPointerRouted, handledEventsToo: true);
+        _ = AddHandler(Events.TerminalFocusChanged, OnTerminalFocusRouted, handledEventsToo: true);
         InitializeContent(_stack);
 
         _scrollBarStyle = InitializePartStyle(ScrollBarStyle.ForwardingDefinition, nameof(ScrollBarStyle));
@@ -235,6 +258,354 @@ public sealed class Document: CompositeControlBase, IStyled<DocumentStyle>
 
     /// <summary>Gets projected embedded-control rectangles for the private presenter.</summary>
     internal IReadOnlyList<DocumentControlPlacement> ControlPlacements => _layout.ControlPlacements;
+
+    /// <summary>Refreshes embedded selection geometry after the private presenter arranges children.</summary>
+    /// <param name="contentOrigin">The absolute origin of document content coordinates.</param>
+    internal void RefreshSelectionGeometry(Point contentOrigin) =>
+        RefreshSelectionGeometryCore(contentOrigin);
+
+    private void RefreshSelectionGeometryCore(Point contentOrigin)
+    {
+        if (_layout.RefreshSelectionGeometry(contentOrigin))
+        {
+            AdoptSelectionMap(_layout.SelectionMap);
+            return;
+        }
+
+        // A source may commit new text as part of its own ArrangeOverride without raising another
+        // invalidation. Rebuild once against the now-arranged subtree so the semantic transaction,
+        // source versions, and final geometry all commit before the outer arrange returns.
+        var layout = new DocumentLayout();
+        layout.Build(Blocks, _layoutWidth, CellPolicy.AmbiguousWidth, ActualStyle.Glyphs);
+        _ = layout.RefreshSelectionGeometry(contentOrigin);
+        CommitSelectionProjection(layout);
+        AdoptSelectionMap(layout.SelectionMap);
+    }
+
+    /// <summary>Gets the current semantic selection map for behavioral invariant tests.</summary>
+    /// <remarks>
+    /// This internal seam proves that logical text, grapheme geometry, source identity, and row hit
+    /// testing are rebuilt together without prematurely exposing Document's public selection API.
+    /// </remarks>
+    internal DocumentSelectionMap SelectionMap => _layout.SelectionMap;
+
+    /// <summary>Gets the pointer-selection phase for mounted cleanup invariant tests.</summary>
+    /// <remarks>
+    /// This internal seam proves handled releases and unavailability cannot strand capture-backed
+    /// gesture state. It does not expose selection arbitration as public control state.
+    /// </remarks>
+    internal DocumentSelectionGesturePhase SelectionGesturePhase => _selectionGesture.Phase;
+
+    /// <summary>Gets whether keyboard navigation currently retains exact visual-boundary geometry.</summary>
+    /// <remarks>This internal seam proves geometry affinity is discarded across projection identity changes.</remarks>
+    internal bool HasSelectionCaretGeometryAffinity => _selectionCaretGeometryAffinity is not null;
+
+    #endregion
+
+    #region Selection
+
+    /// <summary>Creates an authoritative snapshot of the complete normalized semantic stream and
+    /// the currently visible document glyphs.</summary>
+    /// <returns>
+    /// An independently owned snapshot whose rectangles use document-local terminal-cell
+    /// coordinates. Semantic separators and clipped graphemes remain in its text without geometry.
+    /// </returns>
+    /// <remarks>
+    /// The projection is independent of this document's local selection. Reading an invalidated
+    /// projection may synchronously rebuild semantic layout and clear a selection made stale by
+    /// content mutation; it does not otherwise change selection state.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached document is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
+    public new SelectableTextSnapshot GetSelectableTextSnapshot()
+    {
+        VerifyMutable();
+        var map = EnsureSelectionProjection();
+        var clip = GetDescendantSelectableTextInheritedClip(_surface);
+        var contentBounds = _surface.ContentBounds;
+        var glyphs = new List<SelectableTextGlyph>(map.Glyphs.Count);
+
+        foreach (var glyph in map.Glyphs)
+        {
+            var absolute = new Rect(
+                AddCoordinates(contentBounds.X, glyph.Bounds.X),
+                AddCoordinates(contentBounds.Y, glyph.Bounds.Y),
+                glyph.Bounds.Width,
+                glyph.Bounds.Height);
+
+            if (!ContainsCompleteSelectionGlyph(clip, absolute))
+            {
+                continue;
+            }
+
+            glyphs.Add(new SelectableTextGlyph(
+                glyph.Range,
+                new Rect(
+                    Difference(absolute.X, Bounds.X),
+                    Difference(absolute.Y, Bounds.Y),
+                    absolute.Width,
+                    absolute.Height)));
+        }
+
+        return new SelectableTextSnapshot(map.Text, glyphs, isAuthoritative: true);
+    }
+
+    /// <inheritdoc/>
+    public Rect SelectableTextViewport
+    {
+        get
+        {
+            VerifyMutable();
+            var viewport = SelectionViewportBounds();
+            return new Rect(
+                Difference(viewport.X, Bounds.X),
+                Difference(viewport.Y, Bounds.Y),
+                viewport.Width,
+                viewport.Height);
+        }
+    }
+
+    /// <inheritdoc/>
+    public bool RevealSelectableTextOffset(int offset)
+    {
+        VerifyMutable();
+        var projection = PrepareSelectionProjection();
+        Edit.Validate(projection.Map.Text, new Selection(offset, offset));
+        CommitSelectionProjection(projection.Layout);
+        AdoptSelectionMap(projection.Map);
+
+        if (!projection.Map.TryGetCaretGeometry(offset, out var bounds, out _))
+        {
+            return false;
+        }
+
+        var target = VerticalOffset;
+
+        if (bounds.Y < target)
+        {
+            target = bounds.Y;
+        }
+        else if (Viewport.Height > 0 && bounds.Y >= AddCoordinates(target, Viewport.Height))
+        {
+            target = bounds.Y - Viewport.Height + 1;
+        }
+
+        return Apply(target, ScrollCause.Programmatic);
+    }
+
+    /// <inheritdoc/>
+    public bool ScrollSelectableTextViewport(int horizontal, int vertical)
+    {
+        VerifyMutable();
+        return _stack.ScrollBy(horizontal, vertical, ScrollCause.Pointer);
+    }
+
+    [Pure]
+    private static bool ContainsCompleteSelectionGlyph(Rect clip, Rect candidate) =>
+        candidate.X >= clip.X && candidate.Y >= clip.Y &&
+        (long) candidate.X + candidate.Width <= (long) clip.X + clip.Width &&
+        (long) candidate.Y + candidate.Height <= (long) clip.Y + clip.Height;
+
+    /// <summary>Gets the current directional selection over the normalized semantic document stream.</summary>
+    /// <remarks>
+    /// Endpoints are UTF-16 grapheme boundaries. Reading an invalidated document projection rebuilds
+    /// semantic layout synchronously before returning, so content mutation cannot expose stale offsets.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached document is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
+    public Selection Selection
+    {
+        get
+        {
+            VerifyMutable();
+            _ = EnsureSelectionProjection();
+            return _selection;
+        }
+        private set => _selection = value;
+    }
+
+    /// <summary>Gets an owned copy of the selected normalized semantic text, or an empty string.</summary>
+    /// <exception cref="InvalidOperationException">The attached document is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
+    public string SelectedText
+    {
+        get
+        {
+            VerifyMutable();
+            var map = EnsureSelectionProjection();
+            return _selection.IsEmpty
+                ? string.Empty
+                : map.Text.Substring(_selection.Start, _selection.Length);
+        }
+    }
+
+    /// <summary>Raised after the directional semantic selection commits to a different value.</summary>
+    /// <remarks>The event runs synchronously on the owning dispatcher after state commits.</remarks>
+    public event EventHandler? SelectionChanged;
+
+    /// <summary>Replaces the selection with validated UTF-16 grapheme-boundary endpoints.</summary>
+    /// <param name="selection">The proposed directional semantic selection.</param>
+    /// <exception cref="ArgumentOutOfRangeException">An endpoint exceeds the semantic text length.</exception>
+    /// <exception cref="ArgumentException">An endpoint splits an extended grapheme cluster.</exception>
+    /// <exception cref="InvalidOperationException">The attached document is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
+    public void SetSelection(Selection selection)
+    {
+        VerifyMutable();
+        var projection = PrepareSelectionProjection();
+        Edit.Validate(projection.Map.Text, selection);
+        CommitSelectionProjection(projection.Layout);
+        AdoptSelectionMap(projection.Map);
+        ResetSelectionDesiredColumn();
+        _selectionCaretEstablished = true;
+        CommitSelection(selection);
+    }
+
+    /// <summary>Selects the complete normalized semantic document stream.</summary>
+    /// <exception cref="InvalidOperationException">The attached document is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
+    public void SelectAll()
+    {
+        VerifyMutable();
+        var projection = PrepareSelectionProjection();
+        CommitSelectionProjection(projection.Layout);
+        AdoptSelectionMap(projection.Map);
+        ResetSelectionDesiredColumn();
+        _selectionCaretEstablished = true;
+        CommitSelection(new Selection(0, projection.Map.Text.Length));
+    }
+
+    /// <summary>Collapses the selection to its current active caret endpoint.</summary>
+    /// <exception cref="InvalidOperationException">The attached document is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
+    public void ClearSelection()
+    {
+        VerifyMutable();
+        _ = EnsureSelectionProjection();
+        ResetSelectionDesiredColumn();
+        _selectionCaretEstablished = true;
+        CommitSelection(new Selection(_selection.Caret, _selection.Caret));
+    }
+
+    /// <summary>Copies selected semantic text without publishing clipboard or terminal state.</summary>
+    /// <returns>An independently owned string, or empty when the selection is collapsed.</returns>
+    /// <exception cref="InvalidOperationException">The attached document is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
+    [Pure]
+    public string CopySelection() => SelectedText;
+
+    private DocumentSelectionMap EnsureSelectionProjection()
+    {
+        var projection = PrepareSelectionProjection();
+        CommitSelectionProjection(projection.Layout);
+        AdoptSelectionMap(projection.Map);
+
+        return projection.Map;
+    }
+
+    private (DocumentLayout? Layout, DocumentSelectionMap Map) PrepareSelectionProjection()
+    {
+        if (_layoutValid && SelectionSourcesAreCurrent())
+        {
+            return (null, _layout.SelectionMap);
+        }
+
+        var layout = new DocumentLayout();
+        layout.Build(
+            Blocks,
+            _layoutWidth >= 0 ? _layoutWidth : _unboundedWidth,
+            CellPolicy.AmbiguousWidth,
+            ActualStyle.Glyphs);
+        return (layout, layout.SelectionMap);
+    }
+
+    private bool SelectionSourcesAreCurrent()
+    {
+        foreach (var source in _layout.SelectionMap.Sources)
+        {
+            if (source.Source is not ControlBase control ||
+                control.IsDisposed ||
+                source.Source.SelectableTextVersion != source.InvalidationVersion)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void CommitSelectionProjection(DocumentLayout? layout)
+    {
+        if (layout is null)
+        {
+            return;
+        }
+
+        var activeLink = ActiveLink;
+        _layout = layout;
+        _layoutValid = true;
+        _layoutWidth = _layoutWidth >= 0 ? _layoutWidth : _unboundedWidth;
+        _layoutGlyphs = ActualStyle.Glyphs;
+        _layoutAmbiguousWidth = CellPolicy.AmbiguousWidth;
+        RestoreActiveLink(activeLink);
+    }
+
+    private void AdoptSelectionMap(DocumentSelectionMap map)
+    {
+        Debug.Assert(map is not null, "A committed document layout always has a selection map.");
+
+        if (_selectionSemanticMap.Fingerprint == map.Fingerprint &&
+            SemanticallyEquals(_selectionSemanticMap, map))
+        {
+            _selectionSemanticMap = map;
+            return;
+        }
+
+        _selectionSemanticMap = map;
+        _selectionCaretEstablished = false;
+        ResetSelectionDesiredColumn();
+
+        if (_selection != default)
+        {
+            CommitSelection(default);
+        }
+    }
+
+    private static bool SemanticallyEquals(DocumentSelectionMap previous, DocumentSelectionMap current)
+    {
+        if (!string.Equals(previous.Text, current.Text, StringComparison.Ordinal) ||
+            previous.Sources.Count != current.Sources.Count)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < previous.Sources.Count; index++)
+        {
+            var left = previous.Sources[index];
+            var right = current.Sources[index];
+
+            if (!ReferenceEquals(left.Source, right.Source) ||
+                left.Range != right.Range ||
+                !string.Equals(left.Text, right.Text, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void CommitSelection(Selection selection)
+    {
+        if (_selection == selection)
+        {
+            return;
+        }
+
+        _selection = selection;
+        Invalidate();
+        SelectionChanged?.Invoke(this, EventArgs.Empty);
+    }
 
     #endregion
 
@@ -655,6 +1026,37 @@ public sealed class Document: CompositeControlBase, IStyled<DocumentStyle>
             (eventArgs.Stroke.Modifiers & Modifiers.Shift) == 0);
     }
 
+    private void OnPointerRouted(object? sender, PointerEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.Phase != RoutingPhase.Preview)
+        {
+            return;
+        }
+
+        if (eventArgs.IsHandled)
+        {
+            _selectionGesture.HandleHandledPreview(eventArgs);
+            return;
+        }
+
+        if (EffectiveIsEnabled && EffectiveIsVisible)
+        {
+            _selectionGesture.HandlePreview(eventArgs);
+        }
+    }
+
+    private void OnTerminalFocusRouted(object? sender, TerminalFocusEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.Phase == RoutingPhase.Preview && !eventArgs.Focus.Gained)
+        {
+            _selectionGesture.Cancel(releaseCapture: false);
+        }
+    }
+
     /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
@@ -682,10 +1084,21 @@ public sealed class Document: CompositeControlBase, IStyled<DocumentStyle>
 
     private void HandleKey(KeyEventArgs eventArgs)
     {
+        if (eventArgs.IsHandled)
+        {
+            return;
+        }
+
         var stroke = eventArgs.Stroke;
 
         if (stroke.Action is not (KeyAction.Press or KeyAction.Repeat))
         {
+            return;
+        }
+
+        if (IsFocused && TryHandleSelectionKey(stroke))
+        {
+            eventArgs.IsHandled = true;
             return;
         }
 
@@ -731,6 +1144,296 @@ public sealed class Document: CompositeControlBase, IStyled<DocumentStyle>
         }
     }
 
+    private bool TryHandleSelectionKey(Stroke stroke)
+    {
+        var modifiers = stroke.Modifiers & ~(Modifiers.CapsLock | Modifiers.NumLock);
+
+        if (stroke.Action == KeyAction.Press &&
+            stroke.Code == Code.Character &&
+            stroke.Character is { } character &&
+            Rune.ToLowerInvariant(character) == new Rune('a') &&
+            modifiers == Modifiers.Control)
+        {
+            SelectAll();
+            RevealSelectionCaret();
+            return true;
+        }
+
+        if (!_selectionCaretEstablished || modifiers != Modifiers.Shift)
+        {
+            return false;
+        }
+
+        var map = EnsureSelectionProjection();
+        var caret = _selection.Caret;
+        int target;
+
+        if (stroke.Code == Code.Left)
+        {
+            target = map.PreviousBoundary(caret);
+            ResetSelectionDesiredColumn();
+        }
+        else if (stroke.Code == Code.Right)
+        {
+            target = map.NextBoundary(caret);
+            ResetSelectionDesiredColumn();
+        }
+        else if (stroke.Code == Code.Up)
+        {
+            target = MoveSelectionVertically(map, caret, -1);
+        }
+        else if (stroke.Code == Code.Down)
+        {
+            target = MoveSelectionVertically(map, caret, 1);
+        }
+        else if (stroke.Code == Code.Home)
+        {
+            ResetSelectionDesiredColumn();
+            _ = map.TryGetVisualLineBoundary(caret, end: false, out target, out var bounds, out _);
+            SetSelectionCaretGeometryAffinity(map, target, bounds);
+        }
+        else if (stroke.Code == Code.End)
+        {
+            ResetSelectionDesiredColumn();
+            _ = map.TryGetVisualLineBoundary(caret, end: true, out target, out var bounds, out _);
+            SetSelectionCaretGeometryAffinity(map, target, bounds);
+        }
+        else if (stroke.Code == Code.PageUp)
+        {
+            target = MoveSelectionVertically(map, caret, -Math.Max(1, Viewport.Height - PageOverlap));
+        }
+        else if (stroke.Code == Code.PageDown)
+        {
+            target = MoveSelectionVertically(map, caret, Math.Max(1, Viewport.Height - PageOverlap));
+        }
+        else
+        {
+            return false;
+        }
+
+        var fingerprint = map.Fingerprint;
+        var next = new Selection(_selection.Anchor, target);
+        CommitSelection(next);
+
+        // SelectionChanged and every scrolling callback are synchronous extension points. Never
+        // continue revealing geometry when either callback replaced the projection or selection.
+        if (CanContinueKeyboardReveal() &&
+            _selection == next && EnsureSelectionProjection().Fingerprint == fingerprint)
+        {
+            RevealSelectionCaret();
+        }
+
+        return true;
+    }
+
+    private int MoveSelectionVertically(DocumentSelectionMap map, int caret, int rows)
+    {
+        if (map.VisualRowCount == 0)
+        {
+            return caret;
+        }
+
+        if (!_selectionDesiredRow.HasValue)
+        {
+            if (!map.TryGetVisualPosition(caret, out var row, out var column))
+            {
+                return caret;
+            }
+
+            _selectionDesiredRow = row;
+            _selectionDesiredColumn = column;
+        }
+
+        var targetRow = (int) Math.Clamp((long) _selectionDesiredRow.Value + rows, 0, map.VisualRowCount - 1);
+        _selectionDesiredRow = targetRow;
+        return map.OffsetAtVisualColumn(targetRow, _selectionDesiredColumn.GetValueOrDefault());
+    }
+
+    private void RevealSelectionCaret()
+    {
+        if (!CanContinueKeyboardReveal())
+        {
+            return;
+        }
+
+        var expectedSelection = _selection;
+        var map = EnsureSelectionProjection();
+        DiscardStaleSelectionCaretGeometryAffinity(map);
+        var expectedFingerprint = map.Fingerprint;
+        var caret = expectedSelection.Caret;
+
+        _ = map.TryGetCaretGeometry(caret, out _, out var source);
+
+        if (source is { Viewport: { } viewport } && IsSelectionSourceEligible(source))
+        {
+            var localOffset = Math.Clamp(caret - source.Range.Start, 0, source.Text.Length);
+            _ = viewport.RevealSelectableTextOffset(localOffset);
+
+            if (!TryContinueKeyboardReveal(expectedSelection, expectedFingerprint, out map))
+            {
+                return;
+            }
+        }
+
+        Rect caretBounds;
+        if (_selectionCaretGeometryAffinity is { } affinity &&
+            _selectionCaretGeometryAffinityOffset == caret &&
+            ReferenceEquals(_selectionCaretGeometryAffinityMap, map))
+        {
+            caretBounds = affinity;
+        }
+        else if (!map.TryGetCaretGeometry(caret, out caretBounds, out _))
+        {
+            return;
+        }
+
+        var previousOffset = VerticalOffset;
+        var row = caretBounds.Y;
+
+        if (row < VerticalOffset)
+        {
+            _ = Apply(row, ScrollCause.Keyboard);
+        }
+        else if (Viewport.Height > 0 && row >= AddCoordinates(VerticalOffset, Viewport.Height))
+        {
+            _ = Apply(row - Viewport.Height + 1, ScrollCause.Keyboard);
+        }
+
+        if (!TryContinueKeyboardReveal(expectedSelection, expectedFingerprint, out map))
+        {
+            return;
+        }
+
+        if (_selectionCaretGeometryAffinity is { } refreshedAffinity &&
+            _selectionCaretGeometryAffinityOffset == caret &&
+            ReferenceEquals(_selectionCaretGeometryAffinityMap, map))
+        {
+            caretBounds = refreshedAffinity;
+        }
+        else if (!map.TryGetCaretGeometry(caret, out caretBounds, out _))
+        {
+            return;
+        }
+
+        var screenBounds = new Rect(
+            AddCoordinates(_surface.ContentBounds.X, caretBounds.X),
+            AddCoordinates(AddCoordinates(_surface.ContentBounds.Y, caretBounds.Y), previousOffset - VerticalOffset),
+            caretBounds.Width,
+            caretBounds.Height);
+        RevealSelectionCaretThroughAncestors(screenBounds, expectedSelection, expectedFingerprint);
+    }
+
+    private bool TryContinueKeyboardReveal(
+        Selection expectedSelection,
+        ulong expectedFingerprint,
+        out DocumentSelectionMap map)
+    {
+        map = EnsureSelectionProjection();
+        DiscardStaleSelectionCaretGeometryAffinity(map);
+        return CanContinueKeyboardReveal() &&
+               _selection == expectedSelection &&
+               map.Fingerprint == expectedFingerprint;
+    }
+
+    private bool CanContinueKeyboardReveal() =>
+        IsFocused && !IsDisposed && EffectiveIsEnabled && EffectiveIsVisible;
+
+    private void RevealSelectionCaretThroughAncestors(
+        Rect screenBounds,
+        Selection expectedSelection,
+        ulong expectedFingerprint)
+    {
+        for (var current = Parent; current is not null; current = current.Parent)
+        {
+            if (!AllowsModalAncestor(current))
+            {
+                break;
+            }
+
+            if (current is not Container
+                {
+                    AutoScroll: true,
+                    EffectiveIsEnabled: true,
+                    EffectiveIsVisible: true
+                } container)
+            {
+                continue;
+            }
+
+            var viewport = new Rect(
+                container.ContentBounds.X,
+                container.ContentBounds.Y,
+                container.Viewport.Width,
+                container.Viewport.Height);
+            var horizontal = RevealDelta(screenBounds.X, screenBounds.Width, viewport.X, viewport.Width);
+            var vertical = RevealDelta(screenBounds.Y, screenBounds.Height, viewport.Y, viewport.Height);
+            horizontal = (container.ScrollBars & ScrollBars.Horizontal) != 0 ? horizontal : 0;
+            vertical = (container.ScrollBars & ScrollBars.Vertical) != 0 ? vertical : 0;
+
+            if (horizontal == 0 && vertical == 0)
+            {
+                continue;
+            }
+
+            var previousHorizontal = container.HorizontalOffset;
+            var previousVertical = container.VerticalOffset;
+            _ = container.ScrollBy(horizontal, vertical, ScrollCause.Keyboard);
+            screenBounds = new Rect(
+                AddCoordinates(screenBounds.X, previousHorizontal - container.HorizontalOffset),
+                AddCoordinates(screenBounds.Y, previousVertical - container.VerticalOffset),
+                screenBounds.Width,
+                screenBounds.Height);
+
+            if (!TryContinueKeyboardReveal(expectedSelection, expectedFingerprint, out _))
+            {
+                return;
+            }
+        }
+    }
+
+    [Pure]
+    private static int RevealDelta(int start, int length, int viewportStart, int viewportLength)
+    {
+        if (viewportLength <= 0 || start < viewportStart)
+        {
+            return start - viewportStart;
+        }
+
+        var end = (long) start + length;
+        var viewportEnd = (long) viewportStart + viewportLength;
+        return end > viewportEnd ? (int) Math.Clamp(end - viewportEnd, int.MinValue, int.MaxValue) : 0;
+    }
+
+    private void ResetSelectionDesiredColumn()
+    {
+        _selectionDesiredColumn = null;
+        _selectionDesiredRow = null;
+        _selectionCaretGeometryAffinity = null;
+        _selectionCaretGeometryAffinityMap = null;
+    }
+
+    private void SetSelectionCaretGeometryAffinity(DocumentSelectionMap map, int offset, Rect bounds)
+    {
+        if (bounds.Width <= 0 || bounds.Height <= 0)
+        {
+            return;
+        }
+
+        _selectionCaretGeometryAffinity = bounds;
+        _selectionCaretGeometryAffinityMap = map;
+        _selectionCaretGeometryAffinityOffset = offset;
+    }
+
+    private void DiscardStaleSelectionCaretGeometryAffinity(DocumentSelectionMap map)
+    {
+        if (_selectionCaretGeometryAffinity is not null &&
+            !ReferenceEquals(_selectionCaretGeometryAffinityMap, map))
+        {
+            _selectionCaretGeometryAffinity = null;
+            _selectionCaretGeometryAffinityMap = null;
+        }
+    }
+
     // Reported handled whenever the document has anything to scroll, even when already at the
     // boundary, so the keystroke cannot escape and page an enclosing scrollable container out from
     // under the still-focused document.
@@ -758,36 +1461,21 @@ public sealed class Document: CompositeControlBase, IStyled<DocumentStyle>
 
     private void HandlePointer(PointerEventArgs eventArgs)
     {
-        if (eventArgs.Pointer is not
-            {
-                Action: PointerAction.Press,
-                Buttons: var buttons,
-                Cells: { } cells
-            } ||
-            (buttons & Buttons.Primary) == 0)
+        if (eventArgs.Pointer.Action != PointerAction.Release ||
+            _selectionGesture.TakeReleasedLink(eventArgs) is not { IsEnabled: true } link)
         {
             return;
         }
 
-        var bounds = _surface.Bounds;
-
-        if (!bounds.Contains(cells))
+        for (var index = 0; index < _layout.Links.Count; index++)
         {
-            return;
-        }
-
-        var line = cells.Y - bounds.Y;
-        var column = cells.X - bounds.X;
-
-        foreach (var region in _layout.LinkRegions)
-        {
-            if (region.Line != line || !region.Contains(column) || !_layout.Links[region.LinkIndex].IsEnabled)
+            if (!ReferenceEquals(_layout.Links[index], link))
             {
                 continue;
             }
 
-            ActiveLinkIndex = region.LinkIndex;
-            _activeLink = _layout.Links[region.LinkIndex];
+            ActiveLinkIndex = index;
+            _activeLink = link;
             _ = Focus();
             InvalidateActiveLinkAppearance();
             _ = ActivateLink();
@@ -795,6 +1483,352 @@ public sealed class Document: CompositeControlBase, IStyled<DocumentStyle>
             return;
         }
     }
+
+    /// <summary>Gets whether one routed source belongs to the projected document content.</summary>
+    /// <param name="source">The original routed pointer source.</param>
+    /// <returns>True for the private surface or an embedded retained descendant.</returns>
+    internal bool IsSelectionContentSource(ControlBase? source)
+    {
+        for (var current = source; current is not null && !ReferenceEquals(current, this); current = current.Parent)
+        {
+            if (ReferenceEquals(current, _presenter))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Hit-tests one screen cell against the current semantic selection map.</summary>
+    /// <param name="cells">The pointer's screen-cell coordinate.</param>
+    /// <returns>A grapheme-aligned semantic endpoint.</returns>
+    internal int HitTestSelection(Point cells)
+    {
+        var map = EnsureSelectionProjection();
+        var bounds = _surface.ContentBounds;
+        return map.HitTest(new Point(Difference(cells.X, bounds.X), Difference(cells.Y, bounds.Y)));
+    }
+
+    /// <summary>Gets the semantic and ordered-source identity of the current selection projection.</summary>
+    internal ulong SelectionFingerprint => EnsureSelectionProjection().Fingerprint;
+
+    /// <summary>Hit-tests a drag coordinate clamped to the currently visible document viewport.</summary>
+    /// <param name="cells">The retained screen-cell coordinate, which may lie outside the viewport.</param>
+    /// <returns>A grapheme-aligned semantic endpoint at the visible edge.</returns>
+    internal int HitTestSelectionForDrag(Point cells)
+    {
+        var map = EnsureSelectionProjection();
+        var viewport = SelectionViewportBounds();
+        var x = ClampToViewportAxis(cells.X, viewport.X, viewport.Width);
+        var y = ClampToViewportAxis(cells.Y, viewport.Y, viewport.Height);
+        return map.HitTest(new Point(
+            Difference(x, viewport.X),
+            AddCoordinates(Difference(y, viewport.Y), VerticalOffset)));
+    }
+
+    /// <summary>Resolves the embedded selection source containing an original routed descendant.</summary>
+    /// <param name="originalSource">The original routed control.</param>
+    /// <param name="cells">The pointer coordinate used as a geometry fallback.</param>
+    /// <returns>The nearest embedded source, or null for document-owned text.</returns>
+    internal DocumentSelectionSource? SelectionSourceFor(ControlBase? originalSource, Point cells)
+    {
+        var map = EnsureSelectionProjection();
+
+        for (var current = originalSource; current is not null && !ReferenceEquals(current, this); current = current.Parent)
+        {
+            foreach (var source in map.Sources)
+            {
+                if (ReferenceEquals(source.Source, current) && IsSelectionSourceEligible(source))
+                {
+                    return source;
+                }
+            }
+        }
+
+        return SelectionSourceAt(cells);
+    }
+
+    /// <summary>Finds the innermost selectable viewport currently containing one pointer cell.</summary>
+    /// <param name="cells">The pointer's screen-cell coordinate.</param>
+    /// <returns>The matching source, or null.</returns>
+    internal DocumentSelectionSource? SelectionSourceAt(Point cells)
+    {
+        var map = EnsureSelectionProjection();
+
+        for (var index = map.Sources.Count - 1; index >= 0; index--)
+        {
+            var source = map.Sources[index];
+
+            if (IsSelectionSourceEligible(source) &&
+                TrySourceViewportBounds(source, out var bounds) &&
+                bounds.Contains(cells))
+            {
+                return source;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Reconciles one captured source occurrence against the current semantic projection.</summary>
+    /// <param name="source">The previously associated source occurrence, or null.</param>
+    /// <param name="cells">The retained pointer cell used when no prior occurrence remains.</param>
+    /// <returns>The current eligible exact occurrence, a source under the pointer, or null.</returns>
+    internal DocumentSelectionSource? ResolveSelectionSource(DocumentSelectionSource? source, Point cells)
+    {
+        if (source is null)
+        {
+            return SelectionSourceAt(cells);
+        }
+
+        var map = EnsureSelectionProjection();
+        var candidate = map.ResolveSourceOccurrence(source);
+        return candidate is not null && IsSelectionSourceEligible(candidate)
+            ? candidate
+            : SelectionSourceAt(cells);
+    }
+
+    /// <summary>Gets whether an active drag lies beyond an eligible nested, document, or ancestor viewport edge.</summary>
+    /// <param name="cells">The retained pointer cell.</param>
+    /// <param name="associatedSource">The nearest nested selectable source, or null.</param>
+    /// <returns>True when a deterministic timer should remain armed.</returns>
+    internal bool HasSelectionAutoScrollRequest(Point cells, DocumentSelectionSource? associatedSource) =>
+        ResolveSelectionAutoScroll(cells, associatedSource, apply: false, out _);
+
+    /// <summary>Offers one edge-scroll attempt from the innermost selectable viewport outward.</summary>
+    /// <param name="cells">The retained pointer cell.</param>
+    /// <param name="associatedSource">The nearest nested selectable source, or null.</param>
+    /// <param name="hitAdjustment">Receives the cell translation needed before deferred ancestor arrangement.</param>
+    /// <returns>True when one viewport offset changed.</returns>
+    internal bool AutoScrollSelection(
+        Point cells,
+        DocumentSelectionSource? associatedSource,
+        out Point hitAdjustment)
+        => ResolveSelectionAutoScroll(cells, associatedSource, apply: true, out hitAdjustment);
+
+    private bool ResolveSelectionAutoScroll(
+        Point cells,
+        DocumentSelectionSource? associatedSource,
+        bool apply,
+        out Point hitAdjustment)
+    {
+        hitAdjustment = default;
+        var documentBounds = SelectionViewportBounds();
+        var (_, vertical) = AutoScrollDelta(cells, documentBounds);
+        var horizontal = 0;
+        var hasPropagatedRequest = false;
+
+        if (associatedSource is { Viewport: { } sourceViewport } &&
+            TrySourceViewportBounds(associatedSource, out var sourceBounds))
+        {
+            (horizontal, vertical) = AutoScrollDelta(cells, sourceBounds);
+            hasPropagatedRequest = horizontal != 0 || vertical != 0;
+
+            if (hasPropagatedRequest && (!apply || sourceViewport.ScrollSelectableTextViewport(horizontal, vertical)))
+            {
+                return true;
+            }
+        }
+
+        if (vertical != 0)
+        {
+            if (!apply)
+            {
+                return true;
+            }
+
+            var previousVertical = VerticalOffset;
+
+            if (ScrollBy(vertical, ScrollCause.Pointer))
+            {
+                // The stack commits its offset before the translated surface is arranged. Apply
+                // the logical delta to this tick's pointer hit so upward and downward movement
+                // both observe the newly exposed edge immediately.
+                hitAdjustment = new Point(0, Difference(VerticalOffset, previousVertical));
+                return true;
+            }
+
+            hasPropagatedRequest = true;
+        }
+
+        for (var current = Parent; current is not null; current = current.Parent)
+        {
+            if (!AllowsModalAncestor(current))
+            {
+                break;
+            }
+
+            if (current is not Container
+                {
+                    AutoScroll: true,
+                    EffectiveIsEnabled: true,
+                    EffectiveIsVisible: true
+                } container)
+            {
+                continue;
+            }
+
+            if (!hasPropagatedRequest)
+            {
+                (horizontal, vertical) = AutoScrollDelta(
+                    cells,
+                    new Rect(container.ContentBounds.X, container.ContentBounds.Y,
+                        container.Viewport.Width, container.Viewport.Height));
+            }
+
+            horizontal = (container.ScrollBars & ScrollBars.Horizontal) != 0 ? horizontal : 0;
+            vertical = (container.ScrollBars & ScrollBars.Vertical) != 0 ? vertical : 0;
+
+            if (horizontal == 0 && vertical == 0)
+            {
+                continue;
+            }
+
+            hasPropagatedRequest = true;
+
+            if (!apply)
+            {
+                return true;
+            }
+
+            var previousHorizontal = container.HorizontalOffset;
+            var previousVertical = container.VerticalOffset;
+
+            if (container.ScrollBy(horizontal, vertical, ScrollCause.Pointer))
+            {
+                // Container offsets commit before translated descendant arrangement. Adjust this
+                // tick's retained screen coordinate by the committed logical delta so the caret
+                // observes the newly exposed cells immediately rather than one period later.
+                hitAdjustment = new Point(
+                    Difference(container.HorizontalOffset, previousHorizontal),
+                    Difference(container.VerticalOffset, previousVertical));
+                return true;
+            }
+        }
+
+        return hasPropagatedRequest && !apply;
+    }
+
+    private Rect SelectionViewportBounds()
+    {
+        var content = _surface.ContentBounds;
+        return new Rect(
+            content.X,
+            AddCoordinates(content.Y, VerticalOffset),
+            Viewport.Width,
+            Viewport.Height);
+    }
+
+    private bool IsSelectionSourceEligible(DocumentSelectionSource source) =>
+        source.Viewport is not null &&
+        source.Source is ControlBase
+        {
+            IsDisposed: false,
+            EffectiveIsEnabled: true,
+            EffectiveIsVisible: true
+        } control &&
+        IsSelectionContentSource(control);
+
+    private bool TrySourceViewportBounds(DocumentSelectionSource source, out Rect bounds)
+    {
+        if (source.Viewport is null || source.Source is not ControlBase { IsDisposed: false } control)
+        {
+            bounds = default;
+            return false;
+        }
+
+        var local = source.Viewport.SelectableTextViewport;
+        var raw = new Rect(
+            AddCoordinates(control.Bounds.X, local.X),
+            AddCoordinates(control.Bounds.Y, local.Y),
+            local.Width,
+            local.Height);
+        bounds = raw.Intersect(GetDescendantSelectableTextInheritedClip(control));
+        return bounds.Width > 0 && bounds.Height > 0;
+    }
+
+    private static (int Horizontal, int Vertical) AutoScrollDelta(Point cells, Rect viewport) =>
+        (AutoScrollDelta(cells.X, viewport.X, viewport.Width),
+         AutoScrollDelta(cells.Y, viewport.Y, viewport.Height));
+
+    [Pure]
+    private static int AutoScrollDelta(int coordinate, int origin, int length)
+    {
+        if (length <= 0)
+        {
+            return 0;
+        }
+
+        if (coordinate < origin)
+        {
+            long distance = origin;
+            distance -= coordinate;
+            return -(int) Math.Clamp(distance, 1, 8);
+        }
+
+        var end = (long) origin + length;
+        return coordinate >= end
+            ? (int) Math.Clamp(coordinate - end + 1, 1, 8)
+            : 0;
+    }
+
+    [Pure]
+    private static int ClampToViewportAxis(int coordinate, int origin, int length)
+    {
+        long value = coordinate;
+        return length <= 0
+            ? origin
+            : (int) Math.Clamp(value, origin, (long) origin + length - 1);
+    }
+
+    /// <summary>Finds the enabled semantic link at one screen cell.</summary>
+    /// <param name="cells">The pointer's screen-cell coordinate.</param>
+    /// <returns>The enabled link under the cell, or null.</returns>
+    internal DocumentLink? LinkAt(Point cells)
+    {
+        var bounds = _surface.ContentBounds;
+        var line = Difference(cells.Y, bounds.Y);
+        var column = Difference(cells.X, bounds.X);
+
+        foreach (var region in _layout.LinkRegions)
+        {
+            if (region.Line == line &&
+                region.Contains(column) &&
+                _layout.Links[region.LinkIndex] is { IsEnabled: true } link)
+            {
+                return link;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Transfers exclusive pointer capture to this document.</summary>
+    /// <returns>True when capture is owned after the request.</returns>
+    internal bool CaptureSelectionPointer() => CapturePointer();
+
+    /// <summary>Releases exclusive capture only when this document owns it.</summary>
+    internal void ReleaseSelectionPointerCapture()
+    {
+        if (HasPointerCapture)
+        {
+            ReleasePointerCapture();
+        }
+    }
+
+    /// <summary>Commits a hit-tested directional selection without repeating public validation.</summary>
+    /// <param name="anchor">The grapheme-aligned anchor endpoint.</param>
+    /// <param name="caret">The grapheme-aligned active endpoint.</param>
+    internal void CommitPointerSelection(int anchor, int caret)
+    {
+        _selectionCaretEstablished = true;
+        ResetSelectionDesiredColumn();
+        CommitSelection(new Selection(anchor, caret));
+    }
+
+    private static int Difference(int left, int right) =>
+        (int) Math.Clamp((long) left - right, int.MinValue, int.MaxValue);
 
     #endregion
 
@@ -827,6 +1861,7 @@ public sealed class Document: CompositeControlBase, IStyled<DocumentStyle>
             _layoutWidth = effective;
             _layoutGlyphs = glyphs;
             _layoutAmbiguousWidth = ambiguousWidth;
+            AdoptSelectionMap(_layout.SelectionMap);
             RestoreActiveLink(activeLink);
         }
 
@@ -852,6 +1887,43 @@ public sealed class Document: CompositeControlBase, IStyled<DocumentStyle>
 
         RenderQuoteBars(canvas, bounds, first, last);
         RenderMarkers(canvas, bounds, first, last);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnRenderAdornment(TerminalCanvas canvas)
+    {
+        base.OnRenderAdornment(canvas);
+
+        if (_selection.IsEmpty)
+        {
+            return;
+        }
+
+        var background = BackgroundMode.Transparent;
+        var selectionStyle = Apply(ActualStyle.SelectionFace, ref background);
+        var contentBounds = _surface.ContentBounds;
+
+        foreach (var glyph in _layout.SelectionMap.Glyphs)
+        {
+            if (glyph.Range.Start < _selection.Start || glyph.Range.End > _selection.End)
+            {
+                continue;
+            }
+
+            canvas.ApplyCellStyle(
+                new Rect(
+                    AddCoordinates(contentBounds.X, glyph.Bounds.X),
+                    AddCoordinates(contentBounds.Y, glyph.Bounds.Y),
+                    glyph.Bounds.Width,
+                    glyph.Bounds.Height),
+                (_, current) => new TerminalStyle(
+                    selectionStyle.Foreground,
+                    selectionStyle.Background,
+                    selectionStyle.Attributes,
+                    current.Hyperlink,
+                    selectionStyle.Underline,
+                    selectionStyle.UnderlineColor));
+        }
     }
 
     private void RenderLine(TerminalCanvas canvas, Rect bounds, int lineIndex)
@@ -1228,19 +2300,43 @@ public sealed class Document: CompositeControlBase, IStyled<DocumentStyle>
         return index;
     }
 
+    [Pure]
+    private static int AddCoordinates(int left, int right) =>
+        (int) Math.Clamp((long) left + right, int.MinValue, int.MaxValue);
+
     #endregion
 
     #region Lifecycle
 
     /// <inheritdoc/>
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
+    {
+        base.OnLostPointerCapture(reason);
+        _selectionGesture.Cancel(releaseCapture: false);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnFocusChanged(bool focused)
+    {
+        base.OnFocusChanged(focused);
+
+        if (!focused && _selectionGesture.Phase == DocumentSelectionGesturePhase.Selecting)
+        {
+            _selectionGesture.Cancel(releaseCapture: true);
+        }
+    }
+
+    /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
+        _selectionGesture.Cancel(releaseCapture: false);
 
         if (reason == ReleaseReason.Disposed)
         {
             ScrollChanged = null;
             LinkClicked = null;
+            SelectionChanged = null;
         }
     }
 

@@ -89,6 +89,8 @@ export const SUITE_LEVEL_ALLOW_LIST = new Set([
   "SyntaxDefinitionCorpusTests", // whole-embedded-catalog sweep: parses and tokenizes all 160 syntax definitions, no single src subject
   "CuratedThemeDocumentStyleTests", // every bundled theme x DocumentStyle, no single src subject
   "ResponseContainerCompatibilityTests", // four core EventArgs types wrapping terminal-declared response types, no single src subject
+  "DocumentSelectionTests", // semantic projection and mutation contract spanning Document, nodes, and embedded selectable sources
+  "DocumentSelectionSurfaceTests", // routed selection, child arbitration, nested viewports, clipboard, styling, and timed autoscroll
 ]);
 
 /**

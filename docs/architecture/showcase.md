@@ -12,7 +12,7 @@ across the active shell and selected page, and across every simultaneously open
 menu/submenu path. The shell advertises `Alt+key`, while the Menu and GroupBox
 pages demonstrate invocation and focus transfer.
 
-The sidebar remains one arrow-key `NavigationView`. Its heading, groups, and 56
+The sidebar remains one arrow-key `NavigationView`. Its heading, groups, and 59
 catalog items set `UseMnemonic = false`, because no useful single-character
 assignment can be globally unique at that scale. The repeated `DocExample` and
 `C# recipe` structural chrome also opts out. Body prose and generated list data
@@ -75,7 +75,7 @@ blink remain isolated demonstrations rather than general documentation styling.
 
 `Gallery` owns the stable catalog of pane group names, titles, and factories
 (`(string Group, string Name, Func<CompositeControlBase> Create)[]`). The
-sidebar organizes its 56 entries by primary use:
+sidebar organizes its 59 entries by primary use:
 
 - Concepts: ControlBase, Border, Shadow, Data Binding, and Styling.
 - Input: Button, HyperlinkButton, Calendar, DateInput, DateTimeInput, CheckBox,
@@ -84,8 +84,8 @@ sidebar organizes its 56 entries by primary use:
 - Collections: JsonView, ListView, TabControl, Table, and TreeView.
 - Navigation: Menu, MenuItem, and NavigationView.
 - Layout: Dock, Expander, Grid, GroupBox, Overlay, ScrollBar, and Stack.
-- Display: Canvas drawing, FigletText, Image, Prism, Separator, StatusBar, and
-  Text.
+- Display: Canvas drawing, CodeView, Document, FigletText, Image, Markdown,
+  Prism, Separator, StatusBar, and Text.
 - Charts: HorizontalBarChart, VerticalBarChart, LineChart, AreaChart, and
   Sparkline.
 - Progress: ChaseIndicator, ProgressBar, and Spinner.
@@ -291,7 +291,7 @@ The showcase compiles with the solution as production code and uses only public
 library APIs. Behavioral, input, layout, rendering, and Unicode guarantees are
 proved by the terminal and UI suites at the library boundaries that own them;
 the checked-in live image demonstrates the runnable gallery but does not replace
-those automated contracts. Showcase tests enumerate the complete 56-page
+those automated contracts. Showcase tests enumerate the complete 59-page
 catalog, Control as the initial page, marked `Text` documentation coverage,
 fresh detached composite ownership, stable composition-root identity across the
 first layout, no pane inheriting `Container`, and the matching runtime control

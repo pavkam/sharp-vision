@@ -711,6 +711,185 @@ public sealed class TerminalCanvasTests
         frame.GetCell(new Point(1, 0)).ShouldBe(CellInfo.Blank);
     }
 
+    /// <summary>Verifies whole-style composition preserves wide ownership, glyph storage, and retained hyperlink identity.</summary>
+    /// <param name="selectedX">The lead or continuation cell selected by the requested region.</param>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void ApplyCellStyle_WhenRegionTouchesLinkedWideOwner_TransformsCompleteOwner(int selectedX)
+    {
+        // Arrange
+        using Frame frame = new(new Size(2, 1));
+        var hyperlink = new string("https://example.test/wide".ToCharArray());
+        var original = new CellStyle(
+            ReferenceColors.Get(1),
+            ReferenceColors.Get(2),
+            TerminalAttributes.Bold,
+            hyperlink,
+            Underline.Curly,
+            ReferenceColors.Get(3));
+        var replacement = new CellStyle(
+            ReferenceColors.Get(9),
+            ReferenceColors.Get(10),
+            TerminalAttributes.Italic | TerminalAttributes.Overline,
+            hyperlink,
+            Underline.Dotted,
+            ReferenceColors.Get(11));
+        _ = frame.Canvas.Draw("界", default, original);
+
+        // Act
+        frame.Canvas.ApplyCellStyle(new Rect(selectedX, 0, 1, 1), (_, _) => replacement);
+
+        // Assert
+        FrameTests.GetText(frame, default).ShouldBe("界");
+        frame.GetCell(default).Style.ShouldBe(replacement);
+        frame.GetCell(new Point(1, 0)).Style.ShouldBe(replacement);
+        frame.GetCell(default).Style.Hyperlink.ShouldBeSameAs(hyperlink);
+        frame.GetCell(new Point(1, 0)).Style.Hyperlink.ShouldBeSameAs(hyperlink);
+        frame.GetCell(new Point(1, 0)).Continuation.ShouldBeTrue();
+        frame.GetCell(new Point(1, 0)).Lead.ShouldBe(default);
+    }
+
+    /// <summary>Verifies the returned style replaces the hyperlink across a complete wide owner.</summary>
+    [Fact]
+    public void ApplyCellStyle_WhenSelectorReplacesHyperlink_AppliesReturnedHyperlinkToCompleteOwner()
+    {
+        // Arrange
+        using Frame frame = new(new Size(2, 1));
+        var originalHyperlink = new string("https://example.test/original".ToCharArray());
+        var replacementHyperlink = new string("https://example.test/replacement".ToCharArray());
+        var original = new CellStyle(hyperlink: originalHyperlink);
+        var replacement = new CellStyle(
+            ReferenceColors.Get(9),
+            ReferenceColors.Get(10),
+            TerminalAttributes.Italic,
+            replacementHyperlink);
+        _ = frame.Canvas.Draw("界", default, original);
+
+        // Act
+        frame.Canvas.ApplyCellStyle(new Rect(1, 0, 1, 1), (_, _) => replacement);
+
+        // Assert
+        frame.GetCell(default).Style.ShouldBe(replacement);
+        frame.GetCell(new Point(1, 0)).Style.ShouldBe(replacement);
+        frame.GetCell(default).Style.Hyperlink.ShouldBeSameAs(replacementHyperlink);
+        frame.GetCell(new Point(1, 0)).Style.Hyperlink.ShouldBeSameAs(replacementHyperlink);
+        frame.GetCell(default).Style.Hyperlink.ShouldNotBeSameAs(originalHyperlink);
+        FrameTests.GetText(frame, default).ShouldBe("界");
+        frame.GetCell(new Point(1, 0)).Continuation.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies complete stored owners are composed once in row-major order while untouched blanks remain untouched.</summary>
+    [Fact]
+    public void ApplyCellStyle_WhenRegionContainsStoredOwnersAndBlanks_VisitsOwnersOnceInRowMajorOrder()
+    {
+        // Arrange
+        using Frame frame = new(new Size(4, 2));
+        var first = new CellStyle(ReferenceColors.Get(1), ReferenceColors.Get(2));
+        var space = new CellStyle(ReferenceColors.Get(3), ReferenceColors.Get(4));
+        var wide = new CellStyle(ReferenceColors.Get(5), ReferenceColors.Get(6));
+        frame.Canvas.DrawRune(new Rune('A'), new Point(2, 0), first);
+        frame.Canvas.DrawRune(new Rune(' '), new Point(0, 1), space);
+        _ = frame.Canvas.Draw("界", new Point(2, 1), wide);
+        var untouchedIndex = frame.GetIndex(new Point(1, 0));
+        var untouchedRevision = frame.GetCellByIndex(untouchedIndex).MutationRevision;
+        var visited = new List<(Point Point, CellStyle Style)>();
+
+        // Act
+        frame.Canvas.ApplyCellStyle(
+            frame.Canvas.Bounds,
+            (point, style) =>
+            {
+                visited.Add((point, style));
+                return style.WithForeground(ReferenceColors.Get(12));
+            });
+
+        // Assert
+        visited.ShouldBe(
+        [
+            (new Point(2, 0), first),
+            (new Point(0, 1), space),
+            (new Point(2, 1), wide),
+        ]);
+        FrameTests.GetText(frame, new Point(0, 1)).ShouldBe(" ");
+        frame.GetCell(new Point(0, 1)).Style.Foreground.ShouldBe(ReferenceColors.Get(12));
+        frame.GetCell(new Point(2, 1)).Style.ShouldBe(frame.GetCell(new Point(3, 1)).Style);
+        frame.GetCellByIndex(untouchedIndex).MutationRevision.ShouldBe(untouchedRevision);
+        frame.GetCell(new Point(1, 0)).ShouldBe(CellInfo.Blank);
+    }
+
+    /// <summary>Verifies a partially clipped wide owner is skipped before selection or style mutation.</summary>
+    [Fact]
+    public void ApplyCellStyle_WhenClipExcludesPartOfWideOwner_SkipsOwnerAndSelector()
+    {
+        // Arrange
+        using Frame frame = new(new Size(2, 1));
+        var original = new CellStyle(ReferenceColors.Get(1), ReferenceColors.Get(2));
+        _ = frame.Canvas.Draw("界", default, original);
+        var calls = 0;
+
+        // Act
+        frame.Canvas.Clip(new Rect(1, 0, 1, 1)).ApplyCellStyle(
+            frame.Canvas.Bounds,
+            (_, style) =>
+            {
+                calls++;
+                return style.WithForeground(ReferenceColors.Get(9));
+            });
+
+        // Assert
+        calls.ShouldBe(0);
+        frame.GetCell(default).Style.ShouldBe(original);
+        frame.GetCell(new Point(1, 0)).Style.ShouldBe(original);
+    }
+
+    /// <summary>Verifies callback validation precedes frame lifetime validation and valid calls honor disposal.</summary>
+    [Fact]
+    public void ApplyCellStyle_WhenSelectorIsNullOrFrameIsDisposed_ThrowsInValidationOrder()
+    {
+        // Arrange
+        var frame = new Frame(new Size(1, 1));
+        var canvas = frame.Canvas;
+        frame.Dispose();
+
+        // Act
+        var nullThrown = Should.Throw<ArgumentNullException>(() =>
+            canvas.ApplyCellStyle(default, null!));
+        var disposedThrown = Should.Throw<ObjectDisposedException>(() =>
+            canvas.ApplyCellStyle(default, (_, style) => style));
+
+        // Assert
+        nullThrown.ParamName.ShouldBe("selector");
+        disposedThrown.ObjectName.ShouldBe(typeof(Frame).FullName);
+    }
+
+    /// <summary>Verifies selector failure propagates unchanged after committing only the completed traversal prefix.</summary>
+    [Fact]
+    public void ApplyCellStyle_WhenSelectorThrows_PreservesPrefixAndRemainingOwners()
+    {
+        // Arrange
+        using Frame frame = new(new Size(4, 1));
+        var original = new CellStyle(ReferenceColors.Get(1), ReferenceColors.Get(2));
+        _ = frame.Canvas.Draw("AB界", default, original);
+        var replacement = new CellStyle(ReferenceColors.Get(9), ReferenceColors.Get(10));
+        var failure = new InvalidOperationException("selector failed");
+
+        // Act
+        var thrown = Should.Throw<InvalidOperationException>(() =>
+            frame.Canvas.ApplyCellStyle(
+                frame.Canvas.Bounds,
+                (point, _) => point.X == 1 ? throw failure : replacement));
+
+        // Assert
+        thrown.ShouldBeSameAs(failure);
+        frame.GetCell(new Point(0, 0)).Style.ShouldBe(replacement);
+        frame.GetCell(new Point(1, 0)).Style.ShouldBe(original);
+        frame.GetCell(new Point(2, 0)).Style.ShouldBe(original);
+        frame.GetCell(new Point(3, 0)).Style.ShouldBe(original);
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("B");
+        FrameTests.GetText(frame, new Point(2, 0)).ShouldBe("界");
+    }
+
     /// <summary>Verifies a write-scoped effect leaves untouched stored owners unchanged inside its region.</summary>
     [Fact]
     public void DrawWithForeground_WhenDrawWritesSubset_PreservesUntouchedInRegionOwners()

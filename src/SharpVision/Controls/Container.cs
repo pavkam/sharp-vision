@@ -7,11 +7,13 @@ using Scrolling;
 
 using SharpVision.Terminal.Input;
 
+using SharpVision.Text;
+
 using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 
 /// <summary>Defines a mutable control that owns an ordered child collection.</summary>
 [PublicAPI]
-public abstract class Container: ControlBase
+public abstract class Container: ControlBase, ISelectableTextSource
 {
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
 
@@ -34,6 +36,28 @@ public abstract class Container: ControlBase
 
     /// <summary>Gets the owned ordered children.</summary>
     public ControlCollection Children { get; }
+
+    /// <inheritdoc/>
+    public SelectableTextSnapshot GetSelectableTextSnapshot()
+    {
+        VerifyMutable();
+        return SelectableTextAggregation.Create(this);
+    }
+
+    /// <inheritdoc/>
+    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    {
+        ArgumentNullException.ThrowIfNull(children);
+        children.AddRange(Children);
+        return true;
+    }
+
+    /// <inheritdoc/>
+    internal override Rect ResolveSelectableTextDescendantClip(Rect inheritedClip)
+    {
+        var clip = base.ResolveSelectableTextDescendantClip(inheritedClip);
+        return AutoScroll ? clip.Intersect(_scroll.ViewportBounds) : clip;
+    }
 
     /// <summary>Responds after one complete <see cref="Children"/> mutation structurally commits.</summary>
     /// <remarks>
