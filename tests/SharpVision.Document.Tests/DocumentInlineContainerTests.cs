@@ -133,4 +133,27 @@ public sealed class DocumentInlineContainerTests
         outer.Text.ShouldBe("outer");
         inner.IsAttached.ShouldBeFalse();
     }
+
+    /// <summary>Verifies the general case the outer/inner link check exists for: a link nested
+    /// several containers deep - not just as a direct child - is still rejected under an existing
+    /// link ancestor.</summary>
+    [Fact]
+    public void Add_WhenLinkIsNestedSeveralContainersBelowAnotherLink_ThrowsBeforeMutation()
+    {
+        // Arrange
+        var outer = new DocumentLink("outer");
+        var inner = new DocumentLink("inner");
+        var emphasis = new DocumentEmphasis { Inlines = { inner } };
+        var strong = new DocumentStrong { Inlines = { emphasis } };
+
+        // Act
+        var action = () => outer.Inlines.Add(strong);
+
+        // Assert
+        _ = action.ShouldThrow<ArgumentException>();
+        outer.Text.ShouldBe("outer");
+        strong.IsAttached.ShouldBeFalse();
+        emphasis.ParentNode.ShouldBeSameAs(strong);
+        inner.ParentNode.ShouldBeSameAs(emphasis);
+    }
 }

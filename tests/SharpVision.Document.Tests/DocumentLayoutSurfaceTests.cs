@@ -275,9 +275,12 @@ public sealed class DocumentLayoutSurfaceTests
         // Act
         using var probe = new DocumentRenderProbe(document, new Size(4, 1));
 
-        // Assert
+        // Assert: the fallback blank line reserves the same indent real quoted content would -
+        // indent plus the quote's own two-column bar-and-space gutter - not one column less, so
+        // a genuinely empty quote and a quote containing one empty paragraph report the same
+        // extent.
         probe.Row(0).ShouldBe("\u2502");
-        document.Extent.Width.ShouldBeGreaterThanOrEqualTo(1);
+        document.Extent.Width.ShouldBe(2);
     }
 
     /// <summary>Verifies a callout title flows under its indent and keeps the bar on every

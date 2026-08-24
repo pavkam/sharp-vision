@@ -125,6 +125,30 @@ public sealed class DocumentInlineTests
         text.ShouldBe("beforeafter");
     }
 
+    /// <summary>Verifies assignment detaches - rather than disposes - an embedded control the
+    /// current label held, leaving it reusable elsewhere.</summary>
+    [Fact]
+    public void Text_WhenLinkContainsInlineControl_DetachesWithoutDisposingIt()
+    {
+        // Arrange
+        var control = new CheckBox("choice");
+        var link = new DocumentLink();
+        link.Inlines.Add(new DocumentInlineControl(control));
+
+        // Act
+        link.Text = "replacement";
+
+        // Assert
+        link.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("replacement");
+        control.IsDisposed.ShouldBeFalse();
+        control.Parent.ShouldBeNull();
+
+        // The control must be genuinely reusable, not merely un-disposed: wrapping it in a fresh
+        // node must not throw the "already has an owner" ArgumentException a still-attached
+        // control would trigger.
+        _ = new DocumentInlineControl(control);
+    }
+
     /// <summary>Verifies assignment replaces structured content even when its visible label is unchanged.</summary>
     [Fact]
     public void Text_WhenStructuredLabelHasSameVisibleText_ReplacesItWithPlainTextRun()

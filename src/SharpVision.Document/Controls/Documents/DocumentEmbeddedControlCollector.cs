@@ -27,6 +27,19 @@ internal static class DocumentEmbeddedControlCollector
         DocumentNode? ownerNode,
         Document? ownerDocument)
     {
+        var candidateControls = new List<ControlBase>();
+        Collect(candidate, candidateControls);
+
+        // The overwhelming majority of insertions - a plain paragraph, heading, or text run - carry
+        // no embedded control at all. Walking the whole owning document or detached tree to build a
+        // duplicate-ownership set is pointless work in that case: with nothing to check the
+        // candidate against, skip it entirely instead of paying a cost proportional to the whole
+        // tree's size on every single node insertion regardless of what was actually inserted.
+        if (candidateControls.Count == 0)
+        {
+            return;
+        }
+
         var existing = new HashSet<ControlBase>(ReferenceEqualityComparer.Instance);
 
         if (ownerDocument is not null)
@@ -56,9 +69,6 @@ internal static class DocumentEmbeddedControlCollector
                 _ = existing.Add(control);
             }
         }
-
-        var candidateControls = new List<ControlBase>();
-        Collect(candidate, candidateControls);
 
         foreach (var control in candidateControls)
         {

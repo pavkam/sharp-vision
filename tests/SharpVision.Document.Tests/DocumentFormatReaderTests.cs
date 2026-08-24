@@ -48,6 +48,71 @@ public sealed class DocumentFormatReaderTests
             .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("old");
     }
 
+    /// <summary>Verifies a pre-canceled token is observed before any block replaces the current tree.</summary>
+    [Fact]
+    public async Task LoadAsync_WhenTokenIsAlreadyCanceled_ThrowsAndPreservesExistingBlocksAsync()
+    {
+        // Arrange
+        var document = new DocumentControl
+        {
+            Blocks = { new DocumentParagraph("old") }
+        };
+        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes("new text"));
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        // Act
+        var action = async () => await document.LoadAsync(
+            stream,
+            new PlainTextDocumentReaderProbe(),
+            cancellationToken: cancellation.Token);
+
+        // Assert
+        _ = await action.ShouldThrowAsync<OperationCanceledException>();
+        document.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines[0]
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("old");
+    }
+
+    /// <summary>Verifies an explicit non-default encoding decodes the stream instead of the UTF-8 default.</summary>
+    [Fact]
+    public async Task LoadAsync_WhenEncodingIsSupplied_DecodesTheStreamWithItAsync()
+    {
+        // Arrange
+        var document = new DocumentControl();
+        var text = "café";
+        await using var stream = new MemoryStream(Encoding.Latin1.GetBytes(text));
+
+        // Act
+        _ = await document.LoadAsync(
+            stream,
+            new PlainTextDocumentReaderProbe(),
+            encoding: Encoding.Latin1,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        document.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines[0]
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(text);
+    }
+
+    /// <summary>Verifies the source stream stays open and readable after a successful load, matching
+    /// this control's documented "the host owns the stream" contract.</summary>
+    [Fact]
+    public async Task LoadAsync_WhenLoadCompletes_LeavesTheSourceStreamOpenAsync()
+    {
+        // Arrange
+        var document = new DocumentControl();
+        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes("text"));
+
+        // Act
+        _ = await document.LoadAsync(
+            stream,
+            new PlainTextDocumentReaderProbe(),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        stream.CanRead.ShouldBeTrue();
+    }
+
     /// <summary>Verifies a reader result reused after attachment is rejected before replacement begins.</summary>
     [Fact]
     public void Load_WhenReaderReturnsAnAttachedResult_ThrowsAndPreservesExistingBlocks()

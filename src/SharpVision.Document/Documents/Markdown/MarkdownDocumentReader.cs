@@ -375,7 +375,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 }
                 else
                 {
-                    var remove = Math.Min(firstMarker.Indent + 2, CountLeadingSpaces(lines[index]));
+                    var remove = Math.Min(firstMarker.Indent + firstMarker.MarkerWidth, CountLeadingSpaces(lines[index]));
                     continuation.Add(lines[index][remove..]);
                 }
 
@@ -940,7 +940,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
         if (trimmed.Length >= 2 && trimmed[0] is '-' or '+' or '*' && trimmed[1] == ' ')
         {
-            marker = new MarkdownListMarker(indent, isOrdered: false, start: 1, trimmed[2..]);
+            marker = new MarkdownListMarker(indent, isOrdered: false, start: 1, markerWidth: 2, trimmed[2..]);
             return true;
         }
 
@@ -954,7 +954,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         if (digits > 0 && digits + 1 < trimmed.Length && trimmed[digits] is '.' or ')' && trimmed[digits + 1] == ' ' &&
             int.TryParse(trimmed.AsSpan(0, digits), CultureInfo.InvariantCulture, out var start))
         {
-            marker = new MarkdownListMarker(indent, isOrdered: true, start, trimmed[(digits + 2)..]);
+            marker = new MarkdownListMarker(indent, isOrdered: true, start, markerWidth: digits + 2, trimmed[(digits + 2)..]);
             return true;
         }
 

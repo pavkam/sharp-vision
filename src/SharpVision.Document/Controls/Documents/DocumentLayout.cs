@@ -260,7 +260,7 @@ internal sealed class DocumentLayout
 
         if (_lines.Count == firstLine)
         {
-            EmitBlankLine(indent + 1);
+            EmitBlankLine(indent + _quoteIndent);
         }
 
         _quoteBars.Add(new DocumentQuoteBar(

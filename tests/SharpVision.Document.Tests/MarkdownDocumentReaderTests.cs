@@ -506,6 +506,29 @@ public sealed class MarkdownDocumentReaderTests
         var paragraph = item.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
         paragraph.Inlines.Count.ShouldBe(3);
         _ = paragraph.Inlines[1].ShouldBeOfType<DocumentSoftBreak>();
+        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("continued");
+    }
+
+    /// <summary>Verifies a numbered-list continuation line strips exactly its own marker's width -
+    /// digit count plus the punctuation and required space - rather than a bullet's fixed
+    /// two-column width, for every digit count from one through three.</summary>
+    [Theory]
+    [InlineData("1. first\n   continued", "continued")]
+    [InlineData("10. first\n    continued", "continued")]
+    [InlineData("100. first\n     continued", "continued")]
+    public void Read_WhenNumberedListItemHasContinuationLine_StripsExactlyItsOwnMarkerWidth(
+        string source,
+        string expected)
+    {
+        // Arrange and act
+        var item = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem();
+
+        // Assert
+        var paragraph = item.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+        paragraph.Inlines.Count.ShouldBe(3);
+        _ = paragraph.Inlines[1].ShouldBeOfType<DocumentSoftBreak>();
+        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(expected);
     }
 
     /// <summary>Verifies a blank line between peer items makes one list loose instead of splitting

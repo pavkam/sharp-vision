@@ -70,26 +70,27 @@ classDiagram
 
 ## API
 
-| Member                                                      | Type                                   | Default          | Description                                                                            |
-| ----------------------------------------------------------- | -------------------------------------- | ---------------- | -------------------------------------------------------------------------------------- |
-| `Blocks`                                                    | `DocumentBlockCollection`              | Empty            | Owned ordered root block content; accepts only `DocumentBlock` nodes.                  |
-| `Style`                                                     | `DocumentStyle?`                       | `null`           | Complete local presentation, or null for theme ownership.                              |
-| `ActualStyle`                                               | `DocumentStyle`                        | Resolved         | Read-only; the complete local, theme-owned, or code-owned presentation.                |
-| `ScrollBarStyle`                                            | `ScrollBarStyle?`                      | `null`           | Local generated-bar style; null leaves it to the theme.                                |
-| `ActualScrollBarStyle`                                      | `ScrollBarStyle`                       | Resolved         | Read-only resolved generated-bar style.                                                |
-| `Extent`                                                    | `Size`                                 | Layout-dependent | Read-only committed non-negative content extent, in cells.                             |
-| `Viewport`                                                  | `Size`                                 | Layout-dependent | Read-only committed non-negative visible extent, in cells.                             |
-| `VerticalOffset`                                            | `int`                                  | `0`              | Valid vertical content offset in lines; rejects a value outside the current extent.    |
-| `LineSize`                                                  | `int`                                  | `1`              | Non-negative lines one arrow key or wheel notch scrolls; rejects a negative value.     |
-| `PageOverlap`                                               | `int`                                  | `0`              | Non-negative lines a page command keeps in view; rejects a negative value.             |
-| `ShowScrollBars`                                            | `ShowScrollBars`                       | `WhenNeeded`     | When the generated vertical scrollbar is shown; rejects an undefined value.            |
-| `ActiveLink`                                                | `DocumentLink?`                        | `null`           | The focused link; assigning a foreign or disabled link clears the selection instead.   |
-| `Load(string, IDocumentFormatReader, DocumentReadOptions?)` | `DocumentReadResult`                   | —                | Parses detached content through a format reader, then replaces the block tree.         |
-| `ScrollBy(int lines, ScrollCause cause)`                    | `bool`                                 | —                | Adds a signed line delta with saturation and endpoint clamping; rejects unknown cause. |
-| `ScrollToTop()`                                             | `bool`                                 | —                | Scrolls to the first line; reports whether the offset changed.                         |
-| `ScrollToEnd()`                                             | `bool`                                 | —                | Scrolls to the last line; reports whether the offset changed.                          |
-| `ScrollChanged`                                             | `EventHandler<ScrollChangedEventArgs>` | —                | Raised after the vertical offset commits.                                              |
-| `LinkClicked`                                               | `EventHandler<DocumentLinkEventArgs>`  | —                | Raised after any link is activated, following that link's own `Clicked`.               |
+| Member                                                                                         | Type                                   | Default          | Description                                                                            |
+| ---------------------------------------------------------------------------------------------- | -------------------------------------- | ---------------- | -------------------------------------------------------------------------------------- |
+| `Blocks`                                                                                       | `DocumentBlockCollection`              | Empty            | Owned ordered root block content; accepts only `DocumentBlock` nodes.                  |
+| `Style`                                                                                        | `DocumentStyle?`                       | `null`           | Complete local presentation, or null for theme ownership.                              |
+| `ActualStyle`                                                                                  | `DocumentStyle`                        | Resolved         | Read-only; the complete local, theme-owned, or code-owned presentation.                |
+| `ScrollBarStyle`                                                                               | `ScrollBarStyle?`                      | `null`           | Local generated-bar style; null leaves it to the theme.                                |
+| `ActualScrollBarStyle`                                                                         | `ScrollBarStyle`                       | Resolved         | Read-only resolved generated-bar style.                                                |
+| `Extent`                                                                                       | `Size`                                 | Layout-dependent | Read-only committed non-negative content extent, in cells.                             |
+| `Viewport`                                                                                     | `Size`                                 | Layout-dependent | Read-only committed non-negative visible extent, in cells.                             |
+| `VerticalOffset`                                                                               | `int`                                  | `0`              | Valid vertical content offset in lines; rejects a value outside the current extent.    |
+| `LineSize`                                                                                     | `int`                                  | `1`              | Non-negative lines one arrow key or wheel notch scrolls; rejects a negative value.     |
+| `PageOverlap`                                                                                  | `int`                                  | `0`              | Non-negative lines a page command keeps in view; rejects a negative value.             |
+| `ShowScrollBars`                                                                               | `ShowScrollBars`                       | `WhenNeeded`     | When the generated vertical scrollbar is shown; rejects an undefined value.            |
+| `ActiveLink`                                                                                   | `DocumentLink?`                        | `null`           | The focused link; assigning a foreign or disabled link clears the selection instead.   |
+| `Load(string, IDocumentFormatReader, DocumentReadOptions?)`                                    | `DocumentReadResult`                   | —                | Parses detached content through a format reader, then replaces the block tree.         |
+| `LoadAsync(Stream, IDocumentFormatReader, DocumentReadOptions?, Encoding?, CancellationToken)` | `ValueTask<DocumentReadResult>`        | —                | Reads a bounded text stream asynchronously, leaves it open, then calls `Load`.         |
+| `ScrollBy(int lines, ScrollCause cause)`                                                       | `bool`                                 | —                | Adds a signed line delta with saturation and endpoint clamping; rejects unknown cause. |
+| `ScrollToTop()`                                                                                | `bool`                                 | —                | Scrolls to the first line; reports whether the offset changed.                         |
+| `ScrollToEnd()`                                                                                | `bool`                                 | —                | Scrolls to the last line; reports whether the offset changed.                          |
+| `ScrollChanged`                                                                                | `EventHandler<ScrollChangedEventArgs>` | —                | Raised after the vertical offset commits.                                              |
+| `LinkClicked`                                                                                  | `EventHandler<DocumentLinkEventArgs>`  | —                | Raised after any link is activated, following that link's own `Clicked`.               |
 
 `ScrollBy` defaults its `cause` to `ScrollCause.Programmatic`; the other causes
 describe keyboard, pointer, wheel, and content-driven changes and reach
@@ -101,6 +102,14 @@ before the document has been measured.
 `DocumentLinkEventArgs` carries one property, `Link`, holding the activated
 `DocumentLink`. It exists so an application can handle every link centrally
 instead of subscribing to each one.
+
+`LoadAsync` reads `source` into a character buffer bounded by `options`'
+`MaximumCharacters` - throwing `ArgumentOutOfRangeException` the moment decoded
+content would exceed it, before any block ever replaces the current tree - then
+calls `Load` with the accumulated text. `encoding` defaults to UTF-8 with
+byte-order-mark detection; `source` is never disposed or left positioned
+mid-read on failure, matching `TextInput`'s and `CodeView`'s own "the host owns
+the stream" convention.
 
 > [!NOTE]
 >
