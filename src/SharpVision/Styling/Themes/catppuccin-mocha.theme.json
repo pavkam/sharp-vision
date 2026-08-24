@@ -21,7 +21,9 @@
     "slate": "#3e3f51",
     "frost": "#f0f4ff",
     "navy": "#1e2860",
-    "bronze": "#564b1e"
+    "bronze": "#564b1e",
+    "cyan": "#94e2d5",
+    "pink": "#f5c2e7"
   },
   "colors": {
     "window": "base",
@@ -53,7 +55,13 @@
     "error": "red",
     "warning": "yellow",
     "success": "green",
-    "info": "blue"
+    "info": "blue",
+    "red": "red",
+    "green": "green",
+    "yellow": "yellow",
+    "blue": "blue",
+    "magenta": "pink",
+    "cyan": "cyan"
   },
   "attributes": {
     "normalText": [],

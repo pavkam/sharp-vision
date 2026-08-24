@@ -3748,6 +3748,12 @@ namespace SharpVision.Styling
         Success = 27,
         Info = 28,
         WindowSurface = 29,
+        Red = 30,
+        Green = 31,
+        Yellow = 32,
+        Blue = 33,
+        Magenta = 34,
+        Cyan = 35,
     }
     public enum SemanticDecoration
     {

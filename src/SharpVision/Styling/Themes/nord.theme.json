@@ -14,10 +14,12 @@
     "nord4": "#d8dee9",
     "nord6": "#eceff4",
     "nord8": "#88c0d0",
+    "nord9": "#81a1c1",
     "nord10": "#5e81ac",
     "nord11": "#bf616a",
     "nord13": "#ebcb8b",
     "nord14": "#a3be8c",
+    "nord15": "#b48ead",
     "nord16": "#243674",
     "nord17": "#645d2a"
   },
@@ -51,7 +53,13 @@
     "error": "nord11",
     "warning": "nord13",
     "success": "nord14",
-    "info": "nord10"
+    "info": "nord10",
+    "red": "nord11",
+    "green": "nord14",
+    "yellow": "nord13",
+    "blue": "nord9",
+    "magenta": "nord15",
+    "cyan": "nord8"
   },
   "attributes": {
     "normalText": [],

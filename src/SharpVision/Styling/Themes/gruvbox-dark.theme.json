@@ -20,7 +20,9 @@
     "orange": "#fe8019",
     "fg0": "#fbf1c7",
     "navy": "#1d2864",
-    "olive": "#56491c"
+    "olive": "#56491c",
+    "magenta": "#d3869b",
+    "cyan": "#8ec07c"
   },
   "colors": {
     "window": "bg0",
@@ -52,7 +54,13 @@
     "error": "red",
     "warning": "yellow",
     "success": "green",
-    "info": "blue"
+    "info": "blue",
+    "red": "red",
+    "green": "green",
+    "yellow": "yellow",
+    "blue": "blue",
+    "magenta": "magenta",
+    "cyan": "cyan"
   },
   "attributes": {
     "normalText": [],

@@ -41,7 +41,7 @@ publishing catalog metadata.
 
 ## Global values
 
-`colors` requires these 30 properties:
+`colors` requires these 36 properties:
 
 ```text
 window, windowSurface, windowText, surface, surfaceText, control, controlText,
@@ -49,7 +49,7 @@ controlBorder, controlShadow, activeControl, activeText, activeBorder,
 focusedControl, focusedText, focusedBorder, pressedControl, pressedText,
 pressedBorder, selectedControl, selectedText, disabledControl,
 disabledText, disabledBorder, accent, muted, hotkey, error, warning,
-success, info
+success, info, red, green, yellow, blue, magenta, cyan
 ```
 
 Each value must be the exact name of a `palette` entry - a raw `#RGB`/`#RRGGBB`
@@ -328,7 +328,9 @@ are public and require no internal access; see
     "hotkey": "#ffcc66",
     "danger": "#ff5c57",
     "warn": "#f3f99d",
-    "ok": "#5af78e"
+    "ok": "#5af78e",
+    "magenta": "#ff6ac1",
+    "cyan": "#6be2d9"
   },
   "colors": {
     "window": "page",
@@ -360,7 +362,13 @@ are public and require no internal access; see
     "error": "danger",
     "warning": "warn",
     "success": "ok",
-    "info": "accent"
+    "info": "accent",
+    "red": "danger",
+    "green": "ok",
+    "yellow": "warn",
+    "blue": "accent",
+    "magenta": "magenta",
+    "cyan": "cyan"
   },
   "attributes": {
     "normalText": [],

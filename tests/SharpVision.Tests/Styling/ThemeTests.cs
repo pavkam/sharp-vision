@@ -578,7 +578,9 @@ public sealed class ThemeTests
           "palette": {
             "bg":"#101010", "fg":"#e0e0e0", "shadow":"#303030", "accent":"#77aaff",
             "disabledText":"#707070", "disabledBorder":"#606060",
-            "error":"#ff0000", "warning":"#ffff00", "success":"#00ff00", "info":"#0000ff"
+            "error":"#ff0000", "warning":"#ffff00", "success":"#00ff00", "info":"#0000ff",
+            "red":"#ff0000", "green":"#00ff00", "yellow":"#ffff00", "blue":"#0000ff",
+            "magenta":"#ff00ff", "cyan":"#00ffff"
           },
           "colors": {
             "window":"bg", "windowSurface":"bg", "windowText":"fg",
@@ -591,7 +593,9 @@ public sealed class ThemeTests
             "selectedControl":"accent", "selectedText":"fg",
             "disabledControl":"bg", "disabledText":"disabledText", "disabledBorder":"disabledBorder",
             "accent":"accent", "muted":"disabledText", "hotkey":"accent",
-            "error":"error", "warning":"warning", "success":"success", "info":"info"
+            "error":"error", "warning":"warning", "success":"success", "info":"info",
+            "red":"red", "green":"green", "yellow":"yellow", "blue":"blue",
+            "magenta":"magenta", "cyan":"cyan"
           },
           "attributes": {
             "normalText":[], "activeText":[], "focusedText":"bold", "pressedText":[],
@@ -619,7 +623,9 @@ public sealed class ThemeTests
           "palette": {
             "bg":"#101010", "fg":"#e0e0e0", "shadow":"#303030", "accent":"#77aaff",
             "disabledText":"#707070", "disabledBorder":"#606060",
-            "error":"#ff0000", "warning":"#ffff00", "success":"#00ff00", "info":"#0000ff"
+            "error":"#ff0000", "warning":"#ffff00", "success":"#00ff00", "info":"#0000ff",
+            "red":"#ff0000", "green":"#00ff00", "yellow":"#ffff00", "blue":"#0000ff",
+            "magenta":"#ff00ff", "cyan":"#00ffff"
           },
           "colors": {
             "window":"bg", "windowSurface":"bg", "windowText":"fg",
@@ -632,7 +638,9 @@ public sealed class ThemeTests
             "selectedControl":"accent", "selectedText":"fg",
             "disabledControl":"bg", "disabledText":"disabledText", "disabledBorder":"disabledBorder",
             "accent":"accent", "muted":"disabledText", "hotkey":"accent",
-            "error":"error", "warning":"warning", "success":"success", "info":"info"
+            "error":"error", "warning":"warning", "success":"success", "info":"info",
+            "red":"red", "green":"green", "yellow":"yellow", "blue":"blue",
+            "magenta":"magenta", "cyan":"cyan"
           },
           "attributes": {
             "normalText":[], "activeText":[], "focusedText":"bold", "pressedText":[],

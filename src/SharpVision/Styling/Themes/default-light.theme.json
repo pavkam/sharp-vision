@@ -18,7 +18,11 @@
     "gold": "#cdcd00",
     "crimson": "#cd0000",
     "mediumGreen": "#00cd00",
-    "teal": "#008080"
+    "teal": "#008080",
+    "darkGreen": "#006400",
+    "darkGoldenrod": "#7a5c00",
+    "darkMagenta": "#a000a0",
+    "darkCyan": "#006666"
   },
   "colors": {
     "window": "white",
@@ -50,7 +54,13 @@
     "error": "crimson",
     "warning": "gold",
     "success": "mediumGreen",
-    "info": "teal"
+    "info": "teal",
+    "red": "crimson",
+    "green": "darkGreen",
+    "yellow": "darkGoldenrod",
+    "blue": "royalBlue",
+    "magenta": "darkMagenta",
+    "cyan": "darkCyan"
   },
   "attributes": {
     "normalText": [],

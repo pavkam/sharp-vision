@@ -20,7 +20,8 @@
     "purple": "#ae81ff",
     "ice": "#d9f5fb",
     "navy": "#1b2c66",
-    "olive": "#524a1e"
+    "olive": "#524a1e",
+    "mint": "#a1efe4"
   },
   "colors": {
     "window": "bg",
@@ -52,7 +53,13 @@
     "error": "pink",
     "warning": "orange",
     "success": "green",
-    "info": "cyan"
+    "info": "cyan",
+    "red": "pink",
+    "green": "green",
+    "yellow": "yellow",
+    "blue": "cyan",
+    "magenta": "purple",
+    "cyan": "mint"
   },
   "attributes": {
     "normalText": [],

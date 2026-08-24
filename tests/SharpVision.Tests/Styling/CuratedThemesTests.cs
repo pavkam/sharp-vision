@@ -451,6 +451,42 @@ public sealed class CuratedThemesTests
         }
     }
 
+    /// <summary>Verifies every bundled theme keeps its six chromatic accent colors pairwise
+    /// distinguishable. These exist as the theme's canonical red/green/yellow/blue/magenta/cyan
+    /// hues so content-rich controls - syntax tokens, chart series, data views - can differentiate
+    /// values by color alone, without a control-specific theme section. A theme that collapses two
+    /// of them onto the same resolved color makes those series or tokens indistinguishable
+    /// wherever content relies on the full six-color set.</summary>
+    [Fact]
+    public void EveryTheme_ResolvesDistinctChromaticColors()
+    {
+        var chromatic = new[]
+        {
+            SemanticColor.Red, SemanticColor.Green, SemanticColor.Yellow,
+            SemanticColor.Blue, SemanticColor.Magenta, SemanticColor.Cyan
+        };
+
+        var flat = new List<string>();
+
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+
+            for (var i = 0; i < chromatic.Length; i++)
+            {
+                for (var j = i + 1; j < chromatic.Length; j++)
+                {
+                    if (theme.ResolveColor(chromatic[i]) == theme.ResolveColor(chromatic[j]))
+                    {
+                        flat.Add($"{slug} resolves {chromatic[i]} and {chromatic[j]} to the same color");
+                    }
+                }
+            }
+        }
+
+        flat.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies editor themes resolve their accent to an absolute RGB color.</summary>
     [Fact]
     public void EditorThemes_UseRgbAccents()

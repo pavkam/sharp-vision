@@ -207,7 +207,13 @@ public sealed class ThemeCatalogTests
             "error": "#ff0000",
             "warning": "#ffff00",
             "success": "#00ff00",
-            "info": "#5c5cff"
+            "info": "#5c5cff",
+            "red": "#ff0000",
+            "green": "#00ff00",
+            "yellow": "#ffff00",
+            "blue": "#0000ff",
+            "magenta": "#ff00ff",
+            "cyan": "#00ffff"
           },
           "colors": {
             "window": "window",
@@ -239,7 +245,13 @@ public sealed class ThemeCatalogTests
             "error": "error",
             "warning": "warning",
             "success": "success",
-            "info": "info"
+            "info": "info",
+            "red": "red",
+            "green": "green",
+            "yellow": "yellow",
+            "blue": "blue",
+            "magenta": "magenta",
+            "cyan": "cyan"
           },
           "attributes": {
             "normalText": [],

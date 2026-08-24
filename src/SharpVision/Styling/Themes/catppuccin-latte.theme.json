@@ -21,7 +21,9 @@
     "silver": "#bdc1cb",
     "indigo": "#2e3047",
     "periwinkle": "#c2d0e9",
-    "sand": "#ddd8c0"
+    "sand": "#ddd8c0",
+    "cyan": "#179299",
+    "pink": "#ea76cb"
   },
   "colors": {
     "window": "base",
@@ -53,7 +55,13 @@
     "error": "red",
     "warning": "yellow",
     "success": "green",
-    "info": "blue"
+    "info": "blue",
+    "red": "red",
+    "green": "green",
+    "yellow": "yellow",
+    "blue": "blue",
+    "magenta": "pink",
+    "cyan": "cyan"
   },
   "attributes": {
     "normalText": [],

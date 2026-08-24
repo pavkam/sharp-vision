@@ -129,6 +129,30 @@ internal sealed class ThemeDocumentColors
     [JsonPropertyName("info")]
     public string? Info { get; set; }
 
+    /// <summary>Gets or sets the canonical red chromatic accent.</summary>
+    [JsonPropertyName("red")]
+    public string? Red { get; set; }
+
+    /// <summary>Gets or sets the canonical green chromatic accent.</summary>
+    [JsonPropertyName("green")]
+    public string? Green { get; set; }
+
+    /// <summary>Gets or sets the canonical yellow chromatic accent.</summary>
+    [JsonPropertyName("yellow")]
+    public string? Yellow { get; set; }
+
+    /// <summary>Gets or sets the canonical blue chromatic accent.</summary>
+    [JsonPropertyName("blue")]
+    public string? Blue { get; set; }
+
+    /// <summary>Gets or sets the canonical magenta chromatic accent.</summary>
+    [JsonPropertyName("magenta")]
+    public string? Magenta { get; set; }
+
+    /// <summary>Gets or sets the canonical cyan chromatic accent.</summary>
+    [JsonPropertyName("cyan")]
+    public string? Cyan { get; set; }
+
     /// <summary>Gets one authored value by semantic name.</summary>
     [Pure]
     internal string? Get(SemanticColor color) => color switch
@@ -163,6 +187,12 @@ internal sealed class ThemeDocumentColors
         SemanticColor.Warning => Warning,
         SemanticColor.Success => Success,
         SemanticColor.Info => Info,
+        SemanticColor.Red => Red,
+        SemanticColor.Green => Green,
+        SemanticColor.Yellow => Yellow,
+        SemanticColor.Blue => Blue,
+        SemanticColor.Magenta => Magenta,
+        SemanticColor.Cyan => Cyan,
         _ => throw new ArgumentOutOfRangeException(nameof(color), color, "The theme color is unknown.")
     };
 }

@@ -65,5 +65,17 @@ public enum SemanticColor
     /// <summary>The informational status color.</summary>
     Info,
     /// <summary>The raised background of a floating Window or dialog.</summary>
-    WindowSurface
+    WindowSurface,
+    /// <summary>The theme's canonical red accent, for differentiating chart series, syntax tokens, and similar content.</summary>
+    Red,
+    /// <summary>The theme's canonical green accent, for differentiating chart series, syntax tokens, and similar content.</summary>
+    Green,
+    /// <summary>The theme's canonical yellow accent, for differentiating chart series, syntax tokens, and similar content.</summary>
+    Yellow,
+    /// <summary>The theme's canonical blue accent, for differentiating chart series, syntax tokens, and similar content.</summary>
+    Blue,
+    /// <summary>The theme's canonical magenta accent, for differentiating chart series, syntax tokens, and similar content.</summary>
+    Magenta,
+    /// <summary>The theme's canonical cyan accent, for differentiating chart series, syntax tokens, and similar content.</summary>
+    Cyan
 }

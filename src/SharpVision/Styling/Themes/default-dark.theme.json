@@ -23,7 +23,8 @@
     "ash": "#444444",
     "red": "#ff0000",
     "lime": "#00ff00",
-    "periwinkle": "#5c5cff"
+    "periwinkle": "#5c5cff",
+    "magenta": "#ff00ff"
   },
   "colors": {
     "window": "black",
@@ -55,7 +56,13 @@
     "error": "red",
     "warning": "yellow",
     "success": "lime",
-    "info": "periwinkle"
+    "info": "periwinkle",
+    "red": "red",
+    "green": "lime",
+    "yellow": "yellow",
+    "blue": "periwinkle",
+    "magenta": "magenta",
+    "cyan": "cyan"
   },
   "attributes": {
     "normalText": [],

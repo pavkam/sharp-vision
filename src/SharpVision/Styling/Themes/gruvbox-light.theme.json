@@ -21,7 +21,9 @@
     "tan": "#cdbc97",
     "fg0": "#282828",
     "mist": "#d3dbe0",
-    "gold": "#f5e0a3"
+    "gold": "#f5e0a3",
+    "magenta": "#8f3f71",
+    "cyan": "#427b58"
   },
   "colors": {
     "window": "bg0",
@@ -53,7 +55,13 @@
     "error": "red",
     "warning": "yellow",
     "success": "green",
-    "info": "blue"
+    "info": "blue",
+    "red": "red",
+    "green": "green",
+    "yellow": "yellow",
+    "blue": "blue",
+    "magenta": "magenta",
+    "cyan": "cyan"
   },
   "attributes": {
     "normalText": [],

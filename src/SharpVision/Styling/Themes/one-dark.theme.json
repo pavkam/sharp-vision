@@ -54,7 +54,13 @@
     "error": "red",
     "warning": "orange",
     "success": "green",
-    "info": "cyan"
+    "info": "cyan",
+    "red": "red",
+    "green": "green",
+    "yellow": "yellow",
+    "blue": "blue",
+    "magenta": "purple",
+    "cyan": "cyan"
   },
   "attributes": {
     "normalText": [],
