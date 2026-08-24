@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Styling;
 
+using System.Text.Json;
+
 /// <summary>Verifies a style value cannot be brought into existence in a state its own constructor
 /// would refuse, whichever door it comes through.
 ///
@@ -25,14 +27,20 @@ public sealed class StyleInvariantEnforcementTests
     /// <summary>Verifies a wide glyph in a nested <c>glyphs</c> member is refused by the parser,
     /// with the theme and the dotted path still named - the exact case themes.md promises is
     /// "rejected the same way a hand-authored glyph value would be", and the one
-    /// <c>ParseSectionGlyph</c> never measured because it only counted Runes.</summary>
+    /// <c>ParseSectionGlyph</c> never measured because it only counted Runes. Exercised directly
+    /// against <see cref="Theme.Overlay"/> - a theme can no longer author a "scrollBar" section of
+    /// its own, but the dotted path this asserts is exactly what a role section's own nested-glyph
+    /// member would produce, and <c>Overlay</c> does not care which section context handed it the
+    /// override.</summary>
     [Fact]
-    public void GetStyleSet_WhenAThemeAuthorsAWideNestedGlyph_RejectsItWithTheStylePath()
+    public void Overlay_WhenAThemeAuthorsAWideNestedGlyph_RejectsItWithTheStylePath()
     {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            extraStyles: """, "scrollBar": { "normal": { "glyphs": { "blockThumb": "漢" } } } """));
+        var theme = ThemeCatalog.Parse(ThemeJson.Create());
 
-        var error = Should.Throw<InvalidDataException>(() => theme.GetStyleSet(ScrollBarStyle.Default));
+        var error = Should.Throw<InvalidDataException>(() => theme.Overlay(
+            ScrollBarStyle.Default,
+            ParseOverrides(/*lang=json,strict*/ """{"glyphs":{"blockThumb":"漢"}}"""),
+            "styles.scrollBar.normal"));
 
         error.Message.ShouldContain("styles.scrollBar.normal.glyphs.blockThumb");
     }
@@ -40,12 +48,16 @@ public sealed class StyleInvariantEnforcementTests
     /// <summary>The counter-case that keeps the width check honest: a one-cell non-ASCII glyph in
     /// the same member is still accepted, so this did not narrow the contract to ASCII.</summary>
     [Fact]
-    public void GetStyleSet_WhenAThemeAuthorsANarrowNestedGlyph_AcceptsIt()
+    public void Overlay_WhenAThemeAuthorsANarrowNestedGlyph_AcceptsIt()
     {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            extraStyles: """, "scrollBar": { "normal": { "glyphs": { "blockThumb": "▒" } } } """));
+        var theme = ThemeCatalog.Parse(ThemeJson.Create());
 
-        theme.GetStyleSet(ScrollBarStyle.Default).Normal.Glyphs.BlockThumb.ShouldBe(new Rune('▒'));
+        var result = (ScrollBarStyle) theme.Overlay(
+            ScrollBarStyle.Default,
+            ParseOverrides(/*lang=json,strict*/ """{"glyphs":{"blockThumb":"▒"}}"""),
+            "styles.scrollBar.normal");
+
+        result.Glyphs.BlockThumb.ShouldBe(new Rune('▒'));
     }
 
     /// <summary>Verifies a wide glyph inside a Rune <em>array</em> names the offending index. The
@@ -64,14 +76,19 @@ public sealed class StyleInvariantEnforcementTests
     }
 
     /// <summary>Verifies the frame sequence is measured per entry too - the other Rune-array member,
-    /// and the only one in the codebase typed as a sequence rather than a fixed family.</summary>
+    /// and the only one in the codebase typed as a sequence rather than a fixed family. Exercised
+    /// directly against <see cref="Theme.Overlay"/> - a theme can no longer author a "spinner"
+    /// section of its own, but the mechanic is the same regardless of which section context reaches
+    /// it.</summary>
     [Fact]
-    public void Resolve_WhenAThemeAuthorsAWideSpinnerFrame_RejectsIt()
+    public void Overlay_WhenAThemeAuthorsAWideSpinnerFrame_RejectsIt()
     {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            extraStyles: """, "spinner": { "normal": { "frames": ["a", "漢"] } } """));
+        var theme = ThemeCatalog.Parse(ThemeJson.Create());
 
-        var error = Should.Throw<InvalidDataException>(() => SpinnerStyle.Definition.Resolve(null, theme));
+        var error = Should.Throw<InvalidDataException>(() => theme.Overlay(
+            SpinnerStyle.Default,
+            ParseOverrides(/*lang=json,strict*/ """{"frames":["a","漢"]}"""),
+            "styles.spinner.normal"));
 
         error.Message.ShouldContain("styles.spinner.normal.frames");
     }
@@ -92,14 +109,18 @@ public sealed class StyleInvariantEnforcementTests
 
     /// <summary>Verifies the same refusal reaches a leaf style's own nine part colors, which were
     /// the last style type still validating in its constructor body while every sibling had
-    /// already moved to the accessor pattern.</summary>
+    /// already moved to the accessor pattern. Exercised directly against
+    /// <see cref="Theme.Overlay"/> - a theme can no longer author a "calendar" section of its own,
+    /// but the mechanic is the same regardless of which section context reaches it.</summary>
     [Fact]
-    public void Resolve_WhenAThemeAuthorsATransparentCalendarPartColor_RejectsIt()
+    public void Overlay_WhenAThemeAuthorsATransparentCalendarPartColor_RejectsIt()
     {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            extraStyles: """, "calendar": { "normal": { "selectedDayColor": "transparent" } } """));
+        var theme = ThemeCatalog.Parse(ThemeJson.Create());
 
-        var error = Should.Throw<InvalidDataException>(() => CalendarStyle.Definition.Resolve(null, theme));
+        var error = Should.Throw<InvalidDataException>(() => theme.Overlay(
+            CalendarStyle.Default,
+            ParseOverrides(/*lang=json,strict*/ """{"selectedDayColor":"transparent"}"""),
+            "styles.calendar.normal"));
 
         error.Message.ShouldContain("styles.calendar.normal.selectedDayColor");
     }
@@ -250,4 +271,7 @@ public sealed class StyleInvariantEnforcementTests
             TerminalAttributes.Underline,
             Underline.Straight,
             Color.Rgb(3, 3, 3)));
+
+    private static Dictionary<string, JsonElement> ParseOverrides(string json) =>
+        JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
 }

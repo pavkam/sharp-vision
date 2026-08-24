@@ -41,8 +41,11 @@ public static class ThemeJson
         string inputGlyphStyle = "\"heavy\"",
         string inputSides = "\"all\"",
         string containerSides = "\"all\"",
+        string controlSides = "\"none\"",
+        string inputBorderExtra = "",
         string inputExtra = "",
         string inputStates = "",
+        string controlNormalExtra = "",
         string controlExtra = "",
         string windowExtra = "",
         string? controlBorderForeground = null,
@@ -107,10 +110,11 @@ public static class ThemeJson
               "styles": {
                 "control": { "normal": {
                   "face": { "foreground":"controlText", "background":"control", "attributes":"normalText" },
-                  "border": { "sides":"none", "glyphStyle":"rounded", "foreground":"controlBorder", "background":"control", "attributes":"border" },
+                  "border": { "sides":{{controlSides}}, "glyphStyle":"rounded", "foreground":"controlBorder", "background":"control", "attributes":"border" },
                   "shadow": { "visible":false, "mode":"composite", "offset":{"x":0,"y":0}, "glyph":"▓", "foreground":"controlShadow", "background":"transparent", "attributes":"shadow" }
+                  {{controlNormalExtra}}
                 } {{controlExtra}} },
-                "input": { "normal": { "border": { "sides":{{inputSides}}, "glyphStyle":{{inputGlyphStyle}} }
+                "input": { "normal": { "border": { "sides":{{inputSides}}, "glyphStyle":{{inputGlyphStyle}}{{inputBorderExtra}} }
                 {{inputExtra}} },
                 "focused": { "face": { "foreground":"focusedText", "attributes":"focusedText" }, "border": { "foreground":"focusedBorder" } }
                 {{inputStates}} },

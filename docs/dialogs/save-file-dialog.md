@@ -190,24 +190,29 @@ dispatcher-affine.
 `SaveFileDialogStyle` (`sealed record SaveFileDialogStyle : FileDialogStyle`) is
 the dialog's own complete aggregate: `Face`/`Border`/`Shadow` (falling back to
 the Window role's own semantic appearance), `RootPadding`, `ContentSpacing`, and
-`FileListBorder`. A Theme authors it through its own `saveFileDialog` style
-section, resolved with the standard local → Theme → fallback precedence.
+`FileListBorder`. `SaveFileDialogStyle` declares no `styles.*` theme key of its
+own: the frame follows `window`'s role section with the standard local →
+fallback precedence, while `RootPadding`/`ContentSpacing`/`FileListBorder` stay
+code-owned, reachable only through a locally assigned `Style`.
 `Style`/`ActualStyle` follow the same contract as every other themed control; a
-live Theme swap updates the frame and structural geometry together on the next
-layout pass, even without a local `Style`.
+live Theme swap still updates the frame on the next layout pass, even without a
+local `Style`.
 
 `CloseGlyph`, `CloseLeftBracket`, `CloseRightBracket`, and the four
 `CloseMarkColor`/`CloseMarkActiveColor`/`CloseMarkPressedColor`/`CloseMarkDisabledColor`
 fields are inherited from `WindowStyle` through `FileDialogStyle`, and resolve
-through `SaveFileDialogStyle` itself, so a theme's `saveFileDialog` section —
-not its `window` section — drives the close mark this dialog renders.
+through `SaveFileDialogStyle` itself, copied verbatim from the fallback's own
+resolved `window` role section - `SaveFileDialogStyle` declares no `styles.*`
+theme key of its own, so a theme's `window` section drives the close mark this
+dialog renders, and only a locally assigned `Style` can give it a close mark
+independent of `window`.
 
 **Precedence with the owned-part styles above**: `Style` owns the frame and
 structural geometry only. Every named part-style property (`CancelButtonStyle`,
 `ShowHiddenCheckBoxStyle`, `FileListScrollBarStyle`, `FilterScrollBarStyle`,
 `SaveButtonStyle`) remains the sole authority for its own control, resolved
-independently through that control's own Theme key. `OverwriteStyle` is a
-distinct `MessageBoxStyle?` applied only to the overwrite-confirmation
+independently through that control's own declared fallback. `OverwriteStyle` is
+a distinct `MessageBoxStyle?` applied only to the overwrite-confirmation
 MessageBox (see [MessageBox theming](message-box.md#theming)); it does not
 affect the save dialog's own frame.
 
@@ -268,9 +273,10 @@ The behavior above is verified end to end, so callers can rely on it:
 - Layout holds across tiny, normal, and wide hosts with semantic rendering, and
   the whole flow is exercised in the live showcase and against a real temporary
   directory without writing the selected file.
-- `Style` resolves through local → Theme `saveFileDialog` section → Window
-  fallback, updates the frame and structural geometry coherently (including
-  after a live Theme swap), and composes with every owned-part style property.
+- `Style` resolves through local → code-owned completion of the Theme's `window`
+  fallback, updates the frame coherently after a live Theme swap (structural
+  geometry stays code-owned unless a local `Style` moves it), and composes with
+  every owned-part style property.
 - Every text property updates its retained control in place, is validated before
   mutation, and is carried through `SaveFileOptions.Copy()` to `ShowAsync`; the
   overwrite confirmation uses the configured title, message formatter, captions,

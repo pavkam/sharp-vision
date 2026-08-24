@@ -804,10 +804,12 @@ public sealed class ThemeCatalogTests
 
     private static string JsonWithName(string name) => ThemeJson.Create(name: name);
 
-    /// <summary>The regression this test exists to pin. A secondary style type - one that derives
-    /// from <c>ControlStyle</c> but declares itself a part/secondary style owning no theme section
-    /// of its own, such as <see cref="ColorPickerStyle"/> - must have its derived key rejected
-    /// exactly like any other unknown name rather than accepted and then silently ignored.</summary>
+    /// <summary>A secondary style type - one that owns no primary appearance of its own, such as
+    /// <see cref="ColorPickerStyle"/> - has its derived key rejected exactly like any other unknown
+    /// name. This no longer distinguishes secondary from primary styles at all: every leaf's
+    /// derived key is rejected now, since a theme's "styles" object is closed to exactly the six
+    /// well-known role sections regardless of what kind of style a leaf declares itself to
+    /// be.</summary>
     [Fact]
     public void Parse_WhenSectionBelongsToASecondaryStyle_Throws()
     {

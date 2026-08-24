@@ -46,43 +46,50 @@ Retired as type vocabulary, and not to be reintroduced: **`Role`** anywhere,
 
 ## The model
 
-Every themeable value is an immutable record deriving from `ControlStyle`. There
-is no fixed, closed set of them and no enum naming one — a control declares its
-own style type, and that type declares how it resolves.
+Every themeable value is an immutable record deriving from `ControlStyle`. A
+theme's `styles` object is closed to exactly six top-level sections, one per
+well-known base type — `ControlStyle` and its `InputStyle`, `ContainerStyle`,
+`WindowStyle`, `PopupStyle`, `TooltipStyle` siblings. Nothing else is a
+theme-visible key: not a leaf control's own name, not a namespaced vendor
+section.
 
-- `StyleDefinitions.Control<TStyle>(codeOwnedDefault, compare)` — a
-  self-contained root. Only the six well-known base types use this:
-  `ControlStyle` and its `InputStyle`, `ContainerStyle`, `WindowStyle`,
-  `PopupStyle`, `TooltipStyle` siblings.
+- `Theme.GetStyleSet<TStyle>(codeOwnedDefault)` — resolves one of the six
+  well-known types against its own `styles.*` section.
 - `StyleDefinitions.Control<TStyle, TFallback>(fallbackTo, complete, compare)` —
-  every leaf control style, with one declared one-hop fallback.
+  every leaf control style's one factory, with one declared one-hop fallback.
+  `fallbackTo` resolves one of the six well-known types' own per-state set (via
+  `Theme.GetStyleSet`) or one of `Theme`'s four derived interaction sets;
+  `complete` folds that fallback's contribution into this type's own shape. A
+  leaf declares no `styles.*` section of its own at all — its only sources of
+  appearance are this completion logic, the fallback's resolved states, and a
+  locally assigned `Style`.
 - `StyleDefinitions.Part<TStyle>(fallback, compare)` — a secondary style that
   does not own its control's appearance states.
 
-A style's `styles.*` theme key is **derived from its type name** by `StyleKey`:
-drop a trailing `Style`, drop a leading `Theme`, lower-case the first character.
-`ButtonStyle` owns `"button"`, `ScrollBarStyle` owns `"scrollBar"`,
-`ControlStyle` owns `"control"`. Never hand-write a library style's key, and
-never maintain a separate list of section names — the registry that validates
-theme documents is built by reflecting over the style types themselves. The
-explicit-key overloads exist only for third-party sections, which must be
-`vendor.control` namespaced (a dot cannot appear in a type name), and for test
-probes using synthetic `test.*` keys.
+A well-known type's key is **derived from its type name** by the internal
+`StyleKey`: drop a trailing `Style`, drop a leading `Theme`, lower-case the
+first character — so `ControlStyle` owns `"control"`, `WindowStyle` owns
+`"window"`. That derivation only ever resolves for the six well-known roots; a
+leaf style's own derived key (`ButtonStyle` would derive `"button"`) is never
+looked up against a theme document, since `styles` admits only the six names
+regardless of what a leaf type's key would compute to. There is no registry, no
+vendor namespace, and no explicit-key overload for a leaf or third-party
+section.
 
 ## Workflow
 
 1. Pick the well-known base type whose appearance the control should inherit,
    then declare a record deriving from it with only the extra members the
    control needs.
-2. Resolve through `StyleDefinitions.Control<TStyle, TFallback>` with the
-   derived key. Keep complete immutable values separate from the partial
-   per-state contributions a theme authors.
+2. Resolve through `StyleDefinitions.Control<TStyle, TFallback>`, declaring the
+   one-hop fallback. Keep complete immutable values separate from the partial
+   per-state contributions the fallback's own theme section authors.
 3. Return the earliest genuinely affected phase from `compare` — structural
    members are `Measure`, color-only changes are `Render`.
 4. Test local value, theme value, state precedence, ambient inheritance,
    dispatcher affinity, reset, and exact invalidation.
-5. Update every bundled theme and the schema together when adding a section a
-   theme is expected to author.
+5. Update every bundled theme and the schema together when changing a role
+   section's authored members.
 6. Verify representative states on a mounted surface, not just the resolved
    style.
 

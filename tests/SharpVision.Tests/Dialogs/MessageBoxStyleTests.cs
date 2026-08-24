@@ -53,20 +53,6 @@ public sealed class MessageBoxStyleTests
         resolved.MessageFace.ShouldBe(window.Normal.Face);
     }
 
-    /// <summary>Verifies a theme's own "messageBox" key overrides the action-bar margin on top of
-    /// the window fallback.</summary>
-    [Fact]
-    public void Definition_Resolve_WhenThemeAuthorsActionBarMargin_OverridesMarginOnly()
-    {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(extraStyles:
-            """, "messageBox": { "normal": { "actionBarMargin": { "x": 3, "y": 1 } } } """));
-
-        var resolved = MessageBoxStyle.Definition.Resolve(null, theme);
-
-        resolved.ActionBarMargin.ShouldBe(new Thickness(3, 1));
-        resolved.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Paired);
-    }
-
     /// <summary>Verifies a local override always wins over both the theme and the fallback.</summary>
     [Fact]
     public void Definition_Resolve_WhenLocalIsSupplied_LocalWins()

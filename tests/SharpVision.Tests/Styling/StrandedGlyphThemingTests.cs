@@ -4,217 +4,154 @@
 namespace SharpVision.Tests.Styling;
 
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 
-
-/// <summary>Verifies the six controls that kept chrome glyphs on the control class are now reachable
-/// from a theme.
+/// <summary>Verifies the presentation of six controls that once kept chrome glyphs on the control
+/// class - Expander, MenuItem, MenuSeparator, NavigationViewGroup, NavigationViewItem, and
+/// NavigationViewSeparator - plus several other structural/glyph members (Table's grid glyphs and
+/// part colors, StatusBarItem's separators, Text's ellipsis marker, Chart's glyph family, JsonView's
+/// disclosure pair, Calendar's navigation arrows) that a theme could once reach through the
+/// control's own leaf section.
 ///
-/// <para>Each read a hardcoded entry from the <c>internal static</c> <c>ControlGlyphs</c> registry
-/// and exposed a per-instance override as the only customization path. So a theme swapping the
-/// application to an ASCII-safe glyph set moved checkboxes, scrollbars, progress bars, and
-/// separators, and left menu markers, disclosure arrows, and navigation markers exactly where they
-/// were - with no way to follow.</para>
-///
-/// <para>The two separators were the sharpest cases: <c>MenuSeparator</c> and
-/// <c>NavigationViewSeparator</c> are dividers whose glyph property was byte-for-byte the shape
-/// <c>Separator</c> had before it gained <c>SeparatorStyle</c>, so the library contained three
-/// separators that disagreed about who owns a divider glyph.</para>
-///
-/// <para>Every case is asserted through a rendered cell rather than the resolved style alone. A
-/// style that resolves correctly while the control still reads the hardcoded registry passes every
-/// style-layer assertion.</para>
+/// <para>A theme's "styles" object is now closed to exactly the six well-known role sections, so a
+/// leaf resolves no section of its own any more: these members are reachable only through a
+/// locally assigned <c>Style</c>, never through a theme. Every test below that once authored a
+/// theme section now assigns a local style instead, and asserts through a rendered cell rather than
+/// the resolved style alone wherever a render-level sibling did not already exist elsewhere -
+/// resolving correctly is not evidence that a control's render path actually reads the resolved
+/// value.</para>
 /// </summary>
 public sealed class StrandedGlyphThemingTests
 {
-    /// <summary>Verifies a theme reaches the expander's disclosure arrow.</summary>
+    /// <summary>Verifies a locally assigned style reaches the expander's disclosure arrow.</summary>
     [Fact]
-    public async Task Render_WhenThemeAuthorsExpanderGlyphs_DrawsThemAsync()
+    public async Task Render_WhenLocalStyleSetsExpanderGlyphs_DrawsThemAsync()
     {
-        var expander = new Expander { HeaderText = "Section", IsExpanded = true };
+        var expander = new Expander
+        {
+            HeaderText = "Section",
+            IsExpanded = true,
+            Style = ExpanderStyle.Default with { ExpandedGlyph = new Rune('-'), CollapsedGlyph = new Rune('+') }
+        };
         await using var surface = await ComponentSurface.MountAsync(
             expander,
             new Size(20, 4),
             TestContext.Current.CancellationToken);
-
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = Authored(
-                """, "expander": { "normal": { "expandedGlyph": "-", "collapsedGlyph": "+" } } """),
-            "author disclosure glyphs");
 
         surface.Cell(new Point(0, 0)).Text.ShouldBe("-");
     }
 
-    /// <summary>Verifies the collapsed arrow follows the same section, so a theme cannot half-move a
+    /// <summary>Verifies the collapsed arrow follows the same style, so it cannot half-move a
     /// two-state pair.</summary>
     [Fact]
-    public async Task Render_WhenThemeAuthorsExpanderGlyphs_DrawsTheCollapsedOneTooAsync()
+    public async Task Render_WhenLocalStyleSetsExpanderGlyphs_DrawsTheCollapsedOneTooAsync()
     {
-        var expander = new Expander { HeaderText = "Section", IsExpanded = false };
+        var expander = new Expander
+        {
+            HeaderText = "Section",
+            IsExpanded = false,
+            Style = ExpanderStyle.Default with { ExpandedGlyph = new Rune('-'), CollapsedGlyph = new Rune('+') }
+        };
         await using var surface = await ComponentSurface.MountAsync(
             expander,
             new Size(20, 4),
             TestContext.Current.CancellationToken);
 
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = Authored(
-                """, "expander": { "normal": { "expandedGlyph": "-", "collapsedGlyph": "+" } } """),
-            "author disclosure glyphs");
-
         surface.Cell(new Point(0, 0)).Text.ShouldBe("+");
     }
 
-    /// <summary>Verifies the expander's content indent is theme-reachable, since it is the same kind
-    /// of member as <c>ButtonStyle.Padding</c> and moves measured layout.</summary>
+    /// <summary>Verifies a locally assigned style reaches the menu divider - the case that made the
+    /// library hold two separators disagreeing about who owns a divider glyph.</summary>
     [Fact]
-    public void Resolve_WhenThemeAuthorsExpanderIndent_AppliesIt()
+    public async Task Render_WhenLocalStyleSetsMenuSeparatorGlyph_DrawsItAsync()
     {
-        var theme = Authored(""", "expander": { "normal": { "contentIndent": 5 } } """);
-
-        ExpanderStyle.Definition.Resolve(null, theme).ContentIndent.ShouldBe(5);
-    }
-
-    /// <summary>Verifies a theme reaches the menu divider - the case that made the library hold two
-    /// separators disagreeing about who owns a divider glyph.</summary>
-    [Fact]
-    public async Task Render_WhenThemeAuthorsMenuSeparatorGlyph_DrawsItAsync()
-    {
-        var separator = new MenuSeparator();
+        var separator = new MenuSeparator { Style = MenuSeparatorStyle.Default with { Glyph = new Rune('=') } };
         await using var surface = await ComponentSurface.MountAsync(
             separator,
             new Size(6, 1),
             TestContext.Current.CancellationToken);
-
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = Authored(
-                """, "menuSeparator": { "normal": { "glyph": "=" } } """),
-            "author menu divider");
 
         surface.Cell(new Point(0, 0)).Text.ShouldBe("=");
     }
 
     /// <summary>Verifies the same for the navigation divider, the third separator in the family.</summary>
     [Fact]
-    public async Task Render_WhenThemeAuthorsNavigationSeparatorGlyph_DrawsItAsync()
+    public async Task Render_WhenLocalStyleSetsNavigationSeparatorGlyph_DrawsItAsync()
     {
-        var separator = new NavigationViewSeparator();
+        var separator = new NavigationViewSeparator
+        {
+            Style = NavigationViewSeparatorStyle.Default with { Glyph = new Rune('~') }
+        };
         await using var surface = await ComponentSurface.MountAsync(
             separator,
             new Size(6, 1),
             TestContext.Current.CancellationToken);
 
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = Authored(
-                """, "navigationViewSeparator": { "normal": { "glyph": "~" } } """),
-            "author navigation divider");
-
         surface.Cell(new Point(0, 0)).Text.ShouldBe("~");
     }
 
-    /// <summary>Verifies all four menu markers resolve from the theme. The private resolver was
-    /// already named <c>ThemeMenuGlyph</c> while consulting no theme at all - it read four hardcoded
-    /// registry entries, and the name was the only trace of an intent the code did not implement.</summary>
+    /// <summary>Verifies a themed check marker reaches a rendered menu row, which the resolved
+    /// style alone does not establish.</summary>
     [Fact]
-    public void Resolve_WhenThemeAuthorsMenuItemMarkers_ResolvesAllFour()
+    public async Task Render_WhenLocalStyleSetsMenuItemMarkers_DrawsTheCheckedOneAsync()
     {
-        var theme = Authored(
-            """, "menuItem": { "normal": { "uncheckedGlyph": ".", "checkedGlyph": "x", "radioUncheckedGlyph": "o", "radioCheckedGlyph": "*" } } """);
-
-        var style = MenuItemStyle.Definition.Resolve(null, theme);
-
-        style.UncheckedGlyph.ShouldBe(new Rune('.'));
-        style.CheckedGlyph.ShouldBe(new Rune('x'));
-        style.RadioUncheckedGlyph.ShouldBe(new Rune('o'));
-        style.RadioCheckedGlyph.ShouldBe(new Rune('*'));
-    }
-
-    /// <summary>Verifies a themed check marker reaches a rendered menu row, which is what the style
-    /// resolving correctly does not on its own establish.</summary>
-    [Fact]
-    public async Task Render_WhenThemeAuthorsMenuItemMarkers_DrawsTheCheckedOneAsync()
-    {
-        var item = new MenuItem { Text = "Toggle", Kind = MenuItemKind.Check, IsChecked = true };
+        var item = new MenuItem
+        {
+            Text = "Toggle",
+            Kind = MenuItemKind.Check,
+            IsChecked = true,
+            Style = MenuItemStyle.Default with { CheckedGlyph = new Rune('x') }
+        };
         var menu = new Menu { Orientation = Orientation.Vertical, Items = { item } };
         await using var surface = await ComponentSurface.MountAsync(
             menu,
             new Size(20, 3),
             TestContext.Current.CancellationToken);
-
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = Authored(
-                """, "menuItem": { "normal": { "uncheckedGlyph": ".", "checkedGlyph": "x", "radioUncheckedGlyph": "o", "radioCheckedGlyph": "*" } } """),
-            "author menu markers");
 
         Row(surface, 0, 20).ShouldContain("x");
     }
 
     /// <summary>Verifies the radio kind reads its own pair, so a mixed menu cannot render
-    /// half-themed. That is why the style carries both pairs rather than one: an entry's kind is a
-    /// semantic fact the entry owns, not a presentation choice the theme makes.</summary>
+    /// half-styled. That is why the style carries both pairs rather than one: an entry's kind is a
+    /// semantic fact the entry owns, not a presentation choice a style makes.</summary>
     [Fact]
-    public async Task Render_WhenThemeAuthorsMenuItemMarkers_DrawsTheRadioPairAsync()
+    public async Task Render_WhenLocalStyleSetsMenuItemMarkers_DrawsTheRadioPairAsync()
     {
-        var item = new MenuItem { Text = "Choice", Kind = MenuItemKind.Radio, IsChecked = true };
+        var item = new MenuItem
+        {
+            Text = "Choice",
+            Kind = MenuItemKind.Radio,
+            IsChecked = true,
+            Style = MenuItemStyle.Default with { RadioCheckedGlyph = new Rune('*') }
+        };
         var menu = new Menu { Orientation = Orientation.Vertical, Items = { item } };
         await using var surface = await ComponentSurface.MountAsync(
             menu,
             new Size(20, 3),
             TestContext.Current.CancellationToken);
 
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = Authored(
-                """, "menuItem": { "normal": { "uncheckedGlyph": ".", "checkedGlyph": "x", "radioUncheckedGlyph": "o", "radioCheckedGlyph": "*" } } """),
-            "author menu markers");
-
         Row(surface, 0, 20).ShouldContain("*");
-    }
-
-    /// <summary>Verifies the navigation group's disclosure pair and indent are theme-reachable.</summary>
-    [Fact]
-    public void Resolve_WhenThemeAuthorsNavigationGroup_ResolvesGlyphsAndIndent()
-    {
-        var theme = Authored(
-            """, "navigationViewGroup": { "normal": { "collapsedGlyph": "+", "expandedGlyph": "-", "itemIndent": 4 } } """);
-
-        var style = NavigationViewGroupStyle.Definition.Resolve(null, theme);
-
-        style.CollapsedGlyph.ShouldBe(new Rune('+'));
-        style.ExpandedGlyph.ShouldBe(new Rune('-'));
-        style.ItemIndent.ShouldBe(4);
-    }
-
-    /// <summary>Verifies the navigation item's two markers are theme-reachable.</summary>
-    [Fact]
-    public void Resolve_WhenThemeAuthorsNavigationItemMarkers_ResolvesBoth()
-    {
-        var theme = Authored(
-            """, "navigationViewItem": { "normal": { "idleMarker": ".", "currentMarker": ">" } } """);
-
-        var style = NavigationViewItemStyle.Definition.Resolve(null, theme);
-
-        style.IdleMarker.ShouldBe(new Rune('.'));
-        style.CurrentMarker.ShouldBe(new Rune('>'));
     }
 
     /// <summary>Verifies a themed navigation marker reaches a rendered row.
     ///
-    /// <para>The style-layer assertion above is not evidence for this. A style can resolve perfectly
+    /// <para>A style resolving correctly is not evidence for this. A style can resolve perfectly
     /// while the control still reads the hardcoded registry - reverting the render site to
     /// <c>ControlGlyphs.Navigation.ItemIdle</c> left every style-layer test green, which is exactly
     /// how this class of wiring gap survives.</para>
     /// </summary>
     [Fact]
-    public async Task Render_WhenThemeAuthorsNavigationItemMarkers_DrawsThemAsync()
+    public async Task Render_WhenLocalStyleSetsNavigationItemMarkers_DrawsThemAsync()
     {
-        var view = NavigationViewWith(new NavigationViewItem { Text = "Home" });
+        var view = NavigationViewWith(new NavigationViewItem
+        {
+            Text = "Home",
+            Style = NavigationViewItemStyle.Default with { IdleMarker = new Rune('#') }
+        });
         await using var surface = await ComponentSurface.MountAsync(
             view,
             new Size(16, 4),
             TestContext.Current.CancellationToken);
-
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = Authored(
-                """, "navigationViewItem": { "normal": { "idleMarker": "#", "currentMarker": ">" } } """),
-            "author navigation markers");
 
         Row(surface, 0, 16).ShouldContain("#");
     }
@@ -222,9 +159,14 @@ public sealed class StrandedGlyphThemingTests
     /// <summary>Verifies a themed group disclosure glyph reaches a rendered row, for the same
     /// reason.</summary>
     [Fact]
-    public async Task Render_WhenThemeAuthorsNavigationGroupGlyphs_DrawsThemAsync()
+    public async Task Render_WhenLocalStyleSetsNavigationGroupGlyphs_DrawsThemAsync()
     {
-        var group = new NavigationViewGroup { Header = "Tools", IsExpanded = true };
+        var group = new NavigationViewGroup
+        {
+            Header = "Tools",
+            IsExpanded = true,
+            Style = NavigationViewGroupStyle.Default with { ExpandedGlyph = new Rune('-'), CollapsedGlyph = new Rune('+') }
+        };
         group.Items.Add(new NavigationViewItem { Text = "Edit" });
         var view = NavigationViewWith(group);
         await using var surface = await ComponentSurface.MountAsync(
@@ -232,22 +174,25 @@ public sealed class StrandedGlyphThemingTests
             new Size(16, 5),
             TestContext.Current.CancellationToken);
 
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = Authored(
-                """, "navigationViewGroup": { "normal": { "collapsedGlyph": "+", "expandedGlyph": "-" } } """),
-            "author group disclosure");
-
         Row(surface, 0, 16).ShouldContain("-");
     }
 
-    /// <summary>Verifies a theme reaches the table's grid glyphs at the rendered cell. Table was the
-    /// largest remaining case - seven members, three of them colors - and the only one where the
-    /// control already participated in the styling engine through a part slot while owning no
+    /// <summary>Verifies a locally styled table reaches the grid glyphs at the rendered cell. Table
+    /// was the largest remaining case - seven members, three of them colors - and the only one where
+    /// the control already participated in the styling engine through a part slot while owning no
     /// primary style of its own.</summary>
     [Fact]
-    public async Task Render_WhenThemeAuthorsTableGlyphs_DrawsThemAsync()
+    public async Task Render_WhenLocalStyleSetsTableGlyphs_DrawsThemAsync()
     {
-        var table = new Table { Width = Length.Cells(14), ShowGridLines = true };
+        var table = new Table
+        {
+            Width = Length.Cells(14),
+            ShowGridLines = true,
+            Style = TableStyle.Default with
+            {
+                Glyphs = TableStyle.Default.Glyphs with { Horizontal = new Rune('='), Vertical = new Rune('!') }
+            }
+        };
         table.Columns.Add(TableColumn.Auto("A"));
         table.Columns.Add(TableColumn.Auto("B"));
         table.Rows.Add(new TableRow([new ControlText { Content = "1" }, new ControlText { Content = "2" }]));
@@ -256,64 +201,31 @@ public sealed class StrandedGlyphThemingTests
             new Size(14, 5),
             TestContext.Current.CancellationToken);
 
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = Authored(
-                """, "table": { "normal": { "glyphs": { "horizontal": "=", "vertical": "!", "cross": "+" } } } """),
-            "author grid glyphs");
-
         var rendered = string.Concat(Enumerable.Range(0, 5).Select(y => Row(surface, y, 14)));
         rendered.ShouldContain("=");
         rendered.ShouldContain("!");
     }
 
-    /// <summary>Verifies the table's cell padding is theme-reachable, and that it still moves
-    /// measured layout rather than only paint.</summary>
-    [Fact]
-    public void Resolve_WhenThemeAuthorsTableCellPadding_AppliesIt()
-    {
-        var theme = Authored(""", "table": { "normal": { "cellPadding": { "x": 2, "y": 0 } } } """);
-
-        TableStyle.Definition.Resolve(null, theme).CellPadding.Horizontal.ShouldBe(4);
-    }
-
-    /// <summary>Verifies a themed cell padding actually reaches layout, not just the resolved style.
+    /// <summary>Verifies a styled cell padding actually reaches layout, not just the resolved style.
     ///
     /// <para>Nothing in the repository pinned this before the move - replacing the presenter's read
-    /// with a hardcoded <c>default</c> left every Table suite green. The property changed owner, but
-    /// the gap it exposes is older than the change.</para>
+    /// with a hardcoded <c>default</c> left every Table suite green.</para>
     /// </summary>
     [Fact]
-    public void Measure_WhenThemeAuthorsTableCellPadding_WidensTheTable()
+    public void Measure_WhenLocalStyleSetsTableCellPadding_WidensTheTable()
     {
-        var padded = MeasuredTableWidth(Authored(
-            """, "table": { "normal": { "cellPadding": { "x": 3, "y": 0 } } } """));
-        var unpadded = MeasuredTableWidth(ThemeCatalog.Parse(ThemeJson.Create()));
+        var padded = MeasuredTableWidth(TableStyle.Default with { CellPadding = new Thickness(3, 0) });
+        var unpadded = MeasuredTableWidth(null);
 
         padded.ShouldBe(unpadded + 6, "one column, three cells of padding on each side");
     }
 
-    /// <summary>Verifies the three nullable part colors round-trip through a theme. They stayed
-    /// nullable on purpose: null means "inherit the table's own resolved face", which no fixed
-    /// <c>ControlColor</c> can express, and for the header background it also decides whether the
-    /// header row is filled at all.</summary>
+    /// <summary>Verifies an unstyled table leaves the three nullable part colors inheriting. They
+    /// stayed nullable on purpose: null means "inherit the table's own resolved face", which no
+    /// fixed <c>ControlColor</c> can express, and for the header background it also decides whether
+    /// the header row is filled at all.</summary>
     [Fact]
-    public void Resolve_WhenThemeAuthorsTablePartColors_ResolvesThem()
-    {
-        var theme = Authored(
-            """, "table": { "normal": { "headerForeground": "accent", "headerBackground": "surface", "gridLineColor": "muted" } } """);
-
-        var style = TableStyle.Definition.Resolve(null, theme);
-
-        style.HeaderForeground.ShouldBe((ControlColor?) SemanticColor.Accent);
-        style.HeaderBackground.ShouldBe((ControlColor?) SemanticColor.Surface);
-        style.GridLineColor.ShouldBe((ControlColor?) SemanticColor.Muted);
-    }
-
-    /// <summary>The counter-case for the nullable trio, and the reason the overlay needed nullable
-    /// leaf support at all: an unauthored theme leaves all three null, so a table keeps inheriting
-    /// its own face instead of acquiring a header band nobody asked for.</summary>
-    [Fact]
-    public void Resolve_WhenNoThemeAuthorsTablePartColors_LeavesThemInheriting()
+    public void Resolve_WhenNoLocalStyleIsAssigned_LeavesPartColorsInheriting()
     {
         var style = TableStyle.Definition.Resolve(null, ThemeCatalog.Parse(ThemeJson.Create()));
 
@@ -322,37 +234,31 @@ public sealed class StrandedGlyphThemingTests
         style.GridLineColor.ShouldBeNull();
     }
 
-    /// <summary>Verifies an explicit JSON null clears an authored part color back to inheriting,
-    /// which is the whole point of the nullable-leaf branch in the overlay.</summary>
+    /// <summary>Verifies the overlay's nullable-leaf branch resolves an explicit JSON null back to
+    /// inheriting - the mechanic the three nullable part colors need, and the reason the overlay
+    /// needed nullable leaf support at all. Exercised directly against <see cref="Theme.Overlay"/> -
+    /// a leaf declares no theme section of its own to carry this scenario through any more, but the
+    /// mechanic is unrelated to which section context reaches it.</summary>
     [Fact]
-    public void Resolve_WhenThemeAuthorsAnExplicitNullPartColor_ReturnsToInheriting()
+    public void Overlay_WhenAnExplicitNullPartColor_ReturnsToInheriting()
     {
-        var theme = Authored(""", "table": { "normal": { "headerForeground": null } } """);
+        var theme = ThemeCatalog.Parse(ThemeJson.Create());
 
-        TableStyle.Definition.Resolve(null, theme).HeaderForeground.ShouldBeNull();
+        var result = (TableStyle) theme.Overlay(
+            TableStyle.Default with { HeaderForeground = SemanticColor.Accent },
+            ParseOverrides(/*lang=json,strict*/ """{"headerForeground":null}"""),
+            "styles.table.normal");
+
+        result.HeaderForeground.ShouldBeNull();
     }
 
-    /// <summary>Verifies the required placeholder colors round-trip through a theme, unlike the
-    /// nullable trio above they are required non-nullable <c>ControlColor</c> members - a synthetic
-    /// status indicator has no table face to fall back to - the same shape
-    /// <c>TreeViewStyle.LoadingColor</c>/<c>FailedColor</c> already use.</summary>
+    /// <summary>Verifies an unstyled table still resolves the placeholder colors to the documented
+    /// Muted/Error defaults rather than leaving them unset, since they are required members with no
+    /// null state to fall back to - unlike the nullable trio above, a synthetic status indicator has
+    /// no table face to fall back to, the same shape <c>TreeViewStyle.LoadingColor</c>/
+    /// <c>FailedColor</c> already use.</summary>
     [Fact]
-    public void Resolve_WhenThemeAuthorsPlaceholderColors_ResolvesThem()
-    {
-        var theme = Authored(
-            """, "table": { "normal": { "placeholderForeground": "accent", "placeholderErrorForeground": "warning" } } """);
-
-        var style = TableStyle.Definition.Resolve(null, theme);
-
-        style.PlaceholderForeground.ShouldBe((ControlColor) SemanticColor.Accent);
-        style.PlaceholderErrorForeground.ShouldBe((ControlColor) SemanticColor.Warning);
-    }
-
-    /// <summary>The counter-case for the placeholder colors: an unauthored theme still resolves them
-    /// to the documented Muted/Error defaults rather than leaving them unset, since they are
-    /// required members with no null state to fall back to.</summary>
-    [Fact]
-    public void Resolve_WhenNoThemeAuthorsPlaceholderColors_UsesDocumentedDefaults()
+    public void Resolve_WhenNoLocalStyleIsAssigned_UsesDocumentedPlaceholderDefaults()
     {
         var style = TableStyle.Definition.Resolve(null, ThemeCatalog.Parse(ThemeJson.Create()));
 
@@ -360,96 +266,92 @@ public sealed class StrandedGlyphThemingTests
         style.PlaceholderErrorForeground.ShouldBe((ControlColor) SemanticColor.Error);
     }
 
-    /// <summary>Verifies a theme reaches the status-bar separator glyph at the rendered cell.
+    /// <summary>Verifies a locally styled status bar reaches the separator glyph at the rendered
+    /// cell.
     ///
     /// <para>The item's separator used to be one nullable Rune carrying two facts: whether a
-    /// separator exists, and which glyph it is. That is why no theme could reach it - restyling the
-    /// glyph would have meant deciding, per item, whether there was one at all. Presence is now
-    /// <c>ShowLeftSeparator</c>, which reserves the cell, and the glyph is the theme's.</para>
+    /// separator exists, and which glyph it is. Presence is now <c>ShowLeftSeparator</c>, which
+    /// reserves the cell, and the glyph is the style's.</para>
     /// </summary>
     [Fact]
-    public async Task Render_WhenThemeAuthorsStatusBarSeparators_DrawsThemAsync()
+    public async Task Render_WhenLocalStyleSetsStatusBarSeparators_DrawsThemAsync()
     {
-        var item = new StatusBarItem { ShowLeftSeparator = true, Content = new ControlText { Content = "Ready" } };
+        var item = new StatusBarItem
+        {
+            ShowLeftSeparator = true,
+            Content = new ControlText { Content = "Ready" },
+            Style = StatusBarItemStyle.Default with { LeftSeparatorGlyph = new Rune('#'), RightSeparatorGlyph = new Rune('%') }
+        };
         var bar = new StatusBar { Items = { item } };
         await using var surface = await ComponentSurface.MountAsync(
             bar,
             new Size(20, 1),
             TestContext.Current.CancellationToken);
-
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = Authored(
-                """, "statusBarItem": { "normal": { "leftSeparatorGlyph": "#", "rightSeparatorGlyph": "%" } } """),
-            "author status separators");
 
         Row(surface, 0, 20).ShouldContain("#");
     }
 
-    /// <summary>Verifies a per-item override still beats the themed glyph. Splitting presence out
+    /// <summary>Verifies a per-item override still beats the styled glyph. Splitting presence out
     /// must not cost the per-item choice the showcase relies on.</summary>
     [Fact]
-    public void ActualSeparator_WhenTheItemOverridesTheGlyph_KeepsTheOverrideUnderATheme()
+    public void ActualSeparator_WhenTheItemOverridesTheGlyph_KeepsTheOverrideUnderALocalStyle()
     {
-        var theme = Authored(
-            """, "statusBarItem": { "normal": { "leftSeparatorGlyph": "#", "rightSeparatorGlyph": "%" } } """);
         using var item = new StatusBarItem
         {
             ShowLeftSeparator = true,
-            LeftSeparator = StatusBarSeparatorGlyphs.Chevron
+            LeftSeparator = StatusBarSeparatorGlyphs.Chevron,
+            Style = StatusBarItemStyle.Default with { LeftSeparatorGlyph = new Rune('#'), RightSeparatorGlyph = new Rune('%') }
         };
-        item.PropagateTheme(theme);
 
         item.ActualLeftSeparator.ShouldBe(StatusBarSeparatorGlyphs.Chevron);
-        item.ActualRightSeparator.ShouldBe(new Rune('%'), "the unoverridden side still follows the theme");
+        item.ActualRightSeparator.ShouldBe(new Rune('%'), "the unoverridden side still follows the style");
     }
 
     /// <summary>The counter-case for the split: an item that shows no separator reserves no cell, so
-    /// a themed glyph cannot make one appear.</summary>
+    /// a styled glyph cannot make one appear.</summary>
     [Fact]
-    public async Task Render_WhenTheItemShowsNoSeparator_DrawsNoneEvenUnderAThemeAsync()
+    public async Task Render_WhenTheItemShowsNoSeparator_DrawsNoneEvenWithALocalStyleAsync()
     {
-        var item = new StatusBarItem { Content = new ControlText { Content = "Ready" } };
+        var item = new StatusBarItem
+        {
+            Content = new ControlText { Content = "Ready" },
+            Style = StatusBarItemStyle.Default with { LeftSeparatorGlyph = new Rune('#'), RightSeparatorGlyph = new Rune('%') }
+        };
         var bar = new StatusBar { Items = { item } };
         await using var surface = await ComponentSurface.MountAsync(
             bar,
             new Size(20, 1),
             TestContext.Current.CancellationToken);
 
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = Authored(
-                """, "statusBarItem": { "normal": { "leftSeparatorGlyph": "#", "rightSeparatorGlyph": "%" } } """),
-            "author status separators");
-
         Row(surface, 0, 20).ShouldNotContain("#");
     }
 
-    /// <summary>Verifies a theme reaches the truncation marker at the rendered cell.
+    /// <summary>Verifies a locally styled control reaches the truncation marker at the rendered
+    /// cell.
     ///
     /// <para>This has the widest blast radius of any single glyph in the library - every elided
-    /// string renders it - and was reachable only per <c>Text</c> instance, so a theme built for a
-    /// terminal without dependable ellipsis coverage had to be applied at every construction
-    /// site.</para>
+    /// string renders it.</para>
     /// </summary>
     [Fact]
-    public async Task Render_WhenThemeAuthorsTheEllipsis_DrawsItAsync()
+    public async Task Render_WhenLocalStyleSetsTheEllipsis_DrawsItAsync()
     {
-        var text = new ControlText { Content = "Truncate me please", Overflow = Overflow.Ellipsis };
+        var text = new ControlText
+        {
+            Content = "Truncate me please",
+            Overflow = Overflow.Ellipsis,
+            Style = TextStyle.Default with { EllipsisGlyph = new Rune('>') }
+        };
         await using var surface = await ComponentSurface.MountAsync(
             text,
             new Size(8, 1),
             TestContext.Current.CancellationToken);
-
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = Authored(""", "text": { "normal": { "ellipsisGlyph": ">" } } """),
-            "author truncation marker");
 
         Row(surface, 0, 8).ShouldEndWith(">");
     }
 
-    /// <summary>The counter-case: an unauthored theme keeps the code-owned marker, so the fifteen
-    /// bundled themes render every elided string exactly as before.</summary>
+    /// <summary>The counter-case: an unstyled control keeps the code-owned marker.</summary>
     [Fact]
-    public async Task Render_WhenNoThemeAuthorsTheEllipsis_KeepsTheCodeOwnedMarkerAsync()
+    public async Task Render_WhenNoLocalStyleIsAssigned_KeepsTheCodeOwnedMarkerAsync()
     {
         var text = new ControlText { Content = "Truncate me please", Overflow = Overflow.Ellipsis };
         await using var surface = await ComponentSurface.MountAsync(
@@ -457,106 +359,105 @@ public sealed class StrandedGlyphThemingTests
             new Size(8, 1),
             TestContext.Current.CancellationToken);
 
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = ThemeCatalog.Parse(ThemeJson.Create()),
-            "unauthored theme");
-
         Row(surface, 0, 8).ShouldNotContain(">");
     }
 
-    /// <summary>Verifies a per-instance local style still wins, so moving the glyph to the theme did
-    /// not remove the ability to override one label.</summary>
+    /// <summary>Verifies a local style wins over the code-owned default, and that assigning null
+    /// returns the control to that code-owned default - the escape hatch the old
+    /// <c>ResetGlyphs()</c> never provided, since it restored code-owned values by a different
+    /// door than the one every other reset now shares.</summary>
     [Fact]
-    public void ActualStyle_WhenALocalStyleOverridesTheEllipsis_WinsOverTheTheme()
+    public void ActualStyle_WhenALocalStyleOverridesTheEllipsis_WinsThenClearingRestoresTheCodeOwnedDefault()
     {
-        var theme = Authored(""", "text": { "normal": { "ellipsisGlyph": ">" } } """);
         using var text = new ControlText { Content = "x" };
-        text.PropagateTheme(theme);
 
-        text.ActualStyle.EllipsisGlyph.ShouldBe(new Rune('>'));
+        text.ActualStyle.EllipsisGlyph.ShouldBe(TextStyle.Default.EllipsisGlyph);
 
         text.Style = TextStyle.Default with { EllipsisGlyph = new Rune('~') };
         text.ActualStyle.EllipsisGlyph.ShouldBe(new Rune('~'));
 
         text.Style = null;
-        text.ActualStyle.EllipsisGlyph.ShouldBe(new Rune('>'));
+        text.ActualStyle.EllipsisGlyph.ShouldBe(TextStyle.Default.EllipsisGlyph);
     }
 
-    /// <summary>Verifies the chart glyph family can be applied by a theme at all.
+    /// <summary>Verifies the chart glyph family can be authored through the overlay engine at all.
     ///
     /// <para><c>ChartGlyphs</c> was the only glyph family in the library that was not a record and
     /// did not implement the fragment interface, so <c>Theme.Overlay</c> never recursed into it and
     /// its JSON fell through to <c>JsonSerializer</c>. Depending on which path that took, an author
     /// got either an opaque "styles.chart.normal.glyphs is invalid" or a silent fall back to the
     /// code-owned family - and <c>ChartStyle.Glyphs</c>'s getter swallowed the silent case with a
-    /// <c>field == default ? Default : field</c> guard.</para>
+    /// <c>field == default ? Default : field</c> guard. Exercised directly against
+    /// <see cref="Theme.Overlay"/> since "chart" is no longer an authorable theme section, but the
+    /// fragment-conformance regression this guards is about the type, not the section.</para>
     /// </summary>
     [Fact]
-    public void Resolve_WhenThemeAuthorsChartGlyphs_AppliesThem()
+    public void Overlay_WhenAuthoringChartGlyphs_AppliesThem()
     {
-        var theme = Authored(
-            """, "chart": { "normal": { "glyphs": { "bar": "#", "verticalAxis": "!", "horizontalAxis": "=" } } } """);
+        var theme = ThemeCatalog.Parse(ThemeJson.Create());
 
-        var glyphs = ChartStyle.Definition.Resolve(null, theme).Glyphs;
+        var result = (ChartStyle) theme.Overlay(
+            ChartStyle.Default,
+            ParseOverrides(/*lang=json,strict*/ """{"glyphs":{"bar":"#","verticalAxis":"!","horizontalAxis":"="}}"""),
+            "styles.chart.normal");
 
-        glyphs.Bar.ShouldBe(new Rune('#'));
-        glyphs.VerticalAxis.ShouldBe(new Rune('!'));
-        glyphs.HorizontalAxis.ShouldBe(new Rune('='));
-        glyphs.Point.ShouldBe(ChartGlyphs.Default.Point, "an unauthored member keeps the code-owned glyph");
+        result.Glyphs.Bar.ShouldBe(new Rune('#'));
+        result.Glyphs.VerticalAxis.ShouldBe(new Rune('!'));
+        result.Glyphs.HorizontalAxis.ShouldBe(new Rune('='));
+        result.Glyphs.Point.ShouldBe(ChartGlyphs.Default.Point, "an unauthored member keeps the code-owned glyph");
     }
 
-    /// <summary>Verifies an invalid chart glyph is now rejected with the dotted path rather than
-    /// swallowed. The old getter's default-guard meant a theme could fail silently.</summary>
+    /// <summary>Verifies an invalid chart glyph is rejected with the dotted path rather than
+    /// swallowed. The old getter's default-guard meant this could once fail silently.</summary>
     [Fact]
-    public void Resolve_WhenThemeAuthorsAWideChartGlyph_RejectsIt()
+    public void Overlay_WhenAuthoringAWideChartGlyph_RejectsIt()
     {
-        var theme = Authored(""", "chart": { "normal": { "glyphs": { "bar": "漢" } } } """);
+        var theme = ThemeCatalog.Parse(ThemeJson.Create());
 
-        Should.Throw<InvalidDataException>(() => ChartStyle.Definition.Resolve(null, theme))
+        Should.Throw<InvalidDataException>(() => theme.Overlay(
+                ChartStyle.Default,
+                ParseOverrides(/*lang=json,strict*/ """{"glyphs":{"bar":"漢"}}"""),
+                "styles.chart.normal"))
             .Message.ShouldContain("styles.chart.normal.glyphs.bar");
     }
 
-    /// <summary>Verifies a themed axis rule reaches a rendered chart cell. The axis colour was
-    /// already themable while the glyph was a literal, so a theme could recolour an axis it could
-    /// not replace - the specific oddity the report names.</summary>
+    /// <summary>Verifies a locally styled axis rule reaches a rendered chart cell.</summary>
     [Fact]
-    public async Task Render_WhenThemeAuthorsTheChartAxis_DrawsItAsync()
+    public async Task Render_WhenLocalStyleSetsTheChartAxis_DrawsItAsync()
     {
         var chart = new VerticalBarChart
         {
-            Series = new[] { new ChartSeries("S", [new ChartDataPoint("a", 1), new ChartDataPoint("b", 2)]) }
+            Series = new[] { new ChartSeries("S", [new ChartDataPoint("a", 1), new ChartDataPoint("b", 2)]) },
+            Style = ChartStyle.Default with
+            {
+                Glyphs = ChartStyle.Default.Glyphs with { HorizontalAxis = new Rune('=') }
+            }
         };
         await using var surface = await ComponentSurface.MountAsync(
             chart,
             new Size(20, 8),
             TestContext.Current.CancellationToken);
 
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = Authored(
-                """, "chart": { "normal": { "glyphs": { "horizontalAxis": "=" } } } """),
-            "author chart axis");
-
         var rendered = string.Concat(Enumerable.Range(0, 8).Select(y => Row(surface, y, 20)));
         rendered.ShouldContain("=");
     }
 
-    /// <summary>Verifies a themed disclosure arrow reaches a rendered JsonView row. The arrow is
-    /// part of the measured line text and hit-testing measures it to compute the clickable span, so
-    /// the three former literals had to stay in lockstep by hand.</summary>
+    /// <summary>Verifies a locally styled disclosure arrow reaches a rendered JsonView row. The
+    /// arrow is part of the measured line text and hit-testing measures it to compute the clickable
+    /// span, so the three former literals had to stay in lockstep by hand.</summary>
     [Fact]
-    public async Task Render_WhenThemeAuthorsJsonViewDisclosure_DrawsItAsync()
+    public async Task Render_WhenLocalStyleSetsJsonViewDisclosure_DrawsItAsync()
     {
-        var view = new JsonView { Json = _nestedJson };
+        var view = new JsonView
+        {
+            Json = _nestedJson,
+            Style = JsonViewStyle.Default with { CollapsedGlyph = new Rune('+'), ExpandedGlyph = new Rune('-') }
+        };
         view.ExpandAll();
         await using var surface = await ComponentSurface.MountAsync(
             view,
             new Size(24, 5),
             TestContext.Current.CancellationToken);
-
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = Authored(
-                """, "jsonView": { "normal": { "collapsedGlyph": "+", "expandedGlyph": "-" } } """),
-            "author disclosure arrows");
 
         view.ActualStyle.ExpandedGlyph.ShouldBe(new Rune('-'), "the style must resolve before the render can");
 
@@ -564,32 +465,29 @@ public sealed class StrandedGlyphThemingTests
         rendered.ShouldContain("-");
     }
 
-    /// <summary>Verifies a themed month-navigation arrow reaches a rendered Calendar.
-    /// <c>NavigationColor</c> exists precisely to paint this affordance, so the style had already
-    /// accepted the part as theme-owned and simply stopped at the colour.</summary>
+    /// <summary>Verifies a locally styled month-navigation arrow reaches a rendered Calendar.</summary>
     [Fact]
-    public async Task Render_WhenThemeAuthorsCalendarNavigation_DrawsItAsync()
+    public async Task Render_WhenLocalStyleSetsCalendarNavigation_DrawsItAsync()
     {
-        using var calendar = new UiCalendar();
+        using var calendar = new UiCalendar
+        {
+            Style = CalendarStyle.Default with { PreviousMonthGlyph = new Rune('{'), NextMonthGlyph = new Rune('}') }
+        };
         await using var surface = await ComponentSurface.MountAsync(
             calendar,
             new Size(24, 10),
             TestContext.Current.CancellationToken);
-
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = Authored(
-                """, "calendar": { "normal": { "previousMonthGlyph": "{", "nextMonthGlyph": "}" } } """),
-            "author navigation arrows");
 
         var rendered = string.Concat(Enumerable.Range(0, 10).Select(y => Row(surface, y, 24)));
         rendered.ShouldContain("{");
         rendered.ShouldContain("}");
     }
 
-    /// <summary>Verifies the popup anchor arrows are theme-reachable and, critically, run through
-    /// the same width resolution their eight border neighbours get. All four are East Asian
-    /// Ambiguous, so under <c>Ambiguous.Wide</c> an unresolved arrow measures two cells and
-    /// overruns its one-cell frame slot.</summary>
+    /// <summary>Verifies the popup anchor arrows are theme-reachable through "popup" - one of the
+    /// six well-known role sections, and critically, run through the same width resolution their
+    /// eight border neighbours get. All four are East Asian Ambiguous, so under
+    /// <c>Ambiguous.Wide</c> an unresolved arrow measures two cells and overruns its one-cell frame
+    /// slot.</summary>
     [Fact]
     public void Resolve_WhenThemeAuthorsPopupAnchorGlyphs_AppliesThem()
     {
@@ -616,10 +514,13 @@ public sealed class StrandedGlyphThemingTests
         anchors.ShouldBe(PopupAnchorGlyphs.Default);
     }
 
-    /// <summary>The counter-case across all six: an unauthored theme keeps every code-owned glyph, so
-    /// the fifteen bundled themes - none of which authors any of these keys - render as before.</summary>
+    /// <summary>Verifies every one of the six controls whose chrome glyphs used to live on the
+    /// control class keeps its code-owned default when no local Style is assigned. A leaf resolves
+    /// no theme section of its own any more, so an unstyled resolution is the only baseline left to
+    /// pin - the fifteen bundled themes, none of which could author any of these members any more,
+    /// render exactly as this asserts.</summary>
     [Fact]
-    public void Resolve_WhenNoThemeAuthorsTheseKeys_KeepsEveryCodeOwnedGlyph()
+    public void Resolve_WhenNoLocalStyleIsAssigned_KeepsEveryCodeOwnedGlyph()
     {
         var theme = ThemeCatalog.Parse(ThemeJson.Create());
 
@@ -637,48 +538,14 @@ public sealed class StrandedGlyphThemingTests
             .ShouldBe(ControlGlyphs.Navigation.ItemIdle.Value);
     }
 
-    /// <summary>Verifies a local style still wins over the theme, and that assigning null returns the
-    /// control to theme ownership - the escape hatch the old <c>ResetGlyphs()</c> never provided,
-    /// since it restored code-owned values rather than theme-owned ones.</summary>
-    [Fact]
-    public void Style_WhenAssignedThenCleared_OverridesTheThemeThenReturnsToIt()
+    private static Dictionary<string, JsonElement> ParseOverrides(string json) =>
+        JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
+
+    private static int MeasuredTableWidth(TableStyle? style)
     {
-        var theme = Authored(""", "menuSeparator": { "normal": { "glyph": "=" } } """);
-        using var separator = new MenuSeparator();
-        separator.Style.ShouldBeNull();
-        separator.PropagateTheme(theme);
-
-        separator.Style = MenuSeparatorStyle.Default with { Glyph = new Rune('~') };
-        separator.Style.ShouldBe(MenuSeparatorStyle.Default with { Glyph = new Rune('~') });
-        separator.ActualStyle.Glyph.ShouldBe(new Rune('~'));
-
-        separator.Style = null;
-        separator.Style.ShouldBeNull();
-        separator.ActualStyle.Glyph.ShouldBe(new Rune('='));
-    }
-
-    /// <summary>Verifies each new key is admitted by name. An unqualified section a library style
-    /// type does not own is rejected as a typo, so a key that never registered would fail loading
-    /// rather than being silently ignored.</summary>
-    [Theory]
-    [InlineData("expander")]
-    [InlineData("menuItem")]
-    [InlineData("menuSeparator")]
-    [InlineData("navigationViewGroup")]
-    [InlineData("navigationViewItem")]
-    [InlineData("navigationViewSeparator")]
-    public void Parse_WhenTheNewKeyIsAuthored_IsAdmitted(string key) =>
-        _ = ThemeCatalog.Parse(ThemeJson.Create(extraStyles: $$"""", "{{key}}": { "normal": { } } """"));
-
-    private static Theme Authored(string extraStyles) =>
-        ThemeCatalog.Parse(ThemeJson.Create(extraStyles: extraStyles));
-
-    private static int MeasuredTableWidth(Theme theme)
-    {
-        using var table = new Table();
+        using var table = new Table { Style = style };
         table.Columns.Add(TableColumn.Auto("Name"));
         table.Rows.Add(new TableRow([new ControlText { Content = "Value" }]));
-        table.PropagateTheme(theme);
         new LayoutEngine().Layout(table, new Size(60, 10));
         return table.DesiredSize.Width;
     }

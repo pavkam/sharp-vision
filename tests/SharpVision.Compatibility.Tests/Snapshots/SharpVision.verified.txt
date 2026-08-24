@@ -555,14 +555,7 @@ namespace SharpVision.Controls
         where TStyle : SharpVision.Styling.ControlStyle { }
     public static class StyleDefinitions
     {
-        public static SharpVision.Controls.StyleDefinition<TStyle> Control<TStyle>(TStyle codeOwnedDefault, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compare)
-            where TStyle : SharpVision.Styling.ControlStyle { }
-        public static SharpVision.Controls.StyleDefinition<TStyle> Control<TStyle>(string key, TStyle codeOwnedDefault, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compare)
-            where TStyle : SharpVision.Styling.ControlStyle { }
         public static SharpVision.Controls.StyleDefinition<TStyle> Control<TStyle, TFallback>(System.Func<SharpVision.Styling.Theme, SharpVision.Styling.StyleStates<TFallback>> fallbackTo, System.Func<TFallback, SharpVision.Styling.VisualState, SharpVision.Styling.Theme, TStyle> complete, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compare)
-            where TStyle : SharpVision.Styling.ControlStyle
-            where TFallback : SharpVision.Styling.ControlStyle { }
-        public static SharpVision.Controls.StyleDefinition<TStyle> Control<TStyle, TFallback>(string key, System.Func<SharpVision.Styling.Theme, SharpVision.Styling.StyleStates<TFallback>> fallbackTo, System.Func<TFallback, SharpVision.Styling.VisualState, SharpVision.Styling.Theme, TStyle> complete, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compare)
             where TStyle : SharpVision.Styling.ControlStyle
             where TFallback : SharpVision.Styling.ControlStyle { }
         public static SharpVision.Controls.StyleDefinition<TStyle> Part<TStyle>(System.Func<SharpVision.Styling.Theme?, TStyle> fallback, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compare)
@@ -3841,11 +3834,6 @@ namespace SharpVision.Styling
         public SharpVision.Terminal.Geometry.Point? Offset { get; }
         public SharpVision.Styling.Shadow Apply(SharpVision.Styling.Shadow shadow) { }
         public SharpVision.Styling.ShadowOverlay Overlay(SharpVision.Styling.ShadowOverlay later) { }
-    }
-    public static class StyleKey
-    {
-        public static string Of<TStyle>()
-            where TStyle : SharpVision.Styling.ControlStyle { }
     }
     public static class StyleStatesExtensions
     {

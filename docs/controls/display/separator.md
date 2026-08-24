@@ -49,14 +49,10 @@ alongside the inherited `Face`/`Border`/`Shadow`:
 Neither glyph lives on `Separator` itself: both are members of `SeparatorStyle`.
 A `with` expression creates a validated member-wise copy of
 `SeparatorStyle.Default`, and assigning `null` to `Style` restores the
-Theme-owned presentation. Without a local `Style`, `Separator` resolves the
-glyphs from the active theme, falling back to the code-owned defaults above; a
-glyph unsuitable under the active width policy resolves to a portable one-cell
-fallback (`-` horizontal, `|` vertical) instead. A theme document may author a
-`styles.separator` section with `horizontalGlyph`/`verticalGlyph` string
-members; an active theme's section supplies those glyphs ahead of the code-owned
-defaults whenever no local `Style` is assigned (see
-[themes.md](../../concepts/themes.md#style-types)).
+code-owned presentation. Separator declares no `styles.*` theme key of its own,
+so a locally assigned `Style` is the only way to move these away from the
+code-owned defaults above; a glyph unsuitable under the active width policy
+resolves to a portable one-cell fallback (`-` horizontal, `|` vertical) instead.
 
 ## Example
 

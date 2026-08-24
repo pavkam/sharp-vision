@@ -595,10 +595,11 @@ resets to document start.
 
 ### DocumentStyle
 
-`DocumentStyle : ControlStyle` is a complete immutable presentation. Its own
-`"sharpVision.document"` theme key falls back to `control` for anything it does
-not author itself, and it adds fifteen faces and one glyph family to the
-inherited `Face`/`Border`/`Shadow`:
+`DocumentStyle : ControlStyle` is a complete immutable presentation. It declares
+no `styles.*` theme key of its own: it falls back to `control`'s role section
+for its inherited `Face`/`Border`/`Shadow`, and resolves its fifteen additional
+faces and one glyph family directly from semantic colors and the code-owned
+defaults below:
 
 | Member                 | Type             | Default                                                              | Description                                                                |
 | ---------------------- | ---------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
@@ -621,10 +622,11 @@ inherited `Face`/`Border`/`Shadow`:
 
 Every member is required. A `with` expression creates a validated member-wise
 copy of `DocumentStyle.Default` or of any resolved style; assigning `null` to
-`Style` restores the theme-owned presentation, and `ActualStyle` never returns
-null. A theme may author a `styles.sharpVision.document` section ahead of the
-code-owned defaults, though no bundled theme currently does (see
-[themes.md](../../concepts/themes.md#style-types)).
+`Style` restores the `control`-derived presentation, and `ActualStyle` never
+returns null. A theme's `styles` object is closed to the six well-known role
+sections (see [themes.md](../../concepts/themes.md#style-types)), so restyling
+`Document` beyond a local `Style` assignment means restyling `control` itself -
+every control that falls back to it moves together.
 
 The `QuoteFace` default uses `SemanticColor.ControlText`, the same foreground as
 the document body. A quotation is set apart through the italic attribute, never

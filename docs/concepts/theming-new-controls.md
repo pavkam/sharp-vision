@@ -3,7 +3,7 @@
 ## Overview
 
 A new control either reuses one of the six well-known style types outright, or
-declares a self-contained typed style with its own `styles.*` JSON key. It never
+declares a typed style with a declared one-hop fallback to one of them. It never
 adds selector syntax or a mutable style registry, and it never needs internal
 access to compile - both extension paths below are fully public.
 
@@ -84,35 +84,34 @@ A control whose structure needs more than one of the six well-known types
 alone - its own padding, glyph family, mark style, or any other structural
 member - declares a `sealed record` (or `readonly record struct`) deriving from
 `ControlStyle` (or one of its five siblings), and registers a
-`static StyleDefinition<TStyle>` for it with `StyleDefinitions.Control<TStyle>`:
+`static StyleDefinition<TStyle>` for it with a declared **one-hop fallback** to
+whichever of the six well-known types is the closest semantic match -
+`StyleDefinitions.Control<TStyle, TFallback>(fallbackTo, complete, compare)`.
+This is the one factory every leaf control style in the library calls today -
+`Button`, `CheckBox`, `RadioButton`, `ScrollBar`, and the rest - so a restyled
+`"input"` or `"control"` role section automatically reaches every control that
+falls back to it, with nothing to hand-list per control:
 
 ```csharp
-public sealed record CommandTileStyle : InputStyle
+public sealed record CommandTileStyle : ControlStyle
 {
     [SetsRequiredMembers]
     public CommandTileStyle(Face face, Border border, Shadow shadow, Thickness padding)
-        : base(face, border, shadow, InputStyle.Default.DropDownGlyph) => Padding = padding;
-
-    // Declared BEFORE Definition, and this ordering is load-bearing. Static initializers run in
-    // textual order, so a Definition declared first would pass a null Default to a factory that
-    // rejects null - from inside the static constructor, surfacing as a TypeInitializationException
-    // naming neither member.
-    public static CommandTileStyle Default { get; } = new(
-        face: new Face(Color.Default, Color.Transparent, TerminalAttributes.None, Underline.None, Color.Default),
-        border: new Border(BorderSide.All, BorderGlyphStyle.Heavy, Color.Default, Color.Transparent, TerminalAttributes.None),
-        shadow: new Shadow(false, ShadowMode.Composite, default, default, Color.Default, Color.Transparent, TerminalAttributes.None),
-        padding: new Thickness(1, 0));
+        : base(face, border, shadow) => Padding = padding;
 
     internal static StyleDefinition<CommandTileStyle> Definition { get; } =
-        StyleDefinitions.Control<CommandTileStyle>(
-            "acme.commandTile",
-            Default,
+        StyleDefinitions.Control(
+            static theme => theme.GetStyleSet(InputStyle.Default),
+            Complete,
             static (previous, _, current, _) =>
                 previous.Padding != current.Padding
                     ? InvalidationImpact.Measure
                     : previous == current
                         ? InvalidationImpact.None
                         : InvalidationImpact.Render);
+
+    private static CommandTileStyle Complete(InputStyle input, VisualState state, Theme theme) =>
+        new(input.Face, input.Border, input.Shadow, padding: new Thickness(1, 0));
 
     public required Thickness Padding { get; init; }
 }
@@ -133,22 +132,25 @@ public sealed class CommandTile : ControlBase, IStyled<CommandTileStyle>
 }
 ```
 
-`"acme.commandTile"` is this style's own `styles.*` key, following the same
-`"vendor.control"` convention a theme author uses for any third-party section
-(see [themes.md](themes.md#style-types)). A third-party style is the one case
-that passes its key explicitly, because a dot cannot appear in a type name. A
-library-owned style passes no key at all: the overloads without one derive it
-from the style type's own name, so `ButtonStyle` owns `button` and
-`ScrollBarStyle` owns `scrollBar`. `Default` is this type's own code-owned
-fallback - the value every theme that never authors this key resolves to.
-`StyleDefinitions.Control<TStyle>` builds a **self-contained root**: it does not
-inherit another type's theme customization. That is the trade-off to weigh, not
-just a description - a root resolves entirely from its own key, so a theme
-authoring only `styles.control` moves nothing about it. Prefer the one-hop
-fallback form below whenever the control has a sensible parent type. This is the
-fully public extension path - no internal access is required, and a theme author
-can restyle every member (including `Padding`) directly through this key's own
-JSON, per-state, the same way any well-known style's JSON works.
+`CommandTileStyle` declares no `styles.*` key of its own at all: a theme's
+`styles` object is closed to exactly the six well-known role sections, so a leaf
+control's only sources of appearance are its code-owned `Complete` logic, the
+fallback type's own resolved states (`InputStyle`'s `"input"` role section
+here), and a locally assigned `Style`. `Complete` runs once per resolved state,
+completing the fallback's contribution into this type's own shape; a state the
+fallback does not author still runs `Complete` against the fallback's own
+`Normal`, which is the only place a per-state code-owned default - a checked
+accent color, a glyph-family lookup through `theme.Glyphs` - can be expressed.
+`fallbackTo` may resolve any public per-state set: one of the six well-known
+types through `Theme.GetStyleSet`, or one of `Theme`'s four derived interaction
+sets - `GetInteractiveControlStyleSet`, `GetInteractiveRowStyleSet`,
+`GetFocusableContainerStyleSet`, and `GetFocusableControlStyleSet`. Choose a
+derived set the same way a library leaf style does: the Interactive pair for a
+borderless control that owns direct interaction outright (Row alone keeps the
+passive background under pointer hover, for a row whose selection owns the fill
+instead), and the narrower Focusable pair - Container or Control geometry - for
+a control that is merely a direct focus target whose own content already owns
+hover, press, and selection more specifically.
 
 `CommandTile` derives directly from `ControlBase` here, but the same
 `IStyled<TStyle>` declaration plus `InitializeStyle`/`StyleSlot<TStyle>`
@@ -159,7 +161,9 @@ itself; see [Appearance](styling.md#overview) for the full mechanism. Pass a
 private method as `InitializeStyle`'s optional `changed` callback only for
 genuine post-commit work such as normalizing an animation phase or projecting an
 aggregate style onto heterogeneous retained parts - there is no virtual
-`OnStyleChanged` to override.
+`OnStyleChanged` to override. The factory is fully public and requires no
+internal access - a third-party control registers its own `StyleDefinition`
+exactly the way `CommandTileStyle` does above.
 
 Use `StyleDefinitions.Part`, `InitializePartStyle`, and `BindStyle` for a named
 style forwarded to retained implementation controls. Bind the nullable local
@@ -168,26 +172,6 @@ slot, not `Actual`, so a reset never pins a theme-derived value.
 Implement `IsCheckedState`, `IsSelectedState`, or `IsIndeterminateState` only
 when the control genuinely owns that semantic fact. `Focused` means direct
 focus; `FocusWithin` means a descendant has focus.
-
-**One-hop fallback to an existing type's theme customization** (rather than a
-self-contained root) is how every library leaf control - `Button`, `CheckBox`,
-`RadioButton`, `ScrollBar`, and the rest - resolves today
-(`StyleDefinitions.Control<TStyle, TFallback>`), so a restyled `"input"` or
-`"control"` section automatically reaches every control that falls back to it
-without hand-listing each one. The factory is fully public: a third-party style
-uses the same explicit-key overload and `"vendor.control"` convention described
-above, paired with a `fallbackTo` delegate that resolves any public per-state
-set - one of the six well-known types through `Theme.GetStyleSet`, or one of
-`Theme`'s four derived interaction sets: `GetInteractiveControlStyleSet`,
-`GetInteractiveRowStyleSet`, `GetFocusableContainerStyleSet`, and
-`GetFocusableControlStyleSet`. Choose a derived set the same way a library leaf
-style does: the Interactive pair for a borderless control that owns direct
-interaction outright (Row alone keeps the passive background under pointer
-hover, for a row whose selection owns the fill instead), and the narrower
-Focusable pair - Container or Control geometry - for a control that is merely a
-direct focus target whose own content already owns hover, press, and selection
-more specifically. A self-contained root (as above) remains the right choice
-when the control should not automatically follow another type's restyle at all.
 
 ## What goes wrong
 

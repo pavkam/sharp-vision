@@ -73,13 +73,12 @@ so no `CheckBox` appearance profile reaches the row.
 with the loading and failed status foreground colors and one-cell glyphs the
 synthetic status row draws, plus the one-cell disclosure glyphs drawn beside
 collapsed and expanded items. Its defaults use the semantic `Muted` and `Error`
-`SemanticColor` roles, so built-in and custom themes remain authoritative. A
-theme document may additionally author a `styles.treeView` section restyling
-`loadingColor`/`failedColor` (colors) and
-`loadingGlyph`/`failedGlyph`/`collapsedGlyph`/`expandedGlyph` (one-character
-strings) ahead of the code-owned defaults, falling back to the `container` style
-section for everything else, whenever no local `Style` is assigned (see
-[themes.md](../../concepts/themes.md#style-types)).
+`SemanticColor` roles, so built-in and custom themes remain authoritative for
+the colors those roles resolve to. TreeViewStyle declares no `styles.*` theme
+key of its own: its `Face`/`Border`/`Shadow` fall back to `container`'s role
+section, while `LoadingColor`/`FailedColor`/`LoadingGlyph`/`FailedGlyph`/
+`CollapsedGlyph`/`ExpandedGlyph` stay code-owned - reachable only through a
+locally assigned `Style`.
 
 ## Selection
 

@@ -68,18 +68,14 @@ unsuitable under the active width policy uses its code-owned fallback. Replacing
 the Theme recolors an existing bar without changing its glyphs. In indeterminate
 mode, the committed content bounds fill with the resolved indeterminate glyph.
 
-Without a theme section or a local `Style`, completed progress uses the theme's
-accent color (`SemanticColor.Accent`), incomplete track cells use the theme's
-muted color (`SemanticColor.Muted`), and indeterminate progress uses the theme's
-info color (`SemanticColor.Info`). These three colors are not part of a glyph
-family and remain code-owned regardless of `glyphs`. The style's per-part colors
-override those fallbacks while preserving background and attributes. A theme
-document may author a `styles.progressBar` section with
-`fillColor`/`trackColor`/`indeterminateColor` string members (accepting a
-`SemanticColor` name, a palette key, or `"transparent"`/`"default"` - never a
-raw hex literal); an active theme's section supplies those colors ahead of the
-code-owned defaults whenever no local `Style` is assigned (see
-[themes.md](../../concepts/themes.md#style-types)).
+Without a local `Style`, completed progress uses the theme's accent color
+(`SemanticColor.Accent`), incomplete track cells use the theme's muted color
+(`SemanticColor.Muted`), and indeterminate progress uses the theme's info color
+(`SemanticColor.Info`). These three colors are not part of a glyph family and
+remain code-owned regardless of `glyphs`. ProgressBar declares no `styles.*`
+theme key of its own, so a locally assigned style's per-part colors
+(`FillColor`/`TrackColor`/`IndeterminateColor`) are the only way to move those
+colors away from their code-owned defaults.
 
 ## Example
 

@@ -49,16 +49,13 @@ indeterminate), and the inherited `Face`/`Border`/`Shadow`.
 `CheckBoxStyle.Brackets` is the default fixed-width `[ ]`/`[✓]`/`[─]`
 presentation reserving three cells; `Tick` and `Square` are one-cell presets. A
 `with` expression creates a validated member-wise copy of
-`CheckBoxStyle.Default` (`Brackets`). A theme document may additionally author a
-`styles.checkBox` section with a `markStyle` string member (`"square"`,
-`"brackets"`, or `"tick"`); an active theme's section supplies `MarkStyle` ahead
-of the code-owned default whenever no local `Style` is assigned (see
-[themes.md](../../concepts/themes.md#style-types)). The code-owned mark style
-and glyph trio themselves come from the active theme's `glyphs` field, not from
-this section (see [themes.md](../../concepts/themes.md#glyph-families)).
-Assigning `Style` replaces the complete Theme-owned presentation, and assigning
-`null` restores it. `ActualStyle` never returns null. Every glyph is printable
-and one cell wide under the normal width policy.
+`CheckBoxStyle.Default` (`Brackets`). CheckBox declares no `styles.*` theme key
+of its own: its code-owned mark style and glyph trio come from the active
+theme's root-level `glyphs` field whenever no local `Style` is assigned (see
+[themes.md](../../concepts/themes.md#glyph-families)). Assigning `Style`
+replaces the complete Theme-owned presentation, and assigning `null` restores
+it. `ActualStyle` never returns null. Every glyph is printable and one cell wide
+under the normal width policy.
 
 > [!NOTE]
 >

@@ -11,7 +11,10 @@ public sealed class CheckBoxTests
     [Fact]
     public void Style_WhenThemeAndLocalValuesChange_UsesDocumentedPrecedence()
     {
-        var theme = ThemeWithCheckBoxMarkStyle("square");
+        // "blocks" resolves CheckBox's theme-wide glyph family to Square - a leaf declares no
+        // theme section of its own any more, so the glyph family is the only surviving way to
+        // make the theme's own resolution differ from the Tick preset asserted below.
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(glyphs: "blocks"));
         var checkBox = new CheckBox();
 
         checkBox.SetTheme(theme);
@@ -547,7 +550,4 @@ public sealed class CheckBoxTests
             nativeCode: 0,
             Modifiers.None,
             action)));
-
-    private static Theme ThemeWithCheckBoxMarkStyle(string markStyle) =>
-        ThemeCatalog.Parse(ThemeJson.Create(extraStyles: $$""", "checkBox": { "normal": { "markStyle": "{{markStyle}}" } } """));
 }

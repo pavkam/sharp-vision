@@ -10,8 +10,10 @@ using SharpVision.SyntaxHighlighting;
 /// <summary>
 /// Defines one complete immutable <see cref="CodeView"/> presentation: one
 /// <see cref="ControlColor"/> per <see cref="SyntaxDefaultStyle"/> role, plus selection and fold
-/// gutter colors. This style's own "sharpVision.codeView" theme key falls back to
-/// <see cref="ContainerStyle"/>'s "container" key for anything it does not author itself.
+/// gutter colors. This style declares no theme section of its own: it falls back to
+/// <see cref="ContainerStyle"/>'s "container" role section for its passive chrome, resolves its
+/// syntax-role colors from semantic colors, and is themeable only through that fallback and a
+/// locally assigned <see cref="CodeView.Style"/>.
 /// </summary>
 /// <remarks>
 /// Every role defaults to one of the library's existing <see cref="SemanticColor"/> roles rather
@@ -32,7 +34,6 @@ public sealed record CodeViewStyle: ContainerStyle
     /// constraint <c>DocumentStyle</c> documents for every style declared in a different assembly.
     /// </remarks>
     internal static StyleDefinition<CodeViewStyle> Definition { get; } = StyleDefinitions.Control(
-        "sharpVision.codeView",
         static theme => theme.GetStyleSet(ContainerStyle.Default),
         Complete,
         static (previous, previousTheme, current, currentTheme) => Compare(previous, previousTheme, current, currentTheme));

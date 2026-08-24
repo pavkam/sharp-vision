@@ -753,10 +753,14 @@ public sealed class ButtonSurfaceTests
             Height = Length.Cells(3),
             Text = "Save"
         };
+        // Authored under "input" - Button's declared fallback - since a leaf declares no theme
+        // section of its own any more; Border passes through unchanged from
+        // ButtonStyle.Complete's fallback argument, so this reaches Button's own resolved
+        // pointerOver exactly as "button.pointerOver" once did.
         var theme = ThemeCatalog.Parse(ThemeJson.Create(
             palette: "\"pointerOverFace\":\"#ff0000\"",
-            extraStyles:
-            """, "button": { "pointerOver": { "face": { "background": "pointerOverFace" }, "border": { "glyphStyle": "ascii" } } } """));
+            inputStates:
+            """, "pointerOver": { "face": { "background": "pointerOverFace" }, "border": { "glyphStyle": "ascii" } } """));
         await using var surface = await ComponentSurface.MountAsync(
             button,
             new Size(8, 3),
@@ -1176,17 +1180,22 @@ public sealed class ButtonSurfaceTests
 
     #region Test fixtures
 
+    // A leaf declares no theme section of its own any more: Button's Border/Shadow pass through
+    // unchanged from ButtonStyle.Complete's fallback argument, so authoring under "input" - the
+    // declared fallback - reaches Button's own resolved Normal exactly as "button" once did.
     private static Theme CreateTheme(Shadow shadow)
     {
         var offset = shadow.Offset;
         var mode = shadow.Mode.ToString().ToLowerInvariant();
-        var json = ThemeJson.Create(extraStyles: $$"""
-            ,"button": { "normal": { "border": { "sides": "none" }, "shadow": {
-                "visible": {{(shadow.IsVisible ? "true" : "false")}},
-                "mode": "{{mode}}",
-                "offset": { "x": {{offset.X}}, "y": {{offset.Y}} }
-            } } }
-            """);
+        var json = ThemeJson.Create(
+            inputSides: "\"none\"",
+            inputExtra: $$"""
+                , "shadow": {
+                    "visible": {{(shadow.IsVisible ? "true" : "false")}},
+                    "mode": "{{mode}}",
+                    "offset": { "x": {{offset.X}}, "y": {{offset.Y}} }
+                }
+                """);
         return ThemeCatalog.Parse(json);
     }
 

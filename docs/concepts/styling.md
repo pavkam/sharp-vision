@@ -63,10 +63,13 @@ own `StyleDefinition<TStyle>` is built.
 ## Visual states
 
 Every themeable style type derives from `ControlStyle`, which carries a complete
-`Face`/`Border`/`Shadow` for its resting (`Normal`) state. A theme resolves a
-style's full nine-state set (see below) by overlaying that type's own `styles.*`
-JSON key onto its code-owned default; controls never select a closed enum of
-roles.
+`Face`/`Border`/`Shadow` for its resting (`Normal`) state. The six well-known
+role types resolve their full nine-state set by overlaying their own `styles.*`
+JSON key onto their code-owned default (see [themes.md](themes.md#style-types));
+every other (leaf) style type declares no `styles.*` key of its own and instead
+resolves by completing a declared one-hop fallback to one of those six,
+borrowing that fallback's own per-state deltas - controls never select a closed
+enum of roles.
 
 The resolver applies appearance in this order, with later supplied members
 winning:

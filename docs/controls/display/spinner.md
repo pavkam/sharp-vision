@@ -41,12 +41,9 @@ inherited `Face`/`Border`/`Shadow`. Three code-owned presets are available:
 | `SpinnerStyle.Ascii`               | Four-frame (`\|`, `/`, `-`, `\`) | Portable bar, slash, dash, and backslash sequence. |
 
 A `with` expression creates a validated member-wise copy of
-`SpinnerStyle.Default`. A theme document may additionally author a
-`styles.spinner` section with a `frames` array of one-character strings; an
-active theme's section supplies the frame sequence ahead of the code-owned
-default whenever no local `Style` is assigned (see
-[themes.md](../../concepts/themes.md#style-types)). The code-owned frame
-sequence itself comes from the active theme's `glyphs` field (see
+`SpinnerStyle.Default`. Spinner declares no `styles.*` theme key of its own: its
+code-owned frame sequence comes from the active theme's root-level `glyphs`
+field whenever no local `Style` is assigned (see
 [themes.md](../../concepts/themes.md#glyph-families)). Assigning `Style`
 replaces the entire Theme-owned presentation, and assigning `null` restores it.
 

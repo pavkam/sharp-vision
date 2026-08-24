@@ -3,9 +3,11 @@
 
 namespace SharpVision.Controls.Documents;
 
-/// <summary>Defines one complete immutable <see cref="Document"/> presentation. This style's own
-/// "sharpVision.document" theme key falls back to <see cref="ControlStyle"/>'s "control" key for anything it does
-/// not author itself.</summary>
+/// <summary>Defines one complete immutable <see cref="Document"/> presentation. This style
+/// declares no theme section of its own: it falls back to <see cref="ControlStyle"/>'s "control"
+/// role section for its passive chrome, resolves its own document-specific faces from semantic
+/// colors, and is themeable only through that fallback and a locally assigned
+/// <see cref="Document.Style"/>.</summary>
 /// <remarks>
 /// <para>
 /// A terminal has no true font size, so <see cref="DocumentHeading"/> levels differentiate through
@@ -24,7 +26,6 @@ public sealed record DocumentStyle: ControlStyle
     /// <summary>Gets the primary document-style definition.</summary>
     internal static StyleDefinition<DocumentStyle> Definition { get; } =
         StyleDefinitions.Control(
-        "sharpVision.document",
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,
         static (previous, previousTheme, current, currentTheme) =>

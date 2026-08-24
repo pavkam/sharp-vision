@@ -55,34 +55,6 @@ public sealed class ButtonStyleTests
         resolved.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Heavy);
     }
 
-    /// <summary>Verifies a theme's own "button" key overrides padding on top of the input fallback.</summary>
-    [Fact]
-    public void Definition_Resolve_WhenThemeAuthorsButtonPadding_OverridesPaddingOnly()
-    {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(extraStyles: """, "button": { "normal": { "padding": { "x": 4, "y": 2 } } } """));
-
-        var resolved = ButtonStyle.Definition.Resolve(null, theme);
-
-        resolved.Padding.ShouldBe(new Thickness(horizontal: 4, vertical: 2));
-        resolved.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Heavy);
-    }
-
-    /// <summary>Verifies a theme's own "button" key cannot restyle Padding - a structural member -
-    /// under any state but "normal". Padding is never read back from a per-state resolution
-    /// (AppearanceOverlay carries only Face/Border/Shadow), so a theme authoring it under "pressed"
-    /// is rejected before the value is ever read rather than parsed and silently discarded.</summary>
-    [Fact]
-    public void Definition_WhenPaddingIsAuthoredUnderPressed_ThrowsNamingTheDottedPath()
-    {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            extraStyles: """, "button": { "pressed": { "padding": { "x": 4, "y": 2 } } } """));
-
-        var exception = Should.Throw<InvalidDataException>(() =>
-            ButtonStyle.Definition.Appearance!(ButtonStyle.Definition.Resolve(null, theme), theme));
-
-        exception.Message.ShouldContain("styles.button.pressed.padding");
-    }
-
     /// <summary>Verifies a local override always wins over both the theme and the fallback.</summary>
     [Fact]
     public void Definition_Resolve_WhenLocalIsSupplied_LocalWins()

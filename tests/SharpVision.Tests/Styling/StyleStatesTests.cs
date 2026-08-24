@@ -9,13 +9,25 @@ using System.Diagnostics.CodeAnalysis;
 /// GetRawStyleSection's per-state JSON extraction, GetStyleSet's self-contained root resolution
 /// (used only by the six well-known base types), BuildFallbackAwareStates's one-hop declared
 /// fallback chain (used by every leaf control style), and ToAppearanceStates's value-diffing adapter
-/// back into today's unchanged AppearanceResolver/AppearanceStates.ApplyStates fold logic. Uses
-/// synthetic throwaway style types under a namespaced "test." key, not any production style or
-/// the still-unmigrated six fixed profile names, matching the isolation discipline the rollout
-/// plan for this cutover requires before touching shared infrastructure.</summary>
+/// back into today's unchanged AppearanceResolver/AppearanceStates.ApplyStates fold logic. A
+/// theme's "styles" object is closed to exactly the six well-known role sections, so - unlike this
+/// file's earlier synthetic-key incarnation - these primitives are exercised through synthetic
+/// style TYPES (TestRootStyle/TestWidgetStyle) whose JSON is authored under a real role section:
+/// "control" for the root form (which never cross-inherits, matching a synthetic root's own
+/// isolation), "input" for GetRawStyleSection's raw-shape probes. There is no longer any key a
+/// theme document can author that is not one of the six.</summary>
 public sealed class StyleStatesTests
 {
-    private static Theme CreateTheme(string extraStyles = "") => ThemeCatalog.Parse(ThemeJson.Create(extraStyles: extraStyles));
+    private static Theme CreateTheme(
+        string controlSides = "\"none\"",
+        string controlExtra = "",
+        string inputExtra = "",
+        string inputStates = "") =>
+        ThemeCatalog.Parse(ThemeJson.Create(
+            controlSides: controlSides,
+            controlExtra: controlExtra,
+            inputExtra: inputExtra,
+            inputStates: inputStates));
 
     private static TestRootStyle RootDefault() =>
         new(ControlStyle.DefaultFace, ControlStyle.NoBorder, ControlStyle.NoShadow);
@@ -27,7 +39,7 @@ public sealed class StyleStatesTests
     {
         var theme = CreateTheme();
 
-        theme.GetRawStyleSection("test.widget").ShouldBeNull();
+        theme.GetRawStyleSection("missing").ShouldBeNull();
     }
 
     /// <summary>Verifies a declared key's JSON splits first by state name, then by leaf property
@@ -35,9 +47,11 @@ public sealed class StyleStatesTests
     [Fact]
     public void GetRawStyleSection_WhenKeyIsPresent_SplitsByStateThenByProperty()
     {
-        var theme = CreateTheme(""", "test.widget": { "normal": { "padding": 2 }, "pointerOver": { "border": { "foreground": "accent" } } } """);
+        var theme = CreateTheme(
+            inputExtra: ", \"padding\": 2",
+            inputStates: """, "pointerOver": { "border": { "foreground": "accent" } } """);
 
-        var raw = theme.GetRawStyleSection("test.widget");
+        var raw = theme.GetRawStyleSection("input");
 
         _ = raw.ShouldNotBeNull();
         raw["normal"]["padding"].GetInt32().ShouldBe(2);
@@ -49,9 +63,9 @@ public sealed class StyleStatesTests
     [Fact]
     public void GetRawStyleSection_WhenStateNameIsUnknown_Throws()
     {
-        var theme = CreateTheme(""", "test.widget": { "hovered": {} } """);
+        var theme = CreateTheme(inputStates: """, "hovered": {} """);
 
-        _ = Should.Throw<InvalidDataException>(() => theme.GetRawStyleSection("test.widget"));
+        _ = Should.Throw<InvalidDataException>(() => theme.GetRawStyleSection("input"));
     }
 
     /// <summary>Verifies the self-contained root form falls back to the caller-supplied code-owned
@@ -63,7 +77,7 @@ public sealed class StyleStatesTests
         var theme = CreateTheme();
         var codeDefault = RootDefault();
 
-        var set = theme.GetStyleSet("test.root", codeDefault);
+        var set = theme.GetStyleSet("missing", codeDefault);
 
         set.Normal.ShouldBeSameAs(codeDefault);
         set.IsPointerOver.ShouldBeNull();
@@ -74,9 +88,11 @@ public sealed class StyleStatesTests
     [Fact]
     public void GetStyleSet_WhenThemeAuthorsNormalAndAState_PatchesBothOntoTheCodeOwnedDefault()
     {
-        var theme = CreateTheme(""", "test.root": { "normal": { "border": { "sides": "all", "glyphStyle": "rounded" } }, "focused": { "face": { "foreground": "accent" } } } """);
+        var theme = CreateTheme(
+            controlSides: "\"all\"",
+            controlExtra: """, "focused": { "face": { "foreground": "accent" } } """);
 
-        var set = theme.GetStyleSet("test.root", RootDefault());
+        var set = theme.GetStyleSet("control", RootDefault());
 
         set.Normal.Border.Sides.ShouldBe(BorderSide.All);
         set.Normal.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Rounded);
@@ -84,37 +100,21 @@ public sealed class StyleStatesTests
         set.Focused.Face.Foreground.ShouldBe((ControlColor) SemanticColor.Accent);
     }
 
-    /// <summary>Verifies a leaf control style with no own-key override for a given state borrows
-    /// that state's contribution from its declared one-hop fallback, recombined via `complete` -
-    /// the recursive per-state fallback chain this mechanism describes.</summary>
+    /// <summary>Verifies a leaf control style with no theme section of its own borrows a state's
+    /// contribution from its declared one-hop fallback, recombined via `complete` - the only
+    /// per-state source a leaf has, since it authors no styles.* section itself.</summary>
     [Fact]
-    public void BuildFallbackAwareStates_WhenOwnKeyIsUnauthored_InheritsTheFallbackTypesNormal()
+    public void BuildFallbackAwareStates_WhenTheFallbackAuthorsAState_TheLeafInheritsIt()
     {
-        var theme = CreateTheme(""", "test.root": { "focused": { "face": { "foreground": "accent" } } } """);
+        var theme = CreateTheme(controlExtra: """, "focused": { "face": { "foreground": "accent" } } """);
         var resolvedNormal = ResolveWidgetNormal(theme);
 
         var profile = BuildWidgetProfile(theme, resolvedNormal);
 
-        // "test.root" authors a "focused" contribution that "test.widget" does not author itself
-        // - it must still reach the fold, borrowed through the declared chain.
+        // "control" (the fallback) authors a "focused" contribution the widget never could on its
+        // own - it must still reach the fold, borrowed through the declared fallback chain.
         var resolved = profile.Resolve(VisualState.Focused);
         resolved.Face.Foreground.ShouldBe((ControlColor) SemanticColor.Accent);
-    }
-
-    /// <summary>Verifies a state the own key does author patches onto this control's own resolved
-    /// Normal directly, never re-consulting the fallback for that same state.</summary>
-    [Fact]
-    public void BuildFallbackAwareStates_WhenOwnKeyAuthorsOneState_ThatStatePatchesOwnResolvedNormalNotTheFallback()
-    {
-        var theme = CreateTheme(""", "test.widget": { "pointerOver": { "border": { "foreground": "accent" } } } """);
-        var resolvedNormal = ResolveWidgetNormal(theme);
-
-        var profile = BuildWidgetProfile(theme, resolvedNormal);
-
-        var resolved = profile.Resolve(VisualState.IsPointerOver);
-        resolved.Border.Foreground.ShouldBe((ControlColor) SemanticColor.Accent);
-        // Everything this state didn't author still comes from widget's own resolved Normal.
-        resolved.Face.Foreground.ShouldBe(resolvedNormal.Face.Foreground);
     }
 
     /// <summary>The critical correctness property of the value-diffing ToAppearanceStates adapter:
@@ -125,7 +125,8 @@ public sealed class StyleStatesTests
     [Fact]
     public void BuildFallbackAwareStates_WhenTwoStatesAreSimultaneouslyActive_BothDisjointContributionsSurviveTheFold()
     {
-        var theme = CreateTheme(""", "test.widget": { "pointerOver": { "border": { "foreground": "accent" } }, "pressed": { "face": { "background": "accent" } } } """);
+        var theme = CreateTheme(
+            controlExtra: """, "pointerOver": { "border": { "foreground": "accent" } }, "pressed": { "face": { "background": "surface" } } """);
         var resolvedNormal = ResolveWidgetNormal(theme);
 
         var profile = BuildWidgetProfile(theme, resolvedNormal);
@@ -133,7 +134,7 @@ public sealed class StyleStatesTests
         var resolved = profile.Resolve(VisualState.IsPointerOver | VisualState.Pressed);
 
         resolved.Border.Foreground.ShouldBe((ControlColor) SemanticColor.Accent);
-        resolved.Face.Background.ShouldBe((ControlColor) SemanticColor.Accent);
+        resolved.Face.Background.ShouldBe((ControlColor) SemanticColor.Surface);
         // Neither active state authored Shadow - it must still carry Normal's value through untouched.
         resolved.Shadow.ShouldBe(resolvedNormal.Shadow);
     }
@@ -147,7 +148,8 @@ public sealed class StyleStatesTests
     [Fact]
     public void BuildFallbackAwareStates_WhenALaterStateAuthorsNormalsOwnValue_ItWinsTheContestedMember()
     {
-        var theme = CreateTheme(""", "test.root": { "normal": { "face": { "background": "surface" } } }, "test.widget": { "pointerOver": { "face": { "background": "accent" } }, "pressed": { "face": { "background": "surface" } } } """);
+        var theme = CreateTheme(
+            controlExtra: """, "pointerOver": { "face": { "background": "surface" } }, "pressed": { "face": { "background": "control" } } """);
         var resolvedNormal = ResolveWidgetNormal(theme);
 
         var profile = BuildWidgetProfile(theme, resolvedNormal);
@@ -158,13 +160,12 @@ public sealed class StyleStatesTests
     }
 
     private static TestWidgetStyle ResolveWidgetNormal(Theme theme) =>
-        Complete(theme.GetStyleSet("test.root", RootDefault()).Normal, VisualState.Normal, theme);
+        Complete(theme.GetStyleSet("control", RootDefault()).Normal, VisualState.Normal, theme);
 
     private static AppearanceStates BuildWidgetProfile(Theme theme, TestWidgetStyle resolvedNormal) =>
         theme.BuildFallbackAwareStates(
             resolvedNormal,
-            "test.widget",
-            static t => t.GetStyleSet("test.root", RootDefault()),
+            static t => t.GetStyleSet("control", RootDefault()),
             Complete);
 
     private static TestWidgetStyle Complete(TestRootStyle parent, VisualState state, Theme theme) =>

@@ -5,12 +5,20 @@ namespace SharpVision.Tests.Styling;
 
 using SharpVision.Controls.Charts;
 using SharpVision.Controls.Collections;
+using SharpVision.Controls.Display;
+using SharpVision.Controls.Input;
+using SharpVision.Controls.Layout;
 using SharpVision.Controls.Scrolling;
 using SharpVision.Dialogs;
+using SharpVision.Menus;
+using SharpVision.Navigation;
 
-/// <summary>Verifies theme section keys are derived from the style types that own them, so a key
-/// cannot be spelled one way at its definition and another way in the registry that validates
-/// theme documents.</summary>
+/// <summary>Verifies <see cref="StyleKey"/> derives the section key each of the six well-known
+/// base style types owns from its type name, so the two can never drift apart, and verifies a
+/// theme document's "styles" object is closed to exactly those six names - every leaf control
+/// style's own derived key (still computable, since <see cref="StyleKey.Of{TStyle}"/> is generic
+/// over every <c>ControlStyle</c>-derived type) and every vendor-dotted key is rejected the same
+/// way an unknown name is.</summary>
 public sealed class StyleKeyTests
 {
     /// <summary>Verifies the six well-known roots drop their <c>Theme</c> prefix and <c>Style</c>
@@ -26,10 +34,13 @@ public sealed class StyleKeyTests
         StyleKey.Of<TooltipStyle>().ShouldBe("tooltip");
     }
 
-    /// <summary>Verifies leaf control styles drop only the <c>Style</c> suffix and camel-case the
-    /// remainder, preserving every key that existed before derivation replaced the literals.</summary>
+    /// <summary>Verifies the derivation rule keeps working for a leaf control style's type name,
+    /// even though the result no longer names any theme section - <c>Theme.GetStyleSet&lt;TStyle&gt;</c>
+    /// stays generic over every <c>ControlStyle</c>-derived type, so the algorithm itself must keep
+    /// producing a stable key for a type shaped like a leaf, dropping only the <c>Style</c> suffix
+    /// and camel-casing the remainder.</summary>
     [Fact]
-    public void Of_WhenTypeIsALeafControlStyle_DerivesTheExistingSectionName()
+    public void Of_WhenTypeIsALeafControlStyle_StillDerivesAConsistentKey()
     {
         StyleKey.Of<ButtonStyle>().ShouldBe("button");
         StyleKey.Of<CheckBoxStyle>().ShouldBe("checkBox");
@@ -43,32 +54,57 @@ public sealed class StyleKeyTests
         StyleKey.Of<ChartStyle>().ShouldBe("chart");
     }
 
-    /// <summary>The regression this file exists to pin. The section registry used to be a
-    /// hand-written list of the same literals each style type declared separately, and the two had
-    /// drifted: ChartStyle declared "chart" while the registry omitted it, so a theme authoring
-    /// styles.chart was rejected outright as an unknown section. Deriving both from the type makes
-    /// that class of drift unrepresentable.</summary>
+    /// <summary>The regression this file exists to pin, restated for the closed vocabulary: every
+    /// leaf's derived key - real and legitimate as a string, matching exactly what
+    /// <see cref="StyleDefinitions"/> would have needed before section resolution closed to the six
+    /// well-known roots - is still rejected as unknown, since a leaf resolves no theme section at
+    /// all any more. This sweeps every leaf style type declared in the library, so a future style
+    /// that reintroduces a stray explicit key cannot silently reopen the vocabulary.</summary>
     [Fact]
-    public void Parse_WhenThemeAuthorsEveryLibrarySection_IsAccepted()
+    public void Parse_WhenThemeAuthorsAnyLeafSection_IsRejected()
     {
-        foreach (var section in new[]
+        foreach (var key in new[]
         {
-            "chart", "button", "checkBox", "radioButton", "scrollBar", "chaseIndicator", "slider",
-            "progressBar", "spinner", "calendar", "jsonView", "separator", "messageBox",
-            "filePickerDialog", "saveFileDialog", "tabControl"
+            StyleKey.Of<ChartStyle>(),
+            StyleKey.Of<JsonViewStyle>(),
+            StyleKey.Of<TabControlStyle>(),
+            StyleKey.Of<TreeViewStyle>(),
+            StyleKey.Of<ChaseIndicatorStyle>(),
+            StyleKey.Of<ProgressBarStyle>(),
+            StyleKey.Of<SeparatorStyle>(),
+            StyleKey.Of<SpinnerStyle>(),
+            StyleKey.Of<StatusBarItemStyle>(),
+            StyleKey.Of<TextStyle>(),
+            StyleKey.Of<ButtonStyle>(),
+            StyleKey.Of<CalendarStyle>(),
+            StyleKey.Of<CheckBoxStyle>(),
+            StyleKey.Of<HyperlinkButtonStyle>(),
+            StyleKey.Of<RadioButtonStyle>(),
+            StyleKey.Of<SliderStyle>(),
+            StyleKey.Of<ExpanderStyle>(),
+            StyleKey.Of<TableStyle>(),
+            StyleKey.Of<ScrollBarStyle>(),
+            StyleKey.Of<FilePickerDialogStyle>(),
+            StyleKey.Of<MessageBoxStyle>(),
+            StyleKey.Of<SaveFileDialogStyle>(),
+            StyleKey.Of<MenuItemStyle>(),
+            StyleKey.Of<MenuSeparatorStyle>(),
+            StyleKey.Of<NavigationViewGroupStyle>(),
+            StyleKey.Of<NavigationViewItemStyle>(),
+            StyleKey.Of<NavigationViewSeparatorStyle>()
         })
         {
             var json = ThemeJson.Create(
-                extraStyles: $$""", "{{section}}": { "normal": { "face": { "foreground": "accent" } } } """);
+                extraStyles: $$""", "{{key}}": { "normal": { "face": { "foreground": "accent" } } } """);
 
-            var theme = Should.NotThrow(() => ThemeCatalog.Parse(json), $"section '{section}' must be accepted");
-
-            theme.StyleSections.ShouldContainKey(section);
+            var exception = Should.Throw<InvalidDataException>(
+                () => ThemeCatalog.Parse(json), $"section '{key}' must be rejected");
+            exception.Message.ShouldContain(key);
         }
     }
 
-    /// <summary>Verifies an unqualified section no style type owns is still rejected, so the
-    /// derived registry has not simply stopped catching typos.</summary>
+    /// <summary>Verifies an unqualified section no style type owns is still rejected, so the closed
+    /// six-name vocabulary has not simply stopped catching typos.</summary>
     [Fact]
     public void Parse_WhenSectionIsAnUnownedUnqualifiedName_Throws()
     {
@@ -80,18 +116,19 @@ public sealed class StyleKeyTests
         exception.Message.ShouldContain("buton");
     }
 
-    /// <summary>Verifies a dot-namespaced third-party section is still admitted without any
-    /// registry entry - the one case a derived key cannot express, since a type name has no
-    /// dot.</summary>
+    /// <summary>Verifies a dot-namespaced third-party section - once admitted with no registry
+    /// entry needed, as a deliberate escape hatch for a control declared outside the library - is
+    /// now rejected exactly like any other unknown name. The dot no longer bypasses validation:
+    /// there is no longer any registrable third-party section for it to admit.</summary>
     [Fact]
-    public void Parse_WhenSectionIsVendorNamespaced_IsAcceptedWithoutRegistration()
+    public void Parse_WhenSectionIsVendorNamespaced_IsRejected()
     {
         var json = ThemeJson.Create(
             extraStyles: """, "acme.gauge": { "normal": { "face": { "foreground": "accent" } } } """);
 
-        var theme = ThemeCatalog.Parse(json);
+        var exception = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json));
 
-        theme.StyleSections.ShouldContainKey("acme.gauge");
+        exception.Message.ShouldContain("acme.gauge");
     }
 
     /// <summary>Verifies a theme can author a partial border, which every other layer accepts.
@@ -140,31 +177,12 @@ public sealed class StyleKeyTests
         _ = Should.Throw<InvalidDataException>(() => theme.GetStyleSet(InputStyle.Default));
     }
 
-    /// <summary>Verifies a theme can author the tab strip, which was entirely code-owned.
-    ///
-    /// <para><c>TabControl</c> kept two one-cell glyphs and two part colors on the control class,
-    /// with no style type and no <c>styles.*</c> key. The colors were nullable and resolved to
-    /// <c>SemanticColor.ControlBorder</c>/<c>Accent</c> at the draw site when unset, so the default
-    /// lived at the render call rather than in a value a theme could overlay - ASCII divider and
-    /// underline glyphs, the thing a terminal without box-drawing coverage most needs, had to be
-    /// set per instance.</para>
-    /// </summary>
-    [Fact]
-    public void Parse_WhenTabControlSectionAuthorsTheStrip_ResolvesIt()
-    {
-        var json = ThemeJson.Create(
-            extraStyles:
-            """, "tabControl": { "normal": { "dividerGlyph": "|", "underlineGlyph": "=", "dividerColor": "warning", "selectionIndicatorColor": "error" } } """);
-
-        var style = TabControlStyle.Definition.Resolve(null, ThemeCatalog.Parse(json));
-
-        style.DividerGlyph.ShouldBe(new Rune('|'));
-        style.UnderlineGlyph.ShouldBe(new Rune('='));
-        style.DividerColor.ShouldBe((ControlColor) SemanticColor.Warning);
-        style.SelectionIndicatorColor.ShouldBe((ControlColor) SemanticColor.Error);
-    }
-
-    /// <summary>The counter-case: an unauthored theme keeps the code-owned strip.</summary>
+    /// <summary>The counter-case: an unauthored theme keeps the code-owned tab strip - TabControl's
+    /// own dividerGlyph/underlineGlyph/dividerColor/selectionIndicatorColor. A theme could once
+    /// author a "tabControl" section to move these; a leaf resolves no theme section of its own any
+    /// more, so a locally assigned Style is the only surviving door (see
+    /// TabControlSurfaceTests.Render_WhenLocalStyleSetsTheStrip_DrawsTheAuthoredDividerAsync)
+    /// and this counter-case is now the entire theme-facing story.</summary>
     [Fact]
     public void Parse_WhenTabControlSectionIsAbsent_KeepsTheCodeOwnedStrip()
     {
@@ -175,13 +193,15 @@ public sealed class StyleKeyTests
         style.SelectionIndicatorColor.ShouldBe((ControlColor) SemanticColor.Accent);
     }
 
-    /// <summary>Verifies the key derives from the style type name like every other section.</summary>
+    /// <summary>Verifies the key derives from the style type name like every other section, even
+    /// though "tabControl" no longer names an authorable section.</summary>
     [Fact]
     public void Of_WhenTabControlStyle_DerivesTheTabControlKey() =>
         StyleKey.Of<TabControlStyle>().ShouldBe("tabControl");
 
     /// <summary>Verifies a theme can author the window close chrome, which was code-owned and
-    /// unreachable while the glyph lived on the control class.
+    /// unreachable while the glyph lived on the control class. "window" is one of the six
+    /// well-known role sections and remains fully authorable.
     ///
     /// <para><c>Window.CloseGlyph</c> was a control property defaulting to the internal
     /// <c>ControlGlyphs</c> registry, which nothing in the theme pipeline parses, so a theme

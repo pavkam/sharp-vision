@@ -16,16 +16,22 @@ public sealed class Theme
 {
     // A leaf style's own code-owned static preset (e.g. CheckBoxStyle.Brackets) calls its Complete
     // method directly, outside of any real resolution, to build a value with no live Theme in
-    // scope. ThemeCatalog.Dark is deliberately NOT used for that: ThemeCatalog's own static
-    // constructor loads Dark by parsing the embedded "default-dark" document, which - through
-    // ApplyStyleSections/ReadStyleSections - touches every leaf style's own registered
-    // "Definition" property via BuildRegisteredStyleSections's reflective scan. That reenters
-    // THIS type's own static constructor (to reach a leaf style's Complete call, which now needs a
-    // Theme) before ThemeCatalog's Dark/White fields are assigned, so a leaf style's
-    // Complete(..., ThemeCatalog.Dark) observes a still-null Dark and throws a
-    // NullReferenceException the first time anything touches that leaf style. A bare, unauthored
-    // Theme carries the same GlyphFamily.Default (and every other code-owned default) as
-    // ThemeCatalog.Dark without ever touching ThemeCatalog.
+    // scope. ThemeCatalog.Dark is deliberately NOT used for that. It once guarded against a
+    // genuine static-initializer reentrancy - ThemeCatalog's own static constructor parsed the
+    // embedded "default-dark" document by reflectively scanning and touching every leaf style's
+    // own registered "Definition" property, which reentered THIS type's static constructor before
+    // ThemeCatalog's Dark/White fields were assigned - but that reflective registry is gone along
+    // with per-leaf theme sections, so that specific trigger no longer exists.
+    //
+    // The dependency stays worth avoiding on its own terms. Routing a preset through
+    // ThemeCatalog.Dark would make every leaf style's static preset initializer depend on parsing
+    // an embedded theme resource - I/O plus the full parse/validate/cascade catalog machinery
+    // running at type-init time, purely to hand back a Theme - and a resource failure there would
+    // cascade into every preset's own type initializer instead of staying local to ThemeCatalog. A
+    // bare, unauthored Theme carries the same GlyphFamily.Default (and every other code-owned
+    // default) as ThemeCatalog.Dark without ever touching ThemeCatalog: every completion only
+    // reads Glyphs, and Unthemed already carries GlyphFamily.Default for it, the same as Dark's
+    // own zero-config document resolves to.
     internal static readonly Theme Unthemed = new();
 
     private readonly Dictionary<string, Color> _palette;
@@ -1143,97 +1149,41 @@ public sealed class Theme
         return members;
     }
 
-    /// <summary>Resolves a self-contained root style's complete appearance set, honouring a local
-    /// style as the Normal appearance while keeping this key's own theme-authored per-state
-    /// contributions on top of it.</summary>
-    /// <remarks>
-    /// The root factory used to build its appearance from the theme alone, discarding the resolved
-    /// style it was handed. Since <c>StyleSlot</c> passes <c>Resolve(LocalValue, theme)</c> into
-    /// that slot and installs the definition as the primary style, a control using a root
-    /// definition reported the assigned local value from <c>ActualStyle</c> while every rendered
-    /// cell still came from the theme - and because the appearance objects were identical either
-    /// way, a local <c>BorderSide</c> change contributed no impact and scheduled no measure. The
-    /// one-hop fallback factory never had this problem, which is why it went unnoticed: no
-    /// in-repo control uses the root factory as its primary slot.
-    /// </remarks>
-    /// <typeparam name="TStyle">The concrete themeable style type.</typeparam>
-    /// <param name="resolvedNormal">The resolved style - the local value when one is assigned.</param>
-    /// <param name="key">This style type's own <c>styles.*</c> key.</param>
-    /// <param name="codeOwnedDefault">The code-owned default this type falls back to.</param>
-    /// <returns>The complete appearance set.</returns>
-    internal AppearanceStates BuildRootStates<TStyle>(TStyle resolvedNormal, string key, TStyle codeOwnedDefault)
-        where TStyle : ControlStyle
-    {
-        var set = GetStyleSet(key, codeOwnedDefault);
-        var states = set.ToAppearanceStates();
-
-        // The per-state overlays are the THEME's deltas, computed against the theme's own Normal,
-        // and they stay that way - a local style replaces the resting appearance, not the theme's
-        // opinion about how this type reacts to hover, focus, or being disabled. Only Normal is
-        // rebased. When no local style is assigned the two are the same value and this is a no-op.
-        return ReferenceEquals(set.Normal, resolvedNormal)
-            ? states
-            : new AppearanceStates(
-                new ControlAppearance(resolvedNormal.Face, resolvedNormal.Border, resolvedNormal.Shadow),
-                states.IsPointerOver,
-                states.FocusWithin,
-                states.Focused,
-                states.Current,
-                states.Selected,
-                states.Checked,
-                states.Indeterminate,
-                states.Pressed,
-                states.Disabled);
-    }
-
     /// <summary>Resolves one leaf control style's complete per-state set against its declared
-    /// one-hop fallback: a state this control's own key authors patches onto
-    /// <paramref name="resolvedNormal"/> directly; an unauthored state instead borrows the
-    /// fallback type's own resolved per-state DELTA (not its whole resolved value) and re-applies
-    /// just that delta onto <paramref name="resolvedNormal"/> - preserving whatever
-    /// <paramref name="resolvedNormal"/> itself already carries (a locally-assigned style's own
-    /// Face/Border/Shadow customization, and every structural member like Padding, which
-    /// <paramref name="complete"/> only ever completes from the fallback and would otherwise
-    /// silently discard for every non-Normal state. The delta is isolated by
-    /// running <paramref name="complete"/> twice (once against the fallback's Normal, once against
-    /// its per-state contribution) and value-diffing the two results, so any type-specific
-    /// per-state special-casing <paramref name="complete"/> itself performs (e.g. RadioButton's
-    /// Checked-state accent color) still participates in the delta exactly as before. Converted to
-    /// a <see cref="AppearanceStates"/> so the unchanged <see cref="AppearanceResolver"/>/
-    /// <see cref="AppearanceStates.ApplyStates"/> fold logic can consume a leaf control's style exactly
-    /// as it consumes one of the six well-known base types.</summary>
+    /// one-hop fallback: every state borrows the fallback type's own resolved per-state DELTA (not
+    /// its whole resolved value) and re-applies just that delta onto
+    /// <paramref name="resolvedNormal"/> - preserving whatever <paramref name="resolvedNormal"/>
+    /// itself already carries (a locally-assigned style's own Face/Border/Shadow customization,
+    /// and every structural member like Padding, which <paramref name="complete"/> only ever
+    /// completes from the fallback and would otherwise silently discard for every non-Normal
+    /// state. The delta is isolated by running <paramref name="complete"/> twice (once against the
+    /// fallback's Normal, once against its per-state contribution) and value-diffing the two
+    /// results, so any type-specific per-state special-casing <paramref name="complete"/> itself
+    /// performs (e.g. RadioButton's Checked-state accent color) still participates in the delta
+    /// exactly as before. A leaf declares no theme section of its own, so the fallback's delta is
+    /// the only per-state contribution there is - nothing here overlays this style's own JSON,
+    /// because it has none. Converted to a <see cref="AppearanceStates"/> so the unchanged
+    /// <see cref="AppearanceResolver"/>/<see cref="AppearanceStates.ApplyStates"/> fold logic can
+    /// consume a leaf control's style exactly as it consumes one of the six well-known base
+    /// types.</summary>
     internal AppearanceStates BuildFallbackAwareStates<TStyle, TFallback>(
         TStyle resolvedNormal,
-        string key,
         Func<Theme, StyleStates<TFallback>> fallbackTo,
         Func<TFallback, VisualState, Theme, TStyle> complete)
         where TStyle : ControlStyle
         where TFallback : ControlStyle
     {
         var fallbackSet = fallbackTo(this);
-        var raw = GetRawStyleSection(key);
         var completedFallbackNormal = complete(fallbackSet.Normal, VisualState.Normal, this);
         var authored = new Dictionary<string, IReadOnlySet<string>>(StringComparer.Ordinal);
 
         TStyle ResolveState(VisualState state, string stateName, Func<StyleStates<TFallback>, TFallback?> fallbackSelector)
         {
-            // The fallback's contribution is computed FIRST and always, then this control's own JSON
-            // for the state layers on top of it.
-            //
-            // This branch used to return early whenever the control's own key authored the state at
-            // all, so `input.disabled` muting the text and `button.disabled` recolouring the border
-            // gave a Button with the muted border and its NORMAL foreground - and deleting the
-            // button block restored the muted foreground, which is the opposite of what a narrowing
-            // override should do and reads as though the fix were the cause. The root cascade in
-            // BuildRootStyleSet has always layered; these two branches of the same cascade simply
-            // disagreed, and the documented one is this one.
-            //
             // A state the fallback set leaves unpopulated must STILL run `complete` for that state.
             // `complete` is the only place a style type can express a per-state code-owned default
             // (today just RadioButton's Checked accent foreground), and returning resolvedNormal
-            // early here made that branch dead code whenever neither the control's own key nor its
-            // fallback authored the state - which is the common case, since no bundled theme
-            // authors "input.checked".
+            // early here made that branch dead code whenever the fallback did not author the state -
+            // which is the common case, since no bundled theme authors "input.checked".
             //
             // Completing from the fallback's Normal leaves every other style type byte-identical:
             // RadioButtonStyle.Complete is the only implementation that reads its state parameter,
@@ -1252,21 +1202,7 @@ public sealed class Theme
                 authored[stateName] = inheritedMembers;
             }
 
-            if (raw?.TryGetValue(stateName, out var overrides) != true)
-            {
-                return basis;
-            }
-
-            var members = CollectAuthoredChrome(typeof(TStyle), overrides!);
-
-            if (members.Count > 0)
-            {
-                authored[stateName] = inheritedMembers is { Count: > 0 }
-                    ? new HashSet<string>(inheritedMembers.Union(members), StringComparer.Ordinal)
-                    : members;
-            }
-
-            return (TStyle) Overlay(basis, overrides!, $"styles.{key}.{stateName}", restrictToChrome: true);
+            return basis;
         }
 
         var set = new StyleStates<TStyle>

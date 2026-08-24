@@ -62,15 +62,13 @@ defaults to `Accent`, `Muted`, and `Muted` respectively when not overridden. A
 `with` expression creates a validated member-wise copy of any preset. Without a
 local `Style`, the resolved `Glyphs` come from the active theme's `glyphs`
 family field (see [themes.md](../../concepts/themes.md#glyph-families)) rather
-than a fixed code-owned pair. A theme document may additionally author a
-`styles.chaseIndicator` section restyling any of the three colors ahead of the
-code-owned defaults, falling back to the `control` style section for everything
-else, whenever no local `Style` is assigned (see
-[themes.md](../../concepts/themes.md#style-types)). Assigning `Style` replaces
-the entire Theme-owned presentation, and assigning `null` restores it. If the
-active cell-width policy is wide and a configured glyph becomes ambiguous, the
-control falls back to a role-appropriate one-cell ASCII head and a `.` track
-glyph.
+than a fixed code-owned pair. ChaseIndicator declares no `styles.*` theme key of
+its own: it falls back to `control`'s role section for its inherited
+`Face`/`Border`/`Shadow`, and its three colors stay code-owned, themeable only
+through a local `Style`. Assigning `Style` replaces the entire Theme-owned
+presentation, and assigning `null` restores it. If the active cell-width policy
+is wide and a configured glyph becomes ambiguous, the control falls back to a
+role-appropriate one-cell ASCII head and a `.` track glyph.
 
 ## Example
 

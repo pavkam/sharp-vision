@@ -93,11 +93,10 @@ predefined values:
 | `Diamond`    | `◆`   | Distinct mode or environment marker            |
 
 An application whose visual language needs a different one-cell separator can
-assign any other `Rune` that passes the same validation. A theme document may
-author a `styles.statusBarItem` section with `leftSeparatorGlyph`/
-`rightSeparatorGlyph` string members; an active theme's section supplies those
-glyphs ahead of the code-owned defaults whenever no local `Style` is assigned
-(see [themes.md](../../concepts/themes.md#style-types)).
+assign any other `Rune` that passes the same validation. StatusBarItem declares
+no `styles.*` theme key of its own, so a locally assigned `Style`'s
+`LeftSeparatorGlyph`/`RightSeparatorGlyph` is the only way to move these away
+from their code-owned defaults.
 
 ## Defaults and appearance
 

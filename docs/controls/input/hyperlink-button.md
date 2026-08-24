@@ -32,15 +32,14 @@ classDiagram
 | `PerformClick()`               | `void`                              | —              | Activates an available, visible, enabled HyperlinkButton through its public API.                   |
 | `Click`                        | `EventHandler<ActivationEventArgs>` | No subscribers | Raised after the released state commits and before command execution.                              |
 
-`HyperlinkButtonStyle : ControlStyle` is a complete immutable presentation: its
-own `"hyperlinkButton"` theme key falls back to the standard borderless
-interactive appearance, with the coded `Normal` state defaulting to an accent
-foreground, `SemanticDecoration.NormalText` attributes, and a straight
-accent-colored underline. A theme's own `styles.hyperlinkButton.normal.face`
-section restyles the link color directly; a `with` expression creates a
-validated member-wise copy of `HyperlinkButtonStyle.Default`; assigning `null`
-to `Style` restores the Theme-owned presentation, and `ActualStyle` never
-returns null.
+`HyperlinkButtonStyle : ControlStyle` is a complete immutable presentation: it
+declares no `styles.*` theme key of its own and falls back to the standard
+borderless interactive appearance, with the coded `Normal` state defaulting to
+an accent foreground, `SemanticDecoration.NormalText` attributes, and a straight
+accent-colored underline. A locally assigned `Style` is the only way to restyle
+the link color directly; a `with` expression creates a validated member-wise
+copy of `HyperlinkButtonStyle.Default`; assigning `null` to `Style` restores the
+Theme-owned presentation, and `ActualStyle` never returns null.
 
 `StartAffix` and `EndAffix` each reserve a fixed cell column beside the caption,
 the same seam `Button` and `TextInput` expose (see

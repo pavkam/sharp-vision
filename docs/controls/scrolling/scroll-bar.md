@@ -35,17 +35,13 @@ A `ScrollBarStyle` bundles `Chrome`, `Fill`, a complete `ScrollBarGlyphs` set,
 `ControlColor`s for the track, thumb, and buttons, and the inherited
 `Face`/`Border`/`Shadow`. The presets are `FullBlock`, `FullLine`, `ThinBlock`,
 and `ThinLine`. A `with` expression creates a validated member-wise copy of any
-preset; assigning `null` to `Style` restores the Theme-owned presentation. A
-theme document may additionally author a `styles.scrollBar` section with
-`chrome` (`"thin"` or `"full"`) and `fill` (`"line"` or `"block"`) string
-members; an active theme's section supplies `Chrome`/`Fill` ahead of the
-code-owned defaults whenever no local `Style` is assigned (see
-[themes.md](../../concepts/themes.md#style-types)). The code-owned
-`Chrome`/`Fill`/glyph family come from the active theme's `glyphs` field, not
-from this section (see [themes.md](../../concepts/themes.md#glyph-families));
-per-part colors remain code-owned. A style change that alters `Chrome`
-invalidates measure, because the reserved extent moves; any other difference is
-render-only.
+preset; assigning `null` to `Style` restores the Theme-owned presentation.
+ScrollBar declares no `styles.*` theme key of its own: its code-owned
+`Chrome`/`Fill`/glyph family come from the active theme's root-level `glyphs`
+field whenever no local `Style` is assigned (see
+[themes.md](../../concepts/themes.md#glyph-families)); per-part colors remain
+code-owned. A style change that alters `Chrome` invalidates measure, because the
+reserved extent moves; any other difference is render-only.
 
 Hosts that generate their own bars expose a nullable `ScrollBarStyle` property
 and a read-only `ActualScrollBarStyle`. A host forwards a local complete style

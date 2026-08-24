@@ -11,25 +11,25 @@ when shown asynchronously; there is no nested proxy Window.
 
 ## API
 
-| Member                 | Default                | Description                                                                                                                                      |
-| ---------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `Message`              | required               | Non-null message rendered as grapheme-safe wrapped `Text`.                                                                                       |
-| `Title`                | `"Message"`            | Non-null Window title.                                                                                                                           |
-| `Buttons`              | `MessageBoxButtons.Ok` | Defined semantic action layout.                                                                                                                  |
-| `Style`                | `null`                 | A complete local `MessageBoxStyle` owning the frame, message face, and content geometry; `null` follows the active Theme's `messageBox` section. |
-| `ActualStyle`          | resolved               | The resolved `MessageBoxStyle` currently applied.                                                                                                |
-| `ButtonStyle`          | `null`                 | A complete local `ButtonStyle` applied to every generated action; `null` lets each Button use its own semantic profile.                          |
-| `ActualButtonStyle`    | resolved               | The resolved `ButtonStyle` currently applied to every generated action.                                                                          |
-| `SeparatorStyle`       | `null`                 | A complete local `SeparatorStyle` applied to the divider above the action row; `null` follows the active Theme's `separator` section.            |
-| `ActualSeparatorStyle` | resolved               | The resolved `SeparatorStyle` currently applied to the divider.                                                                                  |
-| `OkText`               | `"&OK"`                | Non-null caption for the OK action, when the current layout includes one.                                                                        |
-| `CancelText`           | `"&Cancel"`            | Non-null caption for the Cancel action, when the current layout includes one.                                                                    |
-| `YesText`              | `"&Yes"`               | Non-null caption for the Yes action, when the current layout includes one.                                                                       |
-| `NoText`               | `"&No"`                | Non-null caption for the No action, when the current layout includes one.                                                                        |
-| `SelectedResult`       | default enum value     | The last selection made on a directly mounted MessageBox.                                                                                        |
-| `HasSelectedResult`    | `false`                | Distinguishes "no modeless selection yet" from the enum's default value.                                                                         |
-| `ResultSelected`       | no subscribers         | Raised when a directly mounted MessageBox takes a keyboard or pointer choice.                                                                    |
-| `ShowAsync(...)`       | —                      | Presents one temporary modal MessageBox and returns its semantic result.                                                                         |
+| Member                 | Default                | Description                                                                                                                                                                                 |
+| ---------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Message`              | required               | Non-null message rendered as grapheme-safe wrapped `Text`.                                                                                                                                  |
+| `Title`                | `"Message"`            | Non-null Window title.                                                                                                                                                                      |
+| `Buttons`              | `MessageBoxButtons.Ok` | Defined semantic action layout.                                                                                                                                                             |
+| `Style`                | `null`                 | A complete local `MessageBoxStyle` owning the frame, message face, and content geometry; `null` follows the code-owned default, itself falling back to the active Theme's `window` section. |
+| `ActualStyle`          | resolved               | The resolved `MessageBoxStyle` currently applied.                                                                                                                                           |
+| `ButtonStyle`          | `null`                 | A complete local `ButtonStyle` applied to every generated action; `null` lets each Button use its own semantic profile.                                                                     |
+| `ActualButtonStyle`    | resolved               | The resolved `ButtonStyle` currently applied to every generated action.                                                                                                                     |
+| `SeparatorStyle`       | `null`                 | A complete local `SeparatorStyle` applied to the divider above the action row; `null` follows the code-owned default, itself falling back to the active Theme's `control` section.          |
+| `ActualSeparatorStyle` | resolved               | The resolved `SeparatorStyle` currently applied to the divider.                                                                                                                             |
+| `OkText`               | `"&OK"`                | Non-null caption for the OK action, when the current layout includes one.                                                                                                                   |
+| `CancelText`           | `"&Cancel"`            | Non-null caption for the Cancel action, when the current layout includes one.                                                                                                               |
+| `YesText`              | `"&Yes"`               | Non-null caption for the Yes action, when the current layout includes one.                                                                                                                  |
+| `NoText`               | `"&No"`                | Non-null caption for the No action, when the current layout includes one.                                                                                                                   |
+| `SelectedResult`       | default enum value     | The last selection made on a directly mounted MessageBox.                                                                                                                                   |
+| `HasSelectedResult`    | `false`                | Distinguishes "no modeless selection yet" from the enum's default value.                                                                                                                    |
+| `ResultSelected`       | no subscribers         | Raised when a directly mounted MessageBox takes a keyboard or pointer choice.                                                                                                               |
+| `ShowAsync(...)`       | —                      | Presents one temporary modal MessageBox and returns its semantic result.                                                                                                                    |
 
 `MessageBoxButtons` defines the supported layouts:
 
@@ -176,25 +176,31 @@ interpret ampersands.
 appearance - including its ActiveBorder-on-FocusWithin default), `MessageFace`
 for the message text, and `MessageMargin`/`ActionBarMargin` for the two pieces
 of content geometry that are genuinely presentation choices rather than fixed
-layout. A Theme authors it through its own `messageBox` style section, resolved
-with the standard local &rarr; Theme &rarr; fallback precedence; `Style` and
+layout. `MessageBoxStyle` declares no `styles.*` theme key of its own: the frame
+follows `window`'s role section with the standard local &rarr; fallback
+precedence, while `MessageFace`/`MessageMargin`/`ActionBarMargin` stay
+code-owned, reachable only through a locally assigned `Style`; `Style` and
 `ActualStyle` follow the same contract as every other themed control. A live
-Theme swap updates the frame, message face, and content geometry together on the
-next layout pass, even without a local `Style`.
+Theme swap still updates the frame on the next layout pass, even without a local
+`Style` - only the code-owned members need one to move at all.
 
 `CloseGlyph`, `CloseLeftBracket`, `CloseRightBracket`, and the four
 `CloseMarkColor`/`CloseMarkActiveColor`/`CloseMarkPressedColor`/`CloseMarkDisabledColor`
 fields are inherited from `WindowStyle` and resolve through `MessageBoxStyle`
-itself, so a theme's `messageBox` section — not its `window` section — drives
-the close mark MessageBox renders when `CanClose` is set to `true` (see
-[Interaction](#interaction)).
+itself, copied verbatim from the fallback's own resolved `window` role section
+
+- MessageBox declares no `styles.*` theme key of its own, so a theme's `window`
+  section drives the close mark MessageBox renders when `CanClose` is set to
+  `true`, and only a locally assigned `Style` can give MessageBox a close mark
+  independent of `window` (see [Interaction](#interaction)).
 
 The divider above the action row is a canonical `Separator` with its own
-`SeparatorStyle`/`ActualStyle` contract (its "separator" theme key falls back to
-the generic control role). `MessageBox.SeparatorStyle` forwards a complete local
-override to the retained divider through the same part-style binding
-`ButtonStyle` already uses; `null` returns the divider to independent Theme
-ownership instead of pinning a previously resolved value.
+`SeparatorStyle`/`ActualStyle` contract (declaring no `styles.*` theme key of
+its own, it falls back to the generic control role's code-owned chrome).
+`MessageBox.SeparatorStyle` forwards a complete local override to the retained
+divider through the same part-style binding `ButtonStyle` already uses; `null`
+returns the divider to independent Theme ownership instead of pinning a
+previously resolved value.
 
 ## Example
 
@@ -237,10 +243,10 @@ The behavior above is verified end to end, so callers can rely on it:
 - `ButtonStyle` propagates across every button layout with Theme fallback,
   publishes change notification, remeasures when padding changes, and
   `ShowAsync` forwards an explicit style to every presented action.
-- `Style` resolves through local &rarr; Theme `messageBox` section &rarr; Window
-  fallback, updates the frame, message face, and content geometry coherently
-  (including after a live Theme swap), and resetting it restores Theme
-  ownership.
+- `Style` resolves through local &rarr; code-owned completion of the Theme's
+  `window` fallback, updates the frame coherently after a live Theme swap
+  (message face and content geometry stay code-owned unless a local `Style`
+  moves them), and resetting it restores that fallback-derived presentation.
 - `SeparatorStyle` forwards a complete local override to the retained divider
   and resetting it returns the divider to independent Theme ownership rather
   than pinning a resolved value.

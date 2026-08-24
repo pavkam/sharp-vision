@@ -70,23 +70,63 @@ public sealed class TabControlSurfaceTests
         surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(warning);
     }
 
-    /// <summary>Verifies a theme-authored tab strip reaches the rendered cells.
+    /// <summary>Verifies a locally assigned style's strip glyphs reach the rendered cells.
     ///
     /// <para>The two strip glyphs and two strip colors lived on the control class with no style
-    /// type and no <c>styles.*</c> key, so a theme could not reach any of them - ASCII divider and
-    /// underline glyphs, which a terminal without dependable box-drawing coverage needs, had to be
-    /// set per instance. This asserts the glyph actually drawn, not merely that the style resolved:
+    /// type and no <c>styles.*</c> key, so nothing could reach them - ASCII divider and underline
+    /// glyphs, which a terminal without dependable box-drawing coverage needs, had to be set per
+    /// instance. This asserts the glyph actually drawn, not merely that the style resolved:
     /// resolving correctly while the control still read the code-owned registry is exactly the
-    /// half-wired state a style-level test alone would call green.</para>
+    /// half-wired state a style-level test alone would call green. A leaf declares no theme
+    /// section of its own any more, so a locally assigned Style is the only surviving door.</para>
     /// </summary>
     [Fact]
-    public async Task Render_WhenThemeAuthorsTheStrip_DrawsTheAuthoredDividerAsync()
+    public async Task Render_WhenLocalStyleSetsTheStrip_DrawsTheAuthoredDividerAsync()
     {
         // Arrange
-        var theme = ThemeCatalog.Parse(
-            ThemeJson.Create(
-                extraStyles:
-                """, "tabControl": { "normal": { "dividerGlyph": "!", "underlineGlyph": "~" } } """));
+        var tabs = new TabControl
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HeaderWidth = Length.Cells(6),
+            Style = TabControlStyle.Default with { DividerGlyph = new Rune('!'), UnderlineGlyph = new Rune('~') }
+        };
+        tabs.Items.Add(new TabItem { HeaderText = "One", Content = new ControlText("First") });
+        tabs.Items.Add(new TabItem { HeaderText = "Two", Content = new ControlText("Second") });
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            tabs,
+            new Size(30, 4),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.Cell(new Point(6, 0)).Text.ShouldBe("!");
+    }
+
+    /// <summary>Verifies a live Theme swap that changes only the resolved "accent" color - leaving
+    /// "control"'s own resolved appearance untouched - still repaints TabControlStyle's code-owned
+    /// SelectionIndicatorColor default and still publishes an ActualStyle notification.
+    ///
+    /// <para>TabControl used to resolve <c>ActualStyle</c> by hand-calling
+    /// <c>TabControlStyle.Definition.Resolve(Style, Theme)</c> instead of registering a primary
+    /// style slot through <c>InitializeStyle</c>. Without that slot,
+    /// <c>ControlBase.GetThemeChangeImpact</c> had nothing of TabControlStyle's own to inspect and
+    /// fell back to comparing the generic "control" appearance, which this Theme pair deliberately
+    /// keeps identical - so the regression this guards against would report
+    /// <see cref="InvalidationImpact.None"/> and leave the indicator color stuck on the old
+    /// Theme's value. A leaf declares no theme section of its own any more, so this now isolates
+    /// the scenario through the one surviving lever: the semantic color TabControlStyle's
+    /// code-owned default already points at (<see cref="SemanticColor.Accent"/>), which "control"
+    /// itself never references.</para>
+    /// </summary>
+    [Fact]
+    public async Task Theme_WhenOnlyAccentColorChanges_RepaintsTheSelectionIndicatorAsync()
+    {
+        // Arrange - two themes whose "control" section resolves byte-identically (same background
+        // and foreground); only "accent" differs.
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create());
+        var repainted = ThemeCatalog.Parse(ThemeJson.Create(accent: "#ffcc00"));
         var tabs = new TabControl
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -98,38 +138,53 @@ public sealed class TabControlSurfaceTests
         await using var surface = await ComponentSurface.MountAsync(
             tabs,
             new Size(30, 4),
+            mounted,
             TestContext.Current.CancellationToken);
 
-        // Act
-        await surface.UpdateAsync(() => surface.Application.Theme = theme, "author tab strip");
+        var indicatorBefore = surface.Cell(new Point(0, 1)).Style.Foreground;
+        var controlBackgroundBefore = surface.Cell(new Point(1, 0)).Style.Background;
+        var notifications = new List<string?>();
+        tabs.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
 
-        // Assert
-        surface.Cell(new Point(6, 0)).Text.ShouldBe("!");
+        // Act
+        await surface.UpdateAsync(() => surface.Application.Theme = repainted, "swap accent-only theme");
+
+        // Assert - the style-owned color repaints to the new theme's resolved accent...
+        var expectedIndicator = TerminalPalette.Project(repainted.ResolveColor(SemanticColor.Accent), ColorDepth.Basic16);
+        surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(expectedIndicator);
+        surface.Cell(new Point(0, 1)).Style.Foreground.ShouldNotBe(indicatorBefore);
+
+        // ...while "control"'s own resolved background - untouched by the accent-only diff -
+        // proves this was not a wholesale repaint that would make the isolation moot.
+        surface.Cell(new Point(1, 0)).Style.Background.ShouldBe(controlBackgroundBefore);
+
+        // ...and the primary-slot machinery published the ActualStyle notification the hand-rolled
+        // implementation never claimed.
+        notifications.ShouldContain(nameof(TabControl.ActualStyle));
     }
 
-    /// <summary>Verifies a live Theme swap that changes only the "tabControl" section - leaving
-    /// "control" byte-identical - still repaints the divider and selection-indicator colors and
-    /// still publishes an ActualStyle notification.
+    /// <summary>Verifies a live Theme swap that changes only the resolved "controlBorder" color -
+    /// leaving every other resolved value untouched - still repaints TabControlStyle's code-owned
+    /// DividerColor default across the header row's divider cells.
     ///
-    /// <para>TabControl used to resolve <c>ActualStyle</c> by hand-calling
-    /// <c>TabControlStyle.Definition.Resolve(Style, Theme)</c> instead of registering a primary
-    /// style slot through <c>InitializeStyle</c>. Without that slot,
-    /// <c>ControlBase.GetThemeChangeImpact</c> had nothing of TabControlStyle's own to inspect and
-    /// fell back to comparing the generic "control" appearance, which this Theme pair deliberately
-    /// keeps identical - so the regression this guards against would report
-    /// <see cref="InvalidationImpact.None"/> and leave both colors stuck on the old Theme's
-    /// values.</para>
+    /// <para>The sibling of <see cref="Theme_WhenOnlyAccentColorChanges_RepaintsTheSelectionIndicatorAsync"/>
+    /// for the strip's other code-owned color: <c>DividerColor</c> completes to
+    /// <see cref="SemanticColor.ControlBorder"/>, and "control"'s own JSON border authors that
+    /// foreground symbolically (<c>styles.control.normal.border.foreground</c> is itself the token
+    /// "controlBorder", not a literal), so the resolved <c>ControlStyle</c> record is byte-identical
+    /// between the two themes below even though the underlying "colors.controlBorder" literal
+    /// differs. Only a repaint that genuinely re-resolves <c>DividerColor</c> against the newly
+    /// mounted Theme - rather than reusing a literal cached from the first render - can move the
+    /// divider cell's rendered foreground.</para>
     /// </summary>
     [Fact]
-    public async Task Theme_WhenOnlyTabControlSectionChanges_RepaintsDividerAndIndicatorColorsAsync()
+    public async Task Theme_WhenOnlyControlBorderColorChanges_RepaintsTheDividerAsync()
     {
-        // Arrange - two themes whose "styles.control" sections are byte-identical (same palette,
-        // background, foreground, and accent parameters); only the second adds a "tabControl"
-        // section, so a fallback keyed on "control" alone cannot see this change.
+        // Arrange - two themes whose "control" section resolves byte-identically (both author the
+        // border foreground as the symbolic "controlBorder" token); only the underlying literal
+        // "colors.controlBorder" differs.
         var mounted = ThemeCatalog.Parse(ThemeJson.Create());
-        var repainted = ThemeCatalog.Parse(
-            ThemeJson.Create(
-                extraStyles: """, "tabControl": { "normal": { "dividerColor": "warning", "selectionIndicatorColor": "success" } } """));
+        var repainted = ThemeCatalog.Parse(ThemeJson.Create(controlBorderForeground: "#33cc66"));
         var tabs = new TabControl
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -145,24 +200,14 @@ public sealed class TabControlSurfaceTests
             TestContext.Current.CancellationToken);
 
         var dividerBefore = surface.Cell(new Point(6, 0)).Style.Foreground;
-        var indicatorBefore = surface.Cell(new Point(0, 1)).Style.Foreground;
-        var notifications = new List<string?>();
-        tabs.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
 
         // Act
-        await surface.UpdateAsync(() => surface.Application.Theme = repainted, "swap tabControl-only theme");
+        await surface.UpdateAsync(() => surface.Application.Theme = repainted, "swap controlBorder-only theme");
 
-        // Assert - the two style-owned colors repaint to the new theme's values...
-        var expectedDivider = TerminalPalette.Project(repainted.ResolveColor(SemanticColor.Warning), ColorDepth.Basic16);
-        var expectedIndicator = TerminalPalette.Project(repainted.ResolveColor(SemanticColor.Success), ColorDepth.Basic16);
+        // Assert - the divider repaints to the new theme's resolved controlBorder color...
+        var expectedDivider = TerminalPalette.Project(repainted.ResolveColor(SemanticColor.ControlBorder), ColorDepth.Basic16);
         surface.Cell(new Point(6, 0)).Style.Foreground.ShouldBe(expectedDivider);
-        surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(expectedIndicator);
         surface.Cell(new Point(6, 0)).Style.Foreground.ShouldNotBe(dividerBefore);
-        surface.Cell(new Point(0, 1)).Style.Foreground.ShouldNotBe(indicatorBefore);
-
-        // ...and the primary-slot machinery published the ActualStyle notification the hand-rolled
-        // implementation never claimed.
-        notifications.ShouldContain(nameof(TabControl.ActualStyle));
     }
 
     /// <summary>Verifies clicking the second tab header switches the visible content and selected index.</summary>

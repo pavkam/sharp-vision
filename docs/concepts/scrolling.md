@@ -62,9 +62,10 @@ themed presentation by default.
 The normal precedence applies: a local complete style wins over the Theme, which
 wins over the code-owned fallback. For CLR authoring, start from one of the
 shipped presets - `ScrollBarStyle.FullBlock`, `FullLine`, `ThinBlock`, or
-`ThinLine` - and use a `with` expression to make a validated member-wise copy. A
-theme document may also author a `styles.scrollBar` section supplying `Chrome`
-and `Fill`; see [scroll-bar.md](../controls/scrolling/scroll-bar.md).
+`ThinLine` - and use a `with` expression to make a validated member-wise copy.
+`Chrome` and `Fill` come from the active theme's root-level `glyphs` family
+field rather than a `styles.*` section of ScrollBar's own; see
+[scroll-bar.md](../controls/scrolling/scroll-bar.md).
 
 ## Thumb geometry
 

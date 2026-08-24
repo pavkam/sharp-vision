@@ -165,85 +165,44 @@ public sealed class ThemeTests
     }
 
     /// <summary>The regression this file exists to pin: a validating init accessor rejecting a
-    /// value is a labelled theme error, not a raw TargetInvocationException.</summary>
-    [Theory]
-    [InlineData(""", "separator": { "normal": { "horizontalGlyph": "世" } } """, "styles.separator")]
-    [InlineData(""", "tabControl": { "normal": { "dividerGlyph": "世" } } """, "styles.tabControl")]
-    public void Parse_WhenAValidatingMemberRejectsTheValue_ReportsALabelledThemeError(
-        string extraStyles,
-        string expectedPath)
+    /// value is a labelled theme error, not a raw TargetInvocationException. Exercised directly
+    /// against <see cref="Theme.Overlay"/> with a synthetic fragment whose own init accessor
+    /// validates - the same mechanic every real style's validating member (a markStyle, a paint
+    /// channel, a glyph) shares, independent of which theme section reaches it. A theme's own
+    /// leaf sections no longer exist to carry this scenario, since a leaf resolves no section of
+    /// its own any more.</summary>
+    [Fact]
+    public void Overlay_WhenAValidatingMemberRejectsTheValue_ReportsALabelledThemeError()
     {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(extraStyles: extraStyles));
+        var theme = ThemeCatalog.Parse(ThemeJson.Create());
 
-        var error = Should.Throw<InvalidDataException>(() => ResolveThroughStyle(theme, expectedPath));
+        var error = Should.Throw<InvalidDataException>(() => theme.Overlay(
+            new TestValidatingStyle { Count = 1 },
+            ParseOverrides(/*lang=json,strict*/ """{"count":-1}"""),
+            "styles.acme.normal"));
 
-        error.Message.Contains(expectedPath, StringComparison.Ordinal).ShouldBeTrue(
+        error.Message.Contains("styles.acme.normal.count", StringComparison.Ordinal).ShouldBeTrue(
             $"the failure must name its dotted path, but read '{error.Message}'");
         error.InnerException.ShouldNotBeNull()
             .ShouldNotBeOfType<TargetInvocationException>(
                 "the accessor's own exception must be unwrapped, not the reflection wrapper");
     }
 
-    /// <summary>Verifies a wide glyph is rejected at all, which the labelling above presupposes -
-    /// a silently accepted two-cell glyph would make the message question moot.</summary>
-    [Fact]
-    public void Parse_WhenAGlyphIsWiderThanOneCell_IsRejected()
-    {
-        var theme = ThemeCatalog.Parse(
-            ThemeJson.Create(extraStyles: """, "separator": { "normal": { "horizontalGlyph": "世" } } """));
-
-        _ = Should.Throw<InvalidDataException>(
-            () => SeparatorStyle.Definition.Resolve(null, theme));
-    }
-
     /// <summary>Verifies a get-only computed property is refused by name rather than resolving,
-    /// converting, and then crashing inside SetValue.</summary>
-    [Theory]
-    [InlineData("checkBox", "markWidth")]
-    [InlineData("radioButton", "markWidth")]
-    [InlineData("radioButton", "uncheckedText")]
-    [InlineData("radioButton", "checkedText")]
-    public void Parse_WhenASectionAuthorsAComputedProperty_ReportsItAsUnknown(string section, string member)
+    /// converting, and then crashing inside SetValue. Exercised directly against
+    /// <see cref="Theme.Overlay"/> for the same reason as the validating-member test above.</summary>
+    [Fact]
+    public void Overlay_WhenAKeyNamesAComputedProperty_ReportsItAsUnknown()
     {
-        var theme = ThemeCatalog.Parse(
-            ThemeJson.Create(extraStyles: $$""", "{{section}}": { "normal": { "{{member}}": 3 } } """));
+        var theme = ThemeCatalog.Parse(ThemeJson.Create());
 
-        var error = Should.Throw<InvalidDataException>(() => ResolveThroughStyle(theme, $"styles.{section}"));
+        var error = Should.Throw<InvalidDataException>(() => theme.Overlay(
+            new TestComputedStyle { Seed = 1 },
+            ParseOverrides(/*lang=json,strict*/ """{"computed":3}"""),
+            "styles.acme.normal"));
 
         error.Message.Contains("is not a known property", StringComparison.Ordinal).ShouldBeTrue(
             $"a derived member must be refused by name, but read '{error.Message}'");
-    }
-
-    /// <summary>The counter-case: a settable member with the same shape is still authorable, so
-    /// refusing computed properties did not refuse real ones.</summary>
-    [Fact]
-    public void Parse_WhenASectionAuthorsASettableMember_IsAccepted()
-    {
-        var theme = ThemeCatalog.Parse(
-            ThemeJson.Create(extraStyles: """, "checkBox": { "normal": { "markStyle": "tick" } } """));
-
-        CheckBoxStyle.Definition.Resolve(null, theme).MarkStyle.ShouldBe(CheckBoxMarkStyle.Tick);
-    }
-
-    // Section binding is deferred, so a rejection surfaces on first resolution rather than at Parse.
-    private static void ResolveThroughStyle(Theme theme, string path)
-    {
-        if (path.Contains("separator", StringComparison.Ordinal))
-        {
-            _ = SeparatorStyle.Definition.Resolve(null, theme);
-        }
-        else if (path.Contains("tabControl", StringComparison.Ordinal))
-        {
-            _ = TabControlStyle.Definition.Resolve(null, theme);
-        }
-        else if (path.Contains("radioButton", StringComparison.Ordinal))
-        {
-            _ = RadioButtonStyle.Definition.Resolve(null, theme);
-        }
-        else
-        {
-            _ = CheckBoxStyle.Definition.Resolve(null, theme);
-        }
     }
 
     /// <summary>Verifies ParseSectionGlyph's null passthrough, single-Rune success, and the
@@ -357,52 +316,22 @@ public sealed class ThemeTests
         selected.Face.Background.ShouldBe(theme.Input.Resolve(VisualState.Selected).Face.Background);
     }
 
-    /// <summary>The regression the leaf half exists to pin, in the shape the report gives it: a
-    /// Button authoring only a disabled border still inherits the disabled foreground its fallback
-    /// authored.</summary>
+    /// <summary>A leaf declares no theme section of its own any more, so there is nothing left for
+    /// a leaf-owned block to narrow or replace: a fallback-authored state reaches a real leaf style
+    /// (Button) exactly as fully as it reaches the fallback itself. This is the direct successor of
+    /// the three-test "leaf narrows/replaces/is-removed" regression suite the pre-closure design
+    /// needed - with leaf-owned narrowing deleted outright, only the single inheritance fact
+    /// remains to prove.</summary>
     [Fact]
-    public void BuildFallbackAwareStates_WhenTheLeafNarrowsAnAuthoredState_KeepsTheFallbacksContribution()
+    public void BuildFallbackAwareStates_WhenTheFallbackAuthorsDisabled_TheLeafInheritsItWithNothingToNarrowIt()
     {
         var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            inputStates: """, "disabled": { "face": { "foreground": "disabledText" } } """,
-            extraStyles: """, "button": { "disabled": { "border": { "foreground": "disabledBorder" } } } """));
+            inputStates: """, "disabled": { "face": { "foreground": "disabledText" } } """));
 
         var resolved = ButtonStyle.Definition.Appearance!(ButtonStyle.Definition.Resolve(null, theme), theme)
             .Resolve(VisualState.Disabled);
 
-        resolved.Face.Foreground.ShouldBe(
-            (ControlColor) SemanticColor.DisabledText,
-            "the leaf authored a border, which should narrow the fallback rather than replace it");
-        resolved.Border.Foreground.ShouldBe((ControlColor) SemanticColor.DisabledBorder);
-    }
-
-    /// <summary>The counter-case that makes "layer" mean something: where both sides author the
-    /// same member, the leaf still wins. Layering must not turn a leaf override into a suggestion.</summary>
-    [Fact]
-    public void BuildFallbackAwareStates_WhenBothAuthorTheSameMember_TheLeafWins()
-    {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            inputStates: """, "disabled": { "face": { "foreground": "disabledText" } } """,
-            extraStyles: """, "button": { "disabled": { "face": { "foreground": "accent" } } } """));
-
-        ButtonStyle.Definition.Appearance!(ButtonStyle.Definition.Resolve(null, theme), theme)
-            .Resolve(VisualState.Disabled)
-            .Face.Foreground.ShouldBe((ControlColor) SemanticColor.Accent);
-    }
-
-    /// <summary>Verifies the diagnosis the report calls hardest to attribute: deleting the leaf's
-    /// own block must not <em>restore</em> a member the leaf never touched. Before the fix the two
-    /// spellings disagreed, so the fix looked like the cause.</summary>
-    [Fact]
-    public void BuildFallbackAwareStates_WhenTheLeafBlockIsRemoved_TheFallbackForegroundIsUnchanged()
-    {
-        var withLeafBlock = ThemeCatalog.Parse(ThemeJson.Create(
-            inputStates: """, "disabled": { "face": { "foreground": "disabledText" } } """,
-            extraStyles: """, "button": { "disabled": { "border": { "foreground": "disabledBorder" } } } """));
-        var withoutLeafBlock = ThemeCatalog.Parse(ThemeJson.Create(
-            inputStates: """, "disabled": { "face": { "foreground": "disabledText" } } """));
-
-        DisabledForeground(withLeafBlock).ShouldBe(DisabledForeground(withoutLeafBlock));
+        resolved.Face.Foreground.ShouldBe((ControlColor) SemanticColor.DisabledText);
     }
 
     /// <summary>Verifies a theme authoring only <c>control</c> colors leaves every sibling's
@@ -488,71 +417,22 @@ public sealed class ThemeTests
         theme.GetStyleSet(WindowStyle.Default).Normal.Border.Sides.ShouldBe(BorderSide.None);
     }
 
-    /// <summary>Verifies a root style honours an assigned local value as its resting appearance.
-    /// The root factory discarded the resolved style when it built appearance, so a control using it
-    /// as its primary slot reported the local value from <c>ActualStyle</c> while every rendered cell
-    /// came from the theme.</summary>
-    [Fact]
-    public void BuildRootStates_WhenALocalStyleIsAssigned_ItBecomesTheNormalAppearance()
-    {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create());
-        var local = RootDefault() with
-        {
-            Face = ControlStyle.DefaultFace with { Foreground = Color.Rgb(9, 8, 7) }
-        };
-
-        var states = theme.BuildRootStates(local, "test.root", RootDefault());
-
-        states.Normal.Face.Foreground.ShouldBe((ControlColor) Color.Rgb(9, 8, 7));
-    }
-
-    /// <summary>Verifies the theme's own per-state contributions survive a local style, since a
-    /// local value replaces the resting appearance rather than the theme's opinion about how this
-    /// type reacts to a state.</summary>
-    [Fact]
-    public void BuildRootStates_WhenALocalStyleIsAssigned_TheThemesStateDeltasStillApply()
-    {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            extraStyles: """, "test.root": { "pressed": { "face": { "foreground": "accent" } } } """));
-        var local = RootDefault() with
-        {
-            Face = ControlStyle.DefaultFace with { Foreground = Color.Rgb(9, 8, 7) }
-        };
-
-        var states = theme.BuildRootStates(local, "test.root", RootDefault());
-
-        states.Normal.Face.Foreground.ShouldBe((ControlColor) Color.Rgb(9, 8, 7));
-        states.Resolve(VisualState.Pressed).Face.Foreground.ShouldBe((ControlColor) SemanticColor.Accent);
-    }
-
-    /// <summary>The counter-case: with no local style the result is exactly the theme's own set.</summary>
-    [Fact]
-    public void BuildRootStates_WhenNoLocalStyleIsAssigned_MatchesTheThemesOwnSet()
-    {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            extraStyles: """, "test.root": { "pressed": { "face": { "foreground": "accent" } } } """));
-        var set = theme.GetStyleSet("test.root", RootDefault());
-
-        var states = theme.BuildRootStates(set.Normal, "test.root", RootDefault());
-
-        states.Normal.ShouldBe(set.ToAppearanceStates().Normal);
-        states.Resolve(VisualState.Pressed).ShouldBe(set.ToAppearanceStates().Resolve(VisualState.Pressed));
-    }
-
     /// <summary>Verifies a structural (non-Face/Border/Shadow) member authored under a state other
     /// than "normal" is rejected rather than parsed, validated, and silently discarded -
     /// <see cref="AppearanceOverlay"/> carries only Face/Border/Shadow, so nothing downstream ever
-    /// reads it.</summary>
+    /// reads it. Authored under "control" - one of the six role sections a theme can still author
+    /// at all - rather than a synthetic key, since a theme document no longer admits any other
+    /// kind.</summary>
     [Fact]
     public void GetStyleSet_WhenAStructuralMemberIsAuthoredUnderANonNormalState_ThrowsNamingTheDottedPath()
     {
         var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            extraStyles: """, "test.structural": { "pressed": { "weight": 2 } } """));
+            controlExtra: """, "pressed": { "weight": 2 } """));
 
         var exception = Should.Throw<InvalidDataException>(() =>
-            theme.GetStyleSet("test.structural", StructuralDefault()));
+            theme.GetStyleSet("control", StructuralDefault()));
 
-        exception.Message.ShouldContain("styles.test.structural.pressed.weight");
+        exception.Message.ShouldContain("styles.control.pressed.weight");
     }
 
     /// <summary>The counter-case: the same structural member authored under "normal" - the one
@@ -560,10 +440,9 @@ public sealed class ThemeTests
     [Fact]
     public void GetStyleSet_WhenAStructuralMemberIsAuthoredUnderNormal_Succeeds()
     {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            extraStyles: """, "test.structural": { "normal": { "weight": 2 } } """));
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(controlNormalExtra: ", \"weight\": 2"));
 
-        var resolved = theme.GetStyleSet("test.structural", StructuralDefault());
+        var resolved = theme.GetStyleSet("control", StructuralDefault());
 
         resolved.Normal.Weight.ShouldBe(2);
     }
@@ -653,22 +532,6 @@ public sealed class ThemeTests
             } }
           } }
         """;
-
-    private static ControlColor DisabledForeground(Theme theme) =>
-        ButtonStyle.Definition.Appearance!(ButtonStyle.Definition.Resolve(null, theme), theme)
-            .Resolve(VisualState.Disabled)
-            .Face.Foreground;
-
-    private static TestRootStyle RootDefault() =>
-        new(ControlStyle.DefaultFace, ControlStyle.NoBorder, ControlStyle.NoShadow);
-
-    private sealed record TestRootStyle: ControlStyle
-    {
-        [SetsRequiredMembers]
-        public TestRootStyle(Face face, Border border, Shadow shadow) : base(face, border, shadow)
-        {
-        }
-    }
 
     private static TestStructuralRootStyle StructuralDefault() =>
         new(ControlStyle.DefaultFace, ControlStyle.NoBorder, ControlStyle.NoShadow, weight: 1);
@@ -817,6 +680,29 @@ public sealed class ThemeTests
 
         result.Border.Sides.ShouldBe(BorderSide.All);
         result.Weight.ShouldBe(1);
+    }
+
+    /// <summary>Verifies the <c>restrictToChrome</c> guard rejects a nested
+    /// <see cref="IAppearanceFragment"/>-typed structural member - <see cref="PopupStyle.AnchorGlyphs"/> -
+    /// on a real root style, exercised directly against <see cref="Theme.Overlay"/> the same way the
+    /// synthetic-style guard tests above are. <c>AnchorGlyphs</c> is declared on
+    /// <see cref="PopupStyle"/> itself rather than <see cref="ControlStyle"/>, so the declaring-type
+    /// check rejects it by name before <c>Overlay</c> ever recurses into its own
+    /// <c>pointingUp</c>/<c>pointingDown</c>/<c>pointingLeft</c>/<c>pointingRight</c> members - the
+    /// same "reject before recursing" shape a scalar structural member like <c>weight</c> above gets,
+    /// now proven against a production nested fragment instead of a flat one.</summary>
+    [Fact]
+    public void Overlay_WhenRestrictedToChromeAndKeyIsANestedFragment_ThrowsNamingTheExactPathBeforeRecursing()
+    {
+        var theme = CreateTheme();
+
+        var exception = Should.Throw<InvalidDataException>(() => theme.Overlay(
+            PopupStyle.Default,
+            ParseOverrides(/*lang=json,strict*/ """{"anchorGlyphs":{"pointingUp":"^"}}"""),
+            "styles.popup.pressed",
+            restrictToChrome: true));
+
+        exception.Message.ShouldContain("styles.popup.pressed.anchorGlyphs");
     }
 
     /// <summary>Verifies a scalar value where a fragment property expects an object surfaces as an
@@ -1000,6 +886,36 @@ public sealed class ThemeTests
     {
         public required string Name { get; init; }
         public required int Count { get; init; }
+
+        IAppearanceFragment IAppearanceFragment.Clone() => this with { };
+    }
+
+    // A validating init accessor, exactly like a real style's markStyle enum or paint channel -
+    // used to prove Overlay's property.SetValue door unwraps the accessor's own exception rather
+    // than surfacing the raw reflection TargetInvocationException.
+    private sealed record TestValidatingStyle: IAppearanceFragment
+    {
+        public required int Count
+        {
+            get;
+            init
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
+                field = value;
+            }
+        }
+
+        IAppearanceFragment IAppearanceFragment.Clone() => this with { };
+    }
+
+    // A get-only computed property, derived from Seed with no init accessor of its own - used to
+    // prove ThemeStyleFragment.ResolveProperty refuses it by name rather than Overlay resolving,
+    // converting, and then crashing trying to write it back.
+    private sealed record TestComputedStyle: IAppearanceFragment
+    {
+        public required int Seed { get; init; }
+
+        public int Computed => Seed + 1;
 
         IAppearanceFragment IAppearanceFragment.Clone() => this with { };
     }

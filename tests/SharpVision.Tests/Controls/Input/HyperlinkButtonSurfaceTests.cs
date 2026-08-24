@@ -6,27 +6,45 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Verifies HyperlinkButton appearance, interaction, and activation on a mounted surface.</summary>
 public sealed class HyperlinkButtonSurfaceTests
 {
-    /// <summary>Verifies a theme's own "hyperlinkButton" section overrides the coded accent
-    /// foreground and underline color instead of the fixed SemanticColor.Accent default.</summary>
+    /// <summary>Verifies a locally assigned Style overrides the coded accent foreground and
+    /// underline color instead of the fixed SemanticColor.Accent default - a leaf declares no
+    /// theme section of its own, so a locally assigned Style is the only way left to move this
+    /// color at all.</summary>
+    /// <remarks>
+    /// The local style's Face is seeded with an explicit opaque <see cref="SemanticColor.Control"/>
+    /// background rather than <see cref="HyperlinkButtonStyle.Default"/>'s own bare
+    /// <c>Face.Background</c> (<see cref="Color.Transparent"/>, the code-only "unthemed" baseline
+    /// every leaf's <c>Default</c> is built from). A transparent background left in place here would
+    /// make <c>AppearanceResolver.Resolve</c>'s ambient-inheritance gate treat this control as a
+    /// passive pass-through once mounted under a real parent, silently replacing this Foreground
+    /// with the parent's own - the exact gap <see cref="ControlStyle.DefaultFace"/>'s own remarks
+    /// describe as deliberate for a genuinely transparent control, and a trap for any local style
+    /// built from a leaf's own bare <c>Default</c> instead of its normal theme-resolved appearance.
+    /// </remarks>
     [Fact]
-    public async Task Render_WhenThemeOverridesLinkColor_UsesThemeColorInsteadOfAccentAsync()
+    public async Task Render_WhenLocalStyleOverridesLinkColor_UsesTheOverrideInsteadOfAccentAsync()
     {
         // Arrange
         var color = Color.Rgb(0x32, 0xC8, 0x78);
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            palette: "\"linkColor\":\"#32c878\"",
-            extraStyles: """, "hyperlinkButton": { "normal": { "face": { "foreground": "linkColor", "underlineColor": "linkColor" } } } """));
         var link = new HyperlinkButton("Go")
         {
             HorizontalAlignment = HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Top
+            VerticalAlignment = VerticalAlignment.Top,
+            Style = HyperlinkButtonStyle.Default with
+            {
+                Face = HyperlinkButtonStyle.Default.Face with
+                {
+                    Foreground = color,
+                    Background = SemanticColor.Control,
+                    UnderlineColor = color
+                }
+            }
         };
 
         // Act
         await using var surface = await ComponentSurface.MountAsync(
             link,
             new Size(4, 1),
-            theme,
             TestContext.Current.CancellationToken);
 
         // Assert
@@ -35,39 +53,6 @@ public sealed class HyperlinkButtonSurfaceTests
         (surface.Cell(new Point(0, 0)).Style.Attributes & TerminalAttributes.Underline)
             .ShouldBe(TerminalAttributes.Underline);
         link.GetActualFace(VisualState.Normal).UnderlineColor.ShouldBe(color);
-    }
-
-    /// <summary>Verifies a theme's own per-state "hyperlinkButton.focused" section still reaches
-    /// render output despite HyperlinkButtonStyle.Complete forcing Underline/UnderlineColor
-    /// unconditionally across every state to keep them from reverting outside Normal - an explicit
-    /// JSON override on the control's own key is applied after that fold, not suppressed by it.</summary>
-    [Fact]
-    public async Task Render_WhenThemeOverridesFocusedUnderlineColor_UsesThemeColorAsync()
-    {
-        // Arrange
-        var color = Color.Rgb(0xFF, 0x64, 0x00);
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            palette: "\"focusedLinkColor\":\"#ff6400\"",
-            extraStyles: """, "hyperlinkButton": { "focused": { "face": { "underlineColor": "focusedLinkColor" } } } """));
-        var link = new HyperlinkButton("Go")
-        {
-            HorizontalAlignment = HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Top
-        };
-
-        // Act
-        await using var surface = await ComponentSurface.MountAsync(
-            link,
-            new Size(4, 1),
-            theme,
-            TestContext.Current.CancellationToken);
-        await surface.Keyboard.PressAsync(Code.Tab);
-
-        // Assert
-        surface.ShouldHaveState(link, VisualState.Focused);
-        (surface.Cell(new Point(0, 0)).Style.Attributes & TerminalAttributes.Underline)
-            .ShouldBe(TerminalAttributes.Underline);
-        link.GetActualFace(VisualState.Focused).UnderlineColor.ShouldBe(color);
     }
 
     /// <summary>Verifies the mounted HyperlinkButton renders accent-colored underlined text and responds to hover.</summary>

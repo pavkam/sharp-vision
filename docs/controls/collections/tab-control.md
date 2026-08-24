@@ -130,10 +130,12 @@ index shifts.
 `TabControlStyle` carries the whole header-strip presentation: the validated
 one-cell `DividerGlyph` and `UnderlineGlyph`, and the `DividerColor` and
 `SelectionIndicatorColor` foregrounds, alongside the inherited
-`Face`/`Border`/`Shadow`. A theme authors it through its `styles.tabControl`
-section, which falls back to `control` for anything it does not state — so ASCII
-divider and underline glyphs on a terminal without dependable box-drawing
-coverage are a theme setting rather than a per-instance one.
+`Face`/`Border`/`Shadow`. TabControlStyle declares no `styles.*` theme key of
+its own: its `Face`/`Border`/`Shadow` fall back to `control`'s role section,
+while the four strip members above stay code-owned - so ASCII divider and
+underline glyphs on a terminal without dependable box-drawing coverage need a
+locally assigned `Style` (shared across instances if desired) rather than a
+theme setting.
 
 Assigning `Style` replaces the resolved presentation for one control; assigning
 `null` returns it to the theme. Both colors accept either a concrete `Color` or

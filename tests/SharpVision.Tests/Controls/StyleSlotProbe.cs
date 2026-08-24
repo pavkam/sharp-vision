@@ -12,7 +12,6 @@ public sealed class StyleSlotProbe: ControlBase, IStyled<ButtonStyle>
     public StyleSlotProbe()
     {
         var definition = StyleDefinitions.Control(
-            "test.styleSlotProbe",
             static theme => theme.GetStyleSet(InputStyle.Default),
             Complete,
             static (previous, _, current, _) => previous.Padding == current.Padding

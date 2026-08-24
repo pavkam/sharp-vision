@@ -42,14 +42,12 @@ and Theme-owned state appearance; `ButtonStyle.Filled` is a shadowed, borderless
 preset with two horizontal padding cells and a fractional lower-right shadow. A
 `with` expression creates a validated member-wise copy of `ButtonStyle.Default`
 (`Standard`). Validation rejects any reachable state that combines a visible
-shadow with enabled border sides. A theme document may additionally author a
-`styles.button` section with `horizontalPadding`/`verticalPadding` integer
-members; an active theme's section supplies `Padding` ahead of the code-owned
-default whenever no local `Style` is assigned (see
-[themes.md](../../concepts/themes.md#style-types)). Assigning `Style` makes the
-whole style local and authoritative, and assigning `null` hands ownership back
-to the Theme. `ActualStyle` never returns null, and it changes when an inherited
-Theme changes while `Style` is null.
+shadow with enabled border sides. Button declares no `styles.*` theme key of its
+own, so `Padding` is a fixed code-owned value (one horizontal cell) unless a
+local `Style` assigns a different one. Assigning `Style` makes the whole style
+local and authoritative, and assigning `null` hands ownership back to the Theme.
+`ActualStyle` never returns null, and it changes when an inherited Theme changes
+while `Style` is null.
 
 `StartAffix` and `EndAffix` each reserve a fixed cell column pinned to a face
 edge, inside the padding and outside the caption's own alignment box - setting

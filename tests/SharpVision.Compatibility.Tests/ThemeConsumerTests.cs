@@ -24,19 +24,22 @@ using SharpVision.Styling;
 /// <see cref="GaugeStyle"/> and <see cref="Gauge"/> model a complete third-party control the way
 /// <c>docs/concepts/theming-new-controls.md</c> describes a control with its own typed style,
 /// substituting one of the four derived interaction sets for the fallback a library-owned leaf
-/// control such as <c>SliderStyle</c> would use.
+/// control such as <c>SliderStyle</c> would use. A theme's "styles" object is closed to exactly
+/// the six well-known role sections, so a third-party style - like every library leaf style - now
+/// declares no <c>styles.*</c> key of its own at all: its only sources of appearance are its
+/// code-owned completion logic, the declared fallback, and a locally assigned
+/// <see cref="Gauge.Style"/>.
 /// </remarks>
 public sealed class ThemeConsumerTests
 {
     /// <summary>Models a third-party "gauge" control's complete style: two structural members
     /// (<see cref="FillColor"/>, <see cref="FillGlyph"/>) beyond Face/Border/Shadow, falling back
     /// through <see cref="Theme.GetInteractiveControlStyleSet"/> the same way a library-owned
-    /// borderless interactive leaf style falls back through it, but declared under an explicit
-    /// vendor-dotted key since a third-party type name cannot contain the dot
-    /// <see cref="StyleKey"/> derives keys from. <see cref="FillGlyph"/> exists specifically to
-    /// prove the completion delegate's <see cref="Theme"/> argument reaches theme-level values
-    /// beyond the fallback style's own resolved appearance, the same way a library glyph-aware
-    /// style (e.g. <c>ProgressBarStyle</c>) reads <c>theme.Glyphs</c> to complete itself.</summary>
+    /// borderless interactive leaf style falls back through it. <see cref="FillGlyph"/> exists
+    /// specifically to prove the completion delegate's <see cref="Theme"/> argument reaches
+    /// theme-level values beyond the fallback style's own resolved appearance, the same way a
+    /// library glyph-aware style (e.g. <c>ProgressBarStyle</c>) reads <c>theme.Glyphs</c> to
+    /// complete itself.</summary>
     private sealed record GaugeStyle: ControlStyle
     {
         /// <summary>Initializes a complete gauge presentation.</summary>
@@ -48,11 +51,11 @@ public sealed class ThemeConsumerTests
             FillGlyph = fillGlyph;
         }
 
-        /// <summary>Gets the primary gauge-style definition, resolved against the public
-        /// <c>"acme.gauge"</c> vendor-dotted key.</summary>
+        /// <summary>Gets the primary gauge-style definition. A third-party style declares no
+        /// <c>styles.*</c> key of its own any more, so this resolves entirely from its declared
+        /// fallback and this type's own <see cref="Complete"/> logic.</summary>
         public static StyleDefinition<GaugeStyle> Definition { get; } =
             StyleDefinitions.Control(
-                "acme.gauge",
                 static theme => theme.GetInteractiveControlStyleSet(),
                 Complete,
                 static (previous, _, current, _) =>
@@ -90,7 +93,7 @@ public sealed class ThemeConsumerTests
     }
 
     /// <summary>Verifies an unattached <see cref="Gauge"/> - no local <see cref="Gauge.Style"/>
-    /// assignment, no attached Theme - resolves its "acme.gauge" style against
+    /// assignment, no attached Theme - resolves its style against
     /// <see cref="ThemeCatalog.Dark"/> by completing <see cref="Theme.GetInteractiveControlStyleSet"/>'s
     /// own Normal appearance, the public one-hop fallback resolving a real complete style with
     /// nothing to override it. Also verifies <see cref="GaugeStyle.FillGlyph"/> resolves to

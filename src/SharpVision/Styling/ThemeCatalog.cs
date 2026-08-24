@@ -13,16 +13,15 @@ public static class ThemeCatalog
     private const string _resourcePrefix = "SharpVision.Styling.Themes.";
     private const string _resourceSuffix = ".theme.json";
 
-    // Every library-owned style section - the six well-known styles and every leaf
-    // control style - discovered from the style types themselves rather than from a hand-written
-    // list. This used to be two literal-string sets maintained alongside the identical literals at
-    // each StyleDefinitions call site, and they had already drifted: ChartStyle declared "chart"
-    // while the registry omitted it, so a theme authoring styles.chart was rejected as unknown.
-    // Deriving the set means a style type is registered by existing, and cannot be spelled one way
-    // here and another way at its definition. The open "vendor.control" namespace any third-party
-    // control can use still needs no entry at all - it is admitted by the dot in its name.
-    private static readonly Lazy<HashSet<string>> _registeredStyleSections =
-        new(BuildRegisteredStyleSections, LazyThreadSafetyMode.ExecutionAndPublication);
+    // The complete, closed vocabulary of a theme document's "styles" object. A leaf control style
+    // (button, checkBox, ...) resolves entirely from its code-owned default, its declared one-hop
+    // fallback to one of these six, and a locally assigned Style - never from a theme section of
+    // its own - so admitting any other key, leaf or vendor-dotted, would let a theme author a
+    // section that silently does nothing. This used to be a reflectively discovered registry of
+    // every leaf style type's own key as well; that registry is gone along with the leaf keys it
+    // validated, leaving exactly the six names every bundled theme already authors.
+    private static readonly HashSet<string> _knownStyleSections =
+        new(StringComparer.Ordinal) { "control", "input", "container", "window", "popup", "tooltip" };
     private static readonly Lock _gate = new();
     private static readonly Dictionary<string, Theme> _cache = new(StringComparer.Ordinal);
 
@@ -334,42 +333,11 @@ public static class ThemeCatalog
         theme.SetStyleSections(ReadStyleSections(rawSections, source));
     }
 
-    // Collects every section key the library owns by asking each concrete style type for the key it
-    // resolves, so this can never disagree with the definitions themselves. Abstract intermediates
-    // (e.g. FileDialogStyle, which exists only to share members between the two file dialogs) own no
-    // section of their own and are skipped. Test and third-party style types live in other
-    // assemblies and are deliberately not scanned - they use dot-namespaced keys, which bypass this
-    // registry entirely.
-    private static HashSet<string> BuildRegisteredStyleSections()
-    {
-        var sections = new HashSet<string>(StringComparer.Ordinal);
-
-        foreach (var type in typeof(ControlStyle).Assembly.GetTypes())
-        {
-            if (!type.IsAbstract && type.IsAssignableTo(typeof(ControlStyle)) && !IsSecondaryOnly(type))
-            {
-                _ = sections.Add(StyleKey.Of(type));
-            }
-        }
-
-        return sections;
-    }
-
-    // A style type whose own Definition is secondary owns no styles.* section: nothing ever
-    // resolves that key, so admitting it would let a theme author a section that silently does
-    // nothing - the same class of quiet failure as a typo, but one the parser blessed. The six
-    // well-known roots declare no Definition at all (they resolve through GetStyleSet against
-    // their own Default) and are registered, as is every leaf whose Definition is primary. Only
-    // the deliberate opt-out is subtracted, so a style type is still registered by existing.
-    private static bool IsSecondaryOnly(Type type) =>
-        type.GetProperty("Definition", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
-            ?.GetValue(null) is IStyleDefinition { IsControl: false };
-
-    // A namespaced key ("vendor.control") is a registrable third-party style section and is
-    // retained raw for later lazy binding via Theme.GetStyleSection, with no registry entry
-    // needed here. An unqualified key must be a section some library style type owns
-    // (BuildRegisteredStyleSections) - anything else is very likely a typo (e.g. "buton" instead of
-    // "button"), so it is rejected rather than silently retained.
+    // Every key, including a dot-namespaced one, must be one of the six well-known role sections -
+    // the dot no longer bypasses validation, since there is no longer any registrable third-party
+    // section for it to admit. Anything else is rejected outright: very likely a typo of one of the
+    // six (e.g. "buton" instead of "button"), or a leaf/vendor key that named no section even before
+    // this closed the vocabulary.
     private static Dictionary<string, JsonElement> ReadStyleSections(
         Dictionary<string, JsonElement>? sections,
         string source)
@@ -381,11 +349,10 @@ public static class ThemeCatalog
 
         foreach (var name in sections.Keys)
         {
-            if (!name.Contains('.', StringComparison.Ordinal) &&
-                !_registeredStyleSections.Value.Contains(name))
+            if (!_knownStyleSections.Contains(name))
             {
                 throw new InvalidDataException(
-                    $"Theme '{source}' has unknown styles section '{name}'. Third-party sections must be namespaced as 'vendor.control'.");
+                    $"Theme '{source}' has unknown styles section '{name}'. Sections are limited to the six well-known styles: control, input, container, window, popup, tooltip.");
             }
         }
 

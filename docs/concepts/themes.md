@@ -3,15 +3,15 @@
 ## Overview
 
 A SharpVision theme is a single bounded UTF-8 JSON document. It defines the
-global semantic colors, terminal attributes, and a `styles` object holding every
-themeable style type's own JSON section. The document contains no control
-instances and no application-defined selector names. A leading UTF-8 byte order
-mark is accepted and ignored.
+global semantic colors, terminal attributes, and a `styles` object holding
+exactly six role sections - one JSON section per well-known style type. The
+document contains no control instances and no application-defined selector
+names. A leading UTF-8 byte order mark is accepted and ignored.
 
 ```mermaid
 flowchart LR
     JSON["bounded JSON"] --> Values["colors and attributes"]
-    JSON --> Styles["styles.* sections"]
+    JSON --> Styles["the six styles.* role sections"]
     Values --> Styles
     Styles --> Theme["frozen Theme"]
     Theme --> Controls["controls resolve their own StyleDefinition"]
@@ -27,7 +27,7 @@ The root object accepts only these fields:
 | `palette`                              | object   | At most 256 case-sensitive names mapped to RGB literals.                                             |
 | `colors`                               | object   | One concrete value for every known `SemanticColor`.                                                  |
 | `attributes`                           | object   | One concrete value for every known `SemanticDecoration`.                                             |
-| `styles`                               | object   | One JSON section per themeable style type (see below).                                               |
+| `styles`                               | object   | Exactly the six well-known role sections (see below).                                                |
 
 Unknown and duplicate fields are rejected. Embedded themes must carry complete
 metadata, `colorScheme` included; external documents fill in missing _or blank_
@@ -81,34 +81,29 @@ place any of them is written.
 Every themeable style value derives from `ControlStyle` - a required `Face`,
 `Border`, and `Shadow` plus, for a specific control's own style type, whatever
 structural members that control needs (padding, glyph families, mark styles, and
-so on). Six sibling types generalize the common presentations, as an open set
-any control can extend - `ControlStyle` itself (the passive base and universal
-fallback), `InputStyle`, `ContainerStyle`, `WindowStyle`, `PopupStyle`, and
-`TooltipStyle`. Each has its own `static Default` baking in a distinct
-code-owned border (none, heavy, light, paired, rounded, and light again,
-respectively) and, for `Window` only, a visible composite shadow. A control with
-nothing to add beyond one of these six uses that type directly - there is no
-requirement to declare a new type per control.
+so on). Six sibling types generalize the common presentations - `ControlStyle`
+itself (the passive base and universal fallback), `InputStyle`,
+`ContainerStyle`, `WindowStyle`, `PopupStyle`, and `TooltipStyle`. Each has its
+own `static Default` baking in a distinct code-owned border (none, heavy, light,
+paired, rounded, and light again, respectively) and, for `Window` only, a
+visible composite shadow. A control with nothing to add beyond one of these six
+uses that type directly - there is no requirement to declare a new type per
+control.
 
-`styles` is a flat JSON object: each top-level key is one style type's own
-`"styles.*"` name, resolved independently. The six well-known style keys above
-map to the unqualified keys `control`, `input`, `container`, `window`, `popup`,
-`tooltip`. A leaf control declares its own key (`button`, `checkBox`,
-`scrollBar`, and so on - see the worked table below) alongside a declared
-one-hop fallback to whichever of the six well-known types is the closest
-semantic match; a third-party control claims a namespaced key
-(`"vendor.control"`) the same way. An unqualified key that is neither one of the
-six well-known names nor a library-registered leaf-control name is rejected as
-an unknown field, since it is far more likely a typo than an intentional
-section.
+`styles` is a flat JSON object closed to exactly six top-level keys - one per
+well-known style type: `control`, `input`, `container`, `window`, `popup`,
+`tooltip`. Nothing else is accepted: not a leaf control's own key, not a
+namespaced vendor key. Any other name is rejected as an unknown field, since it
+is far more likely a typo of one of the six than an intentional section.
 
-Every accepted section is a section something resolves. A style type that
-declares itself secondary - a part style forwarded to a control's retained
-pieces rather than owning that control's own appearance - owns no `styles.*` key
-at all, and authoring one by its name is rejected exactly like a typo. That
-matters because the alternative is worse than rejection: a section the parser
-blesses and nothing ever reads would leave an author editing colors that never
-appear, with no error to explain why.
+A leaf control style - `Button`, `CheckBox`, every other control with its own
+style type - resolves no `styles.*` section of its own at all. Its only sources
+of appearance are its code-owned default, a declared one-hop fallback to
+whichever of the six well-known types is the closest semantic match, and a
+locally assigned `Style`. Restyling a leaf therefore means either restyling the
+role section it falls back to (moving every leaf that shares that fallback) or
+assigning that one control a local `Style` - see
+[theming-new-controls.md](theming-new-controls.md).
 
 Only `control` is conventionally load-bearing: it is the terminal root every
 other well-known style's `Normal` state cascades from (see below), and every
@@ -177,17 +172,29 @@ authors `styles.window.focusWithin` itself, mirroring the application-owned
 `IsActive` flag every mounted `Window` maps onto that state (see
 [styling.md](styling.md#shared-chrome)).
 
+A leaf control style's own per-state appearance is not authored JSON at all:
+every state a leaf resolves - `pointerOver`, `focused`, `pressed`, and the rest
+
+- borrows its declared fallback's own resolved per-state **delta** (what that
+  role section's JSON changed about that state, not its whole resolved value)
+  and re-applies just that delta onto the leaf's own resolved `Normal`. A
+  `Button` falling back to `input`, for example, reacts to
+  `styles.input.pointerOver` exactly as `input` itself does, with no
+  `styles.button.pointerOver` of its own to layer on top or narrow it with -
+  there is no such section any more.
+
 The bundled themes keep `control`, `container`, and `window` visually unchanged
 on hover. This keeps text, table shells, tab content, grouping surfaces, and
 other passive ancestry stable even though physical pointer membership remains
 observable. The bundled `input` section uses `surface` for its normal face and
-`activeControl` during hover (authored directly on `input.pointerOver`), and
-`button` also opts into the filled hover background the same way. Focus keeps
-the normal `surface`/`controlText` face, adds the focused text decoration, and
-uses `activeBorder` for chrome; focus therefore remains visible without
-introducing an alarm-like fill or text color. Borderless interactive styles
-rebase those `input` state colors onto `control` geometry. An external theme may
-author an explicit hover contribution on any type that wants it.
+`activeControl` during hover (authored directly on `input.pointerOver`), which
+every borderless interactive leaf - `Button` included - inherits through its
+fallback. Focus keeps the normal `surface`/`controlText` face, adds the focused
+text decoration, and uses `activeBorder` for chrome; focus therefore remains
+visible without introducing an alarm-like fill or text color. Borderless
+interactive styles rebase those `input` state colors onto `control` geometry. A
+custom theme may author an explicit hover contribution on any of the six
+sections that wants one.
 
 Every bundled `window` style uses `windowSurface` for its normal background and
 `windowText` for its foreground. `windowSurface` is raised away from the
@@ -208,13 +215,14 @@ resolved, not a hand-maintained DTO shape): face colors and decorations; border
 sides, glyph style, colors, and attributes; shadow visibility, mode, offset,
 glyph, colors, and attributes.
 
-A style type's own additional structural members (padding, mark style, a glyph
-family) sit at the top level of its state object too - see `button`'s `padding`
-and `radioButton`'s `glyphs` below - but only under `normal`. Nothing but
-`face`/`border`/`shadow` is ever read back from another state: every per-state
-resolution completes a leaf's structural members from its resolved `normal`
-alone, so a theme authoring, say, `button.pressed.padding` is rejected rather
-than parsed, validated, and silently ignored.
+A well-known style's own additional structural members (a window's close-chrome
+glyphs, a popup's anchor arrows) sit at the top level of its state object too -
+see `window`'s `closeGlyph` and `popup`'s `anchorGlyphs` below - but only under
+`normal`. Nothing but `face`/`border`/`shadow` is ever read back from another
+state: every per-state resolution completes a style's structural members from
+its resolved `normal` alone, so a theme authoring, say,
+`styles.window.pointerOver.closeGlyph` is rejected rather than parsed,
+validated, and silently ignored.
 
 Colors inside a style section must name a `SemanticColor` or a `palette` entry -
 a raw hex literal is rejected here too, the same way it is in `colors`.
@@ -224,65 +232,22 @@ they define the type's own chrome, not something a specific control instance
 owns. Individual controls may still set complete local styles that take
 precedence over everything a theme supplies.
 
-Twenty-six library controls resolve part or all of their structural `Style` from
-their own theme section ahead of their code-owned default, whenever no local
-`Style` is assigned - each with a one-hop fallback to the well-known style
-noted.
-
-A leaf's own state section **narrows** its fallback's rather than replacing it,
-the same way the well-known cascade above works. Authoring
-`styles.input.disabled.face.foreground` and
-`styles.button.disabled.border.foreground` gives a disabled Button both: the
-muted foreground from `input`, and its own muted border on top. Authoring the
-same member on both sides lets the leaf win.
-
-| `styles.*` key            | Control                   | Fallback style | Own members                                                                                                                                                                                                                                                                              |
-| ------------------------- | ------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `button`                  | `Button`                  | `input`        | `padding` (`{x, y}` object)                                                                                                                                                                                                                                                              |
-| `checkBox`                | `CheckBox`                | `input`        | `markStyle` (string), `glyphs` (three one-character strings) - member baseline now from the theme's glyph family                                                                                                                                                                         |
-| `radioButton`             | `RadioButton`             | `input`        | `markStyle` (string), `glyphs` (two one-character strings) - member baseline now from the theme's glyph family                                                                                                                                                                           |
-| `calendar`                | `Calendar`                | `input`        | `weekdayHeaderColor`, `navigationColor`, `todayMarkerColor`, `outOfMonthDayColor`, `disabledDayColor`, `selectedDayColor`, `selectedDayBackground`, `activeDayBackground`, `disabledDayBackground`, `contentInset`, `previousMonthGlyph`, `nextMonthGlyph`                               |
-| `scrollBar`               | `ScrollBar`               | `control`      | `chrome`, `fill` (strings), `glyphs` (ten one-character strings), `trackColor`, `thumbColor`, `buttonColor` - chrome/fill/glyphs baseline now from the theme's glyph family                                                                                                              |
-| `chaseIndicator`          | `ChaseIndicator`          | `control`      | `glyphs` (object: `active`/`inactive` one-character strings), `headColor`, `trailColor`, `trackColor` - glyphs baseline now from the theme's glyph family                                                                                                                                |
-| `progressBar`             | `ProgressBar`             | `control`      | `fillColor`, `trackColor`, `indeterminateColor` (colors), `glyphs` (three one-character strings) - glyphs baseline now from the theme's glyph family                                                                                                                                     |
-| `spinner`                 | `Spinner`                 | `control`      | `frames` (array of one-character strings, 1-256 entries) - baseline now from the theme's glyph family                                                                                                                                                                                    |
-| `separator`               | `Separator`               | `control`      | `horizontalGlyph`, `verticalGlyph` (one-character strings)                                                                                                                                                                                                                               |
-| `chart`                   | chart controls            | `control`      | `axisColor`, `labelColor`, `primaryColor`, `secondaryColor`, `tertiaryColor`, `quaternaryColor`, `quinaryColor`, `senaryColor`, `glyphs`, `fillMode`, `lineMode`, `linePattern`                                                                                                          |
-| `hyperlinkButton`         | `HyperlinkButton`         | `control`      | None - restyles the fallback's own `Face`/`Border`/`Shadow` members directly                                                                                                                                                                                                             |
-| `jsonView`                | `JsonView`                | `container`    | `keyColor`, `indexColor`, `stringColor`, `numberColor`, `booleanColor`, `nullColor`, `punctuationColor`, `disclosureColor`, `selectedTextColor`, `selectedBackground`, `collapsedGlyph`, `expandedGlyph`                                                                                 |
-| `treeView`                | `TreeView`                | `container`    | `loadingColor`, `failedColor` (colors), `loadingGlyph`, `failedGlyph`, `collapsedGlyph`, `expandedGlyph` (one-character strings)                                                                                                                                                         |
-| `messageBox`              | `MessageBox`              | `window`       | `messageFace`, `messageMargin`, `actionBarMargin`                                                                                                                                                                                                                                        |
-| `filePickerDialog`        | `FilePickerDialog`        | `window`       | `rootPadding`, `contentSpacing`, `fileListBorder`                                                                                                                                                                                                                                        |
-| `saveFileDialog`          | `SaveFileDialog`          | `window`       | `rootPadding`, `contentSpacing`, `fileListBorder`                                                                                                                                                                                                                                        |
-| `tabControl`              | `TabControl`              | `control`      | `dividerGlyph`, `underlineGlyph` (one-character strings), `dividerColor`, `selectionIndicatorColor`                                                                                                                                                                                      |
-| `expander`                | `Expander`                | `control`      | `collapsedGlyph`, `expandedGlyph` (one-character strings), `contentIndent` (integer)                                                                                                                                                                                                     |
-| `menuItem`                | `MenuItem`                | `control`      | `uncheckedGlyph`, `checkedGlyph`, `radioUncheckedGlyph`, `radioCheckedGlyph` (one-character strings), `affixGap` (integer)                                                                                                                                                               |
-| `menuSeparator`           | `MenuSeparator`           | `control`      | `glyph` (one-character string)                                                                                                                                                                                                                                                           |
-| `navigationViewGroup`     | `NavigationViewGroup`     | `control`      | `collapsedGlyph`, `expandedGlyph` (one-character strings), `itemIndent` (integer)                                                                                                                                                                                                        |
-| `navigationViewItem`      | `NavigationViewItem`      | `control`      | `idleMarker`, `currentMarker` (one-character strings), `affixGap` (integer)                                                                                                                                                                                                              |
-| `navigationViewSeparator` | `NavigationViewSeparator` | `control`      | `glyph` (one-character string)                                                                                                                                                                                                                                                           |
-| `table`                   | `Table`                   | `control`      | `glyphs` (five one-character strings), `cellPadding` (`{x, y}` object), `headerForeground`, `headerBackground`, `gridLineColor` (nullable colors - null inherits the table's own face), `placeholderForeground`, `placeholderErrorForeground` (required colors, default `Muted`/`Error`) |
-| `statusBarItem`           | `StatusBarItem`           | `control`      | `leftSeparatorGlyph`, `rightSeparatorGlyph` (one-character strings)                                                                                                                                                                                                                      |
-| `text`                    | `Text`                    | `control`      | `ellipsisGlyph` (one-character string)                                                                                                                                                                                                                                                   |
-
 A color member accepts the same shapes a well-known style's color does: a
 `SemanticColor` name, a palette key, or `"transparent"`/`"default"` - never a
 raw hex literal - resolved through `Theme.Palette` lazily rather than an eager
-parse-time dictionary. A `glyphs` member is a nested object whose own members
-are each one printable, one-cell Rune string - an entry with more than one Rune,
-or a Rune that measures wider than one cell, is rejected the same way a
-hand-authored glyph value would be. Every bundled theme except the two
-zero-config defaults (`default-dark`/`default-light`, backing
-`ThemeCatalog.Dark`/`ThemeCatalog.White`) authors the `normal` state of `button`
-(the only one of these keys a curated theme still restyles directly) and the
-root-level `glyphs` field described next. `checkBox`, `radioButton`,
-`scrollBar`, `chaseIndicator`, `progressBar`, and `spinner` remain acceptable
-sections - the schema still parses and validates any of them, exactly like every
-other row in the table above - but no bundled theme authors one directly any
-more: `glyphs`, one theme-wide choice, now supplies the baseline all six used to
-carry individually. The remaining sections, and both zero-config defaults, are
-deliberately left unauthored so a control stays on its code-owned presentation
-until a theme opts into restyling it.
+parse-time dictionary. A `glyphs`-shaped member is a nested object whose own
+members are each one printable, one-cell Rune string - an entry with more than
+one Rune, or a Rune that measures wider than one cell, is rejected the same way
+a hand-authored glyph value would be.
+
+Every bundled theme except the two zero-config defaults (`default-dark`/
+`default-light`, backing `ThemeCatalog.Dark`/`ThemeCatalog.White`) restyles
+`input`'s hover and focus cues and `window`'s frame; none of the fifteen authors
+anything beyond the six sections and the root-level `glyphs` field described
+next - there is no other section left to author. A leaf's own appearance,
+wherever it differs from its fallback's, now comes exclusively from its
+code-owned `complete` logic (semantic colors it resolves directly, such as
+`SemanticColor.Accent`) or from a locally assigned `Style`.
 
 ### Glyph families
 
@@ -306,32 +271,31 @@ before this field existed; an unrecognized name fails with a source-labelled
 | `shades`       | Shade-block    | Monokai, Tokyo Night |
 | `lines`        | Line-drawing   | Nord, Solarized      |
 
-A control's own section still wins where the two overlap: `styles.checkBox` (and
-its five siblings) can still restyle `markStyle`/`glyphs` directly for one
-control, on top of whatever the theme's `glyphs` family already supplied -
-`glyphs` only changes where the code-owned baseline those sections patch onto
-comes from. ProgressBar's `fillColor`/`trackColor`/`indeterminateColor` are not
-part of a glyph family either; they stay code-owned (`Accent`/`Muted`/`Info`) or
-themeable directly through `styles.progressBar`.
+These six controls have no `styles.*` section of their own to layer on top any
+more: `glyphs` is now their only theme-driven presentation lever beyond their
+control-derived chrome and a locally assigned `Style`. ProgressBar's
+`FillColor`/`TrackColor`/`IndeterminateColor` are not part of a glyph family
+either; they stay code-owned (`Accent`/`Muted`/`Info`), themeable only through a
+local `Style`.
 
 ### Where a section name comes from
 
 A section key is not a free-form string: it is **derived from the style type
 that owns it**. Drop a trailing `Style`, drop a leading `Theme`, and lower-case
-the first character - so `ButtonStyle` owns `button`, `ScrollBarStyle` owns
-`scrollBar`, and the well-known root `ControlStyle` owns `control`. Adding a
-style type is therefore all it takes to make its section authorable; there is no
-separate registry to update, and a key cannot drift from the type it belongs to.
+the first character - so `ControlStyle` owns `control`, `InputStyle` owns
+`input`, and the same rule accounts for the remaining four well-known roots.
+Deriving the key from the type keeps the two from drifting apart, but only the
+six well-known roots ever resolve a section through this derivation: a leaf
+control style's own derived key (`ButtonStyle` would derive `button`) is never
+looked up against a theme document at all, since `styles` admits only the six
+names regardless of what a type's own key would compute to.
 
-Alongside those, `styles` accepts a namespaced `vendor.control` key (for example
-`"acme.widget"`) for a third-party style type. Because a dot cannot appear in a
-type name, that one case keeps an explicit key: register it with
-`StyleDefinitions.Control<TStyle>(key, codeOwnedDefault, compare)` (a
-self-contained root, like the six well-known types) or
-`StyleDefinitions.Control<TStyle, TFallback>(key, fallbackTo, complete, compare)`
-(a one-hop fallback to an existing type, like every leaf control above). Library
-styles use the overloads without a `key`, which derive it. All four factories
-are public and require no internal access; see
+Register a library style type's fallback definition with
+`StyleDefinitions.Control<TStyle, TFallback>(fallbackTo, complete, compare)` -
+the one factory every leaf control style calls, and the only one left now that a
+leaf resolves no section of its own. `Part<TStyle>` remains for a secondary
+style forwarded to a control's retained pieces rather than owning that control's
+own appearance. Both are public and require no internal access; see
 [theming-new-controls.md](theming-new-controls.md) for a worked example.
 
 ## Example
@@ -462,13 +426,15 @@ are public and require no internal access; see
           "visible": true,
           "mode": "composite",
           "offset": { "x": 2, "y": 1 }
-        }
+        },
+        "closeGlyph": "x"
       }
     },
     "popup": {
       "normal": {
         "face": { "foreground": "windowText", "background": "window" },
-        "border": { "sides": "all", "glyphStyle": "rounded" }
+        "border": { "sides": "all", "glyphStyle": "rounded" },
+        "anchorGlyphs": { "pointingUp": "^", "pointingDown": "v" }
       }
     },
     "tooltip": {
@@ -476,9 +442,6 @@ are public and require no internal access; see
         "face": { "foreground": "windowText", "background": "window" },
         "border": { "sides": "all", "glyphStyle": "light" }
       }
-    },
-    "button": {
-      "normal": { "padding": { "x": 1, "y": 0 } }
     }
   }
 }
@@ -517,7 +480,7 @@ invalidate those entries.
 
 - Stream loading leaves the caller's stream open, and file and embedded loading
   each behave as described above.
-- `control`'s Normal cascade and every bundled type's own JSON overrides resolve
-  exactly as specified.
+- `control`'s Normal cascade and every well-known type's own JSON overrides
+  resolve exactly as specified.
 - Publication is dispatcher-affine and invalidates only the phases the change
   actually affects.

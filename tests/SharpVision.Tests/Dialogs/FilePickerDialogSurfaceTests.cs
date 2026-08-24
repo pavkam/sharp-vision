@@ -457,68 +457,6 @@ public sealed class FilePickerDialogSurfaceTests
             TerminalPalette.Project(theme.Error, ColorDepth.Basic16));
     }
 
-    /// <summary>Verifies the "filePickerDialog" theme section's own closeMarkColor wins over a
-    /// deliberately different "window" section value, proving the two sections resolve
-    /// independently instead of the close chrome always tracking "window".</summary>
-    [Fact]
-    public async Task CloseGlyph_WhenThemeSectionDivergesFromWindowSection_UsesTheDialogsOwnColorAsync()
-    {
-        // Arrange
-        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-divergent-close-color"));
-        var source = new FakeFilePickerFileSystem();
-        source.AddDirectory(directory);
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            windowExtra: """, "closeMarkColor": "success" """,
-            extraStyles: """, "filePickerDialog": { "normal": { "closeMarkColor": "error" } } """));
-        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source);
-        await using var surface = await ComponentSurface.MountAsync(
-            dialog,
-            new Size(76, 33),
-            theme,
-            TestContext.Current.CancellationToken);
-        await DialogWait.UntilAsync(surface, dialog, () => !dialog.IsLoading);
-        var glyphPoint = new Point(dialog.Bounds.X + 4, dialog.Bounds.Y);
-
-        // Assert
-        surface.Cell(glyphPoint).Style.Foreground.ShouldBe(
-            TerminalPalette.Project(theme.Error, ColorDepth.Basic16));
-    }
-
-    /// <summary>Verifies a live Theme swap that authors only the "filePickerDialog" section's
-    /// closeMarkColor - leaving "window" untouched - repaints the close glyph on its own,
-    /// proving <c>GetThemeChangeImpact</c> detects a change confined to FilePickerDialog's own
-    /// resolved close-chrome style rather than only the generic "window" section.</summary>
-    [Fact]
-    public async Task CloseGlyph_WhenThemeIsSwappedLiveWithDialogSpecificColor_RepaintsAsync()
-    {
-        // Arrange
-        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-live-close-swap"));
-        var source = new FakeFilePickerFileSystem();
-        source.AddDirectory(directory);
-        var themeA = ThemeCatalog.Parse(ThemeJson.Create());
-        var themeB = ThemeCatalog.Parse(ThemeJson.Create(
-            extraStyles: """, "filePickerDialog": { "normal": { "closeMarkColor": "error" } } """));
-        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source);
-        await using var surface = await ComponentSurface.MountAsync(
-            dialog,
-            new Size(76, 33),
-            themeA,
-            TestContext.Current.CancellationToken);
-        await DialogWait.UntilAsync(surface, dialog, () => !dialog.IsLoading);
-        var glyphPoint = new Point(dialog.Bounds.X + 4, dialog.Bounds.Y);
-        var beforeColor = surface.Cell(glyphPoint).Style.Foreground;
-
-        // Act
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = themeB,
-            "swap to a filePickerDialog-authoring theme");
-
-        // Assert
-        surface.Cell(glyphPoint).Style.Foreground.ShouldNotBe(beforeColor);
-        surface.Cell(glyphPoint).Style.Foreground.ShouldBe(
-            TerminalPalette.Project(themeB.Error, ColorDepth.Basic16));
-    }
-
     /// <summary>Verifies Escape returns the cancelled result without activating background content.</summary>
     [Fact]
     public async Task ShowAsync_WhenEscapeIsPressed_CancelsAndRestoresFocusAsync()

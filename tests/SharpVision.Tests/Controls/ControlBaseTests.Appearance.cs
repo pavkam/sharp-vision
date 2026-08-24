@@ -397,9 +397,11 @@ public sealed partial class ControlBaseTests
         childNotifications.ShouldContain(nameof(StyledProbe.ActualStyle));
     }
 
-    /// <summary>Verifies a Theme's per-state "button" overrides supply distinct normal and active
-    /// resolved appearance. A style value can no longer embed its own per-state profile
-    /// (only Normal), so per-state customization is now exclusively Theme-JSON-driven.</summary>
+    /// <summary>Verifies a Theme's per-state "input" overrides - the role section StyledProbe's
+    /// ButtonStyle falls back to - supply distinct normal and active resolved appearance. A style
+    /// value can no longer embed its own per-state profile (only Normal), and a leaf declares no
+    /// theme section of its own any more, so per-state customization is now exclusively driven by
+    /// the declared fallback's own Theme JSON.</summary>
     [Fact]
     public void ActualAppearance_WhenThemeProvidesPerStateAppearance_UsesNormalAndActiveValues()
     {
@@ -409,8 +411,11 @@ public sealed partial class ControlBaseTests
             // checks semantic-enum names before palette keys, so a colliding name silently resolves to
             // the theme's semantic ActiveBorder color instead of this palette entry.
             palette: "\"normalFace\":\"#010203\",\"normalBorder\":\"#040506\",\"activeFace\":\"#070809\",\"activeBorderColor\":\"#0a0b0c\",\"activeShadow\":\"#0d0e0f\"",
-            extraStyles:
-            """, "button": { "normal": { "face": { "foreground": "normalFace" }, "border": { "sides": "all", "foreground": "normalBorder" }, "shadow": { "visible": false } }, "pointerOver": { "face": { "foreground": "activeFace" }, "border": { "foreground": "activeBorderColor" }, "shadow": { "background": "activeShadow" } } } """));
+            inputSides: "\"all\"",
+            inputBorderExtra: ", \"foreground\": \"normalBorder\"",
+            inputExtra: """, "face": { "foreground": "normalFace" }, "shadow": { "visible": false } """,
+            inputStates:
+            """, "pointerOver": { "face": { "foreground": "activeFace" }, "border": { "foreground": "activeBorderColor" }, "shadow": { "background": "activeShadow" } } """));
         var control = new StyledProbe();
         control.SetTheme(theme);
 
@@ -628,13 +633,16 @@ public sealed partial class ControlBaseTests
         control.Style.ShouldBeNull();
     }
 
-    /// <summary>Verifies prospective Theme impact is calculated while the inherited Theme remains unchanged.</summary>
+    /// <summary>Verifies prospective Theme impact is calculated while the inherited Theme remains
+    /// unchanged. Driven through "input" - StyledProbe's ButtonStyle falls back to it, and Border
+    /// passes through unchanged from ButtonStyle.Complete's fallback argument - since a leaf
+    /// declares no theme section of its own, and Padding (the member the original scenario used)
+    /// is now a fixed code-owned constant with no theme lever left at all.</summary>
     [Fact]
     public void SetTheme_WhenResolvedStyleChanges_CommitsOnlyAfterCalculatingImpact()
     {
         var previous = ThemeCatalog.Parse(ThemeJson.Create());
-        var current = ThemeCatalog.Parse(ThemeJson.Create(extraStyles:
-            """, "button": { "normal": { "padding": { "x": 3, "y": 2 } } } """));
+        var current = ThemeCatalog.Parse(ThemeJson.Create(inputSides: "\"none\""));
         var control = new StyledProbe();
         control.SetTheme(previous);
         control.Clear(Invalidation.All);

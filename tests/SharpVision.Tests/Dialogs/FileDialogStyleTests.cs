@@ -40,21 +40,6 @@ public sealed class FileDialogStyleTests
         save.Border.ShouldBe(window.Normal.Border);
     }
 
-    /// <summary>Verifies a theme's own "filePickerDialog" key overrides content spacing on top of
-    /// the window fallback, without affecting the independent "saveFileDialog" key.</summary>
-    [Fact]
-    public void Definition_Resolve_WhenThemeAuthorsFilePickerDialog_OverridesOnlyThatKey()
-    {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(extraStyles:
-            """, "filePickerDialog": { "normal": { "contentSpacing": 3 } } """));
-
-        var picker = FilePickerDialogStyle.Definition.Resolve(null, theme);
-        var save = SaveFileDialogStyle.Definition.Resolve(null, theme);
-
-        picker.ContentSpacing.ShouldBe(3);
-        save.ContentSpacing.ShouldBe(1);
-    }
-
     /// <summary>Verifies a local override always wins over both the theme and the fallback.</summary>
     [Fact]
     public void Definition_Resolve_WhenLocalIsSupplied_LocalWins()

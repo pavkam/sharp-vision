@@ -79,16 +79,11 @@ the slider command set remain available to inherited routed input.
 
 The rail renders its filled, thumb, and unfilled cells with the `Accent`,
 `Accent`, and `Muted` foregrounds respectively, from `SliderStyle`'s code-owned
-`FillColor`, `ThumbColor`, and `TrackColor` defaults. A local `Style` assignment
-is authoritative over these. A theme document may otherwise author a
-`styles.slider` section with `fillColor`/`trackColor`/`thumbColor` string
-members (accepting a `SemanticColor` name, a palette key, or
-`"transparent"`/`"default"` - never a raw hex literal) ahead of the code-owned
-defaults whenever no local `Style` is assigned, though no bundled theme
-currently does - the code-owned defaults already match what every bundled theme
-showed (see [themes.md](../../concepts/themes.md#style-types)). Background,
-attributes, and the normal, pointer-over, focused, pressed, and disabled
-appearances follow the shared
+`FillColor`, `ThumbColor`, and `TrackColor` defaults. Slider declares no
+`styles.*` theme key of its own, so a local `Style` assignment is the only way
+to move these away from their code-owned defaults - which already match what
+every bundled theme showed. Background, attributes, and the normal,
+pointer-over, focused, pressed, and disabled appearances follow the shared
 [styling contract](../../concepts/styling.md#visual-states). Zero and tiny
 bounds stay contained, and ambiguous-width glyphs fall back to one-cell ASCII.
 

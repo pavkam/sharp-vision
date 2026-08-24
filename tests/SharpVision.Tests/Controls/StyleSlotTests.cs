@@ -213,31 +213,35 @@ public sealed class StyleSlotTests
     /// <summary>Verifies an <c>ImmutableArray</c> member with equal contents stops reporting a
     /// change. Boxed, it compares by the underlying array reference, so two structurally identical
     /// resolutions of <c>SpinnerStyle.Frames</c> looked different every single time - the
-    /// over-notifying mirror of the two gaps above.</summary>
+    /// over-notifying mirror of the two gaps above. Spinner is one of the six controls
+    /// <c>theme.Glyphs</c> shapes, and <c>SpinnerStyle.Frames</c>'s own init accessor always
+    /// defensively copies its source (see <c>SpinnerStyle.CopyFrames</c>), so two independently
+    /// parsed themes selecting the SAME glyph family still resolve two distinct, equal-by-content
+    /// array instances - a leaf no longer has a theme section of its own to source frames from
+    /// directly, but the value-vs-reference distinction this test exists to pin is otherwise
+    /// unchanged.</summary>
     [Fact]
     public void PropagateTheme_WhenAFrameArrayResolvesEqually_DoesNotPublish()
     {
-        var previous = ThemeCatalog.Parse(ThemeJson.Create(extraStyles: _spinnerFrames));
-        var current = ThemeCatalog.Parse(ThemeJson.Create(extraStyles: _spinnerFrames));
+        var previous = ThemeCatalog.Parse(ThemeJson.Create());
+        var current = ThemeCatalog.Parse(ThemeJson.Create());
 
         SpinnerStyle.Definition.Resolve(null, previous).Frames
             .ShouldBe(SpinnerStyle.Definition.Resolve(null, current).Frames);
         ReportsThemeChange(previous, current).ShouldBeFalse();
     }
 
-    /// <summary>The counter-case for that member: genuinely different frames must still report a
-    /// change, so the sequence comparison did not silence the notification altogether.</summary>
+    /// <summary>The counter-case for that member: genuinely different frames - here, a different
+    /// theme-wide glyph family - must still report a change, so the sequence comparison did not
+    /// silence the notification altogether.</summary>
     [Fact]
     public void PropagateTheme_WhenAFrameArrayDiffers_ReportsAChange()
     {
-        var previous = ThemeCatalog.Parse(ThemeJson.Create(extraStyles: _spinnerFrames));
-        var current = ThemeCatalog.Parse(ThemeJson.Create(
-            extraStyles: """, "spinner": { "normal": { "frames": ["x", "y", "z"] } } """));
+        var previous = ThemeCatalog.Parse(ThemeJson.Create());
+        var current = ThemeCatalog.Parse(ThemeJson.Create(glyphs: "ascii"));
 
         ReportsThemeChange(previous, current).ShouldBeTrue();
     }
-
-    private const string _spinnerFrames = """, "spinner": { "normal": { "frames": ["a", "b", "c"] } } """;
 
     private static bool ReportsThemeChange(Theme previous, Theme current)
     {

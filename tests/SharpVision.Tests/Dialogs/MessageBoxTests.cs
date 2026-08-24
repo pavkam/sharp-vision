@@ -301,60 +301,6 @@ public sealed class MessageBoxTests
             TerminalPalette.Project(theme.Error, ColorDepth.Basic16));
     }
 
-    /// <summary>Verifies the "messageBox" theme section's own closeMarkColor wins over a
-    /// deliberately different "window" section value, proving the two sections resolve
-    /// independently instead of the close chrome always tracking "window".</summary>
-    [Fact]
-    public async Task CloseGlyph_WhenThemeSectionDivergesFromWindowSection_UsesTheDialogsOwnColorAsync()
-    {
-        // Arrange
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            windowExtra: """, "closeMarkColor": "success" """,
-            extraStyles: """, "messageBox": { "normal": { "closeMarkColor": "error" } } """));
-        var messageBox = new MessageBox("Saved successfully.", "Status") { CanClose = true };
-        await using var surface = await ComponentSurface.MountAsync(
-            messageBox,
-            new Size(40, 12),
-            theme,
-            TestContext.Current.CancellationToken);
-        var glyphPoint = new Point(messageBox.Bounds.X + 4, messageBox.Bounds.Y);
-
-        // Assert
-        surface.Cell(glyphPoint).Style.Foreground.ShouldBe(
-            TerminalPalette.Project(theme.Error, ColorDepth.Basic16));
-    }
-
-    /// <summary>Verifies a live Theme swap that authors only the "messageBox" section's
-    /// closeMarkColor - leaving "window" untouched - repaints the close glyph on its own,
-    /// proving <c>GetThemeChangeImpact</c> detects a change confined to MessageBox's own
-    /// resolved close-chrome style rather than only the generic "window" section.</summary>
-    [Fact]
-    public async Task CloseGlyph_WhenThemeIsSwappedLiveWithDialogSpecificColor_RepaintsAsync()
-    {
-        // Arrange
-        var themeA = ThemeCatalog.Parse(ThemeJson.Create());
-        var themeB = ThemeCatalog.Parse(ThemeJson.Create(
-            extraStyles: """, "messageBox": { "normal": { "closeMarkColor": "error" } } """));
-        var messageBox = new MessageBox("Saved successfully.", "Status") { CanClose = true };
-        await using var surface = await ComponentSurface.MountAsync(
-            messageBox,
-            new Size(40, 12),
-            themeA,
-            TestContext.Current.CancellationToken);
-        var glyphPoint = new Point(messageBox.Bounds.X + 4, messageBox.Bounds.Y);
-        var beforeColor = surface.Cell(glyphPoint).Style.Foreground;
-
-        // Act
-        await surface.UpdateAsync(
-            () => surface.Application.Theme = themeB,
-            "swap to a messageBox-authoring theme");
-
-        // Assert
-        surface.Cell(glyphPoint).Style.Foreground.ShouldNotBe(beforeColor);
-        surface.Cell(glyphPoint).Style.Foreground.ShouldBe(
-            TerminalPalette.Project(themeB.Error, ColorDepth.Basic16));
-    }
-
     /// <summary>Verifies a bounded owner does not constrain the application-wide MessageBox plane.</summary>
     [Fact]
     public async Task ShowAsync_WhenOwnerIsInsideBoundedSurface_CentersAgainstApplicationPlaneAsync()

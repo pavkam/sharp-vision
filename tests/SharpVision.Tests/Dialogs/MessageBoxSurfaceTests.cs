@@ -428,21 +428,18 @@ public sealed class MessageBoxSurfaceTests
         _ = await pending!;
     }
 
-    /// <summary>Verifies a live Theme swap authoring the "messageBox" key updates the frame, message,
-    /// and divider coherently, without a local style pinning any part.</summary>
+    /// <summary>Verifies assigning a local style with a wider ActionBarMargin live updates the
+    /// frame, message, and divider coherently. A leaf declares no theme section of its own any
+    /// more, so a locally assigned Style is the only surviving way to move this member at all.</summary>
     [Fact]
-    public async Task Render_WhenThemeIsSwappedLive_UpdatesFrameAndDividerCoherentlyAsync()
+    public async Task Render_WhenLocalStyleIsAssignedLive_UpdatesFrameAndDividerCoherentlyAsync()
     {
         // Arrange
         var opener = new Button { Text = "Open" };
         var host = new Overlay { Children = { opener } };
-        var themeA = ThemeCatalog.Parse(ThemeJson.Create());
-        var themeB = ThemeCatalog.Parse(ThemeJson.Create(extraStyles:
-            """, "messageBox": { "normal": { "actionBarMargin": { "x": 3, "y": 0 } } } """));
         await using var surface = await ComponentSurface.MountAsync(
             host,
             new Size(60, 20),
-            themeA,
             TestContext.Current.CancellationToken);
         Task<MessageBoxResult>? pending = null;
 
@@ -454,10 +451,11 @@ public sealed class MessageBoxSurfaceTests
         var divider = OwnedTree.Find<Separator>(messageBox).ShouldNotBeNull();
         var narrowWidth = divider.Bounds.Width;
 
-        await surface.UpdateAsync(() => surface.Application.Theme = themeB, "swap to a messageBox-authoring theme");
+        await surface.UpdateAsync(
+            () => messageBox.Style = MessageBoxStyle.Default with { ActionBarMargin = new Thickness(3, 0) },
+            "assign a wider ActionBarMargin");
 
         // Assert
-        messageBox.Style.ShouldBeNull();
         messageBox.ActualStyle.ActionBarMargin.ShouldBe(new Thickness(3, 0));
         divider.Bounds.Width.ShouldBeLessThan(narrowWidth);
 

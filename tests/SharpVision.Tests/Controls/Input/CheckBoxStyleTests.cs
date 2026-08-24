@@ -77,18 +77,6 @@ public sealed class CheckBoxStyleTests
         resolved.MarkStyle.ShouldBe(CheckBoxMarkStyle.Brackets);
     }
 
-    /// <summary>Verifies a theme's own "checkBox" key can restyle MarkStyle directly - the
-    /// standalone registrable section this used to require is retired.</summary>
-    [Fact]
-    public void Definition_Resolve_WhenThemeAuthorsCheckBoxMarkStyle_Applies()
-    {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(extraStyles: """, "checkBox": { "normal": { "markStyle": "tick" } } """));
-
-        var resolved = CheckBoxStyle.Definition.Resolve(null, theme);
-
-        resolved.MarkStyle.ShouldBe(CheckBoxMarkStyle.Tick);
-    }
-
     /// <summary>Verifies every bundled theme resolves CheckBox's mark style and glyph trio to
     /// exactly the glyph family that theme's own root-level "glyphs" field declares - the same
     /// values the deleted "checkBox" section used to author directly for the curated set (see

@@ -6,12 +6,12 @@ namespace SharpVision.Controls;
 using Styling;
 
 /// <summary>Defines immutable resolution and invalidation policy for one complete control style.
-/// A style declares its own
-/// <c>styles.*</c> key (via <see cref="StyleDefinitions"/>) and, for every type but the six
-/// well-known roots, a one-hop fallback to inherit theme customization from.</summary>
+/// A leaf control style declares one-hop fallback (via <see cref="StyleDefinitions"/>) to inherit
+/// theme customization from one of the six well-known roots; it authors no <c>styles.*</c> theme
+/// section of its own.</summary>
 /// <typeparam name="TStyle">The immutable complete style value.</typeparam>
 [PublicAPI]
-public sealed class StyleDefinition<TStyle>: IStyleDefinition
+public sealed class StyleDefinition<TStyle>
     where TStyle : ControlStyle
 {
     internal StyleDefinition(
@@ -26,10 +26,6 @@ public sealed class StyleDefinition<TStyle>: IStyleDefinition
 
     /// <summary>Gets whether this definition can own a control's semantic appearance.</summary>
     internal bool IsControl => Appearance is not null;
-
-    // Explicit because IsControl is internal, and an implicit implementation would have to be
-    // public - widening the surface for the sake of one reflective reader.
-    bool IStyleDefinition.IsControl => IsControl;
 
     /// <summary>Gets the complete-style resolver.</summary>
     internal Func<TStyle?, Theme?, TStyle> Resolve { get; }

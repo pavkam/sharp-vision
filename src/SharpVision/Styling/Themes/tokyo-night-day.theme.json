@@ -216,14 +216,6 @@
           "glyphStyle": "light"
         }
       }
-    },
-    "button": {
-      "normal": {
-        "padding": {
-          "x": 2,
-          "y": 0
-        }
-      }
     }
   }
 }

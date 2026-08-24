@@ -298,18 +298,15 @@ value with `Horizontal`, `Vertical`, and `Cross` grid-line runes,
 `SortAscending` and `SortDescending` sort-indicator runes, and `Placeholder` and
 `PlaceholderError` runes drawn across an unloaded or permanently failed
 progressive row (see [Progressive loading](#progressive-loading)). Each member
-is a validated one-cell rune resolved through the active theme, falling back to
-a terminal-safe code-owned default. A theme authors them under
-`styles.table.glyphs.*`; no bundled theme currently authors a `table` section,
-so every table draws the code-owned defaults until one does.
+is a validated one-cell rune with a terminal-safe code-owned default. Table
+declares no `styles.*` theme key of its own, so a locally assigned `Style` is
+the only way to move them - every table draws the code-owned defaults otherwise.
 
-The placeholder row's own foreground follows the same theme-routed path:
+The placeholder row's own foreground follows the same local-style-only path:
 `TableStyle.PlaceholderForeground` and `PlaceholderErrorForeground` are
 required, non-nullable `ControlColor` members — a synthetic status indicator has
-no table face to fall back to — authored under
-`styles.table.placeholderForeground` and
-`styles.table.placeholderErrorForeground` and defaulting to the `Muted` and
-`Error` semantic roles respectively.
+no table face to fall back to — defaulting to the `Muted` and `Error` semantic
+roles respectively.
 
 The sorted column's header reserves one trailing cell inside its own padded
 content area for the direction indicator — `SortAscending` for

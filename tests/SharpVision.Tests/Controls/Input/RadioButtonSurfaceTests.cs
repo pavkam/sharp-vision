@@ -60,14 +60,14 @@ public sealed class RadioButtonSurfaceTests
                              """);
     }
 
-    /// <summary>Verifies a checked mark uses the theme's checked-state foreground.</summary>
+    /// <summary>Verifies a checked mark uses the theme's accent foreground - RadioButtonStyle's own
+    /// code-owned Checked-state completion, the one style in the codebase whose <c>Complete</c>
+    /// reads its state parameter. A leaf declares no theme section of its own to override this
+    /// with a distinct color any more, so the render loop picking up the code-owned accent is the
+    /// complete story now.</summary>
     [Fact]
-    public async Task Render_WhenCheckedAppearanceUsesLiteralForeground_ColorsTheCompleteMarkAsync()
+    public async Task Render_WhenChecked_UsesTheThemesAccentForegroundAsync()
     {
-        var color = Color.Rgb(0x32, 0xC8, 0x78);
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            palette: "\"checkedForeground\":\"#32c878\"",
-            extraStyles: """, "radioButton": { "checked": { "face": { "foreground": "checkedForeground" } } } """));
         var radio = new RadioButton
         {
             IsChecked = true,
@@ -77,10 +77,9 @@ public sealed class RadioButtonSurfaceTests
         await using var surface = await ComponentSurface.MountAsync(
             radio,
             new Size(3, 1),
-            theme,
             TestContext.Current.CancellationToken);
 
-        var expected = TerminalPalette.Project(color, ColorDepth.Basic16);
+        var expected = TerminalPalette.Project(ThemeColorHelper.Accent(ThemeCatalog.Dark), ColorDepth.Basic16);
         surface.ShouldRender("(•)");
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(expected);
         surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(expected);

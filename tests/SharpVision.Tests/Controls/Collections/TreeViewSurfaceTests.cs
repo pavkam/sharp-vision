@@ -650,7 +650,7 @@ public sealed partial class TreeViewSurfaceTests
         await surface.UpdateAsync(() => surface.Application.Theme = TickTheme(), "swap to tick glyphs");
 
         item.ActualCheckMark.Glyphs.ShouldNotBe(before);
-        item.ActualCheckMark.Glyphs.Checked.ShouldBe(new Rune('X'));
+        item.ActualCheckMark.Glyphs.Checked.ShouldBe(new Rune('☒'));
     }
 
     /// <summary>The counter-case that keeps the change honest: an explicit per-item override still
@@ -686,14 +686,13 @@ public sealed partial class TreeViewSurfaceTests
         tree.ActualCheckMark.MarkStyle.ShouldBe(CheckMark.Brackets.MarkStyle);
     }
 
-    // Differs from the code-owned brackets family in both the mark style and the glyph trio.
-    // Authoring markStyle alone would leave Glyphs on the code-owned brackets, which would make the
-    // glyph assertions above pass vacuously.
-    private static Theme TickTheme() =>
-        ThemeCatalog.Parse(
-            ThemeJson.Create(
-                extraStyles:
-                """, "checkBox": { "normal": { "markStyle": "tick", "glyphs": { "unchecked": ".", "checked": "X", "indeterminate": "-" } } } """));
+    // A leaf declares no theme section of its own any more, so the only surviving way to move
+    // CheckBox's resolved mark family through a theme is the theme-wide glyph family
+    // (theme.Glyphs.CheckBox) every bundled theme's own "glyphs" field already selects. "blocks"
+    // differs from the code-owned Brackets family in both the mark style (Square) and the glyph
+    // trio (☐/☒/■) - matching the same "not vacuous on either axis" property the retired
+    // markStyle/glyphs JSON override once had to be spelled out for by hand.
+    private static Theme TickTheme() => ThemeCatalog.Parse(ThemeJson.Create(glyphs: "blocks"));
 
     /// <summary>Verifies a runtime IsVisible -&gt; Collapsed -&gt; IsVisible transition on a mounted
     /// top-level item leaves no stale rendered row behind, and that pointer hit-testing tracks the
