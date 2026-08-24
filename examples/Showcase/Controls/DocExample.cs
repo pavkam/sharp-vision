@@ -53,16 +53,20 @@ internal sealed class DocExample: CompositeControlBase
         {
             // Sized to the recipe's own line count rather than a fixed constant, so a short
             // one-liner does not reserve the same vertical space as a dozen-line excerpt; longer
-            // recipes still get real scroll bars past the cap instead of growing unboundedly. The
-            // Expander already supplies its own border, so the recipe needs no bordered wrapper
-            // of its own.
+            // recipes still get real scroll bars past the cap instead of growing unboundedly.
+            // CodeView always reserves its own top and bottom border row regardless of theme, so
+            // the requested height adds 2 rows beyond the line count actually shown - omitting
+            // this made every recipe one visible content row short of its own line count, forcing
+            // a scroll bar even a two- or three-line recipe should never need. The Expander
+            // already supplies its own border, so the recipe needs no bordered wrapper of its own.
+            const int borderRows = 2;
             var lineCount = source.Count(static c => c == '\n') + 1;
             var code = new CodeView
             {
                 Code = source,
                 Language = "C#",
                 HorizontalAlignment = HorizontalAlignment.Stretch,
-                Height = Length.Cells(Math.Clamp(lineCount, 3, 20)),
+                Height = Length.Cells(Math.Clamp(lineCount + borderRows, 3 + borderRows, 20 + borderRows)),
                 ScrollBars = ScrollBars.Both,
                 ShowScrollBars = ShowScrollBars.WhenNeeded
             };
