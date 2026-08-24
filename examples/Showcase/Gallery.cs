@@ -295,6 +295,7 @@ public sealed class Gallery: Screen
         ArgumentNullException.ThrowIfNull(application);
         application.Theme = ThemeCatalog.Dark;
         application.Resize += OnApplicationResize;
+        ShowcaseClipboard.Writer = value => application.Terminal.Clipboard.Write(value);
     }
 
     /// <inheritdoc/>

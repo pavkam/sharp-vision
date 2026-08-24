@@ -68,7 +68,8 @@ internal sealed class DocExample: CompositeControlBase
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 Height = Length.Cells(Math.Clamp(lineCount + borderRows, 3 + borderRows, 20 + borderRows)),
                 ScrollBars = ScrollBars.Both,
-                ShowScrollBars = ShowScrollBars.WhenNeeded
+                ShowScrollBars = ShowScrollBars.WhenNeeded,
+                ClipboardWriter = ShowcaseClipboard.Write
             };
             block.Children.Add(new Expander
             {
