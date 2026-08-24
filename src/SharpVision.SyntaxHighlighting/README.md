@@ -56,7 +56,7 @@ this package does not embed, can be loaded from an application's own files:
 
 ```csharp
 var catalog = SyntaxDefinitionCatalog.FromDirectory("/path/to/syntax/definitions");
-var view = new CodeView { Catalog = catalog, Language = "C#" };
+var view = new CodeView { Catalog = catalog, Language = "Python" };
 ```
 
 This mirrors upstream Kate's own local-file pickup model for syntax definitions.

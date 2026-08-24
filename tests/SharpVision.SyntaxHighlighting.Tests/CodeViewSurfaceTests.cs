@@ -24,6 +24,85 @@ public sealed class CodeViewSurfaceTests
         surface.Cell(new Point(2, 0)).Style.Foreground.ShouldNotBe(surface.Cell(new Point(5, 0)).Style.Foreground);
     }
 
+    /// <summary>Verifies a tab character contributes exactly one cell to the committed horizontal
+    /// extent - the same one cell <c>DrawSlice</c> substitutes and draws for it - rather than the
+    /// zero cells a raw, unsubstituted measurement would count it as.</summary>
+    [Fact]
+    public async Task Extent_WhenALineContainsATab_CountsItAsExactlyOneCellAsync()
+    {
+        var tabbed = new CodeView { Code = "a\tb\n" };
+        await using var tabbedSurface = await ComponentSurface.MountAsync(
+            tabbed,
+            new Size(20, 3),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        var spaced = new CodeView { Code = "a b\n" };
+        await using var spacedSurface = await ComponentSurface.MountAsync(
+            spaced,
+            new Size(20, 3),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        tabbed.Extent.Width.ShouldBe(spaced.Extent.Width);
+    }
+
+    /// <summary>Verifies a double-click selects the complete word under the pointer.</summary>
+    [Fact]
+    public async Task Pointer_WhenDoubleClicked_SelectsTheCompleteWordAsync()
+    {
+        var view = new CodeView { Code = "alpha beta gamma\n" };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 3),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        // Column 2 is the gutter's width; "beta" starts right after "alpha ", so column 2 + 7
+        // lands one character into "beta".
+        await surface.Pointer.ClickAsync(view, new Point(2 + 7, 0));
+        await surface.Pointer.ClickAsync(view, new Point(2 + 7, 0));
+
+        view.SelectedText.ShouldBe("beta");
+    }
+
+    /// <summary>Verifies a triple-click selects the complete line under the pointer.</summary>
+    [Fact]
+    public async Task Pointer_WhenTripleClicked_SelectsTheCompleteLineAsync()
+    {
+        var view = new CodeView { Code = "alpha beta gamma\n" };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 3),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        await surface.Pointer.ClickAsync(view, new Point(2 + 7, 0));
+        await surface.Pointer.ClickAsync(view, new Point(2 + 7, 0));
+        await surface.Pointer.ClickAsync(view, new Point(2 + 7, 0));
+
+        view.SelectedText.ShouldBe("alpha beta gamma");
+    }
+
+    /// <summary>Verifies a wheel notch scrolls the view by <see cref="CodeView.LineSize"/> lines,
+    /// using a non-default LineSize so the assertion cannot pass merely by coincidence with a
+    /// hardcoded single-line delta.</summary>
+    [Fact]
+    public async Task Pointer_WhenWheelScrolled_MovesTheVerticalOffsetByLineSizeAsync()
+    {
+        var code = string.Join('\n', Enumerable.Range(0, 20).Select(index => $"line{index}")) + "\n";
+        var view = new CodeView { Code = code, LineSize = 3 };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 3),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        await surface.Pointer.WheelAsync(view, new Point(0, 0), wheelY: -1);
+
+        view.VerticalOffset.ShouldBe(3);
+    }
+
     /// <summary>Verifies a primary click sets an empty selection at the clicked column and focuses the view.</summary>
     [Fact]
     public async Task Pointer_WhenPrimaryClickOccurs_SetsCaretAndFocusesAsync()
@@ -142,6 +221,85 @@ public sealed class CodeViewSurfaceTests
         await surface.Keyboard.PressAsync(Code.Right);
 
         view.Selection.Caret.ShouldBe(1);
+    }
+
+    /// <summary>Verifies Left arrow moves the caret back by one grapheme.</summary>
+    [Fact]
+    public async Task Keyboard_WhenLeftArrowIsPressed_MovesCaretBackByOneAsync()
+    {
+        var view = new CodeView { Code = "abcdef\n" };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 3),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.ClickAsync(view, new Point(2 + 3, 0));
+
+        await surface.Keyboard.PressAsync(Code.Left);
+
+        view.Selection.Caret.ShouldBe(2);
+    }
+
+    /// <summary>Verifies Home moves the caret to the start of the current line.</summary>
+    [Fact]
+    public async Task Keyboard_WhenHomeIsPressed_MovesCaretToLineStartAsync()
+    {
+        var view = new CodeView { Code = "abcdef\n" };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 3),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.ClickAsync(view, new Point(2 + 4, 0));
+
+        await surface.Keyboard.PressAsync(Code.Home);
+
+        view.Selection.Caret.ShouldBe(0);
+    }
+
+    /// <summary>Verifies Page Down moves the caret forward by one viewport height minus PageOverlap.</summary>
+    [Fact]
+    public async Task Keyboard_WhenPageDownIsPressed_MovesCaretByOneViewportHeightAsync()
+    {
+        var code = string.Join('\n', Enumerable.Range(0, 20).Select(index => $"line{index}")) + "\n";
+        var view = new CodeView { Code = code };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 5),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.ClickAsync(view, new Point(2, 0));
+        var pageSize = Math.Max(1, view.Viewport.Height - view.PageOverlap);
+
+        await surface.Keyboard.PressAsync(Code.PageDown);
+
+        // The caret must land at the start of the line exactly pageSize rows below where it
+        // started, matching Down arrow's own "same column, next visible line" semantics repeated
+        // pageSize times.
+        var expectedLineStart = string.Join('\n', Enumerable.Range(0, pageSize).Select(index => $"line{index}")).Length + 1;
+        view.Selection.Caret.ShouldBe(expectedLineStart);
+    }
+
+    /// <summary>Verifies Page Up moves the caret back by one viewport height minus PageOverlap,
+    /// undoing an equivalent Page Down.</summary>
+    [Fact]
+    public async Task Keyboard_WhenPageUpIsPressed_MovesCaretBackByOneViewportHeightAsync()
+    {
+        var code = string.Join('\n', Enumerable.Range(0, 20).Select(index => $"line{index}")) + "\n";
+        var view = new CodeView { Code = code };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 5),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.ClickAsync(view, new Point(2, 0));
+        await surface.Keyboard.PressAsync(Code.PageDown);
+        var afterPageDown = view.Selection.Caret;
+
+        await surface.Keyboard.PressAsync(Code.PageUp);
+
+        view.Selection.Caret.ShouldBe(0);
+        afterPageDown.ShouldBeGreaterThan(0);
     }
 
     /// <summary>Verifies Shift+Right extends the selection instead of collapsing it.</summary>

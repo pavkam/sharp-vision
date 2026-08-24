@@ -21,42 +21,42 @@ classDiagram
 
 ## API
 
-| Member                    | Type                                   | Default                        | Description                                                                                                   |
-| ------------------------- | -------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `Code`                    | `string`                               | `""`                           | Complete non-null source text; line endings are normalized to `\n` before any observable state changes.       |
-| `Language`                | `string?`                              | `null`                         | Exact `Catalog` language name to highlight against, or null for no coloring.                                  |
-| `Catalog`                 | `SyntaxDefinitionCatalog`              | `Default`                      | The catalog `Language` resolves a grammar from.                                                               |
-| `Style`                   | `CodeViewStyle?`                       | `null`                         | Gets or sets the complete local presentation.                                                                 |
-| `ActualStyle`             | `CodeViewStyle`                        | Resolved                       | Read-only; the complete local, theme-owned, or code-owned presentation.                                       |
-| Inherited `ContextMenu`   | `ContextMenu?`                         | `CodeViewContextMenu` instance | Provides Copy, Select All, and fold commands; replaceable through the inherited ownership contract.           |
-| `ScrollBars`              | `ScrollBars`                           | `Both`                         | Axes that may expose generated scrollbars.                                                                    |
-| `ShowScrollBars`          | `ShowScrollBars`                       | `WhenNeeded`                   | Visibility policy for generated scrollbars.                                                                   |
-| `ScrollBarStyle`          | `ScrollBarStyle?`                      | `null`                         | Complete local style for generated scrollbars.                                                                |
-| `ActualScrollBarStyle`    | `ScrollBarStyle`                       | Resolved                       | Read-only resolved generated-scrollbar style.                                                                 |
-| `Extent`                  | `Size`                                 | Layout-dependent               | Read-only committed content extent.                                                                           |
-| `Viewport`                | `Size`                                 | Layout-dependent               | Read-only committed visible extent.                                                                           |
-| `HorizontalOffset`        | `int`                                  | `0`                            | Valid horizontal content offset; rejects a value outside the current extent.                                  |
-| `VerticalOffset`          | `int`                                  | `0`                            | Valid vertical content offset; rejects a value outside the current extent.                                    |
-| `LineSize`                | `int`                                  | `1`                            | Non-negative wheel-scroll cell increment.                                                                     |
-| `PageOverlap`             | `int`                                  | `0`                            | Non-negative cells of context retained between page commands.                                                 |
-| `ScrollBy(x, y, cause)`   | `bool`                                 | —                              | Applies signed cell deltas with saturation and endpoint clamping.                                             |
-| `Selection`               | `Selection`                            | Empty at `0`                   | Read-only current directional selection over the normalized `Code` text.                                      |
-| `SelectedText`            | `string`                               | `""`                           | Read-only selected substring, or empty.                                                                       |
-| `ClipboardWriter`         | `Action<string>?`                      | `null`                         | Delegate Ctrl+C and the default context menu's Copy item invoke with `CopySelection()`'s result.              |
-| `SetSelection(selection)` | `void`                                 | —                              | Replaces the selection with a validated grapheme-boundary range.                                              |
-| `SelectAll()`             | `void`                                 | —                              | Selects the entire normalized text.                                                                           |
-| `ClearSelection()`        | `void`                                 | —                              | Collapses the selection to an empty range at its current caret.                                               |
-| `CopySelection()`         | `string`                               | —                              | Pure read of `SelectedText`; never touches a clipboard - see [Selection and copying](#selection-and-copying). |
-| `SelectionChanged`        | `EventHandler<EventArgs>`              | No subscribers                 | Raised after the committed selection changes.                                                                 |
-| `FoldRanges`              | `IReadOnlyList<SyntaxFoldRange>`       | —                              | Read-only; every fold range detected in the current `Code`, outer ranges first.                               |
-| `IsFoldingEnabled`        | `bool`                                 | `true`                         | Whether the fold gutter is reserved and rendered, its arrows are clickable, and collapsed ranges hide lines.  |
-| `IsFoldStart(line)`       | `bool`                                 | —                              | Whether a line begins any fold range at all.                                                                  |
-| `IsFolded(line)`          | `bool`                                 | —                              | Whether a line begins a currently collapsed fold range.                                                       |
-| `SetFolded(line, folded)` | `bool`                                 | —                              | Collapses or expands the fold range starting at one line; returns whether it changed.                         |
-| `ToggleFold(line)`        | `bool`                                 | —                              | Toggles the fold range starting at one line.                                                                  |
-| `CollapseAll()`           | `void`                                 | —                              | Collapses every fold range.                                                                                   |
-| `ExpandAll()`             | `void`                                 | —                              | Expands every fold range.                                                                                     |
-| `ScrollChanged`           | `EventHandler<ScrollChangedEventArgs>` | No subscribers                 | Reports the settled offset, extent, and viewport for one layout pass.                                         |
+| Member                    | Type                                   | Default                        | Description                                                                                                                                                       |
+| ------------------------- | -------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Code`                    | `string`                               | `""`                           | Complete non-null source text, retained verbatim; tokenization, `Selection`, and `SelectedText` instead operate against a separately line-ending-normalized copy. |
+| `Language`                | `string?`                              | `null`                         | Exact `Catalog` language name to highlight against, or null for no coloring.                                                                                      |
+| `Catalog`                 | `SyntaxDefinitionCatalog`              | `Default`                      | The catalog `Language` resolves a grammar from.                                                                                                                   |
+| `Style`                   | `CodeViewStyle?`                       | `null`                         | Gets or sets the complete local presentation.                                                                                                                     |
+| `ActualStyle`             | `CodeViewStyle`                        | Resolved                       | Read-only; the complete local, theme-owned, or code-owned presentation.                                                                                           |
+| Inherited `ContextMenu`   | `ContextMenu?`                         | `CodeViewContextMenu` instance | Provides Copy, Select All, and fold commands; replaceable through the inherited ownership contract.                                                               |
+| `ScrollBars`              | `ScrollBars`                           | `Both`                         | Axes that may expose generated scrollbars.                                                                                                                        |
+| `ShowScrollBars`          | `ShowScrollBars`                       | `WhenNeeded`                   | Visibility policy for generated scrollbars.                                                                                                                       |
+| `ScrollBarStyle`          | `ScrollBarStyle?`                      | `null`                         | Complete local style for generated scrollbars.                                                                                                                    |
+| `ActualScrollBarStyle`    | `ScrollBarStyle`                       | Resolved                       | Read-only resolved generated-scrollbar style.                                                                                                                     |
+| `Extent`                  | `Size`                                 | Layout-dependent               | Read-only committed content extent.                                                                                                                               |
+| `Viewport`                | `Size`                                 | Layout-dependent               | Read-only committed visible extent.                                                                                                                               |
+| `HorizontalOffset`        | `int`                                  | `0`                            | Valid horizontal content offset; rejects a value outside the current extent.                                                                                      |
+| `VerticalOffset`          | `int`                                  | `0`                            | Valid vertical content offset; rejects a value outside the current extent.                                                                                        |
+| `LineSize`                | `int`                                  | `1`                            | Non-negative wheel-scroll cell increment.                                                                                                                         |
+| `PageOverlap`             | `int`                                  | `0`                            | Non-negative cells of context retained between page commands.                                                                                                     |
+| `ScrollBy(x, y, cause)`   | `bool`                                 | —                              | Applies signed cell deltas with saturation and endpoint clamping.                                                                                                 |
+| `Selection`               | `Selection`                            | Empty at `0`                   | Read-only current directional selection over the normalized `Code` text.                                                                                          |
+| `SelectedText`            | `string`                               | `""`                           | Read-only selected substring, or empty.                                                                                                                           |
+| `ClipboardWriter`         | `Action<string>?`                      | `null`                         | Delegate Ctrl+C and the default context menu's Copy item invoke with `CopySelection()`'s result.                                                                  |
+| `SetSelection(selection)` | `void`                                 | —                              | Replaces the selection with a validated grapheme-boundary range.                                                                                                  |
+| `SelectAll()`             | `void`                                 | —                              | Selects the entire normalized text.                                                                                                                               |
+| `ClearSelection()`        | `void`                                 | —                              | Collapses the selection to an empty range at its current caret.                                                                                                   |
+| `CopySelection()`         | `string`                               | —                              | Pure read of `SelectedText`; never touches a clipboard - see [Selection and copying](#selection-and-copying).                                                     |
+| `SelectionChanged`        | `EventHandler<EventArgs>`              | No subscribers                 | Raised after the committed selection changes.                                                                                                                     |
+| `FoldRanges`              | `IReadOnlyList<SyntaxFoldRange>`       | —                              | Read-only; every fold range detected in the current `Code`, outer ranges first.                                                                                   |
+| `IsFoldingEnabled`        | `bool`                                 | `true`                         | Whether the fold gutter is reserved and rendered, its arrows are clickable, and collapsed ranges hide lines.                                                      |
+| `IsFoldStart(line)`       | `bool`                                 | —                              | Whether a line begins any fold range at all.                                                                                                                      |
+| `IsFolded(line)`          | `bool`                                 | —                              | Whether a line begins a currently collapsed fold range.                                                                                                           |
+| `SetFolded(line, folded)` | `bool`                                 | —                              | Collapses or expands the fold range starting at one line; returns whether it changed.                                                                             |
+| `ToggleFold(line)`        | `bool`                                 | —                              | Toggles the fold range starting at one line.                                                                                                                      |
+| `CollapseAll()`           | `void`                                 | —                              | Collapses every fold range.                                                                                                                                       |
+| `ExpandAll()`             | `void`                                 | —                              | Expands every fold range.                                                                                                                                         |
+| `ScrollChanged`           | `EventHandler<ScrollChangedEventArgs>` | No subscribers                 | Reports the settled offset, extent, and viewport for one layout pass.                                                                                             |
 
 `CodeViewStyle`, reached through `Style`/`ActualStyle`, colors every Kate
 default-style role (`NormalColor`, `KeywordColor`, `FunctionColor`,
@@ -180,6 +180,14 @@ var copied = view.CopySelection();
 - Rendering measures and clips using the active terminal cell policy; a tab
   character always measures and draws as exactly one cell.
 - Long lines never wrap: horizontal scrolling reveals the rest of the line.
+- **Known limitation:** horizontal drawing position, scrolling, and pointer
+  hit-testing currently track each token's UTF-16 character count as its column
+  rather than its measured cell width. A line containing a two-cell-wide
+  grapheme cluster (an East Asian wide character, a wide emoji, or fullwidth
+  punctuation) can mis-position later tokens on that line, split a cluster
+  across the horizontal scroll boundary, or resolve a click past such a cluster
+  to the wrong offset. Plain ASCII and other narrow-only text are unaffected;
+  the committed `Extent` itself already measures cell width correctly.
 - A cross-definition reference (embedding another language) that cannot be
   resolved degrades to no highlighting for that reference instead of failing the
   whole document.

@@ -23,6 +23,14 @@ using System.Collections.Concurrent;
 [PublicAPI]
 public sealed class SyntaxCompiledRule
 {
+    /// <summary>The wall-clock bound applied to every regex match this rule performs. A syntax
+    /// definition's <c>RegExpr</c> pattern text is effectively untrusted input - hand-authored,
+    /// third-party, or loaded from disk through <see cref="SyntaxDefinitionCatalog.FromDirectory"/>
+    /// - so a pathological pattern combined with adversarial source text must degrade to a timed-out
+    /// non-match instead of blocking the calling dispatcher thread through catastrophic
+    /// backtracking.</summary>
+    private static readonly TimeSpan _regexMatchTimeout = TimeSpan.FromMilliseconds(500);
+
     private readonly SyntaxKeywordMatcher? _keywordMatcher;
     private readonly SyntaxWordDelimiters _delimiters;
     private readonly Lazy<Regex>? _staticRegex;
@@ -478,7 +486,21 @@ public sealed class SyntaxCompiledRule
                 pattern => CompileRegex(pattern, Source))
             : _staticRegex!.Value;
 
-        var match = regex.Match(line, offset);
+        Match match;
+
+        try
+        {
+            match = regex.Match(line, offset);
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            // A pathological pattern - plausible among hand-authored or externally supplied
+            // (SyntaxDefinitionCatalog.FromDirectory) definitions - combined with adversarial
+            // input text can trigger exponential-time backtracking. _regexMatchTimeout bounds the
+            // wall-clock cost of any single match attempt; a timed-out match degrades to no match
+            // rather than freezing the calling dispatcher thread for the rest of the process.
+            return SyntaxRuleMatch.None;
+        }
 
         if (!match.Success || match.Index != offset)
         {
@@ -507,14 +529,14 @@ public sealed class SyntaxCompiledRule
 
         try
         {
-            return new Regex(pattern, options);
+            return new Regex(pattern, options, _regexMatchTimeout);
         }
         catch (RegexParseException)
         {
             // An invalid pattern in a third-party syntax definition must not crash the whole
             // buffer's highlighting; it simply never matches, the same graceful degradation
             // upstream applies to an invalid QRegularExpression.
-            return new Regex("(?!)", options);
+            return new Regex("(?!)", options, _regexMatchTimeout);
         }
     }
 

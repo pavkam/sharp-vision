@@ -129,4 +129,68 @@ public sealed class SyntaxCompiledRuleTests
         match.Captures.Count.ShouldBe(9);
         match.Captures[8].ShouldBe("i");
     }
+
+    private const string _invalidPatternLanguage = """
+        <language name="Invalid" section="Sources" extensions="*.i" version="1" kateversion="5.0">
+          <highlighting>
+            <contexts>
+              <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                <RegExpr attribute="Normal Text" context="#stay" String="(unterminated"/>
+              </context>
+            </contexts>
+            <itemDatas>
+              <itemData name="Normal Text" defStyleNum="dsNormal"/>
+            </itemDatas>
+          </highlighting>
+        </language>
+        """;
+
+    /// <summary>
+    /// Verifies an unparsable <c>RegExpr</c> pattern - plausible in a hand-authored or third-party
+    /// definition - degrades to a rule that compiles successfully but never matches, rather than
+    /// throwing out of grammar compilation or out of every subsequent match attempt.
+    /// </summary>
+    [Fact]
+    public void TryMatch_WhenPatternIsUnparsable_NeverMatchesWithoutThrowing()
+    {
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(_invalidPatternLanguage));
+        var rule = grammar.Contexts[0].Rules[0];
+
+        var match = rule.TryMatch("anything", 0, []);
+
+        match.Success.ShouldBeFalse();
+    }
+
+    private const string _catastrophicPatternLanguage = """
+        <language name="Catastrophic" section="Sources" extensions="*.c" version="1" kateversion="5.0">
+          <highlighting>
+            <contexts>
+              <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                <RegExpr attribute="Normal Text" context="#stay" String="(a+)+b"/>
+              </context>
+            </contexts>
+            <itemDatas>
+              <itemData name="Normal Text" defStyleNum="dsNormal"/>
+            </itemDatas>
+          </highlighting>
+        </language>
+        """;
+
+    /// <summary>
+    /// Verifies a pattern prone to catastrophic backtracking - the classic <c>(a+)+b</c> shape,
+    /// evaluated against adversarial input with no trailing <c>b</c> - degrades to a timed-out
+    /// non-match instead of blocking the calling thread indefinitely. This deliberately runs the
+    /// match engine long enough for its bounded <c>matchTimeout</c> to actually fire.
+    /// </summary>
+    [Fact]
+    public void TryMatch_WhenPatternCausesCatastrophicBacktracking_TimesOutToANonMatch()
+    {
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(_catastrophicPatternLanguage));
+        var rule = grammar.Contexts[0].Rules[0];
+        var adversarialInput = new string('a', 40);
+
+        var match = rule.TryMatch(adversarialInput, 0, []);
+
+        match.Success.ShouldBeFalse();
+    }
 }

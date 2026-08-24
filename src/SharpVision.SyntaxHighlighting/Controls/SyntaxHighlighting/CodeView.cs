@@ -35,6 +35,17 @@ using TextSelection = Selection;
 /// tab character measures and draws as exactly one cell; this control does not implement
 /// tab-stop expansion.
 /// </para>
+/// <para>
+/// <b>Known limitation:</b> horizontal position bookkeeping for drawing, horizontal scrolling,
+/// and pointer hit-testing currently tracks a token's UTF-16 char count as its column, not its
+/// measured terminal cell width, even though the committed horizontal <see cref="Extent"/> is
+/// already grapheme-and-width aware. A line containing a two-cell-wide grapheme cluster (an East
+/// Asian wide character, a wide emoji, or fullwidth punctuation, all plausible inside a string
+/// literal, comment, or identifier) can therefore mis-position every subsequent token on that
+/// line, slice a cluster in half when the horizontal scroll offset lands inside it, or resolve a
+/// click past such a cluster to the wrong character offset. Plain ASCII and narrow-only text are
+/// unaffected.
+/// </para>
 /// </remarks>
 [PublicAPI]
 public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
@@ -1240,8 +1251,41 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
 
         foreach (var line in _visibleLines)
         {
-            _extentWidth = Math.Max(_extentWidth, GutterWidth + MeasureCells(_lines[line]));
+            _extentWidth = Math.Max(_extentWidth, GutterWidth + MeasureLineCells(_lines[line]));
         }
+    }
+
+    /// <summary>Measures one source line the same way <see cref="DrawSlice"/> actually draws it,
+    /// rather than the way <see cref="ControlBase.MeasureCells"/> alone would measure its raw
+    /// text.</summary>
+    /// <remarks>
+    /// A raw tab character classifies as <see cref="CellWidth.Control"/> and
+    /// contributes zero to <see cref="ControlBase.MeasureCells"/>'s cell count, but <see
+    /// cref="DrawSlice"/> substitutes one literal space - one drawn cell - for every tab before
+    /// painting. Measuring the raw line would therefore undercount <see cref="_extentWidth"/> by
+    /// exactly the tab count on any line that contains one, silently capping <see
+    /// cref="RevealCaret"/>'s horizontal scroll short of content that is genuinely drawn past it.
+    /// Substituting the same one-space-per-tab text this method measures against keeps the extent
+    /// and the paint routine in agreement.
+    /// </remarks>
+    /// <param name="line">The raw source line, not yet tab-substituted.</param>
+    /// <returns>The printable cell count this line actually draws as.</returns>
+    [Pure]
+    private int MeasureLineCells(string line)
+    {
+        if (!line.Contains('\t'))
+        {
+            return MeasureCells(line);
+        }
+
+        var buffer = line.Length <= 512 ? stackalloc char[line.Length] : new char[line.Length];
+
+        for (var i = 0; i < line.Length; i++)
+        {
+            buffer[i] = line[i] == '\t' ? ' ' : line[i];
+        }
+
+        return MeasureCells(buffer);
     }
 
     [Pure]

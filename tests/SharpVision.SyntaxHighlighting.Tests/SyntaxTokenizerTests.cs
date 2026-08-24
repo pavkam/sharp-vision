@@ -131,6 +131,17 @@ public sealed class SyntaxTokenizerTests
         range.EndLine.ShouldBe(1);
     }
 
+    /// <summary>Verifies a stray <c>endRegion</c> with no matching open <c>beginRegion</c> - the
+    /// mirror image of an unterminated <c>beginRegion</c> - is silently ignored rather than
+    /// throwing or producing a nonsensical fold range.</summary>
+    [Fact]
+    public void Tokenize_WhenEndRegionHasNoMatchingOpenRegion_ProducesNoFoldRange()
+    {
+        var result = SyntaxTokenizer.Tokenize(CompileMini(), "}");
+
+        result.FoldRanges.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies an empty document tokenizes to one empty line with no fold ranges.</summary>
     [Fact]
     public void Tokenize_WhenGivenEmptyDocument_ProducesOneEmptyLineAndNoFoldRanges()
@@ -285,6 +296,149 @@ public sealed class SyntaxTokenizerTests
         range.Kind.ShouldBe(SyntaxFoldRangeKind.Indentation);
         range.StartLine.ShouldBe(0);
         range.EndLine.ShouldBe(2);
+    }
+
+    private const string _lineEndPopBeyondRootLanguage = """
+        <language name="LineEndPopBeyondRoot" section="Sources" extensions="*.p" version="1" kateversion="5.0">
+          <highlighting>
+            <contexts>
+              <context name="Normal" attribute="Normal Text" lineEndContext="#pop!Normal"/>
+            </contexts>
+            <itemDatas>
+              <itemData name="Normal Text" defStyleNum="dsNormal"/>
+            </itemDatas>
+          </highlighting>
+        </language>
+        """;
+
+    /// <summary>
+    /// Verifies a <c>lineEndContext</c> that pops-and-pushes even while already at the root
+    /// context - a malformed grammar authoring mistake, since a well-formed root context does not
+    /// try to pop past itself - stays bounded by the per-boundary context-switch ceiling on every
+    /// single line instead of hanging, and that every following line still tokenizes correctly
+    /// regardless of how many frames the pattern has already stacked up.
+    /// </summary>
+    [Fact]
+    public void Tokenize_WhenLineEndContextPopsBeyondTheRootEveryLine_RemainsBoundedAndContinuesTokenizing()
+    {
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(_lineEndPopBeyondRootLanguage));
+
+        var result = SyntaxTokenizer.Tokenize(grammar, "a\nb\nc\nd\ne");
+
+        result.Lines.Count.ShouldBe(5);
+
+        foreach (var line in result.Lines)
+        {
+            line.Tokens.ShouldHaveSingleItem().Style.ShouldBe(SyntaxDefaultStyle.Normal);
+        }
+    }
+
+    private const string _coincidentFoldRangesLanguage = """
+        <language name="CoincidentFolds" section="Sources" extensions="*.c" version="1" kateversion="5.0">
+          <general>
+            <folding indentationsensitive="true"/>
+          </general>
+          <highlighting>
+            <contexts>
+              <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                <StringDetect attribute="Normal Text" context="#stay" String="open" beginRegion="R"/>
+                <StringDetect attribute="Normal Text" context="#stay" String="close" endRegion="R"/>
+              </context>
+            </contexts>
+            <itemDatas>
+              <itemData name="Normal Text" defStyleNum="dsNormal"/>
+            </itemDatas>
+          </highlighting>
+        </language>
+        """;
+
+    /// <summary>Verifies a region fold and an indentation fold that share the exact same start and
+    /// end line sort in a fixed, deterministic order (region before indentation) rather than in
+    /// the unspecified order an unstable sort's tie-breaking would otherwise permit, matching this
+    /// repository's deterministic-UI-state requirement.</summary>
+    [Fact]
+    public void Tokenize_WhenRegionAndIndentationFoldsShareTheSameLines_SortsDeterministically()
+    {
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(_coincidentFoldRangesLanguage));
+
+        var result = SyntaxTokenizer.Tokenize(grammar, "open\n    close\nz");
+
+        result.FoldRanges.Count.ShouldBe(2);
+        result.FoldRanges[0].StartLine.ShouldBe(0);
+        result.FoldRanges[0].EndLine.ShouldBe(1);
+        result.FoldRanges[0].Kind.ShouldBe(SyntaxFoldRangeKind.Region);
+        result.FoldRanges[1].StartLine.ShouldBe(0);
+        result.FoldRanges[1].EndLine.ShouldBe(1);
+        result.FoldRanges[1].Kind.ShouldBe(SyntaxFoldRangeKind.Indentation);
+    }
+
+    private const string _invalidEmptyLinePatternLanguage = """
+        <language name="InvalidEmptyLine" section="Sources" extensions="*.i" version="1" kateversion="5.0">
+          <general>
+            <folding indentationsensitive="true"/>
+            <emptyLines>
+              <emptyLine regexpr="(unterminated"/>
+            </emptyLines>
+          </general>
+          <highlighting>
+            <contexts>
+              <context name="Normal" attribute="Normal Text" lineEndContext="#stay"/>
+            </contexts>
+            <itemDatas>
+              <itemData name="Normal Text" defStyleNum="dsNormal"/>
+            </itemDatas>
+          </highlighting>
+        </language>
+        """;
+
+    /// <summary>Verifies an unparsable <c>&lt;emptyLine regexpr&gt;</c> pattern - plausible in a
+    /// hand-authored or third-party definition - is simply excluded from indentation-folding's
+    /// blank-line classification instead of throwing out of compilation or tokenization.</summary>
+    [Fact]
+    public void Tokenize_WhenEmptyLinePatternIsUnparsable_FoldsAsIfThatRuleWereAbsent()
+    {
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(_invalidEmptyLinePatternLanguage));
+
+        var result = SyntaxTokenizer.Tokenize(grammar, "def foo():\n    x = 1\n    y = 2\nz = 3");
+
+        var range = result.FoldRanges.ShouldHaveSingleItem();
+        range.Kind.ShouldBe(SyntaxFoldRangeKind.Indentation);
+        range.StartLine.ShouldBe(0);
+        range.EndLine.ShouldBe(2);
+    }
+
+    private const string _catastrophicEmptyLinePatternLanguage = """
+        <language name="CatastrophicEmptyLine" section="Sources" extensions="*.c" version="1" kateversion="5.0">
+          <general>
+            <folding indentationsensitive="true"/>
+            <emptyLines>
+              <emptyLine regexpr="^(a+)+b$"/>
+            </emptyLines>
+          </general>
+          <highlighting>
+            <contexts>
+              <context name="Normal" attribute="Normal Text" lineEndContext="#stay"/>
+            </contexts>
+            <itemDatas>
+              <itemData name="Normal Text" defStyleNum="dsNormal"/>
+            </itemDatas>
+          </highlighting>
+        </language>
+        """;
+
+    /// <summary>Verifies a catastrophically-backtracking <c>&lt;emptyLine regexpr&gt;</c> pattern
+    /// times out to "this line is not blank" rather than blocking tokenization of the rest of the
+    /// document. This deliberately runs the match engine long enough for its bounded
+    /// <c>matchTimeout</c> to actually fire.</summary>
+    [Fact]
+    public void Tokenize_WhenEmptyLinePatternCausesCatastrophicBacktracking_TimesOutAndContinuesTokenizing()
+    {
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(_catastrophicEmptyLinePatternLanguage));
+        var adversarialLine = new string('a', 40);
+
+        var result = SyntaxTokenizer.Tokenize(grammar, $"def foo():\n    {adversarialLine}\nz = 3");
+
+        result.Lines.Count.ShouldBe(3);
     }
 
     private const string _emptyLineStopLanguage = """

@@ -222,6 +222,17 @@ public sealed class CodeViewTests
         _ = Should.Throw<ArgumentOutOfRangeException>(() => view.SetSelection(new Selection(0, 10)));
     }
 
+    /// <summary>Verifies SetSelection rejects an endpoint that splits a grapheme cluster.</summary>
+    [Fact]
+    public void SetSelection_WhenEndpointSplitsAGraphemeCluster_ThrowsArgumentException()
+    {
+        // "e\u0301" (e + combining acute accent) is one extended grapheme cluster spanning two
+        // UTF-16 chars; an endpoint of 1 lands between them.
+        var view = new CodeView { Code = "e\u0301bc" };
+
+        _ = Should.Throw<ArgumentException>(() => view.SetSelection(new Selection(0, 1)));
+    }
+
     /// <summary>Verifies SetSelection commits a valid range and SelectedText reflects it.</summary>
     [Fact]
     public void SetSelection_WhenGivenValidRange_UpdatesSelectedText()
@@ -232,6 +243,22 @@ public sealed class CodeViewTests
 
         view.SelectedText.ShouldBe("bcd");
         view.CopySelection().ShouldBe("bcd");
+    }
+
+    /// <summary>Verifies CRLF and lone-CR line endings both normalize to a single <c>\n</c> in
+    /// selected text, even though <see cref="CodeView.Code"/> itself retains the assigned bytes
+    /// verbatim.</summary>
+    [Theory]
+    [InlineData("line one\r\nline two", "line one\nline two")]
+    [InlineData("line one\rline two", "line one\nline two")]
+    public void SelectAll_WhenCodeUsesNonLfLineEndings_NormalizesThemInSelectedText(string code, string expected)
+    {
+        var view = new CodeView { Code = code };
+
+        view.SelectAll();
+
+        view.Code.ShouldBe(code);
+        view.SelectedText.ShouldBe(expected);
     }
 
     /// <summary>Verifies SelectAll selects the entire normalized text.</summary>

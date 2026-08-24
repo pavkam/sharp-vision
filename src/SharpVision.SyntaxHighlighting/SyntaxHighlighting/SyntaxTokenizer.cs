@@ -25,6 +25,13 @@ public static class SyntaxTokenizer
     private const int _maxLoopIterationsPerLine = 1_000_000;
     private const int _indentationTabWidth = 4;
 
+    /// <summary>The wall-clock bound applied to every empty-line indentation-folding regex match.
+    /// An <c>&lt;emptyLine regexpr="…"&gt;</c> pattern is untrusted third-party input the same way
+    /// a rule's <c>RegExpr</c> is, so a pathological pattern must degrade to a timed-out non-match
+    /// instead of blocking the calling thread; see <see cref="SyntaxCompiledRule"/>'s matching
+    /// timeout for the equivalent per-rule bound.</summary>
+    private static readonly TimeSpan _regexMatchTimeout = TimeSpan.FromMilliseconds(500);
+
     /// <summary>Tokenizes a complete document.</summary>
     /// <param name="grammar">The non-null compiled grammar to tokenize against.</param>
     /// <param name="text">The non-null complete source text.</param>
@@ -66,10 +73,24 @@ public static class SyntaxTokenizer
         CloseUnterminatedRegions(openRegions, lines.Count - 1, foldRanges);
         ComputeIndentationFolds(lines, indentationEligibility, foldRanges);
 
+        // A region fold and an indentation fold can legitimately share the exact same start and
+        // end line (a language with both region markers and indentation-sensitive folding enabled
+        // on the same construct). List<T>.Sort is an unstable introspective sort, so without a
+        // deterministic tertiary key the relative order of two such ranges - and therefore which
+        // one BuildFoldStartRanges keeps via Dictionary.TryAdd - would be unspecified across runs,
+        // in tension with this repository's deterministic-UI-state requirement. Kind breaks the
+        // tie deterministically instead.
         foldRanges.Sort(static (left, right) =>
         {
             var byStart = left.StartLine.CompareTo(right.StartLine);
-            return byStart != 0 ? byStart : right.EndLine.CompareTo(left.EndLine);
+
+            if (byStart != 0)
+            {
+                return byStart;
+            }
+
+            var byEnd = right.EndLine.CompareTo(left.EndLine);
+            return byEnd != 0 ? byEnd : left.Kind.CompareTo(right.Kind);
         });
 
         return new SyntaxHighlightResult(result, foldRanges);
@@ -401,7 +422,10 @@ public static class SyntaxTokenizer
         {
             try
             {
-                patterns.Add(new Regex(rule.Pattern, RegexOptions.CultureInvariant | (rule.CaseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase)));
+                patterns.Add(new Regex(
+                    rule.Pattern,
+                    RegexOptions.CultureInvariant | (rule.CaseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase),
+                    _regexMatchTimeout));
             }
             catch (RegexParseException)
             {
@@ -421,9 +445,17 @@ public static class SyntaxTokenizer
 
         foreach (var pattern in emptyLinePatterns)
         {
-            if (pattern.IsMatch(line))
+            try
             {
-                return true;
+                if (pattern.IsMatch(line))
+                {
+                    return true;
+                }
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                // A pathological pattern degrades to "this pattern does not classify the line as
+                // blank" rather than blocking the calling thread; see _regexMatchTimeout.
             }
         }
 

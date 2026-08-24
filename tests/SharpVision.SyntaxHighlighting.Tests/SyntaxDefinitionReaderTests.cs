@@ -203,6 +203,31 @@ public sealed class SyntaxDefinitionReaderTests
         definition.Contexts[0].LineEmptyContext.ShouldBe(definition.Contexts[0].LineEndContext);
     }
 
+    /// <summary>Verifies an explicit <c>lineEmptyContext="#stay"</c> - not merely an unspecified
+    /// attribute - is still overridden to fall back to <c>lineEndContext</c>, matching upstream
+    /// <c>Context::resolveContexts</c>'s special case for skipping past a line-continuation
+    /// character on an otherwise-empty line.</summary>
+    [Fact]
+    public void Read_WhenLineEmptyContextIsExplicitlyStay_FallsBackToLineEndContext()
+    {
+        const string xml = """
+            <language name="ExplicitStay" section="Sources" extensions="*.d" version="1" kateversion="5.0">
+              <highlighting>
+                <contexts>
+                  <context name="Normal" attribute="Normal Text" lineEndContext="#pop" lineEmptyContext="#stay"/>
+                </contexts>
+                <itemDatas>
+                  <itemData name="Normal Text" defStyleNum="dsNormal"/>
+                </itemDatas>
+              </highlighting>
+            </language>
+            """;
+
+        var definition = SyntaxDefinitionReader.Read(xml);
+
+        definition.Contexts[0].LineEmptyContext.ShouldBe(definition.Contexts[0].LineEndContext);
+    }
+
     /// <summary>
     /// Verifies an <c>&lt;item&gt;</c> surrounded by incidental whitespace (common when a list is
     /// formatted one entry per line) is trimmed, matching upstream
