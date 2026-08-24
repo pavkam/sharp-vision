@@ -121,6 +121,17 @@ proves, and the
 [continuous-integration specification](docs/testing/continuous-integration.md#overview)
 maps the commands to the public gate.
 
+## TODO
+
+Planned work not yet implemented:
+
+- A command palette.
+- Toasts and notifications.
+- File system views, with the save and open dialogs built on top of them.
+- Animations for opening floating surfaces.
+- A simplified, revamped style system.
+- A Turbo Vision theme.
+
 ## Contributing and support
 
 Read [Contributing](CONTRIBUTING.md), [Security](SECURITY.md),
