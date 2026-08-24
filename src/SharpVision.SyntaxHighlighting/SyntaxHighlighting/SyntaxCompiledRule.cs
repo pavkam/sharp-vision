@@ -79,6 +79,18 @@ public sealed class SyntaxCompiledRule
     public SyntaxRule Source { get; }
 
     /// <summary>
+    /// Gets whether a failed <see cref="TryMatch"/> reports a meaningful <see
+    /// cref="SyntaxRuleMatch.SkipOffset"/> - true only for <see cref="SyntaxRuleKind.Keyword"/>
+    /// and <see cref="SyntaxRuleKind.RegularExpression"/>, the two kinds whose own matching
+    /// process already discovers, as a side effect of a single failed attempt, exactly how far
+    /// forward a retry would need to move to have any chance of succeeding. <see
+    /// cref="SyntaxTokenizer"/> uses this to cache that bound per line and skip re-invoking these
+    /// two rule kinds at intermediate offsets they cannot possibly match at, the same way upstream
+    /// KSyntaxHighlighting's <c>Rule::hasSkipOffset</c> gates its own per-line skip-offset cache.
+    /// </summary>
+    internal bool HasSkipOffset => Source.Kind is SyntaxRuleKind.Keyword or SyntaxRuleKind.RegularExpression;
+
+    /// <summary>
     /// Gets the style role this rule's own matched text is painted with, or null to inherit
     /// whichever context is active on top of the stack at match time.
     /// </summary>
@@ -469,8 +481,8 @@ public sealed class SyntaxCompiledRule
     {
         Debug.Assert(_keywordMatcher is not null, "A Keyword rule must carry a compiled matcher.");
 
-        var length = _keywordMatcher.Match(line, offset);
-        return length == 0 ? SyntaxRuleMatch.None : new SyntaxRuleMatch(length, []);
+        var (length, skipOffset) = _keywordMatcher.MatchWithSkip(line, offset);
+        return length == 0 ? new SyntaxRuleMatch(skipOffset) : new SyntaxRuleMatch(length, []);
     }
 
     private SyntaxRuleMatch MatchRegularExpression(string line, int offset, IReadOnlyList<string> captures)
@@ -502,9 +514,20 @@ public sealed class SyntaxCompiledRule
             return SyntaxRuleMatch.None;
         }
 
-        if (!match.Success || match.Index != offset)
+        if (!match.Success)
         {
-            return SyntaxRuleMatch.None;
+            // .NET's non-anchored Match(line, offset) already searched every remaining position
+            // in the line for this pattern and found none, so this rule cannot possibly match
+            // again anywhere on the current line either - report the strongest possible skip hint.
+            return new SyntaxRuleMatch(skipOffset: -1);
+        }
+
+        if (match.Index != offset)
+        {
+            // The pattern's next possible match starts at match.Index, not here - the same
+            // non-anchored search already tells us there is no point retrying this rule at any
+            // offset before that.
+            return new SyntaxRuleMatch(skipOffset: match.Index);
         }
 
         if (match.Groups.Count <= 1)

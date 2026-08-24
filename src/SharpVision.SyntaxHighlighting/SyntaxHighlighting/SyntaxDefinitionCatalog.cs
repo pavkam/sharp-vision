@@ -294,7 +294,12 @@ public sealed class SyntaxDefinitionCatalog
     private static bool MatchesGlob(string pattern, string fileName)
     {
         // KDE extension globs use only '*' and '?' wildcards, never full regular expressions.
+        // The resulting pattern is built entirely from Regex.Escape(pattern) plus only ".*"/"."
+        // substitutions, so it can never contain attacker-controlled metacharacters or nested
+        // quantifiers capable of catastrophic backtracking - a timeout is not a correctness
+        // requirement here the way it is for a third-party RegExpr/emptyLine pattern. It is added
+        // anyway for consistency with every other Regex this assembly constructs.
         var regexPattern = "^" + Regex.Escape(pattern).Replace(@"\*", ".*", StringComparison.Ordinal).Replace(@"\?", ".", StringComparison.Ordinal) + "$";
-        return Regex.IsMatch(fileName, regexPattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        return Regex.IsMatch(fileName, regexPattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(500));
     }
 }

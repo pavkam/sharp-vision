@@ -103,6 +103,37 @@ public sealed class CodeViewSurfaceTests
         view.VerticalOffset.ShouldBe(3);
     }
 
+    /// <summary>Verifies reassigning <see cref="CodeView.Code"/> to shorter text while a drag is
+    /// still in progress cancels the drag instead of leaving a stale anchor that the next move
+    /// event would use to build an out-of-range Selection.</summary>
+    [Fact]
+    public async Task Code_WhenReassignedDuringAnInProgressDrag_CancelsTheDragInsteadOfGoingOutOfRangeAsync()
+    {
+        var view = new CodeView { Code = "abcdefghijklmnopqrstuvwxyz\n" };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 3),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        // Start a drag near the end of the long original line, so _pointerAnchor is an offset
+        // that would exceed the length of the much shorter replacement text below.
+        await surface.Pointer.MoveToAsync(view, new Point(2 + 15, 0));
+        await surface.Pointer.PressAsync();
+
+        await surface.UpdateAsync(() => view.Code = "ab\n", "replace Code mid-drag with shorter text");
+
+        // The drag must be fully canceled, not merely tolerant of the next event: capture released
+        // and selecting turned off, exactly as a real Release would leave it.
+        view.HasPointerCapture.ShouldBeFalse();
+
+        // A move event continuing the same physical drag must not resurrect selection extension
+        // from the now-stale anchor.
+        await surface.Pointer.MovePressedToAsync(new Point(2, 0));
+        _ = view.SelectedText;
+        await surface.Pointer.ReleaseAsync();
+    }
+
     /// <summary>Verifies a primary click sets an empty selection at the clicked column and focuses the view.</summary>
     [Fact]
     public async Task Pointer_WhenPrimaryClickOccurs_SetsCaretAndFocusesAsync()

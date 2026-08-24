@@ -185,14 +185,36 @@ public sealed class SyntaxGrammar
     /// <summary>
     /// Compiles one non-<c>IncludeRules</c> rule, or returns null when a
     /// <see cref="SyntaxRuleKind.Keyword"/> rule names a keyword list this definition does not
-    /// declare. Upstream KSyntaxHighlighting's own <c>KeywordListRule::create</c> drops such a
-    /// rule from its context entirely (a warning, not a load failure) rather than rejecting the
-    /// whole definition, since a stale or externally resolved list name in one rule must not
-    /// break every other rule in the file.
+    /// declare, or a <see cref="SyntaxRule.LookAhead"/> rule's context reference fails to resolve.
+    /// Upstream KSyntaxHighlighting's own <c>KeywordListRule::create</c> drops the first case (a
+    /// warning, not a load failure) rather than rejecting the whole definition, since a stale or
+    /// externally resolved list name in one rule must not break every other rule in the file.
     /// </summary>
+    /// <remarks>
+    /// The reader rejects a lookAhead rule whose <c>context</c> attribute is syntactically
+    /// <c>#stay</c> before any cross-definition resolution is possible (see
+    /// <see cref="SyntaxDefinitionReader"/>), matching upstream's own parse-time check. But a
+    /// syntactically non-stay reference - most plausibly <c>Name##OtherDefinition</c> naming a
+    /// definition the consuming catalog does not contain - can still resolve to nothing, exactly
+    /// like any other dangling cross-definition reference this compiler tolerates elsewhere. For
+    /// every other rule kind that is a harmless no-op: the rule simply never advances the
+    /// tokenizer via a context switch. A lookAhead rule has no other purpose, though - it consumes
+    /// no text of its own - so a lookAhead rule that resolves to <see cref="SyntaxContextTarget.Stay"/>
+    /// would match at the same offset on every subsequent attempt without ever making progress,
+    /// stalling the tokenizer for a whole line instead of degrading to "does nothing." Upstream's
+    /// own <c>Rule::resolveCommon</c> guards against exactly this by re-checking after resolution
+    /// (<c>return !(m_lookAhead &amp;&amp; m_context.isStay());</c>) and discarding the rule
+    /// entirely when it fails; this mirrors that check.
+    /// </remarks>
     private SyntaxCompiledRule? CompileRule(SyntaxRule rule, SyntaxGrammarCompiler compiler)
     {
         var target = ResolveTarget(rule.ContextSwitch, compiler);
+
+        if (rule.LookAhead && target.IsStay)
+        {
+            return null;
+        }
+
         var style = ResolveOptionalStyle(rule.AttributeName);
         var delimiters = _baseDelimiters.With(rule.AdditionalDeliminator, rule.WeakDeliminator);
 

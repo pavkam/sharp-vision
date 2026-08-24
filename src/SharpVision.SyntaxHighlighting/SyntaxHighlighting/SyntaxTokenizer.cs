@@ -151,6 +151,24 @@ public static class SyntaxTokenizer
         var lastOffset = -1;
         var stallCount = 0;
 
+        // Per-line cache of each Keyword/RegExpr rule's own reported SyntaxRuleMatch.SkipOffset
+        // (see HasSkipOffset), keyed by rule identity. Without this, a long run of text with no
+        // delimiter and no catch-all consuming rule after a Keyword rule (or a RegExpr rule that
+        // never matches at all) is quadratic: the outer loop's one-character-at-a-time fallback
+        // re-invokes that same rule at every offset, and each invocation independently rescans
+        // forward to rediscover the identical boundary its previous invocation already found.
+        // Caching that boundary and skipping re-invocation until it is reached restores linear
+        // total cost, mirroring upstream KSyntaxHighlighting's own skipOffsets cache in
+        // AbstractHighlighter::highlightLine.
+        var skipOffsets = new Dictionary<SyntaxCompiledRule, int>(ReferenceEqualityComparer.Instance);
+
+        // A dynamic rule's effective pattern depends on the active context frame's captures, so a
+        // cached skip computed under one frame's captures is not valid once a different frame - with
+        // different captures - becomes active. Frame identity (not content) is the correct
+        // invalidation signal: SyntaxContextFrame.Captures is fixed for the frame's whole lifetime,
+        // so a reference change means the frame itself changed.
+        IReadOnlyList<string>? lastCaptures = null;
+
         while (offset < line.Length)
         {
             if (offset == lastOffset)
@@ -170,6 +188,13 @@ public static class SyntaxTokenizer
             var isLookAhead = false;
             var matchedOffset = offset;
             SyntaxDefaultStyle? matchedStyle = null;
+            var currentCaptures = stack[^1].Captures;
+
+            if (!ReferenceEquals(lastCaptures, currentCaptures))
+            {
+                skipOffsets.Clear();
+                lastCaptures = currentCaptures;
+            }
 
             foreach (var rule in topContext.Rules)
             {
@@ -191,7 +216,24 @@ public static class SyntaxTokenizer
                     }
                 }
 
-                var match = rule.TryMatch(line, offset, stack[^1].Captures);
+                var cachedSkip = 0;
+
+                if (rule.HasSkipOffset)
+                {
+                    cachedSkip = skipOffsets.GetValueOrDefault(rule);
+
+                    if (cachedSkip < 0 || cachedSkip > offset)
+                    {
+                        continue;
+                    }
+                }
+
+                var match = rule.TryMatch(line, offset, currentCaptures);
+
+                if (rule.HasSkipOffset && (match.SkipOffset < 0 || match.SkipOffset > cachedSkip))
+                {
+                    skipOffsets[rule] = match.SkipOffset;
+                }
 
                 if (!match.Success || match.Length <= 0)
                 {

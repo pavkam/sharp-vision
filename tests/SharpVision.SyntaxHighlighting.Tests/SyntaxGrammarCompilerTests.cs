@@ -10,6 +10,11 @@ namespace SharpVision.SyntaxHighlighting.Tests;
 /// </summary>
 public sealed class SyntaxGrammarCompilerTests
 {
+    /// <summary>Verifies a null definition is rejected with ArgumentNullException.</summary>
+    [Fact]
+    public void Compile_WhenDefinitionIsNull_ThrowsArgumentNullException() =>
+        _ = Should.Throw<ArgumentNullException>(static () => SyntaxGrammar.Compile(null!));
+
     private const string _baseLanguage = """
         <language name="Base" section="Sources" extensions="*.base" version="1" kateversion="5.0">
           <highlighting>
@@ -234,5 +239,89 @@ public sealed class SyntaxGrammarCompilerTests
         var tokens = result.Lines[0].Tokens;
         tokens[0].Style.ShouldBe(SyntaxDefaultStyle.Keyword);
         tokens[^1].Style.ShouldBe(SyntaxDefaultStyle.Keyword);
+    }
+
+    private const string _lookAheadUnresolvableTargetLanguage = """
+        <language name="LookAheadUnresolvable" section="Sources" extensions="*.lau" version="1" kateversion="5.0">
+          <highlighting>
+            <contexts>
+              <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                <RegExpr attribute="Normal Text" lookAhead="true" context="Other##Missing" String="x"/>
+                <DetectChar attribute="Marker" context="#stay" char="x"/>
+              </context>
+            </contexts>
+            <itemDatas>
+              <itemData name="Normal Text" defStyleNum="dsNormal"/>
+              <itemData name="Marker" defStyleNum="dsAlert"/>
+            </itemDatas>
+          </highlighting>
+        </language>
+        """;
+
+    /// <summary>
+    /// Verifies a <c>lookAhead</c> rule whose context reference names a definition the catalog
+    /// cannot resolve - syntactically valid, but unresolvable only after cross-definition lookup
+    /// runs - is dropped from its context entirely, rather than compiling into a rule whose
+    /// resolved target is <see cref="SyntaxContextTarget.Stay"/>. A lookAhead rule that resolves to
+    /// Stay would match at the same offset on every attempt without ever making progress, since a
+    /// lookAhead match never consumes text of its own: unlike every other rule kind, for which a
+    /// dangling cross-definition reference degrading to a no-op is harmless, here it would stall
+    /// the tokenizer for the rest of the line.
+    /// </summary>
+    [Fact]
+    public void Compile_WhenLookAheadRuleTargetsAnUnresolvableDefinition_DropsTheRuleEntirely()
+    {
+        var grammar = SyntaxGrammar.Compile(
+            SyntaxDefinitionReader.Read(_lookAheadUnresolvableTargetLanguage),
+            resolveDefinition: _ => null);
+
+        grammar.Contexts[0].Rules.ShouldHaveSingleItem().Source.Kind.ShouldBe(SyntaxRuleKind.Character);
+
+        var result = SyntaxTokenizer.Tokenize(grammar, "x");
+        result.Lines[0].Tokens.ShouldHaveSingleItem().Style.ShouldBe(SyntaxDefaultStyle.Alert);
+    }
+
+    private const string _popWithUnresolvedPushLanguage = """
+        <language name="PopWithUnresolvedPush" section="Sources" extensions="*.pup" version="1" kateversion="5.0">
+          <highlighting>
+            <contexts>
+              <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                <DetectChar attribute="Normal Text" context="Inner" char="("/>
+              </context>
+              <context name="Inner" attribute="Bracket" lineEndContext="#stay">
+                <DetectChar attribute="Normal Text" context="#pop!Missing##Unresolvable" char=")"/>
+              </context>
+            </contexts>
+            <itemDatas>
+              <itemData name="Normal Text" defStyleNum="dsNormal"/>
+              <itemData name="Bracket" defStyleNum="dsChar"/>
+            </itemDatas>
+          </highlighting>
+        </language>
+        """;
+
+    /// <summary>
+    /// Pins SharpVision's own, deliberately upstream-diverging resolution contract for a
+    /// <c>#pop!Name##Missing</c> switch whose push target cannot be resolved (see
+    /// <see cref="SyntaxContextTarget"/>'s remarks): the pop still takes effect and the tokenizer
+    /// correctly lands back in the popped-to context, rather than the whole switch collapsing to a
+    /// no-op the way upstream's own resolution step would leave the tokenizer stranded one context
+    /// deeper than intended.
+    /// </summary>
+    [Fact]
+    public void Compile_WhenPopSwitchPushTargetIsUnresolvable_StillPopsBackToTheParentContext()
+    {
+        var grammar = SyntaxGrammar.Compile(
+            SyntaxDefinitionReader.Read(_popWithUnresolvedPushLanguage),
+            resolveDefinition: _ => null);
+
+        // If the pop had been dropped along with the unresolvable push, offset 2's trailing "("
+        // would still be evaluated inside "Inner" - which declares no rule for "(" at all - and
+        // fall back to Inner's own Bracket attribute, a second, differently styled token. With the
+        // pop correctly taking effect, offset 2 is back in "Normal", where "(" matches the same
+        // push rule as offset 0 did, merging the whole line into one Normal-styled token.
+        var result = SyntaxTokenizer.Tokenize(grammar, "()(");
+
+        result.Lines[0].Tokens.ShouldHaveSingleItem().Style.ShouldBe(SyntaxDefaultStyle.Normal);
     }
 }

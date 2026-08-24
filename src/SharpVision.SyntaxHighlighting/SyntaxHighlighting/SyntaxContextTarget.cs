@@ -9,10 +9,15 @@ namespace SharpVision.SyntaxHighlighting;
 /// </summary>
 /// <remarks>
 /// A reference that named a context or definition the grammar compiler could not resolve is
-/// dropped rather than rejected, the same graceful-degradation behavior upstream
-/// KSyntaxHighlighting uses (it logs a warning and treats the switch as a no-op for that target).
-/// This keeps one missing embedded-language definition from breaking highlighting of everything
-/// else in a document.
+/// dropped rather than rejected - the same graceful-degradation philosophy upstream
+/// KSyntaxHighlighting applies elsewhere for a missing embedded-language definition - but only
+/// that one <see cref="Pushes"/> entry is dropped: <see cref="PopCount"/> is always preserved
+/// exactly as declared, even when every push in the same switch fails to resolve, so
+/// <c>#pop!Name##Missing</c> still performs its pop and simply pushes nothing. This differs from
+/// upstream's own resolution step, which collapses a switch with no resolvable push targets to a
+/// complete no-op (pop included). SharpVision's choice is deliberate: a broken cross-definition
+/// push should not also strand the tokenizer one context deeper than the author intended, purely
+/// because the intended destination happened to be unavailable.
 /// </remarks>
 [PublicAPI]
 public readonly record struct SyntaxContextTarget

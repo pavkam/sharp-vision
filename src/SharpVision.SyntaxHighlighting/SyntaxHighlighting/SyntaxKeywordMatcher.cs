@@ -35,7 +35,27 @@ public sealed class SyntaxKeywordMatcher
     /// <paramref name="offset"/> is negative or greater than <paramref name="line"/>'s length.
     /// </exception>
     [Pure]
-    public int Match(ReadOnlySpan<char> line, int offset)
+    public int Match(ReadOnlySpan<char> line, int offset) => MatchWithSkip(line, offset).Length;
+
+    /// <summary>
+    /// Attempts to match one keyword starting exactly at <paramref name="offset"/>, additionally
+    /// reporting how far forward a caller may skip re-invoking this method within the same
+    /// undelimited run without missing a potential match: scanning from any later offset that is
+    /// still short of the reported boundary always re-derives the identical delimiter boundary,
+    /// so a caller retrying position by position gains nothing by calling this method again before
+    /// reaching it.
+    /// </summary>
+    /// <param name="line">The complete line text.</param>
+    /// <param name="offset">The zero-based offset to match at.</param>
+    /// <returns>
+    /// The matched word length (zero when no keyword matches), and the exclusive offset before
+    /// which this method's own boundary scan is guaranteed to reach the same result.
+    /// </returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="offset"/> is negative or greater than <paramref name="line"/>'s length.
+    /// </exception>
+    [Pure]
+    internal (int Length, int SkipOffset) MatchWithSkip(ReadOnlySpan<char> line, int offset)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(offset);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(offset, line.Length);
@@ -47,6 +67,11 @@ public sealed class SyntaxKeywordMatcher
             end++;
         }
 
-        return end == offset ? 0 : _words.Contains(line[offset..end].ToString()) ? end - offset : 0;
+        if (end == offset)
+        {
+            return (0, offset);
+        }
+
+        return _words.Contains(line[offset..end].ToString()) ? (end - offset, end) : (0, end);
     }
 }

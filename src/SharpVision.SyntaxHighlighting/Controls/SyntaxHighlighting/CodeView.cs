@@ -1173,6 +1173,16 @@ public sealed class CodeView: CompositeControlBase, IStyled<CodeViewStyle>
 
     private void RebuildProjection()
     {
+        // Code, Language, and Catalog reassignment can land mid-drag - the pointer stays captured
+        // and selecting while a host live-reloads or streams new content into an already-mounted
+        // view. _pointerAnchor is an absolute offset into the text that is about to be replaced;
+        // if the replacement text is shorter, the very next pointer-move event would commit a
+        // Selection built from that now out-of-range anchor. CommitSelection's own bounds check is
+        // a Debug.Assert, compiled out in Release, so nothing else would catch this before
+        // SelectedText's later Substring call throws from what looks like an unrelated read.
+        // Canceling here - the same reset a real Release or focus-loss already performs - keeps a
+        // reassignment from ever combining with a stale anchor in the first place.
+        CancelPointerSelection();
         NormalizedCode = Code.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
         _lines = NormalizedCode.Split('\n');
         _lineStartOffsets = new int[_lines.Length + 1];

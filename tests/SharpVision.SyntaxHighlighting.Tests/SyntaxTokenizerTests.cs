@@ -298,6 +298,55 @@ public sealed class SyntaxTokenizerTests
         range.EndLine.ShouldBe(2);
     }
 
+    private const string _keywordOnlyLanguage = """
+        <language name="KeywordOnly" section="Sources" extensions="*.k" version="1" kateversion="5.0">
+          <highlighting>
+            <list name="keywords">
+              <item>if</item>
+              <item>else</item>
+            </list>
+            <contexts>
+              <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                <keyword attribute="Keyword" context="#stay" String="keywords"/>
+              </context>
+            </contexts>
+            <itemDatas>
+              <itemData name="Normal Text" defStyleNum="dsNormal"/>
+              <itemData name="Keyword" defStyleNum="dsKeyword"/>
+            </itemDatas>
+          </highlighting>
+        </language>
+        """;
+
+    /// <summary>
+    /// Verifies tokenizing one very long non-keyword, undelimited run under a context whose only
+    /// rule is a <c>keyword</c> list - deliberately omitting a catch-all identifier-consuming rule
+    /// real-world grammars normally pair a keyword rule with - completes in time roughly
+    /// proportional to the input, not quadratic in it.
+    /// </summary>
+    /// <remarks>
+    /// Before the per-line skip-offset cache, the tokenizer's one-character-at-a-time fallback (no
+    /// rule matches at any offset, since the run is never a keyword) re-invoked the keyword rule at
+    /// every offset, and each invocation independently rescanned forward to rediscover the same
+    /// delimiter boundary its previous invocation already found - quadratic in the run length.
+    /// Empirically, that made this exact input take several seconds; this asserts a generous bound
+    /// no plausible machine load reaches under the current linear behavior, while remaining
+    /// impossible for the quadratic behavior to meet.
+    /// </remarks>
+    [Fact]
+    public void Tokenize_WhenOneLongNonKeywordRunHasNoOtherMatchingRule_CompletesInBoundedTime()
+    {
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(_keywordOnlyLanguage));
+        var line = new string('a', 200_000);
+        var stopwatch = Stopwatch.StartNew();
+
+        var result = SyntaxTokenizer.Tokenize(grammar, line);
+
+        stopwatch.Stop();
+        result.Lines.ShouldHaveSingleItem().Tokens.ShouldHaveSingleItem().Style.ShouldBe(SyntaxDefaultStyle.Normal);
+        stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(5));
+    }
+
     private const string _lineEndPopBeyondRootLanguage = """
         <language name="LineEndPopBeyondRoot" section="Sources" extensions="*.p" version="1" kateversion="5.0">
           <highlighting>
@@ -514,5 +563,125 @@ public sealed class SyntaxTokenizerTests
         var result = SyntaxTokenizer.Tokenize(grammar, "((\n\n))");
 
         result.Lines[2].Tokens[0].Style.ShouldBe(SyntaxDefaultStyle.Error);
+    }
+
+    private const string _lookAheadSwitchLanguage = """
+        <language name="LookAheadSwitch" section="Sources" extensions="*.la" version="1" kateversion="5.0">
+          <highlighting>
+            <contexts>
+              <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                <DetectChar attribute="Normal Text" lookAhead="true" context="Marked" char="x"/>
+                <AnyChar attribute="Normal Text" context="#stay" String="x"/>
+              </context>
+              <context name="Marked" attribute="Alert" lineEndContext="#pop"/>
+            </contexts>
+            <itemDatas>
+              <itemData name="Normal Text" defStyleNum="dsNormal"/>
+              <itemData name="Alert" defStyleNum="dsAlert"/>
+            </itemDatas>
+          </highlighting>
+        </language>
+        """;
+
+    /// <summary>
+    /// Verifies a matching <c>lookAhead</c> rule applies its context switch without consuming any
+    /// text: the matched character is styled by the newly active context's own attribute (reached
+    /// through the ordinary "no rule in this context matched" fallback, since "Marked" declares no
+    /// rules of its own), proving the switch actually took effect rather than merely not throwing.
+    /// </summary>
+    [Fact]
+    public void Tokenize_WhenLookAheadRuleMatches_SwitchesContextWithoutConsumingText()
+    {
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(_lookAheadSwitchLanguage));
+
+        var result = SyntaxTokenizer.Tokenize(grammar, "x");
+
+        result.Lines[0].Tokens.ShouldHaveSingleItem().Style.ShouldBe(SyntaxDefaultStyle.Alert);
+    }
+
+    private const string _columnAndFirstNonSpaceLanguage = """
+        <language name="ColumnConstraints" section="Sources" extensions="*.c" version="1" kateversion="5.0">
+          <highlighting>
+            <contexts>
+              <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                <DetectChar attribute="Shebang" context="#stay" char="#" column="0"/>
+                <DetectChar attribute="Marker" context="#stay" char="%" firstNonSpace="true"/>
+              </context>
+            </contexts>
+            <itemDatas>
+              <itemData name="Normal Text" defStyleNum="dsNormal"/>
+              <itemData name="Shebang" defStyleNum="dsPreprocessor"/>
+              <itemData name="Marker" defStyleNum="dsAlert"/>
+            </itemDatas>
+          </highlighting>
+        </language>
+        """;
+
+    /// <summary>Verifies a rule's <c>column</c> constraint restricts it to that exact offset,
+    /// falling through to the context's own default styling everywhere else on the line.</summary>
+    [Fact]
+    public void Tokenize_WhenRuleRequiresAnExactColumn_MatchesOnlyThere()
+    {
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(_columnAndFirstNonSpaceLanguage));
+
+        var atColumnZero = SyntaxTokenizer.Tokenize(grammar, "#a");
+        var elsewhere = SyntaxTokenizer.Tokenize(grammar, "a#");
+
+        atColumnZero.Lines[0].Tokens[0].Style.ShouldBe(SyntaxDefaultStyle.Preprocessor);
+
+        // "#" at offset 1 never satisfies column="0", so the whole line stays one token under the
+        // context's own default style - proving the Shebang style never appears here.
+        elsewhere.Lines[0].Tokens.ShouldHaveSingleItem().Style.ShouldBe(SyntaxDefaultStyle.Normal);
+    }
+
+    /// <summary>Verifies a rule's <c>firstNonSpace</c> constraint restricts it to offsets at or
+    /// before the line's first non-whitespace character, falling through to the context's own
+    /// default styling once that point has passed.</summary>
+    [Fact]
+    public void Tokenize_WhenRuleRequiresFirstNonSpace_MatchesOnlyBeforeItPasses()
+    {
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(_columnAndFirstNonSpaceLanguage));
+
+        // "%" is still the line's first non-space character, so the firstNonSpace rule applies.
+        var beforeFirstNonSpace = SyntaxTokenizer.Tokenize(grammar, "  %a");
+
+        // "a" is the first non-space character; by the time "%" is reached, offset already
+        // exceeds firstNonSpace, so the rule never applies and the whole line stays one token.
+        var afterFirstNonSpace = SyntaxTokenizer.Tokenize(grammar, "a %");
+
+        beforeFirstNonSpace.Lines[0].Tokens[1].Style.ShouldBe(SyntaxDefaultStyle.Alert);
+        afterFirstNonSpace.Lines[0].Tokens.ShouldHaveSingleItem().Style.ShouldBe(SyntaxDefaultStyle.Normal);
+    }
+
+    private const string _perRuleWeakDelimiterLanguage = """
+        <language name="PerRuleWeakDelimiter" section="Sources" extensions="*.w" version="1" kateversion="5.0">
+          <highlighting>
+            <list name="words">
+              <item>foo.bar</item>
+            </list>
+            <contexts>
+              <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                <keyword attribute="Keyword" context="#stay" String="words" weakDeliminator="."/>
+              </context>
+            </contexts>
+            <itemDatas>
+              <itemData name="Normal Text" defStyleNum="dsNormal"/>
+              <itemData name="Keyword" defStyleNum="dsKeyword"/>
+            </itemDatas>
+          </highlighting>
+        </language>
+        """;
+
+    /// <summary>Verifies a rule's own <c>weakDeliminator</c> override actually changes match
+    /// behavior: removing "." from the effective delimiter set lets a keyword list entry that
+    /// itself contains a "." match as one word instead of splitting at the dot.</summary>
+    [Fact]
+    public void Tokenize_WhenRuleOverridesWeakDeliminator_MatchesAcrossTheRemovedDelimiter()
+    {
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(_perRuleWeakDelimiterLanguage));
+
+        var result = SyntaxTokenizer.Tokenize(grammar, "foo.bar");
+
+        result.Lines[0].Tokens.ShouldHaveSingleItem().Style.ShouldBe(SyntaxDefaultStyle.Keyword);
     }
 }
