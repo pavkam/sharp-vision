@@ -105,6 +105,7 @@ public sealed class DocumentReadOptionsTests
         diagnostic.Message.ShouldBe("message");
         diagnostic.Span.ShouldBe(span);
         _ = Should.Throw<ArgumentException>(() => new DocumentDiagnostic(" ", span));
+        _ = Should.Throw<ArgumentNullException>(() => new DocumentDiagnostic(null!, span));
     }
 
     /// <summary>Verifies result diagnostics cannot contain null entries.</summary>

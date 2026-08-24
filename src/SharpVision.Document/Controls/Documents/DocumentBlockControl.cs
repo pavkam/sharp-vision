@@ -4,8 +4,19 @@
 namespace SharpVision.Controls.Documents;
 
 /// <summary>Embeds one detached control as a block occupying its natural height.</summary>
-/// <remarks>The control becomes a retained descendant of the owning <see cref="Document"/>, so it
-/// retains ordinary focus, routed input, styling, and lifetime behavior.</remarks>
+/// <remarks>
+/// <para>
+/// The control becomes a retained descendant of the owning <see cref="Document"/>, so it retains
+/// ordinary focus, routed input, styling, and lifetime behavior.
+/// </para>
+/// <para>
+/// <b>Known limitation:</b> the document measures every embedded control unbounded, regardless of
+/// nesting depth, before its own layout pass ever runs. A percentage <c>Width</c> or
+/// <c>Height</c> on <see cref="Control"/> therefore always resolves as if it were <c>Auto</c>
+/// (see the unbounded-measure rule for percentage sizing) rather than sizing against the
+/// document's own content width. Use a fixed or automatic size for an embedded control instead.
+/// </para>
+/// </remarks>
 [PublicAPI]
 public sealed class DocumentBlockControl: DocumentBlock
 {

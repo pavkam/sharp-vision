@@ -58,6 +58,8 @@ public abstract class DocumentNodeCollection<TNode>: IReadOnlyList<TNode>
     /// <exception cref="ArgumentNullException"><paramref name="node"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="node"/> already belongs to a document tree,
     /// creates a cycle, nests a link, duplicates a retained control, or would exceed the supported tree depth.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public void Add(TNode node) => Insert(_items.Count, node);
 
     /// <summary>Inserts one detached node at a position.</summary>
@@ -67,6 +69,8 @@ public abstract class DocumentNodeCollection<TNode>: IReadOnlyList<TNode>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
     /// <exception cref="ArgumentException"><paramref name="node"/> already belongs to a document tree,
     /// creates a cycle, nests a link, duplicates a retained control, or would exceed the supported tree depth.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public void Insert(int index, TNode node)
     {
         ArgumentNullException.ThrowIfNull(node);
@@ -113,6 +117,8 @@ public abstract class DocumentNodeCollection<TNode>: IReadOnlyList<TNode>
     /// <param name="node">The non-null candidate.</param>
     /// <returns>True when the node was found and removed; otherwise, false.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="node"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public bool Remove(TNode node)
     {
         ArgumentNullException.ThrowIfNull(node);
@@ -131,6 +137,8 @@ public abstract class DocumentNodeCollection<TNode>: IReadOnlyList<TNode>
     /// <summary>Removes the node at a position, leaving it detached.</summary>
     /// <param name="index">The valid zero-based position.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current entries.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public void RemoveAt(int index)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
@@ -143,6 +151,8 @@ public abstract class DocumentNodeCollection<TNode>: IReadOnlyList<TNode>
     }
 
     /// <summary>Removes every node, leaving each one detached.</summary>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public void Clear()
     {
         VerifyMutable();

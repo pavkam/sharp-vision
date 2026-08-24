@@ -555,6 +555,86 @@ public sealed class DocumentLinkSurfaceTests
         probe.Cell(0, 0).Style.ShouldBe(probe.Cell(0, 2).Style);
     }
 
+    /// <summary>Verifies a <c>Clicked</c> handler that removes the just-activated link's own
+    /// paragraph from <c>Blocks</c>, still inside the same activation dispatch, does not corrupt
+    /// state or throw: the reconciliation the removal triggers must tolerate the active link no
+    /// longer existing in the freshly rebuilt link sequence.</summary>
+    [Fact]
+    public async Task Keyboard_WhenClickedHandlerRemovesItsOwnParagraphDuringActivation_DoesNotThrowAsync()
+    {
+        // Arrange
+        var link = new DocumentLink("only");
+        var paragraph = new DocumentParagraph();
+        paragraph.Inlines.Add(link);
+        var document = new Document { Blocks = { paragraph } };
+        link.Clicked += (_, _) => document.Blocks.Remove(paragraph);
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => document.Focus().ShouldBeTrue(), "focus document");
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        document.Blocks.ShouldBeEmpty();
+        document.ActiveLink.ShouldBeNull();
+    }
+
+    /// <summary>Verifies a <c>Clicked</c> handler that reassigns <c>ActiveLink</c> to a different,
+    /// still-attached link, still inside the same activation dispatch, leaves that reassignment in
+    /// effect rather than being silently overwritten by the activation path it interrupted.</summary>
+    [Fact]
+    public async Task Keyboard_WhenClickedHandlerReassignsActiveLinkDuringActivation_LeavesTheReassignmentInEffectAsync()
+    {
+        // Arrange
+        var first = new DocumentLink("first");
+        var second = new DocumentLink("second");
+        var document = LinkDocument(first, second);
+        first.Clicked += (_, _) => document.ActiveLink = second;
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => document.Focus().ShouldBeTrue(), "focus document");
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        document.ActiveLink.ShouldBeSameAs(second);
+    }
+
+    /// <summary>Verifies a <c>Clicked</c> handler that calls <c>Load</c> again, replacing the whole
+    /// tree, still inside the same activation dispatch, does not throw and leaves the document
+    /// showing only the freshly loaded content.</summary>
+    [Fact]
+    public async Task Keyboard_WhenClickedHandlerReloadsTheWholeTreeDuringActivation_DoesNotThrowAsync()
+    {
+        // Arrange
+        var link = new DocumentLink("only");
+        var document = LinkDocument(link);
+        var reader = new PlainTextDocumentReaderProbe();
+        link.Clicked += (_, _) => document.Load("replacement", reader);
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => document.Focus().ShouldBeTrue(), "focus document");
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        document.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines
+            .ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("replacement");
+        document.ActiveLink.ShouldBeNull();
+    }
+
     private static Document LinkDocument(params DocumentLink[] links)
     {
         var document = new Document();

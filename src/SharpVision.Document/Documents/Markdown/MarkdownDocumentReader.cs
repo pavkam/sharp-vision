@@ -511,7 +511,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         return paragraph;
     }
 
-    private void ParseInlines(string source, DocumentInlineCollection destination)
+    private void ParseInlines(string source, DocumentInlineCollection destination, bool insideLink = false)
     {
         var index = 0;
         var plain = new StringBuilder();
@@ -536,7 +536,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 continue;
             }
 
-            if (source[index] == '<' && TryAngleAutolink(source, index, out var angleEnd, out var angleTarget))
+            if (!insideLink && source[index] == '<' && TryAngleAutolink(source, index, out var angleEnd, out var angleTarget))
             {
                 Flush();
                 destination.Add(new DocumentLink(angleTarget, angleTarget));
@@ -544,7 +544,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 continue;
             }
 
-            if (Has(MarkdownExtension.Autolinks) && TryExtendedAutolink(source, index, out var urlEnd, out var url))
+            if (!insideLink && Has(MarkdownExtension.Autolinks) && TryExtendedAutolink(source, index, out var urlEnd, out var url))
             {
                 Flush();
                 destination.Add(new DocumentLink(url, url));
@@ -552,7 +552,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 continue;
             }
 
-            if (!wikiCloserUnavailable && Has(MarkdownExtension.WikiLinks) &&
+            if (!insideLink && !wikiCloserUnavailable && Has(MarkdownExtension.WikiLinks) &&
                 TryWikiLink(source, index, out var wikiEnd, out var wikiTarget, out var wikiLabel))
             {
                 Flush();
@@ -573,7 +573,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 Flush();
                 var strong = new DocumentStrong();
                 var emphasis = new DocumentEmphasis();
-                ParseInlines(source[(index + 3)..combinedEnd], emphasis.Inlines);
+                ParseInlines(source[(index + 3)..combinedEnd], emphasis.Inlines, insideLink);
                 strong.Inlines.Add(emphasis);
                 destination.Add(strong);
                 index = combinedEnd + 3;
@@ -584,9 +584,31 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             {
                 Flush();
                 var strong = new DocumentStrong();
-                ParseInlines(source[(index + 2)..strongEnd], strong.Inlines);
+                ParseInlines(source[(index + 2)..strongEnd], strong.Inlines, insideLink);
                 destination.Add(strong);
                 index = strongEnd + 2;
+                continue;
+            }
+
+            if (TryDelimited(source, index, "___", out var combinedUnderscoreEnd))
+            {
+                Flush();
+                var strongUnderscore = new DocumentStrong();
+                var emphasisUnderscore = new DocumentEmphasis();
+                ParseInlines(source[(index + 3)..combinedUnderscoreEnd], emphasisUnderscore.Inlines, insideLink);
+                strongUnderscore.Inlines.Add(emphasisUnderscore);
+                destination.Add(strongUnderscore);
+                index = combinedUnderscoreEnd + 3;
+                continue;
+            }
+
+            if (TryDelimited(source, index, "__", out var strongUnderscoreEnd))
+            {
+                Flush();
+                var strongUnderscoreOnly = new DocumentStrong();
+                ParseInlines(source[(index + 2)..strongUnderscoreEnd], strongUnderscoreOnly.Inlines, insideLink);
+                destination.Add(strongUnderscoreOnly);
+                index = strongUnderscoreEnd + 2;
                 continue;
             }
 
@@ -594,7 +616,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             {
                 Flush();
                 var strike = new DocumentStrikethrough();
-                ParseInlines(source[(index + 2)..strikeEnd], strike.Inlines);
+                ParseInlines(source[(index + 2)..strikeEnd], strike.Inlines, insideLink);
                 destination.Add(strike);
                 index = strikeEnd + 2;
                 continue;
@@ -606,7 +628,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             {
                 Flush();
                 var emphasis = new DocumentEmphasis();
-                ParseInlines(source[(index + 1)..emphasisEnd], emphasis.Inlines);
+                ParseInlines(source[(index + 1)..emphasisEnd], emphasis.Inlines, insideLink);
                 destination.Add(emphasis);
                 index = emphasisEnd + 1;
                 continue;
@@ -632,12 +654,21 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 linkCloserUnavailable = true;
             }
 
-            if (!linkCloserUnavailable && source[index] == '[' &&
+            if (!insideLink && !linkCloserUnavailable && source[index] == '[' &&
                 TryLink(source, index, out var linkEnd, out var label, out var target))
             {
                 Flush();
                 var link = new DocumentLink { Target = target };
-                ParseInlines(label, link.Inlines);
+
+                // CommonMark forbids a link from containing another link at any nesting depth: a
+                // label whose own content would otherwise resolve to a link (a literal reference
+                // marker is fine and stays plain text either way, but a genuinely link-shaped
+                // sequence such as another "[x](y)" or an autolink is not) instead leaves that
+                // content as ordinary literal text. insideLink propagates through every recursive
+                // call this label's own content can reach - emphasis, strong, strikethrough - so a
+                // link-shaped sequence nested arbitrarily deep inside the label still degrades to
+                // text instead of throwing when the model's own "no nested links" rule rejects it.
+                ParseInlines(label, link.Inlines, insideLink: true);
                 destination.Add(link);
                 index = linkEnd;
                 continue;
@@ -669,7 +700,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     [Pure]
     private static bool TryLink(string source, int index, out int end, out string label, out string target)
     {
-        var closeLabel = FindUnescaped(source, "]", index + 1);
+        var closeLabel = FindLabelClose(source, index);
 
         if (closeLabel < 0 || closeLabel + 1 >= source.Length || source[closeLabel + 1] != '(')
         {
@@ -714,6 +745,51 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         target = UnescapePunctuation(source[(closeLabel + 2)..(cursor - 1)]);
         end = cursor;
         return true;
+    }
+
+    /// <summary>
+    /// Finds the label-closing <c>]</c> for a link opened at <paramref name="index"/>, tracking
+    /// bracket nesting depth rather than accepting the first unescaped <c>]</c> regardless of
+    /// context. A label may legitimately contain its own balanced <c>[...]</c> - a literal
+    /// reference marker ("[See [1]](url)") or a nested image ("[![alt](img.png)](url)", the common
+    /// "linked image" pattern - and the label's true end is the <c>]</c> that returns nesting back
+    /// to zero, not whichever <c>]</c> happens to appear first.
+    /// </summary>
+    /// <param name="source">The complete inline source.</param>
+    /// <param name="index">The zero-based offset of the opening <c>[</c>.</param>
+    /// <returns>The zero-based offset of the matching <c>]</c>, or -1 when the brackets never balance.</returns>
+    [Pure]
+    private static int FindLabelClose(string source, int index)
+    {
+        var depth = 1;
+        var cursor = index + 1;
+
+        while (cursor < source.Length)
+        {
+            if (source[cursor] == '\\' && cursor + 1 < source.Length)
+            {
+                cursor += 2;
+                continue;
+            }
+
+            if (source[cursor] == '[')
+            {
+                depth++;
+            }
+            else if (source[cursor] == ']')
+            {
+                depth--;
+
+                if (depth == 0)
+                {
+                    return cursor;
+                }
+            }
+
+            cursor++;
+        }
+
+        return -1;
     }
 
     [Pure]
@@ -1122,6 +1198,16 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     [Pure]
     private static bool IsRule(string line)
     {
+        // A thematic break, like every other block-start detector in this reader, is bounded to
+        // CommonMark's 0-through-3-space indent: a line with four or more leading spaces is an
+        // indented code block, not a rule. Stripping every space unconditionally before checking
+        // the run - as this method used to - discarded that distinction along with the interior
+        // spaces a spaced-out rule ("- - -") legitimately needs stripped.
+        if (CountLeadingSpaces(line) > 3)
+        {
+            return false;
+        }
+
         var compact = line.Replace(" ", string.Empty, StringComparison.Ordinal);
         return compact.Length >= 3 && compact.All(character => character == compact[0]) && compact[0] is '-' or '*' or '_';
     }

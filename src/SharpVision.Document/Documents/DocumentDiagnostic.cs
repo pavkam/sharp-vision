@@ -10,7 +10,8 @@ public sealed class DocumentDiagnostic
     /// <summary>Initializes a diagnostic.</summary>
     /// <param name="message">The non-empty message.</param>
     /// <param name="span">The source range.</param>
-    /// <exception cref="ArgumentException"><paramref name="message"/> is empty.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="message"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="message"/> is empty or all whitespace.</exception>
     public DocumentDiagnostic(string message, DocumentSourceSpan span)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(message);

@@ -270,6 +270,60 @@ public sealed class MarkdownDocumentReaderTests
             .ShouldBe("*literal* and [label](target)");
     }
 
+    /// <summary>Verifies double-underscore strong emphasis - the extremely common alternative
+    /// spelling to <c>**</c> - is recognized, matching CommonMark's own two equivalent strong
+    /// delimiters.</summary>
+    [Fact]
+    public void Read_WhenTextUsesDoubleUnderscoreStrong_CreatesDocumentStrong()
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read("__bold__")
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        var strong = paragraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentStrong>();
+        strong.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("bold");
+    }
+
+    /// <summary>Verifies triple-underscore strong-and-emphasized text - the underscore equivalent
+    /// to <c>***</c> - nests an emphasis inline inside a strong inline.</summary>
+    [Fact]
+    public void Read_WhenTextUsesTripleUnderscoreStrongAndEmphasis_NestsEmphasisInsideStrong()
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read("___both___")
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        var strong = paragraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentStrong>();
+        var emphasis = strong.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentEmphasis>();
+        emphasis.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("both");
+    }
+
+    /// <summary>Verifies a bare thematic-break line produces a DocumentSeparator.</summary>
+    [Fact]
+    public void Read_WhenLineIsThreeAsterisks_ProducesThematicBreak()
+    {
+        // Arrange and act
+        var block = new MarkdownDocumentReader().Read("***").Blocks.ShouldHaveSingleItem();
+
+        // Assert
+        _ = block.ShouldBeOfType<DocumentSeparator>();
+    }
+
+    /// <summary>Verifies a thematic-break-looking line indented four or more spaces - CommonMark's
+    /// indented-code-block threshold - is not treated as a rule, matching every other
+    /// indent-sensitive block-start detector in this reader.</summary>
+    [Fact]
+    public void Read_WhenRuleLineHasFourSpaceIndent_DoesNotProduceThematicBreak()
+    {
+        // Arrange and act
+        var blocks = new MarkdownDocumentReader().Read("paragraph\n    ***").Blocks;
+
+        // Assert
+        blocks.ShouldNotContain(static block => block is DocumentSeparator);
+    }
+
     /// <summary>Verifies intraword underscores are ordinary text rather than emphasis delimiters.</summary>
     [Fact]
     public void Read_WhenUnderscoresAreIntraword_DoesNotCreateEmphasis()
@@ -374,6 +428,59 @@ public sealed class MarkdownDocumentReaderTests
 
         // Assert
         link.Target.ShouldBe("https://example.invalid/a_(b)");
+    }
+
+    /// <summary>Verifies a link label containing its own literal, balanced <c>[...]</c> - a
+    /// "citation-style" reference marker - still resolves to one link over the complete label,
+    /// rather than failing at the first, inner "]".</summary>
+    [Fact]
+    public void Read_WhenLinkLabelContainsALiteralBracketPair_ResolvesOverTheCompleteLabel()
+    {
+        // Arrange and act
+        var link = new MarkdownDocumentReader().Read("[See [1]](http://example.invalid)")
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentLink>();
+
+        // Assert
+        link.Target.ShouldBe("http://example.invalid");
+        link.Text.ShouldBe("See [1]");
+    }
+
+    /// <summary>Verifies the common "linked image" markup shape - a nested "[x](y)"-looking
+    /// sequence inside an outer link's own label, the pattern Markdown authors use to link an
+    /// image - resolves the outer boundary correctly instead of mistaking the nested sequence's
+    /// own "](" for the outer link's separator, and that the nested sequence itself degrades to
+    /// literal text rather than becoming a second, nested link: this reader has no separate image
+    /// node, and CommonMark forbids a link from containing another link at any nesting depth.</summary>
+    [Fact]
+    public void Read_WhenLinkLabelContainsALinkShapedNestedSequence_ResolvesTheOuterLinkAndFlattensTheNestedOne()
+    {
+        // Arrange and act
+        var link = new MarkdownDocumentReader().Read("[![alt](img.png)](http://example.invalid)")
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentLink>();
+
+        // Assert
+        link.Target.ShouldBe("http://example.invalid");
+        link.Text.ShouldBe("![alt](img.png)");
+    }
+
+    /// <summary>Verifies the "no nested link" rule propagates through an intermediate inline
+    /// container - not just when the link-shaped sequence sits directly in the label - since a
+    /// link's own label is free to contain emphasis or strong text that itself wraps further
+    /// content.</summary>
+    [Fact]
+    public void Read_WhenLinkLabelContainsALinkShapedSequenceInsideStrong_FlattensTheNestedOne()
+    {
+        // Arrange and act
+        var link = new MarkdownDocumentReader().Read("[**[inner](x)**](http://example.invalid)")
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentLink>();
+
+        // Assert
+        link.Target.ShouldBe("http://example.invalid");
+        var strong = link.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentStrong>();
+        strong.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("[inner](x)");
     }
 
     /// <summary>Verifies trailing hashes close a heading only when whitespace separates them.</summary>

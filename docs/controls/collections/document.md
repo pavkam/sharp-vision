@@ -315,6 +315,12 @@ The control participates in the ordinary retained tree, routed input, focus,
 measurement, and disposal contracts. A desired-size change reflows later
 document content. The same control instance cannot appear in two document nodes.
 
+**Known limitation:** the document measures every embedded control unbounded
+before its own layout pass ever runs, so a percentage `Width` or `Height` on the
+embedded control always resolves as if it were `Auto` rather than sizing against
+the document's own content width. Give an embedded control a fixed or automatic
+size instead.
+
 ### DocumentCallout
 
 | Member   | Type                      | Default  | Description                                       |
