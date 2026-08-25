@@ -90,7 +90,7 @@ classDiagram
 | `LineSize`                                                                                     | `int`                                         | `1`              | Non-negative lines one arrow key or wheel notch scrolls; rejects a negative value.       |
 | `PageOverlap`                                                                                  | `int`                                         | `0`              | Non-negative lines a page command keeps in view; rejects a negative value.               |
 | `ShowScrollBars`                                                                               | `ShowScrollBars`                              | `WhenNeeded`     | When the generated vertical scrollbar is shown; rejects an undefined value.              |
-| `ActiveLink`                                                                                   | `DocumentLink?`                               | `null`           | The focused link; assigning a foreign or disabled link clears the selection instead.     |
+| `ActiveLink`                                                                                   | `DocumentLink?`                               | `null`           | Focused projected link; unprojected, foreign, or disabled assignments clear it.          |
 | `Selection`                                                                                    | `Selection`                                   | Empty at `0`     | Read-only directional UTF-16 range over the normalized semantic stream.                  |
 | Inherited `IsTextSelectionEnabled`                                                             | `bool`                                        | `true`           | Enabled by the constructor; disabling clears Document selection and selection gestures.  |
 | Inherited `TextSelection`                                                                      | `Selection`                                   | Empty at `0`     | The same committed directional value exposed by `Selection`.                             |
@@ -146,7 +146,9 @@ provide a seekable or independently buffered source.
 >
 > `ActiveLink` resolves against the links the most recent layout pass found.
 > Assigning it on a document that has not been measured yet leaves it `null`,
-> because there is no projected link sequence to match the value against.
+> because there is no projected link sequence to match the value against. A link
+> added after that pass likewise remains unselectable until a later layout
+> projects it; rejected assignments never become latent selections.
 
 ## Content tree
 

@@ -840,7 +840,8 @@ public sealed class Document:
 
     /// <summary>Gets or sets the focused link, or null when no link is focused.</summary>
     /// <remarks>
-    /// Setting a link that is not in this document, or is disabled, clears the selection instead.
+    /// Selection resolves against the links in the most recent layout projection. Setting a link
+    /// that is unprojected, not in this document, or disabled clears the selection instead.
     /// Disabling or detaching the focused link also clears the selection synchronously.
     /// </remarks>
     /// <exception cref="InvalidOperationException">The attached document is mutated off-dispatcher.</exception>
@@ -869,7 +870,7 @@ public sealed class Document:
 
             var selected = value is { IsEnabled: true } &&
                            ReferenceEquals(value.OwnerDocument, this) &&
-                           (!_layoutValid || index >= 0)
+                           index >= 0
                 ? value
                 : null;
 

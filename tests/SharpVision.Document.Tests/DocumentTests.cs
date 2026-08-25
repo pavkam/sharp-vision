@@ -323,21 +323,64 @@ public sealed class DocumentTests
         document.ActiveLinkIndex.ShouldBe(-1);
     }
 
-    /// <summary>Verifies an owned link can be selected before the first measure and survives the
-    /// initial projection by identity.</summary>
+    /// <summary>Verifies owned links cannot be selected before the first projection and no latent
+    /// selection appears when layout later includes a visible link but omits an empty one.</summary>
     [Fact]
-    public void ActiveLink_WhenOwnedLinkIsSelectedBeforeLayout_PreservesSelection()
+    public void ActiveLink_WhenOwnedLinksAreAssignedBeforeLayout_LeavesSelectionEmptyUntilProjected()
     {
         // Arrange
-        var link = new DocumentLink("link");
-        var document = LinkDocument(link);
+        var empty = new DocumentLink();
+        var visible = new DocumentLink("visible");
+        var document = LinkDocument(empty, visible);
 
-        // Act and assert
-        document.ActiveLink = link;
-        document.ActiveLink.ShouldBeSameAs(link);
+        // Act and assert: no projection exists yet.
+        document.ActiveLink = visible;
+        document.ActiveLink.ShouldBeNull();
+        document.ActiveLinkIndex.ShouldBe(-1);
+        document.ActiveLink = empty;
+        document.ActiveLink.ShouldBeNull();
+
+        // Act and assert: first layout does not resurrect either rejected assignment.
         new LayoutEngine().Layout(document, new Size(20, 2));
-        document.ActiveLink.ShouldBeSameAs(link);
+        document.ActiveLink.ShouldBeNull();
+        document.ActiveLinkIndex.ShouldBe(-1);
+
+        // Act and assert: projection membership now distinguishes the two owned links.
+        document.ActiveLink = empty;
+        document.ActiveLink.ShouldBeNull();
+        document.ActiveLink = visible;
+        document.ActiveLink.ShouldBeSameAs(visible);
         document.ActiveLinkIndex.ShouldBe(0);
+    }
+
+    /// <summary>Verifies an owned link added after layout cannot be selected from a stale
+    /// projection, then becomes selectable after the next layout includes it.</summary>
+    [Fact]
+    public void ActiveLink_WhenOwnedLinkIsAbsentFromLatestProjection_CannotSelectUntilReprojected()
+    {
+        // Arrange
+        var first = new DocumentLink("first");
+        var added = new DocumentLink("added");
+        var document = LinkDocument(first);
+        new LayoutEngine().Layout(document, new Size(20, 2));
+        var addedParagraph = new DocumentParagraph();
+        addedParagraph.Inlines.Add(added);
+        document.Blocks.Add(addedParagraph);
+
+        // Act
+        document.ActiveLink = added;
+
+        // Assert
+        document.ActiveLink.ShouldBeNull();
+        document.ActiveLinkIndex.ShouldBe(-1);
+
+        // Act
+        new LayoutEngine().Layout(document, new Size(20, 2));
+        document.ActiveLink = added;
+
+        // Assert
+        document.ActiveLink.ShouldBeSameAs(added);
+        document.ActiveLinkIndex.ShouldBe(1);
     }
 
     /// <summary>Verifies removing the selected link's paragraph by position clears selection before
