@@ -45,5 +45,5 @@ internal readonly struct DocumentLinkRegion
     /// <param name="column">The candidate column.</param>
     /// <returns>True when the column is covered.</returns>
     [Pure]
-    public bool Contains(int column) => column >= Column && column < Column + Cells;
+    public bool Contains(int column) => column >= Column && column < (long) Column + Cells;
 }

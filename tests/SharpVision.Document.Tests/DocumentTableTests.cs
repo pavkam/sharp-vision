@@ -154,4 +154,36 @@ public sealed class DocumentTableTests
         checkBox.Bounds.Width.ShouldBeGreaterThan(0);
         render.Row(0).ShouldContain("Ready");
     }
+
+    /// <summary>Verifies an extreme measured column followed by empty right-aligned content uses
+    /// saturated geometry without materializing impossible padding.</summary>
+    [Fact]
+    public void Layout_WhenTableColumnHasExtremeControlWidth_SaturatesPaddingAndExtent()
+    {
+        // Arrange
+        var checkBox = new CheckBox("wide") { Width = Length.Cells(int.MaxValue) };
+        var table = new DocumentTable
+        {
+            Rows =
+            {
+                new DocumentTableRow
+                {
+                    Cells = { new DocumentTableCell { Inlines = { new DocumentInlineControl(checkBox) } } }
+                },
+                new DocumentTableRow
+                {
+                    Cells = { new DocumentTableCell { Alignment = DocumentTableCellAlignment.Right } }
+                }
+            }
+        };
+        var document = new Document { Blocks = { table } };
+
+        // Act
+        using var render = new DocumentRenderProbe(document, new Size(12, 2));
+
+        // Assert
+        document.Extent.Width.ShouldBe(int.MaxValue);
+        checkBox.Bounds.Width.ShouldBe(int.MaxValue);
+        render.Row(1).ShouldStartWith("|");
+    }
 }

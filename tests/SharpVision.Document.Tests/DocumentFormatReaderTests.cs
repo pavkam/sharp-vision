@@ -92,6 +92,40 @@ public sealed class DocumentFormatReaderTests
         stream.Position.ShouldBe(0);
     }
 
+    /// <summary>Verifies BOM detection preserves strict decoding for every Unicode encoding it can
+    /// select instead of silently installing replacement fallback.</summary>
+    [Fact]
+    public async Task LoadAsync_WhenBomPrecedesMalformedUnicode_ThrowsAndPreservesExistingBlocksAsync()
+    {
+        // Arrange
+        var cases = new byte[][]
+        {
+            [0xef, 0xbb, 0xbf, 0xc3, 0x28],
+            [0xff, 0xfe, 0x00, 0xd8],
+            [0xfe, 0xff, 0xd8, 0x00],
+            [0xff, 0xfe, 0x00, 0x00, 0x00, 0x00, 0x11, 0x00],
+            [0x00, 0x00, 0xfe, 0xff, 0x00, 0x11, 0x00, 0x00]
+        };
+
+        foreach (var bytes in cases)
+        {
+            var document = new DocumentControl { Blocks = { new DocumentParagraph("old") } };
+            await using var stream = new MemoryStream(bytes);
+
+            // Act
+            var action = async () => await document.LoadAsync(
+                stream,
+                new PlainTextDocumentReaderProbe(),
+                cancellationToken: TestContext.Current.CancellationToken);
+
+            // Assert
+            _ = await action.ShouldThrowAsync<DecoderFallbackException>();
+            stream.Position.ShouldBe(0);
+            document.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines[0]
+                .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("old");
+        }
+    }
+
     /// <summary>Verifies a pre-canceled token is observed before any block replaces the current tree.</summary>
     [Fact]
     public async Task LoadAsync_WhenTokenIsAlreadyCanceled_ThrowsAndPreservesExistingBlocksAsync()

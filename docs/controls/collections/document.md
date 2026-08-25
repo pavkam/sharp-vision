@@ -133,8 +133,11 @@ content would exceed it, before any block ever replaces the current tree - then
 checks cancellation at the EOF-to-parse handoff, parses the accumulated text,
 and checks again before validation and replacement. Each decode read requests at
 most the remaining allowance plus one character, so excess input is detected
-without filling the pooled buffer first. `encoding` defaults to strict UTF-8
-with byte-order-mark detection.
+without filling the pooled buffer first. `encoding` defaults to strict UTF-8. A
+UTF-8, UTF-16 little- or big-endian, or UTF-32 little- or big-endian byte-order
+mark selects that encoding while retaining strict invalid-byte fallback;
+malformed input throws `DecoderFallbackException` rather than silently inserting
+replacement characters.
 
 Both load paths revalidate the reader result as one complete mutable tree before
 clearing existing content. Cross-root duplicate controls, attached nodes, and
@@ -156,6 +159,10 @@ provide a seekable or independently buffered source.
 > because there is no projected link sequence to match the value against. A link
 > added after that pass likewise remains unselectable until a later layout
 > projects it; rejected assignments never become latent selections.
+
+Reading `ActiveLink` after disposal throws `ObjectDisposedException`. Disposal
+also clears the retained link reference and its internal projected index, so an
+unavailable document cannot keep a detached interactive selection alive.
 
 ## Content tree
 
@@ -366,6 +373,9 @@ measurement, and disposal contracts. A desired-size change reflows later
 document content. The same control instance cannot appear in two document nodes.
 A collapsed block control remains retained but contributes neither rows nor
 sibling spacing; making it visible restores its ordinary block position.
+Embedded-control widths participate in saturating cell geometry: an extreme
+desired width can overflow the viewport and saturate `Extent.Width`, but cannot
+wrap a committed line negative or overflow nested and table layout arithmetic.
 
 **Known limitation:** the document measures every embedded control unbounded
 before its own layout pass ever runs, so a percentage `Width` or `Height` on the
@@ -408,7 +418,9 @@ A cell owns flowing `Inlines`, and its `Alignment` is `Left`, `Center`, or
 cell so headings and body values stay aligned. Rich inline attributes, links,
 and one-line retained controls remain active inside cells; table layout never
 flattens them to decorative text. Content still clips to the document viewport
-when the complete table is wider than the available cells.
+when the complete table is wider than the available cells. Alignment padding is
+represented as bounded repeated-cell runs rather than materialized strings, so
+even a saturated column width has bounded allocation.
 
 ## Inlines
 
@@ -421,6 +433,10 @@ on its own line and overflows it rather than being split mid-word.
 Whitespace an author actually typed survives — at the start of a paragraph and
 immediately after a hard break — while whitespace that a wrap pushed to the
 front of a continuation line is dropped.
+
+U+00A0 NO-BREAK SPACE, U+202F NARROW NO-BREAK SPACE, and U+2060 WORD JOINER stay
+inside the surrounding word and never introduce a wrap opportunity. Ordinary
+breakable whitespace keeps the greedy wrapping behavior above.
 
 `DocumentInlineControl` contributes one indivisible, exactly one-cell-high
 retained control to that flow. A collapsed inline control remains retained but

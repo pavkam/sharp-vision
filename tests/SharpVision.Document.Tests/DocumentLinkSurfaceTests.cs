@@ -16,6 +16,40 @@ using Document = Controls.Documents.Document;
 /// disabled state cascade.</summary>
 public sealed class DocumentLinkSurfaceTests
 {
+    /// <summary>Verifies disposal clears the selected link and rejects subsequent access instead of
+    /// exposing stale state from an unavailable control.</summary>
+    [Fact]
+    public void ActiveLink_WhenDocumentIsDisposed_ClearsStateAndThrows()
+    {
+        // Arrange
+        var link = new DocumentLink("link");
+        var document = LinkDocument(link);
+        using var probe = new DocumentRenderProbe(document, new Size(12, 2));
+        document.ActiveLink = link;
+        document.ActiveLinkIndex.ShouldBe(0);
+
+        // Act
+        document.Dispose();
+
+        // Assert
+        document.ActiveLinkIndex.ShouldBe(-1);
+        _ = Should.Throw<ObjectDisposedException>(() => document.ActiveLink);
+    }
+
+    /// <summary>Verifies disposal rejects active-link access even when no selection needed clearing.</summary>
+    [Fact]
+    public void ActiveLink_WhenDisposedWithoutSelection_Throws()
+    {
+        // Arrange
+        var document = new Document();
+
+        // Act
+        document.Dispose();
+
+        // Assert
+        _ = Should.Throw<ObjectDisposedException>(() => document.ActiveLink);
+    }
+
     /// <summary>Verifies links with no painted cells are omitted from active-link navigation.</summary>
     [Fact]
     public void ActiveLink_WhenLinkHasNoVisibleRegion_CannotSelectTheInvisibleLink()

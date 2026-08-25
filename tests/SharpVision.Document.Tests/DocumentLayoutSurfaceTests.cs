@@ -85,6 +85,40 @@ public sealed class DocumentLayoutSurfaceTests
         probe.Row(2).ShouldBe("cd");
     }
 
+    /// <summary>Verifies non-breaking separators stay inside one over-wide word instead of becoming
+    /// discarded continuation-line whitespace.</summary>
+    [Theory]
+    [InlineData("\u00a0")]
+    [InlineData("\u202f")]
+    [InlineData("\u2060")]
+    public void Render_WhenTextContainsNonBreakingSeparator_DoesNotWrapAtTheSeparator(string separator)
+    {
+        // Arrange
+        var document = new Document { Blocks = { new DocumentParagraph($"ab{separator}cd") } };
+
+        // Act
+        using var probe = new DocumentRenderProbe(document, new Size(3, 2));
+
+        // Assert
+        probe.Row(1).ShouldBeEmpty();
+        document.SelectionMap.Text.ShouldBe($"ab{separator}cd");
+    }
+
+    /// <summary>Verifies ordinary ASCII space remains a wrap opportunity beside the non-breaking
+    /// separator cases.</summary>
+    [Fact]
+    public void Render_WhenTextContainsOrdinarySpace_WrapsAtTheSpace()
+    {
+        // Arrange
+        var document = new Document { Blocks = { new DocumentParagraph("ab cd") } };
+
+        // Act
+        using var probe = new DocumentRenderProbe(document, new Size(3, 2));
+
+        // Assert
+        probe.Rows().ShouldBe(["ab", "cd"]);
+    }
+
     /// <summary>Verifies wrapping treats each extended grapheme as an indivisible unit across
     /// combining, variation-selector, ZWJ, and wide-cell content.</summary>
     [Theory]

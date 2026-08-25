@@ -267,7 +267,7 @@ internal sealed class DocumentLayout
             gutter = Math.Max(gutter, MeasureCells(markers[index]));
         }
 
-        gutter += _markerGap;
+        gutter = gutter.Add(_markerGap);
 
         for (var index = 0; index < list.Items.Count; index++)
         {
@@ -293,7 +293,7 @@ internal sealed class DocumentLayout
             // above its nested list with no blank line between them.
             EmitBlocks(
                 list.Items[index].Blocks,
-                indent + gutter,
+                indent.Add(gutter),
                 spacing: 0,
                 face,
                 listDepth + 1,
@@ -302,7 +302,7 @@ internal sealed class DocumentLayout
 
             if (_lines.Count == firstLine)
             {
-                EmitBlankLine(indent + gutter);
+                EmitBlankLine(indent.Add(gutter));
             }
 
             _markers.Add(new DocumentMarkerPlacement(firstLine, indent, markers[index], foregroundOverride));
@@ -318,7 +318,7 @@ internal sealed class DocumentLayout
         var firstLine = _lines.Count;
         EmitBlocks(
             quote.Blocks,
-            indent + _quoteIndent,
+            indent.Add(_quoteIndent),
             spacing: 1,
             DocumentFaceKind.Quote,
             listDepth,
@@ -327,7 +327,7 @@ internal sealed class DocumentLayout
 
         if (_lines.Count == firstLine)
         {
-            EmitBlankLine(indent + _quoteIndent);
+            EmitBlankLine(indent.Add(_quoteIndent));
         }
 
         _quoteBars.Add(new DocumentQuoteBar(
@@ -405,7 +405,7 @@ internal sealed class DocumentLayout
                 foregroundOverride));
         }
 
-        CommitLine(runStart, indent + cells);
+        CommitLine(runStart, indent.Add(cells));
     }
 
     private void EmitRule(int indent, DocumentFaceKind? foregroundOverride)
@@ -423,7 +423,7 @@ internal sealed class DocumentLayout
                 foregroundOverride));
         }
 
-        CommitLine(runStart, indent + cells);
+        CommitLine(runStart, indent.Add(cells));
     }
 
     private void EmitBlankLine(int indent) => CommitLine(_runs.Count, indent);
@@ -446,7 +446,7 @@ internal sealed class DocumentLayout
 
         for (var line = 0; line < height; line++)
         {
-            CommitLine(_runs.Count, indent + desired.Width);
+            CommitLine(_runs.Count, indent.Add(desired.Width));
         }
     }
 
@@ -460,8 +460,8 @@ internal sealed class DocumentLayout
         var title = callout.Title.Length == 0
             ? FormattableString.Invariant($"[{callout.Kind}]")
             : FormattableString.Invariant($"[{callout.Kind}] {callout.Title}");
-        EmitLiteralFlow(title, indent + _quoteIndent, titleFace, foregroundOverride: null);
-        EmitBlocks(callout.Blocks, indent + _quoteIndent, spacing: 1, bodyFace, listDepth, bodyFace);
+        EmitLiteralFlow(title, indent.Add(_quoteIndent), titleFace, foregroundOverride: null);
+        EmitBlocks(callout.Blocks, indent.Add(_quoteIndent), spacing: 1, bodyFace, listDepth, bodyFace);
         _quoteBars.Add(new DocumentQuoteBar(
             firstLine,
             _lines.Count - 1,
@@ -557,24 +557,15 @@ internal sealed class DocumentLayout
                     _ => 0
                 };
 
-                AppendLiteral(
-                    new string(' ', leading + 1),
-                    ref position,
-                    face,
-                    foregroundOverride,
-                    isBold: row.IsHeader);
+                AppendSpaces(leading.Add(1), ref position, face, foregroundOverride);
 
                 foreach (var token in tokens)
                 {
                     AppendTableToken(token, ref position, foregroundOverride);
                 }
 
-                AppendLiteral(
-                    new string(' ', missing - leading + 1) + "|",
-                    ref position,
-                    face,
-                    foregroundOverride,
-                    isBold: row.IsHeader);
+                AppendSpaces((missing - leading).Add(1), ref position, face, foregroundOverride);
+                AppendLiteral("|", ref position, face, foregroundOverride, isBold: row.IsHeader);
             }
 
             CommitLine(runStart, position);
@@ -588,6 +579,11 @@ internal sealed class DocumentLayout
         DocumentFaceKind? foregroundOverride,
         bool isBold)
     {
+        if (column == int.MaxValue)
+        {
+            return;
+        }
+
         var parsedRunIndex = _parsedRuns.Count;
         var spans = isBold && text.Length > 0
             ? (StyleSpan[])
@@ -614,7 +610,33 @@ internal sealed class DocumentLayout
             face,
             linkIndex: -1,
             foregroundOverride));
-        column += cells;
+        column = column.Add(cells);
+    }
+
+    private void AppendSpaces(
+        int cells,
+        ref int column,
+        DocumentFaceKind face,
+        DocumentFaceKind? foregroundOverride)
+    {
+        if (cells <= 0)
+        {
+            return;
+        }
+
+        var drawableCells = Math.Min(cells, int.MaxValue - column);
+
+        if (drawableCells > 0)
+        {
+            _runs.Add(DocumentVisualRun.ForRepeat(
+                column,
+                drawableCells,
+                new Rune(' '),
+                face,
+                foregroundOverride));
+        }
+
+        column = column.Add(cells);
     }
 
     private void AppendTableToken(
@@ -631,7 +653,7 @@ internal sealed class DocumentLayout
                 DocumentFaceKind.Table,
                 foregroundOverride,
                 token.SemanticRange));
-            column++;
+            column = column.Add(1);
             return;
         }
 
@@ -660,12 +682,21 @@ internal sealed class DocumentLayout
                     token.LinkIndex,
                     foregroundOverride)
                 : throw new UnreachableException("A non-control table token must provide text or a repeated glyph."));
-        column += token.Cells;
+        column = column.Add(token.Cells);
     }
 
     [Pure]
-    private static int MeasureTableCell(IEnumerable<DocumentFlowToken> tokens) =>
-        tokens.Sum(static token => token.Kind == DocumentFlowTokenKind.Break ? 1 : token.Cells);
+    private static int MeasureTableCell(IEnumerable<DocumentFlowToken> tokens)
+    {
+        var cells = 0;
+
+        foreach (var token in tokens)
+        {
+            cells = cells.Add(token.Kind == DocumentFlowTokenKind.Break ? 1 : token.Cells);
+        }
+
+        return cells;
+    }
 
     #endregion
 
@@ -939,9 +970,12 @@ internal sealed class DocumentLayout
                 continue;
             }
 
-            // A grapheme cluster longer than one UTF-16 unit is never plain whitespace under Unicode
-            // segmentation, so testing a single-unit cluster is sufficient.
-            var graphemeIsSpace = grapheme.Length == 1 && char.IsWhiteSpace(display[offset]);
+            // NBSP and narrow NBSP are Unicode glue, while word joiner is not whitespace at all.
+            // Keeping all three inside the surrounding word prevents a wrap opportunity that would
+            // violate their explicit non-breaking contract.
+            var graphemeIsSpace = grapheme.Length == 1 &&
+                                  char.IsWhiteSpace(display[offset]) &&
+                                  display[offset] is not ('\u00a0' or '\u202f');
 
             if (length == 0)
             {
@@ -965,7 +999,7 @@ internal sealed class DocumentLayout
     {
         // A degenerate width still has to make progress, so at least one cell is always available;
         // an over-wide token then simply overflows its line rather than looping forever.
-        var available = Math.Max(1, _width - indent);
+        var available = Math.Max(1, SaturatingSubtract(_width, indent));
         var runStart = _runs.Count;
         var column = indent;
         var lineWidth = 0;
@@ -976,7 +1010,7 @@ internal sealed class DocumentLayout
         {
             if (token.Kind == DocumentFlowTokenKind.Break)
             {
-                CommitLine(runStart, indent + lineWidth);
+                CommitLine(runStart, indent.Add(lineWidth));
                 runStart = _runs.Count;
                 column = indent;
                 lineWidth = 0;
@@ -993,9 +1027,9 @@ internal sealed class DocumentLayout
                 continue;
             }
 
-            if (hasContent && lineWidth + token.Cells > available)
+            if (hasContent && lineWidth.Add(token.Cells) > available)
             {
-                CommitLine(runStart, indent + lineWidth);
+                CommitLine(runStart, indent.Add(lineWidth));
                 runStart = _runs.Count;
                 column = indent;
                 lineWidth = 0;
@@ -1034,12 +1068,12 @@ internal sealed class DocumentLayout
                         foregroundOverride)
                     : throw new UnreachableException("A non-control flow token must provide text or a repeated glyph."));
 
-            column += token.Cells;
-            lineWidth += token.Cells;
+            column = column.Add(token.Cells);
+            lineWidth = lineWidth.Add(token.Cells);
             hasContent = true;
         }
 
-        CommitLine(runStart, indent + lineWidth);
+        CommitLine(runStart, indent.Add(lineWidth));
     }
 
     #endregion
@@ -1091,7 +1125,7 @@ internal sealed class DocumentLayout
 
             while (index < end && _runs[index].LinkIndex == linkIndex)
             {
-                cells += _runs[index].Cells;
+                cells = cells.Add(_runs[index].Cells);
                 index++;
             }
 
@@ -1147,12 +1181,12 @@ internal sealed class DocumentLayout
             {
                 var advance = _tabAdvance - (cells % _tabAdvance);
                 _ = builder.Append(' ', advance);
-                cells += advance;
+                cells = cells.Add(advance);
                 continue;
             }
 
             _ = builder.Append(slice);
-            cells += UnicodeWidth.Measure(slice, _ambiguousWidth).Cells;
+            cells = cells.Add(UnicodeWidth.Measure(slice, _ambiguousWidth).Cells);
         }
 
         return builder.ToString();

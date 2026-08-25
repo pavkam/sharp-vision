@@ -38,6 +38,11 @@ be loaded into another document.
 configuration or oversized input. This is a format-independent memory boundary,
 not a Markdown rule.
 
+Before block parsing, the Markdown reader normalizes CRLF and CR line endings to
+LF and replaces every U+0000 NUL with U+FFFD REPLACEMENT CHARACTER. The latter
+is CommonMark's insecure-character normalization: a NUL never reaches document
+text, destinations, or other semantic nodes unchanged.
+
 An inline link with an empty destination, such as `[label]()`, remains a
 semantic `DocumentLink` with a null `Target`. It keeps document link navigation
 and activation semantics without emitting an invalid OSC 8 hyperlink target.

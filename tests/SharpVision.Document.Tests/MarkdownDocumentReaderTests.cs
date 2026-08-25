@@ -429,6 +429,23 @@ public sealed class MarkdownDocumentReaderTests
         paragraph.Inlines.OfType<DocumentSoftBreak>().Count().ShouldBe(2);
     }
 
+    /// <summary>Verifies CommonMark's insecure-character normalization replaces every literal NUL
+    /// before semantic parsing.</summary>
+    [Fact]
+    public void Read_WhenSourceContainsNul_ReplacesItWithTheUnicodeReplacementCharacter()
+    {
+        // Arrange
+        const string source = "before\0after";
+
+        // Act
+        var run = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentTextRun>();
+
+        // Assert
+        run.Text.ShouldBe("before\ufffdafter");
+    }
+
     /// <summary>Verifies missing separators and non-ASCII whitespace do not become task markers.</summary>
     [Theory]
     [InlineData("- [x]task")]

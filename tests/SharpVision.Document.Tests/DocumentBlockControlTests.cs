@@ -363,4 +363,53 @@ public sealed class DocumentBlockControlTests
         using var collapsedAgain = new DocumentRenderProbe(document, new Size(20, 4));
         collapsedAgain.Row(0).ShouldBe("After");
     }
+
+    /// <summary>Verifies maximum-width inline controls saturate flow geometry and force following
+    /// content onto a reachable line.</summary>
+    [Theory]
+    [InlineData(int.MaxValue - 1)]
+    [InlineData(int.MaxValue)]
+    public void Layout_WhenInlineControlHasExtremeWidth_SaturatesExtentAndWrapsFollowingText(int width)
+    {
+        // Arrange
+        var checkBox = new CheckBox("wide") { Width = Length.Cells(width) };
+        var document = new Document
+        {
+            Blocks =
+            {
+                new DocumentParagraph
+                {
+                    Inlines = { new DocumentInlineControl(checkBox), new DocumentTextRun("x") }
+                }
+            }
+        };
+
+        // Act
+        using var probe = new DocumentRenderProbe(document, new Size(12, 2));
+
+        // Assert
+        document.Extent.Width.ShouldBe(width);
+        checkBox.Bounds.Width.ShouldBe(width);
+        probe.Row(1).ShouldBe("x");
+    }
+
+    /// <summary>Verifies a maximum-width block control nested at a positive indent saturates rather
+    /// than wrapping committed line geometry negative.</summary>
+    [Fact]
+    public void Layout_WhenNestedBlockControlHasExtremeWidth_SaturatesExtent()
+    {
+        // Arrange
+        var checkBox = new CheckBox("wide") { Width = Length.Cells(int.MaxValue) };
+        var document = new Document
+        {
+            Blocks = { new DocumentBlockQuote { Blocks = { new DocumentBlockControl(checkBox) } } }
+        };
+
+        // Act
+        using var probe = new DocumentRenderProbe(document, new Size(12, 2));
+
+        // Assert
+        document.Extent.Width.ShouldBe(int.MaxValue);
+        checkBox.Bounds.Width.ShouldBe(int.MaxValue);
+    }
 }

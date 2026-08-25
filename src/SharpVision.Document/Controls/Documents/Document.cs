@@ -145,6 +145,8 @@ public sealed class Document:
     /// <exception cref="ArgumentException"><paramref name="source"/> is not readable, or the reader
     /// result is no longer one complete detached tree.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Decoded content exceeds the configured limit.</exception>
+    /// <exception cref="DecoderFallbackException">The source contains malformed data for its
+    /// explicit or byte-order-mark-selected Unicode encoding.</exception>
     /// <exception cref="InvalidOperationException">The attached document is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The document or source stream is disposed.</exception>
     /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> is canceled.</exception>
@@ -170,10 +172,36 @@ public sealed class Document:
 
         try
         {
-            using var textReader = new StreamReader(
-                source,
+            var encodingPrefix = new byte[4];
+            var encodingPrefixLength = 0;
+
+            while (encodingPrefixLength < encodingPrefix.Length)
+            {
+                var count = await source.ReadAsync(
+                    encodingPrefix.AsMemory(encodingPrefixLength),
+                    cancellationToken);
+
+                if (count == 0)
+                {
+                    break;
+                }
+
+                encodingPrefixLength += count;
+            }
+
+            encoding = ResolveStreamEncoding(
+                encodingPrefix.AsSpan(0, encodingPrefixLength),
                 encoding,
-                detectEncodingFromByteOrderMarks: true,
+                out var preambleLength);
+            using var decodedSource = new DocumentPrefixedReadStream(
+                source,
+                encodingPrefix,
+                preambleLength,
+                encodingPrefixLength - preambleLength);
+            using var textReader = new StreamReader(
+                decodedSource,
+                encoding,
+                detectEncodingFromByteOrderMarks: false,
                 bufferSize: 4096,
                 leaveOpen: true);
             var builder = new StringBuilder(Math.Min(options.MaximumCharacters, 4096));
@@ -883,9 +911,13 @@ public sealed class Document:
     /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
     public DocumentLink? ActiveLink
     {
-        get => _activeLink is { IsEnabled: true } link && ReferenceEquals(link.OwnerDocument, this)
-            ? link
-            : null;
+        get
+        {
+            ObjectDisposedException.ThrowIf(IsDisposed, this);
+            return _activeLink is { IsEnabled: true } link && ReferenceEquals(link.OwnerDocument, this)
+                ? link
+                : null;
+        }
         set
         {
             VerifyMutable();
@@ -1854,6 +1886,48 @@ public sealed class Document:
     private static int AddCoordinates(int left, int right) =>
         (int) Math.Clamp((long) left + right, int.MinValue, int.MaxValue);
 
+    [Pure]
+    private static Encoding ResolveStreamEncoding(
+        ReadOnlySpan<byte> prefix,
+        Encoding fallback,
+        out int preambleLength)
+    {
+        if (prefix.Length >= 4 &&
+            prefix[0] == 0xff && prefix[1] == 0xfe && prefix[2] == 0x00 && prefix[3] == 0x00)
+        {
+            preambleLength = 4;
+            return new UTF32Encoding(bigEndian: false, byteOrderMark: false, throwOnInvalidCharacters: true);
+        }
+
+        if (prefix.Length >= 4 &&
+            prefix[0] == 0x00 && prefix[1] == 0x00 && prefix[2] == 0xfe && prefix[3] == 0xff)
+        {
+            preambleLength = 4;
+            return new UTF32Encoding(bigEndian: true, byteOrderMark: false, throwOnInvalidCharacters: true);
+        }
+
+        if (prefix.Length >= 3 && prefix[0] == 0xef && prefix[1] == 0xbb && prefix[2] == 0xbf)
+        {
+            preambleLength = 3;
+            return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+        }
+
+        if (prefix.Length >= 2 && prefix[0] == 0xff && prefix[1] == 0xfe)
+        {
+            preambleLength = 2;
+            return new UnicodeEncoding(bigEndian: false, byteOrderMark: false, throwOnInvalidBytes: true);
+        }
+
+        if (prefix.Length >= 2 && prefix[0] == 0xfe && prefix[1] == 0xff)
+        {
+            preambleLength = 2;
+            return new UnicodeEncoding(bigEndian: true, byteOrderMark: false, throwOnInvalidBytes: true);
+        }
+
+        preambleLength = 0;
+        return fallback;
+    }
+
     #endregion
 
     #region Lifecycle
@@ -1861,6 +1935,12 @@ public sealed class Document:
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
+        if (reason == ReleaseReason.Disposed)
+        {
+            _activeLink = null;
+            ActiveLinkIndex = -1;
+        }
+
         base.OnUnavailable(reason);
         if (reason == ReleaseReason.Disposed)
         {

@@ -47,7 +47,9 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 "The document exceeds the configured maximum character count.");
         }
 
-        var normalized = source.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+        var normalized = source.Replace('\0', '\ufffd')
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
         var lines = normalized.Split('\n');
         var radioGroupOrdinal = 0;
         var diagnostics = new List<DocumentDiagnostic>();
