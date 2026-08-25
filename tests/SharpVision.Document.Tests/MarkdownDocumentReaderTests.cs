@@ -62,6 +62,75 @@ public sealed class MarkdownDocumentReaderTests
             .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("Heading");
     }
 
+    /// <summary>Verifies the largest permitted ordered marker remains a numbered list marker.</summary>
+    [Fact]
+    public void Read_WhenOrderedMarkerHasNineDigits_ProducesNumberedList()
+    {
+        // Arrange
+        const string source = "123456789. item";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        var list = result.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentList>();
+        list.Kind.ShouldBe(DocumentListKind.Numbered);
+        list.Start.ShouldBe(123456789);
+    }
+
+    /// <summary>Verifies a ten-digit prefix remains ordinary paragraph text instead of becoming an
+    /// ordered list marker.</summary>
+    [Fact]
+    public void Read_WhenOrderedMarkerHasTenDigits_PreservesParagraphText()
+    {
+        // Arrange
+        const string source = "1234567890. item";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        result.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines
+            .ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(source);
+    }
+
+    /// <summary>Verifies an ordered list starting at one may interrupt an open paragraph.</summary>
+    [Fact]
+    public void Read_WhenOrderedListStartingAtOneFollowsParagraph_ProducesSeparateBlocks()
+    {
+        // Arrange
+        const string source = "paragraph\n1. item";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        result.Blocks.Count.ShouldBe(2);
+        _ = result.Blocks[0].ShouldBeOfType<DocumentParagraph>();
+        result.Blocks[1].ShouldBeOfType<DocumentList>().Start.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a non-one ordered start cannot interrupt an open paragraph but remains a
+    /// valid marker when it begins a later block.</summary>
+    [Fact]
+    public void Read_WhenOrderedListStartingAboveOneFollowsParagraph_PreservesParagraphUntilBlankLine()
+    {
+        // Arrange
+        const string source = "paragraph\n2. prose\n\n2. item";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        result.Blocks.Count.ShouldBe(2);
+        var paragraph = result.Blocks[0].ShouldBeOfType<DocumentParagraph>();
+        paragraph.Inlines.Count.ShouldBe(3);
+        paragraph.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("paragraph");
+        _ = paragraph.Inlines[1].ShouldBeOfType<DocumentSoftBreak>();
+        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("2. prose");
+        result.Blocks[1].ShouldBeOfType<DocumentList>().Start.ShouldBe(2);
+    }
+
     /// <summary>Verifies disabled non-standard syntax remains ordinary visible source.</summary>
     [Fact]
     public void Read_WhenExtensionsAreDisabled_PreservesNonStandardSyntaxLiterally()

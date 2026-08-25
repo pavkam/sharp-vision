@@ -121,7 +121,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
             while (index < lines.Length && !string.IsNullOrWhiteSpace(lines[index]))
             {
-                if (paragraphLines.Count > 0 && IsBlockStart(lines[index]))
+                if (paragraphLines.Count > 0 && IsParagraphInterruptingBlockStart(lines[index]))
                 {
                     break;
                 }
@@ -1025,6 +1025,12 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         while (digits < trimmed.Length && char.IsAsciiDigit(trimmed[digits]))
         {
             digits++;
+
+            if (digits > 9)
+            {
+                marker = default;
+                return false;
+            }
         }
 
         if (digits > 0 && digits + 1 < trimmed.Length && trimmed[digits] is '.' or ')' && trimmed[digits + 1] == ' ' &&
@@ -1243,6 +1249,16 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         line.TrimStart().StartsWith("~~~", StringComparison.Ordinal) ||
         TryListMarker(line, out _) ||
         IsRule(line);
+
+    [Pure]
+    private bool IsParagraphInterruptingBlockStart(string line) =>
+        TryListMarker(line, out var marker)
+            ? !marker.IsOrdered || marker.Start == 1
+            : TryHeading(line, out _) ||
+              line.TrimStart().StartsWith('>') ||
+              line.TrimStart().StartsWith("```", StringComparison.Ordinal) ||
+              line.TrimStart().StartsWith("~~~", StringComparison.Ordinal) ||
+              IsRule(line);
 
     [Pure]
     private static int CountLeadingSpaces(string source)

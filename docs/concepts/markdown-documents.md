@@ -45,6 +45,13 @@ thematic breaks. Backslash escapes preserve punctuation literally. A hard break
 may use either two trailing spaces or a trailing backslash. Optional syntax
 stays visible as literal text when its extension is disabled.
 
+Ordered-list markers follow the
+[CommonMark 0.31.2 list-item grammar](https://spec.commonmark.org/0.31.2/#list-items):
+one to nine ASCII digits followed by `.` or `)`. Any valid start value forms a
+list after a block boundary, but only a list starting at `1` may interrupt an
+open paragraph. A ten-digit prefix and a non-one marker inside paragraph
+continuation remain literal paragraph text.
+
 Block-quote nesting is interpreted to a maximum of 64 semantic levels. Any
 deeper quote markers remain literal paragraph content, keeping hostile input
 bounded without discarding source text.
