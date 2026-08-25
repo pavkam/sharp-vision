@@ -15,6 +15,9 @@ internal sealed class DocumentPresenter: Container
     private readonly string _radioScope;
     private readonly DocumentSurface _surface;
 
+    /// <summary>Gets how many complete retained-control reconciliations have run.</summary>
+    internal int ReconciliationCount { get; private set; }
+
     /// <summary>Initializes a presenter with its painted surface as the backmost child.</summary>
     /// <param name="owner">The owning document.</param>
     /// <param name="surface">The painted surface.</param>
@@ -31,9 +34,11 @@ internal sealed class DocumentPresenter: Container
     /// <summary>Synchronizes retained children with the current document tree.</summary>
     internal void ReconcileControls()
     {
+        ReconciliationCount++;
         var desired = new List<ControlBase>();
         DocumentEmbeddedControlCollector.Collect(_owner.Blocks, desired);
         _ = desired.RemoveAll(static control => control.IsDisposed);
+        var desiredSet = new HashSet<ControlBase>(desired, ReferenceEqualityComparer.Instance);
 
         foreach (var radio in desired.OfType<RadioButton>())
         {
@@ -42,7 +47,7 @@ internal sealed class DocumentPresenter: Container
 
         for (var index = Children.Count - 1; index >= 1; index--)
         {
-            if (!desired.Contains(Children[index], ReferenceEqualityComparer.Instance))
+            if (!desiredSet.Contains(Children[index]))
             {
                 Children.RemoveAt(index);
             }

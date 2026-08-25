@@ -61,6 +61,8 @@ public sealed class DocumentLink: DocumentInlineContainer
     /// <see cref="DocumentTextRun"/>. Reading flattens semantic inline containers to visible source
     /// text and represents hard and soft breaks with newline and space respectively.</remarks>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public string Text
     {
         get
@@ -95,6 +97,8 @@ public sealed class DocumentLink: DocumentInlineContainer
     /// setting it is always safe.
     /// </remarks>
     /// <exception cref="ArgumentException">The value is empty or contains a control code unit.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public string? Target
     {
         get;
@@ -135,6 +139,8 @@ public sealed class DocumentLink: DocumentInlineContainer
     /// A disabled link renders with <see cref="DocumentStyle.DisabledLinkFace"/> regardless of
     /// <see cref="Emphasis"/>, is skipped by link navigation, and never raises <see cref="Clicked"/>.
     /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public bool IsEnabled
     {
         get;
@@ -162,6 +168,8 @@ public sealed class DocumentLink: DocumentInlineContainer
     /// separately styled document.
     /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public DocumentLinkEmphasis Emphasis
     {
         get;

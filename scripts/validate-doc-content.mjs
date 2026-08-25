@@ -107,6 +107,51 @@ export function findGitHubIssueIdentifiers(text, options = {}) {
 }
 
 /**
+ * Reports public document mutators that invoke the shared lifecycle guard without documenting both
+ * dispatcher-affinity and disposal failures.
+ *
+ * @param {string} text The C# source text.
+ * @returns {string[]} One message per missing lifecycle contract.
+ */
+export function findUndocumentedDocumentMutationLifecycle(text) {
+  const lines = text.split(/\r?\n/u);
+  const errors = [];
+
+  for (const [index, line] of lines.entries()) {
+    if (!line.includes("VerifyMutable();")) {
+      continue;
+    }
+
+    let declaration = index;
+
+    while (declaration >= 0 && !/^\s*public\s/u.test(lines[declaration])) {
+      declaration--;
+    }
+
+    if (declaration < 0) {
+      continue;
+    }
+
+    let documentationStart = declaration - 1;
+
+    while (documentationStart >= 0 && /^\s*\/\/\//u.test(lines[documentationStart])) {
+      documentationStart--;
+    }
+
+    const documentation = lines.slice(documentationStart + 1, declaration).join("\n");
+    const missing = ["InvalidOperationException", "ObjectDisposedException"].filter(
+      (exception) => !documentation.includes(`cref=\"${exception}\"`)
+    );
+
+    if (missing.length !== 0) {
+      errors.push(`line ${declaration + 1}: public document mutator omits ${missing.join(" and ")}`);
+    }
+  }
+
+  return errors;
+}
+
+/**
  * Blanks the contents of string literals while preserving line structure, so reported line numbers
  * stay accurate. Handles C# raw, verbatim, and ordinary literals plus JavaScript quotes; a lone
  * unterminated quote leaves the rest of its line blanked, which errs toward silence rather than a
@@ -188,6 +233,15 @@ export async function scanRepository(root) {
     })) {
       errors.push(`${relativePath}: ${error}`);
     }
+
+    if (
+      relativePath !== "src/SharpVision.Document/Controls/Documents/Document.cs" &&
+      /^src\/SharpVision\.Document\/Controls\/Documents\/Document.*\.cs$/u.test(relativePath)
+    ) {
+      for (const error of findUndocumentedDocumentMutationLifecycle(text)) {
+        errors.push(`${relativePath}: ${error}`);
+      }
+    }
   }
 
   return errors;
@@ -209,5 +263,5 @@ if (process.argv[1] !== undefined && import.meta.url.endsWith(basename(process.a
     process.exit(1);
   }
 
-  console.log("No GitHub issue references found in code, configuration, or documentation.");
+  console.log("Documentation content contracts are satisfied.");
 }

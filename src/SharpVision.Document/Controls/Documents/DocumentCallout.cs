@@ -17,6 +17,8 @@ public sealed class DocumentCallout: DocumentBlock
 
     /// <summary>Gets or sets the non-empty ordinal callout kind.</summary>
     /// <exception cref="ArgumentException">The value is empty.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public string Kind
     {
         get;
@@ -37,6 +39,8 @@ public sealed class DocumentCallout: DocumentBlock
 
     /// <summary>Gets or sets the non-null display title.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public string Title
     {
         get;

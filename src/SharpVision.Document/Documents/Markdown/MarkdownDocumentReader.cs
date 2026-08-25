@@ -13,7 +13,9 @@ using SharpVision.Text;
 [PublicAPI]
 public sealed class MarkdownDocumentReader: IDocumentFormatReader
 {
-    private const int _maximumBlockQuoteDepth = 64;
+    private const int _maximumRecursiveBlockDepth = 64;
+    private const string _nestingLimitDiagnostic =
+        "Markdown block nesting exceeded the supported limit; deeper markers remain literal.";
     private readonly MarkdownExtension _extensions;
 
     /// <summary>Initializes a baseline CommonMark reader.</summary>
@@ -47,11 +49,16 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         var normalized = source.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
         var lines = normalized.Split('\n');
         var radioGroupOrdinal = 0;
-        var blocks = ParseBlocks(lines, ref radioGroupOrdinal, quoteDepth: 0);
-        return new DocumentReadResult(blocks);
+        var diagnostics = new List<DocumentDiagnostic>();
+        var blocks = ParseBlocks(lines, ref radioGroupOrdinal, blockDepth: 0, diagnostics);
+        return new DocumentReadResult(blocks, diagnostics);
     }
 
-    private List<DocumentBlock> ParseBlocks(string[] lines, ref int radioGroupOrdinal, int quoteDepth)
+    private List<DocumentBlock> ParseBlocks(
+        string[] lines,
+        ref int radioGroupOrdinal,
+        int blockDepth,
+        List<DocumentDiagnostic> diagnostics)
     {
         var blocks = new List<DocumentBlock>();
         var index = 0;
@@ -88,7 +95,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
             if (TryBlockQuoteMarker(line, out _))
             {
-                blocks.Add(ParseQuote(lines, ref index, ref radioGroupOrdinal, quoteDepth));
+                blocks.Add(ParseQuote(lines, ref index, ref radioGroupOrdinal, blockDepth, diagnostics));
                 continue;
             }
 
@@ -103,7 +110,15 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
             if (TryListMarker(line, out _))
             {
-                blocks.Add(ParseList(lines, ref index, ref radioGroupOrdinal, quoteDepth));
+                if (blockDepth >= _maximumRecursiveBlockDepth)
+                {
+                    AddNestingLimitDiagnostic(diagnostics);
+                    blocks.Add(CreateParagraph([line]));
+                    index++;
+                    continue;
+                }
+
+                blocks.Add(ParseList(lines, ref index, ref radioGroupOrdinal, blockDepth, diagnostics));
                 continue;
             }
 
@@ -288,7 +303,8 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         string[] lines,
         ref int index,
         ref int radioGroupOrdinal,
-        int quoteDepth)
+        int blockDepth,
+        List<DocumentDiagnostic> diagnostics)
     {
         var quoted = new List<string>();
 
@@ -298,13 +314,13 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             index++;
         }
 
-        if (quoteDepth + 1 < _maximumBlockQuoteDepth && Has(MarkdownExtension.Callouts) &&
+        if (blockDepth + 1 < _maximumRecursiveBlockDepth && Has(MarkdownExtension.Callouts) &&
             TryCalloutHeader(quoted[0], out var kind, out var title))
         {
             quoted.RemoveAt(0);
             var callout = new DocumentCallout { Kind = kind, Title = title };
 
-            foreach (var block in ParseBlocks([.. quoted], ref radioGroupOrdinal, quoteDepth + 1))
+            foreach (var block in ParseBlocks([.. quoted], ref radioGroupOrdinal, blockDepth + 1, diagnostics))
             {
                 callout.Blocks.Add(block);
             }
@@ -314,13 +330,14 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
         var quote = new DocumentBlockQuote();
 
-        if (quoteDepth + 1 >= _maximumBlockQuoteDepth)
+        if (blockDepth + 1 >= _maximumRecursiveBlockDepth)
         {
+            AddNestingLimitDiagnostic(diagnostics);
             quote.Blocks.Add(CreateParagraph(quoted));
         }
         else
         {
-            foreach (var block in ParseBlocks([.. quoted], ref radioGroupOrdinal, quoteDepth + 1))
+            foreach (var block in ParseBlocks([.. quoted], ref radioGroupOrdinal, blockDepth + 1, diagnostics))
             {
                 quote.Blocks.Add(block);
             }
@@ -333,7 +350,8 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         string[] lines,
         ref int index,
         ref int radioGroupOrdinal,
-        int quoteDepth)
+        int blockDepth,
+        List<DocumentDiagnostic> diagnostics)
     {
         _ = TryListMarker(lines[index], out var firstMarker);
         var list = new DocumentList(firstMarker.IsOrdered ? DocumentListKind.Numbered : DocumentListKind.Bulleted)
@@ -444,7 +462,11 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 continuation.Insert(0, marker.Content);
             }
 
-            foreach (var block in ParseBlocks([.. continuation], ref radioGroupOrdinal, quoteDepth))
+            foreach (var block in ParseBlocks(
+                         [.. continuation],
+                         ref radioGroupOrdinal,
+                         blockDepth + 1,
+                         diagnostics))
             {
                 item.Blocks.Add(block);
             }
@@ -459,6 +481,16 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         }
 
         return list;
+    }
+
+    private static void AddNestingLimitDiagnostic(List<DocumentDiagnostic> diagnostics)
+    {
+        if (diagnostics.Any(static diagnostic => diagnostic.Message == _nestingLimitDiagnostic))
+        {
+            return;
+        }
+
+        diagnostics.Add(new DocumentDiagnostic(_nestingLimitDiagnostic, new DocumentSourceSpan(0, 0)));
     }
 
     private DocumentTable ParseTable(
@@ -608,10 +640,11 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 continue;
             }
 
-            if (!insideLink && Has(MarkdownExtension.Autolinks) && TryExtendedAutolink(source, index, out var urlEnd, out var url))
+            if (!insideLink && Has(MarkdownExtension.Autolinks) &&
+                TryExtendedAutolink(source, index, out var urlEnd, out var urlText, out var urlTarget))
             {
                 Flush();
-                destination.Add(new DocumentLink(url, url));
+                destination.Add(new DocumentLink(urlText, urlTarget));
                 index = urlEnd;
                 continue;
             }
@@ -676,13 +709,14 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 continue;
             }
 
-            if (Has(MarkdownExtension.Strikethrough) && TryDelimited(source, index, "~~", out var strikeEnd))
+            if (Has(MarkdownExtension.Strikethrough) &&
+                TryStrikethrough(source, index, out var strikeEnd, out var strikeDelimiterLength))
             {
                 Flush();
                 var strike = new DocumentStrikethrough();
-                ParseInlines(source[(index + 2)..strikeEnd], strike.Inlines, insideLink);
+                ParseInlines(source[(index + strikeDelimiterLength)..strikeEnd], strike.Inlines, insideLink);
                 destination.Add(strike);
-                index = strikeEnd + 2;
+                index = strikeEnd + strikeDelimiterLength;
                 continue;
             }
 
@@ -754,16 +788,48 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     private bool Has(MarkdownExtension extension) => (_extensions & extension) != 0;
 
     [Pure]
-    private static bool TryDelimited(string source, int index, string delimiter, out int end)
+    private static bool TryStrikethrough(string source, int index, out int end, out int delimiterLength)
     {
-        if (!source.AsSpan(index).StartsWith(delimiter, StringComparison.Ordinal))
+        delimiterLength = CountRun(source, index, '~');
+
+        if (delimiterLength is not (1 or 2) ||
+            index + delimiterLength >= source.Length ||
+            char.IsWhiteSpace(source[index + delimiterLength]))
         {
             end = -1;
             return false;
         }
 
-        end = FindUnescaped(source, delimiter, index + delimiter.Length);
-        return end > index + delimiter.Length;
+        var cursor = index + delimiterLength;
+
+        while (cursor < source.Length)
+        {
+            if (source[cursor] == '\\' && cursor + 1 < source.Length)
+            {
+                cursor += 2;
+                continue;
+            }
+
+            if (source[cursor] != '~')
+            {
+                cursor++;
+                continue;
+            }
+
+            var candidateLength = CountRun(source, cursor, '~');
+
+            if (candidateLength == delimiterLength && cursor > index + delimiterLength &&
+                !char.IsWhiteSpace(source[cursor - 1]))
+            {
+                end = cursor;
+                return true;
+            }
+
+            cursor += candidateLength;
+        }
+
+        end = -1;
+        return false;
     }
 
     [Pure]
@@ -1393,33 +1459,34 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     }
 
     [Pure]
-    private static bool TryExtendedAutolink(string source, int index, out int end, out string target)
+    private static bool TryExtendedAutolink(
+        string source,
+        int index,
+        out int end,
+        out string text,
+        out string target)
     {
-        if (index > 0 && !char.IsWhiteSpace(source[index - 1]) && source[index - 1] != '(')
+        if (index > 0 && !char.IsWhiteSpace(source[index - 1]) && source[index - 1] is not ('(' or '*' or '_' or '~'))
         {
             end = -1;
+            text = string.Empty;
             target = string.Empty;
             return false;
         }
 
         var remainder = source.AsSpan(index);
-
-        if (!remainder.StartsWith("https://", StringComparison.OrdinalIgnoreCase) &&
-            !remainder.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
-        {
-            end = -1;
-            target = string.Empty;
-            return false;
-        }
+        var isUrl = remainder.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+                    remainder.StartsWith("http://", StringComparison.OrdinalIgnoreCase);
+        var isWww = remainder.StartsWith("www.", StringComparison.OrdinalIgnoreCase);
 
         var length = 0;
 
-        while (length < remainder.Length && !char.IsWhiteSpace(remainder[length]) && remainder[length] is not ('<' or '>'))
+        while (length < remainder.Length && remainder[length] is > ' ' and not ('\u007f' or '<' or '>'))
         {
             length++;
         }
 
-        while (length > 0 && remainder[length - 1] is '.' or ',' or ';' or ':' or '!' or '?')
+        while (length > 0 && remainder[length - 1] is '.' or ',' or ';' or ':' or '!' or '?' or '*' or '_' or '~')
         {
             length--;
         }
@@ -1436,9 +1503,72 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             length--;
         }
 
-        target = remainder[..length].ToString();
+        text = remainder[..length].ToString();
         end = index + length;
-        return length > 0;
+
+        if (isUrl && TryGetExtendedAutolinkHost(text, out var urlHost) && IsGfmDomain(urlHost))
+        {
+            target = text;
+            return true;
+        }
+
+        if (isWww && TryGetExtendedAutolinkHost($"http://{text}", out var wwwHost) && IsGfmDomain(wwwHost))
+        {
+            target = $"http://{text}";
+            return true;
+        }
+
+        if (!isUrl && !isWww && IsCommonMarkEmailAutolink(text) && text[(text.IndexOf('@') + 1)..].Contains('.'))
+        {
+            target = $"mailto:{text}";
+            return true;
+        }
+
+        end = -1;
+        text = string.Empty;
+        target = string.Empty;
+        return false;
+    }
+
+    [Pure]
+    private static bool TryGetExtendedAutolinkHost(string candidate, out string host)
+    {
+        var authority = candidate.IndexOf("//", StringComparison.Ordinal);
+        var start = authority < 0 ? 0 : authority + 2;
+        var end = candidate.IndexOfAny(['/', '?', '#'], start);
+        var value = candidate[start..(end < 0 ? candidate.Length : end)];
+        var port = value.LastIndexOf(':');
+
+        if (port >= 0 && !value.AsSpan(port + 1).IsEmpty &&
+            !value.AsSpan(port + 1).ContainsAnyExceptInRange('0', '9'))
+        {
+            value = value[..port];
+        }
+
+        host = value;
+        return host.Length > 0;
+    }
+
+    [Pure]
+    private static bool IsGfmDomain(string host)
+    {
+        if (!host.Contains('.'))
+        {
+            return false;
+        }
+
+        foreach (var label in host.Split('.'))
+        {
+            if (label.Length is < 1 or > 63 ||
+                !char.IsAsciiLetterOrDigit(label[0]) ||
+                !char.IsAsciiLetterOrDigit(label[^1]) ||
+                label.Any(static character => !char.IsAsciiLetterOrDigit(character) && character != '-'))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     [Pure]

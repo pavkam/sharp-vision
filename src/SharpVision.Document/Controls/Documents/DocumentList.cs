@@ -34,6 +34,8 @@ public sealed class DocumentList: DocumentBlock
 
     /// <summary>Gets or sets the marker style applied to every item.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public DocumentListKind Kind
     {
         get;
@@ -54,6 +56,8 @@ public sealed class DocumentList: DocumentBlock
 
     /// <summary>Gets or sets the non-negative first ordinal used by a numbered list.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public int Start
     {
         get;
@@ -77,6 +81,8 @@ public sealed class DocumentList: DocumentBlock
     /// False is CommonMark's tight list: items follow one another directly. True is its loose list,
     /// which suits items whose content runs to several blocks.
     /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public bool IsLoose
     {
         get;

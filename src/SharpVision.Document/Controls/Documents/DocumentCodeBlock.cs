@@ -33,6 +33,8 @@ public sealed class DocumentCodeBlock: DocumentBlock
 
     /// <summary>Gets or sets the non-null literal text.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public string Text
     {
         get;
@@ -53,6 +55,8 @@ public sealed class DocumentCodeBlock: DocumentBlock
 
     /// <summary>Gets or sets the optional fenced-code language identifier.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public string Language
     {
         get;
@@ -67,7 +71,6 @@ public sealed class DocumentCodeBlock: DocumentBlock
             }
 
             field = value;
-            InvalidateContent();
         }
     } = string.Empty;
 }

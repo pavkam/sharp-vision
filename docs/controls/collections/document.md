@@ -225,8 +225,16 @@ both the node and the collection exactly as the caller found them:
 3. A node that already belongs to any document tree — this one included — throws
    `ArgumentException`. Remove it from its current owner first.
 
-Every successful mutation invalidates the owning document's layout exactly once.
-A collection inside a detached subtree invalidates nothing.
+Every successful structural collection mutation reconciles the retained
+embedded-control set and invalidates the owning document's layout exactly once.
+Changing node text, presentation, or link metadata invalidates only the required
+layout or render work; it does not walk and reconcile an unchanged control tree.
+A collection or node inside a detached subtree invalidates nothing.
+
+Mutating an attached node follows its owning document's lifecycle contract: an
+off-dispatcher mutation throws `InvalidOperationException`, and mutation after
+the document is disposed throws `ObjectDisposedException`, before observable
+state changes.
 
 ## Blocks
 
@@ -331,7 +339,8 @@ indents twice and draws two bars.
 is never parsed, so source containing angle brackets needs no escaping. The
 block splits on CRLF, CR, and LF — a CRLF pair is one break, not two — and each
 source line becomes exactly one rendered line. Tabs expand to the next four-cell
-stop.
+stop. `Language` is retained source metadata and changing it does not invalidate
+layout or rendering.
 
 A code line never wraps, because re-flowing code changes its meaning. A line
 longer than the available width is clipped at the content edge until selection

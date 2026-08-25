@@ -13,6 +13,32 @@ using Document = Controls.Documents.Document;
 /// ownership, scrolling state and commands, and focused-link selection.</summary>
 public sealed class DocumentTests
 {
+    /// <summary>Verifies non-structural node mutations never rescan embedded-control membership,
+    /// while a collection edit reconciles it exactly once.</summary>
+    [Fact]
+    public void NodeMutation_WhenStructureIsUnchanged_DoesNotReconcileEmbeddedControls()
+    {
+        // Arrange
+        var text = new DocumentTextRun("before");
+        var link = new DocumentLink("docs", "https://example.test/one");
+        var paragraph = new DocumentParagraph { Inlines = { text, link } };
+        var code = new DocumentCodeBlock("code") { Language = "csharp" };
+        var document = new Document { Blocks = { paragraph, code } };
+        var reconciliations = document.ControlReconciliationCount;
+
+        // Act
+        text.Text = "after";
+        link.Target = "https://example.test/two";
+        link.Emphasis = DocumentLinkEmphasis.Action;
+        code.Language = "fsharp";
+
+        // Assert
+        document.ControlReconciliationCount.ShouldBe(reconciliations);
+
+        paragraph.Inlines.Add(new DocumentInlineControl(new CheckBox("new")));
+        document.ControlReconciliationCount.ShouldBe(reconciliations + 1);
+    }
+
     /// <summary>Verifies a new document is empty, stretches, and takes part in tab navigation as a
     /// single focusable stop.</summary>
     [Fact]

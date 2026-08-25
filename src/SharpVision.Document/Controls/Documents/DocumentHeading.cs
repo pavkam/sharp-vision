@@ -45,6 +45,8 @@ public sealed class DocumentHeading: DocumentBlock
     /// <summary>Gets or sets the heading level from <see cref="MinimumLevel"/> through
     /// <see cref="MaximumLevel"/>.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the valid range.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public int Level
     {
         get;

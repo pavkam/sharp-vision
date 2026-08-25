@@ -21,6 +21,8 @@ public sealed class DocumentCodeSpan: DocumentInline
 
     /// <summary>Gets or sets the non-null literal code text.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public string Text
     {
         get;

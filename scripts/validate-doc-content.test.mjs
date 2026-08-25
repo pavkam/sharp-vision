@@ -3,7 +3,11 @@ import { readFile, readdir } from "node:fs/promises";
 import { extname, join, relative } from "node:path";
 import test from "node:test";
 
-import { findGitHubIssueIdentifiers, scanRepository } from "./validate-doc-content.mjs";
+import {
+  findGitHubIssueIdentifiers,
+  findUndocumentedDocumentMutationLifecycle,
+  scanRepository
+} from "./validate-doc-content.mjs";
 
 async function markdownFiles(root) {
   const entries = await readdir(root, { withFileTypes: true });
@@ -87,6 +91,41 @@ test("findGitHubIssueIdentifiers_WhenLiteralsAreNotStripped_StillSeesTheLiteral"
   const errors = findGitHubIssueIdentifiers(source, { fenced: false, literals: false });
 
   assert.deepEqual(errors, ["line 1: GitHub issue identifier #42"]);
+});
+
+test("findUndocumentedDocumentMutationLifecycle_WhenGuardedSetterOmitsExceptions_ReportsContract", () => {
+  const source = [
+    "/// <summary>Gets or sets text.</summary>",
+    "/// <exception cref=\"ArgumentNullException\">The value is null.</exception>",
+    "public string Text",
+    "{",
+    "    get;",
+    "    set",
+    "    {",
+    "        VerifyMutable();",
+    "    }",
+    "}"
+  ].join("\n");
+
+  const errors = findUndocumentedDocumentMutationLifecycle(source);
+
+  assert.deepEqual(errors, [
+    "line 3: public document mutator omits InvalidOperationException and ObjectDisposedException"
+  ]);
+});
+
+test("findUndocumentedDocumentMutationLifecycle_WhenBothExceptionsAreDocumented_Passes", () => {
+  const source = [
+    "/// <summary>Gets or sets text.</summary>",
+    "/// <exception cref=\"InvalidOperationException\">Off dispatcher.</exception>",
+    "/// <exception cref=\"ObjectDisposedException\">Disposed.</exception>",
+    "public string Text",
+    "{",
+    "    set { VerifyMutable(); }",
+    "}"
+  ].join("\n");
+
+  assert.deepEqual(findUndocumentedDocumentMutationLifecycle(source), []);
 });
 
 test("repository_WhenScanned_ContainsNoGitHubIssueReferences", async () => {

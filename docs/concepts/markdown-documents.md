@@ -143,9 +143,11 @@ mixture of spaces and tabs between or after them, following the
 The zero-to-three-space indentation prefix is evaluated before those interior
 separators, so a leading tab is not silently discarded as marker spacing.
 
-Block-quote nesting is interpreted to a maximum of 64 semantic levels. Any
-deeper quote markers remain literal paragraph content, keeping hostile input
-bounded without discarding source text.
+Recursive block parsing is interpreted to a shared maximum of 64 semantic levels
+across block quotes and nested lists. Markers beyond that boundary remain
+literal paragraph content and the result contains one deterministic diagnostic,
+keeping hostile input bounded without discarding source text or leaking the
+semantic tree's insertion exception.
 
 **Known limitations**, tracked as intentional scope boundaries rather than
 silent gaps:
@@ -168,7 +170,7 @@ silent gaps:
 
 | `MarkdownExtension` | Syntax                               | Document result                                                  |
 | ------------------- | ------------------------------------ | ---------------------------------------------------------------- |
-| `Strikethrough`     | `~~text~~`                           | `DocumentStrikethrough`                                          |
+| `Strikethrough`     | `~text~` / `~~text~~`                | `DocumentStrikethrough`                                          |
 | `Tables`            | GFM pipe table                       | `DocumentTable` with header and cell alignment                   |
 | `TaskLists`         | `- [ ]` / `- [x]`                    | Genuine `CheckBox` inside `DocumentBlockControl`                 |
 | `Autolinks`         | Extended URL                         | Activatable `DocumentLink`                                       |
@@ -179,6 +181,17 @@ silent gaps:
 `GitHubFlavored` combines strikethrough, tables, task lists, and extended
 autolinks. `All` enables every extension. Enabling one individual flag never
 implicitly enables another.
+
+Strikethrough accepts matching runs of exactly one or two tildes. Whitespace
+cannot sit immediately inside either delimiter, and runs of three or more tildes
+remain literal rather than being partially consumed.
+
+Extended autolinks recognize `http://` and `https://` URLs, `www.` domains, and
+email addresses. A `www.` link receives an `http://` target and an email address
+receives a `mailto:` target. URL hosts require valid dotted domain labels;
+unfinished prefixes, intraword URL prefixes, and incomplete email domains remain
+literal. Closing punctuation and emphasis or strikethrough delimiters are not
+absorbed into the target, while balanced URL parentheses remain part of it.
 
 Tables follow the
 [GFM 0.29 delimiter-row grammar](https://github.github.com/gfm/#tables-extension-):

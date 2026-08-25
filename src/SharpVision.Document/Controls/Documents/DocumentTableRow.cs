@@ -11,6 +11,8 @@ public sealed class DocumentTableRow: DocumentNode
     public DocumentTableRow() => Cells = new DocumentTableCellCollection(this);
 
     /// <summary>Gets or sets whether this row labels its columns.</summary>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public bool IsHeader
     {
         get;

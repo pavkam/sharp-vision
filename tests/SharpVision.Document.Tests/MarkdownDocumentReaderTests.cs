@@ -1560,6 +1560,110 @@ public sealed class MarkdownDocumentReaderTests
             .ShouldBe("https://example.invalid/a(b)");
     }
 
+    /// <summary>Verifies GFM extended autolinks recognize URL, www, and email forms at every
+    /// supported left boundary and remove trailing delimiter punctuation.</summary>
+    [Theory]
+    [InlineData("www.example.com", "http://www.example.com")]
+    [InlineData("foo@example.com", "mailto:foo@example.com")]
+    [InlineData("*https://example.com*", "https://example.com")]
+    [InlineData("_www.example.com_", "http://www.example.com")]
+    [InlineData("~https://example.com~", "https://example.com")]
+    public void Read_WhenGfmExtendedAutolinkIsValid_CreatesExpectedTarget(string source, string expectedTarget)
+    {
+        // Arrange
+        var reader = new MarkdownDocumentReader(new MarkdownOptions { Extensions = MarkdownExtension.Autolinks });
+
+        // Act
+        var paragraph = reader.Read(source).Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        DescendantLinks(paragraph.Inlines).ShouldHaveSingleItem().Target.ShouldBe(expectedTarget);
+    }
+
+    /// <summary>Verifies malformed domains and embedded word prefixes remain literal.</summary>
+    [Theory]
+    [InlineData("http://")]
+    [InlineData("www.")]
+    [InlineData("prefixhttps://example.com")]
+    [InlineData("foo@example")]
+    public void Read_WhenGfmExtendedAutolinkIsInvalid_PreservesLiteralSource(string source)
+    {
+        // Arrange
+        var reader = new MarkdownDocumentReader(new MarkdownOptions { Extensions = MarkdownExtension.Autolinks });
+
+        // Act
+        var result = reader.Read(source);
+
+        // Assert
+        result.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines
+            .ShouldNotContain(static inline => inline is DocumentLink);
+        VisibleText(result).ShouldBe(source);
+    }
+
+    /// <summary>Verifies GFM strikethrough accepts one- and two-tilde delimiters.</summary>
+    [Theory]
+    [InlineData("~one~", "one")]
+    [InlineData("~~two~~", "two")]
+    [InlineData("~one two~", "one two")]
+    public void Read_WhenGfmStrikethroughDelimiterIsValid_CreatesSemanticInline(string source, string expected)
+    {
+        // Arrange
+        var reader = new MarkdownDocumentReader(new MarkdownOptions { Extensions = MarkdownExtension.Strikethrough });
+
+        // Act
+        var strike = reader.Read(source).Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>()
+            .Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentStrikethrough>();
+
+        // Assert
+        strike.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies longer runs and whitespace-adjacent delimiters remain literal.</summary>
+    [Theory]
+    [InlineData("This ~~~three~~~")]
+    [InlineData("~~ foo~~")]
+    [InlineData("~~foo ~~")]
+    [InlineData("~ foo~")]
+    public void Read_WhenGfmStrikethroughDelimiterIsInvalid_PreservesLiteralSource(string source)
+    {
+        // Arrange
+        var reader = new MarkdownDocumentReader(new MarkdownOptions { Extensions = MarkdownExtension.Strikethrough });
+
+        // Act
+        var result = reader.Read(source);
+
+        // Assert
+        result.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines
+            .ShouldNotContain(static inline => inline is DocumentStrikethrough);
+        VisibleText(result).ShouldBe(source);
+    }
+
+    /// <summary>Verifies recursive block nesting is bounded before the semantic tree guard and
+    /// reports a deterministic non-fatal diagnostic beyond the boundary.</summary>
+    [Theory]
+    [InlineData(64, false)]
+    [InlineData(65, true)]
+    [InlineData(300, true)]
+    public void Read_WhenListNestingReachesReaderLimit_ReturnsBoundedTree(int levels, bool expectsDiagnostic)
+    {
+        // Arrange
+        var source = string.Join(
+            '\n',
+            Enumerable.Range(0, levels).Select(level => $"{new string(' ', level * 2)}- level {level}"));
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        result.Blocks.ShouldNotBeEmpty();
+        result.Diagnostics.Count.ShouldBe(expectsDiagnostic ? 1 : 0);
+
+        if (expectsDiagnostic)
+        {
+            result.Diagnostics[0].Message.ShouldContain("nesting");
+        }
+    }
+
     /// <summary>Verifies continuation lines remain inside the list item that introduced them.</summary>
     [Fact]
     public void Read_WhenListItemHasContinuationLine_PreservesOneItemParagraph()
@@ -1825,5 +1929,24 @@ public sealed class MarkdownDocumentReaderTests
         }
 
         return text.ToString();
+    }
+
+    private static IEnumerable<DocumentLink> DescendantLinks(IEnumerable<DocumentInline> inlines)
+    {
+        foreach (var inline in inlines)
+        {
+            if (inline is DocumentLink link)
+            {
+                yield return link;
+            }
+
+            if (inline is DocumentInlineContainer container)
+            {
+                foreach (var descendant in DescendantLinks(container.Inlines))
+                {
+                    yield return descendant;
+                }
+            }
+        }
     }
 }

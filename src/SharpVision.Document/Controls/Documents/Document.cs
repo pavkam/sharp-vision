@@ -234,12 +234,24 @@ public sealed class Document:
         }
     }
 
-    /// <summary>Invalidates the projected content after the node tree structurally changes.</summary>
+    /// <summary>Gets how many structural reconciliations have run, exposing the invariant that
+    /// non-structural mutations never rescan retained-control membership.</summary>
+    internal int ControlReconciliationCount => _presenter.ReconciliationCount;
+
+    /// <summary>Invalidates measured and rendered content without changing retained-control
+    /// membership.</summary>
     internal void InvalidateContent()
     {
         _layoutValid = false;
-        _presenter.ReconcileControls();
         InvalidateRetainedDescendant(_surface, InvalidationImpact.Measure);
+    }
+
+    /// <summary>Reconciles retained-control membership after the semantic tree changes, then
+    /// invalidates measured and rendered content.</summary>
+    internal void InvalidateStructure()
+    {
+        _presenter.ReconcileControls();
+        InvalidateContent();
     }
 
     /// <summary>Verifies that semantic content may be mutated on the current thread.</summary>

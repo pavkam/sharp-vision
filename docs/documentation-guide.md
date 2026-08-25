@@ -312,6 +312,11 @@ Documentation changes run, in increasing scope:
 The repository gate also compiles XML documentation, examples, and the showcase,
 so prose-only success is not evidence that a public surface is coherent.
 
+The documentation-content validator also audits mutable document-node APIs.
+Every public mutation boundary guarded by the owning document's lifecycle must
+document both `InvalidOperationException` for off-dispatcher access and
+`ObjectDisposedException` for mutation after disposal.
+
 ## Control-page template
 
 The [control-page contract](#control-page-contract) is the rule; this is its

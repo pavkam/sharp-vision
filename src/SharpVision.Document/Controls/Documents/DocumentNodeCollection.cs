@@ -181,7 +181,7 @@ public abstract class DocumentNodeCollection<TNode>: IReadOnlyList<TNode>
     /// <inheritdoc/>
     IEnumerator IEnumerable.GetEnumerator() => _items.GetEnumerator();
 
-    private void Invalidate() => (_ownerDocument ?? _ownerNode?.OwnerDocument)?.InvalidateContent();
+    private void Invalidate() => (_ownerDocument ?? _ownerNode?.OwnerDocument)?.InvalidateStructure();
 
     private void VerifyMutable() => (_ownerDocument ?? _ownerNode?.OwnerDocument)?.VerifyContentMutable();
 

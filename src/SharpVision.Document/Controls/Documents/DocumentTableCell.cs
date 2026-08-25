@@ -21,6 +21,8 @@ public sealed class DocumentTableCell: DocumentNode
 
     /// <summary>Gets or sets horizontal content alignment.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The attached owner is disposed.</exception>
     public DocumentTableCellAlignment Alignment
     {
         get;
