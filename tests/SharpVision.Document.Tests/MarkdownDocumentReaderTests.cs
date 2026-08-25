@@ -1053,6 +1053,39 @@ public sealed class MarkdownDocumentReaderTests
         result.Blocks[1].ShouldBeOfType<DocumentList>().Start.ShouldBe(0);
     }
 
+    /// <summary>Verifies a Setext underline converts every accumulated paragraph line into one
+    /// heading with the original soft line boundary.</summary>
+    [Theory]
+    [InlineData("Foo\nbar\n===", 1)]
+    [InlineData("Foo\nbar\n---", 2)]
+    public void Read_WhenSetextHeadingSpansMultipleLines_ProducesOneHeading(string source, int expectedLevel)
+    {
+        // Arrange and act
+        var heading = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentHeading>();
+
+        // Assert
+        heading.Level.ShouldBe(expectedLevel);
+        heading.Inlines.Count.ShouldBe(3);
+        heading.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("Foo");
+        _ = heading.Inlines[1].ShouldBeOfType<DocumentSoftBreak>();
+        heading.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("bar");
+    }
+
+    /// <summary>Verifies a blank line closes the paragraph before a later underline, leaving that
+    /// underline to retain its ordinary thematic-break meaning.</summary>
+    [Fact]
+    public void Read_WhenBlankLinePrecedesSetextUnderline_DoesNotConvertEarlierParagraph()
+    {
+        // Arrange and act
+        var result = new MarkdownDocumentReader().Read("Foo\nbar\n\n---");
+
+        // Assert
+        result.Blocks.Count.ShouldBe(2);
+        _ = result.Blocks[0].ShouldBeOfType<DocumentParagraph>();
+        _ = result.Blocks[1].ShouldBeOfType<DocumentSeparator>();
+    }
+
     /// <summary>Verifies four-space-indented hashes are not mistaken for ATX headings.</summary>
     [Fact]
     public void Read_WhenAtxMarkerHasFourSpaceIndent_PreservesParagraphText()

@@ -66,16 +66,6 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 continue;
             }
 
-            if (index + 1 < lines.Length && TrySetextUnderline(lines[index + 1], out var setextLevel) &&
-                !IsBlockStart(line))
-            {
-                var setextHeading = new DocumentHeading(setextLevel);
-                ParseInlines(line.Trim(), setextHeading.Inlines);
-                blocks.Add(setextHeading);
-                index += 2;
-                continue;
-            }
-
             if (TryFence(lines, ref index, out var code))
             {
                 blocks.Add(code);
@@ -118,9 +108,16 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             }
 
             var paragraphLines = new List<string>();
+            var setextLevel = 0;
 
             while (index < lines.Length && !string.IsNullOrWhiteSpace(lines[index]))
             {
+                if (paragraphLines.Count > 0 && TrySetextUnderline(lines[index], out setextLevel))
+                {
+                    index++;
+                    break;
+                }
+
                 if (paragraphLines.Count > 0 && IsParagraphInterruptingBlockStart(lines[index]))
                 {
                     break;
@@ -130,7 +127,16 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 index++;
             }
 
-            blocks.Add(CreateParagraph(paragraphLines));
+            if (setextLevel > 0)
+            {
+                var setextHeading = new DocumentHeading(setextLevel);
+                ParseParagraphLines(paragraphLines, setextHeading.Inlines);
+                blocks.Add(setextHeading);
+            }
+            else
+            {
+                blocks.Add(CreateParagraph(paragraphLines));
+            }
         }
 
         return blocks;
@@ -490,7 +496,12 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     private DocumentParagraph CreateParagraph(List<string> lines)
     {
         var paragraph = new DocumentParagraph();
+        ParseParagraphLines(lines, paragraph.Inlines);
+        return paragraph;
+    }
 
+    private void ParseParagraphLines(List<string> lines, DocumentInlineCollection destination)
+    {
         for (var index = 0; index < lines.Count; index++)
         {
             var line = index == 0
@@ -507,17 +518,15 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 _ => line.TrimEnd(' ', '\t')
             };
 
-            ParseInlines(line, paragraph.Inlines);
+            ParseInlines(line, destination);
 
             if (hasFollowingLine)
             {
-                paragraph.Inlines.Add(spaceBreak || slashBreak
+                destination.Add(spaceBreak || slashBreak
                     ? new DocumentLineBreak()
                     : new DocumentSoftBreak());
             }
         }
-
-        return paragraph;
     }
 
     [Pure]

@@ -14,8 +14,9 @@ Backslash escapes keep \*punctuation\* literal.
 Paragraph boundary spaces and tabs are structural, while interior spacing stays
 authored content.
 
-Setext heading level 1
-======================
+Setext heading level 1\
+can span multiple lines
+=======================
 
 Setext heading level 2
 ----------------------

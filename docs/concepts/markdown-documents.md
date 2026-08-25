@@ -59,6 +59,11 @@ all spaces and tabs after the opening hash sequence and at the end of raw
 heading content are structural. Interior whitespace remains authored content,
 and a closing hash sequence is removed only when whitespace separates it.
 
+Setext underlines convert every line in the immediately preceding paragraph into
+one heading, preserving authored soft or hard line boundaries in its inline
+content. A blank line closes the paragraph first, so a later `---` remains a
+thematic break rather than retroactively creating a heading.
+
 Paragraph raw content follows the
 [CommonMark 0.31.2 paragraph rules](https://spec.commonmark.org/0.31.2/#paragraphs):
 spaces and tabs at the paragraph edges and around soft line breaks are
