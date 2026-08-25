@@ -590,6 +590,48 @@ public sealed class MarkdownDocumentReaderTests
         _ = block.ShouldBeOfType<DocumentSeparator>();
     }
 
+    /// <summary>Verifies spaces and tabs may separate each thematic-break marker family after an
+    /// otherwise valid zero-to-three-space indentation prefix.</summary>
+    [Theory]
+    [InlineData("*\t*\t*")]
+    [InlineData("- \t-\t -")]
+    [InlineData("  _\t_ _\t")]
+    public void Read_WhenThematicBreakMarkersUseTabs_ProducesSeparator(string source)
+    {
+        // Arrange and act
+        var block = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem();
+
+        // Assert
+        _ = block.ShouldBeOfType<DocumentSeparator>();
+    }
+
+    /// <summary>Verifies a tab-separated thematic break uses the same recognition path when it
+    /// interrupts an open paragraph.</summary>
+    [Fact]
+    public void Read_WhenTabSeparatedThematicBreakFollowsParagraph_ProducesSeparateBlocks()
+    {
+        // Arrange and act
+        var blocks = new MarkdownDocumentReader().Read("paragraph\n*\t*\t*").Blocks;
+
+        // Assert
+        blocks.Count.ShouldBe(2);
+        _ = blocks[0].ShouldBeOfType<DocumentParagraph>();
+        _ = blocks[1].ShouldBeOfType<DocumentSeparator>();
+    }
+
+    /// <summary>Verifies a leading tab remains structural indentation rather than being discarded
+    /// as an interior thematic-break separator.</summary>
+    [Fact]
+    public void Read_WhenThematicBreakStartsAfterTab_PreservesLiteralParagraphText()
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read("\t*\t*\t*").Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("\t*\t*\t*");
+    }
+
     /// <summary>Verifies a thematic-break-looking line indented four or more spaces - CommonMark's
     /// indented-code-block threshold - is not treated as a rule, matching every other
     /// indent-sensitive block-start detector in this reader.</summary>

@@ -111,6 +111,12 @@ Block-quote recognition, paragraph interruption, and quote-line consumption use
 the same marker grammar. A `>` marker may be preceded by zero through three
 literal spaces; four or more spaces leave it as literal paragraph content.
 
+Thematic breaks accept at least three matching `*`, `-`, or `_` markers with any
+mixture of spaces and tabs between or after them, following the
+[CommonMark 0.31.2 thematic-break grammar](https://spec.commonmark.org/0.31.2/#thematic-breaks).
+The zero-to-three-space indentation prefix is evaluated before those interior
+separators, so a leading tab is not silently discarded as marker spacing.
+
 Block-quote nesting is interpreted to a maximum of 64 semantic levels. Any
 deeper quote markers remain literal paragraph content, keeping hostile input
 bounded without discarding source text.

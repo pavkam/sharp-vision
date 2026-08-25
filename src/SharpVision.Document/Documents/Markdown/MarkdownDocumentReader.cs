@@ -1603,18 +1603,33 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     [Pure]
     private static bool IsRule(string line)
     {
-        // A thematic break, like every other block-start detector in this reader, is bounded to
-        // CommonMark's 0-through-3-space indent: a line with four or more leading spaces is an
-        // indented code block, not a rule. Stripping every space unconditionally before checking
-        // the run - as this method used to - discarded that distinction along with the interior
-        // spaces a spaced-out rule ("- - -") legitimately needs stripped.
-        if (CountLeadingSpaces(line) > 3)
+        var indent = CountLeadingSpaces(line);
+
+        // The optional indentation prefix is distinct from whitespace between markers. Keeping
+        // that boundary explicit prevents a leading tab - an indented-code shape under the
+        // reader's documented tab limitation - from being discarded as if it were an interior
+        // separator.
+        if (indent > 3 || indent >= line.Length || line[indent] is not ('-' or '*' or '_'))
         {
             return false;
         }
 
-        var compact = line.Replace(" ", string.Empty, StringComparison.Ordinal);
-        return compact.Length >= 3 && compact.All(character => character == compact[0]) && compact[0] is '-' or '*' or '_';
+        var marker = line[indent];
+        var markerCount = 0;
+
+        for (var index = indent; index < line.Length; index++)
+        {
+            if (line[index] == marker)
+            {
+                markerCount++;
+            }
+            else if (line[index] is not (' ' or '\t'))
+            {
+                return false;
+            }
+        }
+
+        return markerCount >= 3;
     }
 
     [Pure]

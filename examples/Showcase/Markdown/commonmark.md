@@ -59,6 +59,9 @@ Only valid fence openers split paragraphs into code blocks.
 
    > Three leading spaces still form a block quote with **inline formatting**.
 
+The thematic separator below also accepts spaces or tabs between matching
+markers.
+
 ---
 
 ```csharp
