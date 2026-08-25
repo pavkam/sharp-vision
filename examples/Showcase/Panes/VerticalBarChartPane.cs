@@ -21,10 +21,7 @@ internal sealed class VerticalBarChartPane: CompositeControlBase
         var previous = new ChartSeries("Previous", [
             new ChartDataPoint("Mon", 3),
             new ChartDataPoint("Tue", 5),
-            new ChartDataPoint("Wed", 6)])
-        {
-            Color = new ControlColor(SemanticColor.Info)
-        };
+            new ChartDataPoint("Wed", 6)]);
         var grouped = new VerticalBarChart
         {
             Width = Length.Cells(46),

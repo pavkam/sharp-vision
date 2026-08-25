@@ -55,10 +55,7 @@ internal sealed class HorizontalBarChartPane: CompositeControlBase
         var target = new ChartSeries("Target", [
             new ChartDataPoint("North", 10),
             new ChartDataPoint("South", 8),
-            new ChartDataPoint("West", 7)])
-        {
-            Color = new ControlColor(SemanticColor.Info)
-        };
+            new ChartDataPoint("West", 7)]);
         var grouped = new HorizontalBarChart
         {
             Width = Length.Cells(46),

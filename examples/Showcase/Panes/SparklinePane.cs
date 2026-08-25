@@ -22,7 +22,7 @@ internal sealed class SparklinePane: CompositeControlBase
             new ChartDataPoint("5", 6), new ChartDataPoint("6", 9)]);
         var compact = new Sparkline { Width = Length.Cells(18), Height = Length.Cells(2), Series = [series] };
         var wide = new Sparkline { Width = Length.Cells(42), Height = Length.Cells(4), Series = [series] };
-        var loadKey = new Text("<accent>■</accent> Load");
+        var loadKey = new Text("<blue>■</blue> Load");
         var status = new Text("Latest sample: 9");
         var add = new Button { Text = "&Add data" };
         add.Click += (_, _) =>
