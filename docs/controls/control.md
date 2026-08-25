@@ -118,6 +118,13 @@ arbitrate by proximity to the routed original source. An authoritative aggregate
 projection owns descendant drags when its range must cross child boundaries,
 while stationary presses remain ordinary child clicks.
 
+Selection notifications are transition-ordered under synchronous reentry. If a
+state hook, component-specific selection event, or earlier
+`TextSelectionChanged` subscriber commits a newer range, the superseded outer
+transition stops publishing immediately. Later common-event subscribers
+therefore receive only the newest committed range and never an event payload
+that disagrees with live selection state.
+
 Application Ctrl+C walks from focus toward the active route boundary, preferring
 the nearest enabled text-selection owner before another `IClipboardCopySource`.
 The chosen copy method runs exactly once; an empty result remains authoritative.

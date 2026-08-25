@@ -69,7 +69,10 @@ caret runs only while the editor is focused, since there is no visible caret to
 reveal otherwise — gaining focus forces one reveal pass immediately, and losing
 focus leaves both offsets exactly where they were. Only content or viewport size
 changes still clamp an out-of-range offset back into bounds, focused or not;
-wheel scrolling is unaffected by any of this (see [Pointer](#pointer)).
+wheel scrolling is unaffected by any of this (see [Pointer](#pointer)). If
+`SelectionChanged` synchronously commits a newer range, the superseded
+transition does not subsequently reach inherited `TextSelectionChanged`
+subscribers.
 
 `ReplaceSelection` reuses the control's ordinary validation, `MaxLength`
 truncation, grapheme-safe boundaries, undo recording, and

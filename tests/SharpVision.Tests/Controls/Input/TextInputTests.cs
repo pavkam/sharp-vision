@@ -470,6 +470,31 @@ public sealed class TextInputTests
         ]);
     }
 
+    /// <summary>Verifies reentry from the editor-specific event cannot publish an obsolete common
+    /// transition after the newer committed selection.</summary>
+    [Fact]
+    public void TextSelectionChanged_WhenSelectionChangedReenters_PublishesOnlyCurrentTransition()
+    {
+        // Arrange
+        var control = new TextInput { Text = "abcd" };
+        var observed = new List<(Selection EventSelection, Selection LiveSelection)>();
+        control.SelectionChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.Selection == new Selection(0, 1))
+            {
+                control.Select(0, 2);
+            }
+        };
+        control.TextSelectionChanged += (_, eventArgs) =>
+            observed.Add((eventArgs.Selection, control.TextSelection));
+
+        // Act
+        control.Select(0, 1);
+
+        // Assert
+        observed.ShouldBe([(new Selection(0, 2), new Selection(0, 2))]);
+    }
+
     /// <summary>Verifies typed text and owned paste share policy and grapheme maximum handling.</summary>
     [Fact]
     public void Dispatch_WhenTextAndPasteArrive_AppliesPolicyAndMaximum()

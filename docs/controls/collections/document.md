@@ -527,7 +527,9 @@ before changing state; an out-of-range endpoint throws
 `ArgumentOutOfRangeException`, and an endpoint inside a grapheme throws
 `ArgumentException`. `SelectAll` selects the whole stream, `ClearSelection`
 collapses at the directional caret, and `SelectionChanged` raises once only when
-the committed `Selection` value changes.
+the committed `Selection` value changes. If that compatibility event commits a
+newer selection, the superseded transition does not subsequently reach inherited
+`TextSelectionChanged` subscribers.
 
 The stream follows reading semantics rather than painted rows or chrome:
 

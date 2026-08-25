@@ -375,6 +375,31 @@ public sealed class CodeViewTests
         raised.ShouldBe(1);
     }
 
+    /// <summary>Verifies reentry from the compatibility event cannot publish an obsolete common
+    /// transition after the newer committed selection.</summary>
+    [Fact]
+    public void TextSelectionChanged_WhenSelectionChangedReenters_PublishesOnlyCurrentTransition()
+    {
+        // Arrange
+        var view = new CodeView { Code = "abcdef" };
+        var observed = new List<(Selection EventSelection, Selection LiveSelection)>();
+        view.SelectionChanged += (_, _) =>
+        {
+            if (view.Selection == new Selection(0, 1))
+            {
+                view.SetSelection(new Selection(0, 2));
+            }
+        };
+        view.TextSelectionChanged += (_, eventArgs) =>
+            observed.Add((eventArgs.Selection, view.Selection));
+
+        // Act
+        view.SetSelection(new Selection(0, 1));
+
+        // Assert
+        observed.ShouldBe([(new Selection(0, 2), new Selection(0, 2))]);
+    }
+
     /// <summary>Verifies a line beginning a region fold can be collapsed and expanded.</summary>
     [Fact]
     public void SetFolded_WhenLineBeginsARegion_CollapsesAndExpands()

@@ -40,6 +40,35 @@ public sealed partial class ControlBaseTests
         observed.Selection.ShouldBe(new Selection(4, 2));
     }
 
+    /// <summary>Verifies reentry from an earlier common-event subscriber prevents later subscribers
+    /// from receiving the obsolete outer transition.</summary>
+    [Fact]
+    public void TextSelectionChanged_WhenSubscriberReenters_PublishesOnlyCurrentTransition()
+    {
+        // Arrange
+        var control = new Stack
+        {
+            IsTextSelectionEnabled = true,
+            Children = { new ControlText("abcd") }
+        };
+        var observed = new List<(Selection EventSelection, Selection LiveSelection)>();
+        control.TextSelectionChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.Selection == new Selection(0, 1))
+            {
+                control.SetTextSelection(new Selection(0, 2));
+            }
+        };
+        control.TextSelectionChanged += (_, eventArgs) =>
+            observed.Add((eventArgs.Selection, control.TextSelection));
+
+        // Act
+        control.SetTextSelection(new Selection(0, 1));
+
+        // Assert
+        observed.ShouldBe([(new Selection(0, 2), new Selection(0, 2))]);
+    }
+
     /// <summary>Verifies invalid grapheme endpoints are rejected without observable mutation.</summary>
     [Fact]
     public void SetTextSelection_WhenEndpointSplitsGrapheme_ThrowsBeforeMutation()

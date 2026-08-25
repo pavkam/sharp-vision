@@ -138,6 +138,32 @@ public sealed class DocumentSelectionTests
         ]);
     }
 
+    /// <summary>Verifies reentry from the compatibility event cannot publish an obsolete common
+    /// transition after the newer committed selection.</summary>
+    [Fact]
+    public void TextSelectionChanged_WhenSelectionChangedReenters_PublishesOnlyCurrentTransition()
+    {
+        // Arrange
+        var document = new Document { Blocks = { new DocumentParagraph("abcd") } };
+        using var probe = new DocumentRenderProbe(document, new Size(10, 2));
+        var observed = new List<(Selection EventSelection, Selection LiveSelection)>();
+        document.SelectionChanged += (_, _) =>
+        {
+            if (document.Selection == new Selection(0, 1))
+            {
+                document.SetSelection(new Selection(0, 2));
+            }
+        };
+        document.TextSelectionChanged += (_, eventArgs) =>
+            observed.Add((eventArgs.Selection, document.Selection));
+
+        // Act
+        document.SetSelection(new Selection(0, 1));
+
+        // Assert
+        observed.ShouldBe([(new Selection(0, 2), new Selection(0, 2))]);
+    }
+
     /// <summary>Verifies geometry-only rebuilds preserve logical endpoints and selected text.</summary>
     [Fact]
     public void Selection_WhenLayoutReflows_PreservesSemanticRange()

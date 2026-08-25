@@ -74,7 +74,10 @@ classDiagram
 `Catalog` rejects an unavailable language with `KeyNotFoundException` before
 mutation. `SetSelection` rejects an endpoint past normalized text with
 `ArgumentOutOfRangeException` and an endpoint inside a grapheme with
-`ArgumentException`. Public mutation is dispatcher-affine after attachment.
+`ArgumentException`. Public mutation is dispatcher-affine after attachment. If
+`SelectionChanged` synchronously commits a newer range, the superseded
+transition does not subsequently reach inherited `TextSelectionChanged`
+subscribers.
 
 `CodeViewStyle` colors all `SyntaxDefaultStyle` roles, selected foreground and
 background, the fold gutter, and its one-cell collapsed and expanded glyphs.

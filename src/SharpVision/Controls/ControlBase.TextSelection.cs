@@ -16,6 +16,7 @@ public abstract partial class ControlBase: ISelectableTextSource
     private int? _textSelectionDesiredRow;
     private bool _textSelectionCaretEstablished;
     private ulong _textSelectionFingerprint;
+    private ulong _textSelectionTransitionVersion;
 
     /// <summary>Gets the common pointer-selection phase for behavioral invariant tests.</summary>
     internal TextSelectionGesturePhase TextSelectionPhase =>
@@ -25,6 +26,10 @@ public abstract partial class ControlBase: ISelectableTextSource
     protected TextSelection CommittedTextSelection { get; private set; }
 
     /// <summary>Raised synchronously after the directional semantic-text selection changes.</summary>
+    /// <remarks>
+    /// If an earlier notification reenters selection mutation, remaining observers receive only the
+    /// newer committed transition; an obsolete outer transition is not published afterward.
+    /// </remarks>
     public event EventHandler<TextSelectionChangedEventArgs>? TextSelectionChanged;
 
     /// <summary>Gets or sets whether this control selects semantic text projected by its subtree.</summary>
@@ -214,13 +219,58 @@ public abstract partial class ControlBase: ISelectableTextSource
 
         var previous = CommittedTextSelection;
         CommittedTextSelection = selection;
+        unchecked
+        {
+            _textSelectionTransitionVersion++;
+        }
+        var transitionVersion = _textSelectionTransitionVersion;
         Invalidate(Invalidation.Render);
         var eventArgs = new TextSelectionChangedEventArgs(previous, selection);
         OnTextSelectionStateChanged(eventArgs);
+
+        if (_textSelectionTransitionVersion != transitionVersion)
+        {
+            return true;
+        }
+
         beforeNotifications?.Invoke();
+
+        if (_textSelectionTransitionVersion != transitionVersion)
+        {
+            return true;
+        }
+
         OnTextSelectionCommitted(eventArgs);
-        TextSelectionChanged?.Invoke(this, eventArgs);
+
+        if (_textSelectionTransitionVersion == transitionVersion)
+        {
+            RaiseTextSelectionChanged(eventArgs, transitionVersion);
+        }
+
         return true;
+    }
+
+    private void RaiseTextSelectionChanged(
+        TextSelectionChangedEventArgs eventArgs,
+        ulong transitionVersion)
+    {
+        var handlers = TextSelectionChanged;
+
+        if (handlers is null)
+        {
+            return;
+        }
+
+        foreach (var subscriber in handlers.GetInvocationList())
+        {
+            if (_textSelectionTransitionVersion != transitionVersion)
+            {
+                break;
+            }
+
+            var handler = (EventHandler<TextSelectionChangedEventArgs>) subscriber;
+            handler(this, eventArgs);
+        }
     }
 
     /// <summary>Publishes component compatibility state after base selection commits.</summary>
