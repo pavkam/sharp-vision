@@ -705,6 +705,46 @@ public sealed class DocumentLinkSurfaceTests
         surface.Cell(new Point(0, 4)).Text.ShouldBe("d");
     }
 
+    /// <summary>Verifies moving to a link in an intrinsic table column beyond the right edge reveals
+    /// it through the document's horizontal viewport.</summary>
+    [Fact]
+    public async Task Keyboard_WhenTabReachesALinkBeyondTheRightEdge_ScrollsToRevealItAsync()
+    {
+        // Arrange
+        var link = new DocumentLink("link");
+        var linkCell = new DocumentTableCell { Inlines = { link } };
+        var table = new DocumentTable
+        {
+            Rows =
+            {
+                new DocumentTableRow
+                {
+                    Cells = { new DocumentTableCell("abcdefghij"), linkCell }
+                }
+            }
+        };
+        var document = new Document { Blocks = { table } };
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(5, 3),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => document.Focus().ShouldBeTrue(), "focus document");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert
+        document.ActiveLink.ShouldBeSameAs(link);
+        var snapshot = await surface.Application.Dispatcher.InvokeAsync(
+            document.GetSelectableTextSnapshot,
+            TestContext.Current.CancellationToken);
+        snapshot.Glyphs.ShouldContain(glyph => glyph.Range.Length == 1 &&
+            document.SelectionMap.Text[glyph.Range.Start] == 'l');
+        (await surface.Application.Dispatcher.InvokeAsync(
+            () => document.ScrollSelectableTextViewport(-100, 0),
+            TestContext.Current.CancellationToken)).ShouldBeTrue();
+    }
+
     /// <summary>Verifies disabling a mounted document cascades disabled visual state, refuses link
     /// activation, holds geometry stable across a genuine resize, and recovers on re-enable.</summary>
     [Fact]

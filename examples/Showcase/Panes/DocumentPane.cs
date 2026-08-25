@@ -442,12 +442,13 @@ internal sealed class DocumentPane: CompositeControlBase
             "Code blocks and thematic breaks",
             "A <info>DocumentCodeBlock</info> is literal: markup is never parsed, so source containing " +
             "angle brackets needs no escaping, line structure is preserved exactly, and lines " +
-            "never wrap. A <info>DocumentSeparator</info> draws a rule across the width available " +
+            "never wrap. Extend a selection past the right edge to reveal a clipped line " +
+            "horizontally. A <info>DocumentSeparator</info> draws a rule across the width available " +
             "at its nesting level.",
             new DocExample(
                 "Preformatted source and a rule",
-                "Line breaks, blank lines, and indentation are all preserved exactly as written; " +
-                "the rule spans the remaining content width.",
+                "Line breaks, blank lines, and indentation are preserved exactly; clipped code " +
+                "reveals horizontally while ordinary prose keeps wrapping.",
                 document,
                 """
                 document.Blocks.Add(new DocumentCodeBlock(

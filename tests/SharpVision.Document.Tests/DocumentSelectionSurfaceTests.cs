@@ -456,6 +456,40 @@ public sealed class DocumentSelectionSurfaceTests
             TestContext.Current.CancellationToken)).ShouldBeFalse();
     }
 
+    /// <summary>Verifies keyboard extension can horizontally reveal a caret inside a clipped,
+    /// non-wrapping code line.</summary>
+    [Fact]
+    public async Task Keyboard_WhenCodeBlockCaretMovesPastRightEdge_RevealsItHorizontallyAsync()
+    {
+        var document = new Document { Blocks = { new DocumentCodeBlock("abcdefghij") } };
+
+        await AssertHorizontalCaretRevealAsync(document);
+    }
+
+    /// <summary>Verifies keyboard extension can horizontally reveal a caret inside an ordinary
+    /// token whose grapheme width exceeds the document viewport.</summary>
+    [Fact]
+    public async Task Keyboard_WhenOverwideWordCaretMovesPastRightEdge_RevealsItHorizontallyAsync()
+    {
+        var document = new Document { Blocks = { new DocumentParagraph("abcdefghij") } };
+
+        await AssertHorizontalCaretRevealAsync(document);
+    }
+
+    /// <summary>Verifies keyboard extension can horizontally reveal a caret inside a table whose
+    /// intrinsic column width exceeds the document viewport.</summary>
+    [Fact]
+    public async Task Keyboard_WhenWideTableCaretMovesPastRightEdge_RevealsItHorizontallyAsync()
+    {
+        var table = new DocumentTable
+        {
+            Rows = { new DocumentTableRow { Cells = { new DocumentTableCell("abcdefghij") } } }
+        };
+        var document = new Document { Blocks = { table } };
+
+        await AssertHorizontalCaretRevealAsync(document);
+    }
+
     /// <summary>Verifies visual line and page commands extend from the established anchor and
     /// saturate without changing selection ownership.</summary>
     [Fact]
@@ -2289,6 +2323,42 @@ public sealed class DocumentSelectionSurfaceTests
         // Assert
         selected.Text(0, 0).ShouldBe(" ");
         selected.Cell(0, 0).ShouldBe(initial.Cell(0, 0));
+    }
+
+    private static async Task AssertHorizontalCaretRevealAsync(Document document)
+    {
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(5, 3),
+            TestContext.Current.CancellationToken);
+        ScrollChangedEventArgs? horizontalChange = null;
+        document.ScrollChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.Offset.X != eventArgs.PreviousOffset.X)
+            {
+                horizontalChange = eventArgs;
+            }
+        };
+        await surface.UpdateAsync(
+            () =>
+            {
+                document.SetSelection(new Selection(0, 5));
+                document.Focus().ShouldBeTrue();
+            },
+            "establish clipped document caret");
+
+        await RouteKeyAsync(surface, document, Code.Right, Modifiers.Shift);
+
+        document.Extent.Width.ShouldBeGreaterThan(document.Viewport.Width);
+        horizontalChange.ShouldNotBeNull().Offset.X.ShouldBeGreaterThan(0);
+        var snapshot = await surface.Application.Dispatcher.InvokeAsync(
+            document.GetSelectableTextSnapshot,
+            TestContext.Current.CancellationToken);
+        var caretGlyph = snapshot.Glyphs.Single(glyph => glyph.Range == new Selection(5, 6));
+        surface.Cell(new Point(caretGlyph.Bounds.X, caretGlyph.Bounds.Y)).Text.ShouldBe("f");
+        (await surface.Application.Dispatcher.InvokeAsync(
+            () => document.ScrollSelectableTextViewport(-100, 0),
+            TestContext.Current.CancellationToken)).ShouldBeTrue();
     }
 
     private static Face SelectionFace(Color background) => new(

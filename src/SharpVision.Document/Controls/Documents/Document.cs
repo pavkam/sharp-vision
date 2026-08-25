@@ -61,6 +61,7 @@ public sealed class Document:
     private DocumentGlyphs _layoutGlyphs;
     private bool _layoutValid;
     private int _layoutWidth = -1;
+    private int _horizontalOffset;
     private TextSelectionMap _selectionSemanticMap = TextSelectionMap.Empty;
 
     /// <summary>Initializes an empty scrollable document.</summary>
@@ -291,6 +292,19 @@ public sealed class Document:
     /// <summary>Gets projected embedded-control rectangles for the private presenter.</summary>
     internal IReadOnlyList<DocumentControlPlacement> ControlPlacements => _layout.ControlPlacements;
 
+    /// <summary>Projects the arranged document content through its bounded horizontal viewport.</summary>
+    /// <param name="bounds">The unshifted presenter content bounds.</param>
+    /// <returns>The horizontally translated bounds spanning the complete projected content width.</returns>
+    internal Rect ProjectContentBounds(Rect bounds)
+    {
+        _ = ApplyHorizontal(_horizontalOffset, ScrollCause.Resize);
+        return new Rect(
+            Difference(bounds.X, _horizontalOffset),
+            bounds.Y,
+            Math.Max(bounds.Width, _layout.MaxCells),
+            bounds.Height);
+    }
+
     /// <summary>Refreshes embedded selection geometry after the private presenter arranges children.</summary>
     /// <param name="contentOrigin">The absolute origin of document content coordinates.</param>
     internal void RefreshSelectionGeometry(Point contentOrigin) =>
@@ -397,7 +411,7 @@ public sealed class Document:
     {
         var content = _surface.ContentBounds;
         return new Rect(
-            content.X,
+            AddCoordinates(content.X, _horizontalOffset),
             AddCoordinates(content.Y, VerticalOffset),
             Viewport.Width,
             Viewport.Height);
@@ -412,39 +426,29 @@ public sealed class Document:
         CommitSelectionProjection(projection.Layout);
         AdoptSelectionMap(projection.Map);
 
-        if (!projection.Map.TryGetCaretGeometry(offset, out var bounds, out _))
-        {
-            return false;
-        }
-
-        var target = VerticalOffset;
-
-        if (bounds.Y < target)
-        {
-            target = bounds.Y;
-        }
-        else if (Viewport.Height > 0 && bounds.Y >= AddCoordinates(target, Viewport.Height))
-        {
-            target = bounds.Y - Viewport.Height + 1;
-        }
-
-        return Apply(target, ScrollCause.Programmatic);
+        return projection.Map.TryGetCaretGeometry(offset, out var bounds, out _) &&
+               RevealViewportCell(bounds.X, bounds.Y, ScrollCause.Programmatic);
     }
 
     /// <inheritdoc/>
     public bool ScrollSelectableTextViewport(int horizontal, int vertical)
     {
         VerifyMutable();
-        return _stack.ScrollBy(horizontal, vertical, ScrollCause.Pointer);
+        var movedHorizontal = ApplyHorizontal(
+            AddCoordinates(_horizontalOffset, horizontal),
+            ScrollCause.Pointer);
+        var movedVertical = _stack.ScrollBy(0, vertical, ScrollCause.Pointer);
+        return movedHorizontal || movedVertical;
     }
 
     /// <inheritdoc/>
     protected override bool ScrollTextSelectionViewport(int horizontal, int vertical, out Point hitAdjustment)
     {
+        var previousHorizontal = _horizontalOffset;
         var previousVertical = VerticalOffset;
         var changed = ScrollSelectableTextViewport(horizontal, vertical);
         hitAdjustment = new Point(
-            0,
+            Difference(_horizontalOffset, previousHorizontal),
             Difference(VerticalOffset, previousVertical));
         return changed;
     }
@@ -676,11 +680,11 @@ public sealed class Document:
 
     #region Scrolling
 
-    /// <summary>Raised after the vertical offset commits.</summary>
+    /// <summary>Raised after either document viewport offset commits.</summary>
     public event EventHandler<ScrollChangedEventArgs>? ScrollChanged;
 
     /// <summary>Gets the committed non-negative content extent.</summary>
-    public Size Extent => _stack.Extent;
+    public Size Extent => new(Math.Max(_stack.Extent.Width, _layout.MaxCells), _stack.Extent.Height);
 
     /// <summary>Gets the committed non-negative visible extent.</summary>
     public Size Viewport => _stack.Viewport;
@@ -751,16 +755,79 @@ public sealed class Document:
 
     private int MaximumOffset => Math.Max(0, Extent.Height - Viewport.Height);
 
+    private int MaximumHorizontalOffset => Math.Max(0, Extent.Width - Viewport.Width);
+
     private bool Apply(int offset, ScrollCause cause)
     {
         var target = Math.Clamp(offset, 0, MaximumOffset);
         return target != VerticalOffset && _stack.ScrollBy(0, target - VerticalOffset, cause);
     }
 
+    private bool RevealViewportCell(int column, int line, ScrollCause cause)
+    {
+        var targetHorizontal = _horizontalOffset;
+        var targetVertical = VerticalOffset;
+
+        if (column < targetHorizontal)
+        {
+            targetHorizontal = column;
+        }
+        else if (Viewport.Width > 0 && column >= AddCoordinates(targetHorizontal, Viewport.Width))
+        {
+            targetHorizontal = Math.Min(
+                MaximumHorizontalOffset,
+                column - Viewport.Width + 1);
+        }
+
+        if (line < targetVertical)
+        {
+            targetVertical = line;
+        }
+        else if (Viewport.Height > 0 && line >= AddCoordinates(targetVertical, Viewport.Height))
+        {
+            targetVertical = line - Viewport.Height + 1;
+        }
+
+        var movedHorizontal = ApplyHorizontal(targetHorizontal, cause);
+        var movedVertical = Apply(targetVertical, cause);
+        return movedHorizontal || movedVertical;
+    }
+
+    private bool ApplyHorizontal(int offset, ScrollCause cause)
+    {
+        ArgumentOutOfRangeException.ThrowIfNotDefined(cause, nameof(cause), "The scroll cause is unknown.");
+        var target = Math.Clamp(offset, 0, MaximumHorizontalOffset);
+
+        if (target == _horizontalOffset)
+        {
+            return false;
+        }
+
+        var previous = new Point(_horizontalOffset, VerticalOffset);
+        _horizontalOffset = target;
+        InvalidateRetainedDescendant(_presenter, InvalidationImpact.Arrange);
+        ScrollChanged?.Invoke(
+            this,
+            new ScrollChangedEventArgs(
+                previous,
+                new Point(_horizontalOffset, VerticalOffset),
+                Extent,
+                Viewport,
+                cause));
+        return true;
+    }
+
     private void OnStackScrollChanged(object? sender, ScrollChangedEventArgs eventArgs)
     {
         _ = sender;
-        ScrollChanged?.Invoke(this, eventArgs);
+        ScrollChanged?.Invoke(
+            this,
+            new ScrollChangedEventArgs(
+                new Point(_horizontalOffset, eventArgs.PreviousOffset.Y),
+                new Point(_horizontalOffset, eventArgs.Offset.Y),
+                Extent,
+                Viewport,
+                eventArgs.Cause));
     }
 
     #endregion
@@ -977,22 +1044,7 @@ public sealed class Document:
                 continue;
             }
 
-            var viewport = Viewport.Height;
-
-            if (viewport <= 0)
-            {
-                return;
-            }
-
-            if (region.Line < VerticalOffset)
-            {
-                _ = Apply(region.Line, ScrollCause.Programmatic);
-            }
-            else if (region.Line >= VerticalOffset + viewport)
-            {
-                _ = Apply(region.Line - viewport + 1, ScrollCause.Programmatic);
-            }
-
+            _ = RevealViewportCell(region.Column, region.Line, ScrollCause.Programmatic);
             return;
         }
     }

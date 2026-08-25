@@ -101,7 +101,8 @@ internal sealed class DocumentPresenter: Container
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        ArrangeChild(_surface, bounds, ResolvedAxes.Both);
+        var projectedBounds = _owner.ProjectContentBounds(bounds);
+        ArrangeChild(_surface, projectedBounds, ResolvedAxes.Both);
 
         foreach (var placement in _owner.ControlPlacements)
         {
@@ -109,8 +110,8 @@ internal sealed class DocumentPresenter: Container
             ArrangeChild(
                 placement.Control,
                 new Rect(
-                    bounds.X + projected.X,
-                    bounds.Y + projected.Y,
+                    projectedBounds.X + projected.X,
+                    projectedBounds.Y + projected.Y,
                     projected.Width,
                     projected.Height),
                 ResolvedAxes.Both);

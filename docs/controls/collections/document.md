@@ -31,11 +31,16 @@ repair value when the primary glyph would not fit one cell, so a terminal
 configured for wide ambiguous characters degrades to plain ASCII instead of
 corrupting the columns beside each glyph.
 
-Scrolling is vertical. `Document` stretches to fill its slot by default and is a
-single focus stop; it never traps Tab, because link navigation releases focus at
-either end of the document. It also owns one browser-like semantic selection
-that can begin or end inside ordinary text, links, retained control captions, or
-an embedded selectable control such as `CodeView`.
+Ordinary document scrolling is vertical and exposes a generated vertical rail.
+Content that deliberately exceeds the wrapping width - preformatted code,
+indivisible prose tokens, and intrinsic-width tables - also participates in the
+document's horizontal selectable-text viewport, so selection reveal and edge
+dragging can expose it without changing ordinary paragraph wrapping. `Document`
+stretches to fill its slot by default and is a single focus stop; it never traps
+Tab, because link navigation releases focus at either end of the document. It
+also owns one browser-like semantic selection that can begin or end inside
+ordinary text, links, retained control captions, or an embedded selectable
+control such as `CodeView`.
 
 ## Inheritance
 
@@ -79,7 +84,7 @@ classDiagram
 | `ActualStyle`                                                                                  | `DocumentStyle`                               | Resolved         | Read-only; the complete local, theme-owned, or code-owned presentation.                  |
 | `ScrollBarStyle`                                                                               | `ScrollBarStyle?`                             | `null`           | Local generated-bar style; null leaves it to the theme.                                  |
 | `ActualScrollBarStyle`                                                                         | `ScrollBarStyle`                              | Resolved         | Read-only resolved generated-bar style.                                                  |
-| `Extent`                                                                                       | `Size`                                        | Layout-dependent | Read-only committed non-negative content extent, in cells.                               |
+| `Extent`                                                                                       | `Size`                                        | Layout-dependent | Read-only committed content extent, including genuine horizontal overflow, in cells.     |
 | `Viewport`                                                                                     | `Size`                                        | Layout-dependent | Read-only committed non-negative visible extent, in cells.                               |
 | `VerticalOffset`                                                                               | `int`                                         | `0`              | Valid vertical content offset in lines; rejects a value outside the current extent.      |
 | `LineSize`                                                                                     | `int`                                         | `1`              | Non-negative lines one arrow key or wheel notch scrolls; rejects a negative value.       |
@@ -103,7 +108,7 @@ classDiagram
 | `SelectableTextViewport`                                                                       | `Rect`                                        | Layout-dependent | Read-only visible selectable aperture in document-local cells.                           |
 | `RevealSelectableTextOffset(int offset)`                                                       | `bool`                                        | —                | Reveals one validated grapheme offset through the document's intrinsic viewport.         |
 | `ScrollSelectableTextViewport(int horizontal, int vertical)`                                   | `bool`                                        | —                | Offers signed cell motion to the intrinsic selectable viewport.                          |
-| `ScrollChanged`                                                                                | `EventHandler<ScrollChangedEventArgs>`        | —                | Raised after the vertical offset commits.                                                |
+| `ScrollChanged`                                                                                | `EventHandler<ScrollChangedEventArgs>`        | —                | Raised after either intrinsic viewport offset commits.                                   |
 | `LinkClicked`                                                                                  | `EventHandler<DocumentLinkEventArgs>`         | —                | Raised after any link is activated, following that link's own `Clicked`.                 |
 | `SelectionChanged`                                                                             | `EventHandler`                                | —                | Raised synchronously after a different directional selection commits.                    |
 | Inherited `TextSelectionChanged`                                                               | `EventHandler<TextSelectionChangedEventArgs>` | —                | Raised from the same committed transition as `SelectionChanged`.                         |
@@ -113,7 +118,10 @@ describe keyboard, pointer, wheel, and content-driven changes and reach
 subscribers through `ScrollChanged` (see
 [scrolling.md](../../concepts/scrolling.md#overview)). `Extent` and `Viewport`
 report the committed values from the most recent layout pass, so both are zero
-before the document has been measured.
+before the document has been measured. Horizontal overflow has no separate
+generated rail or public offset setter; `RevealSelectableTextOffset` and
+`ScrollSelectableTextViewport` move it as part of the selectable-text viewport,
+and `ScrollChanged` reports that movement in `Offset.X`.
 
 `DocumentLinkEventArgs` carries one property, `Link`, holding the activated
 `DocumentLink`. It exists so an application can handle every link centrally
@@ -318,7 +326,8 @@ source line becomes exactly one rendered line. Tabs expand to the next four-cell
 stop.
 
 A code line never wraps, because re-flowing code changes its meaning. A line
-longer than the available width is clipped at the content edge.
+longer than the available width is clipped at the content edge until selection
+reveal or edge dragging moves the document's horizontal selectable viewport.
 
 ### DocumentSeparator
 
@@ -550,6 +559,13 @@ selection can nevertheless start or end inside one child's semantic text, so a
 button caption or `CodeView` line is not forced to be atomic. Only mapped text
 cells receive `SelectionFace`; borders, checkbox marks, radio marks, gutters,
 quote bars, and other chrome remain unchanged.
+
+When code, an indivisible prose token, or a table is wider than the viewport,
+keyboard extension and pointer edge scrolling translate the projected content by
+the minimum horizontal distance that exposes the active caret. The full semantic
+stream and its range remain unchanged; only complete glyphs inside the new clip
+receive exported geometry. Keyboard focus uses the same two-axis reveal for an
+interactive link in an intrinsic table column beyond the right edge.
 
 `Document` is itself an authoritative `ISelectableTextSource` and an
 `ISelectableTextViewport`. Its snapshot retains semantic-only separators and
