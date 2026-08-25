@@ -406,7 +406,7 @@ public sealed class MarkdownDocumentReaderTests
         // Arrange
         const string source = """
             | Name | Count | State |
-            | :--- | ---: | :---: |
+            | :- | --: | :---: |
             | Alpha | 12 | ready |
             """;
         var reader = new MarkdownDocumentReader(new MarkdownOptions
@@ -424,6 +424,55 @@ public sealed class MarkdownDocumentReaderTests
         table.Rows[1].Cells[0].Alignment.ShouldBe(DocumentTableCellAlignment.Left);
         table.Rows[1].Cells[1].Alignment.ShouldBe(DocumentTableCellAlignment.Right);
         table.Rows[1].Cells[2].Alignment.ShouldBe(DocumentTableCellAlignment.Center);
+    }
+
+    /// <summary>Verifies every positive delimiter-hyphen count accepted by GFM creates a table,
+    /// including the compact one- and two-hyphen forms.</summary>
+    [Theory]
+    [InlineData("-")]
+    [InlineData("--")]
+    [InlineData("---")]
+    public void Read_WhenTableDelimiterHasPositiveHyphenCount_ProducesTable(string delimiter)
+    {
+        // Arrange
+        var source = FormattableString.Invariant($"A | B\n{delimiter} | {delimiter}\nx | y");
+        var reader = new MarkdownDocumentReader(new MarkdownOptions
+        {
+            Extensions = MarkdownExtension.Tables
+        });
+
+        // Act
+        var table = reader.Read(source).Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentTable>();
+
+        // Assert
+        table.Rows.Count.ShouldBe(2);
+        table.Rows[0].IsHeader.ShouldBeTrue();
+        table.Rows[0].Cells.Count.ShouldBe(2);
+        table.Rows[1].Cells.Count.ShouldBe(2);
+    }
+
+    /// <summary>Verifies a table delimiter permits only one alignment colon on either edge and
+    /// still requires at least one hyphen.</summary>
+    [Theory]
+    [InlineData(":")]
+    [InlineData("::")]
+    [InlineData("::-")]
+    [InlineData("-::")]
+    [InlineData(":-::")]
+    public void Read_WhenTableDelimiterHasNoHyphenOrRepeatedColons_LeavesLiteral(string delimiter)
+    {
+        // Arrange
+        var source = FormattableString.Invariant($"A\n{delimiter}\nx");
+        var reader = new MarkdownDocumentReader(new MarkdownOptions
+        {
+            Extensions = MarkdownExtension.Tables
+        });
+
+        // Act
+        var result = reader.Read(source);
+
+        // Assert
+        result.Blocks.ShouldNotContain(static block => block is DocumentTable);
     }
 
     /// <summary>Verifies extended URL recognition is isolated from the strikethrough extension.</summary>
@@ -935,11 +984,14 @@ public sealed class MarkdownDocumentReaderTests
     }
 
     /// <summary>Verifies table recognition never truncates a wider authored header or data row.</summary>
-    [Fact]
-    public void Read_WhenTableHeaderAndDelimiterWidthsDiffer_DoesNotDiscardCells()
+    [Theory]
+    [InlineData("-")]
+    [InlineData("--")]
+    [InlineData("---")]
+    public void Read_WhenTableHeaderAndDelimiterWidthsDiffer_DoesNotDiscardCells(string delimiter)
     {
         // Arrange
-        const string source = "| A | B |\n| --- |\n| x | y |";
+        var source = FormattableString.Invariant($"| A | B |\n| {delimiter} |\n| x | y |");
         var reader = new MarkdownDocumentReader(new MarkdownOptions { Extensions = MarkdownExtension.Tables });
 
         // Act

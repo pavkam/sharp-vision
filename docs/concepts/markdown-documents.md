@@ -154,6 +154,14 @@ silent gaps:
 autolinks. `All` enables every extension. Enabling one individual flag never
 implicitly enables another.
 
+Tables follow the
+[GFM 0.29 delimiter-row grammar](https://github.github.com/gfm/#tables-extension-):
+each delimiter cell contains one or more hyphens, with at most one optional
+colon on either edge for alignment. One-, two-, and longer-hyphen cells are
+equivalent structurally, and the header and delimiter rows must contain the same
+number of cells. The Showcase uses longer delimiters for readability, not as a
+parser requirement.
+
 GFM table bodies accept rows without pipes and fill missing trailing cells with
 empty content. A blank line or any recognized block start ends the table, even
 when that block's source line contains a pipe.

@@ -1492,13 +1492,32 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
         foreach (var cell in cells)
         {
-            var value = cell.Trim();
-            var leading = value.StartsWith(':');
-            var trailing = value.EndsWith(':');
-            var hyphens = value.Trim(':');
+            var value = cell.AsSpan().Trim();
 
-            if (hyphens.Length < 3 || hyphens.Any(static character => character != '-'))
+            if (value.IsEmpty)
             {
+                alignments = null;
+                return false;
+            }
+
+            var leading = value[0] == ':';
+            var trailing = value[^1] == ':';
+            var hyphenStart = leading ? 1 : 0;
+            var hyphenEnd = value.Length - (trailing ? 1 : 0);
+
+            if (hyphenStart >= hyphenEnd)
+            {
+                alignments = null;
+                return false;
+            }
+
+            for (var index = hyphenStart; index < hyphenEnd; index++)
+            {
+                if (value[index] == '-')
+                {
+                    continue;
+                }
+
                 alignments = null;
                 return false;
             }
