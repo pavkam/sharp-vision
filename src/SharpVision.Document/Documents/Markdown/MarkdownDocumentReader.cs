@@ -1014,10 +1014,21 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
         var trimmed = line[indent..];
 
-        if (trimmed.Length >= 2 && trimmed[0] is '-' or '+' or '*' && trimmed[1] == ' ')
+        if (trimmed.Length > 0 && trimmed[0] is '-' or '+' or '*')
         {
-            marker = new MarkdownListMarker(indent, isOrdered: false, start: 1, markerWidth: 2, trimmed[2..]);
-            return true;
+            var suffix = trimmed.AsSpan(1);
+
+            if (suffix.IsEmpty || ContainsOnlyListMarkerWhitespace(suffix))
+            {
+                marker = new MarkdownListMarker(indent, isOrdered: false, start: 1, markerWidth: 2, string.Empty);
+                return true;
+            }
+
+            if (suffix[0] == ' ')
+            {
+                marker = new MarkdownListMarker(indent, isOrdered: false, start: 1, markerWidth: 2, suffix[1..].ToString());
+                return true;
+            }
         }
 
         var digits = 0;
@@ -1033,15 +1044,40 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             }
         }
 
-        if (digits > 0 && digits + 1 < trimmed.Length && trimmed[digits] is '.' or ')' && trimmed[digits + 1] == ' ' &&
+        if (digits > 0 && digits < trimmed.Length && trimmed[digits] is '.' or ')' &&
             int.TryParse(trimmed.AsSpan(0, digits), CultureInfo.InvariantCulture, out var start))
         {
-            marker = new MarkdownListMarker(indent, isOrdered: true, start, markerWidth: digits + 2, trimmed[(digits + 2)..]);
-            return true;
+            var suffix = trimmed.AsSpan(digits + 1);
+
+            if (suffix.IsEmpty || ContainsOnlyListMarkerWhitespace(suffix))
+            {
+                marker = new MarkdownListMarker(indent, isOrdered: true, start, markerWidth: digits + 2, string.Empty);
+                return true;
+            }
+
+            if (suffix[0] == ' ')
+            {
+                marker = new MarkdownListMarker(indent, isOrdered: true, start, markerWidth: digits + 2, suffix[1..].ToString());
+                return true;
+            }
         }
 
         marker = default;
         return false;
+    }
+
+    [Pure]
+    private static bool ContainsOnlyListMarkerWhitespace(ReadOnlySpan<char> source)
+    {
+        foreach (var character in source)
+        {
+            if (character is not (' ' or '\t'))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     [Pure]
@@ -1253,7 +1289,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     [Pure]
     private bool IsParagraphInterruptingBlockStart(string line) =>
         TryListMarker(line, out var marker)
-            ? !marker.IsOrdered || marker.Start == 1
+            ? marker.Content.Length > 0 && (!marker.IsOrdered || marker.Start == 1)
             : TryHeading(line, out _) ||
               line.TrimStart().StartsWith('>') ||
               line.TrimStart().StartsWith("```", StringComparison.Ordinal) ||

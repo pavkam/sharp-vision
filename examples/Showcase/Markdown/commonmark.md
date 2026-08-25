@@ -38,6 +38,8 @@ So this sentence does too.
 
 0. Numbered lists may begin at zero
 1. Later items share the measured marker gutter
+2.
+3. Empty items retain their authored position
 
 > Block quotes can contain flowing text and **inline formatting**.
 

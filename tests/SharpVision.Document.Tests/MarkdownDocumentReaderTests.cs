@@ -131,6 +131,106 @@ public sealed class MarkdownDocumentReaderTests
         result.Blocks[1].ShouldBeOfType<DocumentList>().Start.ShouldBe(2);
     }
 
+    /// <summary>Verifies each bullet delimiter can form a standalone empty list item, including
+    /// when trailing whitespace follows the marker.</summary>
+    [Theory]
+    [InlineData("-")]
+    [InlineData("+")]
+    [InlineData("*")]
+    [InlineData("-\t")]
+    public void Read_WhenEmptyBulletMarkerIsStandalone_ProducesEmptyListItem(string source)
+    {
+        // Arrange
+        var reader = new MarkdownDocumentReader();
+
+        // Act
+        var result = reader.Read(source);
+
+        // Assert
+        var list = result.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentList>();
+        list.Kind.ShouldBe(DocumentListKind.Bulleted);
+        list.Items.ShouldHaveSingleItem().Blocks.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies both ordered delimiters can form standalone empty items and preserve the
+    /// authored start value.</summary>
+    [Theory]
+    [InlineData("1.", 1)]
+    [InlineData("2)", 2)]
+    [InlineData("3.\t", 3)]
+    public void Read_WhenEmptyOrderedMarkerIsStandalone_ProducesEmptyListItem(string source, int start)
+    {
+        // Arrange
+        var reader = new MarkdownDocumentReader();
+
+        // Act
+        var result = reader.Read(source);
+
+        // Assert
+        var list = result.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentList>();
+        list.Kind.ShouldBe(DocumentListKind.Numbered);
+        list.Start.ShouldBe(start);
+        list.Items.ShouldHaveSingleItem().Blocks.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies empty ordered items remain in their authored middle position.</summary>
+    [Fact]
+    public void Read_WhenOrderedListContainsEmptyMiddleItem_PreservesAllItems()
+    {
+        // Arrange
+        const string source = "1. first\n2.\n3. third";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        var list = result.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentList>();
+        list.Items.Count.ShouldBe(3);
+        list.Items[0].Blocks.ShouldNotBeEmpty();
+        list.Items[1].Blocks.ShouldBeEmpty();
+        list.Items[2].Blocks.ShouldNotBeEmpty();
+    }
+
+    /// <summary>Verifies empty bullet items remain at both list boundaries.</summary>
+    [Fact]
+    public void Read_WhenBulletListStartsAndEndsWithEmptyItems_PreservesAllItems()
+    {
+        // Arrange
+        const string source = "-\n- middle\n-";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        var list = result.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentList>();
+        list.Items.Count.ShouldBe(3);
+        list.Items[0].Blocks.ShouldBeEmpty();
+        list.Items[1].Blocks.ShouldNotBeEmpty();
+        list.Items[2].Blocks.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies an empty bullet or ordered item cannot interrupt paragraph continuation
+    /// text.</summary>
+    [Theory]
+    [InlineData("*")]
+    [InlineData("1.")]
+    [InlineData("*\t")]
+    public void Read_WhenEmptyListMarkerFollowsParagraph_PreservesParagraph(string marker)
+    {
+        // Arrange
+        var source = $"paragraph\n{marker}";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        var paragraph = result.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+        paragraph.Inlines.Count.ShouldBe(3);
+        paragraph.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("paragraph");
+        _ = paragraph.Inlines[1].ShouldBeOfType<DocumentSoftBreak>();
+        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(marker);
+    }
+
     /// <summary>Verifies disabled non-standard syntax remains ordinary visible source.</summary>
     [Fact]
     public void Read_WhenExtensionsAreDisabled_PreservesNonStandardSyntaxLiterally()

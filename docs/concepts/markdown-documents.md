@@ -50,7 +50,10 @@ Ordered-list markers follow the
 one to nine ASCII digits followed by `.` or `)`. Any valid start value forms a
 list after a block boundary, but only a list starting at `1` may interrupt an
 open paragraph. A ten-digit prefix and a non-one marker inside paragraph
-continuation remain literal paragraph text.
+continuation remain literal paragraph text. A bullet or ordered marker with no
+content creates an empty list item when it starts a block or continues a list;
+optional trailing spaces or tabs do not change that result. An empty marker
+cannot interrupt an open paragraph.
 
 Block-quote nesting is interpreted to a maximum of 64 semantic levels. Any
 deeper quote markers remain literal paragraph content, keeping hostile input
