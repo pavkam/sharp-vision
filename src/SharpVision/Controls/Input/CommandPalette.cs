@@ -67,7 +67,7 @@ public sealed class CommandPalette: CompositeControlBase
             _list,
             _input.Focus,
             () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None),
-            () => Opened?.Invoke(this, EventArgs.Empty),
+            OnOpened,
             () => Closed?.Invoke(this, EventArgs.Empty),
             ownerInitialFocus: _input);
         _ = AddHandler(Events.Key, OnKeyRouted, handledEventsToo: true);
@@ -442,37 +442,44 @@ public sealed class CommandPalette: CompositeControlBase
     {
         _ = sender;
 
-        if (eventArgs.Phase != RoutingPhase.Preview ||
-            eventArgs.IsHandled ||
-            eventArgs.Stroke.Action != KeyAction.Press ||
-            !IsOpen)
+        if (eventArgs.Phase != RoutingPhase.Preview || eventArgs.IsHandled || !IsOpen)
         {
             return;
         }
 
-        if (eventArgs.Stroke.Code == Code.Escape)
+        if (eventArgs.Stroke is { Action: KeyAction.Press, Code: Code.Escape })
         {
             Close();
             eventArgs.IsHandled = true;
             return;
         }
 
-        if (eventArgs.Stroke.Code == Code.Enter && _list.SelectedIndex >= 0)
+        if (eventArgs.Stroke is { Action: KeyAction.Press, Code: Code.Enter })
         {
-            Invoke(_list.SelectedIndex, ActivationCause.Keyboard);
-            eventArgs.IsHandled = true;
+            eventArgs.IsHandled = _list.ActivateCurrent(
+                ActivationCause.Keyboard,
+                eventArgs.Stroke.Code,
+                eventArgs.Stroke.Modifiers);
             return;
         }
 
-        if (eventArgs.Stroke.Code is Code.Up or Code.Down)
+        if (eventArgs.Stroke.Action is KeyAction.Press or KeyAction.Repeat &&
+            eventArgs.Stroke.Code is Code.Up or Code.Down)
         {
-            var direction = eventArgs.Stroke.Code == Code.Down ? 1 : -1;
-            var start = _list.SelectedIndex < 0
-                ? direction > 0 ? -1 : Items.Count
-                : _list.SelectedIndex;
-            _list.SelectedIndex = Math.Clamp(start + direction, 0, Items.Count - 1);
-            eventArgs.IsHandled = true;
+            eventArgs.IsHandled = _list.MoveSelection(eventArgs.Stroke.Code);
         }
+    }
+
+    /// <summary>Unifies the first available result's selection and current state after the popup
+    /// makes its rows eligible, then publishes the completed open transition.</summary>
+    private void OnOpened()
+    {
+        if (Items.Count > 0)
+        {
+            _ = _list.MoveSelection(Code.Home);
+        }
+
+        Opened?.Invoke(this, EventArgs.Empty);
     }
 
     #endregion
@@ -577,6 +584,11 @@ public sealed class CommandPalette: CompositeControlBase
         NotifyPropertyChanged(nameof(Items), InvalidationImpact.None);
         ResultsChanged?.Invoke(this, EventArgs.Empty);
         _popupCoordinator.SetOpen(_wantsOpen && results.Count > 0);
+
+        if (_popupCoordinator.IsOpen && _list.SelectedIndex < 0)
+        {
+            _ = _list.MoveSelection(Code.Home);
+        }
     }
 
     private void ApplyCompletion(

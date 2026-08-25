@@ -1579,7 +1579,12 @@ public sealed class ListView: ItemsControl
         eventArgs.IsHandled = MoveSelection(eventArgs.Stroke.Code);
     }
 
-    private bool MoveSelection(Code code)
+    /// <summary>Moves selection and current item through the shared keyboard-navigation transaction,
+    /// then scrolls the committed row into view.</summary>
+    /// <param name="code">The directional, endpoint, or paging navigation key.</param>
+    /// <returns><see langword="true"/> when the key resolved an eligible target; otherwise,
+    /// <see langword="false"/>.</returns>
+    internal bool MoveSelection(Code code)
     {
         var target = ResolveMove(code);
 

@@ -64,9 +64,13 @@ only when the failing request is still current.
 2. A current successful completion copies and publishes `Items`, raises
    `ResultsChanged`, and opens the popup when results are non-empty.
 3. A cancelled or stale completion has no observable effect.
-4. Down and Up move the result selection while focus stays in the editor. Enter
-   invokes the selected result; pointer activation uses the same `ItemInvoked`
-   contract. Escape closes results.
+4. Opening non-empty results selects the first available row and makes that same
+   row the list's current item while focus stays in the editor. Down and Up
+   press or repeat actions move selection and current item through the
+   `ListView` navigation transaction, which scrolls the result viewport
+   minimally to keep the row visible. Enter invokes the selected current result;
+   pointer activation uses the same `ItemInvoked` contract. Escape closes
+   results.
 
 The result popup uses the shared dismissing modal scope, so outside input closes
 it and restores the focus that preceded `Open()`. The retained editor is the
@@ -122,3 +126,5 @@ _ = palette.Open();
 - A stale or cancelled resolver completion cannot replace newer results.
 - Opening an embedded or overlay-positioned palette focuses the retained editor,
   while invoking a result closes the popup and preserves the query.
+- Result selection and current-item state identify the same row; holding Up or
+  Down continues navigation and keeps the popup scrollbar synchronized.
