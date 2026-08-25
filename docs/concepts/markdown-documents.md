@@ -81,6 +81,10 @@ opener may be indented by at most three spaces, and a backtick fence's info
 string cannot contain a backtick. A rejected fence-looking line remains part of
 the surrounding paragraph instead of splitting it.
 
+Block-quote recognition, paragraph interruption, and quote-line consumption use
+the same marker grammar. A `>` marker may be preceded by zero through three
+literal spaces; four or more spaces leave it as literal paragraph content.
+
 Block-quote nesting is interpreted to a maximum of 64 semantic levels. Any
 deeper quote markers remain literal paragraph content, keeping hostile input
 bounded without discarding source text.

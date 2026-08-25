@@ -96,7 +96,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 continue;
             }
 
-            if (line.TrimStart().StartsWith('>'))
+            if (TryBlockQuoteMarker(line, out _))
             {
                 blocks.Add(ParseQuote(lines, ref index, ref radioGroupOrdinal, quoteDepth));
                 continue;
@@ -277,10 +277,9 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     {
         var quoted = new List<string>();
 
-        while (index < lines.Length && lines[index].TrimStart().StartsWith('>'))
+        while (index < lines.Length && TryBlockQuoteMarker(lines[index], out var contentStart))
         {
-            var value = lines[index].TrimStart()[1..];
-            quoted.Add(value.StartsWith(' ') ? value[1..] : value);
+            quoted.Add(lines[index][contentStart..]);
             index++;
         }
 
@@ -1505,7 +1504,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     [Pure]
     private bool IsBlockStart(string line) =>
         TryHeading(line, out _) ||
-        line.TrimStart().StartsWith('>') ||
+        TryBlockQuoteMarker(line, out _) ||
         TryFenceOpener(line, out _) ||
         TryListMarker(line, out _) ||
         IsRule(line);
@@ -1515,9 +1514,30 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         TryListMarker(line, out var marker)
             ? marker.Content.Length > 0 && (!marker.IsOrdered || marker.Start == 1)
             : TryHeading(line, out _) ||
-              line.TrimStart().StartsWith('>') ||
+              TryBlockQuoteMarker(line, out _) ||
               TryFenceOpener(line, out _) ||
               IsRule(line);
+
+    [Pure]
+    private static bool TryBlockQuoteMarker(string source, out int contentStart)
+    {
+        var indent = CountLeadingSpaces(source);
+
+        if (indent > 3 || indent >= source.Length || source[indent] != '>')
+        {
+            contentStart = 0;
+            return false;
+        }
+
+        contentStart = indent + 1;
+
+        if (contentStart < source.Length && source[contentStart] == ' ')
+        {
+            contentStart++;
+        }
+
+        return true;
+    }
 
     [Pure]
     private static int CountLeadingSpaces(string source)

@@ -50,7 +50,7 @@ Only valid fence openers split paragraphs into code blocks.
 4. Multiple marker spaces stay structural: `4.    item`
 5. Delimiter changes such as `-` to `+` start a new list block
 
-> Block quotes can contain flowing text and **inline formatting**.
+   > Three leading spaces still form a block quote with **inline formatting**.
 
 ---
 

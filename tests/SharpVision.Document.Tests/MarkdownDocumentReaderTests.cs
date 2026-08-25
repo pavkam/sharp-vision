@@ -64,6 +64,58 @@ public sealed class MarkdownDocumentReaderTests
             .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("Heading");
     }
 
+    /// <summary>Verifies a block quote marker accepts only the zero-to-three-space indentation
+    /// range defined by CommonMark.</summary>
+    [Theory]
+    [InlineData("> quote", true)]
+    [InlineData(" > quote", true)]
+    [InlineData("  > quote", true)]
+    [InlineData("   > quote", true)]
+    [InlineData("    > quote", false)]
+    public void Read_WhenBlockQuoteMarkerIndentVaries_RecognizesOnlyUpToThreeSpaces(
+        string source,
+        bool expectedQuote)
+    {
+        // Arrange and act
+        var block = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem();
+
+        // Assert
+        if (expectedQuote)
+        {
+            block.ShouldBeOfType<DocumentBlockQuote>().Blocks.ShouldHaveSingleItem()
+                .ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+                .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("quote");
+        }
+        else
+        {
+            block.ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+                .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(source);
+        }
+    }
+
+    /// <summary>Verifies an over-indented marker neither interrupts a paragraph nor remains inside
+    /// a preceding block quote.</summary>
+    [Fact]
+    public void Read_WhenOverIndentedBlockQuoteMarkerFollowsContent_PreservesLiteralParagraphContent()
+    {
+        // Arrange
+        const string source = "paragraph\n    > literal\n\n> quoted\n    > sibling";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        result.Blocks.Count.ShouldBe(3);
+        var paragraph = result.Blocks[0].ShouldBeOfType<DocumentParagraph>();
+        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("> literal");
+
+        var quote = result.Blocks[1].ShouldBeOfType<DocumentBlockQuote>();
+        quote.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines
+            .ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("quoted");
+        result.Blocks[2].ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("    > sibling");
+    }
+
     /// <summary>Verifies the largest permitted ordered marker remains a numbered list marker.</summary>
     [Fact]
     public void Read_WhenOrderedMarkerHasNineDigits_ProducesNumberedList()
