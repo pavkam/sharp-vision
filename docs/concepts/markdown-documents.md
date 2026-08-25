@@ -71,6 +71,13 @@ structural and are removed before inline parsing. Two trailing spaces or an
 unescaped trailing backslash still create an interior hard break, while trailing
 markers at the end of a paragraph are stripped without creating a break.
 
+Each normalized paragraph is parsed as one inline stream rather than one stream
+per physical source line. Emphasis, strong emphasis, strikethrough, and link
+labels may therefore contain semantic soft or hard break nodes without losing
+their container. A source line ending inside a code span instead normalizes to a
+single literal space, as required by the code-span grammar. Escaped delimiters
+remain literal across those boundaries.
+
 Ordered-list markers follow the
 [CommonMark 0.31.2 list-item grammar](https://spec.commonmark.org/0.31.2/#list-items):
 one to nine ASCII digits followed by `.` or `)`. Any valid start value forms a

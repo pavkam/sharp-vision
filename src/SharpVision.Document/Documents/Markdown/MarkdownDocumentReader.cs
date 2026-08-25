@@ -502,6 +502,8 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
     private void ParseParagraphLines(List<string> lines, DocumentInlineCollection destination)
     {
+        var source = new StringBuilder();
+
         for (var index = 0; index < lines.Count; index++)
         {
             var line = index == 0
@@ -511,22 +513,20 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             var spaceBreak = hasFollowingLine && line.EndsWith("  ", StringComparison.Ordinal);
             var slashBreak = hasFollowingLine && EndsWithUnescapedBackslash(line);
 
-            line = (spaceBreak, slashBreak) switch
+            if (!spaceBreak && !slashBreak)
             {
-                (true, _) => line.TrimEnd(' '),
-                (_, true) => line[..^1],
-                _ => line.TrimEnd(' ', '\t')
-            };
+                line = line.TrimEnd(' ', '\t');
+            }
 
-            ParseInlines(line, destination);
+            _ = source.Append(line);
 
             if (hasFollowingLine)
             {
-                destination.Add(spaceBreak || slashBreak
-                    ? new DocumentLineBreak()
-                    : new DocumentSoftBreak());
+                _ = source.Append('\n');
             }
         }
+
+        ParseInlines(source.ToString(), destination);
     }
 
     [Pure]
@@ -556,6 +556,31 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
         while (index < source.Length)
         {
+            if (source[index] == '\n')
+            {
+                var spaceBreak = index >= 2 && source[index - 1] == ' ' && source[index - 2] == ' ';
+                var slashBreak = EndsWithUnescapedBackslash(source, index);
+
+                if (spaceBreak)
+                {
+                    while (plain.Length > 0 && plain[^1] == ' ')
+                    {
+                        plain.Length--;
+                    }
+                }
+                else if (slashBreak && plain.Length > 0 && plain[^1] == '\\')
+                {
+                    plain.Length--;
+                }
+
+                Flush();
+                destination.Add(spaceBreak || slashBreak
+                    ? new DocumentLineBreak()
+                    : new DocumentSoftBreak());
+                index++;
+                continue;
+            }
+
             if (source[index] == '\\' && index + 1 < source.Length && IsEscapablePunctuation(source[index + 1]))
             {
                 _ = plain.Append(source[index + 1]);
@@ -1583,10 +1608,14 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
     [Pure]
     private static bool EndsWithUnescapedBackslash(string source)
+        => EndsWithUnescapedBackslash(source, source.Length);
+
+    [Pure]
+    private static bool EndsWithUnescapedBackslash(string source, int endExclusive)
     {
         var slashes = 0;
 
-        for (var index = source.Length - 1; index >= 0 && source[index] == '\\'; index--)
+        for (var index = endExclusive - 1; index >= 0 && source[index] == '\\'; index--)
         {
             slashes++;
         }

@@ -11,6 +11,9 @@ of their target. Angle-delimited destinations permit spaces.
 
 Backslash escapes keep \*punctuation\* literal.
 
+_Inline emphasis can cross a hard line break\
+without losing its semantic container._
+
 Paragraph boundary spaces and tabs are structural, while interior spacing stays
 authored content.
 

@@ -628,6 +628,104 @@ public sealed class MarkdownDocumentReaderTests
         code.Text.ShouldBe("a ` b");
     }
 
+    /// <summary>Verifies delimiter-based inline containers retain their parsing state across a
+    /// soft line ending and own the resulting soft-break node.</summary>
+    [Theory]
+    [InlineData("*foo\nbar*", "emphasis")]
+    [InlineData("**foo\nbar**", "strong")]
+    [InlineData("~~foo\nbar~~", "strikethrough")]
+    public void Read_WhenDelimitedInlineSpansSoftBreak_CreatesOneContainer(string source, string expectedKind)
+    {
+        // Arrange
+        var extensions = expectedKind == "strikethrough"
+            ? MarkdownExtension.Strikethrough
+            : MarkdownExtension.None;
+
+        // Act
+        var inline = new MarkdownDocumentReader(new MarkdownOptions { Extensions = extensions }).Read(source)
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem();
+
+        // Assert
+        var inlines = expectedKind switch
+        {
+            "emphasis" => inline.ShouldBeOfType<DocumentEmphasis>().Inlines,
+            "strong" => inline.ShouldBeOfType<DocumentStrong>().Inlines,
+            "strikethrough" => inline.ShouldBeOfType<DocumentStrikethrough>().Inlines,
+            _ => throw new InvalidOperationException($"Unexpected inline kind '{expectedKind}'.")
+        };
+        inlines.Count.ShouldBe(3);
+        inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("foo");
+        _ = inlines[1].ShouldBeOfType<DocumentSoftBreak>();
+        inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("bar");
+    }
+
+    /// <summary>Verifies both hard-break marker forms remain semantic line breaks when their
+    /// physical line boundary occurs inside an inline container.</summary>
+    [Theory]
+    [InlineData("*foo  \nbar*")]
+    [InlineData("*foo\\\nbar*")]
+    public void Read_WhenEmphasisSpansHardBreak_PreservesHardBreakInsideContainer(string source)
+    {
+        // Arrange and act
+        var emphasis = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentEmphasis>();
+
+        // Assert
+        emphasis.Inlines.Count.ShouldBe(3);
+        emphasis.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("foo");
+        _ = emphasis.Inlines[1].ShouldBeOfType<DocumentLineBreak>();
+        emphasis.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("bar");
+    }
+
+    /// <summary>Verifies a multiline code span normalizes its line ending to one literal space
+    /// rather than exposing a document break inside code.</summary>
+    [Fact]
+    public void Read_WhenCodeSpanSpansSoftBreak_CreatesOneNormalizedCodeSpan()
+    {
+        // Arrange and act
+        var code = new MarkdownDocumentReader().Read("`foo\nbar`").Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentCodeSpan>();
+
+        // Assert
+        code.Text.ShouldBe("foo bar");
+    }
+
+    /// <summary>Verifies a link label may span a soft line ending and retains that break inside
+    /// the link's own semantic inline collection.</summary>
+    [Fact]
+    public void Read_WhenLinkLabelSpansSoftBreak_CreatesOneLink()
+    {
+        // Arrange and act
+        var link = new MarkdownDocumentReader().Read("[foo\nbar](https://example.invalid)")
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentLink>();
+
+        // Assert
+        link.Target.ShouldBe("https://example.invalid");
+        link.Inlines.Count.ShouldBe(3);
+        link.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("foo");
+        _ = link.Inlines[1].ShouldBeOfType<DocumentSoftBreak>();
+        link.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("bar");
+    }
+
+    /// <summary>Verifies escaping an opener before a soft line ending keeps both delimiter
+    /// characters literal instead of allowing the later closer to create emphasis.</summary>
+    [Fact]
+    public void Read_WhenMultilineEmphasisOpenerIsEscaped_PreservesLiteralDelimiters()
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read("\\*foo\nbar*").Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.Count.ShouldBe(3);
+        paragraph.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("*foo");
+        _ = paragraph.Inlines[1].ShouldBeOfType<DocumentSoftBreak>();
+        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("bar*");
+    }
+
     /// <summary>Verifies both baseline hard-break forms remove their source markers.</summary>
     [Theory]
     [InlineData("alpha  \nbeta")]
