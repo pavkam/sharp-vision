@@ -1964,10 +1964,10 @@ public sealed class DocumentSelectionSurfaceTests
             TestContext.Current.CancellationToken)).ShouldBe(new Selection(1, 1));
     }
 
-    /// <summary>Verifies an ancestor-consumed release cancels a potential click without collapsing
-    /// stale selection, then leaves the next ordinary click fully eligible.</summary>
+    /// <summary>Verifies an ancestor-consumed release cancels a potential click after the press has
+    /// already collapsed stale selection, then leaves the next ordinary click fully eligible.</summary>
     [Fact]
-    public async Task Pointer_WhenAncestorConsumesPotentialRelease_CancelsWithoutCollapsingAsync()
+    public async Task Pointer_WhenAncestorConsumesPotentialRelease_PreservesImmediatePressCollapseAsync()
     {
         // Arrange
         var button = new Button("Submit");
@@ -2008,7 +2008,7 @@ public sealed class DocumentSelectionSurfaceTests
         document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Idle);
         (await surface.Application.Dispatcher.InvokeAsync(
             () => document.Selection,
-            TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 6));
+            TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 0));
 
         // Act and assert - the next unhandled click is not suppressed by stale gesture state.
         await surface.Pointer.MoveToAsync(PointAt(glyph));

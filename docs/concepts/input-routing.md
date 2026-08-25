@@ -174,8 +174,9 @@ scroll a nested text viewport without knowing its concrete control type.
 `ControlBase.IsTextSelectionEnabled` is false by default. When enabled, the
 nearest enabled owner on a pointer route may select across semantic child
 snapshots. An authoritative aggregate owner may arbitrate a descendant drag so
-one range crosses retained-child boundaries; stationary input still reaches the
-child's click behavior. The final adornment paints only complete mapped
+one range crosses retained-child boundaries. A primary press immediately
+collapses any existing range at its new caret; stationary input still reaches
+the child's click behavior. The final adornment paints only complete mapped
 graphemes, and disable, capture loss, unavailability, or terminal-focus loss
 cancels retained gesture state.
 

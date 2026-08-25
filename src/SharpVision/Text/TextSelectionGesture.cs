@@ -33,7 +33,7 @@ internal sealed class TextSelectionGesture
     /// <summary>Gets the committed pointer-selection phase.</summary>
     internal TextSelectionGesturePhase Phase { get; private set; }
 
-    /// <summary>Observes one preview pointer route and claims it only after dragging begins.</summary>
+    /// <summary>Resets selection on press, then observes the preview route and claims it only after dragging begins.</summary>
     /// <param name="eventArgs">The routed pointer event.</param>
     internal void Handle(PointerEventArgs eventArgs)
     {
@@ -75,6 +75,9 @@ internal sealed class TextSelectionGesture
             _anchor = _owner.HitTestTextSelection(pressedCells);
             _clickCount = _owner.GetTextSelectionClickCount(eventArgs.OriginalSource, eventArgs.ClickCount);
             _associatedSource = _owner.GetTextSelectionSource(eventArgs.OriginalSource, pressedCells);
+            // A new gesture must not display or expose the previous range while it waits for the
+            // drag threshold or release. Collapsing here preserves the child's ordinary press path.
+            _owner.CommitPointerTextSelection(_anchor, _anchor);
             _semanticFingerprint = _owner.TextSelectionFingerprint;
             Phase = TextSelectionGesturePhase.Potential;
 

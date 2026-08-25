@@ -425,7 +425,7 @@ public sealed class DocumentLinkSurfaceTests
     }
 
     /// <summary>Verifies releasing a secondary button cannot complete a primary potential link
-    /// click, while the later primary release still collapses and activates exactly once.</summary>
+    /// click after its press collapses selection, while the later primary release activates exactly once.</summary>
     [Fact]
     public async Task Pointer_WhenSecondaryReleaseOccursDuringPotentialLink_WaitsForPrimaryReleaseAsync()
     {
@@ -450,7 +450,7 @@ public sealed class DocumentLinkSurfaceTests
         document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Potential);
         (await surface.Application.Dispatcher.InvokeAsync(
             () => document.Selection,
-            TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 4));
+            TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 0));
 
         // Act and assert - the primary release remains the sole completing transition.
         await surface.Pointer.ReleaseAsync();

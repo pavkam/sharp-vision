@@ -50,8 +50,9 @@ authoritative aggregate such as `Document` arbitrates drags beginning in its
 projected descendants so one range can cross child boundaries; the descendant's
 ordinary click path remains intact until the shared drag threshold is crossed.
 
-- A primary click collapses the range without preventing an ordinary child
-  click.
+- A primary press immediately collapses the range at the pressed caret without
+  preventing an ordinary child click. The same gesture may then extend a fresh
+  range after crossing the drag threshold.
 - Moving one cell with the primary button held transfers capture to the owner
   and begins a cross-child drag.
 - Ctrl+A selects the complete stream.

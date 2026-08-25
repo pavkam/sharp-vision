@@ -49,6 +49,39 @@ public sealed class TextSelectionGestureSurfaceTests
         }
     }
 
+    /// <summary>Verifies a new primary press clears a committed range before any movement or release.</summary>
+    [Fact]
+    public async Task PointerPress_WhenRangeExists_CollapsesImmediatelyAtPressedCaretAsync()
+    {
+        var text = new ControlText("abcd");
+        var owner = new Stack
+        {
+            IsFocusable = true,
+            IsTextSelectionEnabled = true,
+            Children = { text }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            owner,
+            new Size(4, 1),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(
+            () => owner.SetTextSelection(new Selection(0, 4)),
+            "establish selection before a new pointer gesture");
+        var changes = 0;
+        owner.TextSelectionChanged += (_, _) => changes++;
+
+        await surface.Pointer.MoveToAsync(text, new Point(2, 0));
+        await surface.Pointer.PressAsync();
+
+        var (selection, selectedText) = await surface.Application.Dispatcher.InvokeAsync(
+            () => (owner.TextSelection, owner.SelectedText),
+            TestContext.Current.CancellationToken);
+        selection.ShouldBe(new Selection(2, 2));
+        selectedText.ShouldBeEmpty();
+        changes.ShouldBe(1);
+        await surface.Pointer.ReleaseAsync();
+    }
+
     /// <summary>Verifies word and visual-line click expansion belong to the common controller.</summary>
     [Fact]
     public async Task Pointer_WhenCommonOwnerIsClickedRepeatedly_SelectsWordThenVisualLineAsync()

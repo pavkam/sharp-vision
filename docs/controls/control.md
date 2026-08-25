@@ -101,15 +101,15 @@ cells, and keeps clipped text in the semantic stream without inventing hit
 geometry. Framework chrome and generated parts participate only when their
 owning role explicitly exposes them through the selectable-child seam.
 
-A primary click collapses the range without stealing the child's click. Moving
-one cell with the primary button held crosses the shared drag threshold,
-transfers capture to the resolved enabled selection owner, and extends across
-child boundaries. Ctrl+A selects all; Left/Right moves by grapheme or by word
-with Ctrl; Up/Down preserves a visual column; Home/End uses the current visual
-row; and Page Up/Page Down uses visible height and page overlap. Shift extends
-any navigation command from the established anchor. Selection is painted as a
-final subtree adornment with `SelectedText` on `SelectedControl`, so borders and
-non-semantic chrome remain untouched.
+A primary press immediately collapses the range at the pressed caret without
+stealing the child's click. Moving one cell with the primary button held crosses
+the shared drag threshold, transfers capture to the resolved enabled selection
+owner, and extends across child boundaries. Ctrl+A selects all; Left/Right moves
+by grapheme or by word with Ctrl; Up/Down preserves a visual column; Home/End
+uses the current visual row; and Page Up/Page Down uses visible height and page
+overlap. Shift extends any navigation command from the established anchor.
+Selection is painted as a final subtree adornment with `SelectedText` on
+`SelectedControl`, so borders and non-semantic chrome remain untouched.
 
 Replacing a contributing source, even with equal text, changes projection
 identity and clears a stale range once. Reflow and clipping that preserve the
