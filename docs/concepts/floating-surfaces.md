@@ -12,6 +12,7 @@ classDiagram
     ContentControl <|-- FloatingSurfaceBase
     FloatingSurfaceBase <|-- Window
     FloatingSurfaceBase <|-- Popup
+    FloatingSurfaceBase <|-- Toast
     Window <|-- Dialog~TResult~
     Dialog~TResult~ <|-- FileDialogBase~TResult~
     Dialog~MessageBoxResult~ <|-- MessageBox
@@ -31,6 +32,9 @@ externally defined typed surface family derives from `FloatingSurfaceBase`
 directly and declares [`IStyled<TStyle>`](styling.md#overview) itself, the same
 contract any other control uses to add a primary `Style`/`ActualStyle` slot -
 see [Appearance](styling.md#overview) for the full mechanism.
+[`Toast`](../controls/notifications/toast.md#overview) is the non-modal direct
+surface sibling: it mounts itself in the owning Screen or Overlay presentation
+plane, stacks by screen edge, and supplies its own `ToastStyle` contract.
 
 ## Shared lifecycle
 
@@ -45,6 +49,7 @@ concrete family owns its public open state and chrome:
   removal and disposal.
 - `Flyout` fixes interactive light-dismiss behavior.
 - `Tooltip` fixes passive, delayed, non-modal behavior.
+- `Toast` uses `Show(owner)` and `Dismiss()` with a timed, non-modal lifetime.
 
 Presenting a Window, or explicitly entering modality, requires an attached,
 available, undisposed surface. A detached Popup may stage `IsOpen = true`: it
@@ -68,6 +73,11 @@ hand-rolled path still raises `CloseRequested` first via the same
 `FloatingSurfaceBase.RaiseCloseRequested` helper the engine uses and is guarded
 so repeated closure after committed cleanup raises nothing, honoring the same
 idempotency and veto contract the engine already guarantees.
+
+Toast raises the same vetoable request before manual, keyboard, pointer, or
+timer dismissal. Showing does not enter modality or transfer focus. Its display
+timer starts only after entrance completes, and detach or disposal releases the
+timer and stack registration.
 
 > [!IMPORTANT]
 >

@@ -101,6 +101,7 @@ const harnessUsings = [
   "SharpVision.Layout",
   "SharpVision.Menus",
   "SharpVision.Navigation",
+  "SharpVision.Notifications",
   "SharpVision.Popups",
   "SharpVision.Runtime",
   "SharpVision.Scrolling",

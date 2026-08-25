@@ -171,6 +171,28 @@ public sealed class Dispatcher: IAsyncDisposable
         Enqueue(new PostWork(action));
     }
 
+    /// <summary>Requests one later idle notification without consuming bounded queue capacity.</summary>
+    /// <remarks>
+    /// Dispatcher-affine framework cleanup uses this while an idle callback is already being
+    /// published. Re-arming lets a newly subscribed handler run on a distinct turn after the
+    /// current multicast snapshot completes. A stopping dispatcher ignores the request.
+    /// </remarks>
+    internal void RequestIdle()
+    {
+        VerifyAccess();
+
+        lock (_gate)
+        {
+            if (_stopping)
+            {
+                return;
+            }
+
+            _idleRaised = false;
+            Monitor.Pulse(_gate);
+        }
+    }
+
     /// <summary>
     /// Queues one fire-and-observe callback, invoking <paramref name="onCancelled"/> instead if
     /// dispatcher shutdown cancels the queued work before it runs. Internal because ordinary

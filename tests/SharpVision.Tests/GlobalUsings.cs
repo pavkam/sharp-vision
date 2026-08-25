@@ -21,6 +21,7 @@ global using SharpVision.Input;
 global using SharpVision.Layout;
 global using SharpVision.Menus;
 global using SharpVision.Navigation;
+global using SharpVision.Notifications;
 global using SharpVision.Popups;
 global using SharpVision.Scrolling;
 global using SharpVision.Styling;

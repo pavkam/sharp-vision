@@ -125,5 +125,10 @@ export const controls = [
     { doc: "popups/popup", page: "Popup" },
     { doc: "popups/flyout", page: "Flyout" },
     { doc: "popups/tooltip", page: "Tooltip" },
+    {
+        doc: "notifications/toast",
+        page: "Toast",
+        states: [{ popup: true, actions: [{ click: "Show toast" }] }],
+    },
     { doc: "windows/window", page: "Window" },
 ];

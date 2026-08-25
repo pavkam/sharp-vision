@@ -12,13 +12,14 @@ using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
 /// <summary>Adapts one explicit Overlay or application Screen as a temporary presentation owner.</summary>
 internal sealed class PresentationHost
 {
-    private readonly ControlBase _owner;
-
     private PresentationHost(ControlBase owner)
     {
         Debug.Assert(owner is Overlay or Screen, "A presentation host is an Overlay or Screen.");
-        _owner = owner;
+        Owner = owner;
     }
+
+    /// <summary>Gets the stable retained owner identity used to coordinate sibling presentations.</summary>
+    internal ControlBase Owner { get; }
 
     /// <summary>Resolves the supplied explicit Overlay, owning Screen, or outermost fallback Overlay.</summary>
     /// <param name="owner">The non-null control whose retained ancestry is searched.</param>
@@ -57,7 +58,7 @@ internal sealed class PresentationHost
     {
         ArgumentNullException.ThrowIfNull(surface);
 
-        switch (_owner)
+        switch (Owner)
         {
             case Screen screen:
                 screen.AddPresentation(surface);
@@ -77,7 +78,7 @@ internal sealed class PresentationHost
     public bool Owns(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
-        return _owner switch
+        return Owner switch
         {
             Screen screen => screen.OwnsPresentation(control),
             Overlay overlay => ReferenceEquals(control.Parent, overlay),
@@ -88,7 +89,7 @@ internal sealed class PresentationHost
     /// <summary>Removes one identical temporary surface without disposing it.</summary>
     /// <param name="control">The non-null owned surface.</param>
     /// <returns>True when the surface was removed.</returns>
-    internal bool Remove(FloatingSurfaceBase control) => _owner switch
+    internal bool Remove(FloatingSurfaceBase control) => Owner switch
     {
         Screen screen => screen.RemovePresentation(control),
         Overlay overlay => overlay.Children.Remove(control),

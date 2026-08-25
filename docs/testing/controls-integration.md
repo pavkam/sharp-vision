@@ -44,6 +44,12 @@ checks automatically - a mechanical catalog that only asserts "a test exists"
 for every exported type, without exercising real behavior, is a test smell in
 this codebase and is deliberately not part of the suite.
 
+Toast surface evidence mounts notifications through both a Screen presentation
+plane and an explicit Overlay. It proves all six edge positions, newest-nearest
+stacking, elapsed entrance geometry, semantic cells, keyboard and capture-aware
+pointer dismissal, veto, timeout ordering, focus passivity, and external-detach
+cleanup through the real dispatcher and renderer.
+
 `ComponentGeometrySurfaceTests` applies the same fixed margin, intrinsic border,
 and padding through a single dedicated `ChromeProbe` control, proving exact
 border-box placement, exact `ContentBounds` deflation, the expected frame corner

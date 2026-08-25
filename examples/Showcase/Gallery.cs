@@ -18,6 +18,7 @@ public sealed class Gallery: Screen
         "Display",
         "Charts",
         "Progress",
+        "Notifications",
         "Dialogs",
         "Windows"
     ];
@@ -76,6 +77,7 @@ public sealed class Gallery: Screen
         ("Display", StatusBarPane.Title, static () => new StatusBarPane()),
         ("Input", SliderPane.Title, static () => new SliderPane()),
         ("Progress", SpinnerPane.Title, static () => new SpinnerPane()),
+        ("Notifications", ToastPane.Title, static () => new ToastPane()),
         ("Layout", StackPane.Title, static () => new StackPane()),
         ("Collections", TabControlPane.Title, static () => new TabControlPane()),
         ("Collections", TablePane.Title, static () => new TablePane()),
