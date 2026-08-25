@@ -53,6 +53,12 @@ thematic breaks. Backslash escapes preserve punctuation literally. A hard break
 may use either two trailing spaces or a trailing backslash. Optional syntax
 stays visible as literal text when its extension is disabled.
 
+ATX headings follow the
+[CommonMark 0.31.2 heading grammar](https://spec.commonmark.org/0.31.2/#atx-headings):
+all spaces and tabs after the opening hash sequence and at the end of raw
+heading content are structural. Interior whitespace remains authored content,
+and a closing hash sequence is removed only when whitespace separates it.
+
 Paragraph raw content follows the
 [CommonMark 0.31.2 paragraph rules](https://spec.commonmark.org/0.31.2/#paragraphs):
 spaces and tabs at the paragraph edges and around soft line breaks are

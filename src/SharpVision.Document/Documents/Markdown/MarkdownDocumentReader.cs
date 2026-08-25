@@ -239,7 +239,14 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             return false;
         }
 
-        var content = level == trimmed.Length ? string.Empty : trimmed[(level + 1)..];
+        var contentStart = level;
+
+        while (contentStart < trimmed.Length && trimmed[contentStart] is ' ' or '\t')
+        {
+            contentStart++;
+        }
+
+        var content = trimmed[contentStart..];
         var end = content.Length;
 
         while (end > 0 && content[end - 1] is ' ' or '\t')

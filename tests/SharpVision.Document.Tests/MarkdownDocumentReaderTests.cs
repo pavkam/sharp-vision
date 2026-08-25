@@ -974,6 +974,30 @@ public sealed class MarkdownDocumentReaderTests
         }
     }
 
+    /// <summary>Verifies every space or tab at the raw ATX content boundaries is structural while
+    /// whitespace inside the heading remains authored inline content.</summary>
+    [Theory]
+    [InlineData("#                  foo", "foo")]
+    [InlineData("#\t\tfoo\t\t", "foo")]
+    [InlineData("## \tfoo  bar\t ## \t", "foo  bar")]
+    [InlineData("### \t ", "")]
+    public void Read_WhenAtxHeadingHasBoundaryWhitespace_RemovesOnlyBoundaryWhitespace(
+        string source,
+        string expected)
+    {
+        // Arrange and act
+        var heading = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentHeading>();
+
+        // Assert
+        heading.Inlines.Count.ShouldBe(expected.Length == 0 ? 0 : 1);
+
+        if (expected.Length > 0)
+        {
+            heading.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(expected);
+        }
+    }
+
     /// <summary>Verifies quote nesting has a deterministic structural ceiling below hostile stack depth.</summary>
     [Fact]
     public void Read_WhenBlockQuoteNestingIsHostile_RemainsBoundedAndDeterministic()
