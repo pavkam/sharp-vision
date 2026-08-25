@@ -46,6 +46,7 @@ public sealed class DocumentLink: DocumentInlineContainer
     /// <param name="text">The non-null literal text.</param>
     /// <param name="target">The non-null OSC 8 hyperlink target.</param>
     /// <exception cref="ArgumentNullException"><paramref name="text"/> or <paramref name="target"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="target"/> is empty or contains a control code unit.</exception>
     public DocumentLink(string text, string target) : this(text)
     {
         ArgumentNullException.ThrowIfNull(target);
@@ -93,11 +94,30 @@ public sealed class DocumentLink: DocumentInlineContainer
     /// A terminal without OSC 8 support ignores the target and renders the link's text unchanged, so
     /// setting it is always safe.
     /// </remarks>
+    /// <exception cref="ArgumentException">The value is empty or contains a control code unit.</exception>
     public string? Target
     {
         get;
         set
         {
+            if (value is not null)
+            {
+                if (value.Length == 0)
+                {
+                    throw new ArgumentException("A link target cannot be empty.", nameof(value));
+                }
+
+                foreach (var codeUnit in value)
+                {
+                    if (char.IsControl(codeUnit))
+                    {
+                        throw new ArgumentException(
+                            "A link target cannot contain control code units.",
+                            nameof(value));
+                    }
+                }
+            }
+
             VerifyMutable();
 
             if (string.Equals(field, value, StringComparison.Ordinal))

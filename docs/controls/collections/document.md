@@ -414,9 +414,9 @@ tab stop, so a break in a different place cannot change its width.
 | Member                                     | Type                      | Default    | Description                                                                         |
 | ------------------------------------------ | ------------------------- | ---------- | ----------------------------------------------------------------------------------- |
 | `DocumentLink(string text)`                | —                         | —          | Initializes a link with literal text; rejects a null text.                          |
-| `DocumentLink(string text, string target)` | —                         | —          | Adds an OSC 8 target; rejects a null text or target.                                |
+| `DocumentLink(string text, string target)` | —                         | —          | Adds an OSC 8 target; rejects null, empty, or control-containing arguments.         |
 | `Text`                                     | `string`                  | `""`       | Non-null literal link text; rejects null.                                           |
-| `Target`                                   | `string?`                 | `null`     | OSC 8 hyperlink target emitted around the link's cells, or null.                    |
+| `Target`                                   | `string?`                 | `null`     | OSC 8 target, or null; rejects empty or control-containing values before mutation.  |
 | `IsEnabled`                                | `bool`                    | `true`     | Whether the link can be focused and activated.                                      |
 | `Emphasis`                                 | `DocumentLinkEmphasis`    | `Standard` | Which `DocumentStyle` face family paints the link; rejects an undefined value.      |
 | `Clicked`                                  | `EventHandler<EventArgs>` | —          | Raised after the link is activated by Enter, Space, or an eligible primary release. |
@@ -433,7 +433,8 @@ link and remains activatable on every line it occupies.
 hyperlink around the link's cells so a capable terminal can offer its own open
 or copy affordance, and a terminal without OSC 8 support renders the text
 unchanged; `Clicked` is what makes the link do something inside the application.
-Either, both, or neither is valid.
+Either, both, or neither is valid. Every non-null target must be non-empty and
+contain no control code unit, matching the terminal cell-style contract.
 
 `Emphasis` chooses the presentation, never the behavior: an `Action`-emphasis
 link is exactly as focusable and activatable as a `Standard` one. `Standard`

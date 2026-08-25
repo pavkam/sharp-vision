@@ -93,6 +93,15 @@ public sealed class DocumentInlineTests
         link.Target.ShouldBe("https://example.invalid/docs");
     }
 
+    /// <summary>Verifies link construction rejects targets that cannot be represented by the
+    /// terminal cell style.</summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("\0")]
+    [InlineData("\u001b")]
+    public void Constructor_WhenLinkTargetCannotBeEmitted_ThrowsArgumentException(string target) =>
+        Should.Throw<ArgumentException>(() => new DocumentLink("docs", target));
+
     /// <summary>Verifies link text rejects null on construction and on assignment, and that the
     /// target constructor rejects a null target.</summary>
     [Fact]
@@ -216,6 +225,25 @@ public sealed class DocumentInlineTests
 
         // Assert
         link.Target.ShouldBeNull();
+    }
+
+    /// <summary>Verifies assigning a target that cannot be represented by the terminal cell style
+    /// fails before replacing the current valid target.</summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("\0")]
+    [InlineData("\u001b")]
+    public void Target_WhenValueCannotBeEmitted_ThrowsWithoutChangingState(string target)
+    {
+        // Arrange
+        var link = new DocumentLink("docs", "https://example.invalid/docs");
+
+        // Act
+        void Act() => link.Target = target;
+
+        // Assert
+        _ = Should.Throw<ArgumentException>(Act);
+        link.Target.ShouldBe("https://example.invalid/docs");
     }
 
     /// <summary>Verifies a link event notification exposes exactly the activated link.</summary>

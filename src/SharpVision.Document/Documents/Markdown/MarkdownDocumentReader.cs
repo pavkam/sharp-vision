@@ -658,7 +658,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 TryLink(source, index, out var linkEnd, out var label, out var target))
             {
                 Flush();
-                var link = new DocumentLink { Target = target };
+                var link = new DocumentLink { Target = target.Length == 0 ? null : target };
 
                 // CommonMark forbids a link from containing another link at any nesting depth: a
                 // label whose own content would otherwise resolve to a link (a literal reference

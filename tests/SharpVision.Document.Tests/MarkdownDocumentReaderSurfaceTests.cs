@@ -65,6 +65,26 @@ public sealed class MarkdownDocumentReaderSurfaceTests
         render.Cell(7, 1).Style.Hyperlink.ShouldBe("https://example.test");
     }
 
+    /// <summary>Verifies CommonMark's valid empty link destination remains a semantic link while
+    /// rendering without an invalid OSC 8 target.</summary>
+    [Fact]
+    public void Load_WhenInlineLinkDestinationIsEmpty_RendersWithoutAHyperlinkTarget()
+    {
+        // Arrange
+        var document = new Document();
+        _ = document.Load("[x]()", new MarkdownDocumentReader());
+        var link = document.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>()
+            .Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentLink>();
+
+        // Act
+        using var render = new DocumentRenderProbe(document, new Size(4, 1));
+
+        // Assert
+        link.Target.ShouldBeNull();
+        render.Rows().ShouldBe(["x"]);
+        render.Cell(0, 0).Style.Hyperlink.ShouldBeNull();
+    }
+
     /// <summary>Verifies generated radio names are scoped per mounted document even when both
     /// readers assign the same source-list ordinal.</summary>
     [Fact]

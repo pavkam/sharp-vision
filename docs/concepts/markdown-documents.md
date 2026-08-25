@@ -31,6 +31,10 @@ mutate a mounted control.
 configuration or oversized input. This is a format-independent memory boundary,
 not a Markdown rule.
 
+An inline link with an empty destination, such as `[label]()`, remains a
+semantic `DocumentLink` with a null `Target`. It keeps document link navigation
+and activation semantics without emitting an invalid OSC 8 hyperlink target.
+
 ## Baseline Markdown
 
 The default reader recognizes ATX and Setext headings, paragraphs, soft and hard
