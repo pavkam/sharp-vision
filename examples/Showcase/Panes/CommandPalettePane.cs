@@ -111,11 +111,11 @@ internal sealed class CommandPalettePane: CompositeControlBase
             Children = { showCenter, showTop }
         };
         Overlay.SetTop(triggers, Length.Cells(12));
-        Overlay.SetTop(presentationStatus, Length.Cells(14));
+        Overlay.SetTop(presentationStatus, Length.Cells(15));
         var presentationStage = new Overlay
         {
             Width = Length.Cells(44),
-            Height = Length.Cells(16),
+            Height = Length.Cells(18),
             ClipToBounds = false,
             Border = new Border(
                 BorderSide.All,
